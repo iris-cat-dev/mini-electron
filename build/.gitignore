@@ -25,3 +25,4 @@ ciopfs
 
 !/util/LASTCHANGE.dummy
 !/util/lastchange.gni
+!/util/lastchange.py
