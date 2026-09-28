@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 *.pyo
 /tools/clang/crashreports/
+
+# Upstream credentials intentionally excluded from this public repository.
+/third_party/blink/tools/print_stale_test_expectations_entries.py
+/third_party/openssl/openssl/apps/rsa8192.pem
