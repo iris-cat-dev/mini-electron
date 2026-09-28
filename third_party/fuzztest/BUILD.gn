@@ -1,0 +1,10 @@
+# Copyright 2026 The miniblink132 Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+# Production builds do not depend on these targets. They remain declared so the
+# pinned V8 GN graph can be evaluated in this source-pruned repository.
+foreach(name, [ "fuzztest", "init_fuzztest", "centipede" ]) {
+  group(name) {
+    testonly = true
+  }
+}

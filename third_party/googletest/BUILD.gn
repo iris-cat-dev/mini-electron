@@ -1,0 +1,25 @@
+# Copyright 2026 The miniblink132 Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+# The repository vendors V8's pinned GoogleTest checkout rather than Chromium's
+# top-level copy. Keep Chromium target labels stable for GN files that reference
+# them, while maintaining a single source checkout.
+group("gtest") {
+  testonly = true
+  public_deps = [ "//v8/third_party/googletest:gtest" ]
+}
+
+group("gtest_main") {
+  testonly = true
+  public_deps = [ "//v8/third_party/googletest:gtest_main" ]
+}
+
+group("gmock") {
+  testonly = true
+  public_deps = [ "//v8/third_party/googletest:gmock" ]
+}
+
+group("gmock_main") {
+  testonly = true
+  public_deps = [ "//v8/third_party/googletest:gmock_main" ]
+}
