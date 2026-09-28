@@ -1,0 +1,10 @@
+# Copyright 2026 The miniblink132 Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+group("default") {
+  deps = [
+    "//platform/macos:miniblink_mac_gui_demo",
+    "//platform/macos:miniblink_mac_electron_demo",
+    "//platform/macos:miniblink_mac_smoke",
+  ]
+}

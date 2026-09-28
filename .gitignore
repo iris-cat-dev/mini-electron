@@ -1,0 +1,7 @@
+/out/
+/.mac-tools/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+/tools/clang/crashreports/

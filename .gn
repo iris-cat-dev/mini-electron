@@ -1,0 +1,9 @@
+# GN entry point for the macOS port.
+buildconfig = "//build/config/BUILDCONFIG.gn"
+script_executable = "python3"
+
+default_args = {
+  v8_enable_gdbjit = false
+  v8_imminent_deprecation_warnings = false
+  clang_unsafe_buffers_paths = "//build/config/unsafe_buffers_paths.txt"
+}
