@@ -47,7 +47,7 @@ If GN is outside `PATH`, set `GN=/absolute/path/to/gn`. The output binary is
 `out/mac-arm64/miniblink_mac_smoke`; a successful run prints:
 
 ```json
-{"engine":"miniblink132","platform":"macOS","arch":"arm64","runLoop":"CFRunLoop","result":42}
+{"engine":"miniblink132","platform":"macOS","arch":"arm64","runLoop":"CFRunLoop","unicodeIdentifier":true,"intlLocale":"zh-CN","icuLocale":"zh-Hans-CN","icuDate":"2026年3月17日星期二","icuSort":["北京","广州","上海"],"result":42}
 ```
 
 ### Native GUI demo
@@ -114,6 +114,8 @@ serves both roles: it starts the AppKit/Blink GUI normally and starts the
 statically linked Node runtime for CLI and daemon child processes when
 `ELECTRON_RUN_AS_NODE=1`. Node uses this repository's V8 build, so the bundle
 does not contain a second Node distribution or `Contents/Resources/node`.
+Blink and Node/V8 also share the same statically linked full ICU data package;
+the macOS target does not compile MiniBlink's legacy embedded ICU blob.
 Packaging still downloads the backend's declared Node release into
 `.mac-tools` to run `npm ci`; that executable is build-time tooling only.
 nghttp2 is likewise downloaded, checksum-verified, built as a static library,

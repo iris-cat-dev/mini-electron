@@ -1,8 +1,8 @@
 # OMP Desktop size analysis
 
-This report records the size baseline and optimization options for the Apple
-Silicon OMP Desktop package. Measurements were taken from commit `87cf65a9f`
-after packaging with:
+This report records the original size baseline and optimization options for the
+Apple Silicon OMP Desktop package. Baseline measurements were taken from commit
+`87cf65a9f` after packaging with:
 
 ```sh
 ./platform/macos/build.py --omp-desktop --omp-source ../omp-desktop
@@ -13,12 +13,13 @@ MiB use 1 MiB = 1,048,576 bytes.
 
 ## Executive summary
 
-`OMP Desktop` is 90,623,888 bytes (86.43 MiB). The remaining bytes are mostly
-live machine code and immutable runtime data, not debug symbols:
+The baseline `OMP Desktop` executable was 90,623,888 bytes (86.43 MiB).
+Sharing the full ICU data package between Blink and Node/V8 reduced it to
+88,736,048 bytes (84.63 MiB). Baseline live-byte attribution was:
 
 - Blink/MiniBlink: 38.29 MiB
 - V8: 21.71 MiB
-- ICU: 13.78 MiB
+- ICU: 13.78 MiB before deduplication, approximately 11.98 MiB after
 - Node and its protocol dependencies: 9.81 MiB
 - OpenSSL: 2.24 MiB
 
@@ -33,10 +34,36 @@ and Blink features. Going below 60 MiB would require material compatibility or
 performance losses such as removing WebAssembly, full `Intl`, JIT tiers, or a
 large portion of Blink.
 
-The complete `.app` is approximately 407.36 MiB. Its largest single file is not
-the host executable but the bundled 198.80 MiB `Resources/bin/omp` Bun
-executable. Optimizing only the 86.43 MiB host cannot make the overall package
+The complete `.app` is now approximately 405.56 MiB. Its largest single file is
+not the host executable but the bundled 198.80 MiB `Resources/bin/omp` Bun
+executable. Optimizing only the 84.63 MiB host cannot make the overall package
 small by itself.
+
+## Implemented optimization: shared ICU data
+
+The macOS source manifest no longer compiles
+`content/resources/icudtl.cpp`. During Blink startup,
+`RenderThreadImpl::initializeICUData()` calls `u_init()`, which discovers the
+full `//third_party/icu:icudata` package already linked for V8 and Node. It no
+longer replaces ICU's common data pointer with MiniBlink's legacy 1.80 MiB
+array. Non-macOS builds retain the legacy fallback.
+
+| Measurement | Baseline | Shared ICU data | Reduction |
+| --- | ---: | ---: | ---: |
+| Signed host executable | 90,623,888 bytes | 88,736,048 bytes | 1,887,840 bytes (1.80 MiB, 2.08%) |
+| Complete `.app`, allocated | 417,136 KiB | 415,296 KiB | 1,840 KiB (1.80 MiB) |
+
+Verification used the packaged application:
+
+- Blink and Node both resolved `Intl.Locale('zh-CN').maximize()` to
+  `zh-Hans-CN`.
+- `Intl.DateTimeFormat` produced `2026年3月17日星期二` for the fixed
+  Asia/Shanghai test value.
+- `Intl.Collator('zh-CN')` sorted 北京、广州、上海 in that order.
+- A Blink visual smoke rendered Chinese and exercised marked-text composition
+  plus committed text, producing `中文PASTE_OK` in an input.
+- The packaged OMP frontend and its Chinese UI loaded successfully.
+- `codesign --verify --deep --strict` accepted the resulting `.app`.
 
 ## Measurement method
 
@@ -111,8 +138,9 @@ more names.
 
 ### Logical component attribution
 
-The following values sum live symbols and data atoms from the linker map.
-Small alignment gaps and link metadata are not assigned to a component.
+The following values sum live symbols and data atoms from the baseline linker
+map, before ICU deduplication. Small alignment gaps and link metadata are not
+assigned to a component.
 
 | Component | MiB | Share of live bytes |
 | --- | ---: | ---: |
@@ -194,26 +222,25 @@ Mach-O; it does not reduce the application package.
 
 ### ICU
 
-The binary currently carries:
+The binary now carries:
 
 | ICU contribution | MiB |
 | --- | ---: |
 | Full current ICU data (`icudtl_dat.o`) | 9.98 |
-| Legacy MiniBlink embedded data (`content/resources/icudtl.cpp`) | 1.80 |
 | ICU implementation code | approximately 2.0 |
+| Legacy MiniBlink data in the macOS target | 0 |
 
-The best low-risk data optimization is to initialize Blink from the current
-full ICU data and remove the legacy 1.80 MiB blob. This must be verified against
-Chinese text, locale direction, date/number formatting, sorting, and input
-methods.
+The full data package is shared by Blink and Node/V8. Removing the legacy
+MiniBlink array from the macOS link saved exactly 1,887,840 bytes in the final
+signed host without adding an external resource.
 
 The OMP frontend directly uses `Intl.Locale`, so disabling V8 internationalization
 is not compatible. Filtering full ICU data to a fixed locale set could save an
 estimated 6-8 MiB, but it would make unsupported locales fail and should only be
 done with an explicit product locale policy.
 
-Externalizing the 9.98 MiB ICU blob reduces the executable but leaves the `.app`
-roughly unchanged.
+Externalizing the 9.98 MiB ICU blob would reduce the executable but leave the
+`.app` roughly unchanged.
 
 ### Node
 
@@ -322,14 +349,15 @@ every few hundred KiB matters.
 
 ### Phase 1: low-risk build and data changes
 
+ICU deduplication is complete; the measured host is now 84.63 MiB. Remaining
+steps:
+
 1. Enable `optimize_for_size=true` for ordinary targets.
 2. Change V8 speed targets from `-O3` to `-O2`.
-3. Remove the duplicate 1.80 MiB MiniBlink ICU payload by sharing current ICU
-   data.
-4. Re-run the packaged OMP UI, daemon, compressed fetch, and terminal scenarios.
+3. Re-run the packaged OMP UI, daemon, compressed fetch, and terminal scenarios.
 
-Expected target: 78-81 MiB. This range is an estimate until a complete build is
-measured.
+Expected target after the remaining steps: 78-81 MiB. This range is an estimate
+until a complete optimized build is measured.
 
 ### Phase 2: bounded feature removal
 
@@ -352,12 +380,12 @@ build infrastructure, or maintenance cost.
 
 ## Complete application package
 
-The application currently occupies approximately 417,136 KiB (407.36 MiB).
+The application currently occupies approximately 415,296 KiB (405.56 MiB).
 Measured top-level allocation is:
 
 | Path | Allocated size |
 | --- | ---: |
-| `Contents/MacOS` | approximately 86.4 MiB |
+| `Contents/MacOS` | approximately 84.6 MiB |
 | `Contents/Resources/bin` | approximately 198.8 MiB |
 | `Contents/Resources/backend` | approximately 101.0 MiB |
 | `Contents/Resources/app-dist` | approximately 20.9 MiB |
@@ -404,7 +432,8 @@ exercising the runtime compile paths that use them.
 
 ## Distribution size
 
-The signed 86.43 MiB host executable compressed to 31.73 MiB in a ZIP test.
+The baseline signed 86.43 MiB host executable compressed to 31.73 MiB in a ZIP
+test.
 For download-size goals, a compressed DMG or ZIP provides a much larger return
 than additional symbol manipulation. Compression does not change installed
 logical size or memory mapping.
@@ -416,8 +445,8 @@ For installed `.app` size, the highest-return sequence is:
 1. prune non-target `node-pty` files: approximately 25 MiB;
 2. decide whether Sherpa/ONNX is base or optional: 32.51 MiB;
 3. decide whether the 198.80 MiB Bun OMP executable must remain bundled;
-4. apply `-Os`, V8 `-O2`, and ICU deduplication to the 86.43 MiB host;
+4. apply `-Os` and V8 `-O2` to the current 84.63 MiB host;
 5. only then consider Maglev/Blink feature removal or a new LTO toolchain.
 
-For the host executable alone, start with build optimization and ICU
-deduplication. Further stripping is both unsafe and immaterial.
+For the host executable alone, ICU deduplication is complete. Continue with
+build optimization; further stripping is both unsafe and immaterial.

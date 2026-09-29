@@ -40,11 +40,23 @@ std::optional<std::string> RunEngineProbe(const char* executable_path) {
     v8::Context::Scope context_scope(context);
 
     constexpr char kScript[] =
-        "JSON.stringify({engine: 'miniblink132', platform: 'macOS', "
+        "(() => {"
+        "const locale = new Intl.Locale('zh-CN').maximize().toString();"
+        "const date = new Intl.DateTimeFormat('zh-CN', {timeZone: "
+        "'Asia/Shanghai', dateStyle: 'full'}).format(new "
+        "Date('2026-03-17T00:00:00Z'));"
+        "const sorted = ['上海', '北京', '广州'].sort(new "
+        "Intl.Collator('zh-CN').compare);"
+        "if (locale !== 'zh-Hans-CN' || date !== '2026年3月17日星期二' || "
+        "sorted.join(',') !== '北京,广州,上海') throw new Error('ICU data "
+        "mismatch');"
+        "return JSON.stringify({engine: 'miniblink132', platform: 'macOS', "
         "arch: 'arm64', runLoop: 'CFRunLoop', "
         "unicodeIdentifier: /^[\\p{ID_Start}_][\\p{ID_Continue}_]*$/u.test('_变量1'), "
         "intlLocale: new Intl.NumberFormat('zh-CN').resolvedOptions().locale, "
-        "result: [1, 2, 3].map(x => x * 7).reduce((a, b) => a + b, 0)})";
+        "icuLocale: locale, icuDate: date, icuSort: sorted, "
+        "result: [1, 2, 3].map(x => x * 7).reduce((a, b) => a + b, 0)});"
+        "})()";
     v8::Local<v8::String> source;
     v8::Local<v8::Script> script;
     v8::Local<v8::Value> result;

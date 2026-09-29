@@ -466,7 +466,10 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   mbFireMouseEvent(_webView, MB_MSG_MOUSEMOVE, x, y, 0);
   mbFireMouseEvent(_webView, MB_MSG_LBUTTONDOWN, x, y, MB_LBUTTON);
   mbFireMouseEvent(_webView, MB_MSG_LBUTTONUP, x, y, 0);
-  [self insertCommittedText:@"x"];
+  [self setMarkedText:@"拼音"
+        selectedRange:NSMakeRange(2, 0)
+      replacementRange:NSMakeRange(NSNotFound, 0)];
+  [self insertText:@"中文" replacementRange:NSMakeRange(NSNotFound, 0)];
   NSPasteboard* board = [NSPasteboard generalPasteboard];
   NSString* previous = [board stringForType:NSPasteboardTypeString];
   [board clearContents];

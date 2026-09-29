@@ -4324,7 +4324,6 @@ miniblink_content_sources = [
   "//content/renderer/WebDedicatedWorkerHostFactoryClientImpl.cpp",
   "//content/renderer/WebLocalFrameClientImpl.cpp",
   "//content/renderer/WebWorkerFetchContextImpl.cpp",
-  "//content/resources/icudtl.cpp",
   "//content/resources/V8108SnapshotBlobBinWinX64.cpp",
   "//content/resources/V8108SnapshotBlobBinX86.cpp",
   "//content/ui/ClipboardUtil.cpp",

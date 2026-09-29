@@ -47,9 +47,10 @@
 #include "mbnet/WebURLLoaderImplCurl.h"
 #include "ui/gfx/native_widget_types.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
+#include "base/check.h"
 #include "base/memory/discardable_memory_allocator.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
-#include "third_party/icu/source/common/unicode/utypes.h"
+#include "third_party/icu/source/common/unicode/uclean.h"
 #include "third_party/icu/source/common/unicode/udata.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/ports/SkFontMgr_directory.h"
@@ -69,8 +70,9 @@
 #endif
 #include "url/url_util.h"
 
+#if !BUILDFLAG(IS_MAC)
 extern unsigned char icudtlData[1884304];
-extern unsigned char icudtlData_flutter_desktop[2700172];
+#endif
 extern unsigned char SnapshotBlobBinX86[328619];
 extern unsigned char SnapshotBlobBinX64[327326];
 extern unsigned char SnapshotBlobBinX64Linux[471944];
@@ -87,7 +89,6 @@ namespace cc {
 extern size_t kMemoryThresholdTSoftwareImageDecodeCache;
 }
 
-void readFileToBuf(const char* path, std::vector<char>* buffer);
 
 namespace v8 {
 namespace internal {
@@ -144,75 +145,17 @@ RenderThreadImpl::RenderThreadImpl()
     m_hostThread.Start();
 }
 
-void readFileToBuf(const char* path, std::vector<char>* buffer)
+static void initializeICUData()
 {
-#ifdef _MSC_VER
-    const char kHead[] = "file:///";
-    std::string url = path;
-    if (0 == url.find(kHead))
-        url = url.substr(sizeof(kHead) - 1);
-
-    buffer->clear();
-    HANDLE hFile = CreateFileA(url.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (INVALID_HANDLE_VALUE == hFile)
-        return;
-
-    DWORD fileSizeHigh;
-    const DWORD bufferSize = ::GetFileSize(hFile, &fileSizeHigh);
-    if (0 == bufferSize)
-        return;
-
-    DWORD numberOfBytesRead = 0;
-    buffer->resize(bufferSize);
-    BOOL b = ::ReadFile(hFile, &buffer->at(0), bufferSize, &numberOfBytesRead, nullptr);
-    ::CloseHandle(hFile);
+    UErrorCode error = U_ZERO_ERROR;
+#if BUILDFLAG(IS_MAC)
+    // The macOS target links //third_party/icu:icudata. Let ICU discover that
+    // full data package instead of replacing it with MiniBlink's legacy copy.
+    u_init(&error);
 #else
-    return;
-#endif // _MSC_VER
-}
-
-static bool initializeICUWithFileDescriptorInternal()
-{
-    // This can be called multiple times in tests.
-    UErrorCode err = U_ZERO_ERROR;
-#if 0
-    std::vector<char>* buffer = new std::vector<char>();
-    const char* path;
-
-    //----
-    std::vector<char> pathBuf;
-    pathBuf.resize(2 * MAX_PATH);
-    memset(pathBuf.data(), 0, sizeof(char) * (2 * MAX_PATH));
-    ::GetModuleFileNameA(nullptr, pathBuf.data(), MAX_PATH);
-    ::PathRemoveFileSpecA(pathBuf.data());
-    ::PathAppendA(pathBuf.data(), "icudtl.dat");
-    path = pathBuf.data();
-    //----
-
-    readFileToBuf(path, buffer);
-    if (buffer->size() != 0) {
-        udata_setCommonData((uint8_t*)(buffer->data()), &err);
-        return err == U_ZERO_ERROR;
-    }
-
-    //path = "P:\\chromium\\cef119\\chromium_git\\chromium\\src\\third_party\\icu\\flutter_desktop\\icudtl.dat";
-    //path = "E:\\chroium\\M108\\src\\third_party\\icu\\flutter\\icudtl.dat"
-    //path = "E:\\chroium\\M108\\src\\third_party\\icu\\cast\\icudtl.dat"; // ok
-    //path = "W:\\mycode\\guomi\\bin\\Release\\icudtl.dat";
-    //path = "P:\\chromium\\M115\\third_party\\icu\\flutter_desktop\\icudtl.dat";
-    //path = "W:\\mycode\\mb108\\content\\resources\\icudtl.dat";
-    readFileToBuf(path, buffer);
-    if (buffer->size() != 0) {
-        udata_setCommonData((uint8_t*)(buffer->data()), &err);
-        return err == U_ZERO_ERROR;
-    }
-
-    //udata_setCommonData(const_cast<uint8_t*>(icudtlData), &err);
-#else
-    udata_setCommonData(const_cast<uint8_t*>(icudtlData), &err);
-    printf("initializeICUWithFileDescriptorInternal: %p\n", icudtlData);
+    udata_setCommonData(const_cast<uint8_t*>(icudtlData), &error);
 #endif
-    return err == U_ZERO_ERROR;
+    CHECK(U_SUCCESS(error)) << "ICU initialization failed: " << u_errorName(error);
 }
 
 // TestDiscardableMemoryAllocator is a simple DiscardableMemoryAllocator
@@ -710,7 +653,7 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 {
     ThreadCall::initializeWebKit();
     initializeSkia();
-    initializeICUWithFileDescriptorInternal();
+    initializeICUData();
 
 #if defined(OS_WIN)
     // blink::WebFontRendering::SetUseDirectWrite(base::win::GetVersion() >= base::win::Version::WIN7);
