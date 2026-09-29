@@ -51,17 +51,20 @@ class WorkerThread;
 class WorkerThreadDebugger;
 struct WorkerDevToolsParams;
 
-class WorkerInspectorController final : public GarbageCollected<WorkerInspectorController>,
-                                        public trace_event::EnabledStateObserver,
-                                        public DevToolsAgent::Client,
-                                        private Thread::TaskObserver {
+class WorkerInspectorController final : public GarbageCollected<WorkerInspectorController>
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+    , public trace_event::EnabledStateObserver
+    , public DevToolsAgent::Client
+    , private Thread::TaskObserver
+#endif
+{
 public:
     static WorkerInspectorController* Create(WorkerThread*, const KURL&, scoped_refptr<InspectorTaskRunner>, std::unique_ptr<WorkerDevToolsParams>);
 
     WorkerInspectorController(WorkerThread*, const KURL&, WorkerThreadDebugger*, scoped_refptr<InspectorTaskRunner>, std::unique_ptr<WorkerDevToolsParams>);
     WorkerInspectorController(const WorkerInspectorController&) = delete;
     WorkerInspectorController& operator=(const WorkerInspectorController&) = delete;
-    ~WorkerInspectorController() override;
+    ~WorkerInspectorController();
     void Trace(Visitor*) const;
 
     CoreProbeSink* GetProbeSink() const
@@ -70,13 +73,18 @@ public:
     }
     DevToolsAgent* GetDevToolsAgent() const
     {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+        return nullptr;
+#else
         return agent_.Get();
+#endif
     }
     void Dispose();
     void FlushProtocolNotifications();
     void WaitForDebuggerIfNeeded();
 
 private:
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     // Thread::TaskObserver implementation.
     void WillProcessTask(const base::PendingTask&, bool) override;
     void DidProcessTask(const base::PendingTask&) override;
@@ -93,7 +101,11 @@ private:
     void InspectElement(const gfx::Point&) override;
     void DebuggerTaskStarted() override;
     void DebuggerTaskFinished() override;
+#endif
 
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+    Member<CoreProbeSink> probe_sink_;
+#else
     Member<DevToolsAgent> agent_;
     WorkerThreadDebugger* debugger_;
     WorkerThread* thread_;
@@ -108,6 +120,7 @@ private:
     base::UnguessableToken parent_devtools_token_;
     KURL url_;
     const PlatformThreadId worker_thread_id_;
+#endif
 };
 
 } // namespace blink

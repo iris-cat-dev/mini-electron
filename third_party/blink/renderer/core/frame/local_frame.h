@@ -1071,8 +1071,10 @@ private:
     Member<AdTracker> ad_tracker_;
     Member<IdlenessDetector> idleness_detector_;
     Member<AttributionSrcLoader> attribution_src_loader_;
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     Member<InspectorIssueReporter> inspector_issue_reporter_;
     Member<InspectorTraceEvents> inspector_trace_events_;
+#endif
     // SmoothScrollSequencer is only populated for local roots; all local frames
     // use the instance owned by their local root.
     Member<SmoothScrollSequencer> smooth_scroll_sequencer_;

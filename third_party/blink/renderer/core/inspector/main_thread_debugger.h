@@ -96,6 +96,7 @@ private:
     void ReportConsoleMessage(ExecutionContext*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const WTF::String& message, SourceLocation*) override;
     int ContextGroupId(ExecutionContext*) override;
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     // V8InspectorClient implementation.
     void runMessageLoopOnPause(int context_group_id) override;
     void runMessageLoopOnInstrumentationPause(int context_group_id) override;
@@ -116,6 +117,7 @@ private:
     static void QuerySelectorCallback(const v8::FunctionCallbackInfo<v8::Value>&);
     static void QuerySelectorAllCallback(const v8::FunctionCallbackInfo<v8::Value>&);
     static void XpathSelectorCallback(const v8::FunctionCallbackInfo<v8::Value>&);
+#endif
 
     std::unique_ptr<ClientMessageLoop> client_message_loop_;
     bool paused_;

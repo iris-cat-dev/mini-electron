@@ -15,7 +15,10 @@ MiB use 1 MiB = 1,048,576 bytes.
 
 The baseline `OMP Desktop` executable was 90,623,888 bytes (86.43 MiB).
 Sharing the full ICU data package between Blink and Node/V8 reduced it to
-88,736,048 bytes (84.63 MiB). Baseline live-byte attribution was:
+88,736,048 bytes (84.63 MiB). Removing unsupported desktop surfaces reduced
+the current signed host to 85,415,856 bytes (81.46 MiB): 5,208,032 bytes
+(4.97 MiB, 5.75%) below the original baseline. Baseline live-byte attribution
+was:
 
 - Blink/MiniBlink: 38.29 MiB
 - V8: 21.71 MiB
@@ -28,16 +31,14 @@ symbols. More aggressive `strip` saves only about 6 KiB and removes N-API
 exports required by `node-pty` and `@napi-rs/keyring`, causing those modules to
 crash while loading.
 
-A conservative optimization pass should target 78-81 MiB for the main
-executable. Reaching approximately 72-76 MiB requires disabling optional V8
-and Blink features. Going below 60 MiB would require material compatibility or
-performance losses such as removing WebAssembly, full `Intl`, JIT tiers, or a
-large portion of Blink.
+The current 81.46 MiB host reached the upper edge of the original conservative
+target without changing JavaScript, WebAssembly, `Intl`, media, or rendering
+semantics. Further large reductions require compiler/V8 changes or explicit
+compatibility and performance tradeoffs.
 
-The complete `.app` is now approximately 405.56 MiB. Its largest single file is
-not the host executable but the bundled 198.80 MiB `Resources/bin/omp` Bun
-executable. Optimizing only the 84.63 MiB host cannot make the overall package
-small by itself.
+The complete `.app` now occupies 377,684 KiB (368.83 MiB). This includes both
+the engine reductions and removal of the obsolete Sherpa backend. Its largest
+single file remains the 198.80 MiB `Resources/bin/omp` Bun executable.
 
 ## Implemented optimization: shared ICU data
 
@@ -64,6 +65,69 @@ Verification used the packaged application:
   plus committed text, producing `中文PASTE_OK` in an input.
 - The packaged OMP frontend and its Chinese UI loaded successfully.
 - `codesign --verify --deep --strict` accepted the resulting `.app`.
+
+## Implemented optimization: unsupported desktop surfaces
+
+The macOS target now compiles with `MINIBLINK_DISABLE_DEVTOOLS` and
+`MINIBLINK_DISABLE_PERMISSION_ELEMENT`.
+
+- Frame and worker DevTools transports, inspector agents, and inspector-only
+  probe dispatch are unreachable. The lightweight debugger hooks still forward
+  page and worker exceptions and rejected promises through Blink's normal
+  console reporting paths. Non-DevTools probes used by ad tracking, animation
+  timing, LCP observation, and performance monitoring remain enabled.
+- `HTMLPermissionElement` and its generated V8 binding are absent.
+  `document.createElement("permission")` produces an `HTMLUnknownElement`, so
+  pages do not retain a partially implemented experimental API.
+- The HarfBuzz core aggregate replaces `harfbuzz-subset.cc`. Complex-script
+  shaping remains; `hb_subset_*`, subset planning, CFF subsetting, and repacking
+  are not linked. The macOS host exposes no print-to-PDF or font-subsetting
+  entry point.
+
+The measured linker-map changes are:
+
+| Measurement | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| Total live linker output | 88,303,772 bytes | 84,990,929 bytes | 3,312,843 bytes (3.16 MiB) |
+| Signed host executable | 88,736,048 bytes | 85,415,856 bytes | 3,320,192 bytes (3.17 MiB, 3.74%) |
+
+The live reduction decomposes into 2,740,739 bytes (2.61 MiB) from the
+Inspector/DevTools/probe dependency closure, 563,598 bytes (0.54 MiB) from
+Permission Element, and 8,506 bytes from HarfBuzz. Normal issue reporting and
+the settings/device-emulation helper remain; no DevTools transport can
+instantiate their inspector agents.
+
+The original 0.65 MiB HarfBuzz candidate was the complete shaping-plus-subset
+aggregate, not the subset implementation alone. Apple `ld -dead_strip` had
+already removed nearly all unreachable subset atoms, so replacing the aggregate
+still removes the API and source dependency but saves only 8.3 KiB of live
+output.
+
+Verification covered the changed paths:
+
+- A rendered page reported
+  `permission=unknown worker=42 shaping=ok`; `<permission>` was an
+  `HTMLUnknownElement`, a dedicated worker completed, and expected page/worker
+  error reporting did not crash.
+- The same page rendered Chinese, Arabic, Devanagari, and Korean text and
+  produced `中文PASTE_OK` through marked-text composition and paste.
+- The final linker map contained no `hb_subset_*`, `WebDevToolsAgentImpl`, or
+  V8 inspector-creation symbol and no Permission Element implementation or
+  binding object. The stripped host exported none of those APIs.
+- The packaged OMP Chinese UI loaded; packaged Node retained full Chinese
+  `Intl`; `node-pty` spawned `/bin/zsh` and returned `TERMINAL_OK`.
+- `codesign --verify --deep --strict` accepted the packaged application.
+
+## Implemented optimization: removed Sherpa backend
+
+The current OMP backend no longer uses `sherpa-onnx-node`. The package optimizer
+therefore no longer externalizes or copies that package, its Darwin arm64
+binary, or the local `silero_vad.onnx` asset.
+
+Together with the host reductions above, this changed complete application
+allocation from 415,296 KiB (405.56 MiB) to 377,684 KiB (368.83 MiB), a
+37,612 KiB (36.73 MiB) reduction. Backend allocation is now 69,220 KiB
+(67.60 MiB), down from approximately 101.0 MiB.
 
 ## Measurement method
 
@@ -174,22 +238,21 @@ Largest linked groups:
 | Base | 0.60 |
 | libxml and libxslt | 0.51 |
 
-Candidate feature groups, measured by live object names, are:
+Candidate feature groups, measured from the original linker map, are:
 
-| Candidate | Live-size lower bound | Constraint |
+| Candidate | Baseline attribution | Current status |
 | --- | ---: | --- |
-| Inspector/devtools/probes | 1.20 MiB | Remove only if no developer-tools path is exposed |
+| Inspector/devtools/probes | 1.20 MiB lower bound | Removed; complete dependency closure saved 2.61 MiB |
 | SVG | 1.22 MiB | Required by the OMP UI; keep |
-| Permission Element | 0.60 MiB | Experimental API; strong removal candidate |
+| Permission Element | 0.54 MiB measured | Removed |
 | Canvas/WebGL/GPU | 0.59 MiB | Used by rich rendering; keep unless proven unused |
 | Media/audio/video | 0.55 MiB | Needed for OMP voice/media capability |
-| Workers/service workers | 0.46 MiB | Service-worker subset may be removable |
-| HarfBuzz subsetting | 0.65 MiB | Evaluate if PDF, printing, and font subsetting are absent |
+| Workers/service workers | 0.46 MiB | Workers retained; service-worker subset may be removable |
+| HarfBuzz aggregate | 0.65 MiB | Core shaping retained; subset API removed, saving 8.3 KiB |
 
-`html_permission_element.o` alone contributes 547 KiB of live output. The API
-is behind Blink's `PermissionElement` runtime feature and is not needed by the
-current OMP UI. Removing it requires updating both the handwritten source list
-and generated bindings/tag registration.
+`html_permission_element.o` contributed 560,557 live bytes and its generated V8
+binding contributed 3,041 bytes. Both are absent from the macOS link; generated
+tag registration now creates an `HTMLUnknownElement`.
 
 The OMP frontend loads `/poster_bg-DAFj3nST.wasm`; WebAssembly support is not an
 optional browser feature for this package.
@@ -347,27 +410,31 @@ every few hundred KiB matters.
 
 ## Recommended executable plan
 
-### Phase 1: low-risk build and data changes
+### Phase 1: low-risk compiler changes
 
-ICU deduplication is complete; the measured host is now 84.63 MiB. Remaining
-steps:
+ICU deduplication and unsupported-surface removal are complete; the measured
+signed host is 81.46 MiB. Remaining compiler work:
 
 1. Enable `optimize_for_size=true` for ordinary targets.
 2. Change V8 speed targets from `-O3` to `-O2`.
-3. Re-run the packaged OMP UI, daemon, compressed fetch, and terminal scenarios.
+3. Re-run OMP startup, daemon request latency, compressed fetch, terminal, and
+   sustained agent-session scenarios before accepting either change.
 
-Expected target after the remaining steps: 78-81 MiB. This range is an estimate
-until a complete optimized build is measured.
+The previous target range must be remeasured from the new 81.46 MiB baseline.
 
 ### Phase 2: bounded feature removal
 
-1. Disable Maglev.
-2. Remove Blink Permission Element.
-3. Remove inspector/devtools support if it has no supported user entry point.
-4. Remove the service-worker subset if the desktop origin does not register it.
-5. Evaluate HarfBuzz subsetting after confirming no print/PDF dependency.
+Completed:
 
-Expected target: approximately 72-76 MiB.
+1. Remove Blink Permission Element.
+2. Remove inspector/DevTools transports and inspector-only probes.
+3. Remove HarfBuzz font-subsetting support while retaining shaping.
+
+Remaining candidates:
+
+1. Disable Maglev after startup and sustained-session performance testing.
+2. Remove the service-worker subset only if the desktop origin does not
+   register it.
 
 ### Phase 3: explicit product tradeoffs
 
@@ -375,20 +442,20 @@ Expected target: approximately 72-76 MiB.
 2. Adopt LLVM `lld` and ThinLTO/ICF.
 3. Maintain a reduced Node builtin set.
 
-Expected target: approximately 62-70 MiB. Each item changes compatibility,
-build infrastructure, or maintenance cost.
+No updated target is assigned to this phase until the compiler and bounded
+feature candidates are measured from the current baseline.
 
 ## Complete application package
 
-The application currently occupies approximately 415,296 KiB (405.56 MiB).
-Measured top-level allocation is:
+The application currently occupies 377,684 KiB (368.83 MiB). Measured
+top-level allocation is:
 
 | Path | Allocated size |
 | --- | ---: |
-| `Contents/MacOS` | approximately 84.6 MiB |
-| `Contents/Resources/bin` | approximately 198.8 MiB |
-| `Contents/Resources/backend` | approximately 101.0 MiB |
-| `Contents/Resources/app-dist` | approximately 20.9 MiB |
+| `Contents/MacOS` | 83,416 KiB (81.46 MiB) |
+| `Contents/Resources/bin` | 203,580 KiB (198.81 MiB) |
+| `Contents/Resources/backend` | 69,220 KiB (67.60 MiB) |
+| `Contents/Resources/app-dist` | 21,316 KiB (20.82 MiB) |
 
 ### Bundled OMP executable
 
@@ -405,26 +472,21 @@ APIs and is not established by this analysis.
 
 ### Backend resources
 
-Largest backend packages by logical file size:
+Largest remaining backend packages by allocated size:
 
-| Runtime package | Size |
+| Runtime package | Allocated size |
 | --- | ---: |
-| `sherpa-onnx-darwin-arm64` | 32.51 MiB |
-| `node-pty` | 25.63 MiB |
-| `esbuild` | 9.59 MiB |
+| `node-pty` | 25.74 MiB |
+| `esbuild` | 9.61 MiB |
 | `@esbuild/darwin-arm64` | 9.48 MiB |
-| bundled `@omp-desktop/server` | 9.26 MiB |
-| bundled `@omp-desktop/cli` | 9.19 MiB |
-| `@vscode/ripgrep-darwin-arm64` | 4.32 MiB |
+| bundled `@omp-desktop/cli` | 9.15 MiB |
+| bundled `@omp-desktop/server` | 8.53 MiB |
+| `@vscode/ripgrep-darwin-arm64` | 4.33 MiB |
 
 `node-pty/prebuilds` contains 23.22 MiB of platform binaries. The Windows x64
 and arm64 variants alone account for 22.89 MiB, while the required Darwin arm64
 prebuild is only 0.13 MiB. Removing non-Darwin-arm64 prebuilds plus package
 build sources should save roughly 25 MiB with low runtime risk.
-
-Sherpa/ONNX should be considered for optional or on-demand installation if
-local speech is not a mandatory offline feature. That can save another 32.51
-MiB from the base package.
 
 `esbuild` and its platform binary are deliberately external runtime packages in
 the current backend bundle. They must not be removed without tracing and
@@ -440,13 +502,13 @@ logical size or memory mapping.
 
 ## Priority order
 
-For installed `.app` size, the highest-return sequence is:
+For installed `.app` size, the highest-return remaining sequence is:
 
 1. prune non-target `node-pty` files: approximately 25 MiB;
-2. decide whether Sherpa/ONNX is base or optional: 32.51 MiB;
-3. decide whether the 198.80 MiB Bun OMP executable must remain bundled;
-4. apply `-Os` and V8 `-O2` to the current 84.63 MiB host;
-5. only then consider Maglev/Blink feature removal or a new LTO toolchain.
+2. decide whether the 198.80 MiB Bun OMP executable must remain bundled;
+3. evaluate `optimize_for_size`, V8 `-O2`, and Maglev with performance tests;
+4. evaluate the service-worker subset against the packaged frontend.
 
-For the host executable alone, ICU deduplication is complete. Continue with
-build optimization; further stripping is both unsafe and immaterial.
+ICU deduplication, the three Blink/HarfBuzz surface removals, and the obsolete
+Sherpa backend removal are complete. Further stripping is both unsafe and
+immaterial.

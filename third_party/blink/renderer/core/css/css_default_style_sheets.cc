@@ -43,7 +43,9 @@
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_html_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
@@ -305,12 +307,14 @@ bool CSSDefaultStyleSheets::EnsureDefaultStyleSheetsForElement(const Element& el
         changed_default_style = true;
     }
 
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
     if (!permission_element_style_sheet_ && IsA<HTMLPermissionElement>(element)) {
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
         permission_element_style_sheet_ = ParseUASheet(UncompressResourceAsASCIIString(IDR_UASTYLE_PERMISSION_ELEMENT_CSS));
         AddRulesToDefaultStyleSheets(permission_element_style_sheet_, NamespaceType::kHTML);
         changed_default_style = true;
     }
+#endif
 
     if (!text_track_style_sheet_ && IsA<HTMLVideoElement>(element)) {
         Settings* settings = element.GetDocument().GetSettings();

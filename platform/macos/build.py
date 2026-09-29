@@ -51,8 +51,6 @@ BACKEND_EXTERNAL_PACKAGES = (
     "@vscode/ripgrep-darwin-arm64",
     "esbuild",
     "node-pty",
-    "sherpa-onnx-darwin-arm64",
-    "sherpa-onnx-node",
     "which",
 )
 BACKEND_RUNTIME_PACKAGES = (
@@ -64,8 +62,6 @@ BACKEND_RUNTIME_PACKAGES = (
     "esbuild",
     "isexe",
     "node-pty",
-    "sherpa-onnx-darwin-arm64",
-    "sherpa-onnx-node",
     "which",
 )
 
@@ -347,11 +343,6 @@ def optimize_packaged_backend(root: Path, backend: Path) -> None:
         server_destination / "dist" / "server" / "server"
     )
     file_assets = (
-        (
-            server_source
-            / "dist/server/server/speech/providers/local/sherpa/assets/silero_vad.onnx",
-            worker_directory / "assets/silero_vad.onnx",
-        ),
         (
             server_source
             / "dist/server/server/agent/providers/omp/background-jobs-extension.js",

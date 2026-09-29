@@ -1958,7 +1958,7 @@ miniblink_skia_sources = [
 ]
 
 miniblink_harfbuzz_sources = [
-  "//third_party/harfbuzz-ng/src/src/harfbuzz-subset.cc",
+  "//third_party/harfbuzz-ng/src/src/harfbuzz.cc",
 ]
 
 miniblink_gin_sources = [

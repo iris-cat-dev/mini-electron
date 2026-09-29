@@ -59,8 +59,11 @@ std::unique_ptr<v8_inspector::V8StackTrace> SourceLocation::CaptureStackTraceInt
     ThreadDebugger* debugger = ThreadDebugger::From(isolate);
     if (!debugger || !isolate->InContext())
         return nullptr;
+    v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector();
+    if (!inspector)
+        return nullptr;
     ScriptForbiddenScope::AllowUserAgentScript allow_scripting;
-    return debugger->GetV8Inspector()->captureStackTrace(full);
+    return inspector->captureStackTrace(full);
 }
 
 // static

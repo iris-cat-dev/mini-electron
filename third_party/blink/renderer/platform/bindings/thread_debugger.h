@@ -21,21 +21,31 @@ namespace blink {
 
 class SourceLocation;
 
-class PLATFORM_EXPORT ThreadDebugger : public v8_inspector::V8InspectorClient {
+class PLATFORM_EXPORT ThreadDebugger
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+    : public v8_inspector::V8InspectorClient
+#endif
+{
 public:
     explicit ThreadDebugger(v8::Isolate* isolate)
-        : v8_inspector_(v8_inspector::V8Inspector::create(isolate, this))
     {
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+        v8_inspector_ = v8_inspector::V8Inspector::create(isolate, this);
+#endif
     }
     ThreadDebugger(const ThreadDebugger&) = delete;
     ThreadDebugger& operator=(const ThreadDebugger&) = delete;
-    ~ThreadDebugger() override = default;
+    virtual ~ThreadDebugger() = default;
 
     static ThreadDebugger* From(v8::Isolate*);
     virtual bool IsWorker() = 0;
     v8_inspector::V8Inspector* GetV8Inspector() const
     {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+        return nullptr;
+#else
         return v8_inspector_.get();
+#endif
     }
 
     static void IdleStarted(v8::Isolate*);
@@ -54,8 +64,10 @@ public:
     virtual void ExternalAsyncTaskStarted(const v8_inspector::V8StackTraceId& parent) = 0;
     virtual void ExternalAsyncTaskFinished(const v8_inspector::V8StackTraceId& parent) = 0;
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
 protected:
     std::unique_ptr<v8_inspector::V8Inspector> v8_inspector_;
+#endif
 };
 
 } // namespace blink

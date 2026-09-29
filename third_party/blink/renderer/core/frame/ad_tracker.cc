@@ -127,6 +127,9 @@ ExecutionContext* AdTracker::GetCurrentExecutionContext()
 
 v8_inspector::V8DebuggerId GetDebuggerIdForContext(const v8::Local<v8::Context>& v8_context)
 {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+    return v8_inspector::V8DebuggerId();
+#else
     if (v8_context.IsEmpty()) {
         return v8_inspector::V8DebuggerId();
     }
@@ -136,6 +139,7 @@ v8_inspector::V8DebuggerId GetDebuggerIdForContext(const v8::Local<v8::Context>&
     v8_inspector::V8Inspector* inspector = thread_debugger->GetV8Inspector();
     DCHECK(inspector);
     return inspector->uniqueDebuggerId(contextId);
+#endif
 }
 
 void AdTracker::WillExecuteScript(ExecutionContext* execution_context, const v8::Local<v8::Context>& v8_context, const String& script_url, int script_id)

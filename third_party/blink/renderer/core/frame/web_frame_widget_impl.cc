@@ -84,7 +84,9 @@
 #include "third_party/blink/renderer/core/events/pointer_event_factory.h"
 #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
 #include "third_party/blink/renderer/core/events/wheel_event.h"
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
+#endif
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
 #include "third_party/blink/renderer/core/exported/web_settings_impl.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
@@ -1337,9 +1339,11 @@ void WebFrameWidgetImpl::SendScrollSnapChangingEventIfNeeded(const cc::Composito
 void WebFrameWidgetImpl::UpdateCompositorScrollState(const cc::CompositorCommitData& commit_data)
 {
     is_scroll_gesture_active_ = commit_data.is_scroll_active;
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = LocalRootImpl()->DevToolsAgentImpl(/*create_if_necessary=*/false)) {
         devtools->SetPageIsScrolling(is_scroll_gesture_active_);
     }
+#endif
 
     RecordManipulationTypeCounts(commit_data.manipulation_info);
 
@@ -2713,9 +2717,11 @@ WebInputEventResult WebFrameWidgetImpl::DispatchBufferedTouchEvents()
 {
     CHECK(LocalRootImpl());
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = LocalRootImpl()->DevToolsAgentImpl(/*create_if_necessary=*/false)) {
         devtools->DispatchBufferedTouchEvents();
     }
+#endif
 
     return LocalRootImpl()->GetFrame()->GetEventHandler().DispatchBufferedTouchEvents();
 }
@@ -2746,16 +2752,20 @@ WebInputEventResult WebFrameWidgetImpl::HandleInputEvent(const WebCoalescedInput
         return WebInputEventResult::kNotHandled;
     }
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = LocalRootImpl()->DevToolsAgentImpl(/*create_if_necessary=*/false)) {
         auto result = devtools->HandleInputEvent(input_event);
         if (result != WebInputEventResult::kNotHandled)
             return result;
     }
+#endif
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     // If we are a mouse down potentially activate the paused debugger window.
     if (input_event.GetType() == WebInputEvent::Type::kMouseDown) {
         WebDevToolsAgentImpl::ActivatePausedDebuggerWindow(LocalRootImpl());
     }
+#endif
 
     // Report the event to be NOT processed by WebKit, so that the browser can
     // handle it appropriately.

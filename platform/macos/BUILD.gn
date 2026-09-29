@@ -37,6 +37,8 @@ config("miniblink_engine_config") {
     "ENABLE_MB=1",
     "INSIDE_BLINK=1",
     "LIBXML_STATIC",
+    "MINIBLINK_DISABLE_DEVTOOLS=1",
+    "MINIBLINK_DISABLE_PERMISSION_ELEMENT=1",
     "LIBXSLT_STATIC",
     "PNG_SET_OPTION_SUPPORTED",
     "SK_SUPPORT_LEGACY_DRAWLOOPER",
@@ -336,6 +338,7 @@ static_library("miniblink_libxslt") {
 
 static_library("miniblink_blink") {
   sources = miniblink_blink_sources
+  sources += [ "compat/devtools_disabled.cc" ]
   configs += [ ":miniblink_engine_config" ]
 }
 

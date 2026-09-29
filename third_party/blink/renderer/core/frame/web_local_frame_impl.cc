@@ -185,7 +185,9 @@
 #include "third_party/blink/renderer/core/events/before_print_event.h"
 #include "third_party/blink/renderer/core/events/touch_event.h"
 #include "third_party/blink/renderer/core/execution_context/window_agent.h"
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
+#endif
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
@@ -829,8 +831,10 @@ void WebLocalFrameImpl::Close(DetachReason detach_reason)
 
     client_ = nullptr;
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_.Clear();
+#endif
 
     self_keep_alive_.Clear();
 
@@ -2123,7 +2127,9 @@ void WebLocalFrameImpl::Trace(Visitor* visitor) const
     visitor->Trace(local_frame_client_);
     visitor->Trace(find_in_page_);
     visitor->Trace(frame_);
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     visitor->Trace(dev_tools_agent_);
+#endif
     visitor->Trace(frame_widget_);
     visitor->Trace(print_context_);
     visitor->Trace(input_method_controller_);
@@ -2287,19 +2293,27 @@ void WebLocalFrameImpl::DidChangeContentsSize(const gfx::Size& size)
 
 bool WebLocalFrameImpl::HasDevToolsOverlays() const
 {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+    return false;
+#else
     return dev_tools_agent_ && dev_tools_agent_->HasOverlays();
+#endif
 }
 
 void WebLocalFrameImpl::UpdateDevToolsOverlaysPrePaint()
 {
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_->UpdateOverlaysPrePaint();
+#endif
 }
 
 void WebLocalFrameImpl::PaintDevToolsOverlays(GraphicsContext& context)
 {
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_->PaintOverlays(context);
+#endif
 }
 
 void WebLocalFrameImpl::CreateFrameView()
@@ -2696,8 +2710,10 @@ void WebLocalFrameImpl::WillBeDetached()
 {
     if (frame_->IsMainFrame())
         ViewImpl()->DidDetachLocalMainFrame();
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_->WillBeDestroyed();
+#endif
     if (find_in_page_)
         find_in_page_->Dispose();
     if (print_client_)
@@ -2971,12 +2987,17 @@ Node* WebLocalFrameImpl::ContextMenuImageNodeInner() const
 
 void WebLocalFrameImpl::WaitForDebuggerWhenShown()
 {
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     DCHECK(frame_->IsLocalRoot());
     DevToolsAgentImpl(/*create_if_necessary=*/true)->WaitForDebuggerWhenShown();
+#endif
 }
 
 WebDevToolsAgentImpl* WebLocalFrameImpl::DevToolsAgentImpl(bool create_if_necessary)
 {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+    return nullptr;
+#else
     if (!frame_->IsLocalRoot()) {
         return nullptr;
     }
@@ -2984,6 +3005,7 @@ WebDevToolsAgentImpl* WebLocalFrameImpl::DevToolsAgentImpl(bool create_if_necess
         dev_tools_agent_ = WebDevToolsAgentImpl::CreateForFrame(this);
     }
     return dev_tools_agent_.Get();
+#endif
 }
 
 void WebLocalFrameImpl::WasHidden()

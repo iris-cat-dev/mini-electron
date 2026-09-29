@@ -11,7 +11,11 @@
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#include "third_party/blink/renderer/core/inspector/worker_devtools_params.h"
+#else
 #include "third_party/blink/renderer/core/inspector/devtools_agent.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/workers/global_scope_creation_params.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
@@ -70,9 +74,15 @@ void ThreadedMessagingProxyBase::InitializeWorkerThread(std::unique_ptr<GlobalSc
 
     worker_thread_ = CreateWorkerThread();
 
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+    auto devtools_params = client_provided_devtools_params
+        ? std::move(client_provided_devtools_params)
+        : std::make_unique<WorkerDevToolsParams>();
+#else
     auto devtools_params = client_provided_devtools_params ? std::move(client_provided_devtools_params)
                                                            : DevToolsAgent::WorkerThreadCreated(execution_context_.Get(), worker_thread_.get(), script_url,
                                                                global_scope_creation_params->global_scope_name, token);
+#endif
 
     worker_thread_->Start(std::move(global_scope_creation_params), thread_startup_data, std::move(devtools_params));
 
@@ -133,9 +143,11 @@ void ThreadedMessagingProxyBase::WorkerThreadTerminated()
             parent_thread = scope->GetThread();
         }
         child_thread = std::move(worker_thread_);
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
         if (child_thread) {
             DevToolsAgent::WorkerThreadTerminated(execution_context_.Get(), child_thread.get());
         }
+#endif
     }
 
     // If the parent Worker/Worklet object was already destroyed, this will
@@ -163,7 +175,9 @@ void ThreadedMessagingProxyBase::TerminateGlobalScope()
         return;
     }
     worker_thread_->Terminate();
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     DevToolsAgent::WorkerThreadTerminated(execution_context_.Get(), worker_thread_.get());
+#endif
 }
 
 ExecutionContext* ThreadedMessagingProxyBase::GetExecutionContext() const

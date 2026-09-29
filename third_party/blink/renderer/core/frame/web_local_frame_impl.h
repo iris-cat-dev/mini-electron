@@ -509,7 +509,9 @@ private:
     // widget for layout.
     Member<WebFrameWidgetImpl> frame_widget_;
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     Member<WebDevToolsAgentImpl> dev_tools_agent_;
+#endif
 
     WebAutofillClient* autofill_client_;
 

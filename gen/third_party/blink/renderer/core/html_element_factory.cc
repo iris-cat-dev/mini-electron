@@ -66,7 +66,9 @@
 #include "third_party/blink/renderer/core/html/html_olist_element.h"
 #include "third_party/blink/renderer/core/html/html_paragraph_element.h"
 #include "third_party/blink/renderer/core/html/html_param_element.h"
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_picture_element.h"
 #include "third_party/blink/renderer/core/html/html_pre_element.h"
 #include "third_party/blink/renderer/core/html/html_progress_element.h"
@@ -490,9 +492,13 @@ static HTMLElement* HTMLParamConstructor(Document& document, const CreateElement
 }
 static HTMLElement* HTMLPermissionConstructor(Document& document, const CreateElementFlags flags)
 {
+#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+    return MakeGarbageCollected<HTMLUnknownElement>(html_names::kPermissionTag, document);
+#else
     if (!RuntimeEnabledFeatures::PermissionElementEnabled(document.GetExecutionContext()))
         return MakeGarbageCollected<HTMLUnknownElement>(html_names::kPermissionTag, document);
     return MakeGarbageCollected<HTMLPermissionElement>(document);
+#endif
 }
 static HTMLElement* HTMLPictureConstructor(Document& document, const CreateElementFlags flags)
 {

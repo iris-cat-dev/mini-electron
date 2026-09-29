@@ -71,7 +71,9 @@
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
@@ -1893,19 +1895,31 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return media_element && media_element->paused();
     }
     case CSSSelector::kPseudoPermissionGranted: {
+#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+        return false;
+#else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
         auto* permission_element = DynamicTo<HTMLPermissionElement>(element);
         return permission_element && permission_element->granted();
+#endif
     }
     case CSSSelector::kPseudoPermissionElementInvalidStyle: {
+#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+        return false;
+#else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
         auto* permission_element = DynamicTo<HTMLPermissionElement>(element);
         return permission_element && permission_element->HasInvalidStyle();
+#endif
     }
     case CSSSelector::kPseudoPermissionElementOccluded: {
+#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+        return false;
+#else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
         auto* permission_element = DynamicTo<HTMLPermissionElement>(element);
         return permission_element && permission_element->IsOccluded();
+#endif
     }
     case CSSSelector::kPseudoPictureInPicture:
         return PictureInPictureController::IsElementInPictureInPicture(&element);

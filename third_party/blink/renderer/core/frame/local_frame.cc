@@ -487,8 +487,10 @@ void LocalFrame::Trace(Visitor* visitor) const
     visitor->Trace(probe_sink_);
     visitor->Trace(performance_monitor_);
     visitor->Trace(idleness_detector_);
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     visitor->Trace(inspector_issue_reporter_);
     visitor->Trace(inspector_trace_events_);
+#endif
     visitor->Trace(loader_);
     visitor->Trace(view_);
     visitor->Trace(dom_window_);
@@ -752,10 +754,12 @@ bool LocalFrame::DetachImpl(FrameDetachType type)
         }
     }
     idleness_detector_->Shutdown();
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (inspector_issue_reporter_)
         probe_sink_->RemoveInspectorIssueReporter(inspector_issue_reporter_);
     if (inspector_trace_events_)
         probe_sink_->RemoveInspectorTraceEvents(inspector_trace_events_);
+#endif
     inspector_task_runner_->Dispose();
 
     if (content_capture_manager_) {
@@ -1816,10 +1820,12 @@ LocalFrame::LocalFrame(LocalFrameClient* client, Page& page, FrameOwner* owner, 
     if (IsLocalRoot()) {
         performance_monitor_ = MakeGarbageCollected<PerformanceMonitor>(this, isolate);
 
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
         inspector_issue_reporter_ = MakeGarbageCollected<InspectorIssueReporter>(&page.GetInspectorIssueStorage());
         probe_sink_->AddInspectorIssueReporter(inspector_issue_reporter_);
         inspector_trace_events_ = MakeGarbageCollected<InspectorTraceEvents>();
         probe_sink_->AddInspectorTraceEvents(inspector_trace_events_);
+#endif
         if (RuntimeEnabledFeatures::AdTaggingEnabled()) {
             ad_tracker_ = MakeGarbageCollected<AdTracker>(this);
         }

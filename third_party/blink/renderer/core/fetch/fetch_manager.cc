@@ -356,16 +356,18 @@ void ResponseResolver::RejectBecauseFailed(
     exception_.Reset();
     if (devtools_request_id || issue_id || issue_summary) {
         ThreadDebugger* debugger = ThreadDebugger::From(isolate);
-        auto* inspector = debugger->GetV8Inspector();
-        if (devtools_request_id) {
-            inspector->associateExceptionData(context, value, V8AtomicString(isolate, "requestId"), V8String(isolate, *devtools_request_id));
-        }
-        if (issue_id) {
-            inspector->associateExceptionData(
-                context, value, V8AtomicString(isolate, "issueId"), V8String(isolate, IdentifiersFactory::IdFromToken(*issue_id)));
-        }
-        if (issue_summary) {
-            inspector->associateExceptionData(context, value, V8AtomicString(isolate, "issueSummary"), V8String(isolate, *issue_summary));
+        v8_inspector::V8Inspector* inspector = debugger ? debugger->GetV8Inspector() : nullptr;
+        if (inspector) {
+            if (devtools_request_id) {
+                inspector->associateExceptionData(context, value, V8AtomicString(isolate, "requestId"), V8String(isolate, *devtools_request_id));
+            }
+            if (issue_id) {
+                inspector->associateExceptionData(
+                    context, value, V8AtomicString(isolate, "issueId"), V8String(isolate, IdentifiersFactory::IdFromToken(*issue_id)));
+            }
+            if (issue_summary) {
+                inspector->associateExceptionData(context, value, V8AtomicString(isolate, "issueSummary"), V8String(isolate, *issue_summary));
+            }
         }
     }
     resolver_->Reject(value);

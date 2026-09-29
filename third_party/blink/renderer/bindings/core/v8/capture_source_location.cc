@@ -44,9 +44,9 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::
 {
     v8::Local<v8::StackTrace> stack = message->GetStackTrace();
     std::unique_ptr<v8_inspector::V8StackTrace> stack_trace;
-    ThreadDebugger* debugger = ThreadDebugger::From(isolate);
-    if (debugger) {
-        stack_trace = debugger->GetV8Inspector()->createStackTrace(stack);
+    if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
+        if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
+            stack_trace = inspector->createStackTrace(stack);
     }
 
     int script_id = message->GetScriptOrigin().ScriptId();

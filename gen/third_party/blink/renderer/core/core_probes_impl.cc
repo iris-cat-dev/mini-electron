@@ -61,6 +61,7 @@ CoreProbeSink::~CoreProbeSink()
         s_existingAgents &= ~kAdTracker;
     if (HasAnimationFrameTimingMonitors() && --s_numSinksWithAnimationFrameTimingMonitor == 0)
         s_existingAgents &= ~kAnimationFrameTimingMonitor;
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     if (HasDevToolsSessions() && --s_numSinksWithDevToolsSession == 0)
         s_existingAgents &= ~kDevToolsSession;
     if (HasInspectorAnimationAgents() && --s_numSinksWithInspectorAnimationAgent == 0)
@@ -101,6 +102,7 @@ CoreProbeSink::~CoreProbeSink()
         s_existingAgents &= ~kInspectorPreloadAgent;
     if (HasInspectorTraceEventss() && --s_numSinksWithInspectorTraceEvents == 0)
         s_existingAgents &= ~kInspectorTraceEvents;
+#endif
     if (HasLCPScriptObservers() && --s_numSinksWithLCPScriptObserver == 0)
         s_existingAgents &= ~kLCPScriptObserver;
     if (HasPerformanceMonitors() && --s_numSinksWithPerformanceMonitor == 0)
@@ -927,6 +929,7 @@ void CoreProbeSink::Trace(Visitor* visitor) const
 {
     visitor->Trace(ad_trackers_);
     visitor->Trace(animation_frame_timing_monitors_);
+#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
     visitor->Trace(dev_tools_sessions_);
     visitor->Trace(inspector_animation_agents_);
     visitor->Trace(inspector_audits_agents_);
@@ -947,6 +950,7 @@ void CoreProbeSink::Trace(Visitor* visitor) const
     visitor->Trace(inspector_performance_timeline_agents_);
     visitor->Trace(inspector_preload_agents_);
     visitor->Trace(inspector_trace_eventss_);
+#endif
     visitor->Trace(lcp_script_observers_);
     visitor->Trace(performance_monitors_);
 }

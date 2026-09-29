@@ -28,7 +28,9 @@ void MaybeAssociateExceptionMetaData(v8::Local<v8::Value> exception, const Strin
     v8::Local<v8::Object> object = exception.As<v8::Object>();
     v8::Isolate* isolate = object->GetIsolate();
     ThreadDebugger* debugger = ThreadDebugger::From(isolate);
-    debugger->GetV8Inspector()->associateExceptionData(v8::Local<v8::Context>(), exception, V8String(isolate, key), V8String(isolate, value));
+    v8_inspector::V8Inspector* inspector = debugger ? debugger->GetV8Inspector() : nullptr;
+    if (inspector)
+        inspector->associateExceptionData(v8::Local<v8::Context>(), exception, V8String(isolate, key), V8String(isolate, value));
 }
 
 } // namespace blink

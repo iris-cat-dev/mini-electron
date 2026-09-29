@@ -347,6 +347,10 @@ public:
     // Queries process-wide. Intended for fast-return cases only.
     static bool HasAgentsGlobal(unsigned mask)
     {
+#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+        constexpr unsigned kSupportedAgentMask = kAdTracker | kAnimationFrameTimingMonitor | kLCPScriptObserver | kPerformanceMonitor;
+        mask &= kSupportedAgentMask;
+#endif
         return s_existingAgents.load(std::memory_order_acquire) & mask;
     }
 

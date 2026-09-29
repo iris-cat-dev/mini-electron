@@ -107,7 +107,9 @@
 #include "third_party/blink/renderer/core/html/html_meter_element.h"
 #include "third_party/blink/renderer/core/html/html_olist_element.h"
 #include "third_party/blink/renderer/core/html/html_paragraph_element.h"
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
 #include "third_party/blink/renderer/core/html/html_progress_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
@@ -1903,9 +1905,11 @@ ax::mojom::blink::Role AXNodeObject::RoleFromLayoutObjectOrNode() const
         }
     }
 
+#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
     if (IsA<HTMLPermissionElement>(node)) {
         return ax::mojom::blink::Role::kButton;
     }
+#endif
 
     // Anything that needs to be exposed but doesn't have a more specific role
     // should be considered a generic container. Examples are layout blocks with

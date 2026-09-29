@@ -116,6 +116,14 @@ statically linked Node runtime for CLI and daemon child processes when
 does not contain a second Node distribution or `Contents/Resources/node`.
 Blink and Node/V8 also share the same statically linked full ICU data package;
 the macOS target does not compile MiniBlink's legacy embedded ICU blob.
+The macOS host also omits unsupported browser-only surfaces: Blink's
+DevTools/Inspector transport, the experimental `<permission>` element, and
+HarfBuzz font-subsetting APIs. JavaScript console/error delivery and HarfBuzz
+text shaping remain available. The host has no print-to-PDF or font-subsetting
+entry point.
+The packaged backend no longer carries `sherpa-onnx-node`, its Darwin binary,
+or the local Silero VAD model; the current OMP backend does not use that local
+speech provider.
 Packaging still downloads the backend's declared Node release into
 `.mac-tools` to run `npm ci`; that executable is build-time tooling only.
 nghttp2 is likewise downloaded, checksum-verified, built as a static library,

@@ -20,15 +20,19 @@ ThreadDebugger* ThreadDebugger::From(v8::Isolate* isolate)
 // static
 void ThreadDebugger::IdleStarted(v8::Isolate* isolate)
 {
-    if (ThreadDebugger* debugger = ThreadDebugger::From(isolate))
-        debugger->GetV8Inspector()->idleStarted();
+    if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
+        if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
+            inspector->idleStarted();
+    }
 }
 
 // static
 void ThreadDebugger::IdleFinished(v8::Isolate* isolate)
 {
-    if (ThreadDebugger* debugger = ThreadDebugger::From(isolate))
-        debugger->GetV8Inspector()->idleFinished();
+    if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
+        if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
+            inspector->idleFinished();
+    }
 }
 
 } // namespace blink
