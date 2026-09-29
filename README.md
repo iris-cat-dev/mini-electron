@@ -121,6 +121,9 @@ and linked into the host for the daemon's HTTP/2 support. Packaging bundles
 and optimizes the CLI, daemon supervisor, and daemon worker, retains required
 native Node modules, strips local symbols, and applies an ad-hoc signature.
 
+Detailed size measurements and optimization priorities are documented in
+[`platform/macos/OMP_DESKTOP_SIZE_ANALYSIS.md`](platform/macos/OMP_DESKTOP_SIZE_ANALYSIS.md).
+
 Current security boundary: the lightweight host renders Blink in-process and
 builds V8 with its sandbox disabled because embedded Node's external
 `ArrayBuffer` APIs are incompatible with that sandbox. It is not equivalent
