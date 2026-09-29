@@ -540,6 +540,7 @@ miniblink_openssl_sources = [
   "//third_party/openssl/openssl/crypto/asn1/x_spki.c",
   "//third_party/openssl/openssl/crypto/asn1/x_val.c",
   "//third_party/openssl/openssl/crypto/asn1_dsa.c",
+  "//third_party/openssl/openssl/crypto/async/arch/async_posix.c",
   "//third_party/openssl/openssl/crypto/async/async.c",
   "//third_party/openssl/openssl/crypto/async/async_err.c",
   "//third_party/openssl/openssl/crypto/async/async_wait.c",

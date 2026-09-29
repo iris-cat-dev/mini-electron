@@ -6,6 +6,11 @@ import("build/sources/base.gni")
 import("build/sources/engine.gni")
 import("build/sources/generated.gni")
 import("build/sources/third_party.gni")
+import("build/sources/node.gni")
+
+declare_args() {
+  miniblink_nghttp2_root = "//.mac-tools/nghttp2-1.61.0-darwin-arm64"
+}
 
 source_set("engine_probe") {
   sources = [
@@ -43,7 +48,6 @@ config("miniblink_engine_config") {
     "V8_COMPRESS_POINTERS",
     "V8_COMPRESS_POINTERS_IN_SHARED_CAGE",
     "V8_ENABLE_CONTINUATION_PRESERVED_EMBEDDER_DATA",
-    "V8_ENABLE_SANDBOX",
     "V8_EXTERNAL_CODE_SPACE",
     "V8_PROMISE_INTERNAL_FIELD_COUNT=0",
     "V8_HAVE_TARGET_OS",
@@ -88,6 +92,45 @@ config("miniblink_engine_config") {
     "//v8/include",
   ]
 }
+config("miniblink_node_config") {
+  defines = [
+    "CARES_STATICLIB",
+    "DISABLE_SINGLE_EXECUTABLE_APPLICATION",
+    "HAVE_AMARO=0",
+    "HAVE_INSPECTOR=0",
+    "HAVE_OPENSSL=1",
+    "NODE_ARCH=\"arm64\"",
+    "NODE_BUNDLED_ZLIB=1",
+    "NODE_HAVE_I18N_SUPPORT=1",
+    "NODE_OPENSSL_SYSTEM_CERT_PATH=\"\"",
+    "NODE_PLATFORM=\"darwin\"",
+    "NODE_REPORT",
+    "NODE_USE_V8_PLATFORM=1",
+    "NODE_WANT_INTERNALS=1",
+    "OPENSSL_API_COMPAT=0x10100001L",
+    "STATIC_LEGACY",
+    "__POSIX__",
+  ]
+
+  include_dirs = [
+    "$miniblink_nghttp2_root/include",
+    "//third_party/cares/include",
+    "//third_party/cares/src/lib",
+    "//third_party/libnode/deps/ada",
+    "//third_party/libnode/deps/histogram/include",
+    "//third_party/libnode/deps/llhttp/include",
+    "//third_party/libnode/deps/nbytes/include",
+    "//third_party/libnode/deps/ncrypto",
+    "//third_party/libnode/deps/simdjson",
+    "//third_party/libnode/deps/simdutf",
+    "//third_party/libnode/deps/zstd/lib",
+    "//third_party/libnode/deps/uvwasi/include",
+    "//third_party/libnode/deps/uvwasi/src",
+    "//third_party/libnode/src",
+    "//third_party/libuv/include",
+  ]
+}
+
 
 
 static_library("miniblink_base") {
@@ -130,6 +173,94 @@ static_library("miniblink_openssl") {
     "//third_party/openssl/config/archs/VC-WIN32/no-asm/providers/common/include",
   ]
 }
+static_library("miniblink_libuv") {
+  sources = miniblink_libuv_sources
+  configs += [ ":miniblink_engine_config" ]
+  defines = [
+    "_DARWIN_UNLIMITED_SELECT=1",
+    "_DARWIN_USE_64_BIT_INODE=1",
+    "_FILE_OFFSET_BITS=64",
+    "_LARGEFILE_SOURCE",
+  ]
+  include_dirs = [
+    "//third_party/libuv/include",
+    "//third_party/libuv/src",
+  ]
+  frameworks = [
+    "CoreFoundation.framework",
+    "CoreServices.framework",
+  ]
+}
+
+static_library("miniblink_cares") {
+  sources = miniblink_cares_sources
+  configs += [ ":miniblink_engine_config" ]
+  defines = [
+    "CARES_BUILDING_LIBRARY",
+    "CARES_STATICLIB",
+    "HAVE_CONFIG_H=1",
+  ]
+  include_dirs = [
+    "//platform/macos/compat",
+    "//third_party/cares/include",
+    "//third_party/cares/src/lib",
+  ]
+}
+
+static_library("miniblink_uvwasi") {
+  sources = miniblink_uvwasi_sources
+  configs += [ ":miniblink_engine_config" ]
+  include_dirs = [
+    "//third_party/libnode/deps/uvwasi/include",
+    "//third_party/libnode/deps/uvwasi/src",
+    "//third_party/libuv/include",
+  ]
+  deps = [ ":miniblink_libuv" ]
+}
+
+static_library("miniblink_node_deps") {
+  sources = miniblink_node_dependency_sources + miniblink_zstd_sources
+  configs += [
+    ":miniblink_node_config",
+    ":miniblink_engine_config",
+  ]
+  defines = [
+    "XXH_NAMESPACE=ZSTD_",
+    "ZSTD_DISABLE_ASM",
+    "ZSTD_MULTITHREAD",
+  ]
+  deps = [
+    ":miniblink_libuv",
+    ":miniblink_uvwasi",
+    ":miniblink_openssl",
+  ]
+}
+
+static_library("miniblink_node") {
+  sources = miniblink_node_sources
+  configs -= [ "//build/config/gcc:symbol_visibility_hidden" ]
+  configs += [
+    ":miniblink_node_config",
+    ":miniblink_engine_config",
+    "//build/config/gcc:symbol_visibility_default",
+  ]
+  deps = [
+    ":miniblink_cares",
+    ":miniblink_libuv",
+    ":miniblink_node_deps",
+    ":miniblink_openssl",
+    ":miniblink_util",
+    "//third_party/icu:icu",
+    "//v8:v8",
+    "//v8:v8_libbase",
+    "//v8:v8_libplatform",
+  ]
+  frameworks = [
+    "CoreFoundation.framework",
+    "Security.framework",
+  ]
+}
+
 
 static_library("miniblink_gen_1") {
   sources = miniblink_gen_1_sources
@@ -285,7 +416,12 @@ source_set("miniblink_mb_api_mac") {
 
 source_set("miniblink_posix_win_compat") {
   sources = [ "//linux/linuxwindows.cpp" ]
+  inputs = [ "compat/darwin_legacy_stat_rename.h" ]
   configs += [ ":miniblink_engine_config" ]
+  cflags = [
+    "-include",
+    rebase_path("compat/darwin_legacy_stat_rename.h", root_build_dir),
+  ]
 }
 
 static_library("miniblink_partition_alloc") {
@@ -374,6 +510,8 @@ executable("miniblink_mac_electron_demo") {
   sources = [
     "electron/electron_api.cc",
     "electron/electron_api.h",
+    "electron/node_runtime.cc",
+    "electron/node_runtime.h",
     "electron/electron_demo.mm",
     "electron/omp_desktop_runtime.h",
     "electron/omp_desktop_runtime.mm",
@@ -382,10 +520,20 @@ executable("miniblink_mac_electron_demo") {
   deps = [
     ":miniblink_mac_engine",
     ":miniblink_mb_api_mac",
+    ":miniblink_node",
   ]
   libs = [
+    rebase_path("$miniblink_nghttp2_root/lib/libnghttp2.a", root_build_dir),
     "curl",
     "iconv",
+  ]
+  inputs = [
+    "$miniblink_nghttp2_root/lib/libnghttp2.a",
+    "node_exports.txt",
+  ]
+  ldflags = [
+    "-Wl,-exported_symbols_list," +
+        rebase_path("node_exports.txt", root_build_dir),
   ]
   frameworks = [
     "Carbon.framework",

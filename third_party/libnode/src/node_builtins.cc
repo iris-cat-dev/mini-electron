@@ -7,13 +7,6 @@
 #include "simdutf.h"
 #include "util-inl.h"
 
-//////////////////////////////////////////////////////////////////////////
-#include "../../../electron/common/asar/AsarJs.h"
-
-namespace asar {
-bool readFileToString(const wchar_t* path, std::string* buffer);
-}
-//////////////////////////////////////////////////////////////////////////
 
 namespace node {
 namespace builtins {
@@ -43,52 +36,6 @@ using v8::TryCatch;
 using v8::Undefined;
 using v8::Value;
 
-//---
-StaticExternalOneByteResource electron_resource((const uint8_t*)"  ", 2, nullptr);
-
-const char electron_resource_str[] =
-"function sayHiImpl() {\n"
-"    mbConsoleLog('hello, sayHiImpl!!!!');\n"
-"}\n"
-"module.exports.sayHi = sayHiImpl;\n"
-"var electron = require('electron');\n"
-"module.exports.app = electron.app\n"
-"module.exports.BrowserWindow = electron.BrowserWindow\n"
-"module.exports.BrowserView = electron.BrowserView\n"
-"module.exports.webContents = electron.webContents\n"
-"module.exports.session = electron.session\n"
-"module.exports.MenuItem = electron.MenuItem\n"
-"module.exports.Menu = electron.Menu\n"
-"module.exports.isPromise = electron.isPromise\n"
-"module.exports.dialog = electron.dialog\n"
-"module.exports.net = electron.net\n"
-"module.exports.shell = electron.shell\n"
-"module.exports.screen = electron.screen\n"
-"module.exports.tray = electron.tray\n"
-"module.exports.clipboard = electron.clipboard\n"
-"module.exports.nativeImage = electron.nativeImage\n"
-"module.exports.systemPreferences = electron.systemPreferences\n"
-"module.exports.protocol = electron.protocol\n"
-"module.exports.TouchBar = electron.TouchBar\n"
-"module.exports.Tray = electron.Tray\n"
-"module.exports.autoUpdater = electron.autoUpdater\n"
-"module.exports.globalShortcut = electron.globalShortcut\n"
-"module.exports.powerMonitor = electron.powerMonitor\n"
-"module.exports.powerSaveBlocker = electron.powerSaveBlocker\n"
-"module.exports.crashReporter = electron.crashReporter\n"
-"module.exports.utilityProcess = electron.utilityProcess\n"
-"module.exports.contentTracing = electron.contentTracing\n"
-"module.exports.MessageChannelMain = electron.MessageChannelMain\n"
-"module.exports.safeStorage = electron.safeStorage\n"
-;
-StaticExternalOneByteResource electron_module_resource((const uint8_t*)electron_resource_str, sizeof(electron_resource_str) - 1, nullptr);
-
-struct FakeExternalReseEntry {
-    const WCHAR* path;
-    const char* name;
-    StaticExternalOneByteResource* res = nullptr;
-};
-//---
 
 BuiltinLoader::BuiltinLoader()
     : config_(GetConfig())
@@ -113,84 +60,6 @@ BuiltinLoader::BuiltinLoader()
 #endif // NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
 #endif // HAVE_AMARO
 
-    // weolar
-    static StaticExternalOneByteResource* asar_resource = nullptr;
-    if (!asar_resource) {
-#if 1
-        asar_resource = new StaticExternalOneByteResource((const uint8_t*)atom::AsarJs, atom::AsarJsLength - 1, nullptr);
-#else
-        std::string* asar_resource_buffer = new std::string();
-        asar::readFileToString(L"W:\\mycode\\mb132\\electron\\lib\\common\\asar.js", asar_resource_buffer);
-        *asar_resource_buffer += '\0';
-        asar_resource = new StaticExternalOneByteResource((const uint8_t*)asar_resource_buffer->c_str(), asar_resource_buffer->size() - 1, nullptr);
-#endif
-    }
-    Add("ELECTRON_ASAR", UnionBytes(asar_resource));
-    //Add("electron", UnionBytes(&electron_resource));
-    Add("electron", UnionBytes(&electron_module_resource));
-    Add("electron/main", UnionBytes(&electron_resource));
-    Add("electron/renderer", UnionBytes(&electron_resource));
-    Add("electron/common", UnionBytes(&electron_resource));
-
-    StaticExternalOneByteResource* fs_res = nullptr;
-    {
-        // unlock impl_->mutex
-        ThreadsafeCopyOnWrite<BuiltinSourceMap>::Read source = source_.read();
-        std::map<std::string, UnionBytes>::const_iterator fs_it = source->find("fs");
-        fs_res = fs_it->second.one_byte_resource();
-    }
-    Add("original-fs", UnionBytes(fs_res));
-
-    //////////////////////////////////////////////////////////////////////////
-#if 0
-    FakeExternalReseEntry fakes[] = {
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\_tls_wrap.js", "_tls_wrap"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\package_json_reader.js", "internal/modules/package_json_reader"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\helpers.js", "internal/modules/helpers"},
-        {L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\fs\\promises.js", "internal/fs/promises"},
-        {L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\bootstrap\\node.js", "internal/bootstrap/node"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\esm\\load.js", "internal/modules/esm/load"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\esm\\loader.js", "internal/modules/esm/loader"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\esm\\utils.js", "internal/modules/esm/utils"},
-        {L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\esm\\resolve.js", "internal/modules/esm/resolve"},
-        {L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\main\\worker_thread.js", "internal/main/worker_thread"},
-        {L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\cjs\\loader.js", "internal/modules/cjs/loader"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\fs\\utils.js", "internal/fs/utils"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\modules\\esm\\translators.js", "internal/modules/esm/translators"},
-        //{L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\bootstrap\\realm.js", "internal/bootstrap/realm"},
-    };
-    for (size_t i = 0; i < arraysize(fakes); ++i) {
-        FakeExternalReseEntry& it = fakes[i];
-        ThreadsafeCopyOnWrite<BuiltinSourceMap>::Write source = source_.write();
-        std::map<std::string, UnionBytes>::iterator constructor_it = source->find(it.name);
-
-        StaticExternalOneByteResource* constructor_resource = it.res;
-        if (!constructor_resource) {
-            std::string* buffer = new std::string();
-            asar::readFileToString(it.path, buffer);
-            *buffer += '\0';
-            constructor_resource = new StaticExternalOneByteResource((const uint8_t*)buffer->c_str(), buffer->size() - 1, nullptr);
-            constructor_it->second.changeStaticExternalOneByteResource(constructor_resource);
-            it.res = constructor_resource;
-        }
-    }
-
-    //     {
-    //         // W:\mycode\mb132\third_party\libnode\lib\internal\bootstrap\realm.js
-    //         ThreadsafeCopyOnWrite<BuiltinSourceMap>::Write source2 = source_.write();
-    //         std::map<std::string, UnionBytes>::iterator console_constructor_it = source2->find("internal/bootstrap/realm");
-    // 
-    //         static StaticExternalOneByteResource* console_constructor_resource = nullptr;
-    //         if (!console_constructor_resource) {
-    //             std::string* buffer = new std::string();
-    //             asar::readFileToString(L"W:\\mycode\\mb132\\third_party\\libnode\\lib\\internal\\bootstrap\\realm.js", buffer);
-    //             *buffer += '\0';
-    //             console_constructor_resource = new StaticExternalOneByteResource((const uint8_t*)buffer->c_str(), buffer->size() - 1, nullptr);
-    //         }
-    //         console_constructor_it->second.changeStaticExternalOneByteResource(console_constructor_resource);
-    //     }
-#endif
-    //-----
 }
 
 bool BuiltinLoader::Exists(const char* id)

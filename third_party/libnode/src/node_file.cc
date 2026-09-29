@@ -54,7 +54,6 @@
 #include <unistd.h>
 #endif
 
-#include "../../../electron/common/LoadMiniElectronAsarRes.h"
 
 namespace node {
 
@@ -1004,45 +1003,6 @@ static void ExistsSync(const FunctionCallbackInfo<Value>& args)
     args.GetReturnValue().Set(err == 0);
 }
 
-//--
-// static bool CheckMiniElectronAsarResStat(const std::string& path, int* rc)
-// {
-//     if (atom::isMiniElectronAsarResPath(path)/*path.find(kMiniElectronAsarPrefix) != std::string::npos*/) {
-//         *rc = (path.find(".") != std::string::npos) ? 0 : 1;
-//         return true;
-//     }
-// 
-//     if (atom::isMiniElectronAsarResPath(path)) {
-//         *rc = 0;
-//         return true;
-//     }
-//     return false;
-// }
-
-static void MakeFakeUvStat(uv_stat_t* s, bool is_dir)
-{
-    s->st_dev = 1226378985;
-    s->st_mode = is_dir ? (S_IFDIR) : (S_IFREG);
-    s->st_nlink = 1;
-    s->st_uid = 0;
-    s->st_gid = 0;
-    s->st_rdev = 0;
-    s->st_ino = 1407374883553285;
-    s->st_size = 4096; // 0
-    s->st_blksize = 4096;
-    s->st_blocks = 16;
-    s->st_flags = 0;
-    s->st_gen = 0;
-    s->st_atim.tv_sec = 1744530601;
-    s->st_atim.tv_nsec = 225400500;
-    s->st_mtim.tv_sec = 1744177550;
-    s->st_mtim.tv_nsec = 600030400;
-    s->st_ctim.tv_sec = 1744177550;
-    s->st_ctim.tv_nsec = 600030400;
-    s->st_birthtim.tv_sec = 1692539028;
-    s->st_birthtim.tv_nsec = 745000000;
-}
-//--
 
 // Used to speed up module loading.  Returns 0 if the path refers to
 // a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
@@ -1059,13 +1019,6 @@ static void InternalModuleStat(const FunctionCallbackInfo<Value>& args)
     ToNamespacedPath(env, &path);
 
     int rc = 0;
-    //----
-    std::string path_temp = *path;
-    if (atom::checkMiniElectronAsarResStat(*path, &rc, nullptr)) {
-        args.GetReturnValue().Set(rc);
-        return;
-    }
-    //-----
 
     uv_fs_t req;
     rc = uv_fs_stat(env->event_loop(), &req, *path, nullptr);
@@ -1164,17 +1117,6 @@ static void LStat(const FunctionCallbackInfo<Value>& args)
 
     bool use_bigint = args[1]->IsTrue();
 
-    //--
-    std::string path_temp = *path;
-    int rc = 0;
-    if (/*path_temp.find(kMiniElectronAsarPrefix) != std::string::npos*/atom::checkMiniElectronAsarResStat(*path, &rc, nullptr)) {
-        uv_stat_t s;
-        MakeFakeUvStat(&s, rc == 1/*path_temp.find(".") != std::string::npos*/);
-        Local<Value> arr = FillGlobalStatsArray(binding_data, use_bigint, &s);
-        args.GetReturnValue().Set(arr);
-        return;
-    }
-    //--
 
     if (!args[2]->IsUndefined()) { // lstat(path, use_bigint, req)
         FSReqBase* req_wrap_async = GetReqWrap(args, 2, use_bigint);
@@ -2494,16 +2436,6 @@ static void ReadFileUtf8(const FunctionCallbackInfo<Value>& args)
         BufferValue path(env->isolate(), args[0]);
         CHECK_NOT_NULL(*path);
 
-        //---atom
-        int rc = 0;
-        if (atom::checkMiniElectronAsarResStat(*path, &rc, &result)) {
-            Local<Value> val;
-            if (!ToV8Value(env->context(), result, isolate).ToLocal(&val))
-                return;
-            args.GetReturnValue().Set(val);
-            return;
-        }
-        //--
 
         ToNamespacedPath(env, &path);
         if (CheckOpenPermissions(env, path, flags).IsNothing())

@@ -35,9 +35,6 @@
 #include <optional>
 #include <unordered_map>
 
-namespace content {
-void printCallstack();
-}
 int MbFprintf(FILE* const stream, char const* const format, ...);
 
 namespace node {
@@ -1192,7 +1189,6 @@ void Environment::RunCleanup()
 
 void Environment::RunAtExitCallbacks()
 {
-    OutputDebugStringA("Environment::RunAtExitCallbacks\n");
     TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment), "AtExit");
     for (ExitCallback at_exit : at_exit_functions_) {
         at_exit.cb_(at_exit.arg_);
@@ -1713,7 +1709,6 @@ void AsyncHooks::FailWithCorruptedAsyncStack(double expected_async_id)
 
 void Environment::Exit(ExitCode exit_code)
 {
-    content::printCallstack();
 
     if (options()->trace_exit) {
         HandleScope handle_scope(isolate());

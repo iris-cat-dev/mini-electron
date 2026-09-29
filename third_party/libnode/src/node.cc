@@ -564,7 +564,7 @@ static void PlatformInit(ProcessInitializationFlags::Flags flags)
                 do {
                     err = dup2(null_fd, fd);
                 } while (err < 0 && errno == EINTR);
-                CHECK_EQ(err, 0);
+                CHECK_EQ(err, fd);
             }
 
             if (fstat(fd, &s.stat) < 0)

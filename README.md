@@ -109,10 +109,23 @@ Build a self-contained OMP Desktop application from a sibling checkout:
 ./platform/macos/build.py --omp-desktop --omp-source ../omp-desktop
 ```
 
-The package is written to `out/mac-arm64/OMP Desktop.app`. Packaging bundles
-the CLI, daemon supervisor, and daemon worker while retaining required native
-Node modules, strips local symbols from the MiniBlink executable, and applies
-an ad-hoc code signature after all resources are installed.
+The package is written to `out/mac-arm64/OMP Desktop.app`. One executable
+serves both roles: it starts the AppKit/Blink GUI normally and starts the
+statically linked Node runtime for CLI and daemon child processes when
+`ELECTRON_RUN_AS_NODE=1`. Node uses this repository's V8 build, so the bundle
+does not contain a second Node distribution or `Contents/Resources/node`.
+Packaging still downloads the backend's declared Node release into
+`.mac-tools` to run `npm ci`; that executable is build-time tooling only.
+nghttp2 is likewise downloaded, checksum-verified, built as a static library,
+and linked into the host for the daemon's HTTP/2 support. Packaging bundles
+and optimizes the CLI, daemon supervisor, and daemon worker, retains required
+native Node modules, strips local symbols, and applies an ad-hoc signature.
+
+Current security boundary: the lightweight host renders Blink in-process and
+builds V8 with its sandbox disabled because embedded Node's external
+`ArrayBuffer` APIs are incompatible with that sandbox. It is not equivalent
+to Chromium/Electron's renderer-process sandbox; load only packaged or trusted
+web content.
 
 The Win32-shaped public header now uses portable opaque handles on macOS.
 Native Chromium `NS_RUNLOOP`, CoreText font selection, CPU bitmap callbacks,

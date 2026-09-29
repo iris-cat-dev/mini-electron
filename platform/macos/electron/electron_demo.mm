@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -12,6 +13,7 @@
 
 #include "mbvip/core/mb.h"
 #include "platform/macos/electron/electron_api.h"
+#include "platform/macos/electron/node_runtime.h"
 #include "platform/macos/electron/omp_desktop_runtime.h"
 
 extern "C" void mbMacSetComposition(mbWebView web_view,
@@ -729,6 +731,9 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 }
 
 int main(int argc, char** argv) {
+  if (std::getenv("ELECTRON_RUN_AS_NODE"))
+    return miniblink::electron::RunAsNode(argc, argv);
+
   @autoreleasepool {
     NSString* resourcesPath = NSBundle.mainBundle.resourcePath;
     NSString* packagedIndex =

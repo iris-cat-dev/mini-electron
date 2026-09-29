@@ -23,6 +23,8 @@ GN_REVISION = "feafd1012a32c05ec6095f69ddc3850afb621f3a"
 HEADLESS_TARGET = "miniblink_mac_smoke"
 GUI_TARGET = "miniblink_mac_gui_demo"
 ELECTRON_TARGET = "miniblink_mac_electron_demo"
+NGHTTP2_VERSION = "1.61.0"
+NGHTTP2_SHA256 = "c0e660175b9dc429f11d25b9507a834fb752eea9135ab420bb7cb7e9dbcc9654"
 
 BACKEND_BUNDLE_ENTRIES = (
     (
@@ -36,6 +38,10 @@ BACKEND_BUNDLE_ENTRIES = (
     (
         "node_modules/@omp-desktop/server/dist/server/server/daemon-worker.js",
         "node_modules/@omp-desktop/server/dist/server/server/daemon-worker.js",
+    ),
+    (
+        "node_modules/@omp-desktop/server/dist/server/terminal/terminal-worker-process.js",
+        "node_modules/@omp-desktop/server/dist/server/server/terminal-worker-process.js",
     ),
 )
 BACKEND_EXTERNAL_PACKAGES = (
@@ -64,9 +70,11 @@ BACKEND_RUNTIME_PACKAGES = (
 )
 
 
-def run(command: list[str], *, cwd: Path) -> None:
+def run(
+    command: list[str], *, cwd: Path, env: Optional[dict[str, str]] = None
+) -> None:
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=cwd, check=True)
+    subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
 def find_or_install_gn(root: Path) -> str:
@@ -134,6 +142,8 @@ def gn_args(clang_base: Path, clang_version: str) -> str:
         "use_reclient": False,
         "v8_enable_fuzztest": False,
         "v8_enable_i18n_support": True,
+        "v8_enable_javascript_promise_hooks": True,
+        "v8_enable_sandbox": False,
         "v8_use_external_startup_data": False,
         "icu_use_data_file": False,
         "symbol_level": 0,
@@ -152,7 +162,74 @@ def download(url: str, destination: Path) -> None:
         shutil.copyfileobj(response, output)
 
 
-def ensure_node_distribution(root: Path, version: str) -> Path:
+def ensure_nghttp2(root: Path, clang_base: Path) -> Path:
+    tools_dir = root / ".mac-tools"
+    installation = tools_dir / f"nghttp2-{NGHTTP2_VERSION}-darwin-arm64"
+    header = installation / "include" / "nghttp2" / "nghttp2.h"
+    library = installation / "lib" / "libnghttp2.a"
+    if header.is_file() and library.is_file():
+        return installation
+
+    tools_dir.mkdir(parents=True, exist_ok=True)
+    archive_name = f"nghttp2-{NGHTTP2_VERSION}.tar.xz"
+    url = (
+        "https://github.com/nghttp2/nghttp2/releases/download/"
+        f"v{NGHTTP2_VERSION}/{archive_name}"
+    )
+    with tempfile.TemporaryDirectory(dir=tools_dir) as temporary:
+        temporary_dir = Path(temporary)
+        archive = temporary_dir / archive_name
+        download(url, archive)
+        actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+        if actual != NGHTTP2_SHA256:
+            raise RuntimeError(
+                f"nghttp2 archive checksum mismatch: expected {NGHTTP2_SHA256}, "
+                f"got {actual}"
+            )
+        with tarfile.open(archive, "r:xz") as package:
+            package.extractall(temporary_dir)
+        source = temporary_dir / f"nghttp2-{NGHTTP2_VERSION}"
+        staged = temporary_dir / "install"
+        build_environment = os.environ.copy()
+        developer_dir = clang_base.parents[2]
+        build_environment["DEVELOPER_DIR"] = str(developer_dir)
+        sdk = subprocess.check_output(
+            ["xcrun", "--sdk", "macosx", "--show-sdk-path"],
+            env=build_environment,
+            text=True,
+        ).strip()
+        build_environment["CC"] = str(clang_base / "bin" / "clang")
+        build_environment["CXX"] = str(clang_base / "bin" / "clang++")
+        build_environment["CFLAGS"] = (
+            f"-isysroot {sdk} -mmacosx-version-min=13.0"
+        )
+        build_environment["LDFLAGS"] = (
+            f"-isysroot {sdk} -mmacosx-version-min=13.0"
+        )
+        run(
+            [
+                str(source / "configure"),
+                f"--prefix={staged}",
+                "--enable-lib-only",
+                "--disable-shared",
+                "--enable-static",
+            ],
+            cwd=source,
+            env=build_environment,
+        )
+        run(["make", "-j", "16"], cwd=source, env=build_environment)
+        run(["make", "install"], cwd=source, env=build_environment)
+        if not (staged / "include/nghttp2/nghttp2.h").is_file() or not (
+            staged / "lib/libnghttp2.a"
+        ).is_file():
+            raise RuntimeError("nghttp2 build did not produce the static library")
+        if installation.exists():
+            shutil.rmtree(installation)
+        shutil.move(str(staged), installation)
+    return installation
+
+
+def ensure_build_node_distribution(root: Path, version: str) -> Path:
     tools_dir = root / ".mac-tools"
     distribution = tools_dir / f"node-v{version}-darwin-arm64"
     node = distribution / "bin" / "node"
@@ -362,7 +439,7 @@ def package_omp_desktop(
 
     manifest = json.loads(manifest_path.read_text())
     node_version = manifest["nodeVersion"]
-    node_distribution = ensure_node_distribution(root, node_version)
+    node_distribution = ensure_build_node_distribution(root, node_version)
     package_metadata = json.loads((source / "package.json").read_text())
 
     app = Path(requested_output) if requested_output else out_dir / "OMP Desktop.app"
@@ -374,10 +451,8 @@ def package_omp_desktop(
     macos = contents / "MacOS"
     resources = contents / "Resources"
     bin_dir = resources / "bin"
-    node_bin = resources / "node" / "bin"
     macos.mkdir(parents=True)
     bin_dir.mkdir(parents=True)
-    node_bin.mkdir(parents=True)
 
     executable = macos / "OMP Desktop"
     shutil.copy2(binary, executable)
@@ -394,10 +469,8 @@ def package_omp_desktop(
     )
     shutil.copytree(app_dist, resources / "app-dist")
     shutil.copytree(backend_source, resources / "backend")
-    shutil.copy2(node_distribution / "bin" / "node", node_bin / "node")
     shutil.copy2(omp_binary, bin_dir / "omp")
     shutil.copy2(icon, resources / "icon.icns")
-    (node_bin / "node").chmod(0o755)
     (bin_dir / "omp").chmod(0o755)
 
     install_environment = os.environ.copy()
@@ -441,8 +514,10 @@ def package_omp_desktop(
         bin_dir / "omp-desktop",
         """#!/bin/sh
 RESOURCES=$(cd "$(dirname "$0")/.." && pwd)
+APP_EXECUTABLE="$RESOURCES/../MacOS/OMP Desktop"
 export PATH="$RESOURCES/bin:$PATH"
-exec "$RESOURCES/node/bin/node" \
+export ELECTRON_RUN_AS_NODE=1
+exec "$APP_EXECUTABLE" \
   "$RESOURCES/backend/node_modules/@omp-desktop/cli/dist/index.js" "$@"
 """,
     )
@@ -547,6 +622,8 @@ def main() -> int:
         if args.gui
         else HEADLESS_TARGET
     )
+    if target == ELECTRON_TARGET:
+        ensure_nghttp2(root, clang_base)
     run([gn, "gen", str(out_dir), f"--args={gn_args(clang_base, clang_version)}"], cwd=root)
     run([ninja, "-C", str(out_dir), "-j", "16", target], cwd=root)
     if args.omp_desktop:

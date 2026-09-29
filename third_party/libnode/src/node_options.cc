@@ -36,7 +36,6 @@ using v8::Value;
 
 namespace node {
 
-extern bool g_disable_has_run_bootstrapping_code_error;
 
 namespace per_process {
 Mutex cli_options_mutex;
@@ -909,7 +908,7 @@ void GetCLIOptionsValues(const FunctionCallbackInfo<Value>& args)
     Local<Context> context = isolate->GetCurrentContext();
     Environment* env = Environment::GetCurrent(context);
 
-    if (!env->has_run_bootstrapping_code() && !g_disable_has_run_bootstrapping_code_error) {
+    if (!env->has_run_bootstrapping_code()) {
         // No code because this is an assertion.
         THROW_ERR_OPTIONS_BEFORE_BOOTSTRAPPING(isolate, "Should not query options before bootstrapping is done");
     }

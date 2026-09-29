@@ -27,9 +27,6 @@
 #define NODE_BUILTIN_DEBUG_BINDINGS(V)
 #endif
 
-namespace content {
-void printCallstack();
-}
 
 // A list of built-in bindings. In order to do binding registration
 // in node::Init(), need to add built-in bindings in the following list.
@@ -57,7 +54,7 @@ void printCallstack();
     V(fs_dir)                                                                                                                                                  \
     V(fs_event_wrap)                                                                                                                                           \
     V(heap_utils)                                                                                                                                              \
-    /*V(http2)*/                                                                                                                                                   \
+    V(http2)                                                                                                                                                   \
     V(http_parser)                                                                                                                                             \
     V(inspector)                                                                                                                                               \
     V(internal_only_v8)                                                                                                                                        \
@@ -494,15 +491,6 @@ void DLOpen(const FunctionCallbackInfo<Value>& args)
     }
 
     node::Utf8Value filename(env->isolate(), args[1]); // Cast
-    //--
-    std::string temp = "DLOpen:";
-    temp += *filename;
-    temp += "\n";
-    OutputDebugStringA(temp.c_str());
-    //content::printCallstack();
-    //if (std::string::npos != temp.find("conpty.node"))
-    //    content::printCallstack();
-    //--
     env->TryLoadAddon(*filename, flags, [&](DLib* dlib) {
         static Mutex dlib_load_mutex;
         Mutex::ScopedLock lock(dlib_load_mutex);

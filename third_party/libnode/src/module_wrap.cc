@@ -14,10 +14,6 @@
 
 #include <algorithm>
 
-namespace atom {
-void PreEvaluateModule(); // weolar
-void PostEvaluateModule();
-}
 
 namespace node {
 namespace loader {
@@ -541,7 +537,6 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args)
             microtask_queue->PerformCheckpoint(isolate);
         return result;
     };
-    atom::PreEvaluateModule();
     if (break_on_sigint && timeout != -1) {
         Watchdog wd(isolate, timeout, &timed_out);
         SigintWatchdog swd(isolate, &received_signal);
@@ -555,7 +550,6 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args)
     } else {
         result = run();
     }
-    atom::PostEvaluateModule();
 
     if (result.IsEmpty()) {
         CHECK(try_catch.HasCaught());

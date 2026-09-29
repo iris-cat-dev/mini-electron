@@ -5,6 +5,8 @@
 
 #import <Foundation/Foundation.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -101,6 +103,23 @@ NSDictionary* MergeDictionary(NSDictionary* base, NSDictionary* patch) {
   return result;
 }
 
+BOOL ReadWindowDragPoint(NSDictionary* arguments, NSPoint* point) {
+  NSNumber* screenX =
+      [arguments[@"screenX"] isKindOfClass:[NSNumber class]]
+          ? arguments[@"screenX"]
+          : nil;
+  NSNumber* screenY =
+      [arguments[@"screenY"] isKindOfClass:[NSNumber class]]
+          ? arguments[@"screenY"]
+          : nil;
+  if (!screenX || !screenY || !std::isfinite(screenX.doubleValue) ||
+      !std::isfinite(screenY.doubleValue)) {
+    return NO;
+  }
+  *point = NSMakePoint(screenX.doubleValue, screenY.doubleValue);
+  return YES;
+}
+
 NSString* BridgeScript(NSString* loginShell) {
   NSString* shellJSON = JsonString(loginShell ?: @"/bin/zsh");
   static const char kSource[] = R"JS(
@@ -125,6 +144,75 @@ NSString* BridgeScript(NSString* loginShell) {
     handlers.add(handler);
     return Promise.resolve(() => handlers.delete(handler));
   };
+  const nativeDragInteractiveSelector = [
+    'button', 'a', 'input', 'textarea', 'select',
+    '[role="button"]', '[role="link"]', '[role="textbox"]',
+    '[role="combobox"]', '[role="tab"]', '[role="switch"]',
+    '[role="checkbox"]', '[role="slider"]', '[role="menuitem"]',
+    '[tabindex]', '[contenteditable="true"]',
+  ].join(',');
+  let nativeDragPointerId = null;
+  let nativeDragCaptureTarget = null;
+  let nativeDragPendingMove = null;
+  let nativeDragMoveFrame = null;
+  const finishNativeWindowDrag = (flushLastMove) => {
+    if (nativeDragPointerId === null) return;
+    if (nativeDragMoveFrame !== null) {
+      cancelAnimationFrame(nativeDragMoveFrame);
+      nativeDragMoveFrame = null;
+    }
+    if (flushLastMove && nativeDragPendingMove) {
+      void callNative('window', 'moveWindowDrag', nativeDragPendingMove).catch(() => {});
+    }
+    nativeDragPendingMove = null;
+    void callNative('window', 'endWindowDrag').catch(() => {});
+    if (nativeDragCaptureTarget?.hasPointerCapture?.(nativeDragPointerId)) {
+      nativeDragCaptureTarget.releasePointerCapture(nativeDragPointerId);
+    }
+    nativeDragPointerId = null;
+    nativeDragCaptureTarget = null;
+  };
+  document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || nativeDragPointerId !== null ||
+        !(event.target instanceof Element)) {
+      return;
+    }
+    const region = event.target.closest('[data-window-drag-region="native"]');
+    if (!region || event.target.closest(nativeDragInteractiveSelector)) return;
+    nativeDragPointerId = event.pointerId;
+    nativeDragCaptureTarget = region;
+    region.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+    void callNative('window', 'beginWindowDrag', {
+      screenX: event.screenX,
+      screenY: event.screenY,
+    }).catch(() => finishNativeWindowDrag(false));
+  }, true);
+  window.addEventListener('pointermove', (event) => {
+    if (event.pointerId !== nativeDragPointerId) return;
+    if ((event.buttons & 1) === 0) {
+      finishNativeWindowDrag(true);
+      return;
+    }
+    nativeDragPendingMove = { screenX: event.screenX, screenY: event.screenY };
+    if (nativeDragMoveFrame !== null) return;
+    nativeDragMoveFrame = requestAnimationFrame(() => {
+      nativeDragMoveFrame = null;
+      const point = nativeDragPendingMove;
+      nativeDragPendingMove = null;
+      if (point) {
+        void callNative('window', 'moveWindowDrag', point)
+          .catch(() => finishNativeWindowDrag(false));
+      }
+    });
+  }, true);
+  window.addEventListener('pointerup', (event) => {
+    if (event.pointerId === nativeDragPointerId) finishNativeWindowDrag(true);
+  }, true);
+  window.addEventListener('pointercancel', (event) => {
+    if (event.pointerId === nativeDragPointerId) finishNativeWindowDrag(false);
+  }, true);
+  window.addEventListener('blur', () => finishNativeWindowDrag(false));
   window.__ompDesktopDispatch = (event, payload) => {
     for (const handler of listeners.get(event) || []) handler(payload);
   };
@@ -159,9 +247,13 @@ NSString* BridgeScript(NSString* loginShell) {
           setFullscreen: (fullscreen) => callNative('window', 'setFullscreen', { fullscreen }),
           isFullscreen: () => callNative('window', 'isFullscreen'),
           isMaximized: () => callNative('window', 'isMaximized'),
-          beginWindowDrag: () => Promise.resolve(),
-          moveWindowDrag: () => {},
-          endWindowDrag: () => {},
+          beginWindowDrag: (point) => callNative('window', 'beginWindowDrag', point),
+          moveWindowDrag: (point) => {
+            void callNative('window', 'moveWindowDrag', point).catch(() => {});
+          },
+          endWindowDrag: () => {
+            void callNative('window', 'endWindowDrag').catch(() => {});
+          },
           updateWindowControls: () => Promise.resolve(),
           onResized: (handler) => on('window:resized', handler),
           setBadgeCount: (count) => callNative('window', 'setBadgeCount', { count }),
@@ -218,13 +310,16 @@ NSString* BridgeScript(NSString* loginShell) {
 @interface OmpDesktopRuntime () {
   NSString* _resourcesPath;
   NSString* _appDistPath;
-  NSString* _nodePath;
+  NSString* _nodeExecutablePath;
   NSString* _cliPath;
   NSString* _ompPath;
   NSString* _cliShimPath;
   NSString* _homePath;
   NSString* _listenAddress;
   NSWindow* _window;
+  BOOL _windowDragActive;
+  NSPoint _windowDragMouseStart;
+  NSPoint _windowDragOrigin;
 }
 @end
 
@@ -235,7 +330,7 @@ NSString* BridgeScript(NSString* loginShell) {
   if (self) {
     _resourcesPath = [[resourcesPath stringByStandardizingPath] copy];
     _appDistPath = [[_resourcesPath stringByAppendingPathComponent:@"app-dist"] copy];
-    _nodePath = [[_resourcesPath stringByAppendingPathComponent:@"node/bin/node"] copy];
+    _nodeExecutablePath = [NSBundle.mainBundle.executablePath copy];
     _cliPath = [[_resourcesPath
         stringByAppendingPathComponent:@"backend/node_modules/@omp-desktop/cli/dist/index.js"] copy];
     _ompPath = [[_resourcesPath stringByAppendingPathComponent:@"bin/omp"] copy];
@@ -259,7 +354,7 @@ NSString* BridgeScript(NSString* loginShell) {
 #if !__has_feature(objc_arc)
   [_resourcesPath release];
   [_appDistPath release];
-  [_nodePath release];
+  [_nodeExecutablePath release];
   [_cliPath release];
   [_ompPath release];
   [_cliShimPath release];
@@ -278,6 +373,7 @@ NSString* BridgeScript(NSString* loginShell) {
   NSString* binaryPath = [_resourcesPath stringByAppendingPathComponent:@"bin"];
   NSString* oldPath = environment[@"PATH"] ?: @"/usr/bin:/bin:/usr/sbin:/sbin";
   environment[@"PATH"] = [NSString stringWithFormat:@"%@:%@", binaryPath, oldPath];
+  environment[@"ELECTRON_RUN_AS_NODE"] = @"1";
   environment[@"OMP_DESKTOP_HOME"] = _homePath;
   environment[@"PASEO_LISTEN"] = _listenAddress;
   environment[@"PASEO_DESKTOP_MANAGED"] = @"1";
@@ -288,7 +384,8 @@ NSString* BridgeScript(NSString* loginShell) {
 }
 
 - (NSString*)runCli:(NSArray<NSString*>*)arguments error:(NSString**)errorText {
-  if (![[NSFileManager defaultManager] isExecutableFileAtPath:_nodePath] ||
+  if (![[NSFileManager defaultManager]
+          isExecutableFileAtPath:_nodeExecutablePath] ||
       ![[NSFileManager defaultManager] fileExistsAtPath:_cliPath]) {
     if (errorText)
       *errorText = @"Packaged OMP Desktop backend runtime is missing";
@@ -298,7 +395,7 @@ NSString* BridgeScript(NSString* loginShell) {
   NSTask* task = [[NSTask alloc] init];
   NSPipe* outputPipe = [NSPipe pipe];
   NSPipe* errorPipe = [NSPipe pipe];
-  task.executableURL = [NSURL fileURLWithPath:_nodePath];
+  task.executableURL = [NSURL fileURLWithPath:_nodeExecutablePath];
   task.arguments = [@[ _cliPath ] arrayByAddingObjectsFromArray:arguments];
   task.environment = [self taskEnvironment];
   task.standardOutput = outputPipe;
@@ -630,6 +727,7 @@ NSString* BridgeScript(NSString* loginShell) {
               error:(NSString**)errorText {
   if ([scope isEqualToString:@"window"]) {
     if ([method isEqualToString:@"toggleMaximize"]) {
+      _windowDragActive = NO;
       [_window zoom:nil];
       return [NSNull null];
     }
@@ -644,6 +742,61 @@ NSString* BridgeScript(NSString* loginShell) {
       return @((_window.styleMask & NSWindowStyleMaskFullScreen) != 0);
     if ([method isEqualToString:@"isMaximized"])
       return @(_window.isZoomed);
+    if ([method isEqualToString:@"beginWindowDrag"]) {
+      NSPoint point;
+      if (!ReadWindowDragPoint(arguments, &point)) {
+        if (errorText)
+          *errorText = @"Window drag requires finite screenX and screenY";
+        return nil;
+      }
+      if ((_window.styleMask & NSWindowStyleMaskFullScreen) != 0)
+        return [NSNull null];
+      NSPoint mouse = NSEvent.mouseLocation;
+      if (_window.isZoomed) {
+        NSRect maximizedFrame = _window.frame;
+        CGFloat horizontalRatio = 0.5;
+        if (NSWidth(maximizedFrame) > 0) {
+          horizontalRatio = std::clamp<CGFloat>(
+              (mouse.x - NSMinX(maximizedFrame)) / NSWidth(maximizedFrame),
+              0, 1);
+        }
+        CGFloat topOffset = std::clamp<CGFloat>(
+            NSMaxY(maximizedFrame) - mouse.y, 0, 54);
+        [_window zoom:nil];
+        NSRect restoredFrame = _window.frame;
+        [_window setFrameOrigin:NSMakePoint(
+                                    mouse.x -
+                                        NSWidth(restoredFrame) * horizontalRatio,
+                                    mouse.y + topOffset -
+                                        NSHeight(restoredFrame))];
+      }
+      _windowDragActive = YES;
+      _windowDragMouseStart = mouse;
+      _windowDragOrigin = _window.frame.origin;
+      return [NSNull null];
+    }
+    if ([method isEqualToString:@"moveWindowDrag"]) {
+      NSPoint ignoredPoint;
+      if (!ReadWindowDragPoint(arguments, &ignoredPoint)) {
+        if (errorText)
+          *errorText = @"Window drag requires finite screenX and screenY";
+        return nil;
+      }
+      if (_windowDragActive) {
+        NSPoint mouse = NSEvent.mouseLocation;
+        [_window
+            setFrameOrigin:NSMakePoint(
+                               _windowDragOrigin.x +
+                                   mouse.x - _windowDragMouseStart.x,
+                               _windowDragOrigin.y +
+                                   mouse.y - _windowDragMouseStart.y)];
+      }
+      return [NSNull null];
+    }
+    if ([method isEqualToString:@"endWindowDrag"]) {
+      _windowDragActive = NO;
+      return [NSNull null];
+    }
     if ([method isEqualToString:@"setBadgeCount"]) {
       NSNumber* count = [arguments[@"count"] isKindOfClass:[NSNumber class]]
                             ? arguments[@"count"]
