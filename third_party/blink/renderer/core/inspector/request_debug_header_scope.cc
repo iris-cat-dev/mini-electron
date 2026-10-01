@@ -4,14 +4,19 @@
 
 #include "third_party/blink/renderer/core/inspector/request_debug_header_scope.h"
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/inspector/v8_inspector_string.h"
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
+#endif
 
 namespace blink {
 // static
 String RequestDebugHeaderScope::CaptureStackIdForCurrentLocation(ExecutionContext* context)
 {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    return String();
+#else
     if (!context) {
         return String();
     }
@@ -20,10 +25,12 @@ String RequestDebugHeaderScope::CaptureStackIdForCurrentLocation(ExecutionContex
         return String();
     auto stack = debugger->StoreCurrentStackTrace("network request").ToString();
     return stack ? ToCoreString(std::move(stack)) : String();
+#endif
 }
 
 RequestDebugHeaderScope::RequestDebugHeaderScope(ExecutionContext* context, const String& header)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (header.empty() || !context) {
         return;
     }
@@ -33,12 +40,15 @@ RequestDebugHeaderScope::RequestDebugHeaderScope(ExecutionContext* context, cons
     debugger_ = ThreadDebugger::From(context->GetIsolate());
     if (debugger_)
         debugger_->ExternalAsyncTaskStarted(stack_trace_id_);
+#endif
 }
 
 RequestDebugHeaderScope::~RequestDebugHeaderScope()
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (debugger_)
         debugger_->ExternalAsyncTaskFinished(stack_trace_id_);
+#endif
 }
 
 } // namespace blink

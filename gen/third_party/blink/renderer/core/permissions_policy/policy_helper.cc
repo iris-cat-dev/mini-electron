@@ -15,7 +15,9 @@
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/core/inspector/protocol/page.h"
+#endif
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
@@ -389,6 +391,7 @@ bool DisabledByOriginTrial(mojom::blink::DocumentPolicyFeature feature, FeatureC
     return false;
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 String PermissionsPolicyFeatureToProtocol(mojom::blink::PermissionsPolicyFeature feature, ExecutionContext* execution_context)
 {
     if (execution_context && execution_context->IsIsolatedContext()) {
@@ -588,5 +591,6 @@ String PermissionsPolicyFeatureToProtocol(mojom::blink::PermissionsPolicyFeature
         NOTREACHED();
     }
 }
+#endif
 
 } // namespace blink

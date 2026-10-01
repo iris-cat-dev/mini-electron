@@ -129,6 +129,16 @@ The restored Windows inputs originate from MiniBlink revision
 `191f82c33fc0ff9ddaeedab90e6406a54a8e76c6`; they compile the current shared engine
 sources, including the macOS changes behind their platform guards.
 
+The Windows `Release|x64` build disables Blink/V8/Node Inspector and DevTools.
+`process.features.inspector` is `false`; the `node:inspector` modules and
+`webContents` DevTools/inspection methods are unavailable. The F12 shortcut and
+developer-tools menu entries are removed. Ordinary JavaScript error stacks,
+console messages, page/worker error reporting, and storage events remain active;
+source locations use native V8 stack frames without an Inspector session.
+The experimental `<permission>` implementation and binding are excluded:
+the tag creates an `HTMLUnknownElement`, with no `HTMLPermissionElement`
+constructor. Ordinary permissions-policy handling is retained.
+
 ```sh
 python build.py
 python build.py --run
@@ -150,11 +160,15 @@ Windows does not currently provide the macOS-only browser demo or screenshot
 option. OMP Desktop packaging is supported on both desktop targets.
 
 Windows hidden-title windows honor `titleBarStyle`, `titleBarOverlay`, and
-`setTitleBarOverlay()`. Win32-drawn minimize/maximize/restore/close controls use
-the window DPI and the requested overlay height/colors. CSS app-region dragging
-and no-drag elements remain active. `autoHideMenuBar`, explicit menu visibility,
-Alt activation, menu replacement, and null clearing are supported; ordinary
-framed windows retain their native title bar and menu.
+`setTitleBarOverlay()`. Minimize/maximize/restore/close controls are rasterized
+into a cached, opaque Skia surface and alpha-composited onto the Win32 window,
+using its DPI and the requested overlay height/colors. The background covers
+the restored top inset as well, so page scrollbars cannot expose a white caption
+edge. Opaque borderless windows retain their native DWM shadow without a rounded
+window region; maximized client bounds match the visible work area. CSS
+app-region dragging and no-drag elements remain active. `autoHideMenuBar`,
+explicit menu visibility, Alt activation, menu replacement, and null clearing
+are supported; ordinary framed windows retain their native title bar and menu.
 
 ### OMP Desktop package
 
@@ -182,6 +196,11 @@ and retains the backend lockfile's production dependencies, native Node modules,
 bundled OMP/ripgrep executables, and remote-backend release archives.
 It creates a real `resources/app.asar`, with main/preload scripts and production
 modules under `app.asar.unpacked`, and the frontend under `resources/app-dist`.
+Packaging removes source maps and TypeScript declaration files (`.d.ts`,
+`.d.mts`, `.d.cts`) from the staged application before creating ASAR, and removes
+`node-pty` PDBs. JavaScript, ordinary `.ts` sources, native `.node`/DLL/EXE files,
+licenses, and remote-backend release archives are retained.
+
 
 The same executable runs the GUI, CLI, daemon supervisor, and daemon worker.
 Setting `ELECTRON_RUN_AS_NODE=1` selects the statically linked Node runtime;

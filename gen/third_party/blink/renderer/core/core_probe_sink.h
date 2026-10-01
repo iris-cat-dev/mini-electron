@@ -104,7 +104,11 @@ public:
 
     bool HasDevToolsSessions() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !dev_tools_sessions_.IsEmpty();
+#endif
     }
     const AgentRegistry<DevToolsSession>& DevToolsSessions() const
     {
@@ -115,7 +119,11 @@ public:
 
     bool HasInspectorAnimationAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_animation_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorAnimationAgent>& InspectorAnimationAgents() const
     {
@@ -126,7 +134,11 @@ public:
 
     bool HasInspectorAuditsAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_audits_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorAuditsAgent>& InspectorAuditsAgents() const
     {
@@ -137,7 +149,11 @@ public:
 
     bool HasInspectorCSSAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_css_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorCSSAgent>& InspectorCSSAgents() const
     {
@@ -148,7 +164,11 @@ public:
 
     bool HasInspectorDOMAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_dom_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorDOMAgent>& InspectorDOMAgents() const
     {
@@ -159,7 +179,11 @@ public:
 
     bool HasInspectorDOMDebuggerAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_dom_debugger_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorDOMDebuggerAgent>& InspectorDOMDebuggerAgents() const
     {
@@ -170,7 +194,11 @@ public:
 
     bool HasInspectorDOMSnapshotAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_dom_snapshot_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorDOMSnapshotAgent>& InspectorDOMSnapshotAgents() const
     {
@@ -181,7 +209,11 @@ public:
 
     bool HasInspectorEmulationAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_emulation_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorEmulationAgent>& InspectorEmulationAgents() const
     {
@@ -192,7 +224,11 @@ public:
 
     bool HasInspectorEventBreakpointsAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_event_breakpoints_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorEventBreakpointsAgent>& InspectorEventBreakpointsAgents() const
     {
@@ -203,7 +239,11 @@ public:
 
     bool HasInspectorIssueReporters() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_issue_reporters_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorIssueReporter>& InspectorIssueReporters() const
     {
@@ -214,7 +254,11 @@ public:
 
     bool HasInspectorLayerTreeAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_layer_tree_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorLayerTreeAgent>& InspectorLayerTreeAgents() const
     {
@@ -225,7 +269,11 @@ public:
 
     bool HasInspectorLogAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_log_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorLogAgent>& InspectorLogAgents() const
     {
@@ -236,7 +284,11 @@ public:
 
     bool HasInspectorMediaAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_media_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorMediaAgent>& InspectorMediaAgents() const
     {
@@ -247,7 +299,11 @@ public:
 
     bool HasInspectorNetworkAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_network_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorNetworkAgent>& InspectorNetworkAgents() const
     {
@@ -258,7 +314,11 @@ public:
 
     bool HasInspectorOverlayAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_overlay_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorOverlayAgent>& InspectorOverlayAgents() const
     {
@@ -269,7 +329,11 @@ public:
 
     bool HasInspectorPageAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_page_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorPageAgent>& InspectorPageAgents() const
     {
@@ -280,7 +344,11 @@ public:
 
     bool HasInspectorPerformanceAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_performance_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorPerformanceAgent>& InspectorPerformanceAgents() const
     {
@@ -291,7 +359,11 @@ public:
 
     bool HasInspectorPerformanceTimelineAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_performance_timeline_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorPerformanceTimelineAgent>& InspectorPerformanceTimelineAgents() const
     {
@@ -302,7 +374,11 @@ public:
 
     bool HasInspectorPreloadAgents() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_preload_agents_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorPreloadAgent>& InspectorPreloadAgents() const
     {
@@ -313,7 +389,11 @@ public:
 
     bool HasInspectorTraceEventss() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+        return false;
+#else
         return !inspector_trace_eventss_.IsEmpty();
+#endif
     }
     const AgentRegistry<InspectorTraceEvents>& InspectorTraceEventss() const
     {

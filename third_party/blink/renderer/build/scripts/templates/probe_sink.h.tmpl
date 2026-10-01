@@ -43,7 +43,17 @@ class {{export_symbol}} {{sink_class}} final : public GarbageCollected<{{sink_cl
 {% for agent in agents|sort %}
 {% set class_name = agent | agent_name_to_class %}
 {% set getter_name = agent | to_snake_case %}
-  bool Has{{agent}}s() const { return !{{getter_name}}s_.IsEmpty(); }
+  bool Has{{agent}}s() const {
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    return false;
+#else
+{% endif %}
+    return !{{getter_name}}s_.IsEmpty();
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#endif
+{% endif %}
+  }
   const AgentRegistry<{{class_name}}>& {{class_name}}s() const { return {{getter_name}}s_; }
   void Add{{agent}}({{class_name}}* agent);
   void Remove{{agent}}({{class_name}}* agent);
@@ -51,6 +61,17 @@ class {{export_symbol}} {{sink_class}} final : public GarbageCollected<{{sink_cl
 {% endfor %}
   // Queries process-wide. Intended for fast-return cases only.
   static bool HasAgentsGlobal(unsigned mask) {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    constexpr unsigned kSupportedAgentMask = 0
+{% for agent in agents|sort %}
+{% set class_name = agent | agent_name_to_class %}
+{% if not class_name.startswith("Inspector") and class_name != "DevToolsSession" %}
+        | k{{agent}}
+{% endif %}
+{% endfor %}
+        ;
+    mask &= kSupportedAgentMask;
+#endif
     return s_existingAgents.load(std::memory_order_acquire) & mask;
   }
 

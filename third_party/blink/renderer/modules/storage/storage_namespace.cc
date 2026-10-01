@@ -37,8 +37,10 @@
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/modules/storage/inspector_dom_storage_agent.h"
 #include "third_party/blink/renderer/modules/storage/storage_area.h"
+#endif
 #include "third_party/blink/renderer/modules/storage/storage_controller.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
@@ -190,6 +192,7 @@ void StorageNamespace::CleanUpUnusedAreas()
     cached_areas_.RemoveAll(to_remove);
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 void StorageNamespace::AddInspectorStorageAgent(InspectorDOMStorageAgent* agent)
 {
     inspector_agents_.insert(agent);
@@ -198,14 +201,18 @@ void StorageNamespace::RemoveInspectorStorageAgent(InspectorDOMStorageAgent* age
 {
     inspector_agents_.erase(agent);
 }
+#endif
 
 void StorageNamespace::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     visitor->Trace(inspector_agents_);
+#endif
     visitor->Trace(namespace_);
     Supplement<Page>::Trace(visitor);
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 void StorageNamespace::DidDispatchStorageEvent(const BlinkStorageKey& storage_key, const String& key, const String& old_value, const String& new_value)
 {
     for (InspectorDOMStorageAgent* agent : inspector_agents_) {
@@ -213,6 +220,7 @@ void StorageNamespace::DidDispatchStorageEvent(const BlinkStorageKey& storage_ke
             key, old_value, new_value, IsSessionStorage() ? StorageArea::StorageType::kSessionStorage : StorageArea::StorageType::kLocalStorage, storage_key);
     }
 }
+#endif
 
 void StorageNamespace::BindStorageArea(
     const BlinkStorageKey& storage_key, const LocalFrameToken& local_frame_token, mojo::PendingReceiver<mojom::blink::StorageArea> receiver)

@@ -64,7 +64,9 @@ public:
     // Returns embedder-provided frame token that is consistent across processes
     // and can be used for request / call attribution to the context frame.
     static const String& FrameId(Frame*);
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     static LocalFrame* FrameById(InspectedFrames*, const String&);
+#endif
 
     static String LoaderId(DocumentLoader*);
 

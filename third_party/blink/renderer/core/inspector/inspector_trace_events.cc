@@ -12,10 +12,18 @@
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/core/animation/animation.h"
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#include "third_party/blink/renderer/core/animation/css/css_animation.h"
+#include "third_party/blink/renderer/core/animation/css/css_transition.h"
+#endif
 #include "third_party/blink/renderer/core/animation/keyframe_effect.h"
 #include "third_party/blink/renderer/core/css/invalidation/invalidation_set.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
+#endif
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/events/wheel_event.h"
@@ -26,9 +34,11 @@
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/core/inspector/inspector_animation_agent.h"
 #include "third_party/blink/renderer/core/inspector/inspector_network_agent.h"
 #include "third_party/blink/renderer/core/inspector/inspector_page_agent.h"
+#endif
 #include "third_party/blink/renderer/core/inspector/invalidation_set_to_selector_map.h"
 #include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
@@ -47,6 +57,10 @@
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_priority.h"
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
+#include "third_party/blink/renderer/platform/loader/fetch/resource.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
@@ -61,6 +75,120 @@
 namespace blink {
 
 namespace {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+void AddInitiatorPosition(perfetto::TracedDictionary& dict, const TextPosition& position)
+{
+    dict.Add("lineNumber", position.line_.ZeroBasedInt());
+    dict.Add("columnNumber", position.column_.ZeroBasedInt());
+}
+
+void SetInitiatorWithoutInspector(Document* document, const FetchInitiatorInfo& initiator_info, perfetto::TracedDictionary& dict)
+{
+    auto initiator_dict = dict.AddDictionary("initiator");
+    initiator_dict.Add("fetchType", initiator_info.name);
+
+    if (initiator_info.is_imported_module && !initiator_info.referrer.empty()) {
+        initiator_dict.Add("type", "script");
+        initiator_dict.Add("url", initiator_info.referrer);
+        AddInitiatorPosition(initiator_dict, initiator_info.position);
+        return;
+    }
+
+    bool was_requested_by_stylesheet
+        = initiator_info.name == fetch_initiator_type_names::kCSS || initiator_info.name == fetch_initiator_type_names::kUacss;
+    if (was_requested_by_stylesheet && !initiator_info.referrer.empty()) {
+        initiator_dict.Add("type", "parser");
+        initiator_dict.Add("url", initiator_info.referrer);
+        if (initiator_info.position != TextPosition::BelowRangePosition())
+            AddInitiatorPosition(initiator_dict, initiator_info.position);
+        return;
+    }
+
+    if (!was_requested_by_stylesheet) {
+        auto source_location = CaptureSourceLocation(document ? document->GetExecutionContext() : nullptr);
+        if (source_location->HasStackTrace()) {
+            initiator_dict.Add("type", "script");
+            if (initiator_info.position != TextPosition::BelowRangePosition())
+                AddInitiatorPosition(initiator_dict, initiator_info.position);
+            return;
+        }
+    }
+
+    while (document && !document->GetScriptableDocumentParser())
+        document = document->LocalOwner() ? document->LocalOwner()->ownerDocument() : nullptr;
+    if (document && document->GetScriptableDocumentParser()) {
+        initiator_dict.Add("type", "parser");
+        KURL url = document->Url();
+        url.RemoveFragmentIdentifier();
+        initiator_dict.Add("url", url.GetString());
+        if (initiator_info.position != TextPosition::BelowRangePosition()) {
+            AddInitiatorPosition(initiator_dict, initiator_info.position);
+        } else {
+            AddInitiatorPosition(initiator_dict, document->GetScriptableDocumentParser()->GetTextPosition());
+        }
+        return;
+    }
+
+    initiator_dict.Add("type", "other");
+}
+
+const char* ResourceTypeForTrace(ResourceType resource_type)
+{
+    switch (resource_type) {
+    case ResourceType::kImage:
+        return "Image";
+    case ResourceType::kFont:
+        return "Font";
+    case ResourceType::kAudio:
+    case ResourceType::kVideo:
+        return "Media";
+    case ResourceType::kManifest:
+        return "Manifest";
+    case ResourceType::kTextTrack:
+        return "TextTrack";
+    case ResourceType::kCSSStyleSheet:
+    case ResourceType::kXSLStyleSheet:
+        return "Stylesheet";
+    case ResourceType::kScript:
+        return "Script";
+    default:
+        return "Other";
+    }
+}
+
+String ProtocolForTrace(const ResourceResponse& response)
+{
+    String protocol = response.AlpnNegotiatedProtocol();
+    if (protocol.empty() || protocol == "unknown") {
+        if (response.WasFetchedViaSPDY()) {
+            protocol = "h2";
+        } else if (response.IsHTTP()) {
+            protocol = "http";
+            if (response.HttpVersion() == ResourceResponse::HTTPVersion::kHTTPVersion_0_9) {
+                protocol = "http/0.9";
+            } else if (response.HttpVersion() == ResourceResponse::HTTPVersion::kHTTPVersion_1_0) {
+                protocol = "http/1.0";
+            } else if (response.HttpVersion() == ResourceResponse::HTTPVersion::kHTTPVersion_1_1) {
+                protocol = "http/1.1";
+            }
+        } else {
+            protocol = response.CurrentRequestUrl().Protocol();
+        }
+    }
+    return protocol;
+}
+
+String AnimationDisplayNameForTrace(const Animation& animation)
+{
+    if (!animation.id().empty())
+        return animation.id();
+    if (auto* css_animation = DynamicTo<CSSAnimation>(animation))
+        return css_animation->animationName();
+    if (auto* css_transition = DynamicTo<CSSTransition>(animation))
+        return css_transition->transitionProperty();
+    return "";
+}
+#endif
 
 const unsigned kMaxLayoutRoots = 10;
 const unsigned kMaxQuads = 10;
@@ -810,6 +938,9 @@ String GetRenderBlockingStringFromBehavior(RenderBlockingBehavior render_blockin
 
 void SetInitiator(Document* document, FetchInitiatorInfo initiator_info, perfetto::TracedDictionary& dict)
 {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    SetInitiatorWithoutInspector(document, initiator_info, dict);
+#else
     auto initiator = InspectorNetworkAgent::BuildInitiatorObject(document, initiator_info, 0);
     auto initiatorDict = dict.AddDictionary("initiator");
 
@@ -824,6 +955,7 @@ void SetInitiator(Document* document, FetchInitiatorInfo initiator_info, perfett
     if (initiator->hasUrl()) {
         initiatorDict.Add("url", initiator->getUrl(""));
     }
+#endif
 }
 
 void inspector_send_request_event::Data(perfetto::TracedValue context, ExecutionContext* execution_context, DocumentLoader* loader, uint64_t identifier,
@@ -836,7 +968,11 @@ void inspector_send_request_event::Data(perfetto::TracedValue context, Execution
     dict.Add("url", request.Url().GetString());
     dict.Add("requestMethod", request.HttpMethod());
     dict.Add("isLinkPreload", resource_loader_options.initiator_info.is_link_preload);
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    const char* resource_type_string = ResourceTypeForTrace(resource_type);
+#else
     String resource_type_string = InspectorPageAgent::ResourceTypeJson(InspectorPageAgent::ToResourceType(resource_type));
+#endif
     dict.Add("resourceType", resource_type_string);
     String render_blocking_string = GetRenderBlockingStringFromBehavior(render_blocking_behavior);
     if (!render_blocking_string.IsNull()) {
@@ -872,7 +1008,11 @@ void inspector_send_navigation_request_event::Data(
     dict.Add("frame", IdentifiersFactory::FrameId(frame));
     dict.Add("url", url.GetString());
     dict.Add("requestMethod", http_method);
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    dict.Add("resourceType", "Document");
+#else
     dict.Add("resourceType", protocol::Network::ResourceTypeEnum::Document);
+#endif
     const char* priority = ResourcePriorityString(ResourceLoadPriority::kVeryHigh);
     if (priority)
         dict.Add("priority", priority);
@@ -954,7 +1094,11 @@ void inspector_receive_response_event::Data(
     }
 
     SetHeaders(dict.AddItem("headers"), response.HttpHeaderFields());
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    dict.Add("protocol", ProtocolForTrace(response));
+#else
     dict.Add("protocol", InspectorNetworkAgent::GetProtocolAsString(response));
+#endif
 }
 
 void inspector_receive_data_event::Data(
@@ -1465,7 +1609,11 @@ void inspector_animation_event::Data(perfetto::TracedValue context, const Animat
     dict.Add("id", String::Number(animation.SequenceNumber()));
     dict.Add("state", V8AnimationPlayState(animation.CalculateAnimationPlayState()).AsCStr());
     if (const AnimationEffect* effect = animation.effect()) {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+        dict.Add("displayName", AnimationDisplayNameForTrace(animation));
+#else
         dict.Add("displayName", InspectorAnimationAgent::AnimationDisplayName(animation));
+#endif
         dict.Add("name", animation.id());
         if (auto* frame_effect = DynamicTo<KeyframeEffect>(effect)) {
             if (Element* target = frame_effect->EffectTarget())

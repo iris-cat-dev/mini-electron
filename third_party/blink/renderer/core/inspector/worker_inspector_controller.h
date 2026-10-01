@@ -34,7 +34,9 @@
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/unguessable_token.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/inspector/devtools_agent.h"
+#endif
 #include "third_party/blink/renderer/core/inspector/inspector_task_runner.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -45,6 +47,7 @@
 
 namespace blink {
 
+class DevToolsAgent;
 class CoreProbeSink;
 class InspectedFrames;
 class WorkerThread;

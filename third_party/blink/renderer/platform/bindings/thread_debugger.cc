@@ -20,19 +20,23 @@ ThreadDebugger* ThreadDebugger::From(v8::Isolate* isolate)
 // static
 void ThreadDebugger::IdleStarted(v8::Isolate* isolate)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
         if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
             inspector->idleStarted();
     }
+#endif
 }
 
 // static
 void ThreadDebugger::IdleFinished(v8::Isolate* isolate)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
         if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
             inspector->idleFinished();
     }
+#endif
 }
 
 } // namespace blink

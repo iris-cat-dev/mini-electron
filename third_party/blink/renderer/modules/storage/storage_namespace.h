@@ -35,7 +35,9 @@
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_wrapper_mode.h"
@@ -49,15 +51,15 @@ namespace blink {
 
 class CachedStorageArea;
 class LocalDOMWindow;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 class InspectorDOMStorageAgent;
+#endif
 class StorageController;
 
-// Contains DOMStorage storage areas for BlinkStorageKeys & handles inspector
-// agents. A namespace is either a SessionStorage namespace with a namespace_id,
-// or a LocalStorage namespace with no (or an empty) namespace_id. The
-// LocalStorage version of the StorageNamespace lives in the StorageController.
-// InspectorDOMStorageAgents that are registered on this object are notified
-// through `DidDispatchStorageEvent`.
+// Contains DOMStorage storage areas for BlinkStorageKeys. A namespace is either
+// a SessionStorage namespace with a namespace_id, or a LocalStorage namespace
+// with no (or an empty) namespace_id. The LocalStorage version of the
+// StorageNamespace lives in the StorageController.
 class MODULES_EXPORT StorageNamespace final : public GarbageCollected<StorageNamespace>, public Supplement<Page> {
 public:
     // `kStandard` is access for a given context's storage, while
@@ -101,14 +103,18 @@ public:
         return !namespace_id_.empty();
     }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     void AddInspectorStorageAgent(InspectorDOMStorageAgent* agent);
     void RemoveInspectorStorageAgent(InspectorDOMStorageAgent* agent);
+#endif
 
     void Trace(Visitor* visitor) const override;
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     // Iterates all of the inspector agents and calls
     // `DidDispatchDOMStorageEvent`.
     void DidDispatchStorageEvent(const BlinkStorageKey& storage_key, const String& key, const String& old_value, const String& new_value);
+#endif
 
     // Called by areas in `cached_areas_` to bind/rebind their StorageArea
     // interface.
@@ -123,7 +129,9 @@ public:
 private:
     void EnsureConnected();
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     HeapHashSet<WeakMember<InspectorDOMStorageAgent>> inspector_agents_;
+#endif
 
     // Lives globally.
     raw_ptr<StorageController> controller_;

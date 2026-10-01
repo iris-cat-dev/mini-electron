@@ -72,7 +72,9 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
@@ -351,9 +353,12 @@ void ResponseResolver::RejectBecauseFailed(
     CHECK(resolver_);
     auto* script_state = resolver_->GetScriptState();
     auto* isolate = script_state->GetIsolate();
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     auto context = script_state->GetContext();
+#endif
     v8::Local<v8::Value> value = exception_.Get(isolate);
     exception_.Reset();
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (devtools_request_id || issue_id || issue_summary) {
         ThreadDebugger* debugger = ThreadDebugger::From(isolate);
         v8_inspector::V8Inspector* inspector = debugger ? debugger->GetV8Inspector() : nullptr;
@@ -370,6 +375,7 @@ void ResponseResolver::RejectBecauseFailed(
             }
         }
     }
+#endif
     resolver_->Reject(value);
     Clear();
 }

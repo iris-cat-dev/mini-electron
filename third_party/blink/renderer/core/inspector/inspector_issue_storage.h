@@ -36,9 +36,11 @@ public:
 
     virtual ~InspectorIssueStorage();
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 private:
     void AddInspectorIssue(CoreProbeSink*, std::unique_ptr<protocol::Audits::InspectorIssue>);
     Deque<std::unique_ptr<protocol::Audits::InspectorIssue>> issues_;
+#endif
 };
 
 } // namespace blink

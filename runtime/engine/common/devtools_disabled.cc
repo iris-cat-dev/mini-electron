@@ -11,6 +11,8 @@
 #include "third_party/blink/renderer/core/frame/frame_console.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#include "third_party/blink/renderer/core/inspector/inspector_issue_storage.h"
 #include "third_party/blink/renderer/core/inspector/worker_devtools_params.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_reporting_proxy.h"
@@ -19,7 +21,7 @@
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
-#error "This file is only for the DevTools-free macOS target."
+#error "This file is only for DevTools-free targets."
 #endif
 
 namespace blink {
@@ -210,5 +212,68 @@ void WorkerInspectorController::Trace(Visitor* visitor) const
 {
     visitor->Trace(probe_sink_);
 }
+
+#if defined(_WIN32)
+void AuditsIssue::ReportQuirksModeIssue(ExecutionContext*, bool, DOMNodeId, String, String, String) { }
+
+void AuditsIssue::ReportCorsIssue(ExecutionContext*, int64_t, RendererCorsIssueCode, String, String, String,
+    std::optional<base::UnguessableToken>)
+{
+}
+
+void AuditsIssue::ReportAttributionIssue(
+    ExecutionContext*, mojom::blink::AttributionReportingIssueType, Element*, const String&, const String&)
+{
+}
+
+void AuditsIssue::ReportSharedArrayBufferIssue(ExecutionContext*, bool, SharedArrayBufferIssueType) { }
+void AuditsIssue::ReportDeprecationIssue(ExecutionContext*, String) { }
+void AuditsIssue::ReportClientHintIssue(LocalDOMWindow*, ClientHintIssueReason) { }
+
+AuditsIssue AuditsIssue::CreateBlockedByResponseIssue(
+    network::mojom::BlockedByResponseReason, uint64_t, DocumentLoader*, const ResourceError&, const base::UnguessableToken&)
+{
+    return AuditsIssue();
+}
+
+void AuditsIssue::ReportMixedContentIssue(
+    const KURL&, const KURL&, mojom::blink::RequestContextType, LocalFrame*, MixedContentResolutionStatus, const String&)
+{
+}
+
+AuditsIssue AuditsIssue::CreateContentSecurityPolicyIssue(
+    const SecurityPolicyViolationEventInit&, bool, ContentSecurityPolicyViolationType, LocalFrame*, Element*, SourceLocation*,
+    std::optional<base::UnguessableToken>)
+{
+    return AuditsIssue();
+}
+
+protocol::Audits::GenericIssueErrorType AuditsIssue::GenericIssueErrorTypeToProtocol(mojom::blink::GenericIssueErrorType)
+{
+    return protocol::Audits::GenericIssueErrorType();
+}
+
+void AuditsIssue::ReportGenericIssue(LocalFrame*, mojom::blink::GenericIssueErrorType, int) { }
+void AuditsIssue::ReportGenericIssue(LocalFrame*, mojom::blink::GenericIssueErrorType, int, const String&) { }
+void AuditsIssue::ReportStylesheetLoadingLateImportIssue(Document*, const KURL&, WTF::OrdinalNumber, WTF::OrdinalNumber) { }
+
+void AuditsIssue::ReportPropertyRuleIssue(
+    Document*, const KURL&, WTF::OrdinalNumber, WTF::OrdinalNumber, protocol::Audits::PropertyRuleIssueReason, const String&)
+{
+}
+
+void AuditsIssue::ReportStylesheetLoadingRequestFailedIssue(
+    Document*, const KURL&, const String&, const KURL&, WTF::OrdinalNumber, WTF::OrdinalNumber, const String&)
+{
+}
+
+InspectorIssueStorage::InspectorIssueStorage() = default;
+InspectorIssueStorage::~InspectorIssueStorage() = default;
+void InspectorIssueStorage::AddInspectorIssue(ExecutionContext*, AuditsIssue) { }
+void InspectorIssueStorage::AddInspectorIssue(CoreProbeSink*, AuditsIssue) { }
+void InspectorIssueStorage::Clear() { }
+wtf_size_t InspectorIssueStorage::size() const { return 0; }
+protocol::Audits::InspectorIssue* InspectorIssueStorage::at(wtf_size_t) const { return nullptr; }
+#endif
 
 } // namespace blink

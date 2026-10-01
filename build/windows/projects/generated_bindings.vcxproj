@@ -3965,6 +3965,12 @@
     <ClCompile Include="..\..\..\third_party\abseil-cpp\absl\types\bad_optional_access.cc" />
     <ClCompile Include="..\..\..\third_party\abseil-cpp\absl\types\bad_variant_access.cc" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_html_permission_element.cc" />
+    <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_dev_tools_host.cc" />
+    <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_inspector_overlay_host.cc" />
+    <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\core\inspector\protocol\*.cc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

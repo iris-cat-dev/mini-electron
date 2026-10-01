@@ -8,8 +8,10 @@
 #include "third_party/blink/renderer/core/inspector/exception_metadata.h"
 
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "v8/include/v8.h"
 
@@ -17,6 +19,7 @@ namespace blink {
 
 void MaybeAssociateExceptionMetaData(v8::Local<v8::Value> exception, const String& key, const String& value)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (exception.IsEmpty()) {
         // Should only happen in tests.
         return;
@@ -31,6 +34,7 @@ void MaybeAssociateExceptionMetaData(v8::Local<v8::Value> exception, const Strin
     v8_inspector::V8Inspector* inspector = debugger ? debugger->GetV8Inspector() : nullptr;
     if (inspector)
         inspector->associateExceptionData(v8::Local<v8::Context>(), exception, V8String(isolate, key), V8String(isolate, value));
+#endif
 }
 
 } // namespace blink

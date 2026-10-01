@@ -139,9 +139,11 @@ bool DisabledByOriginTrial(const String&, FeatureContext*);
 // trial (it is origin trial controlled, and the origin trial is not enabled).
 bool DisabledByOriginTrial(mojom::blink::DocumentPolicyFeature, FeatureContext*);
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 // Converts |mojom::blink::PermissionsPolicyFeature| to enum used in devtools
 // protocol.
 String PermissionsPolicyFeatureToProtocol(mojom::blink::PermissionsPolicyFeature, ExecutionContext*);
+#endif
 
 } // namespace blink
 

@@ -664,9 +664,11 @@ void CachedStorageArea::EnqueueStorageEvent(
         }
     }
     areas_->RemoveAll(areas_to_remove_);
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     if (storage_namespace_) {
         storage_namespace_->DidDispatchStorageEvent(storage_key_, key, old_value, new_value);
     }
+#endif
 }
 
 // static

@@ -1599,6 +1599,10 @@
     <None Include="..\..\..\third_party\blink\public\web\DEPS" />
     <None Include="..\..\..\third_party\blink\public\web\OWNERS" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile Remove="..\..\..\third_party\inspector_protocol\crdtp\*.cc" />
+    <ClCompile Remove="..\..\..\third_party\inspector_protocol\crdtp\chromium\*.cc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

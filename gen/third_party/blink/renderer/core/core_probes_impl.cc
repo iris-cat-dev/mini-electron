@@ -177,6 +177,7 @@ void CoreProbeSink::RemoveAnimationFrameTimingMonitor(AnimationFrameTimingMonito
         DCHECK(HasAgentsGlobal(kAnimationFrameTimingMonitor));
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 // static
 unsigned CoreProbeSink::s_numSinksWithDevToolsSession = 0;
 
@@ -856,6 +857,7 @@ void CoreProbeSink::RemoveInspectorTraceEvents(InspectorTraceEvents* agent)
     if (HasInspectorTraceEventss())
         DCHECK(HasAgentsGlobal(kInspectorTraceEvents));
 }
+#endif
 
 // static
 unsigned CoreProbeSink::s_numSinksWithLCPScriptObserver = 0;

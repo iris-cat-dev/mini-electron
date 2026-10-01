@@ -74,16 +74,10 @@ void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node:
     builder.SetMethod("setUserAgent", &WebContents::setUserAgentApi);
     builder.SetMethod("getUserAgent", &WebContents::getUserAgentApi);
     builder.SetMethod("savePage", &WebContents::savePageApi);
-    builder.SetMethod("openDevTools", &WebContents::openDevToolsApi);
-    builder.SetMethod("closeDevTools", &WebContents::closeDevToolsApi);
-    builder.SetMethod("isDevToolsOpened", &WebContents::isDevToolsOpenedApi);
-    builder.SetMethod("isDevToolsFocused", &WebContents::isDevToolsFocusedApi);
     builder.SetMethod("insertCSS", &WebContents::insertCSSApi);
     builder.SetMethod("setZoomFactor", &WebContents::setZoomFactorApi);
     builder.SetMethod("enableDeviceEmulation", &WebContents::enableDeviceEmulationApi);
     builder.SetMethod("disableDeviceEmulation", &WebContents::disableDeviceEmulationApi);
-    builder.SetMethod("toggleDevTools", &WebContents::toggleDevToolsApi);
-    builder.SetMethod("inspectElement", &WebContents::inspectElementApi);
     builder.SetMethod("setAudioMuted", &WebContents::setAudioMutedApi);
     builder.SetMethod("isAudioMuted", &WebContents::isAudioMutedApi);
     builder.SetMethod("undo", &WebContents::undoApi);
@@ -123,7 +117,6 @@ void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node:
     builder.SetMethod("getOwnerBrowserWindow", &WebContents::getOwnerBrowserWindowApi);
     builder.SetMethod("hasServiceWorker", &WebContents::hasServiceWorkerApi);
     builder.SetMethod("unregisterServiceWorker", &WebContents::unregisterServiceWorkerApi);
-    builder.SetMethod("inspectServiceWorker", &WebContents::inspectServiceWorkerApi);
     builder.SetMethod("print", &WebContents::printApi);
     builder.SetMethod("_printToPDF", &WebContents::_printToPDFApi);
     builder.SetMethod("addWorkSpace", &WebContents::addWorkSpaceApi);
@@ -1196,47 +1189,6 @@ void WebContents::savePageApi()
     //todo
 }
 
-void WebContents::openDevToolsApi()
-{
-    std::vector<WCHAR> fullpath;
-    fullpath.resize(MAX_PATH + 1);
-    memset(fullpath.data(), 0, sizeof(wchar_t) * (MAX_PATH + 1));
-    ::GetModuleFileNameW(NULL, fullpath.data(), MAX_PATH);
-    ::PathRemoveFileSpecW(fullpath.data());
-
-    std::vector<WCHAR> name = fullpath;
-    ::PathAppendW(name.data(), L"\\front_end\\inspector.html");
-
-    std::string nameA;
-    if (::PathFileExistsW(name.data())) {
-        nameA = StringUtil::UTF16ToUTF8(name.data());
-        mini_electron_set_debug_config(m_view, "showDevTools", nameA.c_str());
-        return;
-    }
-
-    name = fullpath;
-    ::PathAppendW(name.data(), L"\\resources\\devtools\\inspector.html");
-    nameA = StringUtil::UTF16ToUTF8(name.data());
-    mini_electron_set_debug_config(m_view, "showDevTools", nameA.c_str());
-
-}
-
-void WebContents::closeDevToolsApi()
-{
-    //todo
-}
-
-bool WebContents::isDevToolsOpenedApi()
-{
-    return false;
-}
-
-bool WebContents::isDevToolsFocusedApi()
-{
-    //todo
-    return true;
-}
-
 // std::u16string InsertCSS(v8::Isolate* isolate, const std::string& css, gin::Arguments* args) 
 // {
 //     blink::WebCssOrigin css_origin = blink::WebCssOrigin::kAuthor;
@@ -1289,16 +1241,6 @@ void WebContents::enableDeviceEmulationApi()
 }
 
 void WebContents::disableDeviceEmulationApi()
-{
-    //todo
-}
-
-void WebContents::toggleDevToolsApi()
-{
-    //todo
-}
-
-void WebContents::inspectElementApi()
 {
     //todo
 }
@@ -1595,11 +1537,6 @@ bool WebContents::hasServiceWorkerApi()
 }
 
 void WebContents::unregisterServiceWorkerApi()
-{
-    //todo
-}
-
-void WebContents::inspectServiceWorkerApi()
 {
     //todo
 }

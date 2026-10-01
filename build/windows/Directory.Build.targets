@@ -8,6 +8,7 @@
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>

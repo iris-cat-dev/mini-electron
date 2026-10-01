@@ -12,14 +12,14 @@ void runJsOnBlinkThread(mini_electron_web_view webviewHandle, mini_electron_web_
 
 namespace atom {
 
-// Browser function table£¬¿ÉÒÔÍ¨¹ıËüÀ´µÃµ½ä¯ÀÀÆ÷Ìá¹©µÄ¹¦ÄÜ
+// Browser function tableï¼Œå¯ä»¥é€šè¿‡å®ƒæ¥å¾—åˆ°æµè§ˆå™¨æä¾›çš„åŠŸèƒ½
 NPNetscapeFuncs* g_npBrowserFunctions = nullptr;
 
-/*******¸÷ÖÖ½Ó¿ÚµÄÉùÃ÷*********/
-//ÔÚNPAPI±à³ÌµÄ½Ó¿ÚÖĞÄã»á·¢ÏÖÓĞNP_´òÍ·µÄ£¬ÓĞNPP_´òÍ·µÄ£¬ÓĞNPN_´òÍ·µÄ
-//NPÊÇnpapiµÄ²å¼ş¿âÌá¹©¸øä¯ÀÀÆ÷µÄ×îÉÏ²ãµÄ½Ó¿Ú
-//NPP¼´NP Plugin£¬ÊÇ²å¼ş±¾ÉíÌá¹©¸øä¯ÀÀÆ÷µ÷ÓÃµÄ½Ó¿Ú£¬Ö÷Òª±»ÓÃÀ´Ìî³äNPPluginFuncsµÄ½á¹¹Ìå
-//NPN¼´NP Netscape£¬ÊÇä¯ÀÀÆ÷Ìá¹©¸ø²å¼şÊ¹ÓÃµÄ½Ó¿Ú£¬ÕâĞ©½Ó¿ÚÒ»°ã¶¼ÔÚNPNetscapeFuncs½á¹¹ÌåÖĞ
+/*******å„ç§æ¥å£çš„å£°æ˜*********/
+//åœ¨NPAPIç¼–ç¨‹çš„æ¥å£ä¸­ä½ ä¼šå‘ç°æœ‰NP_æ‰“å¤´çš„ï¼Œæœ‰NPP_æ‰“å¤´çš„ï¼Œæœ‰NPN_æ‰“å¤´çš„
+//NPæ˜¯npapiçš„æ’ä»¶åº“æä¾›ç»™æµè§ˆå™¨çš„æœ€ä¸Šå±‚çš„æ¥å£
+//NPPå³NP Pluginï¼Œæ˜¯æ’ä»¶æœ¬èº«æä¾›ç»™æµè§ˆå™¨è°ƒç”¨çš„æ¥å£ï¼Œä¸»è¦è¢«ç”¨æ¥å¡«å……NPPluginFuncsçš„ç»“æ„ä½“
+//NPNå³NP Netscapeï¼Œæ˜¯æµè§ˆå™¨æä¾›ç»™æ’ä»¶ä½¿ç”¨çš„æ¥å£ï¼Œè¿™äº›æ¥å£ä¸€èˆ¬éƒ½åœ¨NPNetscapeFuncsç»“æ„ä½“ä¸­
 
 //NPP Functions
 NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, int16_t argc, char* argn[], char* argv[], NPSavedData* saved);
@@ -62,7 +62,7 @@ static struct NPClass scriptablePluginClass = {
     NULL,
 };
 
-//½Ó¿ÚµÄÊµÏÖ
+//æ¥å£çš„å®ç°
 NPError __stdcall Webview_NP_Initialize(NPNetscapeFuncs* browserFuncs)
 {
     g_npBrowserFunctions = browserFuncs;
@@ -177,11 +177,11 @@ bool pluginHasMethod(NPObject* obj, NPIdentifier methodName)
         //"native_loadURL",
         "native_getTitle", "native_isLoading", "native_isLoadingMainFrame", "native_isWaitingForResponse", "native_stop", "native_reload",
         "native_reloadIgnoringCache", "native_canGoBack", "native_canGoForward", "native_canGoToOffset", "native_clearHistory", "native_goBack",
-        "native_goForward", "native_goToIndex", "native_goToOffset", "native_isCrashed", "native_setUserAgent", "native_getUserAgent", "native_openDevTools",
-        "native_closeDevTools", "native_isDevToolsOpened", "native_isDevToolsFocused", "native_inspectElement", "native_setAudioMuted", "native_isAudioMuted",
+        "native_goForward", "native_goToIndex", "native_goToOffset", "native_isCrashed", "native_setUserAgent", "native_getUserAgent",
+        "native_setAudioMuted", "native_isAudioMuted",
         "native_undo", "native_redo", "native_cut", "native_copy", "native_paste", "native_pasteAndMatchStyle", "native_delete", "native_selectAll",
         "native_unselect", "native_replace", "native_replaceMisspelling", "native_findInPage", "native_stopFindInPage", "native_getId", "native_downloadURL",
-        "native_inspectServiceWorker", "native_print", "native_printToPDF", "native_showDefinitionForSelection", "native_capturePage", "native_insertCSS",
+        "native_print", "native_printToPDF", "native_showDefinitionForSelection", "native_capturePage", "native_insertCSS",
         "native_insertText", "native_send", "native_sendInputEvent", "native_setZoomFactor", "native_setZoomLevel", "native_setZoomLevelLimits",
         "native_executeJavaScript", nullptr };
 
@@ -329,8 +329,8 @@ bool pluginInvoke(NPObject* obj, NPIdentifier methodName, const NPVariant* args,
         BOOLEAN_TO_NPVARIANT(true, *result);
         return true;
     }
-    if ("native_goToIndex" == method || "native_goToOffset" == method || "native_isCrashed" == method || "native_openDevTools" == method
-        || "native_closeDevTools" == method || "native_inspectElement" == method || "native_setAudioMuted" == method || "native_isAudioMuted" == method) {
+    if ("native_goToIndex" == method || "native_goToOffset" == method || "native_isCrashed" == method
+        || "native_setAudioMuted" == method || "native_isAudioMuted" == method) {
         BOOLEAN_TO_NPVARIANT(false, *result);
         return true;
     }
@@ -344,14 +344,6 @@ bool pluginInvoke(NPObject* obj, NPIdentifier methodName, const NPVariant* args,
     }
     if ("native_getUserAgent" == method) {
         DebugBreak();
-        BOOLEAN_TO_NPVARIANT(false, *result);
-        return true;
-    }
-    if ("native_isDevToolsOpened" == method) {
-        BOOLEAN_TO_NPVARIANT(false, *result);
-        return true;
-    }
-    if ("native_isDevToolsFocused" == method) {
         BOOLEAN_TO_NPVARIANT(false, *result);
         return true;
     }
@@ -396,7 +388,7 @@ bool pluginInvoke(NPObject* obj, NPIdentifier methodName, const NPVariant* args,
         return true;
     }
     if ("native_replace" == method || "native_replaceMisspelling" == method || "native_findInPage" == method || "native_stopFindInPage" == method
-        || "native_inspectServiceWorker" == method || "native_print" == method || "native_printToPDF" == method || "native_showDefinitionForSelection" == method
+        || "native_print" == method || "native_printToPDF" == method || "native_showDefinitionForSelection" == method
         || "native_capturePage" == method || "native_setZoomLevel" == method || "native_setZoomLevelLimits" == method || "native_sendInputEvent" == method) {
         BOOLEAN_TO_NPVARIANT(true, *result);
         return true;

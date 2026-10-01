@@ -33,7 +33,9 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/core/inspector/inspected_frames.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -87,6 +89,7 @@ const String& IdentifiersFactory::FrameId(Frame* frame)
     return GetFrameIdForTracing(frame);
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 // static
 LocalFrame* IdentifiersFactory::FrameById(InspectedFrames* inspected_frames, const String& frame_id)
 {
@@ -97,6 +100,7 @@ LocalFrame* IdentifiersFactory::FrameById(InspectedFrames* inspected_frames, con
     }
     return nullptr;
 }
+#endif
 
 // static
 String IdentifiersFactory::LoaderId(DocumentLoader* loader)

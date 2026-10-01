@@ -122,9 +122,11 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input/keyboard_event_manager.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue_conversion.h"
+#endif
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observer.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
@@ -2087,9 +2089,11 @@ bool Internals::executeCommand(Document* document, const String& name, const Str
 
 void Internals::triggerTestInspectorIssue(Document* document)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     DCHECK(document);
     auto info = mojom::blink::InspectorIssueInfo::New(mojom::InspectorIssueCode::kCookieIssue, mojom::blink::InspectorIssueDetails::New());
     document->GetFrame()->AddInspectorIssue(AuditsIssue(ConvertInspectorIssueToProtocolFormat(InspectorIssue::Create(std::move(info)))));
+#endif
 }
 
 AtomicString Internals::htmlNamespace()

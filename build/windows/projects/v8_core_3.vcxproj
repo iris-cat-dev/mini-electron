@@ -912,6 +912,9 @@
     <ClCompile Include="..\..\..\v8\src\api\api-arguments.cc" />
     <ClCompile Include="..\..\..\v8\src\api\api-natives.cc" />
     <ClCompile Include="..\..\..\v8\src\api\api.cc" />
+    <ClCompile Include="..\..\..\v8\src\api\inspector_value_types.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'!='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\v8\src\asmjs\asm-js.cc" />
     <ClCompile Include="..\..\..\v8\src\asmjs\asm-parser.cc" />
     <ClCompile Include="..\..\..\v8\src\asmjs\asm-scanner.cc" />

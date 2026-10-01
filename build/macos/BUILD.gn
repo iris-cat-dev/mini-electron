@@ -338,7 +338,7 @@ static_library("mini_electron_libxslt") {
 
 static_library("mini_electron_blink") {
   sources = mini_electron_blink_sources
-  sources += [ "//platform/macos/compat/devtools_disabled.cc" ]
+  sources += [ "//runtime/engine/common/devtools_disabled.cc" ]
   configs += [ ":mini_electron_engine_config" ]
 }
 

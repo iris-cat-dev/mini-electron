@@ -426,11 +426,21 @@
     <ClCompile Include="..\..\..\third_party\libnode\deps\zstd\lib\decompress\zstd_ddict.c" />
     <ClCompile Include="..\..\..\third_party\libnode\deps\zstd\lib\decompress\zstd_decompress.c" />
     <ClCompile Include="..\..\..\third_party\libnode\deps\zstd\lib\decompress\zstd_decompress_block.c" />
-    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\Network.cpp" />
-    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeRuntime.cpp" />
-    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeTracing.cpp" />
-    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeWorker.cpp" />
-    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\Protocol.cpp" />
+    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\Network.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeRuntime.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeTracing.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\NodeWorker.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\inspector\protocol\Protocol.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\third_party\libnode\gen\src\node\node_javascript.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\api\async_resource.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\api\callback.cc" />
@@ -481,21 +491,51 @@
     <ClCompile Include="..\..\..\third_party\libnode\src\handle_wrap.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\heap_utils.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\histogram.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\main_thread_interface.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\network_agent.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\network_inspector.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\node_json.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\node_string.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\runtime_agent.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\tracing_agent.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\worker_agent.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\worker_inspector.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_agent.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_io.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_js_api.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_profiler.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_socket.cc" />
-    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_socket_server.cc" />
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\main_thread_interface.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\network_agent.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\network_inspector.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\node_json.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\node_string.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\runtime_agent.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\tracing_agent.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\worker_agent.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector\worker_inspector.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_agent.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_io.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_js_api.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_profiler.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_socket.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\libnode\src\inspector_socket_server.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\third_party\libnode\src\internal_only_v8.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\json_parser.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\json_utils.cc" />
@@ -809,7 +849,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WIN32;_GLIBCXX_USE_CXX11_ABI=1;NODE_OPENSSL_CONF_NAME=nodejs_conf;ICU_NO_USER_DATA_OVERRIDE;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_HAS_EXCEPTIONS=0;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;OPENSSL_NO_PINSHARED;OPENSSL_THREADS;NODE_ARCH="x64";NODE_WANT_INTERNALS=1;V8_DEPRECATION_WARNINGS=1;NODE_OPENSSL_SYSTEM_CERT_PATH="";NODE_USE_NODE_CODE_CACHE=1;HAVE_INSPECTOR=1;FD_SETSIZE=1024;NODE_PLATFORM="win32";NOMINMAX;_UNICODE=1;NODE_USE_V8_PLATFORM=1;NODE_V8_SHARED_RO_HEAP;NODE_HAVE_I18N_SUPPORT=1;NODE_BUNDLED_ZLIB;HAVE_OPENSSL=1;OPENSSL_API_COMPAT=0x10100000L;BASE64_STATIC_DEFINE;UCONFIG_NO_SERVICE=1;U_ENABLE_DYLOAD=0;U_STATIC_IMPLEMENTATION=1;U_HAVE_STD_STRING=1;UCONFIG_NO_BREAK_ITERATION=0;NGHTTP2_STATICLIB;OPENSSL_BUILDING_OPENSSL;OPENSSL_SYS_WIN32;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;_WINSOCK_DEPRECATED_NO_WARNINGS;OPENSSL_PIC;NGTCP2_STATICLIB;NGHTTP3_STATICLIB;V8_USE_EXTERNAL_STARTUP_DATA;V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=0;V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=0;V8_PROMISE_INTERNAL_FIELD_COUNT=0;V8_COMPRESS_POINTERS;V8_COMPRESS_POINTERS_IN_SHARED_CAGE;V8_31BIT_SMIS_ON_64BIT_ARCH;V8_DEPRECATION_WARNINGS;V8_HAVE_TARGET_OS;V8_TARGET_OS_WIN;CPPGC_CAGED_HEAP;CPPGC_YOUNG_GENERATION;CPPGC_POINTER_COMPRESSION;CPPGC_ENABLE_LARGER_CAGE;CPPGC_SLIM_WRITE_BARRIER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WIN32;_GLIBCXX_USE_CXX11_ABI=1;NODE_OPENSSL_CONF_NAME=nodejs_conf;ICU_NO_USER_DATA_OVERRIDE;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_HAS_EXCEPTIONS=0;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;OPENSSL_NO_PINSHARED;OPENSSL_THREADS;NODE_ARCH="x64";NODE_WANT_INTERNALS=1;V8_DEPRECATION_WARNINGS=1;NODE_OPENSSL_SYSTEM_CERT_PATH="";NODE_USE_NODE_CODE_CACHE=1;HAVE_INSPECTOR=0;FD_SETSIZE=1024;NODE_PLATFORM="win32";NOMINMAX;_UNICODE=1;NODE_USE_V8_PLATFORM=1;NODE_V8_SHARED_RO_HEAP;NODE_HAVE_I18N_SUPPORT=1;NODE_BUNDLED_ZLIB;HAVE_OPENSSL=1;OPENSSL_API_COMPAT=0x10100000L;BASE64_STATIC_DEFINE;UCONFIG_NO_SERVICE=1;U_ENABLE_DYLOAD=0;U_STATIC_IMPLEMENTATION=1;U_HAVE_STD_STRING=1;UCONFIG_NO_BREAK_ITERATION=0;NGHTTP2_STATICLIB;OPENSSL_BUILDING_OPENSSL;OPENSSL_SYS_WIN32;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;_WINSOCK_DEPRECATED_NO_WARNINGS;OPENSSL_PIC;NGTCP2_STATICLIB;NGHTTP3_STATICLIB;V8_USE_EXTERNAL_STARTUP_DATA;V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=0;V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=0;V8_PROMISE_INTERNAL_FIELD_COUNT=0;V8_COMPRESS_POINTERS;V8_COMPRESS_POINTERS_IN_SHARED_CAGE;V8_31BIT_SMIS_ON_64BIT_ARCH;V8_DEPRECATION_WARNINGS;V8_HAVE_TARGET_OS;V8_TARGET_OS_WIN;CPPGC_CAGED_HEAP;CPPGC_YOUNG_GENERATION;CPPGC_POINTER_COMPRESSION;CPPGC_ENABLE_LARGER_CAGE;CPPGC_SLIM_WRITE_BARRIER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>

@@ -35,14 +35,24 @@ std::atomic<unsigned> {{sink_class}}::s_existingAgents;
 {{sink_class}}::~{{sink_class}}() {
   base::AutoLock locker(AgentCountLock());
 {% for agent in agents|sort %}
+{% set class_name = agent | agent_name_to_class %}
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+{% endif %}
   if (Has{{agent}}s() && --s_numSinksWith{{agent}} == 0)
     s_existingAgents &= ~k{{agent}};
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#endif
+{% endif %}
 {% endfor %}
 }
 
 {% for agent in agents|sort %}
 {% set class_name = agent | agent_name_to_class %}
 {% set getter_name = agent | to_snake_case %}
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+{% endif %}
 
 // static
 unsigned {{sink_class}}::s_numSinksWith{{agent}} = 0;
@@ -75,14 +85,24 @@ void {{sink_class}}::Remove{{agent}}({{class_name}}* agent) {
   if (Has{{agent}}s())
     DCHECK(HasAgentsGlobal(k{{agent}}));
 }
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#endif
+{% endif %}
 
 {% endfor -%}
 
 void {{sink_class}}::Trace(Visitor* visitor) const
 {
 {% for agent in agents|sort %}
+{% set class_name = agent | agent_name_to_class %}
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+{% endif %}
 {% set getter_name = agent | to_snake_case %}
   visitor->Trace({{getter_name}}s_);
+{% if class_name.startswith("Inspector") or class_name == "DevToolsSession" %}
+#endif
+{% endif %}
 {% endfor %}
 }
 

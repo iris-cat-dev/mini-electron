@@ -275,6 +275,9 @@ def _prune_native_modules(modules: Path) -> None:
         for child in prebuilds.iterdir():
             if child.name != "win32-x64":
                 _remove_path(child)
+    for debug_symbols in (modules / "node-pty").rglob("*.pdb"):
+        if debug_symbols.is_file():
+            debug_symbols.unlink()
 
     esbuild = modules / "@esbuild"
     if esbuild.is_dir():
@@ -294,10 +297,10 @@ def _prune_native_modules(modules: Path) -> None:
     _remove_path(web_ui)
 
 
-def _remove_source_maps(root: Path) -> None:
-    for source_map in root.rglob("*.map"):
-        if source_map.is_file():
-            source_map.unlink()
+def _remove_development_metadata(root: Path) -> None:
+    for path in root.rglob("*"):
+        if path.is_file() and path.name.endswith((".map", ".d.ts", ".d.mts", ".d.cts")):
+            path.unlink()
 
 
 def _create_asar(source: Path, destination: Path, asar_package: Path) -> None:
@@ -433,7 +436,7 @@ def package_windows_omp_desktop(
             json.dumps(app_package, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-        _remove_source_maps(app_source)
+        _remove_development_metadata(app_source)
         _create_asar(
             app_source,
             resources / "app.asar",

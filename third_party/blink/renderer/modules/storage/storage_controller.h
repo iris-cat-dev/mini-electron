@@ -20,7 +20,9 @@
 namespace blink {
 
 class CachedStorageArea;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 class InspectorDOMStorageAgent;
+#endif
 class LocalDOMWindow;
 class LocalFrame;
 class StorageNamespace;
@@ -35,10 +37,7 @@ class StorageNamespace;
 // SessionStorage StorageNamespace objects are created with
 // `CreateSessionStorageNamespace` and live as a supplement on the Page.
 //
-// The LocalStorage StorageNamespace object is owned internally, and
-// StorageController delegates the following methods to that namespace:
-// GetLocalStorageArea, AddLocalStorageInspectorStorageAgent,
-// RemoveLocalStorageInspectorStorageAgent
+// StorageController delegates GetLocalStorageArea to that namespace.
 class MODULES_EXPORT StorageController : public mojom::blink::DomStorageClient {
     USING_FAST_MALLOC(StorageController);
 
@@ -72,8 +71,10 @@ public:
     scoped_refptr<CachedStorageArea> GetLocalStorageArea(LocalDOMWindow* local_dom_window,
         mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area = {},
         StorageNamespace::StorageContext context = StorageNamespace::StorageContext::kStandard);
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     void AddLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent);
     void RemoveLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent);
+#endif
 
     mojom::blink::DomStorage* dom_storage() const
     {

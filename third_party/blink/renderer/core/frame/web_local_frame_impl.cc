@@ -225,8 +225,10 @@
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/inspector/inspector_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue_conversion.h"
+#endif
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
@@ -2938,9 +2940,11 @@ void WebLocalFrameImpl::AddMessageToConsoleImpl(const WebConsoleMessage& message
 // This is only triggered by test_runner.cc
 void WebLocalFrameImpl::AddInspectorIssueImpl(mojom::blink::InspectorIssueCode code)
 {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     DCHECK(GetFrame());
     auto info = mojom::blink::InspectorIssueInfo::New(code, mojom::blink::InspectorIssueDetails::New());
     GetFrame()->AddInspectorIssue(AuditsIssue(ConvertInspectorIssueToProtocolFormat(InspectorIssue::Create(std::move(info)))));
+#endif
 }
 
 void WebLocalFrameImpl::AddGenericIssueImpl(mojom::blink::GenericIssueErrorType error_type, int violating_node_id)

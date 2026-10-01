@@ -8064,6 +8064,26 @@
     <None Include="..\..\..\third_party\blink\renderer\platform\platform.gni" />
     <None Include="..\..\..\third_party\blink\renderer\platform\scheduler\main_thread\DEPS" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\controller\dev_tools_frontend_impl.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\core\exported\web_dev_tools_agent_impl.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\core\html\html_permission_element.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\core\inspector\*.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\core\permissions_policy\permissions_policy_devtools_support.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\modules\storage\inspector_dom_storage_agent.cc" />
+    <ClCompile Remove="..\..\..\third_party\blink\renderer\modules\websockets\inspector_websocket_events.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\console_message.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\console_message_storage.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\dev_tools_emulator.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\exception_metadata.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\identifiers_factory.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\inspector_media_context_impl.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\inspector_task_runner.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\inspector_trace_events.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\invalidation_set_to_selector_map.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\request_debug_header_scope.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\common\devtools_disabled.cc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

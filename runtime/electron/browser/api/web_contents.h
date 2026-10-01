@@ -195,14 +195,8 @@ private:
     void setZoomFactorApi(float factor);
     v8::Local<v8::Promise> insertCSSApi(const std::string& cssText, gin_helper::Arguments* args);
     void savePageApi();
-    void openDevToolsApi();
-    void closeDevToolsApi();
-    bool isDevToolsOpenedApi();
-    bool isDevToolsFocusedApi();
     void enableDeviceEmulationApi();
     void disableDeviceEmulationApi();
-    void toggleDevToolsApi();
-    void inspectElementApi();
     void setAudioMutedApi();
     void isAudioMutedApi();
     void undoApi();
@@ -245,7 +239,6 @@ private:
     v8::Local<v8::Value> getOwnerBrowserWindowApi();
     bool hasServiceWorkerApi();
     void unregisterServiceWorkerApi();
-    void inspectServiceWorkerApi();
     void printApi();
     void _printToPDFApi();
     void addWorkSpaceApi();

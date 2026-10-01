@@ -5,14 +5,17 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_SOURCE_LOCATION_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_SOURCE_LOCATION_H_
 
+#include <cstddef>
 #include <memory>
-
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#include "v8/include/v8-forward.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "v8/include/v8-inspector.h"
+#endif
 
 namespace perfetto::protos::pbzero {
 class BlinkSourceLocation;
@@ -36,6 +39,7 @@ public:
     // Forces full stack trace.
     static std::unique_ptr<SourceLocation> CaptureWithFullStackTrace();
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     // Used only by CaptureSourceLocation.
     static std::unique_ptr<v8_inspector::V8StackTrace> CaptureStackTraceInternal(bool full);
 
@@ -43,6 +47,10 @@ public:
 
     SourceLocation(const String& url, const String& function, unsigned line_number, unsigned column_number, std::unique_ptr<v8_inspector::V8StackTrace>,
         int script_id = 0);
+#else
+    SourceLocation(const String& url, const String& function, unsigned line_number, unsigned column_number, std::nullptr_t, int script_id = 0,
+        const String& stack_trace = String());
+#endif
     ~SourceLocation();
 
     bool IsUnknown() const
@@ -69,14 +77,20 @@ public:
     {
         return script_id_;
     }
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     std::unique_ptr<v8_inspector::V8StackTrace> TakeStackTrace()
     {
         return std::move(stack_trace_);
     }
+#endif
 
     bool HasStackTrace() const
     {
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+        return !stack_trace_text_.empty();
+#else
         return stack_trace_ && !stack_trace_->isEmpty();
+#endif
     }
 
     // Safe to pass between threads, drops async chain in stack trace.
@@ -96,17 +110,24 @@ public:
     // Could be null string when stack trace is unknown.
     String ToString() const;
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     // Could be null when stack trace is unknown.
     std::unique_ptr<v8_inspector::protocol::Runtime::API::StackTrace> BuildInspectorObject() const;
 
     std::unique_ptr<v8_inspector::protocol::Runtime::API::StackTrace> BuildInspectorObject(int max_async_depth) const;
+#endif
 
 private:
     String url_;
     String function_;
     unsigned line_number_;
     unsigned column_number_;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
     std::unique_ptr<v8_inspector::V8StackTrace> stack_trace_;
+#endif
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    String stack_trace_text_;
+#endif
     int script_id_;
 };
 

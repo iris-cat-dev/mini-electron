@@ -26,6 +26,9 @@
 #include "third_party/libnode/src/node_buffer.h"
 #include "third_party/libuv/include/uv.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/core/SkCanvas.h"
+#include "third_party/skia/include/core/SkPaint.h"
+#include "third_party/skia/include/core/SkSurface.h"
 #include "runtime/engine/common/thread_call.h"
 #include "ui/gfx/icon_util.h"
 #include "ui/gfx/geometry/rect.h"
@@ -36,8 +39,11 @@
 #include "platform/windows/resources/resource.h"
 #include <shellapi.h>
 #include <ole2.h>
+#include <dwmapi.h>
 #include <algorithm>
 #include <cstdlib>
+
+#pragma comment(lib, "dwmapi.lib")
 
 #pragma clang optimize off
 namespace content {
@@ -85,6 +91,9 @@ public:
         m_isCursorInfoTypeAsynGetting = false;
         m_memoryBMP = nullptr;
         m_memoryDC = nullptr;
+        m_captionDC = nullptr;
+        m_captionBitmap = nullptr;
+        m_captionBitmapSize = { 0, 0 };
         m_isDestroyApiBeCalled = false;
         m_isMaximized = false;
         m_isFullScreen = false;
@@ -145,6 +154,11 @@ public:
             ::DeleteObject(m_memoryBMP);
         if (m_memoryDC)
             ::DeleteDC(m_memoryDC);
+        m_captionSurface.reset();
+        if (m_captionBitmap)
+            ::DeleteObject(m_captionBitmap);
+        if (m_captionDC)
+            ::DeleteDC(m_captionDC);
 
         //ThreadCall::callUiThreadSync([this] {
         //delete data->m_webContents;
@@ -402,18 +416,28 @@ public:
         return m_titleBarOverlayEnabled && m_createWindowParam && !m_createWindowParam->isFrame && !m_isFullScreen;
     }
 
+    void updateWindowFrame(HWND window) const
+    {
+        if (m_createWindowParam->isFrame || m_createWindowParam->transparent)
+            return;
+        const MARGINS margins = { 1, 1, 1, 1 };
+        ::DwmExtendFrameIntoClientArea(window, &margins);
+    }
+
     RECT captionButtonRect(CaptionButton button) const
     {
         RECT client = { 0 };
         ::GetClientRect(m_hWnd, &client);
         const int buttonWidth = dipToPixel(46);
-        const int overlayHeight = std::max(1, dipToPixel(m_titleBarOverlayHeight));
+        const bool restored = !::IsZoomed(m_hWnd);
+        const int topInset = restored ? dipToPixel(1) : 0;
+        const int overlayHeight = std::max(1, dipToPixel(m_titleBarOverlayHeight - (restored ? 1 : 0)));
         const int indexFromRight = CaptionButtonClose - button;
         RECT result = {
             std::max(client.left, client.right - buttonWidth * (indexFromRight + 1)),
-            client.top,
+            client.top + topInset,
             std::max(client.left, client.right - buttonWidth * indexFromRight),
-            std::min(client.bottom, client.top + overlayHeight)
+            std::min(client.bottom, client.top + topInset + overlayHeight)
         };
         return result;
     }
@@ -422,6 +446,7 @@ public:
     {
         RECT result = captionButtonRect(CaptionButtonMinimize);
         RECT close = captionButtonRect(CaptionButtonClose);
+        result.top = 0;
         result.right = close.right;
         return result;
     }
@@ -469,20 +494,53 @@ public:
         ::InvalidateRect(m_hWnd, &rect, FALSE);
     }
 
+    bool ensureCaptionSurface(HDC dc, int width, int height)
+    {
+        if (m_captionSurface && m_captionBitmapSize.cx == width && m_captionBitmapSize.cy == height)
+            return true;
+        if (!m_captionDC)
+            m_captionDC = ::CreateCompatibleDC(dc);
+        if (!m_captionDC)
+            return false;
+        m_captionSurface.reset();
+        if (m_captionBitmap)
+            ::DeleteObject(m_captionBitmap);
+        BITMAPINFO info = { 0 };
+        info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        info.bmiHeader.biWidth = width;
+        info.bmiHeader.biHeight = -height;
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        void* pixels = nullptr;
+        m_captionBitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
+        if (!m_captionBitmap)
+            return false;
+        m_captionBitmapSize = { width, height };
+        m_captionSurface = SkSurfaces::WrapPixels(SkImageInfo::MakeN32Premul(width, height), pixels, width * 4);
+        return !!m_captionSurface;
+    }
+
     void paintTitleBarOverlay(HDC dc, const RECT& invalidRect)
     {
         if (!isCustomTitleBar())
             return;
-
         RECT buttons = captionButtonsRect();
         RECT intersection;
         if (!::IntersectRect(&intersection, &buttons, &invalidRect))
             return;
+        const int width = buttons.right - buttons.left;
+        const int height = buttons.bottom - buttons.top;
+        if (!ensureCaptionSurface(dc, width, height))
+            return;
 
-        int saved = ::SaveDC(dc);
-        ::IntersectClipRect(dc, intersection.left, intersection.top, intersection.right, intersection.bottom);
-        ::SetBkMode(dc, TRANSPARENT);
-
+        ::GdiFlush();
+        SkCanvas* canvas = m_captionSurface->getCanvas();
+        canvas->save();
+        canvas->translate(-buttons.left, -buttons.top);
+        SkPaint paint;
+        const int symbolSize = std::max(1, dipToPixel(10));
+        const int strokeWidth = std::max(1, dipToPixel(1));
         for (int value = CaptionButtonMinimize; value <= CaptionButtonClose; ++value) {
             CaptionButton button = static_cast<CaptionButton>(value);
             RECT rect = captionButtonRect(button);
@@ -496,45 +554,61 @@ public:
                     ? RGB(0xc4, 0x2b, 0x3a)
                     : blendColor(background, RGB(0xff, 0xff, 0xff), 12);
             }
-
-            HBRUSH brush = ::CreateSolidBrush(background);
-            ::FillRect(dc, &rect, brush);
-            ::DeleteObject(brush);
+            const SkColor backgroundColor = SkColorSetRGB(GetRValue(background), GetGValue(background), GetBValue(background));
+            paint.setStyle(SkPaint::kFill_Style);
+            paint.setAntiAlias(false);
+            paint.setColor(backgroundColor);
+            canvas->drawRect(SkRect::MakeLTRB(rect.left, buttons.top, rect.right, rect.bottom), paint);
 
             COLORREF symbol = isCaptionButtonEnabled(button)
                 ? m_titleBarOverlaySymbolColor
                 : blendColor(m_titleBarOverlayColor, m_titleBarOverlaySymbolColor, 40);
-            const int centerX = (rect.left + rect.right) / 2;
-            const int centerY = (rect.top + rect.bottom) / 2;
-            const int half = std::max(4, dipToPixel(5));
-            HPEN pen = ::CreatePen(PS_SOLID, std::max(1, dipToPixel(1)), symbol);
-            HGDIOBJ oldPen = ::SelectObject(dc, pen);
-            HGDIOBJ oldBrush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
-
+            paint.setColor(SkColorSetRGB(GetRValue(symbol), GetGValue(symbol), GetBValue(symbol)));
+            paint.setStyle(SkPaint::kStroke_Style);
+            paint.setStrokeWidth(strokeWidth);
+            const int left = (rect.left + rect.right - symbolSize) / 2;
+            const int top = (rect.top + rect.bottom - symbolSize) / 2;
+            const float inset = strokeWidth / 2.0f;
+            SkRect glyph = SkRect::MakeLTRB(left + inset, top + inset,
+                left + symbolSize - inset, top + symbolSize - inset);
             if (button == CaptionButtonMinimize) {
-                ::MoveToEx(dc, centerX - half, centerY + half / 2, nullptr);
-                ::LineTo(dc, centerX + half + 1, centerY + half / 2);
+                const int centerY = top + symbolSize / 2;
+                canvas->drawLine(left, centerY, left + symbolSize, centerY, paint);
             } else if (button == CaptionButtonMaximize) {
                 if (::IsZoomed(m_hWnd)) {
-                    RECT back = { centerX - half + dipToPixel(2), centerY - half, centerX + half + dipToPixel(2), centerY + half };
-                    RECT front = { centerX - half - dipToPixel(2), centerY - half + dipToPixel(2), centerX + half - dipToPixel(2), centerY + half + dipToPixel(2) };
-                    ::Rectangle(dc, back.left, back.top, back.right, back.bottom);
-                    ::Rectangle(dc, front.left, front.top, front.right, front.bottom);
+                    const int offset = dipToPixel(2);
+                    SkRect back = SkRect::MakeLTRB(glyph.left() + offset, glyph.top(), glyph.right(), glyph.bottom() - offset);
+                    SkRect front = SkRect::MakeLTRB(glyph.left(), glyph.top() + offset, glyph.right() - offset, glyph.bottom());
+                    canvas->drawRect(back, paint);
+                    const SkColor symbolColor = paint.getColor();
+                    paint.setStyle(SkPaint::kFill_Style);
+                    paint.setColor(backgroundColor);
+                    canvas->drawRect(front, paint);
+                    paint.setStyle(SkPaint::kStroke_Style);
+                    paint.setColor(symbolColor);
+                    canvas->drawRect(front, paint);
                 } else {
-                    ::Rectangle(dc, centerX - half, centerY - half, centerX + half + 1, centerY + half + 1);
+                    canvas->drawRect(glyph, paint);
                 }
             } else {
-                ::MoveToEx(dc, centerX - half, centerY - half, nullptr);
-                ::LineTo(dc, centerX + half + 1, centerY + half + 1);
-                ::MoveToEx(dc, centerX + half, centerY - half, nullptr);
-                ::LineTo(dc, centerX - half - 1, centerY + half + 1);
+                paint.setAntiAlias(true);
+                paint.setStrokeWidth(strokeWidth * 1.05f);
+                paint.setStrokeCap(SkPaint::kSquare_Cap);
+                canvas->drawLine(glyph.left(), glyph.top(), glyph.right(), glyph.bottom(), paint);
+                canvas->drawLine(glyph.right(), glyph.top(), glyph.left(), glyph.bottom(), paint);
             }
-
-            ::SelectObject(dc, oldBrush);
-            ::SelectObject(dc, oldPen);
-            ::DeleteObject(pen);
         }
-        ::RestoreDC(dc, saved);
+        canvas->restore();
+
+        // GDI drawing clears alpha on DWM glass. Composite the cached opaque
+        // raster surface instead, keeping both the caption edge and shadow.
+        HGDIOBJ oldBitmap = ::SelectObject(m_captionDC, m_captionBitmap);
+        const BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+        ::GdiAlphaBlend(dc, intersection.left, intersection.top,
+            intersection.right - intersection.left, intersection.bottom - intersection.top,
+            m_captionDC, intersection.left - buttons.left, intersection.top - buttons.top,
+            intersection.right - intersection.left, intersection.bottom - intersection.top, blend);
+        ::SelectObject(m_captionDC, oldBitmap);
     }
 
     void runCaptionButton(CaptionButton button)
@@ -1107,6 +1181,22 @@ public:
         }
 
         switch (message) {
+        case WM_NCCALCSIZE:
+            if (m_createWindowParam->isFrame)
+                break;
+            if (::IsZoomed(hWnd) && !m_isFullScreen) {
+                RECT* client = wParam
+                    ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0]
+                    : reinterpret_cast<RECT*>(lParam);
+                const LONG top = client->top;
+                const LONG left = client->left;
+                ::DefWindowProcW(hWnd, message, wParam, lParam);
+                client->top = top + client->left - left;
+            }
+            return 0;
+        case WM_DWMCOMPOSITIONCHANGED:
+            updateWindowFrame(hWnd);
+            return 0;
         case WM_CLOSE: {
             WindowState state = m_state;
             m_state = WindowDestroying;
@@ -1244,7 +1334,6 @@ public:
             m_contentsSize.cx = x;
             m_contentsSize.cy = y;
 
-            setRoundWindow();
             invalidateCaptionButtons();
         }
             return 0;
@@ -1269,10 +1358,6 @@ public:
                 mini_electron_fire_key_down_event(m_foucsBrowserView->getEngineView(), virtualKeyCode, flags, false);
             else
                 mini_electron_fire_key_down_event(webview, virtualKeyCode, flags, false);
-
-            if (122 == virtualKeyCode) {
-                mini_electron_set_debug_config(webview, "showDevTools", "G:/mycode/mb/third_party/WebKit/Source/devtools/front_end/inspector.html");
-            }
 
             return 0;
             break;
@@ -1447,6 +1532,7 @@ public:
             break;
 
         case WM_ACTIVATE:
+            updateWindowFrame(hWnd);
             if (LOWORD(wParam) == WA_INACTIVE)
                 hideAutoMenuBar();
             break;
@@ -1686,7 +1772,6 @@ private:
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
         updateNativeMenu();
-        setRoundWindow();
         ::InvalidateRect(m_hWnd, nullptr, FALSE);
     }
 
@@ -1907,7 +1992,7 @@ private:
     void setResizableApi(bool resizable)
     {
         m_createWindowParam->isResizable = resizable;
-        if (m_createWindowParam->isFrame) {
+        if (m_createWindowParam->isFrame || !m_createWindowParam->transparent) {
             DWORD style = ::GetWindowLong(m_hWnd, GWL_STYLE);
             if (resizable)
                 style |= WS_THICKFRAME;
@@ -2453,24 +2538,6 @@ private:
     {
     }
 
-    void setRoundWindow()
-    {
-        if (m_createWindowParam->isFrame)
-            return;
-        if (m_isMaximized || m_isFullScreen) {
-            ::SetWindowRgn(m_hWnd, nullptr, TRUE);
-            return;
-        }
-
-        RECT windowRect;
-        ::GetWindowRect(m_hWnd, &windowRect);
-        int radius = std::max(1, dipToPixel(7));
-        HRGN region = ::CreateRoundRectRgn(0, 0,
-            windowRect.right - windowRect.left,
-            windowRect.bottom - windowRect.top,
-            radius, radius);
-        ::SetWindowRgn(m_hWnd, region, TRUE);
-    }
 
 
     static BOOL MINI_ELECTRON_CALL_TYPE onCloseCallback(mini_electron_web_view webView, void* param, void* unuse)
@@ -2658,7 +2725,7 @@ private:
             createWindowParam->styleEx = 0;
 
             if (!createWindowParam->isFrame)
-                createWindowParam->styles = WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_POPUP;
+                createWindowParam->styles = WS_CAPTION | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
         }
 
         if (createWindowParam->isMinimizable)
@@ -2666,7 +2733,7 @@ private:
         if (createWindowParam->isMaximizable)
             createWindowParam->styles |= WS_MAXIMIZEBOX;
 
-        if (createWindowParam->isResizable && createWindowParam->isFrame)
+        if (createWindowParam->isResizable && (createWindowParam->isFrame || !createWindowParam->transparent))
             createWindowParam->styles |= WS_THICKFRAME;
         createWindowParam->styleEx |= WS_EX_ACCEPTFILES;
 
@@ -2699,9 +2766,9 @@ private:
         HWND dwFlag = HWND_NOTOPMOST;
         if (createWindowParam->isAlwaysOnTop)
             dwFlag = HWND_TOPMOST;
-        ::SetWindowPos(m_hWnd, dwFlag, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOREPOSITION);
+        ::SetWindowPos(m_hWnd, dwFlag, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOREPOSITION | SWP_FRAMECHANGED);
+        updateWindowFrame(m_hWnd);
 
-        setRoundWindow();
 
         if (!createWindowParam->isClosable)
             ::EnableMenuItem(::GetSystemMenu(m_hWnd, false), SC_CLOSE, MF_BYCOMMAND | MF_GRAYED);
@@ -2804,6 +2871,10 @@ private:
     HDC m_memoryDC;
     RECT m_clientRect;
     SIZE m_memoryBmpSize;
+    HDC m_captionDC;
+    HBITMAP m_captionBitmap;
+    SIZE m_captionBitmapSize;
+    sk_sp<SkSurface> m_captionSurface;
 
     HRGN m_draggableRegion;
 

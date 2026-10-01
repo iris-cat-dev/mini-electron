@@ -65,11 +65,6 @@ WebContents.prototype._init = function () {
         //menu.popup(params.x, params.y);
     });
 
-    // The devtools requests the webContents to reload.
-    this.on('devtools-reload-page', function () {
-        this.reload();
-    });
-
     // Delays the page-title-updated event to next tick.
     this.on('-page-title-updated', function (...args) {
         setImmediate(() => {
@@ -142,10 +137,6 @@ WebContents.prototype.insertCSS = function (css, options) {
     return new Promise((resolve, reject) => {
         ;
     });
-}
-
-WebContents.prototype.setDevToolsWebContents = function() {
-    mini_electron_console_log("WebContents.prototype.setDevToolsWebContents not impl\n");
 }
 
 let nextId = 0;

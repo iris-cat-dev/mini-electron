@@ -804,36 +804,96 @@
     <ClCompile Include="..\..\..\v8\src\init\setup-isolate-full.cc" />
     <ClCompile Include="..\..\..\v8\src\init\startup-data-util.cc" />
     <ClCompile Include="..\..\..\v8\src\init\v8.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\crc32.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\custom-preview.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\injected-script.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\inspected-context.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\remote-object-id.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\search-util.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\string-16.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\string-util.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\test-interface.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-console-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-console-message.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-console.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-barrier.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-id.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-script.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-deep-serializer.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-heap-profiler-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-inspector-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-inspector-session-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-profiler-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-regex.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-runtime-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-schema-agent-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-serialization-duplicate-tracker.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-stack-trace-impl.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-string-conversions.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\v8-value-utils.cc" />
-    <ClCompile Include="..\..\..\v8\src\inspector\value-mirror.cc" />
+    <ClCompile Include="..\..\..\v8\src\inspector\crc32.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\custom-preview.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\injected-script.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\inspected-context.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\remote-object-id.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\search-util.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\string-16.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\string-util.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\test-interface.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-console-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-console-message.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-console.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-barrier.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-id.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger-script.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-debugger.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-deep-serializer.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-heap-profiler-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-inspector-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-inspector-session-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-profiler-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-regex.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-runtime-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-schema-agent-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-serialization-duplicate-tracker.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-stack-trace-impl.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-string-conversions.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\v8-value-utils.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\inspector\value-mirror.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\v8\src\interpreter\bytecode-array-builder.cc" />
     <ClCompile Include="..\..\..\v8\src\interpreter\bytecode-array-iterator.cc" />
     <ClCompile Include="..\..\..\v8\src\interpreter\bytecode-array-random-iterator.cc" />

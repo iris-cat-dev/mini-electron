@@ -1,17 +1,68 @@
 # OMP Desktop size analysis
 
-This report records the original size baseline and optimization options for the
-Apple Silicon OMP Desktop package. Baseline measurements were taken from commit
-`87cf65a9f`. The equivalent packaging command through the unified entry point is:
+This report records Windows x64 release reductions and the original Apple
+Silicon package analysis. Windows measurements are separated below; all
+remaining component attribution and compiler estimates describe macOS.
+The macOS baseline was taken from commit `87cf65a9f`. The equivalent packaging
+command through the unified entry point is:
 
 ```sh
 python build.py --omp-desktop --omp-source ../omp-desktop
 ```
 
-The packaged host is stripped with `strip -x` and then ad-hoc signed. Sizes in
-MiB use 1 MiB = 1,048,576 bytes.
+The macOS packaged host is stripped with `strip -x` and then ad-hoc signed.
+Sizes in MiB use 1 MiB = 1,048,576 bytes.
 
-## Executive summary
+## Windows x64: implemented release reductions
+
+The Windows `Release|x64` target disables Blink/V8/Node Inspector and DevTools,
+and excludes the experimental Permission Element implementation and binding.
+Production application staging removes `.d.ts`, `.d.mts`, and `.d.cts` files
+before ASAR creation and removes `node-pty` PDBs. Ordinary TypeScript sources,
+runtime native modules, remote-backend archives, and licenses remain.
+
+Measured logical file bytes, including the final Windows caption fixes:
+
+| Artifact | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| Host executable | 83,176,960 bytes (79.324 MiB) | 80,138,240 bytes (76.426 MiB) | 3,038,720 bytes (2.898 MiB, 3.65%) |
+| `resources/app.asar.unpacked` | 120,236,510 bytes (114.666 MiB) | 76,769,987 bytes (73.214 MiB) | 43,466,523 bytes (41.453 MiB) |
+| `resources/app.asar` | 2,610,815 bytes (2.490 MiB) | 1,820,695 bytes (1.736 MiB) | 790,120 bytes (0.754 MiB) |
+
+The freshly assembled complete Windows package is 431,346,933 bytes
+(411.364 MiB), excluding generated runtime state. Its bundled `bin/omp.exe`
+alone is 243,411,968 bytes (232.136 MiB), and reports `omp/18.4.4`.
+Both older comparison directories had subsequently lost that bundled file,
+so their current directory totals are not complete-package baselines.
+No build PDB or static library is included in the release package.
+
+Verification exercised the built host and packaged production modules:
+
+- Main, preload, and Node workers report Inspector disabled. Both
+  `node:inspector` modules fail with `ERR_INSPECTOR_NOT_AVAILABLE`; the
+  `--inspect` flag exits with code 9.
+- DevTools/inspection methods are absent. `<permission>` creates an
+  `HTMLUnknownElement`, with no `HTMLPermissionElement` constructor.
+- Page and worker exception locations, stacks, and rejected promises remain
+  available. Canvas pixels, fetch, WebAssembly, local/session storage, and
+  cross-frame storage events pass the runtime probe.
+- Node retains Chinese `Intl`, crypto, WebAssembly, worker execution, native
+  keyring discovery, and a real ConPTY command with graceful worker cleanup.
+- ASAR inventory contains no TypeScript declaration files or `node-pty` PDBs.
+  The Chinese OMP frontend loads and the isolated daemon is reachable.
+- At 144 DPI, restored caption glyph bounds and bright-pixel counts match the
+  installed Electron reference: 15-by-2 minimize, 15-by-15 maximize and close.
+  The cached opaque Skia background covers the two-pixel restored top inset;
+  no white pixels remain on the former caption edge. Native DWM rendering
+  stays enabled. Minimize, maximize, restore, and close succeed, and the
+  maximized client matches the visible 3840-by-2100 work area.
+
+Detailed runtime evidence is recorded in
+`out/verification/windows-size-cut-results.json`; the complete package is
+`out/windows-x64/OMP Desktop Optimized`. Existing test-home and desktop profile
+state are preserved.
+
+## macOS executive summary
 
 The baseline `OMP Desktop` executable was 90,623,888 bytes (86.43 MiB).
 Sharing the full ICU data package between Blink and Node/V8 reduced it to

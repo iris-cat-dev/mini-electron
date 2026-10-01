@@ -433,13 +433,27 @@
     <ClInclude Include="..\..\..\gen\v8x64win\torque-generated\src\builtins\weak-ref-tq-csa.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Console.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Debugger.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\HeapProfiler.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Profiler.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Protocol.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Runtime.cpp" />
-    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Schema.cpp" />
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Console.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Debugger.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\HeapProfiler.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Profiler.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Protocol.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Runtime.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gen\v8x64win\src\inspector\protocol\Schema.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\gen\v8x64win\src\regexp\special-case.cc" />
     <ClCompile Include="..\..\..\gen\v8x64win\torque-generated\src\builtins\aggregate-error-tq-csa.cc" />
     <ClCompile Include="..\..\..\gen\v8x64win\torque-generated\src\builtins\aggregate-error-tq.cc" />

@@ -26,7 +26,15 @@ HTMLTypeMap CreateHTMLTypeMap() {
     HTMLElementType type;
   } kTags[] = {
     {% for tag in tags|sort(attribute='name') %}
+    {% if tag.js_interface == "HTMLPermissionElement" %}
+#if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
+    { &html_names::{{tag|symbol}}Tag, HTMLElementType::kHTMLElement },
+#else
+    {% endif %}
     { &html_names::{{tag|symbol}}Tag, HTMLElementType::k{{tag.js_interface}} },
+    {% if tag.js_interface == "HTMLPermissionElement" %}
+#endif
+    {% endif %}
     {% endfor %}
   };
   for (const auto& tag : kTags)

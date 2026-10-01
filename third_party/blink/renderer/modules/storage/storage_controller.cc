@@ -114,6 +114,7 @@ scoped_refptr<CachedStorageArea> StorageController::GetLocalStorageArea(
     return local_storage_namespace_->GetCachedArea(local_dom_window, std::move(local_storage_area), context);
 }
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 void StorageController::AddLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent)
 {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -127,6 +128,7 @@ void StorageController::RemoveLocalStorageInspectorStorageAgent(InspectorDOMStor
     EnsureLocalStorageNamespaceCreated();
     local_storage_namespace_->RemoveInspectorStorageAgent(agent);
 }
+#endif
 
 void StorageController::EnsureLocalStorageNamespaceCreated()
 {

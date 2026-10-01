@@ -122,7 +122,11 @@ HTMLTypeMap CreateHTMLTypeMap()
         { &html_names::kOutputTag, HTMLElementType::kHTMLOutputElement },
         { &html_names::kPTag, HTMLElementType::kHTMLParagraphElement },
         { &html_names::kParamTag, HTMLElementType::kHTMLParamElement },
+#if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
+        { &html_names::kPermissionTag, HTMLElementType::kHTMLElement },
+#else
         { &html_names::kPermissionTag, HTMLElementType::kHTMLPermissionElement },
+#endif
         { &html_names::kPictureTag, HTMLElementType::kHTMLPictureElement },
         { &html_names::kPlaintextTag, HTMLElementType::kHTMLElement },
         { &html_names::kPreTag, HTMLElementType::kHTMLPreElement },

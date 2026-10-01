@@ -61,27 +61,6 @@ Object.assign(BrowserWindow.prototype, {
     send (...args) {
         return this.webContents.send.apply(this.webContents, args);
     },
-    openDevTools (...args) {
-        return this.webContents.openDevTools.apply(this.webContents, args);
-    },
-    closeDevTools () {
-        return this.webContents.closeDevTools();
-    },
-    isDevToolsOpened () {
-        return this.webContents.isDevToolsOpened();
-    },
-    isDevToolsFocused () {
-        return this.webContents.isDevToolsFocused();
-    },
-    toggleDevTools () {
-        return this.webContents.toggleDevTools();
-    },
-    inspectElement (...args) {
-        return this.webContents.inspectElement.apply(this.webContents, args);
-    },
-    inspectServiceWorker () {
-        return this.webContents.inspectServiceWorker();
-    },
     showDefinitionForSelection () {
         return this.webContents.showDefinitionForSelection();
     },

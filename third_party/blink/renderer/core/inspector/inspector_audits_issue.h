@@ -77,6 +77,14 @@ enum class ClientHintIssueReason {
 //     would have to be included in various cc files.
 class CORE_EXPORT AuditsIssue {
 public:
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    AuditsIssue() = default;
+    AuditsIssue(const AuditsIssue&) = delete;
+    AuditsIssue& operator=(const AuditsIssue&) = delete;
+    AuditsIssue(AuditsIssue&&) = default;
+    AuditsIssue& operator=(AuditsIssue&&) = default;
+    ~AuditsIssue() = default;
+#else
     explicit AuditsIssue(std::unique_ptr<protocol::Audits::InspectorIssue> issue);
 
     AuditsIssue() = delete;
@@ -93,6 +101,7 @@ public:
     std::unique_ptr<protocol::Audits::InspectorIssue> TakeIssue();
 
     ~AuditsIssue();
+#endif
 
     static void ReportQuirksModeIssue(
         ExecutionContext* execution_context, bool isLimitedQuirksMode, DOMNodeId document_node_id, String url, String frame_id, String loader_id);
@@ -136,8 +145,10 @@ public:
     static void ReportStylesheetLoadingRequestFailedIssue(Document* document, const KURL& url, const String& request_id, const KURL& initiator_url,
         WTF::OrdinalNumber initiator_line, WTF::OrdinalNumber initiator_column, const String& failureMessage);
 
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 private:
     std::unique_ptr<protocol::Audits::InspectorIssue> issue_;
+#endif
 };
 
 } // namespace blink
