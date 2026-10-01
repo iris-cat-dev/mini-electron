@@ -2,10 +2,10 @@
 
 This report records the original size baseline and optimization options for the
 Apple Silicon OMP Desktop package. Baseline measurements were taken from commit
-`87cf65a9f` after packaging with:
+`87cf65a9f`. The equivalent packaging command through the unified entry point is:
 
 ```sh
-./platform/macos/build.py --omp-desktop --omp-source ../omp-desktop
+python build.py --omp-desktop --omp-source ../omp-desktop
 ```
 
 The packaged host is stripped with `strip -x` and then ad-hoc signed. Sizes in
@@ -43,7 +43,7 @@ single file remains the 198.80 MiB `Resources/bin/omp` Bun executable.
 ## Implemented optimization: shared ICU data
 
 The macOS source manifest no longer compiles
-`content/resources/icudtl.cpp`. During Blink startup,
+`runtime/engine/resources/icudtl.cc`. During Blink startup,
 `RenderThreadImpl::initializeICUData()` calls `u_init()`, which discovers the
 full `//third_party/icu:icudata` package already linked for V8 and Node. It no
 longer replaces ICU's common data pointer with MiniBlink's legacy 1.80 MiB
