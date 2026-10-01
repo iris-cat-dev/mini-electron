@@ -242,11 +242,6 @@ if (enable_scrambled_message_ids) {
 #       Same as above but depends on "foo_blink_cpp_sources" and is used for
 #       dependencies that specify a `blink_cpp_proxy_target`.
 #
-#   generate_java (optional)
-#       If set to true, Java bindings are generated for Android builds. If
-#       |cpp_only| is set to true, it overrides this to prevent generation of
-#       Java bindings.
-#
 #   enable_fuzzing (optional)
 #       Enables generation of fuzzing sources for the target if the global build
 #       arg |enable_mojom_fuzzer| is also set to |true|. Defaults to |true|. If
@@ -1189,10 +1184,6 @@ template("mojom") {
       ]
     }
 
-    generate_java = false
-    if (!cpp_only && defined(invoker.generate_java)) {
-      generate_java = invoker.generate_java
-    }
     type_mappings_target_name = "${target_name}${variant_suffix}__type_mappings"
     type_mappings_path =
         "$target_gen_dir/${target_name}${variant_suffix}__type_mappings"
@@ -1581,96 +1572,6 @@ template("mojom") {
       }
     }
 
-    if (generate_java && is_android) {
-      import("//build/config/android/rules.gni")
-
-      java_generator_target_name = target_name + "_java__generator"
-      if (sources_list != []) {
-        action(java_generator_target_name) {
-          script = mojom_generator_script
-          inputs = mojom_generator_sources + jinja2_sources
-          sources = sources_list
-          deps = [
-            ":$parser_target_name",
-            ":$type_mappings_target_name",
-            "//mojo/public/tools/bindings:precompile_templates",
-          ]
-          outputs = []
-          args = common_generator_args
-          filelist = []
-          foreach(source, sources_list) {
-            filelist += [ rebase_path("$source", root_build_dir) ]
-          }
-          foreach(base_path, output_file_base_paths) {
-            outputs += [ "$root_gen_dir/$base_path.srcjar" ]
-          }
-
-          response_file_contents = filelist
-
-          args += [
-            "--filelist={{response_file_name}}",
-            "-g",
-            "java",
-          ]
-
-          if (!defined(invoker.scramble_message_ids) ||
-              invoker.scramble_message_ids) {
-            inputs += message_scrambling_inputs
-            args += message_scrambling_args
-          }
-        }
-      } else {
-        group(java_generator_target_name) {
-        }
-      }
-
-      java_srcjar_target_name = target_name + "_java_sources"
-
-      action(java_srcjar_target_name) {
-        script = "//build/android/gyp/zip.py"
-        inputs = []
-        if (output_file_base_paths != []) {
-          foreach(base_path, output_file_base_paths) {
-            inputs += [ "$root_gen_dir/${base_path}.srcjar" ]
-          }
-        }
-        output = "$target_gen_dir/$target_name.srcjar"
-        outputs = [ output ]
-        rebase_inputs = rebase_path(inputs, root_build_dir)
-        rebase_output = rebase_path(output, root_build_dir)
-        args = [
-          "--input-zips=$rebase_inputs",
-          "--output=$rebase_output",
-        ]
-        deps = []
-        if (sources_list != []) {
-          deps = [ ":$java_generator_target_name" ]
-        }
-      }
-
-      java_target_name = target_name + "_java"
-      android_library(java_target_name) {
-        forward_variables_from(invoker, [ "enable_bytecode_checks" ])
-        deps = [
-          "//mojo/public/java:bindings_java",
-          "//mojo/public/java:system_java",
-          "//third_party/androidx:androidx_annotation_annotation_java",
-        ]
-
-        # Disable warnings/checks on these generated files.
-        chromium_code = false
-
-        foreach(d, all_deps) {
-          # Resolve the name, so that a target //mojo/something becomes
-          # //mojo/something:something and we can append "_java" to get the java
-          # dependency name.
-          full_name = get_label_info(d, "label_no_toolchain")
-          deps += [ "${full_name}_java" ]
-        }
-
-        srcjar_deps = [ ":$java_srcjar_target_name" ]
-      }
-    }
   }
 
   use_typescript_for_target =

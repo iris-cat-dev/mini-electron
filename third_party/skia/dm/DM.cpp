@@ -662,70 +662,6 @@ static void push_image_gen_src(Path path, ImageGenSrc::Mode mode, SkAlphaType al
     push_src("image", folder, src);
 }
 
-#ifdef SK_ENABLE_ANDROID_UTILS
-static void push_brd_src(Path path, CodecSrc::DstColorType dstColorType, BRDSrc::Mode mode, uint32_t sampleSize)
-{
-    SkString folder("brd_android_codec");
-    switch (mode) {
-    case BRDSrc::kFullImage_Mode:
-        break;
-    case BRDSrc::kDivisor_Mode:
-        folder.append("_divisor");
-        break;
-    default:
-        SkASSERT(false);
-        return;
-    }
-
-    switch (dstColorType) {
-    case CodecSrc::kGetFromCanvas_DstColorType:
-        break;
-    case CodecSrc::kGrayscale_Always_DstColorType:
-        folder.append("_kGray");
-        break;
-    default:
-        SkASSERT(false);
-        return;
-    }
-
-    if (1 != sampleSize) {
-        folder.appendf("_%.3f", 1.0f / (float)sampleSize);
-    }
-
-    BRDSrc* src = new BRDSrc(path, mode, dstColorType, sampleSize);
-    push_src("image", folder, src);
-}
-
-static void push_brd_srcs(Path path, bool gray)
-{
-    if (gray) {
-        // Only run grayscale to one sampleSize and Mode. Though interesting
-        // to test grayscale, it should not reveal anything across various
-        // sampleSizes and Modes
-        // Arbitrarily choose Mode and sampleSize.
-        push_brd_src(path, CodecSrc::kGrayscale_Always_DstColorType, BRDSrc::kFullImage_Mode, 2);
-    }
-
-    // Test on a variety of sampleSizes, making sure to include:
-    // - 2, 4, and 8, which are natively supported by jpeg
-    // - multiples of 2 which are not divisible by 4 (analogous for 4)
-    // - larger powers of two, since BRD clients generally use powers of 2
-    // We will only produce output for the larger sizes on large images.
-    const uint32_t sampleSizes[] = { 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 24, 32, 64 };
-
-    const BRDSrc::Mode modes[] = {
-        BRDSrc::kFullImage_Mode,
-        BRDSrc::kDivisor_Mode,
-    };
-
-    for (uint32_t sampleSize : sampleSizes) {
-        for (BRDSrc::Mode mode : modes) {
-            push_brd_src(path, CodecSrc::kGetFromCanvas_DstColorType, mode, sampleSize);
-        }
-    }
-}
-#endif // SK_ENABLE_ANDROID_UTILS
-
 static void push_codec_srcs(Path path)
 {
     sk_sp<SkData> encoded(SkData::MakeFromFileName(path.c_str()));
@@ -866,30 +802,10 @@ static void push_codec_srcs(Path path)
         };
         for (const char* rawExt : rawExts) {
             if (0 == strcmp(rawExt, ext)) {
-                // RAW is not supported by image generator (skbug.com/5079) or BRD.
+                // RAW is not supported by the image generator (skbug.com/5079).
                 return;
             }
         }
-
-#ifdef SK_ENABLE_ANDROID_UTILS
-        static const char* const brdExts[] = {
-            "jpg",
-            "jpeg",
-            "png",
-            "webp",
-            "JPG",
-            "JPEG",
-            "PNG",
-            "WEBP",
-        };
-        for (const char* brdExt : brdExts) {
-            if (0 == strcmp(brdExt, ext)) {
-                bool gray = codec->getInfo().colorType() == kGray_8_SkColorType;
-                push_brd_srcs(path, gray);
-                break;
-            }
-        }
-#endif
     }
 
     // Push image generator GPU test.
@@ -908,8 +824,6 @@ static void push_codec_srcs(Path path)
         if (SkEncodedImageFormat::kWEBP != codec->getEncodedFormat() && SkEncodedImageFormat::kWBMP != codec->getEncodedFormat()) {
             push_image_gen_src(path, ImageGenSrc::kPlatform_Mode, alphaType, false);
         }
-#elif defined(SK_ENABLE_NDK_IMAGES)
-        push_image_gen_src(path, ImageGenSrc::kPlatform_Mode, alphaType, false);
 #endif
     }
 }

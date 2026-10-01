@@ -33,4 +33,3 @@ Files referenced by `//.gn`:
 * [Writing GN Templates](docs/writing_gn_templates.md)
 * [Debugging Slow Builds](docs/debugging_slow_builds.md)
 * [Mac Hermetic Toolchains](docs/mac_hermetic_toolchain.md)
-* [Android Build Documentation](android/docs/README.md)

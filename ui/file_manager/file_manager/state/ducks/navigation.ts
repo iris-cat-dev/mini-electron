@@ -7,7 +7,7 @@ import type {EntryList, FilesAppEntry, VolumeEntry} from '../../common/js/files_
 import {isSkyvaultV2Enabled} from '../../common/js/flags.js';
 import {VolumeType} from '../../common/js/volume_manager_types.js';
 import {Slice} from '../../lib/base_store.js';
-import {type AndroidApp, DialogType, type NavigationKey, type NavigationRoot, NavigationSection, NavigationType, type State, type Volume} from '../../state/state.js';
+import {DialogType, type NavigationKey, type NavigationRoot, NavigationSection, NavigationType, type State, type Volume} from '../../state/state.js';
 import {getMyFiles} from '../ducks/all_entries.js';
 import {driveRootEntryListKey, oneDriveFakeRootKey, recentRootKey, trashRootKey} from '../ducks/volumes.js';
 import {getEntry} from '../store.js';
@@ -61,8 +61,7 @@ function getPrefixEntryOrEntry(state: State, volume: Volume): VolumeEntry|
  *  6. SMBs
  *  7. Other FSP (File System Provider) (when mounted).
  *  8. Other volumes (MTP, ARCHIVE, REMOVABLE).
- *  9. Android apps.
- *  10. Trash.
+ *  9. Trash.
  */
 export const refreshNavigationRoots =
     slice.addReducer('refresh-roots', refreshNavigationRootsReducer);
@@ -71,7 +70,6 @@ function refreshNavigationRootsReducer(currentState: State): State {
   const {
     navigation: {roots: previousRoots},
     folderShortcuts,
-    androidApps,
     materializedViews,
   } = currentState;
 
@@ -250,17 +248,6 @@ function refreshNavigationRootsReducer(currentState: State): State {
     }
   }
 
-  // Android Apps.
-  Object.values(androidApps as Record<string, AndroidApp>)
-      .forEach((app, index) => {
-        roots.push({
-          key: app.packageName,
-          section: NavigationSection.ANDROID_APPS,
-          separator: index === 0,
-          type: NavigationType.ANDROID_APPS,
-        });
-        processedEntryKeys.add(app.packageName);
-      });
 
   // Trash.
   // Trash should only show when Files app is open as a standalone app. The ARC

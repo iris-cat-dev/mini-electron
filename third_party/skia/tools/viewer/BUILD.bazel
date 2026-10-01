@@ -57,7 +57,6 @@ skia_cc_binary(
         "PathSlide.cpp",
         "PathTessellatorsSlide.cpp",
         "PathTextSlide.cpp",
-        "ProtectedSlide.cpp",
         "QuadStrokerSlide.cpp",
         "RectanizerSlide.cpp",
         "RepeatTileSlide.cpp",

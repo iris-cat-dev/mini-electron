@@ -77,7 +77,6 @@ public:
     void ForceImmediateDrawAndSwapIfPossible() override;
 #if BUILDFLAG(IS_ANDROID)
     void SetVSyncPaused(bool paused) override;
-    void UpdateRefreshRate(float refresh_rate) override;
     void PreserveChildSurfaceControls() override;
     void SetSwapCompletionCallbackEnabled(bool enable) override;
 #endif // BUILDFLAG(IS_ANDROID)

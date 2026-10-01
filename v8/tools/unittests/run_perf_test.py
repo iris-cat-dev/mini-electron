@@ -89,7 +89,6 @@ V8_NESTED_SUITES_JSON = {
      'path': ['richards'],
      'binary': 'd7',
      'main': 'run.js',
-     'resources': ['file1.js', 'file2.js'],
      'run_count': 2,
      'results_regexp': '^Richards: (.+)$'},
     {'name': 'Sub',
@@ -163,7 +162,7 @@ class PerfTest(unittest.TestCase):
     with open(self._test_input, 'w') as f:
       f.write(json.dumps(json_content))
 
-  def _MockCommand(self, raw_dirs, raw_outputs, *args, **kwargs):
+  def _MockCommand(self, raw_outputs, *args, **kwargs):
     on_bots = kwargs.pop('on_bots', False)
     # Fake output for each test run.
     test_outputs = [
@@ -196,18 +195,7 @@ class PerfTest(unittest.TestCase):
         run_perf, 'find_build_directory',
         mock.MagicMock(side_effect=return_values)).start()
 
-    # Check that d8 is called from the correct cwd for each test run.
-    dirs = [os.path.join(TEST_WORKSPACE, dir) for dir in raw_dirs]
-
-    def chdir(dir, *args, **kwargs):
-      if not dirs:
-        raise Exception("Missing test chdir '%s'" % dir)
-      expected_dir = dirs.pop()
-      self.assertEqual(
-          expected_dir, dir,
-          "Unexpected chdir: expected='%s' got='%s'" % (expected_dir, dir))
-
-    os.chdir = mock.MagicMock(side_effect=chdir)
+    os.chdir = mock.MagicMock()
 
     subprocess.check_call = mock.MagicMock()
     platform.system = mock.MagicMock(return_value='Linux')
@@ -275,7 +263,7 @@ class PerfTest(unittest.TestCase):
 
   def testOneRun(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234], 'stddev': ''},
@@ -296,7 +284,7 @@ class PerfTest(unittest.TestCase):
     self._WriteTestInput(V8_JSON)
 
     # Require 2 runs. One for the warm-up.
-    self._MockCommand(2 * ['.'], 2 * ['Richards: 1\nDeltaBlue: 2\n'])
+    self._MockCommand(2 * ['Richards: 1\nDeltaBlue: 2\n'])
     self.assertEqual(0, self._CallMain('--checked-warmup'))
 
     # The warm-up ran at the current time and cache is up to date.
@@ -314,7 +302,7 @@ class PerfTest(unittest.TestCase):
     self._WriteTestInput(V8_JSON)
 
     # One run only since no warm-up is required.
-    self._MockCommand(1 * ['.'], 1 * ['Richards: 1\nDeltaBlue: 2\n'])
+    self._MockCommand(1 * ['Richards: 1\nDeltaBlue: 2\n'])
     self.assertEqual(0, self._CallMain('--checked-warmup'))
 
     # No warm-up ran, cache is only trimmed.
@@ -330,7 +318,7 @@ class PerfTest(unittest.TestCase):
     self._WriteTestInput(V8_JSON)
 
     # Require 2 runs. One for the warm-up.
-    self._MockCommand(2 * ['.'], 2 * ['Richards: 1\nDeltaBlue: 2\n'])
+    self._MockCommand(2 * ['Richards: 1\nDeltaBlue: 2\n'])
     self.assertEqual(0, self._CallMain('--checked-warmup'))
 
     # The warm-up ran at the current time and cache is up to date.
@@ -338,7 +326,7 @@ class PerfTest(unittest.TestCase):
 
   def testOneRunVariants(self):
     self._WriteTestInput(V8_VARIANTS_JSON)
-    self._MockCommand(['.', '.', '.'], [
+    self._MockCommand([
         'x\nRichards: 3.3\nDeltaBlue: 3000\ny\n',
         'x\nRichards: 2.2\nDeltaBlue: 2000\ny\n',
         'x\nRichards: 1.1\nDeltaBlue: 1000\ny\n'
@@ -397,7 +385,7 @@ class PerfTest(unittest.TestCase):
     config['tests'][1]['results_default'] = 42
 
     self._WriteTestInput(config)
-    self._MockCommand(['.', '.', '.'], [
+    self._MockCommand([
         'x\nRichards: 3.3\nDeltaBlue: 3000\ny\n',
         'x\nRichards: 2.2\nDeltaBlue: 2000\ny\n',
         'x\nRichards: 1.1\ny\n',  # One variant lacks DeltaBlue.
@@ -453,7 +441,7 @@ class PerfTest(unittest.TestCase):
     test_input = dict(V8_JSON)
     test_input['test_flags'] = ['2', 'test_name']
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['Richards: 1.234\nDeltaBlue: 10657567'])
+    self._MockCommand(['Richards: 1.234\nDeltaBlue: 10657567'])
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234], 'stddev': ''},
@@ -469,9 +457,8 @@ class PerfTest(unittest.TestCase):
     test_input['name'] = 'v8'
     test_input['units'] = 'ms'
     self._WriteTestInput(test_input)
-    self._MockCommand(['.', '.'],
-                      ['Richards: 100\nDeltaBlue: 200\n',
-                       'Richards: 50\nDeltaBlue: 300\n'])
+    self._MockCommand(['Richards: 100\nDeltaBlue: 200\n',
+     'Richards: 50\nDeltaBlue: 300\n'])
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('v8', 'ms', [
       {'name': 'Richards', 'results': [50.0, 100.0], 'stddev': ''},
@@ -488,9 +475,8 @@ class PerfTest(unittest.TestCase):
     test_input['tests'][0]['results_regexp'] = '^Richards: (.+)$'
     test_input['tests'][1]['results_regexp'] = '^DeltaBlue: (.+)$'
     self._WriteTestInput(test_input)
-    self._MockCommand(['.', '.'],
-                      ['Richards: 100\nDeltaBlue: 200\n',
-                       'Richards: 50\nDeltaBlue: 300\n'])
+    self._MockCommand(['Richards: 100\nDeltaBlue: 200\n',
+     'Richards: 50\nDeltaBlue: 300\n'])
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [50.0, 100.0], 'stddev': ''},
@@ -502,8 +488,7 @@ class PerfTest(unittest.TestCase):
 
   def testPerfectConfidenceRuns(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(
-        ['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'] * 10)
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'] * 10)
     self.assertEqual(0, self._CallMain('--confidence-level', '1'))
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234] * 10, 'stddev': ''},
@@ -515,27 +500,24 @@ class PerfTest(unittest.TestCase):
 
   def testNoisyConfidenceRuns(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(
-        ['.'],
-        reversed([
-          # First 10 runs are mandatory. DeltaBlue is slightly noisy.
-          'x\nRichards: 1.234\nDeltaBlue: 10757567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10557567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          # Need 4 more runs for confidence in DeltaBlue results.
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-          'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
-        ]),
-    )
+    self._MockCommand(reversed([
+      # First 10 runs are mandatory. DeltaBlue is slightly noisy.
+      'x\nRichards: 1.234\nDeltaBlue: 10757567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10557567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      # Need 4 more runs for confidence in DeltaBlue results.
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+      'x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n',
+    ]),)
     self.assertEqual(0, self._CallMain('--confidence-level', '1'))
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234] * 14, 'stddev': ''},
@@ -551,13 +533,12 @@ class PerfTest(unittest.TestCase):
 
   def testNestedSuite(self):
     self._WriteTestInput(V8_NESTED_SUITES_JSON)
-    self._MockCommand(['delta_blue', 'sub/leaf', 'richards'],
-                      ['DeltaBlue: 200\n',
-                       'Simple: 1 ms.\n',
-                       'Simple: 2 ms.\n',
-                       'Simple: 3 ms.\n',
-                       'Richards: 100\n',
-                       'Richards: 50\n'])
+    self._MockCommand(['DeltaBlue: 200\n',
+     'Simple: 1 ms.\n',
+     'Simple: 2 ms.\n',
+     'Simple: 3 ms.\n',
+     'Richards: 100\n',
+     'Richards: 50\n'])
     self.assertEqual(0, self._CallMain())
     self.assertListEqual(sorted([
       {'units': 'score',
@@ -588,7 +569,7 @@ class PerfTest(unittest.TestCase):
     test_input = dict(V8_JSON)
     test_input['stddev_regexp'] = r'^%s-stddev: (.+)$'
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['Richards: 1.234\nRichards-stddev: 0.23\n'
+    self._MockCommand(['Richards: 1.234\nRichards-stddev: 0.23\n'
                               'DeltaBlue: 10657567\nDeltaBlue-stddev: 106\n'])
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
@@ -604,7 +585,7 @@ class PerfTest(unittest.TestCase):
     test_input['stddev_regexp'] = r'^%s-stddev: (.+)$'
     test_input['run_count'] = 2
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['Richards: 3\nRichards-stddev: 0.7\n'
+    self._MockCommand(['Richards: 3\nRichards-stddev: 0.7\n'
                               'DeltaBlue: 6\nDeltaBlue-boom: 0.9\n',
                               'Richards: 2\nRichards-stddev: 0.5\n'
                               'DeltaBlue: 5\nDeltaBlue-stddev: 0.8\n'])
@@ -626,11 +607,8 @@ class PerfTest(unittest.TestCase):
 
   def testBuildbot(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['Richards: 1.234\nDeltaBlue: 10657567\n'],
+    self._MockCommand(['Richards: 1.234\nDeltaBlue: 10657567\n'],
                       on_bots=True)
-    mock.patch.object(
-        run_perf.Platform, 'ReadBuildConfig',
-        mock.MagicMock(return_value={'is_android': False})).start()
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234], 'stddev': ''},
@@ -643,11 +621,8 @@ class PerfTest(unittest.TestCase):
     test_input = dict(V8_JSON)
     test_input['total'] = True
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['Richards: 1.234\nDeltaBlue: 10657567\n'],
+    self._MockCommand(['Richards: 1.234\nDeltaBlue: 10657567\n'],
                       on_bots=True)
-    mock.patch.object(
-        run_perf.Platform, 'ReadBuildConfig',
-        mock.MagicMock(return_value={'is_android': False})).start()
     self.assertEqual(0, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234], 'stddev': ''},
@@ -661,11 +636,8 @@ class PerfTest(unittest.TestCase):
     test_input = dict(V8_JSON)
     test_input['total'] = True
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['x\nRichards: bla\nDeltaBlue: 10657567\ny\n'],
+    self._MockCommand(['x\nRichards: bla\nDeltaBlue: 10657567\ny\n'],
                       on_bots=True)
-    mock.patch.object(
-        run_perf.Platform, 'ReadBuildConfig',
-        mock.MagicMock(return_value={'is_android': False})).start()
     self.assertEqual(1, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'DeltaBlue', 'results': [10657567.0], 'stddev': ''},
@@ -679,7 +651,7 @@ class PerfTest(unittest.TestCase):
 
   def testRegexpNoMatch(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['x\nRichaards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichaards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertEqual(1, self._CallMain())
     self._VerifyResults('test', 'score', [
       {'name': 'DeltaBlue', 'results': [10657567.0], 'stddev': ''},
@@ -691,13 +663,13 @@ class PerfTest(unittest.TestCase):
 
   def testFilterInvalidRegexp(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertNotEqual(0, self._CallMain("--filter=((("))
     self._VerifyMock(os.path.join('out', 'Release', 'd7'), '--flag', 'run.js')
 
   def testFilterRegexpMatchAll(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertEqual(0, self._CallMain("--filter=test"))
     self._VerifyResults('test', 'score', [
         {
@@ -716,7 +688,7 @@ class PerfTest(unittest.TestCase):
 
   def testFilterRegexpSkipAll(self):
     self._WriteTestInput(V8_JSON)
-    self._MockCommand(['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertEqual(0, self._CallMain("--filter=NonExistingName"))
     self._VerifyResults('test', 'score', [])
 
@@ -724,9 +696,8 @@ class PerfTest(unittest.TestCase):
     test_input = dict(V8_JSON)
     test_input['retry_count'] = 1
     self._WriteTestInput(test_input)
-    self._MockCommand(
-        ['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n', ''],
-        exit_code=-1)
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n', ''],
+    exit_code=-1)
     self.assertEqual(1, self._CallMain())
     self._VerifyResults('test', 'score', [])
     self._VerifyErrors([])
@@ -738,42 +709,21 @@ class PerfTest(unittest.TestCase):
     test_input['timeout'] = 70
     test_input['retry_count'] = 0
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], [''], timed_out=True)
+    self._MockCommand([''], timed_out=True)
     self.assertEqual(1, self._CallMain())
     self._VerifyResults('test', 'score', [])
     self._VerifyErrors([])
     self._VerifyMock(os.path.join('out', 'x64.release', 'd7'),
                      '--flag', 'run.js', timeout=70)
 
-  def testAndroid(self):
-    self._WriteTestInput(V8_JSON)
-    mock.patch('run_perf.AndroidPlatform.PreExecution').start()
-    mock.patch('run_perf.AndroidPlatform.PostExecution').start()
-    mock.patch('run_perf.AndroidPlatform.PreTests').start()
-    mock.patch('run_perf.find_build_directory').start()
-    mock.patch(
-        'run_perf.AndroidPlatform.Run',
-        return_value=(Output(stdout='Richards: 1.234\nDeltaBlue: 10657567\n'),
-                      NULL_OUTPUT)).start()
-    mock.patch('testrunner.local.android.Driver', autospec=True).start()
-    mock.patch(
-        'run_perf.Platform.ReadBuildConfig',
-        return_value={'is_android': True}).start()
-    self.assertEqual(0, self._CallMain('--arch', 'arm'))
-    self._VerifyResults('test', 'score', [
-      {'name': 'Richards', 'results': [1.234], 'stddev': ''},
-      {'name': 'DeltaBlue', 'results': [10657567.0], 'stddev': ''},
-    ])
-
   def testTwoRuns_Trybot(self):
     test_input = dict(V8_JSON)
     test_input['run_count'] = 2
     self._WriteTestInput(test_input)
-    self._MockCommand(['.', '.', '.', '.'],
-                      ['Richards: 100\nDeltaBlue: 200\n',
-                       'Richards: 200\nDeltaBlue: 20\n',
-                       'Richards: 50\nDeltaBlue: 200\n',
-                       'Richards: 100\nDeltaBlue: 20\n'])
+    self._MockCommand(['Richards: 100\nDeltaBlue: 200\n',
+     'Richards: 200\nDeltaBlue: 20\n',
+     'Richards: 50\nDeltaBlue: 200\n',
+     'Richards: 100\nDeltaBlue: 20\n'])
     test_output_secondary = os.path.join(
         TEST_WORKSPACE, 'results_secondary.json')
     self.assertEqual(0, self._CallMain(
@@ -802,7 +752,7 @@ class PerfTest(unittest.TestCase):
   def testWrongBinaryWithProf(self):
     test_input = dict(V8_JSON)
     self._WriteTestInput(test_input)
-    self._MockCommand(['.'], ['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
+    self._MockCommand(['x\nRichards: 1.234\nDeltaBlue: 10657567\ny\n'])
     self.assertEqual(0, self._CallMain('--extra-flags=--prof'))
     self._VerifyResults('test', 'score', [
       {'name': 'Richards', 'results': [1.234], 'stddev': ''},

@@ -3257,17 +3257,6 @@ target(_test_target_type, "net_unittests") {
     sources += [ "base/network_interfaces_getifaddrs_unittest.cc" ]
   }
 
-  # Unit tests that aren't supported by the current ICU alternatives on Android.
-  if (is_android && use_platform_icu_alternatives) {
-    sources -= [
-      "base/filename_util_unittest.cc",
-      "base/url_util_unittest.cc",
-      "cert/x509_certificate_unittest.cc",
-      "url_request/url_request_job_unittest.cc",
-    ]
-    deps += [ "//url:url_java" ]
-  }
-
   # Unit tests that are not supported by the current ICU alternatives on iOS.
   if (is_ios && use_platform_icu_alternatives) {
     sources -= [

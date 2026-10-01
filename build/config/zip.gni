@@ -29,7 +29,7 @@ template("zip") {
                              "testonly",
                              "visibility",
                            ])
-    script = "//build/android/gyp/zip.py"
+    script = "//build/zip.py"
     inputs = invoker.inputs
     outputs = [ invoker.output ]
 

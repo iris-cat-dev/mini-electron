@@ -10,7 +10,7 @@ import {MockFileEntry, MockFileSystem} from '../../common/js/mock_entry.js';
 import {TrashRootEntry} from '../../common/js/trash.js';
 import {RootType, VolumeType} from '../../common/js/volume_manager_types.js';
 import {ICON_TYPES, ODFS_EXTENSION_ID} from '../../foreground/js/constants.js';
-import {type AndroidApp, type FileData, type MaterializedView, type NavigationRoot, NavigationSection, NavigationType, type State, type Volume} from '../../state/state.js';
+import {type FileData, type MaterializedView, type NavigationRoot, NavigationSection, NavigationType, type State, type Volume} from '../../state/state.js';
 import {convertEntryToFileData} from '../ducks/all_entries.js';
 import {createFakeVolumeMetadata, setUpFileManagerOnWindow, setupStore, waitDeepEquals} from '../for_tests.js';
 import {getEmptyState, getFileData} from '../store.js';
@@ -68,25 +68,6 @@ function createTrashEntryFileData(): FileData {
   return convertEntryToFileData(trashEntry);
 }
 
-/** Create android apps. */
-function createAndroidApps(): [AndroidApp, AndroidApp] {
-  return [
-    {
-      name: 'App 1',
-      packageName: 'com.test.app1',
-      activityName: 'Activity1',
-      iconSet: {icon16x16Url: 'url1', icon32x32Url: 'url2'},
-      icon: {icon16x16Url: 'url1', icon32x32Url: 'url2'},
-    },
-    {
-      name: 'App 2',
-      packageName: 'com.test.app2',
-      activityName: 'Activity2',
-      iconSet: {icon16x16Url: '', icon32x32Url: ''},
-      icon: ICON_TYPES.GENERIC,
-    },
-  ];
-}
 
 /** Create file data and volume data for volume. */
 function createVolumeFileData(
@@ -136,10 +117,6 @@ export async function testNavigationRoots(done: () => void) {
   const trashEntryFileData = createTrashEntryFileData();
   initialState.allEntries[trashRootKey] = trashEntryFileData;
   initialState.uiEntries.push(trashRootKey);
-  // Put the android apps in the store.
-  const androidAppsData = createAndroidApps();
-  initialState.androidApps[androidAppsData[0].packageName] = androidAppsData[0];
-  initialState.androidApps[androidAppsData[1].packageName] = androidAppsData[1];
 
   // Create different volumes.
   const providerVolume1 =
@@ -317,20 +294,6 @@ export async function testNavigationRoots(done: () => void) {
       section: NavigationSection.REMOVABLE,
       separator: false,
       type: NavigationType.VOLUME,
-    },
-    // android:app1.
-    {
-      key: androidAppsData[0].packageName,
-      section: NavigationSection.ANDROID_APPS,
-      separator: true,
-      type: NavigationType.ANDROID_APPS,
-    },
-    // android:app2.
-    {
-      key: androidAppsData[1].packageName,
-      section: NavigationSection.ANDROID_APPS,
-      separator: false,
-      type: NavigationType.ANDROID_APPS,
     },
     // Trash.
     {

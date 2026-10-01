@@ -16,16 +16,7 @@ import("//build/toolchain/rbe.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
 
-# TODO(crbug.com/40869822): This import is required to detect whether the
-# build is for the catalyst environment in order to disable the hermetic
-# swift compiler (as it does not include support for catalyst). Remove it
-# once the support is available.
-if (is_ios) {
-  import("//build/config/ios/config.gni")
-  import("//build/config/ios/ios_sdk.gni")
-}
-
-assert((target_os == "ios" && host_os == "mac") || host_os != "win")
+assert(host_os != "win")
 
 declare_args() {
   # This controls whether whole module optimization is enabled when building

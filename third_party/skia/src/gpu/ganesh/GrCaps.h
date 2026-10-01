@@ -535,15 +535,6 @@ public:
         return fBuffersAreInitiallyZero;
     }
 
-    /** Returns true if the given backend supports importing AHardwareBuffers via the
-     * GrAHardwarebufferImageGenerator. This will only ever be supported on Android devices with API
-     * level >= 26.
-     * */
-    bool supportsAHardwareBufferImages() const
-    {
-        return fSupportsAHardwareBufferImages;
-    }
-
     bool wireframeMode() const
     {
         return fWireframeMode;
@@ -797,7 +788,6 @@ protected:
     bool fMustClearUploadedBufferData : 1;
     bool fBuffersAreInitiallyZero : 1;
     bool fShouldInitializeTextures : 1;
-    bool fSupportsAHardwareBufferImages : 1;
     bool fHalfFloatVertexAttributeSupport : 1;
     bool fClampToBorderSupport : 1;
     bool fPerformPartialClearsAsDraws : 1;

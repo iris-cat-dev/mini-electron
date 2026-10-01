@@ -13,10 +13,8 @@
 
 namespace viz {
 
-// This is a wrapper for the Android `android.os.PerformanceHintManager` APIs
-// used to provide hints to the OS on rendering performance, so the OS can
-// ramp CPU performance up or down on demand.
-// This header is platform-agnostic though it's only implemented on Android
+// Platform-neutral performance-hint contract used by the display scheduler.
+// Unsupported platforms expose the contract but return no factory.
 
 class VIZ_SERVICE_EXPORT HintSession {
 public:

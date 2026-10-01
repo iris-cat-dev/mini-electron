@@ -76,10 +76,6 @@
 #include "media/gpu/vaapi/vaapi_image_decode_accelerator_worker.h"
 #endif // BUILDFLAG(USE_VAAPI)
 
-#if BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/gl/throw_uncaught_exception.h"
-#include "media/base/android/media_codec_util.h"
-#endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.h"
@@ -1169,11 +1165,7 @@ void GpuServiceImpl::Hang()
 void GpuServiceImpl::ThrowJavaException()
 {
     DCHECK(io_runner_->BelongsToCurrentThread());
-#if BUILDFLAG(IS_ANDROID)
-    ThrowUncaughtException();
-#else
     NOTREACHED() << "Java exception not supported on this platform.";
-#endif
 }
 
 void GpuServiceImpl::StartPeakMemoryMonitorOnMainThread(uint32_t sequence_num)

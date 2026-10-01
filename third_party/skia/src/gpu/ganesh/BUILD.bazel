@@ -1,4 +1,4 @@
-load("//bazel:skia_rules.bzl", "generate_cpp_files_for_headers", "skia_cc_library", "skia_filegroup", "split_srcs_and_hdrs")
+load("//bazel:skia_rules.bzl", "generate_cpp_files_for_headers", "skia_cc_library", "split_srcs_and_hdrs")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -265,15 +265,6 @@ split_srcs_and_hdrs(
     files = CORE_FILES,
 )
 
-skia_filegroup(
-    name = "android_srcs",
-    srcs = [
-        "GrAHardwareBufferImageGenerator.cpp",
-        "GrAHardwareBufferImageGenerator.h",
-        "GrAHardwareBufferUtils.cpp",
-    ],
-)
-
 skia_cc_library(
     name = "ganesh",
     srcs = [
@@ -295,7 +286,6 @@ skia_cc_library(
     hdrs = [
         ":core_hdrs",
         ":core_skslc_hdrs",
-        "//include/android:private_hdrs",
         "//include/gpu:shared_gpu_hdrs",
         "//include/gpu/ganesh:ganesh_hdrs",
         "//include/private/gpu/ganesh:private_hdrs",
@@ -356,7 +346,6 @@ skia_cc_library(
     hdrs = [
         ":core_hdrs",
         ":core_skslc_hdrs",
-        "//include/android:private_hdrs",
         "//include/gpu:shared_gpu_hdrs",
         "//include/gpu/ganesh:ganesh_hdrs",
         "//include/private/gpu/ganesh:private_hdrs",

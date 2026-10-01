@@ -7,19 +7,16 @@ from pathlib import Path
 
 import logging
 import os
-import re
 import signal
 import subprocess
 import sys
 import threading
 import time
 
-from ..local.android import (Driver, CommandFailedException, TimeoutException)
 from ..local.pool import AbortException
 from ..objects import output
 from .process_utils import ProcessStats, EMPTY_PROCESS_LOGGER, PROCESS_LOGGER
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 SEM_INVALID_VALUE = -1
 SEM_NOGPFAULTERRORBOX = 0x0002  # Microsoft Platform SDK WinBase.h
@@ -354,109 +351,16 @@ class WindowsCommand(DesktopCommand):
     taskkill_windows(process, self.verbose)
 
 
-class AndroidCommand(BaseCommand):
-  # This must be initialized before creating any instances of this class.
-  driver = None
-
-  def __init__(self, shell, args=None, cmd_prefix=None, timeout=60, env=None,
-               verbose=False, test_case=None, handle_sigterm=False,
-               log_process_stats=False):
-    """Initialize the command and all files that need to be pushed to the
-    Android device.
-    """
-    super(AndroidCommand, self).__init__(
-        shell, args=args, cmd_prefix=cmd_prefix, timeout=timeout, env=env,
-        verbose=verbose, handle_sigterm=handle_sigterm,
-        log_process_stats=log_process_stats)
-
-    rel_args, files_from_args = args_with_relative_paths(args)
-
-    self.args = rel_args
-
-    test_case_resources = test_case.get_android_resources() if test_case else []
-    self.files_to_push = test_case_resources + files_from_args
-
-  def execute(self, **additional_popen_kwargs):
-    """Execute the command on the device.
-
-    This pushes all required files to the device and then runs the command.
-    """
-    if self.verbose:
-      print('# %s' % self)
-
-    shell_name = self.shell.name
-    shell_dir = self.shell.parent
-
-    self.driver.push_executable(shell_dir, 'bin', shell_name)
-    self.push_test_resources()
-
-    start_time = time.time()
-    return_code = 0
-    timed_out = False
-    try:
-      stdout = self.driver.run(
-          'bin', shell_name, self.args, '.', self.timeout, self.env)
-    except CommandFailedException as e:
-      return_code = e.status
-      stdout = e.output
-    except TimeoutException as e:
-      return_code = 1
-      timed_out = True
-      # Sadly the Android driver doesn't provide output on timeout.
-      stdout = ''
-
-    end_time = time.time()
-    return output.Output(
-        return_code,
-        timed_out,
-        stdout,
-        '',  # No stderr available.
-        -1,  # No pid available.
-        start_time,
-        end_time,
-    )
-
-  def push_test_resources(self):
-    for abs_file in self.files_to_push:
-      abs_dir = abs_file.parent
-      file_name = abs_file.name
-      rel_dir = abs_dir.relative_to(BASE_DIR)
-      self.driver.push_file(abs_dir, file_name, rel_dir)
-
-
-def args_with_relative_paths(args):
-  base_dir_str = re.escape(BASE_DIR.as_posix())
-  rel_args = []
-  files_to_push = []
-  find_path_re = re.compile(r'.*(%s/[^\'"]+).*' % base_dir_str)
-  for arg in (args or []):
-    match = find_path_re.match(str(arg))
-    if match:
-      files_to_push.append(Path(match.group(1)).resolve())
-    rel_args.append(re.sub(r'(.*)%s/(.*)' % base_dir_str, r'\1\2', str(arg)))
-  return rel_args, files_to_push
-
-
 Command = None
 
 
-# Deprecated : use context.os_context
-def setup(target_os, device):
+# Deprecated: use context.os_context.
+def setup(target_os):
   """Set the Command class to the OS-specific version."""
   global Command
-  if target_os == 'android':
-    AndroidCommand.driver = Driver.instance(device)
-    Command = AndroidCommand
-  elif target_os == 'ios':
+  if target_os == 'ios':
     Command = IOSCommand
   elif target_os == 'windows':
     Command = WindowsCommand
   else:
     Command = PosixCommand
-
-
-# Deprecated : use context.os_context
-def tear_down():
-  """Clean up after using commands."""
-  if Command == AndroidCommand:
-    AndroidCommand.driver.tear_down()

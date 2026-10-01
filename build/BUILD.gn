@@ -11,10 +11,6 @@ import("//build/config/features.gni")
 import("//build/util/process_version.gni")
 import("//build_overrides/build.gni")
 
-if (is_ios) {
-  import("//build/config/ios/ios_sdk.gni")
-}
-
 source_set("buildflag_header_h") {
   sources = [ "buildflag.h" ]
 }
@@ -90,8 +86,7 @@ buildflag_header("robolectric_buildflags") {
 
 buildflag_header("ios_buildflags") {
   header = "ios_buildflags.h"
-  _is_ios_app_extension = is_ios && ios_is_app_extension
-  flags = [ "IS_IOS_APP_EXTENSION=$_is_ios_app_extension" ]
+  flags = [ "IS_IOS_APP_EXTENSION=false" ]
 }
 
 buildflag_header("android_buildflags") {

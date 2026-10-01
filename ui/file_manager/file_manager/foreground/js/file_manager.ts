@@ -48,7 +48,6 @@ import {DialogType, SearchLocation} from '../../state/state.js';
 import {getEmptyState, getEntry, getStore, getVolume} from '../../state/store.js';
 
 import {ActionsController} from './actions_controller.js';
-import {AndroidAppListModel} from './android_app_list_model.js';
 import {AppStateController} from './app_state_controller.js';
 import {BannerController} from './banner_controller.js';
 import {CommandHandler} from './command_handler.js';
@@ -134,11 +133,6 @@ export class FileManager {
    * Model of folder shortcuts.
    */
   private folderShortcutsModel_: null|FolderShortcutsDataModel = null;
-
-  /**
-   * Model of Android apps.
-   */
-  private androidAppListModel_: null|AndroidAppListModel = null;
 
   /**
    * Model for providers (providing extensions).
@@ -994,10 +988,6 @@ export class FileManager {
     this.folderShortcutsModel_ =
         new FolderShortcutsDataModel(this.volumeManager_);
 
-    this.androidAppListModel_ = new AndroidAppListModel(
-        this.launchParams_.showAndroidPickerApps,
-        this.launchParams_.includeAllFiles, this.launchParams_.typeList);
-
     this.recentEntry_ = new FakeEntryImpl(
         str('RECENT_ROOT_LABEL'), RootType.RECENT, this.getSourceRestriction_(),
         chrome.fileManagerPrivate.FileCategory.ALL);
@@ -1097,7 +1087,6 @@ export class FileManager {
     assert(this.folderShortcutsModel_);
     assert(this.launchParams_);
     assert(this.recentEntry_);
-    assert(this.androidAppListModel_);
     assert(this.crostini_);
 
     const treeContainerDiv = this.dialogDom_.querySelector<HTMLDivElement>(

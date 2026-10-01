@@ -40,10 +40,8 @@ if (is_ios && xcode_sysroot == "") {
       exec_script("../find_xcode_sysroot.py", [ sdk ], "trim string")
 }
 
-# If building for mac on a mac then lookup all the system includes so that goma and the clang
-# shipped with chrome can find them. When the gn_to_bp.py tool is run, then the host_os != mac.
-# In this case leave the xcode_sysroot empty, and the cc/c++ that come with XCode will be able to
-# find needed include paths.
+# When building for macOS on macOS, look up the system includes so that goma and Chromium's
+# bundled clang can find them.
 if (is_mac && host_os == "mac" && xcode_sysroot == "") {
   xcode_sysroot =
       exec_script("../find_xcode_sysroot.py", [ "macosx" ], "trim string")

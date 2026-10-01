@@ -48,7 +48,6 @@ GrCaps::GrCaps(const GrContextOptions& options)
     fMustClearUploadedBufferData = false;
     fShouldInitializeTextures = false;
     fBuffersAreInitiallyZero = false;
-    fSupportsAHardwareBufferImages = false;
     fSemaphoreSupport = false;
     fBackendSemaphoreSupport = false;
     fFinishedProcAsyncCallbackSupport = false;
@@ -235,7 +234,6 @@ void GrCaps::dumpJSON(SkJSONWriter* writer) const
     writer->appendBool("Must clear buffer memory", fMustClearUploadedBufferData);
     writer->appendBool("Should initialize textures", fShouldInitializeTextures);
     writer->appendBool("Buffers are initially zero", fBuffersAreInitiallyZero);
-    writer->appendBool("Supports importing AHardwareBuffers", fSupportsAHardwareBufferImages);
     writer->appendBool("Semaphore support", fSemaphoreSupport);
     writer->appendBool("Backend Semaphore support", fBackendSemaphoreSupport);
     writer->appendBool("FinishedProc async callback support", fFinishedProcAsyncCallbackSupport);

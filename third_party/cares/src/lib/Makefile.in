@@ -171,8 +171,8 @@ am__objects_1 = libcares_la-ares__addrinfo2hostent.lo \
 	libcares_la-ares__parse_into_addrinfo.lo \
 	libcares_la-ares__slist.lo libcares_la-ares__socket.lo \
 	libcares_la-ares__sortaddrinfo.lo libcares_la-ares__threads.lo \
-	libcares_la-ares__timeval.lo libcares_la-ares_android.lo \
-	libcares_la-ares_cancel.lo libcares_la-ares_data.lo \
+	libcares_la-ares__timeval.lo libcares_la-ares_cancel.lo \
+	libcares_la-ares_data.lo \
 	libcares_la-ares_destroy.lo libcares_la-ares_dns_mapping.lo \
 	libcares_la-ares_dns_name.lo libcares_la-ares_dns_parse.lo \
 	libcares_la-ares_dns_record.lo libcares_la-ares_dns_write.lo \
@@ -258,7 +258,6 @@ am__depfiles_remade =  \
 	./$(DEPDIR)/libcares_la-ares__sortaddrinfo.Plo \
 	./$(DEPDIR)/libcares_la-ares__threads.Plo \
 	./$(DEPDIR)/libcares_la-ares__timeval.Plo \
-	./$(DEPDIR)/libcares_la-ares_android.Plo \
 	./$(DEPDIR)/libcares_la-ares_cancel.Plo \
 	./$(DEPDIR)/libcares_la-ares_create_query.Plo \
 	./$(DEPDIR)/libcares_la-ares_data.Plo \
@@ -631,7 +630,6 @@ CSOURCES = ares__addrinfo2hostent.c	\
   ares__sortaddrinfo.c			\
   ares__threads.c			\
   ares__timeval.c			\
-  ares_android.c			\
   ares_cancel.c				\
   ares_data.c				\
   ares_destroy.c			\
@@ -704,7 +702,6 @@ HHEADERS = ares__buf.h			\
   ares__llist.h				\
   ares__slist.h				\
   ares__threads.h			\
-  ares_android.h			\
   ares_data.h				\
   ares_dns_private.h			\
   ares_event.h				\
@@ -835,7 +832,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares__sortaddrinfo.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares__threads.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares__timeval.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_android.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_cancel.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_create_query.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_data.Plo@am__quote@ # am--include-marker
@@ -1047,13 +1043,6 @@ libcares_la-ares__timeval.lo: ares__timeval.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ares__timeval.c' object='libcares_la-ares__timeval.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -c -o libcares_la-ares__timeval.lo `test -f 'ares__timeval.c' || echo '$(srcdir)/'`ares__timeval.c
-
-libcares_la-ares_android.lo: ares_android.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -MT libcares_la-ares_android.lo -MD -MP -MF $(DEPDIR)/libcares_la-ares_android.Tpo -c -o libcares_la-ares_android.lo `test -f 'ares_android.c' || echo '$(srcdir)/'`ares_android.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcares_la-ares_android.Tpo $(DEPDIR)/libcares_la-ares_android.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ares_android.c' object='libcares_la-ares_android.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -c -o libcares_la-ares_android.lo `test -f 'ares_android.c' || echo '$(srcdir)/'`ares_android.c
 
 libcares_la-ares_cancel.lo: ares_cancel.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -MT libcares_la-ares_cancel.lo -MD -MP -MF $(DEPDIR)/libcares_la-ares_cancel.Tpo -c -o libcares_la-ares_cancel.lo `test -f 'ares_cancel.c' || echo '$(srcdir)/'`ares_cancel.c
@@ -1713,7 +1702,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libcares_la-ares__sortaddrinfo.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares__threads.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares__timeval.Plo
-	-rm -f ./$(DEPDIR)/libcares_la-ares_android.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_cancel.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_create_query.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_data.Plo
@@ -1838,7 +1826,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libcares_la-ares__sortaddrinfo.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares__threads.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares__timeval.Plo
-	-rm -f ./$(DEPDIR)/libcares_la-ares_android.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_cancel.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_create_query.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_data.Plo

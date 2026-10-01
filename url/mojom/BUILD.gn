@@ -6,7 +6,6 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 mojom("url_mojom_gurl") {
-  generate_java = true
   sources = [ "url.mojom" ]
 
   cpp_typemaps = [
@@ -55,7 +54,6 @@ mojom("url_mojom_gurl") {
 }
 
 mojom("url_mojom_origin") {
-  generate_java = true
   sources = [ "origin.mojom" ]
 
   public_deps = [
@@ -100,7 +98,6 @@ mojom("url_mojom_origin") {
 }
 
 mojom("url_mojom_scheme_host_port") {
-  generate_java = true
   sources = [ "scheme_host_port.mojom" ]
 
   cpp_typemaps = [

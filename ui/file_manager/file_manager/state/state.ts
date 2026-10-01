@@ -260,13 +260,11 @@ export interface SearchData {
  * Used to group volumes in the navigation tree.
  * Sections:
  *      - TOP: Recents, Shortcuts.
- *      - MY_FILES: My Files (which includes Downloads, Crostini and Arc++ as
- *                  its children).
+ *      - MY_FILES: My Files (which includes Downloads and Crostini).
  *      - TRASH: trash.
  *      - GOOGLE_DRIVE: Just Google Drive.
  *      - ODFS: Just ODFS.
  *      - CLOUD: All other cloud: SMBs, FSPs and Documents Providers.
- *      - ANDROID_APPS: ANDROID picker apps.
  *      - REMOVABLE: Archives, MTPs, Media Views and Removables.
  */
 export enum NavigationSection {
@@ -276,7 +274,6 @@ export enum NavigationSection {
   ODFS = 'odfs',
   CLOUD = 'cloud',
   TRASH = 'trash',
-  ANDROID_APPS = 'android_apps',
   REMOVABLE = 'removable',
 }
 
@@ -288,24 +285,19 @@ export enum NavigationType {
   GUEST_OS = 'guest_os',
   ENTRY_LIST = 'entry_list',
   DRIVE = 'drive',
-  ANDROID_APPS = 'android_apps',
   TRASH = 'trash',
   // Materialized view is used for Recent and in the future for Search.
   MATERIALIZED_VIEW = 'materialized_view',
 }
 
 /**
- * The key of navigation item, it could be:
- *   * FileKey: the navigation is backed up by a real file entry.
- *   * string: the navigation is backed up by others (e.g. androids_apps).
+ * The key of a navigation item. It is a FileKey for entries and a string for
+ * other navigation roots.
  */
 export type NavigationKey = FileKey|string;
 
 /**
- * This represents the navigation root node, it can be backed up by an file
- * entry or an Android app package (e.g. for android_apps type). If its type
- * is android_apps, the `key` filed will be android app's package name, not a
- * file key.
+ * This represents a navigation root node.
  */
 export interface NavigationRoot {
   key: NavigationKey;
@@ -372,24 +364,6 @@ export interface Drive {
   offlineReason: chrome.fileManagerPrivate.DriveOfflineReason|undefined;
 }
 
-/**
- * An extension of `chrome.fileManagerPrivate.AndroidApp`. The only difference
- * from the private API AndroidApp is this one adds an union type `icon`. This
- * is because `iconSet` can generate a "none" background sometimes, in this
- * case we need a backup icon instead.
- *
- * Note: we keep `iconSet` here to be compatible with the original AndroidApp
- * type because private API `selectAndroidPickerApp` still requires the
- * original type. For other use cases, we can ignore `iconSet` and just use
- * `icon`.
- */
-export interface AndroidApp {
-  name: string;
-  packageName: string;
-  activityName: string;
-  iconSet?: chrome.fileManagerPrivate.IconSet|undefined;
-  icon: string|chrome.fileManagerPrivate.IconSet;
-}
 
 /**
  * A view behaves like a folder, as in, it's a collection of FileData.
@@ -418,7 +392,6 @@ export interface State {
   volumes: Record<VolumeId, Volume>;
   uiEntries: FileKey[];
   folderShortcuts: FileKey[];
-  androidApps: Record<string, AndroidApp>;
   bulkPinning?: chrome.fileManagerPrivate.BulkPinProgress;
   preferences?: chrome.fileManagerPrivate.Preferences;
   materializedViews: MaterializedView[];

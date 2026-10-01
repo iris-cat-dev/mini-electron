@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import("//build/buildflag_header.gni")
-import("//build/config/android/config.gni")
 import("//build/config/c++/c++.gni")
 import("//build/config/chrome_build.gni")
 import("//build/config/chromeos/args.gni")
@@ -33,9 +32,6 @@ if (current_cpu == "mipsel" || current_cpu == "mips64el" ||
 }
 if (is_mac) {
   import("//build/config/apple/symbols.gni")
-}
-if (is_ios) {
-  import("//build/config/ios/ios_sdk.gni")
 }
 if (is_nacl) {
   # To keep NaCl variables out of builds that don't include NaCl, all
@@ -289,16 +285,12 @@ config("compiler") {
   # smaller.
   if (is_win) {
     configs += [ "//build/config/win:compiler" ]
-  } else if (is_android) {
-    configs += [ "//build/config/android:compiler" ]
   } else if (is_linux || is_chromeos) {
     configs += [ "//build/config/linux:compiler" ]
   } else if (is_nacl) {
     configs += [ "//build/config/nacl:compiler" ]
   } else if (is_mac) {
     configs += [ "//build/config/mac:compiler" ]
-  } else if (is_ios) {
-    configs += [ "//build/config/ios:compiler" ]
   } else if (is_fuchsia) {
     configs += [ "//build/config/fuchsia:compiler" ]
   } else if (current_os == "aix") {
@@ -1787,12 +1779,8 @@ config("runtime_library") {
     if (is_chromeos) {
       configs += [ "//build/config/chromeos:runtime_library" ]
     }
-  } else if (is_ios) {
-    configs += [ "//build/config/ios:runtime_library" ]
   } else if (is_mac) {
     configs += [ "//build/config/mac:runtime_library" ]
-  } else if (is_android) {
-    configs += [ "//build/config/android:runtime_library" ]
   }
 
   if (is_component_build) {

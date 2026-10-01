@@ -26,7 +26,3 @@ skia_filegroup(
     ],
 )
 
-skia_filegroup(
-    name = "android_srcs",
-    srcs = ["SkSurface_AndroidFactories.cpp"],
-)

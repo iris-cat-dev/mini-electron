@@ -24,7 +24,7 @@ MAX_TRIES = 7
 TIMEOUT = 120
 
 # Predictable mode works only when run on the host os.
-command.setup(utils.GuessOS(), None)
+command.setup(utils.GuessOS())
 
 def maybe_decode(message):
   if not isinstance(message, str):

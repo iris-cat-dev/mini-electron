@@ -70,10 +70,6 @@
 #include "tools/gpu/MemoryCache.h"
 #include "tools/gpu/TestCanvas.h"
 
-#if defined(SK_BUILD_FOR_ANDROID)
-#include "include/ports/SkImageGeneratorNDK.h"
-#endif
-
 #if defined(SK_BUILD_FOR_MAC) || defined(SK_BUILD_FOR_IOS)
 #include "include/ports/SkImageGeneratorCG.h"
 #endif
@@ -125,10 +121,6 @@
 #endif // SK_ENABLE_PRECOMPILE
 
 #endif // SK_GRAPHITE
-
-#if defined(SK_ENABLE_ANDROID_UTILS)
-#include "client_utils/android/BitmapRegionDecoder.h"
-#endif
 
 #if !defined(SK_DISABLE_LEGACY_TESTS)
 #include "tests/TestUtils.h"
@@ -224,173 +216,6 @@ static SkString get_scaled_name(const Path& path, float scale)
 {
     return SkStringPrintf("%s_%.3f", SkOSPath::Basename(path.c_str()).c_str(), scale);
 }
-
-#ifdef SK_ENABLE_ANDROID_UTILS
-BRDSrc::BRDSrc(Path path, Mode mode, CodecSrc::DstColorType dstColorType, uint32_t sampleSize)
-    : fPath(path)
-    , fMode(mode)
-    , fDstColorType(dstColorType)
-    , fSampleSize(sampleSize)
-{
-}
-
-bool BRDSrc::veto(SinkFlags flags) const
-{
-    // No need to test to non-raster or indirect backends.
-    return flags.type != SinkFlags::kRaster || flags.approach != SinkFlags::kDirect;
-}
-
-static std::unique_ptr<android::skia::BitmapRegionDecoder> create_brd(Path path)
-{
-    sk_sp<SkData> encoded(SkData::MakeFromFileName(path.c_str()));
-    return android::skia::BitmapRegionDecoder::Make(encoded);
-}
-
-static inline void alpha8_to_gray8(SkBitmap* bitmap)
-{
-    // Android requires kGray8 bitmaps to be tagged as kAlpha8.  Here we convert
-    // them back to kGray8 so our test framework can draw them correctly.
-    if (kAlpha_8_SkColorType == bitmap->info().colorType()) {
-        SkImageInfo newInfo = bitmap->info().makeColorType(kGray_8_SkColorType).makeAlphaType(kOpaque_SkAlphaType);
-        *const_cast<SkImageInfo*>(&bitmap->info()) = newInfo;
-    }
-}
-
-Result BRDSrc::draw(SkCanvas* canvas, GraphiteTestContext*) const
-{
-    SkColorType colorType = canvas->imageInfo().colorType();
-    if (kRGB_565_SkColorType == colorType && CodecSrc::kGetFromCanvas_DstColorType != fDstColorType) {
-        return Result::Skip("Testing non-565 to 565 is uninteresting.");
-    }
-    switch (fDstColorType) {
-    case CodecSrc::kGetFromCanvas_DstColorType:
-        break;
-    case CodecSrc::kGrayscale_Always_DstColorType:
-        colorType = kGray_8_SkColorType;
-        break;
-    default:
-        SkASSERT(false);
-        break;
-    }
-
-    auto brd = create_brd(fPath);
-    if (nullptr == brd) {
-        return Result::Skip("Could not create brd for %s.", fPath.c_str());
-    }
-
-    auto recommendedCT = brd->computeOutputColorType(colorType);
-    if (kRGB_565_SkColorType == colorType && recommendedCT != colorType) {
-        return Result::Skip("Skip decoding non-opaque to 565.");
-    }
-    colorType = recommendedCT;
-
-    auto colorSpace = brd->computeOutputColorSpace(colorType, nullptr);
-
-    const uint32_t width = brd->width();
-    const uint32_t height = brd->height();
-    // Visually inspecting very small output images is not necessary.
-    if ((width / fSampleSize <= 10 || height / fSampleSize <= 10) && 1 != fSampleSize) {
-        return Result::Skip("Scaling very small images is uninteresting.");
-    }
-    switch (fMode) {
-    case kFullImage_Mode: {
-        SkBitmap bitmap;
-        if (!brd->decodeRegion(&bitmap, nullptr, SkIRect::MakeXYWH(0, 0, width, height), fSampleSize, colorType, false, colorSpace)) {
-            return Result::Fatal("Cannot decode (full) region.");
-        }
-        alpha8_to_gray8(&bitmap);
-
-        canvas->drawImage(bitmap.asImage(), 0, 0);
-        return Result::Ok();
-    }
-    case kDivisor_Mode: {
-        const uint32_t divisor = 2;
-        if (width < divisor || height < divisor) {
-            return Result::Skip("Divisor is larger than image dimension.");
-        }
-
-        // Use a border to test subsets that extend outside the image.
-        // We will not allow the border to be larger than the image dimensions.  Allowing
-        // these large borders causes off by one errors that indicate a problem with the
-        // test suite, not a problem with the implementation.
-        const uint32_t maxBorder = std::min(width, height) / (fSampleSize * divisor);
-        const uint32_t scaledBorder = std::min(5u, maxBorder);
-        const uint32_t unscaledBorder = scaledBorder * fSampleSize;
-
-        // We may need to clear the canvas to avoid uninitialized memory.
-        // Assume we are scaling a 780x780 image with sampleSize = 8.
-        // The output image should be 97x97.
-        // Each subset will be 390x390.
-        // Each scaled subset be 48x48.
-        // Four scaled subsets will only fill a 96x96 image.
-        // The bottom row and last column will not be touched.
-        // This is an unfortunate result of our rounding rules when scaling.
-        // Maybe we need to consider testing scaled subsets without trying to
-        // combine them to match the full scaled image?  Or maybe this is the
-        // best we can do?
-        canvas->clear(0);
-
-        for (uint32_t x = 0; x < divisor; x++) {
-            for (uint32_t y = 0; y < divisor; y++) {
-                // Calculate the subset dimensions
-                uint32_t subsetWidth = width / divisor;
-                uint32_t subsetHeight = height / divisor;
-                const int left = x * subsetWidth;
-                const int top = y * subsetHeight;
-
-                // Increase the size of the last subset in each row or column, when the
-                // divisor does not divide evenly into the image dimensions
-                subsetWidth += (x + 1 == divisor) ? (width % divisor) : 0;
-                subsetHeight += (y + 1 == divisor) ? (height % divisor) : 0;
-
-                // Increase the size of the subset in order to have a border on each side
-                const int decodeLeft = left - unscaledBorder;
-                const int decodeTop = top - unscaledBorder;
-                const uint32_t decodeWidth = subsetWidth + unscaledBorder * 2;
-                const uint32_t decodeHeight = subsetHeight + unscaledBorder * 2;
-                SkBitmap bitmap;
-                if (!brd->decodeRegion(
-                        &bitmap, nullptr, SkIRect::MakeXYWH(decodeLeft, decodeTop, decodeWidth, decodeHeight), fSampleSize, colorType, false, colorSpace)) {
-                    return Result::Fatal("Cannot decode region.");
-                }
-
-                alpha8_to_gray8(&bitmap);
-                canvas->drawImageRect(bitmap.asImage().get(),
-                    SkRect::MakeXYWH(
-                        (SkScalar)scaledBorder, (SkScalar)scaledBorder, (SkScalar)(subsetWidth / fSampleSize), (SkScalar)(subsetHeight / fSampleSize)),
-                    SkRect::MakeXYWH((SkScalar)(left / fSampleSize), (SkScalar)(top / fSampleSize), (SkScalar)(subsetWidth / fSampleSize),
-                        (SkScalar)(subsetHeight / fSampleSize)),
-                    SkSamplingOptions(), nullptr, SkCanvas::kStrict_SrcRectConstraint);
-            }
-        }
-        return Result::Ok();
-    }
-    default:
-        SkASSERT(false);
-        return Result::Fatal("Error: Should not be reached.");
-    }
-}
-
-SkISize BRDSrc::size() const
-{
-    auto brd = create_brd(fPath);
-    if (brd) {
-        return { std::max(1, brd->width() / (int)fSampleSize), std::max(1, brd->height() / (int)fSampleSize) };
-    }
-    return { 0, 0 };
-}
-
-Name BRDSrc::name() const
-{
-    // We will replicate the names used by CodecSrc so that images can
-    // be compared in Gold.
-    if (1 == fSampleSize) {
-        return SkOSPath::Basename(fPath.c_str());
-    }
-    return get_scaled_name(fPath, 1.0f / (float)fSampleSize);
-}
-
-#endif // SK_ENABLE_ANDROID_UTILS
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -1030,8 +855,6 @@ Result ImageGenSrc::draw(SkCanvas* canvas, GraphiteTestContext*) const
         gen = SkImageGeneratorCG::MakeFromEncodedCG(encoded);
 #elif defined(SK_BUILD_FOR_WIN)
         gen = SkImageGeneratorWIC::MakeFromEncodedWIC(encoded);
-#elif defined(SK_ENABLE_NDK_IMAGES)
-        gen = SkImageGeneratorNDK::MakeFromEncodedNDK(encoded);
 #endif
         if (!gen) {
             return Result::Fatal("Could not create platform image generator.");

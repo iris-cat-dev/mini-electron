@@ -55,9 +55,8 @@ public:
     virtual GrSurfaceProxyView onGenerateTexture(GrRecordingContext*, const SkImageInfo&, skgpu::Mipmapped, GrImageTexGenPolicy) = 0;
 
     // Most internal SkImageGenerators produce textures and views that use kTopLeft_GrSurfaceOrigin.
-    // If the generator may produce textures with different origins (e.g.
-    // GrAHardwareBufferImageGenerator) it should override this function to return the correct
-    // origin. Implementations should be thread-safe.
+    // A generator that may produce textures with different origins should override this function to
+    // return the correct origin. Implementations should be thread-safe.
     virtual GrSurfaceOrigin origin() const
     {
         return kTopLeft_GrSurfaceOrigin;

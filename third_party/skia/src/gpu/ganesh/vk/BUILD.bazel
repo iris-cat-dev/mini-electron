@@ -86,11 +86,6 @@ skia_filegroup(
     srcs = ["GrVkSecondaryCBDrawContext.cpp"],
 )
 
-skia_filegroup(
-    name = "android_srcs",
-    srcs = ["AHardwareBufferVk.cpp"],
-)
-
 skia_cc_library(
     name = "ganesh_vulkan",
     srcs = [

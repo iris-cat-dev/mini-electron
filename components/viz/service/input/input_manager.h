@@ -20,10 +20,6 @@
 #include "components/viz/service/input/render_input_router_support_base.h"
 #include "gpu/ipc/common/surface_handle.h"
 
-#if BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/input/android_input_callback.h"
-#endif
-
 namespace input {
 class TouchEmulator;
 }
@@ -49,9 +45,6 @@ struct FrameSinkMetadata {
 
 class VIZ_SERVICE_EXPORT InputManager : public FrameSinkObserver,
                                         public input::RenderWidgetHostInputEventRouter::Delegate,
-#if BUILDFLAG(IS_ANDROID)
-                                        public AndroidInputCallbackClient,
-#endif
                                         public RenderInputRouterSupportBase::Delegate,
                                         public RenderInputRouterDelegateImpl::Delegate {
 public:
@@ -78,11 +71,6 @@ public:
     RenderInputRouterSupportBase* GetParentRenderInputRouterSupport(const FrameSinkId& frame_sink_id) override;
     RenderInputRouterSupportBase* GetRootRenderInputRouterSupport(const FrameSinkId& frame_sink_id) override;
 
-#if BUILDFLAG(IS_ANDROID)
-    // AndroidInputCallbackClient implementation.
-    bool OnMotionEvent(AInputEvent*, const FrameSinkId& root_frame_sink_id) override;
-#endif
-
     // RenderInputRouterDelegateImpl::Delegate implementation.
     std::unique_ptr<input::RenderInputRouterIterator> GetEmbeddedRenderInputRouters(const FrameSinkId& id) override;
     void NotifyObserversOfInputEvent(const FrameSinkId& frame_sink_id, uint32_t grouping_id, std::unique_ptr<blink::WebCoalescedInputEvent> event) override;
@@ -99,10 +87,6 @@ private:
     std::unique_ptr<RenderInputRouterSupportBase> MakeRenderInputRouterSupport(input::RenderInputRouter* rir, const FrameSinkId& frame_sink_id);
 
     void OnRIRDelegateClientDisconnected(uint32_t grouping_id);
-
-#if BUILDFLAG(IS_ANDROID)
-    void CreateAndroidInputReceiver(const FrameSinkId& frame_sink_id, const gpu::SurfaceHandle& surface_handle);
-#endif // BUILDFLAG(IS_ANDROID)
 
     friend class MockInputManager;
 

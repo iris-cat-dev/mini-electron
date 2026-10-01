@@ -13,7 +13,6 @@ ts_files = [
   "testcase.ts",
 
   # File Manager.
-  "file_manager/android_photos.ts",
   "file_manager/background.ts",
   "file_manager/breadcrumbs.ts",
   "file_manager/choose_entry.ts",

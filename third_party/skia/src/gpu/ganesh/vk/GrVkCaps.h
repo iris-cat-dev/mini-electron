@@ -208,11 +208,6 @@ public:
     {
         return fSupportsExternalMemory;
     }
-    // Returns true if the device supports importing Android hardware buffers into Vulkan memory.
-    bool supportsAndroidHWBExternalMemory() const
-    {
-        return fSupportsAndroidHWBExternalMemory;
-    }
 
     // Returns true if it supports ycbcr conversion for samplers
     bool supportsYcbcrConversion() const
@@ -515,7 +510,6 @@ private:
 
     bool fSupportsDedicatedAllocation = false;
     bool fSupportsExternalMemory = false;
-    bool fSupportsAndroidHWBExternalMemory = false;
 
     bool fSupportsYcbcrConversion = false;
 

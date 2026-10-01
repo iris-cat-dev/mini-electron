@@ -102,10 +102,7 @@ public:
 
     virtual ~SkiaOutputDevice();
 
-    // Begins a paint scope. The base implementation fails when the SkSurface
-    // cannot be initialized, but devices that don't draw to a SkSurface (i.e
-    // |SkiaOutputDeviceVulkanSecondaryCB|) can override this to bypass the
-    // check.
+    // Starts painting into the device's SkSurface.
     virtual std::unique_ptr<SkiaOutputDevice::ScopedPaint> BeginScopedPaint();
 
     // Changes the size of draw surface and invalidates it's contents.
@@ -201,7 +198,6 @@ protected:
     // End paint the back buffer.
     virtual void EndPaint() = 0;
 
-    // Overridden by SkiaOutputDeviceVulkanSecondaryCB.
     virtual SkCanvas* GetCanvas(SkSurface* sk_surface);
     virtual GrSemaphoresSubmitted Flush(
         SkSurface* sk_surface, VulkanContextProvider* vulkan_context_provider, std::vector<GrBackendSemaphore> end_semaphores, base::OnceClosure on_finished);

@@ -31,10 +31,6 @@
 #include "ui/base/ozone_buildflags.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 
-#if BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/frame_sinks/external_begin_frame_source_android.h"
-#endif
-
 #if BUILDFLAG(IS_IOS)
 #include "components/viz/service/frame_sinks/external_begin_frame_source_ios.h"
 #endif
@@ -136,11 +132,7 @@ std::unique_ptr<RootCompositorFrameSinkImpl> RootCompositorFrameSinkImpl::Create
         external_begin_frame_source_mojo = owned_external_begin_frame_source_mojo.get();
         external_begin_frame_source = std::move(owned_external_begin_frame_source_mojo);
     } else {
-#if BUILDFLAG(IS_ANDROID)
-        hw_support_for_multiple_refresh_rates = true;
-        external_begin_frame_source = std::make_unique<ExternalBeginFrameSourceAndroid>(restart_id, params->refresh_rate,
-            /*requires_align_with_java=*/false);
-#elif BUILDFLAG(IS_IOS)
+#if BUILDFLAG(IS_IOS)
         hw_support_for_multiple_refresh_rates = true;
         external_begin_frame_source = std::make_unique<ExternalBeginFrameSourceIOS>(restart_id);
 #else
@@ -174,7 +166,7 @@ std::unique_ptr<RootCompositorFrameSinkImpl> RootCompositorFrameSinkImpl::Create
                 synthetic_begin_frame_source = std::make_unique<DelayBasedBeginFrameSource>(std::move(time_source), restart_id);
             }
         }
-#endif // BUILDFLAG(IS_ANDROID)
+#endif // BUILDFLAG(IS_IOS)
     }
 
     BeginFrameSource* begin_frame_source = synthetic_begin_frame_source.get();
@@ -396,12 +388,6 @@ void RootCompositorFrameSinkImpl::SetVSyncPaused(bool paused)
 {
     if (external_begin_frame_source_)
         external_begin_frame_source_->OnSetBeginFrameSourcePaused(paused);
-}
-
-void RootCompositorFrameSinkImpl::UpdateRefreshRate(float refresh_rate)
-{
-    if (external_begin_frame_source_)
-        external_begin_frame_source_->UpdateRefreshRate(refresh_rate);
 }
 
 void RootCompositorFrameSinkImpl::PreserveChildSurfaceControls()

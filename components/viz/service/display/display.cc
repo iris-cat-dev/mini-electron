@@ -1115,8 +1115,6 @@ void Display::DidReceiveSwapBuffersAck(const gpu::SwapBuffersCompleteParams& par
     TRACE_EVENT_ASYNC_STEP_INTO_WITH_TIMESTAMP0(
         "viz,benchmark", "Graphics.Pipeline.DrawAndSwap", last_swap_ack_trace_id_, "WaitForPresentation", timings.swap_end);
 
-    if (overlay_processor_)
-        overlay_processor_->OverlayPresentationComplete();
     if (renderer_) {
         renderer_->SwapBuffersComplete(params, std::move(release_fence));
     }

@@ -19,8 +19,6 @@ bench_sources = [
   "$_bench/BigPath.cpp",
   "$_bench/BigPath.h",
   "$_bench/BigPathBench.cpp",
-  "$_bench/BitmapRegionDecoderBench.cpp",
-  "$_bench/BitmapRegionDecoderBench.h",
   "$_bench/BlendmodeBench.cpp",
   "$_bench/BlurBench.cpp",
   "$_bench/BlurImageFilterBench.cpp",

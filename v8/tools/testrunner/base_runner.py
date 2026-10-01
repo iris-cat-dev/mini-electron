@@ -220,9 +220,6 @@ class BaseTestRunner(object):
 
     parser.add_option("-j", help="The number of parallel tasks to run",
                       default=0, type=int)
-    parser.add_option("-d", "--device",
-                      help="The device ID to run Android tests on. If not "
-                           "given it will be autodetected.")
 
     # Shard
     parser.add_option("--shard-count", default=1, type=int,
@@ -334,11 +331,9 @@ class BaseTestRunner(object):
 
     print('Build found: %s' % self.outdir)
 
-    # Represents the OS where tests are run on. Same as host OS except for
-    # Android and iOS, which are determined by build output.
-    if self.build_config.is_android:
-      self.target_os = 'android'
-    elif self.build_config.is_ios:
+    # Represents the OS where tests are run. iOS is determined by build
+    # output; other targets use the host OS.
+    if self.build_config.is_ios:
       self.target_os = 'ios'
     else:
       self.target_os = utils.GuessOS()
@@ -426,11 +421,7 @@ class BaseTestRunner(object):
             'build directory (%s) instead.' % self.outdir)
 
     if self.options.j == 0:
-      if self.build_config.is_android:
-        # Adb isn't happy about multi-processed file pushing.
-        self.options.j = 1
-      else:
-        self.options.j = multiprocessing.cpu_count()
+      self.options.j = multiprocessing.cpu_count()
 
     self.options.command_prefix = shlex.split(self.options.command_prefix)
     self.options.extra_flags = sum(list(map(shlex.split, self.options.extra_flags)), [])

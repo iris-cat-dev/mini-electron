@@ -21,7 +21,7 @@ import {changeDirectory} from '../state/ducks/current_directory.js';
 import {refreshNavigationRoots} from '../state/ducks/navigation.js';
 import {clearSearch} from '../state/ducks/search.js';
 import {driveRootEntryListKey} from '../state/ducks/volumes.js';
-import {type AndroidApp, type CurrentDirectory, type FileData, type FileKey, type NavigationKey, type NavigationRoot, NavigationType, PropStatus, SearchLocation, type State} from '../state/state.js';
+import {type CurrentDirectory, type FileData, type FileKey, type NavigationKey, type NavigationRoot, NavigationType, PropStatus, SearchLocation, type State} from '../state/state.js';
 import {getFileData, getStore, getVolume, type Store} from '../state/store.js';
 import {type TreeSelectedChangedEvent, XfTree} from '../widgets/xf_tree.js';
 import {type TreeItemCollapsedEvent, type TreeItemExpandedEvent, XfTreeItem} from '../widgets/xf_tree_item.js';
@@ -42,16 +42,6 @@ interface NavigationItemData {
   fileData: FileData|null;
 }
 
-/**
- * The navigation root data structure, which includes:
- * * `element` and `fileData`.
- * * `androidAppData`: the corresponding android app data which backs up this
- * navigation item, can be null if the navigation is not backed up by an
- * android app.
- */
-interface NavigationRootItemData extends NavigationItemData {
-  androidAppData: AndroidApp|null;
-}
 
 export class DirectoryTreeContainer {
   /** The root tree widget. */
@@ -110,7 +100,7 @@ export class DirectoryTreeContainer {
    * original item, they share the same key but have different DOM elements, so
    * they can't be in the same map.
    */
-  private navigationRootMap_ = new Map<NavigationKey, NavigationRootItemData>();
+  private navigationRootMap_ = new Map<NavigationKey, NavigationItemData>();
   private navigationItemMap_ = new Map<NavigationKey, NavigationItemData>();
   /**
    * Indicate if the RequestAnimationFrame is active for scroll or not, check
@@ -126,8 +116,6 @@ export class DirectoryTreeContainer {
   private folderShortcuts_: State['folderShortcuts']|null = null;
   /** UI entries data from the store. */
   private uiEntries_: State['uiEntries']|null = null;
-  /** Android apps data from the store. */
-  private androidApps_: State['androidApps']|null = null;
   private materializedViews_: State['materializedViews'] = [];
 
   constructor(container: HTMLElement, private directoryModel_: DirectoryModel) {
@@ -167,7 +155,7 @@ export class DirectoryTreeContainer {
       return;
     }
 
-    const {navigation: {roots}, androidApps, currentDirectory} = state;
+    const {navigation: {roots}, currentDirectory} = state;
 
     if (this.shouldUnselectCurrentDirectoryItem_()) {
       this.tree.selectedItem = null;
@@ -189,24 +177,13 @@ export class DirectoryTreeContainer {
       this.renderRoots_(roots);
     }
 
-    // Navigation item can be backed up by either a FileData or a
-    // AndroidAppData, we need to compare what we have in the container with the
-    // data in the store to see if it changes or not. When
-    // FileData/AndroidAppData changes in the store, re-render the corresponding
-    // navigation item.
-    for (const [key, {fileData, androidAppData}] of this.navigationRootMap_) {
-      const newAndroidAppData = androidApps[key]!;
-      const navigationRoot = this.navigationRoots_.find(
-          navigationRoot => navigationRoot.key === key)!;
-      if (navigationRoot.type === NavigationType.ANDROID_APPS) {
-        if (androidAppData !== newAndroidAppData) {
-          this.renderItem_(key, newAndroidAppData, navigationRoot);
-        }
-      } else {
-        const newFileData = getFileData(state, key);
-        if (fileData !== newFileData) {
-          this.renderItem_(key, newFileData, navigationRoot);
-        }
+    // Re-render navigation roots when their backing file data changes.
+    for (const [key, {fileData}] of this.navigationRootMap_) {
+      const newFileData = getFileData(state, key);
+      if (fileData !== newFileData) {
+        const navigationRoot = this.navigationRoots_.find(
+            navigationRoot => navigationRoot.key === key)!;
+        this.renderItem_(key, newFileData, navigationRoot);
       }
     }
     for (const [key, {fileData}] of this.navigationItemMap_) {
@@ -237,7 +214,6 @@ export class DirectoryTreeContainer {
 
     // Add new navigation roots.
     const state = this.store_.getState();
-    const {androidApps} = state;
     for (const [index, navigationRoot] of newRoots.entries()) {
       const exists = this.navigationRootMap_.has(navigationRoot.key);
       const navigationData = this.navigationRootMap_.get(navigationRoot.key)!;
@@ -248,16 +224,13 @@ export class DirectoryTreeContainer {
         this.navigationRootMap_.set(navigationRoot.key, {
           element: navigationRootItem,
           fileData: null,
-          androidAppData: null,
         });
         // We put the navigationKey on the element's dataset, so when certain
         // DOM events happens from the element, we know the corresponding
         // navigation key.
         navigationRootItem.dataset['navigationKey'] = navigationRoot.key;
       }
-      const isAndroidApp = navigationRoot.type === NavigationType.ANDROID_APPS;
       const fileData = getFileData(state, navigationRoot.key);
-      const androidAppData = androidApps[navigationRoot.key]!;
       // The states here might be lost after `insertBefore`, we need to store
       // it here and restore it later if needed.
       const isFocused = document.activeElement === navigationRootItem;
@@ -270,9 +243,7 @@ export class DirectoryTreeContainer {
         }
       }
 
-      this.renderItem_(
-          navigationRoot.key, isAndroidApp ? androidAppData : fileData,
-          navigationRoot);
+      this.renderItem_(navigationRoot.key, fileData, navigationRoot);
 
       // Skip `insertBefore` for the tree item if it's an existing item in
       // renaming state, otherwise it will interrupt user's input (via
@@ -306,16 +277,14 @@ export class DirectoryTreeContainer {
       // No need to handle `fileKeyToRename_` here, because it's not allowed to
       // create a new folder in the directory tree root.
 
-      if (!isAndroidApp) {
-        this.handleInitialRender_(navigationRootItem, fileData, navigationRoot);
-      }
+      this.handleInitialRender_(navigationRootItem, fileData, navigationRoot);
     }
 
     this.navigationRoots_ = newRoots;
   }
 
   private renderItem_(
-      navigationKey: NavigationKey, newData: FileData|AndroidApp|null,
+      navigationKey: NavigationKey, newData: FileData|null,
       navigationRoot?: NavigationRoot) {
     if (!newData) {
       // The corresponding data is deleted from the store, do nothing here.
@@ -325,31 +294,6 @@ export class DirectoryTreeContainer {
     const navigationData =
         this.getNavigationDataFromKey_(navigationKey, !!navigationRoot)!;
     const {element} = navigationData;
-    const isAndroidApp = navigationRoot?.type === NavigationType.ANDROID_APPS;
-    // Handle navigation items backed up by an android app. Note: only
-    // navigation root item can be backed up by an android app.
-    if (isAndroidApp) {
-      if ((navigationData as NavigationRootItemData).androidAppData ===
-          newData) {
-        // Nothing changes, this render might be triggered by its parent.
-        return;
-      }
-      const androidAppData = newData as AndroidApp;
-
-      element.label = androidAppData.name;
-      if (typeof androidAppData.icon === 'object') {
-        element.iconSet = androidAppData.icon;
-      } else {
-        element.icon = androidAppData.icon;
-      }
-      element.separator = navigationRoot.separator;
-      // Setup external link for android app item.
-      this.setupAndroidAppLink_(element);
-      // Update new data back to the map.
-      (navigationData as NavigationRootItemData).androidAppData =
-          androidAppData;
-      return;
-    }
 
     // Handle navigation items backed up by a file data.
     if (navigationData.fileData === newData) {
@@ -563,28 +507,6 @@ export class DirectoryTreeContainer {
     ejectButton.ariaLabel = strf('UNMOUNT_BUTTON_LABEL', label);
   }
 
-  /** Create an external link icon for android app navigation item.*/
-  private setupAndroidAppLink_(element: XfTreeItem) {
-    let externalLink =
-        element.querySelector<HTMLSpanElement>('[slot=trailingIcon]');
-    if (!externalLink) {
-      // Use aria-describedby attribute to let ChromeVox users know that the
-      // link launches an external app window.
-      element.setAttribute('aria-describedby', 'external-link-label');
-
-      // Create an external link.
-      externalLink = document.createElement('span');
-      externalLink.slot = 'trailingIcon';
-      externalLink.className = 'external-link-icon align-right-icon';
-
-      // Append external-link iron-icon.
-      const ironIcon = document.createElement('iron-icon');
-      ironIcon.setAttribute('icon', `files20:external-link`);
-      externalLink.appendChild(ironIcon);
-
-      element.appendChild(externalLink);
-    }
-  }
 
   /** Handle initial rendering. */
   private handleInitialRender_(
@@ -783,15 +705,12 @@ export class DirectoryTreeContainer {
       return;
     }
 
-    const isRoot = 'androidAppData' in navigationData;
+    const isRoot = this.navigationRootMap_.has(navigationKey);
     const {fileData} = navigationData;
     if (fileData) {
       this.recordUmaForItemSelected_(fileData);
     }
-    this.activateDirectory_(
-        selectedItem, isRoot, fileData,
-        isRoot ? (navigationData as NavigationRootItemData).androidAppData :
-                 null);
+    this.activateDirectory_(selectedItem, isRoot, fileData);
   }
 
   /** Handler for mouse move event inside the tree. */
@@ -890,23 +809,7 @@ export class DirectoryTreeContainer {
 
   /** Activate the directory behind the item. */
   private activateDirectory_(
-      element: XfTreeItem, isRoot: boolean, fileData: FileData|null,
-      androidAppData: AndroidApp|null) {
-    if (androidAppData) {
-      // Exclude "icon" filed before sending it to the API.
-      const {icon: _, ...androidAppDataForApi} = androidAppData;
-      chrome.fileManagerPrivate.selectAndroidPickerApp(
-          androidAppDataForApi, () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                  'selectAndroidPickerApp error: ',
-                  chrome.runtime.lastError.message);
-            } else {
-              window.close();
-            }
-          });
-      return;
-    }
+      element: XfTreeItem, isRoot: boolean, fileData: FileData|null) {
 
     if (!fileData) {
       return;
@@ -1039,15 +942,14 @@ export class DirectoryTreeContainer {
    * on the state.
    */
   private shouldRefreshNavigationRoots_(state: State): boolean {
-    const {volumes, folderShortcuts, uiEntries, androidApps} = state;
+    const {volumes, folderShortcuts, uiEntries} = state;
     if (this.volumes_ !== volumes ||
         this.folderShortcuts_ !== folderShortcuts ||
-        this.uiEntries_ !== uiEntries || this.androidApps_ !== androidApps ||
+        this.uiEntries_ !== uiEntries ||
         this.materializedViews_ !== state.materializedViews) {
       this.volumes_ = volumes;
       this.folderShortcuts_ = folderShortcuts;
       this.uiEntries_ = uiEntries;
-      this.androidApps_ = androidApps;
       this.materializedViews_ = state.materializedViews;
       return true;
     }

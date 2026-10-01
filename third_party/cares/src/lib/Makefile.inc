@@ -18,7 +18,6 @@ CSOURCES = ares__addrinfo2hostent.c	\
   ares__sortaddrinfo.c			\
   ares__threads.c			\
   ares__timeval.c			\
-  ares_android.c			\
   ares_cancel.c				\
   ares_data.c				\
   ares_destroy.c			\
@@ -91,7 +90,6 @@ HHEADERS = ares__buf.h			\
   ares__llist.h				\
   ares__slist.h				\
   ares__threads.h			\
-  ares_android.h			\
   ares_data.h				\
   ares_dns_private.h			\
   ares_event.h				\

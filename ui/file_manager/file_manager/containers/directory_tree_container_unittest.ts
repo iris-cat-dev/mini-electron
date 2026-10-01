@@ -13,7 +13,6 @@ import {waitUntil} from '../common/js/test_error_reporting.js';
 import {str} from '../common/js/translations.js';
 import {waitForElementUpdate} from '../common/js/unittest_util.js';
 import {RootType, VolumeType} from '../common/js/volume_manager_types.js';
-import {addAndroidApps} from '../state/ducks/android_apps.js';
 import {updateMaterializedViews} from '../state/ducks/materialized_views.js';
 import {addUiEntry} from '../state/ducks/ui_entries.js';
 import {addVolume, removeVolume} from '../state/ducks/volumes.js';
@@ -137,22 +136,6 @@ function addDriveChildren(parentEntry: Entry, childEntries: string[]) {
   }
 }
 
-/**
- * Add Android app navigation data to the store.
- */
-function addAndroidAppToStore() {
-  const store = getStore();
-  store.dispatch(addAndroidApps({
-    apps: [
-      {
-        name: 'App 1',
-        packageName: 'com.test.app1',
-        activityName: 'Activity1',
-        iconSet: {icon16x16Url: 'url1', icon32x32Url: 'url2'},
-      },
-    ],
-  }));
-}
 
 /**
  * Test case for typical creation of directory tree.
@@ -389,25 +372,18 @@ export async function testCreateDirectoryTreeWithTeamDrivesAndComputers() {
  * 'separator' property is used to display a line divider between
  * "sections" in the directory tree.
  *
- * This test expects that the following tree is built.
- *
- * MyFiles
- * Google Drive
- * Android app 1
+ * This test expects that MyFiles and Google Drive are built.
  */
 export async function testSeparatorInNavigationSections() {
   const directoryTree = directoryTreeContainer.tree;
 
   // Add MyFiles and Drive to the store.
   await addMyFilesAndDriveVolumes();
-  // Add Android apps.
-  addAndroidAppToStore();
 
-  // At top level, MyFiles, Drive and Android app should be listed.
-  await waitUntil(() => directoryTree.items.length === 3);
+  // At top level, MyFiles and Drive should be listed.
+  await waitUntil(() => directoryTree.items.length === 2);
   const myFilesItem = directoryTree.items[0]!;
   const driveItem = directoryTree.items[1]!;
-  const androidAppItem = directoryTree.items[2]!;
 
   // First element should not have separator property, to not display a
   // division line in the first section.
@@ -417,10 +393,6 @@ export async function testSeparatorInNavigationSections() {
   // Drive should have separator, because it's a new section but not the
   // first section.
   assertTrue(driveItem.separator);
-
-  // Android app should have separator, because it's a new section but not the
-  // first section.
-  assertTrue(androidAppItem.separator);
 }
 
 /**

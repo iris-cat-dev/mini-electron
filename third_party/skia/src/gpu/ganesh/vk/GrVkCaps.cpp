@@ -347,17 +347,6 @@ void GrVkCaps::init(const GrContextOptions& contextOptions, const skgpu::VulkanI
         fSupportsExternalMemory = true;
     }
 
-#ifdef SK_BUILD_FOR_ANDROID
-    // Currently Adreno devices are not supporting the QUEUE_FAMILY_FOREIGN_EXTENSION, so until they
-    // do we don't explicitly require it here even the spec says it is required.
-    if (extensions.hasExtension(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME, 2) &&
-        /* extensions.hasExtension(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME, 1) &&*/
-        this->supportsExternalMemory() && this->supportsBindMemory2()) {
-        fSupportsAndroidHWBExternalMemory = true;
-        fSupportsAHardwareBufferImages = true;
-    }
-#endif
-
     auto ycbcrFeatures = skgpu::GetExtensionFeatureStruct<VkPhysicalDeviceSamplerYcbcrConversionFeatures>(
         features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES);
     if (ycbcrFeatures && ycbcrFeatures->samplerYcbcrConversion

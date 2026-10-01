@@ -20,7 +20,6 @@ export class LaunchParam {
   readonly includeAllFiles: boolean;
   readonly allowedPaths: AllowedPaths;
   readonly searchQuery: string;
-  readonly showAndroidPickerApps: boolean;
   readonly volumeFilter: string[];
 
   constructor(unformatted: FilesAppState) {
@@ -33,7 +32,6 @@ export class LaunchParam {
     this.allowedPaths =
         unformatted.allowedPaths ?? AllowedPaths.ANY_PATH_OR_URL;
     this.searchQuery = unformatted.searchQuery ?? '';
-    this.showAndroidPickerApps = !!unformatted.showAndroidPickerApps;
     this.volumeFilter = unformatted.volumeFilter ?? [];
   }
 }

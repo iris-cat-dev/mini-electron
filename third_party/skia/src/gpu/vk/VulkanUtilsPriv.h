@@ -370,8 +370,8 @@ static constexpr const char* VkFormatToStr(VkFormat vkFormat)
 
 #ifdef SK_BUILD_FOR_ANDROID
 /**
- * Vulkan AHardwareBuffer utility functions shared between graphite and ganesh
-*/
+ * Vulkan AHardwareBuffer utility functions.
+ */
 void GetYcbcrConversionInfoFromFormatProps(VulkanYcbcrConversionInfo* outConversionInfo, const VkAndroidHardwareBufferFormatPropertiesANDROID& formatProps);
 
 bool GetAHardwareBufferProperties(VkAndroidHardwareBufferFormatPropertiesANDROID* outHwbFormatProps, VkAndroidHardwareBufferPropertiesANDROID* outHwbProps,

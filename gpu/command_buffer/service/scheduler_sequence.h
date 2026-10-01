@@ -23,7 +23,6 @@ class Display;
 class DisplayCompositorMemoryAndTaskController;
 class ScopedAllowGpuAccessForDisplayResourceProvider;
 class OutputSurfaceProviderImpl;
-class OverlayProcessorAndroid;
 } // namespace viz
 
 namespace gpu {
@@ -46,11 +45,6 @@ private:
     friend class viz::DisplayCompositorMemoryAndTaskController;
     friend class viz::ScopedAllowGpuAccessForDisplayResourceProvider;
     friend class viz::OutputSurfaceProviderImpl;
-    // Overlay is not supported for WebView. However the initialization and
-    // destruction of OverlayProcessor requires posting task to gpu thread, which
-    // would trigger DCHECK, even though the task posting would not run on
-    // WebView.
-    friend class viz::OverlayProcessorAndroid;
     ScopedAllowScheduleGpuTask();
 
 #if DCHECK_IS_ON()

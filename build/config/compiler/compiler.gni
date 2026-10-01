@@ -14,19 +14,12 @@ import("//build/toolchain/cc_wrapper.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
 
-if (is_android) {
-  import("//build/config/android/abi.gni")
-}
 if (current_cpu == "arm" || current_cpu == "arm64") {
   import("//build/config/arm.gni")
 }
 
 if (is_apple) {
   import("//build/config/apple/symbols.gni")
-}
-
-if (is_ios) {
-  import("//build/config/ios/config.gni")
 }
 
 declare_args() {

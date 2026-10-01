@@ -70,11 +70,6 @@ skia_filegroup(
     srcs = ["GrGLMakeNativeInterface_none.cpp"],
 )
 
-skia_filegroup(
-    name = "android_srcs",
-    srcs = ["AHardwareBufferGL.cpp"],
-)
-
 skia_cc_library(
     name = "ganesh_gl",
     srcs = [

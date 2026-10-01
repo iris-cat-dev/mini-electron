@@ -57,7 +57,6 @@ group("v8_perf") {
   data_deps = [
     "..:d8",
     "..:v8_python_base",
-    "../tools:v8_android_test_runner_deps",
     "../tools:v8_testrunner",
   ]
 

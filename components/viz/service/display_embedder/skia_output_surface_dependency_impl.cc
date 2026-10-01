@@ -182,11 +182,6 @@ void SkiaOutputSurfaceDependencyImpl::DidLoseContext(gpu::error::ContextLostReas
     gpu_service_impl_->DidLoseContext(reason, active_url);
 }
 
-bool SkiaOutputSurfaceDependencyImpl::NeedsSupportForExternalStencil()
-{
-    return false;
-}
-
 bool SkiaOutputSurfaceDependencyImpl::IsUsingCompositorGpuThread()
 {
     return !!gpu_service_impl_->compositor_gpu_thread();

@@ -9,8 +9,7 @@ import sys
 
 from contextlib import contextmanager
 
-from ..local.android import Driver
-from .command import AndroidCommand, IOSCommand, PosixCommand, WindowsCommand, taskkill_windows
+from .command import IOSCommand, PosixCommand, WindowsCommand, taskkill_windows
 from .pool import DefaultExecutionPool
 from .process_utils import EMPTY_PROCESS_LOGGER, PROCESS_LOGGER
 from ..testproc.util import list_processes_linux
@@ -74,24 +73,6 @@ class WindowsContext(DesktopContext):
     return outdir.resolve() / f'{shell}.exe'
 
 
-class AndroidOSContext(DefaultOSContext):
-
-  def __init__(self):
-    super().__init__(AndroidCommand)
-
-  @contextmanager
-  def handle_context(self, options):
-    try:
-      AndroidCommand.driver = Driver.instance(options.device)
-      yield
-    finally:
-      AndroidCommand.driver.tear_down()
-
-  @property
-  def device_type(self):
-    return AndroidCommand.driver.device_type
-
-
 class IOSContext(DefaultOSContext):
 
   def __init__(self):
@@ -120,8 +101,7 @@ class IOSContext(DefaultOSContext):
 # its components gets initialized and eventually teared down and how does it
 # interact with both tests and underlying platform specific concerns.
 def find_os_context_factory(target_os):
-  registry = dict(
-      android=AndroidOSContext, ios=IOSContext, windows=WindowsContext)
+  registry = dict(ios=IOSContext, windows=WindowsContext)
   return registry.get(target_os, PosixContext)
 
 

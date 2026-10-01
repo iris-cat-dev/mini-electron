@@ -4,7 +4,6 @@
 
 #include "components/viz/service/display_embedder/output_surface_provider_impl.h"
 
-#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -144,8 +143,7 @@ std::unique_ptr<SoftwareOutputDevice> OutputSurfaceProviderImpl::CreateSoftwareO
         return std::make_unique<SoftwareOutputDevice>();
 
     return CreateSoftwareOutputDeviceWinOrLinux(
-        reinterpret_cast<HWND>(static_cast<uintptr_t>(surface_handle)),
-        display_client);
+        reinterpret_cast<HWND>(surface_handle), display_client);
 
 // #if BUILDFLAG(IS_WIN)
 //     return CreateSoftwareOutputDeviceWin(surface_handle, &output_device_backing_, display_client);

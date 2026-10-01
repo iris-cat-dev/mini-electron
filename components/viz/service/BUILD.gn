@@ -10,7 +10,6 @@ import("//gpu/vulkan/features.gni")
 import("//media/gpu/args.gni")
 import("//skia/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
-import("//third_party/jni_zero/jni_zero.gni")
 
 config("viz_service_implementation") {
 }
@@ -111,8 +110,6 @@ viz_component("service") {
     "display/overlay_candidate_temporal_tracker.h",
     "display/overlay_processor_interface.cc",
     "display/overlay_processor_interface.h",
-    "display/overlay_processor_on_gpu.cc",
-    "display/overlay_processor_on_gpu.h",
     "display/overlay_processor_stub.cc",
     "display/overlay_processor_stub.h",
     "display/pending_swap_params.cc",
@@ -159,8 +156,6 @@ viz_component("service") {
     "display_embedder/skia_output_device_gl.h",
     "display_embedder/skia_output_device_offscreen.cc",
     "display_embedder/skia_output_device_offscreen.h",
-    "display_embedder/skia_output_device_webview.cc",
-    "display_embedder/skia_output_device_webview.h",
     "display_embedder/skia_output_surface_dependency.h",
     "display_embedder/skia_output_surface_dependency_impl.cc",
     "display_embedder/skia_output_surface_dependency_impl.h",
@@ -238,8 +233,6 @@ viz_component("service") {
     "input/render_input_router_support_child_frame.h",
     "layers/layer_context_impl.cc",
     "layers/layer_context_impl.h",
-    "performance_hint/boost_manager.cc",
-    "performance_hint/boost_manager.h",
     "performance_hint/hint_session.cc",
     "performance_hint/hint_session.h",
     "surfaces/frame_index_constants.h",
@@ -411,29 +404,6 @@ viz_component("service") {
     deps += [ "//chromecast/media/service/mojom" ]
   }
 
-  if (is_android) {
-    sources += [
-      "display/overlay_processor_android.cc",
-      "display/overlay_processor_android.h",
-      "display/overlay_processor_surface_control.cc",
-      "display/overlay_processor_surface_control.h",
-      "frame_sinks/external_begin_frame_source_android.cc",
-      "frame_sinks/external_begin_frame_source_android.h",
-      "gl/throw_uncaught_exception.cc",
-      "gl/throw_uncaught_exception.h",
-      "input/android_input_callback.cc",
-      "input/android_input_callback.h",
-      "input/render_input_router_support_android.cc",
-      "input/render_input_router_support_android.h",
-    ]
-
-    deps += [
-      ":service_jni_headers",
-      "//ui/events:gesture_detection",
-      "//ui/events/blink",
-    ]
-  }
-
   if (use_ozone) {
     sources += [
       "display/overlay_processor_delegated.cc",
@@ -497,13 +467,6 @@ viz_component("service") {
       "display_embedder/skia_output_device_vulkan.cc",
       "display_embedder/skia_output_device_vulkan.h",
     ]
-
-    if (is_android) {
-      sources += [
-        "display_embedder/skia_output_device_vulkan_secondary_cb.cc",
-        "display_embedder/skia_output_device_vulkan_secondary_cb.h",
-      ]
-    }
 
     # TODO(crbug.com/40193891): ideally, ozone_platform_x11 should not be used outside
     # ui/ozone.
@@ -600,7 +563,6 @@ viz_source_set("unit_tests") {
     "input/mock_input_manager.cc",
     "input/mock_input_manager.h",
     "main/viz_main_impl_unittest.cc",
-    "performance_hint/boost_manager_unittest.cc",
     "surfaces/referenced_surface_tracker_unittest.cc",
     "surfaces/surface_unittest.cc",
     "transitions/transferable_resource_tracker_unittest.cc",
@@ -683,15 +645,6 @@ viz_source_set("unit_tests") {
         [ "display_embedder/skia_output_device_buffer_queue_unittest.cc" ]
   }
 
-  if (is_android) {
-    sources += [
-      "display/overlay_combination_cache_unittest.cc",
-      "display/overlay_processor_surface_control_unittest.cc",
-      "display/overlay_unittest.cc",
-      "frame_sinks/external_begin_frame_source_android_unittest.cc",
-    ]
-  }
-
   if (enable_vulkan) {
     deps += [
       "//gpu/vulkan:test_support",
@@ -737,30 +690,6 @@ fuzzer_test("hit_test_manager_fuzzer") {
     "//components/viz/test:test_support",
     "//ui/gfx:test_support",
   ]
-}
-
-if (is_android) {
-  android_library("service_java") {
-    deps = [
-      "//base:base_java",
-      "//build/android:build_java",
-      "//third_party/jni_zero:jni_zero_java",
-      "//ui/android:ui_no_recycler_view_java",
-    ]
-
-    srcjar_deps = [ ":service_jni_headers" ]
-    sources = [
-      "java/src/org/chromium/components/viz/service/frame_sinks/ExternalBeginFrameSourceAndroid.java",
-      "java/src/org/chromium/components/viz/service/gl/ThrowUncaughtException.java",
-    ]
-  }
-
-  generate_jni("service_jni_headers") {
-    sources = [
-      "java/src/org/chromium/components/viz/service/frame_sinks/ExternalBeginFrameSourceAndroid.java",
-      "java/src/org/chromium/components/viz/service/gl/ThrowUncaughtException.java",
-    ]
-  }
 }
 
 group("viz_service_fuzzers") {

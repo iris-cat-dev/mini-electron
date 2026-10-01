@@ -51,7 +51,6 @@ public:
     void ScheduleDelayedGPUTaskFromGPUThread(base::OnceClosure task) override;
     void DidLoseContext(gpu::error::ContextLostReason reason, const GURL& active_url) override;
 
-    bool NeedsSupportForExternalStencil() override;
     bool IsUsingCompositorGpuThread() override;
 
 private:

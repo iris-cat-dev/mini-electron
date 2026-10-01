@@ -395,13 +395,7 @@ void DirectRenderer::DrawFrame(AggregatedRenderPassList* render_passes_in_draw_o
 
     DBG_LOG("direct.renderer.total_pixels", "Total Pixels: %" PRIu64, total_pixels_rendered_this_frame_);
 
-    if (overlay_processor_)
-        overlay_processor_->TakeOverlayCandidates(&current_frame()->overlay_list);
-
     FinishDrawingFrame();
-
-    if (overlay_processor_)
-        overlay_processor_->ScheduleOverlays(resource_provider_);
 
     // Total non-root render pass count, excluding root render pass and bypassed
     // render passes.

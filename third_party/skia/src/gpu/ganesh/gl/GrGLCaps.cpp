@@ -344,10 +344,6 @@ void GrGLCaps::init(const GrContextOptions& contextOptions, const GrGLContextInf
         fClearTextureSupport = false;
     }
 
-#if defined(SK_BUILD_FOR_ANDROID) && __ANDROID_API__ >= 26
-    fSupportsAHardwareBufferImages = true;
-#endif
-
     if (GR_IS_GR_GL(standard)) {
         fSRGBWriteControl = version >= GR_GL_VER(3, 0) || ctxInfo.hasExtension("GL_ARB_framebuffer_sRGB") || ctxInfo.hasExtension("GL_EXT_framebuffer_sRGB");
     } else if (GR_IS_GR_GL_ES(standard)) {

@@ -7,7 +7,6 @@ import type {VolumeType} from '../common/js/volume_manager_types.js';
 import {BaseStore} from '../lib/base_store.js';
 
 import {allEntriesSlice} from './ducks/all_entries.js';
-import {androidAppsSlice} from './ducks/android_apps.js';
 import {bulkPinningSlice} from './ducks/bulk_pinning.js';
 import {currentDirectorySlice} from './ducks/current_directory.js';
 import {deviceSlice} from './ducks/device.js';
@@ -52,7 +51,6 @@ export function getStore(): Store {
       volumesSlice,
       bulkPinningSlice,
       uiEntriesSlice,
-      androidAppsSlice,
       folderShortcutsSlice,
       navigationSlice,
       preferencesSlice,
@@ -91,7 +89,6 @@ export function getEmptyState(): State {
     volumes: {},
     uiEntries: [],
     folderShortcuts: [],
-    androidApps: {},
     bulkPinning: undefined,
     preferences: undefined,
     launchParams: {

@@ -106,10 +106,7 @@ export class FilesAppState {
   type?: DialogType;
 
   /**
-   * List of file extensions (.txt, .zip, etc) that will be used by
-   * AndroidAppListModel, when displaying Files app as FilePicker for ARC++.
-   * Files app displays Android apps that can handle such extensions in the
-   * DirectoryTree.
+   * List of file extensions (.txt, .zip, etc) used by file pickers.
    */
   typeList?: TypeList[];
 
@@ -127,10 +124,6 @@ export class FilesAppState {
    */
   allowedPaths?: AllowedPaths;
 
-  /**
-   * If the Android apps should be shown in the DirectoryTree for FilePicker.
-   */
-  showAndroidPickerApps?: boolean;
 
   /**
    * Array of Files app mode dependent volume filter names. Defaults to an

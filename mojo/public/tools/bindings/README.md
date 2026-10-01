@@ -521,7 +521,6 @@ bindings API documentation for that language:
 
 * [C++ Bindings](/mojo/public/cpp/bindings/README.md)
 * [JavaScript Bindings](/mojo/public/js/README.md)
-* [Java Bindings](/mojo/public/java/bindings/README.md)
 
 ## Message Validation
 
@@ -533,11 +532,9 @@ is added.
 
 If a message fails validation, it is never dispatched. Instead a **connection
 error** is raised on the binding object (see
-[C++ Connection Errors](/mojo/public/cpp/bindings/README.md#Connection-Errors),
-[Java Connection Errors](/mojo/public/java/bindings/README.md#Connection-Errors),
-or
-[JavaScript Connection Errors](/mojo/public/js/README.md#Connection-Errors) for
-details.)
+[C++ Connection Errors](/mojo/public/cpp/bindings/README.md#Connection-Errors)
+or [JavaScript Connection Errors](/mojo/public/js/README.md#Connection-Errors)
+for details.)
 
 Some baseline level of validation is done automatically for primitive Mojom
 types.
@@ -762,10 +759,8 @@ Bindings target languages that support versioning expose means to query or
 assert the remote version from a client handle (*e.g.*, an
 `mojo::Remote<T>` in C++ bindings.)
 
-See
-[C++ Versioning Considerations](/mojo/public/cpp/bindings/README.md#Versioning-Considerations)
-and
-[Java Versioning Considerations](/mojo/public/java/bindings/README.md#Versioning-Considerations)
+See [C++ Versioning
+Considerations](/mojo/public/cpp/bindings/README.md#Versioning-Considerations).
 
 ### Versioned Enums
 

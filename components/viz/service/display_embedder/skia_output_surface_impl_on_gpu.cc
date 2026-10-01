@@ -42,7 +42,6 @@
 #include "components/viz/service/display_embedder/skia_output_device_buffer_queue.h"
 #include "components/viz/service/display_embedder/skia_output_device_gl.h"
 #include "components/viz/service/display_embedder/skia_output_device_offscreen.h"
-#include "components/viz/service/display_embedder/skia_output_device_webview.h"
 #include "components/viz/service/display_embedder/skia_output_surface_dependency.h"
 #include "components/viz/service/display_embedder/skia_output_surface_impl_on_gpu_debug_capture.h"
 #include "components/viz/service/display_embedder/skia_render_copy_results.h"
@@ -110,9 +109,6 @@
 #include "gpu/vulkan/vulkan_implementation.h"
 #include "gpu/vulkan/vulkan_util.h"
 #include "third_party/skia/include/gpu/ganesh/vk/GrVkBackendSemaphore.h"
-#if BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/display_embedder/skia_output_device_vulkan_secondary_cb.h"
-#endif
 #endif
 
 #if BUILDFLAG(IS_OZONE)
@@ -1703,14 +1699,9 @@ bool SkiaOutputSurfaceImplOnGpu::InitializeForGL()
                     feature_info_, shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
 #endif // BUILDFLAG(IS_WIN)
             } else {
-                if (dependency_->NeedsSupportForExternalStencil()) {
-                    output_device_ = std::make_unique<SkiaOutputDeviceWebView>(
-                        context_state_.get(), gl_surface_, shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
-                } else {
-                    // Used by Android, Linux, and Windows (when DComp has been disabled).
-                    output_device_ = std::make_unique<SkiaOutputDeviceGL>(
-                        context_state_.get(), gl_surface_, feature_info_, shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
-                }
+                // Used by Linux and Windows when DComp has been disabled.
+                output_device_ = std::make_unique<SkiaOutputDeviceGL>(
+                    context_state_.get(), gl_surface_, feature_info_, shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
             }
         } else {
             presenter_ = nullptr;
@@ -1745,14 +1736,6 @@ bool SkiaOutputSurfaceImplOnGpu::InitializeForVulkan()
             shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
         return true;
     }
-
-#if BUILDFLAG(IS_ANDROID)
-    if (vulkan_context_provider_->GetGrSecondaryCBDrawContext()) {
-        output_device_ = std::make_unique<SkiaOutputDeviceVulkanSecondaryCB>(
-            vulkan_context_provider_, shared_gpu_deps_->memory_tracker(), GetDidSwapBuffersCompleteCallback());
-        return true;
-    }
-#endif
 
 #if !BUILDFLAG(IS_WIN)
     std::unique_ptr<OutputPresenter> output_presenter;

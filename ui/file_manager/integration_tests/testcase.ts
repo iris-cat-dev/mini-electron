@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import * as androidPhotosTests from './file_manager/android_photos.js';
 // clang-format off
 import * as breadcrumbsTests from './file_manager/breadcrumbs.js';
 import * as contextMenuTests from './file_manager/context_menu.js';
@@ -63,7 +62,6 @@ export type TestFunction = () => Promise<void|any>;
  * Namespace for test cases.
  */
 export const testcase: Record<TestFunctionName, TestFunction> = {
-  ...androidPhotosTests,
   ...breadcrumbsTests,
   ...contextMenuTests,
   ...copyBetweenWindowsTests,

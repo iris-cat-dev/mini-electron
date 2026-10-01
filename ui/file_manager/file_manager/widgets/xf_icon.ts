@@ -201,10 +201,6 @@ function getCSS() {
       -webkit-mask-size: 48px;
     }
 
-    :host([type="android_files"]) span {
-      -webkit-mask-image: url(../foreground/images/volumes/android.svg);
-    }
-
     :host([type="archive"]) span {
       -webkit-mask-image: url(../foreground/images/filetype/filetype_archive.svg);
     }

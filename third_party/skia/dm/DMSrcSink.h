@@ -271,35 +271,6 @@ private:
     bool fRunSerially;
 };
 
-#ifdef SK_ENABLE_ANDROID_UTILS
-// Allows for testing of various implementations of Android's BitmapRegionDecoder
-class BRDSrc : public Src {
-public:
-    enum Mode {
-        // Decode the entire image as one region.
-        kFullImage_Mode,
-        // Splits the image into multiple regions using a divisor and decodes the regions
-        // separately.  Also, this test adds a border of a few pixels to each of the regions
-        // that it is decoding.  This tests the behavior when a client asks for a region that
-        // does not fully fit in the image.
-        kDivisor_Mode,
-    };
-
-    BRDSrc(Path, Mode, CodecSrc::DstColorType, uint32_t);
-
-    Result draw(SkCanvas*, GraphiteTestContext*) const override;
-    SkISize size() const override;
-    Name name() const override;
-    bool veto(SinkFlags) const override;
-
-private:
-    Path fPath;
-    Mode fMode;
-    CodecSrc::DstColorType fDstColorType;
-    uint32_t fSampleSize;
-};
-#endif
-
 class ImageGenSrc : public Src {
 public:
     enum Mode {

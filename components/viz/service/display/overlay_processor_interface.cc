@@ -23,9 +23,6 @@
 #include "components/viz/service/display/overlay_processor_mac.h"
 #elif BUILDFLAG(IS_WIN)
 #include "components/viz/service/display/overlay_processor_win.h"
-#elif BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/display/overlay_processor_android.h"
-#include "components/viz/service/display/overlay_processor_surface_control.h"
 #elif BUILDFLAG(IS_OZONE)
 #include "components/viz/service/display/overlay_processor_delegated.h"
 #include "components/viz/service/display/overlay_processor_ozone.h"
@@ -139,24 +136,6 @@ std::unique_ptr<OverlayProcessorInterface> OverlayProcessorInterface::CreateOver
 // 
 //     return std::make_unique<OverlayProcessorOzone>(std::move(overlay_candidates), std::move(renderer_settings.overlay_strategies), sii);
 // 
-// #elif BUILDFLAG(IS_ANDROID)
-//     DCHECK(display_controller);
-// 
-//     if (capabilities.supports_surfaceless) {
-//         // This is for Android SurfaceControl case.
-//         return std::make_unique<OverlayProcessorSurfaceControl>();
-//     } else {
-//         // When SurfaceControl is enabled, any resource backed by
-//         // an AHardwareBuffer can be marked as an overlay candidate but it requires
-//         // that we use a SurfaceControl backed GLSurface. If we're creating a
-//         // native window backed GLSurface, the overlay processing code will
-//         // incorrectly assume these resources can be overlaid. So we disable all
-//         // overlay processing for this OutputSurface.
-//         if (capabilities.android_surface_control_feature_enabled)
-//             return std::make_unique<OverlayProcessorStub>();
-// 
-//         return std::make_unique<OverlayProcessorAndroid>(display_controller);
-//     }
 // #else // Default
 //     return std::make_unique<OverlayProcessorStub>();
 // #endif
@@ -192,14 +171,6 @@ OverlayProcessorInterface::OutputSurfaceOverlayPlane OverlayProcessorInterface::
     overlay_plane.enable_blending = true;
 #endif
     return overlay_plane;
-}
-
-void OverlayProcessorInterface::ScheduleOverlays(DisplayResourceProvider* display_resource_provider)
-{
-}
-
-void OverlayProcessorInterface::OverlayPresentationComplete()
-{
 }
 
 gfx::CALayerResult OverlayProcessorInterface::GetCALayerErrorCode() const

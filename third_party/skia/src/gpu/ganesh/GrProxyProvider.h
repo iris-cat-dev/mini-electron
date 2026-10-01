@@ -230,7 +230,6 @@ public:
 #endif
 
 private:
-    friend class GrAHardwareBufferImageGenerator; // for createWrapped
     friend class GrResourceProvider; // for createWrapped
 
     // processInvalidUniqueKey() with control over removing hash table entries,

@@ -22,8 +22,6 @@ if (defined(skia_settings)) {
   import(skia_settings)
 }
 
-import("gn/ios.gni")
-
 # Skia public API, generally provided by :skia.
 config("skia_public") {
   include_dirs = [ "." ]
@@ -287,21 +285,6 @@ template("optional") {
       }
     }
   }
-}
-
-optional("android_utils") {
-  enabled = skia_enable_android_utils
-
-  public = [
-    "client_utils/android/BRDAllocator.h",
-    "client_utils/android/BitmapRegionDecoder.h",
-    "client_utils/android/FrontBufferedStream.h",
-  ]
-  public_defines = [ "SK_ENABLE_ANDROID_UTILS" ]
-  sources = [
-    "client_utils/android/BitmapRegionDecoder.cpp",
-    "client_utils/android/FrontBufferedStream.cpp",
-  ]
 }
 
 optional("fontmgr_android") {
@@ -940,9 +923,6 @@ optional("gpu_shared") {
     sources += skia_shared_mtl_sources
   }
 
-  if (is_android) {
-    sources += skia_shared_android_sources
-  }
 }
 
 optional("gpu") {
@@ -966,29 +946,9 @@ optional("gpu") {
   libs = []
   frameworks = []
 
-  if (is_android) {
-    sources += skia_gpu_android_private
-
-    # this lib is required to link against AHardwareBuffer
-    if (defined(ndk_api) && ndk_api >= 26) {
-      libs += [ "android" ]
-    }
-  }
-
   if (skia_use_gl) {
     public_defines += [ "SK_GL" ]
-    if (is_android) {
-      sources += [
-        "src/gpu/ganesh/gl/egl/GrGLMakeEGLInterface.cpp",
-        "src/gpu/ganesh/gl/egl/GrGLMakeNativeInterface_egl.cpp",
-      ]
-      sources += skia_android_gl_sources
-
-      # this lib is required to link against AHardwareBuffer
-      if (defined(ndk_api) && ndk_api >= 26) {
-        libs += [ "android" ]
-      }
-    } else if (skia_use_egl) {
+    if (skia_use_egl) {
       if (skia_use_epoxy_egl) {
         sources += [ "src/gpu/ganesh/gl/epoxy/GrGLMakeEpoxyEGLInterface.cpp" ]
         libs += [ "epoxy" ]
@@ -1036,9 +996,6 @@ optional("gpu") {
       } else {
         public_deps += [ "//src/graphics/lib/vulkan" ]
       }
-    }
-    if (is_android) {
-      sources += skia_gpu_vk_android_private
     }
   }
 
@@ -1093,7 +1050,6 @@ optional("heif") {
   # There isn't a way to compile that library outside of it, so we just link against
   # the library. This feature is not supported on other platforms (and we haven't
   # yet tried something like https://github.com/strukturag/libheif/tree/master/libheif).
-  # The dependency for Android is set in gn_to_bp.py.
   deps = []
 
   sources = [ "src/codec/SkHeifCodec.cpp" ]
@@ -1115,7 +1071,6 @@ optional("crabbyavif") {
   # AVIF decoding is provided by CrabbyAvif (a Rust library). Since skia's
   # standalone builds do not support Rust, it is only being enabled when
   # building for the Android framework.
-  # The dependency for Android is set in gn_to_bp.py
   deps = []
   sources = [ "src/codec/SkCrabbyAvifCodec.cpp" ]
 }
@@ -1142,8 +1097,6 @@ optional("jpeg_decode") {
     "src/codec/SkJpegUtility.cpp",
   ]
   if (skia_use_jpeg_gainmaps) {
-    # Theoretically this doesn't need to be public, but this allows gn_to_bp.py to see it, and seems
-    # to align with other codec support. See b/265939413
     public_defines += [ "SK_CODEC_DECODES_JPEG_GAINMAPS" ]
     deps += [
       ":jpeg_mpf",
@@ -1154,7 +1107,7 @@ optional("jpeg_decode") {
 }
 
 optional("jpeg_encode") {
-  enabled = skia_use_libjpeg_turbo_encode && !skia_use_ndk_images
+  enabled = skia_use_libjpeg_turbo_encode
 
   deps = [ "//third_party/libjpeg-turbo:libjpeg" ]
   public = skia_encode_jpeg_public
@@ -1174,17 +1127,6 @@ optional("jpegxl_decode") {
   sources = [ "src/codec/SkJpegxlCodec.cpp" ]
 }
 
-optional("ndk_images") {
-  enabled = skia_use_ndk_images
-  public_defines = [ "SK_ENABLE_NDK_IMAGES" ]
-  sources = [
-    "src/ports/SkImageEncoder_NDK.cpp",
-    "src/ports/SkImageGeneratorNDK.cpp",
-    "src/ports/SkNDKConversions.cpp",
-  ]
-  libs = [ "jnigraphics" ]
-}
-
 optional("graphite") {
   configs = []
   libs = []
@@ -1199,10 +1141,6 @@ optional("graphite") {
   public = skia_graphite_public
   sources = skia_graphite_sources
   sources += skia_sksl_graphite_modules_sources
-
-  if (is_android) {
-    sources += skia_graphite_android_private
-  }
 
   if (skia_enable_vello_shaders) {
     sources += skia_graphite_vello_sources
@@ -1274,7 +1212,7 @@ optional("png_decode") {
 }
 
 optional("png_encode") {
-  enabled = skia_use_libpng_encode && !skia_use_ndk_images
+  enabled = skia_use_libpng_encode
   public = skia_encode_png_public
 
   deps = [ "//third_party/libpng" ]
@@ -1504,7 +1442,7 @@ optional("webp_decode") {
 }
 
 optional("webp_encode") {
-  enabled = skia_use_libwebp_encode && !skia_use_ndk_images
+  enabled = skia_use_libwebp_encode
   public = skia_encode_webp_public
 
   deps = [ "//third_party/libwebp" ]
@@ -1586,7 +1524,6 @@ skia_component("skia") {
   ]
 
   deps = [
-    ":android_utils",
     ":avif",
     ":crabbyavif",
     ":heif",
@@ -1595,7 +1532,6 @@ skia_component("skia") {
     ":jpegxl_decode",
     ":lasx",
     ":minify_sksl",
-    ":ndk_images",
     ":png_decode",
     ":raw",
     ":skx",
@@ -1681,19 +1617,6 @@ skia_component("skia") {
     libs += [ "dl" ]
   }
 
-  if (is_android) {
-    deps += [ "//third_party/expat" ]
-    if (defined(ndk) && ndk != "") {
-      deps += [ "//third_party/cpu-features" ]
-    }
-    sources += [ "src/ports/SkDebug_android.cpp" ]
-    libs += [
-      "EGL",
-      "GLESv2",
-      "log",
-    ]
-  }
-
   if (is_linux || is_wasm) {
     sources += [ "src/ports/SkDebug_stdio.cpp" ]
     if (skia_use_egl) {
@@ -1737,13 +1660,6 @@ skia_component("skia") {
 
   if (skia_include_multiframe_procs) {
     sources += [ "tools/SkSharingProc.cpp" ]
-  }
-
-  # Overrides TRACE_EVENT0..2 macros (etc) to map to Perfetto's tracing macros.
-  # Currently only supported in Android framework.
-  if (skia_android_framework_use_perfetto) {
-    defines += [ "SK_ANDROID_FRAMEWORK_USE_PERFETTO" ]
-    sources += [ "src/android/SkAndroidFrameworkPerfettoStaticStorage.cpp" ]
   }
 
   if (!skia_enable_ganesh && !skia_enable_graphite) {
@@ -1858,8 +1774,6 @@ config("vulkan_memory_allocator") {
 # Targets guarded by skia_enable_tools may use //third_party freely.
 if (skia_enable_tools) {
   skia_public_includes = [
-    "client_utils/android",
-    "include/android",
     "include/codec",
     "include/config",
     "include/core",
@@ -1878,7 +1792,6 @@ if (skia_enable_tools) {
     "modules/svg/include",
   ]
 
-  # Used by gn_to_bp.py to list our public include dirs.
   skia_source_set("public") {
     configs = [ ":skia_public" ]
     include_dirs = skia_public_includes
@@ -2017,8 +1930,7 @@ if (skia_enable_tools) {
           testonly = true
         }
       } else {
-        _executable = target_name
-        skia_executable(_executable) {
+        skia_executable(target_name) {
           check_includes = false
           output_dir = root_build_dir
           forward_variables_from(invoker, "*", [ "is_shared_library" ])
@@ -2026,21 +1938,6 @@ if (skia_enable_tools) {
             configs = []
           }
           configs += [ ":skia_private" ]
-          testonly = true
-        }
-      }
-      if (is_android && skia_android_serial != "" && defined(_executable)) {
-        action("push_" + target_name) {
-          output_dir = root_build_dir
-          script = "gn/push_to_android.py"
-          deps = [ ":" + _executable ]
-          _stamp = "$target_gen_dir/$_executable.pushed_$skia_android_serial"
-          outputs = [ _stamp ]
-          args = [
-            rebase_path("$root_build_dir/$_executable"),
-            skia_android_serial,
-            rebase_path(_stamp),
-          ]
           testonly = true
         }
       }
@@ -2866,69 +2763,6 @@ if (skia_enable_tools) {
       deps = [ "//build/fuchsia/skqp:skqp_repo" ]
     }
   }
-  if (is_android) {
-    shared_library("libskqp_jni") {  # Not a skia_shared_library
-      configs += [ ":skia_private" ]
-      testonly = true
-      sources = [ "tools/skqp/src/jni_skqp.cpp" ]
-      deps = [
-        ":skia",
-        ":skqp_lib",
-        ":tool_utils",
-      ]
-      libs = [ "android" ]
-    }
-  }
-  if (is_android && skia_use_gl) {
-    test_app("skottie_android") {
-      is_shared_library = true
-
-      sources = [ "platform_tools/android/apps/skottie/skottielib/src/main/cpp/native-lib.cpp" ]
-      libs = []
-
-      deps = [
-        ":skia",
-        "modules/skottie",
-        "modules/skshaper",
-        "modules/skunicode",
-      ]
-    }
-
-    test_app("jetski") {
-      is_shared_library = true
-
-      sources = [
-        "modules/jetski/src/Canvas.cpp",
-        "modules/jetski/src/ColorFilters.cpp",
-        "modules/jetski/src/Gradients.cpp",
-        "modules/jetski/src/Image.cpp",
-        "modules/jetski/src/ImageFilter.cpp",
-        "modules/jetski/src/JetSki.cpp",
-        "modules/jetski/src/Matrix.cpp",
-        "modules/jetski/src/Paint.cpp",
-        "modules/jetski/src/Path.cpp",
-        "modules/jetski/src/PathBuilder.cpp",
-        "modules/jetski/src/RuntimeShaderBuilder.cpp",
-        "modules/jetski/src/Shader.cpp",
-        "modules/jetski/src/SkottieAnimation.cpp",
-        "modules/jetski/src/Surface.cpp",
-        "modules/jetski/src/Surface.h",
-        "modules/jetski/src/SurfaceThread.cpp",
-        "modules/jetski/src/SurfaceThread.h",
-        "modules/jetski/src/Utils.cpp",
-      ]
-      libs = [
-        "android",
-        "jnigraphics",
-      ]
-
-      deps = [
-        ":skia",
-        "modules/skottie:skottie",
-        "tools/window:window",
-      ]
-    }
-  }
 
   if (is_ios && skia_enable_skottie) {
     group("skottie_ios") {
@@ -2951,16 +2785,7 @@ if (skia_enable_tools) {
     libs = []
     frameworks = []
 
-    if (is_android) {
-      sources += [
-        "tools/sk_app/android/Window_android.cpp",
-        "tools/sk_app/android/Window_android.h",
-        "tools/sk_app/android/main_android.cpp",
-        "tools/sk_app/android/surface_glue_android.cpp",
-        "tools/sk_app/android/surface_glue_android.h",
-      ]
-      libs += [ "android" ]
-    } else if (is_linux) {
+    if (is_linux) {
       sources += [
         "tools/sk_app/unix/Window_unix.cpp",
         "tools/sk_app/unix/Window_unix.h",
@@ -3002,9 +2827,6 @@ if (skia_enable_tools) {
       ":tool_utils",
       "tools/window",
     ]
-    if (is_android) {
-      deps += [ "//third_party/native_app_glue" ]
-    }
     if (skia_use_gl && skia_use_angle) {
       deps += [ "//third_party/angle2" ]
     }
@@ -3040,7 +2862,6 @@ if (skia_enable_tools) {
       is_shared_library = is_android
       sources = [
         "tools/viewer/3DSlide.cpp",
-        "tools/viewer/AndroidShadowsSlide.cpp",
         "tools/viewer/AnimBlurSlide.cpp",
         "tools/viewer/AnimTimer.h",
         "tools/viewer/AnimatedImageSlide.cpp",
@@ -3093,7 +2914,6 @@ if (skia_enable_tools) {
         "tools/viewer/PathSlide.cpp",
         "tools/viewer/PathTessellatorsSlide.cpp",
         "tools/viewer/PathTextSlide.cpp",
-        "tools/viewer/ProtectedSlide.cpp",
         "tools/viewer/QuadStrokerSlide.cpp",
         "tools/viewer/RectanizerSlide.cpp",
         "tools/viewer/RepeatTileSlide.cpp",

@@ -414,14 +414,6 @@ public:
     void OnSetBeginFrameSourcePaused(bool paused);
     void OnBeginFrame(const BeginFrameArgs& args);
 
-#if BUILDFLAG(IS_ANDROID)
-    // Notifies when the refresh rate of the display is updated. |refresh_rate| is
-    // the rate in frames per second.
-    virtual void UpdateRefreshRate(float refresh_rate)
-    {
-    }
-#endif
-
     // Notifies the begin frame source of the desired frame interval for the
     // observers.
     virtual void SetPreferredInterval(base::TimeDelta interval)

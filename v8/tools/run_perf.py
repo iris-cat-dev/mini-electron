@@ -23,7 +23,6 @@ The suite json format is expected to be:
   "timeout_XXX": <how long test is allowed run run for arch XXX>,
   "retry_count": <how many times to retry failures (in addition to first try)",
   "retry_count_XXX": <how many times to retry failures for arch XXX>
-  "resources": [<js file to be moved to android device or "*">, ...]
   "variants": [
     {
       "name": <name of the variant>,
@@ -142,7 +141,6 @@ import sys
 import time
 import traceback
 
-from testrunner.local import android
 from testrunner.local import command
 from testrunner.local import utils
 from testrunner.objects.output import Output, NULL_OUTPUT
@@ -343,7 +341,6 @@ class DefaultSentinel(Node):
     self.flags = []
     self.test_flags = []
     self.process_size = False
-    self.resources = []
     self.results_processor = None
     self.results_regexp = None
     self.results_default = None
@@ -371,7 +368,6 @@ class GraphConfig(Node):
     assert isinstance(suite['name'], str)
     assert isinstance(suite.get('flags', []), list)
     assert isinstance(suite.get('test_flags', []), list)
-    assert isinstance(suite.get('resources', []), list)
 
     # Only used by child classes
     self.main = suite.get('main', parent.main)
@@ -384,9 +380,6 @@ class GraphConfig(Node):
     self.flags = parent.flags[:] + suite.get('flags', [])
     self.test_flags = parent.test_flags[:] + suite.get('test_flags', [])
     self.owners = parent.owners[:] + suite.get('owners', [])
-
-    # Values independent of parent node.
-    self.resources = suite.get('resources', [])
 
     # Descrete values (with parent defaults).
     self.binary = suite.get('binary', parent.binary)
@@ -845,21 +838,6 @@ class Platform(object):
     self.args = args
     self.warmup_manager = NullWarmupManager()
 
-  @staticmethod
-  def ReadBuildConfig(args):
-    config_path = os.path.join(args.shell_dir, 'v8_build_config.json')
-    if not os.path.isfile(config_path):
-      return {}
-    with open(config_path) as f:
-      return hjson.load(f)
-
-  @staticmethod
-  def GetPlatform(args):
-    if Platform.ReadBuildConfig(args).get('is_android', False):
-      return AndroidPlatform(args)
-    else:
-      return DesktopPlatform(args)
-
   def _Run(self, runnable, count, secondary=False, post_process=True):
     raise NotImplementedError()  # pragma: no cover
 
@@ -911,7 +889,7 @@ class DesktopPlatform(Platform):
     self.command_prefix = []
 
     # Setup command class to OS specific version.
-    command.setup(utils.GuessOS(), args.device)
+    command.setup(utils.GuessOS())
 
     if args.prioritize or args.affinitize is not None:
       self.command_prefix = ['schedtool']
@@ -961,85 +939,6 @@ class DesktopPlatform(Platform):
     # /usr/bin/time outputs to stderr
     if runnable.process_size:
       output.stdout += output.stderr
-    return output
-
-
-class AndroidPlatform(Platform):  # pragma: no cover
-
-  def __init__(self, args):
-    super(AndroidPlatform, self).__init__(args)
-    self.driver = android.Driver.instance(args.device)
-
-  def PreExecution(self):
-    self.driver.set_high_perf_mode()
-
-  def PostExecution(self):
-    self.driver.set_default_perf_mode()
-    self.driver.tear_down()
-
-  def PreTests(self, node, path):
-    if isinstance(node, RunnableConfig):
-      node.ChangeCWD(path)
-    suite_dir = os.path.abspath(os.path.dirname(path))
-    if node.path:
-      bench_rel = os.path.normpath(os.path.join(*node.path))
-      bench_abs = os.path.join(suite_dir, bench_rel)
-    else:
-      bench_rel = '.'
-      bench_abs = suite_dir
-
-    self.driver.push_executable(self.shell_dir, 'bin', node.binary)
-    if self.shell_dir_secondary:
-      self.driver.push_executable(
-          self.shell_dir_secondary, 'bin_secondary', node.binary)
-
-    if isinstance(node, RunnableConfig):
-      self.driver.push_file(bench_abs, node.main, bench_rel)
-    for resource in node.resources:
-      if resource == '*':
-        self.driver.push_files_rec(bench_abs, bench_rel)
-      else:
-        self.driver.push_file(bench_abs, resource, bench_rel)
-
-  def _Run(self, runnable, count, secondary=False, post_process=True):
-    target_dir = 'bin_secondary' if secondary else 'bin'
-    self.driver.drop_ram_caches()
-
-    # Relative path to benchmark directory.
-    if runnable.path:
-      bench_rel = os.path.normpath(os.path.join(*runnable.path))
-    else:
-      bench_rel = '.'
-
-    logcat_file = None
-    if self.args.dump_logcats_to:
-      runnable_name = '-'.join(runnable.graphs)
-      logcat_file = os.path.join(
-          self.args.dump_logcats_to, 'logcat-%s-#%d%s.log' % (
-            runnable_name, count + 1, '-secondary' if secondary else ''))
-      logging.debug('Dumping logcat into %s', logcat_file)
-
-    output = Output()
-    output.start_time = time.time()
-    try:
-      if not self.is_dry_run:
-        output.stdout = self.driver.run(
-            target_dir=target_dir,
-            binary=runnable.binary,
-            args=runnable.GetCommandFlags(self.extra_flags),
-            rel_path=bench_rel,
-            timeout=runnable.timeout,
-            logcat_file=logcat_file,
-        )
-    except android.CommandFailedException as e:
-      output.stdout = e.output
-      output.exit_code = e.status
-    except android.TimeoutException as e:
-      output.stdout = e.output
-      output.timed_out = True
-    if runnable.process_size:
-      output.stdout += 'MaxMemory: Unsupported'
-    output.end_time = time.time()
     return output
 
 
@@ -1162,9 +1061,6 @@ def Main(argv):
   parser.add_argument('--buildbot',
                       help='Deprecated',
                       default=False, action='store_true')
-  parser.add_argument('-d', '--device',
-                      help='The device ID to run Android tests on. If not '
-                      'given it will be autodetected.')
   parser.add_argument('--extra-flags',
                       help='Additional flags to pass to the test executable',
                       default='')
@@ -1224,9 +1120,6 @@ def Main(argv):
                       help='Max total duration in seconds allowed for retries '
                       'across all tests. This is especially useful in '
                       'combination with the --confidence-level flag.')
-  parser.add_argument('--dump-logcats-to',
-                      help='Writes logcat output from each test into specified '
-                      'directory. Only supported for android targets.')
   parser.add_argument(
       '--run-count',
       "--repeat",
@@ -1308,7 +1201,7 @@ def Main(argv):
   # directory.
   args.suite = list(map(os.path.abspath, args.suite))
 
-  platform = Platform.GetPlatform(args)
+  platform = DesktopPlatform(args)
 
   result_tracker = ResultTracker()
   result_tracker_secondary = ResultTracker()

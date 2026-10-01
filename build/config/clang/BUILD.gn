@@ -6,10 +6,6 @@ import("//build/config/pch.gni")
 import("//build/config/rust.gni")
 import("clang.gni")
 
-if (is_ios) {
-  import("//build/config/ios/config.gni")  # For `target_environment`
-}
-
 # Helper function for adding cflags to use a clang plugin.
 # - `plugin` is the name of the plugin.
 # - `plugin_arguments` is a list of arguments to pass to the plugin.

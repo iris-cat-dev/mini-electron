@@ -75,8 +75,8 @@ void SetupSamplerYcbcrConversionInfo(VkSamplerYcbcrConversionCreateInfo* outInfo
 #ifdef SK_BUILD_FOR_ANDROID
 
 /**
- * Shared Vulkan AHardwareBuffer utility functions between graphite and ganesh
-*/
+ * Vulkan AHardwareBuffer utility functions.
+ */
 void GetYcbcrConversionInfoFromFormatProps(VulkanYcbcrConversionInfo* outConversionInfo, const VkAndroidHardwareBufferFormatPropertiesANDROID& formatProps)
 {
     outConversionInfo->fYcbcrModel = formatProps.suggestedYcbcrModel;

@@ -102,10 +102,6 @@
 #include "ui/gfx/gpu_fence_handle.h"
 #include "ui/gfx/hdr_metadata.h"
 
-#if BUILDFLAG(IS_ANDROID)
-#include "components/viz/service/display/overlay_processor_surface_control.h"
-#endif
-
 namespace viz {
 
 namespace {
@@ -2433,18 +2429,8 @@ void SkiaRenderer::DrawTextureQuad(const TextureDrawQuad* quad, const DrawRPDQPa
         override_color_space = CurrentDrawLayerColorSpace().ToSkColorSpace();
     }
 
-#if BUILDFLAG(IS_ANDROID)
-    if (quad->is_stream_video) {
-        // If overlay processor would override color space, override it here to to
-        // avoid color changes during promotion.
-        if (auto overlay_color_space = OverlayProcessorSurfaceControl::GetOverrideColorSpace()) {
-            override_color_space = overlay_color_space->ToSkColorSpace();
-        }
-    }
-#else
-    // Only on android stream video can be composited.
+    // Stream video is only composited by the removed Android overlay path.
     CHECK(!quad->is_stream_video);
-#endif
 
     ScopedSkImageBuilder builder(this, quad->resource_id(), /*maybe_concurrent_reads=*/true,
         quad->premultiplied_alpha ? kPremul_SkAlphaType : kUnpremul_SkAlphaType, quad->y_flipped ? kBottomLeft_GrSurfaceOrigin : kTopLeft_GrSurfaceOrigin,

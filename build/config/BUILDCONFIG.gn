@@ -241,11 +241,7 @@ if (host_toolchain == "") {
 
 _default_toolchain = ""
 
-if (target_os == "android") {
-  # Targeting android on Mac is best-effort and not guaranteed to work.
-  assert(host_os == "linux", "Android builds are only supported on Linux.")
-  _default_toolchain = "//build/toolchain/android:android_clang_$target_cpu"
-} else if (target_os == "chromeos" || target_os == "linux") {
+if (target_os == "chromeos" || target_os == "linux") {
   # See comments in build/toolchain/cros/BUILD.gn about board compiles.
   if (is_clang) {
     _default_toolchain = "//build/toolchain/linux:clang_$target_cpu"
@@ -254,8 +250,6 @@ if (target_os == "android") {
   }
 } else if (target_os == "fuchsia") {
   _default_toolchain = "//build/toolchain/fuchsia:$target_cpu"
-} else if (target_os == "ios") {
-  _default_toolchain = "//build/toolchain/ios:ios_clang_$target_cpu"
 } else if (target_os == "mac") {
   assert(host_os == "mac" || host_os == "linux",
          "Mac cross-compiles are unsupported.")
@@ -393,11 +387,6 @@ if (is_fuchsia) {
   default_compiler_configs += [ "//build/config/gcc:symbol_visibility_hidden" ]
 }
 
-if (is_android) {
-  default_compiler_configs +=
-      [ "//build/config/android:default_orderfile_instrumentation" ]
-}
-
 if (is_clang && !is_nacl) {
   default_compiler_configs += [
     "//build/config/clang:extra_warnings",
@@ -478,12 +467,6 @@ if (is_win) {
   default_shared_library_configs += [ "//build/config/win:cfi_linker" ]
 }
 
-if (is_android) {
-  # Strip native JNI exports from shared libraries by default. Binaries that
-  # want this can remove this config.
-  default_shared_library_configs +=
-      [ "//build/config/android:hide_all_but_jni_onload" ]
-}
 if (is_fuchsia) {
   # Sometimes shared libraries are linked by rustc passing a command line to
   # clang++. It includes "-pie" which is pointless on Fuchsia. Suppress the
@@ -497,11 +480,6 @@ set_defaults("shared_library") {
 }
 set_defaults("loadable_module") {
   configs = default_shared_library_configs
-
-  # loadable_modules are generally used by other libs, not just via JNI.
-  if (is_android) {
-    configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
-  }
 }
 
 default_rust_proc_macro_configs =
@@ -717,10 +695,6 @@ template("component") {
 # to mixed_component.gni
 if (is_component_build) {
   default_component_configs = default_shared_library_configs
-  if (is_android) {
-    default_component_configs -=
-        [ "//build/config/android:hide_all_but_jni_onload" ]
-  }
   if (is_win) {
     # We don't want component dlls to statically load OS dlls that aren't
     # loaded normally.

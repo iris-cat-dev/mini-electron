@@ -7,15 +7,6 @@ import("//build/config/compiler/compiler.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/toolchain/toolchain.gni")
 
-if (is_android) {
-  import("//build/config/android/config.gni")
-}
-
-if (is_ios) {
-  import("//build/config/ios/config.gni")  # For `target_environment`
-  import("//build/config/ios/ios_sdk.gni")  # For `xcode_version_int`
-}
-
 declare_args() {
   # Rust is available in the Chromium build but 3p repos that use //build may
   # not use Rust and thus won't want to depend on having the Rust toolchain
@@ -205,36 +196,6 @@ if (is_linux || is_chromeos) {
     rust_abi_target = current_cpu + "-unknown-linux-gnu"
     cargo_target_abi = ""
   }
-} else if (is_android) {
-  import("//build/config/android/abi.gni")
-  if (android_abi_target == "i686-linux-android") {
-    rust_abi_target = android_abi_target
-    cargo_target_abi = ""
-  } else if (android_abi_target == "arm-linux-androideabi") {
-    # Android clang target specifications mostly match Rust, but this
-    # is an exception
-    rust_abi_target = "armv7-linux-androideabi"
-    cargo_target_abi = "eabi"
-  } else if (android_abi_target == "mipsel-linux-android") {
-    # There is no MIPS android target.
-    rust_abi_target = ""
-    cargo_target_abi = ""
-  } else if (android_abi_target == "x86_64-linux-android") {
-    rust_abi_target = android_abi_target
-    cargo_target_abi = ""
-  } else if (android_abi_target == "aarch64-linux-android") {
-    rust_abi_target = android_abi_target
-    cargo_target_abi = ""
-  } else if (android_abi_target == "mips64el-linux-android") {
-    # There is no MIPS android target.
-    rust_abi_target = ""
-    cargo_target_abi = ""
-  } else if (android_abi_target == "riscv64-linux-android") {
-    rust_abi_target = android_abi_target
-    cargo_target_abi = ""
-  } else {
-    assert(false, "Unknown Android ABI: " + android_abi_target)
-  }
 } else if (is_fuchsia) {
   if (current_cpu == "arm64") {
     rust_abi_target = "aarch64-unknown-fuchsia"
@@ -242,34 +203,6 @@ if (is_linux || is_chromeos) {
   } else if (current_cpu == "x64") {
     rust_abi_target = "x86_64-unknown-fuchsia"
     cargo_target_abi = ""
-  } else {
-    assert(false, "Architecture not supported")
-  }
-} else if (is_ios) {
-  if (current_cpu == "arm64") {
-    if (target_environment == "simulator") {
-      rust_abi_target = "aarch64-apple-ios-sim"
-      cargo_target_abi = "sim"
-    } else if (target_environment == "catalyst") {
-      rust_abi_target = "aarch64-apple-ios-macabi"
-      cargo_target_abi = "macabi"
-    } else {
-      rust_abi_target = "aarch64-apple-ios"
-      cargo_target_abi = ""
-    }
-  } else if (current_cpu == "arm") {
-    rust_abi_target = "armv7s-apple-ios"
-    cargo_target_abi = ""
-  } else if (current_cpu == "x64") {
-    if (target_environment == "catalyst") {
-      rust_abi_target = "x86_64-apple-ios-macabi"
-      cargo_target_abi = "macabi"
-    } else {
-      rust_abi_target = "x86_64-apple-ios"
-      cargo_target_abi = "sim"
-    }
-  } else if (current_cpu == "x86") {
-    rust_abi_target = "i386-apple-ios"
   } else {
     assert(false, "Architecture not supported")
   }

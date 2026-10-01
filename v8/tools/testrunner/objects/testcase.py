@@ -44,45 +44,6 @@ from testrunner.local.variants import INCOMPATIBLE_FLAGS_PER_EXTRA_FLAG
 
 FLAGS_PATTERN = re.compile(r"//\s+Flags:(.*)")
 
-# Patterns for additional resource files on Android. Files that are not covered
-# by one of the other patterns below will be specified in the resources section.
-RESOURCES_PATTERN = re.compile(r"//\s+Resources:(.*)")
-# Pattern to auto-detect files to push on Android for statements like:
-# load("path/to/file.js")
-# d8.file.execute("path/to/file.js")
-LOAD_PATTERN = re.compile(
-    r"(?:execute|load|readbuffer|read)\((?:'|\")([^'\"]+)(?:'|\")\)")
-# Pattern to auto-detect files to push on Android for statements like:
-# import foobar from "path/to/file.js"
-# import {foo, bar} from "path/to/file.js"
-# export {"foo" as "bar"} from "path/to/file.js"
-MODULE_FROM_RESOURCES_PATTERN = re.compile(
-    r"(?:import|export).*?from\s*\(?['\"]([^'\"]+)['\"]",
-    re.MULTILINE | re.DOTALL)
-# Pattern to detect files to push on Android for statements like:
-# import "path/to/file.js"
-# import("module.mjs").catch()...
-# Require the matched path in one line. Note this might include some
-# false matches, which is safe, since files are tested for existence.
-MODULE_IMPORT_RESOURCES_PATTERN = re.compile(
-    r"import\s*\(?['\"]([^'\"\n]+)['\"]",
-    re.MULTILINE)
-# Pattern to detect files to push on Android for statements like:
-# import source x from "path/to/file.js"
-# import.source("module.mjs").catch()...
-# Require the matched path in one line. Note this might include some
-# false matches, which is safe, since files are tested for existence.
-MODULE_IMPORT_SOURCE_RESOURCES_PATTERN = re.compile(
-    r"import\s*\.?\s*source\s*\(?['\"]([^'\"\n]+)['\"]",
-    re.MULTILINE)
-# Pattern to detect files to push on Android for expressions like:
-# shadowRealm.importValue("path/to/file.js", "obj")
-SHADOWREALM_IMPORTVALUE_RESOURCES_PATTERN = re.compile(
-    r"(?:importValue)\((?:'|\")([^'\"]+)(?:'|\")", re.MULTILINE | re.DOTALL)
-# Pattern to detect and strip test262 frontmatter from tests to prevent false
-# positives for MODULE_RESOURCES_PATTERN above.
-TEST262_FRONTMATTER_PATTERN = re.compile(r"/\*---.*?---\*/", re.DOTALL)
-
 TIMEOUT_LONG = "long"
 
 def read_file(file):
@@ -566,60 +527,6 @@ class TestCase(object):
   @property
   def processor_name(self):
     return self.processor.name
-
-  def _get_resources_for_file(self, file):
-    """Returns for a given file a list of absolute paths of files needed by the
-    given file.
-    """
-    source = read_file(file)
-    result = []
-    def add_path(path):
-      result.append(Path(path).resolve())
-    def add_import_path(import_path):
-      add_path(file.parent / import_path)
-    def strip_test262_frontmatter(input):
-      return TEST262_FRONTMATTER_PATTERN.sub('', input)
-    for match in RESOURCES_PATTERN.finditer(source):
-      # There are several resources per line. Relative to base dir.
-      for path in match.group(1).strip().split():
-        add_path(path)
-    # Strip test262 frontmatter before looking for load() and import/export
-    # statements.
-    source = strip_test262_frontmatter(source)
-    for match in LOAD_PATTERN.finditer(source):
-      # Files in load statements are relative to base dir.
-      add_path(match.group(1))
-    # Imported files are relative to the file importing them.
-    for match in MODULE_FROM_RESOURCES_PATTERN.finditer(source):
-      add_import_path(match.group(1))
-    for match in MODULE_IMPORT_RESOURCES_PATTERN.finditer(source):
-      add_import_path(match.group(1))
-    for match in MODULE_IMPORT_SOURCE_RESOURCES_PATTERN.finditer(source):
-      add_import_path(match.group(1))
-    for match in SHADOWREALM_IMPORTVALUE_RESOURCES_PATTERN.finditer(source):
-      add_import_path(match.group(1))
-    return result
-
-  def get_android_resources(self):
-    """Returns a list of absolute paths with additional files needed by the
-    test case.
-
-    Used to push additional files to Android devices.
-    """
-    if not self._get_source_path():
-      return []
-    result = set()
-    to_check = [self._get_source_path()]
-    # Recurse over all files until reaching a fixpoint.
-    while to_check:
-      next_resource = to_check.pop()
-      result.add(next_resource)
-      for resource in self._get_resources_for_file(next_resource):
-        # Only add files that exist on disc. The pattens we check for give some
-        # false positives otherwise.
-        if resource not in result and resource.exists():
-          to_check.append(resource)
-    return sorted(list(result))
 
 
 class DuckProcessor:

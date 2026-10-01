@@ -89,8 +89,6 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/build_info.h"
-#include "components/viz/service/gl/throw_uncaught_exception.h"
-#include "media/base/android/media_codec_util.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -1314,11 +1312,7 @@ void GpuServiceImpl::Hang()
 void GpuServiceImpl::ThrowJavaException()
 {
     DCHECK(io_runner_->BelongsToCurrentThread());
-#if BUILDFLAG(IS_ANDROID)
-    ThrowUncaughtException();
-#else
     NOTREACHED_IN_MIGRATION() << "Java exception not supported on this platform.";
-#endif
 }
 
 void GpuServiceImpl::StartPeakMemoryMonitorOnMainThread(uint32_t sequence_num)
