@@ -22,6 +22,7 @@
 
 #if defined(_M_X64)
 asm(
+    ".att_syntax                                        \n"
 #ifdef __APPLE__
     ".globl _PushAllRegistersAndIterateStack            \n"
     ".private_extern _PushAllRegistersAndIterateStack   \n"

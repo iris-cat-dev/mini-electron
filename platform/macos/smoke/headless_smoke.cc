@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -16,7 +16,7 @@ struct ExecutionState {
 
 void RunJavaScriptSource(void* context) {
   auto* state = static_cast<ExecutionState*>(context);
-  auto output = miniblink::mac::RunEngineProbe(state->executable_path);
+  auto output = mini_electron::mac::RunEngineProbe(state->executable_path);
   if (output) {
     std::printf("%s\n", output->c_str());
     state->exit_code = 0;

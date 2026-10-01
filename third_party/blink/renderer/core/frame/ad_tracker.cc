@@ -127,7 +127,7 @@ ExecutionContext* AdTracker::GetCurrentExecutionContext()
 
 v8_inspector::V8DebuggerId GetDebuggerIdForContext(const v8::Local<v8::Context>& v8_context)
 {
-#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     return v8_inspector::V8DebuggerId();
 #else
     if (v8_context.IsEmpty()) {

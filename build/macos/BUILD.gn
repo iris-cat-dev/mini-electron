@@ -1,0 +1,558 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+import("sources/allocator.gni")
+import("sources/base.gni")
+import("sources/engine.gni")
+import("sources/generated.gni")
+import("sources/third_party.gni")
+import("sources/node.gni")
+
+declare_args() {
+  mini_electron_nghttp2_root = "//.build-tools/nghttp2-1.61.0-darwin-arm64"
+}
+
+source_set("engine_probe") {
+  sources = [
+    "//platform/macos/smoke/engine_probe.cc",
+    "//platform/macos/smoke/engine_probe.h",
+  ]
+
+  deps = [
+    "//v8:v8",
+    "//v8:v8_libbase",
+    "//v8:v8_libplatform",
+  ]
+}
+
+config("mini_electron_engine_config") {
+  defines = [
+    "BLINK_IMPLEMENTATION=1",
+    "CPPGC_CAGED_HEAP",
+    "CPPGC_ENABLE_LARGER_CAGE",
+    "CPPGC_POINTER_COMPRESSION",
+    "CPPGC_SLIM_WRITE_BARRIER",
+    "CPPGC_YOUNG_GENERATION",
+    "CURL_STATICLIB",
+    "MINI_ELECTRON_IMPLEMENTATION=1",
+    "INSIDE_BLINK=1",
+    "LIBXML_STATIC",
+    "MINI_ELECTRON_DISABLE_DEVTOOLS=1",
+    "MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1",
+    "LIBXSLT_STATIC",
+    "PNG_SET_OPTION_SUPPORTED",
+    "SK_SUPPORT_LEGACY_DRAWLOOPER",
+    "U_DEFINE_FALSE_AND_TRUE",
+    "U_STATIC_IMPLEMENTATION",
+    "V8_31BIT_SMIS_ON_64BIT_ARCH",
+    "V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=0",
+    "V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=0",
+    "V8_COMPRESS_POINTERS",
+    "V8_COMPRESS_POINTERS_IN_SHARED_CAGE",
+    "V8_ENABLE_CONTINUATION_PRESERVED_EMBEDDER_DATA",
+    "V8_EXTERNAL_CODE_SPACE",
+    "V8_PROMISE_INTERNAL_FIELD_COUNT=0",
+    "V8_HAVE_TARGET_OS",
+    "V8_TARGET_ARCH_ARM64",
+    "V8_TARGET_OS_MACOS",
+    "USE_AURA",
+  ]
+
+  # This port still compiles legacy engine sources with a modern toolchain.
+  # Keep release output readable until those inherited sources are refreshed.
+  cflags_c = [ "-w" ]
+  cflags_cc = [ "-w" ]
+  cflags_objcc = [ "-w" ]
+  ldflags = [ "-Wl,-w" ]
+
+  include_dirs = [
+    "//",
+    "//gen",
+    "//gen/v8/include",
+    "//platform/posix/win32",
+    "//gpu",
+    "//base/allocator/partition_allocator/src",
+    "//gen/base/allocator/partition_allocator/src",
+    "//third_party/abseil-cpp",
+    "//third_party/brotli/include",
+    "//third_party/harfbuzz-ng/src/src",
+    "//third_party/iccjpeg",
+    "//third_party/icu/source/common",
+    "//third_party/icu/source/i18n",
+    "//third_party/khronos",
+    "//third_party/libjpeg_turbo",
+    "//third_party/libyuv/include",
+    "//third_party/libpng",
+    "//third_party/libwebp/src/src",
+    "//third_party/libxml/src/include",
+    "//third_party/libxslt/src",
+    "//third_party/openssl",
+    "//third_party/openssl/openssl/include",
+    "//third_party/skia",
+    "//third_party/zlib",
+    "//v8",
+    "//v8/include",
+  ]
+}
+config("mini_electron_node_config") {
+  defines = [
+    "CARES_STATICLIB",
+    "DISABLE_SINGLE_EXECUTABLE_APPLICATION",
+    "HAVE_AMARO=0",
+    "HAVE_INSPECTOR=0",
+    "HAVE_OPENSSL=1",
+    "NODE_ARCH=\"arm64\"",
+    "NODE_BUNDLED_ZLIB=1",
+    "NODE_HAVE_I18N_SUPPORT=1",
+    "NODE_OPENSSL_SYSTEM_CERT_PATH=\"\"",
+    "NODE_PLATFORM=\"darwin\"",
+    "NODE_REPORT",
+    "NODE_USE_V8_PLATFORM=1",
+    "NODE_WANT_INTERNALS=1",
+    "OPENSSL_API_COMPAT=0x10100001L",
+    "STATIC_LEGACY",
+    "__POSIX__",
+  ]
+
+  include_dirs = [
+    "$mini_electron_nghttp2_root/include",
+    "//third_party/cares/include",
+    "//third_party/cares/src/lib",
+    "//third_party/libnode/deps/ada",
+    "//third_party/libnode/deps/histogram/include",
+    "//third_party/libnode/deps/llhttp/include",
+    "//third_party/libnode/deps/nbytes/include",
+    "//third_party/libnode/deps/ncrypto",
+    "//third_party/libnode/deps/simdjson",
+    "//third_party/libnode/deps/simdutf",
+    "//third_party/libnode/deps/zstd/lib",
+    "//third_party/libnode/deps/uvwasi/include",
+    "//third_party/libnode/deps/uvwasi/src",
+    "//third_party/libnode/src",
+    "//third_party/libuv/include",
+  ]
+}
+
+
+
+static_library("mini_electron_base") {
+  sources = mini_electron_base_sources
+  sources += [
+    "//base/apple/call_with_eh_frame_asm.S",
+    "//base/base_switches.cc",
+    "//base/i18n/icu_string_conversions.cc",
+    "//base/i18n/string_search.cc",
+    "//base/i18n/time_formatting.cc",
+    "//base/task/thread_pool/task_thread_pool.cc",
+    "//base/third_party/cityhash/city.cc",
+    "//base/third_party/cityhash_v103/src/city_v103.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  defines = [ "BASE_IMPLEMENTATION" ]
+  frameworks = [
+    "AppKit.framework",
+    "CoreFoundation.framework",
+    "Foundation.framework",
+  ]
+}
+
+
+
+static_library("mini_electron_openssl") {
+  sources = mini_electron_openssl_sources
+  sources += [ "//third_party/openssl/openssl/providers/implementations/rands/seeding/rand_unix.c" ]
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [
+    "//third_party/openssl/openssl",
+    "//third_party/openssl/openssl/crypto",
+    "//third_party/openssl/openssl/crypto/asn1",
+    "//third_party/openssl/openssl/crypto/evp",
+    "//third_party/openssl/openssl/crypto/md2",
+    "//third_party/openssl/openssl/crypto/modes",
+    "//third_party/openssl/openssl/crypto/store",
+    "//third_party/openssl/openssl/providers/common/include",
+    "//third_party/openssl/openssl/providers/implementations/include",
+    "//third_party/openssl/config/archs/VC-WIN32/no-asm/providers/common/include",
+  ]
+}
+static_library("mini_electron_libuv") {
+  sources = mini_electron_libuv_sources
+  configs += [ ":mini_electron_engine_config" ]
+  defines = [
+    "_DARWIN_UNLIMITED_SELECT=1",
+    "_DARWIN_USE_64_BIT_INODE=1",
+    "_FILE_OFFSET_BITS=64",
+    "_LARGEFILE_SOURCE",
+  ]
+  include_dirs = [
+    "//third_party/libuv/include",
+    "//third_party/libuv/src",
+  ]
+  frameworks = [
+    "CoreFoundation.framework",
+    "CoreServices.framework",
+  ]
+}
+
+static_library("mini_electron_cares") {
+  sources = mini_electron_cares_sources
+  configs += [ ":mini_electron_engine_config" ]
+  defines = [
+    "CARES_BUILDING_LIBRARY",
+    "CARES_STATICLIB",
+    "HAVE_CONFIG_H=1",
+  ]
+  include_dirs = [
+    "//platform/macos/compat",
+    "//third_party/cares/include",
+    "//third_party/cares/src/lib",
+  ]
+}
+
+static_library("mini_electron_uvwasi") {
+  sources = mini_electron_uvwasi_sources
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [
+    "//third_party/libnode/deps/uvwasi/include",
+    "//third_party/libnode/deps/uvwasi/src",
+    "//third_party/libuv/include",
+  ]
+  deps = [ ":mini_electron_libuv" ]
+}
+
+static_library("mini_electron_node_deps") {
+  sources = mini_electron_node_dependency_sources + mini_electron_zstd_sources
+  configs += [
+    ":mini_electron_node_config",
+    ":mini_electron_engine_config",
+  ]
+  defines = [
+    "XXH_NAMESPACE=ZSTD_",
+    "ZSTD_DISABLE_ASM",
+    "ZSTD_MULTITHREAD",
+  ]
+  deps = [
+    ":mini_electron_libuv",
+    ":mini_electron_uvwasi",
+    ":mini_electron_openssl",
+  ]
+}
+
+static_library("mini_electron_node") {
+  sources = mini_electron_node_sources
+  configs -= [ "//build/config/gcc:symbol_visibility_hidden" ]
+  configs += [
+    ":mini_electron_node_config",
+    ":mini_electron_engine_config",
+    "//build/config/gcc:symbol_visibility_default",
+  ]
+  deps = [
+    ":mini_electron_cares",
+    ":mini_electron_libuv",
+    ":mini_electron_node_deps",
+    ":mini_electron_openssl",
+    ":mini_electron_util",
+    "//third_party/icu:icu",
+    "//v8:v8",
+    "//v8:v8_libbase",
+    "//v8:v8_libplatform",
+  ]
+  frameworks = [
+    "CoreFoundation.framework",
+    "Security.framework",
+  ]
+}
+
+
+static_library("mini_electron_generated_core") {
+  sources = mini_electron_generated_core_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_generated_bindings") {
+  sources = mini_electron_generated_bindings_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_skia") {
+  sources = mini_electron_skia_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_harfbuzz") {
+  sources = mini_electron_harfbuzz_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_gin") {
+  sources = mini_electron_gin_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_skia_mac") {
+  sources = [
+    "//third_party/skia/src/ports/SkFontMgr_mac_ct.cpp",
+    "//third_party/skia/src/ports/SkTypeface_mac_ct.cpp",
+    "//third_party/skia/src/ports/SkDebug_stdio.cpp",
+    "//third_party/skia/src/ports/SkOSFile_posix.cpp",
+    "//third_party/skia/src/ports/SkScalerContext_mac_ct.cpp",
+    "//third_party/skia/src/utils/mac/SkCTFont.cpp",
+    "//third_party/skia/src/utils/mac/SkCTFontCreateExactCopy.cpp",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  frameworks = [
+    "AppKit.framework",
+    "CoreFoundation.framework",
+    "CoreGraphics.framework",
+    "CoreText.framework",
+  ]
+}
+
+static_library("mini_electron_util") {
+  sources = mini_electron_util_sources
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [
+    "//third_party/libcurl/include",
+    "//third_party/libwebp/src",
+  ]
+}
+
+static_library("mini_electron_libxml") {
+  sources = mini_electron_libxml_sources
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [
+    "//third_party/libxml/mac",
+    "//third_party/libxml/mac/include",
+  ]
+}
+
+static_library("mini_electron_libxslt") {
+  sources = mini_electron_libxslt_sources
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [
+    "//third_party/libxml/mac/include",
+    "//third_party/libxslt/mac",
+  ]
+  deps = [ ":mini_electron_libxml" ]
+}
+
+static_library("mini_electron_blink") {
+  sources = mini_electron_blink_sources
+  sources += [ "//platform/macos/compat/devtools_disabled.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_chromium") {
+  sources = mini_electron_chromium_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_content") {
+  sources = mini_electron_content_sources
+  sources += [ "//platform/macos/clipboard_mac.mm" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_blink_mac") {
+  sources = [
+    "//third_party/blink/renderer/controller/memory_usage_monitor_mac.cc",
+    "//third_party/blink/renderer/core/editing/kill_ring_mac.mm",
+    "//third_party/blink/renderer/core/editing/substring_util.mm",
+    "//third_party/blink/renderer/core/layout/layout_theme_mac.mm",
+    "//third_party/blink/renderer/core/scroll/mac_scrollbar_animator_impl.mm",
+    "//third_party/blink/renderer/core/scroll/scrollbar_theme_mac.cc",
+    "//third_party/blink/renderer/core/scroll/web_scrollbar_theme.mm",
+    "//third_party/blink/renderer/platform/fonts/mac/font_cache_mac.mm",
+    "//third_party/blink/renderer/platform/fonts/mac/font_matcher_mac.mm",
+    "//third_party/blink/renderer/platform/fonts/mac/font_platform_data_mac.mm",
+    "//third_party/blink/renderer/platform/mac/color_mac.mm",
+    "//third_party/blink/renderer/platform/mac/graphics_context_canvas.mm",
+    "//third_party/blink/renderer/platform/text/locale_mac.mm",
+    "//third_party/blink/renderer/platform/theme/web_theme_engine_mac.cc",
+    "//third_party/blink/renderer/platform/wtf/text/string_apple.mm",
+    "//third_party/blink/renderer/platform/wtf/text/string_impl_apple.mm",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_screen_mac") {
+  sources = [ "//ui/display/mac/screen_mac.mm" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_platform_mac") {
+  sources = [
+    "//components/viz/common/features_viz.cc",
+    "//components/viz/service/frame_sinks/external_begin_frame_source_mac.cc",
+    "//base/third_party/superfasthash/superfasthash.c",
+    "//base/strings/utf_string_conversions.cc",
+    "//platform/macos/compat/node_runtime_stubs.cc",
+    "//components/performance_manager/public/mojom/web_memory_mojom_stub.cc",
+    "//net/base/platform_mime_util_apple.mm",
+    "//skia/ext/convolver_neon.cc",
+    "//third_party/blink/renderer/core/editing/commands/smart_replace_cf.cc",
+    "//ui/base/cocoa/defaults_utils.mm",
+    "//ui/display/mac/ca_display_link_mac.mm",
+    "//ui/display/mac/cv_display_link_mac.mm",
+    "//ui/display/mac/display_link_mac.mm",
+    "//ui/gfx/mac/coordinate_conversion.mm",
+    "//ui/gfx/mac/io_surface.cc",
+    "//ui/native_theme/native_theme_mac.mm",
+    "//platform/macos/compat/legacy_win32_shims.cc",
+    "//ui/native_theme/scrollbar_animator_mac.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  defines = [ "WCHAR_T_IS_32_BIT" ]
+  frameworks = [
+    "AppKit.framework",
+    "CoreFoundation.framework",
+    "CoreGraphics.framework",
+    "Foundation.framework",
+    "IOSurface.framework",
+  ]
+}
+
+source_set("mini_electron_engine_api") {
+  sources = [ "//platform/macos/api/engine_api.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_posix_win_compat") {
+  sources = [ "//platform/posix/win32/win32_compat.cc" ]
+  inputs = [ "//platform/macos/compat/darwin_legacy_stat_rename.h" ]
+  configs += [ ":mini_electron_engine_config" ]
+  cflags = [
+    "-include",
+    rebase_path("//platform/macos/compat/darwin_legacy_stat_rename.h", root_build_dir),
+  ]
+}
+
+static_library("mini_electron_partition_alloc") {
+  sources = mini_electron_partition_alloc_sources
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_partition_alloc_mac") {
+  sources = [
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/apple/foundation_util.mm",
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/apple/mach_logging.cc",
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/debug/stack_trace_mac.cc",
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/mac/mac_util.mm",
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/system/sys_info_mac.mm",
+    "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/time/time_apple.mm",
+    "//base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ptr_backup_ref_impl.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+group("mini_electron_engine") {
+  deps = [
+    ":mini_electron_chromium",
+    ":mini_electron_content",
+    ":mini_electron_base",
+    ":mini_electron_blink",
+    ":mini_electron_blink_mac",
+    ":mini_electron_generated_core",
+    ":mini_electron_generated_bindings",
+    ":mini_electron_harfbuzz",
+    "//third_party/icu:icu",
+    ":mini_electron_libxml",
+    ":mini_electron_libxslt",
+    ":mini_electron_openssl",
+    ":mini_electron_partition_alloc",
+    ":mini_electron_partition_alloc_mac",
+    ":mini_electron_posix_win_compat",
+    ":mini_electron_screen_mac",
+    ":mini_electron_platform_mac",
+    ":mini_electron_skia",
+    ":mini_electron_skia_mac",
+    ":mini_electron_util",
+    ":mini_electron_gin",
+    "//v8:v8",
+    "//v8:v8_libbase",
+    "//v8:v8_libplatform",
+  ]
+}
+
+executable("mini_electron_smoke") {
+  output_name = "mini-electron-smoke"
+  sources = [ "//platform/macos/smoke/headless_smoke.cc" ]
+
+  deps = [ ":engine_probe" ]
+
+  frameworks = [ "CoreFoundation.framework" ]
+}
+
+executable("mini_electron_browser") {
+  output_name = "mini-electron-browser"
+  sources = [ "//platform/macos/app/gui_demo.mm" ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_engine",
+    ":mini_electron_engine_api",
+  ]
+  libs = [
+    "curl",
+    "iconv",
+  ]
+  frameworks = [
+    "Carbon.framework",
+    "CoreServices.framework",
+    "AppKit.framework",
+    "CoreFoundation.framework",
+    "CoreGraphics.framework",
+    "CoreText.framework",
+    "Foundation.framework",
+    "MediaAccessibility.framework",
+    "IOSurface.framework",
+    "QuartzCore.framework",
+    "Security.framework",
+    "UniformTypeIdentifiers.framework",
+  ]
+}
+
+executable("mini_electron") {
+  output_name = "mini-electron"
+  sources = [
+    "//platform/macos/electron/electron_api.cc",
+    "//platform/macos/electron/electron_api.h",
+    "//platform/macos/electron/node_runtime.cc",
+    "//platform/macos/electron/node_runtime.h",
+    "//platform/macos/electron/electron_demo.mm",
+    "//platform/macos/electron/omp_desktop_runtime.h",
+    "//platform/macos/electron/omp_desktop_runtime.mm",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_engine",
+    ":mini_electron_engine_api",
+    ":mini_electron_node",
+  ]
+  libs = [
+    rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+    "curl",
+    "iconv",
+  ]
+  inputs = [
+    "$mini_electron_nghttp2_root/lib/libnghttp2.a",
+    "//platform/macos/node_exports.txt",
+  ]
+  ldflags = [
+    "-Wl,-exported_symbols_list," +
+        rebase_path("//platform/macos/node_exports.txt", root_build_dir),
+  ]
+  frameworks = [
+    "Carbon.framework",
+    "CoreServices.framework",
+    "AppKit.framework",
+    "CoreFoundation.framework",
+    "CoreGraphics.framework",
+    "CoreText.framework",
+    "Foundation.framework",
+    "MediaAccessibility.framework",
+    "IOSurface.framework",
+    "QuartzCore.framework",
+    "Security.framework",
+    "UniformTypeIdentifiers.framework",
+  ]
+}

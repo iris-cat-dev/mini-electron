@@ -14,6 +14,10 @@ namespace blink::mojom::blink {
 
 class PLATFORM_EXPORT MimeRegistryInterceptorForTesting : public MimeRegistry {
     virtual MimeRegistry* GetForwardingInterface() = 0;
+    bool GetMimeTypeFromExtension(const WTF::String& extension, WTF::String* out_mime_type) override
+    {
+        return GetForwardingInterface()->GetMimeTypeFromExtension(extension, out_mime_type);
+    }
     void GetMimeTypeFromExtension(const WTF::String& extension, GetMimeTypeFromExtensionCallback callback) override;
 };
 class PLATFORM_EXPORT MimeRegistryAsyncWaiter {

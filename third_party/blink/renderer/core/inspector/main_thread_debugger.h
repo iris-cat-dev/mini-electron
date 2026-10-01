@@ -96,7 +96,7 @@ private:
     void ReportConsoleMessage(ExecutionContext*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const WTF::String& message, SourceLocation*) override;
     int ContextGroupId(ExecutionContext*) override;
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     // V8InspectorClient implementation.
     void runMessageLoopOnPause(int context_group_id) override;
     void runMessageLoopOnInstrumentationPause(int context_group_id) override;

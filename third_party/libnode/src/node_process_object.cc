@@ -12,6 +12,14 @@
 #include <climits> // PATH_MAX
 
 
+#ifdef _WIN32
+extern bool g_isElectronMode;
+
+namespace atom {
+void patchProcessObject(v8::Local<v8::Object> object);
+}
+#endif
+
 namespace node {
 using v8::Context;
 using v8::EscapableHandleScope;
@@ -216,6 +224,10 @@ void PatchProcessObject(const FunctionCallbackInfo<Value>& args)
     SetVersions(isolate, versions);
     READONLY_PROPERTY(process, "versions", versions);
 
+#ifdef _WIN32
+    if (g_isElectronMode)
+        atom::patchProcessObject(process);
+#endif
 }
 
 void RegisterProcessExternalReferences(ExternalReferenceRegistry* registry)

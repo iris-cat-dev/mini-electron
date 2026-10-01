@@ -1,0 +1,58 @@
+<Project>
+  <PropertyGroup>
+    <UseMultiToolTask Condition="'$(UseMultiToolTask)' == ''">true</UseMultiToolTask>
+    <EnforceProcessCountAcrossBuilds Condition="'$(EnforceProcessCountAcrossBuilds)' == ''">true</EnforceProcessCountAcrossBuilds>
+    <MiniElectronSourceRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\..'))</MiniElectronSourceRoot>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <AdditionalIncludeDirectories>$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <UsingTask TaskName="MiniElectronObjectPaths" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <SourceRoot ParameterType="System.String" Required="true" />
+      <ObjectRoot ParameterType="System.String" Required="true" />
+      <Result ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Security.Cryptography" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        Result = Sources;
+        string objectRoot = Path.GetFullPath(ObjectRoot);
+        using (var hash = SHA256.Create()) {
+          foreach (var item in Sources) {
+            string source = item.GetMetadata("FullPath");
+            string relative = source.StartsWith(SourceRoot, StringComparison.OrdinalIgnoreCase)
+                ? source.Substring(SourceRoot.Length) : source;
+            string output = Path.Combine(objectRoot, relative + ".obj");
+            // FileTracker appends temporary suffixes and still enforces MAX_PATH.
+            if (Path.IsPathRooted(relative) || output.Length > 200) {
+              string key = BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(relative))).Replace("-", "");
+              output = Path.Combine(objectRoot, key + ".obj");
+            }
+            item.SetMetadata("ObjectFileName", output);
+          }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="MiniElectronPrepareObjectPaths" BeforeTargets="PrepareForBuild;WarnCompileDuplicatedFilename">
+    <MiniElectronObjectPaths Sources="@(ClCompile)" SourceRoot="$(MiniElectronSourceRoot)" ObjectRoot="$(IntDir)objects\">
+      <Output TaskParameter="Result" ItemName="_MiniElectronCompileItems" />
+    </MiniElectronObjectPaths>
+    <ItemGroup>
+      <ClCompile Remove="@(ClCompile)" />
+      <ClCompile Include="@(_MiniElectronCompileItems)" />
+      <_MiniElectronObjectFiles Include="@(ClCompile->'%(ObjectFileName)')" />
+    </ItemGroup>
+    <MakeDir Directories="@(_MiniElectronObjectFiles->'%(RootDir)%(Directory)')" />
+  </Target>
+</Project>

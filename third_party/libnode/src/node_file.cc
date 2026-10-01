@@ -34,6 +34,11 @@
 #include "permission/permission.h"
 #include "util-inl.h"
 
+#ifdef _WIN32
+#include "runtime/electron/common/asar/archive.h"
+#include "runtime/electron/common/asar/asar_util.h"
+#endif
+
 #include "tracing/trace_event.h"
 
 #include "req_wrap-inl.h"
@@ -49,7 +54,10 @@
 #endif
 
 #ifdef _WIN32
+extern bool g_isElectronMode;
+
 #include <windows.h>
+#include "runtime/electron/common/embedded_resources.h"
 #else
 #include <unistd.h>
 #endif
@@ -1020,6 +1028,14 @@ static void InternalModuleStat(const FunctionCallbackInfo<Value>& args)
 
     int rc = 0;
 
+#ifdef _WIN32
+    if (g_isElectronMode &&
+        atom::checkEmbeddedResourceStat(*path, &rc, nullptr)) {
+        args.GetReturnValue().Set(rc);
+        return;
+    }
+#endif
+
     uv_fs_t req;
     rc = uv_fs_stat(env->event_loop(), &req, *path, nullptr);
     if (rc == 0) {
@@ -1117,6 +1133,21 @@ static void LStat(const FunctionCallbackInfo<Value>& args)
 
     bool use_bigint = args[1]->IsTrue();
 
+
+#ifdef _WIN32
+    int resource_type = 0;
+    std::size_t resource_size = 0;
+    if (g_isElectronMode &&
+        args[2]->IsUndefined() &&
+        atom::checkEmbeddedResourceStat(*path, &resource_type, nullptr, &resource_size)) {
+        uv_stat_t stats{};
+        stats.st_mode = resource_type == 1 ? (S_IFDIR | 0555) : (S_IFREG | 0444);
+        stats.st_nlink = 1;
+        stats.st_size = resource_size;
+        args.GetReturnValue().Set(FillGlobalStatsArray(binding_data, use_bigint, &stats));
+        return;
+    }
+#endif
 
     if (!args[2]->IsUndefined()) { // lstat(path, use_bigint, req)
         FSReqBase* req_wrap_async = GetReqWrap(args, 2, use_bigint);
@@ -2437,6 +2468,18 @@ static void ReadFileUtf8(const FunctionCallbackInfo<Value>& args)
         CHECK_NOT_NULL(*path);
 
 
+#ifdef _WIN32
+        int resource_type = 0;
+        if (g_isElectronMode &&
+            atom::checkEmbeddedResourceStat(*path, &resource_type, &result) &&
+            resource_type == 0) {
+            Local<Value> value;
+            if (ToV8Value(env->context(), result, isolate).ToLocal(&value))
+                args.GetReturnValue().Set(value);
+            return;
+        }
+#endif
+
         ToNamespacedPath(env, &path);
         if (CheckOpenPermissions(env, path, flags).IsNothing())
             return;
@@ -3013,6 +3056,19 @@ BindingData::FilePathIsFileReturnType BindingData::FilePathIsFile(Environment* e
 {
     THROW_IF_INSUFFICIENT_PERMISSIONS(
         env, permission::PermissionScope::kFileSystemRead, file_path, BindingData::FilePathIsFileReturnType::kThrowInsufficientPermissions);
+
+#ifdef _WIN32
+    if (file_path.find(".asar/") != std::string::npos || file_path.find(".asar\\") != std::string::npos) {
+        base::FilePath archive_path, relative_path;
+        if (asar::getAsarArchivePath(base::FilePath::FromUTF8Unsafe(file_path), &archive_path, &relative_path)) {
+            auto archive = asar::getOrCreateAsarArchive(archive_path);
+            asar::Archive::FileInfo info;
+            return archive && archive->GetFileInfo(relative_path, &info)
+                ? BindingData::FilePathIsFileReturnType::kIsFile
+                : BindingData::FilePathIsFileReturnType::kIsNotFile;
+        }
+    }
+#endif
 
     uv_fs_t req;
 

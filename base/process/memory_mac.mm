@@ -28,7 +28,7 @@ void EnableTerminationOnHeapCorruption() {
 }
 
 bool UncheckedMalloc(size_t size, void** result) {
-#if defined(ENABLE_MB)
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
   // MiniBlink does not install Chromium's process-wide allocator shim. Keep
   // unchecked allocations paired with the system allocator used by free().
   *result = malloc(size);
@@ -104,7 +104,7 @@ void EnableTerminationOnOutOfMemory() {
 }
 
 void UncheckedFree(void* ptr) {
-#if defined(ENABLE_MB)
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
   free(ptr);
 #elif PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
   // Important: might be different from free(), because in some cases, free()

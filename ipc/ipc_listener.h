@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include "base/component_export.h"
+#include "ipc/ipc_export.h"
 #include "build/build_config.h"
 #include "mojo/public/cpp/bindings/scoped_interface_endpoint_handle.h"
 
@@ -18,7 +18,7 @@ namespace IPC {
 class Message;
 
 // Implemented by consumers of a Channel to receive messages.
-class COMPONENT_EXPORT(IPC) Listener {
+class IPC_EXPORT Listener {
 public:
     // Called when a message is received.  Returns true iff the message was
     // handled.
@@ -62,8 +62,10 @@ public:
 #endif // BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
 
     // Debugging helper for identifying what kind of a Listener this is.
-    // TODO(crbug.com/40143346): Remove this method once the bug is fixed.
-    virtual std::string ToDebugString();
+    virtual std::string ToDebugString()
+    {
+        return "IPC::Listener";
+    }
 
 protected:
     virtual ~Listener()

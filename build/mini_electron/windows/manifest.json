@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "name": "libuv",
+      "path": "build/windows/projects/libuv.vcxproj"
+    },
+    {
+      "name": "libnode",
+      "path": "build/windows/projects/libnode.vcxproj"
+    },
+    {
+      "name": "blink",
+      "path": "build/windows/projects/blink.vcxproj"
+    },
+    {
+      "name": "engine",
+      "path": "build/windows/projects/engine.vcxproj"
+    },
+    {
+      "name": "chromium",
+      "path": "build/windows/projects/chromium.vcxproj"
+    },
+    {
+      "name": "generated_bindings",
+      "path": "build/windows/projects/generated_bindings.vcxproj"
+    },
+    {
+      "name": "harfbuzz",
+      "path": "build/windows/projects/harfbuzz.vcxproj"
+    },
+    {
+      "name": "icu",
+      "path": "build/windows/projects/icu.vcxproj"
+    },
+    {
+      "name": "skia",
+      "path": "build/windows/projects/skia.vcxproj"
+    },
+    {
+      "name": "support",
+      "path": "build/windows/projects/support.vcxproj"
+    },
+    {
+      "name": "v8_core_1",
+      "path": "build/windows/projects/v8_core_1.vcxproj"
+    },
+    {
+      "name": "v8_core_2",
+      "path": "build/windows/projects/v8_core_2.vcxproj"
+    },
+    {
+      "name": "v8_core_3",
+      "path": "build/windows/projects/v8_core_3.vcxproj"
+    },
+    {
+      "name": "v8_generated_1",
+      "path": "build/windows/projects/v8_generated_1.vcxproj"
+    },
+    {
+      "name": "v8_generated_2",
+      "path": "build/windows/projects/v8_generated_2.vcxproj"
+    },
+    {
+      "name": "v8_generated_3",
+      "path": "build/windows/projects/v8_generated_3.vcxproj"
+    },
+    {
+      "name": "gin",
+      "path": "build/windows/projects/gin.vcxproj"
+    },
+    {
+      "name": "openssl",
+      "path": "build/windows/projects/openssl.vcxproj"
+    }
+  ],
+  "entry_project": "build/windows/projects/application.vcxproj",
+  "built_executable": "mini-electron.exe",
+  "package_executable": "mini-electron.exe",
+  "embedded_resources": {
+    "source_dir": "runtime/electron/lib",
+    "output": "generated/runtime/electron/common/embedded_resources_data.h",
+    "include_root": "."
+  },
+  "asar_source": {
+    "output": "generated/runtime/electron/common/asar_source.h"
+  },
+  "msbuild": {
+    "configuration": "Release",
+    "platform": "x64",
+    "sdk": "10.0.26100.0"
+  }
+}

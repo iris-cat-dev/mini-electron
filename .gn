@@ -1,4 +1,4 @@
-# GN entry point for the macOS port.
+# GN backend for macOS. The shared project entry point is build.py.
 buildconfig = "//build/config/BUILDCONFIG.gn"
 script_executable = "python3"
 

@@ -50,7 +50,7 @@
 #include <tchar.h>
 #endif // _WIN32
 
-int MbFprintf(FILE* const stream, char const* const format, ...) {
+int MiniElectronFprintf(FILE* const stream, char const* const format, ...) {
     va_list args;
     int ret;
 

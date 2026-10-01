@@ -123,7 +123,7 @@
 #include "third_party/blink/renderer/core/page/page_visibility_observer.h"
 #include "third_party/blink/renderer/modules/remote_objects/remote_object_gateway_impl.h"
 #endif
-#include "content/renderer/RenderThreadImpl.h"
+#include "runtime/engine/renderer/render_thread_impl.h"
 #include <windows.h>
 
 namespace blink {

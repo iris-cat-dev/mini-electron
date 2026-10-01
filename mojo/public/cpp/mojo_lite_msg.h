@@ -3,8 +3,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ipc_lite/ipc_message_macros.h"
-#include "ipc_lite/ipc_message_utils.h"
+#include "ipc/ipc_message_macros.h"
+#include "ipc/ipc_message_utils.h"
 
 // Defines the IPC messages used by the automation interface.
 

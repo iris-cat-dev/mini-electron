@@ -37,6 +37,10 @@ using v8::Value;
 namespace node {
 
 
+#ifdef _WIN32
+extern bool g_disable_has_run_bootstrapping_code_error;
+#endif
+
 namespace per_process {
 Mutex cli_options_mutex;
 std::shared_ptr<PerProcessOptions> cli_options { new PerProcessOptions() };
@@ -908,7 +912,11 @@ void GetCLIOptionsValues(const FunctionCallbackInfo<Value>& args)
     Local<Context> context = isolate->GetCurrentContext();
     Environment* env = Environment::GetCurrent(context);
 
-    if (!env->has_run_bootstrapping_code()) {
+    bool has_bootstrapped = env->has_run_bootstrapping_code();
+#ifdef _WIN32
+    has_bootstrapped = has_bootstrapped || g_disable_has_run_bootstrapping_code_error;
+#endif
+    if (!has_bootstrapped) {
         // No code because this is an assertion.
         THROW_ERR_OPTIONS_BEFORE_BOOTSTRAPPING(isolate, "Should not query options before bootstrapping is done");
     }

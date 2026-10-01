@@ -73,7 +73,7 @@
 #include "third_party/blink/renderer/core/events/current_input_event.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/events/mouse_event.h"
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
 #endif
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
@@ -545,7 +545,7 @@ void LocalFrameClientImpl::DispatchDidCommitLoad(HistoryItem* item, WebHistoryCo
             }
         }
     }
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* dev_tools = DevToolsAgent(/*create_if_necessary=*/false)) {
         dev_tools->DidCommitLoadForLocalFrame(web_frame_->GetFrame());
     }
@@ -691,7 +691,7 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
         }
     }
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = DevToolsAgent(/*create_if_necessary=*/false)) {
         navigation_info->devtools_initiator_info = devtools->NavigationInitiatorInfo(web_frame_->GetFrame());
     }
@@ -959,7 +959,7 @@ unsigned LocalFrameClientImpl::BackForwardLength()
 
 WebDevToolsAgentImpl* LocalFrameClientImpl::DevToolsAgent(bool create_if_necessary)
 {
-#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     return nullptr;
 #else
     return WebLocalFrameImpl::FromFrame(web_frame_->GetFrame()->LocalFrameRoot())->DevToolsAgentImpl(create_if_necessary);
@@ -1026,7 +1026,7 @@ base::UnguessableToken LocalFrameClientImpl::GetDevToolsFrameToken() const
 
 String LocalFrameClientImpl::evaluateInInspectorOverlayForTesting(const String& script)
 {
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = DevToolsAgent(/*create_if_necessary=*/true)) {
         return devtools->EvaluateInOverlayForTesting(script);
     }
@@ -1141,7 +1141,7 @@ std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> LocalFrameClientImpl::Cr
 void LocalFrameClientImpl::BindDevToolsAgent(
     mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver)
 {
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = DevToolsAgent(/*create_if_necessary=*/true)) {
         devtools->BindReceiver(std::move(host), std::move(receiver));
     }

@@ -47,7 +47,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_initializer.h"
 #include "third_party/blink/renderer/controller/blink_leak_detector.h"
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/controller/dev_tools_frontend_impl.h"
 #endif
 #include "third_party/blink/renderer/controller/javascript_call_stack_generator.h"
@@ -308,7 +308,7 @@ void BlinkInitializer::InitLocalFrame(LocalFrame& frame) const
     if (RuntimeEnabledFeatures::DisplayCutoutAPIEnabled()) {
         frame.GetInterfaceRegistry()->AddAssociatedInterface(WTF::BindRepeating(&DisplayCutoutClientImpl::BindMojoReceiver, WrapWeakPersistent(&frame)));
     }
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     frame.GetInterfaceRegistry()->AddAssociatedInterface(WTF::BindRepeating(&DevToolsFrontendImpl::BindMojoRequest, WrapWeakPersistent(&frame)));
 #endif
 
@@ -327,7 +327,7 @@ void BlinkInitializer::InitServiceWorkerGlobalScope(ServiceWorkerGlobalScope& wo
 
 void BlinkInitializer::OnClearWindowObjectInMainWorld(Document& document, const Settings& settings) const
 {
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (DevToolsFrontendImpl* devtools_frontend = DevToolsFrontendImpl::From(document.GetFrame())) {
         devtools_frontend->DidClearWindowObject();
     }

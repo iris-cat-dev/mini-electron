@@ -83,10 +83,9 @@ public:
 #endif // !BUILDFLAG(IS_FUCHSIA)
     virtual ~MimeRegistry() = default;
 
-    // Sync method. This signature is used by the client side; the service side
-    // should implement the signature with callback below.
+    // The in-process Mojo binding calls the synchronous implementation directly.
 
-    virtual bool GetMimeTypeFromExtension(const WTF::String& extension, WTF::String* out_mime_type);
+    virtual bool GetMimeTypeFromExtension(const WTF::String& extension, WTF::String* out_mime_type) = 0;
 
     using GetMimeTypeFromExtensionCallback = base::OnceCallback<void(const WTF::String&)>;
 

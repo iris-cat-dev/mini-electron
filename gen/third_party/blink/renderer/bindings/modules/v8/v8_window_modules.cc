@@ -9,7 +9,7 @@
 // formatting of the generated files.
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_window.h"
-#include "linux/windows.h"
+#include "platform/posix/win32/windows.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
@@ -223,7 +223,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_output_element.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_paragraph_element.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_param_element.h"
-#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_permission_element.h"
 #endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_picture_element.h"
@@ -10406,7 +10406,7 @@ void HTMLParamElementExposedConstructCallback(v8::Local<v8::Name> v8_property_na
     bindings::V8SetReturnValue(info, V8HTMLParamElement::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 }
 
-#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
 void HTMLPermissionElementExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DOMWindow_HTMLPermissionElement_ConstructorGetterCallback");
@@ -21697,7 +21697,7 @@ void V8Window::Impl::InstallContextDependentProperties(v8::Local<v8::Context> co
 //         v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
 //         IDLMemberInstaller::InstallExposedConstructs(isolate, world, instance_object, prototype_object, interface_object, signature, kExposedConstructTable);
 //     }
-#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
     if ((feature_selector.IsAll() && RuntimeEnabledFeatures::PermissionElementEnabled(execution_context))
         || feature_selector.IsAnyOf(mojom::blink::OriginTrialFeature::kPermissionElement)) {
         static const IDLMemberInstaller::ExposedConstructConfig kExposedConstructTable[] = {

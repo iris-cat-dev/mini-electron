@@ -21,6 +21,14 @@
 #endif
 
 
+#ifdef _WIN32
+extern bool g_isElectronMode;
+
+namespace atom {
+void bindEngineConsoleLog(v8::Local<v8::Context> context);
+}
+#endif
+
 namespace node {
 using errors::TryCatchScope;
 using v8::Array;
@@ -418,6 +426,11 @@ Environment* CreateEnvironment(IsolateData* isolate_data, Local<Context> context
         SetIsolateErrorHandlers(isolate, {});
     }
 
+
+#ifdef _WIN32
+    if (g_isElectronMode)
+        atom::bindEngineConsoleLog(context);
+#endif
 
     Context::Scope context_scope(context);
     env->InitializeMainContext(context, env_snapshot_info);

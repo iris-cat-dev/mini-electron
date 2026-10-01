@@ -1,10 +1,12 @@
-# Copyright 2026 The miniblink132 Authors
+# Copyright 2026 The mini-electron Authors
 # Use of this source code is governed by the Apache-2.0 license.
+
+assert(is_mac, "Use python build.py for the native Windows build backend.")
 
 group("default") {
   deps = [
-    "//platform/macos:miniblink_mac_gui_demo",
-    "//platform/macos:miniblink_mac_electron_demo",
-    "//platform/macos:miniblink_mac_smoke",
+    "//build/macos:mini_electron_browser",
+    "//build/macos:mini_electron",
+    "//build/macos:mini_electron_smoke",
   ]
 }

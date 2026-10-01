@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #import <AppKit/AppKit.h>
@@ -8,13 +8,13 @@
 #include <cstring>
 #include <string>
 
-#include "mbvip/core/mb.h"
+#include "runtime/engine/public/engine_api.h"
 
-extern "C" void mbMacSetComposition(mbWebView web_view,
+extern "C" void mini_electron_mac_set_composition(mini_electron_web_view web_view,
                                     const char16_t* text,
                                     size_t length,
                                     BOOL committed);
-extern "C" void mbMacSetDeviceScaleFactor(mbWebView web_view, float scale);
+extern "C" void mini_electron_mac_set_device_scale_factor(mini_electron_web_view web_view, float scale);
 
 
 static std::u16string UTF16String(NSString* value) {
@@ -26,23 +26,23 @@ static std::u16string UTF16String(NSString* value) {
   return result;
 }
 
-@class MiniBlinkView;
+@class MiniElectronView;
 
-static void MB_CALL_TYPE PaintUpdated(mbWebView web_view,
+static void MINI_ELECTRON_CALL_TYPE PaintUpdated(mini_electron_web_view web_view,
                                       void* parameter,
                                       const void* buffer,
-                                      const mbRect* dirty_rect,
+                                      const mini_electron_rect* dirty_rect,
                                       int width,
                                       int height);
-static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
+static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_view,
                                          void* parameter,
-                                         mbWebFrameHandle frame,
+                                         mini_electron_web_frame_handle frame,
                                          const utf8* url,
-                                         mbLoadingResult result,
+                                         mini_electron_loading_result result,
                                          const utf8* failed_reason);
 
-@interface MiniBlinkView : NSView <NSTextInputClient>
-- (instancetype)initWithFrame:(NSRect)frame webView:(mbWebView)webView;
+@interface MiniElectronView : NSView <NSTextInputClient>
+- (instancetype)initWithFrame:(NSRect)frame webView:(mini_electron_web_view)webView;
 - (void)acceptPixels:(NSData*)pixels width:(int)width height:(int)height;
 - (void)pageDidFinishLoading:(NSString*)url;
 - (BOOL)hasFrame;
@@ -53,25 +53,25 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 @interface DemoAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 - (instancetype)initWithFrontendURL:(NSURL*)frontendURL
                      screenshotPath:(NSString*)screenshotPath;
-- (void)blinkViewDidLoad:(MiniBlinkView*)view url:(NSString*)url;
+- (void)blinkViewDidLoad:(MiniElectronView*)view url:(NSString*)url;
 @end
 
-@implementation MiniBlinkView {
-  mbWebView _webView;
+@implementation MiniElectronView {
+  mini_electron_web_view _webView;
   NSData* _pixels;
   int _pixelWidth;
   int _pixelHeight;
   NSMutableAttributedString* _markedText;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame webView:(mbWebView)webView {
+- (instancetype)initWithFrame:(NSRect)frame webView:(mini_electron_web_view)webView {
   self = [super initWithFrame:frame];
   if (self) {
     _webView = webView;
     _markedText = [[NSMutableAttributedString alloc] init];
     [self setWantsLayer:YES];
-    mbOnPaintBitUpdated(_webView, PaintUpdated, (__bridge void*)self);
-    mbOnLoadingFinish(_webView, LoadingFinished, (__bridge void*)self);
+    mini_electron_on_paint_bit_updated(_webView, PaintUpdated, (__bridge void*)self);
+    mini_electron_on_loading_finish(_webView, LoadingFinished, (__bridge void*)self);
     [self syncRendererMetrics];
   }
   return self;
@@ -79,7 +79,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 
 - (void)dealloc {
   if (_webView != NULL_WEBVIEW)
-    mbDestroyWebView(_webView);
+    mini_electron_destroy_web_view(_webView);
 #if !__has_feature(objc_arc)
   [_pixels release];
   [_markedText release];
@@ -100,12 +100,12 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 }
 
 - (BOOL)becomeFirstResponder {
-  mbSetFocus(_webView);
+  mini_electron_set_focus(_webView);
   return YES;
 }
 
 - (BOOL)resignFirstResponder {
-  mbKillFocus(_webView);
+  mini_electron_kill_focus(_webView);
   return YES;
 }
 
@@ -122,10 +122,10 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
     return;
   const NSSize size = self.bounds.size;
   const float scale = [self currentDeviceScaleFactor];
-  std::fprintf(stderr, "[mb] NSView dip=%.0fx%.0f scale=%.2f\n",
+  std::fprintf(stderr, "[mini-electron] NSView dip=%.0fx%.0f scale=%.2f\n",
                size.width, size.height, scale);
-  mbMacSetDeviceScaleFactor(_webView, scale);
-  mbResize(_webView, std::max(1, static_cast<int>(size.width)),
+  mini_electron_mac_set_device_scale_factor(_webView, scale);
+  mini_electron_resize(_webView, std::max(1, static_cast<int>(size.width)),
            std::max(1, static_cast<int>(size.height)));
 }
 
@@ -177,11 +177,11 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 }
 
 - (void)exerciseInputPath {
-  std::fputs("[mb] AppKit input -> resize/mouse/keyboard/focus/IME\n", stderr);
-  mbSetFocus(_webView);
-  mbFireMouseEvent(_webView, MB_MSG_MOUSEMOVE, 30, 30, 0);
-  mbFireMouseEvent(_webView, MB_MSG_LBUTTONDOWN, 30, 30, MB_LBUTTON);
-  mbFireMouseEvent(_webView, MB_MSG_LBUTTONUP, 30, 30, 0);
+  std::fputs("[mini-electron] AppKit input -> resize/mouse/keyboard/focus/IME\n", stderr);
+  mini_electron_set_focus(_webView);
+  mini_electron_fire_mouse_event(_webView, MINI_ELECTRON_MSG_MOUSEMOVE, 30, 30, 0);
+  mini_electron_fire_mouse_event(_webView, MINI_ELECTRON_MSG_LBUTTONDOWN, 30, 30, MINI_ELECTRON_LBUTTON);
+  mini_electron_fire_mouse_event(_webView, MINI_ELECTRON_MSG_LBUTTONUP, 30, 30, 0);
   NSEvent* keyDown =
       [NSEvent keyEventWithType:NSEventTypeKeyDown
                        location:NSZeroPoint
@@ -209,16 +209,16 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
     const NSSize size = self.bounds.size;
     const int x = static_cast<int>(size.width * 0.5);
     const int y = static_cast<int>(size.height * 0.64);
-    mbFireMouseEvent(self->_webView, MB_MSG_LBUTTONDOWN, x, y, MB_LBUTTON);
-    mbFireMouseEvent(self->_webView, MB_MSG_LBUTTONUP, x, y, 0);
+    mini_electron_fire_mouse_event(self->_webView, MINI_ELECTRON_MSG_LBUTTONDOWN, x, y, MINI_ELECTRON_LBUTTON);
+    mini_electron_fire_mouse_event(self->_webView, MINI_ELECTRON_MSG_LBUTTONUP, x, y, 0);
   });
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 11 * NSEC_PER_SEC),
                  dispatch_get_main_queue(), ^{
     const NSSize size = self.bounds.size;
     const int x = static_cast<int>(size.width * 0.5);
     const int y = static_cast<int>(size.height * 0.55);
-    mbFireMouseEvent(self->_webView, MB_MSG_LBUTTONDOWN, x, y, MB_LBUTTON);
-    mbFireMouseEvent(self->_webView, MB_MSG_LBUTTONUP, x, y, 0);
+    mini_electron_fire_mouse_event(self->_webView, MINI_ELECTRON_MSG_LBUTTONDOWN, x, y, MINI_ELECTRON_LBUTTON);
+    mini_electron_fire_mouse_event(self->_webView, MINI_ELECTRON_MSG_LBUTTONUP, x, y, 0);
   });
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 12 * NSEC_PER_SEC),
                  dispatch_get_main_queue(), ^{
@@ -259,27 +259,27 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   unsigned int flags = 0;
   NSEventModifierFlags modifiers = [event modifierFlags];
   if (modifiers & NSEventModifierFlagShift)
-    flags |= MB_SHIFT;
+    flags |= MINI_ELECTRON_SHIFT;
   if (modifiers & (NSEventModifierFlagControl | NSEventModifierFlagCommand))
-    flags |= MB_CONTROL;
+    flags |= MINI_ELECTRON_CONTROL;
   NSUInteger buttons = [NSEvent pressedMouseButtons];
   if (buttons & 1)
-    flags |= MB_LBUTTON;
+    flags |= MINI_ELECTRON_LBUTTON;
   if (buttons & 2)
-    flags |= MB_RBUTTON;
+    flags |= MINI_ELECTRON_RBUTTON;
   if (buttons & 4)
-    flags |= MB_MBUTTON;
+    flags |= MINI_ELECTRON_MBUTTON;
   return flags;
 }
 
 - (void)sendMouse:(NSEvent*)event message:(unsigned int)message {
   NSPoint point = [self convertPoint:[event locationInWindow] fromView:nil];
-  mbFireMouseEvent(_webView, message, static_cast<int>(point.x),
+  mini_electron_fire_mouse_event(_webView, message, static_cast<int>(point.x),
                    static_cast<int>(point.y), [self mouseFlagsForEvent:event]);
 }
 
 - (void)mouseMoved:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_MOUSEMOVE];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_MOUSEMOVE];
 }
 - (void)mouseDragged:(NSEvent*)event {
   [self mouseMoved:event];
@@ -292,27 +292,27 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 }
 - (void)mouseDown:(NSEvent*)event {
   [[self window] makeFirstResponder:self];
-  [self sendMouse:event message:MB_MSG_LBUTTONDOWN];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_LBUTTONDOWN];
 }
 - (void)mouseUp:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_LBUTTONUP];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_LBUTTONUP];
 }
 - (void)rightMouseDown:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_RBUTTONDOWN];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_RBUTTONDOWN];
 }
 - (void)rightMouseUp:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_RBUTTONUP];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_RBUTTONUP];
 }
 - (void)otherMouseDown:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_MBUTTONDOWN];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_MBUTTONDOWN];
 }
 - (void)otherMouseUp:(NSEvent*)event {
-  [self sendMouse:event message:MB_MSG_MBUTTONUP];
+  [self sendMouse:event message:MINI_ELECTRON_MSG_MBUTTONUP];
 }
 - (void)scrollWheel:(NSEvent*)event {
   NSPoint point = [self convertPoint:[event locationInWindow] fromView:nil];
   int delta = static_cast<int>([event scrollingDeltaY] * 120.0);
-  mbFireMouseWheelEvent(_webView, static_cast<int>(point.x),
+  mini_electron_fire_mouse_wheel_event(_webView, static_cast<int>(point.x),
                         static_cast<int>(point.y), delta,
                         [self mouseFlagsForEvent:event]);
 }
@@ -331,22 +331,22 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   if (([event modifierFlags] & NSEventModifierFlagCommand) != 0)
     return;
   unsigned int key = [self keyForEvent:event];
-  mbFireKeyDownEvent(_webView, key, 0, FALSE);
+  mini_electron_fire_key_down_event(_webView, key, 0, FALSE);
   [self interpretKeyEvents:@[ event ]];
 }
 
 - (void)keyUp:(NSEvent*)event {
   if (([event modifierFlags] & NSEventModifierFlagCommand) != 0)
     return;
-  mbFireKeyUpEvent(_webView, [self keyForEvent:event], 0, FALSE);
+  mini_electron_fire_key_up_event(_webView, [self keyForEvent:event], 0, FALSE);
 }
 
 - (void)insertCommittedText:(NSString*)plain {
   if ([plain length] == 0)
     return;
-  mbSetFocus(_webView);
+  mini_electron_set_focus(_webView);
   std::u16string characters = UTF16String(plain);
-  mbMacSetComposition(_webView, characters.data(), characters.size(), TRUE);
+  mini_electron_mac_set_composition(_webView, characters.data(), characters.size(), TRUE);
   [_markedText deleteCharactersInRange:NSMakeRange(0, [_markedText length])];
 }
 
@@ -382,7 +382,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   [_markedText setAttributedString:attributed];
   NSString* plain = [attributed string];
   std::u16string characters = UTF16String(plain);
-  mbMacSetComposition(_webView, characters.data(), characters.size(), FALSE);
+  mini_electron_mac_set_composition(_webView, characters.data(), characters.size(), FALSE);
 #if !__has_feature(objc_arc)
   if (![string isKindOfClass:[NSAttributedString class]])
     [attributed release];
@@ -391,7 +391,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 
 - (void)unmarkText {
   [_markedText deleteCharactersInRange:NSMakeRange(0, [_markedText length])];
-  mbMacSetComposition(_webView, nullptr, 0, FALSE);
+  mini_electron_mac_set_composition(_webView, nullptr, 0, FALSE);
 }
 
 - (BOOL)hasMarkedText {
@@ -418,8 +418,8 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
                          actualRange:(NSRangePointer)actualRange {
   if (actualRange)
     *actualRange = range;
-  mbRect caret{};
-  mbGetCaretRect(_webView, &caret);
+  mini_electron_rect caret{};
+  mini_electron_get_caret_rect(_webView, &caret);
   NSRect local = NSMakeRect(caret.x, caret.y, std::max(1, caret.w),
                             std::max(1, caret.h));
   return [[self window] convertRectToScreen:[self convertRect:local toView:nil]];
@@ -439,17 +439,17 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 
 @end
 
-static void MB_CALL_TYPE PaintUpdated(mbWebView web_view,
+static void MINI_ELECTRON_CALL_TYPE PaintUpdated(mini_electron_web_view web_view,
                                       void* parameter,
                                       const void* buffer,
-                                      const mbRect* dirty_rect,
+                                      const mini_electron_rect* dirty_rect,
                                       int width,
                                       int height) {
   if (!buffer || width <= 0 || height <= 0)
     return;
   const size_t byteCount = static_cast<size_t>(width) * height * 4;
   NSData* pixels = [[NSData alloc] initWithBytes:buffer length:byteCount];
-  MiniBlinkView* view = (__bridge MiniBlinkView*)parameter;
+  MiniElectronView* view = (__bridge MiniElectronView*)parameter;
   dispatch_async(dispatch_get_main_queue(), ^{
     [view acceptPixels:pixels width:width height:height];
   });
@@ -458,19 +458,19 @@ static void MB_CALL_TYPE PaintUpdated(mbWebView web_view,
 #endif
 }
 
-static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
+static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_view,
                                          void* parameter,
-                                         mbWebFrameHandle frame,
+                                         mini_electron_web_frame_handle frame,
                                          const utf8* url,
-                                         mbLoadingResult result,
+                                         mini_electron_loading_result result,
                                          const utf8* failed_reason) {
-  if (result != MB_LOADING_SUCCEEDED) {
+  if (result != MINI_ELECTRON_LOADING_SUCCEEDED) {
     std::fprintf(stderr, "GUI_ERROR navigation failed: %s\n",
                  failed_reason ? failed_reason : "unknown");
     std::fflush(stderr);
     return;
   }
-  MiniBlinkView* view = (__bridge MiniBlinkView*)parameter;
+  MiniElectronView* view = (__bridge MiniElectronView*)parameter;
   NSString* loadedURL = url ? [NSString stringWithUTF8String:url] : @"";
   dispatch_async(dispatch_get_main_queue(), ^{
     [view pageDidFinishLoading:loadedURL];
@@ -481,7 +481,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   NSURL* _frontendURL;
   NSString* _screenshotPath;
   NSWindow* _window;
-  MiniBlinkView* _blinkView;
+  MiniElectronView* _blinkView;
   BOOL _captureScheduled;
 }
 
@@ -501,7 +501,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   NSMenuItem* appMenuItem = [[NSMenuItem alloc] init];
   [menuBar addItem:appMenuItem];
   NSMenu* appMenu = [[NSMenu alloc] init];
-  [appMenu addItemWithTitle:@"退出 miniblink132 GUI Demo"
+  [appMenu addItemWithTitle:@"退出 mini-electron GUI Demo"
                      action:@selector(terminate:)
               keyEquivalent:@"q"];
   [appMenuItem setSubmenu:appMenu];
@@ -521,13 +521,13 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
                                         styleMask:style
                                           backing:NSBackingStoreBuffered
                                             defer:NO];
-  [_window setTitle:@"miniblink132 macOS Blink Host"];
+  [_window setTitle:@"mini-electron macOS Blink Host"];
   [_window setContentMinSize:NSMakeSize(720, 480)];
   [_window setDelegate:self];
   [_window setAcceptsMouseMovedEvents:YES];
 
-  mbWebView webView = mbCreateWebView();
-  _blinkView = [[MiniBlinkView alloc] initWithFrame:[[_window contentView] bounds]
+  mini_electron_web_view webView = mini_electron_create_web_view();
+  _blinkView = [[MiniElectronView alloc] initWithFrame:[[_window contentView] bounds]
                                             webView:webView];
   [_blinkView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
   [[_window contentView] addSubview:_blinkView];
@@ -536,7 +536,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   [_window makeKeyAndOrderFront:nil];
   [_window makeFirstResponder:_blinkView];
   [NSApp activateIgnoringOtherApps:YES];
-  mbLoadURL(webView, [[_frontendURL absoluteString] UTF8String]);
+  mini_electron_load_url(webView, [[_frontendURL absoluteString] UTF8String]);
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
@@ -547,7 +547,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
   [NSApp terminate:nil];
 }
 
-- (void)blinkViewDidLoad:(MiniBlinkView*)view url:(NSString*)url {
+- (void)blinkViewDidLoad:(MiniElectronView*)view url:(NSString*)url {
   if (_captureScheduled)
     return;
   _captureScheduled = YES;
@@ -564,7 +564,7 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
       std::fputs("GUI_ERROR cannot write Blink snapshot\n", stderr);
       return;
     }
-    std::printf("GUI_READY engine=MiniBlink/Blink/V8 window=%ld url=%s screenshot=%s\n",
+    std::printf("GUI_READY engine=mini-electron/Blink/V8 window=%ld url=%s screenshot=%s\n",
                 (long)[self->_window windowNumber], [url UTF8String],
                 [self->_screenshotPath UTF8String]);
     std::fflush(stdout);
@@ -576,9 +576,9 @@ static void MB_CALL_TYPE LoadingFinished(mbWebView web_view,
 int main(int argc, char** argv) {
   @autoreleasepool {
     const char* frontendSource =
-        argc >= 2 ? argv[1] : "platform/macos/resources/demo/index.html";
+        argc >= 2 ? argv[1] : "examples/browser/index.html";
     const char* screenshotPath =
-        argc >= 3 ? argv[2] : "/tmp/miniblink132-gui-demo.png";
+        argc >= 3 ? argv[2] : "/tmp/mini-electron-browser.png";
     NSString* source = [NSString stringWithUTF8String:frontendSource];
     NSURL* frontendURL = nil;
     if ([source hasPrefix:@"https://"] || [source hasPrefix:@"http://"]) {
@@ -598,14 +598,14 @@ int main(int argc, char** argv) {
     }
 
     NSApplication* application = [NSApplication sharedApplication];
-    mbInit(nullptr);
+    mini_electron_init(nullptr);
     __attribute__((objc_precise_lifetime)) DemoAppDelegate* delegate =
         [[DemoAppDelegate alloc]
             initWithFrontendURL:frontendURL
                  screenshotPath:[NSString stringWithUTF8String:screenshotPath]];
     [application setDelegate:delegate];
     [application run];
-    mbUninit();
+    mini_electron_uninit();
   }
   return 0;
 }

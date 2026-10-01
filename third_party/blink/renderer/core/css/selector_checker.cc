@@ -71,7 +71,7 @@
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
-#if !defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
 #endif
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
@@ -1895,7 +1895,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return media_element && media_element->paused();
     }
     case CSSSelector::kPseudoPermissionGranted: {
-#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
         return false;
 #else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
@@ -1904,7 +1904,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
 #endif
     }
     case CSSSelector::kPseudoPermissionElementInvalidStyle: {
-#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
         return false;
 #else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));
@@ -1913,7 +1913,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
 #endif
     }
     case CSSSelector::kPseudoPermissionElementOccluded: {
-#if defined(MINIBLINK_DISABLE_PERMISSION_ELEMENT)
+#if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
         return false;
 #else
         CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(element.GetExecutionContext()));

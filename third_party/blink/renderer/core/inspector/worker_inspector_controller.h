@@ -52,7 +52,7 @@ class WorkerThreadDebugger;
 struct WorkerDevToolsParams;
 
 class WorkerInspectorController final : public GarbageCollected<WorkerInspectorController>
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     , public trace_event::EnabledStateObserver
     , public DevToolsAgent::Client
     , private Thread::TaskObserver
@@ -73,7 +73,7 @@ public:
     }
     DevToolsAgent* GetDevToolsAgent() const
     {
-#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         return nullptr;
 #else
         return agent_.Get();
@@ -84,7 +84,7 @@ public:
     void WaitForDebuggerIfNeeded();
 
 private:
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     // Thread::TaskObserver implementation.
     void WillProcessTask(const base::PendingTask&, bool) override;
     void DidProcessTask(const base::PendingTask&) override;
@@ -103,7 +103,7 @@ private:
     void DebuggerTaskFinished() override;
 #endif
 
-#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     Member<CoreProbeSink> probe_sink_;
 #else
     Member<DevToolsAgent> agent_;

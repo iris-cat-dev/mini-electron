@@ -49,7 +49,7 @@ struct IcuIndexPair {
     UChar second;
 };
 }
-#include "content/resources/IcuEncodeTable.h"
+#include "runtime/engine/resources/icu_encode_table.h"
 //---
 
 namespace WTF {

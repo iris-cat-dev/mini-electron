@@ -33,7 +33,7 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/inspector/thread_debugger_common_impl.h"
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #endif
 
@@ -73,7 +73,7 @@ private:
     int ContextGroupId(ExecutionContext*) override;
     void ReportConsoleMessage(ExecutionContext*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const WTF::String& message, SourceLocation*) override;
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     // V8InspectorClient implementation.
     void runMessageLoopOnPause(int context_group_id) override;
     void quitMessageLoopOnPause() override;
@@ -90,7 +90,7 @@ private:
     void consoleClear(int context_group_id) override;
 #endif
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     int paused_context_group_id_;
     WTF::HashMap<int, WorkerThread*> worker_threads_;
 #endif

@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #ifndef PLATFORM_MACOS_ELECTRON_ELECTRON_API_H_
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace miniblink::electron {
+namespace mini_electron::electron {
 
 struct BrowserWindowOptions {
   int width = 800;
@@ -30,6 +30,6 @@ struct AppPlan {
 std::optional<AppPlan> EvaluateMainScript(const std::string& script_path,
                                           std::string* error);
 
-}  // namespace miniblink::electron
+}  // namespace mini_electron::electron
 
 #endif  // PLATFORM_MACOS_ELECTRON_ELECTRON_API_H_

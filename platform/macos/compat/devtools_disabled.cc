@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
@@ -18,7 +18,7 @@
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #error "This file is only for the DevTools-free macOS target."
 #endif
 

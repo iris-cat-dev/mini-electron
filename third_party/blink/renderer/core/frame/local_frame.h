@@ -753,7 +753,7 @@ public:
     void ClosePageForTesting();
     void SetInitialFocus(bool reverse);
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
     void GetCharacterIndexAtPoint(const gfx::Point& point);
 #endif
 
@@ -826,7 +826,7 @@ public:
     // Invoked on first contentful paint on this frame.
     void OnFirstContentfulPaint();
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
     void ResetTextInputHostForTesting();
     void RebindTextInputHostForTesting();
 #endif
@@ -1071,7 +1071,7 @@ private:
     Member<AdTracker> ad_tracker_;
     Member<IdlenessDetector> idleness_detector_;
     Member<AttributionSrcLoader> attribution_src_loader_;
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     Member<InspectorIssueReporter> inspector_issue_reporter_;
     Member<InspectorTraceEvents> inspector_trace_events_;
 #endif

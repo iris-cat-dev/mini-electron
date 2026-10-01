@@ -109,7 +109,6 @@ concepts, presenting interfaces that are more idiomatic for the target language:
 
 - [**C++ System API**](/mojo/public/cpp/system/README.md)
 - [**JavaScript System API**](/third_party/blink/renderer/core/mojo/README.md)
-- [**Java System API**](/mojo/public/java/system/README.md)
 
 ## Bindings APIs
 The [**mojom Interface Definition Language (IDL)**](/mojo/public/tools/bindings/README.md)
@@ -119,7 +118,6 @@ supported by a language-specific bindings API:
 
 - [**C++ Bindings API**](/mojo/public/cpp/bindings/README.md)
 - [**JavaScript Bindings API**](/mojo/public/js/README.md)
-- [**Java Bindings API**](/mojo/public/java/bindings/README.md)
 
 Note that the C++ bindings see the broadest usage in Chromium and are thus
 naturally the most feature-rich, including support for things like

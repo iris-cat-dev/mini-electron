@@ -476,8 +476,6 @@ function setupBuffer() {
 }
 
 function setupAsarSupport() {
-  if (!("_isInElectronEnv" in globalThis) || !globalThis._isInElectronEnv()) // weolar add
-    return;
   try {
     process._linkedBinding('electron_common_asar')?.initAsarSupport(process, /*NativeModule.*/require);
   } catch(e) {

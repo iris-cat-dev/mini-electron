@@ -1,5 +1,5 @@
 /out/
-/.mac-tools/
+/.build-tools/
 .DS_Store
 __pycache__/
 *.pyc

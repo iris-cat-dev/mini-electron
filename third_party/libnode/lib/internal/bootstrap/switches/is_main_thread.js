@@ -97,8 +97,8 @@ function createWritableStdioStream(fd) {
       const { Writable } = require('stream');
       stream = new Writable({
         write(buf, enc, cb) {
-          if ("buffer" === enc && ("mbConsoleLog" in globalThis)) // weolar
-            mbConsoleLog("WritableStdio:" + (buf.toString()));
+          if ("buffer" === enc && ("mini_electron_console_log" in globalThis)) // weolar
+            mini_electron_console_log("WritableStdio:" + (buf.toString()));
           cb();
         },
       });

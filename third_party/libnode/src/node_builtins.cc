@@ -7,6 +7,10 @@
 #include "simdutf.h"
 #include "util-inl.h"
 
+#ifdef _WIN32
+#include "generated/runtime/electron/common/asar_source.h"
+#endif
+
 
 namespace node {
 namespace builtins {
@@ -60,6 +64,52 @@ BuiltinLoader::BuiltinLoader()
 #endif // NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
 #endif // HAVE_AMARO
 
+#ifdef _WIN32
+    static constexpr char electron_source[] =
+        "var electron = require('electron');\n"
+        "module.exports.app = electron.app;\n"
+        "module.exports.BrowserWindow = electron.BrowserWindow;\n"
+        "module.exports.BrowserView = electron.BrowserView;\n"
+        "module.exports.webContents = electron.webContents;\n"
+        "module.exports.session = electron.session;\n"
+        "module.exports.MenuItem = electron.MenuItem;\n"
+        "module.exports.Menu = electron.Menu;\n"
+        "module.exports.isPromise = electron.isPromise;\n"
+        "module.exports.dialog = electron.dialog;\n"
+        "module.exports.net = electron.net;\n"
+        "module.exports.shell = electron.shell;\n"
+        "module.exports.screen = electron.screen;\n"
+        "module.exports.tray = electron.tray;\n"
+        "module.exports.clipboard = electron.clipboard;\n"
+        "module.exports.nativeImage = electron.nativeImage;\n"
+        "module.exports.systemPreferences = electron.systemPreferences;\n"
+        "module.exports.protocol = electron.protocol;\n"
+        "module.exports.TouchBar = electron.TouchBar;\n"
+        "module.exports.Tray = electron.Tray;\n"
+        "module.exports.autoUpdater = electron.autoUpdater;\n"
+        "module.exports.globalShortcut = electron.globalShortcut;\n"
+        "module.exports.powerMonitor = electron.powerMonitor;\n"
+        "module.exports.powerSaveBlocker = electron.powerSaveBlocker;\n"
+        "module.exports.crashReporter = electron.crashReporter;\n"
+        "module.exports.utilityProcess = electron.utilityProcess;\n"
+        "module.exports.contentTracing = electron.contentTracing;\n"
+        "module.exports.MessageChannelMain = electron.MessageChannelMain;\n"
+        "module.exports.safeStorage = electron.safeStorage;\n";
+    static StaticExternalOneByteResource electron_resource(
+        reinterpret_cast<const uint8_t*>(electron_source), sizeof(electron_source) - 1, nullptr);
+    // The browser/renderer bootstrap populates these module export objects.
+    static StaticExternalOneByteResource electron_namespace_resource(
+        reinterpret_cast<const uint8_t*>(""), 0, nullptr);
+    static StaticExternalOneByteResource asar_resource(
+        reinterpret_cast<const uint8_t*>(atom::AsarJs), atom::AsarJsLength - 1, nullptr);
+    Add("ELECTRON_ASAR", UnionBytes(&asar_resource));
+    Add("electron", UnionBytes(&electron_resource));
+    Add("electron/main", UnionBytes(&electron_namespace_resource));
+    Add("electron/renderer", UnionBytes(&electron_namespace_resource));
+    Add("electron/common", UnionBytes(&electron_namespace_resource));
+    const UnionBytes original_fs = source_.read()->at("fs");
+    Add("original-fs", original_fs);
+#endif
 }
 
 bool BuiltinLoader::Exists(const char* id)

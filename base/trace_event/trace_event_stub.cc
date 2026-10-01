@@ -6,9 +6,12 @@
 
 #include <string>
 
+#include "base/check.h"
+#include "base/strings/stringprintf.h"
 #include "base/trace_event/trace_event_stub.h"
 #include "base/trace_event/memory_allocator_dump.h"
 #include "base/trace_event/process_memory_dump.h"
+#include "base/trace_event/trace_event_memory_overhead.h"
 #include "base/trace_event/trace_log.h"
 
 namespace base {
@@ -142,6 +145,28 @@ void ProcessMemoryDump::CreateSharedMemoryOwnershipEdge(
     const UnguessableToken&,
     int importance) {
   AddOwnershipEdge(source, MemoryAllocatorDumpGuid(1), importance);
+}
+
+void ProcessMemoryDump::Clear() {
+  allocator_dumps_.clear();
+  allocator_dumps_edges_.clear();
+}
+
+void ProcessMemoryDump::TakeAllDumpsFrom(ProcessMemoryDump* other) {
+  allocator_dumps_.merge(other->allocator_dumps_);
+  DCHECK(other->allocator_dumps_.empty()) << "Duplicate allocator dump names";
+  other->allocator_dumps_.clear();
+  allocator_dumps_edges_.merge(other->allocator_dumps_edges_);
+  other->allocator_dumps_edges_.clear();
+}
+
+void ProcessMemoryDump::DumpHeapUsage(
+    const std::unordered_map<AllocationContext, AllocationMetrics>&,
+    TraceEventMemoryOverhead& overhead,
+    const char* allocator_name) {
+  std::string base_name =
+      base::StringPrintf("tracing/heap_profiler_%s", allocator_name);
+  overhead.DumpInto(base_name.c_str(), this);
 }
 
 TraceLog* TraceLog::GetInstance() {

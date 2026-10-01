@@ -1,0 +1,1742 @@
+﻿
+#include "runtime/electron/browser/api/web_contents.h"
+
+#include "runtime/electron/browser/api/window_interface.h"
+#include "runtime/electron/browser/api/window_list.h"
+#include "runtime/electron/browser/api/session.h"
+#include "runtime/electron/browser/api/web_frame_main.h"
+#include "runtime/electron/browser/api/post_message_util.h"
+#include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/common/id_live_detect.h"
+#include "runtime/electron/common/node_binding.h"
+#include "runtime/electron/common/api/event_emitter_caller.h"
+#include "runtime/electron/common/string_util.h"
+#include "runtime/electron/common/world_ids.h"
+#include "runtime/electron/common/platform_util.h"
+#include "runtime/electron/common/api/event_emitter.h"
+#include "runtime/electron/common/api/event_emitter_caller.h"
+#include "runtime/electron/common/gin_helper/converter.h"
+#include "runtime/electron/common/gin_helper/object_template_builder.h"
+#include "runtime/electron/common/gin_helper/dictionary.h"
+#include "runtime/electron/common/gin_helper/wrappable.h"
+#include "runtime/electron/common/gin_helper/promise.h"
+#include "runtime/electron/common/gin_helper/public/gin_embedders.h"
+#include "runtime/electron/common/gin_helper/public/wrapper_info.h"
+#include "gin/handle.h"
+#include "runtime/engine/common/thread_call.h"
+#include "mojo/public/cpp/bindings/message.h"
+#include "mojo/public/cpp/bindings/connector.h"
+#include "mojo/public/cpp/system/message_pipe.h"
+#include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
+#include "third_party/blink/renderer/platform/wtf/wtf.h"
+#include "third_party/blink/public/common/messaging/cloneable_message.h"
+#include "third_party/blink/public/web/web_css_origin.h"
+#include "third_party/blink/public/web/blink.h"
+#include "third_party/libnode/src/node.h"
+#include "third_party/libnode/src/node_binding.h"
+#include "third_party/libuv/include/uv.h"
+#include "base/values.h"
+#include <shlwapi.h>
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_get_world_script_context_by_web_frame(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, int worldID, v8ContextPtr contextOut);
+void MINI_ELECTRON_CALL_TYPE mini_electron_download_url(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, const std::string& url);
+
+namespace content {
+void printCallstack();
+}
+
+namespace atom {
+
+void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node::Environment* env)
+{
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::FunctionTemplate> prototype = v8::FunctionTemplate::New(isolate, WebContents::newFunction);
+
+    prototype->SetClassName(v8::String::NewFromUtf8(isolate, "WebContents").ToLocalChecked());
+    gin_helper::ObjectTemplateBuilder builder(isolate, prototype->InstanceTemplate());
+    builder.SetMethod("getId", &WebContents::getIdApi);
+    builder.SetMethod("getProcessId", &WebContents::getProcessIdApi);
+    builder.SetMethod("equal", &WebContents::equalApi);
+    builder.SetMethod("_loadURL", &WebContents::_loadURLApi);
+    builder.SetMethod("loadURL", &WebContents::_loadURLApi);
+    builder.SetMethod("downloadURL", &WebContents::downloadURLApi);
+    builder.SetMethod("_getURL", &WebContents::_getURLApi);
+    builder.SetMethod("getTitle", &WebContents::getTitleApi);
+    builder.SetMethod("isLoading", &WebContents::isLoadingApi);
+    builder.SetMethod("isLoadingMainFrame", &WebContents::isLoadingMainFrameApi);
+    builder.SetMethod("isWaitingForResponse", &WebContents::isWaitingForResponseApi);
+    builder.SetMethod("stop", &WebContents::stopApi);
+    builder.SetMethod("goBack", &WebContents::goBackApi);
+    builder.SetMethod("goForward", &WebContents::goForwardApi);
+    builder.SetMethod("goToOffset", &WebContents::goToOffsetApi);
+    builder.SetMethod("goToIndex", &WebContents::goToIndexApi);
+    builder.SetMethod("isCrashed", &WebContents::isCrashedApi);
+    builder.SetMethod("setUserAgent", &WebContents::setUserAgentApi);
+    builder.SetMethod("getUserAgent", &WebContents::getUserAgentApi);
+    builder.SetMethod("savePage", &WebContents::savePageApi);
+    builder.SetMethod("openDevTools", &WebContents::openDevToolsApi);
+    builder.SetMethod("closeDevTools", &WebContents::closeDevToolsApi);
+    builder.SetMethod("isDevToolsOpened", &WebContents::isDevToolsOpenedApi);
+    builder.SetMethod("isDevToolsFocused", &WebContents::isDevToolsFocusedApi);
+    builder.SetMethod("insertCSS", &WebContents::insertCSSApi);
+    builder.SetMethod("setZoomFactor", &WebContents::setZoomFactorApi);
+    builder.SetMethod("enableDeviceEmulation", &WebContents::enableDeviceEmulationApi);
+    builder.SetMethod("disableDeviceEmulation", &WebContents::disableDeviceEmulationApi);
+    builder.SetMethod("toggleDevTools", &WebContents::toggleDevToolsApi);
+    builder.SetMethod("inspectElement", &WebContents::inspectElementApi);
+    builder.SetMethod("setAudioMuted", &WebContents::setAudioMutedApi);
+    builder.SetMethod("isAudioMuted", &WebContents::isAudioMutedApi);
+    builder.SetMethod("undo", &WebContents::undoApi);
+    builder.SetMethod("redo", &WebContents::redoApi);
+    builder.SetMethod("cut", &WebContents::cutApi);
+    builder.SetMethod("copy", &WebContents::copyApi);
+    builder.SetMethod("paste", &WebContents::pasteApi);
+    builder.SetMethod("pasteAndMatchStyle", &WebContents::pasteAndMatchStyleApi);
+    builder.SetMethod("delete", &WebContents::_deleteApi);
+    builder.SetMethod("selectAll", &WebContents::selectAllApi);
+    builder.SetMethod("unselect", &WebContents::unselectApi);
+    builder.SetMethod("replace", &WebContents::replaceApi);
+    builder.SetMethod("replaceMisspelling", &WebContents::replaceMisspellingApi);
+    builder.SetMethod("findInPage", &WebContents::findInPageApi);
+    builder.SetMethod("stopFindInPage", &WebContents::stopFindInPageApi);
+    builder.SetMethod("focus", &WebContents::focusApi);
+    builder.SetMethod("isFocused", &WebContents::isFocusedApi);
+    builder.SetMethod("tabTraverse", &WebContents::tabTraverseApi);
+    builder.SetMethod("_send", &WebContents::_sendApi);
+    builder.SetMethod("_postMessage", &WebContents::_postMessageApi);
+    builder.SetMethod("_testPostMessage", &WebContents::_testPostMessageApi);
+    builder.SetMethod("sendInputEvent", &WebContents::sendInputEventApi);
+    builder.SetMethod("beginFrameSubscription", &WebContents::beginFrameSubscriptionApi);
+    builder.SetMethod("endFrameSubscription", &WebContents::endFrameSubscriptionApi);
+    builder.SetMethod("startDrag", &WebContents::startDragApi);
+    builder.SetMethod("setSize", &WebContents::setSizeApi);
+    builder.SetMethod("isGuest", &WebContents::isGuestApi);
+    builder.SetMethod("isOffscreen", &WebContents::isOffscreenApi);
+    builder.SetMethod("startPainting", &WebContents::startPaintingApi);
+    builder.SetMethod("stopPainting", &WebContents::stopPaintingApi);
+    builder.SetMethod("isPainting", &WebContents::isPaintingApi);
+    builder.SetMethod("setFrameRate", &WebContents::setFrameRateApi);
+    builder.SetMethod("getFrameRate", &WebContents::getFrameRateApi);
+    builder.SetMethod("invalidate", &WebContents::invalidateApi);
+    builder.SetMethod("getType", &WebContents::getTypeApi);
+    builder.SetMethod("getWebPreferences", &WebContents::getWebPreferencesApi);
+    builder.SetMethod("getOwnerBrowserWindow", &WebContents::getOwnerBrowserWindowApi);
+    builder.SetMethod("hasServiceWorker", &WebContents::hasServiceWorkerApi);
+    builder.SetMethod("unregisterServiceWorker", &WebContents::unregisterServiceWorkerApi);
+    builder.SetMethod("inspectServiceWorker", &WebContents::inspectServiceWorkerApi);
+    builder.SetMethod("print", &WebContents::printApi);
+    builder.SetMethod("_printToPDF", &WebContents::_printToPDFApi);
+    builder.SetMethod("addWorkSpace", &WebContents::addWorkSpaceApi);
+    builder.SetMethod("reNullWorkSpace", &WebContents::reNullWorkSpaceApi);
+    builder.SetMethod("showDefinitionForSelection", &WebContents::showDefinitionForSelectionApi);
+    builder.SetMethod("copyImageAt", &WebContents::copyImageAtApi);
+    builder.SetMethod("capturePage", &WebContents::capturePageApi);
+    builder.SetMethod("setEmbedder", &WebContents::setEmbedderApi);
+    builder.SetMethod("isDestroyed", &WebContents::isDestroyedApi);
+    builder.SetMethod("reloadIgnoringCache", &WebContents::reloadIgnoringCacheApi);
+    builder.SetMethod("reload", &WebContents::reloadIgnoringCacheApi);
+    builder.SetProperty("id", &WebContents::getIdApi);
+    builder.SetProperty("session", &WebContents::getSessionApi);
+    builder.SetProperty("zoomFactor", &WebContents::zoomFactorApi);
+    builder.SetProperty("mainFrame", &WebContents::getMainFrameApi);
+    builder.SetMethod("_getZoomLevel", &WebContents::getZoomLevelApi);
+    builder.SetMethod("_setZoomLevel", &WebContents::setZoomLevelApi);
+    builder.SetMethod("_canGoBack", &WebContents::canGoBackApi);
+    builder.SetMethod("_canGoForward", &WebContents::canGoForwardApi);
+    builder.SetMethod("printToPDF", &WebContents::printToPDFApi);
+    builder.SetMethod("setWindowOpenHandler", &WebContents::setWindowOpenHandlerApi);
+
+    /// <summary>
+    //     v8::Local<v8::Function> prototypFunc2 = prototype->GetFunction(context).ToLocalChecked();
+    //     v8::Local<v8::Value> argv[1];
+    //     v8::MaybeLocal<v8::Object> obj = prototypFunc2->NewInstance(context, 0, argv);
+    ///
+
+    v8::Local<v8::Function> prototypFunc = prototype->GetFunction(context).ToLocalChecked();
+
+    gin_helper::Dictionary webContentsClass(isolate, prototypFunc);
+    webContentsClass.SetMethod("getFocusedWebContents", &WebContents::getFocusedWebContentsApi);
+    webContentsClass.SetMethod("getAllWebContents", &WebContents::getAllWebContentsApi);
+    webContentsClass.SetMethod("fromId", &WebContents::fromIdApi);
+
+    s_constructor.Reset(isolate, prototypFunc);
+    target->Set(context, v8::String::NewFromUtf8(isolate, "WebContents").ToLocalChecked(), prototypFunc);
+}
+
+WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary options, WindowInterface* owner)
+{
+    const int argc = 1;
+    v8::Local<v8::Value> argv[argc] = { gin_helper::ConvertToV8(isolate, options) };
+    v8::Local<v8::Function> constructorFunction = v8::Local<v8::Function>::New(isolate, s_constructor);
+
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+    v8::MaybeLocal<v8::Object> obj = constructorFunction->NewInstance(context, argc, argv); // call into WebContents::WebContents
+    if (obj.IsEmpty())
+        return nullptr;
+
+    v8::Local<v8::Object> objV8 = obj.ToLocalChecked();
+
+    WebContents* self = (WebContents*)WrappableBase::GetNativePtr(objV8, &kWrapperInfo);
+    self->m_liveSelf.Reset(isolate, objV8);
+    self->m_owner = owner;
+    return self;
+}
+
+// class TransmitToWebContents : public mojo::MessageReceiver {
+// public:
+//     TransmitToWebContents(WebContents* parent, bool isMainThread, MojoHandle port)
+//     {
+//         m_parent = parent;
+//         m_isMainThread = isMainThread;
+//         m_port = port;
+// 
+//         m_connector = std::make_unique<mojo::Connector>(std::move(port), mojo::Connector::SINGLE_THREADED_SEND);
+//         m_connector->PauseIncomingMethodCallProcessing();
+//         m_connector->set_incoming_receiver(this);
+//         //m_connectorOnMainUiThread->set_connection_error_handler(base::BindOnce(&ApiUtilityProcess::close, base::Unretained(this)));
+//         m_connector->StartReceiving(base::SequencedTaskRunner::GetCurrentDefault());
+//     }
+// 
+//     bool Accept(mojo::Message* message) override
+//     {
+// 
+//     }
+// 
+// private:
+//     WebContents* m_parent;
+//     bool m_isMainThread; // 是在主线程创建还是在网页线程
+//     MojoHandle m_port;
+// 
+//     std::unique_ptr<mojo::Connector> m_connector;
+// };
+
+WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper, const gin_helper::Dictionary& options)
+{
+    m_nodeBindings = new NodeBindings(false);
+    m_isLoading = false;
+    m_id = IdLiveDetect::get()->constructed(this);
+    m_view = NULL_WEBVIEW;
+    m_canGoBack = FALSE;
+    m_canGoForward = FALSE;
+    int id = m_id;
+
+    options.GetBydefaultVal("preload", "", &m_preloadScriptPath);
+    gin_helper::Wrappable<WebContents>::InitWith(isolate, wrapper);
+
+    options.GetBydefaultVal("session", "", &m_sessionName);
+    if (m_sessionName.empty()) {
+        options.GetBydefaultVal("partition", "", &m_sessionName); //
+    }
+    if (!m_sessionName.empty()) {
+        const char* persistPrefix = "persist:";
+        size_t persistPrefixLen = strlen(persistPrefix);
+
+        if (m_sessionName.substr(0, persistPrefixLen) == persistPrefix)
+            m_sessionName = m_sessionName.substr(persistPrefixLen, std::string::npos);
+    } else {
+        m_sessionName = ApiSession::kDefaultSessionName;
+    }
+
+    WebContents* self = this;
+    m_view = mini_electron_create_web_view();
+    mini_electron_set_user_key_value(m_view, "WebContents", self);
+    mini_electron_set_auto_draw_to_hwnd(m_view, FALSE);
+    mini_electron_on_did_create_script_context(m_view, &WebContents::staticDidCreateScriptContextCallback, this);
+    mini_electron_on_will_release_script_context(m_view, &WebContents::staticOnWillReleaseScriptContextCallback, this);
+    mini_electron_on_download_in_blink_thread(m_view, &WebContents::staticOnDownloadCallback, this);
+    mini_electron_on_document_ready_in_blink_thread(m_view, &WebContents::onDocumentReadyInBlinkThread, this);
+    mini_electron_on_navigation(m_view, &WebContents::onNavigationCallback, this);
+    mini_electron_on_title_changed(m_view, &WebContents::onTitleChanged, this);
+    mini_electron_on_loading_finish(m_view, &WebContents::onLoadingFinishCallback, this);
+    mini_electron_on_create_view(m_view, &WebContents::onCreateViewCallback, this);
+    mini_electron_on_url_changed(m_view, &WebContents::onURLChanged, this);
+
+    setUserAgentApi("UserAgent Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like XNT) Chrome/79.0.3945.130 Safari/537.36");
+
+    ApiSession* session = SessionMgr::get()->findOrCreateSession(isolate, m_sessionName, true);
+
+    std::string cookiejar = session->getPath();
+    cookiejar += "\\cookie.dat";
+    mini_electron_set_cookie_jar_full_path(m_view, StringUtil::UTF8ToUTF16(cookiejar).c_str());
+    mini_electron_set_local_storage_full_path(m_view, StringUtil::UTF8ToUTF16(session->getPath()).c_str());
+
+//     m_portPipe = std::make_unique<mojo::MessagePipe>();
+//     MojoHandle port0 = m_portPipe->handle0.get().value();
+//     m_connectorOnMainUiThread = std::make_unique<TransmitToWebContents>(this, true, port0);
+}
+
+WebContents::~WebContents()
+{
+    // 在ui线程的js环境中可能因为gc机制被触发析构
+    for (auto it : m_observers) {
+        (it)->onWebContentsDeleted(this);
+    }
+
+    m_owner->close();
+    delete m_nodeBindings;
+
+    mini_electron_set_user_key_value(m_view, "WebContents", nullptr);
+    IdLiveDetect::get()->deconstructed(m_id);
+}
+
+void WebContents::destroyed()
+{
+    mate::EventEmitter<WebContents>::emit("destroyed");
+}
+
+void WebContents::addObserver(WebContentsObserver* observer)
+{
+    m_observers.insert(observer);
+}
+
+void WebContents::removeObserver(WebContentsObserver* observer)
+{
+    auto it = m_observers.find(observer);
+    m_observers.erase(it);
+}
+
+void WebContents::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+    if (args.IsConstructCall()) {
+        if (args.Length() > 1)
+            return;
+
+        gin_helper::Dictionary options(args.GetIsolate(), args[0]->ToObject(context).ToLocalChecked());
+        WebContents* webContents = new WebContents(isolate, args.This(), options);
+
+        args.GetReturnValue().Set(args.This());
+    } else {
+        const int argc = 2;
+        v8::Local<v8::Value> argv[argc] = { args[0], args[1] };
+        v8::Local<v8::Function> cons = v8::Local<v8::Function>::New(isolate, s_constructor);
+        args.GetReturnValue().Set(cons->NewInstance(context, argc, argv).ToLocalChecked());
+    }
+}
+
+
+void WebContents::staticDidCreateScriptContextCallback(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frame, void* context, int extensionGroup, int worldId)
+{
+    WebContents* self = (WebContents*)param;
+    self->onDidCreateScriptContext(webView, frame, (v8::Local<v8::Context>*)context, extensionGroup, worldId);
+}
+
+static void disableNodejsOfWindow(mini_electron_web_view webView, mini_electron_web_frame_handle frame)
+{
+    mini_electron_run_js(webView, frame, "window.require = null;", false, nullptr, nullptr, nullptr);
+}
+
+static bool needLoadPreload(int worldId, bool isContextIsolation)
+{
+    if (isContextIsolation)
+        return (WorldIDs::ISOLATED_WORLD_ID == worldId);
+    return (WorldIDs::MAIN_WORLD_ID == worldId);
+}
+
+std::vector<std::string> WebContents::getPreloadScript()
+{
+    ApiSession* ses = SessionMgr::get()->findOrCreateSession(v8::Isolate::GetCurrent(), m_sessionName, false);
+    std::vector<std::string> preloads = ses->getPreloadsApi();
+
+    if (!m_preloadScriptPath.empty())
+        preloads.push_back(m_preloadScriptPath);
+    return preloads;
+}
+
+void WebContents::runPreloadScript(mini_electron_web_view webView, mini_electron_web_frame_handle frame, int worldId, std::string& preloadScriptPath)
+{
+    for (size_t i = 0; i < preloadScriptPath.size(); ++i) {
+        if ('\\' == preloadScriptPath[i])
+            preloadScriptPath[i] = '/';
+    }
+
+    std::string contents = "try {window.require('";
+    contents += preloadScriptPath;
+    contents += "');} catch(e) { mini_electron_console_log('window.require fail:' + e.name); }";
+
+    char output[100] = { 0 };
+    sprintf_s(output, 99, "onDidCreateScriptContext preload begin: %p, %d\n", frame, worldId);
+    OutputDebugStringA(output);
+
+    mini_electron_run_js(webView, frame, contents.c_str(), false, nullptr, nullptr, (void*)worldId);
+
+    sprintf_s(output, 99, "onDidCreateScriptContext preload end: %p, %d\n", frame, worldId);
+    OutputDebugStringA(output);
+}
+
+void WebContents::onDidCreateScriptContext(mini_electron_web_view webView, mini_electron_web_frame_handle frame, v8::Local<v8::Context>* context, int extensionGroup, int worldId)
+{
+    v8::MicrotasksScope microtasksScope((*context), v8::MicrotasksScope::Type::kRunMicrotasks);
+    bool isMainWorld = WorldIDs::MAIN_WORLD_ID == worldId;
+    bool shouldLoadNodejs = false;
+    bool shouldPreLoad = false;
+    bool shouldDisableNodejsOfWindow = false;
+
+    if (m_createWindowParam->m_isNodeIntegration && !m_createWindowParam->m_isContextIsolation && !isMainWorld)
+        return;
+
+    std::vector<std::string> preloadPaths = WebContents::getPreloadScript();
+
+    content::ThreadCall::callUiThreadAsync(FROM_HERE, [webView] {
+        std::string temp = "preload,onDidCreateScriptContext, url:";
+        temp += mini_electron_get_url(webView);
+        temp += "\n";
+        OutputDebugStringA(temp.c_str());
+    });
+
+    bindEngineConsoleLog(*context);
+
+    const utf8* script = "window.Notification = function(){};";
+    mini_electron_run_js(webView, frame, script, false, nullptr, nullptr, nullptr);
+
+    if (m_createWindowParam->m_isContextIsolation) {
+        // 有预加载，只有隔离世界有nodejs。主世界没nodejs
+        if (!isMainWorld) {
+            shouldLoadNodejs = true;
+        } else if (mini_electron_is_main_frame(webView, frame) && !preloadPaths.empty()) {
+            char output[100] = { 0 };
+            sprintf_s(output, 99, "onDidCreateScriptContext 1: %p, %d\n", frame, worldId);
+            OutputDebugStringA(output);
+
+            mini_electron_run_js(webView, frame, "void 0", false, nullptr, nullptr, (void*)WorldIDs::ISOLATED_WORLD_ID); // 这句话会导致重入本函数
+        }
+    } else if (m_createWindowParam->m_isNodeIntegration && !m_createWindowParam->m_isContextIsolation) {
+        // 有预加载，预加载里有nodejs，而且预加载没隔离。主世界有nodejs
+        //if (!isMainWorld)
+        //    DebugBreak();
+        shouldLoadNodejs = true;
+    } else if (!m_createWindowParam->m_isNodeIntegration && !m_createWindowParam->m_isContextIsolation) {
+        shouldLoadNodejs = true; // 有预加载，预加载里有nodejs，而且预加载没隔离。主世界没nodejs
+        shouldDisableNodejsOfWindow = true; // 想办法禁用主世界的nodejs
+    }
+
+    if (!m_createWindowParam->m_isNodeIntegrationInSubframes && !mini_electron_is_main_frame(webView, frame))
+        shouldLoadNodejs = false;
+
+    /////
+    if (isMainWorld) {
+        //shouldLoadNodejs = true; // 老版本electron是强行兼容，新版本不兼容算了
+        shouldDisableNodejsOfWindow = false;
+    }
+    /////
+
+    if (shouldLoadNodejs) {
+        //blink::V8PerContextData* perCtx = blink::V8PerContextData::From(*context);
+        //NodeBindingsData* nodeBinding = (NodeBindingsData*)perCtx->GetData("NodeBindings");
+        //nodeBinding = blink::MakeGarbageCollected<NodeBindingsData>(false);
+
+        v8::Isolate* isolate = (*context)->GetIsolate();
+        BlinkMicrotaskSuppressionHandle handle = nodeBlinkMicrotaskSuppressionEnter(isolate);
+        uv_loop_t* uvloop = content::ThreadCall::getBlinkLoop();
+        m_nodeBindings->setUvLoop(uvloop);
+        m_nodeBindings->m_processObjInfo.isContextIsolated = m_createWindowParam->m_isContextIsolation;
+
+        node::Environment* env = m_nodeBindings->createEnvironment(*context);
+        nodeEnvironmentAddCustomArgs(env, m_createWindowParam->m_customArgs);
+        m_nodeBindings->loadEnvironment(env);
+
+        m_environments.insert(env);
+
+        content::ThreadCall::runBlinkThreadNode(uvloop, isolate);
+        nodeBlinkMicrotaskSuppressionLeave(handle);
+
+        if (m_nodeBindings->getUvEnv() == nullptr && WorldIDs::MAIN_WORLD_ID == worldId) { // 给主world main frame设置uv env
+            // Make uv loop being wrapped by window context.
+            m_nodeBindings->setUvEnv(env);
+
+            // Give the node loop a run to make sure everything is ready.
+            //m_nodeBindings->StartPolling();
+        }
+
+        if (!preloadPaths.empty() && mini_electron_is_main_frame(webView, frame) && needLoadPreload(worldId, m_createWindowParam->m_isContextIsolation)) {
+            for (size_t i = 0; i < preloadPaths.size(); ++i) {
+                std::string preloadScriptPath = preloadPaths[i];
+                runPreloadScript(webView, frame, worldId, preloadScriptPath);
+            }
+        }
+    }
+    if (shouldDisableNodejsOfWindow)
+        disableNodejsOfWindow(webView, frame);
+
+    if (WorldIDs::MAIN_WORLD_ID == worldId) {
+    }
+}
+
+void WebContents::staticOnWillReleaseScriptContextCallback(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frame, void* context, int worldId)
+{
+    WebContents* self = (WebContents*)param;
+    self->onWillReleaseScriptContextCallback(webView, frame, (v8::Local<v8::Context>*)context, worldId);
+}
+
+void WebContents::onWillReleaseScriptContextCallback(mini_electron_web_view webView, mini_electron_web_frame_handle frame, v8::Local<v8::Context>* context, int worldId)
+{
+    node::Environment* env = nodeEnvironmentGetByV8Context(*context);
+    if (env /*&& node::IsLiveObj((intptr_t)env)*/ && m_environments.erase(env) != 0) {
+        char* output = (char*)malloc(400);
+        sprintf_s(output, 399, "WebContents::onWillReleaseScriptContextCallback: %p\n", env);
+        OutputDebugStringA(output);
+        free(output);
+
+        mate::emitEvent((*context)->GetIsolate(), nodeGetEnvironmentProcessObject(env), "exit");
+
+        // The main frame may be replaced.
+        if (env == m_nodeBindings->getUvEnv())
+            m_nodeBindings->setUvEnv(nullptr);
+
+        // Destroying the node environment will also run the uv loop,
+        // Node.js expects `kExplicit` microtasks policy and will run microtasks
+        // checkpoints after every call into JavaScript. Since we use a different
+        // policy in the renderer - switch to `kExplicit` and then drop back to the
+        // previous policy value.
+        v8::Isolate* isolate = (*context)->GetIsolate();
+        auto old_policy = isolate->GetMicrotasksPolicy();
+        DCHECK_EQ(v8::MicrotasksScope::GetCurrentDepth(isolate), 0);
+        isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kExplicit);
+
+        node::FreeEnvironment(env);
+        //         if (m_nodeBindings->getUvEnv() == nullptr) {
+        //             node::FreeIsolateData(m_nodeBindings->getIsolateData());
+        //             m_nodeBindings->setIsolateData(nullptr);
+        //         }
+        isolate->SetMicrotasksPolicy(old_policy);
+
+        // ElectronBindings is tracking node environments.
+        //electron_bindings_->EnvironmentDestroyed(env);
+    }
+}
+
+mini_electron_download_opt WebContents::staticOnDownloadCallback(mini_electron_web_view webView, void* param, size_t expectedContentLength, const char* url, const char* mime,
+    const char* disposition, mini_electron_net_job job, mini_electron_net_job_data_bind* dataBind)
+{
+    WebContents* self = (WebContents*)param;
+    ApiSession* ses = SessionMgr::get()->findOrCreateSession(v8::Isolate::GetCurrent(), self->m_sessionName, false);
+    return ses->onDownloadCallback(self, webView, expectedContentLength, url, mime, disposition, job, dataBind);
+}
+
+int testEventEmitter = 0;
+
+struct ReplyCallbackInfo {
+    WebContents* webContents = nullptr;
+    mini_electron_web_frame_handle frame = 0;
+};
+
+// 主进程通过 reply 回复给渲染进程的消息
+static void replyCallback(const v8::FunctionCallbackInfo<v8::Value>& arg)
+{
+    v8::Local<v8::External> ext = arg.Data().As<v8::External>();
+    ReplyCallbackInfo* info = (ReplyCallbackInfo*)ext->Value();
+    gin_helper::Arguments arguments(arg);
+    std::string channel;
+    if (!arguments.GetNext(&channel)) {
+        arguments.ThrowError();
+        return;
+    }
+
+    std::vector<blink::CloneableMessage>* messages = new std::vector<blink::CloneableMessage>();
+    if (!arguments.GetRemaining(messages)) {
+        delete messages;
+        arguments.ThrowError();
+        return;
+    }
+
+    info->webContents->anyPostMessageToRenderer((int64_t)(info->frame), channel, std::unique_ptr<std::vector<blink::CloneableMessage>>(messages));
+}
+
+static void replyWeakCallback(const v8::WeakCallbackInfo<void>& data)
+{
+    ReplyCallbackInfo* info = (ReplyCallbackInfo*)(data.GetParameter());
+    delete info;
+}
+
+// channel是"ipc-message"字符串，和用户发送的channel不是一回事
+void WebContents::rendererPostMessageToMain(
+    mini_electron_web_frame_handle frame, 
+    const std::string& channel, 
+    std::unique_ptr<std::vector<blink::CloneableMessage>> listParams)
+{
+    int id = m_id;
+    WebContents* self = this;
+    std::string* channelCopy = new std::string(channel);
+    if (channel != "ipc-message" && channel != "ipc-render-invoke")
+        DebugBreak();
+
+    std::vector<blink::CloneableMessage>* listParamsPtr = listParams.release();
+    content::ThreadCall::callUiThreadAsync(FROM_HERE, [self, frame, id, channelCopy, listParamsPtr] {
+        if (IdLiveDetect::get()->isLive(id)) {
+            //self->mate::EventEmitter<WebContents>::emit(channelCopy->c_str(), *listParamsCopy);
+
+            v8::Isolate* isolate = self->isolate();
+            v8::HandleScope handleScope(isolate);
+            v8::Local<v8::Object> event = mate::internal::createJSEvent(isolate, self->getWrapper());
+
+            mini_electron_web_view webView = self->getEngineView();
+            intptr_t mainFrame = (intptr_t)mini_electron_web_frame_get_main_frame(webView);
+
+            ApiWebFrameMain* webframe = ApiWebFrameMain::createOrGet(mainFrame);
+            v8::Local<v8::Object> webframeV8 = webframe->GetWrapper(isolate);
+            v8::Local<v8::Context> context = webframeV8->GetCreationContextChecked();
+            v8::Context::Scope contextScope(context);
+
+            event->Set(context, gin_helper::StringToV8(isolate, "senderFrame"), webframeV8);
+
+            v8::Local<v8::Object> webContentsV8 = self->GetWrapper(isolate);
+            event->Set(context, gin_helper::StringToV8(isolate, "sender"), webContentsV8);
+            event->Set(context, gin_helper::StringToV8(isolate, "frameId"), gin_helper::ConvertToV8(isolate, (int64_t)frame));
+
+            ReplyCallbackInfo* info = new ReplyCallbackInfo();
+            info->frame = frame;
+            info->webContents = self;
+            v8::Local<v8::Value> dataLocal = v8::External::New(isolate, info);
+            v8::Local<v8::FunctionTemplate> replyFunTemplate = v8::FunctionTemplate::New(isolate, replyCallback, dataLocal);
+            v8::Local<v8::Function> replyFunction;
+            CHECK(replyFunTemplate->GetFunction(context).ToLocal(&replyFunction));
+            event->Set(context, gin_helper::StringToV8(isolate, "reply"), replyFunction);
+
+            // 将其包装为 Persistent，并设置为 Weak，附带回调
+            v8::Persistent<v8::Function> persistentReplyFunction(isolate, replyFunction);
+            persistentReplyFunction.SetWeak((void*)info, replyWeakCallback,
+                v8::WeakCallbackType::kParameter  // 或 kInternalFields
+            );
+
+            self->mate::EventEmitter<WebContents>::emitCustomEvent(channelCopy->c_str(), event, *listParamsPtr);
+        }
+        delete listParamsPtr;
+        delete channelCopy;
+    });
+}
+
+void WebContents::rendererSendMessageToMain(
+    mini_electron_web_frame_handle frame,
+    const std::string& channel, 
+    std::unique_ptr<std::vector<blink::CloneableMessage>> listParams,
+    std::vector<uint8_t>* encodedMessageRet)
+{
+    WebContents* self = this;
+
+    if (channel != "ipc-message-sync")
+        DebugBreak();
+
+    std::vector<blink::CloneableMessage>* listParamsPtr = listParams.release();
+    content::ThreadCall::callUiThreadSync(FROM_HERE, [self, frame, listParamsPtr, encodedMessageRet] {
+        //         self->mate::EventEmitter<WebContents>::emitWithSender(
+        //             "ipc-message-sync", [jsonRet](const std::string& json) { jsonRet->assign(json.c_str(), json.size()); }, *listParamsPtr);
+        v8::Isolate* isolate = v8::Isolate::GetCurrent();
+        v8::HandleScope handleScope(isolate);
+
+        v8::Local<v8::Object> webContentsV8 = self->getWrapper();
+
+        v8::Local<v8::Object> event = mate::internal::createJSEventWithSender(isolate, webContentsV8,
+            [encodedMessageRet](base::span<const uint8_t> encodedMessage) {
+                if (encodedMessage.size() > 0) {
+                    encodedMessageRet->resize(encodedMessage.size());
+                    memcpy(encodedMessageRet->data(), encodedMessage.data(), encodedMessage.size());
+                }
+        });
+
+        v8::Local<v8::Context> context = webContentsV8->GetCreationContextChecked();
+        event->Set(context, gin_helper::StringToV8(isolate, "sender"), webContentsV8);
+        event->Set(context, gin_helper::StringToV8(isolate, "frameId"), gin_helper::ConvertToV8(isolate, (int64_t)frame));
+
+        self->mate::EventEmitter<WebContents>::emitCustomEvent("ipc-message-sync", event, *listParamsPtr);
+        delete listParamsPtr;
+    });
+}
+
+static bool getIPCObject(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::Local<v8::Object>* ipc)
+{
+    v8::Local<v8::String> key = gin_helper::StringToV8(isolate, "ipc");
+    v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
+    v8::Local<v8::Object> globalObject = context->Global();
+    v8::Local<v8::Value> value;
+    if (!globalObject->GetPrivate(context, privateKey).ToLocal(&value))
+        return false;
+    if (value.IsEmpty() || !value->IsObject())
+        return false;
+    *ipc = value->ToObject(context).ToLocalChecked();
+    return true;
+}
+
+static std::vector<v8::Local<v8::Value>> listValueToVector(v8::Isolate* isolate, const std::vector<blink::CloneableMessage>& list)
+{
+    std::vector<v8::Local<v8::Value>> result;
+    for (size_t i = 0 ; i < list.size(); ++i) {
+        v8::Local<v8::Value> it = gin_helper::ConvertToV8(isolate, list[i]);
+        result.push_back(it);
+    }
+    
+    return result;
+}
+
+static void emitIPCEventToRendererImpl(
+    WebContents* webContents, 
+    mini_electron_web_view view, 
+    mini_electron_web_frame_handle frame, 
+    int worldID, 
+    const std::string& channel, 
+    const std::vector<blink::CloneableMessage>& args)
+{
+    CHECK(WTF::IsMainThread());
+    if (!frame /*|| wkeIsWebRemoteFrame(view, frame)*/)
+        return;
+
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handleScope(isolate);
+    v8::TryCatch tryCatch(isolate);
+    v8::Local<v8::Context> context;
+    mini_electron_get_world_script_context_by_web_frame(view, frame, worldID, &context);
+    if (context.IsEmpty())
+        return;
+    v8::MicrotasksScope microtasksScope(context, v8::MicrotasksScope::kRunMicrotasks);
+    v8::Context::Scope contextScope(context);
+
+    tryCatch.SetVerbose(true);
+    tryCatch.Reset();
+
+    // Only emit IPC event for context with node integration.
+    node::Environment* env = nodeEnvironmentGetByV8Context(context);
+    if (!env)
+        return;
+
+    v8::Local<v8::Object> ipc;
+    if (getIPCObject(isolate, context, &ipc)) {
+        std::vector<v8::Local<v8::Value>> argsVector = listValueToVector(isolate, args);
+        gin_helper::Dictionary evt = gin_helper::Dictionary::CreateEmpty(isolate);
+        evt.Set("sender", ipc); // Insert the Event object, event.sender is ipc.
+        evt.Set("frameId", (int64_t)frame);
+        argsVector.insert(argsVector.begin(), evt.GetHandle());
+        mate::emitEvent(isolate, ipc, channel, argsVector);
+    }
+}
+
+static void emitIPCEventToRenderer(
+    WebContents* webContents, 
+    mini_electron_web_view view, 
+    mini_electron_web_frame_handle frame, 
+    const std::string& channel, 
+    const std::vector<blink::CloneableMessage>& args)
+{
+    emitIPCEventToRendererImpl(webContents, view, frame, WorldIDs::MAIN_WORLD_ID, channel, args);
+    emitIPCEventToRendererImpl(webContents, view, frame, WorldIDs::ISOLATED_WORLD_ID, channel, args);
+}
+
+void WebContents::rendererSendMessageToRenderer(mini_electron_web_view view, mini_electron_web_frame_handle frame, const std::string& channel, const std::vector<blink::CloneableMessage>& args)
+{
+    emitIPCEventToRenderer(nullptr, view, frame, channel, args);
+}
+
+void WebContents::anyPostMessageToRenderer(int64_t frameId, const std::string& channel, std::unique_ptr<std::vector<blink::CloneableMessage>> listParams)
+{
+    int id = m_id;
+    WebContents* self = this;
+    std::string* channelWrap = new std::string(channel);
+    //base::Value::List* listParamsWrap = new base::Value::List(listParams.Clone());
+
+    std::vector<blink::CloneableMessage>* listParamsPtr = listParams.release();
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [self, frameId, id, channelWrap, listParamsPtr] {
+        if (IdLiveDetect::get()->isLive(id)) {
+            mini_electron_web_frame_handle frame = (mini_electron_web_frame_handle)frameId;
+            if (0 == frameId)
+                frame = mini_electron_web_frame_get_main_frame(self->m_view);
+            else {
+                OutputDebugStringA("anyPostMessageToRenderer frameId not 0\n");
+            }
+            emitIPCEventToRenderer(self, self->m_view, frame, *channelWrap, *listParamsPtr);
+        }
+        delete listParamsPtr;
+
+//         if (listParamsWrap->size() == 1) {
+//             const base::Value& a0 = (*listParamsWrap)[0];
+//             base::Value::Type xx = a0.type();
+//             if (a0.type() == base::Value::Type::STRING) {
+//                 const std::string* str = a0.GetIfString();
+//                 if (*str == "vscode:message") {
+//                     testEventEmitter = 1;
+//                     content::printCallstack();
+//                 }
+//             }
+//         }
+
+        delete channelWrap;
+    });
+}
+
+void WebContents::getFocusedWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    v8::Local<v8::Value> result = WindowInterface::getFocusedContents(info.GetIsolate());
+    info.GetReturnValue().Set(result);
+}
+
+void WebContents::getAllWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    WindowList* lists = WindowList::getInstance();
+
+    v8::Local<v8::Array> results = v8::Array::New(info.GetIsolate(), lists->size());
+    int count = 0;
+    for (WindowList::iterator it = lists->begin(); it != lists->end(); ++it, ++count) {
+        WebContents* content = (*it)->getWebContents();
+
+        v8::Local<v8::Value> result = content->GetWrapper(info.GetIsolate());
+        results->Set(context, count, result);
+    }
+    info.GetReturnValue().Set(results);
+}
+
+WebContents* WebContents::fromId(int id)
+{
+    WindowList* lists = WindowList::getInstance();
+
+    WebContents* findedContent = nullptr;
+    for (WindowList::iterator it = lists->begin(); it != lists->end(); ++it) {
+        WebContents* content = (*it)->getWebContents();
+        if ((int32_t)content->m_id != id)
+            continue;
+        findedContent = content;
+        break;
+    }
+    return findedContent;
+}
+
+void WebContents::fromIdApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    if (1 != info.Length())
+        return;
+    v8::Local<v8::Value> arg0 = info[0];
+    if (!arg0->IsInt32())
+        return;
+
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    int32_t id = arg0->Int32Value(context).ToChecked();
+    WebContents* self = WebContents::fromId(id);
+    v8::Isolate* isolate = info.GetIsolate();
+    if (!self) {
+        info.GetReturnValue().Set(v8::Null(isolate));
+        return;
+    }
+    v8::Local<v8::Value> result = v8::Local<v8::Value>::New(isolate, self->GetWrapper(isolate));
+    info.GetReturnValue().Set(result);
+}
+
+int WebContents::getIdApi() const
+{
+    return (int)m_id;
+}
+
+void WebContents::getSessionApi(const v8::FunctionCallbackInfo<v8::Value>& info) const
+{
+    v8::Isolate* isolate = info.GetIsolate();
+    ApiSession* ses = SessionMgr::get()->findOrCreateSession(isolate, m_sessionName, false);
+    info.GetReturnValue().Set(ses->GetWrapper(isolate));
+}
+
+void WebContents::zoomFactorApi(const v8::FunctionCallbackInfo<v8::Value>& info) const
+{
+    mini_electron_web_view webView = getEngineView();
+    float ret = mini_electron_get_zoom_factor(webView);
+    info.GetReturnValue().Set(ret);
+}
+
+void WebContents::getMainFrameApi(const v8::FunctionCallbackInfo<v8::Value>& info) const
+{
+    mini_electron_web_view webView = getEngineView();
+    intptr_t mainFrame = (intptr_t)mini_electron_web_frame_get_main_frame(webView);
+
+    ApiWebFrameMain* webframe = ApiWebFrameMain::createOrGet(mainFrame);
+    v8::Local<v8::Object> wrapper = webframe->GetWrapper(isolate());
+    if (wrapper.IsEmpty())
+        return;
+    info.GetReturnValue().Set(wrapper);
+}
+
+bool WebContents::canGoBackApi() const
+{
+    return m_canGoBack;
+}
+
+bool WebContents::canGoForwardApi() const
+{
+    return m_canGoForward;
+}
+
+void WebContents::printToPDFApi()
+{
+    OutputDebugStringA("WebContents::printToPDFApi not impl\n");
+}
+
+void WebContents::setWindowOpenHandlerApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    OutputDebugStringA("WebContents::setWindowOpenHandlerApi not impl\n");
+
+    if (1 != info.Length())
+        return;
+    v8::Local<v8::Value> arg0 = info[0];
+    if (!arg0->IsFunction())
+        return;
+    v8::Local<v8::Function> fn = arg0.As<v8::Function>();
+    m_windowOpenHandlerCb.Reset(info.GetIsolate(), fn);
+}
+
+void WebContents::downloadURLApi(const std::string& url)
+{
+    mini_electron_web_view webView = getEngineView();
+    intptr_t mainFrame = (intptr_t)mini_electron_web_frame_get_main_frame(webView);
+    mini_electron_download_url(webView, (mini_electron_web_frame_handle) mainFrame, url);
+}
+
+void WebContents::setZoomLevelApi(float level)
+{
+    mini_electron_web_view webView = getEngineView();
+    mini_electron_set_zoom_factor(webView, level);
+}
+
+float WebContents::getZoomLevelApi() const
+{
+    mini_electron_web_view webView = getEngineView();
+    float ret = mini_electron_get_zoom_factor(webView);
+    return ret;
+}
+
+int WebContents::getProcessIdApi() const
+{
+    return (int)::GetCurrentProcessId();
+}
+
+bool WebContents::equalApi() const
+{
+    return false;
+}
+
+static std::string* trimUrl(const std::string& url)
+{
+    std::string* str = new std::string(url);
+
+    // file:\c:\ 处理这种字符串
+    if (str->size() > 9 && str->substr(0, 6) == "file:\\" && str->at(7) == ':') {
+        std::string* strTemp = new std::string(str->substr(6));
+        strTemp->insert(0, "file:///");
+        delete str;
+        str = strTemp;
+    }
+
+    if (str->size() > 9 && str->substr(0, 7) == "file://") {
+        if (str->at(7) != '/')
+            str->insert(7, 1, '/');
+
+        for (size_t i = 0; i < str->size(); ++i) { // 如果是中文路径，则把问号前面的内容解码
+            char c = str->at(i);
+            if ('?' != c)
+                continue;
+
+            std::string urldecodeHead = StringUtil::urlDecode(str->c_str(), i + 1);
+            urldecodeHead += str->substr(i, str->size() - i);
+            *str = urldecodeHead;
+            break;
+        }
+    }
+
+    char invalideHead[] = "http:\\";
+    int invalideHeadLength = sizeof(invalideHead) - 1;
+    if (((int)str->size() > invalideHeadLength) && str->substr(0, invalideHeadLength) == invalideHead) {
+        for (size_t i = 0; i < str->size(); ++i) { // 反斜杠替换成斜杠
+            char c = str->at(i);
+            if ('\\' != c)
+                continue;
+            str->at(i) = '/';
+        }
+        char c = str->at(invalideHeadLength);
+        if (c != '/')
+            str->insert(str->begin() + invalideHeadLength, 1, '/');
+    }
+
+    return str;
+}
+
+void WebContents::_loadURLApi(const std::string& url)
+{
+    std::string* str = trimUrl(url);
+    m_isLoading = true;
+
+    mini_electron_load_url(m_view, str->c_str());
+
+    delete str;
+    m_isLoading = false;
+}
+
+std::string WebContents::_getURLApi()
+{
+    return m_url;
+}
+
+std::string WebContents::getTitleApi()
+{
+    return m_title;
+}
+
+void WebContents::onTitleChanged(mini_electron_web_view webView, void* param, const utf8* title)
+{
+    WebContents* self = (WebContents*)param;
+    if (self->mate::EventEmitter<WebContents>::emit("page-title-updated"))
+        return;
+
+    self->m_title = title;
+    std::wstring titleW = StringUtil::UTF8ToUTF16(title);
+    HWND hwnd = mini_electron_get_host_hwnd(self->m_view);
+    ::SetWindowText(hwnd, titleW.c_str());
+}
+
+void WebContents::onURLChanged(mini_electron_web_view webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward)
+{
+    WebContents* self = (WebContents*)param;
+    self->m_url = url;
+    self->m_canGoBack = canGoBack;
+    self->m_canGoForward = canGoForward;
+}
+
+static void MINI_ELECTRON_CALL_TYPE onNetGetFaviconCallback(mini_electron_web_view webView, void* param, const utf8* url, mini_electron_mem_buf* buf)
+{
+    if (!url)
+        return;
+    WebContents* self = (WebContents*)param;
+
+    base::Value::List params;
+    base::Value::List urls;
+    urls.Append(std::string(url));
+    params.Append(std::move(urls));
+
+    self->mate::EventEmitter<WebContents>::emit("page-favicon-updated", params);
+}
+
+void WebContents::onLoadingFinishCallback(
+    mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId, const utf8* url, mini_electron_loading_result result, const utf8* failedReason)
+{
+    WebContents* self = (WebContents*)param;
+    int id = self->m_id;
+    //     WindowState state = self->m_state;
+    //     bool isDestroyApiBeCalled = self->m_isDestroyApiBeCalled;
+    BOOL isMainFrame = mini_electron_is_main_frame(webView, frameId);
+    std::string* failedReasonString = new std::string((failedReason));
+    std::string* urlString = new std::string((url));
+
+
+    content::ThreadCall::callUiThreadAsync(FROM_HERE, [id, self, result, /*state, isDestroyApiBeCalled,*/ failedReasonString, urlString, isMainFrame] {
+        if (!IdLiveDetect::get()->isLive(id) /*|| WindowDestroying == state || WindowDestroyed == state || isDestroyApiBeCalled*/) {
+            delete failedReasonString;
+            delete urlString;
+            return;
+        }
+
+        if (result == MINI_ELECTRON_LOADING_SUCCEEDED) {
+            self->mate::EventEmitter<WebContents>::emit("did-frame-finish-load", isMainFrame);
+            if (isMainFrame)
+                self->mate::EventEmitter<WebContents>::emit("did-finish-load");
+        } else {
+            self->mate::EventEmitter<WebContents>::emit("did-fail-provisional-load", 0, *failedReasonString, *urlString, isMainFrame);
+
+            if (result == MINI_ELECTRON_LOADING_FAILED)
+                self->mate::EventEmitter<WebContents>::emit("did-fail-load", 0, *failedReasonString, *urlString, isMainFrame);
+        }
+        delete failedReasonString;
+        delete urlString;
+    });
+}
+
+struct WindowOpenHandlerResult {
+    bool isDeny = false;
+    v8::Local<v8::Object> overrideBrowserWindowOptions;
+
+    //     bool hasFrame = true;
+    //     bool isFullscreenable = false;
+    //     std::string preload;
+    //     std::string backgroundColor;
+};
+
+std::unique_ptr<WindowOpenHandlerResult> WebContents::onWindowOpenHandler(v8::Local<v8::Context> context, const std::string& url)
+{
+    if (m_windowOpenHandlerCb.IsEmpty())
+        return nullptr;
+
+    v8::Local<v8::Function> cb = m_windowOpenHandlerCb.Get(isolate());
+    v8::Local<v8::Value> undefined = v8::Undefined(isolate());
+
+    v8::Local<v8::Object> object = v8::Object::New(isolate());
+    gin_helper::Dictionary objDict(isolate(), object);
+    objDict.Set("url", url);
+    v8::Local<v8::Value> argv[1] = { object.As<v8::Value>() };
+
+    v8::MaybeLocal<v8::Value> ret = cb->Call(context, undefined, 1, argv);
+    if (ret.IsEmpty())
+        return nullptr;
+
+    v8::Local<v8::Value> result = ret.ToLocalChecked();
+    if (!result->IsObject())
+        return nullptr;
+    gin_helper::Dictionary resultDict(isolate(), result.As<v8::Object>());
+    std::string action;
+
+    std::unique_ptr<WindowOpenHandlerResult> handlerResult = std::make_unique<WindowOpenHandlerResult>();
+    if (resultDict.Get("action", &action)) {
+        if ("deny" == action)
+            handlerResult->isDeny = true;
+    }
+
+    v8::Local<v8::Object> overrideBrowserWindowOptions;
+    if (resultDict.Get("overrideBrowserWindowOptions", &overrideBrowserWindowOptions)) {
+        handlerResult->overrideBrowserWindowOptions = overrideBrowserWindowOptions;
+    }
+
+    return std::move(handlerResult);
+}
+
+mini_electron_web_view WebContents::onCreateViewCallback(
+    mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url, const mini_electron_window_features* windowFeatures)
+{
+    WebContents* self = (WebContents*)param;
+    std::string* urlString = new std::string((url));
+    v8::Isolate* isolate = self->isolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    bool allow = true;
+    WebContents* newWebcontents = nullptr;
+    v8::HandleScope handleScope(isolate);
+    v8::TryCatch block(isolate);
+
+    std::unique_ptr<WindowOpenHandlerResult> handlerResult = self->onWindowOpenHandler(context, std::string(url));
+    if (handlerResult && handlerResult->isDeny)
+        return NULL_WEBVIEW;
+
+    v8::Local<v8::Object> newGuestWindow;
+
+    v8::Local<v8::Object> event = mate::internal::createJSEvent(isolate, self->getWrapper());
+    mate::emitEvent(isolate, self->getWrapper(), "new-window", event, *urlString, "", "new-window");
+    allow = !event->Get(context, gin_helper::StringToV8(isolate, "defaultPrevented")).ToLocalChecked()->BooleanValue(isolate);
+
+    if (!allow) { // 如果调用了preventDefault，则从newGuest字段找到newGuestWindow
+        newGuestWindow = event->Get(context, gin_helper::StringToV8(isolate, "newGuest")).ToLocalChecked().As<v8::Object>();
+    } else { // 如果使用默认创建的BrowserWindow
+        v8::Local<v8::Object> evt = mate::internal::createJSEvent(isolate, self->getWrapper());
+        if (handlerResult && !handlerResult->overrideBrowserWindowOptions.IsEmpty()) {
+            std::vector<v8::Local<v8::Value>> args;
+            args.push_back(evt);
+            args.push_back(handlerResult->overrideBrowserWindowOptions);
+            mate::emitEvent(isolate, self->getWrapper(), "-new-window", args);
+        } else {
+            mate::emitEvent(isolate, self->getWrapper(), "-new-window", evt, *urlString, "", "new-window");
+        }
+        newGuestWindow = evt->Get(context, gin_helper::StringToV8(isolate, "newGuest")).ToLocalChecked().As<v8::Object>();
+    }
+
+    newWebcontents = WindowInterface::onCreateNewWebview(newGuestWindow);
+    // 如果拿不到newWebcontents，说明可能调用了defaultPrevented，并且没走electron.webContents.prototype.onCreateNewWebview
+    return newWebcontents ? newWebcontents->getEngineView() : NULL_WEBVIEW;
+}
+
+bool WebContents::isLoadingApi()
+{
+    bool isLoading = false;
+    return isLoading;
+}
+
+bool WebContents::isLoadingMainFrameApi()
+{
+    //todo
+    return false;
+}
+
+bool WebContents::isWaitingForResponseApi()
+{
+    //todo
+    return false;
+}
+
+void WebContents::stopApi()
+{
+    mini_electron_stop_loading(m_view);
+}
+
+void WebContents::goBackApi()
+{
+    mini_electron_go_back(m_view);
+}
+
+void WebContents::goForwardApi()
+{
+    mini_electron_go_forward(m_view);
+}
+
+void WebContents::goToOffsetApi(int offset)
+{
+    mini_electron_go_to_offset(m_view, offset);
+}
+
+void WebContents::goToIndexApi(int index)
+{
+    mini_electron_go_to_index(m_view, index);
+}
+
+bool WebContents::isCrashedApi()
+{
+    return false;
+}
+
+void WebContents::setUserAgentApi(const std::string userAgent)
+{
+    m_ua = userAgent;
+    mini_electron_set_user_agent(m_view, userAgent.c_str());
+}
+
+std::string WebContents::getUserAgentApi()
+{
+    return m_ua;
+}
+
+void WebContents::savePageApi()
+{
+    //todo
+}
+
+void WebContents::openDevToolsApi()
+{
+    std::vector<WCHAR> fullpath;
+    fullpath.resize(MAX_PATH + 1);
+    memset(fullpath.data(), 0, sizeof(wchar_t) * (MAX_PATH + 1));
+    ::GetModuleFileNameW(NULL, fullpath.data(), MAX_PATH);
+    ::PathRemoveFileSpecW(fullpath.data());
+
+    std::vector<WCHAR> name = fullpath;
+    ::PathAppendW(name.data(), L"\\front_end\\inspector.html");
+
+    std::string nameA;
+    if (::PathFileExistsW(name.data())) {
+        nameA = StringUtil::UTF16ToUTF8(name.data());
+        mini_electron_set_debug_config(m_view, "showDevTools", nameA.c_str());
+        return;
+    }
+
+    name = fullpath;
+    ::PathAppendW(name.data(), L"\\resources\\devtools\\inspector.html");
+    nameA = StringUtil::UTF16ToUTF8(name.data());
+    mini_electron_set_debug_config(m_view, "showDevTools", nameA.c_str());
+
+}
+
+void WebContents::closeDevToolsApi()
+{
+    //todo
+}
+
+bool WebContents::isDevToolsOpenedApi()
+{
+    return false;
+}
+
+bool WebContents::isDevToolsFocusedApi()
+{
+    //todo
+    return true;
+}
+
+// std::u16string InsertCSS(v8::Isolate* isolate, const std::string& css, gin::Arguments* args) 
+// {
+//     blink::WebCssOrigin css_origin = blink::WebCssOrigin::kAuthor;
+// 
+//     gin_helper::Dictionary options;
+//     if (args->GetNext(&options))
+//         options.Get("cssOrigin", &css_origin);
+// 
+//     content::RenderFrame* render_frame;
+//     if (!MaybeGetRenderFrame(isolate, "insertCSS", &render_frame))
+//         return std::u16string();
+// 
+//     blink::WebFrame* web_frame = render_frame->GetWebFrame();
+//     if (web_frame->IsWebLocalFrame()) {
+//         return web_frame->ToWebLocalFrame()->GetDocument().InsertStyleSheet(blink::WebString::FromUTF8(css), nullptr, css_origin).Utf16();
+//     }
+//     return std::u16string();
+// }
+
+void MINI_ELECTRON_CALL_TYPE onInsertCSSByFrameResultCallback(mini_electron_web_view webView, void* param, const utf8* key)
+{
+    gin_helper::Promise<v8::Local<v8::Value>>* promise = (gin_helper::Promise<v8::Local<v8::Value>>*)param;
+    v8::Local<v8::Value> xx = gin_helper::Converter<std::string>::ToV8(v8::Isolate::GetCurrent(), std::string(key));
+    promise->Resolve(xx);
+}
+
+v8::Local<v8::Promise> WebContents::insertCSSApi(const std::string& cssText, gin_helper::Arguments* args)
+{
+    gin_helper::Promise<v8::Local<v8::Value>>* promise = new gin_helper::Promise<v8::Local<v8::Value>>(isolate());
+    v8::Local<v8::Promise> ret = promise->GetHandle();
+
+    int cssOrigin = (int)blink::WebCssOrigin::kAuthor;
+    gin_helper::Dictionary options(isolate());
+    if (args->GetNext(&options))
+        options.Get("cssOrigin", &cssOrigin);
+
+    mini_electron_insert_css_by_frame_with_result(m_view, mini_electron_web_frame_get_main_frame(m_view), cssText.c_str(), cssOrigin, onInsertCSSByFrameResultCallback, promise);
+
+    return ret;
+}
+
+void WebContents::setZoomFactorApi(float factor)
+{
+
+}
+
+void WebContents::enableDeviceEmulationApi()
+{
+    //todo
+}
+
+void WebContents::disableDeviceEmulationApi()
+{
+    //todo
+}
+
+void WebContents::toggleDevToolsApi()
+{
+    //todo
+}
+
+void WebContents::inspectElementApi()
+{
+    //todo
+}
+
+void WebContents::setAudioMutedApi()
+{
+    /*Isolate* isolate = args.GetIsolate();
+
+    WebContents* webContents = ObjectWrap::Unwrap<WebContents>(args.Holder());
+
+    ThreadCall::callBlinkThreadSync([webContents] {
+        mbSetMediaVolume(webContents->m_view, 0.0);
+    });*/
+}
+
+void WebContents::isAudioMutedApi()
+{
+}
+
+void WebContents::undoApi()
+{
+    mini_electron_editor_undo(m_view);
+}
+
+void WebContents::redoApi()
+{
+    mini_electron_editor_redo(m_view);
+}
+
+void WebContents::cutApi()
+{
+    mini_electron_editor_cut(m_view);
+}
+
+void WebContents::copyApi()
+{
+    mini_electron_editor_copy(m_view);
+}
+
+void WebContents::pasteApi()
+{
+    mini_electron_editor_paste(m_view);
+}
+
+void WebContents::pasteAndMatchStyleApi()
+{
+    //todo
+}
+
+void WebContents::_deleteApi()
+{
+    mini_electron_editor_delete(m_view);
+}
+
+void WebContents::selectAllApi()
+{
+    mini_electron_editor_select_all(m_view);
+}
+
+void WebContents::unselectApi()
+{
+    mini_electron_editor_un_select(m_view);
+}
+
+void WebContents::replaceApi()
+{
+    //todo
+}
+
+void WebContents::replaceMisspellingApi()
+{
+    //todo
+}
+
+void WebContents::findInPageApi()
+{
+    //todo
+}
+
+void WebContents::stopFindInPageApi()
+{
+    //todo
+}
+
+void WebContents::focusApi()
+{
+    mini_electron_set_focus(m_view);
+}
+
+bool WebContents::isFocusedApi()
+{
+    return mini_electron_get_host_hwnd(m_view) == GetFocus();
+}
+
+void WebContents::tabTraverseApi()
+{
+    //todo
+}
+
+bool WebContents::_sendApi(
+    const v8::FunctionCallbackInfo<v8::Value>& info
+    //int64_t frameId, bool isAllFrames, const std::string& channel, const base::Value::List& args
+    )
+{
+    gin_helper::Arguments arg(info);
+
+    int64_t frameId;
+    bool isAllFrames;
+    if (!arg.GetNext(&frameId)) {
+        arg.ThrowError();
+        return false;
+    }
+
+    if (!arg.GetNext(&isAllFrames)) {
+        arg.ThrowError();
+        return false;
+    }
+
+    std::string channel;
+    if (!arg.GetNext(&channel)) {
+        arg.ThrowError();
+        return false;
+    }
+
+    std::vector<blink::CloneableMessage>* args = new std::vector<blink::CloneableMessage>();
+    if (!arg.GetRemaining(args)) {
+        delete args;
+        arg.ThrowError();
+        return false;
+    }
+
+    if (!isAllFrames) {
+        anyPostMessageToRenderer(frameId, channel, std::unique_ptr<std::vector<blink::CloneableMessage>>(args));
+        return true;
+    }
+    WindowList::iterator winIt = WindowList::getInstance()->begin();
+    for (; winIt != WindowList::getInstance()->end(); ++winIt) {
+        WindowInterface* windowInterface = *winIt;
+        WebContents* webContents = windowInterface->getWebContents();
+        webContents->anyPostMessageToRenderer(frameId, channel, std::unique_ptr<std::vector<blink::CloneableMessage>>(args));
+    }
+    return true;
+}
+
+static void emitMojoMessageToRendererImpl(
+    WebContents* webContents, mini_electron_web_view view, mini_electron_web_frame_handle frame, int worldID, const std::string& channel, mojo::Message& mojoMessage)
+{
+    CHECK(WTF::IsMainThread());
+    if (!frame)
+        return;
+
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handleScope(isolate);
+    v8::TryCatch tryCatch(isolate);
+    v8::Local<v8::Context> context;
+    mini_electron_get_world_script_context_by_web_frame(view, frame, worldID, &context);
+    if (context.IsEmpty())
+        return;
+    v8::MicrotasksScope microtasksScope(context, v8::MicrotasksScope::kRunMicrotasks);
+    v8::Context::Scope contextScope(context);
+
+    tryCatch.SetVerbose(true);
+    tryCatch.Reset();
+
+    // Only emit IPC event for context with node integration.
+    node::Environment* env = nodeEnvironmentGetByV8Context(context);
+    if (!env)
+        return;
+
+    v8::Local<v8::Object> ipc;
+    if (getIPCObject(isolate, context, &ipc)) {
+        onChannelMessagingApiAcceptHelper(true, channel, ipc, &mojoMessage);
+    }
+}
+
+void mini_electron_test_message_channel_main(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+
+}
+
+void WebContents::_testPostMessageApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+
+}
+
+bool WebContents::_postMessageApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    int id = m_id;
+    WebContents* self = this;
+    mojo::Message* mojoMessage = new mojo::Message();
+    std::string* channel = new std::string();
+    if (!v8FunInfoToMojoMessage(info, mojoMessage, channel))
+        return false;
+
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [self, id, mojoMessage, channel] {
+        if (IdLiveDetect::get()->isLive(id)) {
+            emitMojoMessageToRendererImpl(self, self->m_view, mini_electron_web_frame_get_main_frame(self->m_view), WorldIDs::ISOLATED_WORLD_ID, *channel, *mojoMessage);
+        }
+        delete mojoMessage;
+        delete channel;
+    });
+    return true;
+}
+
+void WebContents::sendInputEventApi()
+{
+    //todo
+}
+
+void WebContents::beginFrameSubscriptionApi()
+{
+    //todo
+}
+
+void WebContents::endFrameSubscriptionApi()
+{
+    //todo
+}
+
+void WebContents::startDragApi()
+{
+    //todo
+}
+
+void WebContents::setSizeApi()
+{
+    //todo
+}
+
+bool WebContents::isGuestApi()
+{
+    //todo
+    return false;
+}
+
+bool WebContents::isOffscreenApi()
+{
+    //todo
+    return false;
+}
+
+void WebContents::startPaintingApi()
+{
+    //todo
+}
+
+void WebContents::stopPaintingApi()
+{
+    //todo
+}
+
+bool WebContents::isPaintingApi()
+{
+    //todo
+    return false;
+}
+
+void WebContents::setFrameRateApi(int frameRate)
+{
+    m_frameRate = frameRate;
+}
+
+int WebContents::getFrameRateApi()
+{
+    return m_frameRate;
+}
+
+void WebContents::invalidateApi()
+{
+    //todo
+}
+
+void WebContents::getTypeApi()
+{
+    //todo
+}
+
+void WebContents::getWebPreferencesApi()
+{
+    //todo
+}
+
+v8::Local<v8::Value> WebContents::getOwnerBrowserWindowApi()
+{
+    if (m_owner)
+        return m_owner->getWrapper();
+
+    return v8::Null(isolate());
+}
+
+bool WebContents::hasServiceWorkerApi()
+{
+    return false;
+}
+
+void WebContents::unregisterServiceWorkerApi()
+{
+    //todo
+}
+
+void WebContents::inspectServiceWorkerApi()
+{
+    //todo
+}
+
+void WebContents::printApi()
+{
+    //todo
+}
+
+void WebContents::_printToPDFApi()
+{
+    //todo
+}
+
+void WebContents::addWorkSpaceApi()
+{
+    //todo
+}
+
+void WebContents::reNullWorkSpaceApi()
+{
+    //todo
+}
+
+void WebContents::showDefinitionForSelectionApi()
+{
+    //todo
+}
+
+void WebContents::copyImageAtApi()
+{
+    //todo
+}
+
+void WebContents::capturePageApi()
+{
+    //todo
+}
+
+void WebContents::setEmbedderApi()
+{
+    //todo
+}
+
+bool WebContents::isDestroyedApi() const
+{
+    return false;
+}
+
+void WebContents::reloadIgnoringCacheApi()
+{
+    mini_electron_reload(m_view);
+}
+
+BOOL WebContents::onNavigationCallback(mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url)
+{
+    WebContents* self = (WebContents*)param;
+    std::string* urlString = new std::string(url);
+    int id = self->m_id;
+    bool allow = true;
+    content::ThreadCall::callUiThreadSync(FROM_HERE, [id, self, urlString, &allow] {
+        if (!IdLiveDetect::get()->isLive(id))
+            return;
+
+        if (!self->m_isLoading) {
+            self->mate::EventEmitter<WebContents>::emit("did-stop-loading");
+
+            allow = !(self->mate::EventEmitter<WebContents>::emit("will-navigate", *urlString));
+        }
+        self->m_isLoading = false;
+        delete urlString;
+    });
+    return allow;
+}
+
+void WebContents::onDocumentReadyInBlinkThread(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId)
+{
+    int width = mini_electron_get_content_width(webView);
+    int height = mini_electron_get_content_height(webView);
+    WebContents* self = (WebContents*)param;
+    int id = self->m_id;
+
+    bool needSetPos = false;
+    if (self->m_createWindowParam->isUseContentSize && 0 != width && 0 != height)
+        needSetPos = true;
+
+    content::ThreadCall::callUiThreadAsync(FROM_HERE, [webView, self, id, needSetPos, width, height] {
+        if (!IdLiveDetect::get()->isLive(id))
+            return;
+
+        HWND hWnd = mini_electron_get_host_hwnd(webView);
+        RECT rect = { 0 };
+        ::GetWindowRect(hWnd, &rect);
+        //         if (rect.left == kNotSetXYFlag || rect.top == kNotSetXYFlag)
+        //             platform_util::moveToCenter(hWnd);
+
+        if (needSetPos)
+            ::SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, width, height, SWP_NOMOVE | SWP_NOREPOSITION);
+
+        self->mate::EventEmitter<WebContents>::emit("did-navigate");
+        self->mate::EventEmitter<WebContents>::emit("ready-to-show"); // 暂时在这发消息。以后再想办法
+        self->mate::EventEmitter<WebContents>::emit("dom-ready");
+        self->mate::EventEmitter<WebContents>::emit("did-stop-loading");
+
+        for (std::set<WebContentsObserver*>::iterator it = self->m_observers.begin(); it != self->m_observers.end(); ++it) {
+            WebContentsObserver* obs = *it;
+            obs->onWebContentsReadyToShow(self);
+        }
+    });
+}
+
+void WebContents::nullFunction()
+{
+}
+
+gin_helper::WrapperInfo WebContents::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };
+v8::Persistent<v8::Function> WebContents::s_constructor;
+
+static void initializeWebContentApi(v8::Local<v8::Object> target, v8::Local<v8::Value> unused, v8::Local<v8::Context> context, const NodeNative* native)
+{
+    WebContents::init(context->GetIsolate(), target, nullptr);
+}
+
+static const char WebContentsSricpt[] = "exports = {};";
+
+static NodeNative nativeBrowserWebContentsNative { "WebContents", WebContentsSricpt, sizeof(WebContentsSricpt) - 1 };
+
+NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(electron_browser_web_contents, initializeWebContentApi, &nativeBrowserWebContentsNative)
+
+} // atom
+
+namespace gin_helper {
+
+v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const atom::WebContents& content)
+{
+    atom::WebContents* ctx = (atom::WebContents*)&content;
+    return ctx->GetWrapper(isolate);
+}
+
+}

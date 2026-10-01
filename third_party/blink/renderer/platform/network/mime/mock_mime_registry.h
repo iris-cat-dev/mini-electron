@@ -17,11 +17,19 @@ public:
     MockMimeRegistry() = default;
     ~MockMimeRegistry() override = default;
 
-    void GetMimeTypeFromExtension(const String& ext, GetMimeTypeFromExtensionCallback callback) override
+    bool GetMimeTypeFromExtension(const String& ext, String* out_mime_type) override
     {
         std::string mime_type;
-        net::GetMimeTypeFromExtension(WebStringToFilePath(ext).value(), &mime_type);
-        std::move(callback).Run(String::FromUTF8(mime_type));
+        bool found = net::GetMimeTypeFromExtension(WebStringToFilePath(ext).value(), &mime_type);
+        *out_mime_type = String::FromUTF8(mime_type);
+        return found;
+    }
+
+    void GetMimeTypeFromExtension(const String& ext, GetMimeTypeFromExtensionCallback callback) override
+    {
+        String mime_type;
+        GetMimeTypeFromExtension(ext, &mime_type);
+        std::move(callback).Run(mime_type);
     }
 };
 

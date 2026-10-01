@@ -35,7 +35,7 @@
 #include <optional>
 #include <unordered_map>
 
-int MbFprintf(FILE* const stream, char const* const format, ...);
+int MiniElectronFprintf(FILE* const stream, char const* const format, ...);
 
 namespace node {
 
@@ -372,7 +372,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info)
     HandleScope handle_scope(isolate_);
 
     if (per_process::enabled_debug_list.enabled(DebugCategory::MKSNAPSHOT)) {
-        MbFprintf(stderr, "deserializing IsolateDataSerializeInfo...\n");
+        MiniElectronFprintf(stderr, "deserializing IsolateDataSerializeInfo...\n");
         std::cerr << *info << "\n";
     }
 
@@ -385,7 +385,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info)
         MaybeLocal<TypeName> maybe_field = isolate_->GetDataFromSnapshotOnce<TypeName>(info->primitive_values[i++]);                                           \
         Local<TypeName> field;                                                                                                                                 \
         if (!maybe_field.ToLocal(&field)) {                                                                                                                    \
-            MbFprintf(stderr, "Failed to deserialize " #PropertyName "\n");                                                                                      \
+            MiniElectronFprintf(stderr, "Failed to deserialize " #PropertyName "\n");                                                                                      \
         }                                                                                                                                                      \
         PropertyName##_.Set(isolate_, field);                                                                                                                  \
     } while (0);
@@ -403,7 +403,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info)
         MaybeLocal<String> maybe_field = isolate_->GetDataFromSnapshotOnce<String>(info->primitive_values[i++]);
         Local<String> field;
         if (!maybe_field.ToLocal(&field)) {
-            MbFprintf(stderr, "Failed to deserialize AsyncWrap provider %zu\n", j);
+            MiniElectronFprintf(stderr, "Failed to deserialize AsyncWrap provider %zu\n", j);
         }
         async_wrap_providers_[j].Set(isolate_, field);
     }
@@ -420,7 +420,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info)
             MaybeLocal<TypeName> maybe_field = isolate_->GetDataFromSnapshotOnce<TypeName>(d.index);                                                           \
             Local<TypeName> field;                                                                                                                             \
             if (!maybe_field.ToLocal(&field)) {                                                                                                                \
-                MbFprintf(stderr, "Failed to deserialize isolate data template " #PropertyName "\n");                                                            \
+                MiniElectronFprintf(stderr, "Failed to deserialize isolate data template " #PropertyName "\n");                                                            \
             }                                                                                                                                                  \
             set_##PropertyName(field);                                                                                                                         \
             i++;                                                                                                                                               \
@@ -1134,7 +1134,7 @@ void Environment::PrintSyncTrace() const
 
     HandleScope handle_scope(isolate());
 
-    MbFprintf(stderr, "(node:%d) WARNING: Detected use of sync API\n", uv_os_getpid());
+    MiniElectronFprintf(stderr, "(node:%d) WARNING: Detected use of sync API\n", uv_os_getpid());
     PrintStackTrace(isolate(), StackTrace::CurrentStackTrace(isolate(), static_cast<int>(stack_trace_limit()), StackTrace::kDetailed));
 }
 
@@ -1692,7 +1692,7 @@ void AsyncHooks::grow_async_ids_stack()
 
 void AsyncHooks::FailWithCorruptedAsyncStack(double expected_async_id)
 {
-    MbFprintf(stderr,
+    MiniElectronFprintf(stderr,
         "Error: async hook stack has become corrupted ("
         "actual: %.f, expected: %.f)\n",
         async_id_fields_.GetValue(kExecutionAsyncId), expected_async_id);
@@ -1702,7 +1702,7 @@ void AsyncHooks::FailWithCorruptedAsyncStack(double expected_async_id)
     // TODO(joyeecheung): should this exit code be more specific?
     if (!env()->abort_on_uncaught_exception())
         Exit(ExitCode::kGenericUserError);
-    MbFprintf(stderr, "\n");
+    MiniElectronFprintf(stderr, "\n");
     fflush(stderr);
     ABORT_NO_BACKTRACE();
 }
@@ -1715,12 +1715,12 @@ void Environment::Exit(ExitCode exit_code)
         Isolate::DisallowJavascriptExecutionScope disallow_js(isolate(), Isolate::DisallowJavascriptExecutionScope::CRASH_ON_FAILURE);
 
         if (is_main_thread()) {
-            MbFprintf(stderr, "(node:%d) ", uv_os_getpid());
+            MiniElectronFprintf(stderr, "(node:%d) ", uv_os_getpid());
         } else {
-            MbFprintf(stderr, "(node:%d, thread:%" PRIu64 ") ", uv_os_getpid(), thread_id());
+            MiniElectronFprintf(stderr, "(node:%d, thread:%" PRIu64 ") ", uv_os_getpid(), thread_id());
         }
 
-        MbFprintf(stderr, "WARNING: Exited the environment with code %d\n", static_cast<int>(exit_code));
+        MiniElectronFprintf(stderr, "WARNING: Exited the environment with code %d\n", static_cast<int>(exit_code));
         PrintStackTrace(isolate(), StackTrace::CurrentStackTrace(isolate(), static_cast<int>(stack_trace_limit()), StackTrace::kDetailed));
     }
     process_exit_handler_(this, exit_code);
@@ -1768,7 +1768,7 @@ void Environment::RemoveUnmanagedFd(int fd)
 void Environment::PrintInfoForSnapshotIfDebug()
 {
     if (enabled_debug_list()->enabled(DebugCategory::MKSNAPSHOT)) {
-        MbFprintf(stderr, "At the exit of the Environment:\n");
+        MiniElectronFprintf(stderr, "At the exit of the Environment:\n");
         principal_realm()->PrintInfoForSnapshot();
     }
 }
@@ -1822,7 +1822,7 @@ void Environment::DeserializeProperties(const EnvSerializeInfo* info)
     Local<Context> ctx = context();
 
     if (enabled_debug_list_.enabled(DebugCategory::MKSNAPSHOT)) {
-        MbFprintf(stderr, "deserializing EnvSerializeInfo...\n");
+        MiniElectronFprintf(stderr, "deserializing EnvSerializeInfo...\n");
         std::cerr << *info << "\n";
     }
 

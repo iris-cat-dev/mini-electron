@@ -47,7 +47,7 @@ protected:
     virtual int ContextGroupId(ExecutionContext*) = 0;
     virtual void ReportConsoleMessage(ExecutionContext*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const WTF::String& message, SourceLocation*)
         = 0;
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     void installAdditionalCommandLineAPI(v8::Local<v8::Context>, v8::Local<v8::Object>) override;
     void CreateFunctionProperty(
         v8::Local<v8::Context>, v8::Local<v8::Object>, const char* name, v8::FunctionCallback, const char* description, v8::SideEffectType side_effect_type);
@@ -58,7 +58,7 @@ protected:
     v8::Isolate* isolate_;
 
 private:
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     // V8InspectorClient implementation.
     void beginUserGesture() override;
     std::unique_ptr<v8_inspector::DeepSerializationResult> deepSerialize(

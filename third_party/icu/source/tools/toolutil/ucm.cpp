@@ -259,13 +259,13 @@ U_CAPI void U_EXPORT2 ucm_sortTable(UCMTable* t)
  */
 U_CAPI void U_EXPORT2 ucm_moveMappings(UCMTable* base, UCMTable* ext)
 {
-    UCMapping *mb, *mbLimit;
+    UCMapping *mb, *mini_electron_limit;
     int8_t flag;
 
     mb = base->mappings;
-    mbLimit = mb + base->mappingsLength;
+    mini_electron_limit = mb + base->mappingsLength;
 
-    while (mb < mbLimit) {
+    while (mb < mini_electron_limit) {
         flag = mb->moveFlag;
         if (flag != 0) {
             /* reset the move flag */
@@ -277,10 +277,10 @@ U_CAPI void U_EXPORT2 ucm_moveMappings(UCMTable* base, UCMTable* ext)
             }
 
             /* remove this mapping: move the last base mapping down and overwrite the current one */
-            if (mb < (mbLimit - 1)) {
-                uprv_memcpy(mb, mbLimit - 1, sizeof(UCMapping));
+            if (mb < (mini_electron_limit - 1)) {
+                uprv_memcpy(mb, mini_electron_limit - 1, sizeof(UCMapping));
             }
-            --mbLimit;
+            --mini_electron_limit;
             --base->mappingsLength;
             base->isSorted = FALSE;
         } else {
@@ -295,12 +295,12 @@ static uint8_t checkBaseExtUnicode(UCMStates* baseStates, UCMTable* base, UCMTab
 {
     (void)baseStates;
 
-    UCMapping *mb, *me, *mbLimit, *meLimit;
+    UCMapping *mb, *me, *mini_electron_limit, *meLimit;
     int32_t cmp;
     uint8_t result;
 
     mb = base->mappings;
-    mbLimit = mb + base->mappingsLength;
+    mini_electron_limit = mb + base->mappingsLength;
 
     me = ext->mappings;
     meLimit = me + ext->mappingsLength;
@@ -310,7 +310,7 @@ static uint8_t checkBaseExtUnicode(UCMStates* baseStates, UCMTable* base, UCMTab
     for (;;) {
         /* skip irrelevant mappings on both sides */
         for (;;) {
-            if (mb == mbLimit) {
+            if (mb == mini_electron_limit) {
                 return result;
             }
 

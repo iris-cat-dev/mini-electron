@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #include "platform/macos/smoke/engine_probe.h"
@@ -13,7 +13,7 @@
 #include "v8/include/v8-primitive.h"
 #include "v8/include/v8-script.h"
 
-namespace miniblink::mac {
+namespace mini_electron::mac {
 
 std::optional<std::string> RunEngineProbe(const char* executable_path) {
   v8::V8::InitializeICUDefaultLocation(executable_path);
@@ -50,7 +50,7 @@ std::optional<std::string> RunEngineProbe(const char* executable_path) {
         "if (locale !== 'zh-Hans-CN' || date !== '2026年3月17日星期二' || "
         "sorted.join(',') !== '北京,广州,上海') throw new Error('ICU data "
         "mismatch');"
-        "return JSON.stringify({engine: 'miniblink132', platform: 'macOS', "
+        "return JSON.stringify({engine: 'mini-electron', platform: 'macOS', "
         "arch: 'arm64', runLoop: 'CFRunLoop', "
         "unicodeIdentifier: /^[\\p{ID_Start}_][\\p{ID_Continue}_]*$/u.test('_变量1'), "
         "intlLocale: new Intl.NumberFormat('zh-CN').resolvedOptions().locale, "
@@ -75,4 +75,4 @@ std::optional<std::string> RunEngineProbe(const char* executable_path) {
   return output;
 }
 
-}  // namespace miniblink::mac
+}  // namespace mini_electron::mac

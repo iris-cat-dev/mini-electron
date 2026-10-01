@@ -107,7 +107,7 @@
 #include "third_party/blink/renderer/core/events/ui_event_with_key_state.h"
 #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
 #include "third_party/blink/renderer/core/events/wheel_event.h"
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
 #endif
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
@@ -2769,7 +2769,7 @@ void WebViewImpl::Show(const LocalFrameToken& opener_frame_token, NavigationPoli
     local_main_frame_host_remote_->ShowCreatedWindow(opener_frame_token, NavigationPolicyToDisposition(policy), std::move(window_features),
         opened_by_user_gesture, WTF::BindOnce(&WebViewImpl::DidShowCreatedWindow, WTF::Unretained(this)));
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (auto* dev_tools_agent = MainFrameImpl()->DevToolsAgentImpl(/*create_if_necessary=*/false)) {
         dev_tools_agent->DidShowNewWindow();
     }

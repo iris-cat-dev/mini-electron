@@ -239,7 +239,7 @@
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/transform.h"
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/renderer/core/editing/ephemeral_range.h"
 #include "third_party/blink/renderer/core/editing/substring_util.h"
 #include "third_party/blink/renderer/platform/fonts/mac/attributed_string_type_converter.h"
@@ -487,7 +487,7 @@ void LocalFrame::Trace(Visitor* visitor) const
     visitor->Trace(probe_sink_);
     visitor->Trace(performance_monitor_);
     visitor->Trace(idleness_detector_);
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     visitor->Trace(inspector_issue_reporter_);
     visitor->Trace(inspector_trace_events_);
 #endif
@@ -754,7 +754,7 @@ bool LocalFrame::DetachImpl(FrameDetachType type)
         }
     }
     idleness_detector_->Shutdown();
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (inspector_issue_reporter_)
         probe_sink_->RemoveInspectorIssueReporter(inspector_issue_reporter_);
     if (inspector_trace_events_)
@@ -1820,7 +1820,7 @@ LocalFrame::LocalFrame(LocalFrameClient* client, Page& page, FrameOwner* owner, 
     if (IsLocalRoot()) {
         performance_monitor_ = MakeGarbageCollected<PerformanceMonitor>(this, isolate);
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         inspector_issue_reporter_ = MakeGarbageCollected<InspectorIssueReporter>(&page.GetInspectorIssueStorage());
         probe_sink_->AddInspectorIssueReporter(inspector_issue_reporter_);
         inspector_trace_events_ = MakeGarbageCollected<InspectorTraceEvents>();
@@ -3219,13 +3219,13 @@ void LocalFrame::SetInitialFocus(bool reverse)
     GetPage()->GetFocusController().SetInitialFocus(reverse ? mojom::blink::FocusType::kBackward : mojom::blink::FocusType::kForward);
 }
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
 void LocalFrame::GetCharacterIndexAtPoint(const gfx::Point& point)
 {
     HitTestLocation location(View()->ViewportToFrame(gfx::Point(point)));
     HitTestResult result = GetEventHandler().HitTestResultAtLocation(location, HitTestRequest::kReadOnly | HitTestRequest::kActive);
     uint32_t index = Selection().CharacterIndexForPoint(result.RoundedPointInInnerNodeFrame());
-#if !defined(ENABLE_MB)
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     mojo_handler_->TextInputHost().GotCharacterIndexAtPoint(index);
 #endif
 }
@@ -3625,7 +3625,7 @@ bool LocalFrame::ShouldThrottleDownload()
     return false;
 }
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
 void LocalFrame::ResetTextInputHostForTesting()
 {
     mojo_handler_->ResetTextInputHostForTesting();

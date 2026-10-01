@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #include "platform/macos/electron/electron_api.h"
@@ -10,7 +10,7 @@
 #include <sstream>
 #include <utility>
 
-#include "content/common/ThreadCall.h"
+#include "runtime/engine/common/thread_call.h"
 #include "v8/include/v8-context.h"
 #include "v8/include/v8-container.h"
 #include "v8/include/v8-exception.h"
@@ -23,7 +23,7 @@
 #include "v8/include/v8-script.h"
 #include "v8/include/v8-template.h"
 
-namespace miniblink::electron {
+namespace mini_electron::electron {
 namespace {
 
 v8::Local<v8::String> V8String(v8::Isolate* isolate, const char* value) {
@@ -180,7 +180,7 @@ class Runtime {
   }
 
   static void AppGetName(const v8::FunctionCallbackInfo<v8::Value>& info) {
-    info.GetReturnValue().Set(V8String(info.GetIsolate(), "miniblink132"));
+    info.GetReturnValue().Set(V8String(info.GetIsolate(), "mini-electron"));
   }
 
   static void NewBrowserWindow(
@@ -359,7 +359,7 @@ std::optional<AppPlan> EvaluateMainScript(const std::string& script_path,
   contents << input.rdbuf();
 
   std::optional<AppPlan> result;
-  content::ThreadCall::callBlinkThreadSync(MB_FROM_HERE, [&] {
+  content::ThreadCall::callBlinkThreadSync(FROM_HERE, [&] {
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
     if (!isolate) {
       *error = "Blink thread has no active V8 isolate";
@@ -399,4 +399,4 @@ std::optional<AppPlan> EvaluateMainScript(const std::string& script_path,
   return result;
 }
 
-}  // namespace miniblink::electron
+}  // namespace mini_electron::electron

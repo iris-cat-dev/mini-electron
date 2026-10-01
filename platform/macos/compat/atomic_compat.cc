@@ -4,22 +4,22 @@
 
 #if defined(_MSC_VER)
 
-extern "C" uintptr_t MbTlsAlloc()
+extern "C" uintptr_t MiniElectronTlsAlloc()
 {
     return (uintptr_t)TlsAlloc();
 }
 
-extern "C" LPVOID MbTlsGetValue(uintptr_t dwTlsIndex)
+extern "C" LPVOID MiniElectronTlsGetValue(uintptr_t dwTlsIndex)
 {
     return TlsGetValue((DWORD)dwTlsIndex);
 }
 
-extern "C" BOOL MbTlsSetValue(uintptr_t dwTlsIndex, LPVOID lpTlsValue)
+extern "C" BOOL MiniElectronTlsSetValue(uintptr_t dwTlsIndex, LPVOID lpTlsValue)
 {
     return TlsSetValue((DWORD)dwTlsIndex, lpTlsValue);
 }
 
-extern "C" BOOL MbTlsFree(uintptr_t dwTlsIndex)
+extern "C" BOOL MiniElectronTlsFree(uintptr_t dwTlsIndex)
 {
     return TlsFree((DWORD)dwTlsIndex);
 }
@@ -51,24 +51,24 @@ extern "C" long MB_InterlockedCompareExchange(long volatile* _Destination, long 
 
 #else
 
-uintptr_t MbTlsAlloc()
+uintptr_t MiniElectronTlsAlloc()
 {
     pthread_key_t key;
     pthread_key_create(&key, nullptr);
     return reinterpret_cast<uintptr_t>(key);
 }
 
-LPVOID MbTlsGetValue(uintptr_t dwTlsIndex)
+LPVOID MiniElectronTlsGetValue(uintptr_t dwTlsIndex)
 {
     return pthread_getspecific(static_cast<pthread_key_t>(dwTlsIndex));
 }
 
-BOOL MbTlsSetValue(uintptr_t dwTlsIndex, LPVOID lpTlsValue)
+BOOL MiniElectronTlsSetValue(uintptr_t dwTlsIndex, LPVOID lpTlsValue)
 {
     return pthread_setspecific(static_cast<pthread_key_t>(dwTlsIndex), lpTlsValue) == 0;
 }
 
-BOOL MbTlsFree(uintptr_t dwTlsIndex)
+BOOL MiniElectronTlsFree(uintptr_t dwTlsIndex)
 {
     return pthread_key_delete(static_cast<pthread_key_t>(dwTlsIndex)) == 0;
 }

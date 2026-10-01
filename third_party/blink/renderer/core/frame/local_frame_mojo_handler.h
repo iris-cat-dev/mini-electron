@@ -25,7 +25,7 @@
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/public/mojom/input/text_input_host.mojom-blink.h"
 #endif
 
@@ -74,7 +74,7 @@ public:
     mojom::blink::DevicePostureProvider* DevicePostureProvider();
     mojom::blink::BackForwardCacheControllerHost& BackForwardCacheControllerHostRemote();
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
     mojom::blink::TextInputHost& TextInputHost();
     void ResetTextInputHostForTesting();
     void RebindTextInputHostForTesting();
@@ -134,7 +134,7 @@ private:
         int32_t world_id, JavaScriptExecuteRequestForTestsCallback callback) final;
     void JavaScriptExecuteRequestInIsolatedWorld(
         const String& javascript, bool wants_result, int32_t world_id, JavaScriptExecuteRequestInIsolatedWorldCallback callback) final;
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
     void GetCharacterIndexAtPoint(const gfx::Point& point) final;
     void GetFirstRectForRange(const gfx::Range& range) final;
     void GetStringForRange(const gfx::Range& range, GetStringForRangeCallback callback) final;
@@ -196,7 +196,7 @@ private:
 
     HeapMojoAssociatedRemote<mojom::blink::BackForwardCacheControllerHost> back_forward_cache_controller_host_remote_ { nullptr };
 
-#if BUILDFLAG(IS_MAC) && !defined(ENABLE_MB)
+#if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
     HeapMojoRemote<mojom::blink::TextInputHost> text_input_host_ { nullptr };
 #endif
 

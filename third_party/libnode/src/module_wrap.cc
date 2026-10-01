@@ -15,6 +15,14 @@
 #include <algorithm>
 
 
+#ifdef _WIN32
+extern bool g_isElectronMode;
+
+namespace atom {
+void PreEvaluateModule();
+}
+#endif
+
 namespace node {
 namespace loader {
 
@@ -537,6 +545,11 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args)
             microtask_queue->PerformCheckpoint(isolate);
         return result;
     };
+#ifdef _WIN32
+    if (g_isElectronMode)
+        atom::PreEvaluateModule();
+#endif
+
     if (break_on_sigint && timeout != -1) {
         Watchdog wd(isolate, timeout, &timed_out);
         SigintWatchdog swd(isolate, &received_signal);

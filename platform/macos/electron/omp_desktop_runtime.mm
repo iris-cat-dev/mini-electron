@@ -1,4 +1,4 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #import "platform/macos/electron/omp_desktop_runtime.h"
@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <string>
 
-extern "C" void mbMacSetStoragePaths(mbWebView webView,
+extern "C" void mini_electron_mac_set_storage_paths(mini_electron_web_view webView,
                                      const char* cookiePath,
                                      const char* localStoragePath);
 
@@ -124,11 +124,11 @@ NSString* BridgeScript(NSString* loginShell) {
   NSString* shellJSON = JsonString(loginShell ?: @"/bin/zsh");
   static const char kSource[] = R"JS(
 (() => {
-  if (window.paseoDesktop || typeof window.mbQuery !== 'function') return;
+  if (window.paseoDesktop || typeof window.mini_electron_query !== 'function') return;
 
   const listeners = new Map();
   const callNative = (scope, method, args) => new Promise((resolve, reject) => {
-    window.mbQuery(%d, JSON.stringify({ scope, method, args: args ?? null }), (_message, response) => {
+    window.mini_electron_query(%d, JSON.stringify({ scope, method, args: args ?? null }), (_message, response) => {
       try {
         const envelope = JSON.parse(response);
         if (envelope.ok) resolve(envelope.value);
@@ -918,7 +918,7 @@ NSString* BridgeScript(NSString* loginShell) {
   });
 }
 
-- (BOOL)serveURL:(NSString*)value job:(mbNetJob)job {
+- (BOOL)serveURL:(NSString*)value job:(mini_electron_net_job)job {
   NSURLComponents* components = [NSURLComponents componentsWithString:value];
   if (![components.scheme isEqualToString:@"http"] ||
       ![components.host isEqualToString:@"127.0.0.1"] ||
@@ -942,17 +942,17 @@ NSString* BridgeScript(NSString* loginShell) {
   NSData* data = [NSData dataWithContentsOfFile:candidate];
   if (!data) {
     const char message[] = "Not found";
-    mbNetSetMIMEType(job, "text/plain");
-    mbNetSetData(job, const_cast<char*>(message), sizeof(message) - 1);
+    mini_electron_net_set_mime_type(job, "text/plain");
+    mini_electron_net_set_data(job, const_cast<char*>(message), sizeof(message) - 1);
     return YES;
   }
-  mbNetSetMIMEType(job, MimeType(candidate).UTF8String);
-  mbNetSetHTTPHeaderFieldUtf8(job, "Access-Control-Allow-Origin", "*", TRUE);
-  mbNetSetData(job, const_cast<void*>(data.bytes), static_cast<int>(data.length));
+  mini_electron_net_set_mime_type(job, MimeType(candidate).UTF8String);
+  mini_electron_net_set_http_header_field_utf8(job, "Access-Control-Allow-Origin", "*", TRUE);
+  mini_electron_net_set_data(job, const_cast<void*>(data.bytes), static_cast<int>(data.length));
   return YES;
 }
 
-- (void)configureWebView:(mbWebView)webView window:(NSWindow*)window {
+- (void)configureWebView:(mini_electron_web_view)webView window:(NSWindow*)window {
   _window = window;
   NSString* storageDirectory =
       [_homePath stringByAppendingPathComponent:@"web-runtime"];
@@ -963,34 +963,34 @@ NSString* BridgeScript(NSString* loginShell) {
                                              attributes:nil
                                                   error:nil];
   NSString* cookies = [storageDirectory stringByAppendingPathComponent:@"cookies.dat"];
-  mbMacSetStoragePaths(webView, cookies.UTF8String, localStorage.UTF8String);
-  mbOnLoadUrlBegin(
+  mini_electron_mac_set_storage_paths(webView, cookies.UTF8String, localStorage.UTF8String);
+  mini_electron_on_load_url_begin(
       webView,
-      [](mbWebView view, void* parameter, const char* url, void* job) -> BOOL {
+      [](mini_electron_web_view view, void* parameter, const char* url, void* job) -> BOOL {
         OmpDesktopRuntime* runtime = (__bridge OmpDesktopRuntime*)parameter;
         NSString* value = url ? [NSString stringWithUTF8String:url] : @"";
         return [runtime serveURL:value job:job];
       },
       (__bridge void*)self);
-  mbOnDidCreateScriptContext(
+  mini_electron_on_did_create_script_context(
       webView,
-      [](mbWebView view, void* parameter, mbWebFrameHandle frame, void* context,
+      [](mini_electron_web_view view, void* parameter, mini_electron_web_frame_handle frame, void* context,
          int extensionGroup, int worldId) {
-        if (worldId != 0 || frame != mbWebFrameGetMainFrame(view))
+        if (worldId != 0 || frame != mini_electron_web_frame_get_main_frame(view))
           return;
         OmpDesktopRuntime* runtime = (__bridge OmpDesktopRuntime*)parameter;
         NSString* shell = NSProcessInfo.processInfo.environment[@"SHELL"] ?: @"/bin/zsh";
         NSString* script = BridgeScript(shell);
-        mbRunJs(view, frame, script.UTF8String, FALSE, nullptr, nullptr, nullptr);
+        mini_electron_run_js(view, frame, script.UTF8String, FALSE, nullptr, nullptr, nullptr);
       },
       (__bridge void*)self);
-  mbOnJsQuery(
+  mini_electron_on_js_query(
       webView,
-      [](mbWebView view, void* parameter, mbJsExecState state, int64_t queryId,
+      [](mini_electron_web_view view, void* parameter, mini_electron_js_exec_state state, int64_t queryId,
          int customMessage, const utf8* request) {
         OmpDesktopRuntime* runtime = (__bridge OmpDesktopRuntime*)parameter;
         if (customMessage != kBridgeMessage) {
-          mbResponseQuery(view, queryId, customMessage,
+          mini_electron_response_query(view, queryId, customMessage,
                           "{\"ok\":false,\"error\":\"Unknown native message\"}");
           return;
         }
@@ -1001,7 +1001,7 @@ NSString* BridgeScript(NSString* loginShell) {
                                        : @{ @"ok" : @YES,
                                             @"value" : result ?: [NSNull null] };
           NSString* response = JsonString(envelope);
-          mbResponseQuery(view, queryId, customMessage, response.UTF8String);
+          mini_electron_response_query(view, queryId, customMessage, response.UTF8String);
 #if !__has_feature(objc_arc)
           [response release];
 #endif

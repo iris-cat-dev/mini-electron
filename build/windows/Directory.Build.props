@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <LLVMInstallDir Condition="'$(LLVMInstallDir)' == ''">C:\Program Files\LLVM</LLVMInstallDir>
+    <LLVMToolsVersion Condition="'$(LLVMToolsVersion)' == ''">22</LLVMToolsVersion>
+  </PropertyGroup>
+</Project>

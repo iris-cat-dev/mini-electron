@@ -5,19 +5,24 @@
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 #include "base/trace_event/trace_event.h"
+#include "base/tracing_buildflags.h"
 
 namespace blink {
 namespace trace_event {
 
 void EnableTracing(const String& category_filter)
 {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     base::trace_event::TraceLog::GetInstance()->SetEnabled(
         base::trace_event::TraceConfig(category_filter.Utf8(), ""), base::trace_event::TraceLog::RECORDING_MODE);
+#endif
 }
 
 void DisableTracing()
 {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     base::trace_event::TraceLog::GetInstance()->SetDisabled();
+#endif
 }
 
 void AddAsyncEnabledStateObserver(base::WeakPtr<AsyncEnabledStateObserver> observer)

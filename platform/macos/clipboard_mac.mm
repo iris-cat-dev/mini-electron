@@ -1,11 +1,11 @@
-// Copyright 2026 The miniblink132 Authors
+// Copyright 2026 The mini-electron Authors
 // Use of this source code is governed by the Apache-2.0 license.
 
 #import <AppKit/AppKit.h>
 
 #include "platform/macos/clipboard_mac.h"
 
-namespace miniblink::mac {
+namespace mini_electron::mac {
 namespace {
 
 std::u16string ToUTF16(NSString* value) {
@@ -55,4 +55,4 @@ std::u16string ReadClipboardHtml() {
   }
 }
 
-}  // namespace miniblink::mac
+}  // namespace mini_electron::mac

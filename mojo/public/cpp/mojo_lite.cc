@@ -54,15 +54,15 @@
 #if defined(OS_WIN)
 #include "base/threading/platform_thread_win.h"
 #endif
-#include "ipc_lite/ipc_channel_proxy.h"
-#include "ipc_lite/ipc_message_macros.h"
+#include "ipc/ipc_channel_proxy.h"
+#include "ipc/ipc_message_macros.h"
 #include "mojo/public/cpp/mojo_lite_msg.h"
 #include "base/process/process.h"
 #include "base/task/single_thread_task_executor.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/hash/hash.h"
-#include "content/common/LiveIdDetect.h"
-#include "content/renderer/RenderThreadImpl.h"
+#include "runtime/engine/common/live_id_detect.h"
+#include "runtime/engine/renderer/render_thread_impl.h"
 #include <unordered_map>
 #include <windows.h>
 

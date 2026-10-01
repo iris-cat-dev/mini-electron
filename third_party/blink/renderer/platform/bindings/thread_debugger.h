@@ -22,14 +22,14 @@ namespace blink {
 class SourceLocation;
 
 class PLATFORM_EXPORT ThreadDebugger
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     : public v8_inspector::V8InspectorClient
 #endif
 {
 public:
     explicit ThreadDebugger(v8::Isolate* isolate)
     {
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         v8_inspector_ = v8_inspector::V8Inspector::create(isolate, this);
 #endif
     }
@@ -41,7 +41,7 @@ public:
     virtual bool IsWorker() = 0;
     v8_inspector::V8Inspector* GetV8Inspector() const
     {
-#if defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         return nullptr;
 #else
         return v8_inspector_.get();
@@ -64,7 +64,7 @@ public:
     virtual void ExternalAsyncTaskStarted(const v8_inspector::V8StackTraceId& parent) = 0;
     virtual void ExternalAsyncTaskFinished(const v8_inspector::V8StackTraceId& parent) = 0;
 
-#if !defined(MINIBLINK_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 protected:
     std::unique_ptr<v8_inspector::V8Inspector> v8_inspector_;
 #endif
