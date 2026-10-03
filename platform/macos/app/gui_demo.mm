@@ -14,7 +14,6 @@ extern "C" void mini_electron_mac_set_composition(mini_electron_web_view web_vie
                                     const char16_t* text,
                                     size_t length,
                                     BOOL committed);
-extern "C" void mini_electron_mac_set_device_scale_factor(mini_electron_web_view web_view, float scale);
 
 
 static std::u16string UTF16String(NSString* value) {
@@ -124,9 +123,9 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
   const float scale = [self currentDeviceScaleFactor];
   std::fprintf(stderr, "[mini-electron] NSView dip=%.0fx%.0f scale=%.2f\n",
                size.width, size.height, scale);
-  mini_electron_mac_set_device_scale_factor(_webView, scale);
   mini_electron_resize(_webView, std::max(1, static_cast<int>(size.width)),
            std::max(1, static_cast<int>(size.height)));
+  mini_electron_set_device_scale_factor(_webView, scale);
 }
 
 - (void)viewDidMoveToWindow {

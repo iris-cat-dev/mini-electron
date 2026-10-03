@@ -30,6 +30,7 @@
 #include "third_party/blink/public/platform/web_url_request_extra_data.h"
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-shared.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#include <cstdint>
 #include <memory>
 
 namespace mini_electron {
@@ -37,6 +38,9 @@ namespace mini_electron {
 class WebURLRequestExtraDataWrap : public blink::WebURLRequestExtraData {
 public:
     int64_t mbwebviewId = 0;
+    uint64_t frameId = 0;
+    uint64_t parentFrameId = 0;
+    bool isMainFrame = false;
     MojoHandle dataPipeProducerHandle = 0;
     blink::mojom::RequestContextFrameType frameType = blink::mojom::RequestContextFrameType::kNone;
 

@@ -18,13 +18,33 @@ Menu.prototype._init = function () {
     });
 }
 
-Menu.prototype.popup = function (options) {
-    // windowObj, x, y, positioningItem
+Menu.prototype.popup = function (options = {}) {
+    options = options || {};
     this._init();
-    if (options && ('x' in options) && 'y' in options)
-        this._popup(options.x, options.y);
-    else
-        this._popup();
+
+    const callback = options.callback;
+    if (callback != null && typeof callback !== 'function') {
+        throw new TypeError('callback must be a function');
+    }
+
+    let windowHandle = null;
+    if (options.window != null) {
+        if (typeof options.window.getNativeWindowHandle !== 'function') {
+            throw new TypeError('window must be a BrowserWindow');
+        }
+        windowHandle = options.window.getNativeWindowHandle();
+    }
+
+    const hasPosition = Number.isInteger(options.x) && Number.isInteger(options.y);
+    try {
+        this._popup(
+            windowHandle,
+            hasPosition ? options.x : null,
+            hasPosition ? options.y : null
+        );
+    } finally {
+        if (callback) callback();
+    }
 }
 
 Menu.prototype.append = function (item) {

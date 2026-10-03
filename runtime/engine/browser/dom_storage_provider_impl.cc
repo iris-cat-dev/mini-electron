@@ -6,6 +6,7 @@
 #include "runtime/engine/common/thread_call.h"
 #include "runtime/engine/common/string_conversions.h"
 #include "runtime/engine/renderer/web_view_client_impl.h"
+#include "runtime/engine/renderer/renderer_storage_broker.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
@@ -14,12 +15,10 @@
 #include "third_party/blink/public/mojom/dom_storage/dom_storage.mojom-blink.h"
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-blink.h"
 #include "third_party/blink/public/mojom/dom_storage/session_storage_namespace.mojom-blink.h"
-#include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "base/files/file_path.h"
-#include "base/files/file_util.h"
 #include "base/strings/utf_string_conversions.h"
 
 bool ::blink::mojom::blink::StorageArea::GetAll(
@@ -31,13 +30,6 @@ bool ::blink::mojom::blink::StorageArea::GetAll(
 namespace content {
 
 class StorageAreaImpl;
-//static const char* kLocalStorageExtensionName = ".localstorage";
-
-static const char* kSeparator = "--mb-sep--\n";
-static size_t kSeparatorLength = 11;
-
-static const char* kEmptySeprator = "--mb-ept--"; // (char)0x1f;
-static size_t kEmptySepratorLength = 10;
 
 class StorageAreaImplMgr {
 public:
@@ -52,7 +44,22 @@ public:
 
     static StorageAreaImplMgr* get();
 
-    StorageAreaImpl* findOrCreateByStorageKey(bool isLocal, const ::blink::BlinkStorageKey& storageKey);
+    StorageAreaImpl* findOrCreateByStorageKey(bool isLocal,
+        const ::blink::BlinkStorageKey& storageKey,
+        const base::FilePath& localStorageDirectory,
+        const WTF::String& namespaceId);
+    void associateNamespaceFrame(const WTF::String& namespaceId,
+        uint64_t frameId)
+    {
+        if (!namespaceId.empty() && frameId)
+            m_namespaceFrames.Set(namespaceId, frameId);
+    }
+
+    uint64_t frameForNamespace(const WTF::String& namespaceId) const
+    {
+        auto found = m_namespaceFrames.find(namespaceId);
+        return found == m_namespaceFrames.end() ? 0 : found->value;
+    }
 
 private:
     static String buildFileName(const ::blink::BlinkStorageKey& storageKey)
@@ -77,14 +84,17 @@ private:
     }
 
     WTF::HashMap<String, StorageAreaImpl*> m_areas;
+    WTF::HashMap<String, uint64_t> m_namespaceFrames;
 };
 
 class StorageAreaImpl {
 public:
-    StorageAreaImpl(bool isLocal, const ::blink::BlinkStorageKey& storageKey)
+    StorageAreaImpl(bool isLocal, const ::blink::BlinkStorageKey& storageKey,
+        const WTF::String& namespaceId)
+        : m_isLocal(isLocal)
+        , m_storageKey(storageKey)
+        , m_namespaceId(namespaceId)
     {
-        m_isLocal = isLocal;
-        m_storageKey = storageKey;
     }
 
     bool isLocal() const { return m_isLocal; }
@@ -120,34 +130,84 @@ public:
         ThreadCall::callBlinkThreadDelayed(FROM_HERE, [self] { delete self; }, 5000);
     }
 
-    void toSave()
+    bool clear(uint64_t frameId)
     {
-        if (m_isSaving || m_isDestroying)
-            return;
-        m_isSaving = true;
-        StorageAreaImpl* self = this;
-        ThreadCall::callBlinkThreadDelayed(FROM_HERE, [self] { self->delaySave(); }, 1500);
+        if (m_areaMap) {
+            while (m_areaMap->GetLength()) {
+                String ignored;
+                m_areaMap->RemoveItem(m_areaMap->GetKey(0), &ignored);
+            }
+        }
+        base::Value::Dict result;
+        std::string error;
+        return RequestRendererStorage(
+            frameId, StorageRequest("clear"), &result, &error);
     }
 
-    void loadFromFile(const base::FilePath& localPathDir, WTF::Vector<::blink::mojom::blink::KeyValuePtr>* outData)
+    bool put(uint64_t frameId, const WTF::Vector<uint8_t>& encoded_key,
+        const WTF::Vector<uint8_t>& encoded_value)
     {
-        if (!m_isLocal)
-            return;
+        base::Value::Dict request = StorageRequest("set");
+        std::string key = Uint8VectorToString(encoded_key,
+            blink::CachedStorageArea::FormatOption::kLocalStorageDetectFormat).Utf8();
+        std::string value = Uint8VectorToString(encoded_value,
+            blink::CachedStorageArea::FormatOption::kLocalStorageDetectFormat).Utf8();
+        request.Set("key", std::move(key));
+        request.Set("value", std::move(value));
+        base::Value::Dict result;
+        std::string error;
+        return RequestRendererStorage(
+            frameId, std::move(request), &result, &error);
+    }
 
-        if (m_localPath.empty()) {
-            String localStorage = StorageAreaImplMgr::buildFileNameStringByStorageKey(m_isLocal, m_storageKey);
-            base::FilePath localPath = localPathDir;
-            m_localPath = localPath.Append(blink::StringToFilePath(localStorage));
+    bool remove(uint64_t frameId,
+        const WTF::Vector<uint8_t>& encoded_key)
+    {
+        base::Value::Dict request = StorageRequest("remove");
+        std::string key = Uint8VectorToString(encoded_key,
+            blink::CachedStorageArea::FormatOption::kLocalStorageDetectFormat).Utf8();
+        request.Set("key", std::move(key));
+        base::Value::Dict result;
+        std::string error;
+        return RequestRendererStorage(
+            frameId, std::move(request), &result, &error);
+    }
+
+    void loadFromBroker(uint64_t frameId, const base::FilePath&,
+        WTF::Vector<::blink::mojom::blink::KeyValuePtr>* outData)
+    {
+        base::Value::Dict result;
+        std::string error;
+        if (!RequestRendererStorage(
+                frameId, StorageRequest("keys"), &result, &error))
+            return;
+        const base::Value::List* keys = result.FindList("keys");
+        if (!keys)
+            return;
+        for (const base::Value& entry : *keys) {
+            const std::string* key_string = entry.GetIfString();
+            if (!key_string)
+                continue;
+            base::Value::Dict request = StorageRequest("get");
+            request.Set("key", *key_string);
+            base::Value::Dict value_result;
+            if (!RequestRendererStorage(frameId, std::move(request),
+                    &value_result, &error)
+                || !value_result.FindBool("found").value_or(false))
+                continue;
+            const std::string* value_string = value_result.FindString("value");
+            if (!value_string)
+                continue;
+            WTF::Vector<uint8_t> key(key_string->size());
+            WTF::Vector<uint8_t> value(value_string->size());
+            std::memcpy(key.data(), key_string->data(), key_string->size());
+            std::memcpy(value.data(), value_string->data(),
+                value_string->size());
+            StringToUint8Vector(&key);
+            StringToUint8Vector(&value);
+            outData->push_back(
+                ::blink::mojom::blink::KeyValue::New(key, value));
         }
-
-        std::string buffer;
-        if (!base::ReadFileToString(m_localPath, &buffer))
-            return;
-
-        if (buffer.size() < kSeparatorLength || 0 != strncmp(kSeparator, &buffer[buffer.size() - kSeparatorLength], kSeparatorLength))
-            buffer.append(kSeparator, kSeparatorLength);
-
-        loadFromBufferImpl(buffer, outData);
     }
 
     // look: CachedStorageArea::Uint8VectorToString
@@ -200,104 +260,26 @@ public:
     }
 
 private:
-    void loadFromBufferImpl(const std::string& buffer, WTF::Vector<::blink::mojom::blink::KeyValuePtr>* outData)
+    base::Value::Dict StorageRequest(const char* operation) const
     {
-        const char* pos = &buffer[0];
-        bool isKey = true;
-        WTF::Vector<uint8_t> key;
-        WTF::Vector<uint8_t> value;
-        for (size_t i = 0; i < buffer.size() - kSeparatorLength + 1; ++i) {
-            if (0 != strncmp(kSeparator, &buffer[i], kSeparatorLength))
-                continue;
-
-            const char* posEnd = &buffer[i];
-            WTF::Vector<uint8_t> keyOrValue;
-            keyOrValue.resize(posEnd - pos);
-            memcpy(keyOrValue.data(), pos, keyOrValue.size());
-            if (isKey) {
-                key = keyOrValue;
-            } else {
-                value = keyOrValue;
-                if (value.size() == kEmptySepratorLength && 0 == strncmp((const char*)value.data(), kEmptySeprator, kEmptySepratorLength))
-                    value.clear();
-
-                if (0 != key.size()) {
-                    StringToUint8Vector(&key);
-                    StringToUint8Vector(&value);
-                    ::blink::mojom::blink::KeyValuePtr keyValue = ::blink::mojom::blink::KeyValue::New(key, value);
-                    outData->push_back(std::move(keyValue));
-                }
-            }
-            pos = posEnd + kSeparatorLength;
-            isKey = !isKey;
-            i += kSeparatorLength;
+        base::Value::Dict request;
+        request.Set("operation", operation);
+        std::string origin =
+            m_storageKey.GetSecurityOrigin()->ToString().Utf8();
+        request.Set("origin", std::move(origin));
+        request.Set("storageType", m_isLocal ? "local" : "session");
+        if (!m_isLocal) {
+            std::string namespace_id = m_namespaceId.Utf8();
+            request.Set("namespaceId", std::move(namespace_id));
         }
-
-        //////////////////////////////////////////////////////////////////////////
-        //     DOMStorageMap::iterator it1 = m_cachedArea->begin();
-        //     for (; it1 != m_cachedArea->end(); ++it1) {
-        //         String path = it1->key;
-        //         HashMap<String, String>* pageStorageArea2 = it1->value;
-        //         HashMap<String, String>::iterator itor2 = pageStorageArea2->begin();
-        //         for (; itor2 != pageStorageArea2->end(); ++itor2) {
-        //             String keyStr = itor2->key;
-        //             String valueStr = itor2->value;
-        //
-        //             String output = String::format("WebStorageAreaImpl::loadFromBufferImpl: %s , %s , %s\n", path.utf8().data(), keyStr.utf8().data(), valueStr.utf8().data());
-        //             OutputDebugStringA(output.utf8().data());
-        //         }
-        //     }
-        //////////////////////////////////////////////////////////////////////////
-    }
-
-    void delaySave()
-    {
-        if (!m_areaMap || !m_isLocal)
-            return;
-
-        std::string buffer;
-        const unsigned length = m_areaMap->GetLength();
-        for (size_t i = 0; i < length; ++i) {
-            String key = m_areaMap->GetKey(i);
-            std::string keyBuffer = key.Utf8();
-            const String& value = m_areaMap->GetItem(key);
-            std::string valueBuffer = value.Utf8();
-
-            if (0 == keyBuffer.size())
-                buffer.append(kEmptySeprator, kEmptySepratorLength);
-            else
-                buffer.append(keyBuffer.data(), keyBuffer.size());
-            buffer.append(kSeparator, kSeparatorLength);
-
-            if (0 == valueBuffer.size())
-                buffer.append(kEmptySeprator, kEmptySepratorLength);
-            else
-                buffer.append(valueBuffer.data(), valueBuffer.size());
-            buffer.append(kSeparator, kSeparatorLength);
-        }
-
-        m_isSaving = false;
-        base::FilePath dir = m_localPath.DirName();
-        if (!base::DirectoryExists(dir)) {
-            base::File::Error error;
-            bool b = base::CreateDirectoryAndGetError(dir, &error);
-            if (!base::DirectoryExists(dir)) {
-                return;
-            }
-        }
-        if (buffer.size() == 0) {
-            base::DeleteFile(m_localPath);
-            return;
-        }
-        base::WriteFile(m_localPath, std::string_view(buffer.data(), buffer.size()));
+        return request;
     }
 
     bool m_isLocal;
-    bool m_isSaving = false;
     bool m_isDestroying = false;
-    base::FilePath m_localPath;
     blink::StorageAreaMap* m_areaMap = nullptr;
     blink::BlinkStorageKey m_storageKey;
+    WTF::String m_namespaceId;
 };
 
 StorageAreaImplMgr* StorageAreaImplMgr::get()
@@ -308,14 +290,22 @@ StorageAreaImplMgr* StorageAreaImplMgr::get()
     return s_inst;
 }
 
-StorageAreaImpl* StorageAreaImplMgr::findOrCreateByStorageKey(bool isLocal, const ::blink::BlinkStorageKey& storageKey)
+StorageAreaImpl* StorageAreaImplMgr::findOrCreateByStorageKey(
+    bool isLocal, const ::blink::BlinkStorageKey& storageKey,
+    const base::FilePath& localStorageDirectory,
+    const WTF::String& namespaceId)
 {
-    WTF::String key = buildFileNameStringByStorageKey(isLocal, storageKey);
-    WTF::HashMap<String, StorageAreaImpl*>::iterator it = m_areas.find(key);
+    WTF::String fileName =
+        buildFileNameStringByStorageKey(isLocal, storageKey);
+    std::string storageKeyString = localStorageDirectory.AsUTF8Unsafe() +
+        "|" + fileName.Utf8().c_str() + "|" + namespaceId.Utf8().c_str();
+    WTF::String key = WTF::String::FromUTF8(storageKeyString);
+    auto it = m_areas.find(key);
     if (it != m_areas.end())
         return it->value;
 
-    StorageAreaImpl* result = new StorageAreaImpl(isLocal, storageKey);
+    StorageAreaImpl* result =
+        new StorageAreaImpl(isLocal, storageKey, namespaceId);
     m_areas.insert(key, result);
     return result;
 }
@@ -351,13 +341,20 @@ int s_StorageAreaStub = 0;
 
 class StorageAreaStub : public ::blink::mojom::blink::StorageArea {
 public:
-    StorageAreaStub(bool isLocal, const ::blink::BlinkStorageKey& storageKey, const ::blink::LocalFrameToken& localFrameToken)
+    StorageAreaStub(bool isLocal,
+        const ::blink::BlinkStorageKey& storageKey,
+        const ::blink::LocalFrameToken& localFrameToken,
+        const WTF::String& namespaceId = WTF::String())
     {
+        m_frameId = static_cast<uint64_t>(
+            ::blink::LocalFrameToken::Hasher()(localFrameToken));
         s_StorageAreaStub++;
-        m_localStorageDir = getLocalStorageDirByLocalFrameToken(localFrameToken);
-        m_impl = StorageAreaImplMgr::get()->findOrCreateByStorageKey(isLocal, storageKey);
+        m_localStorageDir =
+            getLocalStorageDirByLocalFrameToken(localFrameToken);
+        m_impl = StorageAreaImplMgr::get()->findOrCreateByStorageKey(
+            isLocal, storageKey, m_localStorageDir, namespaceId);
 
-        m_impl->loadFromFile(m_localStorageDir, &m_outData);
+        m_impl->loadFromBroker(m_frameId, m_localStorageDir, &m_outData);
     }
 
     ~StorageAreaStub()
@@ -433,52 +430,60 @@ public:
         std::move(callback).Run(true); // Key already has this value.
     }
 
-    void Put(const WTF::Vector<uint8_t>& key, const WTF::Vector<uint8_t>& value, const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
+    void Put(const WTF::Vector<uint8_t>& key,
+        const WTF::Vector<uint8_t>& value,
+        const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
         const WTF::String& source, PutCallback callback) override
     {
         CHECK(ThreadCall::isBlinkThread());
-        //         char* ptr = (char*)malloc(key.size() + 1);
-        //         memcpy(ptr, key.data(), key.size());
-        //         ptr[key.size()] = 0;
-        //
-        //         char* ptr2 = (char*)malloc(value.size() + 1);
-        //         memcpy(ptr2, value.data(), value.size());
-        //         ptr[value.size()] = 0;
-
-        if (m_impl->isLocal()) {
-            base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, 
-                base::BindOnce(&StorageAreaStub::delayDispatchObservers, base::Unretained(this), 
-                    DelayDispatchObserversType::kPut, key, value, clientOldValue, source, std::move(callback)));
+        if (!m_impl->put(m_frameId, key, value)) {
+            std::move(callback).Run(false);
+            return;
         }
-        m_impl->toSave();
+        if (m_impl->isLocal()) {
+            delayDispatchObservers(DelayDispatchObserversType::kPut,
+                key, value, clientOldValue, source, std::move(callback));
+        } else {
+            std::move(callback).Run(true);
+        }
     }
 
-    void Delete(const WTF::Vector<uint8_t>& key, const absl::optional<WTF::Vector<uint8_t>>& clientOldValue, const WTF::String& source,
+    void Delete(const WTF::Vector<uint8_t>& key,
+        const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
+        const WTF::String& source,
         ::blink::mojom::blink::StorageArea::DeleteCallback callback) override
     {
         CHECK(ThreadCall::isBlinkThread());
-        if (m_impl->isLocal()) {
-            base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-                base::BindOnce(&StorageAreaStub::delayDispatchObservers, base::Unretained(this),
-                    DelayDispatchObserversType::kDelete, key, WTF::Vector<uint8_t>(), std::nullopt, source, std::move(callback)));
+        if (!m_impl->remove(m_frameId, key)) {
+            std::move(callback).Run(false);
+            return;
         }
-
-        m_impl->toSave();
+        if (m_impl->isLocal()) {
+            delayDispatchObservers(DelayDispatchObserversType::kDelete,
+                key, WTF::Vector<uint8_t>(), clientOldValue, source,
+                std::move(callback));
+        } else {
+            std::move(callback).Run(true);
+        }
     }
 
-    void DeleteAll(const WTF::String& source, ::mojo::PendingRemote<::blink::mojom::blink::StorageAreaObserver> newObserver,
+    void DeleteAll(const WTF::String& source,
+        ::mojo::PendingRemote<::blink::mojom::blink::StorageAreaObserver> newObserver,
         ::blink::mojom::blink::StorageArea::DeleteAllCallback callback) override
     {
         CHECK(ThreadCall::isBlinkThread());
         addObserverImpl(std::move(newObserver));
-
-        if (m_impl->isLocal()) {
-            base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-                base::BindOnce(&StorageAreaStub::delayDispatchObservers, base::Unretained(this),
-                    DelayDispatchObserversType::kDeleteAll, WTF::Vector<uint8_t>(), WTF::Vector<uint8_t>(), std::nullopt, source, std::move(callback)));
+        if (!m_impl->clear(m_frameId)) {
+            std::move(callback).Run(false);
+            return;
         }
-
-        m_impl->toSave();
+        if (m_impl->isLocal()) {
+            delayDispatchObservers(DelayDispatchObserversType::kDeleteAll,
+                WTF::Vector<uint8_t>(), WTF::Vector<uint8_t>(), std::nullopt,
+                source, std::move(callback));
+        } else {
+            std::move(callback).Run(true);
+        }
     }
 
     void Get(const WTF::Vector<uint8_t>& key, ::blink::mojom::blink::StorageArea::GetCallback callback) override
@@ -500,8 +505,7 @@ public:
         CHECK(ThreadCall::isBlinkThread());
         addObserverImpl(std::move(newObserver));
 
-        //m_impl->loadFromFile(String("W:\\mycode\\mb108\\out\\Debug\\localstorage\\"), outData);
-        //m_impl->loadFromFile(m_localStorageDir, outData); // !!!!!!!!!!!!!!!!
+
         outData->swap(m_outData);
         return true;
     }
@@ -523,6 +527,7 @@ public:
     }
 
 private:
+    uint64_t m_frameId = 0;
     base::FilePath m_localStorageDir;
     WTF::Vector<::blink::mojom::blink::KeyValuePtr> m_outData;
     StorageAreaImpl* m_impl = nullptr;
@@ -538,11 +543,19 @@ public:
 
     void Clone(const WTF::String& cloneToNamespace) override
     {
-        // ��ʱ��ʵ��window.open�Ŀ�������Ϊ��ͬ������������Ļ���̫һ��
-        //char* output = (char*)malloc(400);
-        //sprintf(output, "SessionStorageNamespaceImpl:Clone: %s, %s\n", m_namespaceId.Utf8().c_str(), cloneToNamespace.Utf8().c_str());
-        //OutputDebugStringA(output);
-        //free(output);
+        base::Value::Dict request;
+        request.Set("operation", "clone-session");
+        request.Set("storageType", "session");
+        std::string source_namespace = m_namespaceId.Utf8();
+        std::string target_namespace = cloneToNamespace.Utf8();
+        request.Set("namespaceId", std::move(source_namespace));
+        request.Set("targetNamespaceId", std::move(target_namespace));
+        base::Value::Dict result;
+        std::string error;
+        uint64_t frame_id =
+            StorageAreaImplMgr::get()->frameForNamespace(m_namespaceId);
+        content::RequestRendererStorage(
+            frame_id, std::move(request), &result, &error);
     }
 
 private:
@@ -577,15 +590,18 @@ public:
     }
 
     // ����󶨵�ʱ��������Ҫ����Ƿ�Ҫ������Դ��frame��session
-    void BindSessionStorageArea(const ::blink::BlinkStorageKey& storageKey, const ::blink::LocalFrameToken& localFrameToken, const WTF::String& namespaceId,
-        ::mojo::PendingReceiver<::blink::mojom::blink::StorageArea> sessionNamespace) override
+    void BindSessionStorageArea(const ::blink::BlinkStorageKey& storageKey,
+        const ::blink::LocalFrameToken& localFrameToken,
+        const WTF::String& namespaceId,
+        ::mojo::PendingReceiver<::blink::mojom::blink::StorageArea>
+            sessionNamespace) override
     {
-        //String key = storageKey.ToDebugString();
-        //char* output = (char*)malloc(400);
-        //sprintf(output, "BindSessionStorageArea: %s, %s\n", namespaceId.Utf8().c_str(), key.Utf8().c_str());
-        //OutputDebugStringA(output);
-        //free(output);
-        createAndBindBrokerProxy<::blink::mojom::blink::StorageArea, StorageAreaStub>(sessionNamespace.PassPipe(), false, storageKey, localFrameToken);
+        StorageAreaImplMgr::get()->associateNamespaceFrame(namespaceId,
+            static_cast<uint64_t>(
+                ::blink::LocalFrameToken::Hasher()(localFrameToken)));
+        createAndBindBrokerProxy<::blink::mojom::blink::StorageArea,
+            StorageAreaStub>(sessionNamespace.PassPipe(), false, storageKey,
+            localFrameToken, namespaceId);
     }
 };
 

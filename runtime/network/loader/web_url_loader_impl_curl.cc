@@ -87,11 +87,15 @@ WebURLLoaderImplCurl::WebURLLoaderImplCurl(
     scoped_refptr<base::SingleThreadTaskRunner> freezableTaskRunnerHandle, 
     scoped_refptr<base::SingleThreadTaskRunner> unfreezableTaskRunnerHandle, 
     base::WaitableEvent* terminateSyncLoadEvent,
-    int64_t mbwebviewId)
+    int64_t mbwebviewId, uint64_t frameId, uint64_t parentFrameId,
+    bool isMainFrame)
     : m_freezableTaskRunner(std::move(freezableTaskRunnerHandle))
     , m_unfreezableTaskRunner(std::move(unfreezableTaskRunnerHandle))
     , m_terminateSyncLoadEvent(terminateSyncLoadEvent)
     , m_engineViewId(mbwebviewId)
+    , m_frameId(frameId)
+    , m_parentFrameId(parentFrameId)
+    , m_isMainFrame(isMainFrame)
 {
     CHECK(m_engineViewId > 0);
     m_jobId = -1;
@@ -101,7 +105,7 @@ WebURLLoaderImplCurl::WebURLLoaderImplCurl(
     const scoped_refptr<base::SingleThreadTaskRunner> currentRunner = base::SingleThreadTaskRunner::GetCurrentDefault();
     scoped_refptr<base::SingleThreadTaskRunner> runner = m_freezableTaskRunner;
     if (runner->BelongsToCurrentThread())
-        m_freezableTaskRunner = currentRunner; // ÓĞÊ±ºò¾ÍËãrunnerÊÇ±¾Ïß³ÌµÄ£¬µ«ºÍThreadTaskRunnerHandle::Get»¹²»ÊÇÍ¬Ò»¸öÊµÀı
+        m_freezableTaskRunner = currentRunner; // æœ‰æ—¶å€™å°±ç®—runneræ˜¯æœ¬çº¿ç¨‹çš„ï¼Œä½†å’ŒThreadTaskRunnerHandle::Getè¿˜ä¸æ˜¯åŒä¸€ä¸ªå®ä¾‹
     else
         m_freezableTaskRunner = runner;
 }
@@ -142,7 +146,7 @@ static bool checkIsResURL(const GURL& url)
     return false;
 }
 
-// ±¾º¯ÊıÒ»°ãÊÇÔÚweb workerµÄxhrÀïµ÷ÓÃ
+// æœ¬å‡½æ•°ä¸€èˆ¬æ˜¯åœ¨web workerçš„xhré‡Œè°ƒç”¨
 void WebURLLoaderImplCurl::LoadAsynchronously(
     std::unique_ptr<network::ResourceRequest> request, 
     scoped_refptr<const blink::SecurityOrigin> topFrameOrigin,
@@ -177,8 +181,9 @@ void WebURLLoaderImplCurl::LoadAsynchronously(
 
     WebURLLoaderInternal* job = new WebURLLoaderInternal(netManager->getIoThread(type), this, std::move(request), client, false, shouldContentSniffURL(url));
     job->m_engineViewId = mbwebviewId;
+    job->setRequestFrameMetadata(blink::mojom::RequestContextFrameType::kNone,
+        m_frameId, m_parentFrameId, m_isMainFrame);
     //job->m_dataPipeProducerHandle = extraDataWrap->dataPipeProducerHandle;
-    job->m_frameType = blink::mojom::RequestContextFrameType::kNone/*kTopLevel*/;
     //job->m_downloadName = extraDataWrap->releaseDownloadName();
 
     int jobIds = 0;
@@ -188,10 +193,10 @@ void WebURLLoaderImplCurl::LoadAsynchronously(
     m_jobId = jobIds;
     job->m_jobId = m_jobId;
 
-    // Ö´ĞĞÍêaddºó£¬this¿ÉÄÜ±»Ïú»Ù£¬µ±dataurlµÄÊ±ºò
+    // æ‰§è¡Œå®Œaddåï¼Œthiså¯èƒ½è¢«é”€æ¯ï¼Œå½“dataurlçš„æ—¶å€™
 }
 
-// ±¾º¯ÊıÒ²ÊÇÔÚweb workerµÄxhrÀïµ÷ÓÃ
+// æœ¬å‡½æ•°ä¹Ÿæ˜¯åœ¨web workerçš„xhré‡Œè°ƒç”¨
 void WebURLLoaderImplCurl::LoadSynchronously(
     std::unique_ptr<network::ResourceRequest> request,
     scoped_refptr<const blink::SecurityOrigin> topFrameOrigin,
@@ -225,6 +230,9 @@ void WebURLLoaderImplCurl::LoadSynchronously(
     mini_electron::BlinkSynchronousLoader syncLoader(error, response, &buffer);
     mini_electron::WebURLLoaderInternal* job
         = new mini_electron::WebURLLoaderInternal(netManager->getIoThread(type), this, std::move(request), &syncLoader, false, shouldContentSniffURL(url));
+    job->m_engineViewId = m_engineViewId;
+    job->setRequestFrameMetadata(blink::mojom::RequestContextFrameType::kNone,
+        m_frameId, m_parentFrameId, m_isMainFrame);
     netManager->dispatchSynchronousJob(job, m_terminateSyncLoadEvent);
     data = WTF::SharedBuffer::Create(base::span<const unsigned char>((const unsigned char*)buffer.data(), buffer.size()));
     memset(buffer.data(), 0, buffer.size());
@@ -257,10 +265,10 @@ static void addOriginHeaderIfNeeded(network::ResourceRequest* request)
         //    return true;
         //}
 
-        // If the `CORS flag` is set, `httpRequest`¡¯s method is neither `GET` nor
-        // `HEAD`, or `httpRequest`¡¯s mode is "websocket", then append
+        // If the `CORS flag` is set, `httpRequest`â€™s method is neither `GET` nor
+        // `HEAD`, or `httpRequest`â€™s mode is "websocket", then append
         // `Origin`/the result of serializing a request origin with `httpRequest`,
-        // to `httpRequest`¡¯s header list.
+        // to `httpRequest`â€™s header list.
         //
         // We exclude navigation requests to keep the existing behavior.
         // TODO(yhirano): Reconsider this.
@@ -330,7 +338,7 @@ void WebURLLoaderImplCurl::LoadAsynchronouslyEx(
     m_jobId = jobIds;
     job->m_jobId = m_jobId;
 
-    // Ö´ĞĞÍêaddºó£¬this¿ÉÄÜ±»Ïú»Ù£¬µ±dataurlµÄÊ±ºò
+    // æ‰§è¡Œå®Œaddåï¼Œthiså¯èƒ½è¢«é”€æ¯ï¼Œå½“dataurlçš„æ—¶å€™
 }
 
 void WebURLLoaderImplCurl::DidChangePriority(blink::WebURLRequest::Priority, int intra_priority_value)

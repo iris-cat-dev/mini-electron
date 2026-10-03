@@ -7,7 +7,6 @@
 #include "runtime/electron/browser/api/menu_event_notif.h"
 #include "runtime/electron/browser/api/browser_view.h"
 #include "runtime/electron/browser/api/session.h"
-#include "runtime/electron/renderer/webview_plugin.h"
 #include "runtime/electron/common/options_switches.h"
 #include "runtime/electron/common/node_register_help.h"
 #include "runtime/electron/common/embedded_resources.h"
@@ -32,7 +31,11 @@
 #include "runtime/engine/common/thread_call.h"
 #include "ui/gfx/icon_util.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/gfx/geometry/size_conversions.h"
 #include "ui/display/win/screen_win.h"
+#include "ui/display/screen.h"
+#include "base/no_destructor.h"
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/windows_version.h"
@@ -42,6 +45,7 @@
 #include <dwmapi.h>
 #include <algorithm>
 #include <cstdlib>
+#include <vector>
 
 #pragma comment(lib, "dwmapi.lib")
 
@@ -65,7 +69,6 @@ const int RESIZE_BORDER = 3; // 窗口尺寸和调整边缘的阈值
 #define GET_Y_LPARAM(lp)   ((int)(short)HIWORD(lp))
 
 const wchar_t WindowInterface::kElectronClassName[] = L"mb_electron_window";
-typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_on_view_load_info_fn)(mini_electron_web_view webView, mini_electron_net_view_load_info_callback callback, void* param);
 
 // Converts binary data to Buffer.
 v8::Local<v8::Value> toBuffer(v8::Isolate* isolate, void* val, int size)
@@ -82,6 +85,10 @@ public:
     explicit BrowserWindow(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
     {
         gin_helper::Wrappable<BrowserWindow>::InitWith(isolate, wrapper);
+        if (!display::Screen::GetScreen()) {
+            static base::NoDestructor<display::win::ScreenWin> screen;
+            display::Screen::SetScreenInstance(screen.get(), FROM_HERE);
+        }
         m_webContents = nullptr;
         m_createWindowParam = nullptr;
         m_state = WindowUninited;
@@ -103,9 +110,6 @@ public:
         m_titleBarOverlayEnabled = false;
         m_titleBarOverlayHeight = 30;
         m_titleBarOverlayColor = RGB(0x18, 0x1b, 0x1a);
-        m_lastCaptionDragTick = 0;
-        m_lastCaptionDragPoint.x = 0;
-        m_lastCaptionDragPoint.y = 0;
         m_titleBarOverlaySymbolColor = RGB(0xe4, 0xe4, 0xe7);
         m_captionHoverButton = CaptionButtonNone;
         m_captionPressedButton = CaptionButtonNone;
@@ -114,6 +118,7 @@ public:
         m_autoHideMenuBar = false;
         m_menuBarVisible = true;
         m_menuBarAltVisible = false;
+        m_lastAcceleratorKey = 0;
         m_fullScreenStyle = 0;
         m_fullScreenExStyle = 0;
         ::ZeroMemory(&m_windowPlacement, sizeof(m_windowPlacement));
@@ -150,10 +155,10 @@ public:
 
         ::DeleteObject(m_draggableRegion);
 
-        if (m_memoryBMP)
-            ::DeleteObject(m_memoryBMP);
         if (m_memoryDC)
             ::DeleteDC(m_memoryDC);
+        if (m_memoryBMP)
+            ::DeleteObject(m_memoryBMP);
         m_captionSurface.reset();
         if (m_captionBitmap)
             ::DeleteObject(m_captionBitmap);
@@ -234,6 +239,7 @@ public:
         builder.SetMethod("setEnable", &BrowserWindow::setEnableApi);
         builder.SetMethod("getNativeWindowHandle", &BrowserWindow::getNativeWindowHandleApi);
         builder.SetMethod("getBounds", &BrowserWindow::getBoundsApi);
+        builder.SetMethod("getNormalBounds", &BrowserWindow::getNormalBoundsApi);
         builder.SetMethod("setBounds", &BrowserWindow::setBoundsApi);
         builder.SetMethod("getSize", &BrowserWindow::getSizeApi);
         builder.SetMethod("setSize", &BrowserWindow::setSizeApi);
@@ -328,7 +334,13 @@ public:
 
     virtual void close() override
     {
-        ::DestroyWindow(m_hWnd); // go to WM_NCDESTROY
+        ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+    }
+
+    virtual void destroy() override
+    {
+        m_isDestroyApiBeCalled = true;
+        ::DestroyWindow(m_hWnd);
     }
 
     virtual v8::Local<v8::Object> getWrapper() override
@@ -349,6 +361,56 @@ public:
     virtual HWND getHWND() const override
     {
         return m_hWnd;
+    }
+
+    void onWebContentsPaint(WebContents*) override
+    {
+        if (::IsWindow(m_hWnd))
+            ::InvalidateRect(m_hWnd, nullptr, FALSE);
+    }
+
+    void onWebContentsDraggableRegions(
+        WebContents*, const base::Value::List& regions) override
+    {
+        m_draggableRegions.clear();
+        m_draggableRegions.reserve(regions.size());
+        for (const base::Value& value : regions) {
+            const base::Value::Dict* region = value.GetIfDict();
+            if (!region)
+                continue;
+            const auto x = region->FindInt("x");
+            const auto y = region->FindInt("y");
+            const auto width = region->FindInt("width");
+            const auto height = region->FindInt("height");
+            const auto draggable = region->FindBool("draggable");
+            if (!x || !y || !width || !height || !draggable
+                || *width <= 0 || *height <= 0)
+                continue;
+            m_draggableRegions.push_back({
+                gfx::Rect(*x, *y, *width, *height), *draggable });
+        }
+        rebuildDraggableRegion();
+    }
+
+    void rebuildDraggableRegion()
+    {
+        if (!m_hWnd)
+            return;
+        HRGN draggable = ::CreateRectRgn(0, 0, 0, 0);
+        HRGN no_drag = ::CreateRectRgn(0, 0, 0, 0);
+        HRGN item = ::CreateRectRgn(0, 0, 0, 0);
+        const float scale = display::win::ScreenWin::GetScaleFactorForHWND(m_hWnd);
+        for (const DraggableRegion& region : m_draggableRegions) {
+            const gfx::Rect bounds = gfx::ScaleToEnclosingRect(region.bounds, scale);
+            ::SetRectRgn(item, bounds.x(), bounds.y(), bounds.right(), bounds.bottom());
+            HRGN target = region.draggable ? draggable : no_drag;
+            ::CombineRgn(target, target, item, RGN_OR);
+        }
+        ::CombineRgn(draggable, draggable, no_drag, RGN_DIFF);
+        ::DeleteObject(item);
+        ::DeleteObject(no_drag);
+        ::DeleteObject(m_draggableRegion);
+        m_draggableRegion = draggable;
     }
 
     virtual void setNativeMenu(HMENU menu) override
@@ -698,243 +760,125 @@ public:
         updateNativeMenu();
     }
 
-    bool handleDraggableDoubleClick(LPARAM lParam)
+
+    bool ensureLayeredSurface(int width, int height)
     {
-        if (!m_lastCaptionDragTick || !m_createWindowParam->isMovable)
+        if (width <= 0 || height <= 0)
             return false;
-        DWORD elapsed = ::GetTickCount() - m_lastCaptionDragTick;
-        if (elapsed > ::GetDoubleClickTime()) {
-            m_lastCaptionDragTick = 0;
+        if (m_memoryDC && m_memoryBMP
+            && m_memoryBmpSize.cx == width && m_memoryBmpSize.cy == height) {
+            return true;
+        }
+        if (!m_memoryDC)
+            m_memoryDC = ::CreateCompatibleDC(nullptr);
+        if (!m_memoryDC)
+            return false;
+
+        BITMAPINFO info = {};
+        info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        info.bmiHeader.biWidth = width;
+        info.bmiHeader.biHeight = -height;
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        void* pixels = nullptr;
+        HBITMAP bitmap = ::CreateDIBSection(
+            nullptr, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
+        if (!bitmap || !pixels) {
+            if (bitmap)
+                ::DeleteObject(bitmap);
             return false;
         }
-
-        POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-        ::ClientToScreen(m_hWnd, &point);
-        if (std::abs(point.x - m_lastCaptionDragPoint.x) > ::GetSystemMetrics(SM_CXDOUBLECLK) / 2
-            || std::abs(point.y - m_lastCaptionDragPoint.y) > ::GetSystemMetrics(SM_CYDOUBLECLK) / 2) {
+        ::ZeroMemory(pixels,
+            static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
+        HGDIOBJ oldBitmap = ::SelectObject(m_memoryDC, bitmap);
+        if (!oldBitmap || oldBitmap == HGDI_ERROR) {
+            ::DeleteObject(bitmap);
             return false;
         }
-
-        m_lastCaptionDragTick = 0;
-        if (::IsZoomed(m_hWnd))
-            ::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_RESTORE, 0);
-        else if (m_createWindowParam->isMaximizable)
-            ::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+        if (m_memoryBMP)
+            ::DeleteObject(oldBitmap);
+        m_memoryBMP = bitmap;
+        m_memoryBmpSize = { width, height };
         return true;
     }
 
-    void paintToMemoryBitmap(const HDC hdc, int x, int y, int cx, int cy)
+    bool updateLayeredWindow()
     {
-        HWND hWnd = m_hWnd;
-        RECT rectDest;
-        ::GetClientRect(hWnd, &rectDest);
-        SIZE sizeDest = { rectDest.right - rectDest.left, rectDest.bottom - rectDest.top };
-        if (0 == sizeDest.cx * sizeDest.cy)
-            return;
-
-        HDC hSreenDC = ::GetWindowDC(hWnd);
-        if (!m_memoryDC)
-            m_memoryDC = ::CreateCompatibleDC(hSreenDC);
-
-        if (!m_memoryBMP || !isRectEqual(m_clientRect, rectDest)) {
-            m_clientRect = rectDest;
-            m_memoryBmpSize = sizeDest;
-
-            if (m_memoryBMP)
-                ::DeleteObject((HGDIOBJ)m_memoryBMP);
-            m_memoryBMP = ::CreateCompatibleBitmap(hSreenDC, sizeDest.cx, sizeDest.cy);
-        }
-        ::ReleaseDC(hWnd, hSreenDC);
-
-        DWORD flag = SRCCOPY;
-        if (m_createWindowParam->transparent)
-            flag |= CAPTUREBLT;
-
-        BOOL b = FALSE;
-        HBITMAP hbmpOld = (HBITMAP)::SelectObject(m_memoryDC, m_memoryBMP);
-        ::BitBlt(m_memoryDC, x, y, cx, cy, hdc, x, y, flag);
+        if (!m_memoryDC || !m_memoryBMP)
+            return false;
+        POINT source = { 0, 0 };
+        SIZE size = m_memoryBmpSize;
+        BLENDFUNCTION blend = {
+            AC_SRC_OVER, 0, 255, AC_SRC_ALPHA
+        };
+        HDC screen = ::GetDC(nullptr);
+        const BOOL updated = ::UpdateLayeredWindow(
+            m_hWnd, screen, nullptr, &size, m_memoryDC, &source,
+            0, &blend, ULW_ALPHA);
+        if (screen)
+            ::ReleaseDC(nullptr, screen);
+        return !!updated;
     }
 
-    typedef struct _UPDATELAYEREDWINDOWINFO {
-        DWORD cbSize;
-        HDC hdcDst;
-        const POINT* pptDst;
-        const SIZE* psize;
-        HDC hdcSrc;
-        const POINT* pptSrc;
-        COLORREF crKey;
-        const BLENDFUNCTION* pblend;
-        DWORD dwFlags;
-        const RECT* prcDirty;
-    } STR_UPDATELAYEREDWINDOWINFO;
-
-    bool drawToNativeLayeredContext(HDC dc, HDC source_dc, const RECT* srcRect, const RECT* clientRect)
-    {
-        BOOL b = FALSE;
-
-        int clientWidth = clientRect->right - clientRect->left;
-        int clientHeight = clientRect->bottom - clientRect->top;
-
-        BLENDFUNCTION blendFunction = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-        typedef BOOL(WINAPI * PFN_UpdateLayeredWindow)(
-            HWND hWnd, HDC hdcDst, POINT * pptDst, SIZE * psize, HDC hdcSrc, POINT * pptSrc, COLORREF crKey, BLENDFUNCTION * pblend, DWORD dwFlags);
-        static PFN_UpdateLayeredWindow s_pUpdateLayeredWindow = NULL;
-        if (NULL == s_pUpdateLayeredWindow)
-            s_pUpdateLayeredWindow = reinterpret_cast<PFN_UpdateLayeredWindow>(GetProcAddress(GetModuleHandleW(L"user32.dll"), "UpdateLayeredWindow"));
-
-        SIZE clientSize = { clientWidth, clientHeight };
-        POINT zero = { 0 };
-
-        typedef int(WINAPI * PFN_UpdateLayeredWindowIndirect)(HWND hWnd, STR_UPDATELAYEREDWINDOWINFO const* pULWInfo);
-        static PFN_UpdateLayeredWindowIndirect s_pUpdateLayeredWindowIndirect = NULL;
-        if (NULL == s_pUpdateLayeredWindowIndirect)
-            s_pUpdateLayeredWindowIndirect
-                = reinterpret_cast<PFN_UpdateLayeredWindowIndirect>(GetProcAddress(GetModuleHandleW(L"user32.dll"), "UpdateLayeredWindowIndirect"));
-
-        if (0 && s_pUpdateLayeredWindowIndirect) {
-            STR_UPDATELAYEREDWINDOWINFO info = { sizeof(STR_UPDATELAYEREDWINDOWINFO), dc, nullptr, &clientSize, source_dc, nullptr, RGB(0xFF, 0xFF, 0xFF),
-                &blendFunction, ULW_ALPHA, srcRect };
-            b = s_pUpdateLayeredWindowIndirect(m_hWnd, &info);
-        } else {
-            b = s_pUpdateLayeredWindow(m_hWnd, dc, nullptr, &clientSize, source_dc, &zero, RGB(0xFF, 0xFF, 0xFF), &blendFunction, ULW_ALPHA);
-        }
-        return !!b;
-    }
-
-    void saveContentWidthHeight()
-    {
-    }
-
-    void paintToScreen(int x, int y, int cx, int cy)
-    {
-        HDC hdcScreen = ::GetDC(m_hWnd);
-        DWORD flag = SRCCOPY;
-        BOOL b = FALSE;
-        if (m_createWindowParam->transparent) {
-            RECT srcRect = { x, y, cx, cy };
-            RECT clientRect;
-            ::GetClientRect(m_hWnd, &clientRect);
-
-            drawToNativeLayeredContext(hdcScreen, m_memoryDC, &srcRect, &clientRect);
-
-            ::ReleaseDC(m_hWnd, hdcScreen);
-        } else
-            b = ::BitBlt(hdcScreen, x, y, cx, cy, m_memoryDC, x, y, flag);
-        ::ReleaseDC(m_hWnd, hdcScreen);
-    }
-
-    static void MINI_ELECTRON_CALL_TYPE staticOnPaintUpdatedInUiThread(mini_electron_web_view webView, BrowserWindow* self, const HDC hdc, int x, int y, int cx, int cy)
-    {
-        ::EnterCriticalSection(&self->m_memoryCanvasLock);
-        self->paintToMemoryBitmap(hdc, x, y, cx, cy);
-        ::LeaveCriticalSection(&self->m_memoryCanvasLock);
-
-        int id = self->m_id;
-        if (self->m_createWindowParam->transparent) {
-            content::ThreadCall::callUiThreadAsync(FROM_HERE, [id, self, x, y, cx, cy] {
-                if (IdLiveDetect::get()->isLive(id))
-                    self->paintToScreen(x, y, cx, cy);
-            });
-        } else {
-            RECT rc = { x, y, x + cx, y + cy };
-            ::InvalidateRect(self->m_hWnd, &rc, false);
-        }
-
-        //         ThreadCall::callBlinkThreadAsync([id, self] {
-        //             if (!IdLiveDetect::get()->isLive(id))
-        //                 return;
-        //             ::EnterCriticalSection(&self->m_memoryCanvasLock);
-        //             self->saveContentWidthHeight();
-        //             ::LeaveCriticalSection(&self->m_memoryCanvasLock);
-        //         });
-    }
 
     void onPaintMessage(HWND hWnd)
     {
         PAINTSTRUCT ps = { 0 };
-        HDC hdc = ::BeginPaint(hWnd, &ps);
+        HDC paintDC = ::BeginPaint(hWnd, &ps);
 
         RECT rcClip = ps.rcPaint;
         RECT rcClient;
         ::GetClientRect(hWnd, &rcClient);
 
+        const bool transparent = m_createWindowParam->transparent;
         RECT rcInvalid = rcClient;
-        if (rcClip.right != rcClip.left && rcClip.bottom != rcClip.top)
+        if (!transparent && rcClip.right != rcClip.left
+            && rcClip.bottom != rcClip.top) {
             ::IntersectRect(&rcInvalid, &rcClip, &rcClient);
-
-        // src是m_memoryDC的坐标，dest是hdc的坐标
-        int srcX = rcInvalid.left - rcClient.left;
-        int srcY = rcInvalid.top - rcClient.top;
-        int destX = rcInvalid.left;
-        int destY = rcInvalid.top;
-        int width = rcInvalid.right - rcInvalid.left;
-        int height = rcInvalid.bottom - rcInvalid.top;
-
-        BrowserWindow* self = this;
-        int id = self->m_id;
-        //         ThreadCall::callBlinkThreadAsync([id, self] {
-        //             if (IdLiveDetect::get()->isLive(id))
-        //                 self->saveContentWidthHeight();
-        //         });
-
-        bool isResied = !isRectEqual(rcClient, m_clientRect);
-        ::EnterCriticalSection(&m_memoryCanvasLock);
-
-        if (m_memoryBmpSize.cx < width)
-            width = m_memoryBmpSize.cx;
-        if (m_memoryBmpSize.cy < height)
-            height = m_memoryBmpSize.cy;
-
-        if (0 != width && 0 != height && m_memoryBMP && m_memoryDC) {
-            HBITMAP hbmpOld = (HBITMAP)::SelectObject(m_memoryDC, m_memoryBMP);
-
-            paintBrowserViews(m_memoryDC, srcX, srcY, width, height);
-
-            BOOL b = ::BitBlt(hdc, destX, destY, width, height, m_memoryDC, srcX, srcY, SRCCOPY);
-            ::SelectObject(m_memoryDC, hbmpOld);
         }
-        ::LeaveCriticalSection(&m_memoryCanvasLock);
 
-        paintTitleBarOverlay(hdc, rcInvalid);
+        const int srcX = rcInvalid.left - rcClient.left;
+        const int srcY = rcInvalid.top - rcClient.top;
+        const int width = rcInvalid.right - rcInvalid.left;
+        const int height = rcInvalid.bottom - rcInvalid.top;
+        HDC targetDC = paintDC;
+        if (transparent) {
+            const int clientWidth = rcClient.right - rcClient.left;
+            const int clientHeight = rcClient.bottom - rcClient.top;
+            targetDC = ensureLayeredSurface(clientWidth, clientHeight)
+                ? m_memoryDC
+                : nullptr;
+        }
+
+        if (targetDC && width > 0 && height > 0) {
+            if (m_webContents) {
+                m_webContents->paintFrame(targetDC, rcInvalid.left,
+                    rcInvalid.top, srcX, srcY, width, height);
+            }
+            paintBrowserViews(targetDC, rcInvalid);
+            paintTitleBarOverlay(targetDC, rcInvalid);
+        }
+        if (transparent && targetDC)
+            updateLayeredWindow();
 
         ::EndPaint(hWnd, &ps);
     }
 
-    void paintBrowserViews(HDC hdc, int x, int y, int w, int h)
+    void paintBrowserViews(HDC hdc, const RECT& parentPaintRect)
     {
-        for (size_t i = 0; i < m_browserViews.size(); ++i) {
-            BrowserView* view = m_browserViews[i];
-            RECT r = view->getClientRect();
-            int xInView = x - r.left;
-            int yInView = y - r.top;
-            view->onPaintInUiThread(hdc, x, y, xInView, yInView, w, h);
+        for (BrowserView* view : m_browserViews) {
+            if (view && view->getWebContents())
+                view->onPaintInUiThread(hdc, parentPaintRect);
         }
     }
 
-    bool isDraggableRegionNcHitTest(HWND hWnd)
-    {
-        bool handle = false;
-        if (!m_draggableRegion)
-            return handle;
 
-        POINT pos;
-        ::GetCursorPos(&pos);
-        ::ScreenToClient(hWnd, &pos);
-
-        handle = !!::PtInRegion(m_draggableRegion, pos.x, pos.y);
-        return handle;
-    }
-
-    bool doDraggableRegionNcHitTest(HWND hWnd)
-    {
-        bool handle = isDraggableRegionNcHitTest(hWnd);
-        if (handle && !m_createWindowParam->isFrame)
-            ::PostMessage(hWnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
-        return handle;
-    }
 
     bool mouseMsgToBrowserViews(unsigned int message, int x, int y, unsigned int flags)
     {
+        if (m_foucsBrowserView && !m_foucsBrowserView->getWebContents())
+            m_foucsBrowserView = nullptr;
         bool isHandled = false;
         BrowserView* hittestView = findHittestBrowserview(x, y);
         // 如果是WM_LBUTTONDOWN消息，就先找到焦点view，发送过去
@@ -974,19 +918,15 @@ public:
         if (m_isIgnoreMouseEvents)
             return;
 
-        int id = m_id;
-        mini_electron_web_view webview = m_webContents->getEngineView();
         if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
-            if (!doDraggableRegionNcHitTest(hWnd)) {
-                ::SetFocus(hWnd);
-                ::SetCapture(hWnd);
-            }
+            ::SetFocus(hWnd);
+            ::SetCapture(hWnd);
         } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
             ::ReleaseCapture();
         }
 
-        int x = LOWORD(lParam);
-        int y = HIWORD(lParam);
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
 
         unsigned int flags = 0;
 
@@ -1012,50 +952,44 @@ public:
         //                 return;
         //             self->delayDoMouseMsg(webview);
         //         });
-        if (!mouseMsgToBrowserViews(message, x, y, flags))
-            mini_electron_fire_mouse_event(webview, message, x, y, flags);
+        if (!mouseMsgToBrowserViews(message, x, y, flags)) {
+            // Blink applies the widget DSF to native device-pixel input.
+            m_webContents->sendWindowsMouseEvent(message, x, y, flags);
+        }
 
-        if (WM_LBUTTONDOWN == message)
-            doDraggableRegionNcHitTest(hWnd);
     }
 
     BrowserView* findHittestBrowserview(int x, int y)
     {
         POINT pt = { x, y };
-        for (int i = (int)m_browserViews.size() - 1; i >= 0; --i) {
+        for (int i = static_cast<int>(m_browserViews.size()) - 1; i >= 0; --i) {
             BrowserView* view = m_browserViews[i];
+            if (!view || !view->getWebContents())
+                continue;
             RECT r = view->getClientRect();
-            if (::PtInRect(&r, pt)) {
+            if (::PtInRect(&r, pt))
                 return view;
-            }
         }
         return nullptr;
     }
 
+    WebContents* focusedWebContents()
+    {
+        if (m_foucsBrowserView) {
+            WebContents* contents = m_foucsBrowserView->getWebContents();
+            if (contents)
+                return contents;
+            m_foucsBrowserView = nullptr;
+        }
+        return m_webContents;
+    }
+
     void onCursorChange()
     {
-        if (m_isCursorInfoTypeAsynGetting)
-            return;
-        m_isCursorInfoTypeAsynGetting = true;
-
-        mini_electron_web_view webview = m_webContents->getEngineView();
-
-        POINT pt;
-        ::GetCursorPos(&pt);
-        ::ScreenToClient(m_hWnd, &pt);
-
-        m_isCursorInfoTypeAsynGetting = false;
-
-        int cursorType = 0;
-        BrowserView* browserView = findHittestBrowserview(pt.x, pt.y);
-        if (browserView && browserView->getEngineView())
-            cursorType = mini_electron_get_cursor_info_type(browserView->getEngineView());
-        else
-            cursorType = mini_electron_get_cursor_info_type(webview);
-        if (cursorType == m_cursorInfoType)
-            return;
-        m_cursorInfoType = cursorType;
-        ::PostMessage(m_hWnd, WM_SETCURSOR /*_ASYN*/, 0, 0);
+        // Cursor shape changes arrive from the remote renderer. Until a new
+        // shape is received, retain the standard arrow rather than querying an
+        // in-process Blink view.
+        m_cursorInfoType = 0;
     }
 
     bool setCursorInfoTypeByCache(LPARAM lParam)
@@ -1159,7 +1093,6 @@ public:
 
     LRESULT windowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
-        mini_electron_web_view webview = m_webContents->getEngineView();
         BrowserWindow* self = this;
         int id = m_id;
 
@@ -1205,6 +1138,7 @@ public:
                 if (isPreventDefault) {
                     if (m_state == WindowDestroying)
                         m_state = state;
+                    App::getInstance()->onWindowCloseCancelled();
                     return 0;
                 }
             }
@@ -1217,7 +1151,8 @@ public:
             ::KillTimer(hWnd, (UINT_PTR)this);
             ::RemovePropW(hWnd, kPropW);
             ::RevokeDragDrop(m_hWnd);
-            mini_electron_destroy_web_view(webview);
+            if (m_webContents)
+                m_webContents->closeRenderer();
 
             for (size_t i = 0; i < m_browserViews.size(); ++i) {
                 BrowserView* view = m_browserViews[i];
@@ -1248,11 +1183,22 @@ public:
             hideAutoMenuBar();
             break;
         case WM_SYSKEYDOWN:
+            if (wParam != VK_MENU && ::GetForegroundWindow() == hWnd
+                && MenuEventNotif::onAccelerator(m_nativeMenu, static_cast<UINT>(wParam))) {
+                m_lastAcceleratorKey = static_cast<UINT>(wParam);
+                return 0;
+            }
             if (wParam == VK_MENU && m_autoHideMenuBar && m_menuBarVisible && m_nativeMenu) {
                 m_menuBarAltVisible = !m_menuBarAltVisible;
                 updateNativeMenu();
                 if (!m_menuBarAltVisible)
                     return 0;
+            }
+            break;
+        case WM_SYSKEYUP:
+            if (m_lastAcceleratorKey == static_cast<UINT>(wParam)) {
+                m_lastAcceleratorKey = 0;
+                return 0;
             }
             break;
 
@@ -1272,10 +1218,14 @@ public:
 
         case WM_GETMINMAXINFO: {
             MINMAXINFO* minmaxInfo = (MINMAXINFO*)lParam;
-            minmaxInfo->ptMinTrackSize.x = m_createWindowParam->minWidth;
-            minmaxInfo->ptMinTrackSize.y = m_createWindowParam->minHeight;
-            minmaxInfo->ptMaxTrackSize.x = m_createWindowParam->maxWidth;
-            minmaxInfo->ptMaxTrackSize.y = m_createWindowParam->maxHeight;
+            const gfx::Size minimum = display::win::ScreenWin::DIPToScreenSize(
+                hWnd, gfx::Size(m_createWindowParam->minWidth, m_createWindowParam->minHeight));
+            const gfx::Size maximum = display::win::ScreenWin::DIPToScreenSize(
+                hWnd, gfx::Size(m_createWindowParam->maxWidth, m_createWindowParam->maxHeight));
+            minmaxInfo->ptMinTrackSize.x = minimum.width();
+            minmaxInfo->ptMinTrackSize.y = minimum.height();
+            minmaxInfo->ptMaxTrackSize.x = maximum.width();
+            minmaxInfo->ptMaxTrackSize.y = maximum.height();
             if (!m_createWindowParam->isFrame && !m_isFullScreen) {
                 HMONITOR monitor = ::MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
                 MONITORINFO info = { sizeof(info) };
@@ -1304,17 +1254,14 @@ public:
                 return 0;
             if (command == SC_MOVE && !m_createWindowParam->isMovable)
                 return 0;
-            if (command == SC_MOVE && (wParam & 0x000f) == HTCAPTION) {
-                m_lastCaptionDragTick = ::GetTickCount();
-                ::GetCursorPos(&m_lastCaptionDragPoint);
-            }
         } break;
 
         case WM_SIZE: {
             int x = LOWORD(lParam);
             int y = HIWORD(lParam);
             const gfx::Size viewportSize = display::win::ScreenWin::ScreenToDIPSize(m_hWnd, gfx::Size(x, y));
-            mini_electron_resize(webview, viewportSize.width(), viewportSize.height());
+            m_webContents->resize(viewportSize.width(), viewportSize.height(),
+                display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
 
             if (WindowInited == m_state)
                 mate::EventEmitter<BrowserWindow>::emit("resize");
@@ -1340,6 +1287,12 @@ public:
 //         case WM_SETICON:
 //             return 0;
         case WM_KEYDOWN: {
+            if (::GetForegroundWindow() == hWnd
+                && MenuEventNotif::onAccelerator(m_nativeMenu, static_cast<UINT>(wParam))) {
+                m_lastAcceleratorKey = static_cast<UINT>(wParam);
+                return 0;
+            }
+
             setIcon(hWnd); // !!
 
             if (m_hIMC) {
@@ -1354,15 +1307,18 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (m_foucsBrowserView)
-                mini_electron_fire_key_down_event(m_foucsBrowserView->getEngineView(), virtualKeyCode, flags, false);
-            else
-                mini_electron_fire_key_down_event(webview, virtualKeyCode, flags, false);
+            if (WebContents* target = focusedWebContents())
+                target->sendWindowsKeyEvent("keyDown", virtualKeyCode, flags);
 
             return 0;
             break;
         }
         case WM_KEYUP: {
+            if (m_lastAcceleratorKey == static_cast<UINT>(wParam)) {
+                m_lastAcceleratorKey = 0;
+                return 0;
+            }
+
             unsigned int virtualKeyCode = wParam;
             unsigned int flags = 0;
             if (HIWORD(lParam) & KF_REPEAT)
@@ -1370,10 +1326,8 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (self->m_foucsBrowserView)
-                mini_electron_fire_key_up_event(m_foucsBrowserView->getEngineView(), virtualKeyCode, flags, false);
-            else
-                mini_electron_fire_key_up_event(webview, virtualKeyCode, flags, false);
+            if (WebContents* target = focusedWebContents())
+                target->sendWindowsKeyEvent("keyUp", virtualKeyCode, flags);
 
             return 0;
             break;
@@ -1386,10 +1340,8 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (self->m_foucsBrowserView)
-                mini_electron_fire_key_press_event(self->m_foucsBrowserView->getEngineView(), charCode, flags, false);
-            else
-                mini_electron_fire_key_press_event(webview, charCode, flags, false);
+            if (WebContents* target = focusedWebContents())
+                target->sendWindowsKeyEvent("char", charCode, flags);
             return 0;
             break;
         }
@@ -1405,15 +1357,13 @@ public:
         case WM_MBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MOUSEMOVE:
-            if (message == WM_LBUTTONDBLCLK && handleDraggableDoubleClick(lParam))
-                return 0;
             onCursorChange();
             onMouseMessage(hWnd, message, wParam, lParam);
             break;
         case WM_CONTEXTMENU: {
             POINT pt;
-            pt.x = LOWORD(lParam);
-            pt.y = HIWORD(lParam);
+            pt.x = GET_X_LPARAM(lParam);
+            pt.y = GET_Y_LPARAM(lParam);
 
             if (pt.x != -1 && pt.y != -1)
                 ::ScreenToClient(hWnd, &pt);
@@ -1432,15 +1382,15 @@ public:
             if (wParam & MK_RBUTTON)
                 flags |= MINI_ELECTRON_RBUTTON;
 
-            mini_electron_fire_context_menu_event(webview, pt.x, pt.y, flags);
+            m_webContents->sendWindowsMouseEvent(WM_CONTEXTMENU, pt.x, pt.y, flags);
             break;
         }
         case WM_MOUSEWHEEL: {
             if (m_isIgnoreMouseEvents)
                 break;
             POINT pt;
-            pt.x = LOWORD(lParam);
-            pt.y = HIWORD(lParam);
+            pt.x = GET_X_LPARAM(lParam);
+            pt.y = GET_Y_LPARAM(lParam);
             ::ScreenToClient(hWnd, &pt);
 
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -1460,22 +1410,32 @@ public:
                 flags |= MINI_ELECTRON_RBUTTON;
 
             BrowserView* hittestView = findHittestBrowserview(pt.x, pt.y);
-            if (hittestView)
-                mini_electron_fire_mouse_wheel_event(hittestView->getEngineView(), pt.x, pt.y, delta, flags);
-            else
-                mini_electron_fire_mouse_wheel_event(webview, pt.x, pt.y, delta, flags);
+            WebContents* target = m_webContents;
+            int targetX = pt.x;
+            int targetY = pt.y;
+            if (hittestView) {
+                target = hittestView->getWebContents();
+                const RECT bounds = hittestView->getClientRect();
+                targetX -= bounds.left;
+                targetY -= bounds.top;
+            }
+            if (target) {
+                // Input stays in physical pixels; the renderer applies its DSF.
+                target->sendWindowsMouseEvent(
+                    WM_MOUSEWHEEL, targetX, targetY, flags, delta);
+            }
             break;
         }
         case WM_SETFOCUS:
             mate::EventEmitter<BrowserWindow>::emit("focus");
-            mini_electron_set_focus(webview);
+            m_webContents->setFocus(true);
             return 0;
 
         case WM_KILLFOCUS:
+            m_lastAcceleratorKey = 0;
             mate::EventEmitter<BrowserWindow>::emit("blur");
             hideAutoMenuBar();
-
-            mini_electron_kill_focus(webview);
+            m_webContents->setFocus(false);
             return 0;
 
         case WM_SETCURSOR: {
@@ -1491,31 +1451,22 @@ public:
             break;
         }
         case WM_IME_STARTCOMPOSITION: {
-            mini_electron_rect* caret = new mini_electron_rect();
-            mini_electron_get_caret_rect(webview, caret);
+            RECT* caret = new RECT { 0, 0, 0, 1 };
             ::PostMessage(hWnd, WM_IME_STARTCOMPOSITION_ASYN, (WPARAM)caret, 0);
-        }
             return 0;
+        }
         case WM_IME_STARTCOMPOSITION_ASYN: {
-            mini_electron_rect* caret = (mini_electron_rect*)wParam;
+            RECT* caret = reinterpret_cast<RECT*>(wParam);
             COMPOSITIONFORM compositionForm;
             compositionForm.dwStyle = CFS_POINT | CFS_FORCE_POSITION;
-            compositionForm.ptCurrentPos.x = caret->x;
-            compositionForm.ptCurrentPos.y = caret->y;
-
+            compositionForm.ptCurrentPos.x = caret->left;
+            compositionForm.ptCurrentPos.y = caret->top;
             HIMC hIMC = ::ImmGetContext(hWnd);
-
-            if (0 == caret->h) {
-                ::ImmAssociateContext(hWnd, nullptr);
-                m_hIMC = hIMC;
-            }
-
             ::ImmSetCompositionWindow(hIMC, &compositionForm);
             ::ImmReleaseContext(hWnd, hIMC);
-
             delete caret;
-        } 
             break;
+        }
         case WM_DROPFILES:
             //onDragFiles((HDROP)wParam);
             break; //         if (message != WM_TIMER) {
@@ -1536,51 +1487,68 @@ public:
             if (LOWORD(wParam) == WA_INACTIVE)
                 hideAutoMenuBar();
             break;
-        case WM_DPICHANGED:
+        case WM_DPICHANGED: {
+            display::win::ScreenWin::UpdateDisplayInfos();
             if (!m_isFullScreen) {
                 RECT* suggested = reinterpret_cast<RECT*>(lParam);
                 ::SetWindowPos(hWnd, nullptr, suggested->left, suggested->top,
                     suggested->right - suggested->left, suggested->bottom - suggested->top,
                     SWP_NOACTIVATE | SWP_NOZORDER);
             }
+            const float scale = LOWORD(wParam) / 96.f;
+            RECT client;
+            ::GetClientRect(hWnd, &client);
+            const gfx::Size viewport = gfx::ScaleToCeiledSize(
+                gfx::Size(client.right - client.left, client.bottom - client.top), 1.f / scale);
+            m_webContents->resize(viewport.width(), viewport.height(), scale);
+            for (BrowserView* view : m_browserViews) {
+                if (view)
+                    view->onParentScaleFactorChanged();
+            }
+            rebuildDraggableRegion();
             invalidateCaptionButtons();
             return 0;
-        case WM_NCHITTEST:
-        {
-            if (m_createWindowParam->isFrame)
-                break;
-
-            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            ::ScreenToClient(hWnd, &pt);
-            if (captionButtonFromPoint(pt) != CaptionButtonNone)
-                return HTCLIENT;
-            if (!m_createWindowParam->isResizable || m_isMaximized || ::IsZoomed(hWnd) || m_isFullScreen)
+        }
+        case WM_NCHITTEST: {
+            POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            ::ScreenToClient(hWnd, &point);
+            if (captionButtonFromPoint(point) != CaptionButtonNone)
                 return HTCLIENT;
 
-            RECT rc;
-            ::GetClientRect(hWnd, &rc);
-            const int border = std::max(RESIZE_BORDER, dipToPixel(RESIZE_BORDER));
-            bool leftEdge = pt.x < border;
-            bool rightEdge = pt.x >= rc.right - border;
-            bool topEdge = pt.y < border;
-            bool bottomEdge = pt.y >= rc.bottom - border;
-
-            if (leftEdge && topEdge)
-                return HTTOPLEFT;
-            if (rightEdge && topEdge)
-                return HTTOPRIGHT;
-            if (leftEdge && bottomEdge)
-                return HTBOTTOMLEFT;
-            if (rightEdge && bottomEdge)
-                return HTBOTTOMRIGHT;
-            if (leftEdge)
-                return HTLEFT;
-            if (rightEdge)
-                return HTRIGHT;
-            if (topEdge)
-                return HTTOP;
-            if (bottomEdge)
-                return HTBOTTOM;
+            if (m_createWindowParam->isFrame) {
+                const LRESULT native_hit = ::DefWindowProcW(hWnd, message, wParam, lParam);
+                if (native_hit != HTCLIENT)
+                    return native_hit;
+            } else if (m_createWindowParam->isResizable
+                && !m_isMaximized && !::IsZoomed(hWnd) && !m_isFullScreen) {
+                RECT client;
+                ::GetClientRect(hWnd, &client);
+                const int border = std::max(RESIZE_BORDER, dipToPixel(RESIZE_BORDER));
+                const bool left = point.x < border;
+                const bool right = point.x >= client.right - border;
+                const bool top = point.y < border;
+                const bool bottom = point.y >= client.bottom - border;
+                if (left && top)
+                    return HTTOPLEFT;
+                if (right && top)
+                    return HTTOPRIGHT;
+                if (left && bottom)
+                    return HTBOTTOMLEFT;
+                if (right && bottom)
+                    return HTBOTTOMRIGHT;
+                if (left)
+                    return HTLEFT;
+                if (right)
+                    return HTRIGHT;
+                if (top)
+                    return HTTOP;
+                if (bottom)
+                    return HTBOTTOM;
+            }
+            if (!m_isFullScreen && m_createWindowParam->isMovable
+                && !findHittestBrowserview(point.x, point.y)
+                && m_draggableRegion && ::PtInRegion(m_draggableRegion, point.x, point.y))
+                return HTCAPTION;
             return HTCLIENT;
         }
         }
@@ -1640,9 +1608,6 @@ public:
             return ::DefWindowProcW(hWnd, message, wParam, lParam);
 
         id = self->m_id;
-        mini_electron_web_view webview = self->m_webContents->getEngineView();
-        if (!webview)
-            return ::DefWindowProcW(hWnd, message, wParam, lParam);
 
         return self->windowProc(hWnd, message, wParam, lParam);
     }
@@ -1650,14 +1615,12 @@ public:
 private:
     void closeApi()
     {
-        m_state = WindowDestroying;
         ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
     }
 
     void destroyApi()
     {
-        m_isDestroyApiBeCalled = true;
-        closeApi();
+        destroy();
     }
 
     void focusApi()
@@ -1795,9 +1758,12 @@ private:
     void setBrowserViewApi(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
         BrowserView* browserView = getBrowserView(info);
-        if (!browserView)
+        if (!browserView || !browserView->getWebContents())
             return;
-        m_browserViews.push_back(browserView); // TODO delete
+        if (std::find(m_browserViews.begin(), m_browserViews.end(), browserView)
+            == m_browserViews.end()) {
+            m_browserViews.push_back(browserView);
+        }
         browserView->attachBrowserWindow(m_hWnd);
     }
 
@@ -1810,18 +1776,11 @@ private:
             BrowserView* view = *it;
             if (view != browserView)
                 continue;
+            if (m_foucsBrowserView == browserView)
+                m_foucsBrowserView = nullptr;
             m_browserViews.erase(it);
             browserView->detachBrowserWindow();
-
-            int width = m_clientRect.right - m_clientRect.left;
-            int height = m_clientRect.bottom - m_clientRect.top;
-
-            mini_electron_web_view webview = m_webContents->getEngineView();
-            HDC hdc = mini_electron_get_locked_view_dc(webview);
-            ::BitBlt(m_memoryDC, 0, 0, width, height, hdc, 0, 0, SRCCOPY);
-            mini_electron_unlock_view_dc(webview);
-
-            ::InvalidateRect(m_hWnd, &m_clientRect, false);
+            ::InvalidateRect(m_hWnd, nullptr, FALSE);
             break;
         }
     }
@@ -1888,6 +1847,40 @@ private:
         return bounds;
     }
 
+    v8::Local<v8::Object> getNormalBoundsApi()
+    {
+        if (!m_isFullScreen && !::IsZoomed(m_hWnd) && !::IsIconic(m_hWnd))
+            return getBoundsApi();
+
+        WINDOWPLACEMENT placement = m_windowPlacement;
+        if (!m_isFullScreen) {
+            placement.length = sizeof(placement);
+            ::GetWindowPlacement(m_hWnd, &placement);
+        }
+        RECT normalRect = placement.rcNormalPosition;
+        const DWORD exStyle = m_isFullScreen
+            ? m_fullScreenExStyle
+            : ::GetWindowLong(m_hWnd, GWL_EXSTYLE);
+        if (!(exStyle & WS_EX_TOOLWINDOW)) {
+            MONITORINFO monitor = { sizeof(monitor) };
+            if (::GetMonitorInfoW(::MonitorFromRect(&normalRect,
+                    MONITOR_DEFAULTTONEAREST), &monitor)) {
+                ::OffsetRect(&normalRect,
+                    monitor.rcWork.left - monitor.rcMonitor.left,
+                    monitor.rcWork.top - monitor.rcMonitor.top);
+            }
+        }
+        const gfx::Rect dipBounds = display::win::ScreenWin::ScreenToDIPRect(
+            nullptr, gfx::Rect(normalRect));
+        v8::Local<v8::Object> bounds = v8::Object::New(isolate());
+        gin_helper::Dictionary dictionary(isolate(), bounds);
+        dictionary.Set("x", dipBounds.x());
+        dictionary.Set("y", dipBounds.y());
+        dictionary.Set("width", dipBounds.width());
+        dictionary.Set("height", dipBounds.height());
+        return bounds;
+    }
+
     void setBoundsApi(v8::Local<v8::Object> bounds)
     {
         v8::Local<v8::Context> context = isolate()->GetCurrentContext();
@@ -1912,12 +1905,14 @@ private:
 
     v8::Local<v8::Object> getSizeApi()
     {
-        RECT clientRect;
-        ::GetClientRect(m_hWnd, &clientRect);
+        RECT windowRect;
+        ::GetWindowRect(m_hWnd, &windowRect);
+        const gfx::Size dipSize = display::win::ScreenWin::ScreenToDIPSize(
+            m_hWnd, gfx::Size(windowRect.right - windowRect.left, windowRect.bottom - windowRect.top));
         v8::Local<v8::Context> context = isolate()->GetCurrentContext();
 
-        v8::Local<v8::Integer> width = v8::Integer::New(isolate(), clientRect.right - clientRect.left);
-        v8::Local<v8::Integer> height = v8::Integer::New(isolate(), clientRect.bottom - clientRect.top);
+        v8::Local<v8::Integer> width = v8::Integer::New(isolate(), dipSize.width());
+        v8::Local<v8::Integer> height = v8::Integer::New(isolate(), dipSize.height());
         v8::Local<v8::Array> size = v8::Array::New(isolate(), 2);
         size->Set(context, 0, width);
         size->Set(context, 1, height);
@@ -1930,7 +1925,10 @@ private:
         sprintf_s(output, 99, "BrowserWindow::setSizeApi: %d %d\n", width, height);
         OutputDebugStringA(output);
 
-        ::SetWindowPos(m_hWnd, NULL, 0, 0, width, height, SWP_NOMOVE);
+        const gfx::Size pixelSize = display::win::ScreenWin::DIPToScreenSize(
+            m_hWnd, gfx::Size(width, height));
+        ::SetWindowPos(m_hWnd, nullptr, 0, 0, pixelSize.width(), pixelSize.height(),
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     void getContentBoundsApi()
@@ -1954,15 +1952,26 @@ private:
         contentsSize = m_contentsSize;
         ::LeaveCriticalSection(&m_memoryCanvasLock);
 
-        std::vector<int> size = { contentsSize.cx, contentsSize.cy };
+        const gfx::Size dipSize = display::win::ScreenWin::ScreenToDIPSize(
+            m_hWnd, gfx::Size(contentsSize.cx, contentsSize.cy));
+        std::vector<int> size = { dipSize.width(), dipSize.height() };
         return size;
     }
 
     void setContentSizeApi(int width, int height)
     {
-        m_contentsSize.cx = width;
-        m_contentsSize.cy = height;
-        mini_electron_resize(m_webContents->getEngineView(), width, height);
+        const gfx::Size pixelSize = display::win::ScreenWin::DIPToScreenSize(
+            m_hWnd, gfx::Size(width, height));
+        RECT windowRect;
+        RECT clientRect;
+        ::GetWindowRect(m_hWnd, &windowRect);
+        ::GetClientRect(m_hWnd, &clientRect);
+        const int frameWidth = windowRect.right - windowRect.left
+            - (clientRect.right - clientRect.left);
+        const int frameHeight = windowRect.bottom - windowRect.top
+            - (clientRect.bottom - clientRect.top);
+        ::SetWindowPos(m_hWnd, nullptr, 0, 0, pixelSize.width() + frameWidth,
+            pixelSize.height() + frameHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     void setMinimumSizeApi(int width, int height)
@@ -2158,11 +2167,9 @@ private:
     {
     }
 
-    void setDocumentEditedApi(bool b)
+    void setDocumentEditedApi(bool edited)
     {
-        BrowserWindow* self = this;
-        mini_electron_set_editable(m_webContents->getEngineView(), b);
-        m_isDocumentEdited = true;
+        m_isDocumentEdited = edited;
     }
 
     bool isDocumentEditedApi()
@@ -2188,7 +2195,7 @@ private:
 
     void focusOnWebViewApi()
     {
-        mini_electron_set_focus(m_webContents->getEngineView());
+        m_webContents->setFocus(true);
     }
 
     void isWebViewFocusedApi()
@@ -2434,194 +2441,6 @@ private:
         return false;
     }
 
-    static bool hookUrl(void* job, const char* url, const char* hookedUrl, const WCHAR* localFile, const char* mime)
-    {
-        if (0 != strstr(url, hookedUrl)) {
-            mini_electron_net_set_mime_type(job, (char*)mime);
-
-            std::string contents;
-            if (asar::readFileToString(base::FilePath::FromUTF16Unsafe((const char16_t*)(localFile)), &contents) && 0 != contents.size())
-                mini_electron_net_set_data(job, (void*)contents.data(), contents.size());
-
-            OutputDebugStringA("hookedUrl:");
-            OutputDebugStringA(url);
-            OutputDebugStringA("\n");
-
-            return true;
-        }
-
-        return false;
-    }
-
-    static int saveDumpFile(const char* path, const char* buffer, unsigned int size)
-    {
-        void* hFile = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-        if ((void*)-1 != hFile) {
-            DWORD dwSize = 0;
-            WriteFile(hFile, buffer, size, &dwSize, NULL);
-            CloseHandle(hFile);
-            return 1;
-        }
-        return 0;
-    }
-
-    static void MINI_ELECTRON_CALL_TYPE handleLoadUrlEnd(mini_electron_web_view webView, void* param, const char* url, void* job, void* buf, int len)
-    {
-        saveDumpFile("p:\\1.js", (const char*)buf, len);
-        OutputDebugStringA("");
-    }
-
-    static BOOL MINI_ELECTRON_CALL_TYPE handleLoadUrlBegin(mini_electron_web_view webView, BrowserWindow* self, const char* url, void* job)
-    {
-        std::string temp = "apiwindow.load:";
-        temp += url;
-        temp += "\n";
-        OutputDebugStringA(temp.c_str());
-
-        static void* ptr = nullptr;
-        if (!ptr) {
-            HANDLE h = GetModuleHandleW(L"kernel32.dll");
-            void* ptr = GetProcAddress((HMODULE)h, "OutputDebugStringW");
-            char output[100] = { 0 };
-            sprintf_s(output, 99, "OutputDebugStringW: %p\n", ptr);
-            OutputDebugStringA(output);
-        }
-
-//         if (hookUrl(job, url, "chunk-vendors.1682480299277.js", L"G:\\test\\web_test\\ele_test\\windows-common-jiasu\\my_test\\chunk-vendors.1682480299277.js",
-//                 "text/javascript"))
-//             return true;
-
-
-        std::string resourceData;
-        int rc = 0;
-        if (checkEmbeddedResourceStat(url, &rc, &resourceData)) {
-            mini_electron_net_set_data(job, resourceData.data(), resourceData.size());
-            return true;
-        }
-
-        ApiSession* ses = SessionMgr::get()->findOrCreateSession(nullptr, self->m_webContents->m_sessionName, false);
-        if (ses) {
-            ses->onLoadUrlBeginInBlinkThread(webView, url, job);
-        }
-
-        if (ProtocolInterface::inst()->handleLoadUrlBegin(self, url, job))
-            return true;
-
-        if (0 == strstr(url, "file:///") || 0 == strstr(url, ".asar"))
-            return false;
-
-        int urlLength = strlen(url);
-        int urlHostLength = urlLength;
-        for (int i = 0; i < urlLength; ++i) {
-            if ('?' != url[i])
-                continue;
-            urlHostLength = i;
-            break;
-        }
-
-        size_t fileHeadLength = sizeof("file:///") - 1;
-        std::string urlString(url, urlHostLength);
-        urlString = urlString.substr(fileHeadLength, urlString.size() - fileHeadLength);
-        base::FilePath path = base::FilePath::FromUTF8Unsafe(urlString);
-        std::string contents;
-        if (!asar::readFileToString(path, &contents) || 0 == contents.size()) {
-            return false;
-        }
-        mini_electron_net_set_data(job, &contents.at(0), contents.size());
-
-        return true;
-    }
-
-    static void MINI_ELECTRON_CALL_TYPE onConsoleCallback(
-        mini_electron_web_view webView, void* param, mini_electron_console_level level, const utf8* message, const utf8* sourceName, unsigned sourceLine, const utf8* stackTrace)
-    {
-    }
-
-
-
-    static BOOL MINI_ELECTRON_CALL_TYPE onCloseCallback(mini_electron_web_view webView, void* param, void* unuse)
-    {
-        BrowserWindow* self = (BrowserWindow*)param;
-
-        WindowState state = self->m_state;
-        self->m_state = WindowDestroying;
-        if (WindowDestroying != state && !self->m_isDestroyApiBeCalled) {
-            v8::HandleScope handleScope(v8::Isolate::GetCurrent());
-            bool isPreventDefault = self->mate::EventEmitter<BrowserWindow>::emit("close");
-            if (isPreventDefault)
-                return FALSE;
-        }
-        ::ShowWindow(self->m_hWnd, SW_HIDE);
-        return TRUE;
-    }
-
-    static void MINI_ELECTRON_CALL_TYPE onURLChangedCallback(mini_electron_web_view webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward)
-    {
-        BrowserWindow* self = (BrowserWindow*)param;
-        self->getWebContents()->onUrlChange(url);
-    }
-
-
-    static void MINI_ELECTRON_CALL_TYPE onViewLoadInfo(mini_electron_web_view webView, void* param, mini_electron_view_load_type type, mini_electron_view_load_callback_info* info)
-    {
-        BrowserWindow* self = (BrowserWindow*)param;
-        int id = self->m_id;
-        WindowState state = self->m_state;
-        bool isDestroyApiBeCalled = self->m_isDestroyApiBeCalled;
-
-        std::string* url = nullptr;
-        std::string* newUrl = nullptr;
-        std::string* method = nullptr;
-        std::string* referrer = nullptr;
-        mini_electron_resource_type resourceType = MINI_ELECTRON_RESOURCE_TYPE_MAIN_FRAME;
-        int httpResponseCode = 0;
-
-        mini_electron_will_send_request_info* willSendRequestInfo = info->willSendRequestInfo;
-        if (MINI_ELECTRON_DID_GET_REDIRECT_REQUEST == type && willSendRequestInfo) {
-            //willSendRequestInfo->isHolded = true;
-            url = new std::string(mini_electron_get_string(willSendRequestInfo->url));
-            newUrl = new std::string(mini_electron_get_string(willSendRequestInfo->newUrl));
-            method = new std::string(mini_electron_get_string(willSendRequestInfo->method));
-            referrer = new std::string(mini_electron_get_string(willSendRequestInfo->referrer));
-
-            resourceType = willSendRequestInfo->resourceType;
-            httpResponseCode = willSendRequestInfo->resourceType;
-        }
-
-        if (MINI_ELECTRON_DID_NAVIGATE == type)
-            mini_electron_run_js(self->m_webContents->getEngineView(), mini_electron_web_frame_get_main_frame(webView), ";", false, nullptr, nullptr,
-                nullptr); // 为了<webview>标签，强制触发js创建回调
-
-        content::ThreadCall::callUiThreadAsync(
-            FROM_HERE, [id, self, state, isDestroyApiBeCalled, type, resourceType, httpResponseCode, url, newUrl, method, referrer] {
-                if ((!IdLiveDetect::get()->isLive(id) || WindowDestroying == state || WindowDestroyed == state || isDestroyApiBeCalled)) {
-                    OutputDebugStringA("");
-                } else if (MINI_ELECTRON_DID_START_LOADING == type)
-                    self->m_webContents->mate::EventEmitter<WebContents>::emit("did-start-loading");
-                else if (MINI_ELECTRON_DID_STOP_LOADING == type)
-                    self->m_webContents->mate::EventEmitter<WebContents>::emit("did-stop-loading");
-                else if (MINI_ELECTRON_DID_GET_RESPONSE_DETAILS == type) {
-
-                } else if (MINI_ELECTRON_DID_GET_REDIRECT_REQUEST == type) {
-                    self->m_webContents->mate::EventEmitter<WebContents>::emit(
-                        "did-get-redirect-request", *url, *newUrl, resourceType == MINI_ELECTRON_RESOURCE_TYPE_MAIN_FRAME, httpResponseCode, *method, *referrer);
-                }
-
-                if (url) {
-                    delete url;
-                    delete newUrl;
-                    delete method;
-                    delete referrer;
-                }
-            });
-    }
-
-
-
-    static WebContents::BrowserWindowConstructorOptions* create()
-    {
-    }
 
     static BrowserWindow* newWindow(gin_helper::Dictionary* options, v8::Local<v8::Object> wrapper)
     {
@@ -2656,7 +2475,7 @@ private:
         if (webPreferences.Get("offscreen", &offscreen) && offscreen)
             options->Set(options::kFrame, false);
 
-        webPreferences.GetBydefaultVal("nodeIntegration", true, &createWindowParam->m_isNodeIntegration);
+        webPreferences.GetBydefaultVal("nodeIntegration", false, &createWindowParam->m_isNodeIntegration);
         webPreferences.GetBydefaultVal("contextIsolation", true, &createWindowParam->m_isContextIsolation);
         webPreferences.Get("additionalArguments", &createWindowParam->m_customArgs);
 
@@ -2693,10 +2512,10 @@ private:
         options->GetBydefaultVal("width", 1, &createWindowParam->width);
         options->GetBydefaultVal("height", 1, &createWindowParam->height);
 
-        int parentWidth = ::GetSystemMetrics(SM_CXSCREEN);
-        int parentHeight = ::GetSystemMetrics(SM_CYSCREEN);
-        int kNotSetXFlag = (parentWidth - createWindowParam->width) / 2;
-        int kNotSetYFlag = (parentHeight - createWindowParam->height) / 2;
+        const gfx::Size primarySize = display::win::ScreenWin::ScreenToDIPSize(
+            nullptr, gfx::Size(::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN)));
+        int kNotSetXFlag = (primarySize.width() - createWindowParam->width) / 2;
+        int kNotSetYFlag = (primarySize.height() - createWindowParam->height) / 2;
 
         options->GetBydefaultVal("x", kNotSetXFlag, &createWindowParam->x);
         options->GetBydefaultVal("y", kNotSetYFlag, &createWindowParam->y);
@@ -2706,13 +2525,13 @@ private:
 
         if (createWindowParam->height < createWindowParam->minHeight)
             createWindowParam->height = createWindowParam->minHeight;
-#ifdef OS_WIN
-        float f = display::win::ScreenWin::GetScaleFactorForHWND(NULL);
-        if (f > 0.5f) {
-            createWindowParam->width *= f;
-            createWindowParam->height *= f;
-        }
-#endif
+        const gfx::Rect pixelBounds = display::win::ScreenWin::DIPToScreenRect(
+            nullptr, gfx::Rect(createWindowParam->x, createWindowParam->y,
+                createWindowParam->width, createWindowParam->height));
+        createWindowParam->x = pixelBounds.x();
+        createWindowParam->y = pixelBounds.y();
+        createWindowParam->width = pixelBounds.width();
+        createWindowParam->height = pixelBounds.height();
         std::string title;
         options->GetBydefaultVal("title", "Electron", &title);
         createWindowParam->title = StringUtil::UTF8ToUTF16(title);
@@ -2748,9 +2567,6 @@ private:
         return self;
     }
 
-    static void matchDpi(mini_electron_web_view webview)
-    {
-    }
 
     void newWindowTaskInUiThread(WebContents::BrowserWindowConstructorOptions* createWindowParam)
     {
@@ -2781,29 +2597,13 @@ private:
         int width = m_clientRect.right - m_clientRect.left;
         int height = m_clientRect.bottom - m_clientRect.top;
 
-        int id = m_id;
         HWND hWnd = m_hWnd;
-        mini_electron_web_view webview = m_webContents->getEngineView();
-        //m_webContents->onNewWindowInUiThread(0, 0, width, height, createWindowParam);
-        if (createWindowParam->transparent)
-            mini_electron_set_transparent(webview, true);
-        const gfx::Size viewportSize = display::win::ScreenWin::ScreenToDIPSize(hWnd, gfx::Size(width, height));
-        mini_electron_resize(webview, viewportSize.width(), viewportSize.height());
-        matchDpi(webview);
-
-        mini_electron_set_handle(webview, hWnd);
-        mini_electron_on_paint_updated(webview, (mini_electron_paint_updated_callback)staticOnPaintUpdatedInUiThread, this);
-        mini_electron_on_console(webview, onConsoleCallback, nullptr);
-
-        mini_electron_on_load_url_begin(webview, (mini_electron_load_url_begin_callback)handleLoadUrlBegin, this);
-        mini_electron_on_load_url_end(webview, (mini_electron_load_url_end_callback)handleLoadUrlEnd, this);
-
-        mini_electron_on_url_changed(webview, onURLChangedCallback, this);
-        mini_electron_on_close(webview, onCloseCallback, this);
-
-        mini_electron_set_focus(webview);
-        mini_electron_set_debug_config(webview, "decodeUrlRequest", "");
-        mini_electron_set_navigation_to_new_window_enable(webview, true);
+        const gfx::Size viewportSize = display::win::ScreenWin::ScreenToDIPSize(
+            hWnd, gfx::Size(width, height));
+        m_webContents->resize(viewportSize.width(), viewportSize.height(),
+            display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
+        rebuildDraggableRegion();
+        m_webContents->setFocus(true);
         //setIcon(m_hWnd);
 
         MenuEventNotif::onWindowDidCreated(this);
@@ -2840,6 +2640,10 @@ private:
                 v8::Object::New(isolate)));
             BrowserWindow* self = newWindow(&options, args.This());
             WindowList::getInstance()->addWindow(self);
+            if (self && self->m_webContents && self->m_state == WindowInited
+                && ::IsWindow(self->m_hWnd) && App::getInstance()) {
+                App::getInstance()->emit("browser-window-created", args.This());
+            }
 
             args.GetReturnValue().Set(args.This());
         }
@@ -2877,6 +2681,11 @@ private:
     sk_sp<SkSurface> m_captionSurface;
 
     HRGN m_draggableRegion;
+    struct DraggableRegion {
+        gfx::Rect bounds;
+        bool draggable;
+    };
+    std::vector<DraggableRegion> m_draggableRegions;
 
     bool m_isMaximized;
     bool m_isFullScreen;
@@ -2892,9 +2701,8 @@ private:
     CaptionButton m_captionPressedButton;
     bool m_trackingMouseLeave;
 
-    DWORD m_lastCaptionDragTick;
-    POINT m_lastCaptionDragPoint;
     HMENU m_nativeMenu;
+    UINT m_lastAcceleratorKey;
     bool m_autoHideMenuBar;
     bool m_menuBarVisible;
     bool m_menuBarAltVisible;

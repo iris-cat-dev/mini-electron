@@ -3,6 +3,8 @@
 #define INCLUDE_BASE_ELECTRON_MACROS_H_
 #pragma once
 
+#include "base/threading/thread_local.h"
+
 #if !defined(arraysize)
 
 // The arraysize(arr) macro returns the # of elements in an array arr.

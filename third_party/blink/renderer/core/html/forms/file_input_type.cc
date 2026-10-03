@@ -297,6 +297,20 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
         if (base_dir == root_path)
             root_length = 0;
         for (const auto& file : files) {
+            if (file->is_file_system()) {
+                const auto& info = file->get_file_system();
+                FileMetadata metadata;
+                metadata.modification_time = NullableTimeToOptionalTime(info->modification_time);
+                metadata.length = info->length;
+                metadata.type = FileMetadata::kTypeFile;
+                String path = DecodeURLEscapeSequences(info->url.GetPath().ToString(), DecodeURLMode::kUTF8OrIsomorphic).Replace('\\', '/');
+                String relative_path = path.Substring(root_length);
+                if (relative_path.StartsWith('/'))
+                    relative_path = relative_path.Substring(1);
+                if (File* selected = File::CreateForFileSystemFile(context, info->url, metadata, File::kIsUserVisible, relative_path))
+                    file_list->Append(selected);
+                continue;
+            }
             // Normalize backslashes to slashes before exposing the relative path to
             // script.
             String string_path = FilePathToString(file->get_native_file()->file_path);
@@ -338,7 +352,8 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
             metadata.modification_time = NullableTimeToOptionalTime(fs_info->modification_time);
             metadata.length = fs_info->length;
             metadata.type = FileMetadata::kTypeFile;
-            file_list->Append(File::CreateForFileSystemFile(context, fs_info->url, metadata, File::kIsUserVisible));
+            if (File* selected = File::CreateForFileSystemFile(context, fs_info->url, metadata, File::kIsUserVisible))
+                file_list->Append(selected);
         }
     }
     return file_list;

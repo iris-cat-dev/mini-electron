@@ -1,0 +1,56 @@
+{
+  "name": "mini-electron",
+  "version": "1.3.3",
+  "description": "Electron-compatible desktop runtime for Windows x64 and Apple Silicon macOS",
+  "license": "Apache-2.0",
+  "author": "mini-electron contributors",
+  "main": "index.js",
+  "types": "electron.d.ts",
+  "bin": {
+    "electron": "cli.js",
+    "mini-electron": "cli.js"
+  },
+  "dependencies": {
+    "@types/node": "^24.0.0"
+  },
+  "scripts": {
+    "postinstall": "node install.js",
+    "test": "node --test test/*.test.js"
+  },
+  "files": [
+    "artifacts.json",
+    "cli.js",
+    "electron.d.ts",
+    "index.js",
+    "install.js",
+    "lib/",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "os": [
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ],
+  "miniElectron": {
+    "runtimeVersion": "1.3.3",
+    "electronApiVersion": "41.2.0",
+    "nodeVersion": "24.0.0",
+    "nodeModuleAbi": 134,
+    "chromiumMajorVersion": 132
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iris-cat-dev/mini-electron.git"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "chromium"
+  ]
+}

@@ -10,6 +10,7 @@
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/gin_helper/object_template_builder.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
+#include "runtime/electron/common/gin_helper/promise.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
 
@@ -55,27 +56,29 @@ void openExternal(const v8::FunctionCallbackInfo<v8::Value>& info)
 
     if (args.Length() != 1 && args.Length() != 2) {
         args.ThrowError();
-        info.GetReturnValue().Set(false);
         return;
     }
 
     std::string url;
     if (!args.GetNext(&url)) {
         args.ThrowError();
-        info.GetReturnValue().Set(false);
         return;
     }
-    std::u16string urlW(base::UTF8ToUTF16(url));
 
     bool activate = true;
-
     gin_helper::Dictionary options = gin_helper::Dictionary::CreateEmpty(info.GetIsolate());
-    if (args.GetNext(&options)) {
+    if (args.GetNext(&options))
         options.Get("activate", &activate);
-    }
 
-    bool b = platform_util::openExternal(urlW, activate);
-    info.GetReturnValue().Set(b);
+    gin_helper::Promise<void> promise(args.isolate());
+    v8::Local<v8::Promise> handle = promise.GetHandle();
+    std::string error;
+    if (platform_util::openExternal(base::UTF8ToUTF16(url), activate, &error))
+        promise.Resolve();
+    else
+        promise.RejectWithErrorMessage(
+            error.empty() ? "Failed to open external URL" : error);
+    info.GetReturnValue().Set(handle);
 }
 
 //#if defined(OS_WIN)
@@ -180,7 +183,7 @@ void showItemInFolder(const v8::FunctionCallbackInfo<v8::Value>& info)
     platform_util::showItemInFolder(base::FilePath::FromUTF8Unsafe(fullPathStr));
 }
 
-void openItem(const v8::FunctionCallbackInfo<v8::Value>& info)
+void openPath(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     std::string fullPathStr;
     gin_helper::Arguments args(info);
@@ -194,7 +197,12 @@ void openItem(const v8::FunctionCallbackInfo<v8::Value>& info)
         return;
     }
 
-    platform_util::openItem(base::FilePath::FromUTF8Unsafe(fullPathStr));
+    gin_helper::Promise<std::string> promise(args.isolate());
+    v8::Local<v8::Promise> handle = promise.GetHandle();
+    std::string error;
+    platform_util::openPath(base::FilePath::FromUTF8Unsafe(fullPathStr), &error);
+    promise.Resolve(error);
+    info.GetReturnValue().Set(handle);
 }
 
 void moveItemToTrash(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -229,8 +237,7 @@ void initializeShellApi(v8::Local<v8::Object> exports, v8::Local<v8::Value> unus
     v8::Local<v8::Object> obj = v8::Object::New(isolate);
     gin_helper::Dictionary dict(context->GetIsolate(), obj);
     dict.SetMethod("showItemInFolder", &showItemInFolder);
-    dict.SetMethod("openItem", &openItem);
-    dict.SetMethod("openPath", &openItem);
+    dict.SetMethod("openPath", &openPath);
     dict.SetMethod("openExternal", &openExternal);
     dict.SetMethod("moveItemToTrash", &moveItemToTrash);
     dict.SetMethod("beep", &beep);

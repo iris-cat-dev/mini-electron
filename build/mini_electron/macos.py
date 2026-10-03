@@ -9,12 +9,21 @@ import hashlib
 import os
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import subprocess
 import tarfile
 import tempfile
 import urllib.request
 from typing import Optional
+from .distribution import (
+    copy_devtools_frontend,
+    copy_release_notices,
+    copy_runtime_javascript,
+    publish_distribution,
+    release_metadata,
+    staging_directory,
+)
 
 GN_REVISION = "feafd1012a32c05ec6095f69ddc3850afb621f3a"
 HEADLESS_TARGET = "mini_electron_smoke"
@@ -26,44 +35,71 @@ ELECTRON_BINARY = "mini-electron"
 NGHTTP2_VERSION = "1.61.0"
 NGHTTP2_SHA256 = "c0e660175b9dc429f11d25b9507a834fb752eea9135ab420bb7cb7e9dbcc9654"
 
-BACKEND_BUNDLE_ENTRIES = (
+
+ELECTRON_BUILDER_VERSION = "26.8.1"
+
+
+SQUIRREL_FRAMEWORKS = ("Squirrel", "Mantle", "ReactiveObjC")
+SQUIRREL_LICENSES = (
+    ("Squirrel.Mac.LICENSE", "third_party/Squirrel.Mac-main/LICENSE"),
+    ("Mantle.LICENSE.md", "third_party/Squirrel.Mac-main/vendor/Mantle/LICENSE.md"),
     (
-        "node_modules/@omp-desktop/cli/dist/index.js",
-        "node_modules/@omp-desktop/cli/dist/index.js",
+        "ReactiveObjC.LICENSE.md",
+        "third_party/Squirrel.Mac-main/vendor/ReactiveObjC/LICENSE.md",
     ),
-    (
-        "node_modules/@omp-desktop/server/dist/scripts/supervisor-entrypoint.js",
-        "node_modules/@omp-desktop/server/dist/scripts/supervisor-entrypoint.js",
-    ),
-    (
-        "node_modules/@omp-desktop/server/dist/server/server/daemon-worker.js",
-        "node_modules/@omp-desktop/server/dist/server/server/daemon-worker.js",
-    ),
-    (
-        "node_modules/@omp-desktop/server/dist/server/terminal/terminal-worker-process.js",
-        "node_modules/@omp-desktop/server/dist/server/server/terminal-worker-process.js",
-    ),
+    ("Sparkle.LICENSE", "third_party/Squirrel.Mac-main/vendor/Sparkle/LICENSE"),
 )
-BACKEND_EXTERNAL_PACKAGES = (
-    "@esbuild/darwin-arm64",
-    "@napi-rs/keyring",
-    "@vscode/ripgrep",
-    "@vscode/ripgrep-darwin-arm64",
-    "esbuild",
-    "node-pty",
-    "which",
-)
-BACKEND_RUNTIME_PACKAGES = (
-    "@esbuild/darwin-arm64",
-    "@napi-rs/keyring",
-    "@napi-rs/keyring-darwin-arm64",
-    "@vscode/ripgrep",
-    "@vscode/ripgrep-darwin-arm64",
-    "esbuild",
-    "isexe",
-    "node-pty",
-    "which",
-)
+
+
+def copy_squirrel_frameworks(out_dir: Path, destination: Path) -> None:
+    for framework_name in SQUIRREL_FRAMEWORKS:
+        source = out_dir / f"{framework_name}.framework"
+        if not source.is_dir() or source.is_symlink():
+            raise RuntimeError(f"Built {framework_name} framework is missing: {source}")
+        expected_links = {
+            "Versions/Current": "A",
+            framework_name: f"Versions/Current/{framework_name}",
+            "Headers": "Versions/Current/Headers",
+            "Resources": "Versions/Current/Resources",
+        }
+        for relative, expected_target in expected_links.items():
+            link = source / relative
+            if not link.is_symlink() or os.readlink(link) != expected_target:
+                raise RuntimeError(
+                    f"Built {framework_name} framework has an invalid versioned "
+                    f"layout at {link}"
+                )
+        framework_binary = source / "Versions" / "A" / framework_name
+        if not framework_binary.is_file() or framework_binary.stat().st_size == 0:
+            raise RuntimeError(
+                f"Built {framework_name} framework binary is missing or empty: "
+                f"{framework_binary}"
+            )
+        if framework_name == "Squirrel":
+            shipit = source / "Versions" / "A" / "Resources" / "ShipIt"
+            if (
+                not shipit.is_file()
+                or shipit.stat().st_size == 0
+                or (shipit.stat().st_mode & 0o111) == 0
+            ):
+                raise RuntimeError(
+                    f"Built Squirrel framework is missing executable ShipIt: {shipit}"
+                )
+        shutil.copytree(
+            source,
+            destination / source.name,
+            symlinks=True,
+        )
+
+
+def copy_squirrel_notices(root: Path, destination: Path) -> None:
+    notices = destination / "LICENSES.squirrel"
+    notices.mkdir(exist_ok=True)
+    for output_name, relative_source in SQUIRREL_LICENSES:
+        source = root / relative_source
+        if not source.is_file():
+            raise RuntimeError(f"Squirrel runtime license is missing: {source}")
+        shutil.copy2(source, notices / output_name)
 
 
 def run(
@@ -225,181 +261,278 @@ def ensure_nghttp2(root: Path, clang_base: Path) -> Path:
     return installation
 
 
-def ensure_build_node_distribution(root: Path, version: str) -> Path:
-    tools_dir = root / ".build-tools"
-    distribution = tools_dir / f"node-v{version}-darwin-arm64"
-    node = distribution / "bin" / "node"
-    npm = distribution / "bin" / "npm"
-    if node.is_file() and npm.is_file():
-        return distribution
+def _require_file(path: Path, label: str) -> None:
+    if not path.is_file() or path.stat().st_size == 0:
+        raise RuntimeError(f"{label} is missing or empty: {path}")
 
-    tools_dir.mkdir(parents=True, exist_ok=True)
-    archive_name = f"node-v{version}-darwin-arm64.tar.gz"
-    base_url = f"https://nodejs.org/dist/v{version}"
-    with tempfile.TemporaryDirectory(dir=tools_dir) as temporary:
-        temporary_dir = Path(temporary)
-        checksums = temporary_dir / "SHASUMS256.txt"
-        archive = temporary_dir / archive_name
-        download(f"{base_url}/SHASUMS256.txt", checksums)
-        expected = next(
-            (
-                line.split()[0]
-                for line in checksums.read_text().splitlines()
-                if line.split()[-1] == archive_name
-            ),
-            None,
+
+def _read_json(path: Path, label: str) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Cannot read {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{label} must contain a JSON object: {path}")
+    return value
+
+
+def _validate_framework_layout(frameworks: Path) -> None:
+    for framework_name in SQUIRREL_FRAMEWORKS:
+        framework = frameworks / f"{framework_name}.framework"
+        expected_links = {
+            "Versions/Current": "A",
+            framework_name: f"Versions/Current/{framework_name}",
+            "Headers": "Versions/Current/Headers",
+            "Resources": "Versions/Current/Resources",
+        }
+        for relative, target in expected_links.items():
+            link = framework / relative
+            if not link.is_symlink() or os.readlink(link) != target:
+                raise RuntimeError(
+                    f"Packaged {framework_name} framework has an invalid link: {link}"
+                )
+        _require_file(
+            framework / "Versions" / "A" / framework_name,
+            f"packaged {framework_name} framework binary",
         )
-        if not expected:
-            raise RuntimeError(f"{archive_name} is missing from Node.js checksums")
-        download(f"{base_url}/{archive_name}", archive)
-        actual = hashlib.sha256(archive.read_bytes()).hexdigest()
-        if actual != expected:
+    shipit = (
+        frameworks
+        / "Squirrel.framework"
+        / "Versions"
+        / "A"
+        / "Resources"
+        / "ShipIt"
+    )
+    _require_file(shipit, "packaged Squirrel ShipIt")
+    if (shipit.stat().st_mode & 0o111) == 0:
+        raise RuntimeError(f"Packaged Squirrel ShipIt is not executable: {shipit}")
+
+
+def _stage_electron_bundle(
+    root: Path,
+    out_dir: Path,
+    binary: Path,
+    app: Path,
+    metadata: dict[str, object],
+) -> None:
+    if app.exists() or app.is_symlink():
+        raise RuntimeError(f"Runtime application staging path already exists: {app}")
+    contents = app / "Contents"
+    macos = contents / "MacOS"
+    resources = contents / "Resources"
+    frameworks = contents / "Frameworks"
+    macos.mkdir(parents=True)
+    resources.mkdir()
+    frameworks.mkdir()
+
+    executable = macos / "Electron"
+    shutil.copy2(binary, executable)
+    executable.chmod(0o755)
+    strip = shutil.which("strip")
+    if not strip:
+        raise RuntimeError("strip was not found on PATH")
+    run([strip, "-x", str(executable)], cwd=root)
+
+    info = {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleDisplayName": "Electron",
+        "CFBundleExecutable": "Electron",
+        "CFBundleIdentifier": "dev.mini-electron.runtime",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": "Electron",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": str(metadata["runtimeVersion"]),
+        "CFBundleVersion": str(metadata["runtimeVersion"]),
+        "LSMinimumSystemVersion": "13.0",
+        "NSHighResolutionCapable": True,
+    }
+    with (contents / "Info.plist").open("wb") as output:
+        plistlib.dump(info, output, sort_keys=True)
+    (contents / "PkgInfo").write_bytes(b"APPL????")
+
+    helper_names = (
+        "Electron Helper",
+        "Electron Helper (GPU)",
+        "Electron Helper (Plugin)",
+        "Electron Helper (Renderer)",
+    )
+    for helper_name in helper_names:
+        helper = frameworks / f"{helper_name}.app" / "Contents"
+        helper_macos = helper / "MacOS"
+        helper_macos.mkdir(parents=True)
+        helper_executable = helper_macos / helper_name
+        os.link(executable, helper_executable)
+        helper_executable.chmod(0o755)
+        helper_info = {
+            "CFBundleDevelopmentRegion": "en",
+            "CFBundleDisplayName": helper_name,
+            "CFBundleExecutable": helper_name,
+            "CFBundleIdentifier": (
+                "dev.mini-electron.runtime."
+                + helper_name.removeprefix("Electron ")
+                .lower()
+                .replace(" ", "-")
+                .replace("(", "")
+                .replace(")", "")
+            ),
+            "CFBundleInfoDictionaryVersion": "6.0",
+            "CFBundleName": helper_name,
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": str(metadata["runtimeVersion"]),
+            "CFBundleVersion": str(metadata["runtimeVersion"]),
+            "LSBackgroundOnly": True,
+            "LSMinimumSystemVersion": "13.0",
+        }
+        with (helper / "Info.plist").open("wb") as output:
+            plistlib.dump(helper_info, output, sort_keys=True)
+        (helper / "PkgInfo").write_bytes(b"APPL????")
+
+    copy_squirrel_frameworks(out_dir, frameworks)
+    copy_runtime_javascript(root, resources)
+    copy_devtools_frontend(root, resources)
+    copy_release_notices(root, resources)
+    copy_squirrel_notices(root, resources)
+    _validate_framework_layout(frameworks)
+
+
+def _validate_remote_backend(backend: Path) -> None:
+    manifest = _read_json(backend / "manifest.json", "remote backend manifest")
+    files = manifest.get("files")
+    if manifest.get("schemaVersion") != 1 or not isinstance(files, dict) or not files:
+        raise RuntimeError(f"Remote backend manifest is invalid: {backend / 'manifest.json'}")
+    backend_root = backend.resolve()
+    for relative, expected_hash in files.items():
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or not isinstance(expected_hash, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", expected_hash)
+        ):
+            raise RuntimeError(f"Remote backend manifest entry is invalid: {relative!r}")
+        candidate = (backend / relative).resolve()
+        try:
+            candidate.relative_to(backend_root)
+        except ValueError as error:
             raise RuntimeError(
-                f"Node.js archive checksum mismatch: expected {expected}, got {actual}"
+                f"Remote backend manifest path escapes its directory: {relative}"
+            ) from error
+        _require_file(candidate, f"remote backend file {relative}")
+        digest = hashlib.sha256()
+        with candidate.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != expected_hash:
+            raise RuntimeError(
+                f"Remote backend file checksum does not match its manifest: {relative}"
             )
-        with tarfile.open(archive, "r:gz") as package:
-            package.extractall(temporary_dir)
-        extracted = temporary_dir / distribution.name
-        if not (extracted / "bin" / "node").is_file():
-            raise RuntimeError("Node.js archive did not contain the expected executable")
-        if distribution.exists():
-            shutil.rmtree(distribution)
-        shutil.move(str(extracted), distribution)
-    return distribution
 
 
-def write_executable(path: Path, content: str) -> None:
-    path.write_text(content)
-    path.chmod(0o755)
-
-
-def copy_backend_package(modules: Path, optimized_modules: Path, name: str) -> None:
-    source = modules / name
-    if not source.is_dir():
-        raise RuntimeError(f"installed backend is missing runtime package {name}")
-    destination = optimized_modules / name
+def _resolve_omp_output(
+    root: Path,
+    out_dir: Path,
+    source: Path,
+    requested_output: Optional[str],
+) -> Path:
+    candidate = Path(requested_output) if requested_output else out_dir / "OMP Desktop.app"
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    if candidate.is_symlink() or candidate.is_junction():
+        raise RuntimeError(
+            f"--app-output must not be a symlink or junction: {candidate}"
+        )
+    destination = candidate.resolve()
+    root = root.resolve()
+    out_dir = out_dir.resolve()
+    source = source.resolve()
+    if destination in (root, out_dir) or destination in root.parents or destination in out_dir.parents:
+        raise RuntimeError(
+            f"--app-output must name an application bundle, not {destination}"
+        )
+    if (
+        destination == source
+        or destination in source.parents
+        or source in destination.parents
+    ):
+        raise RuntimeError("--app-output must not overlap the OMP Desktop source")
+    if destination.exists() and not destination.is_dir():
+        raise RuntimeError(f"--app-output must be a directory path: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, destination, symlinks=True)
+    return destination
 
 
-def optimize_packaged_backend(root: Path, backend: Path) -> None:
-    modules = backend / "node_modules"
-    esbuild = modules / "esbuild" / "bin" / "esbuild"
-    if not esbuild.is_file():
-        raise RuntimeError("installed backend is missing esbuild")
-
-    optimized = backend.with_name(f"{backend.name}-optimized")
-    if optimized.exists():
-        shutil.rmtree(optimized)
-    optimized_modules = optimized / "node_modules"
-    optimized_modules.mkdir(parents=True)
-
-    for name in ("package.json", "manifest.json"):
-        source = backend / name
-        if source.is_file():
-            shutil.copy2(source, optimized / name)
-
-    banner = (
-        'import { createRequire as __createRequireForBundle } from "node:module"; '
-        "const require = __createRequireForBundle(import.meta.url);"
+def _validate_omp_asar(node: str, source: Path, archive: Path) -> None:
+    script = r"""
+const asar = require('@electron/asar');
+const archive = process.argv[1];
+const manifest = JSON.parse(asar.extractFile(archive, 'package.json').toString('utf8'));
+if (manifest.main !== 'dist/main.js') throw new Error(`unexpected main entry: ${manifest.main}`);
+for (const entry of [
+  'dist/main.js',
+  'dist/preload.js',
+  'node_modules/@omp-desktop/cli/dist/run.js',
+  'node_modules/@omp-desktop/server/package.json',
+]) {
+  if (asar.extractFile(archive, entry).length === 0) throw new Error(`missing ${entry}`);
+}
+"""
+    result = subprocess.run(
+        [node, "-e", script, str(archive)],
+        cwd=source,
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    for source_relative, output_relative in BACKEND_BUNDLE_ENTRIES:
-        source = backend / source_relative
-        if not source.is_file():
-            raise RuntimeError(f"installed backend is missing bundle entry {source_relative}")
-        output = optimized / output_relative
-        output.parent.mkdir(parents=True, exist_ok=True)
-        command = [
-            str(esbuild),
-            str(source),
-            "--bundle",
-            "--platform=node",
-            "--target=node22",
-            "--format=esm",
-            "--minify-syntax",
-            "--minify-whitespace",
-            "--legal-comments=none",
-            f"--banner:js={banner}",
-            f"--outfile={output}",
-        ]
-        command.extend(f"--external:{name}" for name in BACKEND_EXTERNAL_PACKAGES)
-        run(command, cwd=root)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"Packaged OMP Desktop app.asar is invalid: {detail}")
 
-    for name in BACKEND_RUNTIME_PACKAGES:
-        copy_backend_package(modules, optimized_modules, name)
 
-    cli_source = modules / "@omp-desktop" / "cli"
-    cli_destination = optimized_modules / "@omp-desktop" / "cli"
-    shutil.copy2(cli_source / "package.json", cli_destination / "package.json")
-    shutil.copytree(cli_source / "bin", cli_destination / "bin")
-
-    server_source = modules / "@omp-desktop" / "server"
-    server_destination = optimized_modules / "@omp-desktop" / "server"
-    shutil.copy2(server_source / "package.json", server_destination / "package.json")
-    exports = server_destination / "dist" / "server" / "server" / "exports.js"
-    exports.write_text("export {};\n")
-
-    worker_directory = (
-        server_destination / "dist" / "server" / "server"
+def _validate_omp_app(app: Path) -> None:
+    contents = app / "Contents"
+    resources = contents / "Resources"
+    required = (
+        contents / "MacOS" / "OMP Desktop",
+        resources / "app.asar",
+        resources / "app.asar.unpacked" / "dist" / "daemon" / "node-entrypoint-runner.js",
+        resources / "app-dist" / "index.html",
+        resources / "remote-backend" / "manifest.json",
+        resources
+        / "app.asar.unpacked"
+        / "node_modules"
+        / "@omp-desktop"
+        / "server"
+        / "dist"
+        / "server"
+        / "server"
+        / "agent"
+        / "providers"
+        / "omp"
+        / "background-jobs-extension.js",
+        resources / "bin" / "omp",
+        resources / "bin" / "omp-desktop",
+        resources / "mini-electron" / "lib" / "browser" / "init.js",
+        resources / "mini-electron" / "lib" / "browser" / "electron.js",
+        resources / "bin" / "rg",
+        resources / "devtools-frontend" / "front_end" / "devtools_app.html",
+        resources / "LICENSE",
+        resources / "LICENSES.chromium.html",
+        resources / "LICENSES.leveldb",
+        resources / "LICENSES.squirrel" / "Squirrel.Mac.LICENSE",
+        resources / "LICENSES.squirrel" / "Mantle.LICENSE.md",
+        resources / "LICENSES.squirrel" / "ReactiveObjC.LICENSE.md",
+        resources / "LICENSES.squirrel" / "Sparkle.LICENSE",
     )
-    file_assets = (
-        (
-            server_source
-            / "dist/server/server/agent/providers/omp/background-jobs-extension.js",
-            worker_directory / "background-jobs-extension.js",
-        ),
-        (
-            server_source / "dist/server/terminal/terminal-ts-loader.mjs",
-            worker_directory / "terminal-ts-loader.mjs",
-        ),
-        (
-            server_source / "dist/server/terminal/terminal-ts-loader.mjs",
-            optimized_modules
-            / "@omp-desktop"
-            / "terminal"
-            / "terminal-ts-loader.mjs",
-        ),
-        (
-            server_source / "dist/scripts/mcp-stdio-socket-bridge-cli.mjs",
-            server_destination / "dist/scripts/mcp-stdio-socket-bridge-cli.mjs",
-        ),
-        (
-            server_source / "dist/scripts/github-git-askpass.mjs",
-            server_destination / "dist/scripts/github-git-askpass.mjs",
-        ),
-        (
-            server_source / "dist/scripts/github-git-askpass.cmd",
-            server_destination / "dist/scripts/github-git-askpass.cmd",
-        ),
+    for path in required:
+        _require_file(path, "packaged OMP Desktop entry")
+    forbidden = (
+        contents / "MacOS" / "Electron",
+        contents / "MacOS" / "node",
+        contents / "Frameworks" / "Electron Framework.framework",
     )
-    for source, destination in file_assets:
-        if not source.is_file():
-            raise RuntimeError(f"installed backend is missing runtime asset {source}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, destination)
-
-    directory_assets = (
-        (
-            server_source / "dist/server/terminal/shell-integration",
-            worker_directory / "shell-integration",
-        ),
-        (
-            server_source / "dist/server/skills",
-            server_destination / "skills",
-        ),
-    )
-    for source, destination in directory_assets:
-        if not source.is_dir():
-            raise RuntimeError(f"installed backend is missing runtime assets {source}")
-        shutil.copytree(source, destination)
-
-    npm_bin = optimized_modules / ".bin"
-    npm_bin.mkdir()
-    (npm_bin / "omp-desktop").symlink_to("../@omp-desktop/cli/bin/omp-desktop")
-
-    shutil.rmtree(backend)
-    optimized.rename(backend)
-    print("Optimized packaged backend with bundled CLI and daemon", flush=True)
+    if any(path.exists() for path in forbidden):
+        raise RuntimeError("OMP Desktop retained a stock Electron or Node runtime")
+    _validate_remote_backend(resources / "remote-backend")
+    _validate_framework_layout(contents / "Frameworks")
 
 
 def package_omp_desktop(
@@ -409,142 +542,171 @@ def package_omp_desktop(
     source: Path,
     requested_output: Optional[str],
 ) -> Path:
+    root = root.resolve()
+    out_dir = out_dir.resolve()
+    source = source.resolve()
+    binary = binary.resolve()
+    desktop = source / "packages" / "desktop"
     app_dist = source / "packages" / "app" / "dist"
-    backend_source = (
-        source / "packages" / "desktop" / "remote-backend-dist"
-    )
-    manifest_path = backend_source / "manifest.json"
-    omp_binary = source / "bin" / "omp-darwin-arm64"
-    icon = source / "packages" / "desktop" / "assets" / "icon.icns"
-    required = [
-        app_dist / "index.html",
-        manifest_path,
-        backend_source / "package-lock.json",
-        omp_binary,
-        icon,
+    backend = desktop / "remote-backend-dist"
+    desktop_manifest = desktop / "package.json"
+    builder_config = desktop / "electron-builder.yml"
+    builder_cli = source / "node_modules" / "electron-builder" / "cli.js"
+    required = (
         binary,
-    ]
-    missing = [str(path) for path in required if not path.is_file()]
-    if missing:
-        raise RuntimeError("OMP Desktop packaging inputs are missing: " + ", ".join(missing))
-
-    manifest = json.loads(manifest_path.read_text())
-    node_version = manifest["nodeVersion"]
-    node_distribution = ensure_build_node_distribution(root, node_version)
-    package_metadata = json.loads((source / "package.json").read_text())
-
-    app = Path(requested_output) if requested_output else out_dir / "OMP Desktop.app"
-    if not app.is_absolute():
-        app = root / app
-    if app.exists():
-        shutil.rmtree(app)
-    contents = app / "Contents"
-    macos = contents / "MacOS"
-    resources = contents / "Resources"
-    bin_dir = resources / "bin"
-    macos.mkdir(parents=True)
-    bin_dir.mkdir(parents=True)
-
-    executable = macos / "OMP Desktop"
-    shutil.copy2(binary, executable)
-    executable.chmod(0o755)
-    unstripped_size = executable.stat().st_size
-    strip = shutil.which("strip")
-    if not strip:
-        raise RuntimeError("strip was not found on PATH")
-    run([strip, "-x", str(executable)], cwd=root)
-    stripped_size = executable.stat().st_size
-    print(
-        f"Stripped {unstripped_size - stripped_size} bytes from {executable.name}",
-        flush=True,
+        desktop / "dist" / "main.js",
+        desktop / "dist" / "preload.js",
+        desktop / "dist" / "daemon" / "node-entrypoint-runner.js",
+        app_dist / "index.html",
+        backend / "manifest.json",
+        backend / "package.json",
+        backend / "package-lock.json",
+        source / "bin" / "omp-darwin-arm64",
+        desktop / "bin" / "omp-desktop",
+        desktop / "assets" / "icon-macos.png",
+        desktop_manifest,
+        builder_config,
+        builder_cli,
     )
-    shutil.copytree(app_dist, resources / "app-dist")
-    shutil.copytree(backend_source, resources / "backend")
-    shutil.copy2(omp_binary, bin_dir / "omp")
-    shutil.copy2(icon, resources / "icon.icns")
-    (bin_dir / "omp").chmod(0o755)
+    for path in required:
+        _require_file(path, "OMP Desktop packaging input")
+    _validate_remote_backend(backend)
 
-    install_environment = os.environ.copy()
-    install_environment["PATH"] = (
-        str(node_distribution / "bin")
-        + os.pathsep
-        + install_environment.get("PATH", "")
+    desktop_package = _read_json(desktop_manifest, "desktop package manifest")
+    root_package = _read_json(source / "package.json", "OMP Desktop package manifest")
+    if desktop_package.get("version") != root_package.get("version"):
+        raise RuntimeError("OMP Desktop package versions do not match")
+    if desktop_package.get("main") != "dist/main.js":
+        raise RuntimeError("OMP Desktop main entry is not dist/main.js")
+    builder_package = _read_json(
+        source / "node_modules" / "electron-builder" / "package.json",
+        "electron-builder package manifest",
     )
-    npm = node_distribution / "bin" / "npm"
-    print(f"+ install packaged backend with Node.js {node_version}", flush=True)
-    subprocess.run(
-        [
-            str(npm),
-            "ci",
-            "--prefix",
-            str(resources / "backend"),
-            "--omit=dev",
-            "--include=optional",
-            "--no-audit",
-            "--no-fund",
-        ],
-        cwd=root,
-        env=install_environment,
-        check=True,
+    if builder_package.get("version") != ELECTRON_BUILDER_VERSION:
+        raise RuntimeError(
+            f"OMP Desktop must use electron-builder {ELECTRON_BUILDER_VERSION}"
+        )
+    mini_package = _read_json(root / "package.json", "mini-electron package manifest")
+    mini_runtime = mini_package.get("miniElectron")
+    electron_version = (
+        mini_runtime.get("electronApiVersion")
+        if isinstance(mini_runtime, dict)
+        else None
     )
-    optimize_packaged_backend(root, resources / "backend")
-    cli_entry = (
-        resources
-        / "backend"
-        / "node_modules"
-        / "@omp-desktop"
-        / "cli"
-        / "dist"
-        / "index.js"
-    )
-    if not cli_entry.is_file():
-        raise RuntimeError("installed backend is missing @omp-desktop/cli")
+    development = desktop_package.get("devDependencies")
+    if (
+        not isinstance(electron_version, str)
+        or not isinstance(development, dict)
+        or development.get("electron") != electron_version
+    ):
+        raise RuntimeError("OMP Desktop Electron API version does not match mini-electron")
+
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Node.js was not found on PATH")
+    destination = _resolve_omp_output(root, out_dir, source, requested_output)
+    metadata = release_metadata(root, "darwin", "arm64")
+    with tempfile.TemporaryDirectory(
+        prefix=".omp-desktop-package-", dir=destination.parent
+    ) as temporary:
+        temporary_root = Path(temporary)
+        electron_dist = temporary_root / "electron-dist"
+        _stage_electron_bundle(
+            root, out_dir, binary, electron_dist / "Electron.app", metadata
+        )
+        copy_release_notices(root, electron_dist)
+        copy_squirrel_notices(root, electron_dist)
+        builder_output = temporary_root / "builder-output"
+        environment = os.environ.copy()
+        environment["OMP_DESKTOP_BUNDLE_OMP"] = "1"
+        environment["CSC_IDENTITY_AUTO_DISCOVERY"] = "false"
+        run(
+            [
+                node,
+                str(builder_cli),
+                "--config",
+                str(builder_config),
+                "--mac",
+                "dir",
+                "--arm64",
+                "--publish",
+                "never",
+                f"--config.electronDist={electron_dist}",
+                f"--config.electronVersion={electron_version}",
+                f"--config.directories.output={builder_output}",
+            ],
+            cwd=desktop,
+            env=environment,
+        )
+        candidates = sorted(builder_output.glob("mac*/OMP Desktop.app"))
+        if len(candidates) != 1:
+            raise RuntimeError(
+                f"electron-builder produced {len(candidates)} OMP Desktop app bundles"
+            )
+        packaged = candidates[0]
+        resources = packaged / "Contents" / "Resources"
+        copy_release_notices(root, resources)
+        copy_squirrel_notices(root, resources)
+        _validate_omp_app(packaged)
+        _validate_omp_asar(node, source, resources / "app.asar")
+        run(["codesign", "--force", "--deep", "--sign", "-", str(packaged)], cwd=root)
+
+        previous = temporary_root / "previous-app"
+        if destination.exists():
+            destination.rename(previous)
+        try:
+            packaged.rename(destination)
+        except BaseException:
+            if previous.exists() and not destination.exists():
+                previous.rename(destination)
+            raise
+    print(f"OMP Desktop package: {destination}", flush=True)
+    return destination
 
 
-    write_executable(
-        bin_dir / "omp-desktop",
-        """#!/bin/sh
-RESOURCES=$(cd "$(dirname "$0")/.." && pwd)
-APP_EXECUTABLE="$RESOURCES/../MacOS/OMP Desktop"
-export PATH="$RESOURCES/bin:$PATH"
-export ELECTRON_RUN_AS_NODE=1
-exec "$APP_EXECUTABLE" \
-  "$RESOURCES/backend/node_modules/@omp-desktop/cli/dist/index.js" "$@"
-""",
+def package_runtime_distribution(
+    root: Path, out_dir: Path, binary: Path, requested_output: Optional[str]
+) -> tuple[Path, Path]:
+    metadata = release_metadata(root, "darwin", "arm64")
+    destination = (
+        Path(requested_output) if requested_output else out_dir / "runtime-dist"
     )
-    info = {
-        "CFBundleDevelopmentRegion": "en",
-        "CFBundleDisplayName": "OMP Desktop",
-        "CFBundleExecutable": "OMP Desktop",
-        "CFBundleIconFile": "icon",
-        "CFBundleIdentifier": "sh.omp.desktop.mini-electron",
-        "CFBundleInfoDictionaryVersion": "6.0",
-        "CFBundleName": "OMP Desktop",
-        "CFBundlePackageType": "APPL",
-        "CFBundleShortVersionString": package_metadata["version"],
-        "CFBundleVersion": package_metadata["version"],
-        "CFBundleURLTypes": [
-            {
-                "CFBundleURLName": "sh.omp.desktop",
-                "CFBundleURLSchemes": ["omp-desktop"],
-            }
-        ],
-        "LSApplicationCategoryType": "public.app-category.developer-tools",
-        "LSMinimumSystemVersion": "13.0",
-        "NSHighResolutionCapable": True,
-        "NSHumanReadableCopyright": "OMP Desktop contributors",
-    }
-    with (contents / "Info.plist").open("wb") as output:
-        plistlib.dump(info, output, sort_keys=True)
-    (contents / "PkgInfo").write_bytes(b"APPL????")
-    run(["codesign", "--force", "--deep", "--sign", "-", str(app)], cwd=root)
-    print(f"OMP Desktop package: {app}", flush=True)
-    return app
+    if not destination.is_absolute():
+        destination = root / destination
+    if destination.is_symlink() or destination.is_junction():
+        raise RuntimeError(
+            f"--dist-output must not be a symlink or junction: {destination}"
+        )
+    destination = destination.resolve()
+    if destination == root or destination == out_dir or destination in out_dir.parents:
+        raise RuntimeError("--dist-output must not replace the repository or build output")
+    if not binary.is_file() or binary.stat().st_size == 0:
+        raise RuntimeError(f"Runtime binary is missing or empty: {binary}")
+
+    staged = staging_directory(destination)
+    try:
+        app = staged / "Electron.app"
+        _stage_electron_bundle(root, out_dir, binary, app, metadata)
+        copy_release_notices(root, staged)
+        copy_squirrel_notices(root, staged)
+        run(["codesign", "--force", "--deep", "--sign", "-", str(app)], cwd=root)
+        published, archive, _ = publish_distribution(staged, destination, metadata)
+    except BaseException:
+        if staged.exists():
+            shutil.rmtree(staged)
+        raise
+    print(f"[macos] Runtime distribution: {published}", flush=True)
+    print(f"[macos] Runtime archive: {archive}", flush=True)
+    return published, archive
+
 
 def build(root: Path, args: argparse.Namespace) -> int:
     ninja = shutil.which("ninja")
     if not ninja:
         raise RuntimeError("ninja was not found on PATH")
+    if args.dist_output and not args.package_dist:
+        raise RuntimeError("--dist-output requires --package-dist")
+
 
     gn = find_or_install_gn(root)
     clang_base, clang_version = xcode_clang()
@@ -557,7 +719,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
     )
     target = (
         ELECTRON_TARGET
-        if args.electron or args.omp_desktop
+        if args.electron or args.omp_desktop or args.package_dist
         else GUI_TARGET
         if args.gui
         else HEADLESS_TARGET
@@ -576,6 +738,14 @@ def build(root: Path, args: argparse.Namespace) -> int:
         generate_node_bootstraps(root)
     run([gn, "gen", str(out_dir), f"--args={gn_args(clang_base, clang_version)}"], cwd=root)
     run([ninja, "-C", str(out_dir), "-j", str(args.jobs), target], cwd=root)
+    if args.package_dist:
+        package_runtime_distribution(
+            root,
+            out_dir,
+            out_dir / binary_name,
+            args.dist_output,
+        )
+        return 0
     if args.omp_desktop:
         source = Path(args.omp_source)
         if not source.is_absolute():

@@ -29,6 +29,7 @@
  */
 
 #include "runtime/network/websocket/web_socket_channel_curl.h"
+#include <algorithm>
 
 #include "runtime/engine/common/live_id_detect.h"
 #include "runtime/network/websocket/socket_stream_error.h"
@@ -37,6 +38,9 @@
 
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/fileapi/file_reader_client.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
 #include "third_party/blink/renderer/modules/websockets/websocket_channel_client.h"
@@ -87,14 +91,19 @@ WebSocketChannelCurl::WebSocketChannelCurl(
 
 WebSocketChannelCurl::~WebSocketChannelCurl()
 {
-    //DCHECK(!m_blobLoader);
-    //DCHECK(0 == m_ref);
-    //WTF_LOG(Network, "WebSocketChannelCurl %p dtor", this);
+    if (m_brokerSocketId)
+        content::ForgetRendererWebSocket(m_brokerSocketId);
     common::LiveIdDetect::get()->deconstructed(m_id);
 }
 
 void WebSocketChannelCurl::dispose()
 {
+    if (m_brokerSocketId) {
+        content::CloseRendererWebSocket(m_brokerSocketId,
+            CloseEventCodeGoingAway, "execution context destroyed");
+        content::ForgetRendererWebSocket(m_brokerSocketId);
+        m_brokerSocketId = 0;
+    }
 }
 
 // Document* WebSocketChannelCurl::document()
@@ -107,17 +116,14 @@ void WebSocketChannelCurl::dispose()
 //     return toDocument(context);
 // }
 
-void WebSocketChannelCurl::send(const std::string& message, bool isFromHook, base::OnceClosure completionCallback)
+void WebSocketChannelCurl::send(const std::string& message, bool,
+    base::OnceClosure completionCallback)
 {
-    //WTF_LOG(Network, "WebSocketChannelCurl %p send() Sending String '%s'", this, message.data());
-    enqueueTextFrame(message, isFromHook, std::move(completionCallback));
-    processOutgoingFrameQueue();
-    // According to WebSocket API specification, WebSocket.send() should return void instead
-    // of boolean. However, our implementation still returns boolean due to compatibility
-    // concern (see bug 65850).
-    // m_channel->send() may happen later, thus it's not always possible to know whether
-    // the message has been sent to the socket successfully. In this case, we have no choice
-    // but to return true.
+    if (m_brokerSocketId)
+        content::SendRendererWebSocket(m_brokerSocketId, false,
+            base::Value(message));
+    if (completionCallback)
+        std::move(completionCallback).Run();
 }
 
 // void WebSocketChannelCurl::send(const DOMArrayBuffer& binaryData, unsigned byteOffset, unsigned byteLength)
@@ -134,23 +140,22 @@ void WebSocketChannelCurl::send(const std::string& message, bool isFromHook, bas
 //     processOutgoingFrameQueue();
 // }
 
-bool WebSocketChannelCurl::send(const char* data, int length, bool isFromHook)
+bool WebSocketChannelCurl::send(const char* data, int length, bool)
 {
-    //WTF_LOG(Network, "WebSocketChannelCurl %p send() Sending char* data=%p length=%d", this, data, length);
-    enqueueRawFrame(WebSocketOneFrame::OpCodeBinary, data, length, isFromHook);
-    processOutgoingFrameQueue();
+    if (!m_brokerSocketId || length < 0 || (length > 0 && !data))
+        return false;
+    std::vector<uint8_t> bytes;
+    if (length > 0) {
+        const auto* first = reinterpret_cast<const uint8_t*>(data);
+        bytes.assign(first, first + length);
+    }
+    content::SendRendererWebSocket(m_brokerSocketId, true,
+        base::Value(std::move(bytes)));
     return true;
 }
 
 unsigned long WebSocketChannelCurl::bufferedAmount() const
 {
-    //WTF_LOG(Network, "WebSocketChannelCurl %p bufferedAmount()", this);
-    DCHECK(m_handle);
-    DCHECK(!m_suspended);
-
-    DebugBreak();
-    //     if (common::LiveIdDetect::get()->getPtr((intptr_t)m_handleId))
-    //         return m_handle->bufferedAmount();
     return 0;
 }
 
@@ -190,25 +195,18 @@ void WebSocketChannelCurl::fail(const String& reason /*, MessageLevel, std::uniq
     DCHECK(m_closed || !m_handshake);
 }
 
-void WebSocketChannelCurl::sendTextAsCharVector(std::unique_ptr<Vector<char>> data)
+void WebSocketChannelCurl::sendTextAsCharVector(
+    std::unique_ptr<Vector<char>> data)
 {
-    ////WTF_LOG(Network, "DocumentWebSocketChannel %p sendTextAsCharVector(%p, %llu)", this, data.get(), static_cast<unsigned long long>(data->size()));
-    if (m_id) {
-        // FIXME: Change the inspector API to show the entire message instead
-        // of individual frames.
-        //InspectorInstrumentation::didSendWebSocketFrame(document(), m_id, WebSocketOneFrame::OpCodeText, true, data->data(), data->size());
-    }
-    send(data->data(), data->size(), false);
+    if (!m_brokerSocketId)
+        return;
+    content::SendRendererWebSocket(m_brokerSocketId, false,
+        base::Value(std::string(data->data(), data->size())));
 }
 
-void WebSocketChannelCurl::sendBinaryAsCharVector(std::unique_ptr<Vector<char>> data)
+void WebSocketChannelCurl::sendBinaryAsCharVector(
+    std::unique_ptr<Vector<char>> data)
 {
-    ////WTF_LOG(Network, "DocumentWebSocketChannel %p sendBinaryAsCharVector(%p, %llu)", this, data.get(), static_cast<unsigned long long>(data->size()));
-    if (m_id) {
-        // FIXME: Change the inspector API to show the entire message instead
-        // of individual frames.
-        //InspectorInstrumentation::didSendWebSocketFrame(document(), m_id, WebSocketOneFrame::OpCodeBinary, true, data->data(), data->size());
-    }
     send(data->data(), data->size(), false);
 }
 
@@ -630,7 +628,7 @@ bool WebSocketChannelCurl::processFrame()
 
     case WebSocketOneFrame::OpCodeBinary:
         if (frame.m_final) {
-            Vector<char> binaryData(payloadLength); // 复制一份，就怕原数据在skipBuffer里失效了
+            Vector<char> binaryData(payloadLength); // 澶嶅埗涓�浠斤紝灏辨�曞師鏁版嵁鍦╯kipBuffer閲屽け鏁堜簡
             memcpy(binaryData.data(), payload, payloadLength);
 
             Vector<base::span<const char>> data;
@@ -868,76 +866,155 @@ blink::Document* WebSocketChannelCurl::document()
 //-----
 bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protocol)
 {
-    //WTF_LOG(Network, "WebSocketChannelCurl %p connect()", this);
-    DCHECK(!m_handle);
     DCHECK(!m_suspended);
-    blink::KURL kurl = url;
-    m_handshake.reset(new WebSocketHandshake(kurl, protocol, /*document()*/ m_executionContext.Get()));
-    m_handshake->reset();
-    if (m_deflateFramer.canDeflate())
-        m_handshake->addExtensionProcessor(m_deflateFramer.createExtensionProcessor());
-    //     if (m_id)
-    //         InspectorInstrumentation::didCreateWebSocket(document(), m_id, kurl, protocol);
-
-    // if (Frame* frame = document()->frame()) // 似乎这个判断没啥用
-    {
-        ref();
-        m_handle = SocketStreamHandle::create(m_handshake->url(), this);
-        m_handleId = m_handle->getId();
+    if (m_brokerSocketId)
+        return false;
+    m_handshake = std::make_unique<WebSocketHandshake>(
+        url, protocol, m_executionContext.Get());
+    base::Value::Dict options;
+    std::string url_string = url.GetString().Utf8();
+    std::string protocol_string = protocol.Utf8();
+    options.Set("url", std::move(url_string));
+    options.Set("protocol", std::move(protocol_string));
+    uint64_t frame_id = 0;
+    if (auto* window =
+            blink::DynamicTo<blink::LocalDOMWindow>(m_executionContext.Get())) {
+        if (blink::LocalFrame* frame = window->GetFrame()) {
+            frame_id = static_cast<uint64_t>(
+                blink::LocalFrameToken::Hasher()(frame->GetLocalFrameToken()));
+        }
     }
-    //     if (!document()->frame())
-    //         OutputDebugStringA("WebSocketChannelCurl::connect, document()->frame() is empty\n");
-    return true;
-}
-
-blink::WebSocketChannel::SendResult WebSocketChannelCurl::Send(const std::string& message, base::OnceClosure completionCallback)
-{
-    send(message, false, std::move(completionCallback));
-    return blink::WebSocketChannel::SendResult::kCallbackWillBeCalled;
+    const int64_t channel_id = m_id;
+    m_brokerSocketId = content::OpenRendererWebSocket(frame_id,
+        std::move(options), [channel_id](const base::Value::Dict& event) {
+            auto* channel = static_cast<WebSocketChannelCurl*>(
+                common::LiveIdDetect::get()->getPtr(channel_id));
+            if (!channel || !channel->m_client)
+                return;
+            const std::string* type = event.FindString("event");
+            if (!type)
+                return;
+            if (*type == "open") {
+                const std::string* selected = event.FindString("protocol");
+                const std::string* extensions = event.FindString("extensions");
+                channel->m_client->DidConnect(
+                    selected ? WTF::String::FromUTF8(*selected) : WTF::String(),
+                    extensions ? WTF::String::FromUTF8(*extensions) : WTF::String());
+            } else if (*type == "text") {
+                if (const std::string* text = event.FindString("data"))
+                    channel->m_client->DidReceiveTextMessage(
+                        WTF::String::FromUTF8(*text));
+            } else if (*type == "binary") {
+                if (const base::Value::BlobStorage* bytes =
+                        event.FindBlob("data")) {
+                    Vector<base::span<const char>> spans;
+                    spans.push_back(base::span<const char>(
+                        reinterpret_cast<const char*>(bytes->data()),
+                        bytes->size()));
+                    channel->m_client->DidReceiveBinaryMessage(spans);
+                }
+            } else if (*type == "sent") {
+                int bytes = event.FindInt("bytes").value_or(0);
+                if (bytes > 0)
+                    channel->m_client->DidConsumeBufferedAmount(bytes);
+            } else if (*type == "close") {
+                int code = event.FindInt("code").value_or(
+                    CloseEventCodeAbnormalClosure);
+                const std::string* reason = event.FindString("reason");
+                bool clean = event.FindBool("clean").value_or(false);
+                channel->m_brokerSocketId = 0;
+                channel->m_client->DidClose(clean
+                        ? blink::WebSocketChannelClient::kClosingHandshakeComplete
+                        : blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
+                    code, reason ? WTF::String::FromUTF8(*reason) : WTF::String());
+            } else if (*type == "error") {
+                channel->m_brokerSocketId = 0;
+                channel->m_client->DidError();
+            }
+        });
+    return m_brokerSocketId != 0;
 }
 
 blink::WebSocketChannel::SendResult WebSocketChannelCurl::Send(
-    const blink::DOMArrayBuffer& buf, size_t byteOffset, size_t byteLength, base::OnceClosure completionCallback)
+    const std::string& message, base::OnceClosure completionCallback)
 {
-    size_t allByteLen = buf.ByteLength();
-    if (byteOffset >= allByteLen)
-        return blink::WebSocketChannel::SendResult::kSentSynchronously;
-
-    size_t realByteLength = byteLength;
-    if (byteOffset + byteLength > allByteLen) {
-        realByteLength = allByteLen - byteOffset;
+    if (m_brokerSocketId) {
+        content::SendRendererWebSocket(m_brokerSocketId, false,
+            base::Value(message));
     }
-    if (0 == realByteLength)
-        return blink::WebSocketChannel::SendResult::kSentSynchronously;
-
-    send(((const char*)buf.Data()) + byteOffset, realByteLength, false);
+    if (completionCallback)
+        std::move(completionCallback).Run();
     return blink::WebSocketChannel::SendResult::kSentSynchronously;
 }
 
-void WebSocketChannelCurl::Send(scoped_refptr<blink::BlobDataHandle>)
+blink::WebSocketChannel::SendResult WebSocketChannelCurl::Send(
+    const blink::DOMArrayBuffer& buffer, size_t byte_offset,
+    size_t byte_length, base::OnceClosure completionCallback)
 {
-    DebugBreak();
+    size_t total = buffer.ByteLength();
+    if (m_brokerSocketId && byte_offset <= total) {
+        size_t length = std::min(byte_length, total - byte_offset);
+        std::vector<uint8_t> bytes;
+        if (length > 0) {
+            const auto* first =
+                static_cast<const uint8_t*>(buffer.Data()) + byte_offset;
+            bytes.assign(first, first + length);
+        }
+        content::SendRendererWebSocket(m_brokerSocketId, true,
+            base::Value(std::move(bytes)));
+    }
+    if (completionCallback)
+        std::move(completionCallback).Run();
+    return blink::WebSocketChannel::SendResult::kSentSynchronously;
+}
+
+void WebSocketChannelCurl::Send(
+    scoped_refptr<blink::BlobDataHandle> blob_data)
+{
+    if (!m_brokerSocketId || !blob_data) {
+        if (m_client)
+            m_client->DidError();
+        return;
+    }
+    auto loaded = blink::SyncedFileReaderAccumulator::Load(
+        std::move(blob_data),
+        base::SingleThreadTaskRunner::GetCurrentDefault());
+    if (loaded.first != blink::FileErrorCode::kOK) {
+        if (m_client)
+            m_client->DidError();
+        return;
+    }
+    blink::ArrayBufferContents contents =
+        std::move(loaded.second).AsArrayBufferContents();
+    base::span<const uint8_t> bytes = contents.ByteSpan();
+    std::vector<uint8_t> copy(bytes.begin(), bytes.end());
+    content::SendRendererWebSocket(m_brokerSocketId, true,
+        base::Value(std::move(copy)));
 }
 
 void WebSocketChannelCurl::Close(int code, const String& reason)
 {
-    //WTF_LOG(Network, "WebSocketChannelCurl %p close() code=%d reason='%s'", this, code, reason.utf8().data());
-    DCHECK(!m_suspended);
-    if (!m_handle)
+    if (!m_brokerSocketId)
         return;
+    std::string reason_string = reason.Utf8();
+    content::CloseRendererWebSocket(m_brokerSocketId, code,
+        reason_string);
     m_isClosing = true;
-    //RefPtr<WebSocketChannelCurl> protect(*this); // An attempt to send closing handshake may fail, which will get the channel closed and dereferenced.
-    startClosingHandshake(code, reason);
-
-    // 原版不知道为啥那么长，这里为了防止断网后在js里用WebSocket.close关不掉这个连接，把超时时间改小一点
-    if (m_closing && !m_closingTimer.IsActive())
-        m_closingTimer.StartOneShot(/*2 * TCPMaximumSegmentLifetime*/ base::Minutes(1), FROM_HERE);
-    m_isClosing = false;
 }
 
-void WebSocketChannelCurl::Fail(const String& reason, blink::mojom::ConsoleMessageLevel, std::unique_ptr<blink::SourceLocation>)
+void WebSocketChannelCurl::Fail(const String& reason,
+    blink::mojom::ConsoleMessageLevel,
+    std::unique_ptr<blink::SourceLocation>)
 {
-    fail(reason /*, MessageLevel, std::unique_ptr<blink::SourceLocation>*/);
+    if (m_brokerSocketId) {
+        std::string reason_string = reason.Utf8();
+        content::CloseRendererWebSocket(m_brokerSocketId,
+            CloseEventCodeAbnormalClosure, reason_string);
+        content::ForgetRendererWebSocket(m_brokerSocketId);
+        m_brokerSocketId = 0;
+    }
+    if (m_client)
+        m_client->DidError();
 }
 
 void WebSocketChannelCurl::Disconnect()
@@ -945,23 +1022,30 @@ void WebSocketChannelCurl::Disconnect()
     if (m_handshake)
         m_handshake->clearScriptExecutionContext();
     m_client = nullptr;
-    if (m_handle && common::LiveIdDetect::get()->getPtr((intptr_t)m_handleId))
-        m_handle->disconnect();
+    if (m_brokerSocketId) {
+        content::CloseRendererWebSocket(m_brokerSocketId,
+            CloseEventCodeGoingAway, "renderer disconnected");
+        content::ForgetRendererWebSocket(m_brokerSocketId);
+        m_brokerSocketId = 0;
+    }
 }
 
 void WebSocketChannelCurl::CancelHandshake()
 {
-    DebugBreak();
+    if (m_brokerSocketId) {
+        content::CloseRendererWebSocket(m_brokerSocketId,
+            CloseEventCodeAbnormalClosure, "handshake cancelled");
+        content::ForgetRendererWebSocket(m_brokerSocketId);
+        m_brokerSocketId = 0;
+    }
 }
 
 void WebSocketChannelCurl::ApplyBackpressure()
 {
-    DebugBreak();
 }
 
 void WebSocketChannelCurl::RemoveBackpressure()
 {
-    DebugBreak();
 }
 
 void WebSocketChannelCurl::didReceiveAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&)

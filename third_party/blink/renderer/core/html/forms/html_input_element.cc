@@ -2315,6 +2315,11 @@ void HTMLInputElement::SetFilesFromPaths(const Vector<String>& paths)
     return input_type_->SetFilesFromPaths(paths);
 }
 
+void HTMLInputElement::SetBrokeredFiles(FileList* files)
+{
+    input_type_->SetFilesAndDispatchEvents(files);
+}
+
 void HTMLInputElement::ChildrenChanged(const ChildrenChange& change)
 {
     // Some input types only need shadow roots to hide any children that may

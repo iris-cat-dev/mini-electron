@@ -538,6 +538,7 @@
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkIcoCodec.h" />
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegCodec.h" />
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegDecoderMgr.h" />
+    <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegSourceMgr.h" />
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegPriv.h" />
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegUtility.h" />
     <ClInclude Include="..\..\..\third_party\skia\src\codec\SkJpegxlCodec.h" />
@@ -1031,6 +1032,7 @@
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkJpegCodec.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkJpegDecoderMgr.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkJpegMetadataDecoderImpl.cpp" />
+    <ClCompile Include="..\..\..\third_party\skia\src\codec\SkJpegSourceMgr.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkJpegUtility.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkMaskSwizzler.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\codec\SkParseEncodedOrigin.cpp" />

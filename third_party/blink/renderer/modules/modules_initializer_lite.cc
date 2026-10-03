@@ -245,10 +245,10 @@ void ModulesInitializer::InitLocalFrame(LocalFrame& frame) const
 
 void ModulesInitializer::InstallSupplements(LocalFrame& frame) const
 {
-    //     DCHECK(WebLocalFrameImpl::FromFrame(&frame)->Client());
-    //     InspectorAccessibilityAgent::ProvideTo(&frame);
-    //     ImageDownloaderImpl::ProvideTo(frame);
-    //     AudioRendererSinkCache::InstallWindowObserver(*frame.DomWindow());
+    DCHECK(WebLocalFrameImpl::FromFrame(&frame)->Client());
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    InspectorAccessibilityAgent::ProvideTo(&frame);
+#endif
 }
 
 MediaControls* ModulesInitializer::CreateMediaControls(HTMLMediaElement& media_element, ShadowRoot& shadow_root) const
@@ -266,15 +266,17 @@ PictureInPictureController* ModulesInitializer::CreatePictureInPictureController
 void ModulesInitializer::InitInspectorAgentSession(
     DevToolsSession* session, bool allow_view_agents, InspectorDOMAgent* dom_agent, InspectedFrames* inspected_frames, Page* page) const
 {
-    //     session->CreateAndAppend<InspectorIndexedDBAgent>(inspected_frames, session->V8Session());
-    //     session->CreateAndAppend<DeviceOrientationInspectorAgent>(inspected_frames);
-    //     session->CreateAndAppend<InspectorDOMStorageAgent>(inspected_frames);
-    //     session->CreateAndAppend<InspectorAccessibilityAgent>(inspected_frames, dom_agent);
-    //     session->CreateAndAppend<InspectorWebAudioAgent>(page);
-    //     if (allow_view_agents) {
-    //         session->CreateAndAppend<InspectorDatabaseAgent>(page);
-    //         session->CreateAndAppend<InspectorCacheStorageAgent>(inspected_frames);
-    //     }
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    session->CreateAndAppend<InspectorIndexedDBAgent>(inspected_frames, session->V8Session());
+    session->CreateAndAppend<DeviceOrientationInspectorAgent>(inspected_frames);
+    session->CreateAndAppend<InspectorDOMStorageAgent>(inspected_frames);
+    session->CreateAndAppend<InspectorAccessibilityAgent>(inspected_frames, dom_agent);
+    session->CreateAndAppend<InspectorWebAudioAgent>(page);
+    session->CreateAndAppend<InspectorCacheStorageAgent>(inspected_frames);
+    session->CreateAndAppend<BucketFileSystemAgent>(inspected_frames);
+    if (allow_view_agents)
+        session->CreateAndAppend<InspectorDatabaseAgent>(page);
+#endif
 }
 
 void ModulesInitializer::OnClearWindowObjectInMainWorld(Document& document, const Settings& settings) const

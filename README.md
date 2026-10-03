@@ -70,14 +70,16 @@ Native Windows context menus no longer append the Chinese or English
 framework-test disclaimer. Standard context-sensitive actions remain available;
 when no standard action applies, no empty popup is shown.
 
-Windows session data now lives under `profiles`. An existing `minieleses`
-directory is renamed only when the destination does not exist. The macOS default
-Application Support directory similarly changes from `miniblink132` to
-`mini-electron`. Migration does not merge or overwrite an existing destination;
-rename failure keeps using the old directory, without copy-and-delete fallback.
-macOS uses [exclusive rename](https://www.manpagez.com/man/2/renamex_np/osx-10.12.3.php).
+Windows session data now lives under `profiles`; macOS's default Application
+Support directory changes from `miniblink132` to `mini-electron`. When the new
+destination is absent, migration copies the legacy profile into an owned sibling
+staging tree and publishes it with an exclusive atomic rename. The legacy source
+is retained. An existing or concurrently-created destination wins; failed copying
+or publication keeps using the legacy profile and removes only owned staging.
 Explicit storage paths are unchanged. These legacy directory strings remain
-solely for data migration. The OMP bundle identifier is now
+solely for data migration. Cookie and Local Storage outputs use the same exclusive
+publication rule; malformed or unsupported Local Storage data rejects the whole
+import rather than committing a partial database. The OMP bundle identifier is now
 `sh.omp.desktop.mini-electron`; OS settings keyed to the old bundle identity are
 not migrated.
 
@@ -108,9 +110,11 @@ python build.py --electron --interactive --electron-main /path/to/main.js
 ```
 
 On Windows the script's containing directory is packaged as `resources/app`,
-with `package.json.main` set to the chosen filename. On macOS the host reads the
-script directly; its lightweight main-script evaluator only provides
-`require('electron')`, not general Node module loading.
+with `package.json.main` set to the chosen filename. The macOS main-process host
+uses Node module loading, accepts an application directory or main script, and
+discovers packaged `Contents/Resources/app.asar` or `app`. Its
+`ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
+The macOS native runtime has not been executed on this Windows machine.
 
 ## Windows (x64)
 
@@ -170,6 +174,18 @@ app-region dragging and no-drag elements remain active. `autoHideMenuBar`,
 explicit menu visibility, Alt activation, menu replacement, and null clearing
 are supported; ordinary framed windows retain their native title bar and menu.
 
+The Windows host declares Per-Monitor V2 DPI awareness and initializes its native
+screen before creating the first window. Window and viewport sizes remain in DIP;
+Viz renders a physical-pixel bitmap at the window's device scale, and Win32 paints
+it 1:1. Native mouse coordinates stay in device pixels until Blink applies that
+scale. Page zoom is independent of display scaling; factor/level conversion also
+preserves `setZoomFactor(1)` as a true reset.
+
+CSS drag rectangles reach the native window through the renderer callback and
+authenticated IPC. Win32 `WM_NCHITTEST` returns `HTCAPTION` only for eligible drag
+regions; no-drag holes win even when rectangles overlap. Native caption handling
+replaces the obsolete synthetic `SC_MOVE` and double-click tracking paths.
+
 ### OMP Desktop package
 
 Use the original OMP Desktop main/preload scripts and Expo frontend from
@@ -189,17 +205,35 @@ cd ../../../mini-electron
 python build.py --omp-desktop --omp-source ../omp-desktop --jobs 16
 ```
 
-The output is `out/windows-x64/OMP Desktop/OMP Desktop.exe`.
-Launch it from that directory, or add `--interactive` to the build command.
-`--app-output PATH` selects another package directory. Packaging requires npm
-and retains the backend lockfile's production dependencies, native Node modules,
-bundled OMP/ripgrep executables, and remote-backend release archives.
-It creates a real `resources/app.asar`, with main/preload scripts and production
-modules under `app.asar.unpacked`, and the frontend under `resources/app-dist`.
-Packaging removes source maps and TypeScript declaration files (`.d.ts`,
-`.d.mts`, `.d.cts`) from the staged application before creating ASAR, and removes
-`node-pty` PDBs. JavaScript, ordinary `.ts` sources, native `.node`/DLL/EXE files,
-licenses, and remote-backend release archives are retained.
+The original `packages/desktop/electron-builder.yml` and after-pack hooks build
+`out/windows-x64/OMP Desktop/win-unpacked/OMP Desktop.exe`,
+`OMP-Desktop-Setup-0.4.0-x64.exe`, its `.blockmap`, the Windows ZIP, and `latest.yml`.
+Launch the executable from `win-unpacked`, or add `--interactive` to the build
+command. `--app-output PATH` selects another release directory.
+
+To omit the bundled OMP executable on Windows, reuse OMP's no-OMP builder
+configuration (Git Bash):
+
+```sh
+OMP_DESKTOP_BUNDLE_OMP=0 python build.py --omp-desktop --omp-source ../omp-desktop --jobs 16
+```
+
+This writes a separate `out/windows-x64/OMP Desktop No OMP` release with
+`OMP-Desktop-No-OMP-Setup-VERSION-x64.exe`, its blockmap, ZIP, and `latest.yml`.
+The package retains the desktop runtime, daemon, terminal bindings, and ripgrep,
+but neither requires the downloaded OMP binary nor includes `resources/bin/omp.exe`.
+OMP agent sessions require an independently installed OMP executable; the existing
+provider accepts `OMP_COMMAND` or discovers `omp` through PATH.
+Both variants retain the original application identity and update feed; separate
+output directories do not make them side-by-side installations or isolated update channels.
+
+Packaging requires the original compiled desktop, frontend, CLI
+(`packages/cli/dist/output/**/*.js`), and remote-backend build products.
+The custom `electronDist` supplies this runtime; electron-builder retains the
+original ASAR/unpack rules, native modules, bundled executables, NSIS configuration,
+GitHub publisher metadata, and `resources/app-update.yml`. It does not download or
+ship stock Electron or a separate Node executable. The obsolete editor-target
+icon resource and unused esbuild unpack requirement are removed.
 
 
 The same executable runs the GUI, CLI, daemon supervisor, and daemon worker.
@@ -210,9 +244,10 @@ ESM resolution understand ASAR paths. `resources/bin/omp-desktop.cmd` is the
 bundled CLI launcher.
 
 For an isolated instance, set `OMP_DESKTOP_HOME` to a separate directory and
-set `daemon.listen` in that directory's `config.json`. The CLI status probe uses
-the persisted listen target; setting only `PASEO_LISTEN` does not isolate it
-from an already running daemon on the default port.
+set `daemon.listen` in that directory's `config.json`. Use
+`PASEO_ELECTRON_USER_DATA_DIR` to isolate desktop preferences and Chromium-style
+session directories as well. The CLI status probe uses the persisted listen
+target; setting only `PASEO_LISTEN` does not isolate it from an existing daemon.
 
 
 ## macOS (Apple Silicon)
@@ -389,8 +424,79 @@ OMP evidence is under `out/verification/omp-desktop-windows.png`,
 Window-chrome evidence is retained in `out/verification/window-chrome-results.json`
 and `window-chrome-native.png`; the OMP screenshots include the integrated dark
 title bar without a persistent native menu strip.
-The original application's update check currently receives HTTP 404 for the
-release's missing `latest.yml`; no automatic-update download was verified.
+That older check received HTTP 404 for the release's missing `latest.yml`; it did
+not verify an automatic-update download.
+
+### OMP Desktop 0.4.0 Windows contract verification
+
+The original 0.4.0 packaged frontend reached its home screen and settings through
+the real isolated OMP preload. Native mouse input opened settings; physical
+Ctrl+Shift+N opened one additional original application window. Screenshots are
+under `out/windows-x64/verification/omp-desktop-windows-final.png` and
+`omp-desktop-settings-final.png`.
+The final uninstrumented packaged run showed a green connected host, resolved an
+isolated directory through the daemon, and reached its new-conversation composer.
+Direct packaged `--version`, `--help`, and positional `status --json` exited zero;
+the latter reported the desktop-managed 0.4.0 daemon running and reachable.
+`omp-desktop-final-gui.json` identifies the packaged executable and those results.
+
+Actual Windows checks covered:
+
+- `browser-window-created` before constructor return, one first-painted-frame
+  `ready-to-show` notification, and restored bounds across maximize, fullscreen,
+  minimize, and restore.
+- Native popup dismissal and owner destruction invoking the close callback once;
+  selection invokes `click` before that callback. Physical accelerators honor
+  disabled/hidden items and application-menu replacement/removal. Ctrl/Shift
+  state is transported to the renderer rather than sampled from its OS thread.
+- Real custom/default/cancel message buttons and checkbox state; native file
+  multiselect with `*.png;*.jpg`; asynchronous and synchronous directory cancel.
+- Real default/persistent Session directories, `null` for memory sessions, and
+  the original retired-profile cleanup preserving the default profile.
+- `shell.openPath` resolving the native error string or `''`, and
+  `shell.openExternal` resolving `undefined` or rejecting a real OS failure.
+- PNG/JPEG/ICO decoding, including the original 256×256 packaged ICO and rejected
+  truncated ICO data. Main-to-renderer IPC survives nested payload delivery on
+  the Blink thread.
+- Per-Monitor V2 awareness on the 144-DPI monitor: DPR 1.5, a 920×600 DIP viewport
+  and matching 1380×900 physical client/bitmap. A physical click reached CSS
+  coordinates (400, 150) exactly; page zoom 1.25 produced DPR 1.875 without
+  resizing the bitmap, and reset/reload retained DPR 1.5.
+- Real CSS-caption dragging, overlapping no-drag holes, non-resizable dragging,
+  `movable: false`, native double-click maximize, maximized drag-to-restore,
+  fullscreen exclusion, and clearing an empty drag-region list. The unmodified
+  packaged OMP titlebar also moved its window by the physical mouse delta.
+- Actual renderer WebSocket Unicode and 70,000-byte binary round trips with a
+  clean close; Windows libcurl now compiles its WebSocket protocol handlers.
+
+Windows `autoUpdater` is an EventEmitter consumed by the original
+`electron-updater` NSIS implementation. An isolated original-builder NSIS probe
+installed 0.3.11, downloaded and verified 0.4.0, called `quitAndInstall`, observed
+`before-quit-for-update` before application shutdown, and launched the installed
+0.4.0 replacement. The probe used native input
+`a3b7d9131bfd20c2da2997401452a35b1d51f6199e2431a5c0dab3a7c0c06da6`;
+its versioned evidence is `nsis-updater-proof-f71c8bfac1.json` and matching
+`nsis-updater-*.jsonl` in the same verification directory. The official installed
+OMP application and its registry identity were untouched.
+
+Current release hashes/feed consumer checks are in `native-input.json` and
+`package-proof.json`. Actual packaged Node mode, CLI, keyring, ConPTY, and ZIP
+extraction were also exercised; their retained reports identify the native
+input used. The public 0.3.11 release still lacks `latest.yml`; producing a local
+feed does not publish it to GitHub.
+
+The final DPI/input/drag smoke is retained in `windows-dpi-drag-final.json`.
+It identifies the native executable used and covers a single 3840×2160 display
+at 150%; a real cross-monitor DPI transition was not exercised. The obsolete
+Mac-private device-scale entry point was replaced by the shared native API.
+Packaged runtime discovery selects `resources/app.asar` before `resources/app`
+and preserves application argument casing. Command/flag precedence belongs to
+the original application's argument parser, not the runtime's app-path resolver.
+
+Inspector, DevTools, and development React DevTools remain disabled on Windows.
+No extension system is implemented. Existing renderer job restrictions, including
+direct OS clipboard read/write denial, remain unchanged; the native main-process
+clipboard API is separate from those restrictions.
 
 Local evidence is retained in `out/verification/rename-runtime-result.json`,
 `rename-runtime-ready.png`, and `rename-runtime-input.png`.
@@ -408,3 +514,62 @@ support UTF-8 loading and synchronous `lstat`, but `statSync()` and binary
 Normal files packaged under `resources/app` do not have those virtual-path
 restrictions. This is not full Electron API or filesystem compatibility.
 The existing Node `url.parse()` deprecation warning also remains visible.
+
+### Cleanup cutover verification
+
+The renderer uses the canonical native IPC transport and browser-owned file,
+network, storage, download, and popup brokers. Frame identity and origin metadata
+are not supplied by renderer JavaScript. File access is limited to application
+roots, trusted `loadFile` roots, and opaque capabilities issued by native file
+selection; profile directories are not application roots. The obsolete renderer
+bootstrap, compatibility aliases, and incomplete extension surface were removed.
+Windows no longer stages disabled DevTools resources; macOS retains its live
+Inspector, DevTools, and updater framework inputs.
+
+Windows runtime evidence is under `out/windows-x64/verification/cleanup-*.json`
+and matching PNGs. Reports identify the particular native input exercised; older
+reports are not evidence that every later executable was rerun through every case.
+The exercised paths include:
+
+- Genuine Unicode file and directory selection, DOM `File` bytes and upload
+  bodies, plus rejection of forged native file identity.
+- Credentialless private-network preflights, denied and allowed requests,
+  frame-origin storage isolation, and continued execution after a failed preload.
+- Browser-owned streamed downloads, including cancellation, interruption, and a
+  completed 70 MiB file with matching SHA-256; denied/allowed popup creation and
+  rejection of a pending load when its WebContents is destroyed.
+- BrowserView bounds, real click/wheel input and detach at 150% DPI, physical
+  window dragging, and opaque, half-alpha, and fully transparent desktop
+  composition. Clipboard image probes covered malformed and valid top-down DIBs.
+- Native `loadURL` completion for Unicode, Base64, and empty `data:` documents.
+  Renderer-initiated top-level `data:` navigation remains blocked, and the new
+  opaque document does not inherit the previous document's local-file permission.
+- Real SQLite cookie and LevelDB Local Storage imports without source mutation;
+  a mixed valid/unsupported database does not publish partial BrokerStorage.
+- Real runtime-directory, checksummed ZIP, and verified offline-cache npm
+  installation, plus rejection of bad checksums and unlisted release files.
+  `require('mini-electron')` remains a path resolver, not a per-call inventory scan.
+
+Packed ESM source is read directly from ASAR rather than extracted into temporary
+files. Windows extraction for real file handles and native modules uses bounded
+GUID-based reservation and removes owned files when sharing rules allow it.
+Historical temporary files of unknown ownership are not removed by this cleanup.
+The final original OMP Desktop 0.4.0 package passed its unchanged CLI shim's
+version/help/status commands, reached its own desktop-managed daemon, and
+created, wrote to, captured, and killed a real ConPTY terminal. Original packaged
+main/preload bytes matched the source build. The retained consumer report is
+`cleanup-omp-consumer-proof.json`; `cleanup-final-native-asar-proof.json` covers
+direct packed ESM loading, real file handles, and the native keyring operation.
+`cleanup-final-release-install-proof.json` identifies the final ZIP and installed
+native executable used by the npm CLI smoke.
+The DPI-correct 1800-by-1200 original application home surface is retained as
+`cleanup-omp-consumer-physical.png`, with its scope and correction recorded in
+`cleanup-omp-consumer-physical-proof.json`. The earlier logical-coordinate
+consumer capture and input attempt are not accepted as GUI interaction proof;
+the extra original-application click probe was not validated and was stopped.
+SQLite, LevelDB, the renderer sandbox, and the live Squirrel/Mantle/ReactiveObjC
+updater dependencies and licenses remain in the product closure.
+
+macOS source/resource closure, license staging, and output-overlap guards were
+checked on Windows. No macOS native build, AppKit interaction, signing,
+notarization, or macOS migration/runtime smoke was performed.

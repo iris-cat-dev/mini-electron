@@ -15,6 +15,7 @@
 #include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/renderer/renderer_blink_platform_impl.h"
 #include "runtime/network/loader/web_url_loader_internal.h"
+#include "runtime/network/loader/web_url_loader_manager.h"
 #include "runtime/network/cookies/web_cookie_jar_curl_impl.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
@@ -590,6 +591,17 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_on_paint_updated(mini_electron_web_vi
     webview->getClosure().setPaintUpdatedCallback(callback, param);
 }
 
+void MINI_ELECTRON_CALL_TYPE mini_electron_on_draggable_regions_changed(
+    mini_electron_web_view webviewHandle,
+    mini_electron_draggable_regions_changed_callback callback, void* param)
+{
+    checkThreadCallIsValid(__FUNCTION__);
+    content::WebViewHost* webview = (content::WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
+    if (!webview)
+        return;
+    webview->getClosure().setDraggableRegionsChangedCallback(callback, param);
+}
+
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_on_load_url_fail(mini_electron_web_view webviewHandle, mini_electron_load_url_fail_callback callback, void* param)
 {
@@ -904,10 +916,41 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_is_main_frame(mini_electron_web_view 
     return mainFrame->View()->MainFrame() == mainFrame;
 }
 
+uint64_t MINI_ELECTRON_CALL_TYPE mini_electron_get_parent_frame_id(
+    mini_electron_web_view webviewHandle,
+    mini_electron_web_frame_handle frameId)
+{
+    content::WebViewHost* webview = (content::WebViewHost*)
+        common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
+    if (!webview || frameId == (mini_electron_web_frame_handle)-2)
+        return 0;
+
+    blink::LocalFrame* blinkFrame = blink::FromFrameTokenHash((size_t)frameId);
+    if (!blinkFrame)
+        return 0;
+    blink::WebLocalFrameImpl* frame
+        = blink::WebLocalFrameImpl::FromFrame(blinkFrame);
+    blink::WebFrame* parent = frame ? frame->Parent() : nullptr;
+    if (!parent || !parent->IsWebLocalFrame())
+        return 0;
+    return static_cast<uint64_t>(content::getFrameIdByWebLocalFrame(
+        parent->ToWebLocalFrame()));
+}
+
 void MINI_ELECTRON_CALL_TYPE mini_electron_resize(mini_electron_web_view webviewHandle, int w, int h)
 {
     content::ThreadCall::callBlinkThreadAsyncWithValid(
         FROM_HERE, webviewHandle, [w, h](content::WebViewHost* webview) { webview->onResize(w, h, webview->isWebWindowMode()); });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_device_scale_factor(
+    mini_electron_web_view webviewHandle, float deviceScaleFactor)
+{
+    content::ThreadCall::callBlinkThreadAsyncWithValid(
+        FROM_HERE, webviewHandle,
+        [deviceScaleFactor](content::WebViewHost* webview) {
+            webview->setDeviceScaleFactor(deviceScaleFactor);
+        });
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_wake(mini_electron_web_view webviewHandle)
@@ -1003,12 +1046,23 @@ mini_electron_download_opt MINI_ELECTRON_CALL_TYPE mini_electron_download_by_utf
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_cancel_request(mini_electron_net_job jobPtr)
 {
-    mini_electron::WebURLLoaderInternal* job = (mini_electron::WebURLLoaderInternal*)jobPtr;
-    if (content::ThreadCall::isBlinkThread()) {
+    const int job_id =
+        static_cast<mini_electron::WebURLLoaderInternal*>(jobPtr)->m_id;
+    auto cancel = [job_id] {
+        mini_electron::WebURLLoaderManager* manager =
+            mini_electron::WebURLLoaderManager::sharedInstance();
+        mini_electron::AutoLockJob lock(manager, job_id);
+        mini_electron::WebURLLoaderInternal* job = lock.lock();
+        if (!job || job->isCancelled() || job->m_isEmbedderCanceled)
+            return;
         job->m_isEmbedderCanceled = true;
-    } else {
-        content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [job] { job->m_isEmbedderCanceled = true; });
-    }
+        if (job->m_isHoldJobToAsynCommit && !job->m_isUrlBegining)
+            manager->continueJob(job);
+    };
+    if (content::ThreadCall::isBlinkThread())
+        cancel();
+    else
+        content::ThreadCall::callBlinkThreadAsync(FROM_HERE, std::move(cancel));
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_on_load_url_end(mini_electron_web_view webviewHandle, mini_electron_load_url_end_callback callback, void* param)

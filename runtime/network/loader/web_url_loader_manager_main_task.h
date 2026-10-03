@@ -507,7 +507,6 @@ mini_electron_resource_type webURLRequestToResourceType(const network::ResourceR
         }
         if (frameType == blink::mojom::RequestContextFrameType::kNested)
             return MINI_ELECTRON_RESOURCE_TYPE_SUB_FRAME;
-        DebugBreak();
         return MINI_ELECTRON_RESOURCE_TYPE_SUB_RESOURCE;
     }
 
@@ -573,6 +572,10 @@ mini_electron_resource_type webURLRequestToResourceType(const network::ResourceR
         // Workers
     case blink::mojom::ResourceType::kServiceWorker:
         return MINI_ELECTRON_RESOURCE_TYPE_SERVICE_WORKER;
+    case blink::mojom::ResourceType::kNavigationPreloadMainFrame:
+        return MINI_ELECTRON_RESOURCE_TYPE_MAIN_FRAME;
+    case blink::mojom::ResourceType::kNavigationPreloadSubFrame:
+        return MINI_ELECTRON_RESOURCE_TYPE_SUB_FRAME;
     case blink::mojom::ResourceType::kSharedWorker:
         return MINI_ELECTRON_RESOURCE_TYPE_SHARED_WORKER;
     case blink::mojom::ResourceType::kWorker:
@@ -600,8 +603,9 @@ mini_electron_resource_type webURLRequestToResourceType(const network::ResourceR
         //         DebugBreak();
          
 
+    case blink::mojom::ResourceType::kCspReport:
+    case blink::mojom::ResourceType::kJson:
     default:
-        DebugBreak();
         return MINI_ELECTRON_RESOURCE_TYPE_SUB_RESOURCE;
     }
 }

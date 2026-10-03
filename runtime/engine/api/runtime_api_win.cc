@@ -20,6 +20,9 @@
 #include "third_party/blink/public/web/web_css_origin.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_element.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_blob.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_file.h"
+#include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
@@ -384,10 +387,22 @@ static v8::Local<v8::Value> nodeToV8Value(blink::Element* elem, v8::Local<v8::Ob
     return blink::ToV8Traits<blink::Element>::ToV8(scriptState, elem);
 }
 
-BOOL MINI_ELECTRON_CALL_TYPE mini_electron_pass_web_element_value_to_other_context(void* val, void* destCtx, void* outVal)
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_pass_dom_value_to_other_context(void* val, void* destCtx, void* outVal)
 {
     v8::Local<v8::Value>* value = (v8::Local<v8::Value>*)val;
     v8::Local<v8::Context>* destContext = (v8::Local<v8::Context>*)destCtx;
+    v8::Isolate* isolate = (*destContext)->GetIsolate();
+    blink::Blob* blob = nullptr;
+    if (blink::V8File::HasInstance(isolate, *value))
+        blob = blink::V8File::ToWrappable(isolate, *value);
+    else if (blink::V8Blob::HasInstance(isolate, *value))
+        blob = blink::V8Blob::ToWrappable(isolate, *value);
+    if (blob) {
+        v8::Context::Scope destination_context_scope(*destContext);
+        *(v8::Local<v8::Value>*)outVal =
+            blob->ToV8(isolate, (*destContext)->Global());
+        return true;
+    }
 
     blink::Element* elem = webElementFromV8Value(*value);
     if (!elem)

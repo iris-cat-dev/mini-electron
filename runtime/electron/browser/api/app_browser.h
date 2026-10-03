@@ -10,6 +10,9 @@
 namespace atom {
 
 #if defined(_WIN32)
+void SetAppUserModelID(const std::wstring& name);
+const wchar_t* GetAppUserModelID();
+
 struct LaunchItem {
     std::u16string name;
     std::u16string path;

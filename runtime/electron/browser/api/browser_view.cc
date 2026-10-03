@@ -15,8 +15,8 @@
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libuv/include/uv.h"
-
-#include <vector>
+#include "ui/display/win/screen_win.h"
+#include "ui/gfx/geometry/rect.h"
 
 namespace atom {
 
@@ -27,23 +27,19 @@ BrowserView::BrowserView(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
     m_webContents = nullptr;
     m_createWindowParam = nullptr;
     m_hWnd = nullptr;
-    m_memoryBMP = nullptr;
-    m_memoryDC = nullptr;
-    m_clientRect.left = 0;
-    m_clientRect.top = 0;
-    m_clientRect.right = 0;
-    m_clientRect.bottom = 0;
-    m_memoryBmpSize.cx = 0;
-    m_memoryBmpSize.cy = 0;
+    m_boundsInDips = { 0, 0, 0, 0 };
+    m_clientRect = { 0, 0, 0, 0 };
     m_id = IdLiveDetect::get()->constructed(this);
 
     ::InitializeCriticalSection(&m_rectLock);
-    ::InitializeCriticalSection(&m_memoryCanvasLock);
 }
 
 BrowserView::~BrowserView()
 {
-    OutputDebugStringA("BrowserView::~BrowserView\n");
+    destroy();
+    delete m_createWindowParam;
+    ::DeleteCriticalSection(&m_rectLock);
+    IdLiveDetect::get()->deconstructed(m_id);
 }
 
 void BrowserView::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
@@ -81,7 +77,7 @@ void BrowserView::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 void BrowserView::destroyed()
 {
-    m_webContents->destroyed();
+    destroy();
 }
 
 v8::Local<v8::Value> BrowserView::_getWebContentsApi()
@@ -94,10 +90,30 @@ v8::Local<v8::Value> BrowserView::_getWebContentsApi()
 
 void BrowserView::_setBoundsApi(int x, int y, int w, int h)
 {
-    RECT r = { x, y, x + w, y + h };
-    setClientRect(r);
+    RECT oldBounds = getClientRect();
+    const RECT dipBounds = { x, y, x + w, y + h };
+    const bool attached = ::IsWindow(m_hWnd);
+    const float scale = attached
+        ? display::win::ScreenWin::GetScaleFactorForHWND(m_hWnd)
+        : 1.0f;
+    const gfx::Rect pixelBounds = attached
+        ? display::win::ScreenWin::DIPToClientRect(
+            m_hWnd, gfx::Rect(x, y, w, h))
+        : gfx::Rect(x, y, w, h);
+    const RECT clientBounds = {
+        pixelBounds.x(), pixelBounds.y(), pixelBounds.right(), pixelBounds.bottom()
+    };
+    ::EnterCriticalSection(&m_rectLock);
+    m_boundsInDips = dipBounds;
+    m_clientRect = clientBounds;
+    ::LeaveCriticalSection(&m_rectLock);
 
-    mini_electron_resize(m_webContents->getEngineView(), w, h);
+    if (m_webContents && w > 0 && h > 0)
+        m_webContents->resize(w, h, scale);
+    if (::IsWindow(m_hWnd)) {
+        ::InvalidateRect(m_hWnd, &oldBounds, FALSE);
+        ::InvalidateRect(m_hWnd, &clientBounds, FALSE);
+    }
 }
 
 BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, v8::Local<v8::Object> wrapper)
@@ -145,12 +161,14 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
     if (createWindowParam->height < createWindowParam->minHeight)
         createWindowParam->height = createWindowParam->minHeight;
 
-    mini_electron_web_view webview = webContents->getEngineView();
-    if (createWindowParam->transparent)
-        mini_electron_set_transparent(webview, true);
-    mini_electron_resize(webview, createWindowParam->width, createWindowParam->height);
-    mini_electron_on_paint_updated(webview, (mini_electron_paint_updated_callback)staticOnBlinkPaintUpdatedInUiThread, self);
-    mini_electron_set_navigation_to_new_window_enable(webview, true);
+    self->m_boundsInDips = {
+        createWindowParam->x,
+        createWindowParam->y,
+        createWindowParam->x + createWindowParam->width,
+        createWindowParam->y + createWindowParam->height
+    };
+    webContents->resize(createWindowParam->width, createWindowParam->height);
+    webContents->addObserver(self);
 
     self->m_createWindowParam = createWindowParam;
     webContents->setCreateWindowParam(createWindowParam);
@@ -161,114 +179,88 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
 
 void BrowserView::attachBrowserWindow(HWND hWnd)
 {
+    if (!m_webContents || !::IsWindow(hWnd))
+        return;
     m_hWnd = hWnd;
-
-    int x = m_createWindowParam->x;
-    int y = m_createWindowParam->y;
-    int w = m_createWindowParam->width;
-    int h = m_createWindowParam->height;
-    RECT r = getClientRect();
-
-    if (r.right - r.left != 0) {
-        x = r.left;
-        y = r.top;
-        w = r.right - r.left;
-        h = r.bottom - r.top;
-    }
-
-    mini_electron_web_view webview = m_webContents->getEngineView();
-    //self->m_webContents->onNewWindowInUiThread(x, y, w, h, self->m_createWindowParam);
-
-    //matchDpi(webview);
-    mini_electron_set_handle(webview, hWnd);
-
-    //::ShowWindow(m_hWnd, createWindowParam->isShow ? SW_SHOWNORMAL : SW_HIDE);
+    onParentScaleFactorChanged();
+    m_webContents->setFocus(true);
     m_state = WindowInited;
 }
 
 void BrowserView::detachBrowserWindow()
 {
-    m_state = WindowDestroying;
+    if (::IsWindow(m_hWnd)) {
+        RECT bounds = getClientRect();
+        ::InvalidateRect(m_hWnd, &bounds, FALSE);
+    }
+    m_hWnd = nullptr;
+    if (m_state != WindowDestroyed)
+        m_state = WindowUninited;
 }
 
-void BrowserView::onPaintInUiThread(const HDC hdc, int destX, int destY, int x, int y, int cx, int cy)
+void BrowserView::onParentScaleFactorChanged()
 {
-    if (!m_memoryDC)
+    if (!m_webContents || !::IsWindow(m_hWnd))
         return;
-    ::EnterCriticalSection(&m_memoryCanvasLock);
-    DWORD flag = SRCCOPY;
-    ::BitBlt(hdc, destX, destY, cx, cy, m_memoryDC, x, y, flag);
-    ::LeaveCriticalSection(&m_memoryCanvasLock);
-
-    //     char* output = (char*)malloc(0x100);
-    //     sprintf_s(output, 0x99, "BrowserView::onPaintInUiThread: %d, %d, (%d, %d, %d, %d)\n", destX, destY, x, y, cx, cy);
-    //     OutputDebugStringA(output);
-    //     free(output);
+    const float scale = display::win::ScreenWin::GetScaleFactorForHWND(m_hWnd);
+    int width = 0;
+    int height = 0;
+    ::EnterCriticalSection(&m_rectLock);
+    const RECT dipBounds = m_boundsInDips;
+    width = dipBounds.right - dipBounds.left;
+    height = dipBounds.bottom - dipBounds.top;
+    const gfx::Rect pixelBounds = display::win::ScreenWin::DIPToClientRect(
+        m_hWnd, gfx::Rect(dipBounds.left, dipBounds.top, width, height));
+    m_clientRect = {
+        pixelBounds.x(), pixelBounds.y(), pixelBounds.right(), pixelBounds.bottom()
+    };
+    ::LeaveCriticalSection(&m_rectLock);
+    if (width > 0 && height > 0)
+        m_webContents->resize(width, height, scale);
+    ::InvalidateRect(m_hWnd, nullptr, FALSE);
 }
 
-void BrowserView::staticOnBlinkPaintUpdatedInUiThread(mini_electron_web_view webView, BrowserView* self, const HDC hdc, int x, int y, int cx, int cy)
+void BrowserView::onPaintInUiThread(HDC hdc, const RECT& parentPaintRect)
 {
-    self->onBlinkPaintUpdatedInUiThread(hdc, x, y, cx, cy);
+    if (!m_webContents)
+        return;
+    const RECT bounds = getClientRect();
+    RECT paintRect;
+    if (!::IntersectRect(&paintRect, &bounds, &parentPaintRect))
+        return;
+    m_webContents->paintFrame(hdc, paintRect.left, paintRect.top,
+        paintRect.left - bounds.left, paintRect.top - bounds.top,
+        paintRect.right - paintRect.left, paintRect.bottom - paintRect.top);
 }
 
-void BrowserView::onBlinkPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, int cy)
+void BrowserView::onWebContentsPaint(WebContents* contents)
 {
-    ::EnterCriticalSection(&m_memoryCanvasLock);
-    HWND hWnd = m_hWnd;
-    RECT r = getClientRect();
-    SIZE sizeDest = { r.right - r.left, r.bottom - r.top };
+    if (contents != m_webContents || !::IsWindow(m_hWnd))
+        return;
+    RECT rect = getClientRect();
+    ::InvalidateRect(m_hWnd, &rect, FALSE);
+}
 
-    HDC hSreenDC = ::GetWindowDC(hWnd);
-    if (!m_memoryDC)
-        m_memoryDC = ::CreateCompatibleDC(hSreenDC);
-
-    if (!m_memoryBMP /*|| !isRectEqual(m_clientRect, rectDest)*/) {
-        //m_clientRect = rectDest;
-        m_memoryBmpSize = sizeDest;
-
-        if (m_memoryBMP)
-            ::DeleteObject((HGDIOBJ)m_memoryBMP);
-        m_memoryBMP = ::CreateCompatibleBitmap(hSreenDC, sizeDest.cx, sizeDest.cy);
-    }
-    ::ReleaseDC(hWnd, hSreenDC);
-
-    DWORD flag = SRCCOPY;
-    if (m_createWindowParam->transparent)
-        flag |= CAPTUREBLT;
-
-    //     char* output = (char*)malloc(0x100);
-    //     sprintf_s(output, 0x99, "BrowserView::onBlinkPaintUpdatedInUiThread: %d, %d, %d, %d\n", x, y, cx, cy);
-    //     OutputDebugStringA(output);
-    //     free(output);
-
-    BOOL b = FALSE;
-    HBITMAP hbmpOld = (HBITMAP)::SelectObject(m_memoryDC, m_memoryBMP);
-    ::BitBlt(m_memoryDC, x, y, cx, cy, hdc, x, y, flag);
-
-    ::LeaveCriticalSection(&m_memoryCanvasLock);
-
-    if (m_createWindowParam->transparent) {
-        //         ThreadCall::callUiThreadAsync([id, self, x, y, cx, cy] {
-        //             if (IdLiveDetect::get()->isLive(id))
-        //                 self->onPaintUpdatedInUiThread(x, y, cx, cy);
-        //             });
-    } else {
-        RECT r = getClientRect();
-        int rcX = r.left + x;
-        int rcY = r.top + y;
-        RECT rc = { rcX, rcY, rcX + cx, rcY + cy };
-        ::InvalidateRect(m_hWnd, &rc, false);
-    }
+void BrowserView::onWebContentsDeleted(WebContents* contents)
+{
+    if (contents != m_webContents)
+        return;
+    HWND parent = m_hWnd;
+    const RECT bounds = getClientRect();
+    m_webContents = nullptr;
+    m_hWnd = nullptr;
+    m_state = WindowDestroyed;
+    if (::IsWindow(parent))
+        ::InvalidateRect(parent, &bounds, FALSE);
 }
 
 void BrowserView::handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent, unsigned int flags)
 {
+    if (!m_webContents)
+        return;
     RECT r = getClientRect();
-    int xInView = xInParent - r.left;
-    int yInView = yInParent - r.top;
-
-    mini_electron_web_view webview = m_webContents->getEngineView();
-    mini_electron_fire_mouse_event(webview, message, xInView, yInView, flags);
+    m_webContents->sendWindowsMouseEvent(
+        message, xInParent - r.left, yInParent - r.top, flags);
 }
 
 bool BrowserView::isClosed()
@@ -278,6 +270,25 @@ bool BrowserView::isClosed()
 
 void BrowserView::close()
 {
+    destroy();
+}
+
+void BrowserView::destroy()
+{
+    if (m_state == WindowDestroyed)
+        return;
+    WebContents* contents = m_webContents;
+    HWND parent = m_hWnd;
+    const RECT bounds = getClientRect();
+    m_webContents = nullptr;
+    m_hWnd = nullptr;
+    m_state = WindowDestroyed;
+    if (contents) {
+        contents->removeObserver(this);
+        contents->destroyed();
+    }
+    if (::IsWindow(parent))
+        ::InvalidateRect(parent, &bounds, FALSE);
 }
 
 v8::Local<v8::Object> BrowserView::getWrapper()

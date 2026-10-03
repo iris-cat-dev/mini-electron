@@ -43,6 +43,8 @@
 #include "base/threading/thread.h"
 #include <windows.h>
 #include <memory>
+#include <cstdint>
+#include <string>
 
 
 // The allocations and releases in WebURLLoaderInternal are
@@ -67,6 +69,18 @@ class WebURLLoaderManagerMainTask;
 class WebURLLoaderManager;
 class FlattenHTTPBodyElementStream;
 struct InitializeHandleInfo;
+struct RequestFrameMetadata {
+    blink::mojom::RequestContextFrameType frameType
+        = blink::mojom::RequestContextFrameType::kNone;
+    uint64_t frameId = 0;
+    uint64_t parentFrameId = 0;
+    bool isMainFrame = false;
+};
+
+void RegisterRequestFrameMetadata(RequestFrameMetadata metadata);
+bool TakeRequestFrameMetadata(RequestFrameMetadata* metadata);
+void UnregisterRequestFrameMetadata();
+
 
 class JobHead {
 public:
@@ -147,6 +161,16 @@ public:
     void decodeUrlRequest();
 
     void resetFirstRequest(std::unique_ptr<network::ResourceRequest>&& newRequest);
+    void setRequestFrameMetadata(
+        blink::mojom::RequestContextFrameType frameType, uint64_t frameId,
+        uint64_t parentFrameId, bool isMainFrame)
+    {
+        m_frameType = frameType;
+        m_frameId = frameId;
+        m_parentFrameId = parentFrameId;
+        m_isMainFrame = isMainFrame;
+    }
+
 
     bool isCancelled() const
     {
@@ -206,6 +230,10 @@ public:
     MojoHandle m_dataPipeProducerHandle = 0; // 给DidStartLoadingResponseBody用的。现在的blink靠这个MojoHandle来接收数据
 
     blink::mojom::RequestContextFrameType m_frameType = blink::mojom::RequestContextFrameType::kNone;
+    uint64_t m_frameId = 0;
+    uint64_t m_parentFrameId = 0;
+    bool m_isMainFrame = false;
+    std::string m_requestInitiator;
 
     std::unique_ptr<String> m_downloadName;
 

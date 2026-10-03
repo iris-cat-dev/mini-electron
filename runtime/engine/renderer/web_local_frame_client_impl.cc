@@ -48,6 +48,7 @@
 #include "runtime/network/loader/loader_factory_impl.h"
 #include "runtime/network/loader/single_request_url_loader.h"
 #include "runtime/network/loader/web_url_loader_impl_curl.h"
+#include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_request_extra_data_wrap.h"
 #include "base/strings/utf_string_conversions.h"
 
@@ -348,27 +349,66 @@ void WebLocalFrameClientImpl::FinalizeRequest(blink::WebURLRequest& req)
 {
     scoped_refptr<mini_electron::WebURLRequestExtraDataWrap> extraData = base::MakeRefCounted<mini_electron::WebURLRequestExtraDataWrap>();
     extraData->mbwebviewId = m_engineViewId;
+    extraData->frameId = static_cast<uint64_t>(
+        getFrameIdByWebLocalFrame(m_frame));
+    blink::WebFrame* parent = m_frame ? m_frame->Parent() : nullptr;
+    extraData->parentFrameId = parent && parent->IsWebLocalFrame()
+        ? static_cast<uint64_t>(
+            getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+        : 0;
+    extraData->isMainFrame = !parent;
     req.SetURLRequestExtraData(extraData);
 
     setRequestHead(m_frame, req);
 }
 
-scoped_refptr<network::SharedURLLoaderFactory> CreateURLLoaderFactoryForWebView(int64_t id)
+static void StartFrameURLLoader(
+    mini_electron::SingleRequestURLLoader* loader,
+    mini_electron::RequestFrameMetadata metadata, bool isSync,
+    const network::ResourceRequest& request,
+    mojo::PendingReceiver<network::mojom::URLLoader> receiver,
+    mojo::PendingRemote<network::mojom::URLLoaderClient> client)
+{
+    mini_electron::RegisterRequestFrameMetadata(metadata);
+    loader->startLoader(isSync, request, std::move(receiver), std::move(client));
+    mini_electron::UnregisterRequestFrameMetadata();
+}
+
+static scoped_refptr<network::SharedURLLoaderFactory> CreateURLLoaderFactoryForWebView(
+    int64_t id, uint64_t frameId, uint64_t parentFrameId, bool isMainFrame)
 {
     scoped_refptr<mini_electron::WebURLRequestExtraDataWrap> extraData = base::MakeRefCounted<mini_electron::WebURLRequestExtraDataWrap>();
     extraData->mbwebviewId = id;
+    extraData->frameId = frameId;
+    extraData->parentFrameId = parentFrameId;
+    extraData->isMainFrame = isMainFrame;
 
     scoped_refptr<base::SingleThreadTaskRunner> runner = base::SingleThreadTaskRunner::GetCurrentDefault();
     mini_electron::SingleRequestURLLoader* loader = new mini_electron::SingleRequestURLLoader(runner, runner, nullptr, extraData);
 
-    return base::MakeRefCounted<mini_electron::SingleReqURLLoaderFactory>(base::BindOnce(&mini_electron::SingleRequestURLLoader::startLoader,
-        base::Unretained(loader)));
+    return base::MakeRefCounted<mini_electron::SingleReqURLLoaderFactory>(
+        base::BindOnce(&StartFrameURLLoader, base::Unretained(loader),
+            mini_electron::RequestFrameMetadata { extraData->frameType,
+                extraData->frameId, extraData->parentFrameId,
+                extraData->isMainFrame }));
+}
+
+scoped_refptr<network::SharedURLLoaderFactory> CreateURLLoaderFactoryForWebView(int64_t id)
+{
+    return CreateURLLoaderFactoryForWebView(id, 0, 0, false);
 }
 
 // third_party\blink\renderer\core\editing\serializers\serialization.cc
 scoped_refptr<network::SharedURLLoaderFactory> WebLocalFrameClientImpl::GetURLLoaderFactory()
 {
-    return CreateURLLoaderFactoryForWebView(m_engineViewId);
+    blink::WebFrame* parent = m_frame ? m_frame->Parent() : nullptr;
+    return CreateURLLoaderFactoryForWebView(m_engineViewId,
+        static_cast<uint64_t>(getFrameIdByWebLocalFrame(m_frame)),
+        parent && parent->IsWebLocalFrame()
+            ? static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+            : 0,
+        !parent);
 }
 
 class WebHTTPHeaderVisitorimpl : public blink::WebHTTPHeaderVisitor {
@@ -416,15 +456,28 @@ bool decidePolicyForNavigation(int64_t mbwebviewId, blink::WebLocalFrame* frame,
         break;
     }
 
+    const uint64_t frame_id = static_cast<uint64_t>(
+        getFrameIdByWebLocalFrame(frame));
+    blink::WebFrame* parent = frame ? frame->Parent() : nullptr;
+    const uint64_t parent_frame_id = parent && parent->IsWebLocalFrame()
+        ? static_cast<uint64_t>(
+            getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+        : 0;
+    const BOOL is_main_frame = parent ? FALSE : TRUE;
+    std::string url_string = gurl.possibly_invalid_spec();
+    std::string method = info.url_request.HttpMethod().Utf8();
     BOOL result = TRUE;
-    std::string urlStr = gurl.possibly_invalid_spec().c_str();
-    const char* url = urlStr.c_str();
-    ThreadCall::callUiThreadSync(FROM_HERE, [&result, mbwebviewId, navigationType, url] {
-        WebViewHost* self = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(mbwebviewId);
-        if (!self)
-            return;
-        result = self->getClosure().m_NavigationCallback(mbwebviewId, self->getClosure().m_NavigationParam, navigationType, url);
-    });
+    ThreadCall::callUiThreadSync(FROM_HERE,
+        [&result, mbwebviewId, navigationType, &url_string, frame_id,
+            parent_frame_id, is_main_frame, &method] {
+            WebViewHost* self = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(mbwebviewId);
+            if (!self)
+                return;
+            result = self->getClosure().m_NavigationCallback(mbwebviewId,
+                self->getClosure().m_NavigationParam, navigationType,
+                url_string.c_str(), frame_id, parent_frame_id, is_main_frame,
+                method.c_str());
+        });
     return !!result;
 }
 
@@ -453,6 +506,18 @@ static void beginNavigation(
     std::unique_ptr<network::ResourceRequest> request = std::make_unique<network::ResourceRequest>();
     request->url = (GURL)(blink::KURL)info->url_request.Url();
     request->method = info->url_request.HttpMethod().Utf8();
+    request->mode = info->url_request.GetMode();
+    request->credentials_mode = info->url_request.GetCredentialsMode();
+    request->destination = info->url_request.GetRequestDestination();
+    const blink::ResourceRequest& source_request =
+        info->url_request.ToResourceRequest();
+    if (source_request.RequestorOrigin()) {
+        request->request_initiator =
+            source_request.RequestorOrigin()->ToUrlOrigin();
+    }
+    request->resource_type = static_cast<int>(frame->Parent()
+            ? blink::mojom::ResourceType::kSubFrame
+            : blink::mojom::ResourceType::kMainFrame);
 
     const blink::WebHTTPBody& httpBody = info->url_request.HttpBody();
     if (!httpBody.IsNull())
@@ -481,13 +546,25 @@ static void beginNavigation(
     bool isDownload = downloadName.get() && !downloadName->empty();
     scoped_refptr<mini_electron::WebURLRequestExtraDataWrap> extraData = base::MakeRefCounted<mini_electron::WebURLRequestExtraDataWrap>();
     extraData->mbwebviewId = mbwebviewId;
+    extraData->frameId = static_cast<uint64_t>(
+        getFrameIdByWebLocalFrame(frame));
+    blink::WebFrame* parent = frame ? frame->Parent() : nullptr;
+    extraData->parentFrameId = parent && parent->IsWebLocalFrame()
+        ? static_cast<uint64_t>(
+            getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+        : 0;
+    extraData->isMainFrame = !parent;
     extraData->dataPipeProducerHandle = dataPipeProducerHandle;
     extraData->frameType = info->frame_type;
     extraData->setIsDownload(std::move(downloadName));
 
     scoped_refptr<const blink::SecurityOrigin> topFrameOrigin;
     mini_electron::BodyLoaderClient* client = new mini_electron::BodyLoaderClient(isDownload, std::move(info), navigationControl->GetLocalFrameToken(), token);
+    mini_electron::RegisterRequestFrameMetadata(
+        { extraData->frameType, extraData->frameId, extraData->parentFrameId,
+            extraData->isMainFrame });
     loader->LoadAsynchronouslyEx(std::move(request), topFrameOrigin, false, std::move(resourceLoadInfoNotifierWrap), nullptr, extraData, client);
+    mini_electron::UnregisterRequestFrameMetadata();
 }
 
 void WebLocalFrameClientImpl::BeginNavigation(std::unique_ptr<blink::WebNavigationInfo> info)
@@ -597,6 +674,20 @@ void WebLocalFrameClientImpl::DidCommitNavigation(blink::WebHistoryCommitType co
     if (!webview)
         return;
 
+    if (webview->getClosure().m_FrameURLChangedCallback) {
+        std::string url = m_frame->GetDocument().Url().GetString().Utf8();
+        blink::WebFrame* parent = m_frame->Parent();
+        uint64_t parent_frame_id = parent && parent->IsWebLocalFrame()
+            ? static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+            : 0;
+        webview->getClosure().m_FrameURLChangedCallback(
+            m_engineViewId, webview->getClosure().m_FrameURLChangedParam,
+            reinterpret_cast<mini_electron_web_frame_handle>(
+                static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frame))),
+            url.c_str(), parent_frame_id, parent ? FALSE : TRUE);
+    }
+
     webview->didCommitProvisionalLoad(m_frame, m_frame->GetCurrentHistoryItem(), commitType, false);
 }
 
@@ -626,11 +717,33 @@ void WebLocalFrameClientImpl::DidFinishSameDocumentNavigation(
     if (!webview)
         return;
 
+    if (webview->getClosure().m_FrameURLChangedCallback) {
+        std::string url = m_frame->GetDocument().Url().GetString().Utf8();
+        blink::WebFrame* parent = m_frame->Parent();
+        uint64_t parent_frame_id = parent && parent->IsWebLocalFrame()
+            ? static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+            : 0;
+        webview->getClosure().m_FrameURLChangedCallback(
+            m_engineViewId, webview->getClosure().m_FrameURLChangedParam,
+            reinterpret_cast<mini_electron_web_frame_handle>(
+                static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frame))),
+            url.c_str(), parent_frame_id, parent ? FALSE : TRUE);
+    }
+
     webview->didCommitProvisionalLoad(m_frame, m_frame->GetCurrentHistoryItem(), commitType, true);
 }
 
 void WebLocalFrameClientImpl::FrameDetached(blink::DetachReason detach_reason)
 {
+    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_engineViewId);
+    if (webview && webview->getClosure().m_FrameDetachedCallback) {
+        webview->getClosure().m_FrameDetachedCallback(
+            m_engineViewId, webview->getClosure().m_FrameDetachedParam,
+            reinterpret_cast<mini_electron_web_frame_handle>(
+                static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frame))));
+    }
+
     // We need to clean up subframes by removing them from the map and deleting
     // the RenderFrameImpl.  In contrast, the main frame is owned by its
     // containing RenderViewHost (so that they have the same lifetime), so only
@@ -668,7 +781,14 @@ scoped_refptr<blink::WebWorkerFetchContext> WebLocalFrameClientImpl::CreateWorke
 scoped_refptr<blink::WebWorkerFetchContext> WebLocalFrameClientImpl::CreateWorkerFetchContext()
 {
     blink::WebSecurityOrigin orig = m_frame->GetSecurityOrigin();
-    return base::AdoptRef(new WebWorkerFetchContextImpl(orig, m_engineViewId));
+    blink::WebFrame* parent = m_frame->Parent();
+    return base::AdoptRef(new WebWorkerFetchContextImpl(orig, m_engineViewId,
+        static_cast<uint64_t>(getFrameIdByWebLocalFrame(m_frame)),
+        parent && parent->IsWebLocalFrame()
+            ? static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()))
+            : 0,
+        !parent));
 
     //     mojo::PendingReceiver<blink::mojom::RendererPreferenceWatcher>
     //         watcher_receiver;
@@ -926,16 +1046,28 @@ blink::WebView* WebLocalFrameClientImpl::CreateNewWindow(
     mini_electron_web_view result = NULL_WEBVIEW;
     int64_t mbwebviewId = m_engineViewId;
 
-    ThreadCall::callUiThreadSync(FROM_HERE, [&result, mbwebviewId, policy, urlString, features] {
+    const std::string frame_name = name.Utf8();
+    const auto opener = reinterpret_cast<mini_electron_web_frame_handle>(getFrameId());
+    const mini_electron_window_features window_features = {
+        features.x, features.y, features.width, features.height,
+        features.x_set, features.y_set, features.width_set, features.height_set,
+        features.is_popup, features.resizable, features.noopener,
+        features.noreferrer, features.background
+    };
+    ThreadCall::callUiThreadSync(FROM_HERE, [&result, mbwebviewId, policy,
+        urlString, opener, &frame_name, &window_features] {
         WebViewHost* self = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(mbwebviewId);
         if (!self)
             return;
 
-        mini_electron_web_view webviewHandle = (mini_electron_web_view)mbwebviewId;
-        mini_electron_navigation_type type = (mini_electron_navigation_type)policy;
         if (self->getClosure().m_CreateViewCallback)
             result = self->getClosure().m_CreateViewCallback(
-                webviewHandle, self->getClosure().m_CreateViewParam, type, urlString, (const mini_electron_window_features*)&features);
+                static_cast<mini_electron_web_view>(mbwebviewId),
+                self->getClosure().m_CreateViewParam, opener,
+                policy == blink::kWebNavigationPolicyNewBackgroundTab
+                    ? "background-tab" : policy == blink::kWebNavigationPolicyNewForegroundTab
+                        ? "foreground-tab" : "new-window",
+                urlString, frame_name.c_str(), &window_features);
 
         return;
     });
@@ -974,51 +1106,23 @@ void WebLocalFrameClientImpl::WillReleaseScriptContext(v8::Local<v8::Context> co
     webview->onWillReleaseScriptContext(context, worldId, m_frame->GetLocalFrameToken());
 }
 
-void WebLocalFrameClientImpl::onLoadingSucceeded()
-{
-    if (m_onLoadingSucceededCount >= 0 && m_onLoadingSucceededCount < 5) {
-        m_onLoadingSucceededCount++;
-        return;
-    }
-    if (-1 == m_onLoadingSucceededCount)
-        return;
-    m_onLoadingSucceededCount = -1;
-
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_engineViewId);
-    if (!m_isMainFrame || !webview)
-        return;
-
-
-    const blink::LocalFrameToken& token = m_frame->GetLocalFrameToken();
-    blink::WebDocument doc = m_frame->GetDocument();
-    blink::KURL url = doc.Url();
-    const String& urlStr = url.GetString();
-
-    void* param = webview->getClosure().m_LoadingFinishParam;
-    mini_electron_loading_finish_callback callback = webview->getClosure().m_LoadingFinishCallback;
-    if (callback) {
-        callback((mini_electron_web_view)m_engineViewId, param, (mini_electron_web_frame_handle)(blink::LocalFrameToken::Hasher()(token)), urlStr.Utf8().c_str(), MINI_ELECTRON_LOADING_SUCCEEDED, "");
-    }
-}
 
 void WebLocalFrameClientImpl::DidFinishLoad()
 {
-    OutputDebugStringA(m_isMainFrame ? "WebLocalFrameClientImpl::DidFinishLoad main\n" : "WebLocalFrameClientImpl::DidFinishLoad not main\n");
+    WebViewHost* webview =
+        static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(m_engineViewId));
+    if (!webview || !m_frame)
+        return;
+    const std::string url = m_frame->GetDocument().Url().GetString().Utf8();
+    auto& closure = webview->getClosure();
+    if (closure.m_LoadingFinishCallback)
+        closure.m_LoadingFinishCallback(
+            static_cast<mini_electron_web_view>(m_engineViewId),
+            closure.m_LoadingFinishParam,
+            reinterpret_cast<mini_electron_web_frame_handle>(getFrameId()),
+            url.c_str(), MINI_ELECTRON_LOADING_SUCCEEDED, "");
 }
 
-void WebLocalFrameClientImpl::DraggableRegionsChanged()
-{
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_engineViewId);
-    if (!webview)
-        return;
-
-    blink::WebFrame* frame = webview->getMainFrame();
-    if (!frame)
-        return;
-    blink::WebDocument doc = frame->ToWebLocalFrame()->GetDocument();
-    blink::WebVector<blink::WebDraggableRegion> regions = doc.DraggableRegions();
-    webview->draggableRegionsChanged(regions);
-}
 
 // �п�����web worker�̣߳�����nodejs worker
 mini_electron_web_frame_handle v8ContextToEngineWebFrameHandle(v8::Local<v8::Context> context)
@@ -1183,7 +1287,9 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
         //             delete fileChooserImplReceiver->internal_state()->impl();
         //             delete fileChooserImplReceiver;
         //         }, base::Unretained(fileChooserImplReceiver)));
-        createAndBindInterface<::blink::mojom::blink::FileChooser, FileChooserImpl>(receiver.PassPipe(), m_engineViewId);
+        createAndBindInterface<::blink::mojom::blink::FileChooser, FileChooserImpl>(
+            receiver.PassPipe(), static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(m_frame)));
 
     } else if ("blink.mojom.QuotaManagerHost" == name) {
         createAndBindInterface<::blink::mojom::blink::QuotaManagerHost, QuotaManagerHostImpl>(receiver.PassPipe());

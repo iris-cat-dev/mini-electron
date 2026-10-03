@@ -109,7 +109,8 @@ public:
 
 class LoaderFactoryImpl final : public blink::URLLoaderFactory {
 public:
-    LoaderFactoryImpl(int64_t mbwebviewId);
+    LoaderFactoryImpl(int64_t mbwebviewId, uint64_t frameId,
+        uint64_t parentFrameId, bool isMainFrame);
 
     // URLLoaderFactory implementation:
     std::unique_ptr<blink::URLLoader> CreateURLLoader(const network::ResourceRequest& request,
@@ -125,6 +126,9 @@ public:
 private:
     base::WaitableEvent* m_terminateSyncLoadEvent = nullptr;
     int64_t m_engineViewId = 0;
+    uint64_t m_frameId = 0;
+    uint64_t m_parentFrameId = 0;
+    bool m_isMainFrame = false;
 };
 
 class BodyLoaderClient : public blink::URLLoaderClient {
@@ -134,7 +138,7 @@ public:
         std::unique_ptr<blink::WebNavigationInfo> info, 
         const blink::LocalFrameToken& navigationControlToken,
         const blink::FrameToken& token
-    ); // TODO: WebNavigationControl要考虑页面被销毁了
+    ); // TODO: WebNavigationControl瑕佽�冭檻椤甸潰琚攢姣佷簡
     ~BodyLoaderClient() override;
 
     bool WillFollowRedirect(
@@ -153,7 +157,6 @@ public:
     void DidReceiveResponse(const blink::WebURLResponse&, 
         absl::variant<mojo::ScopedDataPipeConsumerHandle, SegmentedBuffer>, std::optional<mojo_base::BigBuffer> cached_metadata) override;
     void DidStartLoadingResponseBody(mojo::ScopedDataPipeConsumerHandle body) /*override*/;
-    void DidReceiveDataForTesting(base::span<const char> data) override;
 
     void DidReceiveTransferSizeUpdate(int transfer_size_diff) override
     {
@@ -175,8 +178,6 @@ protected:
     blink::FrameToken m_frameToken;
     std::unique_ptr<blink::WebNavigationInfo> m_info;
     blink::LocalFrameToken m_navigationControlId;
-
-    std::vector<char> m_buf;
 
     friend class URLLoaderImpl;
     std::unique_ptr<URLLoaderImpl> m_urlLoaderImpl;

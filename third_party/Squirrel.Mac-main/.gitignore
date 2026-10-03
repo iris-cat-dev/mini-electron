@@ -1,0 +1,17 @@
+.DS_Store
+.idea/
+__pycache__/
+
+# Standalone gclient state and fetched toolchains are not product inputs.
+/.cipd/
+/.gclient
+/.gcs_entries
+/.gclient_entries
+/.gclient_previous_sync_commits
+/build/
+/buildtools/
+/third_party/llvm-build/
+/third_party/ninja/
+/tools/
+
+/out/

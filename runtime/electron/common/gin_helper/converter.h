@@ -6,6 +6,7 @@
 #define GIN_HELPER_CONVERTER_H_
 
 #include <string>
+#include <type_traits>
 #include <xstring>
 #include <vector>
 #include <functional>
@@ -233,19 +234,20 @@ template <typename T> struct ToV8ReturnsMaybe<std::vector<T>> {
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const base::Value& input);
 
 // Convenience functions that deduce T.
-template <typename T> v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, T input)
+template <typename T> v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const T& input)
 {
-    return Converter<T>::ToV8(isolate, input);
+    return Converter<std::decay_t<decltype(input)>>::ToV8(isolate, input);
 }
 
-template <typename T> v8::MaybeLocal<v8::Value> ConvertToV8(v8::Local<v8::Context> context, T input)
+template <typename T> v8::MaybeLocal<v8::Value> ConvertToV8(v8::Local<v8::Context> context, const T& input)
 {
-    return Converter<T>::ToV8(context, input);
+    return Converter<std::decay_t<decltype(input)>>::ToV8(context, input);
 }
 
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const std::vector<intptr_t>& input);
 
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const base::Value::List& input);
+v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const base::Value::Dict& input);
 
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const blink::CloneableMessage& input);
 
@@ -254,7 +256,7 @@ v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const std::vector<blink::
 template <typename T, bool = ToV8ReturnsMaybe<T>::value> struct ToV8Traits;
 
 template <typename T> struct ToV8Traits<T, true> {
-    static bool TryConvertToV8(v8::Isolate* isolate, T input, v8::Local<v8::Value>* output)
+    static bool TryConvertToV8(v8::Isolate* isolate, const T& input, v8::Local<v8::Value>* output)
     {
         auto maybe = ConvertToV8(isolate->GetCurrentContext(), input);
         if (maybe.IsEmpty())
@@ -265,16 +267,16 @@ template <typename T> struct ToV8Traits<T, true> {
 };
 
 template <typename T> struct ToV8Traits<T, false> {
-    static bool TryConvertToV8(v8::Isolate* isolate, T input, v8::Local<v8::Value>* output)
+    static bool TryConvertToV8(v8::Isolate* isolate, const T& input, v8::Local<v8::Value>* output)
     {
         *output = ConvertToV8(isolate, input);
         return true;
     }
 };
 
-template <typename T> bool TryConvertToV8(v8::Isolate* isolate, T input, v8::Local<v8::Value>* output)
+template <typename T> bool TryConvertToV8(v8::Isolate* isolate, const T& input, v8::Local<v8::Value>* output)
 {
-    return ToV8Traits<T>::TryConvertToV8(isolate, input, output);
+    return ToV8Traits<std::decay_t<decltype(input)>>::TryConvertToV8(isolate, input, output);
 }
 
 // This crashes when input.size() > v8::String::kMaxLength.

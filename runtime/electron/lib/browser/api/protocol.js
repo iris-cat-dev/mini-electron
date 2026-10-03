@@ -7,6 +7,15 @@ var handlerToIdMap = {};
 var idGen = 0;
 var schemeToIdMap = {};
 
+function normalizeScheme(scheme) {
+    if (typeof scheme !== 'string')
+        throw new TypeError('Protocol scheme must be a string');
+    const normalized = scheme.replace(/:$/, '').toLowerCase();
+    if (!/^[a-z][a-z0-9+.-]*$/.test(normalized))
+        throw new TypeError(`Invalid protocol scheme: ${scheme}`);
+    return normalized;
+}
+
 function onLoadUrlBegin(id, request, nativeCallbackInfo) {
     var handler = handlerToIdMap[id];
     if (!handler) {
@@ -29,23 +38,48 @@ function onLoadUrlBegin(id, request, nativeCallbackInfo) {
 }
 
 Protocol.prototype.registerProtocol = function(scheme, handler, completion, type) {
-    var id = ++idGen;
+    scheme = normalizeScheme(scheme);
+    if (typeof handler !== 'function')
+        throw new TypeError('Protocol handler must be a function');
+    if (this._isProtocolHandled(scheme)) {
+        const error = new Error(`Protocol is already handled: ${scheme}`);
+        if (completion) {
+            completion(error);
+            return;
+        }
+        throw error;
+    }
+    const id = ++idGen;
+    if (!this._registerProtocol(scheme, id, type || 'buffer')) {
+        const error = new Error(`Unable to register protocol: ${scheme}`);
+        if (completion) {
+            completion(error);
+            return;
+        }
+        throw error;
+    }
     handlerToIdMap[id] = handler;
-    this._registerProtocol(scheme, id, type);
     schemeToIdMap[scheme] = id;
     if (completion)
         completion(null);
 }
 
 Protocol.prototype.handle = function(scheme, handler) {
+    scheme = normalizeScheme(scheme);
     if (typeof handler !== 'function')
         throw new TypeError('Protocol handler must be a function');
     if (this._isProtocolHandled(scheme))
         throw new Error('Protocol is already handled: ' + scheme);
     this.registerProtocol(scheme, (request, finish) => {
-        Promise.resolve().then(() => handler(new Request(request.url, {
-            method: request.method, headers: request.headers
-        }))).then(async response => {
+        Promise.resolve().then(() => {
+            const init = { method: request.method, headers: request.headers };
+            if (request.body != null &&
+                request.method !== 'GET' && request.method !== 'HEAD') {
+                init.body = request.body;
+                init.duplex = 'half';
+            }
+            return handler(new Request(request.url, init));
+        }).then(async response => {
             if (!(response instanceof Response))
                 throw new TypeError('Protocol handler must return a Response');
             finish({
@@ -83,33 +117,38 @@ Protocol.prototype.registerHttpProtocol = function(scheme, handler, completion) 
 }
 
 Protocol.prototype.unregisterProtocol = function(scheme, completion) {
-    delete handlerToIdMap[schemeToIdMap[scheme]];
-    delete schemeToIdMap[scheme];
-
+    scheme = normalizeScheme(scheme);
+    const id = schemeToIdMap[scheme];
+    if (id !== undefined) {
+        delete handlerToIdMap[id];
+        delete schemeToIdMap[scheme];
+    }
     this._unregisterProtocol(scheme);
     if (completion)
         completion(null);
 }
 
 Protocol.prototype.isProtocolHandled = function(scheme, callback) {
-    var b = this._isProtocolHandled(scheme);
-    callback(b);
+    const handled = this._isProtocolHandled(normalizeScheme(scheme));
+    if (callback)
+        callback(handled);
+    return handled;
 }
 
 Protocol.prototype.interceptFileProtocol = function(scheme, handler, completion) {
-    this.registerProtocol(scheme, handler, completion);
+    this.registerProtocol(scheme, handler, completion, 'file');
 }
 
 Protocol.prototype.interceptStringProtocol = function(scheme, handler, completion) {
-    this.registerProtocol(scheme, handler, completion);
+    this.registerProtocol(scheme, handler, completion, 'string');
 }
 
 Protocol.prototype.interceptBufferProtocol = function(scheme, handler, completion) {
-    this.registerProtocol(scheme, handler, completion);
+    this.registerProtocol(scheme, handler, completion, 'buffer');
 }
 
 Protocol.prototype.interceptHttpProtocol = function(scheme, handler, completion) {
-    this.registerProtocol(scheme, handler, completion);
+    this.registerProtocol(scheme, handler, completion, 'http');
 }
 
 Protocol.prototype.uninterceptProtocol = function(scheme, completion) {

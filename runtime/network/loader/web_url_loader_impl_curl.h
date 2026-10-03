@@ -36,7 +36,8 @@ public:
         scoped_refptr<base::SingleThreadTaskRunner> freezableTaskRunnerHandle, 
         scoped_refptr<base::SingleThreadTaskRunner> unfreezableTaskRunnerHandle,
         base::WaitableEvent* terminateSyncLoadEvent,
-        int64_t mbwebviewId);
+        int64_t mbwebviewId, uint64_t frameId = 0,
+        uint64_t parentFrameId = 0, bool isMainFrame = false);
     ~WebURLLoaderImplCurl() /*override*/;
 
     // --URLLoader methods:
@@ -85,7 +86,7 @@ private:
 
     //mojo::ScopedDataPipeConsumerHandle m_responseBodyConsumerDataPipe;
 
-    bool m_isAutoDestroy = true; // Ò»°ã¶¼ÊÇ×Ô¶¯Ïú»Ù£¬²»¹ımain frameµÄÀıÍâ
+    bool m_isAutoDestroy = true; // ä¸€èˆ¬éƒ½æ˜¯è‡ªåŠ¨é”€æ¯ï¼Œä¸è¿‡main frameçš„ä¾‹å¤–
 
     bool* m_hadDestroied = nullptr;
     int m_jobId = 0;
@@ -101,6 +102,9 @@ private:
 
     base::WaitableEvent* m_terminateSyncLoadEvent = nullptr;
     int64_t m_engineViewId = 0;
+    uint64_t m_frameId = 0;
+    uint64_t m_parentFrameId = 0;
+    bool m_isMainFrame = false;
 
     base::WeakPtrFactory<WebURLLoaderImplCurl> m_weakPtr { this };
 };

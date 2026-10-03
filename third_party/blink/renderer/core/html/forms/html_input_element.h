@@ -239,6 +239,7 @@ public:
     void setFiles(FileList*);
 
     void SetFilesFromPaths(const Vector<String>&);
+    void SetBrokeredFiles(FileList*);
 
     // Returns true if the given DragData has more than one dropped files.
     bool ReceiveDroppedFiles(const DragData*);

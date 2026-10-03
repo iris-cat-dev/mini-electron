@@ -21,6 +21,13 @@ import urllib.request
 import zipfile
 
 from .node_sources import generate_node_bootstraps
+from .distribution import (
+    copy_release_notices,
+    copy_runtime_javascript,
+    publish_distribution,
+    release_metadata,
+    staging_directory,
+)
 
 
 _MANIFEST = Path("build/mini_electron/windows/manifest.json")
@@ -88,6 +95,10 @@ def _validate_options(args: object) -> None:
         getattr(args, "omp_desktop", False)
     ):
         unsupported.append("--app-output without --omp-desktop")
+    if getattr(args, "dist_output", None) is not None and not bool(
+        getattr(args, "package_dist", False)
+    ):
+        unsupported.append("--dist-output without --package-dist")
     if getattr(args, "screenshot", None) is not None:
         unsupported.append("--screenshot")
     frontend = getattr(args, "frontend", _DEFAULT_FRONTEND)
@@ -785,6 +796,39 @@ def _package(root: Path, args: object, output: Path, built: Path, manifest: dict
     return executable
 
 
+def _package_runtime_distribution(
+    root: Path, args: object, output: Path, built: Path
+) -> tuple[Path, Path]:
+    metadata = release_metadata(root, "win32", "x64")
+    requested = getattr(args, "dist_output", None)
+    destination = Path(str(requested)) if requested else output / "runtime-dist"
+    if not destination.is_absolute():
+        destination = root / destination
+    if destination.is_symlink() or destination.is_junction():
+        raise BuildError(
+            f"--dist-output must not be a symlink or junction: {destination}"
+        )
+    destination = destination.resolve()
+    if destination == root or destination == output or destination in output.parents:
+        raise BuildError("--dist-output must not replace the repository or build output")
+    staged = staging_directory(destination)
+    try:
+        executable = staged / "electron.exe"
+        shutil.copy2(built, executable)
+        copy_release_notices(root, staged)
+        copy_runtime_javascript(root, staged / "resources")
+        copy_release_notices(root, staged / "resources")
+        published, archive, _ = publish_distribution(staged, destination, metadata)
+    except BaseException:
+        if staged.exists():
+            shutil.rmtree(staged)
+        raise
+    print(f"[windows] Runtime distribution: {published}")
+    print(f"[windows] Runtime archive: {archive}")
+    return published, archive
+
+
+
 def _find_visible_window(process_id: int, timeout: float) -> tuple[int, str] | None:
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -982,6 +1026,10 @@ def build(root: Path, args: argparse.Namespace) -> int:
             nghttp2_root,
             jobs,
         )
+        if bool(getattr(args, "package_dist", False)):
+            _package_runtime_distribution(root, args, output, built)
+            return 0
+
         if bool(getattr(args, "omp_desktop", False)):
             from .omp_desktop import package_windows_omp_desktop
 

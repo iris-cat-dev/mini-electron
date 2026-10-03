@@ -1,4 +1,10 @@
+'use strict';
 
-const binding = process._linkedBinding('electron_common_nativeImage');
-const NativeImage = binding.NativeImage;
+const { NativeImage } = process._linkedBinding('electron_common_nativeImage');
+const nativeToJPEG = NativeImage.prototype.toJPEG;
+
+NativeImage.prototype.toJPEG = function (quality = 100) {
+  return nativeToJPEG.call(this, { quality });
+};
+
 exports.NativeImage = NativeImage;

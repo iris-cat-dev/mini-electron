@@ -34,21 +34,6 @@
 
 namespace {
 
-// Old ShellExecute crashes the process when the command for a given scheme
-// is empty. This function tells if it is.
-
-bool ValidateShellCommandForScheme(const std::string& scheme)
-{
-    base::win::RegKey key;
-    std::u16string registry_path = base::ASCIIToUTF16(scheme) + u"\\shell\\open\\command";
-    key.Open(HKEY_CLASSES_ROOT, (const WCHAR*)registry_path.c_str(), KEY_READ);
-    if (!key.Valid())
-        return false;
-    DWORD size = 0;
-    key.ReadValue(NULL, NULL, &size, NULL);
-    if (size <= 2)
-        return false;
-}
 
 // Required COM implementation of IFileOperationProgressSink so we can
 // precheck files before deletion to make sure they can be move to the
@@ -211,6 +196,36 @@ HRESULT DeleteFileProgressSink::ResumeTimer()
     return S_OK;
 }
 
+std::string FormatWindowsShellError(const std::string& action, DWORD error_code)
+{
+    if (error_code == ERROR_SUCCESS)
+        return action + ": Windows Shell rejected the request";
+
+    wchar_t* message_buffer = nullptr;
+    const DWORD message_length = ::FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+            | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr, error_code, 0,
+        reinterpret_cast<wchar_t*>(&message_buffer), 0, nullptr);
+
+    std::wstring message;
+    if (message_length != 0 && message_buffer) {
+        message.assign(message_buffer, message_length);
+        ::LocalFree(message_buffer);
+        while (!message.empty()
+            && (message.back() == L'\r' || message.back() == L'\n'
+                || message.back() == L' ' || message.back() == L'\t')) {
+            message.pop_back();
+        }
+    }
+
+    std::string result = action + " (Windows error "
+        + std::to_string(error_code) + ")";
+    if (!message.empty())
+        result += ": " + base::WideToUTF8(message);
+    return result;
+}
+
 } // namespace
 
 namespace platform_util {
@@ -256,7 +271,7 @@ void showItemInFolder(const base::FilePath& full_path)
         return;
     scoped_refptr<IShellFolder> desktop(ptr);
     ptr->Release(); // 这里引用技术不知道对不对
-    *(int*)1 = 1;
+
 
     base::win::ScopedCoMem<ITEMIDLIST> dir_item;
     hr = desktop->ParseDisplayName(NULL, NULL, const_cast<wchar_t*>(dir.value().c_str()), NULL, &dir_item, NULL);
@@ -299,69 +314,61 @@ void showItemInFolder(const base::FilePath& full_path)
     }
 }
 
-void openItem(const base::FilePath& full_path)
+bool openPath(const base::FilePath& full_path, std::string* error)
 {
-    if (::PathIsDirectoryW(full_path.value().c_str()))
-        ui::win::OpenFolderViaShell(full_path);
-    else
-        ui::win::OpenFileViaShell(full_path);
+    if (error)
+        error->clear();
+
+    ::SetLastError(ERROR_SUCCESS);
+    const DWORD attributes = ::GetFileAttributesW(full_path.value().c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        DWORD error_code = ::GetLastError();
+        if (error_code == ERROR_SUCCESS)
+            error_code = ERROR_FILE_NOT_FOUND;
+        if (error) {
+            *error = FormatWindowsShellError(
+                "Failed to open path \"" + full_path.AsUTF8Unsafe() + "\"",
+                error_code);
+        }
+        return false;
+    }
+
+    ::SetLastError(ERROR_SUCCESS);
+    const bool opened = (attributes & FILE_ATTRIBUTE_DIRECTORY)
+        ? ui::win::OpenFolderViaShell(full_path)
+        : ui::win::OpenFileViaShell(full_path);
+    if (opened)
+        return true;
+
+    if (error) {
+        *error = FormatWindowsShellError(
+            "Failed to open path \"" + full_path.AsUTF8Unsafe() + "\"",
+            ::GetLastError());
+    }
+    return false;
 }
 
-class OpenExternal {
-public:
-    OpenExternal(const std::u16string& url, bool activate)
-        : m_url(url)
-        , m_activate(activate)
-        , m_wait(0)
-    {
-    }
-
-    bool call()
-    {
-        bool retVal = false;
-        m_retVal = &retVal;
-        ::CreateThread(nullptr, 0, &OpenExternal::threadEnter, this, 0, 0);
-        while (0 == m_wait) {
-            ::Sleep(10);
-        }
-        return retVal;
-    }
-
-    static DWORD WINAPI threadEnter(LPVOID lpThreadParameter)
-    {
-        OpenExternal* self = (OpenExternal*)lpThreadParameter;
-        *(self->m_retVal) = self->openExternalImpl(self->m_url, self->m_activate);
-        self->m_wait = 1;
-        return 0;
-    }
-
-    bool openExternalImpl(const std::u16string& url, bool activate)
-    {
-        // Quote the input scheme to be sure that the command does not have
-        // parameters unexpected by the external program. This url should already
-        // have been escaped.
-        std::u16string escaped_url = (const char16_t*)L"\"" + url + (const char16_t*)L"\"";
-
-        if (reinterpret_cast<ULONG_PTR>(ShellExecuteW(NULL, L"open", (LPCWSTR)escaped_url.c_str(), NULL, NULL, SW_SHOWNORMAL)) <= 32) {
-            // We fail to execute the call. We could display a message to the user.
-            // TODO(nsylvain): we should also add a dialog to warn on errors. See
-            // bug 1136923.
-            return false;
-        }
-        return true;
-    }
-
-private:
-    std::u16string m_url;
-    bool m_activate;
-    bool* m_retVal;
-    int m_wait;
-};
-
-bool openExternal(const std::u16string& url, bool activate)
+bool openExternal(const std::u16string& url, bool activate, std::string* error)
 {
-    OpenExternal threader(url, activate);
-    return threader.call();
+    if (error)
+        error->clear();
+
+    SHELLEXECUTEINFOW execute_info = { sizeof(execute_info) };
+    execute_info.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
+    execute_info.lpVerb = L"open";
+    execute_info.lpFile = reinterpret_cast<LPCWSTR>(url.c_str());
+    execute_info.nShow = activate ? SW_SHOWNORMAL : SW_SHOWNOACTIVATE;
+
+    ::SetLastError(ERROR_SUCCESS);
+    if (::ShellExecuteExW(&execute_info))
+        return true;
+
+    if (error) {
+        *error = FormatWindowsShellError(
+            "Failed to open external URL \"" + base::UTF16ToUTF8(url) + "\"",
+            ::GetLastError());
+    }
+    return false;
 }
 
 void moveToCenter(HWND hWnd)

@@ -37,6 +37,11 @@
     <ClCompile Include="..\..\..\runtime\electron\browser\api\menu.cc" />
     <ClCompile Include="..\..\..\runtime\electron\browser\api\message_port_main.cc" />
     <ClCompile Include="..\..\..\runtime\electron\browser\api\parent_port.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\browser\api\native_theme.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\browser\api\notification.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\browser\devtools_gateway.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\runtime\electron\browser\api\power_monitor.cc" />
     <ClCompile Include="..\..\..\runtime\electron\browser\api\protocol.cc" />
     <ClCompile Include="..\..\..\runtime\electron\browser\api\safe_storage.cc" />
@@ -94,6 +99,10 @@
     <ClCompile Include="..\..\..\runtime\electron\common\embedded_resources.cc" />
     <ClCompile Include="..\..\..\runtime\electron\common\node_binding.cc" />
     <ClCompile Include="..\..\..\runtime\electron\common\node_thread.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\common\renderer_client.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\common\renderer_protocol.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\common\renderer_server.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\common\renderer_platform_win.cc" />
     <ClCompile Include="..\..\..\runtime\electron\common\options_switches.cc" />
     <ClCompile Include="..\..\..\runtime\electron\common\platform_util_win.cc" />
     <ClCompile Include="..\..\..\runtime\electron\common\system_tray.cc" />
@@ -101,11 +110,48 @@
     <ClCompile Include="..\..\..\runtime\electron\node_bindings.cc" />
     <ClCompile Include="..\..\..\runtime\electron\node_gin.cc" />
     <ClCompile Include="..\..\..\runtime\electron\renderer\api\context_bridge.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\api\renderer_ipc.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\api\web_frame.cc" />
     <ClCompile Include="..\..\..\runtime\electron\renderer\api\object_cache.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\webview_plugin.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\webview_plugin_impl.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\renderer\sandbox_preload_host.cc" />
+    <ClCompile Include="..\..\..\runtime\electron\renderer\authorized_file.cc" />
+    <ClCompile Include="..\..\..\runtime\storage\stock_profile_migrator.cc" />
+    <ClCompile Include="..\..\..\third_party\sqlite\sqlite3.c">
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\leveldb\db\builder.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\db_impl.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\db_iter.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\dbformat.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\filename.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\log_reader.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\log_writer.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\memtable.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\repair.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\table_cache.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\version_edit.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\version_set.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\db\write_batch.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\block.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\block_builder.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\filter_block.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\format.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\iterator.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\merger.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\table.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\table_builder.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\table\two_level_iterator.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\arena.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\bloom.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\cache.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\coding.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\comparator.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\crc32c.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\env.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\env_windows.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\filter_policy.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\hash.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\logging.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\options.cc" />
+    <ClCompile Include="..\..\..\third_party\leveldb\util\status.cc" />
     <ClCompile Include="..\..\..\platform\windows\compat\atomic.cc" />
     <ClCompile Include="..\..\..\platform\windows\main.cc">
       <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</PreprocessToFile>
@@ -190,8 +236,6 @@
     <ClInclude Include="..\..\..\runtime\electron\node_bindings.h" />
     <ClInclude Include="..\..\..\runtime\electron\renderer\api\context_bridge.h" />
     <ClInclude Include="..\..\..\runtime\electron\renderer\api\object_cache.h" />
-    <ClInclude Include="..\..\..\runtime\electron\renderer\webview_plugin.h" />
-    <ClInclude Include="..\..\..\runtime\electron\renderer\webview_plugin_impl.h" />
     <ClInclude Include="..\..\..\platform\windows\resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -426,7 +470,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;SUPPORT_XP_CODE;USE_AURA;INSIDE_BLINK;V8_ENABLE_CHECKS;OS_WIN;SK_SUPPORT_LEGACY_DRAWLOOPER;_WINSOCK_DEPRECATED_NO_WARNINGS;MINI_ELECTRON_IMPLEMENTATION=1;_GLIBCXX_USE_CXX11_ABI=1;NODE_OPENSSL_CONF_NAME=nodejs_conf;ICU_NO_USER_DATA_OVERRIDE;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_HAS_EXCEPTIONS=0;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;OPENSSL_NO_PINSHARED;NODE_ARCH="ia32";NODE_WANT_INTERNALS=1;V8_DEPRECATION_WARNINGS=1;NODE_OPENSSL_SYSTEM_CERT_PATH="";NODE_USE_NODE_CODE_CACHE=1;HAVE_INSPECTOR=0;FD_SETSIZE=1024;NODE_PLATFORM="win32";NODE_USE_V8_PLATFORM=1;NODE_V8_SHARED_RO_HEAP;NODE_HAVE_I18N_SUPPORT=1;NODE_BUNDLED_ZLIB;HAVE_OPENSSL=1;OPENSSL_API_COMPAT=0x10100000L;BASE64_STATIC_DEFINE;UCONFIG_NO_SERVICE=1;U_ENABLE_DYLOAD=0;U_STATIC_IMPLEMENTATION=1;U_HAVE_STD_STRING=1;UCONFIG_NO_BREAK_ITERATION=0;NGHTTP2_STATICLIB;OPENSSL_BUILDING_OPENSSL;OPENSSL_SYS_WIN32;OPENSSL_PIC;NGTCP2_STATICLIB;NGHTTP3_STATICLIB;V8_USE_EXTERNAL_STARTUP_DATA;V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=0;V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=0;V8_PROMISE_INTERNAL_FIELD_COUNT=0;V8_COMPRESS_POINTERS;V8_COMPRESS_POINTERS_IN_SHARED_CAGE;V8_31BIT_SMIS_ON_64BIT_ARCH;V8_DEPRECATION_WARNINGS;V8_HAVE_TARGET_OS;V8_TARGET_OS_WIN;CPPGC_CAGED_HEAP;CPPGC_YOUNG_GENERATION;CPPGC_POINTER_COMPRESSION;CPPGC_ENABLE_LARGER_CAGE;CPPGC_SLIM_WRITE_BARRIER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;SUPPORT_XP_CODE;USE_AURA;INSIDE_BLINK;V8_ENABLE_CHECKS;OS_WIN;SK_SUPPORT_LEGACY_DRAWLOOPER;_WINSOCK_DEPRECATED_NO_WARNINGS;MINI_ELECTRON_IMPLEMENTATION=1;_GLIBCXX_USE_CXX11_ABI=1;NODE_OPENSSL_CONF_NAME=nodejs_conf;ICU_NO_USER_DATA_OVERRIDE;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_HAS_EXCEPTIONS=0;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;OPENSSL_NO_PINSHARED;NODE_ARCH="x64";NODE_WANT_INTERNALS=1;V8_DEPRECATION_WARNINGS=1;NODE_OPENSSL_SYSTEM_CERT_PATH="";NODE_USE_NODE_CODE_CACHE=1;HAVE_INSPECTOR=0;FD_SETSIZE=1024;NODE_PLATFORM="win32";NODE_USE_V8_PLATFORM=1;NODE_V8_SHARED_RO_HEAP;NODE_HAVE_I18N_SUPPORT=1;NODE_BUNDLED_ZLIB;HAVE_OPENSSL=1;OPENSSL_API_COMPAT=0x10100000L;BASE64_STATIC_DEFINE;UCONFIG_NO_SERVICE=1;U_ENABLE_DYLOAD=0;U_STATIC_IMPLEMENTATION=1;U_HAVE_STD_STRING=1;UCONFIG_NO_BREAK_ITERATION=0;NGHTTP2_STATICLIB;OPENSSL_BUILDING_OPENSSL;OPENSSL_SYS_WIN32;OPENSSL_PIC;NGTCP2_STATICLIB;NGHTTP3_STATICLIB;V8_USE_EXTERNAL_STARTUP_DATA;V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=0;V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=0;V8_PROMISE_INTERNAL_FIELD_COUNT=0;V8_COMPRESS_POINTERS;V8_COMPRESS_POINTERS_IN_SHARED_CAGE;V8_31BIT_SMIS_ON_64BIT_ARCH;V8_DEPRECATION_WARNINGS;V8_HAVE_TARGET_OS;V8_TARGET_OS_WIN;CPPGC_CAGED_HEAP;CPPGC_YOUNG_GENERATION;CPPGC_POINTER_COMPRESSION;CPPGC_ENABLE_LARGER_CAGE;CPPGC_SLIM_WRITE_BARRIER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>

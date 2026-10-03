@@ -13,11 +13,17 @@ class WebLocalFrame;
 
 namespace content {
 
-WebWorkerFetchContextImpl::WebWorkerFetchContextImpl(const blink::WebSecurityOrigin& orig, int64_t mbwebviewId)
+WebWorkerFetchContextImpl::WebWorkerFetchContextImpl(
+    const blink::WebSecurityOrigin& orig, int64_t mbwebviewId,
+    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame)
+    : m_orig(blink::WebSecurityOrigin::CreateFromString(orig.ToString()))
+    , m_engineViewId(mbwebviewId)
+    , m_frameId(frameId)
+    , m_parentFrameId(parentFrameId)
+    , m_isMainFrame(isMainFrame)
+    , m_loaderFactoryImpl(new mini_electron::LoaderFactoryImpl(
+          mbwebviewId, frameId, parentFrameId, isMainFrame))
 {
-    m_orig = blink::WebSecurityOrigin::CreateFromString(orig.ToString());
-    m_engineViewId = mbwebviewId;
-    m_loaderFactoryImpl.reset(new mini_electron::LoaderFactoryImpl(mbwebviewId));
 }
 
 WebWorkerFetchContextImpl::~WebWorkerFetchContextImpl()
@@ -44,7 +50,8 @@ std::unique_ptr<blink::URLLoaderFactory> WebWorkerFetchContextImpl::WrapURLLoade
     blink::CrossVariantMojoRemote<network::mojom::URLLoaderFactoryInterfaceBase> url_loader_factory)
 {
     std::unique_ptr<blink::URLLoaderFactory> loaderFactoryImpl;
-    loaderFactoryImpl.reset(new mini_electron::LoaderFactoryImpl(m_engineViewId));
+    loaderFactoryImpl.reset(new mini_electron::LoaderFactoryImpl(
+        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame));
     return std::move(loaderFactoryImpl);
 }
 
@@ -59,6 +66,9 @@ void WebWorkerFetchContextImpl::FinalizeRequest(blink::WebURLRequest& request)
 {
     scoped_refptr<mini_electron::WebURLRequestExtraDataWrap> extraData = base::MakeRefCounted<mini_electron::WebURLRequestExtraDataWrap>();
     extraData->mbwebviewId = m_engineViewId;
+    extraData->frameId = m_frameId;
+    extraData->parentFrameId = m_parentFrameId;
+    extraData->isMainFrame = m_isMainFrame;
 
     blink::WebURLRequest* req = (blink::WebURLRequest*)(&request);
     req->SetURLRequestExtraData(extraData);

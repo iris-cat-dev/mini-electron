@@ -2,6 +2,7 @@
 # Use of this source code is governed by the Apache-2.0 license.
 
 import("sources/allocator.gni")
+import("sources/electron.gni")
 import("sources/base.gni")
 import("sources/engine.gni")
 import("sources/generated.gni")
@@ -37,7 +38,6 @@ config("mini_electron_engine_config") {
     "MINI_ELECTRON_IMPLEMENTATION=1",
     "INSIDE_BLINK=1",
     "LIBXML_STATIC",
-    "MINI_ELECTRON_DISABLE_DEVTOOLS=1",
     "MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1",
     "LIBXSLT_STATIC",
     "PNG_SET_OPTION_SUPPORTED",
@@ -99,7 +99,7 @@ config("mini_electron_node_config") {
     "CARES_STATICLIB",
     "DISABLE_SINGLE_EXECUTABLE_APPLICATION",
     "HAVE_AMARO=0",
-    "HAVE_INSPECTOR=0",
+    "HAVE_INSPECTOR=1",
     "HAVE_OPENSSL=1",
     "NODE_ARCH=\"arm64\"",
     "NODE_BUNDLED_ZLIB=1",
@@ -123,6 +123,9 @@ config("mini_electron_node_config") {
     "//third_party/libnode/deps/llhttp/include",
     "//third_party/libnode/deps/nbytes/include",
     "//third_party/libnode/deps/ncrypto",
+    "//third_party/libnode/deps/inspector_protocol",
+    "//third_party/libnode/gen",
+    "//third_party/libnode/gen/src",
     "//third_party/libnode/deps/simdjson",
     "//third_party/libnode/deps/simdutf",
     "//third_party/libnode/deps/zstd/lib",
@@ -338,7 +341,6 @@ static_library("mini_electron_libxslt") {
 
 static_library("mini_electron_blink") {
   sources = mini_electron_blink_sources
-  sources += [ "//runtime/engine/common/devtools_disabled.cc" ]
   configs += [ ":mini_electron_engine_config" ]
 }
 
@@ -511,22 +513,52 @@ executable("mini_electron_browser") {
   ]
 }
 
+action("stage_devtools_frontend") {
+  script = "copy_devtools_frontend.py"
+  _source = "//third_party/devtools-frontend/generated/front_end"
+  _destination = "$root_out_dir/resources/devtools-frontend/front_end"
+  _stamp = "$root_out_dir/resources/devtools-frontend.stamp"
+  _inputs = exec_script(
+      script,
+      [
+        "--source=" + rebase_path(_source, root_build_dir),
+        "--print-inputs",
+      ],
+      "list lines")
+  inputs = [ "//third_party/devtools-frontend/REVISION" ] + _inputs
+  outputs = [ _stamp ]
+  args = [
+    "--source=" + rebase_path(_source, root_build_dir),
+    "--destination=" + rebase_path(_destination, root_build_dir),
+    "--stamp=" + rebase_path(_stamp, root_build_dir),
+  ]
+}
+
 executable("mini_electron") {
   output_name = "mini-electron"
-  sources = [
-    "//platform/macos/electron/electron_api.cc",
-    "//platform/macos/electron/electron_api.h",
-    "//platform/macos/electron/node_runtime.cc",
-    "//platform/macos/electron/node_runtime.h",
-    "//platform/macos/electron/electron_demo.mm",
-    "//platform/macos/electron/omp_desktop_runtime.h",
-    "//platform/macos/electron/omp_desktop_runtime.mm",
-  ]
+  sources = mini_electron_mac_electron_sources
   configs += [ ":mini_electron_engine_config" ]
+  _source_root = rebase_path("//", "")
+  defines = [
+    "HAVE_CRC32C=0",
+    "HAVE_SNAPPY=0",
+    "LEVELDB_COMPILE_LIBRARY",
+    "LEVELDB_HAS_PORT_CONFIG_H=0",
+    "LEVELDB_PLATFORM_POSIX=1",
+    "MINI_ELECTRON_SOURCE_ROOT=\"$_source_root\"",
+    "SQLITE_OMIT_LOAD_EXTENSION",
+    "SQLITE_THREADSAFE=1",
+  ]
+  include_dirs = [
+    "//third_party/leveldb",
+    "//third_party/leveldb/include",
+  ]
   deps = [
     ":mini_electron_engine",
     ":mini_electron_engine_api",
     ":mini_electron_node",
+    ":stage_devtools_frontend",
+    "//third_party/Squirrel.Mac-main:squirrel_framework+link",
   ]
   libs = [
     rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
@@ -540,6 +572,10 @@ executable("mini_electron") {
   ldflags = [
     "-Wl,-exported_symbols_list," +
         rebase_path("//platform/macos/node_exports.txt", root_build_dir),
+    "-rpath",
+    "@executable_path/../Frameworks",
+    "-rpath",
+    "@executable_path",
   ]
   frameworks = [
     "Carbon.framework",
@@ -549,10 +585,12 @@ executable("mini_electron") {
     "CoreGraphics.framework",
     "CoreText.framework",
     "Foundation.framework",
+    "UserNotifications.framework",
     "MediaAccessibility.framework",
     "IOSurface.framework",
     "QuartzCore.framework",
     "Security.framework",
+    "ServiceManagement.framework",
     "UniformTypeIdentifiers.framework",
   ]
 }

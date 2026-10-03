@@ -8,19 +8,22 @@
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
-#include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libuv/include/uv.h"
+#include "third_party/libnode/src/node_buffer.h"
 #include "runtime/electron/browser/api/protocol_interface.h"
 #include "runtime/electron/common/node_register_help.h"
 #include "runtime/electron/common/api/event_emitter.h"
 #include "runtime/engine/common/thread_call.h"
-#include "runtime/engine/public/engine_api.h"
 #include "base/memory/ref_counted.h"
-#include "runtime/network/loader/web_url_loader_internal.h"
-#include "runtime/network/loader/web_url_loader_manager.h"
+#include "base/files/file_util.h"
 #include "url/url_util.h"
+#include "base/strings/string_util.h"
+#include "base/strings/string_number_conversions.h"
+#include "url/gurl.h"
+#include <algorithm>
+#include <memory>
 #include <vector>
 #include <map>
 
@@ -29,8 +32,8 @@ namespace atom {
 namespace {
 
 struct ProtocolCallbackInfo {
-    int jobId;
     std::string type;
+    ProtocolInterface::BrokerReply brokerReply;
 };
 
 }
@@ -68,7 +71,7 @@ public:
 
         builder.SetMethod("_registerProtocol", &Protocol::_registerProtocolApi);
         builder.SetMethod("_unregisterProtocol", &Protocol::_unregisterProtocolApi);
-        builder.SetMethod("_isProtocolHandled", &Protocol::_isProtocolHandledApi);
+        builder.SetMethod("_isProtocolHandled", &Protocol::isProtocolHandled);
         builder.SetMethod("onHandlerFinish", &Protocol::onHandlerFinishApi);
 
         constructor.Reset(isolate, prototype->GetFunction(context).ToLocalChecked());
@@ -108,6 +111,9 @@ public:
             if (!definition.Get("scheme", &scheme) ||
                 !definition.Get("privileges", &value) || !value->IsObject())
                 continue;
+            scheme = base::ToLowerASCII(scheme);
+            if (scheme.empty())
+                continue;
             gin_helper::Dictionary privileges(isolate, value.As<v8::Object>());
             bool standard = false, secure = false, fetch = false, cors = false, serviceWorkers = false;
             privileges.Get("standard", &standard);
@@ -115,20 +121,31 @@ public:
             privileges.Get("supportFetchAPI", &fetch);
             privileges.Get("corsEnabled", &cors);
             privileges.Get("allowServiceWorkers", &serviceWorkers);
-            content::ThreadCall::callBlinkThreadSync(FROM_HERE, [=] {
-                if (standard && !url::IsStandardScheme(scheme))
-                    url::AddStandardScheme(scheme.c_str(), url::SCHEME_WITH_HOST);
-                if (secure) {
-                    url::AddSecureScheme(scheme.c_str());
-                    blink::SchemeRegistry::RegisterURLSchemeBypassingSecureContextCheck(WTF::String::FromUTF8(scheme));
-                }
-                if (cors)
-                    url::AddCorsEnabledScheme(scheme.c_str());
-                if (fetch)
-                    blink::SchemeRegistry::RegisterURLSchemeAsSupportingFetchAPI(WTF::String::FromUTF8(scheme));
-                if (serviceWorkers)
-                    blink::SchemeRegistry::RegisterURLSchemeAsAllowingServiceWorkers(WTF::String::FromUTF8(scheme));
-            });
+            RendererPrivilegedScheme registered;
+            registered.scheme = scheme;
+            registered.standard = standard;
+            registered.secure = secure;
+            registered.support_fetch_api = fetch;
+            registered.cors_enabled = cors;
+            registered.allow_service_workers = serviceWorkers;
+            {
+                base::AutoLock autoLock(m_lock);
+                auto existing = std::find_if(m_privilegedSchemes.begin(),
+                    m_privilegedSchemes.end(),
+                    [&scheme](const RendererPrivilegedScheme& value) {
+                        return value.scheme == scheme;
+                    });
+                if (existing == m_privilegedSchemes.end())
+                    m_privilegedSchemes.push_back(std::move(registered));
+                else
+                    *existing = std::move(registered);
+            }
+            if (standard && !url::IsStandardScheme(scheme))
+                url::AddStandardScheme(scheme.c_str(), url::SCHEME_WITH_HOST);
+            if (secure)
+                url::AddSecureScheme(scheme.c_str());
+            if (cors)
+                url::AddCorsEnabledScheme(scheme.c_str());
         }
     }
     //     void registerFileProtocolApi(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -187,12 +204,6 @@ public:
         if (it != m_schemeToHandleId.end())
             return false;
 
-        content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [scheme] {
-            WTF::String schemeStr = WTF::String::FromUTF8(scheme);
-            blink::SchemeRegistry::RegisterURLSchemeAsSupportingFetchAPI(schemeStr);
-            blink::SchemeRegistry::RegisterURLSchemeAsAllowingServiceWorkers(schemeStr);
-        });
-
         m_schemeToHandleId.insert(std::make_pair(scheme, ProtocolInfo(handlerId, type)));
         return true;
     }
@@ -203,39 +214,34 @@ public:
         m_schemeToHandleId.erase(scheme);
     }
 
-    bool _isProtocolHandledApi(const std::string& scheme)
+    bool isProtocolHandled(const std::string& scheme) override
     {
         base::AutoLock autoLock(m_lock);
         std::map<std::string, ProtocolInfo>::iterator it = m_schemeToHandleId.find(scheme);
         return (it != m_schemeToHandleId.end());
     }
 
-    static std::string normalizeFilePath(const std::string& path)
-    {
-        std::string result = "file:///";
-        for (size_t i = 0; i < path.size(); ++i) {
-            if (path[i] == '\\')
-                result += '/';
-            else
-                result += path[i];
-        }
-        return result;
-    }
 
     void onHandlerFinishApi(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         v8::Isolate* isolate = args.GetIsolate();
-        uint64_t requestId = args[1].As<v8::BigInt>()->Uint64Value();
-        auto pending = m_pendingResponses.find(requestId);
-        if (pending == m_pendingResponses.end())
+        if (args.Length() < 2 || !args[1]->IsBigInt())
             return;
-        ProtocolCallbackInfo info = std::move(pending->second);
-        m_pendingResponses.erase(pending);
+        uint64_t requestId = args[1].As<v8::BigInt>()->Uint64Value();
+        ProtocolCallbackInfo info;
+        {
+            base::AutoLock autoLock(m_lock);
+            auto pending = m_pendingResponses.find(requestId);
+            if (pending == m_pendingResponses.end())
+                return;
+            info = std::move(pending->second);
+            m_pendingResponses.erase(pending);
+        }
 
         gin_helper::Dictionary response(isolate, args[0]->IsObject()
             ? args[0].As<v8::Object>() : v8::Object::New(isolate));
         std::string filePath, mimeType, statusText;
-        std::vector<char> data;
+        std::vector<uint8_t> data;
         std::map<std::string, std::string> headers;
         int error = 0, statusCode = 200;
         response.Get("error", &error);
@@ -278,78 +284,114 @@ public:
                 headers.emplace(std::move(key), std::move(value));
             }
         }
-        content::ThreadCall::callBlinkThreadAsync(FROM_HERE,
-            [info = std::move(info), filePath = std::move(filePath), data = std::move(data),
-             mimeType = std::move(mimeType), headers = std::move(headers),
-             statusText = std::move(statusText), statusCode, error]() mutable {
-                auto manager = mini_electron::WebURLLoaderManager::sharedInstance();
-                mini_electron::AutoLockJob lock(manager, info.jobId);
-                auto job = lock.lock();
-                if (!job)
-                    return;
-                if (error) {
-                    mini_electron_net_cancel_request(job);
-                    return;
-                }
-                if (info.type == "file") {
-                    mini_electron_net_change_request_url(job, normalizeFilePath(filePath).c_str());
-                } else {
-                    mini_electron_net_set_data(job, data.data(), static_cast<int>(data.size()));
-                    job->m_response.SetHttpStatusCode(statusCode);
-                    job->m_response.SetHttpStatusText(blink::WebString::FromUTF8(statusText));
-                    if (!mimeType.empty())
-                        mini_electron_net_set_mime_type(job, mimeType.c_str());
-                    for (const auto& [key, value] : headers)
-                        mini_electron_net_set_http_header_field_utf8(job, key.c_str(), value.c_str(), TRUE);
-                }
-                mini_electron_net_continue_job(job);
-            });
+        base::Value::Dict result;
+        if (error) {
+            info.brokerReply({}, "Protocol handler failed with error " +
+                std::to_string(error));
+            return;
+        }
+        if (info.type == "file") {
+            std::optional<std::vector<uint8_t>> bytes =
+                base::ReadFileToBytes(base::FilePath::FromUTF8Unsafe(filePath));
+            if (!bytes) {
+                info.brokerReply({}, "Protocol file response is unreadable");
+                return;
+            }
+            result.Set("body", base::Value(std::move(*bytes)));
+        } else {
+            result.Set("body", base::Value(std::move(data)));
+        }
+        result.Set("statusCode", statusCode);
+        result.Set("statusText", statusText);
+        result.Set("mimeType", mimeType);
+        base::Value::Dict responseHeaders;
+        for (const auto& [key, value] : headers)
+            responseHeaders.Set(key, value);
+        result.Set("headers", std::move(responseHeaders));
+        info.brokerReply(std::move(result), {});
     }
 
-    virtual bool handleLoadUrlBegin(void* param, const char* url, void* job) override
+    void handleBrokerRequest(int contentsId, uint64_t frameId,
+        const base::Value::Dict& payload, BrokerReply reply) override
     {
-        const char* separator = strstr(url, "://");
-        if (!separator)
-            return false;
-        std::string scheme(url, separator);
-        base::AutoLock autoLock(m_lock);
-        auto handler = m_schemeToHandleId.find(scheme);
-        if (handler == m_schemeToHandleId.end())
-            return false;
-        int id = handler->second.id;
-        uint64_t requestId = ++m_nextRequestId;
-        ProtocolCallbackInfo info { static_cast<mini_electron::WebURLLoaderInternal*>(job)->m_id,
-            handler->second.type };
-        std::string requestUrl(url);
-        std::string referrer(mini_electron_net_get_referrer(job));
-        auto method = mini_electron_net_get_request_method(job);
-        // Hold before dispatch; the handler may resolve synchronously or asynchronously.
-        mini_electron_net_hold_job_to_asyn_commit(job);
+        const std::string* requestUrl = payload.FindString("url");
+        const std::string* method = payload.FindString("method");
+        if (!requestUrl || !method) {
+            reply({}, "Invalid protocol broker request");
+            return;
+        }
+        GURL parsed(*requestUrl);
+        if (!parsed.is_valid() || !parsed.has_scheme()) {
+            reply({}, "Invalid protocol URL");
+            return;
+        }
+
+        int handlerId = 0;
+        uint64_t requestId = 0;
+        {
+            base::AutoLock autoLock(m_lock);
+            auto handler = m_schemeToHandleId.find(parsed.scheme());
+            if (handler == m_schemeToHandleId.end()) {
+                reply({}, "Protocol is not handled");
+                return;
+            }
+            handlerId = handler->second.id;
+            requestId = ++m_nextRequestId;
+            ProtocolCallbackInfo info;
+            info.type = handler->second.type;
+            info.brokerReply = std::move(reply);
+            m_pendingResponses.emplace(requestId, std::move(info));
+        }
+
+        base::Value::Dict requestData = payload.Clone();
+        requestData.Remove("kind");
+        requestData.Set("contentsId", contentsId);
+        requestData.Set("frameId", base::NumberToString(frameId));
+        auto ownedRequestData =
+            std::make_shared<base::Value::Dict>(std::move(requestData));
         content::ThreadCall::callUiThreadAsync(FROM_HERE,
-            [this, id, requestId, info = std::move(info),
-             requestUrl = std::move(requestUrl), referrer = std::move(referrer), method] {
-                m_pendingResponses.emplace(requestId, std::move(info));
+            [this, handlerId, requestId,
+             requestData = std::move(ownedRequestData)] {
                 auto isolate = v8::Isolate::GetCurrent();
+                if (!isolate)
+                    return;
                 v8::HandleScope handleScope(isolate);
-                auto request = v8::Object::New(isolate);
-                gin_helper::Dictionary dictionary(isolate, request);
-                dictionary.Set("url", requestUrl);
-                dictionary.Set("referrer", referrer);
-                dictionary.Set("method", method == kMiniElectronRequestTypeGet ? "GET" :
-                    (method == kMiniElectronRequestTypePost ? "POST" : "PUT"));
-                v8::Local<v8::Value> arguments[] = { v8::Integer::New(isolate, id),
-                    request, v8::BigInt::NewFromUnsigned(isolate, requestId) };
                 auto callback = m_jsReciver.Get(isolate);
                 auto context = callback->GetCreationContextChecked();
                 v8::Context::Scope contextScope(context);
-                node::MakeCallback(isolate, request, callback, 3, arguments, { 0, 0 });
+                std::optional<base::Value> body = requestData->Extract("body");
+                v8::Local<v8::Value> request =
+                    gin_helper::ConvertToV8(isolate, *requestData);
+                if (body && body->is_blob() && !body->GetBlob().empty()) {
+                    auto* bytes = new base::Value::BlobStorage(std::move(*body).TakeBlob());
+                    v8::Local<v8::Object> buffer = node::Buffer::New(isolate,
+                        reinterpret_cast<char*>(bytes->data()), bytes->size(),
+                        [](char*, void* owned) {
+                            delete static_cast<base::Value::BlobStorage*>(owned);
+                        }, bytes).ToLocalChecked();
+                    gin_helper::Dictionary requestObject(isolate, request.As<v8::Object>());
+                    requestObject.Set("body", buffer);
+                }
+                v8::Local<v8::Value> arguments[] = {
+                    v8::Integer::New(isolate, handlerId),
+                    request,
+                    v8::BigInt::NewFromUnsigned(isolate, requestId)
+                };
+                node::MakeCallback(isolate, context->Global(), callback,
+                    3, arguments, { 0, 0 });
             });
-        return true;
     }
+
 
     v8::Local<v8::Object> getWrapper(v8::Isolate* isolate) override
     {
         return GetWrapper(isolate);
+    }
+
+    std::vector<RendererPrivilegedScheme> getPrivilegedSchemes() const override
+    {
+        base::AutoLock autoLock(m_lock);
+        return m_privilegedSchemes;
     }
 
 public:
@@ -359,8 +401,9 @@ public:
     v8::Persistent<v8::Function> m_jsReciver;
     std::map<std::string, ProtocolInfo> m_schemeToHandleId;
     std::map<uint64_t, ProtocolCallbackInfo> m_pendingResponses;
+    std::vector<RendererPrivilegedScheme> m_privilegedSchemes;
     uint64_t m_nextRequestId = 0;
-    base::Lock m_lock;
+    mutable base::Lock m_lock;
 };
 
 v8::Persistent<v8::Function> Protocol::constructor;

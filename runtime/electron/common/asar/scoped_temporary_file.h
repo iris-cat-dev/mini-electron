@@ -36,6 +36,10 @@ public:
 
 private:
     base::FilePath path_;
+    // Reserves the extensionless name returned by GetTempFileName for the
+    // lifetime of path_. Without it, the next extraction can reuse the same
+    // base name and fail to replace an already-open extension-bearing file.
+    base::FilePath reservation_path_;
 
     DISALLOW_COPY_AND_ASSIGN(ScopedTemporaryFile);
 };

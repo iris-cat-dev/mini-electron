@@ -13,6 +13,7 @@ class MenuItem;
 class MenuEventNotif {
 public:
     static void onMenuCommon(UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static bool onAccelerator(HMENU menu, UINT virtualKeyCode);
     static bool getNativeMenu(v8::Local<v8::Value> value, HMENU* menu);
     static void onWindowDidCreated(WindowInterface* window);
 };

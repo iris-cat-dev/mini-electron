@@ -1,84 +1,120 @@
+// Copyright 2026 The mini-electron Authors
+// Use of this source code is governed by the Apache-2.0 license.
 
-#ifndef content_renderer_PermissionServiceImpl_h
-#define content_renderer_PermissionServiceImpl_h
+#ifndef CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_
+#define CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_
+
+#include <memory>
+#include <utility>
 
 #include "gen/third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
-#include "base/task/sequenced_task_runner.h"
+#include "runtime/engine/renderer/renderer_permission_broker.h"
 
-class PermissionServiceImpl : public ::blink::mojom::blink::PermissionService {
-    //using HasPermissionCallback = base::OnceCallback<void(::blink::mojom::blink::PermissionStatus)>;
-    /*virtual*/ void HasPermission(::blink::mojom::blink::PermissionDescriptorPtr permission, HasPermissionCallback callback) override
+class PermissionServiceImpl : public blink::mojom::blink::PermissionService {
+public:
+    void HasPermission(blink::mojom::blink::PermissionDescriptorPtr permission,
+        HasPermissionCallback callback) override
     {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](
-            ::blink::mojom::blink::PermissionService::HasPermissionCallback cb) {
-            std::move(cb).Run(::blink::mojom::blink::PermissionStatus::GRANTED);
-        }, std::move(callback)));
+        Query(std::move(permission), false, false, std::move(callback));
     }
 
-    /*virtual*/ void RegisterPageEmbeddedPermissionControl(
-        WTF::Vector<::blink::mojom::blink::PermissionDescriptorPtr> permissions, ::mojo::PendingRemote<::blink::mojom::blink::EmbeddedPermissionControlClient> client) override
+    void RegisterPageEmbeddedPermissionControl(
+        WTF::Vector<blink::mojom::blink::PermissionDescriptorPtr>,
+        mojo::PendingRemote<blink::mojom::blink::EmbeddedPermissionControlClient>) override
     {
-
     }
 
-    //using RequestPageEmbeddedPermissionCallback = base::OnceCallback<void(EmbeddedPermissionControlResult)>;
-    /*virtual*/ void RequestPageEmbeddedPermission(::blink::mojom::blink::EmbeddedPermissionRequestDescriptorPtr descriptor,
-        ::blink::mojom::blink::PermissionService::RequestPageEmbeddedPermissionCallback callback) override
+    void RequestPageEmbeddedPermission(
+        blink::mojom::blink::EmbeddedPermissionRequestDescriptorPtr,
+        RequestPageEmbeddedPermissionCallback callback) override
     {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](
-            ::blink::mojom::blink::PermissionService::RequestPageEmbeddedPermissionCallback cb) {
-            std::move(cb).Run(::blink::mojom::blink::EmbeddedPermissionControlResult::kGranted);
-        }, std::move(callback)));
+        std::move(callback).Run(
+            blink::mojom::blink::EmbeddedPermissionControlResult::kNotSupported);
     }
 
-    //using RequestPermissionCallback = base::OnceCallback<void(::blink::mojom::blink::PermissionStatus)>;
-    /*virtual*/ void RequestPermission(::blink::mojom::blink::PermissionDescriptorPtr permission, bool user_gesture, RequestPermissionCallback callback) override
+    void RequestPermission(
+        blink::mojom::blink::PermissionDescriptorPtr permission,
+        bool user_gesture, RequestPermissionCallback callback) override
     {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](
-            ::blink::mojom::blink::PermissionService::RequestPermissionCallback cb) {
-            std::move(cb).Run(::blink::mojom::blink::PermissionStatus::GRANTED);
-        }, std::move(callback)));
+        Query(std::move(permission), user_gesture, true, std::move(callback));
     }
 
-    //using RequestPermissionsCallback = base::OnceCallback<void(const WTF::Vector<::blink::mojom::blink::PermissionStatus>&)>;
-    /*virtual*/ void RequestPermissions(WTF::Vector<::blink::mojom::blink::PermissionDescriptorPtr> permission,
+    void RequestPermissions(
+        WTF::Vector<blink::mojom::blink::PermissionDescriptorPtr> permissions,
         bool user_gesture, RequestPermissionsCallback callback) override
     {
-        *(int*)1 = 1;
-//         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](
-//             ::blink::mojom::blink::PermissionService::RequestPermissionCallback cb) {
-//                 std::move(cb).Run(::blink::mojom::blink::PermissionStatus::GRANTED);
-//             }, std::move(callback)));
+        if (permissions.empty()) {
+            std::move(callback).Run({});
+            return;
+        }
+        struct State {
+            WTF::Vector<blink::mojom::blink::PermissionStatus> statuses;
+            size_t remaining = 0;
+            RequestPermissionsCallback callback;
+        };
+        auto state = std::make_shared<State>();
+        state->statuses.resize(permissions.size());
+        state->remaining = permissions.size();
+        state->callback = std::move(callback);
+        for (wtf_size_t index = 0; index < permissions.size(); ++index) {
+            const int name = static_cast<int>(permissions[index]->name);
+            content::RequestRendererPermission(
+                content::RendererPermissionName(name), user_gesture, true,
+                [state, index](bool granted) mutable {
+                    state->statuses[index] = granted
+                        ? blink::mojom::blink::PermissionStatus::GRANTED
+                        : blink::mojom::blink::PermissionStatus::DENIED;
+                    if (--state->remaining == 0)
+                        std::move(state->callback).Run(state->statuses);
+                });
+        }
     }
 
-    //using RevokePermissionCallback = base::OnceCallback<void(::blink::mojom::blink::PermissionStatus)>;
-    /*virtual*/ void RevokePermission(::blink::mojom::blink::PermissionDescriptorPtr permission,
-        ::blink::mojom::blink::PermissionService::RevokePermissionCallback callback) override
+    void RevokePermission(blink::mojom::blink::PermissionDescriptorPtr,
+        RevokePermissionCallback callback) override
     {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](
-            ::blink::mojom::blink::PermissionService::RevokePermissionCallback cb) {
-            std::move(cb).Run(::blink::mojom::blink::PermissionStatus::GRANTED);
-        }, std::move(callback)));
+        std::move(callback).Run(blink::mojom::blink::PermissionStatus::DENIED);
     }
 
-    /*virtual*/ void AddPermissionObserver(
-        ::blink::mojom::blink::PermissionDescriptorPtr permission, ::blink::mojom::blink::PermissionStatus last_known_status,
-        ::mojo::PendingRemote<::blink::mojom::blink::PermissionObserver> observer) override
+    void AddPermissionObserver(
+        blink::mojom::blink::PermissionDescriptorPtr,
+        blink::mojom::blink::PermissionStatus,
+        mojo::PendingRemote<blink::mojom::blink::PermissionObserver>) override
     {
-
     }
 
-    /*virtual*/ void AddPageEmbeddedPermissionObserver(
-        ::blink::mojom::blink::PermissionDescriptorPtr permission, ::blink::mojom::blink::PermissionStatus last_known_status,
-        ::mojo::PendingRemote<::blink::mojom::blink::PermissionObserver> observer) override
+    void AddPageEmbeddedPermissionObserver(
+        blink::mojom::blink::PermissionDescriptorPtr,
+        blink::mojom::blink::PermissionStatus,
+        mojo::PendingRemote<blink::mojom::blink::PermissionObserver>) override
     {
-
     }
 
-    /*virtual*/ void NotifyEventListener(::blink::mojom::blink::PermissionDescriptorPtr permission, const WTF::String& event_type, bool is_added) override
+    void NotifyEventListener(blink::mojom::blink::PermissionDescriptorPtr,
+        const WTF::String&, bool) override
     {
+    }
 
+private:
+    template <typename Callback>
+    void Query(blink::mojom::blink::PermissionDescriptorPtr permission,
+        bool user_gesture, bool is_request, Callback callback)
+    {
+        if (!permission) {
+            std::move(callback).Run(
+                blink::mojom::blink::PermissionStatus::DENIED);
+            return;
+        }
+        auto saved = std::make_shared<Callback>(std::move(callback));
+        content::RequestRendererPermission(
+            content::RendererPermissionName(static_cast<int>(permission->name)),
+            user_gesture, is_request,
+            [saved](bool granted) mutable {
+                std::move(*saved).Run(granted
+                    ? blink::mojom::blink::PermissionStatus::GRANTED
+                    : blink::mojom::blink::PermissionStatus::DENIED);
+            });
     }
 };
 
-#endif // content_renderer_PermissionServiceImpl_h
+#endif // CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_

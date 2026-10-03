@@ -12,6 +12,7 @@
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/navigation_body_loader.h"
+#include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "gen/third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "gen/services/network/public/mojom/url_response_head.mojom.h"
 #include "gen/services/network/public/mojom/encoded_body_length.mojom.h"
@@ -20,11 +21,14 @@
 
 namespace mini_electron {
 
-void pushBackToBuffer(std::vector<char>* buf, const char* data, size_t len);
 
-LoaderFactoryImpl::LoaderFactoryImpl(int64_t mbwebviewId)
+LoaderFactoryImpl::LoaderFactoryImpl(int64_t mbwebviewId,
+    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame)
+    : m_engineViewId(mbwebviewId)
+    , m_frameId(frameId)
+    , m_parentFrameId(parentFrameId)
+    , m_isMainFrame(isMainFrame)
 {
-    m_engineViewId = mbwebviewId;
 }
 
 std::unique_ptr<blink::URLLoader> LoaderFactoryImpl::CreateURLLoader(
@@ -34,7 +38,9 @@ std::unique_ptr<blink::URLLoader> LoaderFactoryImpl::CreateURLLoader(
     WTF::Vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles
 )
 {
-    return std::make_unique<WebURLLoaderImplCurl>(std::move(freezableTaskRunnerHandle), std::move(unfreezableTaskRunnerHandle), m_terminateSyncLoadEvent, m_engineViewId);
+    return std::make_unique<WebURLLoaderImplCurl>(std::move(freezableTaskRunnerHandle),
+        std::move(unfreezableTaskRunnerHandle), m_terminateSyncLoadEvent,
+        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame);
 }
 
 BodyLoaderClient::BodyLoaderClient(
@@ -121,18 +127,18 @@ void BodyLoaderClient::DidStartLoadingResponseBody(mojo::ScopedDataPipeConsumerH
         blink::WebPolicyContainerPolicies(), blink::ToCrossVariantAssociatedMojoType(std::move(policyContainerRemote)));
 
     if (m_response->MimeType().IsNull() || m_response->MimeType().IsEmpty())
-        m_response->SetMimeType(blink::WebString::FromASCII("text/html")); // ÓÐµÄÍøÕ¾£¬±ÈÈçhttps://mofang.163.com/ÏÂÃæµÄ£¬Ã»Õâ¸ö×Ö¶Î
+        m_response->SetMimeType(blink::WebString::FromASCII("text/html")); // æœ‰çš„ç½‘ç«™ï¼Œæ¯”å¦‚https://mofang.163.com/ä¸‹é¢çš„ï¼Œæ²¡è¿™ä¸ªå­—æ®µ
 
     ::network::mojom::URLResponseHeadPtr urlResponseHead = ::network::mojom::URLResponseHead::New();
     //urlResponseHead->headers;
     urlResponseHead->mime_type = m_response->MimeType().Ascii();
-    urlResponseHead->charset = m_response->HttpHeaderField(blink::WebString::FromASCII("charset")).Ascii();
+    urlResponseHead->charset = m_response->ToResourceResponse().TextEncodingName().Ascii();
     urlResponseHead->content_length = m_response->ExpectedContentLength();
     urlResponseHead->encoded_data_length = m_response->ExpectedContentLength();
     urlResponseHead->encoded_body_length = network::mojom::EncodedBodyLength::New(m_response->ExpectedContentLength());
 
     CHECK(!m_urlLoaderImpl);
-    m_urlLoaderImpl.reset(new URLLoaderImpl(this)); // TODO: ÄÚ´æÐ¹Â¶
+    m_urlLoaderImpl.reset(new URLLoaderImpl(this)); // TODO: å†…å­˜æ³„éœ²
 
     ::network::mojom::URLLoaderClientEndpointsPtr urlLoaderClientEndpoints = ::network::mojom::URLLoaderClientEndpoints::New(
         m_urlLoaderImpl->m_urlLoader.BindNewPipeAndPassRemote(), m_urlLoaderImpl->m_urlLoaderClient.BindNewPipeAndPassReceiver());
@@ -151,18 +157,12 @@ void BodyLoaderClient::DidStartLoadingResponseBody(mojo::ScopedDataPipeConsumerH
     navigationParams->frame_load_type = m_info->frame_load_type;
     navigationParams->response.SetCurrentRequestUrl(url);
     navigationParams->response.SetMimeType(m_response->MimeType());
+    navigationParams->response.SetTextEncodingName(
+        blink::WebString(m_response->ToResourceResponse().TextEncodingName()));
 
     blink::WebNavigationControl* navigationControl = (blink::WebNavigationControl*)blink::WebLocalFrame::FromFrameToken(m_navigationControlId);
     if (navigationControl && !m_isDownload)
         navigationControl->CommitNavigation(std::move(navigationParams), nullptr);
-}
-
-// ±¾º¯ÊýÒ»°ã´ÓhandleDataURL´«À´¡£²âÊÔ°¸Àý£º
-// var iframe = document.createElement('iframe');
-// iframe.src = "data:text/html;charset=utf-8,<!DOCTYPE html><script>parent.postMessage(document.contentType,'*')<\/script>";
-void BodyLoaderClient::DidReceiveDataForTesting(base::span<const char> data)
-{
-    pushBackToBuffer(&m_buf, data.data(), data.size());
 }
 
 void BodyLoaderClient::DidFinishLoading(
@@ -176,13 +176,6 @@ void BodyLoaderClient::DidFinishLoading(
 
     blink::WebNavigationControl* navigationControl = (blink::WebNavigationControl*)blink::WebLocalFrame::FromFrameToken(m_navigationControlId);
 
-    if (navigationControl && !m_buf.empty()) {
-        base::span<const char> html(m_buf.data(), m_buf.size());
-        std::unique_ptr<blink::WebNavigationParams> navigationParams = blink::WebNavigationParams::CreateWithHTMLStringForTesting(html, blink::WebURL());
-        navigationControl->CommitNavigation(std::move(navigationParams), nullptr /* extra_data */);
-        m_buf.clear();
-        return;
-    }
 
     char output[200] = { 0 };
     sprintf(output, "BodyLoaderClient::DidFinishLoading: %p, %p, %p\n", this, navigationControl, m_urlLoaderImpl.get());

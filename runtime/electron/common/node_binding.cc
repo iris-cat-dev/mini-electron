@@ -18,6 +18,7 @@
 #include "gin/v8_platform_page_allocator.h"
 #include "gin/dictionary.h"
 #include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/path_service.h"
 #include <xstring>
@@ -121,7 +122,6 @@ NodeBindings::NodeBindings(bool isBrowser)
     : m_isBrowser(isBrowser)
     , m_uvLoop(nullptr)
     , m_uvEnv(nullptr)
-    , m_callNextTickAsync(new uv_async_t())
 {
 }
 
@@ -133,62 +133,22 @@ NodeBindings::~NodeBindings()
 
     if (m_isolateData)
         node::FreeIsolateData(m_isolateData);
-    delete m_callNextTickAsync;
 }
-
-static std::wstring* kResPath = nullptr;
 
 std::wstring getResourcesPath(const std::wstring& name)
 {
-    std::wstring out;
-    if (kResPath) {
-        out += *kResPath + name;
-        return out;
-    }
-
-    std::vector<WCHAR> path;
-    path.resize(MAX_PATH + 1);
-    ::GetModuleFileName(nullptr, path.data(), MAX_PATH);
-    std::wstring selfPathW = path.data();
-
-    //std::string selfPath = base::UTF16ToUTF8(std::u16string_view((const char16_t*)selfPathW.data(), selfPathW.size()));
-     
-
-    ::PathRemoveFileSpecW(&path[0]);
-    out += &path[0];
-
-    std::wstring temp(out);
-    temp += L"\\skia.lib";
-    if (::PathFileExists(temp.c_str())) {
-        out += L"..\\..\\..\\electron\\lib\\";
-    } else { // release模式下，直接用打包好的数据
-        out = out + L"\\" kEmbeddedResourcePrefix "\\lib\\";
-        setEmbeddedResourcePath(base::WideToUTF8(out));
-
-//         WCHAR drive = L'c';
-//         for (size_t i = 0; path[i] != L'\0'; ++i) { // 取一个可用的盘符
-//             if (path[i] == L':') {
-//                 CHECK(i != 0);
-//                 drive = path[i - 1];
-//                 if (drive >= 'A' && drive <= 'Z') {
-//                     drive += 32;
-//                 }
-//                 break;
-//             }
-//         }
-//         out = drive;
- 
-    }
-
-    kResPath = new std::wstring(out);
-    out += name;
-
-    temp = L"getResourcesPath:";
-    temp += out;
-    temp += L"\n";
-    OutputDebugStringW(temp.c_str());
-
-    return out;
+    static const std::wstring root = [] {
+        base::FilePath executable;
+        base::PathService::Get(base::FILE_EXE, &executable);
+        const base::FilePath directory = executable.DirName();
+        const base::FilePath installed = directory.AppendASCII("resources").AppendASCII("mini-electron").AppendASCII("lib");
+        if (base::DirectoryExists(installed))
+            return installed.value() + L"\\";
+        const std::wstring embedded = directory.AppendASCII(kEmbeddedResourcePrefix).AppendASCII("lib").value() + L"\\";
+        setEmbeddedResourcePath(base::WideToUTF8(embedded));
+        return embedded;
+    }();
+    return root + name;
 }
 
 void loadNodeScriptFromRes(void* path)
@@ -237,28 +197,6 @@ std::unique_ptr<const char*[]> stringVectorToArgArray(const std::vector<std::str
     return argsArray;
 }
 
-void NodeBindings::initNodeEnv()
-{
-    std::vector<std::string> args = AtomCommandLine::argv();
-    int argsSize = args.size();
-
-    std::unique_ptr<const char*[]> c_argv = stringVectorToArgArray(args);
-    //int exec_argc;
-    //const char** execArgv = nullptr;
-    //node::Init(&argsSize, c_argv.get(), &exec_argc, &execArgv);
-
-    //std::vector<std::string> argv = { "electron" };
-    std::vector<std::string> execArgv;
-    std::vector<std::string> errors;
-    uint64_t processFlags = node::ProcessFlags::kNoFlags;
-    // We do not want the child processes spawned from the utility process
-    // to inherit the custom stdio handles created for the parent.
-    processFlags |= node::ProcessFlags::kEnableStdioInheritance;
-
-    args.push_back("--no-experimental-detect-module"); // 不加这行，asar的流程会走到nodejs的openhandle里去
-
-    /*int exit_code = */ node::InitializeNodeWithArgs(&args, &execArgv, &errors, (node::ProcessFlags::Flags)(processFlags));
-}
 
 static void MethodCallbackWrap(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
@@ -290,7 +228,6 @@ static void isInElectronEnv(const v8::FunctionCallbackInfo<v8::Value>& info)
 
 void NodeBindings::bindFunction(v8::Isolate* isolate, v8::Local<v8::Object> object)
 {
-    NodeBindings* self = this;
     bindMethod(isolate, object, "crash", &crash);
     bindMethod(isolate, object, "hang", &hang);
     bindMethod(isolate, object, "log", &log);
@@ -299,7 +236,6 @@ void NodeBindings::bindFunction(v8::Isolate* isolate, v8::Local<v8::Object> obje
 #if defined(OS_POSIX)
     bindMethod(isolate, object, "setFdLimit", &base::SetFdLimit);
 #endif
-    bindMethod(isolate, object, "activateUvLoop", [self](const v8::FunctionCallbackInfo<v8::Value>& info) { self->activateUVLoop(info.GetIsolate()); });
 
 #if defined(MAS_BUILD)
     bindMethod(isolate, object, "mas", true);
@@ -324,10 +260,9 @@ void patchProcessObject(v8::Local<v8::Object> object)
     v8::Context::Scope contextScope(context);
 
     if (processObject.Get("versions", &versions)) {
-        versions.DefineOwnProperty("atom-project-name", std::string(ATOM_VERSION_STRING));
-        versions.DefineOwnProperty("atom-shell", std::string(ATOM_VERSION_STRING)); // For compatibility.
         versions.DefineOwnProperty("chrome", std::string(CHROME_VERSION_STRING));
         versions.DefineOwnProperty("electron", std::string(ATOM_VERSION_STRING));
+        versions.DefineOwnProperty("miniElectron", std::string(MINI_ELECTRON_VERSION_STRING));
 
         base::FilePath exePath;
         base::PathService::Get(base::BasePathKey::FILE_EXE, &exePath);
@@ -406,8 +341,6 @@ static void mini_electron_console_log(const v8::FunctionCallbackInfo<v8::Value>&
     OutputDebugStringW(strW.c_str());
 }
 
-void mini_electron_test_message_channel_main(const v8::FunctionCallbackInfo<v8::Value>& info);
-
 static void addFunction(v8::Local<v8::Context> context, const char* name, v8::FunctionCallback callback, bool isMainNode)
 {
     v8::Isolate* isolate = context->GetIsolate();
@@ -443,159 +376,8 @@ void bindEngineConsoleLog(v8::Local<v8::Context> context)
     bool isBrowserProcess = isMainThread();
     addFunction(context, "mini_electron_console_log", mini_electron_console_log, isBrowserProcess);
     addFunction(context, "mini_electron_get_v8_name_id_hash", mini_electron_get_v8_name_id_hash, isBrowserProcess);
-    addFunction(context, "mini_electron_test_message_channel_main", mini_electron_test_message_channel_main, isBrowserProcess);
     addFunction(context, "_isInElectronEnv", isInElectronEnv, isBrowserProcess);
 }
 
-node::Environment* NodeBindings::createEnvironment(v8::Local<v8::Context> context)
-{
-    v8::Isolate* isolate = context->GetIsolate();
-    uv_async_init(m_uvLoop, m_callNextTickAsync, onCallNextTick);
-    m_callNextTickAsync->data = this;
-
-    std::vector<std::string> args = AtomCommandLine::argv();
-    // Feed node the path to initialization script.
-    std::wstring processType = m_isBrowser ? FILE_PATH_LITERAL("browser") : FILE_PATH_LITERAL("renderer");
-    std::wstring resourcesPath = getResourcesPath(FILE_PATH_LITERAL(""));
-    std::wstring scriptPath = resourcesPath // .append(FILE_PATH_LITERAL("electron.asar"))
-                                  .append(processType)
-                                  .append(FILE_PATH_LITERAL("\\init.js"));
-
-    // electron里的process.resourcesPath指的是xxx/resources目录。而main.js一般在xxx/resources/app下
-    if (args.size() > 1) {
-        resourcesPath = StringUtil::MultiByteToUTF16(/*CP_ACP*/ (936), args[1]);
-        const WCHAR* resourcesPos = wcsstr(resourcesPath.c_str(), L"resources");
-        if (!resourcesPos) {
-            std::vector<WCHAR> wbuf(resourcesPath.size() + 1);
-            memset(&wbuf[0], 0, 2 * (resourcesPath.size() + 1));
-            wcsncpy(&wbuf[0], resourcesPath.c_str(), resourcesPath.size());
-            ::PathRemoveFileSpecW(&wbuf[0]);
-            resourcesPath = &wbuf[0];
-        } else {
-            resourcesPath = std::wstring(resourcesPath.c_str(), resourcesPos - resourcesPath.c_str() + 9);
-        }
-    }
-
-    // 新版本electron的resourcesPath直接就是{exe dir}/resources
-    base::FilePath exePath;
-    base::PathService::Get(base::BasePathKey::FILE_EXE, &exePath);
-    base::FilePath resPath = exePath.DirName();
-    resourcesPath = (const WCHAR*)(resPath.AppendASCII("resources").AsUTF16Unsafe()).c_str();
-
-    if (scriptPath.length() > 0 && scriptPath[0] >= L'a' && scriptPath[0] <= L'z')
-        scriptPath[0] += L'A' - L'a';
-
-    std::string scriptPathStr = StringUtil::UTF16ToUTF8(scriptPath);
-    args.insert(args.begin() + 1, scriptPathStr.c_str()); 
-
-    if (!m_isolateData) {
-        g_nodeArgc->m_registerIsolatesLock.Acquire();
-        if (g_nodeArgc->m_registerIsolates.end() == g_nodeArgc->m_registerIsolates.find(isolate)) {
-            g_nodeArgc->m_registerIsolates.insert(isolate);
-            g_nodeArgc->m_nodeMultiIsolatePlatform->RegisterIsolate(isolate, m_uvLoop); // 所有线程的isolate都必须调用这个注册
-        }
-        m_isolateData = node::CreateIsolateData(isolate, m_uvLoop, g_nodeArgc->m_nodeMultiIsolatePlatform);
-        g_nodeArgc->m_registerIsolatesLock.Release();
-    }
-
-    uint64_t flags =
-        //node::EnvironmentFlags::kDefaultFlags |
-        node::EnvironmentFlags::kOwnsProcessState | node::EnvironmentFlags::kHideConsoleWindows | node::EnvironmentFlags::kNoGlobalSearchPaths;
-
-    std::vector<std::string> execArgs;
-    std::unique_ptr<const char*[]> c_argv = stringVectorToArgArray(args);
-    node::Environment* env = node::CreateEnvironment(m_isolateData, context, args, execArgs, static_cast<node::EnvironmentFlags::Flags>(flags));
-    nodeEnvironmentElectronPostEarlyInitialization(env);
-    if (!m_isBrowser)
-        nodeEnvironmentSetIsblinkCore(env);
-
-    //     const char* argv1[] = { "electron.exe", "E:\\mycode\\miniblink49\\trunk\\electron\\lib\\init.js" };
-    //     node::Environment* env = node::CreateEnvironment(isolate, m_uvLoop, context, 2, argv1, 2, argv1);
-    //     node::Environment* env = node::CreateEnvironment(isolate, m_uvLoop, context, 2, argv1, 2, argv1);
-
-    // Node turns off AutorunMicrotasks, but we need it in web pages to match the
-    // behavior of Chrome.
-    //     if (!m_isBrowser)
-
-    gin::Dictionary process(isolate, nodeGetEnvironmentProcessObject(env));
-    process.Set("type", StringUtil::UTF16ToUTF8(processType));
-    process.Set("resourcesPath", StringUtil::UTF16ToUTF8(resourcesPath));
-    // Do not set DOM globals for renderer process.
-    if (!m_isBrowser) {
-        process.Set("_noBrowserGlobals", StringUtil::UTF16ToUTF8(resourcesPath));
-        addFunction(context, "blinkConsoleLog", mini_electron_console_log, false);
-    }
-
-    m_processObjInfo.isBrowserProcess = m_isBrowser;
-    bindFunction(isolate, nodeGetEnvironmentProcessObject(env));
-
-    // The path to helper app.
-    //     base::FilePath helper_exec_path;
-    //     PathService::Get(content::CHILD_PROCESS_EXE, &helper_exec_path);
-    //     process.Set("helperExecPath", helper_exec_path);
-    return env;
-}
-
-void NodeBindings::loadEnvironment(node::Environment* evn)
-{
-    node::LoadEnvironment(evn, node::StartExecutionCallback {});
-    mate::emitEvent(nodeEnvironmentGetV8Isolate(evn), nodeGetEnvironmentProcessObject(evn), "loaded");
-}
-
-void NodeBindings::activateUVLoop(v8::Isolate* isoloate)
-{
-    node::Environment* env = nodeEnvironmentGetCurrent(isoloate);
-    if (std::find(m_pendingNextTicks.begin(), m_pendingNextTicks.end(), env) != m_pendingNextTicks.end())
-        return;
-
-    m_pendingNextTicks.push_back(env);
-    uv_async_send(m_callNextTickAsync);
-}
-
-// static
-void NodeBindings::onCallNextTick(uv_async_t* handle)
-{
-    NodeBindings* self = static_cast<NodeBindings*>(handle->data);
-
-    for (std::list<node::Environment*>::const_iterator it = self->m_pendingNextTicks.begin(); it != self->m_pendingNextTicks.end(); ++it) {
-        node::Environment* env = *it;
-        v8::Local<v8::Context> context = nodeEnvironmentGetV8Context(env);
-        if (!context->GetMicrotaskQueue())
-            continue;
-
-        //         v8::HandleScope handleScope(isolate);
-        //
-        //         // KickNextTick, copied from node.cc:
-        //         node::Environment::AsyncCallbackScope callbackScope(env);
-        //         if (callbackScope.in_makecallback())
-        //             continue;
-        //
-        //         v8::Context::Scope contextScope(env->context());
-        //
-        //         v8::Isolate* isolate = isolate;
-        //         v8::Local<v8::Context> ctx = isolate->GetCurrentContext();
-        //         v8::Isolate* isolate2 = v8::Isolate::GetCurrent();
-        //
-        //         node::TickInfo* tickInfo = env->tick_info();
-        //         if (tickInfo->length() == 0)
-        //             isolate->RunMicrotasks();
-        //
-        //         v8::Local<v8::Object> process = env->process_object();
-        //         if (tickInfo->length() == 0)
-        //             tickInfo->set_index(0);
-        //
-        //         env->tick_callback_function()->Call(process, 0, nullptr).IsEmpty();
-
-        // look: E:\chroium\electron22\electron\shell\common\api\electron_bindings.cc
-        v8::Isolate* isolate = nodeEnvironmentGetV8Isolate(env);
-        //gin_helper::Locker locker(isolate, self->m_isBrowser); // 暂时不锁了，不然在initNodeEnvAndRunLoop里的 v8::HandleScope会导致gin_helper::Locker卡死
-        v8::Context::Scope contextScope(context);
-        v8::HandleScope handleScope(isolate);
-        v8::MicrotasksScope microtasksScope(context, v8::MicrotasksScope::kRunMicrotasks);
-        node::CallbackScope scope(isolate, v8::Object::New(isolate), { 0, 0 });
-    }
-
-    self->m_pendingNextTicks.clear();
-}
 
 } // atom

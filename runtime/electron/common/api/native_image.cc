@@ -4,361 +4,677 @@
 
 #include "runtime/electron/common/api/native_image.h"
 
-#include "runtime/electron/node_bindings.h"
-#include "runtime/electron/common/asar/archive.h"
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "base/base64.h"
+#include "base/containers/span.h"
+#include "base/files/file_path.h"
+#include "base/strings/escape.h"
+#include "base/strings/string_util.h"
+#include "base/numerics/checked_math.h"
 #include "runtime/electron/common/asar/asar_util.h"
-#include "runtime/electron/common/node_register_help.h"
-#include "runtime/electron/common/gin_helper/wrappable.h"
-#include "runtime/electron/common/gin_helper/object_template_builder.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
+#include "runtime/electron/common/gin_helper/object_template_builder.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
-#include "runtime/electron/common/init_gdi_plus.h"
+#include "runtime/electron/common/gin_helper/wrappable.h"
+#include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/node_bindings.h"
+#include "skia/ext/image_operations.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libnode/src/node_buffer.h"
-#include "third_party/libnode/src/node_version.h"
-#include "third_party/libuv/include/uv.h"
-#include "base/base64.h"
-#include "base/strings/string_util.h"
-#include "base/threading/thread_local.h"
-
-#undef min
-#undef max
-using std::max;
-using std::min;
-
-#include <Unknwn.h>
-#include <gdiplus.h>
-#include <objidl.h>
-#include <vector>
+#include "third_party/skia/include/core/SkData.h"
+#include "third_party/skia/include/codec/SkCodec.h"
+#include "third_party/skia/include/codec/SkIcoDecoder.h"
+#include "third_party/skia/include/core/SkColor.h"
+#include "third_party/skia/include/core/SkImageInfo.h"
+#include "ui/gfx/codec/jpeg_codec.h"
+#include "ui/gfx/codec/png_codec.h"
 
 namespace atom {
+namespace {
+
+constexpr size_t kMaxEncodedImageBytes = 256u * 1024u * 1024u;
+constexpr int kMaxImageDimension = 32768;
+
+bool IsValidDimensions(int width, int height)
+{
+    if (width <= 0 || height <= 0 || width > kMaxImageDimension || height > kMaxImageDimension)
+        return false;
+    base::CheckedNumeric<size_t> bytes = static_cast<size_t>(width);
+    bytes *= static_cast<size_t>(height);
+    bytes *= 4u;
+    return bytes.IsValid() && bytes.ValueOrDie() <= kMaxEncodedImageBytes;
+}
+
+v8::Local<v8::Object> CopyToNodeBuffer(v8::Isolate* isolate, base::span<const uint8_t> bytes)
+{
+    return node::Buffer::Copy(
+               isolate, reinterpret_cast<const char*>(bytes.data()), bytes.size())
+        .ToLocalChecked();
+}
+
+int ReadInt(const base::Value::Dict& options, const char* key, int fallback)
+{
+    const std::optional<int> value = options.FindInt(key);
+    return value.value_or(fallback);
+}
+
+} // namespace
 
 THREAD_LOCAL_CONSTRUCTOR(NativeImage)
 
-
 NativeImage::NativeImage(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
 {
-    m_gdipBitmap = nullptr;
     gin_helper::Wrappable<NativeImage>::InitWith(isolate, wrapper);
+}
+
+NativeImage::~NativeImage()
+{
+#if BUILDFLAG(IS_WIN)
+    if (icon_)
+        ::DestroyIcon(icon_);
+#endif
 }
 
 void NativeImage::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
 {
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::FunctionTemplate> prototype = v8::FunctionTemplate::New(isolate, newFunction);
+    v8::Local<v8::FunctionTemplate> prototype =
+        v8::FunctionTemplate::New(isolate, newFunction);
+    prototype->SetClassName(
+        v8::String::NewFromUtf8Literal(isolate, "NativeImage"));
 
-    prototype->SetClassName(v8::String::NewFromUtf8(isolate, "NativeImage").ToLocalChecked());
     gin_helper::ObjectTemplateBuilder builder(isolate, prototype->InstanceTemplate());
-    builder.SetMethod("toPNG", &NativeImage::toPNGAPI);
-    builder.SetMethod("toDataURL", &NativeImage::toDataURLApi);
+    builder.SetMethod("toPNG", &NativeImage::toPNG);
+    builder.SetMethod("toJPEG", &NativeImage::toJPEG);
+    builder.SetMethod("toBitmap", &NativeImage::toBitmap);
+    builder.SetMethod("toDataURL", &NativeImage::toDataURL);
+    builder.SetMethod("getSize", &NativeImage::getSize);
+    builder.SetMethod("crop", &NativeImage::crop);
+    builder.SetMethod("resize", &NativeImage::resize);
     builder.SetMethod("isEmpty", &NativeImage::isEmpty);
+    builder.SetMethod("isTemplateImage", &NativeImage::isTemplateImage);
+    builder.SetMethod("setTemplateImage", &NativeImage::setTemplateImage);
 
-    getNativeImageConstructor().Reset(isolate, prototype->GetFunction(context).ToLocalChecked());
-    target->Set(context, v8::String::NewFromUtf8(isolate, "NativeImage").ToLocalChecked(), prototype->GetFunction(context).ToLocalChecked());
+    v8::Local<v8::Function> constructor =
+        prototype->GetFunction(context).ToLocalChecked();
+    getNativeImageConstructor().Reset(isolate, constructor);
+    target
+        ->Set(context, v8::String::NewFromUtf8Literal(isolate, "NativeImage"),
+            constructor)
+        .Check();
 
-    gin_helper::Dictionary nativeImageClass(isolate, prototype->GetFunction(context).ToLocalChecked());
-    nativeImageClass.SetMethod("createEmpty", &NativeImage::createEmptyApi);
-    nativeImageClass.SetMethod("createFromPath", &NativeImage::createFromPathApi);
+    gin_helper::Dictionary native_image_class(isolate, constructor);
+    native_image_class.SetMethod("createEmpty", &NativeImage::createEmptyApi);
+    native_image_class.SetMethod("createFromPath", &NativeImage::createFromPathApi);
+    native_image_class.SetMethod("createFromBuffer", &NativeImage::createFromBufferApi);
+    native_image_class.SetMethod(
+        "createFromDataURL", &NativeImage::createFromDataURLApi);
 }
 
-std::vector<unsigned char>* NativeImage::encodeToBuffer(const CLSID* clsid)
+v8::Local<v8::Object> NativeImage::toPNG()
 {
-    IStream* pIStream = nullptr;
+    if (isEmpty())
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    std::optional<std::vector<uint8_t>> encoded =
+        gfx::PNGCodec::EncodeBGRASkBitmap(bitmap_, false);
+    if (!encoded)
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    return CopyToNodeBuffer(isolate(), *encoded);
+}
 
-    std::vector<unsigned char>* output = nullptr;
-    bool ok = false;
-    HRESULT hr = ::CreateStreamOnHGlobal(NULL, true, &pIStream);
-    if (S_OK != hr)
-        return nullptr;
-    Gdiplus::Status status = m_gdipBitmap->Save(pIStream, clsid, NULL);
+v8::Local<v8::Object> NativeImage::toJPEG(const base::Value::Dict& options)
+{
+    if (isEmpty())
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    const int quality = std::clamp(ReadInt(options, "quality", 100), 0, 100);
+    std::optional<std::vector<uint8_t>> encoded =
+        gfx::JPEGCodec::Encode(bitmap_, quality);
+    if (!encoded)
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    return CopyToNodeBuffer(isolate(), *encoded);
+}
 
-    LARGE_INTEGER liTemp = { 0 };
-    pIStream->Seek(liTemp, STREAM_SEEK_SET, NULL);
-    DWORD dwSize = 0;
-    STATSTG stats = { 0 };
-    pIStream->Stat(&stats, 0);
+v8::Local<v8::Object> NativeImage::toBitmap()
+{
+    if (isEmpty())
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    base::CheckedNumeric<size_t> size = static_cast<size_t>(getWidth());
+    size *= static_cast<size_t>(getHeight());
+    size *= 4u;
+    if (!size.IsValid())
+        return CopyToNodeBuffer(isolate(), base::span<const uint8_t>());
+    std::vector<uint8_t> bytes(size.ValueOrDie());
+    const size_t row_bytes = static_cast<size_t>(getWidth()) * 4u;
+    for (int y = 0; y < getHeight(); ++y) {
+        std::memcpy(bytes.data() + static_cast<size_t>(y) * row_bytes,
+            bitmap_.getAddr(0, y), row_bytes);
+    }
+    return CopyToNodeBuffer(isolate(), bytes);
+}
 
-    do {
-        if (0 == stats.cbSize.QuadPart || stats.cbSize.QuadPart > 2024 * 2024)
-            break;
+std::string NativeImage::toDataURL()
+{
+    if (isEmpty())
+        return "data:image/png;base64,";
+    std::optional<std::vector<uint8_t>> encoded =
+        gfx::PNGCodec::EncodeBGRASkBitmap(bitmap_, false);
+    if (!encoded)
+        return "data:image/png;base64,";
+    std::string result("data:image/png;base64,");
+    result.reserve(result.size() + 4u * ((encoded->size() + 2u) / 3u));
+    base::Base64EncodeAppend(base::span<const uint8_t>(*encoded), &result);
+    return result;
+}
 
-        dwSize = (DWORD)stats.cbSize.QuadPart;
-        output = new std::vector<unsigned char>();
-        output->resize(dwSize);
+v8::Local<v8::Object> NativeImage::getSize()
+{
+    v8::Local<v8::Object> result = v8::Object::New(isolate());
+    gin_helper::Dictionary dictionary(isolate(), result);
+    dictionary.Set("width", getWidth());
+    dictionary.Set("height", getHeight());
+    return result;
+}
 
-        ULONG readSize = 0;
-        hr = pIStream->Read(output->data(), dwSize, &readSize);
-        ok = (S_OK == hr);
-    } while (false);
-
-    if (!ok && output) {
-        delete output;
-        output = nullptr;
+v8::Local<v8::Object> NativeImage::crop(const base::Value::Dict& rect)
+{
+    const int x = ReadInt(rect, "x", -1);
+    const int y = ReadInt(rect, "y", -1);
+    const int width = ReadInt(rect, "width", 0);
+    const int height = ReadInt(rect, "height", 0);
+    base::CheckedNumeric<int> right = x;
+    right += width;
+    base::CheckedNumeric<int> bottom = y;
+    bottom += height;
+    if (isEmpty() || x < 0 || y < 0 || !IsValidDimensions(width, height)
+        || !right.IsValid() || !bottom.IsValid()
+        || right.ValueOrDie() > getWidth() || bottom.ValueOrDie() > getHeight()) {
+        return createEmpty(isolate());
     }
 
-    if (pIStream)
-        pIStream->Release();
-
-    return output;
+    SkBitmap cropped;
+    if (!cropped.tryAllocPixels(
+            SkImageInfo::MakeN32Premul(width, height))) {
+        return createEmpty(isolate());
+    }
+    if (!bitmap_.readPixels(cropped.info(), cropped.getPixels(),
+            cropped.rowBytes(), x, y)) {
+        return createEmpty(isolate());
+    }
+    return createFromBitmap(isolate(), cropped);
 }
 
-v8::Local<v8::Object> NativeImage::toPNGAPI(const base::Value::Dict& args)
+v8::Local<v8::Object> NativeImage::resize(const base::Value::Dict& options)
 {
-    //double scaleFactor = 1.0;
-    //absl::optional<double> scaleFactorOpt = args.FindDouble("scaleFactor");
-
-    std::vector<unsigned char>* output = encodeToBuffer(&s_pngClsid);
-    if (!output)
-        return v8::Local<v8::Object>();
-
-    const char* data = reinterpret_cast<const char*>(output->data());
-    size_t size = output->size();
-    v8::Local<v8::Object> result = node::Buffer::Copy(isolate(), data, size).ToLocalChecked();
-
-    delete output;
-
-    return result;
+    if (isEmpty())
+        return createEmpty(isolate());
+    int width = ReadInt(options, "width", 0);
+    int height = ReadInt(options, "height", 0);
+    if (width <= 0 && height <= 0)
+        return createEmpty(isolate());
+    if (width <= 0)
+        width = std::max(1, static_cast<int>(std::lround(
+                                static_cast<double>(getWidth()) * height / getHeight())));
+    if (height <= 0)
+        height = std::max(1, static_cast<int>(std::lround(
+                                 static_cast<double>(getHeight()) * width / getWidth())));
+    if (!IsValidDimensions(width, height))
+        return createEmpty(isolate());
+    SkBitmap resized = skia::ImageOperations::Resize(
+        bitmap_, skia::ImageOperations::RESIZE_LANCZOS3, width, height);
+    if (resized.drawsNothing())
+        return createEmpty(isolate());
+    return createFromBitmap(isolate(), resized);
 }
 
-v8::Local<v8::Object> NativeImage::toJpeg(const base::Value::Dict& args)
+bool NativeImage::isTemplateImage() const
 {
-    //     int quality = 100;
-    //     args.GetInteger("quality", &quality);
-
-    std::vector<unsigned char>* output = encodeToBuffer(&s_jpgClsid);
-    if (!output)
-        return v8::Local<v8::Object>();
-
-    const char* data = reinterpret_cast<const char*>(output->data());
-    size_t size = output->size();
-    v8::Local<v8::Object> result = node::Buffer::Copy(isolate(), data, size).ToLocalChecked();
-    delete output;
-
-    return result;
+    return is_template_image_;
 }
 
-v8::Local<v8::Object> NativeImage::toBitmap(const base::Value::Dict& args)
+void NativeImage::setTemplateImage(bool is_template)
 {
-    //     int quality = 100;
-    //     args.GetInteger("quality", &quality);
-
-    UINT w = m_gdipBitmap->GetWidth();
-    UINT h = m_gdipBitmap->GetHeight();
-
-    Gdiplus::Rect rect(0, 0, w, h);
-    Gdiplus::BitmapData lockedBitmapData;
-    m_gdipBitmap->LockBits(
-#if USING_VC6RT != 1
-        &
-#endif
-        rect,
-        Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &lockedBitmapData);
-
-    v8::Local<v8::Object> result;
-    const char* data = reinterpret_cast<const char*>(lockedBitmapData.Scan0);
-    if (!data)
-        return result;
-
-    int stride = lockedBitmapData.Stride;
-    size_t size = w * stride / 4 + h;
-    result = node::Buffer::Copy(isolate(), data, size).ToLocalChecked();
-
-    return result;
+    is_template_image_ = is_template;
 }
 
 v8::Local<v8::Object> NativeImage::createEmpty(v8::Isolate* isolate)
 {
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Function> constructorFunction = v8::Local<v8::Function>::New(isolate, getNativeImageConstructor());
-    v8::Local<v8::Object> obj = constructorFunction->NewInstance(context).ToLocalChecked();
-
-    NativeImage* self = (NativeImage*)WrappableBase::GetNativePtr(obj, &kWrapperInfo);
-    return obj;
+    v8::Local<v8::Function> constructor =
+        v8::Local<v8::Function>::New(isolate, getNativeImageConstructor());
+    return constructor->NewInstance(context).ToLocalChecked();
 }
 
-void NativeImage::createEmptyApi(const v8::FunctionCallbackInfo<v8::Value> info)
+v8::Local<v8::Object> NativeImage::createFromBitmap(
+    v8::Isolate* isolate, const SkBitmap& bitmap)
+{
+    v8::Local<v8::Object> result = createEmpty(isolate);
+    NativeImage* self = GetSelf(result);
+    if (self)
+        self->bitmap_ = bitmap;
+    return result;
+}
+
+void NativeImage::createEmptyApi(
+    const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     info.GetReturnValue().Set(createEmpty(info.GetIsolate()));
 }
 
-void NativeImage::createFromPathApi(const v8::FunctionCallbackInfo<v8::Value> info /*v8::Isolate* isolate, const std::string& path*/)
+void NativeImage::createFromPathApi(
+    const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    std::string fileContents;
     std::string path;
-    if (info.Length() == 1 && info[0]->IsString()) {
-        v8::String::Utf8Value pathString(info.GetIsolate(), info[0]);
-        path = *pathString;
+    if (info.Length() > 0 && info[0]->IsString()) {
+        v8::String::Utf8Value value(info.GetIsolate(), info[0]);
+        if (*value)
+            path.assign(*value, value.length());
     }
-
-    if (path.empty() || !asar::readFileToString(base::FilePath::FromUTF8Unsafe(path), &fileContents)) {
+    std::string contents;
+    if (path.empty()
+        || !asar::readFileToString(base::FilePath::FromUTF8Unsafe(path), &contents)) {
         info.GetReturnValue().Set(createEmpty(info.GetIsolate()));
         return;
     }
-
-    const unsigned char* data = reinterpret_cast<const unsigned char*>(fileContents.data());
-    size_t size = fileContents.size();
-
-    v8::Local<v8::Object> obj = createNativeImageFromBuffer(info.GetIsolate(), data, size);
-    info.GetReturnValue().Set(obj);
+    info.GetReturnValue().Set(createNativeImageFromBuffer(info.GetIsolate(),
+        reinterpret_cast<const uint8_t*>(contents.data()), contents.size()));
 }
 
-void NativeImage::createFromBufferApi(const v8::FunctionCallbackInfo<v8::Value> info)
+void NativeImage::createFromBufferApi(
+    const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     v8::Isolate* isolate = info.GetIsolate();
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Value> buffer;
-    v8::Local<v8::Object> resultObj;
-    if (info.Length() == 1) {
-        buffer = info[0];
-        if (!buffer->IsUint8Array()) {
-            info.GetReturnValue().Set(resultObj);
+    if (info.Length() < 1 || !node::Buffer::HasInstance(info[0])) {
+        isolate->ThrowException(v8::Exception::TypeError(
+            v8::String::NewFromUtf8Literal(isolate, "buffer must be a node Buffer")));
+        return;
+    }
+    const uint8_t* data =
+        reinterpret_cast<const uint8_t*>(node::Buffer::Data(info[0]));
+    const size_t size = node::Buffer::Length(info[0]);
+
+    if (info.Length() > 1 && info[1]->IsObject()) {
+        gin_helper::Dictionary options(
+            isolate, info[1].As<v8::Object>());
+        int width = 0;
+        int height = 0;
+        options.Get("width", &width);
+        options.Get("height", &height);
+        if (width > 0 || height > 0) {
+            base::CheckedNumeric<size_t> required = static_cast<size_t>(width);
+            required *= static_cast<size_t>(height);
+            required *= 4u;
+            if (!IsValidDimensions(width, height) || !required.IsValid()
+                || size < required.ValueOrDie()) {
+                info.GetReturnValue().Set(createEmpty(isolate));
+                return;
+            }
+            SkBitmap bitmap;
+            if (!bitmap.tryAllocPixels(SkImageInfo::MakeN32Premul(width, height))) {
+                info.GetReturnValue().Set(createEmpty(isolate));
+                return;
+            }
+            const size_t row_bytes = static_cast<size_t>(width) * 4u;
+            for (int y = 0; y < height; ++y) {
+                std::memcpy(bitmap.getAddr(0, y),
+                    data + static_cast<size_t>(y) * row_bytes, row_bytes);
+            }
+            info.GetReturnValue().Set(createFromBitmap(isolate, bitmap));
             return;
         }
     }
-    int width = 0;
-    int height = 0;
-    double scaleFactor = 1.0;
-    if (info.Length() == 2 && info[1]->IsObject()) {
-        gin_helper::Dictionary options(isolate, info[1]->ToObject(context).ToLocalChecked());
-        options.GetBydefaultVal("width", width, &width);
-        options.GetBydefaultVal("height", height, &height);
-        options.GetBydefaultVal("scaleFactor", scaleFactor, &scaleFactor);
-    }
-
-    unsigned char* data = reinterpret_cast<unsigned char*>(node::Buffer::Data(buffer));
-    size_t size = node::Buffer::Length(buffer);
-
-    resultObj = createNativeImageFromBuffer(isolate, data, size);
-    info.GetReturnValue().Set(resultObj);
+    info.GetReturnValue().Set(
+        createNativeImageFromBuffer(isolate, data, size));
 }
 
-v8::Local<v8::Object> NativeImage::createFromBITMAPINFO(v8::Isolate* isolate, const BITMAPINFO* gdiBitmapInfo, void* gdiBitmapData)
+void NativeImage::createFromDataURLApi(
+    const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Function> constructorFunction = v8::Local<v8::Function>::New(isolate, getNativeImageConstructor());
-    v8::Local<v8::Object> resultObj = constructorFunction->NewInstance(context).ToLocalChecked();
-    NativeImage* self = (NativeImage*)WrappableBase::GetNativePtr(resultObj, &NativeImage::kWrapperInfo);
-
-    Gdiplus::Bitmap* gdipBitmap = Gdiplus::Bitmap::FromBITMAPINFO(gdiBitmapInfo, gdiBitmapData);
-    if (!gdipBitmap)
-        return v8::Local<v8::Object>();
-
-    UINT w = gdipBitmap->GetWidth();
-    UINT h = gdipBitmap->GetHeight();
-    Gdiplus::Rect rect(0, 0, w, h);
-    self->m_gdipBitmap = gdipBitmap->Clone(rect, PixelFormat32bppARGB); // 这个要复制一份，不然好像外面的bitmap销毁，这个bitmap也没了
-    delete gdipBitmap;
-
-    return resultObj;
-}
-
-void NativeImage::createFromBufferImpl(const unsigned char* data, size_t size)
-{
-    HGLOBAL memHandle = ::GlobalAlloc(GMEM_FIXED, size);
-    BYTE* pMem = (BYTE*)::GlobalLock(memHandle);
-    memcpy(pMem, data, size);
-    ::GlobalUnlock(memHandle);
-
-    IStream* istream = nullptr;
-    ::CreateStreamOnHGlobal(memHandle, FALSE, &istream);
-    m_gdipBitmap = Gdiplus::Bitmap::FromStream(istream);
-
-    if (memHandle)
-        ::GlobalFree(memHandle);
-
-    if (istream)
-        istream->Release();
-}
-
-v8::Local<v8::Object> NativeImage::createNativeImageFromBuffer(v8::Isolate* isolate, const unsigned char* data, size_t size)
-{
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Function> constructorFunction = v8::Local<v8::Function>::New(isolate, getNativeImageConstructor());
-    v8::Local<v8::Object> resultObj = constructorFunction->NewInstance(context).ToLocalChecked();
-    NativeImage* self = (NativeImage*)WrappableBase::GetNativePtr(resultObj, &NativeImage::kWrapperInfo);
-    self->createFromBufferImpl(data, size);
-
-    return resultObj;
-}
-
-std::string NativeImage::toDataURLApi()
-{
-    if (!m_gdipBitmap)
-        return "";
-    std::vector<unsigned char>* output = encodeToBuffer(&s_jpgClsid);
-    if (!output)
-        return "";
-    constexpr char kPrefix[] = "data:image/jpeg;base64,";
-    std::string ret;
-    ret.reserve(sizeof(kPrefix) - 1 + 4 * ((output->size() + 2) / 3));
-    ret.append(kPrefix);
-    base::Base64EncodeAppend(base::span<const uint8_t>(*output), &ret);
-    delete output;
-    return ret;
-}
-
-void NativeImage::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    v8::Isolate* isolate = args.GetIsolate();
-    if (args.IsConstructCall()) {
-        new NativeImage(isolate, args.This());
-        args.GetReturnValue().Set(args.This());
+    v8::Isolate* isolate = info.GetIsolate();
+    if (info.Length() < 1 || !info[0]->IsString()) {
+        isolate->ThrowException(v8::Exception::TypeError(
+            v8::String::NewFromUtf8Literal(isolate, "dataURL must be a string")));
         return;
     }
+    v8::String::Utf8Value value(isolate, info[0]);
+    std::string data_url(*value, value.length());
+    const size_t comma = data_url.find(',');
+    if (comma == std::string::npos || data_url.compare(0, 5, "data:") != 0) {
+        info.GetReturnValue().Set(createEmpty(isolate));
+        return;
+    }
+    const std::string metadata =
+        base::ToLowerASCII(data_url.substr(5, comma - 5));
+    if (metadata.rfind("image/png", 0) != 0
+        && metadata.rfind("image/jpeg", 0) != 0
+        && metadata.rfind("image/jpg", 0) != 0) {
+        info.GetReturnValue().Set(createEmpty(isolate));
+        return;
+    }
+    std::string decoded;
+    const std::string_view payload(data_url.data() + comma + 1,
+        data_url.size() - comma - 1);
+    const bool is_base64 = metadata.find(";base64") != std::string::npos;
+    if (is_base64) {
+        if (!base::Base64Decode(payload, &decoded)) {
+            info.GetReturnValue().Set(createEmpty(isolate));
+            return;
+        }
+    } else {
+        decoded = base::UnescapeBinaryURLComponent(payload);
+    }
+    if (decoded.size() > kMaxEncodedImageBytes) {
+        info.GetReturnValue().Set(createEmpty(isolate));
+        return;
+    }
+    info.GetReturnValue().Set(createNativeImageFromBuffer(isolate,
+        reinterpret_cast<const uint8_t*>(decoded.data()), decoded.size()));
+}
+
+#if BUILDFLAG(IS_WIN)
+v8::Local<v8::Object> NativeImage::createFromDIB(
+    v8::Isolate* isolate, const void* dib, size_t dib_size)
+{
+    if (!dib || dib_size < sizeof(BITMAPINFOHEADER))
+        return createEmpty(isolate);
+
+    DWORD header_size = 0;
+    std::memcpy(&header_size, dib, sizeof(header_size));
+    if (header_size < sizeof(BITMAPINFOHEADER) || header_size > dib_size)
+        return createEmpty(isolate);
+
+    BITMAPINFOHEADER header = {};
+    std::memcpy(&header, dib, sizeof(header));
+    if (header.biSize != header_size || header.biPlanes != 1
+        || (header.biBitCount != 24 && header.biBitCount != 32)
+        || header.biCompression != BI_RGB) {
+        // Masked DIBs are not decoded by this path. Reject them before deriving
+        // a pixel address from their variable-size mask table.
+        return createEmpty(isolate);
+    }
+
+    base::CheckedNumeric<size_t> pixel_offset =
+        static_cast<size_t>(header_size);
+    // A true-color DIB may still carry an explicit optimal color palette.
+    base::CheckedNumeric<size_t> palette_bytes =
+        static_cast<size_t>(header.biClrUsed);
+    palette_bytes *= sizeof(RGBQUAD);
+    pixel_offset += palette_bytes;
+    if (!pixel_offset.IsValid()
+        || pixel_offset.ValueOrDie() > dib_size) {
+        return createEmpty(isolate);
+    }
+
+    if (header.biWidth <= 0
+        || header.biHeight == std::numeric_limits<LONG>::min()) {
+        return createEmpty(isolate);
+    }
+    const int height = std::abs(header.biHeight);
+    if (!IsValidDimensions(header.biWidth, height))
+        return createEmpty(isolate);
+
+    base::CheckedNumeric<size_t> stride =
+        static_cast<size_t>(header.biWidth);
+    stride *= static_cast<size_t>(header.biBitCount / 8);
+    stride += 3u;
+    stride /= 4u;
+    stride *= 4u;
+    base::CheckedNumeric<size_t> pixel_bytes = stride;
+    pixel_bytes *= static_cast<size_t>(height);
+    if (!stride.IsValid() || !pixel_bytes.IsValid())
+        return createEmpty(isolate);
+
+    const size_t offset = pixel_offset.ValueOrDie();
+    const size_t required_pixels = pixel_bytes.ValueOrDie();
+    const size_t available_pixels = dib_size - offset;
+    if (required_pixels > available_pixels)
+        return createEmpty(isolate);
+    if (header.biSizeImage != 0
+        && (header.biSizeImage < required_pixels
+            || header.biSizeImage > available_pixels)) {
+        return createEmpty(isolate);
+    }
+
+    const auto* pixels = static_cast<const uint8_t*>(dib) + offset;
+    return createFromBITMAPINFO(
+        isolate, reinterpret_cast<const BITMAPINFO*>(dib), pixels,
+        required_pixels);
+}
+
+v8::Local<v8::Object> NativeImage::createFromBITMAPINFO(
+    v8::Isolate* isolate, const BITMAPINFO* info, const void* pixels)
+{
+    return createFromBITMAPINFO(
+        isolate, info, pixels, std::numeric_limits<size_t>::max());
+}
+
+v8::Local<v8::Object> NativeImage::createFromBITMAPINFO(
+    v8::Isolate* isolate, const BITMAPINFO* info, const void* pixels,
+    size_t pixel_size)
+{
+    if (!info || !pixels)
+        return createEmpty(isolate);
+    const BITMAPINFOHEADER& header = info->bmiHeader;
+    const int width = header.biWidth;
+    if (header.biHeight == std::numeric_limits<LONG>::min())
+        return createEmpty(isolate);
+    const int height = std::abs(header.biHeight);
+    const int bits_per_pixel = header.biBitCount;
+    if (header.biSize < sizeof(BITMAPINFOHEADER) || header.biPlanes != 1
+        || !IsValidDimensions(width, height)
+        || (bits_per_pixel != 24 && bits_per_pixel != 32)
+        || header.biCompression != BI_RGB) {
+        return createEmpty(isolate);
+    }
+    base::CheckedNumeric<size_t> source_stride = static_cast<size_t>(width);
+    source_stride *= static_cast<size_t>(bits_per_pixel / 8);
+    source_stride += 3u;
+    source_stride /= 4u;
+    source_stride *= 4u;
+    base::CheckedNumeric<size_t> source_size = source_stride;
+    source_size *= static_cast<size_t>(height);
+    if (!source_stride.IsValid() || !source_size.IsValid()
+        || source_size.ValueOrDie() > pixel_size) {
+        return createEmpty(isolate);
+    }
+
+    const size_t stride = source_stride.ValueOrDie();
+    const auto* source_bytes = static_cast<const uint8_t*>(pixels);
+    std::vector<uint8_t> rgba(static_cast<size_t>(width) * height * 4u);
+    bool has_nonzero_alpha = false;
+    for (int y = 0; y < height; ++y) {
+        const int source_y = header.biHeight > 0 ? height - 1 - y : y;
+        const uint8_t* source =
+            source_bytes + static_cast<size_t>(source_y) * stride;
+        uint8_t* destination =
+            rgba.data() + static_cast<size_t>(y) * width * 4u;
+        for (int x = 0; x < width; ++x) {
+            destination[x * 4] = source[x * bits_per_pixel / 8 + 2];
+            destination[x * 4 + 1] = source[x * bits_per_pixel / 8 + 1];
+            destination[x * 4 + 2] = source[x * bits_per_pixel / 8];
+            destination[x * 4 + 3] =
+                bits_per_pixel == 32 ? source[x * 4 + 3] : 255;
+            has_nonzero_alpha |= destination[x * 4 + 3] != 0;
+        }
+    }
+    if (bits_per_pixel == 32 && !has_nonzero_alpha) {
+        for (size_t index = 3; index < rgba.size(); index += 4)
+            rgba[index] = 255;
+    }
+    return createFromRGBA(isolate, rgba.data(), width, height, width * 4);
+}
+#endif
+
+v8::Local<v8::Object> NativeImage::createFromRGBA(v8::Isolate* isolate,
+    const uint8_t* rgba, int width, int height, int stride)
+{
+    if (!rgba || !IsValidDimensions(width, height)
+        || stride < width * 4) {
+        return createEmpty(isolate);
+    }
+    base::CheckedNumeric<size_t> input_size = static_cast<size_t>(stride);
+    input_size *= static_cast<size_t>(height);
+    if (!input_size.IsValid())
+        return createEmpty(isolate);
+
+    SkBitmap bitmap;
+    if (!bitmap.tryAllocPixels(SkImageInfo::MakeN32Premul(width, height)))
+        return createEmpty(isolate);
+    for (int y = 0; y < height; ++y) {
+        const uint8_t* source = rgba + static_cast<size_t>(y) * stride;
+        SkPMColor* destination = bitmap.getAddr32(0, y);
+        for (int x = 0; x < width; ++x) {
+            destination[x] = SkPreMultiplyARGB(
+                source[x * 4 + 3], source[x * 4], source[x * 4 + 1],
+                source[x * 4 + 2]);
+        }
+    }
+    return createFromBitmap(isolate, bitmap);
+}
+
+bool NativeImage::decode(const uint8_t* data, size_t size)
+{
+    if (!data || size == 0 || size > kMaxEncodedImageBytes)
+        return false;
+    base::span<const uint8_t> bytes(data, size);
+    SkBitmap decoded = gfx::PNGCodec::Decode(bytes);
+    if (decoded.drawsNothing())
+        decoded = gfx::JPEGCodec::Decode(bytes);
+    if (decoded.drawsNothing()) {
+        sk_sp<SkData> encoded = SkData::MakeWithoutCopy(data, size);
+        std::unique_ptr<SkCodec> codec = SkIcoDecoder::IsIco(data, size)
+            ? SkIcoDecoder::Decode(std::move(encoded), nullptr)
+            : SkCodec::MakeFromData(std::move(encoded));
+        if (!codec || !IsValidDimensions(
+                          codec->dimensions().width(),
+                          codec->dimensions().height())) {
+            return false;
+        }
+        const SkImageInfo info = SkImageInfo::MakeN32Premul(
+            codec->dimensions().width(), codec->dimensions().height());
+        if (!decoded.tryAllocPixels(info)
+            || codec->getPixels(
+                   info, decoded.getPixels(), decoded.rowBytes())
+                != SkCodec::kSuccess) {
+            return false;
+        }
+    }
+    if (!IsValidDimensions(decoded.width(), decoded.height()))
+        return false;
+    bitmap_ = decoded;
+    return true;
+}
+
+v8::Local<v8::Object> NativeImage::createNativeImageFromBuffer(
+    v8::Isolate* isolate, const unsigned char* data, size_t size)
+{
+    v8::Local<v8::Object> result = createEmpty(isolate);
+    NativeImage* self = GetSelf(result);
+    if (self)
+        self->decode(data, size);
+    return result;
+}
+
+void NativeImage::newFunction(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    if (!args.IsConstructCall())
+        return;
+    new NativeImage(args.GetIsolate(), args.This());
+    args.GetReturnValue().Set(args.This());
 }
 
 NativeImage* NativeImage::GetSelf(v8::Local<v8::Object> handle)
 {
-    return (NativeImage*)WrappableBase::GetNativePtr(handle, &kWrapperInfo);
+    return static_cast<NativeImage*>(
+        WrappableBase::GetNativePtr(handle, &kWrapperInfo));
+}
+
+#if BUILDFLAG(IS_WIN)
+HBITMAP NativeImage::getBitmap() const
+{
+    if (isEmpty())
+        return nullptr;
+    BITMAPINFO info = {};
+    info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    info.bmiHeader.biWidth = getWidth();
+    info.bmiHeader.biHeight = -getHeight();
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+    void* pixels = nullptr;
+    HBITMAP bitmap =
+        ::CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
+    if (!bitmap || !pixels)
+        return nullptr;
+    const size_t row_bytes = static_cast<size_t>(getWidth()) * 4u;
+    for (int y = 0; y < getHeight(); ++y) {
+        std::memcpy(static_cast<uint8_t*>(pixels) + static_cast<size_t>(y) * row_bytes,
+            bitmap_.getAddr(0, y), row_bytes);
+    }
+    return bitmap;
 }
 
 HICON NativeImage::getIcon()
 {
-    HICON hIcon = NULL;
-    if (m_gdipBitmap)
-        m_gdipBitmap->GetHICON(&hIcon);
-    return hIcon;
+    if (icon_ || isEmpty())
+        return icon_;
+    HBITMAP color = getBitmap();
+    if (!color)
+        return nullptr;
+    HBITMAP mask = ::CreateBitmap(getWidth(), getHeight(), 1, 1, nullptr);
+    ICONINFO info = {};
+    info.fIcon = TRUE;
+    info.hbmColor = color;
+    info.hbmMask = mask;
+    icon_ = ::CreateIconIndirect(&info);
+    ::DeleteObject(color);
+    ::DeleteObject(mask);
+    return icon_;
 }
-
-HBITMAP NativeImage::getBitmap()
-{
-    HBITMAP hBitmap = NULL;
-    Gdiplus::Color colorBackground = 0xff000000;
-    if (m_gdipBitmap)
-        m_gdipBitmap->GetHBITMAP(colorBackground, &hBitmap);
-    return hBitmap;
-}
+#endif
 
 int NativeImage::getWidth() const
 {
-    if (m_gdipBitmap)
-        return m_gdipBitmap->GetWidth();
-    return 0;
+    return isEmpty() ? 0 : bitmap_.width();
 }
+
 int NativeImage::getHeight() const
 {
-    if (m_gdipBitmap)
-        return m_gdipBitmap->GetHeight();
-    return 0;
+    return isEmpty() ? 0 : bitmap_.height();
 }
 
 bool NativeImage::isEmpty() const
 {
-    return !m_gdipBitmap || getWidth() == 0 || getHeight() == 0;
+    return bitmap_.drawsNothing();
 }
 
-gin_helper::WrapperInfo NativeImage::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };
+gin_helper::WrapperInfo NativeImage::kWrapperInfo = {
+    gin_helper::GinEmbedder::kEmbedderNativeGin
+};
 
-void initializeNativeImageApi(v8::Local<v8::Object> exports, v8::Local<v8::Value> unused, v8::Local<v8::Context> context, void* priv)
+void initializeNativeImageApi(v8::Local<v8::Object> exports,
+    v8::Local<v8::Value>, v8::Local<v8::Context> context, void*)
 {
     NativeImage::init(context->GetIsolate(), exports);
 }
 
-} // atom namespace
+} // namespace atom
 
-static const char CommonNativeImageNative[] = "console.log('BrowserNativeImageNative');;";
-static NodeNative nativeCommonNativeImageNative { "NativeImage", CommonNativeImageNative, sizeof(CommonNativeImageNative) - 1 };
+static const char CommonNativeImageNative[] = "";
+static NodeNative nativeCommonNativeImageNative {
+    "NativeImage", CommonNativeImageNative, 0
+};
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(electron_common_nativeImage, atom::initializeNativeImageApi, &nativeCommonNativeImageNative)
+NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(
+    electron_common_nativeImage, atom::initializeNativeImageApi,
+    &nativeCommonNativeImageNative)

@@ -24,19 +24,13 @@
 #include <vector>
 
 BOOL MINI_ELECTRON_CALL_TYPE mini_electron_get_context_by_v8_object(void* isolate, void* obj, int worldID, v8ContextPtr cxtOut);
-BOOL MINI_ELECTRON_CALL_TYPE mini_electron_pass_web_element_value_to_other_context(void* val, void* destCtx, void* outVal);
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_pass_dom_value_to_other_context(void* val, void* destCtx, void* outVal);
 
 namespace features {
 //const base::Feature kContextBridgeMutability{ "ContextBridgeMutability", base::FEATURE_DISABLED_BY_DEFAULT };
 }
 
-namespace content {
-void printCallstackIsolate(v8::Isolate* isolate);
-}
-
 namespace atom {
-
-extern int testEventEmitter;
 
 //content::RenderFrame* GetRenderFrame(v8::Local<v8::Object> value);
 
@@ -303,10 +297,12 @@ v8::MaybeLocal<v8::Value> PassValueToOtherContext(v8::Local<v8::Context> source_
         return v8::MaybeLocal<v8::Value>(cloned_arr);
     }
 
-    // Custom logic to "clone" Element references
+    // DOM wrappers retain their native identity across isolated worlds.
     v8::Local<v8::Value> otherContextValue;
-    if (mini_electron_pass_web_element_value_to_other_context(&value, &destination_context, &otherContextValue))
+    if (mini_electron_pass_dom_value_to_other_context(&value, &destination_context, &otherContextValue)) {
+        object_cache->CacheProxiedObject(value, otherContextValue);
         return v8::MaybeLocal<v8::Value>(otherContextValue);
+    }
 
     // Proxy all objects
     if (IsPlainObject(value)) {
@@ -382,10 +378,6 @@ void ProxyFunctionWrapper(const v8::FunctionCallbackInfo<v8::Value>& info)
         {
             v8::TryCatch try_catch(args.isolate());
             maybe_return_value = func->Call(func_owning_context, func, proxied_args.size(), proxied_args.data());
-            if (testEventEmitter) {
-                content::printCallstackIsolate(args.isolate());
-            }
-
             if (try_catch.HasCaught()) {
                 did_error = true;
                 v8::Local<v8::Value> exception = try_catch.Exception();

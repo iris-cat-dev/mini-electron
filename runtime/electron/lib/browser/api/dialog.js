@@ -63,7 +63,11 @@ Dialog.prototype._callDialogFunction = function(funcType, browserWindowID, optio
     var self = this;
     const promise = new Promise(function(resolve, reject) {
         if ("showSaveDialog" === funcType) {
-            var callback1 = function(canceled/*: boolean*/, filePaths/*: string[]*/) {
+            var callback1 = function(canceled/*: boolean*/, filePaths/*: string[]*/, error) {
+                if (error) {
+                    reject(new Error(error));
+                    return;
+                }
                 resolve({
                     "canceled": canceled,
                     "filePath": filePaths[0]
@@ -71,7 +75,11 @@ Dialog.prototype._callDialogFunction = function(funcType, browserWindowID, optio
             };
             self._showSaveDialog(browserWindowID, options, callback1);
         } else if ("showOpenDialog" === funcType) {
-            var callback2 = function(canceled/*: boolean*/, filePaths/*: string[]*/) {
+            var callback2 = function(canceled/*: boolean*/, filePaths/*: string[]*/, error) {
+                if (error) {
+                    reject(new Error(error));
+                    return;
+                }
                 resolve({
                     "canceled": canceled,
                     "filePaths": filePaths

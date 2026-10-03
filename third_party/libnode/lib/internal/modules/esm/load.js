@@ -23,6 +23,7 @@ const {
 const {
   dataURLProcessor,
 } = require('internal/data_url');
+const asarPathPattern = /\.asar\//;
 
 /**
  * @param {URL} url URL to the module
@@ -34,8 +35,12 @@ async function getSource(url, context) {
   const responseURL = href;
   let source;
   if (protocol === 'file:') {
-    const { readFile: readFileAsync } = require('internal/fs/promises').exports;
-    source = await readFileAsync(url);
+    // Packed ASAR entries are virtual files. The ASAR-aware synchronous reader
+    // reads their bytes directly from the archive, while the promise reader
+    // obtains a FileHandle and would have to extract each ESM source to disk.
+    source = RegExpPrototypeExec(asarPathPattern, url.pathname) === null ?
+      await require('internal/fs/promises').exports.readFile(url) :
+      readFileSync(url);
   } else if (protocol === 'data:') {
     const result = dataURLProcessor(url);
     if (result === 'failure') {

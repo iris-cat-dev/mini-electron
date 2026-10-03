@@ -1,86 +1,36 @@
+'use strict';
 
-var App = process._linkedBinding('electron_browser_app').App;
-
-App.prototype.commandLine = {
-    appendSwitch: function(switchVal, value) {
-    },
-    
-    appendArgument: function(value) {
+const { EventEmitter } = require('events');
+let app;
+if (process.platform === 'darwin') {
+  app = process._linkedBinding('electron_browser_mac_host').app;
+  for (const key of Reflect.ownKeys(EventEmitter.prototype)) {
+    if (key !== 'constructor' && !(key in app)) {
+      Object.defineProperty(app, key, Object.getOwnPropertyDescriptor(EventEmitter.prototype, key));
     }
+  }
+} else {
+  const App = process._linkedBinding('electron_browser_app').App;
+  Object.setPrototypeOf(App.prototype, EventEmitter.prototype);
+  app = new App();
+}
+
+app.whenReady = function () {
+  if (this.isReady()) return Promise.resolve();
+  return new Promise(resolve => this.once('ready', () => resolve()));
 };
 
-// App.prototype.on look: electron\lib\browser\electron.js
-App.prototype.whenReady = function() {
-    var self = this;
-    var promise;
-
-    promise = new Promise(function(resolve, reject) {
-        if (self.isReady()) { mini_electron_console_log("App.prototype.whenReady 1:" + self.isReady());
-            resolve(); mini_electron_console_log("App.prototype.whenReady 2:" + self.isReady());
-            return;
-        }
-        self.on("ready", function() {
-            resolve();
-        });
-    });
-    return promise;
+let applicationPath = typeof app.getAppPath === 'function' ? app.getAppPath() : null;
+app.getAppPath = function () { return applicationPath; };
+app.setAppPath = function (value) {
+  this._setAppPath(value);
+  applicationPath = value;
+};
+app.getApplicationMenu = function () {
+  return require('./menu').getApplicationMenu();
+};
+if (typeof app._relaunch === 'function') {
+  app.relaunch = function (options = {}) { this._relaunch(options); };
 }
 
-let appPath = null;
-
-App.prototype.getAppPath = function() {
-    return appPath;
-}
-
-App.prototype.setAppPath = function(path) {
-    appPath = path;
-    this._setAppPath(path);
-}
-
-App.prototype.getApplicationMenu = function() {
-    return Menu.getApplicationMenu()
-}
-
-App.prototype.relaunch = function(options) {
-    if (!options)
-        options = {};
-    if (!options.args || Object.prototype.toString.call(options.args) != '[object Array]')
-        options.args = [""];
-    
-    if (!options.execPath || typeof (execPath) != "string")
-        options.execPath = "";
-    this._relaunch(options);
-}
-
-var singleInstanceCallbackMap = [];
-var singleInstanceCallbackMapIdGen = 0;
-
-function singleInstancCallback(callback) {
-    return function(argString) {
-        try {
-            var argJson = JSON.parse(argString);
-            if (argJson.length == 0)
-                return;
-
-            if (argJson.length == 1)
-                argJson.append("");
-
-            var workingDirectory = argJson.pop();
-            callback(argJson, workingDirectory);
-
-        } catch (e) {
-        }
-    }
-}
-
-App.prototype.makeSingleInstance = function(callback) {
-    //if (callback)
-    //    return this.makeSingleInstanceImpl(-1);
-    
-    //singleInstanceCallbackMapIdGen++;
-    //singleInstanceCallbackMap[singleInstanceCallbackMapIdGen] = callback;
-    return this.makeSingleInstanceImpl(singleInstancCallback(callback));
-}
-
-
-exports.App = App;
+module.exports = app;

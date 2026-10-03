@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace mini_electron::mac {
 
@@ -14,6 +15,13 @@ bool ClipboardHasText();
 bool ClipboardHasHtml();
 std::u16string ReadClipboardText();
 std::u16string ReadClipboardHtml();
+std::vector<uint8_t> ReadClipboardPng();
+std::vector<std::u16string> AvailableClipboardFormats();
+
+// Writes one pasteboard item so text and image remain available together.
+bool WriteClipboard(const std::u16string* text,
+                    const std::vector<uint8_t>* png);
+void ClearClipboard();
 
 }  // namespace mini_electron::mac
 

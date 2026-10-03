@@ -1,5 +1,13 @@
 const app = require('electron').app;
 
+const keyCommand = (keyCode, modifiers = 0) => (webContents) => {
+  webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
+  webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+}
+
+const controlKeyCommand = (keyCode, shift = false) =>
+  keyCommand(keyCode, 0x08 | (shift ? 0x04 : 0))
+
 const roles = {
   about: {
     get label () {
@@ -14,16 +22,16 @@ const roles = {
   copy: {
     label: 'Copy',
     accelerator: 'CommandOrControl+C',
-    webContentsMethod: 'copy'
+    webContentsMethod: controlKeyCommand(0x43)
   },
   cut: {
     label: 'Cut',
     accelerator: 'CommandOrControl+X',
-    webContentsMethod: 'cut'
+    webContentsMethod: controlKeyCommand(0x58)
   },
   delete: {
     label: 'Delete',
-    webContentsMethod: 'delete'
+    webContentsMethod: keyCommand(0x2e)
   },
   front: {
     label: 'Bring All to Front'
@@ -49,12 +57,12 @@ const roles = {
   paste: {
     label: 'Paste',
     accelerator: 'CommandOrControl+V',
-    webContentsMethod: 'paste'
+    webContentsMethod: controlKeyCommand(0x56)
   },
   pasteandmatchstyle: {
     label: 'Paste and Match Style',
     accelerator: 'Shift+CommandOrControl+V',
-    webContentsMethod: 'pasteAndMatchStyle'
+    webContentsMethod: controlKeyCommand(0x56, true)
   },
   quit: {
     get label () {
@@ -70,7 +78,7 @@ const roles = {
   redo: {
     label: 'Redo',
     accelerator: 'Shift+CommandOrControl+Z',
-    webContentsMethod: 'redo'
+    webContentsMethod: controlKeyCommand(0x5a, true)
   },
   resetzoom: {
     label: 'Actual Size',
@@ -82,7 +90,7 @@ const roles = {
   selectall: {
     label: 'Select All',
     accelerator: 'CommandOrControl+A',
-    webContentsMethod: 'selectAll'
+    webContentsMethod: controlKeyCommand(0x41)
   },
   services: {
     label: 'Services'
@@ -103,7 +111,7 @@ const roles = {
   undo: {
     label: 'Undo',
     accelerator: 'CommandOrControl+Z',
-    webContentsMethod: 'undo'
+    webContentsMethod: controlKeyCommand(0x5a)
   },
   unhide: {
     label: 'Show All'
@@ -118,18 +126,14 @@ const roles = {
     label: 'Zoom In',
     accelerator: 'CommandOrControl+Plus',
     webContentsMethod: (webContents) => {
-      webContents.getZoomLevel((zoomLevel) => {
-        webContents.setZoomLevel(zoomLevel + 0.5)
-      })
+      webContents.setZoomLevel(webContents.getZoomLevel() + 0.5)
     }
   },
   zoomout: {
     label: 'Zoom Out',
     accelerator: 'CommandOrControl+-',
     webContentsMethod: (webContents) => {
-      webContents.getZoomLevel((zoomLevel) => {
-        webContents.setZoomLevel(zoomLevel - 0.5)
-      })
+      webContents.setZoomLevel(webContents.getZoomLevel() - 0.5)
     }
   }
 }

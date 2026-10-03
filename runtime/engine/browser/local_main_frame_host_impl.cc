@@ -16,8 +16,7 @@ LocalMainFrameHostImpl::LocalMainFrameHostImpl(WebLocalFrameClientImpl* frameCli
 
 void LocalMainFrameHostImpl::DidFirstVisuallyNonEmptyPaint()
 {
-    if (m_frameClient)
-        m_frameClient->onLoadingSucceeded();
+    // Painting is not document completion; WebLocalFrameClient::DidFinishLoad is.
 }
 
 void LocalMainFrameHostImpl::RequestClose()

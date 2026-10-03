@@ -39,67 +39,85 @@
 #include "net/base/net_errors.h"
 #include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
+#include "mojo/public/cpp/system/data_pipe.h"
+#include <algorithm>
+#include <limits>
 
 namespace mini_electron {
 
-void finishHandleDataURL(bool isSync, std::function<void(void)>&& closure)
-{
-    CHECK(WTF::IsMainThread());
-    if (isSync) {
-        closure();
-        return;
-    }
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](std::function<void(void)>&& closure) { closure(); }, std::move(closure)));
-}
 
-void handleDataURL(int jobId, blink::URLLoader* handle, blink::URLLoaderClient* client, const blink::KURL& kurl, bool useStreamOnResponse, bool isSync)
+void handleDataURL(int jobId, const blink::KURL& kurl, bool isSync)
 {
-    Vector<char>* data = new Vector<char>();
+    Vector<char> data;
     String mimeType;
     String charset;
-    bool ok = parseDataURL((GURL)kurl, mimeType, charset, *data);
-    if (!ok) {
-        blink::WebURLError error(net::ERR_INVALID_ARGUMENT, kurl);
-        //error.domain = blink::WebString(kurl);
-        //error.localizedDescription = blink::WebString::fromUTF8("Cannot show DataURL\n");
-        client->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
-        return;
-    }
-
-    blink::WebURLResponse* response = new blink::WebURLResponse();
-    //response->initialize();
-    response->SetMimeType(mimeType);
-    response->SetTextEncodingName(charset);
-    response->SetCurrentRequestUrl(blink::WebURL(kurl));
-    response->SetExpectedContentLength(data->size());
-    response->SetHttpStatusCode(200);
-    response->SetHttpStatusText(blink::WebString::FromLatin1("OK"));
-
-    if (useStreamOnResponse) {
-        OutputDebugStringA("handleDataURL, useStreamOnResponse\n");
-    }
-
-    //     SharedMemoryDataConsumerHandle::BackpressureMode mode = SharedMemoryDataConsumerHandle::kDoNotApplyBackpressure;
-    //     SharedMemoryDataConsumerHandle::Writer* bodyStreamWriter = nullptr;
-    //     SharedMemoryDataConsumerHandle* readHandle = new SharedMemoryDataConsumerHandle(mode, WTF::bind(&cancelBodyStreaming, bodyStreamWriter), &bodyStreamWriter);
-
-    finishHandleDataURL(isSync, [jobId, client, /*readHandle,*/ response, data] {
-//         client->DidReceiveResponse(*response);
-//         client->DidReceiveData(data->data(), data->size());
-        //DebugBreak();
-
-        client->DidReceiveResponse(*response, absl::variant<mojo::ScopedDataPipeConsumerHandle, SegmentedBuffer>(), std::optional<mojo_base::BigBuffer>());
-        client->DidReceiveDataForTesting(base::span<const char>(data->data(), data->size()));
-        client->DidFinishLoading(base::TimeTicks::Now(), data->size(), data->size(), data->size());
-
+    const bool parsed = parseDataURL((GURL)kurl, mimeType, charset, data);
+    auto complete = base::BindOnce([](int jobId, const blink::KURL& kurl,
+                                      bool isSync, bool parsed, const String& mimeType,
+                                      const String& charset, Vector<char> data) {
         WebURLLoaderManager* manager = WebURLLoaderManager::sharedInstance();
-        JobHead* jobHead = manager->checkJob(jobId);
-        delete jobHead;
+        AutoLockJob lock(manager, jobId);
+        WebURLLoaderInternal* job = lock.lock();
+        if (!job || job->isCancelled())
+            return;
+        blink::URLLoaderClient* client = job->client();
+        blink::WebURLResponse response;
+        response.SetMimeType(mimeType);
+        response.SetTextEncodingName(charset);
+        response.SetCurrentRequestUrl(blink::WebURL(kurl));
+        response.SetExpectedContentLength(data.size());
+        response.SetHttpStatusCode(200);
+        response.SetHttpStatusText(blink::WebString::FromLatin1("OK"));
+        int error = parsed ? net::OK : net::ERR_INVALID_ARGUMENT;
+        mojo::ScopedDataPipeProducerHandle producer;
+        mojo::ScopedDataPipeConsumerHandle consumer;
+        if (error == net::OK && !isSync) {
+            if (data.size() > std::numeric_limits<uint32_t>::max()) {
+                error = net::ERR_FILE_TOO_BIG;
+            } else {
+                const MojoCreateDataPipeOptions options{
+                    sizeof(MojoCreateDataPipeOptions), MOJO_CREATE_DATA_PIPE_FLAG_NONE,
+                    1, std::max<uint32_t>(1, static_cast<uint32_t>(data.size()))
+                };
+                if (mojo::CreateDataPipe(&options, producer, consumer) != MOJO_RESULT_OK) {
+                    error = net::ERR_INSUFFICIENT_RESOURCES;
+                } else if (!data.empty()) {
+                    uint32_t bytes = static_cast<uint32_t>(data.size());
+                    const MojoWriteDataOptions writeOptions{
+                        sizeof(MojoWriteDataOptions), MOJO_WRITE_DATA_FLAG_NONE
+                    };
+                    if (MojoWriteData(producer.get().value(), data.data(), &bytes,
+                            &writeOptions) != MOJO_RESULT_OK || bytes != data.size()) {
+                        error = net::ERR_FAILED;
+                    }
+                }
+                producer.reset();
+            }
+        }
+        if (error != net::OK) {
+            client->DidFail(blink::WebURLError(error, kurl),
+                base::TimeTicks::Now(), 0, 0, 0);
+        } else {
+            if (isSync) {
+                client->DidReceiveResponse(response, SegmentedBuffer(), std::nullopt);
+                client->DidReceiveDataForTesting(
+                    base::span<const char>(data.data(), data.size()));
+            } else {
+                client->DidReceiveResponse(response, std::move(consumer), std::nullopt);
+            }
+            client->DidFinishLoading(base::TimeTicks::Now(),
+                data.size(), data.size(), data.size());
+        }
         manager->removeLiveJobs(jobId);
-
-        delete response;
-        delete data;
-    });
+        lock.setNotDerefForDelete();
+        delete job;
+    }, jobId, kurl, isSync, parsed, std::move(mimeType), std::move(charset), std::move(data));
+    CHECK(WTF::IsMainThread());
+    if (isSync)
+        std::move(complete).Run();
+    else
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(complete));
 }
 
 std::string extractCharset(const WTF::String& contentType);
@@ -136,24 +154,18 @@ bool parseDataURL(const GURL& kurl, String& mimeType, String& charset, Vector<ch
     if (charset.empty())
         charset = "US-ASCII";
 
-    int64_t totalEncodedDataLength = 0;
     String data2;
     if (base64) {
         data2 = /*WTF::ensureStringToUTF8String*/ (blink::DecodeURLEscapeSequences(data, url::DecodeURLMode::kUTF8));
-        if (!(WTF::Base64Decode(data2, out/*, shouldIgnoreCharacter*/) && out.size() > 0))
+        if (!WTF::Base64Decode(data2, out))
             return false;
 
-        totalEncodedDataLength = out.size();
     } else {
         WTF::TextEncoding encoding(charset);
         data2 = /*WTF::ensureStringToUTF8String*/ (blink::DecodeURLEscapeSequences(data, /*encoding*/ url::DecodeURLMode::kUTF8));
 
         std::string encodedData = encoding.Encode(data2, WTF::kURLEncodedEntitiesForUnencodables);
-        if (0 == encodedData.length())
-            return false;
-
         out.Append(encodedData.data(), encodedData.length());
-        totalEncodedDataLength = encodedData.length();
     }
 
     return true;

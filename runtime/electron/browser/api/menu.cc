@@ -13,10 +13,12 @@
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
+#include "third_party/libnode/src/node_buffer.h"
 #include "third_party/libuv/include/uv.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include <set>
+#include <cstring>
 
 namespace atom {
 
@@ -67,6 +69,24 @@ public:
         m_isEnabled = b;
     }
 
+
+    bool isEnabled() const
+    {
+        return m_isEnabled;
+    }
+
+    void setVisible(bool visible)
+    {
+        m_isVisible = visible;
+    }
+
+    bool isVisible() const
+    {
+        return m_isVisible;
+    }
+
+    void setAccelerator(const std::string& accelerator);
+    bool matchesAccelerator(UINT virtualKeyCode) const;
     void setChecked(bool b)
     {
         m_isChecked = b;
@@ -112,7 +132,16 @@ private:
     Menu* m_subMenu;
     std::string m_label;
     bool m_isEnabled;
+    bool m_isVisible;
     bool m_isChecked;
+    bool m_acceleratorValid;
+    bool m_acceleratorControl;
+    bool m_acceleratorShift;
+    bool m_acceleratorAlt;
+    bool m_acceleratorSuper;
+    bool m_acceleratorPlus;
+    bool m_acceleratorMinus;
+    UINT m_acceleratorKey;
     UINT m_action;
     v8::Persistent<v8::Value> m_clickCallbackValue;
     Menu* m_menu;
@@ -132,11 +161,13 @@ public:
         m_hMenu = NULL;
         m_isItemNeedRebuilt = false;
         m_isAppOrPopupMenu = kNoInit;
+        m_liveMenus->insert(this);
     }
 
     virtual ~Menu() override
     {
         OutputDebugStringA("~Menu\n");
+        m_liveMenus->erase(this);
         ::DestroyMenu(m_hMenu);
         m_hMenu = nullptr;
 
@@ -148,6 +179,7 @@ public:
     {
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
         m_liveMenuItem = new std::set<MenuItem*>();
+        m_liveMenus = new std::set<Menu*>();
         v8::Local<v8::FunctionTemplate> prototype = v8::FunctionTemplate::New(isolate, newFunction);
 
         prototype->SetClassName(v8::String::NewFromUtf8(isolate, "Menu").ToLocalChecked());
@@ -227,7 +259,8 @@ public:
         size_t pos = args[0]->ToUint32(context).ToLocalChecked()->Value();
 
         v8::Object* v8Obj = v8::Object::Cast(*args[1]);
-        v8::MaybeLocal<v8::Array> v8MaybeObjProps = v8Obj->GetOwnPropertyNames(isolate->GetCurrentContext());
+        v8::MaybeLocal<v8::Array> v8MaybeObjProps = v8Obj->GetOwnPropertyNames(
+            context, static_cast<v8::PropertyFilter>(v8::ALL_PROPERTIES | v8::SKIP_SYMBOLS));
         if (v8MaybeObjProps.IsEmpty())
             return;
         v8::Local<v8::Array> v8ObjProps = v8MaybeObjProps.ToLocalChecked();
@@ -277,6 +310,15 @@ public:
                 item->setEnabled(outValue->ToBoolean(isolate)->Value());
             }
 
+            if ("visible" == keyNameStr && outValue->IsBoolean()) {
+                item->setVisible(outValue->ToBoolean(isolate)->Value());
+            }
+
+            if ("_accelerator" == keyNameStr && outValue->IsString()) {
+                v8::String::Utf8Value utf8(isolate, outValue->ToString(context).ToLocalChecked());
+                item->setAccelerator(*utf8);
+            }
+
             if ("checked" == keyNameStr && outValue->IsBoolean()) {
                 item->setChecked(outValue->ToBoolean(isolate)->Value());
             }
@@ -316,24 +358,50 @@ public:
     {
         v8::Isolate* isolate = args.GetIsolate();
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
-        Menu* self = this;
-        if (!m_hideWndHelp) {
-            m_hideWndHelp = new HideWndHelp(L"HideParentWindowClass",
-                [self](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return self->hideWndProc(hWnd, uMsg, wParam, lParam); });
+
+        HWND owner = nullptr;
+        const bool hasOwner = args.Length() > 0 && !args[0]->IsNullOrUndefined();
+        if (hasOwner) {
+            if (!node::Buffer::HasInstance(args[0])
+                || node::Buffer::Length(args[0]) < sizeof(HWND)) {
+                isolate->ThrowException(v8::Exception::TypeError(
+                    v8::String::NewFromUtf8(isolate, "Invalid BrowserWindow handle").ToLocalChecked()));
+                return;
+            }
+            std::memcpy(&owner, node::Buffer::Data(args[0]), sizeof(HWND));
+            if (!::IsWindow(owner))
+                return;
+        } else {
+            Menu* self = this;
+            if (!m_hideWndHelp) {
+                m_hideWndHelp = new HideWndHelp(L"HideParentWindowClass",
+                    [self](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+                        return self->hideWndProc(hWnd, uMsg, wParam, lParam);
+                    });
+            }
+            owner = m_hideWndHelp->getWnd();
         }
 
-        buildMenus(false);
-
-        ::SetForegroundWindow(m_hideWndHelp->getWnd());
+        HMENU popup = buildMenus(false);
+        if (!popup || !::IsWindow(owner))
+            return;
 
         POINT pt;
-        if (args.Length() == 2 && args[0]->IsInt32() && args[1]->IsInt32()) {
-            pt.x = args[0]->ToInt32(context).ToLocalChecked()->Value();
-            pt.y = args[0]->ToInt32(context).ToLocalChecked()->Value();
+        if (args.Length() >= 3 && args[1]->IsInt32() && args[2]->IsInt32()) {
+            pt.x = args[1]->ToInt32(context).ToLocalChecked()->Value();
+            pt.y = args[2]->ToInt32(context).ToLocalChecked()->Value();
         } else {
             ::GetCursorPos(&pt);
         }
-        ::TrackPopupMenu(m_hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, m_hideWndHelp->getWnd(), NULL);
+
+        ::SetForegroundWindow(owner);
+        const UINT command = ::TrackPopupMenu(popup,
+            TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD | TPM_NONOTIFY,
+            pt.x, pt.y, 0, owner, nullptr);
+        if (command)
+            MenuEventNotif::onMenuCommon(WM_COMMAND, MAKEWPARAM(command, 0), 0);
+        if (::IsWindow(owner))
+            ::PostMessageW(owner, WM_NULL, 0, 0);
     }
 
     void _clearApi()
@@ -355,26 +423,45 @@ public:
 
     void onCommon(MenuItem* item, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        MENUITEMINFOW info = { 0 };
-        info.cbSize = sizeof(MENUITEMINFOW);
-        info.fMask = MIIM_STATE; // information to get
-        int index = findItemIndex(item);
-        BOOL b = ::GetMenuItemInfo(m_hMenu, (UINT)index, TRUE, &info);
+        if (!item || !item->isEnabled() || !item->isVisible())
+            return;
 
         if (MenuItem::CheckableActionType == item->getType()) {
-            if (item->getChecked()) {
-                info.fState = MFS_UNCHECKED;
-                b = ::SetMenuItemInfo(m_hMenu, (UINT)index, TRUE, &info);
-                item->setChecked(false);
-            } else {
-                info.fState |= MFS_CHECKED;
-                b = ::SetMenuItemInfo(m_hMenu, (UINT)index, TRUE, &info);
-                item->setChecked(true);
+            MENUITEMINFOW info = { 0 };
+            info.cbSize = sizeof(MENUITEMINFOW);
+            info.fMask = MIIM_STATE;
+            if (::GetMenuItemInfoW(m_hMenu, item->getAction(), FALSE, &info)) {
+                if (item->getChecked()) {
+                    info.fState &= ~MFS_CHECKED;
+                    item->setChecked(false);
+                } else {
+                    info.fState |= MFS_CHECKED;
+                    item->setChecked(true);
+                }
+                ::SetMenuItemInfoW(m_hMenu, item->getAction(), FALSE, &info);
             }
         }
 
         v8::Local<v8::Value> focusedWindow = WindowInterface::getFocusedWindow(isolate());
-        item->getMenu()->mate::EventEmitter<Menu>::emit("click", item->getClickCallbackValue(), focusedWindow /*, focusedWebContents*/);
+        v8::Local<v8::Value> focusedWebContents = WindowInterface::getFocusedContents(isolate());
+        item->getMenu()->mate::EventEmitter<Menu>::emit(
+            "click", item->getClickCallbackValue(), focusedWindow, focusedWebContents);
+    }
+
+    static bool dispatchAccelerator(HMENU nativeMenu, UINT virtualKeyCode)
+    {
+        if (!nativeMenu)
+            return false;
+        for (Menu* menu : *m_liveMenus) {
+            if (menu->m_hMenu != nativeMenu)
+                continue;
+            MenuItem* item = menu->findAccelerator(virtualKeyCode);
+            if (!item)
+                return false;
+            item->getMenu()->onCommon(item, WM_COMMAND, MAKEWPARAM(item->getAction(), 0), 0);
+            return true;
+        }
+        return false;
     }
 
     static Menu* getAppMenu()
@@ -386,6 +473,7 @@ public:
     static gin_helper::WrapperInfo kWrapperInfo;
     static v8::Persistent<v8::Function> constructor;
     static std::set<MenuItem*>* m_liveMenuItem;
+    static std::set<Menu*>* m_liveMenus;
 
     HideWndHelp* m_hideWndHelp;
 
@@ -424,6 +512,23 @@ private:
             item->insertPlatformMenu(i, menu->m_hMenu);
         }
         return menu->m_hMenu;
+    }
+
+    MenuItem* findAccelerator(UINT virtualKeyCode)
+    {
+        for (MenuItem* item : m_items) {
+            if (!item->isEnabled() || !item->isVisible())
+                continue;
+            if (item->getType() == MenuItem::SubmenuType) {
+                Menu* submenu = item->getSubMenu();
+                MenuItem* match = submenu ? submenu->findAccelerator(virtualKeyCode) : nullptr;
+                if (match)
+                    return match;
+            } else if (item->matchesAccelerator(virtualKeyCode)) {
+                return item;
+            }
+        }
+        return nullptr;
     }
 
     int findItemIndex(MenuItem* item)
@@ -471,8 +576,18 @@ MenuItem::MenuItem(v8::Isolate* isolate, Menu* menu)
 {
     m_isolate = isolate;
     m_type = ActionType;
+    m_hSubMenu = nullptr;
     m_isEnabled = true;
+    m_isVisible = true;
     m_isChecked = false;
+    m_acceleratorValid = false;
+    m_acceleratorControl = false;
+    m_acceleratorShift = false;
+    m_acceleratorAlt = false;
+    m_acceleratorSuper = false;
+    m_acceleratorPlus = false;
+    m_acceleratorMinus = false;
+    m_acceleratorKey = 0;
     m_action = s_menuItemCount++;
     m_menu = menu;
     m_subMenu = nullptr;
@@ -485,6 +600,144 @@ MenuItem::~MenuItem()
     Menu::m_liveMenuItem->erase(this);
 }
 
+static std::string lowerAcceleratorToken(const std::string& token)
+{
+    std::string result = token;
+    for (char& character : result) {
+        if (character >= 'A' && character <= 'Z')
+            character += 'a' - 'A';
+    }
+    return result;
+}
+
+void MenuItem::setAccelerator(const std::string& accelerator)
+{
+    m_acceleratorValid = false;
+    m_acceleratorControl = false;
+    m_acceleratorShift = false;
+    m_acceleratorAlt = false;
+    m_acceleratorSuper = false;
+    m_acceleratorPlus = false;
+    m_acceleratorMinus = false;
+    m_acceleratorKey = 0;
+
+    bool hasKey = false;
+    size_t start = 0;
+    while (start <= accelerator.size()) {
+        size_t end = accelerator.find('+', start);
+        const bool isLast = end == std::string::npos;
+        if (isLast)
+            end = accelerator.size();
+        std::string token = lowerAcceleratorToken(accelerator.substr(start, end - start));
+        if (token.empty() && end == accelerator.size())
+            token = "plus";
+
+        if (token == "commandorcontrol" || token == "cmdorctrl"
+            || token == "cmdorcontrol" || token == "controlorcommand"
+            || token == "ctrl" || token == "control") {
+            m_acceleratorControl = true;
+        } else if (token == "shift") {
+            m_acceleratorShift = true;
+        } else if (token == "alt" || token == "option") {
+            m_acceleratorAlt = true;
+        } else if (token == "command" || token == "cmd" || token == "super") {
+            m_acceleratorSuper = true;
+        } else {
+            UINT key = 0;
+            if (token.size() == 1 && token[0] >= 'a' && token[0] <= 'z') {
+                key = static_cast<UINT>(token[0] - 'a' + 'A');
+            } else if (token.size() == 1 && token[0] >= '0' && token[0] <= '9') {
+                key = static_cast<UINT>(token[0]);
+            } else if (token == "=") {
+                key = VK_OEM_PLUS;
+            } else if (token == "plus" || token == "add") {
+                key = VK_OEM_PLUS;
+                m_acceleratorPlus = true;
+            } else if (token == "-" || token == "minus" || token == "subtract") {
+                key = VK_OEM_MINUS;
+                m_acceleratorMinus = true;
+            } else if (token == "space") {
+                key = VK_SPACE;
+            } else if (token == "tab") {
+                key = VK_TAB;
+            } else if (token == "backspace") {
+                key = VK_BACK;
+            } else if (token == "delete" || token == "del") {
+                key = VK_DELETE;
+            } else if (token == "insert" || token == "ins") {
+                key = VK_INSERT;
+            } else if (token == "enter" || token == "return") {
+                key = VK_RETURN;
+            } else if (token == "escape" || token == "esc") {
+                key = VK_ESCAPE;
+            } else if (token == "left") {
+                key = VK_LEFT;
+            } else if (token == "right") {
+                key = VK_RIGHT;
+            } else if (token == "up") {
+                key = VK_UP;
+            } else if (token == "down") {
+                key = VK_DOWN;
+            } else if (token == "home") {
+                key = VK_HOME;
+            } else if (token == "end") {
+                key = VK_END;
+            } else if (token == "pageup") {
+                key = VK_PRIOR;
+            } else if (token == "pagedown") {
+                key = VK_NEXT;
+            } else if (token.size() >= 2 && token[0] == 'f') {
+                int number = 0;
+                for (size_t i = 1; i < token.size(); ++i) {
+                    if (token[i] < '0' || token[i] > '9') {
+                        number = 0;
+                        break;
+                    }
+                    number = number * 10 + token[i] - '0';
+                }
+                if (number >= 1 && number <= 24)
+                    key = VK_F1 + number - 1;
+            }
+
+            if (!key || hasKey)
+                return;
+            m_acceleratorKey = key;
+            hasKey = true;
+        }
+
+        if (isLast)
+            break;
+        start = end + 1;
+    }
+    m_acceleratorValid = hasKey;
+}
+
+bool MenuItem::matchesAccelerator(UINT virtualKeyCode) const
+{
+    if (!m_acceleratorValid)
+        return false;
+
+    bool keyMatches = virtualKeyCode == m_acceleratorKey;
+    if (m_acceleratorPlus)
+        keyMatches = virtualKeyCode == VK_OEM_PLUS || virtualKeyCode == VK_ADD;
+    else if (m_acceleratorMinus)
+        keyMatches = virtualKeyCode == VK_OEM_MINUS || virtualKeyCode == VK_SUBTRACT;
+    if (!keyMatches)
+        return false;
+
+    const bool control = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    const bool alt = (::GetKeyState(VK_MENU) & 0x8000) != 0;
+    const bool super = ((::GetKeyState(VK_LWIN) | ::GetKeyState(VK_RWIN)) & 0x8000) != 0;
+    bool requiredShift = m_acceleratorShift;
+    if (m_acceleratorPlus && virtualKeyCode == VK_OEM_PLUS)
+        requiredShift = true;
+    const bool shift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
+    return control == m_acceleratorControl
+        && shift == requiredShift
+        && alt == m_acceleratorAlt
+        && super == m_acceleratorSuper;
+}
+
 void MenuItem::setSubMenu(Menu* subMenu)
 {
     HMENU hSubMenu = subMenu->m_hMenu;
@@ -495,8 +748,11 @@ void MenuItem::setSubMenu(Menu* subMenu)
 
 void MenuItem::insertPlatformMenu(size_t pos, HMENU hMenu) const
 {
+    if (!m_isVisible)
+        return;
+
     int count = ::GetMenuItemCount(hMenu);
-    if (count < 0 && (int)pos > count)
+    if (count < 0)
         return;
 
     MENUITEMINFO info = { 0 };
@@ -586,9 +842,15 @@ void MenuEventNotif::onMenuCommon(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
+bool MenuEventNotif::onAccelerator(HMENU menu, UINT virtualKeyCode)
+{
+    return Menu::dispatchAccelerator(menu, virtualKeyCode);
+}
+
 v8::Persistent<v8::Function> Menu::constructor;
 gin_helper::WrapperInfo Menu::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };
 std::set<MenuItem*>* Menu::m_liveMenuItem = nullptr;
+std::set<Menu*>* Menu::m_liveMenus = nullptr;
 
 Menu* Menu::m_appMenu = nullptr;
 

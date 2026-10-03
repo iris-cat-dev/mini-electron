@@ -1987,6 +1987,7 @@
     <ClInclude Include="..\..\..\ui\gfx\ca_layer_result.h" />
     <ClInclude Include="..\..\..\ui\gfx\client_native_pixmap.h" />
     <ClInclude Include="..\..\..\ui\gfx\client_native_pixmap_factory.h" />
+    <ClInclude Include="..\..\..\ui\gfx\codec\jpeg_codec.h" />
     <ClInclude Include="..\..\..\ui\gfx\codec\png_codec.h" />
     <ClInclude Include="..\..\..\ui\gfx\codec\vector_wstream.h" />
     <ClInclude Include="..\..\..\ui\gfx\color_analysis.h" />
@@ -3265,6 +3266,7 @@
     <ClCompile Include="..\..\..\ui\gfx\canvas.cc" />
     <ClCompile Include="..\..\..\ui\gfx\canvas_skia.cc" />
     <ClCompile Include="..\..\..\ui\gfx\ca_layer_params.cc" />
+    <ClCompile Include="..\..\..\ui\gfx\codec\jpeg_codec.cc" />
     <ClCompile Include="..\..\..\ui\gfx\codec\png_codec.cc" />
     <ClCompile Include="..\..\..\ui\gfx\codec\vector_wstream.cc" />
     <ClCompile Include="..\..\..\ui\gfx\color_analysis.cc" />

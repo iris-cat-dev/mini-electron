@@ -1,6 +1,9 @@
 
 #include "runtime/engine/browser/web_view_host.h"
 
+#include <utility>
+#include <vector>
+
 #include "runtime/engine/renderer/web_view_client_impl.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/renderer/policy_container_host_impl.h"
@@ -615,14 +618,7 @@ void WebViewHost::setDefaultPreferences(blink::WebViewImpl* webWiew)
     //(preferences.local_storage_enabled);
     webWiew->UpdateRendererPreferences(preferences);
 
-#if !BUILDFLAG(IS_MAC)
-    float zoom = RenderThreadImpl::get()->getZoom();
-    //     blink::PageScaleConstraints pageScaleCons = webWiew->GetPageScaleConstraintsSet().UserAgentConstraints();
-    //     pageScaleCons.initial_scale = zoom;
-    //     pageScaleCons.maximum_scale = 5;
-    //     webWiew->GetPageScaleConstraintsSet().SetUserAgentConstraints(pageScaleCons);
-    webWiew->SetZoomFactorForDeviceScaleFactor(zoom);
-#endif
+    propagatedZoomFactor();
 }
 
 void WebViewHost::setZoomFactor(float factor)
@@ -631,14 +627,7 @@ void WebViewHost::setZoomFactor(float factor)
         return;
     m_hasSetZoomFactor = true;
     m_zoomFactor = factor;
-#if BUILDFLAG(IS_MAC)
     propagatedZoomFactor();
-#else
-    blink::WebViewImpl* webWiew = (blink::WebViewImpl*)m_renderWidgetHostImpl->m_webWiew;
-    webWiew->SetInitialPageScaleOverride(factor);
-    webWiew->SetZoomFactorForDeviceScaleFactor(factor);
-    webWiew->SetPageScaleFactor(factor);
-#endif
 }
 
 float WebViewHost::getZoomFactor() const
@@ -656,20 +645,8 @@ void WebViewHost::propagatedZoomFactor()
     if (!m_renderWidgetHostImpl || !m_renderWidgetHostImpl->m_webWiew)
         return;
     blink::WebViewImpl* webWiew = (blink::WebViewImpl*)m_renderWidgetHostImpl->m_webWiew;
-#if BUILDFLAG(IS_MAC)
-    // Page zoom is independent of the display's DIP-to-pixel scale. Navigation
-    // must not replace the Retina scale with the default page zoom of 1.
-    m_renderWidgetHostImpl->setDeviceScaleFactor(m_renderWidgetHostImpl->deviceScaleFactor());
+    // Page zoom must not replace the display's DIP-to-pixel scale.
     webWiew->MainFrameWidget()->SetZoomLevel(blink::ZoomFactorToZoomLevel(zoom));
-#else
-
-    //setZoomFactor(zoom);
-    //     blink::PageScaleConstraints pageScaleCons = webWiew->GetPageScaleConstraintsSet().UserAgentConstraints();
-    //     pageScaleCons.initial_scale = zoom;
-    //     pageScaleCons.maximum_scale = 5;
-    //     webWiew->GetPageScaleConstraintsSet().SetUserAgentConstraints(pageScaleCons);
-    webWiew->SetZoomFactorForDeviceScaleFactor(zoom);
-#endif
 }
 
 void WebViewHost::createWebWindowInUiThread(mini_electron_window_type type, HWND parent, int x, int y, int width, int height)
@@ -1015,15 +992,26 @@ blink::WebFrame* WebViewHost::getMainFrame() const
 
 void WebViewHost::draggableRegionsChanged(blink::WebVector<blink::WebDraggableRegion> regions)
 {
-    m_draggableRegion = regions;
+    m_draggableRegion = std::move(regions);
+    mini_electron_draggable_regions_changed_callback callback =
+        getClosure().m_DraggableRegionsChangedCallback;
+    if (!callback)
+        return;
 
-    float f = content::RenderThreadImpl::get()->getZoom();
-    if (f != 1.f) {
-        for (size_t i = 0; i < m_draggableRegion.size(); ++i) {
-            blink::WebDraggableRegion r = m_draggableRegion[i];
-            m_draggableRegion[i].bounds = gfx::ScaleToEnclosingRect(r.bounds, f);
-        }
+    std::vector<mini_electron_draggable_region> callback_regions;
+    callback_regions.reserve(m_draggableRegion.size());
+    for (const blink::WebDraggableRegion& region : m_draggableRegion) {
+        mini_electron_draggable_region output = {};
+        output.bounds.left = region.bounds.x();
+        output.bounds.top = region.bounds.y();
+        output.bounds.right = region.bounds.right();
+        output.bounds.bottom = region.bounds.bottom();
+        output.draggable = region.draggable ? TRUE : FALSE;
+        callback_regions.push_back(output);
     }
+    callback(getWebviewHandle(), getClosure().m_DraggableRegionsChangedParam,
+        callback_regions.empty() ? nullptr : callback_regions.data(),
+        static_cast<int>(callback_regions.size()));
 }
 
 void WebViewHost::onPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, int cy)
@@ -1035,7 +1023,7 @@ void WebViewHost::onPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, 
     }
 #endif
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     mini_electron_paint_bit_updated_callback paintBitUpdatedCallback = getClosure().m_PaintBitUpdatedCallback;
     if (paintBitUpdatedCallback && m_bitmapByte) {
         mini_electron_rect r = { x, y, cx, cy };
@@ -1287,7 +1275,7 @@ bool WebViewHost::onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL 
     if (flags & MINI_ELECTRON_EXTENDED)
         lParam |= ((KF_EXTENDED) >> 16);
 
-    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kKeyUp, WM_KEYUP, wParam, lParam);
+    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kKeyUp, WM_KEYUP, wParam, lParam, flags);
     if (m_platformEventHandler.get())
         m_platformEventHandler->fireInputEventToCompositingThread(keyEvent);
     return true;
@@ -1306,7 +1294,7 @@ bool WebViewHost::onKeyDown(unsigned int virtualKeyCode, unsigned int flags, BOO
 #endif
     //WTF::TemporaryChange<bool> temporaryChange(g_isBackKeyDown, true);
 
-    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kRawKeyDown, WM_KEYDOWN, wParam, lParam);
+    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kRawKeyDown, WM_KEYDOWN, wParam, lParam, flags);
     if (m_platformEventHandler.get())
         m_platformEventHandler->fireInputEventToCompositingThread(keyEvent);
     bool systemKey = false;
@@ -1329,7 +1317,7 @@ bool WebViewHost::onKeyPress(unsigned int charCode, unsigned int flags, BOOL isS
     if (isSystemKey)
         message = WM_IME_CHAR;
 
-    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kChar, message, wParam, lParam);
+    blink::WebKeyboardEvent keyEvent = content::PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type::kChar, message, wParam, lParam, flags);
     if (m_platformEventHandler.get())
         m_platformEventHandler->fireInputEventToCompositingThread(keyEvent);
     return true;
@@ -1857,8 +1845,6 @@ void WebViewHost::dispatchUrlCheanged(const std::string& url)
 
     m_url = url;
 
-    if (getFrameClient())
-        getFrameClient()->onLoadingSucceeded();
 
     if (!(getClosure().m_URLChangedCallback))
         return;
@@ -2034,15 +2020,6 @@ void* WebViewHost::getUserKeyValue(const char* key) const
     return ret;
 }
 
-void onWebviewDidFirstVisuallyNonEmptyPaint(int64_t webviewId)
-{
-    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webviewId] {
-        WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewId);
-        if (!webview || !webview->getFrameClient())
-            return;
-        webview->getFrameClient()->onLoadingSucceeded();
-    });
-}
 
 void WebViewHost::setProxy(const mini_electron_proxy* proxy)
 {

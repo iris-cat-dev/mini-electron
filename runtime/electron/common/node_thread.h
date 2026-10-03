@@ -1,8 +1,6 @@
 ﻿#ifndef atom_NodeThread_h
 #define atom_NodeThread_h
 
-#define NODE_ARCH "ia32"
-#define NODE_PLATFORM "win32"
 #define NODE_WANT_INTERNALS 1
 #define HAVE_OPENSSL 1
 #define HAVE_ETW 1
@@ -66,7 +64,7 @@ typedef struct _NodeArgc {
 
 extern NodeArgc* g_nodeArgc; // 所有线程都可访问
 
-NodeArgc* runNodeThread();
+int runNodeMain();
 node::Environment* nodeGetEnvironment(NodeArgc*);
 
 } // atom

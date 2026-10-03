@@ -2659,23 +2659,10 @@ void WebLocalFrameImpl::Load(const WebURLRequest& request, WebFrameLoadType fram
         return;
     }
 
-    LocalDOMWindow* origin_window = GetFrame()->DomWindow();
-    SecurityOrigin* orig = origin_window->GetMutableSecurityOrigin();
-    if (orig->Protocol().empty()) {
-        url::Origin url_origin = url::Origin::Create((GURL)(KURL)(request.Url()));
-        scoped_refptr<SecurityOrigin> new_security_origin = SecurityOrigin::CreateFromUrlOrigin(url_origin);
-        
-        new_security_origin->GrantLoadLocalResources();
-        origin_window->GetSecurityContext().SetSecurityOriginForTesting(nullptr);
-        origin_window->GetSecurityContext().SetSecurityOrigin(new_security_origin);
-    }
-    
-    FrameLoadRequest frame_load_request = FrameLoadRequest(/*nullptr*/ GetFrame()->DomWindow(), resource_request);
+    // This API is the trusted embedder load path, not a renderer-initiated
+    // navigation. DocumentLoader derives the new document's origin on commit.
+    FrameLoadRequest frame_load_request(nullptr, resource_request);
 
-    //     HistoryItem* historyItem = item;
-    //     frame()->loader().load(
-    //         frameRequest, static_cast<FrameLoadType>(webFrameLoadType), historyItem,
-    //         static_cast<HistoryLoadType>(webHistoryLoadType));
 
     GetFrame()->Loader().StartNavigation(frame_load_request, frame_load_type);
 }

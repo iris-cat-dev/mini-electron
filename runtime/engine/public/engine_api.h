@@ -241,13 +241,15 @@ typedef struct {
     int width;
     int height;
 
-    BOOL menuBarVisible;
-    BOOL statusBarVisible;
-    BOOL toolBarVisible;
-    BOOL locationBarVisible;
-    BOOL scrollbarsVisible;
+    BOOL xSet;
+    BOOL ySet;
+    BOOL widthSet;
+    BOOL heightSet;
+    BOOL isPopup;
     BOOL resizable;
-    BOOL fullscreen;
+    BOOL noopener;
+    BOOL noreferrer;
+    BOOL background;
 } mini_electron_window_features;
 
 typedef struct mini_electron_print_settings_impl {
@@ -360,6 +362,18 @@ typedef enum mini_electron_request_type_impl {
     kMiniElectronRequestTypePost,
     kMiniElectronRequestTypePut,
 } mini_electron_request_type;
+typedef struct mini_electron_net_request_info_impl {
+    uint64_t frame_id;
+    uint64_t parent_frame_id;
+    BOOL is_main_frame;
+    BOOL is_document;
+    const utf8* initiator;
+    int credentials_mode;
+    int request_mode;
+    int resource_type;
+    int destination;
+} mini_electron_net_request_info;
+
 
 typedef struct mini_electron_slist_impl {
     char* data;
@@ -415,15 +429,27 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_js_query_ex_callback)(mini_e
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_title_changed_callback)(mini_electron_web_view webView, void* param, const utf8* title);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_mouse_over_url_changed_callback)(mini_electron_web_view webView, void* param, const utf8* url);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_url_changed_callback)(mini_electron_web_view webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward);
-typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_url_changed_callback2)(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId, const utf8* url);
+typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_url_changed_callback2)(
+    mini_electron_web_view webView, void* param,
+    mini_electron_web_frame_handle frameId, const utf8* url,
+    uint64_t parent_frame_id, BOOL is_main_frame);
+typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_frame_detached_callback)(
+    mini_electron_web_view webView, void* param,
+    mini_electron_web_frame_handle frameId);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_paint_updated_callback)(mini_electron_web_view webView, void* param, const HDC hdc, int x, int y, int cx, int cy);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_paint_bit_updated_callback)(mini_electron_web_view webView, void* param, const void* buffer, const mini_electron_rect* r, int width, int height);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_alert_box_callback)(mini_electron_web_view webView, void* param, const utf8* msg);
 typedef BOOL(MINI_ELECTRON_CALL_TYPE* mini_electron_confirm_box_callback)(mini_electron_web_view webView, void* param, const utf8* msg);
 typedef mini_electron_string_ptr(MINI_ELECTRON_CALL_TYPE* mini_electron_prompt_box_callback)(mini_electron_web_view webView, void* param, const utf8* msg, const utf8* defaultResult, BOOL* result);
-typedef BOOL(MINI_ELECTRON_CALL_TYPE* mini_electron_navigation_callback)(mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url);
+typedef BOOL(MINI_ELECTRON_CALL_TYPE* mini_electron_navigation_callback)(
+    mini_electron_web_view webView, void* param,
+    mini_electron_navigation_type navigationType, const utf8* url,
+    uint64_t frame_id, uint64_t parent_frame_id, BOOL is_main_frame,
+    const utf8* method);
 typedef mini_electron_web_view(MINI_ELECTRON_CALL_TYPE* mini_electron_create_view_callback)(
-    mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url, const mini_electron_window_features* windowFeatures);
+    mini_electron_web_view webView, void* param, mini_electron_web_frame_handle openerFrame,
+    const utf8* disposition, const utf8* url,
+    const utf8* frameName, const mini_electron_window_features* windowFeatures);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_document_ready_callback)(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_load_url_finish_callback)(mini_electron_web_view webView, void* param, const utf8* url, mini_electron_net_job job, int len);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_load_url_headers_received_callback)(mini_electron_web_view webView, void* param, const char* url, mini_electron_net_job job);
@@ -756,7 +782,12 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
                                                                                                                                                                \
     ITERATOR1(mini_electron_request_type, mini_electron_net_get_request_method, mini_electron_net_job jobPtr, "")                                                                                       \
     ITERATOR2(void, mini_electron_set_view_proxy, mini_electron_web_view webView, const mini_electron_proxy* proxy, "")                                                                               \
+    ITERATOR1(const char*, mini_electron_net_get_request_method_string, mini_electron_net_job jobPtr, "")                                                                                \
+    ITERATOR2(BOOL, mini_electron_net_get_request_info, mini_electron_net_job jobPtr, mini_electron_net_request_info* info, "")                                                        \
+    ITERATOR1(mini_electron_resource_type, mini_electron_net_get_resource_type, mini_electron_net_job jobPtr, "")                                                                     \
     ITERATOR2(void, mini_electron_net_set_mime_type, mini_electron_net_job jobPtr, const char* type, "")                                                                                   \
+    ITERATOR3(void, mini_electron_net_set_http_status, mini_electron_net_job jobPtr, int status, const char* statusText, "")                                                               \
+    ITERATOR2(void, mini_electron_net_set_response_url, mini_electron_net_job jobPtr, const char* url, "")                                                                                \
     ITERATOR1(const char*, mini_electron_net_get_mime_type, mini_electron_net_job jobPtr, "只能在blink线程调用（非主线程）")                                                               \
     ITERATOR3(const utf8*, mini_electron_net_get_http_header_field, mini_electron_net_job job, const char* key, BOOL fromRequestOrResponse, "")                                             \
     ITERATOR4(void, mini_electron_net_set_http_header_field, mini_electron_net_job jobPtr, const WCHAR* key, const WCHAR* value, BOOL response, "")                                         \
@@ -799,6 +830,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
     ITERATOR1(void, mini_electron_clear_cookie, mini_electron_web_view webView, "")                                                                                                      \
                                                                                                                                                                \
     ITERATOR3(void, mini_electron_resize, mini_electron_web_view webView, int w, int h, "")                                                                                             \
+    ITERATOR2(void, mini_electron_set_device_scale_factor, mini_electron_web_view webView, float deviceScaleFactor, "")                                                                  \
     ITERATOR2(void, mini_electron_get_size, mini_electron_web_view webView, mini_electron_rect* rc, "")                                                                                              \
     ITERATOR2(BOOL, mini_electron_get_window_rect, mini_electron_web_view webview, mini_electron_rect* rc, "")                                                                                        \
                                                                                                                                                                \
@@ -807,6 +839,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
     ITERATOR3(void, mini_electron_on_document_ready, mini_electron_web_view webView, mini_electron_document_ready_callback callback, void* param, "")                                                   \
     ITERATOR3(void, mini_electron_on_paint_updated, mini_electron_web_view webView, mini_electron_paint_updated_callback callback, void* callbackParam, "")                                             \
     ITERATOR3(void, mini_electron_on_paint_bit_updated, mini_electron_web_view webView, mini_electron_paint_bit_updated_callback callback, void* callbackParam, "")                                       \
+    ITERATOR3(void, mini_electron_on_draggable_regions_changed, mini_electron_web_view webView, mini_electron_draggable_regions_changed_callback callback, void* callbackParam, "")                     \
     ITERATOR3(void, mini_electron_on_load_url_begin, mini_electron_web_view webView, mini_electron_load_url_begin_callback callback, void* callbackParam, "")                                             \
     ITERATOR3(void, mini_electron_on_load_url_end, mini_electron_web_view webView, mini_electron_load_url_end_callback callback, void* callbackParam, "")                                                 \
     ITERATOR3(void, mini_electron_on_load_url_fail, mini_electron_web_view webView, mini_electron_load_url_fail_callback callback, void* callbackParam, "")                                               \
@@ -877,6 +910,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
     ITERATOR4(mini_electron_js_value, mini_electron_run_js_sync, mini_electron_web_view webView, mini_electron_web_frame_handle frameId, const utf8* script, BOOL isInClosure, "")                                   \
     ITERATOR1(mini_electron_web_frame_handle, mini_electron_web_frame_get_main_frame, mini_electron_web_view webView, "")                                                                                 \
     ITERATOR2(BOOL, mini_electron_is_main_frame, mini_electron_web_view webView, mini_electron_web_frame_handle frameId, "")                                                                            \
+    ITERATOR2(uint64_t, mini_electron_get_parent_frame_id, mini_electron_web_view webView, mini_electron_web_frame_handle frameId, "")                                                                      \
     ITERATOR2(void, mini_electron_set_node_js_enable, mini_electron_web_view webView, BOOL b, "")                                                                                          \
                                                                                                                                                                \
     ITERATOR5(void, mini_electron_set_device_parameter, mini_electron_web_view webView, const char* device, const char* paramStr, int paramInt, float paramFloat, "")                     \

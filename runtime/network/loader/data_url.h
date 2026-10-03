@@ -30,9 +30,7 @@
 #include "url/gurl.h"
 
 namespace blink {
-class URLLoader;
 class KURL;
-class URLLoaderClient;
 }
 
 namespace WTF {
@@ -41,7 +39,7 @@ class String;
 
 namespace mini_electron {
 
-void handleDataURL(int jobId, blink::URLLoader* handle, blink::URLLoaderClient* client, const blink::KURL& kurl, bool useStreamOnResponse, bool isSync);
+void handleDataURL(int jobId, const blink::KURL& kurl, bool isSync);
 bool parseDataURL(const GURL& kurl, WTF::String& mimeType, WTF::String& charset, WTF::Vector<char>& out);
 
 }

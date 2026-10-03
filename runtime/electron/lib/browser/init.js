@@ -1,114 +1,113 @@
 'use strict';
 
-require('./electron.js');
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
-const Module = require('module');
-const v8 = require('v8');
-const app = require('electron').app;
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const { pathToFileURL } = require('node:url');
 
-// Import common settings. 
-require('./../common/init.js');
-require('./rpc-server.js');
+Object.defineProperty(process, 'type', { configurable: true, value: 'browser' });
+process.resourcesPath ||= path.join(path.dirname(process.execPath), 'resources');
+const packagedRoot = ['app.asar', 'app'].map(name => path.join(process.resourcesPath, name))
+  .find(candidate => fs.existsSync(candidate.endsWith('.asar') ? candidate : path.join(candidate, 'package.json')));
 
-if (typeof module!== 'undefined' && module.exports) {
-    mini_electron_console_log("is_module_js!!");
+if (!packagedRoot && (process.argv[1] === '--version' || process.argv[1] === '-v')) {
+  process.stdout.write(`v${process.versions.miniElectron}\n`);
+  process.exit(0);
+} else if (!packagedRoot && process.argv[1] === '--abi') {
+  process.stdout.write(`${process.versions.modules}\n`);
+  process.exit(0);
+} else if (!packagedRoot && (process.argv[1] === '--help' || process.argv[1] === '-h')) {
+  process.stdout.write('Usage: electron [app-directory | main-script] [arguments]\n');
+  process.exit(0);
 } else {
-    mini_electron_console_log("not is_module_js!!");
-}
+  const apiKey = Symbol.for('mini-electron.main-api');
+  const electron = globalThis[apiKey] = {};
+  const names = [
+    'app', 'ipcMain', 'BrowserWindow', 'BrowserView', 'webContents', 'session',
+    'MenuItem', 'Menu', 'dialog', 'net', 'protocol', 'nativeImage', 'clipboard',
+    'nativeTheme', 'Notification', 'Tray', 'shell', 'screen', 'safeStorage',
+    'powerMonitor', 'autoUpdater', 'utilityProcess', 'webFrameMain', 'MessageChannelMain',
+  ];
+  const moduleSource = "const api = globalThis[Symbol.for('mini-electron.main-api')];\nmodule.exports = api;\n" +
+    names.map(name => `module.exports.${name} = api.${name};`).join('\n');
+  Module.registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier === 'electron' || specifier === 'electron/main') {
+        return { url: 'mini-electron:main', format: 'commonjs', shortCircuit: true };
+      }
+      return nextResolve(specifier, context);
+    },
+    load(url, context, nextLoad) {
+      if (url === 'mini-electron:main') {
+        return { format: 'commonjs', source: moduleSource, shortCircuit: true };
+      }
+      return nextLoad(url, context);
+    },
+  });
+  require('../common/init');
+  require('./electron');
 
-/*
-let packageJson = null;
-let packagePath = __dirname + '/../../app.asar/'; //__dirname + '/../default_app/';
-if (!fs.existsSync(packagePath))
-    packagePath = __dirname + '/../default_app/';
-packageJson = require(packagePath + 'package.json');
-*/
-let packageJson = null;
-let packagePath = null;
-const searchPaths = ['/../default_app/', 'app', 'app.asar', 'default_app.asar']
-for (packagePath of searchPaths) {
-    try {
-        packagePath = path.join(__dirname, packagePath)
-        packageJson = require(path.join(packagePath, 'package.json'))
-        break
-    } catch (error) {
-        continue
+  function resolveApplication() {
+    let argument;
+    for (let index = 1; index < process.argv.length; ++index) {
+      const value = process.argv[index];
+      if (value === '--') {
+        argument = process.argv[index + 1];
+        break;
+      }
+      if (value.startsWith('--app=')) {
+        argument = value.slice(6);
+        break;
+      }
+      if (!packagedRoot && !value.startsWith('-')) {
+        argument = value;
+        process.argv[index] = path.resolve(value);
+        break;
+      }
     }
-}
-
-if (packageJson == null) {
-    process.nextTick(function () {
-        return process.exit(1);
-    })
-    throw new Error('Unable to find a valid app')
-}
-
-// Set application's version.
-if (packageJson.version != null) {
-    app.setVersion(packageJson.version);
-}
-
-// Set application's name.
-if (packageJson.productName != null) {
-    app.setName(packageJson.productName)
-} else if (packageJson.name != null) {
-    app.setName(packageJson.name);
-}
-
-// Set application's desktop name.
-if (packageJson.desktopName != null) {
-    app.setDesktopName(packageJson.desktopName);
-} else {
-    app.setDesktopName((app.getName()) + '.desktop');
-}
-
-// Set v8 flags
-if (packageJson.v8Flags != null) {
-    v8.setFlagsFromString(packageJson.v8Flags);
-}
-
-// Set the user path according to application's name.
-app.setPath('userData', path.join(app.getPath('appData'), app.getName()));
-app.setPath('userCache', path.join(app.getPath('cache'), app.getName()));
-app.setAppPath(packagePath);
-
-// Don't quit on fatal error.
-process.on('uncaughtException', function (error) {
-    // Do nothing if the user has a custom uncaught exception handler.
-    if (process.listenerCount('uncaughtException') > 1) {
-        return;
+    let root;
+    let entry;
+    let packaged = false;
+    if (argument) {
+      root = path.resolve(argument);
+      if (!fs.statSync(root).isDirectory()) {
+        entry = root;
+        root = path.dirname(root);
+      }
+    } else {
+      root = packagedRoot;
+      packaged = Boolean(root);
+      root ||= path.join(__dirname, '..', 'default_app');
     }
+    const manifest = path.join(root, 'package.json');
+    const metadata = fs.existsSync(manifest) ? JSON.parse(fs.readFileSync(manifest, 'utf8')) : {};
+    return { root, entry: entry || path.resolve(root, metadata.main || 'index.js'), metadata, packaged };
+  }
 
-    // Show error in GUI.
-    // We can't import { dialog } at the top of this file as this file is
-    // responsible for setting up the require hook for the "electron" module
-    // so we import it inside the handler down here
-    
-    //import('electron').then(({ dialog }) => {
-    //    const stack = error.stack ? error.stack : `${error.name}: ${error.message}`;
-    //    const message = 'Uncaught Exception:\n' + stack;
-    //    dialog.showErrorBox('A JavaScript error occurred in the main process', message);
-    //});
-    
-    const stack = error.stack ? error.stack : `${error.name}: ${error.message}`;
-    const message = "Uncaught Exception:\n" + stack;
-    console.log("A JavaScript error occurred in the main process, " + message);
-});
-
-// Set main startup script of the app.
-const mainStartupScript = packageJson.main || 'index.js';
-
-// Finally load app's main.js and transfer control to C++.
-Module._load(path.join(packagePath, mainStartupScript), Module, true);
-
-setImmediate(function() {
-    try {
-        app._setIsReady();
-        app.emit('will-finish-launching', {});
-        app.emit('ready', {});
-    } catch(e) {
-        console.log("browser/init.js, app.ready fail::" + e + ", \n" + e.stack);
+  async function startApplication() {
+    const application = resolveApplication();
+    const { app } = electron;
+    if (!application.packaged) process.defaultApp = true;
+    else delete process.defaultApp;
+    app._setIsPackaged(application.packaged);
+    app.setName(application.metadata.productName || application.metadata.name || 'mini-electron');
+    app.setVersion(application.metadata.version || process.versions.miniElectron);
+    app.setAppPath(application.root);
+    if (application.metadata.v8Flags) require('node:v8').setFlagsFromString(application.metadata.v8Flags);
+    if (application.metadata.type === 'module' || path.extname(application.entry) === '.mjs') {
+      await import(pathToFileURL(application.entry).href);
+    } else {
+      Module._load(application.entry, null, true);
     }
-});
+    setImmediate(() => {
+      app.emit('will-finish-launching', {});
+      app._setIsReady();
+      app.emit('ready', {});
+    });
+  }
+
+  startApplication().catch(error => {
+    console.error(error.stack || error);
+    electron.app.exit(1);
+  });
+}

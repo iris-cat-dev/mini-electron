@@ -4,6 +4,17 @@
 
 #include "runtime/electron/browser/api/web_request.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+#include <iterator>
+#include <string_view>
+#include <utility>
+
+#include "base/strings/escape.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+
 #include "runtime/electron/browser/api/session.h"
 #include "runtime/electron/node_bindings.h"
 #include "runtime/electron/common/node_register_help.h"
@@ -19,7 +30,8 @@
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libuv/include/uv.h"
 #include <vector>
-#include <shlwapi.h>
+#include "url/gurl.h"
+#include "url/url_util.h"
 
 namespace atom {
 
@@ -79,62 +91,401 @@ void ApiWebRequest::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 }
 
-void ApiWebRequest::onBeforeSendHeadersApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+namespace {
+
+void ThrowTypeError(v8::Isolate* isolate, const std::string& message)
 {
-    v8::Local<v8::Value> cb;
-    if (args.Length() == 1) {
-        cb = args[0];
-    } else if (args.Length() == 2) {
-        cb = args[1];
+    isolate->ThrowException(v8::Exception::TypeError(
+        gin_helper::StringToV8(isolate, message)));
+}
+
+bool MatchWithAsterisk(std::string_view value, std::string_view pattern)
+{
+    size_t valueIndex = 0;
+    size_t patternIndex = 0;
+    size_t wildcardIndex = std::string_view::npos;
+    size_t wildcardValueIndex = 0;
+    while (valueIndex < value.size()) {
+        if (patternIndex < pattern.size()
+            && pattern[patternIndex] == value[valueIndex]) {
+            ++valueIndex;
+            ++patternIndex;
+        } else if (patternIndex < pattern.size()
+            && pattern[patternIndex] == '*') {
+            wildcardIndex = patternIndex++;
+            wildcardValueIndex = valueIndex;
+        } else if (wildcardIndex != std::string_view::npos) {
+            patternIndex = wildcardIndex + 1;
+            valueIndex = ++wildcardValueIndex;
+        } else {
+            return false;
+        }
     }
-    if (!cb->IsFunction())
-        return;
-
-    m_beforeSendHeadersCb.Reset(args.GetIsolate(), cb);
+    while (patternIndex < pattern.size() && pattern[patternIndex] == '*')
+        ++patternIndex;
+    return patternIndex == pattern.size();
 }
 
-void ApiWebRequest::onSendHeadersApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+} // namespace
+
+int ApiWebRequest::listenerIndex(const char* eventName)
 {
-    v8::Local<v8::Value> cb;
-    if (args.Length() == 1) {
-        cb = args[0];
-    } else if (args.Length() == 2) {
-        cb = args[1];
+    static constexpr const char* kEventNames[kListenerCount] = {
+        "onBeforeRequest",
+        "onBeforeSendHeaders",
+        "onSendHeaders",
+        "onHeadersReceived",
+        "onBeforeRedirect",
+        "onResponseStarted",
+        "onCompleted",
+        "onErrorOccurred",
+    };
+    if (!eventName)
+        return -1;
+    for (int i = 0; i < kListenerCount; ++i) {
+        if (std::strcmp(eventName, kEventNames[i]) == 0)
+            return i;
     }
-    if (!cb->IsFunction())
+    return -1;
+}
+
+void ApiWebRequest::setListener(
+    const v8::FunctionCallbackInfo<v8::Value>& args,
+    const char* eventName, v8::Persistent<v8::Value>* listener)
+{
+    v8::Isolate* isolate = args.GetIsolate();
+    const int index = listenerIndex(eventName);
+    if (index < 0)
         return;
+    if (args.Length() < 1 || args.Length() > 2) {
+        ThrowTypeError(isolate,
+            std::string(eventName) + " requires a listener and optional filter");
+        return;
+    }
 
-    m_sendHeadersCb.Reset(args.GetIsolate(), cb);
+    v8::Local<v8::Value> candidate = args[args.Length() - 1];
+    if (candidate->IsNull()) {
+        listener->Reset();
+        m_listenerFilters[index] = ListenerFilter();
+        return;
+    }
+    if (!candidate->IsFunction()) {
+        ThrowTypeError(isolate,
+            std::string(eventName) + " listener must be a function or null");
+        return;
+    }
+
+    ListenerFilter filter;
+    if (args.Length() == 2) {
+        if (!args[0]->IsObject() || args[0]->IsNull()
+            || args[0]->IsArray()) {
+            ThrowTypeError(isolate,
+                std::string(eventName) + " filter must be an object");
+            return;
+        }
+        filter.matchesAll = false;
+        gin_helper::Dictionary dictionary(isolate, args[0].As<v8::Object>());
+        std::vector<std::string> urls;
+        if (!dictionary.Has("urls")
+            || !dictionary.Get("urls", &urls)) {
+            ThrowTypeError(isolate,
+                std::string(eventName)
+                    + " filter.urls must be an array of URL patterns");
+            return;
+        }
+        std::vector<std::string> excludeUrls;
+        if (dictionary.Has("excludeUrls")
+            && !dictionary.Get("excludeUrls", &excludeUrls)) {
+            ThrowTypeError(isolate,
+                std::string(eventName)
+                    + " filter.excludeUrls must be an array of URL patterns");
+            return;
+        }
+        std::vector<std::string> resourceTypes;
+        if (dictionary.Has("types")
+            && !dictionary.Get("types", &resourceTypes)) {
+            ThrowTypeError(isolate,
+                std::string(eventName)
+                    + " filter.types must be an array of resource types");
+            return;
+        }
+        filter.hasResourceTypes = dictionary.Has("types");
+
+        auto parsePattern = [](const std::string& value, UrlPattern* out) {
+            if (value == "<all_urls>") {
+                out->allUrls = true;
+                return true;
+            }
+            const size_t separator = value.find(':');
+            if (separator == std::string::npos || separator == 0)
+                return false;
+            out->scheme = base::ToLowerASCII(value.substr(0, separator));
+            out->anyScheme = out->scheme == "*";
+            if (!out->anyScheme) {
+                if (!base::IsStringASCII(out->scheme)
+                    || !std::isalpha(
+                        static_cast<unsigned char>(out->scheme[0]))) {
+                    return false;
+                }
+                for (char character : out->scheme) {
+                    if (!std::isalnum(static_cast<unsigned char>(character))
+                        && character != '+' && character != '-'
+                        && character != '.') {
+                        return false;
+                    }
+                }
+            }
+
+            const bool hasStandardSeparator =
+                value.compare(separator, 3, "://") == 0;
+            const bool isStandardScheme =
+                out->anyScheme || url::IsStandardScheme(out->scheme);
+            if (hasStandardSeparator != isStandardScheme)
+                return false;
+            const size_t authorityStart =
+                separator + (hasStandardSeparator ? 3 : 1);
+            if (!hasStandardSeparator) {
+                out->matchHost = false;
+                out->path = value.substr(authorityStart);
+                if (out->path.empty())
+                    return false;
+                out->decodedPath = base::UnescapeURLComponent(
+                    out->path, base::UnescapeRule::NORMAL);
+                return true;
+            }
+
+            if (authorityStart == value.size())
+                return false;
+            size_t pathStart = value.find('/', authorityStart);
+            if (out->scheme == "file" && pathStart == std::string::npos) {
+                out->path = "/" + value.substr(authorityStart);
+            } else {
+                if (pathStart == std::string::npos)
+                    return false;
+                out->path = value.substr(pathStart);
+            }
+            if (out->path.empty())
+                return false;
+            out->decodedPath = base::UnescapeURLComponent(
+                out->path, base::UnescapeRule::NORMAL);
+            if (out->scheme == "file") {
+                out->matchHost = false;
+                return true;
+            }
+
+            std::string authority =
+                value.substr(authorityStart, pathStart - authorityStart);
+            if (authority.empty() || authority.find('@') != std::string::npos)
+                return false;
+            std::string host = authority;
+            std::string port;
+            if (authority.front() == '[') {
+                const size_t closingBracket = authority.find(']');
+                if (closingBracket == std::string::npos)
+                    return false;
+                host = authority.substr(0, closingBracket + 1);
+                if (closingBracket + 1 < authority.size()) {
+                    if (authority[closingBracket + 1] != ':')
+                        return false;
+                    port = authority.substr(closingBracket + 2);
+                    if (port.empty())
+                        return false;
+                }
+            } else {
+                const size_t portSeparator = authority.find(':');
+                if (portSeparator != std::string::npos) {
+                    if (authority.find(':', portSeparator + 1)
+                        != std::string::npos) {
+                        return false;
+                    }
+                    host = authority.substr(0, portSeparator);
+                    port = authority.substr(portSeparator + 1);
+                    if (port.empty())
+                        return false;
+                }
+            }
+            if (host == "*") {
+                out->hostMatch = HostMatch::kAny;
+            } else {
+                if (base::StartsWith(host, "*.")) {
+                    out->hostMatch = HostMatch::kSubdomains;
+                    host.erase(0, 2);
+                }
+                if (host.empty() || host.find('*') != std::string::npos)
+                    return false;
+                GURL canonical("http://" + host + "/");
+                if (!canonical.is_valid() || canonical.host().empty())
+                    return false;
+                out->host = canonical.host();
+                while (!out->host.empty() && out->host.back() == '.')
+                    out->host.pop_back();
+                if (out->host.empty())
+                    return false;
+            }
+            if (!port.empty() && port != "*") {
+                if (!base::StringToInt(port, &out->port)
+                    || out->port < 0 || out->port > 65535) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        auto parsePatterns = [&](const std::vector<std::string>& inputs,
+                                 std::vector<UrlPattern>* outputs,
+                                 const char* property) {
+            outputs->reserve(inputs.size());
+            for (const std::string& input : inputs) {
+                UrlPattern pattern;
+                if (!parsePattern(input, &pattern)) {
+                    ThrowTypeError(isolate, std::string(eventName)
+                        + " filter." + property
+                        + " contains an invalid URL pattern: " + input);
+                    return false;
+                }
+                outputs->push_back(std::move(pattern));
+            }
+            return true;
+        };
+        if (!parsePatterns(urls, &filter.urls, "urls")
+            || !parsePatterns(
+                excludeUrls, &filter.excludeUrls, "excludeUrls")) {
+            return;
+        }
+
+        static constexpr const char* kResourceTypes[] = {
+            "mainFrame", "subFrame", "stylesheet", "script", "image",
+            "font", "object", "xhr", "ping", "cspReport", "media",
+            "webSocket", "other",
+        };
+        for (const std::string& resourceType : resourceTypes) {
+            if (std::find(std::begin(kResourceTypes),
+                    std::end(kResourceTypes), resourceType)
+                == std::end(kResourceTypes)) {
+                ThrowTypeError(isolate, std::string(eventName)
+                    + " filter.types contains an invalid resource type: "
+                    + resourceType);
+                return;
+            }
+        }
+        filter.resourceTypes = std::move(resourceTypes);
+    }
+
+    listener->Reset(isolate, candidate);
+    m_listenerFilters[index] = std::move(filter);
 }
 
-void ApiWebRequest::onHeadersReceivedApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+bool ApiWebRequest::matchesListener(const char* eventName,
+    const std::string& url, const std::string& resourceType) const
 {
-    OutputDebugStringA("ApiWebRequest::onHeadersReceivedApi NOT impl\n");
+    const int index = listenerIndex(eventName);
+    if (index < 0)
+        return false;
+    const ListenerFilter& filter = m_listenerFilters[index];
+    if (filter.matchesAll)
+        return true;
+    if (filter.hasResourceTypes
+        && std::find(filter.resourceTypes.begin(), filter.resourceTypes.end(),
+               resourceType) == filter.resourceTypes.end()) {
+        return false;
+    }
+
+    GURL parsed(url);
+    auto matchesPattern = [&parsed](const UrlPattern& pattern) {
+        if (!parsed.is_valid())
+            return false;
+        if (pattern.allUrls)
+            return true;
+        if (pattern.anyScheme) {
+            if (!parsed.SchemeIs("http") && !parsed.SchemeIs("https"))
+                return false;
+        } else if (parsed.scheme() != pattern.scheme) {
+            return false;
+        }
+        if (pattern.matchHost) {
+            std::string_view host = parsed.host_piece();
+            while (!host.empty() && host.back() == '.')
+                host.remove_suffix(1);
+            if (pattern.hostMatch == HostMatch::kExact
+                && host != pattern.host) {
+                return false;
+            }
+            if (pattern.hostMatch == HostMatch::kSubdomains
+                && host != pattern.host
+                && (host.size() <= pattern.host.size()
+                    || !base::EndsWith(host, pattern.host)
+                    || host[host.size() - pattern.host.size() - 1] != '.')) {
+                return false;
+            }
+            if (pattern.port >= 0
+                && parsed.EffectiveIntPort() != pattern.port) {
+                return false;
+            }
+        }
+        const std::string requestPath = parsed.PathForRequest();
+        if (MatchWithAsterisk(requestPath, pattern.path))
+            return true;
+        if (requestPath.find('%') == std::string::npos
+            && pattern.decodedPath == pattern.path) {
+            return false;
+        }
+        return MatchWithAsterisk(
+            base::UnescapeURLComponent(
+                requestPath, base::UnescapeRule::NORMAL),
+            pattern.decodedPath);
+    };
+    if (!std::any_of(filter.urls.begin(), filter.urls.end(), matchesPattern))
+        return false;
+    return !std::any_of(filter.excludeUrls.begin(),
+        filter.excludeUrls.end(), matchesPattern);
 }
 
-void ApiWebRequest::onResponseStartedApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiWebRequest::onBeforeSendHeadersApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("ApiWebRequest::onResponseStartedApi NOT impl\n");
+    setListener(args, "onBeforeSendHeaders", &m_beforeSendHeadersCb);
 }
 
-void ApiWebRequest::onBeforeRedirectApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiWebRequest::onSendHeadersApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("ApiWebRequest::onBeforeRedirectApi NOT impl\n");
+    setListener(args, "onSendHeaders", &m_sendHeadersCb);
 }
 
-void ApiWebRequest::onCompletedApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiWebRequest::onHeadersReceivedApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("ApiWebRequest::onCompletedApi NOT impl\n");
+    setListener(args, "onHeadersReceived", &m_headersReceivedCb);
 }
 
-void ApiWebRequest::onErrorOccurredApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiWebRequest::onResponseStartedApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("ApiWebRequest::onErrorOccurredApi NOT impl\n");
+    setListener(args, "onResponseStarted", &m_responseStartedCb);
 }
 
-void ApiWebRequest::onBeforeRequestApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiWebRequest::onBeforeRedirectApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("ApiWebRequest::onBeforeRequestApi NOT impl\n");
+    setListener(args, "onBeforeRedirect", &m_beforeRedirectCb);
+}
+
+void ApiWebRequest::onCompletedApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    setListener(args, "onCompleted", &m_completedCb);
+}
+
+void ApiWebRequest::onErrorOccurredApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    setListener(args, "onErrorOccurred", &m_errorOccurredCb);
+}
+
+void ApiWebRequest::onBeforeRequestApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    setListener(args, "onBeforeRequest", &m_beforeRequestCb);
 }
 
 gin_helper::WrapperInfo ApiWebRequest::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };

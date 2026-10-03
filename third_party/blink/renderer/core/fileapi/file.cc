@@ -28,6 +28,7 @@
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
+#include "runtime/engine/renderer/brokered_file_registry.h"
 #include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -36,6 +37,7 @@
 #include "third_party/blink/renderer/core/core_initializer.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/file_backed_blob_factory_dispatcher.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -161,7 +163,8 @@ File* File::CreateWithRelativePath(ExecutionContext* context, const String& path
 }
 
 // static
-File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata, UserVisibility user_visibility)
+File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata,
+    UserVisibility user_visibility, const String& relative_path)
 {
     String content_type = GetContentTypeFromFileName(url.GetPath().ToString(), File::kWellKnownContentTypes);
     // RegisterBlob doesn't take nullable strings.
@@ -170,9 +173,24 @@ File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, 
     }
 
     scoped_refptr<BlobDataHandle> handle;
-    CoreInitializer::GetInstance().GetFileSystemManager(&context).RegisterBlob(content_type, url, metadata.length, metadata.modification_time, &handle);
+    if (url.ProtocolIs("mini-electron-broker")) {
+        auto* window = DynamicTo<LocalDOMWindow>(context);
+        if (!window || !window->GetFrame())
+            return nullptr;
+        handle = content::GetBrokeredFileBlob(
+            blink::LocalFrameToken::Hasher()(window->GetLocalFrameToken()), url.GetString().Utf8(),
+            content_type);
+        if (!handle || handle->size() != static_cast<uint64_t>(metadata.length))
+            return nullptr;
+    } else {
+        CoreInitializer::GetInstance().GetFileSystemManager(&context).RegisterBlob(
+            content_type, url, metadata.length, metadata.modification_time, &handle);
+    }
 
-    return MakeGarbageCollected<File>(url, metadata, user_visibility, handle);
+    File* file = MakeGarbageCollected<File>(
+        url, metadata, user_visibility, std::move(handle));
+    file->relative_path_ = relative_path;
+    return file;
 }
 
 File::File(ExecutionContext* context, const String& path, ContentTypeLookupPolicy policy, UserVisibility user_visibility)

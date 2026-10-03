@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "runtime/electron/browser/api/window_list.h"
+#if defined(_WIN32)
+#include "runtime/electron/browser/api/app.h"
+#endif
 
 #include <algorithm>
 
@@ -49,15 +52,31 @@ WindowInterface* WindowList::find(int id) const
 // static
 void WindowList::WindowCloseCancelled(WindowInterface* window)
 {
+#if defined(_WIN32)
+    if (App::getInstance())
+        App::getInstance()->onWindowCloseCancelled();
+#endif
 }
 
 // static
 void WindowList::closeAllWindows()
 {
-    WindowVector windows = getInstance()->m_windows;
-    for (WindowInterface* window : windows)
-        if (!window->isClosed())
+    const WindowVector windows = getInstance()->m_windows;
+    for (WindowInterface* window : windows) {
+        const auto& live = getInstance()->m_windows;
+        if (std::find(live.begin(), live.end(), window) != live.end() && !window->isClosed())
             window->close();
+    }
+}
+
+void WindowList::destroyAllWindows()
+{
+    const WindowVector windows = getInstance()->m_windows;
+    for (WindowInterface* window : windows) {
+        const auto& live = getInstance()->m_windows;
+        if (std::find(live.begin(), live.end(), window) != live.end() && !window->isClosed())
+            window->destroy();
+    }
 }
 
 WindowList::WindowList()

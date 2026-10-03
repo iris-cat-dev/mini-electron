@@ -4,6 +4,7 @@
 
 #include <string>
 #include <map>
+#include "base/synchronization/lock.h"
 
 namespace mini_electron {
 
@@ -13,16 +14,18 @@ class CookieJarMgr {
 public:
     static CookieJarMgr* getInst()
     {
-        if (!m_inst)
-            m_inst = new CookieJarMgr();
+        static CookieJarMgr instance;
+        m_inst = &instance;
         return m_inst;
     }
 
     WebCookieJarImpl* createOrGet(const std::string& fullPath);
+    bool clear(const std::string& fullPath);
 
 private:
     static CookieJarMgr* m_inst;
     std::map<std::string, WebCookieJarImpl*> m_pathToCookies;
+    base::Lock m_lock;
 };
 
 }

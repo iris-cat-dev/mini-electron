@@ -22,24 +22,33 @@
 #include "base/values.h"
 #include "base/base_paths.h"
 #include "base/path_service.h"
-#include "base/base64.h"
+#include "base/command_line.h"
+#include "base/process/launch.h"
+#include "base/win/scoped_handle.h"
 #include "base/json/json_writer.h"
+#include "base/json/json_reader.h"
+#include "base/files/file_util.h"
 #include "base/files/file_path.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/scoped_co_mem.h"
+#include "base/win/registry.h"
+#include "third_party/openssl/openssl/include/openssl/sha.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libuv/include/uv.h"
 #include "runtime/engine/common/utf16.h"
 #include "runtime/engine/common/thread_call.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
+#include <utility>
 #include <shlobj.h>
 #include <Shlwapi.h>
 #include <shellapi.h>
 #include <Netlistmgr.h>
 
-typedef BOOL(__stdcall* FN_ChangeWindowMessageFilterEx)(HWND hwnd, UINT message, DWORD action, void* pChangeFilterStruct);
 
 namespace content {
 void printCallstack();
@@ -72,9 +81,10 @@ static void MINI_ELECTRON_CALL_TYPE onOnUvCreateProcessCallback(
 namespace atom {
 
 App* App::m_instance = nullptr;
-static const WCHAR kMutexName[] = L"LocalAtomProcessSingletonStartup!";
+int App::m_exitCode = 0;
 const WCHAR kHiddenWindowPropName[] = L"mb_app_hidden_window";
-const int BUFSIZE = 4096;
+static void registerHiddenWindowClass(LPCWSTR className);
+static void notifySingleProcess(HWND window, base::Value::Dict additionalData);
 
 App* App::getInstance()
 {
@@ -86,16 +96,16 @@ App::App(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
     gin_helper::Wrappable<App>::InitWith(isolate, wrapper);
     m_instance = this;
     m_version = "1.3.3";
+    m_name = "Electron";
     m_singleInstanceHandle = nullptr;
 
 }
 
 App::~App()
 {
-    ::CloseHandle(m_singleInstanceHandle);
-    m_singleInstanceHandle = nullptr;
-
-    DebugBreak();
+    releaseSingleInstanceLockApi();
+    if (m_instance == this)
+        m_instance = nullptr;
 }
 
 void App::init(v8::Local<v8::Object> target, v8::Isolate* isolate)
@@ -114,12 +124,14 @@ void App::init(v8::Local<v8::Object> target, v8::Isolate* isolate)
     builder.SetMethod("isReady", &App::isReadyApi);
     builder.SetProperty("isPackaged", &App::isPackagedApi);
     builder.SetMethod("_setAppPath", &App::_setAppPathApi);
+    builder.SetMethod("_setIsPackaged", &App::_setIsPackagedApi);
     builder.SetMethod("_setIsReady", &App::_setIsReadyApi);
     builder.SetMethod("isOnline", &App::isOnlineApi);
     builder.SetMethod("addRecentDocument", &App::addRecentDocumentApi);
     builder.SetMethod("clearRecentDocuments", &App::clearRecentDocumentsApi);
     builder.SetMethod("setAppUserModelId", &App::setAppUserModelIdApi);
     builder.SetMethod("requestSingleInstanceLock", &App::requestSingleInstanceLockApi);
+    builder.SetMethod("hasSingleInstanceLock", &App::hasSingleInstanceLockApi);
     builder.SetMethod("isDefaultProtocolClient", &App::isDefaultProtocolClientApi);
     builder.SetMethod("setAsDefaultProtocolClient", &App::setAsDefaultProtocolClientApi);
     builder.SetMethod("removeAsDefaultProtocolClient", &App::removeAsDefaultProtocolClientApi);
@@ -134,8 +146,7 @@ void App::init(v8::Local<v8::Object> target, v8::Isolate* isolate)
     builder.SetMethod("getPath", &App::getPathApi);
     builder.SetMethod("setDesktopName", &App::setDesktopNameApi);
     builder.SetMethod("getLocale", &App::getLocaleApi);
-    builder.SetMethod("makeSingleInstanceImpl", &App::makeSingleInstanceImplApi);
-    builder.SetMethod("releaseSingleInstance", &App::releaseSingleInstanceApi);
+    builder.SetMethod("releaseSingleInstanceLock", &App::releaseSingleInstanceLockApi);
     builder.SetMethod("_relaunch", &App::relaunchApi);
     builder.SetMethod("isAccessibilitySupportEnabled", &App::isAccessibilitySupportEnabled);
     builder.SetMethod("disableHardwareAcceleration", &App::disableHardwareAcceleration);
@@ -151,36 +162,79 @@ void App::nullFunction()
     OutputDebugStringA("nullFunction\n");
 }
 
-void quit()
-{
-    ::TerminateProcess(::GetCurrentProcess(), 0);
-    WindowList::closeAllWindows();
-
-    //     content::ThreadCall::exitMessageLoop(content::ThreadCall::getBlinkThreadId());
-    //     content::ThreadCall::exitMessageLoop(content::ThreadCall::getUiThreadId());
-}
-
 void App::quitApi()
 {
-    OutputDebugStringA("quitApi\n");
-
-    content::printCallstack();
-
-    App* self = this;
-    content::ThreadCall::callUiThreadAsync(FROM_HERE, [self] {
-        content::ThreadCall::callUiThreadAsync(FROM_HERE, [self] { self->emit("before-quit"); });
-        quit();
-    });
+    if (!content::ThreadCall::isUiThread()) {
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [this] { quitApi(); });
+        return;
+    }
+    if (m_quitState != QuitState::Running)
+        return;
+    m_quitState = QuitState::BeforeQuit;
+    const bool prevented = emit("before-quit");
+    if (m_quitState != QuitState::BeforeQuit)
+        return;
+    if (prevented) {
+        m_quitState = QuitState::Running;
+        return;
+    }
+    m_quitState = QuitState::ClosingWindows;
+    WindowList::closeAllWindows();
+    if (WindowList::getInstance()->empty() && m_quitState == QuitState::ClosingWindows)
+        finishQuit(0, false);
 }
 
-void App::exitApi()
+void App::exitApi(gin_helper::Arguments* args)
 {
-    quitApi();
+    int exitCode = 0;
+    if (args->Length() && !args->GetNext(&exitCode)) {
+        args->ThrowTypeError("exitCode must be an integer");
+        return;
+    }
+    finishQuit(exitCode, true);
+}
+
+void App::finishQuit(int exitCode, bool force)
+{
+    if (m_quitState == QuitState::Exiting)
+        return;
+    if (!force) {
+        m_quitState = QuitState::WillQuit;
+        const bool prevented = emit("will-quit");
+        if (m_quitState != QuitState::WillQuit)
+            return;
+        if (prevented) {
+            m_quitState = QuitState::Running;
+            return;
+        }
+    }
+    m_quitState = QuitState::Exiting;
+    m_exitCode = exitCode;
+    if (force)
+        WindowList::destroyAllWindows();
+    emit("quit", exitCode);
+    releaseSingleInstanceLockApi();
+    content::ThreadCall::exitUiThreadMessageLoop();
+}
+
+void App::onWindowCloseCancelled()
+{
+    if (m_quitState == QuitState::ClosingWindows)
+        m_quitState = QuitState::Running;
 }
 
 void App::focusApi()
 {
-    OutputDebugStringA("focusApi\n");
+    WindowList* windows = WindowList::getInstance();
+    if (windows->empty())
+        return;
+    HWND window = windows->get(windows->size() - 1)->getHWND();
+    if (!window)
+        return;
+    if (::IsIconic(window))
+        ::ShowWindow(window, SW_RESTORE);
+    ::SetForegroundWindow(window);
+    ::SetFocus(window);
 }
 
 bool App::isReadyApi() const
@@ -195,18 +249,14 @@ void App::_setIsReadyApi()
 
 bool App::isPackagedApi()
 {
-    return true; // weolar!!!
-//     if (-1 == m_isPackaged) {
-//         std::string appPath = m_appPath;
-//         std::transform(appPath.begin(), appPath.end(), appPath.begin(), [](unsigned char c) { return std::tolower(c); });
-//         m_isPackaged = (appPath.find(".asar") != std::string::npos) ? 1 : 0;
-//     }
-//     return m_isPackaged == 1;
+    return m_isPackaged;
 }
 
 void App::_setAppPathApi(const std::string& path)
 {
     m_appPath = path;
+    if (!SessionMgr::get()->setRootDir(base::FilePath::FromUTF8Unsafe(getPathApi("userData"))))
+        throwPathError("Unable to initialize userData before creating sessions");
 }
 
 bool App::isOnlineApi()
@@ -290,52 +340,138 @@ void App::clearRecentDocumentsApi()
 
 void App::setAppUserModelIdApi(const std::string& id)
 {
-    OutputDebugStringA("setAppUserModelIdApi\n");
+    SetAppUserModelID(base::UTF8ToWide(id));
 }
 
-bool App::requestSingleInstanceLockApi()
+bool App::requestSingleInstanceLockApi(gin_helper::Arguments* args)
 {
-    base::FilePath path;
-    base::PathService::Get(base::DIR_EXE, &path);
-    std::string temp = path.AsUTF8Unsafe();
-    temp = base::Base64Encode(std::string_view(temp.c_str(), temp.size()));
-
-    HANDLE hMutex = NULL;
-    hMutex = ::CreateMutexA(NULL, FALSE, (temp).c_str());
-    if (hMutex != NULL) {
-        if (ERROR_ALREADY_EXISTS == ::GetLastError()) {
-            ::ReleaseMutex(hMutex);
+    if (m_singleInstanceHandle)
+        return true;
+    base::Value::Dict additionalData;
+    if (args->Length() && !args->GetNext(&additionalData)) {
+        args->ThrowTypeError("additionalData must be an object");
+        return false;
+    }
+    const base::FilePath root = base::MakeAbsoluteFilePath(base::FilePath::FromUTF8Unsafe(getPathApi("userData")));
+    if (root.empty())
+        return false;
+    std::wstring normalized = root.value();
+    ::CharLowerBuffW(normalized.data(), static_cast<DWORD>(normalized.size()));
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    SHA256(reinterpret_cast<const unsigned char*>(normalized.data()), normalized.size() * sizeof(wchar_t), digest);
+    static const wchar_t hex[] = L"0123456789abcdef";
+    std::wstring suffix(SHA256_DIGEST_LENGTH * 2, L'0');
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        suffix[i * 2] = hex[digest[i] >> 4];
+        suffix[i * 2 + 1] = hex[digest[i] & 15];
+    }
+    const std::wstring mutexName = L"Local\\MiniElectronProfile_" + suffix;
+    const std::wstring className = L"MiniElectronSingleton_" + suffix;
+    HANDLE mutex = ::CreateMutexW(nullptr, TRUE, mutexName.c_str());
+    if (!mutex)
+        return false;
+    if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+        const DWORD ownership = ::WaitForSingleObject(mutex, 0);
+        if (ownership != WAIT_OBJECT_0 && ownership != WAIT_ABANDONED) {
+            const ULONGLONG deadline = ::GetTickCount64() + 5000;
+            HWND primary = nullptr;
+            while (!primary && ::GetTickCount64() < deadline) {
+                primary = ::FindWindowW(className.c_str(), nullptr);
+                if (!primary)
+                    ::Sleep(10);
+            }
+            if (primary)
+                notifySingleProcess(primary, std::move(additionalData));
+            ::CloseHandle(mutex);
             return false;
         }
     }
+    registerHiddenWindowClass(className.c_str());
+    m_hiddenWindow = ::CreateWindowExW(0, className.c_str(), L"", WS_OVERLAPPED,
+        0, 0, 1, 1, nullptr, nullptr, ::GetModuleHandleW(nullptr), this);
+    if (!m_hiddenWindow) {
+        ::ReleaseMutex(mutex);
+        ::CloseHandle(mutex);
+        return false;
+    }
+    m_singleInstanceHandle = mutex;
+    ::ChangeWindowMessageFilterEx(m_hiddenWindow, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
     return true;
 }
 
-// const std::string& protocol, const std::string& path, const std::string& args
+static bool getProtocolRegistration(const v8::FunctionCallbackInfo<v8::Value>& args,
+    std::wstring* schemeName, std::wstring* command)
+{
+    std::string scheme;
+    if (!args.Length() || !gin_helper::ConvertFromV8(args.GetIsolate(), args[0], &scheme) || scheme.empty())
+        return false;
+    if (!base::IsAsciiAlpha(scheme[0]) || std::any_of(scheme.begin() + 1, scheme.end(), [](char c) {
+        return !base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '+' && c != '-' && c != '.';
+    }))
+        return false;
+    base::FilePath program;
+    std::string executable;
+    if (args.Length() > 1 && !args[1]->IsUndefined()) {
+        if (!gin_helper::ConvertFromV8(args.GetIsolate(), args[1], &executable) || executable.empty())
+            return false;
+        program = base::FilePath::FromUTF8Unsafe(executable);
+    } else if (!base::PathService::Get(base::FILE_EXE, &program)) {
+        return false;
+    }
+    base::CommandLine invocation(program);
+    if (args.Length() > 2 && !args[2]->IsUndefined()) {
+        std::vector<std::string> arguments;
+        if (!gin_helper::ConvertFromV8(args.GetIsolate(), args[2], &arguments))
+            return false;
+        for (const auto& argument : arguments)
+            invocation.AppendArg(argument);
+    }
+    *schemeName = base::UTF8ToWide(base::ToLowerASCII(scheme));
+    *command = invocation.GetCommandLineString() + L" \"%1\"";
+    return true;
+}
+
 bool App::isDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("isDefaultProtocolClientApi\n");
-    return true;
+    std::wstring scheme, expected, actual;
+    if (!getProtocolRegistration(args, &scheme, &expected))
+        return false;
+    base::win::RegKey key(HKEY_CLASSES_ROOT, (scheme + L"\\shell\\open\\command").c_str(), KEY_READ);
+    return key.ReadValue(nullptr, &actual) == ERROR_SUCCESS && actual == expected;
 }
 
-//const std::string& protocol, const std::string& path, const std::string& args
 bool App::setAsDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("setAsDefaultProtocolClientApi\n");
-    if (0 == args.Length())
+    std::wstring scheme, command;
+    if (!getProtocolRegistration(args, &scheme, &command))
         return false;
-
-    std::string protocol;
-    if (!gin_helper::ConvertFromV8(args.GetIsolate(), args[0], &protocol))
+    const std::wstring keyPath = L"Software\\Classes\\" + scheme;
+    base::win::RegKey protocol;
+    if (protocol.Create(HKEY_CURRENT_USER, keyPath.c_str(), KEY_WRITE) != ERROR_SUCCESS
+        || protocol.WriteValue(nullptr, L"URL:Custom Protocol") != ERROR_SUCCESS
+        || protocol.WriteValue(L"URL Protocol", L"") != ERROR_SUCCESS)
         return false;
-
+    base::win::RegKey handler;
+    if (handler.Create(HKEY_CURRENT_USER, (keyPath + L"\\shell\\open\\command").c_str(), KEY_WRITE) != ERROR_SUCCESS
+        || handler.WriteValue(nullptr, command.c_str()) != ERROR_SUCCESS)
+        return false;
+    ::SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
     return true;
 }
 
-// const std::string& protocol, const std::string& path, const std::string& args
 bool App::removeAsDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    OutputDebugStringA("removeAsDefaultProtocolClientApi\n");
+    std::wstring scheme, expected, actual;
+    if (!getProtocolRegistration(args, &scheme, &expected))
+        return false;
+    const std::wstring handlerPath = L"Software\\Classes\\" + scheme + L"\\shell\\open\\command";
+    base::win::RegKey handler(HKEY_CURRENT_USER, handlerPath.c_str(), KEY_READ);
+    if (handler.ReadValue(nullptr, &actual) != ERROR_SUCCESS || actual != expected)
+        return false;
+    base::win::RegKey classes(HKEY_CURRENT_USER, L"Software\\Classes", KEY_WRITE);
+    if (classes.DeleteKey(scheme.c_str()) != ERROR_SUCCESS)
+        return false;
+    ::SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
     return true;
 }
 
@@ -468,7 +604,10 @@ void App::setJumpListApi(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 std::string App::getLocaleApi()
 {
-    return "zh-cn";
+    wchar_t locale[LOCALE_NAME_MAX_LENGTH];
+    if (!::GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH))
+        return std::string();
+    return base::WideToUTF8(locale);
 }
 
 static LRESULT CALLBACK staticWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -492,7 +631,6 @@ static void registerHiddenWindowClass(LPCWSTR lpszClassName)
 
 static LRESULT CALLBACK staticWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    int id = -1;
     App* self = (App*)::GetPropW(hWnd, kHiddenWindowPropName);
     if (!self && message == WM_CREATE) {
         LPCREATESTRUCTW cs = (LPCREATESTRUCTW)lParam;
@@ -508,6 +646,7 @@ static LRESULT CALLBACK staticWindowProc(HWND hWnd, UINT message, WPARAM wParam,
         COPYDATASTRUCT* copyData = (COPYDATASTRUCT*)lParam;
         if (copyData->dwData == WindowInterface::kSingleInstanceMessage) {
             self->onCopyData(copyData);
+            return TRUE;
         }
     }
 
@@ -516,321 +655,148 @@ static LRESULT CALLBACK staticWindowProc(HWND hWnd, UINT message, WPARAM wParam,
 
 void App::onCopyData(const COPYDATASTRUCT* copyData)
 {
-    if (copyData->dwData != WindowInterface::kSingleInstanceMessage || 0 == copyData->cbData)
+    if (!copyData || copyData->dwData != WindowInterface::kSingleInstanceMessage
+        || !copyData->lpData || !copyData->cbData || copyData->cbData > 1024 * 1024)
         return;
-    if (m_singleInstanceCall.IsEmpty())
-        return;
-
-    std::string json((const char*)copyData->lpData, copyData->cbData);
-
-    v8::Function* callback = nullptr;
-    v8::Local<v8::Value> f = m_singleInstanceCall.Get(isolate());
-    callback = v8::Function::Cast(*(f));
-
-    v8::MaybeLocal<v8::String> argString = v8::String::NewFromUtf8(isolate(), json.c_str(), v8::NewStringType::kNormal, json.length());
-
-    v8::Local<v8::Value> argv[1];
-    argv[0] = argString.ToLocalChecked();
-    callback->Call(callback->GetCreationContext().ToLocalChecked(), v8::Undefined(isolate()), 1, argv);
+    std::string json(static_cast<const char*>(copyData->lpData), copyData->cbData);
+    content::ThreadCall::callUiThreadAsync(FROM_HERE, [this, json = std::move(json)] {
+        auto message = base::JSONReader::ReadDict(json);
+        if (!message)
+            return;
+        const auto* argv = message->FindList("argv");
+        const auto* cwd = message->FindString("cwd");
+        const auto* data = message->FindDict("additionalData");
+        if (!argv || !cwd || !data || std::any_of(argv->begin(), argv->end(), [](const base::Value& argument) {
+            return !argument.is_string();
+        }))
+            return;
+        emit("second-instance", *argv, *cwd, *data);
+    });
 }
 
-static std::u16string getNormalizeFilePath()
+static void notifySingleProcess(HWND window, base::Value::Dict additionalData)
 {
-    std::vector<WCHAR> path;
-    path.resize(BUFSIZE + 1);
-    ::GetModuleFileNameW(::GetModuleHandleW(NULL), &path[0], BUFSIZE);
-
-    std::vector<WCHAR> buffer;
-    buffer.resize(BUFSIZE + 1);
-    // ::GetLongPathName(path.data(), &buffer[0], BUFSIZE);
-
-    WCHAR** lppPart = { nullptr };
-    ::GetFullPathName(&path[0], BUFSIZE, &buffer[0], lppPart);
-
-    int i = 0;
-    for (; i < BUFSIZE; ++i) {
-        WCHAR c = buffer[i];
-        if (c >= L'A' && c <= L'Z')
-            buffer[i] += 32;
-        else if (c == L'/')
-            buffer[i] = L'\\';
-        if (L'\0' == c)
-            break;
-    }
-
-    return std::u16string((const char16_t*)buffer.data(), i);
-}
-
-static void notifSingleProcess(HWND hWnd)
-{
-    std::vector<std::string> argv = atom::AtomCommandLine::argv();
-
-    std::vector<WCHAR> buffer;
-    buffer.resize(MAX_PATH + 1);
-    ::GetModuleFileNameW(::GetModuleHandleW(NULL), &buffer[0], MAX_PATH);
-    ::PathRemoveFileSpecW(&buffer[0]);
-
-    std::string workingDirectory = base::UTF16ToUTF8((const char16_t*)(&buffer[0]));
-
-    base::Value::List value;
+    base::FilePath cwd;
+    if (!base::GetCurrentDirectory(&cwd))
+        return;
+    base::Value::List argv;
+    for (const auto& argument : AtomCommandLine::argv())
+        argv.Append(argument);
+    base::Value::Dict message;
+    message.Set("argv", std::move(argv));
+    message.Set("cwd", cwd.AsUTF8Unsafe());
+    message.Set("additionalData", std::move(additionalData));
     std::string json;
-
-    for (size_t i = 0; i < argv.size(); ++i) {
-        value.Append(argv[i]);
-    }
-
-    value.Append(workingDirectory);
-    base::JSONWriter::Write(value, &json);
-
-    COPYDATASTRUCT copyData;
+    if (!base::JSONWriter::Write(message, &json) || json.size() > 1024 * 1024)
+        return;
+    COPYDATASTRUCT copyData = {};
     copyData.dwData = WindowInterface::kSingleInstanceMessage;
-    copyData.cbData = json.length();
-    copyData.lpData = (PVOID)json.c_str();
-    ::SendMessage(hWnd, WM_COPYDATA, (WPARAM)hWnd, (LPARAM)&copyData);
+    copyData.cbData = static_cast<DWORD>(json.size());
+    copyData.lpData = json.data();
+    DWORD_PTR result = 0;
+    ::SendMessageTimeoutW(window, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&copyData),
+        SMTO_ABORTIFHUNG | SMTO_BLOCK, 5000, &result);
 }
 
-bool App::makeSingleInstanceImplApi(const v8::FunctionCallbackInfo<v8::Value>& args)
+void App::releaseSingleInstanceLockApi()
 {
-    if (args[0]->IsFunction())
-        m_singleInstanceCall.Reset(args.GetIsolate(), args[0]);
-    else
-        m_singleInstanceCall.Reset();
-
-    std::u16string filePath = getNormalizeFilePath();
-    unsigned int pathHash = StringUtil::hashString(base::UTF16ToUTF8(filePath).c_str());
-
-    std::vector<WCHAR> buffer;
-    buffer.resize(BUFSIZE);
-    swprintf(&buffer[0], L"MiniElectronSingleInstance_%d\n", pathHash);
-
-    m_singleInstanceHandle = ::CreateMutex(NULL, FALSE, kMutexName);
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        HWND hWnd = ::FindWindowEx(NULL, NULL, &buffer[0], nullptr);
-        if (hWnd)
-            notifSingleProcess(hWnd);
+    if (m_hiddenWindow) {
+        ::DestroyWindow(m_hiddenWindow);
+        m_hiddenWindow = nullptr;
+    }
+    if (m_singleInstanceHandle) {
+        ::ReleaseMutex(m_singleInstanceHandle);
         ::CloseHandle(m_singleInstanceHandle);
         m_singleInstanceHandle = nullptr;
-        return true;
     }
-
-    registerHiddenWindowClass(&buffer[0]);
-    m_hiddenWindow = ::CreateWindowExW(0, &buffer[0], L"title", WS_OVERLAPPED, 0, 0, 1, 1, NULL, NULL, ::GetModuleHandleW(NULL), this);
-    ::ShowWindow(m_hiddenWindow, SW_HIDE);
-
-    // NB: Ensure that if the primary app gets started as elevated
-    // admin inadvertently, secondary windows running not as elevated
-    // will still be able to send messages
-    HMODULE hinstLib = LoadLibraryW(L"User32.dll");
-    static FN_ChangeWindowMessageFilterEx ChangeWindowMessageFilterFunc = nullptr;
-    static bool isFind = false;
-    if (!isFind) {
-        isFind = true;
-        ChangeWindowMessageFilterFunc = (FN_ChangeWindowMessageFilterEx)GetProcAddress(hinstLib, "ChangeWindowMessageFilterEx");
-        if (ChangeWindowMessageFilterFunc)
-            ChangeWindowMessageFilterFunc(m_hiddenWindow, WM_COPYDATA, /*MSGFLT_ALLOW*/ 1, NULL);
-    }
-
-    return false;
 }
 
-void App::releaseSingleInstanceApi()
+int RunRelauncher(int argc, wchar_t* argv[])
 {
-    ::CloseHandle(m_singleInstanceHandle);
-    m_singleInstanceHandle = nullptr;
-}
-
-static std::u16string addQuoteForArg(const std::u16string& arg)
-{
-    // We follow the quoting rules of CommandLineToArgvW.
-    // http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
-    std::u16string quotable_chars((const char16_t*)L" \\\"");
-    if (arg.find_first_of(quotable_chars) == std::u16string::npos) {
-        // No quoting necessary.
-        return arg;
-    }
-
-    std::u16string out;
-    out += (L'"');
-    for (size_t i = 0; i < arg.size(); ++i) {
-        if (arg[i] == '\\') {
-            // Find the extent of this run of backslashes.
-            size_t start = i, end = start + 1;
-            for (; end < arg.size() && arg[end] == '\\'; ++end) {
-            }
-            size_t backslash_count = end - start;
-
-            // Backslashes are escapes only if the run is followed by a double quote.
-            // Since we also will end the string with a double quote, we escape for
-            // either a double quote or the end of the string.
-            if (end == arg.size() || arg[end] == '"') {
-                // To quote, we need to output 2x as many backslashes.
-                backslash_count *= 2;
-            }
-            for (size_t j = 0; j < backslash_count; ++j)
-                out += L'\\';
-
-            // Advance i to one before the end to balance i++ in loop.
-            i = end - 1;
-        } else if (arg[i] == '"') {
-            out += L'\\';
-            out += L'"';
-        } else {
-            out += (arg[i]);
-        }
-    }
-    out += L'"';
-
-    return out;
-}
-
-static std::u16string argvToCommandLineString(const std::vector<std::u16string>& argv)
-{
-    std::u16string commandLine;
-    for (const std::u16string& arg : argv) {
-        if (!commandLine.empty())
-            commandLine += L' ';
-        commandLine += addQuoteForArg(arg);
-    }
-    return commandLine;
-}
-
-const char* kWaitEventName = "ElectronRelauncherWaitEvent";
-const WCHAR* kRelauncherTypeArg = L"--type=relauncher";
-const WCHAR* kRelauncherArgSeparator = L"---";
-
-static PROCESS_INFORMATION* launchProcess(const std::u16string& cmdline)
-{
-    STARTUPINFO startup_info = { 0 };
-    DWORD flags = 0;
-
-    startup_info.dwFlags = STARTF_USESHOWWINDOW;
-    startup_info.wShowWindow = SW_SHOW;
-
-    PROCESS_INFORMATION* tempProcessInfo = new PROCESS_INFORMATION();
-    memset(tempProcessInfo, 0, sizeof(PROCESS_INFORMATION));
-    std::u16string writableCmdline = cmdline;
-
-    if (!::CreateProcessW(NULL, (WCHAR*)writableCmdline.data(), NULL, NULL, FALSE, flags, NULL, NULL, &startup_info, tempProcessInfo)) {
-        tempProcessInfo->hProcess = INVALID_HANDLE_VALUE;
-        return tempProcessInfo;
-    }
-
-    return tempProcessInfo;
-}
-
-static std::u16string getWaitEventName(DWORD pid)
-{
-    std::vector<char> buffer;
-    buffer.resize(0x1000);
-    memset(&buffer[0], 0, 0x1000);
-    sprintf(&buffer[0], "%s-%d", kWaitEventName, static_cast<int>(pid));
-    return base::UTF8ToUTF16(&buffer[0]);
-}
-
-static bool relaunchAppWithHelper(const base::FilePath& helper, const std::vector<std::u16string>& relauncher_args, const std::vector<std::u16string>& argv)
-{
-    std::vector<std::u16string> relaunchArgv;
-    relaunchArgv.push_back(helper.AsUTF16Unsafe());
-    PROCESS_INFORMATION* process = launchProcess(argvToCommandLineString(relaunchArgv));
-    if (!process || INVALID_HANDLE_VALUE == process->hProcess) {
-        if (process)
-            delete process;
-        return false;
-    }
-
-    // The relauncher process is now starting up, or has started up. The
-    // original parent process continues.
-    // Synchronize with the relauncher process.
-    std::u16string name = getWaitEventName(process->dwProcessId);
-    HANDLE waitEvent = ::CreateEventW(NULL, TRUE, FALSE, (LPCWSTR)name.c_str());
-    if (waitEvent != NULL) {
-        ::WaitForSingleObject(waitEvent, 1000);
-        ::CloseHandle(waitEvent);
-    }
-
-    return true;
-}
-
-static bool relaunchApp(const std::vector<std::u16string>& argv)
-{
-    // Use the currently-running application's helper process. The automatic
-    // update feature is careful to leave the currently-running version alone,
-    // so this is safe even if the relaunch is the result of an update having
-    // been applied. In fact, it's safer than using the updated version of the
-    // helper process, because there's no guarantee that the updated version's
-    // relauncher implementation will be compatible with the running version's.
-    base::FilePath childPath;
-    std::vector<char16_t> currentExePath;
-    currentExePath.resize(MAX_PATH);
-    ::GetModuleFileNameW(NULL, (LPWSTR)currentExePath.data(), MAX_PATH);
-    childPath = base::FilePath::FromUTF16Unsafe((currentExePath.data()));
-
-    std::vector<std::u16string> relauncherArgs;
-    return relaunchAppWithHelper(childPath, relauncherArgs, argv);
+    if (argc < 5 || wcscmp(argv[1], L"--type=relauncher") || wcscmp(argv[3], L"--"))
+        return 1;
+    wchar_t* end = nullptr;
+    const unsigned long long value = wcstoull(argv[2], &end, 10);
+    if (!value || !end || *end || value > UINTPTR_MAX)
+        return 1;
+    base::win::ScopedHandle parent(reinterpret_cast<HANDLE>(static_cast<std::uintptr_t>(value)));
+    if (::WaitForSingleObject(parent.Get(), INFINITE) != WAIT_OBJECT_0)
+        return 1;
+    base::CommandLine target { base::FilePath(argv[4]) };
+    for (int i = 5; i < argc; ++i)
+        target.AppendArgNative(argv[i]);
+    return base::LaunchProcess(target, base::LaunchOptions()).IsValid() ? 0 : 1;
 }
 
 void App::relaunchApi(const base::Value::Dict& options)
 {
-    std::string argsStr;
-    std::string execPathStr;
-    bool isOverrideArgv = false;
-    const base::Value* args = nullptr;
-    const base::Value::List* argsList = nullptr;
-    std::vector<std::u16string> argsArray;
-
-    argsList = options.FindList("args");
-    if (argsList) {
-        for (size_t i = 0; argsList && i < argsList->size(); ++i) {
-            const base::Value& argV = (*argsList)[i];
-            if (!argV.is_string())
-                continue;
-            const std::string* arg = argV.GetIfString();
-            if (arg->size() > 0)
-                argsArray.push_back(base::UTF8ToUTF16(*arg));
+    base::FilePath executable;
+    if (!base::PathService::Get(base::FILE_EXE, &executable)) {
+        throwPathError("Unable to locate the current executable for relaunch");
+        return;
+    }
+    base::FilePath target = executable;
+    if (const auto* execPath = options.Find("execPath")) {
+        if (!execPath->is_string() || execPath->GetString().empty()) {
+            throwPathError("execPath must be a nonempty string");
+            return;
         }
-        if (argsArray.size() > 0)
-            isOverrideArgv = true;
+        target = base::FilePath::FromUTF8Unsafe(execPath->GetString());
     }
-
-    const std::string* execPath = nullptr;
-    execPath = options.FindString("execPath");
-    if (execPath) {
-        if (execPath->size() > 0)
-            isOverrideArgv = true;
+    HANDLE handle = nullptr;
+    if (!::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentProcess(), ::GetCurrentProcess(),
+        &handle, SYNCHRONIZE, TRUE, 0)) {
+        throwPathError("Unable to create the relaunch wait handle");
+        return;
     }
-
-    if (!isOverrideArgv) {
-        const std::vector<std::u16string>& argv = atom::AtomCommandLine::wargv();
-        relaunchApp(argv);
-    }
-
-    std::vector<std::u16string> argv;
-    argv.reserve(1 + argsArray.size());
-
-    if (execPathStr.empty()) {
-        std::vector<char16_t> currentExePath;
-        currentExePath.resize(MAX_PATH);
-        if (GetModuleFileName(NULL, (WCHAR*)currentExePath.data(), MAX_PATH))
-            argv.push_back(&currentExePath[0]);
+    base::win::ScopedHandle parent(handle);
+    base::CommandLine helper(executable);
+    helper.AppendSwitchASCII("type", "relauncher");
+    helper.AppendArg(std::to_string(reinterpret_cast<std::uintptr_t>(parent.Get())));
+    helper.AppendArg("--");
+    helper.AppendArgPath(target);
+    if (const auto* arguments = options.Find("args")) {
+        if (!arguments->is_list()) {
+            throwPathError("args must be an array of strings");
+            return;
+        }
+        for (const auto& argument : arguments->GetList()) {
+            if (!argument.is_string()) {
+                throwPathError("args must be an array of strings");
+                return;
+            }
+            helper.AppendArg(argument.GetString());
+        }
     } else {
-        argv.push_back(base::UTF8ToUTF16(execPathStr));
+        const auto defaultArguments = AtomCommandLine::argv();
+        for (size_t i = 1; i < defaultArguments.size(); ++i)
+            helper.AppendArg(defaultArguments[i]);
     }
-
-    argv.insert(argv.end(), argsArray.begin(), argsArray.end());
-    relaunchApp(argv);
+    base::LaunchOptions launch;
+    launch.handles_to_inherit.push_back(parent.Get());
+    if (!base::LaunchProcess(helper, launch).IsValid())
+        throwPathError("Unable to start the relaunch helper");
 }
 
 void App::setPathApi(const std::string& name, const std::string& path)
 {
-    if (!(name == "userData" || name == "cache" || name == "userCache" || name == "documents" || name == "downloads" || name == "music" || name == "videos"
-            || name == "pepperFlashSystemPlugin"))
+    static const char* const names[] = { "home", "appData", "userData", "sessionData", "temp",
+        "exe", "module", "desktop", "documents", "downloads", "music", "pictures", "videos",
+        "recent", "logs", "crashDumps", "cache", "userCache" };
+    if (std::find(std::begin(names), std::end(names), name) == std::end(names)) {
+        throwPathError("Unknown path name: " + name);
         return;
-
-    std::map<std::string, std::string>::iterator it = m_pathMap.find(name);
-    if (it == m_pathMap.end())
-        m_pathMap.insert(std::make_pair(name, path));
-    else
-        it->second = path;
+    }
+    const base::FilePath directory = base::FilePath::FromUTF8Unsafe(path);
+    if (!directory.IsAbsolute() || !base::CreateDirectory(directory)) {
+        throwPathError("Path must be an absolute, creatable directory: " + path);
+        return;
+    }
+    if ((name == "userData" || name == "sessionData") && !SessionMgr::get()->setRootDir(directory)) {
+        throwPathError("Cannot change the session root after sessions have been created: " + path);
+        return;
+    }
+    m_pathMap[name] = directory.AsUTF8Unsafe();
 }
 
 bool getTempDir(base::FilePath* path)
@@ -931,69 +897,50 @@ bool getUserDownloadsDirectory(base::FilePath* result)
 
 std::string App::getPathApi(const std::string& name) const
 {
+    const auto override = m_pathMap.find(name);
+    if (override != m_pathMap.end())
+        return override->second;
     base::FilePath path;
-    std::u16string systemBuffer;
-    systemBuffer.assign(MAX_PATH, L'\0');
-    std::u16string pathBuffer;
-    if (name == "appData") {
-        if ((::SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, (LPWSTR)(systemBuffer.data()))) < 0)
-            return "";
-//     } else if (name == "userData" || name == "documents" || name == "downloads" || name == "music" || name == "videos" || name == "pepperFlashSystemPlugin") {
-//         std::map<std::string, std::string>::const_iterator it = m_pathMap.find(name);
-//         if (it == m_pathMap.end())
-//             return "";
-//         return it->second;
-    } else if (name == "home")
-        systemBuffer = getHomeDir().AsUTF16Unsafe();
-    else if (name == "temp" || name == "crashDumps") { // 暂时把crashDumps放这
-        if (!getTempDir(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "userDesktop" || name == "desktop") {
-        if (FAILED(SHGetFolderPath(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, (LPWSTR)(systemBuffer.data()))))
-            return "";
-    } else if (name == "exe") {
-        ::GetModuleFileName(NULL, (LPWSTR)(systemBuffer.data()), MAX_PATH);
-    } else if (name == "module") {
-        ::GetModuleFileName(NULL, (LPWSTR)(systemBuffer.data()), MAX_PATH);
-    } else if (name == "cache" || name == "userCache") {
-        if ((::SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, (LPWSTR)(systemBuffer.data()))) < 0)
-            return "";
+    if (name == "appData")
+        getUserDirectory(CSIDL_APPDATA, &path);
+    else if (name == "userData")
+        path = base::FilePath::FromUTF8Unsafe(getPathApi("appData")).Append(base::FilePath::FromUTF8Unsafe(m_name));
+    else if (name == "sessionData")
+        return getPathApi("userData");
+    else if (name == "cache" || name == "userCache")
+        path = base::FilePath::FromUTF8Unsafe(getPathApi("userData")).AppendASCII("Cache");
+    else if (name == "logs")
+        path = base::FilePath::FromUTF8Unsafe(getPathApi("userData")).AppendASCII("logs");
+    else if (name == "crashDumps")
+        path = base::FilePath::FromUTF8Unsafe(getPathApi("userData")).AppendASCII("Crashpad");
+    else if (name == "home")
+        path = getHomeDir();
+    else if (name == "temp")
+        getTempDir(&path);
+    else if (name == "desktop")
+        getUserDirectory(CSIDL_DESKTOPDIRECTORY, &path);
+    else if (name == "exe" || name == "module")
+        base::PathService::Get(base::FILE_EXE, &path);
+    else if (name == "documents")
+        getUserDocumentsDirectory(&path);
+    else if (name == "music")
+        getUserMusicDirectory(&path);
+    else if (name == "pictures")
+        getUserPicturesDirectory(&path);
+    else if (name == "videos")
+        getUserVideosDirectory(&path);
+    else if (name == "recent")
+        getUserRecentDirectory(&path);
+    else if (name == "downloads")
+        getUserDownloadsDirectory(&path);
+    if (path.empty())
+        throwPathError("Unable to resolve path: " + name);
+    return path.AsUTF8Unsafe();
+}
 
-        pathBuffer = systemBuffer.c_str();
-        pathBuffer += (const char16_t*)MINI_ELECTRON_U16("\\electron");
-    } else if (name == "documents") {
-        if (!getUserDocumentsDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "music") {
-        if (!getUserMusicDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "pictures") {
-        if (!getUserPicturesDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "videos") {
-        if (!getUserVideosDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "recent") {
-        if (!getUserRecentDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "downloads") {
-        if (!getUserDownloadsDirectory(&path))
-            return "";
-        systemBuffer = path.AsUTF16Unsafe();
-    } else if (name == "userData") {
-        systemBuffer = SessionMgr::get()->getRootDir().AsUTF16Unsafe();
-    } else {
-        return "";
-    }
-
-    pathBuffer = systemBuffer.c_str();
-    return base::UTF16ToUTF8(pathBuffer);
+void App::throwPathError(const std::string& message) const
+{
+    isolate()->ThrowException(v8::Exception::Error(gin_helper::StringToV8(isolate(), message)));
 }
 
 void App::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -1008,13 +955,14 @@ void App::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 void App::onWindowAllClosed()
 {
-    if (content::ThreadCall::isUiThread()) {
-        emit("window-all-closed");
+    if (!content::ThreadCall::isUiThread()) {
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [this] { onWindowAllClosed(); });
         return;
     }
-
-    App* self = this;
-    content::ThreadCall::callUiThreadAsync(FROM_HERE, [self] { self->emit("window-all-closed"); });
+    if (m_quitState == QuitState::ClosingWindows)
+        finishQuit(0, false);
+    else if (m_quitState == QuitState::Running)
+        emit("window-all-closed");
 }
 
 v8::Persistent<v8::Function> App::constructor;

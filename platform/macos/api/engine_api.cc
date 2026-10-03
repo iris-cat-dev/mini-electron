@@ -393,7 +393,7 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_kill_focus(mini_electron_web_view han
       [](content::WebViewHost* view) { view->killFocus(); });
 }
 
-void mini_electron_mac_set_device_scale_factor(mini_electron_web_view handle, float scale) {
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_device_scale_factor(mini_electron_web_view handle, float scale) {
   content::ThreadCall::callBlinkThreadAsyncWithValid(
       FROM_HERE, handle, [scale](content::WebViewHost* view) {
         view->setDeviceScaleFactor(scale);

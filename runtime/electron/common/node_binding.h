@@ -25,6 +25,8 @@ namespace atom {
 class TracingControllerImpl;
 
 void bindEngineConsoleLog(v8::Local<v8::Context> context);
+std::wstring getResourcesPath(const std::wstring& name);
+void patchProcessObject(v8::Local<v8::Object> object);
 
 class NodeBindings {
 public:
@@ -36,7 +38,6 @@ public:
         m_uvLoop = uvLoop;
     }
 
-    static void initNodeEnv();
 
     // https://electron.js.cn/docs/latest/api/process#processcontextisolated-readonly
     struct ProcessObjInfo {
@@ -47,9 +48,6 @@ public:
 
     void bindFunction(v8::Isolate* isolate, v8::Local<v8::Object> object);
 
-    node::Environment* createEnvironment(v8::Local<v8::Context> context);
-    void loadEnvironment(node::Environment* evn);
-    void activateUVLoop(v8::Isolate* isoloate);
 
     node::IsolateData* getIsolateData() const
     {
@@ -71,12 +69,9 @@ public:
     }
 
 private:
-    static void onCallNextTick(uv_async_t* handle);
     bool m_isBrowser;
     uv_loop_t* m_uvLoop = nullptr;
     node::Environment* m_uvEnv = nullptr;
-    uv_async_t* m_callNextTickAsync = nullptr;
-    std::list<node::Environment*> m_pendingNextTicks;
 
     // Isolate data used in creating the environment
     node::IsolateData* m_isolateData = nullptr;

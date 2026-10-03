@@ -86,6 +86,36 @@ extern "C" MojoResult MojoMakeDelayCloseFlag(MojoHandle handle);
 extern "C" MojoResult MojoSetDebugMojoHandleStr(MojoHandle handle, const std::string& str);
 
 namespace mini_electron {
+namespace {
+
+thread_local bool g_has_registered_frame_metadata = false;
+thread_local RequestFrameMetadata g_registered_frame_metadata;
+
+} // namespace
+
+void RegisterRequestFrameMetadata(RequestFrameMetadata metadata)
+{
+    CHECK(!g_has_registered_frame_metadata);
+    g_has_registered_frame_metadata = true;
+    g_registered_frame_metadata = metadata;
+}
+
+bool TakeRequestFrameMetadata(RequestFrameMetadata* metadata)
+{
+    if (!g_has_registered_frame_metadata || !metadata)
+        return false;
+    *metadata = g_registered_frame_metadata;
+    g_has_registered_frame_metadata = false;
+    g_registered_frame_metadata = {};
+    return true;
+}
+
+void UnregisterRequestFrameMetadata()
+{
+    g_has_registered_frame_metadata = false;
+    g_registered_frame_metadata = {};
+}
+
 
 MainTaskRunner* MainTaskRunner::m_inst = nullptr;
 
@@ -1218,11 +1248,10 @@ bool isBlackListUrl(const std::string& url)
 
 class HandleDataURLTask {
 public:
-    HandleDataURLTask(WebURLLoaderManager* manager, int jobId, bool useStreamOnResponse)
+    HandleDataURLTask(WebURLLoaderManager* manager, int jobId)
     {
         m_manager = manager;
         m_jobId = jobId;
-        m_useStreamOnResponse = useStreamOnResponse;
     }
 
     ~HandleDataURLTask() = default;
@@ -1238,13 +1267,12 @@ public:
             return;
 
         GURL url = job->firstRequest()->url;
-        handleDataURL(m_jobId, job->loader(), job->client(), blink::KURL(url), m_useStreamOnResponse, false);
+        handleDataURL(m_jobId, blink::KURL(url), false);
     }
 
 private:
     WebURLLoaderManager* m_manager;
     int m_jobId;
-    bool m_useStreamOnResponse;
 };
 
 class HandleDownloadBlobOrDataURLTask {
@@ -1322,14 +1350,13 @@ int WebURLLoaderManager::addAsynchronousJob(WebURLLoaderInternal* job)
     if (kurl.SchemeIs("data")) {
         jobId = addLiveJobs(job);
         job->m_isDataUrl = true;
-        bool useStreamOnResponse = false; // job->firstRequest()->useStreamOnResponse();
         m_mainThreadRunner->PostTask(FROM_HERE,
             base::BindOnce(
                 [](HandleDataURLTask* task) {
                     task->run();
                     delete task;
                 },
-                new HandleDataURLTask(this, jobId, useStreamOnResponse)));
+                new HandleDataURLTask(this, jobId)));
 
         return jobId;
     }
@@ -1375,6 +1402,15 @@ base::Thread* WebURLLoaderManager::getIoThread(IoThreadType type)
 
 void WebURLLoaderManager::continueJob(WebURLLoaderInternal* job)
 {
+    if (job->m_isEmbedderCanceled && job->m_isHoldJobToAsynCommit) {
+        job->m_isHoldJobToAsynCommit = false;
+        delete job->m_initializeHandleInfo;
+        job->m_initializeHandleInfo = nullptr;
+        m_mainThreadRunner->PostTask(FROM_HERE,
+            base::BindOnce(&BlackListCancelTask::run,
+                base::Unretained(new BlackListCancelTask(this, job->m_id))));
+        return;
+    }
     if (job->m_hasResponseOverrideData) {
         delete job->m_initializeHandleInfo;
         job->m_initializeHandleInfo = nullptr;
@@ -1512,7 +1548,7 @@ void WebURLLoaderManager::dispatchSynchronousJob(WebURLLoaderInternal* job, base
 
     GURL url = job->firstRequest()->url;
     if (url.SchemeIs("data") && job->client()) {
-        handleDataURL(jobId, job->loader(), job->client(), blink::KURL(url), false /*job->firstRequest()->useStreamOnResponse()*/, true);
+        handleDataURL(jobId, blink::KURL(url), true);
         return;
     }
 
@@ -1579,6 +1615,22 @@ void onNetSetMIMEType(mini_electron_net_job jobPtr, const char* type)
     WebURLLoaderInternal* job = (WebURLLoaderInternal*)jobPtr;
     job->m_response.SetMimeType(blink::WebString::FromUTF8(type));
 }
+void onNetSetHTTPStatus(mini_electron_net_job jobPtr, int status,
+    const char* status_text)
+{
+    WebURLLoaderInternal* job = static_cast<WebURLLoaderInternal*>(jobPtr);
+    job->m_response.SetHttpStatusCode(status);
+    job->m_response.SetHttpStatusText(
+        blink::WebString::FromUTF8(status_text ? status_text : ""));
+}
+void onNetSetResponseURL(mini_electron_net_job jobPtr, const char* url)
+{
+    WebURLLoaderInternal* job = static_cast<WebURLLoaderInternal*>(jobPtr);
+    job->m_response.SetCurrentRequestUrl(
+        blink::KURL(WTF::String::FromUTF8(url ? url : "")));
+}
+
+
 
 void onNetSetHTTPHeaderField(mini_electron_net_job jobPtr, const utf8* key, const utf8* value, BOOL response)
 {
@@ -2112,7 +2164,7 @@ int WebURLLoaderManager::initializeHandleOnMainThread(WebURLLoaderInternal* job)
     // 不再区分返回值，而是根据各种bool变量来判断未来是否需要继续网络层工作。
     dispatchEmbedderLoadUrlBegin(job, info);
 
-    if (job->m_hasResponseOverrideData) {
+    if (job->m_hasResponseOverrideData && !job->m_isEmbedderCanceled) {
         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(&HookAsynTask::run, base::Unretained(new HookAsynTask(this, jobId))));
 
         CHECK(!job->m_isHoldJobToAsynCommit);
@@ -2206,6 +2258,13 @@ WebURLLoaderInternal::WebURLLoaderInternal(base::Thread* ioThread, WebURLLoaderI
     m_engineViewId = 0;
     m_type = kLoaderInternal;
     m_firstRequest.reset(request.release());
+    if (m_firstRequest->request_initiator)
+        m_requestInitiator = m_firstRequest->request_initiator->Serialize();
+    RequestFrameMetadata frameMetadata;
+    if (TakeRequestFrameMetadata(&frameMetadata)) {
+        setRequestFrameMetadata(frameMetadata.frameType, frameMetadata.frameId,
+            frameMetadata.parentFrameId, frameMetadata.isMainFrame);
+    }
     GURL url = m_firstRequest->url;
     m_user = url.username();
     m_pass = url.password();

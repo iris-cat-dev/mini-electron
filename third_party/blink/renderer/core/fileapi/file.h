@@ -107,7 +107,8 @@ public:
 
     // Calls RegisterBlob through the relevant FileSystemManager, then constructs
     // a File with the resulting BlobDataHandle.
-    static File* CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata, UserVisibility user_visibility);
+    static File* CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata,
+        UserVisibility user_visibility, const String& relative_path = String());
 
     File(ExecutionContext* context, const String& path, ContentTypeLookupPolicy = kWellKnownContentTypes, UserVisibility = File::kIsUserVisible);
     File(ExecutionContext* context, const String& path, const String& name, ContentTypeLookupPolicy, UserVisibility);

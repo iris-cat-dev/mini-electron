@@ -743,7 +743,7 @@ static uint32_t windowsKeyCodeToDomKey(int windowsKeyCode)
     return  windowsKeyCode | 0x200000;
 }
 
-blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam)
+blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags)
 {
     base::TimeTicks time = base::TimeTicks::Now();
     LPARAM keyData = lParam; // MAKELPARAM(0, (WORD)flags);
@@ -757,7 +757,11 @@ blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(blink::WebInput
     //keyEvent.SetSize(sizeof(WebKeyboardEvent));
     keyEvent.SetType(type);
 
-    buildModifiers(&keyEvent);
+    // Modifier state belongs to the input sender, not this renderer's thread.
+    if (flags & MINI_ELECTRON_CONTROL)
+        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kControlKey);
+    if (flags & MINI_ELECTRON_SHIFT)
+        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kShiftKey);
 
     if (isKeypadEvent(wParam, keyData, type))
         keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kIsKeyPad);

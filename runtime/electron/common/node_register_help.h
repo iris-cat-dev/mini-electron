@@ -2,6 +2,8 @@
 #ifndef NodeRegisterHelp_h
 #define NodeRegisterHelp_h
 
+#include "runtime/electron/node_bindings.h"
+
 #define NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(modname, regfunc, priv)                                                                                \
     extern "C" {                                                                                                                                               \
     static node::node_module _module = { NODE_MODULE_VERSION, NM_F_LINKED /*NM_F_BUILTIN*/, NULL, __FILE__, NULL,                                              \

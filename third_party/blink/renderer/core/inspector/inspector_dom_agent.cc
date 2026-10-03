@@ -32,6 +32,7 @@
 
 #include <memory>
 
+#include "runtime/engine/renderer/brokered_file_registry.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/binding_security.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
@@ -1409,9 +1410,19 @@ protocol::Response InspectorDOMAgent::setFileInputFiles(
     }
 
     Vector<String> paths;
-    for (const String& file : *files)
+    bool brokered = true;
+    for (const String& file : *files) {
         paths.push_back(file);
-    To<HTMLInputElement>(node)->SetFilesFromPaths(paths);
+        brokered &= file.StartsWith("mini-electron-broker://");
+    }
+    if (brokered) {
+        FileList* list = content::CreateBrokeredFileList(paths);
+        if (!list)
+            return protocol::Response::ServerError("Upload capability is unavailable");
+        html_input_element->SetBrokeredFiles(list);
+    } else {
+        html_input_element->SetFilesFromPaths(paths);
+    }
     return protocol::Response::Success();
 }
 

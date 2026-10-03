@@ -5,6 +5,8 @@
 #ifndef GIN_HELPER_ARGUMENTS_H_
 #define GIN_HELPER_ARGUMENTS_H_
 
+#include <utility>
+
 #include "gin/gin_export.h"
 #include "runtime/electron/common/gin_helper/converter.h"
 
@@ -71,6 +73,19 @@ public:
         return true;
     }
 
+    bool GetRemaining(base::Value::List* out)
+    {
+        const int length = info_->Length();
+        out->reserve(out->size() + length - next_);
+        while (next_ < length) {
+            base::Value value;
+            if (!GetNext(&value))
+                return false;
+            out->Append(std::move(value));
+        }
+        return true;
+    }
+
     bool Skip()
     {
         if (next_ >= info_->Length())
@@ -84,7 +99,7 @@ public:
         return info_->Length();
     }
 
-    template <typename T> void Return(T val)
+    template <typename T> void Return(const T& val)
     {
         v8::Local<v8::Value> v8_value;
         if (!TryConvertToV8(isolate_, val, &v8_value))

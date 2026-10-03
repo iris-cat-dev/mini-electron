@@ -2,10 +2,17 @@
 #include "runtime/electron/common/atom_command_line.h"
 #include "runtime/electron/common/node_thread.h"
 #include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/browser/api/app.h"
+#include "runtime/electron/common/renderer_server.h"
+#include "runtime/engine/common/thread_call.h"
+#include "base/at_exit.h"
+#include "base/task/single_thread_task_executor.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/command_line.h"
 #include "base/process/launch.h"
 
 #include <cstdlib>
+#include <cwchar>
 #include <ole2.h>
 #include <windows.h>
 
@@ -16,6 +23,35 @@ namespace {
 bool isEnvironmentVariableSet(const char* name)
 {
     return std::getenv(name) != nullptr;
+}
+
+// The embedded manifest is authoritative. Keep a runtime fallback for hosts
+// that replace executable resources before launch.
+void enablePerMonitorDpiAwareness()
+{
+    using SetProcessDpiAwarenessContextFn = BOOL(WINAPI*)(HANDLE);
+    auto setProcessDpiAwarenessContext =
+        reinterpret_cast<SetProcessDpiAwarenessContextFn>(::GetProcAddress(
+            ::GetModuleHandleW(L"user32.dll"), "SetProcessDpiAwarenessContext"));
+    if (setProcessDpiAwarenessContext
+        && setProcessDpiAwarenessContext(reinterpret_cast<HANDLE>(-4)))
+        return;
+
+    HMODULE shcore = ::LoadLibraryW(L"shcore.dll");
+    if (shcore) {
+        using SetProcessDpiAwarenessFn = HRESULT(WINAPI*)(int);
+        auto setProcessDpiAwareness =
+            reinterpret_cast<SetProcessDpiAwarenessFn>(
+                ::GetProcAddress(shcore, "SetProcessDpiAwareness"));
+        const HRESULT result = setProcessDpiAwareness
+            ? setProcessDpiAwareness(2)
+            : E_NOTIMPL;
+        ::FreeLibrary(shcore);
+        if (SUCCEEDED(result))
+            return;
+    }
+
+    ::SetProcessDPIAware();
 }
 
 int runAsNode()
@@ -47,13 +83,10 @@ namespace atom {
     fn(electron_browser_dialog)                                  \
     fn(electron_browser_protocol)                                \
     fn(electron_browser_tray)                                    \
-    fn(electron_renderer_ipc)                                    \
     fn(electron_common_v8_util)                                  \
     fn(electron_common_shell)                                    \
     fn(electron_common_original_fs)                              \
     fn(electron_common_screen)                                   \
-    fn(electron_renerer_webframe)                                \
-    fn(electron_renderer_contextbridge)                          \
     fn(electron_common_intl_collator)                            \
     fn(electron_common_asar)                                     \
     fn(electron_common_nativeImage)                              \
@@ -69,7 +102,9 @@ namespace atom {
     fn(electron_browser_commandline)                             \
     fn(electron_browser_message_port)                            \
     fn(electron_browser_safe_storage)                            \
-    fn(electron_browser_powermonitor)
+    fn(electron_browser_powermonitor)                            \
+    fn(electron_browser_native_theme)                            \
+    fn(electron_browser_notification)
 
 NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_REG_IN_MAIN(NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_DECLARE_IN_MAIN)
 
@@ -86,6 +121,11 @@ void initV8Data();
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
+    enablePerMonitorDpiAwareness();
+    if (atom::IsRendererProcess(__argc, __wargv))
+        return atom::RunRendererProcess(__argc, __wargv);
+    if (__argc > 1 && std::wcscmp(__wargv[1], L"--type=relauncher") == 0)
+        return atom::RunRelauncher(__argc, __wargv);
     // Both modes use the same V8 snapshot; Node mode must not initialize the host.
     if (isEnvironmentVariableSet("ELECTRON_RUN_AS_NODE")) {
         atom::_register_electron_common_asar();
@@ -100,6 +140,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
     atom::registerNodeModules();
     content::initV8Data();
 
-    [[maybe_unused]] atom::NodeArgc* node = atom::runNodeThread();
-    return 0;
+    base::AtExitManager atExit;
+    base::SingleThreadTaskExecutor uiExecutor(base::MessagePumpType::UI);
+    base::ThreadPoolInstance::CreateAndStartWithDefaultParams("mini-electron-main");
+    content::ThreadCall::init(nullptr);
+    const int exitCode = atom::runNodeMain();
+    base::ThreadPoolInstance::Get()->Shutdown();
+    ::OleUninitialize();
+    return exitCode;
 }

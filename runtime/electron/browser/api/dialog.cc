@@ -13,16 +13,14 @@
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
-#include "runtime/engine/common/utf16.h"
 #include "runtime/engine/common/thread_call.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include <CommCtrl.h>
 #include <Shobjidl.h>
 #include <Shlobj.h>
-#include <shlwapi.h>
-#include <CommDlg.h>
-#include <cderr.h>
 #include <vector>
+#include <string>
 
 //struct __declspec(uuid("00000000-0000-0000-c000-000000000046")) IFileOpenDialog;
 namespace content {
@@ -98,64 +96,82 @@ public:
 
     struct ShowOpenOrSaveDialogThreadInfo {
         bool isOpenOrSave;
-        std::string* title;
-        std::string* defaultPath;
-        std::string* buttonLabel;
-        Filters* filters;
-        //base::Value::List* properties;
+        std::string title;
+        std::string defaultPath;
+        std::string buttonLabel;
+        Filters filters;
         int fileDialogProperty;
         v8::Isolate* isolate;
         v8::Persistent<v8::Object> recv;
         v8::Persistent<v8::Function> callback;
-        base::Value::List* paths;
+        base::Value::List paths;
         bool canceled;
+        HRESULT error;
         HWND hwnd;
-        int* sync;
-
-        ~ShowOpenOrSaveDialogThreadInfo()
-        {
-            delete title;
-            delete defaultPath;
-            delete buttonLabel;
-            delete filters;
-            //delete properties;
-            delete paths;
-        }
+        HANDLE completed;
     };
+
+    static std::string dialogErrorMessage(const char* operation, HRESULT error)
+    {
+        wchar_t* systemMessage = nullptr;
+        DWORD length = ::FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr, error, 0, reinterpret_cast<wchar_t*>(&systemMessage), 0, nullptr);
+        std::string message(operation);
+        message += " failed";
+        if (length && systemMessage) {
+            while (length && (systemMessage[length - 1] == L'\r' || systemMessage[length - 1] == L'\n'))
+                --length;
+            message += ": ";
+            message += base::UTF16ToUTF8(
+                std::u16string(reinterpret_cast<const char16_t*>(systemMessage), length));
+        } else {
+            message += " (HRESULT ";
+            message += std::to_string(static_cast<unsigned long>(error));
+            message += ")";
+        }
+        if (systemMessage)
+            ::LocalFree(systemMessage);
+        return message;
+    }
 
     static void showOpenOrSaveDialogEnd(ShowOpenOrSaveDialogThreadInfo* info)
     {
-        v8::Local<v8::Value> result = v8::Undefined(info->isolate);
-        if (0 != info->paths->size())
-            result = gin_helper::Converter<base::Value::List>::ToV8(info->isolate, *info->paths);
-
+        v8::HandleScope handleScope(info->isolate);
         v8::Local<v8::Object> recv = info->recv.Get(info->isolate);
-        v8::Local<v8::Value> argv[2];
-        argv[0] = info->canceled ? v8::True(info->isolate) : v8::False(info->isolate); // canceled: boolean
-        argv[1] = result; // filePaths: string[]
-
-        info->callback.Get(info->isolate)->Call(recv->GetCreationContextChecked(), recv, 2, argv);
-
+        v8::Local<v8::Value> argv[3];
+        argv[0] = info->canceled ? v8::True(info->isolate) : v8::False(info->isolate);
+        argv[1] = gin_helper::Converter<base::Value::List>::ToV8(info->isolate, info->paths);
+        argv[2] = FAILED(info->error) && !info->canceled
+            ? gin_helper::StringToV8(info->isolate, dialogErrorMessage("File dialog", info->error)).As<v8::Value>()
+            : v8::Undefined(info->isolate).As<v8::Value>();
+        info->callback.Get(info->isolate)->Call(
+            recv->GetCreationContextChecked(), recv, 3, argv);
         delete info;
     }
 
     static DWORD __stdcall showOpenOrSaveDialogThreadEntryPoint(void* param)
     {
-        ShowOpenOrSaveDialogThreadInfo* info = (ShowOpenOrSaveDialogThreadInfo*)param;
-        info->canceled = !showOpenOrSaveDialog(
-            info->isOpenOrSave, info->hwnd, *info->title, *info->buttonLabel, *info->defaultPath, *info->filters, info->fileDialogProperty, info->paths);
-        if (info->sync) {
-            *info->sync = 1;
+        ShowOpenOrSaveDialogThreadInfo* info =
+            static_cast<ShowOpenOrSaveDialogThreadInfo*>(param);
+        info->error = showOpenOrSaveDialog(
+            info->isOpenOrSave, info->hwnd, info->title, info->buttonLabel,
+            info->defaultPath, info->filters, info->fileDialogProperty, &info->paths);
+        info->canceled = info->error == HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        if (info->completed) {
+            ::SetEvent(info->completed);
             return 0;
         }
-        content::ThreadCall::callUiThreadAsync(FROM_HERE, [info] { showOpenOrSaveDialogEnd(info); });
+        content::ThreadCall::callUiThreadAsync(
+            FROM_HERE, [info] { showOpenOrSaveDialogEnd(info); });
         return 0;
     }
 
     // showOpenDialog([browserWindow, ]options[, callback])
-    void _showOpenOrSaveDialogApi(bool isOpenOrSave, bool isSync, const v8::FunctionCallbackInfo<v8::Value>& args)
+    void _showOpenOrSaveDialogApi(bool isOpenOrSave, bool isSync,
+        const v8::FunctionCallbackInfo<v8::Value>& args)
     {
-        if (3 != args.Length())
+        if (args.Length() != 3)
             return;
         v8::Isolate* isolate = args.GetIsolate();
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -168,58 +184,71 @@ public:
         if (args[1]->IsObject())
             options = args[1]->ToObject(context).ToLocalChecked();
 
-        int sync = 0;
-
         ShowOpenOrSaveDialogThreadInfo* info = new ShowOpenOrSaveDialogThreadInfo();
-        info->title = new std::string();
-        info->defaultPath = new std::string();
-        info->buttonLabel = new std::string();
-        info->filters = new Filters();
-        //info->properties = nullptr;
         info->isolate = isolate;
         info->isOpenOrSave = isOpenOrSave;
-        info->paths = new base::Value::List();
-        info->sync = isSync ? &sync : nullptr;
         info->canceled = true;
-        info->hwnd = NULL;
+        info->error = E_FAIL;
+        info->hwnd = nullptr;
+        info->completed = isSync ? ::CreateEventW(nullptr, TRUE, FALSE, nullptr) : nullptr;
 
         WindowInterface* face = WindowList::getInstance()->find(browserWindowId);
         if (face)
             info->hwnd = face->getHWND();
 
-        getOptions(isolate, options, info->title, info->defaultPath, info->filters, info->buttonLabel, /*&info->properties,*/ &info->fileDialogProperty);
+        getOptions(isolate, options, &info->title, &info->defaultPath,
+            &info->filters, &info->buttonLabel, &info->fileDialogProperty);
 
-        v8::Function* callback = nullptr;
-        if (args[2]->IsFunction()) {
-            //callback = v8::Function::Cast(*(args[2]));
+        if (!isSync) {
+            if (!args[2]->IsFunction()) {
+                delete info;
+                isolate->ThrowException(v8::Exception::TypeError(
+                    gin_helper::StringToV8(isolate, "Dialog callback is required")));
+                return;
+            }
             info->callback.Reset(isolate, args[2].As<v8::Function>());
-        } else if (!isSync)
-            DebugBreak();
-
-        info->recv.Reset(isolate, isolate->GetCurrentContext()->Global());
-
-        DWORD threadIdentifier = 0;
-        HANDLE threadHandle = ::CreateThread(0, 0, showOpenOrSaveDialogThreadEntryPoint, info, 0, &threadIdentifier);
-        ::CloseHandle(threadHandle);
-
-        if (!isSync)
+            info->recv.Reset(isolate, context->Global());
+        } else if (!info->completed) {
+            delete info;
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, "Failed to create dialog completion event")));
             return;
-
-        while (*info->sync == 0) {
-            ::Sleep(1);
         }
 
-        v8::Local<v8::Value> result = v8::Undefined(isolate);
-        if (0 != info->paths->size())
-            result = gin_helper::Converter<base::Value::List>::ToV8(isolate, *info->paths);
+        if (isSync) {
+            // Run a synchronous owned dialog on the window's thread. Creating it
+            // on a worker while this thread waits can deadlock on owner messages.
+            showOpenOrSaveDialogThreadEntryPoint(info);
+            ::WaitForSingleObject(info->completed, INFINITE);
+            ::CloseHandle(info->completed);
+        } else {
+            DWORD threadIdentifier = 0;
+            HANDLE threadHandle = ::CreateThread(
+                nullptr, 0, showOpenOrSaveDialogThreadEntryPoint, info, 0,
+                &threadIdentifier);
+            if (!threadHandle) {
+                delete info;
+                isolate->ThrowException(v8::Exception::Error(
+                    gin_helper::StringToV8(isolate, "Failed to create dialog thread")));
+                return;
+            }
+            ::CloseHandle(threadHandle);
+            return;
+        }
 
-        //         if (callback) {
-        //             v8::Local<v8::Object> recv = args.GetIsolate()->GetCurrentContext()->Global();
-        //             v8::Local<v8::Value> argv[1];
-        //             argv[0] = result;
-        //             callback->Call(recv, 1, argv);
-        //         } else
-        args.GetReturnValue().Set(result);
+        if (FAILED(info->error) && !info->canceled) {
+            std::string message = dialogErrorMessage("File dialog", info->error);
+            delete info;
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, message)));
+            return;
+        }
+
+        if (!info->canceled) {
+            args.GetReturnValue().Set(
+                gin_helper::Converter<base::Value::List>::ToV8(isolate, info->paths));
+        }
+        delete info;
     }
 
     void _showErrorBoxApi(const std::string& title, const std::string& content)
@@ -241,137 +270,196 @@ public:
     }
 
     struct ShowMessageBoxThreadInfo {
-        Dialog* self;
         std::u16string title;
         std::u16string message;
-        int uType;
-        int buttonsSize;
+        std::u16string detail;
+        std::u16string checkboxLabel;
+        std::vector<std::u16string> buttons;
+        std::string type;
+        int defaultId;
+        int cancelId;
         v8::Isolate* isolate;
         gin_helper::Promise<gin_helper::Dictionary>* promise;
         HWND hwnd;
-        int result;
+        HANDLE completed;
+        int response;
+        bool checkboxChecked;
+        HRESULT error;
     };
 
     static DWORD __stdcall showMessageBoxThreadEntryPoint(void* param)
     {
-        ShowMessageBoxThreadInfo* info = (ShowMessageBoxThreadInfo*)param;
-
-        int result = ::MessageBoxW(nullptr, (LPCWSTR)info->message.c_str(), (LPCWSTR)info->title.c_str(), info->uType);
-        if (1 == info->buttonsSize) {
-            result = 0;
-        } else if (2 == info->buttonsSize) {
-            if (IDYES == result)
-                result = 0;
-            else
-                result = 1;
-        } else if (3 == info->buttonsSize) {
-            if (IDYES == result)
-                result = 0;
-            else if (IDNO == result)
-                result = 1;
-            else
-                result = 2;
+        ShowMessageBoxThreadInfo* info =
+            static_cast<ShowMessageBoxThreadInfo*>(param);
+        const int buttonIdBase = 1000;
+        std::vector<TASKDIALOG_BUTTON> taskButtons(info->buttons.size());
+        for (size_t i = 0; i < info->buttons.size(); ++i) {
+            taskButtons[i].nButtonID = buttonIdBase + static_cast<int>(i);
+            taskButtons[i].pszButtonText =
+                reinterpret_cast<LPCWSTR>(info->buttons[i].c_str());
         }
-        info->result = result;
-        if (info->promise) {
-            content::ThreadCall::callUiThreadAsync(FROM_HERE, [info] {
-                v8::HandleScope handleScope(info->isolate);
-                v8::TryCatch block(info->isolate);
-                gin_helper::Dictionary dict = gin_helper::Dictionary::CreateEmpty(info->isolate);
 
-                dict.Set("response", info->result);
-                dict.Set("checkboxChecked", false);
+        TASKDIALOGCONFIG config = { sizeof(config) };
+        config.hwndParent = info->hwnd;
+        config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SIZE_TO_CONTENT;
+        if (info->hwnd)
+            config.dwFlags |= TDF_POSITION_RELATIVE_TO_WINDOW;
+        if (info->checkboxChecked)
+            config.dwFlags |= TDF_VERIFICATION_FLAG_CHECKED;
+        config.pszWindowTitle = reinterpret_cast<LPCWSTR>(info->title.c_str());
+        config.pszMainInstruction = reinterpret_cast<LPCWSTR>(info->message.c_str());
+        if (!info->detail.empty())
+            config.pszContent = reinterpret_cast<LPCWSTR>(info->detail.c_str());
+        if (!info->checkboxLabel.empty()) {
+            config.pszVerificationText =
+                reinterpret_cast<LPCWSTR>(info->checkboxLabel.c_str());
+        }
+        if (info->type == "error")
+            config.pszMainIcon = TD_ERROR_ICON;
+        else if (info->type == "warning")
+            config.pszMainIcon = TD_WARNING_ICON;
+        else if (info->type == "question")
+            config.pszMainIcon = TD_INFORMATION_ICON;
+        else
+            config.pszMainIcon = TD_INFORMATION_ICON;
+        config.cButtons = static_cast<UINT>(taskButtons.size());
+        config.pButtons = taskButtons.data();
+        config.nDefaultButton = buttonIdBase + info->defaultId;
 
+        int selectedButton = 0;
+        BOOL verificationChecked = info->checkboxChecked ? TRUE : FALSE;
+        info->error = ::TaskDialogIndirect(
+            &config, &selectedButton, nullptr, &verificationChecked);
+        info->checkboxChecked = verificationChecked != FALSE;
+        if (SUCCEEDED(info->error)) {
+            if (selectedButton >= buttonIdBase
+                && selectedButton < buttonIdBase + static_cast<int>(info->buttons.size())) {
+                info->response = selectedButton - buttonIdBase;
+            } else {
+                info->response = info->cancelId;
+            }
+        }
+
+        if (info->completed) {
+            ::SetEvent(info->completed);
+            return 0;
+        }
+
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [info] {
+            v8::HandleScope handleScope(info->isolate);
+            if (FAILED(info->error)) {
+                info->promise->RejectWithErrorMessage(
+                    dialogErrorMessage("Message dialog", info->error));
+            } else {
+                gin_helper::Dictionary dict =
+                    gin_helper::Dictionary::CreateEmpty(info->isolate);
+                dict.Set("response", info->response);
+                dict.Set("checkboxChecked", info->checkboxChecked);
                 info->promise->Resolve(dict);
-                delete info->promise;
-                delete info;
-            });
-        }
+            }
+            delete info->promise;
+            delete info;
+        });
         return 0;
     }
 
-    void showMessageBoxSyncImpl(const v8::FunctionCallbackInfo<v8::Value>& args, bool isSync)
+    void showMessageBoxSyncImpl(
+        const v8::FunctionCallbackInfo<v8::Value>& args, bool isSync)
     {
-        if (3 != args.Length())
+        if (args.Length() != 3)
             return;
 
         v8::Isolate* isolate = args.GetIsolate();
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
         int browserWindowId = -1;
-        v8::Local<v8::Object> options;
         if (args[0]->IsInt32())
             browserWindowId = args[0]->ToInt32(context).ToLocalChecked()->Value();
 
+        v8::Local<v8::Object> options;
         if (args[1]->IsObject())
             options = args[1]->ToObject(context).ToLocalChecked();
-
-        v8::Function* callback = nullptr;
-        if (args[2]->IsFunction())
-            callback = v8::Function::Cast(*(args[2]));
 
         std::string title;
         std::string message;
         std::string detail;
         std::string type;
+        std::string checkboxLabel;
         std::vector<std::string> buttons;
-        getMessageOptions(isolate, options, &title, &message, &detail, &type, &buttons);
-
-        UINT uType = MB_ICONINFORMATION;
-        if ("error" == type)
-            uType = MB_ICONERROR;
-        else if ("question" == type)
-            uType = MB_ICONQUESTION;
-        else if ("warning" == type)
-            uType = MB_ICONWARNING;
-
-        if (1 == buttons.size())
-            uType |= MB_OK;
-        else if (2 == buttons.size())
-            uType |= MB_YESNO;
-        else if (3 == buttons.size())
-            uType |= MB_YESNOCANCEL;
+        int defaultId = 0;
+        int cancelId = 0;
+        bool checkboxChecked = false;
+        getMessageOptions(isolate, options, &title, &message, &detail, &type,
+            &buttons, &defaultId, &cancelId, &checkboxLabel, &checkboxChecked);
+        if (buttons.empty())
+            buttons.push_back("OK");
+        if (defaultId < 0 || defaultId >= static_cast<int>(buttons.size()))
+            defaultId = 0;
+        if (cancelId < 0 || cancelId >= static_cast<int>(buttons.size()))
+            cancelId = 0;
 
         ShowMessageBoxThreadInfo* info = new ShowMessageBoxThreadInfo();
-        info->message = base::UTF8ToUTF16(message);
-        info->message += (const char16_t*)L" ";
-        info->message += base::UTF8ToUTF16(detail);
-        info->result = -1;
-        info->self = this;
-        info->uType = uType;
         info->title = base::UTF8ToUTF16(title);
-        info->buttonsSize = buttons.size();
+        info->message = base::UTF8ToUTF16(message);
+        info->detail = base::UTF8ToUTF16(detail);
+        info->checkboxLabel = base::UTF8ToUTF16(checkboxLabel);
+        for (const std::string& button : buttons)
+            info->buttons.push_back(base::UTF8ToUTF16(button));
+        info->type = type;
+        info->defaultId = defaultId;
+        info->cancelId = cancelId;
         info->promise = nullptr;
         info->isolate = isolate;
         info->hwnd = nullptr;
+        info->completed = isSync ? ::CreateEventW(nullptr, TRUE, FALSE, nullptr) : nullptr;
+        info->response = cancelId;
+        info->checkboxChecked = checkboxChecked;
+        info->error = E_FAIL;
+
+        WindowInterface* face = WindowList::getInstance()->find(browserWindowId);
+        if (face)
+            info->hwnd = face->getHWND();
 
         v8::Local<v8::Promise> handle;
         if (!isSync) {
             info->promise = new gin_helper::Promise<gin_helper::Dictionary>(isolate);
             handle = info->promise->GetHandle();
+        } else if (!info->completed) {
+            delete info;
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, "Failed to create dialog completion event")));
+            return;
         }
-        DWORD threadIdentifier = 0;
-        HANDLE threadHandle = ::CreateThread(0, 0, showMessageBoxThreadEntryPoint, info, 0, &threadIdentifier);
-        ::CloseHandle(threadHandle);
 
         if (isSync) {
-            while (info->result < 0) {
-                ::Sleep(1);
-            }
-
-            v8::Local<v8::Value> v8Result = v8::Integer::New(isolate, info->result).As<v8::Value>();
-            if (callback) {
-                v8::Local<v8::Object> recv = isolate->GetCurrentContext()->Global();
-                v8::Local<v8::Value> argv[1];
-                argv[0] = v8Result;
-                callback->Call(isolate->GetCurrentContext(), recv, 1, argv);
-            } else
-                args.GetReturnValue().Set(v8Result);
-
-            delete info;
+            // Keep the owned modal window on its owner's UI thread.
+            showMessageBoxThreadEntryPoint(info);
+            ::WaitForSingleObject(info->completed, INFINITE);
+            ::CloseHandle(info->completed);
         } else {
+            DWORD threadIdentifier = 0;
+            HANDLE threadHandle = ::CreateThread(
+                nullptr, 0, showMessageBoxThreadEntryPoint, info, 0,
+                &threadIdentifier);
+            if (!threadHandle) {
+                delete info->promise;
+                delete info;
+                isolate->ThrowException(v8::Exception::Error(
+                    gin_helper::StringToV8(isolate, "Failed to create dialog thread")));
+                return;
+            }
+            ::CloseHandle(threadHandle);
             args.GetReturnValue().Set(handle);
+            return;
         }
+        if (FAILED(info->error)) {
+            std::string error = dialogErrorMessage("Message dialog", info->error);
+            delete info;
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, error)));
+            return;
+        }
+        args.GetReturnValue().Set(v8::Integer::New(isolate, info->response));
+        delete info;
     }
 
 private:
@@ -385,45 +473,52 @@ private:
     };
 
     void getMessageOptions(
-        v8::Isolate* isolate, 
-        v8::Local<v8::Object> options, 
-        std::string* title, 
-        std::string* message, 
+        v8::Isolate* isolate,
+        v8::Local<v8::Object> options,
+        std::string* title,
+        std::string* message,
         std::string* detail,
-        std::string* type, 
-        std::vector<std::string>* buttons)
+        std::string* type,
+        std::vector<std::string>* buttons,
+        int* defaultId,
+        int* cancelId,
+        std::string* checkboxLabel,
+        bool* checkboxChecked)
     {
         base::Value::Dict optionsDict;
-        if (options.IsEmpty() || !gin_helper::Converter<base::Value::Dict>::FromV8(isolate, options, &optionsDict))
+        if (options.IsEmpty()
+            || !gin_helper::Converter<base::Value::Dict>::FromV8(
+                isolate, options, &optionsDict)) {
             return;
+        }
 
-        std::string* tempStr = optionsDict.FindString("title");
+        const std::string* tempStr = optionsDict.FindString("title");
         if (tempStr)
             *title = *tempStr;
         tempStr = optionsDict.FindString("message");
         if (tempStr)
             *message = *tempStr;
-
         tempStr = optionsDict.FindString("detail");
         if (tempStr)
             *detail = *tempStr;
-
         tempStr = optionsDict.FindString("type");
         if (tempStr)
             *type = *tempStr;
+        tempStr = optionsDict.FindString("checkboxLabel");
+        if (tempStr)
+            *checkboxLabel = *tempStr;
 
-        base::Value::List* buttonsList = nullptr;
-        buttonsList = optionsDict.FindList("buttons");
+        *defaultId = optionsDict.FindInt("defaultId").value_or(0);
+        *cancelId = optionsDict.FindInt("cancelId").value_or(0);
+        *checkboxChecked =
+            optionsDict.FindBool("checkboxChecked").value_or(false);
+
+        const base::Value::List* buttonsList = optionsDict.FindList("buttons");
         if (!buttonsList)
             return;
-
-        for (size_t i = 0; i < buttonsList->size(); ++i) {
-            std::string button;
-            const base::Value& val = (*buttonsList)[i];
-            if (val.is_string())
-                button = *val.GetIfString();
-            if (!button.empty())
-                buttons->push_back(button);
+        for (const base::Value& value : *buttonsList) {
+            if (value.is_string())
+                buttons->push_back(*value.GetIfString());
         }
     }
 
@@ -471,7 +566,7 @@ private:
             Filter filter;
             std::vector<std::string> extensions;
             for (size_t j = 0; j < extensionsList->size(); ++j) {
-                const base::Value& extensionsListVal = (*extensionsList)[i];
+                const base::Value& extensionsListVal = (*extensionsList)[j];
                 if (!extensionsListVal.is_string())
                     continue;
                 const std::string* extension = extensionsListVal.GetIfString();
@@ -518,398 +613,177 @@ private:
         return out;
     }
 
-    //     std::vector<std::u16string> showOpenFile() {
-    //         HRESULT hr = S_OK;
-    //         std::vector<std::u16string> filePaths;
-    //
-    //         IFileOpenDialog *fileDlg = NULL;
-    //         hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDlg));
-    //         if (FAILED(hr)) return filePaths;
-    //         //ON_SCOPE_EXIT([&] { fileDlg->Release(); });
-    //
-    //         IKnownFolderManager *pkfm = NULL;
-    //         hr = CoCreateInstance(CLSID_KnownFolderManager,
-    //             NULL,
-    //             CLSCTX_INPROC_SERVER,
-    //             IID_PPV_ARGS(&pkfm));
-    //         if (FAILED(hr)) return filePaths;
-    //         //ON_SCOPE_EXIT([&] { pkfm->Release(); });
-    //
-    //         IKnownFolder *pKnownFolder = NULL;
-    //         hr = pkfm->GetFolder(FOLDERID_PublicMusic, &pKnownFolder);
-    //         if (FAILED(hr)) return filePaths;
-    //         //ON_SCOPE_EXIT([&] { pKnownFolder->Release(); });
-    //
-    //         IShellItem *psi = NULL;
-    //         hr = pKnownFolder->GetShellItem(0, IID_PPV_ARGS(&psi));
-    //         if (FAILED(hr)) return filePaths;
-    //         //ON_SCOPE_EXIT([&] { psi->Release(); });
-    //
-    //         hr = fileDlg->AddPlace(psi, FDAP_BOTTOM);
-    //         COMDLG_FILTERSPEC rgSpec[] = {
-    //             { L"音乐文件", L"*.mp3;*.wav;" }
-    //         };
-    //         fileDlg->SetFileTypes(1, rgSpec);
-    //
-    //         DWORD dwOptions;
-    //         fileDlg->GetOptions(&dwOptions);
-    //         fileDlg->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
-    //         hr = fileDlg->Show(NULL);
-    //         if (SUCCEEDED(hr)) {
-    //             IShellItemArray *pRets;
-    //             hr = fileDlg->GetResults(&pRets);
-    //             if (SUCCEEDED(hr)) {
-    //                 DWORD count;
-    //                 pRets->GetCount(&count);
-    //                 for (DWORD i = 0; i < count; i++) {
-    //                     IShellItem *pRet;
-    //                     LPWSTR nameBuffer;
-    //                     pRets->GetItemAt(i, &pRet);
-    //                     pRet->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &nameBuffer);
-    //                     filePaths.push_back(std::u16string(nameBuffer));
-    //                     pRet->Release();
-    //                     CoTaskMemFree(nameBuffer);
-    //                 }
-    //                 pRets->Release();
-    //             }
-    //         }
-    //         return filePaths;
-    //     }
-
-    static void pushStringToVector(std::vector<wchar_t>* buffer, const std::u16string& str)
+    static void setDefaultPath(IFileDialog* dialog, const std::u16string& defaultPath)
     {
-        for (size_t i = 0; i < str.length(); ++i) {
-            buffer->push_back(str[i]);
-        }
-    }
-
-    static void convertFilters(const Filters& filters, std::vector<wchar_t>* buffer)
-    {
-        for (size_t i = 0; i < filters.size(); ++i) {
-            Filter filter = filters[i];
-            std::u16string name = base::UTF8ToUTF16(filter.first);
-            pushStringToVector(buffer, name);
-            buffer->push_back(L'\0');
-
-            for (size_t j = 0; j < filter.second.size(); ++j) {
-                std::string extension = filter.second[j];
-                std::u16string extensionW = base::UTF8ToUTF16(extension);
-                extensionW.insert(0, (const char16_t*)(MINI_ELECTRON_U16("*.")));
-                extensionW.append((const char16_t*)(MINI_ELECTRON_U16(";")));
-                pushStringToVector(buffer, extensionW);
-            }
-            buffer->push_back(L'\0');
-        }
-        buffer->push_back(L'\0');
-    }
-
-    static bool showOpenOrSaveDialog(bool isOpenOrSave, HWND parentWindow, const std::string& title, const std::string& buttonLabel,
-        const std::string& defaultPath, const Filters& filters, int properties, base::Value::List* paths)
-    {
-        std::u16string titleW = base::UTF8ToUTF16(title);
-        std::u16string defaultPathW = base::UTF8ToUTF16(defaultPath);
-        std::vector<wchar_t> filtersStr;
-
-        if (properties & FILE_DIALOG_OPEN_DIRECTORY) {
-            std::u16string resuleDir;
-            selectDir(parentWindow, titleW, defaultPathW, &resuleDir);
-            paths->Append(base::UTF16ToUTF8(resuleDir));
-            return true;
-        }
-
-        convertFilters(filters, &filtersStr);
-
-        OPENFILENAMEW ofn = { 0 };
-        std::vector<char16_t> fileResult;
-        fileResult.resize(4 * MAX_PATH + 1);
-
-        ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner = parentWindow;
-        ofn.lpstrFilter = &filtersStr[0]; // L"Picture File(*.bmp,*.jpg)\0*.bmp;*.jpg;\0\0";
-        ofn.nFilterIndex = 1;
-        ofn.lpstrFile = (WCHAR*)(fileResult.data());
-        ofn.nMaxFile = 1 * MAX_PATH;
-        ofn.lpstrFileTitle = nullptr; // titleW.c_str();
-        ofn.nMaxFileTitle = 0; // titleW.size();
-        ofn.lpstrInitialDir = (const WCHAR*)(defaultPathW.c_str());
-        ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
-
-        if (properties & FILE_DIALOG_MULTI_SELECTIONS)
-            ofn.Flags |= OFN_ALLOWMULTISELECT;
-
-        BOOL b = isOpenOrSave ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn);
-        if (b) {
-            splitPathFromGetOpenFileNameResult(fileResult, paths);
-            return true;
-        }
-
-        if (FNERR_BUFFERTOOSMALL != CommDlgExtendedError())
-            return false;
-
-        unsigned short size = *((unsigned short*)&fileResult[0]);
-        fileResult.resize(2 * size + 2);
-        ofn.lpstrFile = LPWSTR(fileResult.data());
-        ofn.nMaxFile = size;
-        b = isOpenOrSave ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn);
-        if (b) {
-            splitPathFromGetOpenFileNameResult(fileResult, paths);
-            return true;
-        }
-
-        return false;
-    }
-
-    static void splitPathFromGetOpenFileNameResult(const std::vector<char16_t>& fileResult, base::Value::List* paths)
-    {
-        std::vector<std::u16string> pathsTemp;
-        const char16_t* begin = &fileResult[0];
-        const char16_t* end = nullptr;
-        for (size_t i = 0; i < fileResult.size() - 1 && L'\0' != *begin; ++i) {
-            if (L'\0' == fileResult[i]) {
-                end = &fileResult[0] + i;
-                if (end == begin)
-                    return;
-
-                std::u16string path(begin, end - begin);
-                pathsTemp.push_back((path));
-
-                begin = &fileResult[0] + i + 1;
-            }
-        }
-
-        if (0 == pathsTemp.size())
+        if (defaultPath.empty())
             return;
 
-        if (1 == pathsTemp.size())
-            paths->Append(base::UTF16ToUTF8(pathsTemp[0]));
-
-        if (2 <= pathsTemp.size()) {
-            std::u16string rootPath = pathsTemp[0];
-            if (1 >= rootPath.size())
-                return;
-
-            if (L'\\' != rootPath[rootPath.size() - 1])
-                rootPath += L'\\';
-            for (size_t i = 1; i < pathsTemp.size(); ++i) {
-                std::u16string path = rootPath;
-                path += pathsTemp[i];
-                paths->Append(base::UTF16ToUTF8(path));
+        std::u16string folderPath = defaultPath;
+        std::u16string fileName;
+        DWORD attributes = ::GetFileAttributesW(
+            reinterpret_cast<LPCWSTR>(defaultPath.c_str()));
+        if (attributes == INVALID_FILE_ATTRIBUTES
+            || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            size_t separator = defaultPath.find_last_of(
+                reinterpret_cast<const char16_t*>(L"\\/"));
+            if (separator != std::u16string::npos) {
+                folderPath = defaultPath.substr(0, separator);
+                fileName = defaultPath.substr(separator + 1);
             }
         }
 
-        return;
+        IShellItem* folder = nullptr;
+        HRESULT hr = ::SHCreateItemFromParsingName(
+            reinterpret_cast<LPCWSTR>(folderPath.c_str()), nullptr,
+            IID_PPV_ARGS(&folder));
+        if (SUCCEEDED(hr)) {
+            dialog->SetFolder(folder);
+            folder->Release();
+        }
+        if (!fileName.empty())
+            dialog->SetFileName(reinterpret_cast<LPCWSTR>(fileName.c_str()));
     }
-    
-    // 辅助函数：将 HRESULT 错误转换为可读信息（调试用）
-    static void CheckHR(HRESULT hr, const std::string& context)
+
+    static HRESULT appendShellItemPath(
+        IShellItem* item, base::Value::List* paths)
     {
+        PWSTR path = nullptr;
+        HRESULT hr = item->GetDisplayName(SIGDN_FILESYSPATH, &path);
+        if (FAILED(hr))
+            return hr;
+        paths->Append(base::UTF16ToUTF8(
+            std::u16string(reinterpret_cast<const char16_t*>(path))));
+        ::CoTaskMemFree(path);
+        return S_OK;
+    }
+
+    static HRESULT showOpenOrSaveDialog(
+        bool isOpenOrSave,
+        HWND parentWindow,
+        const std::string& title,
+        const std::string& buttonLabel,
+        const std::string& defaultPath,
+        const Filters& filters,
+        int properties,
+        base::Value::List* paths)
+    {
+        HRESULT initializeResult =
+            ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (FAILED(initializeResult))
+            return initializeResult;
+
+        IFileDialog* dialog = nullptr;
+        HRESULT hr = ::CoCreateInstance(
+            isOpenOrSave ? CLSID_FileOpenDialog : CLSID_FileSaveDialog,
+            nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
         if (FAILED(hr)) {
-            //_com_error err(hr);
-            //std::cerr << "[" << context << "] 错误: " << err.ErrorMessage() << " (HRESULT: 0x"
-            //    << std::hex << hr << ")" << std::endl;
-            //throw std::runtime_error("COM 操作失败");
-        }
-    }
-
-    static bool selectFolderDialog(IFileOpenDialog* pFileOpen, HWND hwndParent, std::u16string* folderPath)
-    {
-        // 1. 创建 IFileOpenDialog 实例
-
-        // 2. 设置选项：只选择文件夹！
-        DWORD dwOptions;
-        HRESULT hr = pFileOpen->GetOptions(&dwOptions);
-        CheckHR(hr, "GetOptions");
-        if (FAILED(hr))
-            return false;
-
-        hr = pFileOpen->SetOptions(dwOptions | FOS_PICKFOLDERS);
-        CheckHR(hr, "SetOptions(FOS_PICKFOLDERS)");
-        if (FAILED(hr))
-            return false;
-
-        // 3. 可选：设置对话框标题
-        hr = pFileOpen->SetTitle(L"请选择一个文件夹");
-        CheckHR(hr, "SetTitle");
-        if (FAILED(hr))
-            return false;
-
-        // 4. 显示对话框
-        hr = pFileOpen->Show(hwndParent);
-        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
-            // 用户按了“取消”
-            pFileOpen->Release();
-            return false;
-        }
-        CheckHR(hr, "Show");
-        if (FAILED(hr))
-            return false;
-
-        // 5. 获取用户选择的项
-        IShellItem* pItem = nullptr;
-        hr = pFileOpen->GetResult(&pItem);
-        CheckHR(hr, "GetResult");
-        if (FAILED(hr))
-            return false;
-
-        // 6. 获取文件夹的路径
-        PWSTR pszFolderPath = nullptr;
-        hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFolderPath);
-        CheckHR(hr, "GetDisplayName");
-        if (FAILED(hr))
-            return false;
-
-        *folderPath = (const char16_t*)pszFolderPath;
-
-        // 7. 释放资源
-        CoTaskMemFree(pszFolderPath);
-        pItem->Release();
-        pFileOpen->Release();
-
-        return true;
-    }
-
-    static int CALLBACK browseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
-    {
-        switch (uMsg) {
-        case BFFM_INITIALIZED:
-            ::SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
-            break;
+            ::CoUninitialize();
+            return hr;
         }
 
-        return 0;
-    }
-
-    static unsigned selectDir(HWND parentWindow, const std::u16string& title, const std::u16string& defaultPath, std::u16string* strDir)
-    {
-        IFileOpenDialog* pFileOpen = nullptr;
-        HRESULT hr = CoCreateInstance(
-            CLSID_FileOpenDialog,
-            nullptr,
-            CLSCTX_INPROC_SERVER,
-            IID_PPV_ARGS(&pFileOpen)
-        );
-        CheckHR(hr, "CoCreateInstance(IFileOpenDialog)");
-        if (!(FAILED(hr))) { // win vista以上走这
-            selectFolderDialog(pFileOpen, nullptr, strDir);
-            return IDOK;
+        DWORD dialogOptions = 0;
+        hr = dialog->GetOptions(&dialogOptions);
+        if (SUCCEEDED(hr)) {
+            dialogOptions |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
+            if (properties & FILE_DIALOG_SHOW_HIDDEN_FILES)
+                dialogOptions |= FOS_FORCESHOWHIDDEN;
+            if (isOpenOrSave) {
+                if (properties & FILE_DIALOG_OPEN_DIRECTORY)
+                    dialogOptions |= FOS_PICKFOLDERS;
+                else
+                    dialogOptions |= FOS_FILEMUSTEXIST;
+                if (properties & FILE_DIALOG_MULTI_SELECTIONS)
+                    dialogOptions |= FOS_ALLOWMULTISELECT;
+                // The modern picker exposes its standard New Folder command;
+                // FILE_DIALOG_CREATE_DIRECTORY therefore needs no extra flag.
+            } else {
+                dialogOptions |= FOS_OVERWRITEPROMPT;
+                if (properties & FILE_DIALOG_PROMPT_TO_CREATE)
+                    dialogOptions |= FOS_CREATEPROMPT;
+            }
+            hr = dialog->SetOptions(dialogOptions);
         }
 
-        // 兼容xp
-        std::vector<char16_t> szDir;
-        szDir.resize(MAX_PATH);
-        BROWSEINFO bi;
-        bi.hwndOwner = parentWindow;
-        bi.pidlRoot = NULL;
-        bi.pszDisplayName = (LPWSTR)(szDir.data());
-        bi.lpszTitle = (LPWSTR)(title.c_str());
-        bi.iImage = 0;
-
-        bi.ulFlags = BIF_USENEWUI | BIF_RETURNONLYFSDIRS;
-        bi.lpfn = browseCallbackProc;
-        bi.lParam = (LPARAM)(LPCWSTR)defaultPath.c_str();
-
-        LPITEMIDLIST lp = SHBrowseForFolder(&bi);
-        if (lp && SHGetPathFromIDList(lp, (LPWSTR)(szDir.data()))) {
-            *strDir = &szDir[0];
-            if (0 != strDir->size() && L'\\' != strDir->at(strDir->size() - 1))
-                strDir->append((const char16_t*)MINI_ELECTRON_U16("\\"));
-            return IDOK;
+        std::u16string titleW = base::UTF8ToUTF16(title);
+        std::u16string buttonLabelW = base::UTF8ToUTF16(buttonLabel);
+        if (SUCCEEDED(hr) && !titleW.empty())
+            hr = dialog->SetTitle(reinterpret_cast<LPCWSTR>(titleW.c_str()));
+        if (SUCCEEDED(hr) && !buttonLabelW.empty()) {
+            hr = dialog->SetOkButtonLabel(
+                reinterpret_cast<LPCWSTR>(buttonLabelW.c_str()));
         }
 
-        return IDCANCEL;
-    }
+        std::vector<std::u16string> filterNames;
+        std::vector<std::u16string> filterPatterns;
+        std::vector<COMDLG_FILTERSPEC> filterSpecs;
+        if (SUCCEEDED(hr)
+            && !(properties & FILE_DIALOG_OPEN_DIRECTORY)
+            && !filters.empty()) {
+            filterNames.reserve(filters.size());
+            filterPatterns.reserve(filters.size());
+            filterSpecs.reserve(filters.size());
+            for (const Filter& filter : filters) {
+                filterNames.push_back(base::UTF8ToUTF16(filter.first));
+                std::u16string pattern;
+                for (const std::string& extension : filter.second) {
+                    if (!pattern.empty())
+                        pattern += reinterpret_cast<const char16_t*>(L";");
+                    pattern += reinterpret_cast<const char16_t*>(L"*.");
+                    pattern += base::UTF8ToUTF16(extension);
+                }
+                filterPatterns.push_back(pattern);
+            }
+            for (size_t i = 0; i < filterNames.size(); ++i) {
+                COMDLG_FILTERSPEC spec = {
+                    reinterpret_cast<LPCWSTR>(filterNames[i].c_str()),
+                    reinterpret_cast<LPCWSTR>(filterPatterns[i].c_str())
+                };
+                filterSpecs.push_back(spec);
+            }
+            hr = dialog->SetFileTypes(
+                static_cast<UINT>(filterSpecs.size()), filterSpecs.data());
+            if (SUCCEEDED(hr))
+                hr = dialog->SetFileTypeIndex(1);
+        }
 
-    static const int ID_COMBO_ADDR = 0x47c;
-    static const int ID_LEFT_TOOBAR = 0x4A0;
-    static LONG g_lOriWndProc;
+        if (SUCCEEDED(hr)) {
+            setDefaultPath(dialog, base::UTF8ToUTF16(defaultPath));
+            hr = dialog->Show(parentWindow);
+        }
 
-    LRESULT static __stdcall _WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-    {
-        switch (uMsg) {
-        case WM_COMMAND: {
-            if (wParam == IDOK) {
-                std::vector<wchar_t> wcDirPath;
-                wcDirPath.resize(MAX_PATH);
-                HWND hComboAddr = GetDlgItem(hwnd, ID_COMBO_ADDR);
-                if (hComboAddr != NULL)
-                    GetWindowText(hComboAddr, &wcDirPath[0], MAX_PATH);
-
-                if (!wcslen(&wcDirPath[0]))
-                    break;
-
-                DWORD dwAttr = GetFileAttributes(&wcDirPath[0]);
-                if (dwAttr != -1 && (FILE_ATTRIBUTE_DIRECTORY & dwAttr)) {
-                    LPOPENFILENAMEW oFn = (LPOPENFILENAME)GetProp(hwnd, L"OPENFILENAME");
-                    if (oFn) {
-                        int size = oFn->nMaxFile > MAX_PATH ? MAX_PATH : oFn->nMaxFile;
-                        memcpy(oFn->lpstrFile, &wcDirPath[0], size * sizeof(wchar_t));
-                        ::RemoveProp(hwnd, L"OPENFILENAME");
-                        ::EndDialog(hwnd, 1);
-                    } else {
-                        ::EndDialog(hwnd, 0);
+        if (SUCCEEDED(hr) && isOpenOrSave) {
+            IFileOpenDialog* openDialog = nullptr;
+            hr = dialog->QueryInterface(IID_PPV_ARGS(&openDialog));
+            if (SUCCEEDED(hr)) {
+                IShellItemArray* results = nullptr;
+                hr = openDialog->GetResults(&results);
+                if (SUCCEEDED(hr)) {
+                    DWORD count = 0;
+                    hr = results->GetCount(&count);
+                    for (DWORD i = 0; SUCCEEDED(hr) && i < count; ++i) {
+                        IShellItem* item = nullptr;
+                        hr = results->GetItemAt(i, &item);
+                        if (SUCCEEDED(hr)) {
+                            hr = appendShellItemPath(item, paths);
+                            item->Release();
+                        }
                     }
+                    results->Release();
                 }
-                break;
+                openDialog->Release();
             }
-            //////////////////////////////////////////////////////////////////////////
-            //如果是左边toolbar发出的WM_COMMOND消息（即点击左边的toolbar）, 则清空OK按钮旁的组合框。
-            HWND hCtrl = (HWND)lParam;
-            if (hCtrl == NULL) {
-                break;
+        } else if (SUCCEEDED(hr)) {
+            IShellItem* result = nullptr;
+            hr = dialog->GetResult(&result);
+            if (SUCCEEDED(hr)) {
+                hr = appendShellItemPath(result, paths);
+                result->Release();
             }
-            int ctrlId = ::GetDlgCtrlID(hCtrl);
-            if (ctrlId == ID_LEFT_TOOBAR) {
-                HWND hComboAddr = ::GetDlgItem(hwnd, ID_COMBO_ADDR);
-                if (hComboAddr != NULL) {
-                    ::SetWindowTextW(hComboAddr, L"");
-                }
-            }
-        } break;
-        }
-        int i = CallWindowProc((WNDPROC)g_lOriWndProc, hwnd, uMsg, wParam, lParam);
-        return i;
-    }
-
-    UINT_PTR static __stdcall folderProc(HWND hdlg, UINT uiMsg, WPARAM wParam, LPARAM lParam)
-    {
-        //参考reactos可知，hdlg 是一个隐藏的对话框，其父窗口为打开文件对话框， OK，CANCEL按钮等控件的消息在父窗口处理。
-        if (uiMsg != WM_NOTIFY)
-            return 1;
-
-        LPOFNOTIFY lpOfNotify = (LPOFNOTIFY)lParam;
-        if (lpOfNotify->hdr.code == CDN_INITDONE) {
-            SetPropW(GetParent(hdlg), L"OPENFILENAME", (HANDLE)(lpOfNotify->lpOFN));
-            g_lOriWndProc = ::SetWindowLongW(::GetParent(hdlg), /*GWL_WNDPROC*/ (-4), (LONG)_WndProc);
         }
 
-        if (lpOfNotify->hdr.code != CDN_SELCHANGE)
-            return 1;
-
-        std::vector<wchar_t> wcDirPath;
-        wcDirPath.resize(MAX_PATH);
-        CommDlg_OpenSave_GetFilePathW(::GetParent(hdlg), &wcDirPath[0], sizeof(wchar_t) * MAX_PATH);
-        HWND hComboAddr = ::GetDlgItem(::GetParent(hdlg), ID_COMBO_ADDR);
-        if (NULL == hComboAddr)
-            return 1;
-
-        size_t pathSize = wcslen(&wcDirPath[0]);
-        if (0 != pathSize) { //去掉文件夹快捷方式的后缀名。
-            if (pathSize >= 4) {
-                wchar_t* wcExtension = ::PathFindExtensionW(&wcDirPath[0]);
-                if (wcslen(wcExtension)) {
-                    wcExtension = ::CharLowerW(wcExtension);
-                    if (!wcscmp(wcExtension, L".lnk")) {
-                        wcDirPath[pathSize - 4] = L'\0';
-                    }
-                }
-            }
-
-            ::SetWindowTextW(hComboAddr, &wcDirPath[0]);
-        } else {
-            ::SetWindowTextW(hComboAddr, L"");
-        }
-
-        return 1;
+        dialog->Release();
+        ::CoUninitialize();
+        return hr;
     }
 
 public:
@@ -917,7 +791,6 @@ public:
     static v8::Persistent<v8::Function> constructor;
 };
 
-LONG Dialog::g_lOriWndProc = 0;
 
 v8::Persistent<v8::Function> Dialog::constructor;
 gin_helper::WrapperInfo Dialog::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };

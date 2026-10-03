@@ -2,31 +2,32 @@
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include "runtime/electron/browser/api/download_item.h"
+#include "runtime/electron/node_bindings.h"
+
+#include "base/strings/utf_string_conversions.h"
 #include "runtime/electron/common/api/event_emitter.h"
-#include "runtime/electron/common/id_live_detect.h"
-#include "runtime/electron/common/string_util.h"
-#include "runtime/electron/common/node_register_help.h"
-#include "runtime/electron/common/node_thread.h"
 #include "runtime/electron/common/gin_helper/object_template_builder.h"
-#include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
-#include "runtime/engine/public/engine_api.h"
+#include "runtime/electron/common/id_live_detect.h"
+#include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/common/string_util.h"
 #include "runtime/engine/common/thread_call.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
-#include "third_party/libuv/include/uv.h"
-#include <vector>
-#include <map>
 
 namespace atom {
 
-ApiDownloadItem::ApiDownloadItem(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
+ApiDownloadItem::ApiDownloadItem(
+    v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
+    : m_id(IdLiveDetect::get()->constructed(this)),
+      m_recvSize(0),
+      m_allSize(0),
+      m_state(kProgressing),
+      m_isPaused(false)
 {
-    m_id = IdLiveDetect::get()->constructed(this);
-    m_isPaused = false;
-    m_state = kProgressing;
     gin_helper::Wrappable<ApiDownloadItem>::InitWith(isolate, wrapper);
 }
 
@@ -37,25 +38,26 @@ ApiDownloadItem::~ApiDownloadItem()
 
 ApiDownloadItem* ApiDownloadItem::create(v8::Isolate* isolate)
 {
-    const int argc = 1;
-    v8::Local<v8::Value> argv[argc] = { v8::Null(isolate) };
-    v8::Local<v8::Function> constructorFunction = v8::Local<v8::Function>::New(isolate, constructor);
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-    v8::Local<v8::Object> objV8 = constructorFunction->NewInstance(context, argc, argv).ToLocalChecked(); // call into ApiDownloadItem::ApiDownloadItem
-    ApiDownloadItem* self = (ApiDownloadItem*)WrappableBase::GetNativePtr(objV8, &kWrapperInfo);
-    self->m_liveSelf.Reset(isolate, objV8);
-    return self;
+    v8::Local<v8::Function> function =
+        v8::Local<v8::Function>::New(isolate, constructor);
+    v8::Local<v8::Object> object;
+    if (!function->NewInstance(isolate->GetCurrentContext()).ToLocal(&object))
+        return nullptr;
+    ApiDownloadItem* item = static_cast<ApiDownloadItem*>(
+        WrappableBase::GetNativePtr(object, &kWrapperInfo));
+    item->m_liveSelf.Reset(isolate, object);
+    return item;
 }
 
-void ApiDownloadItem::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
+void ApiDownloadItem::init(
+    v8::Isolate* isolate, v8::Local<v8::Object> target)
 {
-    const char* className = "DownloadItem";
-    v8::Local<v8::FunctionTemplate> funTempl = v8::FunctionTemplate::New(isolate, newFunction);
+    v8::Local<v8::FunctionTemplate> function =
+        v8::FunctionTemplate::New(isolate, newFunction);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-    funTempl->SetClassName(v8::String::NewFromUtf8(isolate, className).ToLocalChecked());
-    gin_helper::ObjectTemplateBuilder builder(isolate, funTempl->InstanceTemplate());
+    function->SetClassName(
+        v8::String::NewFromUtf8(isolate, "DownloadItem").ToLocalChecked());
+    gin_helper::ObjectTemplateBuilder builder(isolate, function->InstanceTemplate());
     builder.SetMethod("setSavePath", &ApiDownloadItem::setSavePathApi);
     builder.SetMethod("getSavePath", &ApiDownloadItem::getSavePathApi);
     builder.SetMethod("setSaveDialogOptions", &ApiDownloadItem::setSaveDialogOptionsApi);
@@ -64,7 +66,7 @@ void ApiDownloadItem::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
     builder.SetMethod("isPaused", &ApiDownloadItem::isPausedApi);
     builder.SetMethod("resume", &ApiDownloadItem::resumeApi);
     builder.SetMethod("canResume", &ApiDownloadItem::canResumeApi);
-    builder.SetMethod("cancels", &ApiDownloadItem::cancelsApi);
+    builder.SetMethod("cancel", &ApiDownloadItem::cancelApi);
     builder.SetMethod("getURL", &ApiDownloadItem::getURLApi);
     builder.SetMethod("getMimeType", &ApiDownloadItem::getMimeTypeApi);
     builder.SetMethod("hasUserGesture", &ApiDownloadItem::hasUserGestureApi);
@@ -78,215 +80,159 @@ void ApiDownloadItem::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
     builder.SetMethod("getETag", &ApiDownloadItem::getETagApi);
     builder.SetMethod("getStartTime", &ApiDownloadItem::getStartTimeApi);
 
-    v8::Local<v8::Function> fun = funTempl->GetFunction(context).ToLocalChecked();
-    constructor.Reset(isolate, fun);
-    target->Set(context, v8::String::NewFromUtf8(isolate, className).ToLocalChecked(), fun);
+    v8::Local<v8::Function> constructorFunction =
+        function->GetFunction(context).ToLocalChecked();
+    constructor.Reset(isolate, constructorFunction);
+    target->Set(context,
+        v8::String::NewFromUtf8(isolate, "DownloadItem").ToLocalChecked(),
+        constructorFunction).Check();
 }
 
-void ApiDownloadItem::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
+void ApiDownloadItem::newFunction(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    v8::Isolate* isolate = args.GetIsolate();
-    if (args.IsConstructCall()) {
-        new ApiDownloadItem(isolate, args.This());
-        args.GetReturnValue().Set(args.This());
+    if (!args.IsConstructCall())
         return;
-    }
+    new ApiDownloadItem(args.GetIsolate(), args.This());
+    args.GetReturnValue().Set(args.This());
 }
 
-// 这个路径是全路径，不包含了文件名的
 void ApiDownloadItem::setSavePathApi(const std::string path)
 {
     m_savePath = StringUtil::normalizePath(path);
 }
 
-std::string ApiDownloadItem::getSavePathApi() const
-{
-    return m_savePath;
-}
-
-void ApiDownloadItem::setSaveDialogOptionsApi(const v8::FunctionCallbackInfo<v8::Value>& args /*options*/)
-{
-}
-
-void ApiDownloadItem::getSaveDialogOptionsApi(const v8::FunctionCallbackInfo<v8::Value>& args) const
-{
-}
-
+std::string ApiDownloadItem::getSavePathApi() const { return m_savePath; }
+void ApiDownloadItem::setSaveDialogOptionsApi(
+    const v8::FunctionCallbackInfo<v8::Value>&) {}
+void ApiDownloadItem::getSaveDialogOptionsApi(
+    const v8::FunctionCallbackInfo<v8::Value>&) const {}
 void ApiDownloadItem::pauseApi()
 {
+    if (m_state != kProgressing)
+        return;
     m_isPaused = true;
+    if (m_paused)
+        m_paused->store(true, std::memory_order_release);
 }
-
-bool ApiDownloadItem::isPausedApi() const
-{
-    return m_isPaused;
-}
-
+bool ApiDownloadItem::isPausedApi() const { return m_isPaused; }
 void ApiDownloadItem::resumeApi()
 {
     m_isPaused = false;
+    if (m_paused)
+        m_paused->store(false, std::memory_order_release);
 }
-
-bool ApiDownloadItem::canResumeApi() const
+bool ApiDownloadItem::canResumeApi() const { return false; }
+void ApiDownloadItem::cancelApi()
 {
-    return true;
+    if (m_state != kProgressing)
+        return;
+    m_state = kCancelled;
+    if (m_canceled)
+        m_canceled->store(true, std::memory_order_release);
 }
 
-void ApiDownloadItem::cancelsApi()
+void ApiDownloadItem::finishCancelledBeforeStart()
 {
-    OutputDebugStringA("ApiDownloadItem::cancelsApi is not impl\n");
+    if (m_state == kCancelled)
+        finish(MINI_ELECTRON_LOADING_CANCELED);
 }
 
-std::string ApiDownloadItem::getURLApi() const
-{
-    return m_url;
-}
-
-std::string ApiDownloadItem::getMimeTypeApi() const
-{
-    return m_mime;
-}
-
-bool ApiDownloadItem::hasUserGestureApi() const
-{
-    return true;
-}
-
+std::string ApiDownloadItem::getURLApi() const { return m_url; }
+std::string ApiDownloadItem::getMimeTypeApi() const { return m_mime; }
+bool ApiDownloadItem::hasUserGestureApi() const { return true; }
 std::string ApiDownloadItem::getFilenameApi() const
 {
-    return "";
+    size_t slash = m_url.find_last_of("/\\");
+    return slash == std::string::npos ? m_url : m_url.substr(slash + 1);
 }
-
 int ApiDownloadItem::getTotalBytesApi() const
 {
-    return m_allSize;
+    return static_cast<int>(m_allSize);
 }
-
 int ApiDownloadItem::getReceivedBytesApi() const
 {
-    return m_recvSize;
+    return static_cast<int>(m_recvSize);
 }
-
 std::string ApiDownloadItem::getContentDispositionApi() const
 {
     return m_disposition;
 }
-
 std::string ApiDownloadItem::getStateApi() const
 {
     switch (m_state) {
-    case kProgressing:
-        return "progressing";
-    case kCompleted:
-        return "completed";
-    case kCancelled:
-        return "cancelled";
+    case kProgressing: return "progressing";
+    case kCompleted: return "completed";
+    case kCancelled: return "cancelled";
+    case kInterrupted: return "interrupted";
     }
-    return "progressing";
+    return "interrupted";
 }
-
 std::vector<std::string> ApiDownloadItem::getURLChainApi() const
 {
-    std::vector<std::string> ret;
-    ret.push_back(m_url);
-    return ret;
+    return { m_url };
 }
+std::string ApiDownloadItem::getLastModifiedTimeApi() const { return {}; }
+std::string ApiDownloadItem::getETagApi() const { return {}; }
+std::string ApiDownloadItem::getStartTimeApi() const { return {}; }
 
-std::string ApiDownloadItem::getLastModifiedTimeApi() const
+void ApiDownloadItem::updateProgress(size_t received)
 {
-    return "";
+    if (m_done || m_state != kProgressing)
+        return;
+    m_recvSize = received;
+    mate::EventEmitter<ApiDownloadItem>::emit(
+        std::string("updated"), std::string("progressing"));
 }
 
-std::string ApiDownloadItem::getETagApi() const
+void ApiDownloadItem::finish(mini_electron_loading_result result)
 {
-    return "";
+    if (m_done)
+        return;
+    m_done = true;
+    const bool canceled = m_state == kCancelled
+        || result == MINI_ELECTRON_LOADING_CANCELED;
+    m_state = canceled ? kCancelled
+        : result == MINI_ELECTRON_LOADING_SUCCEEDED ? kCompleted : kInterrupted;
+    m_isPaused = false;
+    if (m_paused)
+        m_paused->store(false, std::memory_order_release);
+    const std::string state = getStateApi();
+    mate::EventEmitter<ApiDownloadItem>::emit(
+        std::string("done"), state, state);
+    m_liveSelf.Reset();
 }
 
-std::string ApiDownloadItem::getStartTimeApi() const
-{
-    return "";
-}
-
-void ApiDownloadItem::staticOnNetJobDataRecvCallback(void* ptr, mini_electron_net_job job, const char* data, int length)
-{
-    ApiDownloadItem* item = (ApiDownloadItem*)ptr;
-    item->m_recvSize += length;
-
-    content::ThreadCall::callUiThreadAsync(
-        FROM_HERE, [item] { 
-            item->mate::EventEmitter<ApiDownloadItem>::emit(std::string("updated"), std::string("progressing")); 
-        });
-}
-
-static unsigned int __stdcall msgBoxThread(void* param)
-{
-    std::function<void(void)>* callback = (std::function<void(void)>*)param;
-    (*callback)();
-    delete callback;
-    return 0;
-}
-
-void ApiDownloadItem::staticOnPopupDialogSaveNameCallback(void* ptr, const WCHAR* filePath)
-{
-    ApiDownloadItem* item = (ApiDownloadItem*)ptr;
-    item->m_savePath = StringUtil::UTF16ToUTF8(filePath);
-}
-
-void ApiDownloadItem::staticOnNetJobDataFinishCallback(void* ptr, mini_electron_net_job job, mini_electron_loading_result result)
-{
-    OutputDebugStringA("onNetJobDataFinishCallback\n");
-
-    ApiDownloadItem* item = (ApiDownloadItem*)ptr;
-    //     std::string url = item->m_url;
-    //
-    //     WCHAR temp[20] = { 0 };
-    //     wsprintf(temp, L"%d", item->m_recvSize);
-
-    //     std::wstring* title = new std::wstring(utf8ToUtf16(url));
-    //     *title += L" 下载完成：";
-    //     *title += temp;
-
-    content::ThreadCall::callUiThreadAsync(FROM_HERE, [item, result] {
-        if (result == MINI_ELECTRON_LOADING_SUCCEEDED)
-            item->mate::EventEmitter<ApiDownloadItem>::emit(std::string("done"), std::string("completed"), std::string("completed"));
-        else
-            item->mate::EventEmitter<ApiDownloadItem>::emit(std::string("done"), std::string("interrupted"), std::string("interrupted"));
-
-        delete item;
-    });
-
-    //     std::function<void(void)>* callback = new std::function<void(void)>([title, result] {
-     
-    //         ::MessageBoxW(nullptr, title->c_str(), lpCaption, MB_OK);
-    //         delete title;
-    //     });
-    //
-    //     unsigned int threadId = 0; // 为了不卡blink线程，messagbox放到另外个线程弹出
-    //     HANDLE threadHandle = reinterpret_cast<HANDLE>(_beginthreadex(0, 0, msgBoxThread, callback, 0, &threadId));
-    //     ::CloseHandle(threadHandle);
-}
-
-gin_helper::WrapperInfo ApiDownloadItem::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };
+gin_helper::WrapperInfo ApiDownloadItem::kWrapperInfo = {
+    gin_helper::GinEmbedder::kEmbedderNativeGin
+};
 v8::Persistent<v8::Function> ApiDownloadItem::constructor;
 
-void initializeBrowserDownloadItemApi(v8::Local<v8::Object> exports, v8::Local<v8::Value> unused, v8::Local<v8::Context> context, void* priv)
+void initializeBrowserDownloadItemApi(v8::Local<v8::Object> exports,
+    v8::Local<v8::Value>, v8::Local<v8::Context> context, void*)
 {
     ApiDownloadItem::init(context->GetIsolate(), exports);
 }
 
-static const char BrowserDownloadItemName[] = "console.log('BrowserDownloadItemNative');;";
-static NodeNative BrowserDownloadItemNative { "DownloadItem", BrowserDownloadItemName, sizeof(BrowserDownloadItemName) - 1 };
+static const char BrowserDownloadItemName[] =
+    "console.log('BrowserDownloadItemNative');;";
+static NodeNative BrowserDownloadItemNative {
+    "DownloadItem", BrowserDownloadItemName,
+    sizeof(BrowserDownloadItemName) - 1
+};
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(electron_browser_downloaditem, initializeBrowserDownloadItemApi, &BrowserDownloadItemNative)
+NODE_MODULE_CONTEXT_AWARE_BUILTIN_SCRIPT_MANUAL(
+    electron_browser_downloaditem, initializeBrowserDownloadItemApi,
+    &BrowserDownloadItemNative)
 
-} // atom namespace
+} // namespace atom
 
 namespace gin_helper {
 
-v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const atom::ApiDownloadItem& item)
+v8::Local<v8::Value> ConvertToV8(
+    v8::Isolate* isolate, const atom::ApiDownloadItem& item)
 {
-    atom::ApiDownloadItem* it = (atom::ApiDownloadItem*)&item;
-    return it->GetWrapper(isolate);
+    return const_cast<atom::ApiDownloadItem&>(item).GetWrapper(isolate);
 }
 
-}
+} // namespace gin_helper

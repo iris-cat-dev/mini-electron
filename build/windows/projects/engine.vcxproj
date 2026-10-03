@@ -1273,6 +1273,13 @@
     <ClCompile Include="..\..\..\runtime\engine\common\thread_call.cc" />
     <ClCompile Include="..\..\..\runtime\engine\common\web_mime_registry_impl.cc" />
     <ClCompile Include="..\..\..\runtime\engine\renderer\associated_interface_provider_impl.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\renderer\brokered_file_registry.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\renderer\renderer_cdp_service.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\runtime\engine\renderer\renderer_permission_broker.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\renderer\renderer_storage_broker.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\renderer\renderer_websocket_broker.cc" />
     <ClCompile Include="..\..\..\runtime\engine\renderer\blink_interface_registry_impl.cc" />
     <ClCompile Include="..\..\..\runtime\engine\renderer\blob_registry_impl.cc" />
     <ClCompile Include="..\..\..\runtime\engine\renderer\blob_url_store_impl.cc" />

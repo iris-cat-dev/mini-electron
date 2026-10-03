@@ -1,6 +1,7 @@
 
 #ifndef content_renderer_WebWorkerFetchContextImpl_h
 #define content_renderer_WebWorkerFetchContextImpl_h
+#include <cstdint>
 
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
 
@@ -12,7 +13,9 @@ namespace content {
 
 class WebWorkerFetchContextImpl : public blink::WebWorkerFetchContext {
 public:
-    WebWorkerFetchContextImpl(const blink::WebSecurityOrigin& orig, int64_t mbwebviewId);
+    WebWorkerFetchContextImpl(const blink::WebSecurityOrigin& orig,
+        int64_t mbwebviewId, uint64_t frameId, uint64_t parentFrameId,
+        bool isMainFrame);
     ~WebWorkerFetchContextImpl() override;
 
     void SetTerminateSyncLoadEvent(base::WaitableEvent*) override;
@@ -41,9 +44,12 @@ public:
     blink::mojom::ControllerServiceWorkerMode GetControllerServiceWorkerMode(void) const override;
 
 private:
-    std::unique_ptr<mini_electron::LoaderFactoryImpl> m_loaderFactoryImpl;
     blink::WebSecurityOrigin m_orig;
     int64_t m_engineViewId = 0;
+    uint64_t m_frameId = 0;
+    uint64_t m_parentFrameId = 0;
+    bool m_isMainFrame = false;
+    std::unique_ptr<mini_electron::LoaderFactoryImpl> m_loaderFactoryImpl;
 };
 
 }

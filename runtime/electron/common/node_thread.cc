@@ -1,251 +1,132 @@
-﻿
 #include "runtime/electron/common/node_thread.h"
 
+#include "runtime/electron/browser/api/app.h"
+#include "runtime/electron/browser/api/window_list.h"
+#include "runtime/electron/common/atom_command_line.h"
+#include "runtime/electron/common/gin_helper/per_isolate_data.h"
 #include "runtime/electron/common/node_binding.h"
-#include "runtime/engine/common/thread_call.h"
-#include "runtime/electron/common/tracing_controller_impl.h"
 #include "runtime/electron/node_bindings.h"
-#include "third_party/libnode/src/node_platform.h"
-#include "v8/include/libplatform/libplatform.h"
-//#include "third_party/zlib/unzip.h"
-#include "runtime/electron/common/atom_version.h"
-#include "gin/v8_initializer.h"
-#include "gin/public/isolate_holder.h"
-#include "base/command_line.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/task/thread_pool/initialization_util.h"
+#include "runtime/engine/common/thread_call.h"
+#include "base/functional/bind.h"
+#include "base/json/json_writer.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/threading/platform_thread.h"
-
-#include <string.h>
-#include <Windows.h>
-#include <process.h>
-#include <objbase.h>
-
-namespace node {
-extern bool g_is_in_electron;
-}
+#include "base/time/time.h"
+#include "base/values.h"
+#include <algorithm>
+#include <cstdio>
+#include <optional>
 
 namespace atom {
 
 base::PlatformThreadId g_mainThreadId;
+NodeArgc* g_nodeArgc = nullptr;
 
 bool isMainThread()
 {
     return g_mainThreadId == base::PlatformThread::CurrentId();
 }
 
-static void childSignalCallback(uv_async_t* signal)
+static void pumpNode(NodeArgc* state)
 {
-}
-
-// class ElectronFsHooks : public node::Environment::FileSystemHooks {
-//     virtual bool internalModuleStat(const char* path, int* rc) override
-//     {
-//         *rc = 1;
-//         return false;
-//     }
-//
-//     void open()
-//     {
-//     }
-// };
-
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
-public:
-    ArrayBufferAllocator()
-    {
-    }
-
-    virtual void* Allocate(size_t size)
-    {
-        void* p = AllocateUninitialized(size);
-        memset(p, 0, size);
-        return p;
-    }
-
-    virtual void* AllocateUninitialized(size_t size)
-    {
-        if (!content::ThreadCall::isUiThread())
-            DebugBreak();
-        return nodeBlinkAllocateUninitialized(size);
-    }
-
-    virtual void Free(void* data, size_t size)
-    {
-        nodeBlinkFree(data, size);
-    }
-};
-
-static uv_timer_t* s_gcTimer = new uv_timer_t();
-
-static void gcTimerCallBack(uv_timer_t* handle)
-{
-    uv_timer_stop(s_gcTimer);
-    uv_timer_start(s_gcTimer, gcTimerCallBack, 1000 * 20, 1);
-
-    v8::Isolate* isolate = (v8::Isolate*)(handle->data);
-    if (isolate)
-        isolate->LowMemoryNotification();
-}
-
-static void runUiMessageLoop(NodeArgc* n)
-{
-    content::ThreadCall::runUiThreadMessageLoop(n->uiThreadNodeEnv.uvLoop, n->uiThreadNodeEnv.v8platform, n->m_isolate);
-}
-
-static void initUiThread(NodeArgc* n)
-{
-    base::PlatformThread::SetName("NodeCoreAndUi");
-    v8::V8::SetFlagsFromString("--no-freeze-flags-after-init");
-    uv_loop_t* loop = n->uiThreadNodeEnv.uvLoop;
-    mini_electron_init(nullptr);
-    mini_electron_enable_high_dpi_support();
-
-    g_mainThreadId = base::PlatformThread::CurrentId();
-
-    s_gcTimer = new uv_timer_t();
-    uv_timer_init(loop, s_gcTimer);
-    uv_timer_start(s_gcTimer, gcTimerCallBack, 1000 * 20, 1);
-}
-
-static v8::Isolate* initNodeEnvAndRunLoop(NodeArgc* nodeArgc)
-{
-    initUiThread(nodeArgc);
-    //     ElectronFsHooks fsHooks;
-    //     nodeArgc->childEnv->file_system_hooks(&fsHooks);
-    NodeBindings::initNodeEnv();
-
-    nodeArgc->uiThreadNodeEnv.isolateHolder
-        = new gin::IsolateHolder(base::SingleThreadTaskRunner::GetCurrentDefault(), gin::IsolateHolder::IsolateType::kUtility);
-    v8::Isolate* isolate = nodeArgc->uiThreadNodeEnv.isolateHolder->isolate();
-
-    node::IsolateSettings isolateSettings;
-    node::SetIsolateUpForNode(isolate, isolateSettings);
-
-    v8::Isolate::Scope isolateScope(isolate);
-    {
-        v8::HandleScope handleScope(isolate);
-        v8::Local<v8::Context> context = v8::Context::New(isolate);
-        v8::Context::Scope contextScope(context);
-         
-
-        nodeArgc->m_nodeMultiIsolatePlatform
-            = node::CreatePlatform(base::RecommendedMaxNumberOfThreadsInThreadGroup(3, 8, 0.1, 0), new TracingControllerImpl());
-
-        node::Environment* env = nodeArgc->m_nodeBinding->createEnvironment(context);
-        nodeArgc->uiThreadNodeEnv.env = env;
-        nodeAddElectronRequire(env);
-        nodeArgc->m_nodeBinding->loadEnvironment(env);
-        nodeArgc->m_nodeBinding->setUvEnv(env);
-        //nodeArgc->m_nodeBinding->patchProcessObject(env);
-        nodeArgc->m_isolate = isolate;
-        s_gcTimer->data = isolate;
-        runUiMessageLoop(nodeArgc);
-    }
-
-    return isolate;
-}
-
-static void uiThreadRun(NodeArgc* nodeArgc)
-{
-    //node::g_is_in_electron = true;
-    int err = 0;
-    nodeArgc->uiThreadNodeEnv.uvLoop = uv_default_loop();
-    nodeArgc->m_nodeBinding->setUvLoop(nodeArgc->uiThreadNodeEnv.uvLoop);
-
-    ::OleInitialize(nullptr);
-
-    // Interruption signal handler
-    err = uv_async_init(nodeArgc->uiThreadNodeEnv.uvLoop, &nodeArgc->async, childSignalCallback);
-    if (err != 0) {
-        err = uv_loop_close(nodeArgc->uiThreadNodeEnv.uvLoop);
-        //CHECK_EQ(err, 0);
-        free(nodeArgc);
-        nodeArgc->initType = false;
-        //::SetEvent(nodeArgc->initEvent);
+    if (!state->initType)
         return;
+    uv_run(state->uiThreadNodeEnv.uvLoop, UV_RUN_NOWAIT);
+    state->m_nodeMultiIsolatePlatform->FlushForegroundTasks(state->m_isolate);
+    state->m_isolate->PerformMicrotaskCheckpoint();
+    const int wait = uv_backend_timeout(state->uiThreadNodeEnv.uvLoop);
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(FROM_HERE,
+        base::BindOnce(pumpNode, base::Unretained(state)), base::Milliseconds(wait < 0 ? 10 : std::clamp(wait, 1, 10)));
+}
+
+int runNodeMain()
+{
+    const std::vector<std::string> args = AtomCommandLine::argv();
+    const auto initialization = node::InitializeOncePerProcess(
+        { args.front(), "--no-experimental-detect-module" },
+        node::ProcessInitializationFlags::kEnableStdioInheritance);
+    if (!initialization)
+        return 1;
+    for (const auto& error : initialization->errors())
+        std::fprintf(stderr, "mini-electron: %s\n", error.c_str());
+    if (initialization->early_return())
+        return initialization->exit_code();
+
+    NodeArgc state;
+    g_nodeArgc = &state;
+    state.m_nodeMultiIsolatePlatform = initialization->platform();
+    g_mainThreadId = base::PlatformThread::CurrentId();
+    base::PlatformThread::SetName("mini-electron-main");
+    std::vector<std::string> errors;
+    auto setup = node::CommonEnvironmentSetup::Create(initialization->platform(),
+        &errors, args, initialization->exec_args());
+    if (!setup) {
+        for (const auto& error : errors)
+            std::fprintf(stderr, "mini-electron: %s\n", error.c_str());
+        g_nodeArgc = nullptr;
+        node::TearDownOncePerProcess();
+        return 1;
     }
-    //uv_unref(reinterpret_cast<uv_handle_t*>(&nodeArgc->async)); //zero 不屏蔽此句导致loop循环退出
 
-    nodeArgc->initType = true;
-    //::SetEvent(nodeArgc->initEvent);
-
-    nodeArgc->uiThreadNodeEnv.v8platform = (v8::Platform*)nodeCreateDefaultPlatform();
-    //ThreadCall::createBlinkThread(nodeArgc->v8platform);
-
-    [[maybe_unused]] v8::Isolate* isolate = initNodeEnvAndRunLoop(nodeArgc);
-
-    OutputDebugStringA("env->CleanupHandles not impl\n");
-    //nodeArgc->uiThreadNodeEnv.env->CleanupHandles(); // Clean-up all running handles
-    //delete nodeArgc->uiThreadNodeEnv.env;//nodeArgc->childEnv->Dispose();
-    //nodeArgc->uiThreadNodeEnv.env = nullptr;
-    //isolate->Dispose();
+    std::optional<int> processExit;
+    int exitCode = 1;
+    {
+        v8::Isolate* isolate = setup->isolate();
+        v8::Locker locker(isolate);
+        v8::Isolate::Scope isolateScope(isolate);
+        v8::HandleScope handles(isolate);
+        v8::Context::Scope contextScope(setup->context());
+        gin_helper::PerIsolateData wrapperData(isolate, setup->array_buffer_allocator().get());
+        NodeBindings bindings(true);
+        state.m_nodeBinding = &bindings;
+        state.m_isolate = isolate;
+        state.uiThreadNodeEnv.env = setup->env();
+        state.uiThreadNodeEnv.uvLoop = setup->event_loop();
+        state.uiThreadNodeEnv.v8platform = initialization->platform();
+        bindings.m_processObjInfo.isBrowserProcess = true;
+        bindings.bindFunction(isolate, nodeGetEnvironmentProcessObject(setup->env()));
+        patchProcessObject(nodeGetEnvironmentProcessObject(setup->env()));
+        bindEngineConsoleLog(setup->context());
+        nodeEnvironmentElectronPostEarlyInitialization(setup->env());
+        node::SetProcessExitHandler(setup->env(), [&](node::Environment* env, int code) {
+            processExit = code;
+            state.initType = false;
+            WindowList::destroyAllWindows();
+            content::ThreadCall::exitUiThreadMessageLoop();
+            node::Stop(env);
+        });
+        const std::string script = base::WideToUTF8(getResourcesPath(L"browser\\init.js"));
+        std::string quoted;
+        base::JSONWriter::Write(base::Value(script), &quoted);
+        const bool loaded = !node::LoadEnvironment(setup->env(),
+            "const filename = " + quoted
+                + "; require('module').createRequire(filename)(filename);").IsEmpty();
+        if (loaded && !processExit) {
+            state.initType = true;
+            pumpNode(&state);
+            content::ThreadCall::runUiThreadMessageLoop(nullptr, nullptr, nullptr);
+        } else if (!processExit) {
+            std::fputs("mini-electron: main-process bootstrap failed\n", stderr);
+        }
+        state.initType = false;
+        WindowList::destroyAllWindows();
+        exitCode = processExit.value_or(loaded ? App::getExitCode() : 1);
+        if (!processExit)
+            node::EmitProcessExit(setup->env());
+        node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
+        state.uiThreadNodeEnv.env = nullptr;
+        state.m_nodeBinding = nullptr;
+    }
+    setup.reset();
+    g_nodeArgc = nullptr;
+    node::TearDownOncePerProcess();
+    return exitCode;
 }
 
-NodeArgc* g_nodeArgc = nullptr;
-
-NodeArgc* runNodeThread()
+node::Environment* nodeGetEnvironment(NodeArgc* state)
 {
-    //MessageBoxA(0, "runNodeThread", 0, 0);
-    //NodeArgc* nodeArgc = (NodeArgc*)malloc(sizeof(NodeArgc));
-    NodeArgc* nodeArgc = new NodeArgc();
-    g_nodeArgc = nodeArgc;
-    // memset(nodeArgc, 0, sizeof(NodeArgc));
-    // nodeArgc->childLoop = (uv_loop_t*)malloc(sizeof(uv_loop_t));
-
-    nodeArgc->m_nodeBinding = new NodeBindings(true /*, nodeArgc->childLoop*/);
-
-    uiThreadRun(nodeArgc);
-    //     nodeArgc->initEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL); // 创建一个对象,用来等待node环境基础环境创建成功
-    //     int err = uv_thread_create(&nodeArgc->thread, reinterpret_cast<uv_thread_cb>(workerRun), nodeArgc);
-    //     if (err != 0)
-    //         goto thread_create_failed;
-    //     ::WaitForSingleObject(nodeArgc->initEvent, INFINITE);
-    //     ::CloseHandle(nodeArgc->initEvent);
-    //     nodeArgc->initEvent = NULL;
-    //
-    //     if (!nodeArgc->initType)
-    //         goto thread_init_failed;
-    //     return nodeArgc;
-    //
-    // thread_init_failed:
-    //
-    // thread_create_failed:
-    free(nodeArgc);
-    return nullptr;
+    return state ? state->uiThreadNodeEnv.env : nullptr;
 }
 
-node::Environment* nodeGetEnvironment(NodeArgc* nodeArgc)
-{
-    if (nodeArgc)
-        return nodeArgc->uiThreadNodeEnv.env;
-    return nullptr;
-}
-
-} // atom
-
-// #include "node/src/debug-agent.h"
-//
-// namespace node {
-// namespace debugger {
-//
-// Agent::~Agent(void)
-// {
-//     Stop();
-//     uv_sem_destroy(&start_sem_);
-//
-//     while (AgentMessage* msg = messages_.PopFront())
-//         delete msg;
-// }
-//
-// void Agent::Stop()
-// {
-//     if (state_ != kRunning)
-//         return;
-//
-//     DebugBreak();
-//     state_ = kNone;
-// }
-//
-// } // debugger
-// } // node
+} // namespace atom

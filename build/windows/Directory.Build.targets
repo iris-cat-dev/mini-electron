@@ -9,9 +9,17 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(MSBuildProjectName)' == 'application'">
+    <ClCompile>
+      <PreprocessorDefinitions>CURL_STATICLIB;WINVER=0x0A00;_WIN32_WINNT=0x0A00;HAVE_CRC32C=0;HAVE_SNAPPY=0;LEVELDB_COMPILE_LIBRARY;LEVELDB_HAS_PORT_CONFIG_H=0;LEVELDB_PLATFORM_WINDOWS=1;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Comctl32.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <UsingTask TaskName="MiniElectronObjectPaths" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>

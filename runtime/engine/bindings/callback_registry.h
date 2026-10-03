@@ -166,6 +166,24 @@ public:
         m_URLChangedCallback = callback;
         m_URLChangedParam = param;
     };
+    mini_electron_url_changed_callback2 m_FrameURLChangedCallback { nullptr };
+    void* m_FrameURLChangedParam { nullptr };
+    void setFrameURLChangedCallback(
+        mini_electron_url_changed_callback2 callback, void* param)
+    {
+        m_FrameURLChangedCallback = callback;
+        m_FrameURLChangedParam = param;
+    };
+
+    mini_electron_frame_detached_callback m_FrameDetachedCallback { nullptr };
+    void* m_FrameDetachedParam { nullptr };
+    void setFrameDetachedCallback(
+        mini_electron_frame_detached_callback callback, void* param)
+    {
+        m_FrameDetachedCallback = callback;
+        m_FrameDetachedParam = param;
+    };
+
 
     mini_electron_loading_finish_callback m_LoadingFinishCallback { nullptr };
     void* m_LoadingFinishParam { nullptr };
@@ -189,6 +207,15 @@ public:
     {
         m_PaintBitUpdatedCallback = callback;
         m_PaintBitUpdatedParam = param;
+    };
+
+    mini_electron_draggable_regions_changed_callback m_DraggableRegionsChangedCallback { nullptr };
+    void* m_DraggableRegionsChangedParam { nullptr };
+    void setDraggableRegionsChangedCallback(
+        mini_electron_draggable_regions_changed_callback callback, void* param)
+    {
+        m_DraggableRegionsChangedCallback = callback;
+        m_DraggableRegionsChangedParam = param;
     };
 
     mini_electron_create_view_callback m_CreateViewCallback { nullptr };

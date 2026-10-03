@@ -36,13 +36,32 @@ const char* createTempCharString(const char* str, size_t length);
 namespace mini_electron {
 void onNetSetData(mini_electron_net_job jobPtr, void* buf, int len);
 void onNetSetMIMEType(mini_electron_net_job jobPtr, const char* type);
+void onNetSetHTTPStatus(mini_electron_net_job jobPtr, int status,
+    const char* status_text);
+void onNetSetResponseURL(mini_electron_net_job jobPtr, const char* url);
 void onNetSetHTTPHeaderFieldCommon(mini_electron_net_job jobPtr, const utf8* key, const utf8* value, BOOL response);
 void changeRequestUrl(mini_electron_net_job jobPtr, const char* url);
+mini_electron_resource_type webURLRequestToResourceType(
+    const network::ResourceRequest& request,
+    blink::mojom::RequestContextFrameType frameType);
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_http_header_field_utf8(mini_electron_net_job jobPtr, const utf8* key, const utf8* value, BOOL response)
 {
     mini_electron::onNetSetHTTPHeaderFieldCommon(jobPtr, key, value, response);
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_response_url(
+    mini_electron_net_job jobPtr, const char* url)
+{
+    mini_electron::onNetSetResponseURL(jobPtr, url ? url : "");
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_http_status(
+    mini_electron_net_job jobPtr, int status, const char* status_text)
+{
+    mini_electron::onNetSetHTTPStatus(jobPtr, status,
+        status_text ? status_text : "");
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_mime_type(mini_electron_net_job jobPtr, const char* type)
@@ -111,6 +130,59 @@ mini_electron_request_type MINI_ELECTRON_CALL_TYPE mini_electron_net_get_request
     }
     return kMiniElectronRequestTypeInvalidation;
 }
+const char* MINI_ELECTRON_CALL_TYPE
+mini_electron_net_get_request_method_string(void* jobPtr)
+{
+    checkThreadCallIsValid(__FUNCTION__);
+    auto* job = static_cast<mini_electron::WebURLLoaderInternal*>(jobPtr);
+    if (job->m_initializeHandleInfo)
+        return job->m_initializeHandleInfo->method.c_str();
+    return job->firstRequest()->method.c_str();
+}
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_net_get_request_info(
+    mini_electron_net_job jobPtr, mini_electron_net_request_info* info)
+{
+    checkThreadCallIsValid(__FUNCTION__);
+    if (!jobPtr || !info)
+        return FALSE;
+    auto* job = static_cast<mini_electron::WebURLLoaderInternal*>(jobPtr);
+    const network::ResourceRequest* request = job->firstRequest();
+    if (!request)
+        return FALSE;
+    *info = {};
+    info->frame_id = job->m_frameId;
+    info->parent_frame_id = job->m_parentFrameId;
+    info->is_main_frame = job->m_isMainFrame ? TRUE : FALSE;
+    info->is_document =
+        job->m_frameType != blink::mojom::RequestContextFrameType::kNone
+            || request->destination == network::mojom::RequestDestination::kDocument
+            || request->destination == network::mojom::RequestDestination::kFrame
+            || request->destination == network::mojom::RequestDestination::kIframe
+        ? TRUE
+        : FALSE;
+    info->initiator = job->m_requestInitiator.c_str();
+    info->credentials_mode = static_cast<int>(request->credentials_mode);
+    info->request_mode = static_cast<int>(request->mode);
+    info->resource_type = request->resource_type;
+    info->destination = static_cast<int>(request->destination);
+    return TRUE;
+}
+mini_electron_resource_type MINI_ELECTRON_CALL_TYPE
+mini_electron_net_get_resource_type(mini_electron_net_job jobPtr)
+{
+    checkThreadCallIsValid(__FUNCTION__);
+    if (!jobPtr)
+        return MINI_ELECTRON_RESOURCE_TYPE_LAST_TYPE;
+    auto* job = static_cast<mini_electron::WebURLLoaderInternal*>(jobPtr);
+    const network::ResourceRequest* request = job->firstRequest();
+    return request
+        ? mini_electron::webURLRequestToResourceType(
+            *request, job->m_frameType)
+        : MINI_ELECTRON_RESOURCE_TYPE_LAST_TYPE;
+}
+
+
+
 
 const mini_electron_slist* MINI_ELECTRON_CALL_TYPE mini_electron_net_get_raw_http_head_in_blink_thread(mini_electron_net_job jobPtr)
 {

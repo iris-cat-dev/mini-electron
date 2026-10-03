@@ -2,9 +2,14 @@
 #ifndef atom_StringUtil_h
 #define atom_StringUtil_h
 
-#include <windows.h>
+#include <cctype>
+#include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
+
+#include "base/strings/utf_string_conversions.h"
+#include "build/build_config.h"
 
 namespace atom {
 
@@ -12,33 +17,17 @@ class StringUtil {
 public:
     static std::wstring UTF8ToUTF16(const std::string& utf8)
     {
-        return MultiByteToUTF16(CP_UTF8, utf8);
+        return base::UTF8ToWide(utf8);
     }
 
-    static std::wstring MultiByteToUTF16(int codepage, const std::string& utf8)
+    static std::wstring MultiByteToUTF16(int, const std::string& value)
     {
-        std::wstring utf16;
-        size_t n = ::MultiByteToWideChar(codepage, 0, utf8.c_str(), utf8.size(), nullptr, 0);
-        if (0 == n)
-            return std::wstring();
-        std::vector<wchar_t> wbuf(n);
-        MultiByteToWideChar(codepage, 0, utf8.c_str(), utf8.size(), &wbuf[0], n);
-        utf16.resize(n);
-        utf16.assign(&wbuf[0], n);
-        return utf16;
+        return base::UTF8ToWide(value);
     }
 
     static std::string UTF16ToUTF8(const std::wstring& utf16)
     {
-        std::string utf8;
-        size_t n = ::WideCharToMultiByte(CP_UTF8, 0, utf16.c_str(), utf16.size(), NULL, 0, NULL, NULL);
-        if (0 == n)
-            return std::string();
-        std::vector<char> buf(n + 1);
-        ::WideCharToMultiByte(CP_UTF8, 0, utf16.c_str(), utf16.size(), &buf[0], n, NULL, NULL);
-        utf8.resize(n);
-        utf8.assign(&buf[0], n);
-        return utf8;
+        return base::WideToUTF8(utf16);
     }
 
     static std::string urlDecode(const char* pszEncodedIn, size_t pszEncodedInLen)
@@ -147,24 +136,25 @@ public:
 
     static std::string normalizePath(const std::string& path)
     {
-        std::string ret;
-        for (size_t i = 0; i < path.size(); ++i) {
-            char c = path[i];
+#if BUILDFLAG(IS_WIN)
+        std::string result;
+        result.reserve(path.size());
+        for (char value : path) {
+            char c = value;
             if (c >= 'A' && c <= 'Z')
                 c += ('a' - 'A');
             if (c == '/')
                 c = '\\';
-            ret += c;
+            result += c;
         }
-
-        const char pre[] = "file:\\\\\\";
-        if (ret.size() > sizeof(pre) - 1) {
-            std::string temp = ret.substr(0, sizeof(pre) - 1);
-            if (temp == pre)
-                ret = ret.substr(sizeof(pre) - 1);
-        }
-
-        return ret;
+        const char prefix[] = "file:\\\\\\";
+        if (result.size() >= sizeof(prefix) - 1 &&
+            result.compare(0, sizeof(prefix) - 1, prefix) == 0)
+            result.erase(0, sizeof(prefix) - 1);
+        return result;
+#else
+        return path;
+#endif
     }
 
     //     static void readJsFile(const wchar_t* path, std::vector<char>* buffer)

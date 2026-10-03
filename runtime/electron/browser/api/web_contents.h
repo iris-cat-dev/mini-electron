@@ -1,328 +1,279 @@
-﻿
-#ifndef browser_api_ApiWebContents_h
-#define browser_api_ApiWebContents_h
+#ifndef BROWSER_API_WEB_CONTENTS_H_
+#define BROWSER_API_WEB_CONTENTS_H_
 
-#include "runtime/electron/node_bindings.h"
-#include "runtime/electron/browser/api/window_state.h"
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
+#include <memory>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "base/files/file_path.h"
+#include "base/values.h"
 #include "runtime/electron/common/api/event_emitter.h"
-#include "runtime/engine/public/engine_api.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
-#include <set>
+#include "runtime/electron/common/renderer_client.h"
 
 namespace node {
 class Environment;
 }
 
-namespace base {
-class ListValue;
-}
-
-namespace mojo {
-class Connector;
-}
-
 namespace atom {
 
-static const int kNotSetXYFlag = 400 /*-8467*/;
+static const int kNotSetXYFlag = 400;
 
-class NodeBindings;
 class WebContents;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+class DevToolsGateway;
+#endif
 class WindowInterface;
 struct WindowOpenHandlerResult;
 
-inline static bool isRectEqual(const RECT& a, const RECT& b)
+#if defined(_WIN32)
+inline bool isRectEqual(const RECT& a, const RECT& b)
 {
-    return (a.left == b.left) && (a.top == b.top) && (a.right == b.right) && (a.bottom == b.bottom);
+    return a.left == b.left && a.top == b.top && a.right == b.right && a.bottom == b.bottom;
 }
 
-inline static bool isPointInRect(const RECT& a, const POINT& b)
+inline bool isPointInRect(const RECT& a, const POINT& b)
 {
     return b.x >= a.left && b.x <= a.right && b.y >= a.top && b.y <= a.bottom;
 }
+#endif
 
 class WebContentsObserver {
 public:
-    virtual void onWebContentsCreated(WebContents* contents)
-    {
-    }
-    virtual void onWebContentsDeleted(WebContents* contents)
-    {
-    }
-    virtual void onWebContentsReadyToShow(WebContents* contents)
-    {
-    }
+    virtual ~WebContentsObserver() = default;
+    virtual void onWebContentsCreated(WebContents*) { }
+    virtual void onWebContentsDeleted(WebContents*) { }
+    virtual void onWebContentsReadyToShow(WebContents*) { }
+    virtual void onWebContentsPaint(WebContents*) { }
+    virtual void onWebContentsDraggableRegions(
+        WebContents*, const base::Value::List&) { }
 };
 
-class TransmitToWebContents;
-
-class WebContents
-    : public mate::EventEmitter<WebContents>
-{
+class WebContents : public mate::EventEmitter<WebContents> {
 public:
     struct BrowserWindowConstructorOptions {
-        int x;
-        int y;
-        int width;
-        int height;
-        unsigned styles;
-        unsigned styleEx;
-        bool transparent;
+        int x = 0;
+        int y = 0;
+        int width = 0;
+        int height = 0;
+        unsigned styles = 0;
+        unsigned styleEx = 0;
+        bool transparent = false;
         std::wstring title;
-        bool isShow;
-        bool isCenter;
-        bool isResizable;
-        bool isMinimizable;
-        bool isMaximizable;
-        bool isFrame;
-        bool isMovable;
-
-        bool isUseContentSize;
-        bool isAlwaysOnTop;
-        bool isClosable;
-
-        int minWidth;
-        int minHeight;
-        int maxWidth;
-        int maxHeight;
-
-        bool m_isNodeIntegration;
-        bool m_isNodeIntegrationInSubframes;
-        bool m_isContextIsolation;
+        bool isShow = true;
+        bool isCenter = false;
+        bool isResizable = true;
+        bool isMinimizable = true;
+        bool isMaximizable = true;
+        bool isFrame = true;
+        bool isMovable = true;
+        bool isUseContentSize = false;
+        bool isAlwaysOnTop = false;
+        bool isClosable = true;
+        int minWidth = 100;
+        int minHeight = 100;
+        int maxWidth = 500;
+        int maxHeight = 500;
+        bool m_isNodeIntegration = false;
+        bool m_isNodeIntegrationInSubframes = false;
+        bool m_isContextIsolation = true;
         std::vector<std::string> m_customArgs;
-
         std::string m_iconPath;
-
-        BrowserWindowConstructorOptions()
-        {
-            x = 0;
-            y = 0;
-            width = 0;
-            height = 0;
-            styles = 0;
-            styleEx = 0;
-            transparent = false;
-
-            isShow = true;
-            isCenter = false;
-            isResizable = true;
-            isMinimizable = true;
-            isMaximizable = true;
-            isFrame = true;
-            isMovable = true;
-
-            isUseContentSize = false;
-            isAlwaysOnTop = false;
-            isClosable = true;
-
-            minWidth = 100;
-            minHeight = 100;
-            maxWidth = 500;
-            maxHeight = 500;
-
-            m_isNodeIntegration = false; // 新版本electron从12开始，默认关闭这个nodejs了
-            m_isNodeIntegrationInSubframes = false;
-            m_isContextIsolation = true;
-        }
     };
 
-    static void init(v8::Isolate* isolate, v8::Local<v8::Object> target, node::Environment* env);
-    static WebContents* create(v8::Isolate* isolate, gin_helper::Dictionary options, WindowInterface* owner);
+    static void init(v8::Isolate*, v8::Local<v8::Object>, node::Environment*);
+    static WebContents* create(v8::Isolate*, gin_helper::Dictionary, WindowInterface* owner);
+    static WebContents* fromId(int id);
+    static bool sendRendererMessage(int contents_id, const std::string& method,
+        base::Value::Dict params);
 
-    explicit WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper, const gin_helper::Dictionary& options);
+    WebContents(v8::Isolate*, v8::Local<v8::Object>, const gin_helper::Dictionary&);
     ~WebContents();
 
     void destroyed();
-    void addObserver(WebContentsObserver* observer);
-    void removeObserver(WebContentsObserver* observer);
+    void addObserver(WebContentsObserver*);
+    void removeObserver(WebContentsObserver*);
 
-    mini_electron_web_view getEngineView() const
-    {
-        return m_view;
-    }
-    WindowInterface* getOwner() const
-    {
-        return m_owner;
-    }
+    WindowInterface* getOwner() const { return m_owner; }
+    WebContents* host() const { return m_host; }
+    int getIdApi() const { return m_id; }
+    bool isDestroyedApi() const;
+    bool isAlive() const;
 
-    std::vector<std::string> getPreloadScript();
+    void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
+    void resize(int width, int height, double scale_factor = 1.0);
+    void setFocus(bool focused);
+    bool sendInput(base::Value::Dict event);
+    void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
+    void sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags);
+    bool copyFrame(RendererFrameSnapshot* snapshot) const;
+#if defined(_WIN32)
+    bool paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y, int width, int height) const;
+#endif
+    void closeRenderer();
 
-    void rendererPostMessageToMain(mini_electron_web_frame_handle frame, const std::string& channel, std::unique_ptr<std::vector<blink::CloneableMessage>> listParams);
-    void rendererSendMessageToMain(mini_electron_web_frame_handle frame, const std::string& channel, std::unique_ptr<std::vector<blink::CloneableMessage>> listParams, 
-        std::vector<uint8_t>* encodedMessageRet);
-    void anyPostMessageToRenderer(int64_t frameId, const std::string& channel, std::unique_ptr<std::vector<blink::CloneableMessage>> listParams);
-    static void rendererSendMessageToRenderer(mini_electron_web_view view, mini_electron_web_frame_handle frame, const std::string& channel, const std::vector<blink::CloneableMessage>& args);
 
-    int getIdApi() const;
-    static WebContents* fromId(int id);
+    static v8::Persistent<v8::Function> s_constructor;
+    static gin_helper::WrapperInfo kWrapperInfo;
 
 private:
-    void runPreloadScript(mini_electron_web_view webView, mini_electron_web_frame_handle frame, int worldId, std::string& preloadScriptPath);
+    static void newFunction(const v8::FunctionCallbackInfo<v8::Value>&);
+    static void createGuestApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    static void getFocusedWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    static void getAllWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    static void fromIdApi(const v8::FunctionCallbackInfo<v8::Value>&);
 
-    static void newFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
-    void getMainFrameApi(const v8::FunctionCallbackInfo<v8::Value>& info) const;
-    void getSessionApi(const v8::FunctionCallbackInfo<v8::Value>& info) const;
-    void zoomFactorApi(const v8::FunctionCallbackInfo<v8::Value>& info) const;
-    bool canGoBackApi() const;
-    bool canGoForwardApi() const;
-    void setZoomLevelApi(float level);
-    float getZoomLevelApi() const;
-    void printToPDFApi();
-    void setWindowOpenHandlerApi(const v8::FunctionCallbackInfo<v8::Value>& info);
+    void getSessionApi(const v8::FunctionCallbackInfo<v8::Value>&) const;
+    void authorizeFileSelectionApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void getMainFrameApi(const v8::FunctionCallbackInfo<v8::Value>&) const;
+    void requestApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    bool sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    bool sendApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void sendInputEventApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void capturePageApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void setWindowOpenHandlerApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    bool respondApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    bool attachGuestApi(const v8::FunctionCallbackInfo<v8::Value>&);
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    void debuggerAttachApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void debuggerDetachApi();
+    bool debuggerIsAttachedApi() const;
+    void debuggerSendCommandApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    std::string openDevToolsApi(const base::Value::Dict& options);
+    void closeDevToolsApi();
+    bool isDevToolsOpenedApi() const;
+    bool inspectElementApi(int x, int y);
+#endif
+    void destroyApi();
 
-    void _loadURLApi(const std::string& url);
+    void loadURLApi(const std::string& url);
+    void downloadURLApi(const std::string& url);
+    std::string getURLApi() const { return m_url; }
+    std::string getTitleApi() const { return m_title; }
     int getProcessIdApi() const;
-    bool equalApi() const;
+    bool canGoBackApi() const { return m_canGoBack; }
+    bool canGoForwardApi() const { return m_canGoForward; }
+    bool isLoadingApi() const { return m_isLoading; }
+    bool isLoadingMainFrameApi() const { return m_isLoading; }
+    bool isWaitingForResponseApi() const { return m_isLoading; }
+    bool isCrashedApi() const { return m_crashed; }
+    bool isGuestApi() const { return m_type == "webview"; }
+    bool isOffscreenApi() const { return true; }
+    std::string getTypeApi() const { return m_type; }
+    base::Value::Dict getWebPreferencesApi() const { return m_web_preferences.Clone(); }
+    v8::Local<v8::Value> getOwnerBrowserWindowApi();
 
-    static void getFocusedWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-    static void getAllWebContentsApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-    static void fromIdApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-
-    std::string _getURLApi();
-    std::string getTitleApi();
-
-    bool isLoadingApi();
-    bool isLoadingMainFrameApi();
-    bool isWaitingForResponseApi();
     void stopApi();
     void goBackApi();
     void goForwardApi();
     void goToOffsetApi(int offset);
     void goToIndexApi(int index);
-    bool isCrashedApi();
-    void setUserAgentApi(const std::string userAgent);
-    std::string getUserAgentApi();
-    void setZoomFactorApi(float factor);
-    v8::Local<v8::Promise> insertCSSApi(const std::string& cssText, gin_helper::Arguments* args);
-    void savePageApi();
-    void enableDeviceEmulationApi();
-    void disableDeviceEmulationApi();
-    void setAudioMutedApi();
-    void isAudioMutedApi();
-    void undoApi();
-    void redoApi();
-    void cutApi();
-    void copyApi();
-    void pasteApi();
-    void pasteAndMatchStyleApi();
-    void _deleteApi();
-    void selectAllApi();
-    void unselectApi();
-    void replaceApi();
-    void replaceMisspellingApi();
-    void findInPageApi();
-    void stopFindInPageApi();
-    void focusApi();
-    bool isFocusedApi();
-    void tabTraverseApi();
-    bool _sendApi(
-        //int64_t frameId, bool isAllFrames, const std::string& channel, const base::Value::List& args
-        const v8::FunctionCallbackInfo<v8::Value>& info
-    );
-    bool _postMessageApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-    void _testPostMessageApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-    void sendInputEventApi();
-    void beginFrameSubscriptionApi();
-    void endFrameSubscriptionApi();
-    void startDragApi();
-    void setSizeApi();
-    bool isGuestApi();
-    bool isOffscreenApi();
-    void startPaintingApi();
-    void stopPaintingApi();
-    bool isPaintingApi();
-    void setFrameRateApi(int frameRate);
-    int getFrameRateApi();
-    void invalidateApi();
-    void getTypeApi();
-    void getWebPreferencesApi();
-    v8::Local<v8::Value> getOwnerBrowserWindowApi();
-    bool hasServiceWorkerApi();
-    void unregisterServiceWorkerApi();
-    void printApi();
-    void _printToPDFApi();
-    void addWorkSpaceApi();
-    void reNullWorkSpaceApi();
-    void showDefinitionForSelectionApi();
-    void copyImageAtApi();
-    void capturePageApi();
-    void setEmbedderApi();
-    bool isDestroyedApi() const;
+    void reloadApi();
     void reloadIgnoringCacheApi();
-    void downloadURLApi(const std::string& url);
+    void setUserAgentApi(const std::string& user_agent);
+    std::string getUserAgentApi() const { return m_user_agent; }
+    void setZoomLevelApi(double level);
+    double getZoomLevelApi() const { return m_zoom_level; }
+    void setZoomFactorApi(double factor);
+    double getZoomFactorApi() const;
+    void focusApi() { setFocus(true); }
+    bool isFocusedApi() const { return m_focused; }
+    void invalidateApi();
+    void setIgnoreMenuShortcutsApi(bool ignore);
 
-    void nullFunction();
+    void onRendererEvent(base::Value::Dict event);
+    void emitRendererEvent(const std::string& type, const base::Value::Dict& payload, uint64_t request_id);
+    std::unique_ptr<WindowOpenHandlerResult> onWindowOpenHandler(
+        v8::Local<v8::Context>, const base::Value::Dict& details);
+    void unregisterAndNotify();
+    struct RendererNavigation {
+        std::string token;
+        std::string url;
+        std::string method;
+        std::string initiator_origin;
+        bool browser_initiated = false;
+        bool consumed = false;
+    };
+    struct RendererFrameState {
+        uint64_t parent_id = 0;
+        uint64_t parent_generation = 0;
+        uint64_t generation = 0;
+        bool main_frame = false;
+        std::string committed_url;
+        std::string committed_origin;
+        std::string response_url;
+        RendererNavigation navigation;
+    };
+    struct RendererFrameEpoch {
+        uint64_t frame_id = 0;
+        uint64_t generation = 0;
+    };
+    void addApplicationResourceRoot(const base::FilePath&);
+    std::string approveFrameNavigation(uint64_t frame_id,
+        uint64_t parent_id, bool main_frame, const std::string& url,
+        const std::string& method);
+    bool registerRendererFrame(uint64_t frame_id, uint64_t parent_id,
+        bool main_frame);
+    bool commitRendererFrame(uint64_t frame_id, const std::string& url);
+    bool isRendererFrameCurrent(uint64_t frame_id) const;
 
-    static void __stdcall staticDidCreateScriptContextCallback(mini_electron_web_view webView, void* param, void* frame, void* context, int extensionGroup, int worldId);
-    void onDidCreateScriptContext(mini_electron_web_view webView, void* frame, v8::Local<v8::Context>* context, int extensionGroup, int worldId);
-    static void __stdcall staticOnWillReleaseScriptContextCallback(mini_electron_web_view webView, void* param, void* frame, void* context, int worldId);
-    void onWillReleaseScriptContextCallback(mini_electron_web_view webView, void* frame, v8::Local<v8::Context>* context, int worldId);
-    static mini_electron_download_opt __stdcall staticOnDownloadCallback(mini_electron_web_view, void*, size_t, const char*, const char*, const char*, mini_electron_net_job, mini_electron_net_job_data_bind*);
-    static void MINI_ELECTRON_CALL_TYPE onDocumentReadyInBlinkThread(mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId);
-    static BOOL MINI_ELECTRON_CALL_TYPE onNavigationCallback(mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url);
-    static mini_electron_web_view MINI_ELECTRON_CALL_TYPE onCreateViewCallback(
-        mini_electron_web_view webView, void* param, mini_electron_navigation_type navigationType, const utf8* url, const mini_electron_window_features* windowFeatures);
-
-    void onUrlChange(const std::string& url)
-    {
-        m_url = url;
-    }
-    static void MINI_ELECTRON_CALL_TYPE onTitleChanged(mini_electron_web_view webView, void* param, const utf8* title);
-    static void MINI_ELECTRON_CALL_TYPE onURLChanged(mini_electron_web_view webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward);
-    static void MINI_ELECTRON_CALL_TYPE onLoadingFinishCallback(
-        mini_electron_web_view webView, void* param, mini_electron_web_frame_handle frameId, const utf8* url, mini_electron_loading_result result, const utf8* failedReason);
-
-    void setCreateWindowParam(BrowserWindowConstructorOptions* createWindowParam)
-    {
-        m_createWindowParam = createWindowParam;
-    }
-
-public:
-    static v8::Persistent<v8::Function> s_constructor;
-    static gin_helper::WrapperInfo kWrapperInfo;
-
-private:
-    std::unique_ptr<WindowOpenHandlerResult> onWindowOpenHandler(v8::Local<v8::Context> context, const std::string& url);
-
-    friend class BrowserView;
-    friend class BrowserWindow;
-
-    NodeBindings* m_nodeBindings = nullptr;
-    int m_id;
+    int m_id = 0;
+    WindowInterface* m_owner = nullptr;
+    WebContents* m_host = nullptr;
+    BrowserWindowConstructorOptions* m_createWindowParam = nullptr;
+    std::unique_ptr<RendererClient> m_renderer;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    std::unique_ptr<DevToolsGateway> m_devtools_gateway;
+#endif
     std::set<WebContentsObserver*> m_observers;
-    std::set<node::Environment*> m_environments;
+    std::set<int> m_guest_ids;
+    std::unordered_map<uint64_t, RendererFrameState> m_renderer_frames;
+    std::unordered_map<uint64_t, RendererFrameEpoch> m_file_chooser_frames;
+    uint64_t m_main_frame_id = 0;
+    uint64_t m_frame_generation = 0;
+    RendererNavigation m_pending_main_navigation;
+    std::vector<base::FilePath> m_application_resource_roots;
 
-    friend class TransmitToWebContents;
-//     std::unique_ptr <mojo::MessagePipe> m_portPipe;
-//     std::unique_ptr<TransmitToWebContents> m_connectorOnMainUiThread;
-//     std::unique_ptr<TransmitToWebContents> m_connectorOnBlinkUiThread;
-
-    mini_electron_web_view m_view;
-    WindowInterface* m_owner;
-
-    BrowserWindowConstructorOptions* m_createWindowParam;
-
-    bool m_isLoading;
-
-    bool m_canGoBack;
-    bool m_canGoForward;
-
-    std::string m_ua;
+    bool m_isLoading = false;
+    bool m_canGoBack = false;
+    bool m_canGoForward = false;
+    bool m_crashed = false;
+    bool m_destroyed = false;
+    bool m_destroy_event_emitted = false;
+    bool m_ready_to_show_emitted = false;
+    bool m_focused = false;
+    bool m_ignore_menu_shortcuts = false;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    bool m_debugger_attached = false;
+#endif
+    std::string m_type = "window";
     std::string m_url;
     std::string m_title;
-    std::string m_preloadScriptPath;
-    std::string m_sessionName;
-    int m_frameRate;
+    std::string m_user_agent;
+    std::string m_partition;
+    double m_zoom_level = 0.0;
+    base::Value::Dict m_web_preferences;
+    v8::Persistent<v8::Function> m_window_open_handler;
+    v8::Persistent<v8::Object> m_live_self;
 
-    v8::Persistent<v8::Function> m_windowOpenHandlerCb;
-
-    v8::Persistent<v8::Object> m_liveSelf;
+    friend class BrowserWindow;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+    friend class DevToolsGateway;
+#endif
+    friend class BrowserView;
 };
 
-} // atom
+} // namespace atom
 
 namespace gin_helper {
-v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const atom::WebContents& content);
+v8::Local<v8::Value> ConvertToV8(v8::Isolate*, const atom::WebContents&);
 }
 
-#endif // browser_api_ApiWebContents_h
+#endif // BROWSER_API_WEB_CONTENTS_H_

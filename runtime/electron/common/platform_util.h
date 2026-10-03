@@ -5,6 +5,8 @@
 #ifndef ATOM_COMMON_PLATFORM_UTIL_H_
 #define ATOM_COMMON_PLATFORM_UTIL_H_
 
+#include <string>
+
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
@@ -27,17 +29,23 @@ void showItemInFolder(const base::FilePath& full_path);
 
 // Open the given file in the desktop's default manner.
 // Must be called from the UI thread.
+#if defined(OS_WIN)
+// Returns true when Windows accepted the open request. On failure, |error|
+// receives a user-readable description.
+bool openPath(const base::FilePath& full_path, std::string* error);
+#else
 void openItem(const base::FilePath& full_path);
+#endif
 
 // Open the given external protocol URL in the desktop's default manner.
 // (For example, mailto: URLs in the default mail user agent.)
-bool openExternal(
 #if defined(OS_WIN)
-    const std::u16string& url,
+// Returns true when Windows accepted the open request. On failure, |error|
+// receives a user-readable description.
+bool openExternal(const std::u16string& url, bool activate, std::string* error);
 #else
-    const GURL& url,
+bool openExternal(const GURL& url, bool activate);
 #endif
-    bool activate);
 
 #if defined(OS_WIN)
 void moveToCenter(HWND hWnd);

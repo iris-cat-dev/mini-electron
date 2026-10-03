@@ -27,6 +27,7 @@ def main() -> int:
     mode.add_argument("--run", action="store_true", help="build and run the platform smoke check")
     mode.add_argument("--electron", action="store_true", help="build and run the shared Electron demo")
     mode.add_argument("--gui", action="store_true", help="build and run the native browser demo (macOS)")
+    mode.add_argument("--package-dist", action="store_true", help="build the publishable runtime distribution and zip")
     mode.add_argument("--omp-desktop", action="store_true", help="package OMP Desktop")
     parser.add_argument(
         "--electron-main", default="examples/electron/main.js",
@@ -43,6 +44,10 @@ def main() -> int:
     )
     parser.add_argument("--omp-source", default="../omp-desktop", help="OMP Desktop source checkout")
     parser.add_argument("--app-output", help="output directory for packaged OMP Desktop")
+    parser.add_argument(
+        "--dist-output",
+        help="runtime distribution directory (default: PLATFORM_OUT/runtime-dist)",
+    )
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")

@@ -322,7 +322,6 @@ viz::CompositorFrame VizClient::createFrame(const viz::BeginFrameArgs& args)
 
 DWORD g_lastBeginFrameTime = 0;
 
-void onWebviewDidFirstVisuallyNonEmptyPaint(int64_t webviewId);
 
 void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat_map<uint32_t, ::viz::FrameTimingDetails>& details, bool frame_ack,
     std::vector<::viz::ReturnedResource> resources)
@@ -339,7 +338,6 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
     viz::CompositorFrame frame = createFrame(args);
     viz::LocalSurfaceId localSurfaceId = m_hostLocalSurfaceId;
 
-    onWebviewDidFirstVisuallyNonEmptyPaint(m_webviewId);
 
     m_vizCompositorRunner->PostTask(FROM_HERE,
         base::BindOnce(

@@ -118,15 +118,11 @@ public:
     void WillReleaseScriptContext(v8::Local<v8::Context>, int32_t world_id) override;
 
     void DidFinishLoad() override;
-    void onLoadingSucceeded();
 
     void WasHidden() override;
     void WasShown() override;
 
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override;
-
-    //Geometry notifications
-    void DraggableRegionsChanged() /*override*/;
 
     //---
     void setFrame(blink::WebLocalFrame* frame)
@@ -171,7 +167,6 @@ public:
 
     bool m_isMainFrame = false;
 
-    int m_onLoadingSucceededCount = 0;
 
     blink::WebLocalFrame* m_frame = nullptr;
     bool m_hidden = false;

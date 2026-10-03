@@ -30,8 +30,11 @@
 
 #ifndef MINI_ELECTRON_NETWORK_WEBSOCKET_WEB_SOCKET_CHANNEL_CURL_H_
 #define MINI_ELECTRON_NETWORK_WEBSOCKET_WEB_SOCKET_CHANNEL_CURL_H_
+#include <cstdint>
 
 #include "runtime/network/websocket/socket_stream_handle_client.h"
+#include "base/values.h"
+#include "runtime/engine/renderer/renderer_websocket_broker.h"
 #include "runtime/network/websocket/web_socket_deflate_framer.h"
 #include "runtime/network/websocket/web_socket_one_frame.h"
 #include "runtime/network/websocket/web_socket_handshake.h"
@@ -213,6 +216,7 @@ private:
     std::unique_ptr<WebSocketHandshake> m_handshake;
     scoped_refptr<SocketStreamHandle> m_handle;
     int64_t m_handleId;
+    uint64_t m_brokerSocketId = 0;
 
     std::vector<char> m_buffer;
 

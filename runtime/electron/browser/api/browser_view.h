@@ -13,14 +13,13 @@
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/engine/public/engine_api.h"
-#include <vector>
 #include <windows.h>
 
 namespace atom {
 
 class WebContents;
 
-class BrowserView : public mate::EventEmitter<BrowserView>, public WindowInterface {
+class BrowserView : public mate::EventEmitter<BrowserView>, public WindowInterface, public WebContentsObserver {
 public:
     BrowserView(v8::Isolate* isolate, v8::Local<v8::Object> wrapper);
     ~BrowserView();
@@ -39,14 +38,17 @@ public:
     void attachBrowserWindow(HWND hWnd);
     void detachBrowserWindow();
     void handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent, unsigned int flags);
-
+    void onParentScaleFactorChanged();
     // WindowInterface
     bool isClosed() override;
     void close() override;
+    void destroy() override;
     v8::Local<v8::Object> getWrapper() override;
     int getId() const override;
     WebContents* getWebContents() const override;
     HWND getHWND() const override;
+    void onWebContentsPaint(WebContents*) override;
+    void onWebContentsDeleted(WebContents*) override;
 
     RECT getClientRect() const
     {
@@ -57,39 +59,17 @@ public:
         return r;
     }
 
-    void setClientRect(const RECT& r)
-    {
-        ::EnterCriticalSection(&m_rectLock);
-        m_clientRect = r;
-        ::LeaveCriticalSection(&m_rectLock);
-    }
+    void onPaintInUiThread(HDC hdc, const RECT& parentPaintRect);
 
-    mini_electron_web_view getEngineView() const
-    {
-        if (!m_webContents)
-            return NULL_WEBVIEW;
-        return m_webContents->getEngineView();
-    }
-
-    void onPaintInUiThread(const HDC hdc, int destX, int destY, int x, int y, int cx, int cy);
-
-private:
-    static void staticOnBlinkPaintUpdatedInUiThread(mini_electron_web_view webView, BrowserView* self, const HDC hdc, int x, int y, int cx, int cy);
-    void onBlinkPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, int cy);
-
-public:
     WebContents* m_webContents;
     WebContents::BrowserWindowConstructorOptions* m_createWindowParam;
     HWND m_hWnd;
     WindowState m_state;
     int m_id;
 
-    mutable CRITICAL_SECTION m_memoryCanvasLock;
     mutable CRITICAL_SECTION m_rectLock;
-    HBITMAP m_memoryBMP;
-    HDC m_memoryDC;
+    RECT m_boundsInDips;
     RECT m_clientRect;
-    SIZE m_memoryBmpSize;
     v8::Persistent<v8::Object> m_liveSelf;
 
     static gin::WrapperInfo kWrapperInfo;

@@ -15,6 +15,8 @@ class Arguments;
 
 namespace atom {
 
+int RunRelauncher(int argc, wchar_t* argv[]);
+
 class App : public mate::EventEmitter<App> {
 public:
     explicit App(v8::Isolate* isolate, v8::Local<v8::Object> wrapper);
@@ -27,18 +29,21 @@ public:
     void nullFunction();
 
     void quitApi();
-    void exitApi();
+    void exitApi(gin_helper::Arguments* args);
     void focusApi();
     bool isReadyApi() const;
     void _setIsReadyApi();
     bool isPackagedApi();
     void _setAppPathApi(const std::string& path);
+    const std::string& getAppPath() const { return m_appPath; }
+    void _setIsPackagedApi(bool packaged) { m_isPackaged = packaged; }
     bool isOnlineApi();
     void getFileIconApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     void addRecentDocumentApi(const std::string& path);
     void clearRecentDocumentsApi();
     void setAppUserModelIdApi(const std::string& id);
-    bool requestSingleInstanceLockApi();
+    bool requestSingleInstanceLockApi(gin_helper::Arguments* args);
+    bool hasSingleInstanceLockApi() const { return m_singleInstanceHandle != nullptr; }
     bool isDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     bool setAsDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     bool removeAsDefaultProtocolClientApi(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -84,14 +89,15 @@ public:
 
     std::string getLocaleApi();
 
-    bool makeSingleInstanceImplApi(const v8::FunctionCallbackInfo<v8::Value>& args);
-    void releaseSingleInstanceApi();
+    void releaseSingleInstanceLockApi();
 
     void relaunchApi(const base::Value::Dict& options);
 
     static void newFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
 
     void onWindowAllClosed();
+    void onWindowCloseCancelled();
+    static int getExitCode() { return m_exitCode; }
 
 public:
     void onCopyData(const COPYDATASTRUCT* copyData);
@@ -99,17 +105,22 @@ public:
     static gin_helper::WrapperInfo kWrapperInfo;
     static v8::Persistent<v8::Function> constructor;
 
-    v8::Persistent<v8::Value> m_singleInstanceCall;
-    HWND m_hiddenWindow;
-    HANDLE m_singleInstanceHandle;
+    HWND m_hiddenWindow = nullptr;
+    HANDLE m_singleInstanceHandle = nullptr;
 
 private:
+    enum class QuitState { Running, BeforeQuit, ClosingWindows, WillQuit, Exiting };
+    void finishQuit(int exitCode, bool force);
+    void throwPathError(const std::string& message) const;
+
     static App* m_instance;
+    static int m_exitCode;
+    QuitState m_quitState = QuitState::Running;
     bool m_isReady = false;
     std::string m_version;
     std::string m_name;
     std::string m_appPath;
-    int m_isPackaged = -1;
+    bool m_isPackaged = false;
     std::map<std::string, std::string> m_pathMap;
 };
 

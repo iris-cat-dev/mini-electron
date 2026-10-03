@@ -21,28 +21,11 @@ function createIpcMain() {
         if (typeof listener !== 'function') {
             throw new TypeError("Expected handler to be a function, but found type " + (typeof listener));
         }
-        const invokeHandler = async (event, requestId, ...args) => {
-            if (event.innnerChannel !== 'ipc-render-invoke')
-                return;
-            const replyChannel = 'ipc-main-handle-reply-' + requestId;
-            try {
-                const result = await listener(event, ...args);
-                event.sender.send(replyChannel, { result });
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                event.sender.send(replyChannel, { error: message });
-            }
-        };
-        ipcMain.m_invokeHandlers.set(channel, invokeHandler);
-        ipcMain.__origOn__(channel, invokeHandler);
+        ipcMain.m_invokeHandlers.set(channel, listener);
     }
     
-    ipcMain.removeHandler = function (channel /*string*/) {
-        if (ipcMain.m_invokeHandlers.has(channel)) {
-            let listener = ipcMain.m_invokeHandlers.get(channel);
-            ipcMain.removeListener(channel, listener);
-            ipcMain.m_invokeHandlers.delete(channel);
-        }
+    ipcMain.removeHandler = function (channel) {
+        ipcMain.m_invokeHandlers.delete(channel);
     }
     
     return ipcMain;

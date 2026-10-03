@@ -63,6 +63,7 @@ public:
 
     // Closes all windows.
     static void closeAllWindows();
+    static void destroyAllWindows();
 
 private:
     WindowList();

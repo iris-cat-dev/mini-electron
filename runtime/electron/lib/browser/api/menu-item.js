@@ -8,7 +8,7 @@ const MenuItem = function (options) {
   const Menu = require('electron').Menu
   this.selector = options.selector
   this.type = options.type
-  this.role = options.role
+  this.role = typeof options.role === 'string' ? options.role.toLowerCase() : options.role
   this.label = options.label
   this.sublabel = options.sublabel
   this.accelerator = options.accelerator
@@ -39,6 +39,12 @@ const MenuItem = function (options) {
   this.overrideProperty('enabled', true)
   this.overrideProperty('visible', true)
   this.overrideProperty('checked', false)
+
+  // Keep the public accelerator property aligned with Electron while passing
+  // role defaults to the native Windows menu.
+  Object.defineProperty(this, '_accelerator', {
+    value: this.accelerator != null ? this.accelerator : roles.getDefaultAccelerator(this.role)
+  })
 
   if (!MenuItem.types.includes(this.type)) {
     throw new Error(`Unknown menu item type: ${this.type}`)
