@@ -17,11 +17,18 @@ function temporaryDirectory(t) {
   return directory;
 }
 
-function packageFixture(t) {
+function packageFixture(t, target) {
   const directory = path.join(temporaryDirectory(t), 'package');
   fs.mkdirSync(directory);
   for (const file of PACKAGE_FILES) fs.copyFileSync(path.join(ROOT, file), path.join(directory, file));
   fs.cpSync(path.join(ROOT, 'lib'), path.join(directory, 'lib'), { recursive: true });
+  if (target) {
+    const manifestFile = path.join(directory, 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+    manifest.os = [target.platform];
+    manifest.cpu = [target.arch];
+    fs.writeFileSync(manifestFile, `${JSON.stringify(manifest)}\n`);
+  }
   return directory;
 }
 
@@ -46,8 +53,8 @@ function createDistribution(directory) {
   fs.writeFileSync(
     path.join(directory, 'version.json'),
     `${JSON.stringify({
-      packageVersion: '1.3.3',
-      runtimeVersion: '1.3.3',
+      packageVersion: '0.1.0',
+      runtimeVersion: '0.1.0',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -128,8 +135,8 @@ const macTargetEnvironment = {
 
 function macVersion(files, links) {
   return {
-    packageVersion: '1.3.3',
-    runtimeVersion: '1.3.3',
+    packageVersion: '0.1.0',
+    runtimeVersion: '0.1.0',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -178,15 +185,16 @@ function createMacDistribution(directory) {
 }
 
 test('installer rejects unsupported targets before creating an install marker', (t) => {
-  const fixture = packageFixture(t);
-  const result = runNode(['install.js'], {
-    cwd: fixture,
-    env: { npm_config_platform: 'linux', npm_config_arch: 'x64' },
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /does not provide a runtime for linux-x64/u);
-  assert.equal(fs.existsSync(path.join(fixture, 'path.txt')), false);
-  assert.equal(fs.existsSync(path.join(fixture, 'dist')), false);
+  for (const [platform, arch] of [['linux', 'x64'], ['darwin', 'arm64'], ['win32', 'arm64']]) {
+    const fixture = packageFixture(t);
+    const result = runNode(['install.js'], {
+      cwd: fixture,
+      env: { npm_config_platform: platform, npm_config_arch: arch },
+    });
+    assert.notEqual(result.status, 0, `${platform}-${arch}`);
+    assert.equal(fs.existsSync(path.join(fixture, 'path.txt')), false);
+    assert.equal(fs.existsSync(path.join(fixture, 'dist')), false);
+  }
 });
 
 test('skip-download fails clearly when no verified binary exists', (t) => {
@@ -249,8 +257,8 @@ test('verified offline zip installs through the same contract as release archive
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
   const version = {
-    packageVersion: '1.3.3',
-    runtimeVersion: '1.3.3',
+    packageVersion: '0.1.0',
+    runtimeVersion: '0.1.0',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -278,7 +286,7 @@ test('verified offline zip installs through the same contract as release archive
 });
 
 test('authenticated macOS framework symlinks survive ZIP installation', { skip: process.platform === 'win32' }, (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, { platform: 'darwin', arch: 'arm64' });
   const archive = path.join(temporaryDirectory(t), 'mac-runtime.zip');
   const executableRelative = 'Electron.app/Contents/MacOS/Electron';
   const framework = 'Electron.app/Contents/Frameworks/Squirrel.framework';
@@ -322,7 +330,7 @@ test('authenticated macOS framework symlinks survive ZIP installation', { skip: 
 });
 
 test('authenticated macOS framework symlinks survive a local distribution override', { skip: process.platform === 'win32' }, (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, { platform: 'darwin', arch: 'arm64' });
   const distribution = path.join(temporaryDirectory(t), 'mac-runtime');
   fs.mkdirSync(distribution);
   const { framework, links } = createMacDistribution(distribution);
@@ -400,8 +408,8 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
     const fixture = packageFixture(t);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
-      packageVersion: '1.3.3',
-      runtimeVersion: '1.3.3',
+      packageVersion: '0.1.0',
+      runtimeVersion: '0.1.0',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,

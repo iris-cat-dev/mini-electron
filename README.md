@@ -7,6 +7,62 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+## npm distribution (Windows x64)
+
+The npm package is `@iriscat/mini-electron`, starting at version `0.1.0`.
+This npm release supports **Windows x64 only**. macOS remains a source/build
+target, not an installable platform in this release. `artifacts.json` retains
+native build metadata for both hosts; the npm installer and release assembler
+restrict published targets using `package.json`'s `os` and `cpu` declarations.
+
+```sh
+npm install --save-dev @iriscat/mini-electron@0.1.0
+node -p "require('@iriscat/mini-electron')"
+```
+
+The npm tarball contains the installer, CLI, types, and manifests, not the native
+executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
+matching GitHub Release, verifies the archive and its complete file inventory,
+then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
+executable path outside the runtime; application main/preload code still imports
+the built-in `electron` API. The package and runtime version is `0.1.0`; the
+Electron API version remains `41.2.0`.
+
+For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
+`runtime-dist` directory or a ZIP accompanied by its `.sha256` file. Unset
+`ELECTRON_SKIP_BINARY_DOWNLOAD` and `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when
+installing into a fresh package directory.
+
+OMP Desktop can retain its existing Electron development types and explicitly
+select this runtime for packaging (Git Bash):
+
+```sh
+cd D:/Project/omp-desktop
+npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.0
+cd packages/desktop
+ELECTRON_DIST="$(node -p "require('node:path').dirname(require('@iriscat/mini-electron'))")"
+cd ../..
+npm run build:desktop -- --win --x64 --publish never \
+  --config.electronDist="$ELECTRON_DIST" --config.electronVersion=41.2.0
+```
+
+Keep the original `npmRebuild: false` setting and application imports. Both
+development packages expose an `electron` command; use the explicit
+`mini-electron` CLI rather than depending on which shared command wins.
+
+To prepare the declared npm targets from a native build:
+
+```sh
+python build.py --jobs 16 --package-dist
+python scripts/build_runtime_release.py \
+  --windows-dist out/windows-x64/runtime-dist --output out/runtime-release
+```
+
+The assembler writes `v0.1.0` runtime assets and an `npm-package` directory with
+the README and installer. Publish the runtime ZIP and `SHASUMS256.txt` to GitHub
+before publishing that npm package with public access.
+
+
 ## Repository layout
 
 - `build.py`: the single build, package, and run entry point; selects the host OS
@@ -548,7 +604,7 @@ The exercised paths include:
   a mixed valid/unsupported database does not publish partial BrokerStorage.
 - Real runtime-directory, checksummed ZIP, and verified offline-cache npm
   installation, plus rejection of bad checksums and unlisted release files.
-  `require('mini-electron')` remains a path resolver, not a per-call inventory scan.
+  `require('@iriscat/mini-electron')` remains a path resolver, not a per-call inventory scan.
 
 Packed ESM source is read directly from ASAR rather than extracted into temporary
 files. Windows extraction for real file handles and native modules uses bounded

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -29,6 +30,7 @@ _PACKAGE_FILES = (
     "index.js",
     "install.js",
     "LICENSE",
+    "README.md",
     "package.json",
 )
 _TARGETS = (
@@ -89,9 +91,17 @@ def assemble(args: argparse.Namespace) -> Path:
             f"Release output must not be a symlink or junction: {output}"
         )
     output = output.resolve()
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     inputs: list[tuple[Path, dict[str, object]]] = []
     for platform_name, arch, argument in _TARGETS:
-        directory = Path(getattr(args, argument))
+        if platform_name not in package["os"] or arch not in package["cpu"]:
+            continue
+        input_value = getattr(args, argument)
+        if input_value is None:
+            raise DistributionError(
+                f"Runtime distribution for published target {platform_name}-{arch} is required"
+            )
+        directory = Path(input_value)
         if not directory.is_absolute():
             directory = ROOT / directory
         directory = directory.resolve()
@@ -100,6 +110,8 @@ def assemble(args: argparse.Namespace) -> Path:
         if output == directory or output in directory.parents or directory in output.parents:
             raise DistributionError("Release output and runtime distribution inputs must not overlap")
         inputs.append((directory, _validate_distribution(directory, platform_name, arch)))
+    if not inputs:
+        raise DistributionError("The npm package does not declare a supported runtime target")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staged = Path(tempfile.mkdtemp(prefix=f".{output.name}.stage-", dir=output.parent))
@@ -148,10 +160,10 @@ def assemble(args: argparse.Namespace) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Assemble both runtime zips and the publishable mini-electron npm package."
+        description="Assemble the declared npm runtime targets and the publishable mini-electron package."
     )
-    parser.add_argument("--windows-dist", required=True, help="win32-x64 runtime-dist directory")
-    parser.add_argument("--macos-dist", required=True, help="darwin-arm64 runtime-dist directory")
+    parser.add_argument("--windows-dist", help="win32-x64 runtime-dist directory")
+    parser.add_argument("--macos-dist", help="darwin-arm64 runtime-dist directory")
     parser.add_argument("--output", default="out/runtime-release", help="release output directory")
     args = parser.parse_args()
     try:

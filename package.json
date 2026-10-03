@@ -1,7 +1,7 @@
 {
-  "name": "mini-electron",
-  "version": "1.3.3",
-  "description": "Electron-compatible desktop runtime for Windows x64 and Apple Silicon macOS",
+  "name": "@iriscat/mini-electron",
+  "version": "0.1.0",
+  "description": "Electron-compatible desktop runtime for Windows x64",
   "license": "Apache-2.0",
   "author": "mini-electron contributors",
   "main": "index.js",
@@ -26,19 +26,20 @@
     "lib/",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18.17"
   },
   "os": [
-    "darwin",
     "win32"
   ],
   "cpu": [
-    "arm64",
     "x64"
   ],
   "miniElectron": {
-    "runtimeVersion": "1.3.3",
+    "runtimeVersion": "0.1.0",
     "electronApiVersion": "41.2.0",
     "nodeVersion": "24.0.0",
     "nodeModuleAbi": 134,

@@ -5,6 +5,7 @@
 
 #include "runtime/electron/common/node_register_help.h"
 #include "runtime/electron/common/atom_command_line.h"
+#include "runtime/electron/common/atom_version.h"
 #include "runtime/electron/common/string_util.h"
 #include "runtime/electron/common/api/event_emitter.h"
 #include "runtime/electron/common/icon_util.h"
@@ -95,7 +96,7 @@ App::App(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
 {
     gin_helper::Wrappable<App>::InitWith(isolate, wrapper);
     m_instance = this;
-    m_version = "1.3.3";
+    m_version = MINI_ELECTRON_VERSION_STRING;
     m_name = "Electron";
     m_singleInstanceHandle = nullptr;
 
