@@ -14,10 +14,10 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 import urllib.request
 from typing import Optional
 from .distribution import (
-    copy_devtools_frontend,
     copy_release_notices,
     copy_runtime_javascript,
     publish_distribution,
@@ -107,6 +107,120 @@ def run(
 ) -> None:
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=cwd, env=env, check=True)
+
+
+WINDOW_TIMEOUT_SECONDS = 30.0
+CLOSE_TIMEOUT_SECONDS = 10.0
+_FIND_WINDOW_SCRIPT = """
+ObjC.import('CoreGraphics');
+function run(argv) {
+  const pid = Number(argv[0]);
+  const windows = ObjC.deepUnwrap(ObjC.castRefToObject(
+      $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly |
+                                   $.kCGWindowListExcludeDesktopElements, 0))) || [];
+  const match = windows.find(w => w.kCGWindowOwnerPID === pid && w.kCGWindowLayer === 0);
+  return match ? JSON.stringify({ id: match.kCGWindowNumber, title: match.kCGWindowName || '' }) : '';
+}
+"""
+_TERMINATE_SCRIPT = """
+ObjC.import('AppKit');
+function run(argv) {
+  const app = $.NSRunningApplication.runningApplicationWithProcessIdentifier(Number(argv[0]));
+  return !app.isNil() && app.terminate ? 'sent' : '';
+}
+"""
+
+
+def _javascript_for_automation(script: str, *arguments: str) -> str:
+    result = subprocess.run(
+        ["/usr/bin/osascript", "-l", "JavaScript", "-e", script, *arguments],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"osascript failed: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _stop_process(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=CLOSE_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def run_electron(
+    command: list[str], *, cwd: Path, interactive: bool, screenshot: Optional[str]
+) -> None:
+    """Runs an Electron app; without |interactive|, a native-window smoke check.
+
+    Like the Windows backend, the smoke check waits for a visible window, asks
+    the application to quit (AppKit terminate -> app.quit()), and requires a
+    zero exit status.
+    """
+    print("+", " ".join(command), flush=True)
+    process = subprocess.Popen(command, cwd=cwd)
+    if interactive:
+        print(f"[macos] Running {command[0]}; close the application to continue.")
+        try:
+            return_code = process.wait()
+        except KeyboardInterrupt:
+            _stop_process(process)
+            raise
+        if return_code != 0:
+            raise subprocess.CalledProcessError(return_code, command)
+        return
+
+    try:
+        deadline = time.monotonic() + WINDOW_TIMEOUT_SECONDS
+        window: Optional[dict[str, object]] = None
+        while window is None and time.monotonic() < deadline:
+            if process.poll() is not None:
+                raise RuntimeError(
+                    f"{Path(command[0]).name} exited with code {process.returncode} "
+                    "before creating a visible window"
+                )
+            found = _javascript_for_automation(_FIND_WINDOW_SCRIPT, str(process.pid))
+            if found:
+                window = json.loads(found)
+            else:
+                time.sleep(0.1)
+        if window is None:
+            raise RuntimeError(
+                f"{Path(command[0]).name} did not create a visible window within "
+                f"{WINDOW_TIMEOUT_SECONDS:g}s"
+            )
+        print(f"[macos] Visible window: {window['title'] or '<untitled>'}", flush=True)
+        if screenshot:
+            # Window capture requires the Screen Recording permission for the
+            # terminal that runs build.py.
+            capture = subprocess.run(
+                ["/usr/sbin/screencapture", "-x", "-o", f"-l{window['id']}", screenshot],
+                capture_output=True,
+                text=True,
+            )
+            if capture.returncode != 0:
+                raise RuntimeError(
+                    f"screencapture failed ({capture.stderr.strip()}); grant Screen "
+                    "Recording permission to this terminal or omit --screenshot"
+                )
+            print(f"[macos] Window snapshot: {screenshot}", flush=True)
+        if _javascript_for_automation(_TERMINATE_SCRIPT, str(process.pid)) != "sent":
+            raise RuntimeError(f"Failed to request {Path(command[0]).name} to quit")
+        try:
+            return_code = process.wait(timeout=CLOSE_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError(
+                f"{Path(command[0]).name} did not exit after the quit request"
+            ) from error
+    finally:
+        _stop_process(process)
+    if return_code != 0:
+        raise RuntimeError(f"{Path(command[0]).name} exited with code {return_code}")
 
 
 def find_or_install_gn(root: Path) -> str:
@@ -389,7 +503,6 @@ def _stage_electron_bundle(
 
     copy_squirrel_frameworks(out_dir, frameworks)
     copy_runtime_javascript(root, resources)
-    copy_devtools_frontend(root, resources)
     copy_release_notices(root, resources)
     copy_squirrel_notices(root, resources)
     _validate_framework_layout(frameworks)
@@ -513,7 +626,6 @@ def _validate_omp_app(app: Path) -> None:
         resources / "mini-electron" / "lib" / "browser" / "init.js",
         resources / "mini-electron" / "lib" / "browser" / "electron.js",
         resources / "bin" / "rg",
-        resources / "devtools-frontend" / "front_end" / "devtools_app.html",
         resources / "LICENSE",
         resources / "LICENSES.chromium.html",
         resources / "LICENSES.leveldb",
@@ -531,6 +643,8 @@ def _validate_omp_app(app: Path) -> None:
     )
     if any(path.exists() for path in forbidden):
         raise RuntimeError("OMP Desktop retained a stock Electron or Node runtime")
+    if (resources / "devtools-frontend").exists():
+        raise RuntimeError("DevTools-disabled macOS package retained frontend assets")
     _validate_remote_backend(resources / "remote-backend")
     _validate_framework_layout(contents / "Frameworks")
 
@@ -712,11 +826,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
     clang_base, clang_version = xcode_clang()
     out_dir = root / args.out
 
-    screenshot = args.screenshot or (
-        "/tmp/mini-electron-demo.png"
-        if args.electron
-        else "/tmp/mini-electron-browser.png"
-    )
+    gui_screenshot = args.screenshot or "/tmp/mini-electron-browser.png"
     target = (
         ELECTRON_TARGET
         if args.electron or args.omp_desktop or args.package_dist
@@ -762,10 +872,12 @@ def build(root: Path, args: argparse.Namespace) -> int:
         main_script = Path(args.electron_main)
         if not main_script.is_absolute():
             main_script = root / main_script
-        command = [str(out_dir / binary_name), str(main_script), screenshot]
-        if args.interactive:
-            command.append("--interactive")
-        run(command, cwd=root)
+        run_electron(
+            [str(out_dir / binary_name), str(main_script)],
+            cwd=root,
+            interactive=args.interactive,
+            screenshot=args.screenshot,
+        )
         return 0
     if args.gui:
         frontend = args.frontend
@@ -774,7 +886,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
             if not frontend_path.is_absolute():
                 frontend_path = root / frontend_path
             frontend = str(frontend_path)
-        run([str(out_dir / binary_name), frontend, screenshot], cwd=root)
+        run([str(out_dir / binary_name), frontend, gui_screenshot], cwd=root)
     elif args.run:
         run([str(out_dir / binary_name)], cwd=root)
     return 0

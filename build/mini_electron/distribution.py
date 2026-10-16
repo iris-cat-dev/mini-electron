@@ -388,27 +388,6 @@ def copy_runtime_javascript(root: Path, resources: Path) -> None:
     shutil.copytree(source, target, symlinks=False)
 
 
-def copy_devtools_frontend(root: Path, resources: Path) -> None:
-    devtools_source = (
-        root / "third_party" / "devtools-frontend" / "generated" / "front_end"
-    )
-    required_devtools_entries = (
-        devtools_source / "devtools_app.html",
-        devtools_source / "entrypoints" / "devtools_app" / "devtools_app.js",
-        devtools_source / "entrypoints" / "inspector_main" / "inspector_main.js",
-    )
-    if not devtools_source.is_dir() or any(
-        not entry.is_file() for entry in required_devtools_entries
-    ):
-        raise DistributionError(
-            "Pinned generated DevTools frontend assets are missing: "
-            f"{devtools_source}"
-        )
-    devtools_target = resources / "devtools-frontend" / "front_end"
-    devtools_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(devtools_source, devtools_target, symlinks=False)
-
-
 def write_version_metadata(directory: Path, metadata: dict[str, object]) -> None:
     executable = metadata["executable"]
     if not isinstance(executable, str):

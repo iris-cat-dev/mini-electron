@@ -7,38 +7,48 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
-## npm distribution (Windows x64)
+## npm distribution (Windows x64, Apple Silicon macOS)
 
-The npm package is `@iriscat/mini-electron`, starting at version `0.1.0`.
-This npm release supports **Windows x64 only**. macOS remains a source/build
-target, not an installable platform in this release. `artifacts.json` retains
-native build metadata for both hosts; the npm installer and release assembler
-restrict published targets using `package.json`'s `os` and `cpu` declarations.
+The npm package is `@iriscat/mini-electron`. Version `0.1.1` publishes both
+Windows x64 and Apple Silicon macOS runtimes; `0.1.0` was Windows-only.
+`package.json` declares `win32`/`x64` and `darwin`/`arm64`; the installer maps
+Rosetta-translated Node on Apple Silicon to `darwin-arm64` and rejects Intel
+macOS.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.0
+npm install --save-dev @iriscat/mini-electron@0.1.1
 node -p "require('@iriscat/mini-electron')"
 ```
+
+The `0.1.1` Windows runtime is the `0.1.0` Windows build with only its embedded
+runtime version string changed to `0.1.1` and its manifest regenerated; it does
+not include shared-source changes made for the macOS port. The macOS runtime is
+a native build of this tree with a stripped (`strip -x`) executable and an
+ad-hoc signature; it is not notarized.
 
 The npm tarball contains the installer, CLI, types, and manifests, not the native
 executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
 matching GitHub Release, verifies the archive and its complete file inventory,
 then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
 executable path outside the runtime; application main/preload code still imports
-the built-in `electron` API. The package and runtime version is `0.1.0`; the
+the built-in `electron` API. The package and runtime version is `0.1.1`; the
 Electron API version remains `41.2.0`.
 
 For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
-`runtime-dist` directory or a ZIP accompanied by its `.sha256` file. Unset
-`ELECTRON_SKIP_BINARY_DOWNLOAD` and `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when
-installing into a fresh package directory.
+`runtime-dist` directory or a ZIP accompanied by its `.sha256` file, or set
+`MINI_ELECTRON_MIRROR` to a directory server that hosts `v<version>/` release
+assets. Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and
+`MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when installing into a fresh package directory.
+On macOS the installed executable is
+`dist/Electron.app/Contents/MacOS/Electron`; `npx mini-electron app.js` and
+`ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as on Windows.
 
 OMP Desktop can retain its existing Electron development types and explicitly
 select this runtime for packaging (Git Bash):
 
 ```sh
 cd D:/Project/omp-desktop
-npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.0
+npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.1
 cd packages/desktop
 ELECTRON_DIST="$(node -p "require('node:path').dirname(require('@iriscat/mini-electron'))")"
 cd ../..
@@ -50,17 +60,21 @@ Keep the original `npmRebuild: false` setting and application imports. Both
 development packages expose an `electron` command; use the explicit
 `mini-electron` CLI rather than depending on which shared command wins.
 
-To prepare the declared npm targets from a native build:
+To prepare the declared npm targets, run `--package-dist` on each native host,
+then assemble both runtime directories on one machine:
 
 ```sh
 python build.py --jobs 16 --package-dist
 python scripts/build_runtime_release.py \
-  --windows-dist out/windows-x64/runtime-dist --output out/runtime-release
+  --windows-dist out/windows-x64/runtime-dist \
+  --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
 ```
 
-The assembler writes `v0.1.0` runtime assets and an `npm-package` directory with
-the README and installer. Publish the runtime ZIP and `SHASUMS256.txt` to GitHub
-before publishing that npm package with public access.
+The assembler writes `v0.1.1` runtime assets, one `SHASUMS256.txt` covering
+both ZIPs, and an `npm-package` directory with the README and installer. Each
+runtime's `version.json` must carry the package version, so a new npm version
+requires rebuilding both runtimes. Publish the runtime ZIPs and `SHASUMS256.txt`
+to GitHub before publishing that npm package with public access.
 
 
 ## Repository layout
@@ -170,7 +184,6 @@ with `package.json.main` set to the chosen filename. The macOS main-process host
 uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
-The macOS native runtime has not been executed on this Windows machine.
 
 ## Windows (x64)
 
@@ -354,12 +367,30 @@ keyboard, focus, and IME paths and writes a verification snapshot to
 
 ### Electron host
 
-The shared `python build.py --electron` command creates native AppKit windows
-backed by the same renderer as the GUI demo and writes its verification
-snapshot to `/tmp/mini-electron-demo.png`. Use `--screenshot PATH` to
-choose another location. The macOS adapter implements readiness/quit, window
-title/visibility/bounds methods, `loadFile()`, `loadURL()`,
-`BrowserWindow.getAllWindows()`, and `webContents.getURL()`.
+`python build.py --electron` runs the shared example in native AppKit windows
+backed by the same renderer as the GUI demo. Like the Windows backend, it waits
+for a visible window, requests quit (AppKit terminate → `app.quit()`), and
+requires exit status 0. `--screenshot PATH` additionally captures that window
+with `screencapture`, which needs Screen Recording permission for the terminal.
+The macOS adapter implements readiness/quit, window title/visibility/bounds
+methods, `loadFile()`, `loadURL()`, `BrowserWindow.getAllWindows()`, and
+`webContents.getURL()`. The main process uses the same Node options as Windows
+(`--unhandled-rejections=warn`, no CommonJS module-type detection).
+
+### Runtime distribution
+
+```sh
+python build.py --package-dist
+```
+
+This writes `out/mac-arm64/runtime-dist` and
+`out/mac-arm64/mini-electron-v0.1.0-darwin-arm64.zip`. The runtime is an
+ad-hoc-signed `Electron.app` with the stripped host executable, Electron-named
+helper bundles that electron-builder renames, the Squirrel/Mantle/ReactiveObjC
+frameworks, runtime JavaScript, and license notices. Renderer processes are
+spawned from the main executable; the helpers exist for packaging layout.
+The ZIP preserves framework symlinks and is about 162 MB because each helper
+bundle carries a copy of the 87 MB executable.
 
 ### OMP Desktop package
 
@@ -626,6 +657,13 @@ the extra original-application click probe was not validated and was stopped.
 SQLite, LevelDB, the renderer sandbox, and the live Squirrel/Mantle/ReactiveObjC
 updater dependencies and licenses remain in the product closure.
 
-macOS source/resource closure, license staging, and output-overlap guards were
-checked on Windows. No macOS native build, AppKit interaction, signing,
-notarization, or macOS migration/runtime smoke was performed.
+On an Apple Silicon Mac (macOS 27, Xcode clang 17), `python build.py --run`,
+`--gui`, `--electron`, and `--package-dist` built and ran. The smoke executable
+reported `result: 42` with ICU zh-CN formatting; the GUI demo wrote its Blink
+snapshot; the shared example reached a visible window and exited 0. The
+assembled two-target release was served from a local `MINI_ELECTRON_MIRROR`;
+`npm install` of the packed tarball verified and installed the darwin ZIP,
+`codesign --verify --deep --strict` passed, `require()` returned
+`dist/Electron.app/Contents/MacOS/Electron`, `npx electron --version`/`--abi`
+printed `v0.1.0`/`134`, and an installed app loaded a file and exited with its
+`app.exit()` code. Notarization and Developer ID signing were not performed.

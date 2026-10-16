@@ -16,6 +16,7 @@
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/browser/api/session.h"
+#include "runtime/electron/browser/api/web_contents.h"
 #include "runtime/electron/browser/api/window_list.h"
 #include "runtime/electron/browser/api/window_interface.h"
 #include "runtime/electron/browser/api/app_browser.h"
@@ -256,6 +257,7 @@ bool App::isPackagedApi()
 void App::_setAppPathApi(const std::string& path)
 {
     m_appPath = path;
+    WebContents::setApplicationRoot(path);
     if (!SessionMgr::get()->setRootDir(base::FilePath::FromUTF8Unsafe(getPathApi("userData"))))
         throwPathError("Unable to initialize userData before creating sessions");
 }

@@ -13,7 +13,6 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "net/base/filename_util.h"
-#include "runtime/electron/browser/api/app.h"
 #include "runtime/electron/browser/api/session.h"
 #include "runtime/electron/browser/api/window_interface.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -42,6 +41,12 @@ std::unordered_map<int, WebContents*>& AllContents()
 {
     static std::unordered_map<int, WebContents*> contents;
     return contents;
+}
+
+std::string& ApplicationRoot()
+{
+    static std::string root;
+    return root;
 }
 
 uint64_t RequestIdFrom(const base::Value::Dict& event)
@@ -283,9 +288,9 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     m_web_preferences.Set("nodeIntegrationInSubFrames", preload_all_frames);
     m_web_preferences.Set("sandbox", true);
     m_web_preferences.Set("nodeIntegration", false);
-    if (App* app = App::getInstance())
+    if (!ApplicationRoot().empty())
         addApplicationResourceRoot(
-            base::FilePath::FromUTF8Unsafe(app->getAppPath()));
+            base::FilePath::FromUTF8Unsafe(ApplicationRoot()));
 
     RendererLaunchOptions launch;
     launch.contents_id = m_id;
@@ -445,6 +450,11 @@ bool WebContents::sendRendererMessage(int contents_id,
     if (!contents || !contents->isAlive() || !contents->m_renderer)
         return false;
     return contents->m_renderer->Send(method, std::move(params));
+}
+
+void WebContents::setApplicationRoot(const std::string& path)
+{
+    ApplicationRoot() = path;
 }
 
 void WebContents::addApplicationResourceRoot(const base::FilePath& path)

@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PACKAGE_FILES = ['artifacts.json', 'cli.js', 'index.js', 'install.js', 'package.json'];
 
 function temporaryDirectory(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-electron-test-'));
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mini-electron-test-')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
@@ -53,8 +53,8 @@ function createDistribution(directory) {
   fs.writeFileSync(
     path.join(directory, 'version.json'),
     `${JSON.stringify({
-      packageVersion: '0.1.0',
-      runtimeVersion: '0.1.0',
+      packageVersion: '0.1.1',
+      runtimeVersion: '0.1.1',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -135,8 +135,8 @@ const macTargetEnvironment = {
 
 function macVersion(files, links) {
   return {
-    packageVersion: '0.1.0',
-    runtimeVersion: '0.1.0',
+    packageVersion: '0.1.1',
+    runtimeVersion: '0.1.1',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -185,7 +185,7 @@ function createMacDistribution(directory) {
 }
 
 test('installer rejects unsupported targets before creating an install marker', (t) => {
-  for (const [platform, arch] of [['linux', 'x64'], ['darwin', 'arm64'], ['win32', 'arm64']]) {
+  for (const [platform, arch] of [['linux', 'x64'], ['darwin', 'x64'], ['win32', 'arm64']]) {
     const fixture = packageFixture(t);
     const result = runNode(['install.js'], {
       cwd: fixture,
@@ -257,8 +257,8 @@ test('verified offline zip installs through the same contract as release archive
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
   const version = {
-    packageVersion: '0.1.0',
-    runtimeVersion: '0.1.0',
+    packageVersion: '0.1.1',
+    runtimeVersion: '0.1.1',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -408,8 +408,8 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
     const fixture = packageFixture(t);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
-      packageVersion: '0.1.0',
-      runtimeVersion: '0.1.0',
+      packageVersion: '0.1.1',
+      runtimeVersion: '0.1.1',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -464,9 +464,8 @@ test('electron bin preserves argv, stdout, stderr, and exit code', (t) => {
   const fixture = packageFixture(t);
   const override = path.join(temporaryDirectory(t), 'override');
   fs.mkdirSync(override);
-  const executable = path.join(override, 'electron.exe');
-  fs.copyFileSync(process.execPath, executable);
-  fs.chmodSync(executable, 0o755);
+  // Link rather than copy: Homebrew's node resolves @rpath/libnode next to its real path.
+  fs.symlinkSync(process.execPath, path.join(override, 'electron.exe'));
   const child = path.join(temporaryDirectory(t), 'child.js');
   fs.writeFileSync(child, "process.stdout.write(process.argv[2]); process.stderr.write(process.argv[3]); process.exit(23);\n");
   const result = runNode([path.join(fixture, 'cli.js'), child, 'stdout-value', 'stderr-value'], {

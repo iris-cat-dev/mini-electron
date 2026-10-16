@@ -68,7 +68,6 @@ extern "C" NODE_EXTERN void* nodeBlinkAllocateUninitialized(size_t length);
 extern "C" NODE_EXTERN void nodeBlinkFree(void* data, size_t length);
 
 extern "C" NODE_EXTERN void nodeModuleInitRegister();
-extern "C" NODE_EXTERN char* nodeBufferGetData(void* buf, size_t* len);
 
 bool isNodejsEnable();
 std::shared_ptr<v8::TaskRunner> nodePlatformGetForegroundTaskRunner(v8::Isolate* isolate);

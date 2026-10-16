@@ -16,6 +16,7 @@
 #include "base/pickle.h"
 #include "base/values.h"
 #include "base/json/json_reader.h"
+#include "base/strings/string_number_conversions.h"
 
 #if defined(OS_WIN)
 #include <io.h>
@@ -108,14 +109,8 @@ bool FillFileInfoWithNode(Archive::FileInfo* info, uint32_t header_size, const b
     }
 
     const std::string* offset = node->FindString("offset");
-    if (!offset)
+    if (!offset || !base::StringToUint64(*offset, &info->offset))
         return false;
-
-    //   if (!base::StringToUint64(offset, &info->offset))
-    //     return false;
-
-    char* endptr = nullptr;
-    info->offset = _strtoui64(offset->c_str(), &endptr, 10);
 
     info->offset += header_size;
 

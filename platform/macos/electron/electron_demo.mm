@@ -24,10 +24,6 @@ bool IsRegularFile(const std::filesystem::path& path) {
   return std::filesystem::is_regular_file(path, error);
 }
 
-bool IsApplication(const std::filesystem::path& path) {
-  std::error_code error;
-  return std::filesystem::is_directory(path, error) || IsRegularFile(path);
-}
 
 std::filesystem::path Absolute(const std::filesystem::path& path) {
   std::error_code error;
@@ -57,14 +53,6 @@ std::filesystem::path FindBrowserModule(
   return IsRegularFile(source) ? source : std::filesystem::path();
 }
 
-std::filesystem::path FindPackagedApplication(
-    const std::filesystem::path& resources_path) {
-  const std::filesystem::path asar = resources_path / "app.asar";
-  if (IsRegularFile(asar))
-    return asar;
-  const std::filesystem::path directory = resources_path / "app";
-  return IsApplication(directory) ? directory : std::filesystem::path();
-}
 
 }  // namespace
 
@@ -81,22 +69,6 @@ int main(int argc, char** argv) {
     const std::filesystem::path executable = Absolute(argv[0]);
     const std::filesystem::path resources =
         Absolute([NSBundle.mainBundle.resourcePath fileSystemRepresentation]);
-    std::filesystem::path application = FindPackagedApplication(resources);
-    const bool packaged = !application.empty();
-
-    int first_application_argument = 1;
-    if (!packaged && argc > 1 && argv[1][0] != '-') {
-      application = Absolute(argv[1]);
-      first_application_argument = 2;
-    }
-    if (application.empty() || !IsApplication(application)) {
-      std::fputs(
-          "mini-electron: no application found; pass an app directory/main "
-          "script or package Contents/Resources/app[.asar]\n",
-          stderr);
-      return 2;
-    }
-
     const std::filesystem::path browser_module = FindBrowserModule(resources);
     if (browser_module.empty()) {
       std::fputs(
@@ -106,14 +78,15 @@ int main(int argc, char** argv) {
       return 2;
     }
 
+    // Like the Windows host, application discovery (packaged app.asar/app,
+    // an app directory or script argument, --version/--abi/--help, and the
+    // bundled default app) belongs to the shared browser init.js.
     mini_electron::electron::MainProcessOptions options;
     options.executable_path = executable.string();
-    options.application_path = application.string();
     options.browser_module_path = browser_module.string();
     options.resources_path = resources.string();
-    options.is_packaged = packaged;
-    for (int index = first_application_argument; index < argc; ++index)
-      options.application_arguments.emplace_back(argv[index]);
+    for (int index = 1; index < argc; ++index)
+      options.arguments.emplace_back(argv[index]);
 
     [NSApplication sharedApplication];
     return mini_electron::electron::RunMainProcess(options);

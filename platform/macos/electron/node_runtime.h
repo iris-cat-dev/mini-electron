@@ -11,11 +11,10 @@ namespace mini_electron::electron {
 
 struct MainProcessOptions {
   std::string executable_path;
-  std::string application_path;
   std::string browser_module_path;
   std::string resources_path;
-  std::vector<std::string> application_arguments;
-  bool is_packaged = false;
+  // Command-line arguments after argv[0]; the shared init.js resolves the app.
+  std::vector<std::string> arguments;
 };
 
 // Runs the binary with ordinary Node semantics. This path never initializes the
@@ -23,9 +22,9 @@ struct MainProcessOptions {
 int RunAsNode(int argc, char** argv);
 
 // Creates the trusted Node main process, installs only main-process linked
-// bindings, loads the shared Electron JavaScript module, and then executes the
-// application's unmodified package entry point. The Node/libuv loop is kept on
-// the AppKit main thread.
+// bindings, loads the shared Electron JavaScript module, and lets it resolve and
+// execute the application's unmodified package entry point. The Node/libuv
+// loop is kept on the AppKit main thread.
 int RunMainProcess(const MainProcessOptions& options);
 
 }  // namespace mini_electron::electron

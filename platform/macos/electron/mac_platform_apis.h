@@ -13,6 +13,9 @@ namespace mini_electron::electron {
 // Adds AppKit implementations for the Electron linked bindings that cannot use
 // the Win32 browser API sources.
 void InstallMacPlatformApiBindings(node::Environment* environment);
+// Releases V8 handles and AppKit observers held by those bindings; called
+// before the main isolate is disposed.
+void ShutdownMacPlatformApiBindings();
 
 }  // namespace mini_electron::electron
 

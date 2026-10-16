@@ -39,6 +39,20 @@ void AppendUnique(std::vector<std::u16string>* formats,
     formats->push_back(std::move(value));
 }
 
+NSPasteboardType PasteboardType(const std::string& format) {
+  if (format == "text/plain")
+    return NSPasteboardTypeString;
+  if (format == "text/html")
+    return NSPasteboardTypeHTML;
+  if (format == "text/rtf")
+    return NSPasteboardTypeRTF;
+  if (format == "image/png")
+    return NSPasteboardTypePNG;
+  if (format == "text/uri-list")
+    return NSPasteboardTypeURL;
+  return [NSString stringWithUTF8String:format.c_str()] ?: @"";
+}
+
 }  // namespace
 
 uint64_t ClipboardSequenceNumber() {
@@ -120,24 +134,98 @@ std::vector<std::u16string> AvailableClipboardFormats() {
   }
 }
 
-bool WriteClipboard(const std::u16string* text,
-                    const std::vector<uint8_t>* png) {
+bool ClipboardHasFormat(const std::string& format) {
   @autoreleasepool {
-    if (!text && (!png || png->empty()))
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    NSPasteboardType type = PasteboardType(format);
+    if (type.length == 0)
       return false;
+    NSMutableArray<NSPasteboardType>* types = [NSMutableArray arrayWithObject:type];
+    if ([type isEqualToString:NSPasteboardTypePNG])
+      [types addObject:NSPasteboardTypeTIFF];
+    if ([type isEqualToString:NSPasteboardTypeURL])
+      [types addObject:NSPasteboardTypeFileURL];
+    return [pasteboard availableTypeFromArray:types] != nil;
+  }
+}
+
+std::string ReadClipboardData(const std::string& format) {
+  @autoreleasepool {
+    NSPasteboardType type = PasteboardType(format);
+    if (type.length == 0)
+      return {};
+    NSData* data = [[NSPasteboard generalPasteboard] dataForType:type];
+    if (!data)
+      return {};
+    return std::string(static_cast<const char*>(data.bytes), data.length);
+  }
+}
+
+std::string ReadClipboardRtf() {
+  return ReadClipboardData("text/rtf");
+}
+
+void ReadClipboardBookmark(std::u16string* title, std::string* url) {
+  @autoreleasepool {
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    NSString* address = [pasteboard stringForType:NSPasteboardTypeURL];
+    *title = ToUTF16([pasteboard stringForType:@"public.url-name"]);
+    *url = address.UTF8String ?: "";
+  }
+}
+
+bool WriteClipboard(const ClipboardContent& content) {
+  @autoreleasepool {
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
     NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
-    if (text && ![item setString:FromUTF16(*text)
-                        forType:NSPasteboardTypeString]) {
+    if (content.text &&
+        ![item setString:FromUTF16(*content.text)
+                 forType:NSPasteboardTypeString]) {
       return false;
     }
-    if (png && !png->empty()) {
-      NSData* image = [NSData dataWithBytes:png->data() length:png->size()];
+    if (content.html &&
+        ![item setString:FromUTF16(*content.html) forType:NSPasteboardTypeHTML]) {
+      return false;
+    }
+    if (content.rtf) {
+      NSData* rtf = [NSData dataWithBytes:content.rtf->data()
+                                   length:content.rtf->size()];
+      if (![item setData:rtf forType:NSPasteboardTypeRTF])
+        return false;
+    }
+    if (content.bookmark_title && content.bookmark_url) {
+      NSString* url =
+          [NSString stringWithUTF8String:content.bookmark_url->c_str()] ?: @"";
+      if (![item setString:url forType:NSPasteboardTypeURL] ||
+          ![item setString:FromUTF16(*content.bookmark_title)
+                   forType:@"public.url-name"]) {
+        return false;
+      }
+      if (!content.text && ![item setString:url forType:NSPasteboardTypeString])
+        return false;
+    }
+    if (content.png && !content.png->empty()) {
+      NSData* image = [NSData dataWithBytes:content.png->data()
+                                     length:content.png->size()];
       if (![item setData:image forType:NSPasteboardTypePNG])
         return false;
     }
+    return item.types.count == 0 || [pasteboard writeObjects:@[ item ]];
+  }
+}
+
+bool WriteClipboardData(const std::string& format,
+                        const std::vector<uint8_t>& data) {
+  @autoreleasepool {
+    NSPasteboardType type = PasteboardType(format);
+    if (type.length == 0)
+      return false;
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard clearContents];
-    return [pasteboard writeObjects:@[ item ]];
+    return [pasteboard setData:[NSData dataWithBytes:data.data()
+                                              length:data.size()]
+                       forType:type];
   }
 }
 

@@ -196,7 +196,8 @@ public:
     bool ShareFrameBufferWith(RendererClient& target,
         int guest_contents_id) const override
     {
-        auto* target_impl = dynamic_cast<RendererClientImpl*>(&target);
+        // RendererClientImpl is the only RendererClient implementation.
+        auto* target_impl = static_cast<RendererClientImpl*>(&target);
         if (!target_impl || guest_contents_id <= 0 || !IsAlive() || !target_impl->IsAlive())
             return false;
         std::string error;

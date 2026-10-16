@@ -5,6 +5,7 @@
 #import <UserNotifications/UserNotifications.h>
 
 #include "platform/macos/electron/desktop_api_mac.h"
+#include "platform/macos/electron/mac_electron_bindings.h"
 
 #include <map>
 #include <mutex>
@@ -17,6 +18,48 @@ extern "C" void _register_electron_common_nativeImage();
 extern "C" void _register_electron_common_clipboard();
 extern "C" void _register_electron_browser_notification();
 extern "C" void _register_electron_browser_native_theme();
+
+namespace mini_electron::mac {
+namespace {
+uint64_t ParseIdentifier(NSString* identifier);
+NotificationCallbacks TakeNotification(uint64_t identifier);
+}  // namespace
+}  // namespace mini_electron::mac
+
+@interface MiniElectronNotificationDelegate
+    : NSObject <UNUserNotificationCenterDelegate>
+@end
+
+@implementation MiniElectronNotificationDelegate
+- (void)userNotificationCenter:(UNUserNotificationCenter*)center
+    willPresentNotification:(UNNotification*)notification
+      withCompletionHandler:(void (^)(UNNotificationPresentationOptions))handler {
+  handler(UNNotificationPresentationOptionBanner |
+          UNNotificationPresentationOptionList |
+          UNNotificationPresentationOptionSound);
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter*)center
+    didReceiveNotificationResponse:(UNNotificationResponse*)response
+             withCompletionHandler:(void (^)(void))handler {
+  const uint64_t identifier = mini_electron::mac::ParseIdentifier(
+      response.notification.request.identifier);
+  mini_electron::mac::NotificationCallbacks callbacks =
+      mini_electron::mac::TakeNotification(identifier);
+  const bool dismissed =
+      [response.actionIdentifier
+          isEqualToString:UNNotificationDismissActionIdentifier];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    mini_electron::electron::RunInMainJavaScriptScope([&] {
+      if (!dismissed && callbacks.clicked)
+        callbacks.clicked();
+      if (callbacks.closed)
+        callbacks.closed();
+    });
+  });
+  handler();
+}
+@end
 
 namespace mini_electron::mac {
 namespace {
@@ -56,40 +99,6 @@ uint64_t ParseIdentifier(NSString* identifier) {
              : 0;
 }
 NSString* const kNotificationCategory = @"mini-electron.notification";
-
-
-@interface MiniElectronNotificationDelegate
-    : NSObject <UNUserNotificationCenterDelegate>
-@end
-
-@implementation MiniElectronNotificationDelegate
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center
-    willPresentNotification:(UNNotification*)notification
-      withCompletionHandler:(void (^)(UNNotificationPresentationOptions))handler {
-  handler(UNNotificationPresentationOptionBanner |
-          UNNotificationPresentationOptionList |
-          UNNotificationPresentationOptionSound);
-}
-
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center
-    didReceiveNotificationResponse:(UNNotificationResponse*)response
-             withCompletionHandler:(void (^)(void))handler {
-  const uint64_t identifier =
-      ParseIdentifier(response.notification.request.identifier);
-  NotificationCallbacks callbacks = TakeNotification(identifier);
-  const bool dismissed =
-      [response.actionIdentifier
-          isEqualToString:UNNotificationDismissActionIdentifier];
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (!dismissed && callbacks.clicked)
-      callbacks.clicked();
-    if (callbacks.closed)
-      callbacks.closed();
-  });
-  handler();
-}
-@end
-
 MiniElectronNotificationDelegate* NotificationDelegate() {
   static MiniElectronNotificationDelegate* delegate;
   static dispatch_once_t once;
@@ -125,7 +134,7 @@ void InitializeDesktopApis(v8::Local<v8::Object> exports,
 
 node::node_module g_desktop_api_module = {
     NODE_MODULE_VERSION,
-    NM_F_LINKED,
+    node::ModuleFlags::kLinked,
     nullptr,
     __FILE__,
     nullptr,
@@ -186,8 +195,10 @@ uint64_t ShowNativeNotification(const std::u16string& title,
           ? ToUTF8(error.localizedDescription)
           : "Notification permission was denied";
       dispatch_async(dispatch_get_main_queue(), ^{
-        if (failed.failed)
-          failed.failed(message);
+        if (failed.failed) {
+          mini_electron::electron::RunInMainJavaScriptScope(
+              [&] { failed.failed(message); });
+        }
       });
       return;
     }
@@ -197,8 +208,10 @@ uint64_t ShowNativeNotification(const std::u16string& title,
         NotificationCallbacks failed = TakeNotification(identifier);
         const std::string message = ToUTF8(add_error.localizedDescription);
         dispatch_async(dispatch_get_main_queue(), ^{
-          if (failed.failed)
-            failed.failed(message);
+          if (failed.failed) {
+            mini_electron::electron::RunInMainJavaScriptScope(
+                [&] { failed.failed(message); });
+          }
         });
         return;
       }
@@ -211,7 +224,7 @@ uint64_t ShowNativeNotification(const std::u16string& title,
             shown = found->second.shown;
         }
         if (shown)
-          shown();
+          mini_electron::electron::RunInMainJavaScriptScope(shown);
       });
     }];
   }];
@@ -259,7 +272,7 @@ uint64_t ObserveNativeTheme(std::function<void()> callback) {
                     current = found->second.second;
                 }
                 if (current)
-                  current();
+                  mini_electron::electron::RunInMainJavaScriptScope(current);
               }];
   g_theme_observers.emplace(identifier,
                             std::make_pair(token, std::move(callback)));

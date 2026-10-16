@@ -127,7 +127,14 @@ RenderThreadImpl::RenderThreadImpl()
     : m_thread("RenderThreadImpl")
     , m_hostThread("HostThread")
 {
+#if BUILDFLAG(IS_MAC)
+    // The engine renders offscreen. A CFRunLoop pump keeps AppKit (and the
+    // NSApplication it would create) out of sandboxed renderer processes;
+    // native hosts that run [NSApp run] still service its common-mode sources.
+    m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::NS_RUNLOOP);
+#else
     m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::UI);
+#endif
     base::PlatformThread::SetName("Mb132UiThread");
 
     ThreadCall::init(nullptr);

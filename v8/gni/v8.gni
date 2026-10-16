@@ -5,8 +5,6 @@
 import("//build/config/chrome_build.gni")
 import("//build/config/compiler/pgo/pgo.gni")
 import("//build/config/gclient_args.gni")
-import("//build/config/ios/config.gni")
-import("//build/config/ios/ios_sdk_overrides.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/v8_target_cpu.gni")
 import("//build_overrides/build.gni")
@@ -74,14 +72,6 @@ declare_args() {
   # at the cost of performance.
   # Sets -DV8_LITE_MODE.
   v8_enable_lite_mode = false
-
-  # iOS executable code pages is in 17.4 SDK. We
-  # use target_os == "ios" here because it isn't equivalent
-  # to is_ios (is_ios is based on host_os).
-  if (target_os == "ios") {
-    # TODO(dtapuska): Change this to an assert.
-    v8_enable_lite_mode = ios_deployment_target != "17.4"
-  }
 
   # Enable the Turbofan compiler.
   # Sets -dV8_ENABLE_TURBOFAN.

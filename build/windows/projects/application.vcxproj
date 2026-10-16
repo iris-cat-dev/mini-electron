@@ -192,7 +192,6 @@
     <ClInclude Include="..\..\..\runtime\electron\common\atom_command_line.h" />
     <ClInclude Include="..\..\..\runtime\electron\common\atom_version.h" />
     <ClInclude Include="..\..\..\runtime\electron\common\chrome_version.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\file_util.h" />
     <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\arguments.h" />
     <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\callback.h" />
     <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\callback_converter.h" />

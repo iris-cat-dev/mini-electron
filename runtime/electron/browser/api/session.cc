@@ -11,7 +11,6 @@
 #include "runtime/electron/browser/api/protocol_interface.h"
 #include "runtime/electron/common/node_register_help.h"
 #include "runtime/electron/common/api/event_emitter.h"
-#include "runtime/electron/common/file_util.h"
 #include "runtime/electron/common/string_util.h"
 #include "runtime/electron/common/id_live_detect.h"
 #include "runtime/electron/common/gin_helper/object_template_builder.h"

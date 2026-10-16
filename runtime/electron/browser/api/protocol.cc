@@ -262,13 +262,11 @@ public:
             data.assign(text.begin(), text.end());
         } else {
             v8::Local<v8::Value> buffer;
-            if (!response.Get("data", &buffer)) {
+            if (!response.Get("data", &buffer) || !node::Buffer::HasInstance(buffer)) {
                 error = -2;
             } else {
-                size_t size = 0;
-                char* bytes = nodeBufferGetData(&buffer, &size);
-                if (size)
-                    data.assign(bytes, bytes + size);
+                const char* bytes = node::Buffer::Data(buffer);
+                data.assign(bytes, bytes + node::Buffer::Length(buffer));
             }
         }
         v8::Local<v8::Value> headerValue;

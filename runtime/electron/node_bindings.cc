@@ -395,14 +395,6 @@ void nodeRunNoWait()
         v8::platform::PumpMessageLoop(s_v8platform, isolate);
 }
 
-char* nodeBufferGetData(void* buf, size_t* len)
-{
-    v8::Local<v8::Value>* val = (v8::Local<v8::Value>*)buf;
-    char* data = node::Buffer::Data(*val);
-    *len = node::Buffer::Length(*val);
-    return data;
-}
-
 std::shared_ptr<v8::TaskRunner> nodePlatformGetForegroundTaskRunner(v8::Isolate* isolate)
 {
     return atom::g_nodeArgc->m_nodeMultiIsolatePlatform->GetForegroundTaskRunner(isolate);

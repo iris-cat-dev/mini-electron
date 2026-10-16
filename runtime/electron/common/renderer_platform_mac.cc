@@ -28,6 +28,7 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "runtime/electron/common/renderer_protocol.h"
+#include "third_party/libcurl/include/curl/curl.h"
 
 extern char** environ;
 
@@ -79,8 +80,10 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     int to_child[2] = { -1, -1 };
     int from_child[2] = { -1, -1 };
     int control[2] = { -1, -1 };
+    // macOS has no AF_UNIX SOCK_SEQPACKET; datagram socketpairs keep the
+    // fixed-size control message boundaries the renderer expects.
     if (::pipe(to_child) || ::pipe(from_child)
-        || ::socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control)) {
+        || ::socketpair(AF_UNIX, SOCK_DGRAM, 0, control)) {
         for (int fd : { to_child[0], to_child[1], from_child[0], from_child[1],
                  control[0], control[1] }) {
             if (fd >= 0)
@@ -105,7 +108,9 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
         }
     }
 
-    std::string shared_name = "/mini-electron-renderer-"
+    // macOS limits POSIX shared memory names to PSHMNAMLEN (31) characters;
+    // the name is unlinked immediately after both descriptors are opened.
+    std::string shared_name = "/me-r-"
         + base::NumberToString(base::RandUint64());
     int frame_fd = ::shm_open(shared_name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0600);
     if (frame_fd < 0) {
@@ -331,6 +336,14 @@ bool EnterRendererSandbox(std::string* error)
         "(global-name \"com.apple.fonts\") "
         "(global-name \"com.apple.coreservices.launchservicesd\") "
         "(global-name \"com.apple.windowserver.active\"))\n";
+    // The system libcurl initializes LibreSSL, which reads
+    // /private/etc/ssl/openssl.cnf and calls exit(1) when that read is denied.
+    // Initialize it before lockdown and keep this reference for the process
+    // lifetime so the loader's own curl_global_init only increments the count.
+    if (::curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
+        *error = "libcurl initialization failed";
+        return false;
+    }
     char* sandbox_error = nullptr;
     if (::sandbox_init(profile.c_str(), 0, &sandbox_error) != 0) {
         *error = sandbox_error ? sandbox_error : "seatbelt initialization failed";

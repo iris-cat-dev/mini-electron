@@ -5,6 +5,7 @@
 #import <objc/runtime.h>
 
 #include "platform/macos/electron/mac_platform_apis.h"
+#include "platform/macos/electron/mac_electron_bindings.h"
 
 #include <algorithm>
 #include <string>
@@ -14,7 +15,12 @@
 #include "runtime/electron/common/api/native_image.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_buffer.h"
+#include "ui/base/idle/idle.h"
 #include "v8.h"
+
+#include <IOKit/ps/IOPowerSources.h>
+#include <IOKit/ps/IOPSKeys.h>
+#include <IOKit/pwr_mgt/IOPM.h>
 
 namespace mini_electron::electron {
 namespace {
@@ -101,11 +107,24 @@ NSImage* ImageFrom(v8::Isolate* isolate, v8::Local<v8::Value> value) {
 }
 
 class MacMenu;
+class MacTray;
+
+}  // namespace
+}  // namespace mini_electron::electron
 
 @interface MiniElectronMenuAction : NSObject
-- (instancetype)initWithMenu:(MacMenu*)menu item:(v8::Local<v8::Object>)item;
+- (instancetype)initWithMenu:(mini_electron::electron::MacMenu*)menu
+                        item:(v8::Local<v8::Object>)item;
 - (void)invoke:(id)sender;
 @end
+
+@interface MiniElectronTrayAction : NSObject
+- (instancetype)initWithTray:(mini_electron::electron::MacTray*)tray;
+- (void)invoke:(id)sender;
+@end
+
+namespace mini_electron::electron {
+namespace {
 
 class MacMenu {
  public:
@@ -196,9 +215,10 @@ class MacMenu {
       if (MacMenu* menu = From(info[0].As<v8::Object>())) NSApp.mainMenu = menu->menu_;
     }
   }
+  // Runs from an AppKit target/action, so the caller enters the main
+  // JavaScript scope first.
   void Invoke(v8::Local<v8::Object> item) {
-    v8::HandleScope scope(isolate_);
-    v8::Local<v8::Context> context = isolate_->GetCurrentContext();
+    v8::Local<v8::Context> context = item->GetCreationContextChecked();
     v8::Local<v8::Value> click = Get(context, item, "click");
     if (!click->IsFunction()) return;
     v8::Local<v8::Value> arguments[] = {
@@ -211,20 +231,28 @@ class MacMenu {
   v8::Isolate* isolate_;
   v8::Global<v8::Object> wrapper_;
 };
+}  // namespace
+}  // namespace mini_electron::electron
 
 @implementation MiniElectronMenuAction {
-  MacMenu* _menu;
+  mini_electron::electron::MacMenu* _menu;
   v8::Global<v8::Object> _item;
   v8::Isolate* _isolate;
 }
-- (instancetype)initWithMenu:(MacMenu*)menu item:(v8::Local<v8::Object>)item {
+- (instancetype)initWithMenu:(mini_electron::electron::MacMenu*)menu
+                        item:(v8::Local<v8::Object>)item {
   self = [super init];
-  if (self) { _menu = menu; _isolate = item->GetIsolate(); _item.Reset(_isolate, item); }
+  if (self) {
+    _menu = menu;
+    _isolate = item->GetIsolate();
+    _item.Reset(_isolate, item);
+  }
   return self;
 }
 - (void)invoke:(id)sender {
-  v8::HandleScope scope(_isolate);
-  _menu->Invoke(_item.Get(_isolate));
+  mini_electron::electron::RunInMainJavaScriptScope(
+      [self] { _menu->Invoke(_item.Get(_isolate)); });
+  (void)sender;
 }
 - (void)dealloc {
   _item.Reset();
@@ -233,6 +261,9 @@ class MacMenu {
 #endif
 }
 @end
+
+namespace mini_electron::electron {
+namespace {
 
 void InitMenu(v8::Local<v8::Object> exports, v8::Local<v8::Value>,
               v8::Local<v8::Context> context, void*) {
@@ -249,11 +280,6 @@ void InitMenu(v8::Local<v8::Object> exports, v8::Local<v8::Value>,
   Set(context, exports, "Menu", constructor);
 }
 
-class MacTray;
-@interface MiniElectronTrayAction : NSObject
-- (instancetype)initWithTray:(MacTray*)tray;
-- (void)invoke:(id)sender;
-@end
 
 class MacTray {
  public:
@@ -303,13 +329,14 @@ class MacTray {
   static void SetCallback(const v8::FunctionCallbackInfo<v8::Value>& info) { if (MacTray* self = From(info.This()); self && info.Length() && info[0]->IsFunction()) self->callback_.Reset(info.GetIsolate(), info[0].As<v8::Function>()); }
   static void SetContext(const v8::FunctionCallbackInfo<v8::Value>&) {}
   void Click(bool right_click) {
-    if (callback_.IsEmpty()) return;
-    v8::HandleScope scope(isolate_);
-    v8::Local<v8::Context> context = isolate_->GetCurrentContext();
-    v8::Local<v8::Value> argument =
-        String(isolate_, right_click ? "right-click" : "click");
-    (void)callback_.Get(isolate_)->Call(
-        context, wrapper_.Get(isolate_), 1, &argument);
+    RunInMainJavaScriptScope([this, right_click] {
+      if (callback_.IsEmpty() || wrapper_.IsEmpty()) return;
+      v8::Local<v8::Object> receiver = wrapper_.Get(isolate_);
+      v8::Local<v8::Value> argument =
+          String(isolate_, right_click ? "right-click" : "click");
+      (void)callback_.Get(isolate_)->Call(receiver->GetCreationContextChecked(),
+                                          receiver, 1, &argument);
+    });
   }
  private:
   v8::Isolate* isolate_;
@@ -318,9 +345,18 @@ class MacTray {
   v8::Global<v8::Object> wrapper_;
   v8::Global<v8::Function> callback_;
 };
+}  // namespace
+}  // namespace mini_electron::electron
 
-@implementation MiniElectronTrayAction { MacTray* _tray; }
-- (instancetype)initWithTray:(MacTray*)tray { self = [super init]; if (self) _tray = tray; return self; }
+@implementation MiniElectronTrayAction {
+  mini_electron::electron::MacTray* _tray;
+}
+- (instancetype)initWithTray:(mini_electron::electron::MacTray*)tray {
+  self = [super init];
+  if (self)
+    _tray = tray;
+  return self;
+}
 - (void)invoke:(id)sender {
   NSEventType type = NSApp.currentEvent.type;
   _tray->Click(type == NSEventTypeRightMouseDown ||
@@ -328,6 +364,9 @@ class MacTray {
   (void)sender;
 }
 @end
+
+namespace mini_electron::electron {
+namespace {
 
 void InitTray(v8::Local<v8::Object> exports, v8::Local<v8::Value>,
               v8::Local<v8::Context> context, void*) {
@@ -571,6 +610,100 @@ void InitScreen(v8::Local<v8::Object> exports, v8::Local<v8::Value>,
   Set(context, exports, "Screen", type->GetFunction(context).ToLocalChecked());
 }
 
+// powerMonitor: system idle state plus NSWorkspace sleep/wake/power-off and
+// screen lock events, emitted on the shared EventEmitter-backed instance.
+v8::Global<v8::Object> g_power_monitor;
+NSMutableArray* g_power_observers = nil;
+
+void EmitPower(const char* name) {
+  RunInMainJavaScriptScope([name] {
+    if (g_power_monitor.IsEmpty())
+      return;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Local<v8::Object> monitor = g_power_monitor.Get(isolate);
+    v8::Local<v8::Context> context = monitor->GetCreationContextChecked();
+    v8::Local<v8::Value> emit = Get(context, monitor, "emit");
+    if (!emit->IsFunction())
+      return;
+    v8::Local<v8::Value> argument = String(isolate, name);
+    (void)emit.As<v8::Function>()->Call(context, monitor, 1, &argument);
+  });
+}
+
+void ObservePower(NSNotificationCenter* center, NSNotificationName name,
+                  const char* event) {
+  id observer = [center addObserverForName:name
+                                    object:nil
+                                     queue:NSOperationQueue.mainQueue
+                                usingBlock:^(NSNotification*) { EmitPower(event); }];
+  [g_power_observers addObject:observer];
+}
+
+void PowerIdleState(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  v8::Isolate* isolate = info.GetIsolate();
+  const int threshold = info.Length()
+      ? info[0]->Int32Value(isolate->GetCurrentContext()).FromMaybe(0)
+      : 0;
+  if (threshold <= 0) {
+    isolate->ThrowException(v8::Exception::TypeError(String(
+        isolate, "Invalid idle threshold, must be greater than 0")));
+    return;
+  }
+  const char* state = "unknown";
+  switch (ui::CalculateIdleState(threshold)) {
+    case ui::IDLE_STATE_ACTIVE: state = "active"; break;
+    case ui::IDLE_STATE_IDLE: state = "idle"; break;
+    case ui::IDLE_STATE_LOCKED: state = "locked"; break;
+    default: break;
+  }
+  info.GetReturnValue().Set(String(isolate, state));
+}
+
+void PowerIdleTime(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  info.GetReturnValue().Set(ui::CalculateIdleTime());
+}
+
+void PowerOnBattery(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  bool on_battery = false;
+  CFTypeRef blob = IOPSCopyPowerSourcesInfo();
+  if (blob) {
+    CFStringRef type = IOPSGetProvidingPowerSourceType(blob);
+    on_battery = type && CFStringCompare(type, CFSTR(kIOPMBatteryPowerKey), 0) ==
+                             kCFCompareEqualTo;
+    CFRelease(blob);
+  }
+  info.GetReturnValue().Set(on_battery);
+}
+
+void PowerNew(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (!info.IsConstructCall())
+    return;
+  g_power_monitor.Reset(info.GetIsolate(), info.This());
+  if (!g_power_observers) {
+    g_power_observers = [[NSMutableArray alloc] init];
+    NSNotificationCenter* workspace = NSWorkspace.sharedWorkspace.notificationCenter;
+    ObservePower(workspace, NSWorkspaceWillSleepNotification, "suspend");
+    ObservePower(workspace, NSWorkspaceDidWakeNotification, "resume");
+    ObservePower(workspace, NSWorkspaceWillPowerOffNotification, "shutdown");
+    NSDistributedNotificationCenter* distributed =
+        NSDistributedNotificationCenter.defaultCenter;
+    ObservePower(distributed, @"com.apple.screenIsLocked", "lock-screen");
+    ObservePower(distributed, @"com.apple.screenIsUnlocked", "unlock-screen");
+  }
+  info.GetReturnValue().Set(info.This());
+}
+
+void InitPowerMonitor(v8::Local<v8::Object> exports, v8::Local<v8::Value>,
+                      v8::Local<v8::Context> context, void*) {
+  v8::Isolate* isolate = context->GetIsolate();
+  v8::Local<v8::FunctionTemplate> type = v8::FunctionTemplate::New(isolate, PowerNew);
+  type->SetClassName(String(isolate, "ApiPowerMonitor"));
+  type->PrototypeTemplate()->Set(isolate, "getSystemIdleState", v8::FunctionTemplate::New(isolate, PowerIdleState));
+  type->PrototypeTemplate()->Set(isolate, "getSystemIdleTime", v8::FunctionTemplate::New(isolate, PowerIdleTime));
+  type->PrototypeTemplate()->Set(isolate, "isOnBatteryPower", v8::FunctionTemplate::New(isolate, PowerOnBattery));
+  Set(context, exports, "ApiPowerMonitor", type->GetFunction(context).ToLocalChecked());
+}
+
 }  // namespace
 
 void InstallMacPlatformApiBindings(node::Environment* environment) {
@@ -579,6 +712,19 @@ void InstallMacPlatformApiBindings(node::Environment* environment) {
   node::AddLinkedBinding(environment, "electron_browser_dialog", InitDialog, nullptr);
   node::AddLinkedBinding(environment, "electron_common_shell", InitShell, nullptr);
   node::AddLinkedBinding(environment, "electron_common_screen", InitScreen, nullptr);
+  node::AddLinkedBinding(environment, "electron_browser_powermonitor", InitPowerMonitor, nullptr);
+}
+
+void ShutdownMacPlatformApiBindings() {
+  for (id observer in g_power_observers) {
+    [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:observer];
+    [NSDistributedNotificationCenter.defaultCenter removeObserver:observer];
+  }
+#if !__has_feature(objc_arc)
+  [g_power_observers release];
+#endif
+  g_power_observers = nil;
+  g_power_monitor.Reset();
 }
 
 }  // namespace mini_electron::electron

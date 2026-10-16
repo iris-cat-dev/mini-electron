@@ -3,8 +3,13 @@
 #define browser_api_WindowInterface_h
 
 #include <v8.h>
+#if defined(_WIN32)
 typedef struct HWND__* HWND;
 typedef struct HMENU__* HMENU;
+#else
+// POSIX hosts use the opaque Win32-shaped handles from platform/posix/win32.
+#include <windows.h>
+#endif
 using NativeWindowHandle = void*;
 
 namespace atom {
@@ -26,7 +31,12 @@ public:
     {
         return reinterpret_cast<NativeWindowHandle>(getHWND());
     }
+#if defined(_WIN32)
     virtual void setNativeMenu(HMENU menu);
+#else
+    // Non-Windows hosts install application menus through their own Menu binding.
+    virtual void setNativeMenu(HMENU) { }
+#endif
     static v8::Local<v8::Value> getFocusedWindow(v8::Isolate* isolate);
     static v8::Local<v8::Value> getFocusedContents(v8::Isolate* isolate);
 

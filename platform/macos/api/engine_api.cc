@@ -4,22 +4,38 @@
 #include "runtime/engine/public/engine_api.h"
 
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <cmath>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
+#include "runtime/engine/bindings/js_value.h"
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/common/live_id_detect.h"
 #include "runtime/engine/common/thread_call.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
+#include "runtime/engine/renderer/renderer_blink_platform_impl.h"
+#include "runtime/network/loader/web_url_loader_internal.h"
+#include "runtime/network/loader/web_url_loader_manager.h"
+#include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/public/web/web_css_origin.h"
+#include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_frame_widget.h"
 #include "runtime/engine/renderer/web_local_frame_client_impl.h"
 #include "third_party/blink/public/web/web_view.h"
+#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_blob.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_element.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_file.h"
+#include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "ui/display/screen_info.h"
 
 
@@ -27,10 +43,31 @@ namespace blink {
 LocalFrame* FromFrameTokenHash(const size_t& frame_token_hash);
 }
 
+namespace {
+// Strings returned through the C API stay valid until the owning WebViewHost
+// finishes its current Blink task and calls content::freeTempCharStrings().
+std::vector<std::unique_ptr<std::string>>& TemporaryStrings() {
+  static std::vector<std::unique_ptr<std::string>> strings;
+  return strings;
+}
+}  // namespace
+
 namespace content {
-void freeTempCharStrings() {}
+void freeTempCharStrings() {
+  TemporaryStrings().clear();
+}
+}  // namespace content
+
+bool checkThreadCallIsValid(const char*) {
+  return true;
 }
 
+const char* createTempCharString(const char* str, size_t length) {
+  if (!str || !length)
+    return "";
+  TemporaryStrings().push_back(std::make_unique<std::string>(str, length));
+  return TemporaryStrings().back()->c_str();
+}
 namespace content {
 void runJsOnBlinkThread(mini_electron_web_view webview_handle,
                         mini_electron_web_frame_handle frame_id,
@@ -426,7 +463,288 @@ void mini_electron_mac_set_storage_paths(mini_electron_web_view handle,
       });
 }
 
+void MINI_ELECTRON_CALL_TYPE mini_electron_call_blink_thread_async(
+    mini_electron_thread_callback callback, void* param1, void* param2) {
+  content::ThreadCall::callBlinkThreadAsync(
+      FROM_HERE, [callback, param1, param2] { callback(param1, param2); });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_call_blink_thread_sync(
+    mini_electron_thread_callback callback, void* param1, void* param2) {
+  content::ThreadCall::callBlinkThreadSync(
+      FROM_HERE, [callback, param1, param2] { callback(param1, param2); });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_wake(mini_electron_web_view) {
+  content::ThreadCall::wake();
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_transparent(
+    mini_electron_web_view handle, BOOL transparent) {
+  if (content::WebViewHost* view = ViewFor(handle))
+    view->setIsTransparent(!!transparent);
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_auto_draw_to_hwnd(
+    mini_electron_web_view handle, BOOL enabled) {
+  if (content::WebViewHost* view = ViewFor(handle))
+    view->setAutoDrawToHwnd(!!enabled);
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_user_agent(
+    mini_electron_web_view, const utf8* user_agent) {
+  if (!user_agent)
+    return;
+  std::string value(user_agent);
+  content::ThreadCall::callBlinkThreadAsync(
+      FROM_HERE, [value = std::move(value)] {
+        static_cast<content::RendererBlinkPlatformImpl*>(
+            blink::Platform::Current())
+            ->setUserAgent(value);
+      });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_set_zoom_factor(
+    mini_electron_web_view handle, float factor) {
+  content::ThreadCall::callBlinkThreadAsyncWithValid(
+      FROM_HERE, handle,
+      [factor](content::WebViewHost* view) { view->setZoomFactor(factor); });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_on_alert_box(
+    mini_electron_web_view handle,
+    mini_electron_alert_box_callback callback,
+    void* parameter) {
+  if (content::WebViewHost* view = ViewFor(handle))
+    view->getClosure().setAlertBoxCallback(callback, parameter);
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_on_confirm_box(
+    mini_electron_web_view handle,
+    mini_electron_confirm_box_callback callback,
+    void* parameter) {
+  if (content::WebViewHost* view = ViewFor(handle))
+    view->getClosure().setConfirmBoxCallback(callback, parameter);
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_on_prompt_box(
+    mini_electron_web_view handle,
+    mini_electron_prompt_box_callback callback,
+    void* parameter) {
+  if (content::WebViewHost* view = ViewFor(handle))
+    view->getClosure().setPromptBoxCallback(callback, parameter);
+}
+
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_is_main_frame(
+    mini_electron_web_view handle, mini_electron_web_frame_handle frame_id) {
+  if (!ViewFor(handle))
+    return FALSE;
+  if (frame_id == reinterpret_cast<mini_electron_web_frame_handle>(-2))
+    return TRUE;
+  blink::LocalFrame* core_frame =
+      blink::FromFrameTokenHash(reinterpret_cast<size_t>(frame_id));
+  blink::WebLocalFrameImpl* frame =
+      core_frame ? blink::WebLocalFrameImpl::FromFrame(core_frame) : nullptr;
+  return frame && frame->View()->MainFrame() == frame;
+}
+
+uint64_t MINI_ELECTRON_CALL_TYPE mini_electron_get_parent_frame_id(
+    mini_electron_web_view handle, mini_electron_web_frame_handle frame_id) {
+  if (!ViewFor(handle) ||
+      frame_id == reinterpret_cast<mini_electron_web_frame_handle>(-2)) {
+    return 0;
+  }
+  blink::LocalFrame* core_frame =
+      blink::FromFrameTokenHash(reinterpret_cast<size_t>(frame_id));
+  blink::WebLocalFrameImpl* frame =
+      core_frame ? blink::WebLocalFrameImpl::FromFrame(core_frame) : nullptr;
+  blink::WebFrame* parent = frame ? frame->Parent() : nullptr;
+  if (!parent || !parent->IsWebLocalFrame())
+    return 0;
+  return static_cast<uint64_t>(
+      content::getFrameIdByWebLocalFrame(parent->ToWebLocalFrame()));
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_insert_css_by_frame_with_result(
+    mini_electron_web_view handle,
+    mini_electron_web_frame_handle frame_id,
+    const utf8* css_text,
+    int css_origin,
+    mini_electron_insert_css_by_frame_result_callback callback,
+    void* parameter) {
+  std::string css(css_text ? css_text : "");
+  content::ThreadCall::callBlinkThreadAsync(
+      FROM_HERE, [handle, frame_id, css = std::move(css), css_origin, callback,
+                  parameter] {
+        blink::WebLocalFrame* frame = nullptr;
+        if (content::WebViewHost* view = ViewFor(handle)) {
+          if (frame_id == reinterpret_cast<mini_electron_web_frame_handle>(-2)) {
+            if (content::WebLocalFrameClientImpl* client = view->getFrameClient())
+              frame = client->getFrame();
+          } else if (blink::LocalFrame* core_frame = blink::FromFrameTokenHash(
+                         reinterpret_cast<size_t>(frame_id))) {
+            frame = blink::WebLocalFrameImpl::FromFrame(core_frame);
+          }
+        }
+        std::string key;
+        if (frame) {
+          key = frame->GetDocument()
+                    .InsertStyleSheet(blink::WebString::FromUTF8(css), nullptr,
+                                      css_origin == 0
+                                          ? blink::WebCssOrigin::kAuthor
+                                          : blink::WebCssOrigin::kUser)
+                    .Utf8();
+        }
+        content::ThreadCall::callUiThreadAsync(
+            FROM_HERE, [handle, key = std::move(key), callback, parameter] {
+              callback(handle, parameter, key.c_str());
+            });
+      });
+}
+
+mini_electron_js_type MINI_ELECTRON_CALL_TYPE mini_electron_get_js_value_type(
+    mini_electron_js_exec_state, mini_electron_js_value value) {
+  auto* bridge = static_cast<mini_electron::engine::JsValueBridge*>(
+      common::LiveIdDetect::get()->getPtrLocked(value));
+  if (!bridge)
+    return kMiniElectronJsTypeUndefined;
+  const mini_electron_js_type type = bridge->getType();
+  common::LiveIdDetect::get()->unlock(value, bridge);
+  return type;
+}
+
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_js_to_boolean(
+    mini_electron_js_exec_state, mini_electron_js_value value) {
+  auto* bridge = static_cast<mini_electron::engine::JsValueBridge*>(
+      common::LiveIdDetect::get()->getPtrLocked(value));
+  if (!bridge)
+    return FALSE;
+  const BOOL result = bridge->getType() == kMiniElectronJsTypeBool
+      ? bridge->getBoolVal()
+      : FALSE;
+  common::LiveIdDetect::get()->unlock(value, bridge);
+  return result;
+}
+
+double MINI_ELECTRON_CALL_TYPE mini_electron_js_to_double(
+    mini_electron_js_exec_state, mini_electron_js_value value) {
+  auto* bridge = static_cast<mini_electron::engine::JsValueBridge*>(
+      common::LiveIdDetect::get()->getPtrLocked(value));
+  if (!bridge)
+    return 0;
+  const double result = bridge->getType() == kMiniElectronJsTypeNumber
+      ? bridge->getDoubleVal()
+      : 0;
+  common::LiveIdDetect::get()->unlock(value, bridge);
+  return result;
+}
+
+const utf8* MINI_ELECTRON_CALL_TYPE mini_electron_js_to_string(
+    mini_electron_js_exec_state, mini_electron_js_value value) {
+  auto* bridge = static_cast<mini_electron::engine::JsValueBridge*>(
+      common::LiveIdDetect::get()->getPtrLocked(value));
+  if (!bridge)
+    return "";
+  std::string result;
+  if (bridge->getType() == kMiniElectronJsTypeString)
+    result = bridge->getStrVal();
+  common::LiveIdDetect::get()->unlock(value, bridge);
+  return createTempCharString(result.c_str(), result.size());
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_net_cancel_request(
+    mini_electron_net_job job) {
+  const int job_id = static_cast<mini_electron::WebURLLoaderInternal*>(job)->m_id;
+  auto cancel = [job_id] {
+    mini_electron::WebURLLoaderManager* manager =
+        mini_electron::WebURLLoaderManager::sharedInstance();
+    mini_electron::AutoLockJob lock(manager, job_id);
+    mini_electron::WebURLLoaderInternal* locked = lock.lock();
+    if (!locked || locked->isCancelled() || locked->m_isEmbedderCanceled)
+      return;
+    locked->m_isEmbedderCanceled = true;
+    if (locked->m_isHoldJobToAsynCommit && !locked->m_isUrlBegining)
+      manager->continueJob(locked);
+  };
+  if (content::ThreadCall::isBlinkThread())
+    cancel();
+  else
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, std::move(cancel));
+}
+
+const char* MINI_ELECTRON_CALL_TYPE mini_electron_net_get_referrer(
+    mini_electron_net_job) {
+  return "";
+}
+
+mini_electron_mem_buf* MINI_ELECTRON_CALL_TYPE mini_electron_create_mem_buf(
+    mini_electron_web_view, void* buffer, size_t length) {
+  if (!buffer || !length)
+    return nullptr;
+  auto* result = static_cast<mini_electron_mem_buf*>(
+      std::malloc(sizeof(mini_electron_mem_buf)));
+  result->unuse = sizeof(mini_electron_mem_buf);
+  result->length = length;
+  result->data = std::malloc(length);
+  std::memcpy(result->data, buffer, length);
+  return result;
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_free_mem_buf(
+    mini_electron_mem_buf* buffer) {
+  if (!buffer)
+    return;
+  std::free(buffer->data);
+  std::free(buffer);
+}
+
 }  // extern "C"
+
+// context_bridge.cc declares these two helpers with C++ linkage.
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_get_context_by_v8_object(
+    void* isolate, void* object, int world_id, v8ContextPtr context_out) {
+  v8::Local<v8::Object>* value = static_cast<v8::Local<v8::Object>*>(object);
+  v8::Local<v8::Context> creation_context;
+  if (!(*value)->GetCreationContext().ToLocal(&creation_context))
+    return FALSE;
+  blink::WebLocalFrame* frame =
+      blink::WebLocalFrame::FrameForContext(creation_context);
+  if (!frame)
+    return FALSE;
+  *static_cast<v8::Local<v8::Context>*>(context_out) = world_id == 0
+      ? frame->MainWorldScriptContext()
+      : frame->GetScriptContextFromWorldId(static_cast<v8::Isolate*>(isolate),
+                                           world_id);
+  return TRUE;
+}
+
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_pass_dom_value_to_other_context(
+    void* value_pointer, void* destination_pointer, void* out_pointer) {
+  v8::Local<v8::Value> value =
+      *static_cast<v8::Local<v8::Value>*>(value_pointer);
+  v8::Local<v8::Context> destination =
+      *static_cast<v8::Local<v8::Context>*>(destination_pointer);
+  v8::Isolate* isolate = destination->GetIsolate();
+  blink::Blob* blob = nullptr;
+  if (blink::V8File::HasInstance(isolate, value))
+    blob = blink::V8File::ToWrappable(isolate, value);
+  else if (blink::V8Blob::HasInstance(isolate, value))
+    blob = blink::V8Blob::ToWrappable(isolate, value);
+  v8::Context::Scope destination_scope(destination);
+  if (blob) {
+    *static_cast<v8::Local<v8::Value>*>(out_pointer) =
+        blob->ToV8(isolate, destination->Global());
+    return TRUE;
+  }
+  blink::Element* element = blink::V8Element::ToWrappable(isolate, value);
+  if (!element)
+    return FALSE;
+  *static_cast<v8::Local<v8::Value>*>(out_pointer) =
+      blink::ToV8Traits<blink::Element>::ToV8(
+          blink::ScriptState::From(isolate, destination), element);
+  return TRUE;
+}
+
 
 void mini_electron_show_window_impl(mini_electron_web_view handle, BOOL show) {
   content::ThreadCall::callBlinkThreadAsyncWithValid(

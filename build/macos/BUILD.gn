@@ -38,6 +38,7 @@ config("mini_electron_engine_config") {
     "MINI_ELECTRON_IMPLEMENTATION=1",
     "INSIDE_BLINK=1",
     "LIBXML_STATIC",
+    "MINI_ELECTRON_DISABLE_DEVTOOLS=1",
     "MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1",
     "LIBXSLT_STATIC",
     "PNG_SET_OPTION_SUPPORTED",
@@ -99,7 +100,7 @@ config("mini_electron_node_config") {
     "CARES_STATICLIB",
     "DISABLE_SINGLE_EXECUTABLE_APPLICATION",
     "HAVE_AMARO=0",
-    "HAVE_INSPECTOR=1",
+    "HAVE_INSPECTOR=0",
     "HAVE_OPENSSL=1",
     "NODE_ARCH=\"arm64\"",
     "NODE_BUNDLED_ZLIB=1",
@@ -123,9 +124,6 @@ config("mini_electron_node_config") {
     "//third_party/libnode/deps/llhttp/include",
     "//third_party/libnode/deps/nbytes/include",
     "//third_party/libnode/deps/ncrypto",
-    "//third_party/libnode/deps/inspector_protocol",
-    "//third_party/libnode/gen",
-    "//third_party/libnode/gen/src",
     "//third_party/libnode/deps/simdjson",
     "//third_party/libnode/deps/simdutf",
     "//third_party/libnode/deps/zstd/lib",
@@ -341,6 +339,7 @@ static_library("mini_electron_libxslt") {
 
 static_library("mini_electron_blink") {
   sources = mini_electron_blink_sources
+  sources += [ "//runtime/engine/common/devtools_disabled.cc" ]
   configs += [ ":mini_electron_engine_config" ]
 }
 
@@ -349,10 +348,18 @@ static_library("mini_electron_chromium") {
   configs += [ ":mini_electron_engine_config" ]
 }
 
+# GN derives object names from source basenames. Chromium's net data-URL
+# parser shares one with the runtime's data-URL loader.
+source_set("mini_electron_net_data_url") {
+  sources = [ "//net/base/data_url.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
 static_library("mini_electron_content") {
   sources = mini_electron_content_sources
   sources += [ "//platform/macos/clipboard_mac.mm" ]
   configs += [ ":mini_electron_engine_config" ]
+  deps = [ ":mini_electron_net_data_url" ]
 }
 
 source_set("mini_electron_blink_mac") {
@@ -394,9 +401,11 @@ source_set("mini_electron_platform_mac") {
     "//skia/ext/convolver_neon.cc",
     "//third_party/blink/renderer/core/editing/commands/smart_replace_cf.cc",
     "//ui/base/cocoa/defaults_utils.mm",
+    "//ui/base/idle/idle_mac.mm",
     "//ui/display/mac/ca_display_link_mac.mm",
     "//ui/display/mac/cv_display_link_mac.mm",
     "//ui/display/mac/display_link_mac.mm",
+    "//ui/gfx/codec/jpeg_codec.cc",
     "//ui/gfx/mac/coordinate_conversion.mm",
     "//ui/gfx/mac/io_surface.cc",
     "//ui/native_theme/native_theme_mac.mm",
@@ -410,6 +419,7 @@ source_set("mini_electron_platform_mac") {
     "CoreFoundation.framework",
     "CoreGraphics.framework",
     "Foundation.framework",
+    "IOKit.framework",
     "IOSurface.framework",
   ]
 }
@@ -513,26 +523,6 @@ executable("mini_electron_browser") {
   ]
 }
 
-action("stage_devtools_frontend") {
-  script = "copy_devtools_frontend.py"
-  _source = "//third_party/devtools-frontend/generated/front_end"
-  _destination = "$root_out_dir/resources/devtools-frontend/front_end"
-  _stamp = "$root_out_dir/resources/devtools-frontend.stamp"
-  _inputs = exec_script(
-      script,
-      [
-        "--source=" + rebase_path(_source, root_build_dir),
-        "--print-inputs",
-      ],
-      "list lines")
-  inputs = [ "//third_party/devtools-frontend/REVISION" ] + _inputs
-  outputs = [ _stamp ]
-  args = [
-    "--source=" + rebase_path(_source, root_build_dir),
-    "--destination=" + rebase_path(_destination, root_build_dir),
-    "--stamp=" + rebase_path(_stamp, root_build_dir),
-  ]
-}
 
 executable("mini_electron") {
   output_name = "mini-electron"
@@ -552,12 +542,12 @@ executable("mini_electron") {
   include_dirs = [
     "//third_party/leveldb",
     "//third_party/leveldb/include",
+    "//third_party/libuv/include",
   ]
   deps = [
     ":mini_electron_engine",
     ":mini_electron_engine_api",
     ":mini_electron_node",
-    ":stage_devtools_frontend",
     "//third_party/Squirrel.Mac-main:squirrel_framework+link",
   ]
   libs = [

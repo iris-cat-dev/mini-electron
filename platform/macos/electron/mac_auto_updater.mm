@@ -6,6 +6,7 @@
 #import <Squirrel/Squirrel.h>
 
 #include "platform/macos/electron/mac_auto_updater.h"
+#include "platform/macos/electron/mac_electron_bindings.h"
 
 #include <string>
 #include <vector>
@@ -104,6 +105,19 @@ void EmitError(NSError* error) {
   Emit("error", 1, &argument);
 }
 
+// Squirrel and ReactiveObjC deliver signal events on arbitrary schedulers.
+// JavaScript is entered only on the main thread, inside the main Environment's
+// callback scope.
+void OnMainJavaScript(void (^block)()) {
+  void (^run)() = ^{
+    RunInMainJavaScriptScope([block] { block(); });
+  };
+  if (NSThread.isMainThread)
+    run();
+  else
+    dispatch_async(dispatch_get_main_queue(), run);
+}
+
 NSDictionary<NSString*, NSString*>* Headers(
     v8::Local<v8::Context> context,
     v8::Local<v8::Value> value) {
@@ -134,15 +148,11 @@ void ReplaceUpdater(NSURLRequest* request,
                     NSDictionary<NSString*, NSString*>* headers) {
   AutoUpdaterState& state = State();
   [state.check dispose];
-  [state.check release];
   state.check = nil;
   [state.availability dispose];
-  [state.availability release];
   state.availability = nil;
   [state.install dispose];
-  [state.install release];
   state.install = nil;
-  [state.updater release];
   state.updater = nil;
   SQRLRequestForDownload request_for_download = ^NSURLRequest*(NSURL* url) {
     NSMutableURLRequest* download = [NSMutableURLRequest requestWithURL:url];
@@ -204,7 +214,6 @@ void SetFeedURL(const v8::FunctionCallbackInfo<v8::Value>& info) {
     return;
   }
   AutoUpdaterState& state = State();
-  [state.feed_url release];
   state.feed_url = [[url absoluteString] copy];
 }
 
@@ -222,10 +231,8 @@ void CheckForUpdates(const v8::FunctionCallbackInfo<v8::Value>& info) {
     return;
   }
   [state.check dispose];
-  [state.check release];
   state.check = nil;
   [state.availability dispose];
-  [state.availability release];
   state.availability = [[[[state.updater
       rac_valuesForKeyPath:@"state" observer:nil]
       filter:^BOOL(NSNumber* value) {
@@ -234,56 +241,49 @@ void CheckForUpdates(const v8::FunctionCallbackInfo<v8::Value>& info) {
       }]
       take:1]
       subscribeNext:^(id) {
-        if (NSThread.isMainThread) {
+        OnMainJavaScript(^{
           Emit("update-available");
-        } else {
-          dispatch_async(dispatch_get_main_queue(), ^{
-            Emit("update-available");
-          });
-        }
+        });
       }];
-  [state.availability retain];
   Emit("checking-for-update");
   __block BOOL found_update = NO;
   RACSignal* signal =
       [state.updater.checkForUpdatesCommand execute:nil];
-  state.check = [[signal
+  state.check = [signal
       subscribeNext:^(SQRLDownloadedUpdate* downloaded) {
         found_update = YES;
         SQRLUpdate* update = downloaded.update;
-        AutoUpdaterState& callback_state = State();
-        if (!callback_state.isolate || callback_state.context.IsEmpty())
-          return;
-        v8::Isolate::Scope isolate_scope(callback_state.isolate);
-        v8::HandleScope handle_scope(callback_state.isolate);
-        v8::Local<v8::Context> context =
-            callback_state.context.Get(callback_state.isolate);
-        v8::Context::Scope context_scope(context);
-        v8::Local<v8::Object> event = v8::Object::New(callback_state.isolate);
-        [callback_state.availability dispose];
-        NSString* date = update.releaseDate
-            ? update.releaseDate.description
-            : @"";
-        v8::Local<v8::Value> arguments[] = {
-            event,
-            String(callback_state.isolate, update.releaseNotes ?: @""),
-            String(callback_state.isolate, update.releaseName ?: @""),
-            String(callback_state.isolate, date),
-            String(callback_state.isolate,
-                   update.updateURL.absoluteString ?: @"")};
-        Emit("update-downloaded", 5, arguments);
+        OnMainJavaScript(^{
+          AutoUpdaterState& callback_state = State();
+          if (!callback_state.isolate)
+            return;
+          [callback_state.availability dispose];
+          NSString* date = update.releaseDate
+              ? update.releaseDate.description
+              : @"";
+          v8::Local<v8::Value> arguments[] = {
+              v8::Object::New(callback_state.isolate),
+              String(callback_state.isolate, update.releaseNotes ?: @""),
+              String(callback_state.isolate, update.releaseName ?: @""),
+              String(callback_state.isolate, date),
+              String(callback_state.isolate,
+                     update.updateURL.absoluteString ?: @"")};
+          Emit("update-downloaded", 5, arguments);
+        });
       }
                error:^(NSError* error) {
-                 AutoUpdaterState& callback_state = State();
-                 [callback_state.availability dispose];
-                 EmitError(error);
+                 OnMainJavaScript(^{
+                   [State().availability dispose];
+                   EmitError(error);
+                 });
                }
            completed:^{
-             AutoUpdaterState& callback_state = State();
-             [callback_state.availability dispose];
-             if (!found_update)
-               Emit("update-not-available");
-           }] retain];
+             OnMainJavaScript(^{
+               [State().availability dispose];
+               if (!found_update)
+                 Emit("update-not-available");
+             });
+           }];
 }
 
 void QuitAndInstall(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -295,13 +295,14 @@ void QuitAndInstall(const v8::FunctionCallbackInfo<v8::Value>& info) {
     return;
   }
   [state.install dispose];
-  [state.install release];
   state.install = nil;
   Emit("before-quit-for-update");
-  state.install = [[[state.updater relaunchToInstallUpdate]
+  state.install = [[state.updater relaunchToInstallUpdate]
       subscribeError:^(NSError* error) {
-        EmitError(error);
-      }] retain];
+        OnMainJavaScript(^{
+          EmitError(error);
+        });
+      }];
 }
 
 void InitAutoUpdater(v8::Local<v8::Object> exports,
@@ -331,17 +332,12 @@ void InstallMacAutoUpdaterBinding(node::Environment* environment) {
 void ShutdownMacAutoUpdaterBinding() {
   AutoUpdaterState& state = State();
   [state.check dispose];
-  [state.check release];
   state.check = nil;
   [state.availability dispose];
-  [state.availability release];
   state.availability = nil;
   [state.install dispose];
-  [state.install release];
   state.install = nil;
-  [state.updater release];
   state.updater = nil;
-  [state.feed_url release];
   state.feed_url = nil;
   state.wrapper.Reset();
   state.context.Reset();

@@ -5,11 +5,13 @@
 
 #include <cstdio>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "base/message_loop/message_pump_type.h"
 #include "base/task/single_thread_task_executor.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
 #include "runtime/electron/common/gin_helper/per_isolate_data.h"
 #include "runtime/electron/common/atom_version.h"
 #include "runtime/electron/common/chrome_version.h"
@@ -18,12 +20,14 @@
 #include "platform/macos/electron/mac_auto_updater.h"
 #include "platform/macos/electron/mac_electron_bindings.h"
 #include "third_party/libnode/src/node.h"
+#include "third_party/libuv/include/uv.h"
 
 extern "C" void _register_electron_common_asar();
 extern "C" void _register_electron_browser_commandline();
 extern "C" void _register_electron_browser_downloaditem();
 extern "C" void _register_electron_browser_protocol();
 extern "C" void _register_electron_browser_session();
+extern "C" void _register_electron_browser_safe_storage();
 extern "C" void _register_electron_browser_webrequest();
 
 namespace mini_electron::electron {
@@ -64,15 +68,30 @@ std::string BrowserBootstrap(const MainProcessOptions& options) {
       "chrome: {value: '" CHROME_VERSION_STRING "'}"
       "});\nObject.defineProperty(process, 'resourcesPath', { configurable: true, value: ";
   source += QuoteJavaScriptString(options.resources_path);
-  source += " });\nrequire(require('path').join(require('path').dirname(";
+  source += " });\nconst filename = require('path').join(require('path').dirname(";
   source += QuoteJavaScriptString(options.browser_module_path);
-  source += "), 'init.js'));\n";
+  source += "), 'init.js');\nrequire('module').createRequire(filename)(filename);\n";
   return source;
 }
 
 void PrintErrors(const char* phase, const std::vector<std::string>& errors) {
   for (const std::string& error : errors)
     std::fprintf(stderr, "mini-electron: %s: %s\n", phase, error.c_str());
+}
+
+// Runs libuv until app.quit()/app.exit()/process.exit() requests shutdown.
+// The AppKit pump handles keep the loop alive like the Windows UI message loop.
+void RunMainLoop(node::MultiIsolatePlatform* platform,
+                 v8::Isolate* isolate,
+                 uv_loop_t* loop) {
+  while (!MacMainLoopExitRequested()) {
+    uv_run(loop, UV_RUN_DEFAULT);
+    if (MacMainLoopExitRequested())
+      break;
+    platform->DrainTasks(isolate);
+    if (!uv_loop_alive(loop))
+      break;
+  }
 }
 
 }  // namespace
@@ -83,7 +102,22 @@ int RunAsNode(int argc, char** argv) {
 }
 
 int RunMainProcess(const MainProcessOptions& options) {
-  std::vector<std::string> initialization_args = {options.executable_path};
+  _register_electron_common_asar();
+  _register_electron_browser_commandline();
+  _register_electron_browser_downloaditem();
+  _register_electron_browser_protocol();
+  _register_electron_browser_safe_storage();
+  _register_electron_browser_session();
+  _register_electron_browser_webrequest();
+  mini_electron::mac::RegisterMacDesktopApiModule();
+  // Linked modules must be registered before node::InitializeOncePerProcess;
+  // afterwards node_module_register treats them as pending dlopen addons.
+  // Same process options as the Windows host: Electron's main process warns
+  // on unhandled rejections instead of crashing, and CommonJS detection stays
+  // off.
+  std::vector<std::string> initialization_args = {
+      options.executable_path, "--no-experimental-detect-module",
+      "--unhandled-rejections=warn"};
   std::shared_ptr<node::InitializationResult> initialization =
       node::InitializeOncePerProcess(
           initialization_args,
@@ -98,19 +132,13 @@ int RunMainProcess(const MainProcessOptions& options) {
     return initialization->exit_code();
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::UI);
+  // Session network/file brokers run blocking work on the Chromium thread
+  // pool, matching the Windows host's main-process lifecycle.
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("mini-electron-main");
 
   std::vector<std::string> process_args = {options.executable_path};
-  if (!options.is_packaged)
-    process_args.push_back(options.application_path);
-  process_args.insert(process_args.end(), options.application_arguments.begin(),
-                      options.application_arguments.end());
-  _register_electron_common_asar();
-  _register_electron_browser_commandline();
-  _register_electron_browser_downloaditem();
-  _register_electron_browser_protocol();
-  _register_electron_browser_session();
-  _register_electron_browser_webrequest();
-  mini_electron::mac::RegisterMacDesktopApiModule();
+  process_args.insert(process_args.end(), options.arguments.begin(),
+                      options.arguments.end());
 
   std::vector<std::string> setup_errors;
   std::unique_ptr<node::CommonEnvironmentSetup> setup =
@@ -119,10 +147,12 @@ int RunMainProcess(const MainProcessOptions& options) {
           initialization->exec_args());
   if (!setup) {
     PrintErrors("Node environment", setup_errors);
+    base::ThreadPoolInstance::Get()->Shutdown();
     node::TearDownOncePerProcess();
     return 1;
   }
 
+  std::optional<int> process_exit;
   const int exit_code = [&]() {
     v8::Isolate* isolate = setup->isolate();
     v8::Locker locker(isolate);
@@ -133,8 +163,6 @@ int RunMainProcess(const MainProcessOptions& options) {
         isolate, setup->array_buffer_allocator().get());
     MacBindingOptions binding_options;
     binding_options.resources_path = options.resources_path;
-    binding_options.application_path = options.application_path;
-    binding_options.is_packaged = options.is_packaged;
     InstallMacElectronBindings(setup->env(), binding_options);
     InstallMacAutoUpdaterBinding(setup->env());
     if (!InstallMacRunLoopIntegration(setup->event_loop())) {
@@ -142,22 +170,30 @@ int RunMainProcess(const MainProcessOptions& options) {
       std::fputs("mini-electron: failed to integrate AppKit and Node event loops\n", stderr);
       return 1;
     }
-    if (node::LoadEnvironment(setup->env(), BrowserBootstrap(options)).IsEmpty()) {
+    // process.exit() has already emitted 'exit'; like the Windows host, stop
+    // the loop and tear down instead of calling exit() mid-JavaScript.
+    node::SetProcessExitHandler(
+        setup->env(), [&](node::Environment* environment, int code) {
+          process_exit = code;
+          ExitMacMainProcess(code);
+          node::Stop(environment);
+        });
+    const bool loaded =
+        !node::LoadEnvironment(setup->env(), BrowserBootstrap(options)).IsEmpty();
+    if (loaded && !process_exit)
+      RunMainLoop(initialization->platform(), isolate, setup->event_loop());
+    else if (!process_exit)
       std::fputs("mini-electron: browser bootstrap failed\n", stderr);
-      ShutdownMacAutoUpdaterBinding();
-      ShutdownMacRunLoopIntegration();
-      node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
-      return 1;
-    }
-    v8::Maybe<int> loop_result = node::SpinEventLoop(setup->env());
-    const int result = loop_result.IsNothing()
-        ? GetMacMainProcessExitCode()
-        : loop_result.FromJust();
+    const int result =
+        process_exit.value_or(loaded ? GetMacMainProcessExitCode() : 1);
+    if (!process_exit)
+      (void)node::EmitProcessExit(setup->env());
     ShutdownMacAutoUpdaterBinding();
     ShutdownMacRunLoopIntegration();
     node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
     return result;
   }();
+  base::ThreadPoolInstance::Get()->Shutdown();
   setup.reset();
   node::TearDownOncePerProcess();
   return exit_code;

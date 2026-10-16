@@ -19,7 +19,6 @@
 #include "runtime/electron/node_bindings.h"
 #include "runtime/electron/common/node_register_help.h"
 #include "runtime/electron/common/api/event_emitter.h"
-#include "runtime/electron/common/file_util.h"
 #include "runtime/electron/common/string_util.h"
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/gin_helper/object_template_builder.h"

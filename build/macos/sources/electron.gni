@@ -18,8 +18,6 @@ mini_electron_mac_host_sources = [
 ]
 
 mini_electron_browser_api_sources = [
-  "//runtime/electron/browser/devtools_gateway.cc",
-  "//runtime/electron/browser/devtools_gateway.h",
   "//runtime/electron/browser/api/command_line.cc",
   "//runtime/electron/browser/api/download_item.cc",
   "//runtime/electron/browser/api/download_item.h",
@@ -27,6 +25,7 @@ mini_electron_browser_api_sources = [
   "//runtime/electron/browser/api/notification.cc",
   "//runtime/electron/browser/api/protocol.cc",
   "//runtime/electron/browser/api/protocol_interface.h",
+  "//runtime/electron/browser/api/safe_storage.cc",
   "//runtime/electron/browser/api/session.cc",
   "//runtime/electron/browser/api/session.h",
   "//runtime/electron/browser/api/web_contents.cc",
@@ -67,6 +66,8 @@ mini_electron_common_api_sources = [
   "//runtime/electron/common/gin_helper/promise.cc",
   "//runtime/electron/common/gin_helper/wrappable.cc",
   "//runtime/electron/common/id_live_detect.cc",
+  "//runtime/electron/common/v8_util.cc",
+  "//runtime/electron/common/v8_util.h",
 ]
 
 mini_electron_renderer_transport_sources = [
@@ -81,14 +82,6 @@ mini_electron_renderer_transport_sources = [
   "//runtime/electron/renderer/api/object_cache.h",
   "//runtime/electron/renderer/sandbox_preload_host.cc",
   "//runtime/electron/renderer/sandbox_preload_host.h",
-  "//runtime/engine/renderer/brokered_file_registry.cc",
-  "//runtime/engine/renderer/brokered_file_registry.h",
-  "//runtime/engine/renderer/renderer_storage_broker.cc",
-  "//runtime/engine/renderer/renderer_storage_broker.h",
-  "//runtime/engine/renderer/renderer_websocket_broker.cc",
-  "//runtime/engine/renderer/renderer_websocket_broker.h",
-  "//runtime/engine/renderer/renderer_permission_broker.cc",
-  "//runtime/engine/renderer/renderer_permission_broker.h",
   "//runtime/electron/common/renderer_platform.h",
   "//runtime/electron/common/renderer_platform_mac.cc",
   "//runtime/electron/common/renderer_protocol.cc",

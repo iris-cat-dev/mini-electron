@@ -1571,6 +1571,7 @@ mini_electron_skia_sources = [
   "//third_party/skia/src/codec/SkJpegCodec.cpp",
   "//third_party/skia/src/codec/SkJpegDecoderMgr.cpp",
   "//third_party/skia/src/codec/SkJpegMetadataDecoderImpl.cpp",
+  "//third_party/skia/src/codec/SkJpegSourceMgr.cpp",
   "//third_party/skia/src/codec/SkJpegUtility.cpp",
   "//third_party/skia/src/codec/SkMaskSwizzler.cpp",
   "//third_party/skia/src/codec/SkParseEncodedOrigin.cpp",

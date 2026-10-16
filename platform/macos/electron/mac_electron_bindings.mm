@@ -40,11 +40,12 @@
 
 namespace mini_electron::electron {
 namespace {
-extern MiniElectronApplicationDelegate* g_application_delegate;
+MiniElectronApplicationDelegate* g_application_delegate = nil;
 
 class MacBrowserWindow;
 void DestroyAllWindows();
 bool CloseAllWindows();
+void RequestMainLoopExit();
 
 struct HostState {
   node::Environment* environment = nullptr;
@@ -59,6 +60,8 @@ struct HostState {
   bool ready = false;
   int exit_code = 0;
   bool quitting = false;
+  bool exiting = false;
+  bool exit_requested = false;
   int next_window_id = 1;
   int single_instance_fd = -1;
   std::string single_instance_notification;
@@ -69,6 +72,35 @@ struct HostState {
 HostState& State() {
   static HostState state;
   return state;
+}
+
+// AppKit delegate and notification callbacks run from the event pump outside
+// any V8 scope. Entering JavaScript from them needs a HandleScope, the main
+// context, and a Node CallbackScope so microtasks and async hooks drain like
+// any other native-to-JS callback.
+class NativeCallbackScope {
+ public:
+  explicit NativeCallbackScope(HostState& state)
+      : handle_scope_(state.isolate),
+        context_scope_(state.context.Get(state.isolate)),
+        callback_scope_(state.isolate,
+                        state.context.Get(state.isolate)->Global(),
+                        {0, 0}) {}
+  NativeCallbackScope(const NativeCallbackScope&) = delete;
+  NativeCallbackScope& operator=(const NativeCallbackScope&) = delete;
+
+ private:
+  v8::HandleScope handle_scope_;
+  v8::Context::Scope context_scope_;
+  node::CallbackScope callback_scope_;
+};
+
+bool CanEnterJavaScript(const HostState& state) {
+  return state.isolate && state.environment && !state.context.IsEmpty();
+}
+
+bool CanEmitAppEvent(const HostState& state) {
+  return CanEnterJavaScript(state) && !state.app.IsEmpty();
 }
 
 v8::Local<v8::String> V8String(v8::Isolate* isolate, const char* value) {
@@ -209,9 +241,7 @@ void RefreshNamedPaths() {
   state.paths["pictures"] = SearchPath(NSPicturesDirectory);
   state.paths["music"] = SearchPath(NSMusicDirectory);
   state.paths["videos"] = SearchPath(NSMoviesDirectory);
-  state.paths["exe"] = State().options.application_path.empty()
-      ? std::string()
-      : [[[NSBundle mainBundle] executablePath] fileSystemRepresentation];
+  state.paths["exe"] = [[[NSBundle mainBundle] executablePath] fileSystemRepresentation];
 }
 
 void AppSetName(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -243,8 +273,10 @@ void AppGetVersion(const v8::FunctionCallbackInfo<v8::Value>& info) {
 }
 
 void AppSetAppPath(const v8::FunctionCallbackInfo<v8::Value>& info) {
-  if (info.Length())
-    State().app_path = Utf8(info.GetIsolate(), info[0]);
+  if (!info.Length())
+    return;
+  State().app_path = Utf8(info.GetIsolate(), info[0]);
+  atom::WebContents::setApplicationRoot(State().app_path);
 }
 
 void AppGetAppPath(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -347,14 +379,8 @@ void AppRequestSingleInstanceLock(
   info.GetReturnValue().Set(acquired);
 }
 
-void AppReleaseSingleInstanceLock(
-    const v8::FunctionCallbackInfo<v8::Value>&) {
+void ReleaseSingleInstanceLock() {
   HostState& state = State();
-  if (state.single_instance_fd < 0)
-    return;
-  flock(state.single_instance_fd, LOCK_UN);
-  close(state.single_instance_fd);
-  state.single_instance_fd = -1;
   if (!state.single_instance_notification.empty()) {
     [[NSDistributedNotificationCenter defaultCenter]
         removeObserver:g_application_delegate
@@ -362,29 +388,44 @@ void AppReleaseSingleInstanceLock(
                 object:nil];
     state.single_instance_notification.clear();
   }
+  if (state.single_instance_fd < 0)
+    return;
+  flock(state.single_instance_fd, LOCK_UN);
+  close(state.single_instance_fd);
+  state.single_instance_fd = -1;
 }
 
-void StopMainEnvironment(int exit_code) {
-  HostState& state = State();
-  state.exit_code = exit_code;
-  if (!state.environment)
-    return;
-  node::Environment* environment = state.environment;
-  state.environment = nullptr;
-  node::Stop(environment);
+void AppReleaseSingleInstanceLock(
+    const v8::FunctionCallbackInfo<v8::Value>&) {
+  ReleaseSingleInstanceLock();
 }
 
 void AppGetExitCode(const v8::FunctionCallbackInfo<v8::Value>& info) {
   info.GetReturnValue().Set(State().exit_code);
 }
 
+// Mirrors App::finishQuit on Windows: 'quit' is emitted once, the main loop
+// stops, and RunMainProcess then emits process 'exit'.
+void FinishQuit(v8::Isolate* isolate, int exit_code, bool force) {
+  HostState& state = State();
+  if (state.exiting)
+    return;
+  state.exiting = true;
+  state.quitting = true;
+  state.exit_code = exit_code;
+  if (force)
+    DestroyAllWindows();
+  EmitCancelableWithValue(AppObject(isolate), "quit",
+                          v8::Integer::New(isolate, exit_code));
+  ReleaseSingleInstanceLock();
+  RequestMainLoopExit();
+}
+
 void AppExit(const v8::FunctionCallbackInfo<v8::Value>& info) {
   int exit_code = 0;
   if (info.Length() && info[0]->IsInt32())
     exit_code = info[0].As<v8::Int32>()->Value();
-  State().quitting = true;
-  DestroyAllWindows();
-  StopMainEnvironment(exit_code);
+  FinishQuit(info.GetIsolate(), exit_code, true);
 }
 
 bool RequestApplicationQuit(v8::Isolate* isolate) {
@@ -399,7 +440,7 @@ bool RequestApplicationQuit(v8::Isolate* isolate) {
     state.quitting = false;
     return false;
   }
-  StopMainEnvironment(0);
+  FinishQuit(isolate, 0, false);
   return true;
 }
 
@@ -407,20 +448,31 @@ void AppQuit(const v8::FunctionCallbackInfo<v8::Value>& info) {
   RequestApplicationQuit(info.GetIsolate());
 }
 
+}  // namespace
+}  // namespace mini_electron::electron
+
+using mini_electron::electron::AppObject;
+using mini_electron::electron::CanEmitAppEvent;
+using mini_electron::electron::CanEnterJavaScript;
+using mini_electron::electron::Emit;
+using mini_electron::electron::EmitCancelableWithValue;
+using mini_electron::electron::HostState;
+using mini_electron::electron::NativeCallbackScope;
+using mini_electron::electron::RequestApplicationQuit;
+using mini_electron::electron::State;
+using mini_electron::electron::V8String;
+
 @interface MiniElectronApplicationDelegate : NSObject <NSApplicationDelegate>
 - (void)secondInstance:(NSNotification*)notification;
 @end
 
-MiniElectronApplicationDelegate* g_application_delegate = nil;
-
 @implementation MiniElectronApplicationDelegate
 - (void)secondInstance:(NSNotification*)notification {
   HostState& state = State();
-  if (!state.isolate || state.app.IsEmpty())
+  if (!CanEmitAppEvent(state))
     return;
-  v8::HandleScope scope(state.isolate);
-  v8::Local<v8::Context> context = state.context.Get(state.isolate);
-  v8::Context::Scope context_scope(context);
+  NativeCallbackScope scope(state);
+  v8::Local<v8::Context> context = state.isolate->GetCurrentContext();
   NSArray<NSString*>* values = notification.userInfo[@"arguments"];
   v8::Local<v8::Array> arguments =
       v8::Array::New(state.isolate, values.count);
@@ -435,11 +487,9 @@ MiniElectronApplicationDelegate* g_application_delegate = nil;
 }
 - (void)applicationDidBecomeActive:(NSNotification*)notification {
   HostState& state = State();
-  if (!state.isolate || state.app.IsEmpty())
+  if (!CanEmitAppEvent(state))
     return;
-  v8::HandleScope scope(state.isolate);
-  v8::Local<v8::Context> context = state.context.Get(state.isolate);
-  v8::Context::Scope context_scope(context);
+  NativeCallbackScope scope(state);
   Emit(AppObject(state.isolate), "activate");
   (void)notification;
 }
@@ -447,10 +497,8 @@ MiniElectronApplicationDelegate* g_application_delegate = nil;
 - (BOOL)applicationShouldHandleReopen:(NSApplication*)application
                     hasVisibleWindows:(BOOL)has_visible_windows {
   HostState& state = State();
-  if (state.isolate && !state.app.IsEmpty()) {
-    v8::HandleScope scope(state.isolate);
-    v8::Local<v8::Context> context = state.context.Get(state.isolate);
-    v8::Context::Scope context_scope(context);
+  if (CanEmitAppEvent(state)) {
+    NativeCallbackScope scope(state);
     v8::Local<v8::Value> argument =
         v8::Boolean::New(state.isolate, has_visible_windows);
     Emit(AppObject(state.isolate), "activate", 1, &argument);
@@ -462,11 +510,9 @@ MiniElectronApplicationDelegate* g_application_delegate = nil;
 - (void)application:(NSApplication*)application
             openURLs:(NSArray<NSURL*>*)urls {
   HostState& state = State();
-  if (!state.isolate || state.app.IsEmpty())
+  if (!CanEmitAppEvent(state))
     return;
-  v8::HandleScope scope(state.isolate);
-  v8::Local<v8::Context> context = state.context.Get(state.isolate);
-  v8::Context::Scope context_scope(context);
+  NativeCallbackScope scope(state);
   for (NSURL* url in urls) {
     const char* text = url.absoluteString.UTF8String;
     EmitCancelableWithValue(
@@ -479,11 +525,9 @@ MiniElectronApplicationDelegate* g_application_delegate = nil;
 - (void)application:(NSApplication*)application
            openFiles:(NSArray<NSString*>*)filenames {
   HostState& state = State();
-  if (!state.isolate || state.app.IsEmpty())
+  if (!CanEmitAppEvent(state))
     return;
-  v8::HandleScope scope(state.isolate);
-  v8::Local<v8::Context> context = state.context.Get(state.isolate);
-  v8::Context::Scope context_scope(context);
+  NativeCallbackScope scope(state);
   for (NSString* filename in filenames) {
     EmitCancelableWithValue(
         AppObject(state.isolate), "open-file",
@@ -495,16 +539,17 @@ MiniElectronApplicationDelegate* g_application_delegate = nil;
 - (NSApplicationTerminateReply)applicationShouldTerminate:
     (NSApplication*)application {
   HostState& state = State();
-  if (!state.isolate || state.app.IsEmpty())
+  if (!CanEmitAppEvent(state))
     return NSTerminateNow;
-  v8::HandleScope scope(state.isolate);
-  v8::Local<v8::Context> context = state.context.Get(state.isolate);
-  v8::Context::Scope context_scope(context);
+  NativeCallbackScope scope(state);
   RequestApplicationQuit(state.isolate);
   (void)application;
   return NSTerminateCancel;
 }
 @end
+
+namespace mini_electron::electron {
+namespace {
 
 void AppGetLoginItemSettings(
     const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -588,9 +633,76 @@ v8::Local<v8::Object> CreateApp(v8::Local<v8::Context> context) {
   return app;
 }
 
+// Anything that presents a WebContents frame in a MiniElectronRendererView.
+class RendererSurfaceHost {
+ public:
+  virtual void Draw(NSRect dirty_rect) = 0;
+  virtual void Resize() = 0;
+  virtual void Focus(bool focused) = 0;
+  virtual bool SendInput(base::Value::Dict event) = 0;
+
+ protected:
+  virtual ~RendererSurfaceHost() = default;
+};
+
+void DrawWebContentsFrame(atom::WebContents* contents, NSView* view,
+                          NSRect dirty_rect);
+void ResizeWebContents(atom::WebContents* contents, NSView* view);
+
+// BrowserView: an extra WebContents composited as a subview of a window's
+// renderer view, positioned in window content (top-left origin) coordinates.
+class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
+                             public atom::WindowInterface,
+                             public atom::WebContentsObserver,
+                             public RendererSurfaceHost {
+ public:
+  MacBrowserView(v8::Isolate* isolate,
+                 v8::Local<v8::Object> wrapper,
+                 const gin_helper::Dictionary& options);
+  ~MacBrowserView() override;
+
+  static void Init(v8::Local<v8::Object> target);
+  static MacBrowserView* FromValue(v8::Local<v8::Value> value);
+
+  bool isClosed() override { return !web_contents_; }
+  void close() override { destroy(); }
+  void destroy() override;
+  v8::Local<v8::Object> getWrapper() override { return wrapper_.Get(isolate()); }
+  int getId() const override { return id_; }
+  atom::WebContents* getWebContents() const override { return web_contents_; }
+  NativeWindowHandle getNativeWindowHandle() const override {
+    return (__bridge void*)view_.window;
+  }
+
+  void onWebContentsDeleted(atom::WebContents* contents) override;
+  void onWebContentsPaint(atom::WebContents*) override;
+
+  void Draw(NSRect dirty_rect) override;
+  void Resize() override;
+  void Focus(bool focused) override;
+  bool SendInput(base::Value::Dict event) override;
+
+  void AttachTo(NSView* parent);
+  void Detach();
+
+  static v8::Persistent<v8::Function> constructor;
+  static gin_helper::WrapperInfo kWrapperInfo;
+
+ private:
+  static void New(const v8::FunctionCallbackInfo<v8::Value>& info);
+  static void GetWebContents(const v8::FunctionCallbackInfo<v8::Value>& info);
+  static void SetBounds(const v8::FunctionCallbackInfo<v8::Value>& info);
+
+  int id_ = 0;
+  NSView* view_ = nil;
+  atom::WebContents* web_contents_ = nullptr;
+  v8::Global<v8::Object> wrapper_;
+};
+
 class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
                                public atom::WindowInterface,
-                               public atom::WebContentsObserver {
+                               public atom::WebContentsObserver,
+                               public RendererSurfaceHost {
  public:
   MacBrowserWindow(v8::Isolate* isolate,
                    v8::Local<v8::Object> wrapper,
@@ -615,11 +727,12 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   void onWebContentsDeleted(atom::WebContents* contents) override;
   void onWebContentsPaint(atom::WebContents*) override;
   void onWebContentsReadyToShow(atom::WebContents*) override;
-  void Draw(NSRect dirty_rect);
-  void Resize();
-  void Focus(bool focused);
-  bool SendInput(base::Value::Dict event);
+  void Draw(NSRect dirty_rect) override;
+  void Resize() override;
+  void Focus(bool focused) override;
+  bool SendInput(base::Value::Dict event) override;
 
+  void ForgetBrowserView(MacBrowserView* view);
   bool RequestClose();
   void DidBecomeKey();
   void DidResignKey();
@@ -671,6 +784,8 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   static void GetFocusedWindow(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void FromWebContents(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void FromId(const v8::FunctionCallbackInfo<v8::Value>& info);
+  static void AddBrowserView(const v8::FunctionCallbackInfo<v8::Value>& info);
+  static void RemoveBrowserView(const v8::FunctionCallbackInfo<v8::Value>& info);
 
   void DestroyNative();
 
@@ -680,13 +795,20 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   NSRect normal_bounds_ = NSZeroRect;
   NSObject<NSWindowDelegate>* delegate_ = nil;
   atom::WebContents* web_contents_ = nullptr;
+  std::vector<MacBrowserView*> browser_views_;
   v8::Global<v8::Object> wrapper_;
   bool closed_ = false;
   bool destroying_ = false;
 };
 
+}  // namespace
+}  // namespace mini_electron::electron
+
+using mini_electron::electron::MacBrowserWindow;
+using mini_electron::electron::RendererSurfaceHost;
+
 @interface MiniElectronRendererView : NSView <NSTextInputClient>
-- (instancetype)initWithFrame:(NSRect)frame owner:(MacBrowserWindow*)owner;
+- (instancetype)initWithFrame:(NSRect)frame owner:(RendererSurfaceHost*)owner;
 @end
 
 @interface MiniElectronWindowDelegate : NSObject <NSWindowDelegate>
@@ -694,11 +816,11 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
 @end
 
 @implementation MiniElectronRendererView {
-  MacBrowserWindow* _owner;
+  RendererSurfaceHost* _owner;
   NSMutableAttributedString* _markedText;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame owner:(MacBrowserWindow*)owner {
+- (instancetype)initWithFrame:(NSRect)frame owner:(RendererSurfaceHost*)owner {
   self = [super initWithFrame:frame];
   if (self) {
     _owner = owner;
@@ -839,11 +961,38 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   if (self) _owner = owner;
   return self;
 }
-- (BOOL)windowShouldClose:(NSWindow*)sender { return _owner->RequestClose(); }
-- (void)windowDidBecomeKey:(NSNotification*)notification { _owner->DidBecomeKey(); }
-- (void)windowDidResignKey:(NSNotification*)notification { _owner->DidResignKey(); }
-- (void)windowDidResize:(NSNotification*)notification { _owner->DidResize(); }
+- (BOOL)windowShouldClose:(NSWindow*)sender {
+  HostState& state = State();
+  if (!CanEnterJavaScript(state))
+    return YES;
+  NativeCallbackScope scope(state);
+  return _owner->RequestClose();
+}
+- (void)windowDidBecomeKey:(NSNotification*)notification {
+  HostState& state = State();
+  if (!CanEnterJavaScript(state))
+    return;
+  NativeCallbackScope scope(state);
+  _owner->DidBecomeKey();
+}
+- (void)windowDidResignKey:(NSNotification*)notification {
+  HostState& state = State();
+  if (!CanEnterJavaScript(state))
+    return;
+  NativeCallbackScope scope(state);
+  _owner->DidResignKey();
+}
+- (void)windowDidResize:(NSNotification*)notification {
+  HostState& state = State();
+  if (!CanEnterJavaScript(state))
+    return;
+  NativeCallbackScope scope(state);
+  _owner->DidResize();
+}
 @end
+
+namespace mini_electron::electron {
+namespace {
 
 v8::Persistent<v8::Function> MacBrowserWindow::constructor;
 gin_helper::WrapperInfo MacBrowserWindow::kWrapperInfo = {
@@ -977,6 +1126,9 @@ void MacBrowserWindow::DestroyNative() {
     web_contents_->destroyed();
     web_contents_ = nullptr;
   }
+  for (MacBrowserView* view : browser_views_)
+    view->Detach();
+  browser_views_.clear();
   NSWindow* window = window_;
   MiniElectronWindowDelegate* delegate = delegate_;
   MiniElectronRendererView* renderer_view = renderer_view_;
@@ -1027,13 +1179,14 @@ void MacBrowserWindow::onWebContentsReadyToShow(atom::WebContents*) {
   Emit(getWrapper(), "ready-to-show");
 }
 
-void MacBrowserWindow::Draw(NSRect dirty_rect) {
+void DrawWebContentsFrame(atom::WebContents* contents, NSView* view,
+                          NSRect dirty_rect) {
   [[NSColor colorWithRed:0.047 green:0.067 blue:0.106 alpha:1.0] setFill];
   NSRectFill(dirty_rect);
-  if (!web_contents_)
+  if (!contents || !view)
     return;
   atom::RendererFrameSnapshot frame;
-  if (!web_contents_->copyFrame(&frame) || frame.rgba.empty() || frame.width <= 0 ||
+  if (!contents->copyFrame(&frame) || frame.rgba.empty() || frame.width <= 0 ||
       frame.height <= 0 || frame.stride <= 0) {
     return;
   }
@@ -1046,11 +1199,11 @@ void MacBrowserWindow::Draw(NSRect dirty_rect) {
       nullptr, false, kCGRenderingIntentDefault);
   CGContextRef context = NSGraphicsContext.currentContext.CGContext;
   CGContextSaveGState(context);
-  CGContextTranslateCTM(context, 0, renderer_view_.bounds.size.height);
+  CGContextTranslateCTM(context, 0, view.bounds.size.height);
   CGContextScaleCTM(context, 1, -1);
   CGContextDrawImage(context,
-                     CGRectMake(0, 0, renderer_view_.bounds.size.width,
-                                renderer_view_.bounds.size.height),
+                     CGRectMake(0, 0, view.bounds.size.width,
+                                view.bounds.size.height),
                      image);
   CGContextRestoreGState(context);
   CGImageRelease(image);
@@ -1058,14 +1211,204 @@ void MacBrowserWindow::Draw(NSRect dirty_rect) {
   CGDataProviderRelease(provider);
 }
 
-void MacBrowserWindow::Resize() {
-  if (!web_contents_ || !renderer_view_)
+void ResizeWebContents(atom::WebContents* contents, NSView* view) {
+  if (!contents || !view)
     return;
-  NSSize size = renderer_view_.bounds.size;
-  const double scale = window_ ? window_.backingScaleFactor : 1.0;
-  web_contents_->resize(std::max(1, static_cast<int>(std::lround(size.width))),
-                        std::max(1, static_cast<int>(std::lround(size.height))),
-                        scale);
+  NSSize size = view.bounds.size;
+  const double scale = view.window ? view.window.backingScaleFactor
+                                   : NSScreen.mainScreen.backingScaleFactor;
+  contents->resize(std::max(1, static_cast<int>(std::lround(size.width))),
+                   std::max(1, static_cast<int>(std::lround(size.height))),
+                   scale);
+}
+
+void MacBrowserWindow::Draw(NSRect dirty_rect) {
+  DrawWebContentsFrame(web_contents_, renderer_view_, dirty_rect);
+}
+
+void MacBrowserWindow::Resize() {
+  ResizeWebContents(web_contents_, renderer_view_);
+}
+
+v8::Persistent<v8::Function> MacBrowserView::constructor;
+gin_helper::WrapperInfo MacBrowserView::kWrapperInfo = {
+    gin_helper::GinEmbedder::kEmbedderNativeGin};
+
+MacBrowserView::MacBrowserView(v8::Isolate* isolate,
+                               v8::Local<v8::Object> wrapper,
+                               const gin_helper::Dictionary& options) {
+  gin_helper::Wrappable<MacBrowserView>::InitWith(isolate, wrapper);
+  wrapper_.Reset(isolate, wrapper);
+  id_ = State().next_window_id++;
+  view_ = [[MiniElectronRendererView alloc]
+      initWithFrame:NSMakeRect(0, 0, 1, 1) owner:this];
+  gin_helper::Dictionary web_preferences =
+      gin_helper::Dictionary::CreateEmpty(isolate);
+  options.Get("webPreferences", &web_preferences);
+  web_contents_ = atom::WebContents::create(isolate, web_preferences, this);
+  if (web_contents_) {
+    web_contents_->addObserver(this);
+    Resize();
+  }
+}
+
+MacBrowserView::~MacBrowserView() {
+  destroy();
+  wrapper_.Reset();
+}
+
+void MacBrowserView::destroy() {
+  for (MacBrowserWindow* window : State().windows)
+    window->ForgetBrowserView(this);
+  Detach();
+  if (web_contents_) {
+    web_contents_->removeObserver(this);
+    web_contents_->destroyed();
+    web_contents_ = nullptr;
+  }
+  NSView* view = view_;
+  view_ = nil;
+#if !__has_feature(objc_arc)
+  [view release];
+#else
+  (void)view;
+#endif
+}
+
+MacBrowserView* MacBrowserView::FromValue(v8::Local<v8::Value> value) {
+  if (value.IsEmpty() || !value->IsObject())
+    return nullptr;
+  return static_cast<MacBrowserView*>(gin_helper::WrappableBase::GetNativePtr(
+      value.As<v8::Object>(), &kWrapperInfo));
+}
+
+void MacBrowserView::onWebContentsDeleted(atom::WebContents* contents) {
+  if (web_contents_ == contents)
+    web_contents_ = nullptr;
+}
+
+void MacBrowserView::onWebContentsPaint(atom::WebContents*) {
+  [view_ setNeedsDisplay:YES];
+}
+
+void MacBrowserView::Draw(NSRect dirty_rect) {
+  DrawWebContentsFrame(web_contents_, view_, dirty_rect);
+}
+
+void MacBrowserView::Resize() { ResizeWebContents(web_contents_, view_); }
+
+void MacBrowserView::Focus(bool focused) {
+  if (web_contents_)
+    web_contents_->setFocus(focused);
+}
+
+bool MacBrowserView::SendInput(base::Value::Dict event) {
+  return web_contents_ && web_contents_->sendInput(std::move(event));
+}
+
+void MacBrowserView::AttachTo(NSView* parent) {
+  if (!view_ || !parent)
+    return;
+  [parent addSubview:view_ positioned:NSWindowAbove relativeTo:nil];
+  Resize();
+}
+
+void MacBrowserView::Detach() {
+  if (view_.superview)
+    [view_ removeFromSuperview];
+}
+
+void MacBrowserView::New(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (!info.IsConstructCall()) {
+    info.GetIsolate()->ThrowException(v8::Exception::TypeError(
+        V8String(info.GetIsolate(), "BrowserView must be constructed")));
+    return;
+  }
+  gin_helper::Dictionary options =
+      gin_helper::Dictionary::CreateEmpty(info.GetIsolate());
+  if (info.Length() && info[0]->IsObject())
+    options = gin_helper::Dictionary(info.GetIsolate(), info[0].As<v8::Object>());
+  new MacBrowserView(info.GetIsolate(), info.This(), options);
+  info.GetReturnValue().Set(info.This());
+}
+
+void MacBrowserView::GetWebContents(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  MacBrowserView* self = FromValue(info.This());
+  if (self && self->web_contents_)
+    info.GetReturnValue().Set(
+        gin_helper::ConvertToV8(info.GetIsolate(), *self->web_contents_));
+  else
+    info.GetReturnValue().Set(v8::Null(info.GetIsolate()));
+}
+
+// _setBounds(x, y, width, height) in DIPs relative to the window content's
+// top-left corner; the renderer view is flipped, so no conversion is needed.
+void MacBrowserView::SetBounds(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  MacBrowserView* self = FromValue(info.This());
+  if (!self || !self->view_ || info.Length() < 4)
+    return;
+  v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+  double values[4];
+  for (int index = 0; index < 4; ++index)
+    values[index] = info[index]->NumberValue(context).FromMaybe(0);
+  self->view_.frame = NSMakeRect(values[0], values[1], std::max(1.0, values[2]),
+                                 std::max(1.0, values[3]));
+  self->Resize();
+  [self->view_ setNeedsDisplay:YES];
+}
+
+void MacBrowserView::Init(v8::Local<v8::Object> target) {
+  v8::Isolate* isolate = target->GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  if (constructor.IsEmpty()) {
+    v8::Local<v8::FunctionTemplate> type =
+        v8::FunctionTemplate::New(isolate, New);
+    type->SetClassName(V8String(isolate, "BrowserView"));
+    v8::Local<v8::ObjectTemplate> instance = type->InstanceTemplate();
+    instance->SetInternalFieldCount(
+        gin_helper::InternalFields::kNumberOfInternalFields);
+    instance->Set(isolate, "_getWebContents",
+                  v8::FunctionTemplate::New(isolate, GetWebContents));
+    instance->Set(isolate, "_setBounds",
+                  v8::FunctionTemplate::New(isolate, SetBounds));
+    constructor.Reset(isolate, type->GetFunction(context).ToLocalChecked());
+  }
+  SetValue(context, target, "BrowserView", constructor.Get(isolate));
+}
+
+void MacBrowserWindow::ForgetBrowserView(MacBrowserView* view) {
+  browser_views_.erase(
+      std::remove(browser_views_.begin(), browser_views_.end(), view),
+      browser_views_.end());
+}
+
+void MacBrowserWindow::AddBrowserView(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  MacBrowserWindow* self = From(info);
+  MacBrowserView* view = info.Length() ? MacBrowserView::FromValue(info[0]) : nullptr;
+  if (!self || !self->renderer_view_ || !view || !view->getWebContents())
+    return;
+  for (MacBrowserWindow* window : State().windows) {
+    if (window != self)
+      window->ForgetBrowserView(view);
+  }
+  self->ForgetBrowserView(view);
+  self->browser_views_.push_back(view);
+  view->AttachTo(self->renderer_view_);
+}
+
+void MacBrowserWindow::RemoveBrowserView(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  MacBrowserWindow* self = From(info);
+  MacBrowserView* view = info.Length() ? MacBrowserView::FromValue(info[0]) : nullptr;
+  if (!self || !view)
+    return;
+  if (std::find(self->browser_views_.begin(), self->browser_views_.end(), view) ==
+      self->browser_views_.end())
+    return;
+  self->ForgetBrowserView(view);
+  view->Detach();
 }
 
 void MacBrowserWindow::Focus(bool focused) {
@@ -1294,42 +1637,50 @@ void MacBrowserWindow::Init(v8::Local<v8::Object> target) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::FunctionTemplate> type = v8::FunctionTemplate::New(isolate, New);
   type->SetClassName(V8String(isolate, "BrowserWindow"));
-  gin_helper::ObjectTemplateBuilder builder(isolate, type->InstanceTemplate());
-  builder.SetMethod("_getWebContents", &MacBrowserWindow::GetWebContents);
-  builder.SetMethod("close", &MacBrowserWindow::Close);
-  builder.SetMethod("destroy", &MacBrowserWindow::Destroy);
-  builder.SetMethod("show", &MacBrowserWindow::Show);
-  builder.SetMethod("showInactive", &MacBrowserWindow::Show);
-  builder.SetMethod("hide", &MacBrowserWindow::Hide);
-  builder.SetMethod("focus", &MacBrowserWindow::FocusWindow);
-  builder.SetMethod("blur", &MacBrowserWindow::BlurWindow);
-  builder.SetMethod("isFocused", &MacBrowserWindow::IsFocused);
-  builder.SetMethod("isVisible", &MacBrowserWindow::IsVisible);
-  builder.SetMethod("isDestroyed", &MacBrowserWindow::IsDestroyed);
-  builder.SetMethod("maximize", &MacBrowserWindow::Maximize);
-  builder.SetMethod("unmaximize", &MacBrowserWindow::Unmaximize);
-  builder.SetMethod("isMaximized", &MacBrowserWindow::IsMaximized);
-  builder.SetMethod("minimize", &MacBrowserWindow::Minimize);
-  builder.SetMethod("restore", &MacBrowserWindow::Restore);
-  builder.SetMethod("isMinimized", &MacBrowserWindow::IsMinimized);
-  builder.SetMethod("setFullScreen", &MacBrowserWindow::SetFullScreen);
-  builder.SetMethod("isFullScreen", &MacBrowserWindow::IsFullScreen);
-  builder.SetMethod("_setTitle", &MacBrowserWindow::SetTitle);
-  builder.SetMethod("getTitle", &MacBrowserWindow::GetTitle);
-  builder.SetMethod("getBounds", &MacBrowserWindow::GetBounds);
-  builder.SetMethod("setBounds", &MacBrowserWindow::SetBounds);
-  builder.SetMethod("getNormalBounds", &MacBrowserWindow::GetNormalBounds);
-  builder.SetMethod("setPosition", &MacBrowserWindow::SetPosition);
-  builder.SetMethod("setSize", &MacBrowserWindow::SetSize);
-  builder.SetMethod("setMinimumSize", &MacBrowserWindow::SetMinimumSize);
-  builder.SetMethod("setBackgroundColor", &MacBrowserWindow::SetBackgroundColor);
-  builder.SetMethod("setTitleBarOverlay", &MacBrowserWindow::SetTitleBarOverlay);
-  builder.SetMethod("setWindowButtonPosition", &MacBrowserWindow::SetWindowButtonPosition);
-  builder.SetMethod("center", &MacBrowserWindow::Center);
-  builder.SetMethod("setAlwaysOnTop", &MacBrowserWindow::SetAlwaysOnTop);
-  builder.SetMethod("isAlwaysOnTop", &MacBrowserWindow::IsAlwaysOnTop);
-  builder.SetMethod("setDocumentEdited", &MacBrowserWindow::SetDocumentEdited);
-  builder.SetMethod("isDocumentEdited", &MacBrowserWindow::IsDocumentEdited);
+  v8::Local<v8::ObjectTemplate> instance = type->InstanceTemplate();
+  instance->SetInternalFieldCount(
+      gin_helper::InternalFields::kNumberOfInternalFields);
+  auto method = [&](const char* name, v8::FunctionCallback callback) {
+    instance->Set(isolate, name, v8::FunctionTemplate::New(isolate, callback));
+  };
+  method("_getWebContents", &MacBrowserWindow::GetWebContents);
+  method("close", &MacBrowserWindow::Close);
+  method("destroy", &MacBrowserWindow::Destroy);
+  method("show", &MacBrowserWindow::Show);
+  method("showInactive", &MacBrowserWindow::Show);
+  method("hide", &MacBrowserWindow::Hide);
+  method("focus", &MacBrowserWindow::FocusWindow);
+  method("blur", &MacBrowserWindow::BlurWindow);
+  method("isFocused", &MacBrowserWindow::IsFocused);
+  method("isVisible", &MacBrowserWindow::IsVisible);
+  method("isDestroyed", &MacBrowserWindow::IsDestroyed);
+  method("maximize", &MacBrowserWindow::Maximize);
+  method("unmaximize", &MacBrowserWindow::Unmaximize);
+  method("isMaximized", &MacBrowserWindow::IsMaximized);
+  method("minimize", &MacBrowserWindow::Minimize);
+  method("restore", &MacBrowserWindow::Restore);
+  method("isMinimized", &MacBrowserWindow::IsMinimized);
+  method("setFullScreen", &MacBrowserWindow::SetFullScreen);
+  method("isFullScreen", &MacBrowserWindow::IsFullScreen);
+  method("_setTitle", &MacBrowserWindow::SetTitle);
+  method("getTitle", &MacBrowserWindow::GetTitle);
+  method("getBounds", &MacBrowserWindow::GetBounds);
+  method("setBounds", &MacBrowserWindow::SetBounds);
+  method("getNormalBounds", &MacBrowserWindow::GetNormalBounds);
+  method("setPosition", &MacBrowserWindow::SetPosition);
+  method("setSize", &MacBrowserWindow::SetSize);
+  method("setMinimumSize", &MacBrowserWindow::SetMinimumSize);
+  method("setBackgroundColor", &MacBrowserWindow::SetBackgroundColor);
+  method("setTitleBarOverlay", &MacBrowserWindow::SetTitleBarOverlay);
+  method("setWindowButtonPosition", &MacBrowserWindow::SetWindowButtonPosition);
+  method("center", &MacBrowserWindow::Center);
+  method("setAlwaysOnTop", &MacBrowserWindow::SetAlwaysOnTop);
+  method("isAlwaysOnTop", &MacBrowserWindow::IsAlwaysOnTop);
+  method("setDocumentEdited", &MacBrowserWindow::SetDocumentEdited);
+  method("isDocumentEdited", &MacBrowserWindow::IsDocumentEdited);
+  method("setBrowserView", &MacBrowserWindow::AddBrowserView);
+  method("addBrowserView", &MacBrowserWindow::AddBrowserView);
+  method("removeBrowserView", &MacBrowserWindow::RemoveBrowserView);
   v8::Local<v8::Function> function = type->GetFunction(context).ToLocalChecked();
   SetMethod(context, function, "getAllWindows", GetAllWindows);
   SetMethod(context, function, "getFocusedWindow", GetFocusedWindow);
@@ -1361,6 +1712,17 @@ void InitializeBrowserWindow(v8::Local<v8::Object> target,
   MacBrowserWindow::Init(target);
 }
 
+void InitializeBrowserView(v8::Local<v8::Object> target,
+                           v8::Local<v8::Value>,
+                           v8::Local<v8::Context>,
+                           void*) {
+  if (atom::WebContents::s_constructor.IsEmpty()) {
+    v8::Local<v8::Object> ignored = v8::Object::New(target->GetIsolate());
+    atom::WebContents::init(target->GetIsolate(), ignored, State().environment);
+  }
+  MacBrowserView::Init(target);
+}
+
 void InitializeMacHost(v8::Local<v8::Object> target,
                        v8::Local<v8::Value>,
                        v8::Local<v8::Context> context,
@@ -1377,7 +1739,19 @@ void InitializeMacHost(v8::Local<v8::Object> target,
 
 uv_prepare_t* g_prepare = nullptr;
 uv_check_t* g_check = nullptr;
+uv_timer_t* g_wakeup = nullptr;
 uv_loop_t* g_loop = nullptr;
+
+// AppKit events and Chromium tasks do not wake libuv's kqueue. Like the
+// Windows host's pumpNode cadence, bound each poll so the prepare/check pump
+// runs at least this often.
+constexpr uint64_t kPumpIntervalMs = 10;
+
+void RequestMainLoopExit() {
+  State().exit_requested = true;
+  if (g_loop)
+    uv_stop(g_loop);
+}
 
 void PumpAppKit() {
   @autoreleasepool {
@@ -1392,12 +1766,21 @@ void PumpAppKit() {
       [NSApp sendEvent:event];
     }
     [NSApp updateWindows];
-    base::RunLoop().RunUntilIdle();
+    // Chromium tasks (renderer events, replies, timers) emit into JavaScript,
+    // and libuv prepare/check callbacks run without any V8 scope.
+    HostState& state = State();
+    if (CanEnterJavaScript(state)) {
+      NativeCallbackScope scope(state);
+      base::RunLoop().RunUntilIdle();
+    } else {
+      base::RunLoop().RunUntilIdle();
+    }
   }
 }
 
 void PumpPrepare(uv_prepare_t*) { PumpAppKit(); }
 void PumpCheck(uv_check_t*) { PumpAppKit(); }
+void PumpWakeup(uv_timer_t*) {}
 
 }  // namespace
 
@@ -1408,8 +1791,8 @@ void InstallMacElectronBindings(node::Environment* environment,
   state.isolate = node::GetMainContext(environment)->GetIsolate();
   state.context.Reset(state.isolate, node::GetMainContext(environment));
   state.options = options;
-  state.app_path = options.application_path;
-  state.packaged = options.is_packaged;
+  state.app_path.clear();
+  state.packaged = false;
   if (!g_application_delegate) {
     g_application_delegate = [[MiniElectronApplicationDelegate alloc] init];
     NSApp.delegate = g_application_delegate;
@@ -1427,6 +1810,8 @@ void InstallMacElectronBindings(node::Environment* environment,
                          InitializeBrowserWindow, nullptr);
   node::AddLinkedBinding(environment, "electron_browser_web_contents",
                          InitializeWebContents, nullptr);
+  node::AddLinkedBinding(environment, "electron_browser_browserview",
+                         InitializeBrowserView, nullptr);
   InstallMacPlatformApiBindings(environment);
 }
 
@@ -1434,28 +1819,58 @@ int GetMacMainProcessExitCode() {
   return State().exit_code;
 }
 
+bool MacMainLoopExitRequested() {
+  return State().exit_requested;
+}
+
+void ExitMacMainProcess(int exit_code) {
+  HostState& state = State();
+  state.quitting = true;
+  state.exiting = true;
+  state.exit_code = exit_code;
+  DestroyAllWindows();
+  RequestMainLoopExit();
+}
+
+bool RunInMainJavaScriptScope(const std::function<void()>& callback) {
+  HostState& state = State();
+  if (!callback || !CanEnterJavaScript(state))
+    return false;
+  NativeCallbackScope scope(state);
+  callback();
+  return true;
+}
+
 bool InstallMacRunLoopIntegration(uv_loop_s* loop) {
   if (!loop || g_loop)
     return false;
   g_prepare = new uv_prepare_t();
   g_check = new uv_check_t();
+  g_wakeup = new uv_timer_t();
   if (uv_prepare_init(loop, g_prepare) != 0 ||
-      uv_check_init(loop, g_check) != 0) {
+      uv_check_init(loop, g_check) != 0 ||
+      uv_timer_init(loop, g_wakeup) != 0) {
     delete g_prepare;
     delete g_check;
+    delete g_wakeup;
     g_prepare = nullptr;
     g_check = nullptr;
+    g_wakeup = nullptr;
     return false;
   }
   if (uv_prepare_start(g_prepare, PumpPrepare) != 0 ||
-      uv_check_start(g_check, PumpCheck) != 0) {
+      uv_check_start(g_check, PumpCheck) != 0 ||
+      uv_timer_start(g_wakeup, PumpWakeup, kPumpIntervalMs, kPumpIntervalMs) != 0) {
     uv_close(reinterpret_cast<uv_handle_t*>(g_prepare), nullptr);
     uv_close(reinterpret_cast<uv_handle_t*>(g_check), nullptr);
+    uv_close(reinterpret_cast<uv_handle_t*>(g_wakeup), nullptr);
     uv_run(loop, UV_RUN_NOWAIT);
     delete g_prepare;
     delete g_check;
+    delete g_wakeup;
     g_prepare = nullptr;
     g_check = nullptr;
+    g_wakeup = nullptr;
     return false;
   }
   g_loop = loop;
@@ -1465,23 +1880,13 @@ bool InstallMacRunLoopIntegration(uv_loop_s* loop) {
 void ShutdownMacRunLoopIntegration() {
   DestroyAllWindows();
   HostState& state = State();
-  if (!state.single_instance_notification.empty()) {
-    [[NSDistributedNotificationCenter defaultCenter]
-        removeObserver:g_application_delegate
-                  name:NSStringFromUtf8(state.single_instance_notification)
-                object:nil];
-    state.single_instance_notification.clear();
-  }
+  ReleaseSingleInstanceLock();
   NSApp.delegate = nil;
 #if !__has_feature(objc_arc)
   [g_application_delegate release];
 #endif
   g_application_delegate = nil;
-  if (state.single_instance_fd >= 0) {
-    flock(state.single_instance_fd, LOCK_UN);
-    close(state.single_instance_fd);
-    state.single_instance_fd = -1;
-  }
+  ShutdownMacPlatformApiBindings();
   state.app.Reset();
   state.context.Reset();
   state.environment = nullptr;
@@ -1491,13 +1896,17 @@ void ShutdownMacRunLoopIntegration() {
     return;
   uv_prepare_stop(g_prepare);
   uv_check_stop(g_check);
+  uv_timer_stop(g_wakeup);
   uv_close(reinterpret_cast<uv_handle_t*>(g_prepare),
            [](uv_handle_t* handle) { delete reinterpret_cast<uv_prepare_t*>(handle); });
   uv_close(reinterpret_cast<uv_handle_t*>(g_check),
            [](uv_handle_t* handle) { delete reinterpret_cast<uv_check_t*>(handle); });
+  uv_close(reinterpret_cast<uv_handle_t*>(g_wakeup),
+           [](uv_handle_t* handle) { delete reinterpret_cast<uv_timer_t*>(handle); });
   uv_run(g_loop, UV_RUN_NOWAIT);
   g_prepare = nullptr;
   g_check = nullptr;
+  g_wakeup = nullptr;
   g_loop = nullptr;
 }
 

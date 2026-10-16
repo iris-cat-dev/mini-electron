@@ -93,6 +93,9 @@ public:
     static WebContents* fromId(int id);
     static bool sendRendererMessage(int contents_id, const std::string& method,
         base::Value::Dict params);
+    // The packaged/default application directory that renderer file loads may
+    // read. Set by the platform app implementation whenever its app path changes.
+    static void setApplicationRoot(const std::string& path);
 
     WebContents(v8::Isolate*, v8::Local<v8::Object>, const gin_helper::Dictionary&);
     ~WebContents();
