@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/message_loop/message_pump_type.h"
+#include "base/message_loop/message_pump_apple.h"
 #include "base/task/single_thread_task_executor.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "runtime/electron/common/gin_helper/per_isolate_data.h"
@@ -131,7 +131,12 @@ int RunMainProcess(const MainProcessOptions& options) {
   if (initialization->early_return())
     return initialization->exit_code();
 
-  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::UI);
+  // libuv's AppKit integration owns event dispatch. Re-entering NSApp.run for
+  // every RunUntilIdle turn cancels a native control's in-flight mouse gesture
+  // before a later mouse-up can reach it. Drain Chromium tasks through CFRunLoop
+  // instead, without starting/stopping a second application event loop.
+  base::SingleThreadTaskExecutor task_executor(
+      std::make_unique<base::MessagePumpCFRunLoop>());
   // Session network/file brokers run blocking work on the Chromium thread
   // pool, matching the Windows host's main-process lifecycle.
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("mini-electron-main");

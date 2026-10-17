@@ -53,8 +53,8 @@ function createDistribution(directory) {
   fs.writeFileSync(
     path.join(directory, 'version.json'),
     `${JSON.stringify({
-      packageVersion: '0.1.2',
-      runtimeVersion: '0.1.2',
+      packageVersion: '0.1.3',
+      runtimeVersion: '0.1.3',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -135,8 +135,8 @@ const macTargetEnvironment = {
 
 function macVersion(files, links) {
   return {
-    packageVersion: '0.1.2',
-    runtimeVersion: '0.1.2',
+    packageVersion: '0.1.3',
+    runtimeVersion: '0.1.3',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -257,8 +257,8 @@ test('verified offline zip installs through the same contract as release archive
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
   const version = {
-    packageVersion: '0.1.2',
-    runtimeVersion: '0.1.2',
+    packageVersion: '0.1.3',
+    runtimeVersion: '0.1.3',
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -408,8 +408,8 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
     const fixture = packageFixture(t);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
-      packageVersion: '0.1.2',
-      runtimeVersion: '0.1.2',
+      packageVersion: '0.1.3',
+      runtimeVersion: '0.1.3',
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,

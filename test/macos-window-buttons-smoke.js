@@ -1,8 +1,8 @@
 'use strict';
 
-// Requires a source checkout and Xcode. The helper sends real AppKit mouse
-// events through the NSWindow so layout and native button hit testing are both
-// covered; it does not invoke the window actions directly.
+// Requires a source checkout and Xcode. The helper queues AppKit mouse events
+// for the application's native pump, covering layout, hit testing, and callbacks
+// entered from outside JavaScript. It does not invoke window actions directly.
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');

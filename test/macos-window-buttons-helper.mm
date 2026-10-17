@@ -164,23 +164,15 @@ static napi_value Click(napi_env env, napi_callback_info info) {
                                       NSMidY(button.bounds))
                    toView:nil];
   NSApplication* application = [NSApplication sharedApplication];
-  NSEvent* mouse_up = MouseEvent(window, NSEventTypeLeftMouseUp, point);
-  [application postEvent:mouse_up atStart:YES];
-  @try {
-    [window sendEvent:MouseEvent(window, NSEventTypeLeftMouseDown, point)];
-  } @finally {
-    NSEvent* queued = [application
-        nextEventMatchingMask:NSEventMaskLeftMouseUp
-                    untilDate:NSDate.distantPast
-                       inMode:NSDefaultRunLoopMode
-                      dequeue:NO];
-    if (queued == mouse_up) {
-      [application nextEventMatchingMask:NSEventMaskLeftMouseUp
-                               untilDate:NSDate.distantPast
-                                  inMode:NSDefaultRunLoopMode
-                                 dequeue:YES];
-    }
-  }
+  // Return to the native event pump before dispatch. Direct sendEvent: from a
+  // JavaScript callback masks native-to-JS callback and microtask ordering.
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC),
+                 dispatch_get_main_queue(), ^{
+    [application postEvent:MouseEvent(window, NSEventTypeLeftMouseUp, point)
+                  atStart:NO];
+  });
+  [application postEvent:MouseEvent(window, NSEventTypeLeftMouseDown, point)
+                atStart:YES];
 
   napi_value result;
   napi_get_boolean(env, true, &result);
