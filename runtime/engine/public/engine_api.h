@@ -79,6 +79,8 @@ typedef enum {
     MINI_ELECTRON_SHIFT = 0x04,
     MINI_ELECTRON_CONTROL = 0x08,
     MINI_ELECTRON_MBUTTON = 0x10,
+    MINI_ELECTRON_META = 0x20,
+    MINI_ELECTRON_ALT = 0x40,
 } mini_electron_mouse_flags;
 
 typedef enum {
@@ -871,6 +873,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
     ITERATOR1(void, mini_electron_editor_paste, mini_electron_web_view webView, "")                                                                                                      \
     ITERATOR1(void, mini_electron_editor_delete, mini_electron_web_view webView, "")                                                                                                     \
     ITERATOR1(void, mini_electron_editor_undo, mini_electron_web_view webView, "")                                                                                                       \
+    ITERATOR2(void, mini_electron_execute_edit_command, mini_electron_web_view webView, const char* command, "Queues a Blink editing command on the focused frame")                                    \
                                                                                                                                                                \
     ITERATOR5(BOOL, mini_electron_fire_mouse_event, mini_electron_web_view webView, unsigned int message, int x, int y, unsigned int flags, "")                                           \
     ITERATOR4(BOOL, mini_electron_fire_context_menu_event, mini_electron_web_view webView, int x, int y, unsigned int flags, "")                                                           \

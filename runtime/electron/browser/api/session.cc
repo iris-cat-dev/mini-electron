@@ -72,8 +72,11 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #else
-#include <sys/select.h>
+#include <fcntl.h>
 #include <netdb.h>
+#include <sys/select.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 namespace atom {
@@ -919,15 +922,14 @@ private:
     bool SendFrame(CURL* curl, const Outgoing& outgoing)
     {
         size_t offset = 0;
-        unsigned int flags = outgoing.close ? CURLWS_CLOSE
+        const unsigned int flags = outgoing.close ? CURLWS_CLOSE
             : outgoing.binary ? CURLWS_BINARY : CURLWS_TEXT;
         do {
             size_t sent = 0;
             const void* data = outgoing.data.empty()
                 ? nullptr : outgoing.data.data() + offset;
             CURLcode result = curl_ws_send(curl, data,
-                outgoing.data.size() - offset, &sent,
-                static_cast<curl_off_t>(outgoing.data.size()), flags);
+                outgoing.data.size() - offset, &sent, 0, flags);
             if (result == CURLE_AGAIN) {
                 if (!WaitForCurlSocket(curl, false))
                     return false;
@@ -936,7 +938,6 @@ private:
             if (result != CURLE_OK)
                 return false;
             offset += sent;
-            flags = CURLWS_CONT;
         } while (offset < outgoing.data.size());
         return true;
     }
@@ -1042,7 +1043,7 @@ private:
         opened.Set("event", "open");
         curl_header* selected_protocol = nullptr;
         if (curl_easy_header(curl, "Sec-WebSocket-Protocol", 0,
-                CURLH_HEADER, -1, &selected_protocol) == CURLHE_OK
+                CURLH_HEADER | CURLH_1XX, -1, &selected_protocol) == CURLHE_OK
             && selected_protocol && selected_protocol->value) {
             opened.Set("protocol", selected_protocol->value);
         } else {
@@ -1122,10 +1123,11 @@ private:
             }
             if (metadata->flags & CURLWS_PING) {
                 size_t sent = 0;
-                curl_ws_send(curl, buffer, received, &sent,
-                    static_cast<curl_off_t>(received), CURLWS_PONG);
+                curl_ws_send(curl, buffer, received, &sent, 0, CURLWS_PONG);
                 continue;
             }
+            if (metadata->flags & CURLWS_PONG)
+                continue;
             if (incoming.empty())
                 incoming_binary = !!(metadata->flags & CURLWS_BINARY);
             if (received > kMaximumBrokerBodySize - incoming.size()) {
@@ -1136,7 +1138,7 @@ private:
                 break;
             }
             incoming.insert(incoming.end(), buffer, buffer + received);
-            if (metadata->bytesleft == 0) {
+            if (metadata->bytesleft == 0 && !(metadata->flags & CURLWS_CONT)) {
                 base::Value::Dict event;
                 event.Set("event", incoming_binary ? "binary" : "text");
                 if (incoming_binary) {
@@ -2621,37 +2623,66 @@ bool ApiSession::authorizeUploadPaths(int contents_id,
     return true;
 }
 
-std::string ApiSession::authorizeFile(
-    int contentsId, const base::FilePath& path)
+std::string ApiSession::authorizeFile(int contentsId, uint64_t frame_id,
+    uint64_t frame_generation, const base::FilePath& path,
+    int64_t* authorized_size, base::Time* authorized_modified)
 {
     constexpr int64_t kMaximumAuthorizedFileSize =
         std::numeric_limits<int>::max();
     base::FilePath absolute = base::MakeAbsoluteFilePath(path);
     base::FilePath canonical;
-    if (contentsId <= 0 || absolute.empty()
-        || !base::NormalizeFilePath(absolute, &canonical)
-        || !base::PathExists(canonical)
-        || !base::PathIsReadable(canonical)
-        || base::DirectoryExists(canonical)) {
+    if (contentsId <= 0 || !frame_id || !frame_generation || absolute.empty()
+        || !base::NormalizeFilePath(absolute, &canonical)) {
         return std::string();
     }
-    std::optional<int64_t> size = base::GetFileSize(canonical);
-    if (!size || *size < 0 || *size > kMaximumAuthorizedFileSize)
+    std::shared_ptr<base::File> file;
+#if BUILDFLAG(IS_POSIX)
+    const int descriptor = open(canonical.value().c_str(),
+        O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOFOLLOW);
+    struct stat descriptor_info = {};
+    struct stat path_info = {};
+    if (descriptor < 0 || fstat(descriptor, &descriptor_info) != 0
+        || !S_ISREG(descriptor_info.st_mode)
+        || stat(canonical.value().c_str(), &path_info) != 0
+        || descriptor_info.st_dev != path_info.st_dev
+        || descriptor_info.st_ino != path_info.st_ino) {
+        if (descriptor >= 0)
+            close(descriptor);
         return std::string();
+    }
+    file = std::make_shared<base::File>(descriptor);
+#else
+    file = std::make_shared<base::File>(
+        canonical, base::File::FLAG_OPEN | base::File::FLAG_READ);
+#endif
+    base::File::Info info;
+    if (!file->IsValid() || !file->GetInfo(&info) || info.is_directory
+        || info.is_symbolic_link || info.size < 0
+        || info.size > kMaximumAuthorizedFileSize) {
+        return std::string();
+    }
+    if (authorized_size)
+        *authorized_size = info.size;
+    if (authorized_modified)
+        *authorized_modified = info.last_modified;
     base::AutoLock lock(m_brokerLock);
     std::string token;
     do {
         token = base::HexEncode(base::RandBytesAsVector(16));
     } while (m_authorizedFiles.contains(token));
-    m_authorizedFiles[token] = { canonical, *size, contentsId };
+    m_authorizedFiles.emplace(token, AuthorizedFile {
+        canonical, info.size, contentsId, frame_id, frame_generation,
+        std::move(file), info.last_modified });
     return token;
 }
 
 base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
+    uint64_t frame_id, uint64_t frame_generation,
     const std::vector<std::string>& paths, std::string* error)
 {
-    constexpr size_t kMaximumSelectedFiles = 10000;
-    constexpr int64_t kMaximumTotalBytes = 4LL * 1024 * 1024 * 1024;
+    constexpr size_t kMaximumSelectedFiles = 1024;
+    constexpr int64_t kMaximumSelectedFileBytes = 256LL * 1024 * 1024;
+    constexpr int64_t kMaximumTotalBytes = 512LL * 1024 * 1024;
     struct Selection {
         base::FilePath path;
         int64_t size;
@@ -2670,7 +2701,7 @@ base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
             || canonical != absolute || !base::PathIsReadable(canonical)
             || !base::GetFileInfo(canonical, &info) || info.is_directory
             || info.is_symbolic_link || info.size < 0
-            || info.size > std::numeric_limits<int>::max()) {
+            || info.size > kMaximumSelectedFileBytes) {
             return false;
         }
         if (selections.size() == kMaximumSelectedFiles
@@ -2728,8 +2759,15 @@ base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
     }
     base::Value::List files;
     for (const Selection& selection : selections) {
-        std::string token = authorizeFile(contentsId, selection.path);
-        if (token.empty()) {
+        int64_t authorized_size = 0;
+        base::Time authorized_modified;
+        std::string token = authorizeFile(contentsId, frame_id,
+            frame_generation, selection.path, &authorized_size,
+            &authorized_modified);
+        if (token.empty() || authorized_size != selection.size
+            || authorized_modified != selection.modified) {
+            if (!token.empty())
+                revokeFile(token);
             for (const base::Value& file : files) {
                 if (const std::string* granted =
                         file.GetDict().FindString("token")) {
@@ -2753,13 +2791,113 @@ base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
     return files;
 }
 
+base::Value::List ApiSession::authorizeDroppedFiles(int contentsId,
+    uint64_t frame_id, uint64_t frame_generation,
+    const std::vector<std::string>& paths, std::string* error)
+{
+    constexpr size_t kMaximumDroppedFiles = 1024;
+    constexpr size_t kMaximumPathLength = 4096;
+    constexpr int64_t kMaximumDroppedFileBytes = 50LL * 1024 * 1024;
+    constexpr int64_t kMaximumTotalBytes = 256LL * 1024 * 1024;
+    base::Value::List files;
+    std::vector<std::string> granted_tokens;
+    int64_t total_bytes = 0;
+    const auto fail = [&](const char* message) {
+        for (const std::string& token : granted_tokens)
+            revokeFile(token);
+        if (error)
+            *error = message;
+        return base::Value::List();
+    };
+
+    if (contentsId <= 0 || !frame_id || !frame_generation || paths.empty()
+        || paths.size() > kMaximumDroppedFiles) {
+        return fail("Native drag exceeds file count limits");
+    }
+    for (const std::string& raw_path : paths) {
+        if (raw_path.empty() || raw_path.size() > kMaximumPathLength)
+            return fail("Native drag path exceeds platform limits");
+        base::FilePath absolute = base::MakeAbsoluteFilePath(
+            base::FilePath::FromUTF8Unsafe(raw_path));
+        base::FilePath canonical;
+        base::File::Info info;
+        if (absolute.empty() || base::IsLink(absolute)
+            || !base::NormalizeFilePath(absolute, &canonical)
+            || canonical.empty() || !base::PathIsReadable(canonical)
+            || !base::GetFileInfo(canonical, &info)
+            || info.is_symbolic_link) {
+            return fail("Native drag path is unreadable or is a symbolic link");
+        }
+        const std::string canonical_path = canonical.AsUTF8Unsafe();
+        const std::string display_name = canonical.BaseName().AsUTF8Unsafe();
+        if (canonical_path.empty() || canonical_path.size() > kMaximumPathLength
+            || display_name.empty() || display_name.size() > kMaximumPathLength) {
+            return fail("Canonical native drag path exceeds platform limits");
+        }
+
+        base::Value::Dict file;
+        file.Set("name", display_name);
+        file.Set("path", canonical_path);
+        file.Set("directory", info.is_directory);
+        file.Set("lastModified",
+            info.last_modified.InMillisecondsFSinceUnixEpochIgnoringNull());
+        if (info.is_directory) {
+            file.Set("size", 0);
+        } else {
+            if (info.size < 0 || info.size > kMaximumDroppedFileBytes
+                || info.size > kMaximumTotalBytes - total_bytes) {
+                return fail("Native drag exceeds file size limits");
+            }
+            int64_t authorized_size = 0;
+            base::Time authorized_modified;
+            std::string token = authorizeFile(contentsId, frame_id,
+                frame_generation, canonical, &authorized_size,
+                &authorized_modified);
+            if (token.empty())
+                return fail("Native drag file changed before authorization");
+            if (authorized_size > kMaximumDroppedFileBytes
+                || authorized_size > kMaximumTotalBytes - total_bytes) {
+                revokeFile(token);
+                return fail("Native drag exceeds file size limits");
+            }
+            total_bytes += authorized_size;
+            granted_tokens.push_back(token);
+            file.Set("token", std::move(token));
+            file.Set("size", static_cast<int>(authorized_size));
+            file.Set("lastModified",
+                authorized_modified.InMillisecondsFSinceUnixEpochIgnoringNull());
+        }
+        files.Append(std::move(file));
+    }
+    return files;
+}
+
 void ApiSession::revokeFile(const std::string& token)
 {
     base::AutoLock lock(m_brokerLock);
     m_authorizedFiles.erase(token);
 }
 
+void ApiSession::revokeFilesForFrame(int contents_id, uint64_t frame_id,
+    uint64_t frame_generation)
+{
+    base::AutoLock lock(m_brokerLock);
+    for (auto file = m_authorizedFiles.begin();
+         file != m_authorizedFiles.end();) {
+        const AuthorizedFile& authorization = file->second;
+        if (authorization.contents_id == contents_id
+            && authorization.frame_id == frame_id
+            && (!frame_generation
+                || authorization.frame_generation == frame_generation)) {
+            file = m_authorizedFiles.erase(file);
+        } else {
+            ++file;
+        }
+    }
+}
+
 void ApiSession::handleFileBroker(int contentsId,
+    const BrokerFrameContext& frameContext,
     const base::Value::Dict& payload, BrokerReply reply)
 {
     const std::string* operation = payload.FindString("operation");
@@ -2767,6 +2905,30 @@ void ApiSession::handleFileBroker(int contentsId,
         reply({}, "Invalid file broker request");
         return;
     }
+    if (*operation == "revoke") {
+        const base::Value::List* tokens = payload.FindList("tokens");
+        if (!tokens || tokens->size() > 1024) {
+            reply({}, "Invalid file capability revocation");
+            return;
+        }
+        base::AutoLock lock(m_brokerLock);
+        for (const base::Value& value : *tokens) {
+            const std::string* token = value.GetIfString();
+            if (!token || token->empty() || token->size() > 256)
+                continue;
+            auto found = m_authorizedFiles.find(*token);
+            if (found != m_authorizedFiles.end()
+                && found->second.contents_id == contentsId
+                && found->second.frame_id == frameContext.frame_id
+                && found->second.frame_generation
+                    == frameContext.frame_generation) {
+                m_authorizedFiles.erase(found);
+            }
+        }
+        reply({}, {});
+        return;
+    }
+
     if (*operation == "authorize-upload") {
         const std::string* requested_path =
             payload.FindString("requestedPath");
@@ -2792,11 +2954,10 @@ void ApiSession::handleFileBroker(int contentsId,
             if (!--grant->second)
                 m_pendingUploadGrants.erase(grant);
         }
-        std::string token = authorizeFile(contentsId, canonical);
-        std::optional<int64_t> size;
-        if (!token.empty())
-            size = base::GetFileSize(canonical);
-        if (!size || *size > std::numeric_limits<int>::max()) {
+        int64_t size = 0;
+        std::string token = authorizeFile(contentsId, frameContext.frame_id,
+            frameContext.frame_generation, canonical, &size, nullptr);
+        if (token.empty() || size > std::numeric_limits<int>::max()) {
             if (!token.empty())
                 revokeFile(token);
             reply({}, "Authorized upload changed before use");
@@ -2804,7 +2965,7 @@ void ApiSession::handleFileBroker(int contentsId,
         }
         base::Value::Dict result;
         result.Set("token", token);
-        result.Set("size", static_cast<int>(*size));
+        result.Set("size", static_cast<int>(size));
         result.Set("displayName", canonical.BaseName().AsUTF8Unsafe());
         result.Set("path", canonical.AsUTF8Unsafe());
         reply(std::move(result), {});
@@ -2813,53 +2974,95 @@ void ApiSession::handleFileBroker(int contentsId,
     const std::string* token = payload.FindString("token");
     std::optional<int> offsetValue = payload.FindInt("offset");
     std::optional<int> lengthValue = payload.FindInt("length");
-    if (*operation != "read" || !token || !offsetValue || !lengthValue
-        || *offsetValue < 0 || *lengthValue < 0
-        || *lengthValue > 16 * 1024 * 1024) {
+    if (*operation != "read" || !token || !offsetValue || !lengthValue) {
         reply({}, "Invalid file broker request");
         return;
     }
-    base::FilePath path;
+    const bool valid_range = *offsetValue >= 0 && *lengthValue >= 0
+        && *lengthValue <= 16 * 1024 * 1024;
+    std::shared_ptr<base::File> file;
     int64_t authorizedSize = 0;
+    base::Time authorizedModified;
     {
         base::AutoLock lock(m_brokerLock);
         auto found = m_authorizedFiles.find(*token);
         if (found == m_authorizedFiles.end()
-            || found->second.contents_id != contentsId) {
-            reply({}, "File token is not authorized");
+            || found->second.contents_id != contentsId
+            || found->second.frame_id != frameContext.frame_id
+            || found->second.frame_generation
+                != frameContext.frame_generation) {
+            reply({}, "File token is not authorized for this document");
             return;
         }
-        path = found->second.path;
+        if (!valid_range) {
+            m_authorizedFiles.erase(found);
+            reply({}, "Invalid file broker read range");
+            return;
+        }
+        file = found->second.file;
         authorizedSize = found->second.size;
+        authorizedModified = found->second.last_modified;
     }
-    std::optional<int64_t> currentSize = base::GetFileSize(path);
-    int64_t requestedEnd = static_cast<int64_t>(*offsetValue) + *lengthValue;
-    if (!currentSize || *currentSize != authorizedSize ||
-        requestedEnd > authorizedSize) {
-        reply({}, "Authorized file changed or read exceeds its grant");
-        return;
-    }
-    base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-    if (!file.IsValid()) {
-        reply({}, "Authorized file is no longer readable");
-        return;
-    }
-    std::vector<uint8_t> bytes(static_cast<size_t>(*lengthValue));
-    std::optional<size_t> read = file.Read(
-        static_cast<int64_t>(*offsetValue), base::span(bytes));
-    if (!read) {
-        reply({}, "Unable to read authorized file");
-        return;
-    }
-    bytes.resize(*read);
-    base::Value::Dict result;
-    result.Set("data", base::Value(std::move(bytes)));
-    bool eof = static_cast<int64_t>(*offsetValue + *read)
-        >= authorizedSize;
-    result.Set("eof", eof);
-    if (eof)
-        revokeFile(*token);
-    reply(std::move(result), {});
+    const int offset = *offsetValue;
+    const int length = *lengthValue;
+    const std::string token_copy = *token;
+    scoped_refptr<base::SequencedTaskRunner> reply_runner =
+        base::SequencedTaskRunner::GetCurrentDefault();
+    base::WeakPtr<ApiSession> weak_session = m_weakFactory.GetWeakPtr();
+    base::ThreadPool::PostTask(FROM_HERE,
+        { base::MayBlock(), base::TaskPriority::USER_VISIBLE },
+        base::BindOnce(
+            [](std::shared_ptr<base::File> file, int64_t authorized_size,
+                base::Time authorized_modified, int offset, int length,
+                std::string token,
+                scoped_refptr<base::SequencedTaskRunner> reply_runner,
+                base::WeakPtr<ApiSession> weak_session,
+                BrokerReply reply) mutable {
+                base::Value::Dict result;
+                std::string error;
+                bool revoke = false;
+                base::File::Info current_info;
+                const int64_t requested_end =
+                    static_cast<int64_t>(offset) + length;
+                if (!file || !file->IsValid() || !file->GetInfo(&current_info)
+                    || current_info.size != authorized_size
+                    || current_info.last_modified != authorized_modified
+                    || requested_end > authorized_size) {
+                    error = "Authorized file changed or read exceeds its grant";
+                    revoke = true;
+                } else {
+                    std::vector<uint8_t> bytes(static_cast<size_t>(length));
+                    std::optional<size_t> read = file->Read(
+                        static_cast<int64_t>(offset), base::span(bytes));
+                    if (!read) {
+                        error = "Unable to read authorized file";
+                        revoke = true;
+                    } else if (!file->GetInfo(&current_info)
+                        || current_info.size != authorized_size
+                        || current_info.last_modified != authorized_modified) {
+                        error = "Authorized file changed while it was being read";
+                        revoke = true;
+                    } else {
+                        bytes.resize(*read);
+                        result.Set("data", base::Value(std::move(bytes)));
+                        const bool eof = static_cast<int64_t>(offset + *read)
+                            >= authorized_size;
+                        result.Set("eof", eof);
+                        revoke = eof;
+                    }
+                }
+                reply_runner->PostTask(FROM_HERE, base::BindOnce(
+                    [](base::WeakPtr<ApiSession> session, std::string token,
+                        bool revoke, BrokerReply reply,
+                        base::Value::Dict result, std::string error) mutable {
+                        if (revoke && session)
+                            session->revokeFile(token);
+                        reply(std::move(result), std::move(error));
+                    }, std::move(weak_session), std::move(token), revoke,
+                    std::move(reply), std::move(result), std::move(error)));
+            }, std::move(file), authorizedSize, authorizedModified, offset,
+            length, std::move(token_copy), std::move(reply_runner),
+            std::move(weak_session), std::move(reply)));
 }
 
 void ApiSession::handleNetworkBroker(int contentsId,
@@ -3277,11 +3480,11 @@ void ApiSession::handleBrokerRequest(int contentsId,
         handleStorageBroker(
             contentsId, frameContext, payload, std::move(reply));
     } else if (*kind == "file") {
-        if (!frameContext.frame_id) {
-            reply({}, "File request has no authorized frame");
+        if (!frameContext.frame_id || !frameContext.frame_generation) {
+            reply({}, "File request has no authorized document");
             return;
         }
-        handleFileBroker(contentsId, payload, std::move(reply));
+        handleFileBroker(contentsId, frameContext, payload, std::move(reply));
     } else if (*kind == "network") {
         if (!m_protocol)
             m_protocol = ProtocolInterface::inst();

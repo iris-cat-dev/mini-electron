@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <string>
+#include "v8.h"
 
 struct uv_loop_s;
 
@@ -42,6 +43,8 @@ void ShutdownMacRunLoopIntegration();
 // queue blocks, and NSNotification observers run outside any V8 scope and must
 // enter JavaScript through this. Returns false when the Environment is gone.
 bool RunInMainJavaScriptScope(const std::function<void()>& callback);
+// Caller must already be inside the main JavaScript scope.
+v8::Local<v8::Object> GetFocusedBrowserWindow(v8::Isolate* isolate);
 
 }  // namespace mini_electron::electron
 

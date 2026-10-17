@@ -88,6 +88,10 @@ void SandboxPreloadHost::DidCreateScriptContext(mini_electron_web_view view,
     view_ = view;
     if (!main_frame_)
         main_frame_ = frame;
+    if (!frame_id_) {
+        frame_id_ = static_cast<uint64_t>(
+            reinterpret_cast<uintptr_t>(frame));
+    }
     v8::Isolate* isolate = context->GetIsolate();
     isolate_ = isolate;
     if (world_id == WorldIDs::MAIN_WORLD_ID) {
@@ -244,8 +248,10 @@ void SandboxPreloadHost::WebUtilsGetPathForFile(
         ThrowTypeError(info.GetIsolate(), "webUtils.getPathForFile expects a File");
         return;
     }
+    SandboxPreloadHost* self = Self(info);
     std::string path;
-    if (!GetAuthorizedPathForFile(info.GetIsolate()->GetCurrentContext(),
+    if (!self || !GetAuthorizedPathForFile(
+            info.GetIsolate()->GetCurrentContext(), self->frame_id_,
             info[0], &path)) {
         info.GetReturnValue().Set(v8::String::Empty(info.GetIsolate()));
         return;

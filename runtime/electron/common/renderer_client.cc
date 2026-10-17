@@ -55,7 +55,15 @@ public:
         launch.Set("webSecurity", options.web_security);
         launch.Set("allowRunningInsecureContent", options.allow_running_insecure_content);
         launch.Set("transparent", options.transparent);
+        launch.Set("backgroundColor", std::move(options.background_color));
         launch.Set("process", std::move(options.preload_process_metadata));
+        std::string accept_languages;
+        for (const std::string& language : GetPreferredSystemLanguages()) {
+            if (!accept_languages.empty())
+                accept_languages.push_back(',');
+            accept_languages.append(language);
+        }
+        launch.Set("acceptLanguages", std::move(accept_languages));
         base::Value::List preloads;
         for (auto& preload : options.preloads) {
             base::Value::Dict item;
@@ -167,6 +175,8 @@ public:
             uint64_t before = header->generation.load(std::memory_order_acquire);
             if (before & 1)
                 continue;
+            if (before && before == snapshot->generation && !snapshot->rgba.empty())
+                return true;
             const uint32_t width = header->width;
             const uint32_t height = header->height;
             const uint32_t stride = header->stride;
@@ -177,8 +187,9 @@ public:
                 || stride > data_size || height > data_size / stride
                 || sizeof(*header) + data_size > process_.frame_mapping_size)
                 return false;
-            std::vector<uint8_t> pixels(data_size);
-            std::memcpy(pixels.data(), header + 1, data_size);
+            snapshot->generation = 0;
+            snapshot->rgba.resize(data_size);
+            std::memcpy(snapshot->rgba.data(), header + 1, data_size);
             std::atomic_thread_fence(std::memory_order_acquire);
             uint64_t after = header->generation.load(std::memory_order_relaxed);
             if (before != after || (after & 1))
@@ -187,7 +198,6 @@ public:
             snapshot->height = static_cast<int>(height);
             snapshot->stride = static_cast<int>(stride);
             snapshot->generation = after;
-            snapshot->rgba = std::move(pixels);
             return true;
         }
         return false;

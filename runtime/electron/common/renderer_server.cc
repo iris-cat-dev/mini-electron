@@ -23,28 +23,40 @@
 #include <vector>
 
 #include "base/base64.h"
+#include "base/files/file_path.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/time.h"
 #include "runtime/electron/common/world_ids.h"
 #include "build/build_config.h"
 #include "runtime/electron/common/renderer_client.h"
 #include "runtime/electron/common/renderer_platform.h"
 #include "runtime/electron/common/renderer_protocol.h"
 #include "runtime/electron/renderer/sandbox_preload_host.h"
+#include "runtime/engine/api/internal_api.h"
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/common/live_id_detect.h"
 #include "runtime/engine/public/engine_api.h"
+#include "runtime/engine/common/thread_call.h"
+#include "runtime/engine/renderer/platform_event_handler.h"
+#include "ui/events/keycodes/dom/keycode_converter.h"
 #include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "runtime/engine/renderer/renderer_cdp_service.h"
 #endif
 #include "runtime/engine/renderer/brokered_file_registry.h"
+#include "net/base/mime_util.h"
 #include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/common/page/drag_operation.h"
+#include "third_party/blink/public/platform/web_blob_info.h"
+#include "third_party/blink/public/platform/web_drag_data.h"
+#include "third_party/blink/public/web/web_frame_widget.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "base/strings/escape.h"
@@ -56,13 +68,18 @@
 #include "third_party/blink/public/web/web_script_source.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/gfx/geometry/point_f.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkPixmap.h"
 #include "url/gurl.h"
 #include "url/url_util.h"
+#if BUILDFLAG(IS_MAC)
+#include "platform/macos/clipboard_mac.h"
+#endif
 
 #if BUILDFLAG(IS_WIN)
 #include <windows.h>
@@ -157,6 +174,8 @@ struct ServerOptions {
     bool web_security = true;
     bool allow_running_insecure_content = false;
     bool transparent = false;
+    uint32_t background_color = 0xffffffff;
+    std::string accept_languages;
     std::vector<RendererPreload> preloads;
     std::vector<RendererPrivilegedScheme> privileged_schemes;
     base::Value::Dict process_metadata;
@@ -248,6 +267,15 @@ bool ParseOptions(base::Value::Dict launch, ServerOptions* options)
     options->allow_running_insecure_content
         = launch.FindBool("allowRunningInsecureContent").value_or(false);
     options->transparent = launch.FindBool("transparent").value_or(false);
+    if (const std::string* color = launch.FindString("backgroundColor")) {
+        unsigned rgb = 0;
+        if (color->size() == 7 && (*color)[0] == '#'
+            && std::string_view(*color).substr(1).find_first_not_of("0123456789abcdefABCDEF") == std::string_view::npos
+            && base::HexStringToUInt(std::string_view(*color).substr(1), &rgb))
+            options->background_color = 0xff000000u | rgb;
+    }
+    if (const std::string* languages = launch.FindString("acceptLanguages"))
+        options->accept_languages = *languages;
     if (base::Value::Dict* process = launch.FindDict("process"))
         options->process_metadata = process->Clone();
     if (base::Value::List* preloads = launch.FindList("preloads")) {
@@ -311,6 +339,9 @@ public:
     ~RendererServerImpl()
     {
         content::SetRendererStorageBroker({});
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetRendererClipboardBroker({});
+#endif
         content::SetRendererPermissionBroker({});
         StopControlThread();
         if (reader_.joinable())
@@ -366,8 +397,22 @@ public:
                     failure_reply({}, "storage broker channel is closed");
                 }
             });
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetRendererClipboardBroker(
+            [this](base::Value::Dict payload, base::Value::Dict* result) {
+                payload.Set("kind", "clipboard");
+                std::string error;
+                return RequestParentSync("broker-request", std::move(payload),
+                    main_frame_, result, &error);
+            });
+#endif
         RegisterSchemes();
+#if BUILDFLAG(IS_MAC)
+        view_ = mini_electron_create_web_view_with_background(
+            options_.background_color, options_.transparent);
+#else
         view_ = mini_electron_create_web_view();
+#endif
         if (!view_) {
             *error = "engine refused to create renderer view";
             return false;
@@ -384,6 +429,7 @@ public:
             content::WebViewHost* host = self->View();
             if (!host)
                 return;
+            host->setSetLanguage(self->options_.accept_languages);
             if (blink::WebView* web_view = host->getWebView()) {
                 blink::WebSettings* settings = web_view->GetSettings();
                 settings->SetWebSecurityEnabled(self->options_.web_security);
@@ -404,14 +450,21 @@ public:
                         mini_electron_web_frame_handle>(
                         static_cast<uintptr_t>(frame_id));
                     content::RendererFileChooserReply failure_reply = reply;
+                    auto epoch = self->frame_document_epochs_.find(frame_id);
+                    if (epoch == self->frame_document_epochs_.end()) {
+                        failure_reply({}, "file chooser frame is unavailable");
+                        return;
+                    }
+                    const uint64_t document_epoch = epoch->second;
                     if (!self->RequestParent("file-chooser",
                             std::move(request),
-                            [self, frame_id, reply = std::move(reply)](
+                            [self, frame_id, document_epoch,
+                                reply = std::move(reply)](
                                 base::Value::Dict result,
                                 std::string error) mutable {
                                 self->MaterializeChosenFiles(frame_id,
-                                    std::move(result), std::move(error),
-                                    std::move(reply));
+                                    document_epoch, std::move(result),
+                                    std::move(error), std::move(reply));
                             },
                             frame)) {
                         failure_reply({},
@@ -505,11 +558,21 @@ public:
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
             self->cdp_service_.reset();
 #endif
-            self->preload_hosts_.clear();
         }, this, nullptr);
         if (view_)
             mini_electron_destroy_web_view(view_);
         view_ = NULL_WEBVIEW;
+        // Preload proxy functions store their host as a raw V8 External. Keep
+        // the hosts alive until destroying the web view has torn down every
+        // frame context and drained pending Blink events.
+        mini_electron_call_blink_thread_sync([](void* server, void*) {
+            static_cast<RendererServerImpl*>(server)->preload_hosts_.clear();
+        }, this, nullptr);
+        // ClipboardHost runs on Blink's sequence. Keep its browser transport
+        // installed until view/context teardown and queued Blink work drain.
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetRendererClipboardBroker({});
+#endif
         mini_electron_uninit();
     }
 
@@ -637,8 +700,10 @@ private:
                         *result = std::move(response);
                         *error = std::move(response_error);
                         done = true;
+                        // The waiter owns this condition variable on its stack.
+                        // Keep its final notification before unlocking.
+                        replied.notify_one();
                     }
-                    replied.notify_one();
                 },
                 frame, true)) {
             *error = "browser channel is closed";
@@ -890,8 +955,37 @@ private:
                 Reply(request_id, {}, "invalid viewport");
                 return;
             }
-            mini_electron_resize(view_, width, height);
-            mini_electron_set_device_scale_factor(view_, scale);
+            bool schedule;
+            {
+                std::lock_guard<std::mutex> lock(viewport_lock_);
+                viewport_width_ = width;
+                viewport_height_ = height;
+                viewport_scale_ = scale;
+                schedule = !viewport_pending_;
+                viewport_pending_ = true;
+            }
+            if (schedule) {
+                PostBlink([this] {
+                    int width;
+                    int height;
+                    float scale;
+                    {
+                        std::lock_guard<std::mutex> lock(viewport_lock_);
+                        width = viewport_width_;
+                        height = viewport_height_;
+                        scale = viewport_scale_;
+                        viewport_pending_ = false;
+                    }
+                    if (closing_)
+                        return;
+                    if (content::WebViewHost* view = View()) {
+                        // Keep size and scale together, and apply only the
+                        // latest pending tuple through the engine's resize gate.
+                        view->setDeviceScaleFactor(scale);
+                        view->onResize(width, height, false);
+                    }
+                });
+            }
             Reply(request_id);
         } else if (method == "setFocus") {
             if (params.FindBool("focused").value_or(false))
@@ -976,6 +1070,49 @@ private:
         } else if (method == "setIgnoreMenuShortcuts") {
             ignore_menu_shortcuts_ = params.FindBool("ignore").value_or(false);
             Reply(request_id);
+        } else if (method == "set-background-color") {
+            const std::string* color = params.FindString("color");
+            unsigned rgb = 0;
+            if (!color || color->size() != 7 || (*color)[0] != '#'
+                || std::string_view(*color).substr(1).find_first_not_of("0123456789abcdefABCDEF") != std::string_view::npos
+                || !base::HexStringToUInt(std::string_view(*color).substr(1), &rgb)) {
+                Reply(request_id, {}, "invalid background color");
+            } else {
+                options_.background_color = 0xff000000u | rgb;
+                PostBlink([this, background = options_.background_color] {
+                    if (content::WebViewHost* host = View())
+                        host->setBackgroundColor(background);
+                });
+                Reply(request_id);
+            }
+        } else if (method == "prepare-to-show") {
+            if (closing_) {
+                Reply(request_id, {}, "renderer is shutting down");
+                return;
+            }
+            pending_preparations_.insert(request_id);
+            auto complete = [runner = owner_runner_, weak = owner_weak_, request_id](bool success) {
+                runner->PostTask(FROM_HERE, base::BindOnce(
+                    &RendererServerImpl::CompletePreparation, weak, request_id, success));
+            };
+            // Enter the same Blink sequence as preceding IPC delivery. The
+            // callback belongs to the forced commit, not an already queued draw.
+            PostBlink([view_id = view_, complete = std::move(complete)]() mutable {
+                base::ScopedClosureRunner abandoned(base::BindOnce(
+                    [](decltype(complete) complete) { complete(false); }, complete));
+                auto* host = static_cast<content::WebViewHost*>(
+                    common::LiveIdDetect::getWebViewIds()->getPtr(view_id));
+                blink::WebFrameWidget* widget = host && host->getWebView()
+                    ? host->getWebView()->MainFrameWidget() : nullptr;
+                if (!widget)
+                    return;
+                widget->RequestSuccessfulPresentationWithForcedRedraw(base::BindOnce(
+                    [](base::ScopedClosureRunner abandoned,
+                        decltype(complete) complete) {
+                        (void)abandoned.Release();
+                        complete(true);
+                    }, std::move(abandoned), std::move(complete)));
+            });
         } else if (method == "invalidate") {
             // Wake schedules a genuine compositor frame; paint notification is
             // emitted only when the engine produces that frame.
@@ -998,16 +1135,39 @@ private:
         } else if (method == "ipc-message") {
             std::string* channel = params.FindString("channel");
             base::Value::List* args = params.FindList("args");
-            if (!channel || !args || channel->size() > 1024) {
+            const std::string* frame_identity = params.FindString("frameId");
+            std::optional<bool> all_frames = params.FindBool("allFrames");
+            uint64_t frame_id = 0;
+            if (!channel || !args || !frame_identity || !all_frames
+                || channel->size() > 1024
+                || (!*all_frames
+                    && (!base::StringToUint64(*frame_identity, &frame_id)
+                        || base::NumberToString(frame_id) != *frame_identity
+                        || !frame_id
+                        || static_cast<uint64_t>(
+                            static_cast<uintptr_t>(frame_id)) != frame_id))) {
                 Reply(request_id, {}, "invalid IPC message");
                 return;
             }
             PostBlink([this, channel = std::move(*channel),
-                          args = std::move(*args), request_id]() mutable {
-                size_t remaining = preload_hosts_.size();
-                for (auto& [frame, preload] : preload_hosts_)
-                    preload->DeliverIpc(channel,
-                        --remaining == 0 ? std::move(args) : args.Clone());
+                          args = std::move(*args), frame_id, all_frames = *all_frames,
+                          request_id]() mutable {
+                if (all_frames) {
+                    size_t remaining = preload_hosts_.size();
+                    for (auto& [frame, preload] : preload_hosts_) {
+                        preload->DeliverIpc(channel,
+                            --remaining == 0 ? std::move(args) : args.Clone());
+                    }
+                    Reply(request_id);
+                    return;
+                }
+                auto target = preload_hosts_.find(
+                    static_cast<uintptr_t>(frame_id));
+                if (target == preload_hosts_.end()) {
+                    Reply(request_id, {}, "IPC target frame is unavailable");
+                    return;
+                }
+                target->second->DeliverIpc(channel, std::move(args));
                 Reply(request_id);
             });
         } else if (method.rfind("guest.", 0) == 0) {
@@ -1026,12 +1186,371 @@ private:
             Reply(request_id, {}, "renderer method is not implemented");
         }
     }
+    static uint32_t NativeDragModifiers(int flags)
+    {
+        uint32_t modifiers = 0;
+        if (flags & MINI_ELECTRON_SHIFT)
+            modifiers |= blink::WebInputEvent::kShiftKey;
+        if (flags & MINI_ELECTRON_CONTROL)
+            modifiers |= blink::WebInputEvent::kControlKey;
+        if (flags & MINI_ELECTRON_ALT)
+            modifiers |= blink::WebInputEvent::kAltKey;
+        if (flags & MINI_ELECTRON_META)
+            modifiers |= blink::WebInputEvent::kMetaKey;
+        return modifiers;
+    }
+
+    bool IsCurrentFrameDocument(
+        uint64_t frame_id, uint64_t document_epoch) const
+    {
+        auto found = frame_document_epochs_.find(frame_id);
+        return found != frame_document_epochs_.end()
+            && found->second == document_epoch;
+    }
+
+    void ReportNativeDragOperation(uint64_t generation,
+        ui::mojom::DragOperation operation, bool document_is_handling_drag)
+    {
+        if (native_drag_generation_ != generation)
+            return;
+        base::Value::Dict payload;
+        payload.Set("generation", base::NumberToString(generation));
+        payload.Set("accepted", document_is_handling_drag
+            && operation != ui::mojom::DragOperation::kNone);
+        SendEvent("native-drag-operation", std::move(payload), main_frame_);
+    }
+
+    void ResetNativeDragOnBlink(bool preserve_brokered_files = false)
+    {
+        native_drag_generation_ = 0;
+        native_drag_ready_ = false;
+        native_drag_data_ = blink::WebDragData();
+        native_drag_pending_.clear();
+        if (!preserve_brokered_files) {
+            for (const std::string& url : native_drag_broker_urls_)
+                content::UnregisterBrokeredFile(url);
+        }
+        native_drag_broker_urls_.clear();
+    }
+
+    void DispatchNativeDragOnBlink(const base::Value::Dict& event,
+        const blink::WebDragData& data)
+    {
+        content::WebViewHost* host = View();
+        blink::WebFrameWidget* widget = host && host->getWebView()
+            ? host->getWebView()->MainFrameWidget() : nullptr;
+        const std::string* type = event.FindString("type");
+        if (!widget || !type)
+            return;
+        // AppKit reports DIPs; Blink drag hit testing uses viewport pixels.
+        const float scale = widget->GetOriginalScreenInfo().device_scale_factor;
+        gfx::PointF point(event.FindInt("x").value_or(0) * scale,
+            event.FindInt("y").value_or(0) * scale);
+        gfx::PointF screen_point(event.FindInt("screenX").value_or(0),
+            event.FindInt("screenY").value_or(0));
+        uint32_t modifiers = NativeDragModifiers(
+            event.FindInt("modifiers").value_or(0));
+        if (*type == "dragEnter") {
+            widget->DragTargetDragEnter(data, point, screen_point,
+                blink::kDragOperationCopy, modifiers,
+                base::BindOnce(&RendererServerImpl::ReportNativeDragOperation,
+                    base::Unretained(this), native_drag_generation_));
+        } else if (*type == "dragOver") {
+            widget->DragTargetDragOver(point, screen_point,
+                blink::kDragOperationCopy, modifiers,
+                base::BindOnce(&RendererServerImpl::ReportNativeDragOperation,
+                    base::Unretained(this), native_drag_generation_));
+        } else if (*type == "dragLeave") {
+            widget->DragTargetDragLeave(point, screen_point);
+        } else if (*type == "drop") {
+            widget->DragTargetDrop(data, point, screen_point, modifiers,
+                base::DoNothing());
+        }
+    }
+
+    void BeginNativeDragOnBlink(base::Value::Dict event, uint64_t generation)
+    {
+        if (native_drag_generation_) {
+            if (native_drag_ready_) {
+                base::Value::Dict leave = event.Clone();
+                leave.Set("type", "dragLeave");
+                DispatchNativeDragOnBlink(leave, native_drag_data_);
+            }
+            ResetNativeDragOnBlink();
+        }
+        native_drag_generation_ = generation;
+        native_drag_pending_.push_back(std::move(event));
+    }
+
+    void HandleNativeDragOnBlink(base::Value::Dict event,
+        uint64_t generation)
+    {
+        if (!native_drag_generation_ || native_drag_generation_ != generation)
+            return;
+        const std::string* type = event.FindString("type");
+        if (!type)
+            return;
+        if (!native_drag_ready_) {
+            if (*type == "dragOver" && !native_drag_pending_.empty()
+                && native_drag_pending_.back().FindString("type")
+                    && *native_drag_pending_.back().FindString("type")
+                        == "dragOver") {
+                native_drag_pending_.back() = std::move(event);
+            } else {
+                native_drag_pending_.push_back(std::move(event));
+            }
+            return;
+        }
+        const bool terminal = *type == "drop" || *type == "dragLeave";
+        const bool preserve_brokered_files = *type == "drop";
+        DispatchNativeDragOnBlink(event, native_drag_data_);
+        if (terminal)
+            ResetNativeDragOnBlink(preserve_brokered_files);
+    }
+
+    void AcknowledgeNativeDragMaterialization(
+        uint64_t generation, bool success)
+    {
+        base::Value::Dict payload;
+        payload.Set("generation", base::NumberToString(generation));
+        payload.Set("success", success);
+        SendEvent("native-drag-materialized", std::move(payload), main_frame_);
+    }
+
+    void CompleteNativeDragOnBlink(uint64_t generation,
+        blink::WebDragData data, std::string error)
+    {
+        if (native_drag_generation_ != generation)
+            return;
+        AcknowledgeNativeDragMaterialization(generation, error.empty());
+        if (!error.empty()) {
+            ResetNativeDragOnBlink();
+            return;
+        }
+        native_drag_ready_ = true;
+        native_drag_data_ = std::move(data);
+        std::vector<base::Value::Dict> pending =
+            std::move(native_drag_pending_);
+        for (const base::Value::Dict& event : pending) {
+            if (native_drag_generation_ != generation)
+                break;
+            const std::string* type = event.FindString("type");
+            if (!type)
+                continue;
+            DispatchNativeDragOnBlink(event, native_drag_data_);
+            if (*type == "drop" || *type == "dragLeave") {
+                ResetNativeDragOnBlink(*type == "drop");
+                break;
+            }
+        }
+    }
+
+    void MaterializeNativeDrag(uint64_t frame_id, uint64_t generation,
+        base::Value::List files)
+    {
+        constexpr size_t kMaximumDroppedFiles = 1024;
+        constexpr int64_t kMaximumDroppedFileBytes = 50LL * 1024 * 1024;
+        constexpr int64_t kMaximumTotalBytes = 256LL * 1024 * 1024;
+        if (files.empty() || files.size() > kMaximumDroppedFiles) {
+            PostBlink([this, generation] {
+                CompleteNativeDragOnBlink(generation, blink::WebDragData(),
+                    "native drag exceeds file count limits");
+            });
+            return;
+        }
+        auto source = std::make_shared<base::Value::List>(std::move(files));
+        auto output = std::make_shared<blink::WebDragData>();
+        auto output_items = std::make_shared<
+            std::vector<blink::WebDragData::Item>>();
+        output_items->reserve(source->size());
+        const std::string file_system_id =
+            "mini-electron-drag-" + base::NumberToString(generation);
+        output->SetFilesystemId(
+            blink::WebString::FromUTF8(file_system_id));
+        auto index = std::make_shared<size_t>(0);
+        auto total_bytes = std::make_shared<int64_t>(0);
+        auto next = std::make_shared<std::function<void(std::string)>>();
+        *next = [this, frame_id, generation, source, output, output_items,
+                    index, total_bytes, next, file_system_id](
+                    std::string next_error) mutable {
+            if (native_drag_generation_ != generation) {
+                *next = {};
+                return;
+            }
+            if (!next_error.empty()) {
+                auto error = std::move(next_error);
+                RendererServerImpl* self = this;
+                const uint64_t completed_generation = generation;
+                *next = {};
+                self->CompleteNativeDragOnBlink(completed_generation,
+                    blink::WebDragData(), std::move(error));
+                return;
+            }
+            if (*index == source->size()) {
+                output->SetItems(blink::WebVector<blink::WebDragData::Item>(
+                    std::move(*output_items)));
+                blink::WebDragData completed = std::move(*output);
+                RendererServerImpl* self = this;
+                const uint64_t completed_generation = generation;
+                *next = {};
+                self->CompleteNativeDragOnBlink(completed_generation,
+                    std::move(completed), {});
+                return;
+            }
+            const size_t item_index = (*index)++;
+            base::Value::Dict* metadata = (*source)[item_index].GetIfDict();
+            const std::string* name = metadata
+                ? metadata->FindString("name") : nullptr;
+            const std::string* path = metadata
+                ? metadata->FindString("path") : nullptr;
+            std::optional<int> size = metadata
+                ? metadata->FindInt("size") : std::nullopt;
+            std::optional<bool> directory = metadata
+                ? metadata->FindBool("directory") : std::nullopt;
+            const std::string* token = metadata
+                ? metadata->FindString("token") : nullptr;
+            const double last_modified = metadata
+                ? metadata->FindDouble("lastModified").value_or(0) : 0;
+            const bool valid_name = name && !name->empty()
+                && name->size() <= 4096 && *name != "." && *name != ".."
+                && name->find('/') == std::string::npos
+                && name->find('\\') == std::string::npos;
+            const bool valid_token = directory.value_or(false)
+                ? !token
+                : token && !token->empty() && token->size() <= 256
+                    && std::all_of(token->begin(), token->end(), [](char c) {
+                        return (c >= 'a' && c <= 'z')
+                            || (c >= 'A' && c <= 'Z')
+                            || (c >= '0' && c <= '9')
+                            || c == '-' || c == '_';
+                    });
+            if (!valid_name || !path || path->empty() || path->size() > 4096
+                || !size || *size < 0 || !directory || !valid_token
+                || !std::isfinite(last_modified)
+                || (*directory && *size != 0)
+                || (!*directory && *size > kMaximumDroppedFileBytes)
+                || *size > kMaximumTotalBytes - *total_bytes) {
+                (*next)("native drag returned invalid file metadata");
+                return;
+            }
+            *total_bytes += *size;
+            std::string name_copy = *name;
+            std::string path_copy = *path;
+            std::string token_copy = token ? *token : std::string();
+            const bool is_directory = *directory;
+            const int item_size = *size;
+            const std::string broker_host = is_directory
+                ? "drag-" + base::NumberToString(generation) + "-"
+                    + base::NumberToString(item_index)
+                : token_copy;
+            const std::string broker_url = GURL(
+                "mini-electron-broker://" + broker_host + "/"
+                + base::EscapePath(name_copy)).spec();
+            auto register_item = [this, frame_id, generation, output_items,
+                                     next, file_system_id, broker_url,
+                                     name = std::move(name_copy),
+                                     path = std::move(path_copy), item_size,
+                                     last_modified, is_directory](
+                                     std::vector<uint8_t> bytes) mutable {
+                if (native_drag_generation_ != generation) {
+                    *next = {};
+                    return;
+                }
+                content::RegisterBrokeredFile(broker_url, name,
+                    std::move(bytes), path, frame_id, is_directory);
+                native_drag_broker_urls_.push_back(broker_url);
+                std::string mime_type;
+                if (!is_directory) {
+                    net::GetMimeTypeFromFile(
+                        base::FilePath::FromUTF8Unsafe(name), &mime_type);
+                }
+                scoped_refptr<blink::BlobDataHandle> blob =
+                    content::GetBrokeredFileBlob(frame_id, broker_url,
+                        blink::WebString::FromUTF8(mime_type));
+                if (!blob || blob->size() != static_cast<uint64_t>(item_size)) {
+                    (*next)("native drag failed to create brokered file");
+                    return;
+                }
+                blink::WebDragData::FileSystemFileItem item;
+                item.url = blink::WebURL(blink::KURL(
+                    WTF::String::FromUTF8(broker_url)));
+                item.size = item_size;
+                item.file_system_id =
+                    blink::WebString::FromUTF8(file_system_id);
+                item.blob_info = blink::WebBlobInfo(blob,
+                    blink::WebString::FromUTF8(name),
+                    blink::WebString::FromUTF8(mime_type),
+                    base::Time::FromMillisecondsSinceUnixEpoch(last_modified),
+                    item_size);
+                output_items->emplace_back(std::move(item));
+                (*next)({});
+            };
+            if (is_directory) {
+                register_item({});
+                return;
+            }
+            ReadAuthorizedUpload(frame_id, token_copy, item_size,
+                [register_item = std::move(register_item), next](
+                    std::vector<uint8_t> bytes,
+                    std::string read_error) mutable {
+                    PostBlink([register_item = std::move(register_item), next,
+                        bytes = std::move(bytes),
+                        read_error = std::move(read_error)]() mutable {
+                        if (!read_error.empty()) {
+                            (*next)(std::move(read_error));
+                            return;
+                        }
+                        register_item(std::move(bytes));
+                    });
+                });
+        };
+        PostBlink([next] { (*next)({}); });
+    }
+
+    bool DispatchNativeDrag(const base::Value::Dict& event)
+    {
+        const std::string* type = event.FindString("type");
+        const std::string* generation_text = event.FindString("generation");
+        uint64_t generation = 0;
+        if (!type || !generation_text
+            || !base::StringToUint64(*generation_text, &generation)
+            || !generation
+            || base::NumberToString(generation) != *generation_text
+            || !event.FindInt("x") || !event.FindInt("y")
+            || !event.FindInt("screenX") || !event.FindInt("screenY")
+            || !event.FindInt("modifiers")) {
+            return false;
+        }
+        if (*type == "dragEnter") {
+            const base::Value::List* files = event.FindList("files");
+            const uint64_t frame_id = static_cast<uint64_t>(
+                reinterpret_cast<uintptr_t>(main_frame_));
+            if (!files || !frame_id)
+                return false;
+            PostBlink([this, generation, event = event.Clone()]() mutable {
+                BeginNativeDragOnBlink(std::move(event), generation);
+            });
+            MaterializeNativeDrag(frame_id, generation, files->Clone());
+            return true;
+        }
+        if (*type != "dragOver" && *type != "dragLeave" && *type != "drop")
+            return false;
+        PostBlink([this, generation, event = event.Clone()]() mutable {
+            HandleNativeDragOnBlink(std::move(event), generation);
+        });
+        return true;
+    }
+
 
     bool DispatchInput(const base::Value::Dict& event)
     {
         const std::string* type = event.FindString("type");
         if (!type)
             return false;
+        if (*type == "dragEnter" || *type == "dragOver"
+            || *type == "dragLeave" || *type == "drop") {
+            return DispatchNativeDrag(event);
+        }
         int x = event.FindInt("x").value_or(0);
         int y = event.FindInt("y").value_or(0);
         int flags = event.FindInt("modifiers").value_or(0);
@@ -1043,20 +1562,76 @@ private:
             SendEvent("guest-input", std::move(payload));
             return true;
         }
+        if (*type == "editCommand") {
+            const std::string* command = event.FindString("command");
+            if (!command)
+                return false;
+            mini_electron_execute_edit_command(view_, command->c_str());
+            return true;
+        }
         if (*type == "mouseWheel")
             return !!mini_electron_fire_mouse_wheel_event(view_, x, y,
-                event.FindInt("deltaY").value_or(0), flags);
+                static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0))), flags);
         if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp") {
             unsigned message = MINI_ELECTRON_MSG_MOUSEMOVE;
             int button = event.FindInt("button").value_or(0);
+            if (const std::string* name = event.FindString("button")) {
+                if (*name == "right")
+                    button = 2;
+                else if (*name == "middle")
+                    button = 1;
+            }
             if (*type == "mouseDown")
-                message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONDOWN : MINI_ELECTRON_MSG_LBUTTONDOWN;
+                message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONDOWN
+                    : button == 1 ? MINI_ELECTRON_MSG_MBUTTONDOWN : MINI_ELECTRON_MSG_LBUTTONDOWN;
             else if (*type == "mouseUp")
-                message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONUP : MINI_ELECTRON_MSG_LBUTTONUP;
+                message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONUP
+                    : button == 1 ? MINI_ELECTRON_MSG_MBUTTONUP : MINI_ELECTRON_MSG_LBUTTONUP;
             return !!mini_electron_fire_mouse_event(view_, message, x, y, flags);
         }
         unsigned key = static_cast<unsigned>(event.FindInt("keyCode").value_or(0));
         bool system = event.FindBool("systemKey").value_or(false);
+        if ((*type == "keyDown" || *type == "keyUp" || *type == "char") &&
+            event.FindInt("nativeKeyCode") && event.FindInt("domCode") &&
+            event.FindInt("domKey")) {
+            auto event_type = *type == "keyDown" ? blink::WebInputEvent::Type::kRawKeyDown
+                : *type == "keyUp" ? blink::WebInputEvent::Type::kKeyUp
+                                  : blink::WebInputEvent::Type::kChar;
+            auto input = content::PlatformEventHandler::buildKeyboardEvent(
+                event_type, 0, *type == "char" ? event.FindInt("charCode").value_or(key) : key,
+                0, flags);
+            input.native_key_code = *event.FindInt("nativeKeyCode");
+            input.dom_code = *event.FindInt("domCode");
+            input.dom_key = static_cast<uint32_t>(*event.FindInt("domKey"));
+            input.is_system_key = system;
+            auto copy_text = [](const std::string* text, auto& destination) {
+                if (!text)
+                    return;
+                const std::u16string utf16 = base::UTF8ToUTF16(*text);
+                std::fill(destination.begin(), destination.end(), 0);
+                std::copy_n(utf16.begin(), std::min(utf16.size(), destination.size()),
+                            destination.begin());
+            };
+            copy_text(event.FindString("text"), input.text);
+            copy_text(event.FindString("unmodifiedText"), input.unmodified_text);
+            // The legacy Windows builder guesses keypad from virtual keys.
+            // Native DOM code distinguishes keypad Enter/arrows from navigation keys.
+            int modifiers = input.GetModifiers() &
+                ~(blink::WebInputEvent::kIsKeyPad | blink::WebInputEvent::kIsLeft |
+                  blink::WebInputEvent::kIsRight);
+            const auto location = ui::KeycodeConverter::DomCodeToLocation(
+                static_cast<ui::DomCode>(input.dom_code));
+            if (location == ui::DomKeyLocation::NUMPAD)
+                modifiers |= blink::WebInputEvent::kIsKeyPad;
+            else if (location == ui::DomKeyLocation::LEFT)
+                modifiers |= blink::WebInputEvent::kIsLeft;
+            else if (location == ui::DomKeyLocation::RIGHT)
+                modifiers |= blink::WebInputEvent::kIsRight;
+            input.SetModifiers(modifiers);
+            content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
+                [input](content::WebViewHost* view) { view->onKeyboardEvent(input); });
+            return true;
+        }
         if (*type == "keyDown")
             return !!mini_electron_fire_key_down_event(view_, key, flags, system);
         if (*type == "keyUp")
@@ -1110,7 +1685,7 @@ private:
     int HitTestGuest(int x, int y, const std::string& type)
     {
         std::lock_guard<std::mutex> lock(guest_lock_);
-        if (type == "keyDown" || type == "keyUp" || type == "char") {
+        if (type == "keyDown" || type == "keyUp" || type == "char" || type == "editCommand") {
             for (auto& [id, guest] : guests_) {
                 if (guest.attached && guest.focused)
                     return id;
@@ -1409,6 +1984,9 @@ private:
             pending = std::move(pending_screenshot_);
         }
         const auto* source = static_cast<const uint8_t*>(buffer);
+        constexpr size_t red_byte =
+            kN32_SkColorType == kRGBA_8888_SkColorType ? 0 : 2;
+        constexpr size_t blue_byte = 2 - red_byte;
         std::vector<uint8_t> pixels(
             static_cast<size_t>(pending->output_width)
                 * pending->output_height * 4);
@@ -1419,9 +1997,9 @@ private:
                 size_t from = (static_cast<size_t>(source_y) * width + source_x) * 4;
                 size_t to = (static_cast<size_t>(output_y)
                     * pending->output_width + output_x) * 4;
-                pixels[to] = source[from + 2];
+                pixels[to] = source[from + red_byte];
                 pixels[to + 1] = source[from + 1];
-                pixels[to + 2] = source[from];
+                pixels[to + 2] = source[from + blue_byte];
                 pixels[to + 3] = source[from + 3];
             }
         }
@@ -1459,26 +2037,62 @@ private:
         Reply(pending->request_id, std::move(result));
     }
 
-    void MaterializeChosenFiles(uint64_t frame_id,
+    void RevokeAuthorizedUploads(
+        uint64_t frame_id, const base::Value::List& files)
+    {
+        base::Value::List tokens;
+        for (const base::Value& value : files) {
+            const base::Value::Dict* metadata = value.GetIfDict();
+            const std::string* token = metadata
+                ? metadata->FindString("token") : nullptr;
+            if (token && !token->empty())
+                tokens.Append(*token);
+        }
+        if (tokens.empty())
+            return;
+        base::Value::Dict request;
+        request.Set("kind", "file");
+        request.Set("operation", "revoke");
+        request.Set("tokens", std::move(tokens));
+        auto frame = reinterpret_cast<mini_electron_web_frame_handle>(
+            static_cast<uintptr_t>(frame_id));
+        RequestParent("broker-request", std::move(request),
+            [](base::Value::Dict, std::string) {}, frame);
+    }
+
+    void MaterializeChosenFiles(uint64_t frame_id, uint64_t document_epoch,
         base::Value::Dict result, std::string error,
         content::RendererFileChooserReply reply)
     {
         if (!error.empty()) {
-            PostBlink([reply = std::move(reply),
+            PostBlink([this, frame_id, document_epoch,
+                          reply = std::move(reply),
                           error = std::move(error)]() mutable {
+                if (!IsCurrentFrameDocument(frame_id, document_epoch))
+                    error = "file chooser document was replaced";
                 reply({}, std::move(error));
             });
             return;
         }
         if (result.FindBool("canceled").value_or(false)) {
-            PostBlink([reply = std::move(reply)]() mutable {
+            PostBlink([this, frame_id, document_epoch,
+                          reply = std::move(reply)]() mutable {
+                if (!IsCurrentFrameDocument(frame_id, document_epoch)) {
+                    reply({}, "file chooser document was replaced");
+                    return;
+                }
                 reply(base::Value::Dict().Set("canceled", true), {});
             });
             return;
         }
         base::Value::List* response_files = result.FindList("files");
         if (!response_files) {
-            PostBlink([reply = std::move(reply)]() mutable {
+            PostBlink([this, frame_id, document_epoch,
+                          reply = std::move(reply)]() mutable {
+                if (!IsCurrentFrameDocument(frame_id, document_epoch)) {
+                    reply({}, "file chooser document was replaced");
+                    return;
+                }
                 reply({}, "file chooser returned no file metadata");
             });
             return;
@@ -1488,9 +2102,12 @@ private:
         auto output = std::make_shared<base::Value::List>();
         auto index = std::make_shared<size_t>(0);
         auto next = std::make_shared<std::function<void(std::string)>>();
-        *next = [this, frame_id, source, output, index, next,
+        *next = [this, frame_id, document_epoch, source, output, index, next,
                     reply = std::move(reply)](std::string next_error) mutable {
+            if (!IsCurrentFrameDocument(frame_id, document_epoch))
+                next_error = "file chooser document was replaced";
             if (!next_error.empty()) {
+                RevokeAuthorizedUploads(frame_id, *source);
                 auto completed_reply = std::move(reply);
                 *next = {};
                 completed_reply({}, std::move(next_error));
@@ -1538,18 +2155,23 @@ private:
             double last_modified =
                 metadata->FindDouble("lastModified").value_or(0);
             ReadAuthorizedUpload(frame_id, *token, *size,
-                [frame_id, output, next, token = std::move(token_copy),
+                [this, frame_id, document_epoch, output, next,
+                    token = std::move(token_copy),
                     name = std::move(name_copy), path = std::move(path_copy),
                     virtual_path = std::move(virtual_path),
                     size = *size, last_modified](
                     std::vector<uint8_t> bytes,
                     std::string read_error) mutable {
-                    PostBlink([frame_id, output, next,
+                    PostBlink([this, frame_id, document_epoch, output, next,
                         token = std::move(token),
                         name = std::move(name), path = std::move(path),
                         virtual_path = std::move(virtual_path),
                         size, last_modified, bytes = std::move(bytes),
                         read_error = std::move(read_error)]() mutable {
+                        if (!IsCurrentFrameDocument(frame_id, document_epoch)) {
+                            (*next)("file chooser document was replaced");
+                            return;
+                        }
                         if (!read_error.empty()) {
                             (*next)(std::move(read_error));
                             return;
@@ -1580,10 +2202,11 @@ private:
         auto bytes = std::make_shared<std::vector<uint8_t>>();
         bytes->reserve(static_cast<size_t>(size));
         auto offset = std::make_shared<int>(0);
+        auto started = std::make_shared<bool>(false);
         auto read_next =
             std::make_shared<std::function<void(std::string)>>();
-        *read_next = [this, frame_id, token, size, bytes, offset, read_next,
-                         callback = std::move(callback)](
+        *read_next = [this, frame_id, token, size, bytes, offset, started,
+                         read_next, callback = std::move(callback)](
                          std::string error) mutable {
             if (!error.empty()) {
                 auto completed_callback = std::move(callback);
@@ -1591,7 +2214,7 @@ private:
                 completed_callback({}, std::move(error));
                 return;
             }
-            if (*offset == size) {
+            if (*offset == size && (size != 0 || *started)) {
                 auto completed_callback = std::move(callback);
                 auto completed_bytes = std::move(*bytes);
                 *read_next = {};
@@ -1600,6 +2223,7 @@ private:
             }
             constexpr int kChunkSize = 8 * 1024 * 1024;
             int length = std::min(kChunkSize, size - *offset);
+            *started = true;
             base::Value::Dict read;
             read.Set("kind", "file");
             read.Set("operation", "read");
@@ -1711,10 +2335,39 @@ private:
     }
 #endif
 
+    void CompletePreparation(uint64_t request_id, bool success)
+    {
+        if (!pending_preparations_.erase(request_id))
+            return;
+        if (!success || closing_) {
+            Reply(request_id, {}, "renderer presentation is unavailable");
+            return;
+        }
+        // Software DrawAck follows PaintUpdated publication and precedes
+        // successful presentation feedback. Read only on the publication owner.
+        const uint64_t generation = frame_->generation.load(std::memory_order_acquire);
+        if (!generation || (generation & 1) || !frame_->data_size) {
+            Reply(request_id, {}, "renderer frame publication failed");
+            return;
+        }
+        base::Value::Dict result;
+        result.Set("generation", base::NumberToString(generation));
+        Reply(request_id, std::move(result));
+    }
+
+    void FailPreparations(const char* error)
+    {
+        auto pending = std::move(pending_preparations_);
+        pending_preparations_.clear();
+        for (uint64_t request_id : pending)
+            Reply(request_id, {}, error);
+    }
+
     void Shutdown()
     {
         if (closing_.exchange(true))
             return;
+        FailPreparations("renderer is shutting down");
         dialog_cv_.notify_all();
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         if (cdp_service_)
@@ -2068,6 +2721,7 @@ private:
             };
         }
         if (self->registered_frames_.insert(frame_id).second) {
+            self->frame_document_epochs_[frame_id] = 1;
             base::Value::Dict payload;
             payload.Set("frameId", base::NumberToString(frame_id));
             payload.Set("parentFrameId",
@@ -2158,6 +2812,12 @@ private:
         auto* self = static_cast<RendererServerImpl*>(parameter);
         const uint64_t frame_id = static_cast<uint64_t>(
             reinterpret_cast<uintptr_t>(frame));
+        content::ClearBrokeredFilesForFrame(frame_id);
+        uint64_t& document_epoch = self->frame_document_epochs_[frame_id];
+        document_epoch = document_epoch == std::numeric_limits<uint64_t>::max()
+            ? 1 : document_epoch + 1;
+        if (is_main_frame)
+            self->ResetNativeDragOnBlink();
         base::Value::Dict payload;
         payload.Set("frameId", base::NumberToString(frame_id));
         payload.Set("url", url ? url : "");
@@ -2185,9 +2845,13 @@ private:
             self->pending_navigations_.erase(frame_id);
             self->frame_hierarchy_.erase(frame_id);
         }
-        self->preload_hosts_.erase(static_cast<uintptr_t>(frame_id));
+        if (!self->closing_)
+            self->preload_hosts_.erase(static_cast<uintptr_t>(frame_id));
         self->registered_frames_.erase(frame_id);
+        self->frame_document_epochs_.erase(frame_id);
         content::ClearBrokeredFilesForFrame(frame_id);
+        if (frame == self->main_frame_)
+            self->ResetNativeDragOnBlink();
         self->SendEvent("frame-detached", {}, frame);
     }
 
@@ -2286,22 +2950,32 @@ private:
         int width, int height)
     {
         auto* self = static_cast<RendererServerImpl*>(parameter);
-        if (!buffer || width <= 0 || height <= 0 || width > 16384 || height > 16384)
+        if (!buffer || !self->frame_ || width <= 0 || height <= 0 || width > 16384 || height > 16384) {
+            self->FailPreparations("renderer frame publication failed");
             return;
+        }
         self->CompleteScreenshot(buffer, width, height);
         size_t stride = static_cast<size_t>(width) * 4;
         size_t size = stride * static_cast<size_t>(height);
-        if (size > self->frame_->capacity || sizeof(*self->frame_) + size > self->arguments_.frame_size)
+        if (size > self->frame_->capacity || sizeof(*self->frame_) + size > self->arguments_.frame_size) {
+            self->FailPreparations("renderer frame publication failed");
             return;
+        }
         uint64_t generation = self->frame_->generation.load(std::memory_order_relaxed);
         self->frame_->generation.store(generation + 1, std::memory_order_release);
         auto* destination = reinterpret_cast<uint8_t*>(self->frame_ + 1);
-        const auto* source = static_cast<const uint8_t*>(buffer);
-        for (size_t pixel = 0; pixel < size; pixel += 4) {
-            destination[pixel] = source[pixel + 2];
-            destination[pixel + 1] = source[pixel + 1];
-            destination[pixel + 2] = source[pixel];
-            destination[pixel + 3] = source[pixel + 3];
+        // Skia's native pixels are RGBA on macOS and BGRA on Windows.
+        // The shared frame protocol always carries RGBA.
+        if constexpr (kN32_SkColorType == kRGBA_8888_SkColorType) {
+            std::memcpy(destination, buffer, size);
+        } else {
+            const auto* source = static_cast<const uint8_t*>(buffer);
+            for (size_t pixel = 0; pixel < size; pixel += 4) {
+                destination[pixel] = source[pixel + 2];
+                destination[pixel + 1] = source[pixel + 1];
+                destination[pixel + 2] = source[pixel];
+                destination[pixel + 3] = source[pixel + 3];
+            }
         }
         self->CompositeGuests(destination, width, height, static_cast<int>(stride));
         self->frame_->width = width;
@@ -2540,12 +3214,26 @@ private:
     static constexpr size_t kMaxGuestFrames = 256;
     mini_electron_web_view view_ = NULL_WEBVIEW;
     mini_electron_web_frame_handle main_frame_ = nullptr;
+    // Accessed only on the Blink thread. Browser generations invalidate stale
+    // materialization completions and preserve enter/over/drop ordering.
+    uint64_t native_drag_generation_ = 0;
+    bool native_drag_ready_ = false;
+    blink::WebDragData native_drag_data_;
+    std::vector<base::Value::Dict> native_drag_pending_;
+    std::vector<std::string> native_drag_broker_urls_;
     scoped_refptr<base::SequencedTaskRunner> owner_runner_;
     base::WeakPtr<RendererServerImpl> owner_weak_;
+    // Renderer owner sequence only; compositor callbacks marshal back here.
+    std::set<uint64_t> pending_preparations_;
     std::unique_ptr<base::RunLoop> run_loop_;
     std::thread reader_;
     std::thread control_thread_;
     std::mutex write_lock_;
+    std::mutex viewport_lock_;
+    int viewport_width_ = 0;
+    int viewport_height_ = 0;
+    float viewport_scale_ = 1.f;
+    bool viewport_pending_ = false;
     std::atomic<bool> closing_ { false };
     bool ignore_menu_shortcuts_ = false;
     std::atomic<uint64_t> next_parent_request_ { 1 };
@@ -2560,6 +3248,7 @@ private:
     std::mutex navigation_lock_;
     std::map<uint64_t, PendingNavigation> pending_navigations_;
     std::map<uint64_t, std::pair<uint64_t, bool>> frame_hierarchy_;
+    std::map<uint64_t, uint64_t> frame_document_epochs_;
     std::set<uint64_t> registered_frames_;
     std::map<uintptr_t, std::unique_ptr<SandboxPreloadHost>> preload_hosts_;
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)

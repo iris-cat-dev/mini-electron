@@ -18,6 +18,10 @@ import zipfile
 class DistributionError(RuntimeError):
     pass
 
+def path_is_link(path: Path) -> bool:
+    is_junction = getattr(path, "is_junction", None)
+    return path.is_symlink() or bool(is_junction and is_junction())
+
 _RESERVED_WINDOWS_NAME = re.compile(
     r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$", re.IGNORECASE
 )
@@ -598,7 +602,7 @@ def create_zip(source: Path, destination: Path) -> None:
 def publish_distribution(
     staged: Path, destination: Path, metadata: dict[str, object]
 ) -> tuple[Path, Path, str]:
-    if destination.is_symlink() or destination.is_junction():
+    if path_is_link(destination):
         raise DistributionError(
             f"Runtime distribution output must not be a symlink or junction: "
             f"{destination}"

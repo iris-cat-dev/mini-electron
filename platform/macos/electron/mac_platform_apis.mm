@@ -108,15 +108,32 @@ NSImage* ImageFrom(v8::Isolate* isolate, v8::Local<v8::Value> value) {
 
 class MacMenu;
 class MacTray;
+bool g_menu_accelerator = false;
 
 }  // namespace
 }  // namespace mini_electron::electron
+
+@interface MiniElectronNativeMenu : NSMenu
+@end
+@implementation MiniElectronNativeMenu
+- (BOOL)performKeyEquivalent:(NSEvent*)event {
+  const bool previous = mini_electron::electron::g_menu_accelerator;
+  mini_electron::electron::g_menu_accelerator = true;
+  const BOOL handled = [super performKeyEquivalent:event];
+  mini_electron::electron::g_menu_accelerator = previous;
+  return handled;
+}
+@end
 
 @interface MiniElectronMenuAction : NSObject
 - (instancetype)initWithMenu:(mini_electron::electron::MacMenu*)menu
                         item:(v8::Local<v8::Object>)item;
 - (void)invoke:(id)sender;
+- (void)invalidate;
+- (BOOL)validateMenuItem:(NSMenuItem*)sender;
 @end
+static NSHashTable<MiniElectronMenuAction*>* g_menu_actions = nil;
+
 
 @interface MiniElectronTrayAction : NSObject
 - (instancetype)initWithTray:(mini_electron::electron::MacTray*)tray;
@@ -126,10 +143,62 @@ class MacTray;
 namespace mini_electron::electron {
 namespace {
 
+void ConfigureAccelerator(NSMenuItem* native, const std::string& accelerator) {
+  if (accelerator.empty()) return;
+  NSEventModifierFlags flags = 0;
+  NSString* key = @"";
+  NSArray<NSString*>* tokens = [NSStringFrom(accelerator) componentsSeparatedByString:@"+"];
+  for (NSString* token in tokens) {
+    NSString* lower = token.lowercaseString;
+    if ([lower isEqualToString:@"commandorcontrol"] ||
+        [lower isEqualToString:@"cmdorctrl"] ||
+        [lower isEqualToString:@"command"] || [lower isEqualToString:@"cmd"])
+      flags |= NSEventModifierFlagCommand;
+    else if ([lower isEqualToString:@"control"] || [lower isEqualToString:@"ctrl"])
+      flags |= NSEventModifierFlagControl;
+    else if ([lower isEqualToString:@"shift"])
+      flags |= NSEventModifierFlagShift;
+    else if ([lower isEqualToString:@"alt"] || [lower isEqualToString:@"option"])
+      flags |= NSEventModifierFlagOption;
+    else if ([lower isEqualToString:@"plus"] || token.length == 0)
+      key = @"+";
+    else if ([lower isEqualToString:@"space"])
+      key = @" ";
+    else if ([lower isEqualToString:@"enter"] || [lower isEqualToString:@"return"])
+      key = @"\r";
+    else if ([lower isEqualToString:@"escape"] || [lower isEqualToString:@"esc"])
+      key = @"\033";
+    else if ([lower isEqualToString:@"tab"])
+      key = @"\t";
+    else if ([lower isEqualToString:@"backspace"])
+      key = @"\177";
+    else
+      key = lower;
+  }
+  // AppKit compares shifted letter key equivalents case-sensitively against
+  // `charactersIgnoringModifiers` (for example, Shift+Z produces "Z").
+  if ((flags & NSEventModifierFlagShift) && key.length == 1 &&
+      [NSCharacterSet.lowercaseLetterCharacterSet
+          characterIsMember:[key characterAtIndex:0]])
+    key = key.uppercaseString;
+  native.keyEquivalent = key;
+  native.keyEquivalentModifierMask = flags;
+}
+
+SEL EditSelector(const std::string& role) {
+  if (role == "undo") return @selector(undo:);
+  if (role == "redo") return @selector(redo:);
+  if (role == "cut") return @selector(cut:);
+  if (role == "copy") return @selector(copy:);
+  if (role == "paste") return @selector(paste:);
+  if (role == "selectall") return @selector(selectAll:);
+  return nullptr;
+}
+
 class MacMenu {
  public:
   MacMenu(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
-      : isolate_(isolate), menu_([[NSMenu alloc] init]) {
+      : isolate_(isolate), menu_([[MiniElectronNativeMenu alloc] init]) {
     wrapper_.Reset(isolate, wrapper);
     wrapper_.SetWeak(this, Weak, v8::WeakCallbackType::kParameter);
   }
@@ -176,6 +245,9 @@ class MacMenu {
       objc_setAssociatedObject(native, @selector(invoke:), action,
                                OBJC_ASSOCIATION_RETAIN_NONATOMIC);
       native.enabled = Boolean(context, item, "enabled", true);
+      native.hidden = !Boolean(context, item, "visible", true);
+      if (Boolean(context, item, "registerAccelerator", true))
+        ConfigureAccelerator(native, Text(context, item, "_accelerator"));
       native.state = Boolean(context, item, "checked", false)
           ? NSControlStateValueOn : NSControlStateValueOff;
       v8::Local<v8::Value> submenu = Get(context, item, "submenu");
@@ -200,9 +272,10 @@ class MacMenu {
     MacMenu* self = From(info.This());
     if (!self) return;
     NSPoint point = NSEvent.mouseLocation;
-    if (info.Length() >= 2) {
-      point.x = info[0]->NumberValue(info.GetIsolate()->GetCurrentContext()).FromMaybe(point.x);
-      point.y = info[1]->NumberValue(info.GetIsolate()->GetCurrentContext()).FromMaybe(point.y);
+    if (info.Length() >= 3 && info[1]->IsNumber() && info[2]->IsNumber()) {
+      point.x = info[1]->NumberValue(info.GetIsolate()->GetCurrentContext()).FromMaybe(point.x);
+      point.y = info[2]->NumberValue(info.GetIsolate()->GetCurrentContext()).FromMaybe(point.y);
+      point.y = NSMaxY(NSScreen.screens.firstObject.frame) - point.y;
     }
     [self->menu_ popUpMenuPositioningItem:nil atLocation:point inView:nil];
   }
@@ -219,11 +292,24 @@ class MacMenu {
   // JavaScript scope first.
   void Invoke(v8::Local<v8::Object> item) {
     v8::Local<v8::Context> context = item->GetCreationContextChecked();
+    if (!Boolean(context, item, "enabled", true) ||
+        !Boolean(context, item, "visible", true)) return;
+    if (SEL selector = EditSelector(Text(context, item, "role"))) {
+      [NSApp sendAction:selector to:nil from:nil];
+      return;
+    }
     v8::Local<v8::Value> click = Get(context, item, "click");
     if (!click->IsFunction()) return;
-    v8::Local<v8::Value> arguments[] = {
-        v8::Object::New(isolate_), item, v8::Undefined(isolate_), v8::Undefined(isolate_)};
-    (void)click.As<v8::Function>()->Call(context, item, 4, arguments);
+    v8::Local<v8::Object> focused = GetFocusedBrowserWindow(isolate_);
+    v8::Local<v8::Value> window = focused.IsEmpty()
+        ? v8::Null(isolate_).As<v8::Value>() : focused.As<v8::Value>();
+    v8::Local<v8::Value> contents = focused.IsEmpty()
+        ? v8::Null(isolate_).As<v8::Value>() : Get(context, focused, "webContents");
+    v8::Local<v8::Object> event = v8::Object::New(isolate_);
+    Set(context, event, "triggeredByAccelerator", v8::Boolean::New(isolate_,
+        g_menu_accelerator));
+    v8::Local<v8::Value> arguments[] = {event, window, contents};
+    (void)click.As<v8::Function>()->Call(context, item, 3, arguments);
   }
 
   NSMenu* menu_;
@@ -246,16 +332,46 @@ class MacMenu {
     _menu = menu;
     _isolate = item->GetIsolate();
     _item.Reset(_isolate, item);
+    if (!g_menu_actions) {
+      g_menu_actions = [[NSHashTable alloc]
+          initWithOptions:NSPointerFunctionsWeakMemory capacity:0];
+    }
+    [g_menu_actions addObject:self];
   }
   return self;
 }
+- (void)invalidate {
+  _menu = nullptr;
+  _item.Reset();
+  _isolate = nullptr;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem*)sender {
+  if (!_menu || !_isolate || _item.IsEmpty())
+    return NO;
+  bool enabled = false;
+  mini_electron::electron::RunInMainJavaScriptScope([self, sender, &enabled] {
+    if (!_menu || !_isolate || _item.IsEmpty())
+      return;
+    auto item = _item.Get(_isolate);
+    auto context = item->GetCreationContextChecked();
+    enabled = mini_electron::electron::Boolean(context, item, "enabled", true) &&
+        mini_electron::electron::Boolean(context, item, "visible", true);
+    sender.hidden = !mini_electron::electron::Boolean(context, item, "visible", true);
+  });
+  return enabled;
+}
 - (void)invoke:(id)sender {
-  mini_electron::electron::RunInMainJavaScriptScope(
-      [self] { _menu->Invoke(_item.Get(_isolate)); });
+  if (!_menu || !_isolate || _item.IsEmpty())
+    return;
+  mini_electron::electron::RunInMainJavaScriptScope([self] {
+    if (_menu && _isolate && !_item.IsEmpty())
+      _menu->Invoke(_item.Get(_isolate));
+  });
   (void)sender;
 }
 - (void)dealloc {
-  _item.Reset();
+  [self invalidate];
 #if !__has_feature(objc_arc)
   [super dealloc];
 #endif
@@ -716,6 +832,16 @@ void InstallMacPlatformApiBindings(node::Environment* environment) {
 }
 
 void ShutdownMacPlatformApiBindings() {
+  // AppKit may retain menu items until its outer autorelease pool drains, after
+  // Node has disposed the isolate. Release every V8 handle while the isolate is
+  // still valid; later NSMenuItem teardown then only destroys empty handles.
+  for (MiniElectronMenuAction* action in g_menu_actions.allObjects)
+    [action invalidate];
+  NSApp.mainMenu = nil;
+#if !__has_feature(objc_arc)
+  [g_menu_actions release];
+#endif
+  g_menu_actions = nil;
   for (id observer in g_power_observers) {
     [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:observer];
     [NSDistributedNotificationCenter.defaultCenter removeObserver:observer];

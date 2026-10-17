@@ -20,6 +20,8 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
 
 bool ::blink::mojom::blink::StorageArea::GetAll(
     mojo::PendingRemote<::blink::mojom::blink::StorageAreaObserver>, WTF::Vector<::blink::mojom::blink::KeyValuePtr>*)
@@ -412,6 +414,22 @@ public:
         const WTF::String& source, 
         base::OnceCallback<void(bool)> callback)
     {
+        // Mojo acknowledgements must arrive after CachedStorageArea has queued
+        // its pending mutation. The local receiver shortcut is synchronous, so
+        // retain the payload and dispatch on the next Blink task instead.
+        base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+            base::BindOnce(&StorageAreaStub::dispatchObservers,
+                m_weakFactory.GetWeakPtr(), type, key, value, clientOldValue,
+                source, std::move(callback)));
+    }
+
+    void dispatchObservers(DelayDispatchObserversType type,
+        const WTF::Vector<uint8_t>& key,
+        const WTF::Vector<uint8_t>& value,
+        const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
+        const WTF::String& source,
+        base::OnceCallback<void(bool)> callback)
+    {
         if (m_impl->isLocal()) {
             for (const auto& observer : m_observers) {
                 if (!observer.TryGet())
@@ -532,6 +550,7 @@ private:
     WTF::Vector<::blink::mojom::blink::KeyValuePtr> m_outData;
     StorageAreaImpl* m_impl = nullptr;
     mojo::RemoteSet<::blink::mojom::blink::StorageAreaObserver> m_observers;
+    base::WeakPtrFactory<StorageAreaStub> m_weakFactory{this};
 };
 
 class SessionStorageNamespaceImpl : public ::blink::mojom::blink::SessionStorageNamespace {

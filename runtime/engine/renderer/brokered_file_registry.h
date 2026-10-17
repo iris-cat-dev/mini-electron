@@ -27,7 +27,8 @@ namespace content {
 // opaque capabilities and never resolve to a host filesystem path.
 void RegisterBrokeredFile(const std::string& broker_url,
     const std::string& display_name, std::vector<uint8_t> bytes,
-    std::string authorized_path = {}, uint64_t authorized_frame_id = 0);
+    std::string authorized_path = {}, uint64_t authorized_frame_id = 0,
+    bool is_directory = false);
 blink::FileList* CreateBrokeredFileList(
     const WTF::Vector<WTF::String>& broker_urls);
 const blink::RawData* FindBrokeredFileBytes(
@@ -35,10 +36,15 @@ const blink::RawData* FindBrokeredFileBytes(
 scoped_refptr<blink::BlobDataHandle> GetBrokeredFileBlob(
     uint64_t frame_id, const std::string& broker_url,
     const WTF::String& content_type);
+void UnregisterBrokeredFile(const std::string& broker_url);
 void ClearBrokeredFilesForFrame(uint64_t frame_id);
 void ClearBrokeredFiles();
 bool GetAuthorizedPathForBrokeredFile(
-    const blink::File& file, std::string* authorized_path);
+    uint64_t frame_id, const blink::File& file,
+    std::string* authorized_path);
+// Returns false for unbrokered Files; |is_directory| is never inferred by
+// touching the sandbox-denied host path.
+bool GetBrokeredFileDirectory(const blink::File& file, bool* is_directory);
 
 using RendererFileChooserReply =
     std::function<void(base::Value::Dict, std::string)>;

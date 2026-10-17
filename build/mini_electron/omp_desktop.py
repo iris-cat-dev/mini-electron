@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 from typing import Any
 
-from .distribution import copy_release_notices
+from .distribution import copy_release_notices, path_is_link
 
 
 _PRODUCT_NAME = "OMP Desktop"
@@ -24,18 +24,20 @@ _REQUIRED_DESKTOP_OUTPUTS = (
     Path("dist/daemon/node-entrypoint-runner.js"),
 )
 _REQUIRED_PACKAGED_ENTRIES = (
-    Path("resources/app.asar"),
-    Path("resources/app.asar.unpacked/dist/daemon/node-entrypoint-runner.js"),
+    Path("resources/app/package.json"),
+    Path("resources/app/dist/main.js"),
+    Path("resources/app/dist/preload.js"),
+    Path("resources/app/dist/daemon/node-entrypoint-runner.js"),
     Path(
-        "resources/app.asar.unpacked/node_modules/@omp-desktop/server/dist/server/"
+        "resources/app/node_modules/@omp-desktop/server/dist/server/"
         "server/agent/providers/omp/background-jobs-extension.js"
     ),
     Path(
-        "resources/app.asar.unpacked/node_modules/@napi-rs/"
+        "resources/app/node_modules/@napi-rs/"
         "keyring-win32-x64-msvc/keyring.win32-x64-msvc.node"
     ),
     Path(
-        "resources/app.asar.unpacked/node_modules/node-pty/"
+        "resources/app/node_modules/node-pty/"
         "prebuilds/win32-x64/conpty.node"
     ),
     Path("resources/app-dist/index.html"),
@@ -97,7 +99,7 @@ def _resolve_output(
             candidate = root / candidate
     else:
         candidate = out_dir / _PRODUCT_NAME
-    if candidate.is_symlink() or candidate.is_junction():
+    if path_is_link(candidate):
         raise OmpPackagingError(
             f"--app-output must not be a symlink or junction: {candidate}"
         )
@@ -183,8 +185,8 @@ def _validate_cli_shim(path: Path) -> None:
     required = (
         'set "electron_run_as_node=1"',
         '"%app_executable%"',
-        "app.asar.unpacked\\dist\\daemon\\node-entrypoint-runner.js",
-        "app.asar\\node_modules\\@omp-desktop\\cli\\dist\\index.js",
+        "app\\dist\\daemon\\node-entrypoint-runner.js",
+        "app\\node_modules\\@omp-desktop\\cli\\dist\\index.js",
     )
     if any(value not in contents for value in required):
         raise OmpPackagingError(
@@ -192,7 +194,7 @@ def _validate_cli_shim(path: Path) -> None:
         )
 
 
-def _runtime_versions(root: Path, source: Path, desktop_package: dict[str, Any]) -> str:
+def _runtime_versions(root: Path, source: Path) -> str:
     mini_package = _read_json(root / "package.json", "mini-electron package manifest")
     runtime = mini_package.get("miniElectron")
     if not isinstance(runtime, dict):
@@ -201,14 +203,16 @@ def _runtime_versions(root: Path, source: Path, desktop_package: dict[str, Any])
     if not isinstance(electron_version, str) or not electron_version:
         raise OmpPackagingError("mini-electron electronApiVersion is missing")
 
-    development = desktop_package.get("devDependencies")
-    configured_electron = (
-        development.get("electron") if isinstance(development, dict) else None
+    electron_package = _read_json(
+        source / "node_modules" / "electron" / "package.json",
+        "Electron package manifest",
     )
-    if configured_electron != electron_version:
+    installed_electron = electron_package.get("version")
+    if installed_electron != electron_version:
         raise OmpPackagingError(
-            "OMP Desktop Electron version does not match mini-electron's API version: "
-            f"{configured_electron!r} != {electron_version!r}"
+            "Installed OMP Desktop Electron version does not match "
+            "mini-electron's API version: "
+            f"{installed_electron!r} != {electron_version!r}"
         )
 
     builder_package = _read_json(
@@ -371,7 +375,7 @@ def package_windows_omp_desktop(
     root_package = _read_json(source / "package.json", "OMP Desktop root package manifest")
     if version != root_package.get("version"):
         raise OmpPackagingError("OMP Desktop package versions do not match")
-    electron_version = _runtime_versions(root, source, desktop_package)
+    electron_version = _runtime_versions(root, source)
 
     node = shutil.which("node.exe") or shutil.which("node")
     if not node:

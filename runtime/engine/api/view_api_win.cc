@@ -391,6 +391,18 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_get_caret_rect(mini_electron_web_view
     r->h = 10;
 }
 
+void MINI_ELECTRON_CALL_TYPE mini_electron_execute_edit_command(mini_electron_web_view webviewHandle, const char* command)
+{
+    if (!command || !*command)
+        return;
+    content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, webviewHandle,
+        [command = std::string(command)](content::WebViewHost* view) {
+            auto* webView = view->getWebView();
+            if (webView && webView->FocusedFrame())
+                webView->FocusedFrame()->ExecuteCommand(blink::WebString::FromUTF8(command));
+        });
+}
+
 void MINI_ELECTRON_CALL_TYPE mini_electron_editor_un_select(mini_electron_web_view webviewHandle)
 {
 }

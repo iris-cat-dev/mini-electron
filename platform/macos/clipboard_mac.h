@@ -5,10 +5,18 @@
 #define PLATFORM_MACOS_CLIPBOARD_MAC_H_
 
 #include <cstdint>
+#include <functional>
+#include "base/values.h"
 #include <string>
 #include <vector>
 
 namespace mini_electron::mac {
+
+using ClipboardBroker = std::function<bool(base::Value::Dict, base::Value::Dict*)>;
+// Renderer processes install an authenticated synchronous browser transport.
+// Once installed, clearing it fails closed; direct AppKit access is never
+// restored in that process.
+void SetRendererClipboardBroker(ClipboardBroker broker);
 
 // Representations written together as one pasteboard item. Null members are
 // omitted; a bookmark requires both its title and URL.

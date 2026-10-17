@@ -17,9 +17,10 @@ Sizes in MiB use 1 MiB = 1,048,576 bytes.
 
 The Windows `Release|x64` target disables Blink/V8/Node Inspector and DevTools,
 and excludes the experimental Permission Element implementation and binding.
-Production application staging removes `.d.ts`, `.d.mts`, and `.d.cts` files
-before ASAR creation and removes `node-pty` PDBs. Ordinary TypeScript sources,
-runtime native modules, remote-backend archives, and licenses remain.
+The measurements below describe the historical ASAR package; current OMP Desktop releases stage
+the application under `resources/app`. That measured build removed `.d.ts`, `.d.mts`, and `.d.cts`
+files before ASAR creation and removed `node-pty` PDBs. Ordinary TypeScript sources, runtime
+native modules, remote-backend archives, and licenses remained.
 
 Measured logical file bytes, including the final Windows caption fixes:
 
@@ -61,6 +62,278 @@ Detailed runtime evidence is recorded in
 `out/verification/windows-size-cut-results.json`; the complete package is
 `out/windows-x64/OMP Desktop Optimized`. Existing test-home and desktop profile
 state are preserved.
+
+## macOS: frontend startup I/O (2026-10-17)
+
+The OMP Desktop 0.5.1 entry script is 17,993,691 bytes. Its local file response
+used the Node stream default of 64 KiB per read. The custom protocol waits for
+the complete response body before delivering the script, so repeated small
+reads delayed the first usable frontend. The runtime now caps read chunks at
+1 MiB or the file size, whichever is smaller. Streaming, byte-based
+backpressure, cancellation, MIME types, and HEAD semantics are preserved;
+there is no persistent cache or whole-file read added.
+
+The same real packaged frontend and isolated profile were exercised with the
+macOS arm64 runtime before and after the change. A temporary protocol wrapper
+recorded body consumption and page paint events; the final measurement used
+the production implementation without an I/O override.
+
+| Stage | Before | After |
+| --- | ---: | ---: |
+| Entry-script response body consumption | 4660 ms | 365.4 ms |
+| Navigation to first contentful paint | 5364 ms | 1073.2 ms |
+
+These are individual warm-filesystem samples, not cold-disk guarantees or a
+comparison with the installed conventional Electron build. Main-process
+module loading and daemon readiness are separate stages. A real local
+workspace and conversation input opened after the optimized startup.
+
+The full packaged application was also launched through macOS Launch Services
+(`open -n -W -a`) with the same isolated profile and Iris enabled. Removing the
+desktop daemon manager's import of the complete server entrypoint and deferring
+pet rendering moved work off the main-window critical path.
+
+| Full launch stage | Before | After |
+| --- | ---: | ---: |
+| Main module loaded | 897 ms | 474 ms |
+| Main window created | 2457 ms | 1068 ms |
+| First contentful paint | 3676 ms | 2325 ms |
+
+In the final package run, managed-daemon startup returned at 4780 ms, the frontend
+signaled settled startup at 4963 ms, and the pet window was created at 5632 ms,
+after main content was visible. The isolated managed daemon reported `running`.
+An earlier optimized run reached first contentful paint at 2632 ms. These are
+single warm-filesystem observations with temporary timing instrumentation, not
+a cold-launch latency guarantee.
+
+## macOS: single runtime executable (2026-10-16)
+
+The macOS runtime no longer stages four full executable copies inside
+`Electron Helper*.app`. The GUI, renderer subprocesses, and Node workers reuse
+the host executable. Renderer process isolation and the Seatbelt profile are
+unchanged. Squirrel, Mantle, and ReactiveObjC remain required dynamic libraries.
+
+Measurements from the rebuilt runtime and the OMP Desktop `0.5.1` arm64 bundle,
+summing regular-file bytes without following symlinks:
+
+| Artifact | Before | After |
+| --- | ---: | ---: |
+| Complete `OMP Desktop.app` | 696,993,733 bytes (664.71 MiB) | 348,976,942 bytes (332.81 MiB) |
+| Runtime ZIP | 161,615,734 bytes (154.13 MiB) | 33,240,012 bytes (31.70 MiB) |
+| Helper application bundles | 4 | 0 |
+
+The remaining `Contents/Frameworks` is 1,528,708 bytes (1.46 MiB). This reduction
+does not remove the bundled OMP executable or application resources.
+
+All roles share the app's Info.plist, so it defaults to `LSUIElement=true`.
+Only GUI BrowserWindow creation promotes its process to a regular Dock
+application. Without this default, renderer and Node subprocesses also acquire
+Dock icons even though they no longer use separate helper executables.
+
+Verification exercised the real packaged GUI, separate renderer, frontend
+connection to the desktop-managed daemon (`online`, directory `ready`), native
+mouse navigation to Schedules, CLI version/status, and a cold CLI daemon start.
+During 45 startup samples only the GUI had activation policy `Regular`;
+the renderer, supervisor, and daemon had `Accessory`. The packaged smoke
+regression also checks background process trees for unwanted Dock visibility.
+`codesign --verify --deep --strict` accepted the final ad-hoc-signed app.
+Developer ID signing and notarization were not performed.
+
+The macOS renderer also preserves Skia's native RGBA order instead of applying
+the Windows BGRA swap unconditionally. A real rendered six-swatch page and
+`capturePage().toPNG()` matched red, green, blue, brand cyan `#00DBE4`, brand
+magenta `#F84FCC`, and white exactly. The packaged application's native window
+was visually checked after the fix. The current runtime disables DevTools, so
+the CDP screenshot branch was not exercised.
+
+The system libcurl exported WebSocket symbols but rejected `ws`/`wss`.
+The runtime now statically links pinned libcurl 8.23.0 with WebSocket support,
+reusing the existing TLS library and Apple's SecTrust certificate store.
+The native renderer regression passed subprotocol negotiation, fragmented text,
+binary data, ping/pong, and clean close. HTTPS accepted a valid certificate and
+rejected a self-signed certificate; no extra framework bundle was introduced.
+
+Native AppKit handling now consumes Blink's draggable-region updates, subtracts
+`no-drag` controls, and handles caption mouse-down and double-click. macOS keeps
+native drag regions after zooming instead of switching to the manual fallback.
+Real mouse events moved the packaged window by (+80, +40) points without resizing,
+zoomed it from 1200 × 800 to 1647 × 1084, and restored its exact previous bounds.
+The titlebar sidebar toggle remained clickable without moving the window.
+
+IPC invocation and send events now retain their native source-frame identity.
+The main-frame wrapper is stable for a document and becomes detached after
+replacement. The native regression verifies main-frame authorization, subframe
+rejection, identity reuse, and navigation detachment. In the actual packaged
+frontend, 23 activity publications over 159 seconds succeeded with no failures,
+including a language change; no pet-activity error toast remained. The optional
+pet overlay separately lacks `setIgnoreMouseEvents` and is not covered by that
+activity-sync result.
+
+The `system-ui` CJK regression required only metadata access to the `/System`
+directory itself. Independent CoreText probes isolated that ancestor lookup;
+existing access under `/System/Library` was insufficient. Before/after rendered
+font comparisons and the actual Chinese settings UI were visually checked.
+The sandbox otherwise remains unchanged and no fonts are added to the bundle.
+
+Native AppKit event injection into the real packaged renderer moved a scrollbar
+from 0 to 1472 pixels, stopped after release, and scrolled down to 1522 then back
+to 1472. Wheel scrolling also moved the actual Settings sidebar to 38.5 pixels.
+The Settings sidebar deliberately hides its native scrollbar, so its empty edge
+is not a drag target. The workstation was locked during these checks; global
+physical-pointer injection could not be exercised, so an external temporary
+native addon delivered real NSEvent objects through `MiniElectronRendererView`.
+
+The runtime now supplies OS preferred languages to the sandboxed navigator
+instead of the legacy `cn-ZH,cn` constant. macOS language smoke scenarios with
+per-process English and Chinese preferences both passed without changing global
+system settings. App-level manual overrides retain their existing precedence.
+A fresh packaged-app profile automatically displayed Chinese for the real
+`zh-Hans-US, en-US` preference list. Manual English survived reload despite
+the Chinese system preference; selecting System restored the Chinese UI.
+
+Hover and scroll flashing had the same native presentation race: the host
+cleared the full view before a shared-frame read, then returned with only the
+clear color if the renderer was writing. The presenter now retains a validated
+image while a separate reusable buffer receives the next frame. A failed read
+never modifies the presented pixels, and ordinary redraws reuse the image.
+The permanent native regression fails on the previous runtime and passes after
+the fix; it forces writer contention through the real NSView draw path and
+then verifies that a later complete frame still changes the displayed color.
+
+macOS `webContents.prepareToShow(): Promise<void>` is the startup presentation
+fence used after application content-ready IPC. It requests a successful
+post-request compositor presentation with forced viewport damage, receives the
+stable shared-frame generation, and resolves only after the hidden native view
+has drawn that generation or a newer complete frame into its backing store.
+This is not the initial `ready-to-show` lifetime paint or a `capturePage` read,
+and does not certify WindowServer scanout. Destroying or losing the renderer
+rejects outstanding preparation. Native hosts without this backing-store
+acknowledgement reject the operation rather than pretending to present.
+`show`, `showInactive`, and `focus` also draw the current complete shared frame
+before ordering a macOS window onscreen. The existing native presentation
+regression now starts hidden and prepares static content before first reveal.
+
+The final packaged OMP startup profile kept the application window hidden through
+the renderer's first contentful paint at 3,339 ms. The native presentation fence
+started the reveal at 3,450 ms, returned with the window visible at 3,458 ms, and
+`capturePage()` returned a non-empty branded startup frame at 3,514 ms. The separate
+AppKit regression supplies the native-view draw proof; this renderer capture is not
+claimed as independent WindowServer scanout evidence. Moving Mermaid, WebSocket
+response validation, and terminal emulation behind their use sites reduced the
+startup script body from about 18 MB to 11,307,818 bytes. Its 3.4 MB, 2.1 MB, and
+880.6 KB chunks, respectively, were absent from the initial request set; the
+validator loaded after first reveal when the daemon connection first needed it.
+
+Hidden-titlebar/full-size-content and frameless windows also need an interior
+native resize border: the existing Resizable style alone left edge events on
+the renderer/caption input path. The previous runtime failed a real NSWindow
+left-edge drag with an unchanged 520-point width instead of the expected 544.
+The host now handles a five-point edge/corner border before caption/web input,
+uses screen-space deltas, anchors the opposite edge, and clamps window min/max
+sizes. Full-screen and non-resizable windows retain their non-resize behavior.
+The native regression covers all eight directions, shrinking and expanding,
+constraints, release, resize cursors, no-drag controls and viewport updates.
+It also enters/exits real AppKit full screen for OMP's hidden-titlebar style.
+
+The native-edge revision passed eight resize directions and
+cursor checks, growing from 1200 × 800 to 1240 × 830 for corner drags. Six
+hover targets and Settings wheel scrolling retained identical presented pixels
+during forced frame contention. The Chinese System-language UI remained
+readable, the managed host was online, and 17 pet-activity publications had no
+errors. These checks delivered genuine NSEvents to the actual NSWindow/view;
+an external process-targeted pointer probe did not change the bounds, so this
+does not claim an independent physical-pointer/manual acceptance check.
+
+Those geometry and final-viewport checks did not cover continuous resize frame
+publication; the user subsequently reported white screens and flickering.
+
+The resize compositor was submitting a root frame without its page embedded,
+while Blink waited for the acknowledgment before preparing replacement content.
+An allocation handoff could also let queued damage publish a new white-cleared
+bitmap before painting. The corrected path retains the active child surface
+through a referenced fallback range until replacement activation. It coalesces
+size/scale changes and publishes only actual software swaps, with acknowledgment
+after UI consumption and retained allocation ownership through teardown.
+
+The new continuous-resize regression observes committed CALayer pixels through
+rapid timer-paced native events, not direct `drawRect:` calls. It covers retained
+presentation with a paused renderer, later color/frame updates, bounded final
+viewport recovery and a visible replacement-layout marker. The actual OMP
+baseline additionally captured four samples where all nine detection points
+became white during one 80-step resize sequence.
+
+The white-frame revision passed the same 80-step native resize sequence with
+zero white detection points in every sample (previous bundle: four all-white
+samples). After release, the native layer and matching renderer viewport were
+observed within 75 ms. The committed-layer regression also passed rapid resize,
+writer pause/resume, subsequent complete colors, and visible replacement layout;
+the eight-direction/full-screen, contention, IPC, WebSocket, language and 11 npm
+tests passed. Chinese System-language rendering remained readable; the isolated
+host was online and pet activity publication had no errors. Verification used
+genuine AppKit event injection and committed-layer sampling, not physical display
+scanout or a manual pointer acceptance check. Windows/Linux runtime resize and
+shutdown were not exercised on this macOS workstation.
+
+The following geometry revision addresses the subsequent squeezed-content
+report. Its predecessor nonuniformly stretched retained native images and child
+fallback surfaces. A deterministic paused-renderer portrait test changed an
+80 × 80 DIP square into 46 × 104 DIP. The corrected presenter clips at original
+pixel density, and Viz uses natural fallback geometry with alpha-correct child
+background gutters. A readiness-triggered viewport retry closes the static-page
+lost-final-resize race; canonical allocator merging prevents stale metadata from
+rewinding the parent ID while retaining the new dimensions.
+
+The geometry regression passed paused retention, static final convergence,
+rapid static transitions, animated layouts and subsequent real frame updates.
+It checks viewport and marker bounds across 700 × 1050, 1500 × 500, 620 × 1000
+and 1200 × 800. In the actual packaged UI, temporary visual markers retained an
+80 × 80 fixed square and 100 × 100 responsive square at all four sizes; responsive
+positions matched DOM layout. The temporary marker overlay was removed before
+visually checking the unmodified Chinese homepage. Eight-direction/full-screen,
+contention, IPC, WebSocket, language and 11 npm regressions also passed. This
+revision retains the same single-executable/process-isolated architecture;
+Windows/Linux runtime verification and physical-pointer scanout remain outside
+the exercised checks.
+
+### Duplicate-window and storage correction
+
+Apple crash reports established two renderer exits under the same GUI process.
+The native storage stub synchronously acknowledged writes before Blink queued
+its pending mutation; burst writes reproduced a renderer exit in the actual OMP
+page. Storage notifications now retain their payload and run on the next Blink
+task. Storage and synchronous navigation reply callbacks also notify under their
+completion lock, preventing the waiter from destroying its stack condition
+variable before the reply thread's final use.
+
+Renderer liveness is no longer reported as `WebContents.isDestroyed()`. The
+owning native window remains eligible for selection until actual destruction.
+OMP coalesces implicit reopen/tray/pet/relaunch creation, while explicit New
+Window/project creation remains independent. Only the successful desktop lock
+owner performs daemon/update shutdown; failed-lock secondary launches exit
+without stopping the primary's managed daemon.
+
+Before correction, terminating only an isolated probe's renderer and issuing
+two activate events produced three real native windows. The final signed bundle
+completed 1,000 alternating storage writes in 8.776 seconds without a renderer
+exit. Ten native reopen callbacks reused the same window and renderer. The real
+AppKit New Window menu action added one window; after both windows were destroyed,
+ten reopen callbacks created just one replacement. CGWindowList confirmed one
+visible native main window. Three plain same-profile launches exited successfully
+without adding windows or stopping the managed daemon; actual primary quit then
+removed the owned daemon record and exited successfully.
+
+Desktop launch/background/navigation/quit checks passed 31 tests. Native storage
+burst/Unicode/delete/clear/reload persistence and renderer-loss lifetime smokes
+passed, as did IPC, WebSocket, navigator languages, cached presentation and 11 npm
+tests. Native edge input on the actual final UI changed width from 1200 to 1248
+while preserving height 800. The broader resize smoke stopped waiting for AppKit
+to finish entering full screen while `loginwindow` was frontmost; this revision
+does not claim a newly verified full-screen transition or physical-pointer input.
+The GUI/profile used for these acceptance checks was temporary; no existing user
+GUI or its renderer was deliberately terminated.
+
+The following sections retain the earlier engine-size baseline and optimization
+history; their historical totals are not measurements of this bundle.
 
 ## macOS executive summary
 

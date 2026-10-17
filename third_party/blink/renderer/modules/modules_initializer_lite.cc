@@ -13,6 +13,8 @@
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "components/services/filesystem/public/mojom/types.mojom-blink.h"
 #include "third_party/blink/public/mojom/dom_storage/session_storage_namespace.mojom-blink.h"
 #include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
@@ -23,6 +25,7 @@
 #include "third_party/blink/public/web/web_view_client.h"
 #include "third_party/blink/public/mojom/blob/data_element.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/modules/v8/module_bindings_initializer.h"
+#include "third_party/blink/renderer/core/clipboard/dragged_isolated_file_system.h"
 #include "third_party/blink/renderer/core/css/background_color_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/clip_path_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/css_paint_image_generator.h"
@@ -191,7 +194,8 @@ void ModulesInitializer::Initialize()
     indexed_db_names::Init();
     media_capabilities_names::Init();
     //     AXObjectCache::Init(AXObjectCacheImpl::Create);
-    //     DraggedIsolatedFileSystem::Init(DraggedIsolatedFileSystemImpl::PrepareForDataObject);
+    DraggedIsolatedFileSystem::Init(
+        DraggedIsolatedFileSystemImpl::PrepareForDataObject);
     //     CSSPaintImageGenerator::Init(CSSPaintImageGeneratorImpl::Create);
     //     BackgroundColorPaintImageGenerator::Init(BackgroundColorPaintImageGeneratorImpl::Create);
     //     ClipPathPaintImageGenerator::Init(ClipPathPaintImageGeneratorImpl::Create);
@@ -644,25 +648,6 @@ static String GetContentTypeFromFileName(const String& name, File::ContentTypeLo
     return type;
 }
 
-bool GetFileSystemUrlSize(const String& path, int64_t* file_size)
-{
-    String path_temp = path;
-    if (path_temp.StartsWith("file:///"))
-        path_temp = path_temp.Right(path_temp.length() - sizeof("file:///") + 1);
-
-    std::optional<int64_t> file_size_opt = base::GetFileSize(StringToFilePath(path_temp));
-    if (file_size_opt.has_value()) {
-        *file_size = file_size_opt.value();
-        return true;
-    }
-    String path_escape = blink::DecodeURLEscapeSequences(path_temp, url::DecodeURLMode::kUTF8OrIsomorphic);
-    file_size_opt = base::GetFileSize(StringToFilePath(path_escape));
-    if (file_size_opt.has_value()) {
-        *file_size = file_size_opt.value();
-        return true;
-    }
-    return false;
-}
 
 class FileSystemManagerStub : public mojom::blink::FileSystemManager {
 public:
@@ -670,132 +655,165 @@ public:
     bool Open(const ::scoped_refptr<const ::blink::SecurityOrigin>& origin, ::blink::mojom::blink::FileSystemType file_system_type, WTF::String* out_name,
         ::blink::KURL* out_root_url, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_name)
+            *out_name = WTF::String();
+        if (out_root_url)
+            *out_root_url = KURL();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using OpenCallback = base::OnceCallback<void(const WTF::String&, const ::blink::KURL&, ::base::File::Error)>;
     void Open(const ::scoped_refptr<const ::blink::SecurityOrigin>& origin, ::blink::mojom::blink::FileSystemType file_system_type, OpenCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(WTF::String(), KURL(),
+            base::File::FILE_ERROR_SECURITY);
     }
 
 
     bool ResolveURL(const ::blink::KURL& filesystem_url, ::blink::mojom::blink::FileSystemInfoPtr* out_info, ::base::FilePath* out_file_path, bool* out_is_directory,
         ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_info)
+            out_info->reset();
+        if (out_file_path)
+            *out_file_path = base::FilePath();
+        if (out_is_directory)
+            *out_is_directory = false;
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using ResolveURLCallback = base::OnceCallback<void(FileSystemInfoPtr, const ::base::FilePath&, bool, ::base::File::Error)>;
     void ResolveURL(const ::blink::KURL& filesystem_url, ResolveURLCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(nullptr, base::FilePath(), false,
+            base::File::FILE_ERROR_SECURITY);
     }
 
     bool Move(const ::blink::KURL& src_path, const ::blink::KURL& dest_path, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using MoveCallback = base::OnceCallback<void(::base::File::Error)>;
     void Move(const ::blink::KURL& src_path, const ::blink::KURL& dest_path, MoveCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool Copy(const ::blink::KURL& src_path, const ::blink::KURL& dest_path, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using CopyCallback = base::OnceCallback<void(::base::File::Error)>;
     void Copy(const ::blink::KURL& src_path, const ::blink::KURL& dest_path, CopyCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool Remove(const ::blink::KURL& path, bool recursive, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using RemoveCallback = base::OnceCallback<void(::base::File::Error)>;
     void Remove(const ::blink::KURL& path, bool recursive, RemoveCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool ReadMetadata(const ::blink::KURL& path, ::base::File::Info* out_file_info, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_file_info)
+            *out_file_info = base::File::Info();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using ReadMetadataCallback = base::OnceCallback<void(const ::base::File::Info&, ::base::File::Error)>;
     void ReadMetadata(const ::blink::KURL& path, ReadMetadataCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(
+            base::File::Info(), base::File::FILE_ERROR_SECURITY);
     }
 
     bool Create(const ::blink::KURL& path, bool exclusive, bool is_directory, bool recursive, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using CreateCallback = base::OnceCallback<void(::base::File::Error)>;
     void Create(const ::blink::KURL& path, bool exclusive, bool is_directory, bool recursive, CreateCallback callback) override
     {
-
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool Exists(const ::blink::KURL& path, bool is_directory, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using ExistsCallback = base::OnceCallback<void(::base::File::Error)>;
     void Exists(const ::blink::KURL& path, bool is_directory, ExistsCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     void ReadDirectory(const ::blink::KURL& path, ::mojo::PendingRemote<::blink::mojom::blink::FileSystemOperationListener> listener) override
     {
-        DebugBreak();
+        mojo::Remote<mojom::blink::FileSystemOperationListener> remote(
+            std::move(listener));
+        remote->ErrorOccurred(base::File::FILE_ERROR_SECURITY);
     }
 
     bool ReadDirectorySync(
         const ::blink::KURL& path, WTF::Vector<::filesystem::mojom::blink::DirectoryEntryPtr>* out_entries, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_entries)
+            out_entries->clear();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using ReadDirectorySyncCallback = base::OnceCallback<void(WTF::Vector<::filesystem::mojom::blink::DirectoryEntryPtr>, ::base::File::Error)>;
     void ReadDirectorySync(const ::blink::KURL& path, ReadDirectorySyncCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(
+            {}, base::File::FILE_ERROR_SECURITY);
     }
 
     void Write(const ::blink::KURL& file_path, ::mojo::PendingRemote<::blink::mojom::blink::Blob> blob, int64_t position,
         ::mojo::PendingReceiver<::blink::mojom::blink::FileSystemCancellableOperation> op_receiver, ::mojo::PendingRemote<::blink::mojom::blink::FileSystemOperationListener> listener)
         override
     {
-        DebugBreak();
+        mojo::Remote<mojom::blink::FileSystemOperationListener> remote(
+            std::move(listener));
+        remote->ErrorOccurred(base::File::FILE_ERROR_SECURITY);
     }
 
     bool WriteSync(const ::blink::KURL& file_path, ::mojo::PendingRemote<::blink::mojom::blink::Blob> blob, int64_t position, int64_t* out_byte_count,
         ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_byte_count)
+            *out_byte_count = 0;
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
@@ -804,7 +822,7 @@ public:
         const ::blink::KURL& file_path, ::mojo::PendingRemote<::blink::mojom::blink::Blob> blob, int64_t position, WriteSyncCallback callback)
         override
     {
-        DebugBreak();
+        std::move(callback).Run(0, base::File::FILE_ERROR_SECURITY);
     }
 
     //using TruncateCallback = base::OnceCallback<void(::base::File::Error)>;
@@ -812,25 +830,33 @@ public:
         const ::blink::KURL& file_path, int64_t length, ::mojo::PendingReceiver<::blink::mojom::blink::FileSystemCancellableOperation> op_receiver, TruncateCallback callback)
         override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool TruncateSync(const ::blink::KURL& file_path, int64_t length, ::base::File::Error* out_error_code) override
     {
-        DebugBreak();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
         return false;
     }
 
     //using TruncateSyncCallback = base::OnceCallback<void(::base::File::Error)>;
     void TruncateSync(const ::blink::KURL& file_path, int64_t length, TruncateSyncCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::FILE_ERROR_SECURITY);
     }
 
     bool CreateSnapshotFile(const ::blink::KURL& file_path, ::base::File::Info* out_file_info, ::base::FilePath* out_platform_path,
         ::base::File::Error* out_error_code, ::mojo::PendingRemote<::blink::mojom::blink::ReceivedSnapshotListener>* out_snapshot_listener) override
     {
-        DebugBreak();
+        if (out_file_info)
+            *out_file_info = base::File::Info();
+        if (out_platform_path)
+            *out_platform_path = base::FilePath();
+        if (out_error_code)
+            *out_error_code = base::File::FILE_ERROR_SECURITY;
+        if (out_snapshot_listener)
+            *out_snapshot_listener = {};
         return false;
     }
 
@@ -839,42 +865,37 @@ public:
 
     void CreateSnapshotFile(const ::blink::KURL& file_path, CreateSnapshotFileCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(base::File::Info(), base::FilePath(),
+            base::File::FILE_ERROR_SECURITY,
+            mojo::PendingRemote<mojom::blink::ReceivedSnapshotListener>());
     }
 
     bool GetPlatformPath(const ::blink::KURL& file_path, ::base::FilePath* out_platform_path) override
     {
-        DebugBreak();
+        if (out_platform_path)
+            *out_platform_path = base::FilePath();
         return false;
     }
 
     //using GetPlatformPathCallback = base::OnceCallback<void(const ::base::FilePath&)>;
     void GetPlatformPath(const ::blink::KURL& file_path, GetPlatformPathCallback callback) override
     {
-
-        DebugBreak();
+        std::move(callback).Run(base::FilePath());
     }
 
     bool RegisterBlob(const WTF::String& content_type, const ::blink::KURL& url, uint64_t length,
         std::optional<::base::Time> expected_modification_time, ::scoped_refptr<::blink::BlobDataHandle>* out_blob) override
     {
-        String path = url.GetString();
-        std::unique_ptr<BlobData> blob_data;
-        int64_t file_size = 0;
-        if (!GetFileSystemUrlSize(path, &file_size)) {
-            file_size = std::numeric_limits<uint64_t>::max();
-        }
-
-        *out_blob = BlobDataHandle::CreateForFile(nullptr, path, 0, file_size, expected_modification_time, content_type);
-
-        return true;
+        if (out_blob)
+            *out_blob = nullptr;
+        return false;
     }
 
     //using RegisterBlobCallback = base::OnceCallback<void(const ::scoped_refptr<::blink::BlobDataHandle>&)>;
     void RegisterBlob(const WTF::String& content_type, const ::blink::KURL& url, uint64_t length,
         std::optional<::base::Time> expected_modification_time, RegisterBlobCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(scoped_refptr<BlobDataHandle>());
     }
 };
 

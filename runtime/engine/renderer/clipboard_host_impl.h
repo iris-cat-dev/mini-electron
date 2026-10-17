@@ -3,6 +3,11 @@
 #define content_renderer_ClipboardHostImpl_h
 
 #include "third_party/blink/public/mojom/clipboard/clipboard.mojom-blink.h"
+#include "build/build_config.h"
+#if BUILDFLAG(IS_MAC)
+#include <optional>
+#include <string>
+#endif
 #include <windows.h>
 
 namespace content {
@@ -100,7 +105,13 @@ private:
     void writeTextInternal(const WTF::String& string);
 
     static HWND m_clipboardOwner;
+#if BUILDFLAG(IS_MAC)
+    // Keep representations together until Blink completes this write.
+    std::optional<std::u16string> m_pendingText;
+    std::optional<std::u16string> m_pendingHtml;
+#endif
 };
+
 
 }
 

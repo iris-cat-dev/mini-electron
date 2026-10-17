@@ -4,6 +4,12 @@
 
 #include "runtime/engine/public/engine_api.h"
 
+#if defined(__APPLE__)
+// Configure the first Blink page before its asynchronous creation is queued.
+mini_electron_web_view mini_electron_create_web_view_with_background(
+    unsigned background_color, bool transparent);
+#endif
+
 // 不知道为啥，如果在mb内部直接调用mbXXX api，在某些linux下会报错，导出表被改了
 void mini_electron_destroy_web_view_impl(mini_electron_web_view webviewHandle);
 void mini_electron_show_window_impl(mini_electron_web_view webviewHandle, BOOL b);

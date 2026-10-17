@@ -3,6 +3,7 @@
 
 #include "runtime/engine/public/engine_api.h"
 #include "base/location.h"
+#include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/platform_thread.h"
@@ -19,7 +20,9 @@ class Isolate;
 namespace content {
 
 using TraceLocation = ::base::Location;
+#if !defined(__APPLE__)
 struct TaskAsyncData;
+#endif
 class WebViewHost;
 
 class ThreadCall {
@@ -37,6 +40,7 @@ public:
     static void callBlinkThreadSync(const TraceLocation& caller, std::function<void(void)>&& closure);
     static void callUiThreadSync(const TraceLocation& caller, std::function<void(void)>&& closure);
     static void callUiThreadAsync(const TraceLocation& caller, std::function<void(void)>&& closure);
+    static void callUiThreadAsync(const TraceLocation& caller, base::OnceClosure closure);
     static void callUiThreadDelayed(const TraceLocation& caller, std::function<void(void)>&& closure, size_t millisecond);
     static void callMediaThreadAsync(const TraceLocation& caller, std::function<void(void)>&& closure);
 
@@ -81,7 +85,9 @@ public:
 
 private:
     static void callThreadSync(const TraceLocation& caller, std::function<void(void)>&& closure, scoped_refptr<base::SingleThreadTaskRunner> runner);
+#if !defined(__APPLE__)
     static bool waitForCallThreadAsync(TaskAsyncData* asyncData);
+#endif
 
     static void onThreadIdle(uv_loop_t* loop, v8::Platform* platform, v8::Isolate* isolate);
 

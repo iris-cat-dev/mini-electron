@@ -27,11 +27,6 @@
 
 namespace blink {
 
-DirectoryEntry* DOMFileSystem::root(void) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
 
 bool V8DOMFileSystem::IsExposed(ExecutionContext* execution_context)
 {

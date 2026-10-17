@@ -25,6 +25,7 @@ struct BrokeredFile {
     scoped_refptr<blink::BlobDataHandle> blob;
     std::string authorized_path;
     uint64_t authorized_frame_id = 0;
+    bool is_directory = false;
 };
 
 std::map<std::string, BrokeredFile>& Files()
@@ -43,7 +44,8 @@ RendererFileChooserBroker& FileChooserBroker()
 
 void RegisterBrokeredFile(const std::string& broker_url,
     const std::string& display_name, std::vector<uint8_t> bytes,
-    std::string authorized_path, uint64_t authorized_frame_id)
+    std::string authorized_path, uint64_t authorized_frame_id,
+    bool is_directory)
 {
     if (broker_url.rfind("mini-electron-broker://", 0) != 0)
         return;
@@ -52,7 +54,7 @@ void RegisterBrokeredFile(const std::string& broker_url,
         reinterpret_cast<const char*>(bytes.data()), bytes.size()));
     Files()[broker_url] = {
         display_name, std::move(data), {}, std::move(authorized_path),
-        authorized_frame_id
+        authorized_frame_id, is_directory
     };
 }
 
@@ -66,7 +68,7 @@ blink::FileList* CreateBrokeredFileList(
     for (const WTF::String& url : broker_urls) {
         std::string key = url.Utf8();
         auto found = Files().find(key);
-        if (found == Files().end())
+        if (found == Files().end() || found->second.is_directory)
             return nullptr;
         metadata.length = found->second.bytes->size();
         auto blob = GetBrokeredFileBlob(
@@ -107,6 +109,11 @@ scoped_refptr<blink::BlobDataHandle> GetBrokeredFileBlob(
     }
     return file.blob;
 }
+void UnregisterBrokeredFile(const std::string& broker_url)
+{
+    Files().erase(broker_url);
+}
+
 
 void ClearBrokeredFilesForFrame(uint64_t frame_id)
 {
@@ -125,14 +132,27 @@ void ClearBrokeredFiles()
 
 
 bool GetAuthorizedPathForBrokeredFile(
-    const blink::File& file, std::string* authorized_path)
+    uint64_t frame_id, const blink::File& file, std::string* authorized_path)
 {
-    if (!authorized_path || file.FileSystemURL().IsEmpty())
+    if (!frame_id || !authorized_path || file.FileSystemURL().IsEmpty())
         return false;
     auto found = Files().find(file.FileSystemURL().GetString().Utf8());
-    if (found == Files().end() || found->second.authorized_path.empty())
+    if (found == Files().end() || found->second.authorized_path.empty()
+        || found->second.authorized_frame_id != frame_id)
         return false;
     *authorized_path = found->second.authorized_path;
+    return true;
+}
+
+bool GetBrokeredFileDirectory(
+    const blink::File& file, bool* is_directory)
+{
+    if (!is_directory || file.FileSystemURL().IsEmpty())
+        return false;
+    auto found = Files().find(file.FileSystemURL().GetString().Utf8());
+    if (found == Files().end())
+        return false;
+    *is_directory = found->second.is_directory;
     return true;
 }
 

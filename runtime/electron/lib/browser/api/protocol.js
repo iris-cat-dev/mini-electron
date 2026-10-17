@@ -84,7 +84,6 @@ Protocol.prototype.handle = function(scheme, handler) {
                 throw new TypeError('Protocol handler must return a Response');
             finish({
                 data: Buffer.from(await response.arrayBuffer()),
-                mimeType: response.headers.get('content-type') || '',
                 statusCode: response.status,
                 statusText: response.statusText,
                 headers: Object.fromEntries(response.headers),

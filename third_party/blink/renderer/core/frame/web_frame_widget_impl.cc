@@ -4254,6 +4254,20 @@ const viz::LocalSurfaceId& WebFrameWidgetImpl::LocalSurfaceIdFromParent()
     return widget_base_->local_surface_id_from_parent();
 }
 
+bool WebFrameWidgetImpl::RequestSuccessfulPresentationWithForcedRedraw(
+    base::OnceClosure callback)
+{
+    cc::LayerTreeHost* host = widget_base_ ? widget_base_->LayerTreeHost() : nullptr;
+    if (!host)
+        return false;
+    host->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
+        [](base::OnceClosure callback, const viz::FrameTimingDetails&) {
+            std::move(callback).Run();
+        }, std::move(callback)));
+    host->SetNeedsCommitWithForcedRedraw();
+    return true;
+}
+
 cc::LayerTreeHost* WebFrameWidgetImpl::LayerTreeHost()
 {
     return widget_base_->LayerTreeHost();

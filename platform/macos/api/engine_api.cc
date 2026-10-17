@@ -2,6 +2,7 @@
 // Use of this source code is governed by the Apache-2.0 license.
 
 #include "runtime/engine/public/engine_api.h"
+#include "runtime/engine/api/internal_api.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -119,6 +120,22 @@ WPARAM MouseFlags(unsigned int flags) {
 
 }  // namespace
 
+mini_electron_web_view mini_electron_create_web_view_with_background(
+    unsigned background_color, bool transparent) {
+  auto* view = new content::WebViewHost(false, background_color, transparent);
+  const mini_electron_web_view handle = view->getWebviewHandle();
+  std::fprintf(stderr, "[mini-electron] mini_electron_create_web_view(%lld) -> Blink WebView task\n",
+               static_cast<long long>(handle));
+  content::ThreadCall::callBlinkThreadAsync(
+      FROM_HERE, [view] {
+        view->createWebWindowOrViewInBlinkThread(nullptr, nullptr, false,
+                                                 view->isTransparent());
+        std::fprintf(stderr,
+                     "[mini-electron] WebViewHost -> WebViewImpl/LocalFrame/Page created\n");
+      });
+  return handle;
+}
+
 extern "C" {
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_init(const mini_electron_settings* settings) {
@@ -138,18 +155,7 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_uninit() {
 }
 
 mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view() {
-  auto* view = new content::WebViewHost(false);
-  const mini_electron_web_view handle = view->getWebviewHandle();
-  std::fprintf(stderr, "[mini-electron] mini_electron_create_web_view(%lld) -> Blink WebView task\n",
-               static_cast<long long>(handle));
-  content::ThreadCall::callBlinkThreadAsync(
-      FROM_HERE, [view] {
-        view->createWebWindowOrViewInBlinkThread(nullptr, nullptr, false,
-                                                 view->isTransparent());
-        std::fprintf(stderr,
-                     "[mini-electron] WebViewHost -> WebViewImpl/LocalFrame/Page created\n");
-      });
-  return handle;
+  return mini_electron_create_web_view_with_background(0xffffffff, false);
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_destroy_web_view(mini_electron_web_view handle) {
@@ -428,6 +434,45 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_kill_focus(mini_electron_web_view han
   content::ThreadCall::callBlinkThreadAsyncWithValid(
       FROM_HERE, handle,
       [](content::WebViewHost* view) { view->killFocus(); });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_execute_edit_command(
+    mini_electron_web_view handle, const char* command) {
+  if (!command || !*command)
+    return;
+  content::ThreadCall::callBlinkThreadAsyncWithValid(
+      FROM_HERE, handle,
+      [command = std::string(command)](content::WebViewHost* view) {
+        auto* web_view = view->getWebView();
+        auto* frame = web_view ? web_view->FocusedFrame() : nullptr;
+        if (frame)
+          frame->ExecuteCommand(blink::WebString::FromUTF8(command));
+      });
+}
+
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_select_all(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "SelectAll");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_copy(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Copy");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_cut(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Cut");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_paste(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Paste");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_delete(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Delete");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_undo(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Undo");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_redo(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Redo");
+}
+void MINI_ELECTRON_CALL_TYPE mini_electron_editor_un_select(mini_electron_web_view view) {
+  mini_electron_execute_edit_command(view, "Unselect");
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_set_device_scale_factor(mini_electron_web_view handle, float scale) {

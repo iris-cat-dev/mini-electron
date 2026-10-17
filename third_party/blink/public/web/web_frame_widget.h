@@ -242,6 +242,11 @@ public:
     // Update the LocalSurfaceId used for frames produced by this widget.
     virtual void ApplyLocalSurfaceIdUpdate(const viz::LocalSurfaceId& id) = 0;
 
+    // Forces a full-viewport commit and runs the callback only after successful
+    // presentation. Returns false if the compositor is unavailable.
+    virtual bool RequestSuccessfulPresentationWithForcedRedraw(
+        base::OnceClosure callback) = 0;
+
 private:
     // This is a private virtual method so we don't expose cc::LayerTreeHost
     // outside of this class. Friend classes may be added in order to access it.

@@ -84,8 +84,6 @@ void SoftwareOutputDeviceWinOrLinuxBase::EndPaint()
 
     gfx::Rect intersected_damage_rect = damage_rect_;
     intersected_damage_rect.Intersect(gfx::Rect(viewport_pixel_size_));
-    if (intersected_damage_rect.IsEmpty())
-        return;
 
     EndPaintDelegated(intersected_damage_rect);
 }
@@ -104,25 +102,31 @@ SoftwareOutputDeviceWinOrLinux::SoftwareOutputDeviceWinOrLinux(HWND hwnd, mojo::
 
 SoftwareOutputDeviceWinOrLinux::~SoftwareOutputDeviceWinOrLinux()
 {
+    weak_ptr_factory_.InvalidateWeakPtrs();
     base::AutoLock lock(canvas_lock_);
+    bitmap_lifetime_->alive = false;
+    bitmap_owner_.canvas.reset();
     canvas_.reset();
-#if !defined(WIN32)
-    if (bitmap_pixels_)
-        free(bitmap_pixels_);
-#endif
 }
 
 void SoftwareOutputDeviceWinOrLinux::OnSwapBuffers(SwapBuffersCallback swap_ack_callback, gfx::FrameData data)
 {
+    DCHECK(!waiting_on_draw_ack_);
     DCHECK(swap_ack_callback_.is_null());
 
-    // We aren't waiting on DrawAck() and can immediately run the callback.
-    if (!waiting_on_draw_ack_) {
+    // EndPaint can be followed by SwapBuffersSkipped during resize. Do not
+    // publish those buffers: only a real swap establishes scheduler backpressure
+    // that keeps this allocation unchanged until the UI consumes the frame.
+    gfx::Rect damage = pending_damage_rect_;
+    pending_damage_rect_ = gfx::Rect();
+    if (damage.IsEmpty() || !layered_window_updater_.is_bound() || !layered_window_updater_.get()) {
         task_runner_->PostTask(FROM_HERE, base::BindOnce(std::move(swap_ack_callback), viewport_pixel_size_));
         return;
     }
-
     swap_ack_callback_ = base::BindOnce(std::move(swap_ack_callback), viewport_pixel_size_);
+    waiting_on_draw_ack_ = true;
+    TRACE_EVENT_ASYNC_BEGIN0("viz", "SoftwareOutputDeviceWinOrLinux::Draw", this);
+    layered_window_updater_->Draw(damage, base::BindOnce(&SoftwareOutputDeviceWinOrLinux::DrawAck, weak_ptr_factory_.GetWeakPtr()));
 }
 
 static void CopyCanvasContent(uint8_t* src_bitmap_pixels, SkCanvas* dst_canvase, int width, int height)
@@ -143,6 +147,7 @@ static void CopyCanvasContent(uint8_t* src_bitmap_pixels, SkCanvas* dst_canvase,
 void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
 {
     base::AutoLock lock(canvas_lock_);
+    pending_damage_rect_ = gfx::Rect();
 
     size_t required_bytes;
     if (!ResourceSizes::MaybeSizeInBytes<size_t>(viewport_pixel_size_, SinglePlaneFormat::kRGBA_8888, &required_bytes)) {
@@ -159,8 +164,6 @@ void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
         = skia::CreatePlatformCanvasWithPixels(viewport_pixel_size_.width(), viewport_pixel_size_.height(), true, bitmap_pixels, skia::CRASH_ON_FAILURE);
     //CopyCanvasContent(bitmap_pixels_, new_canvase.get(), bitmap_pixels_size_.width(), bitmap_pixels_size_.height());
 
-    if (bitmap_pixels_)
-        free(bitmap_pixels_);
 #else
     std::unique_ptr<SkCanvas> new_canvase = skia::CreatePlatformCanvasReturnPixels(
         viewport_pixel_size_.width(), viewport_pixel_size_.height(), !has_transparent_background_canvas_, &bitmap_pixels);
@@ -174,7 +177,14 @@ void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
 #endif
     bitmap_pixels_size_ = viewport_pixel_size_;
     bitmap_pixels_ = bitmap_pixels;
-    canvas_.reset(new_canvase.release());
+#if !defined(WIN32)
+    canvas_ = std::shared_ptr<SkCanvas>(new_canvase.release(), [bitmap_pixels](SkCanvas* canvas) {
+        delete canvas;
+        free(bitmap_pixels);
+    });
+#else
+    canvas_ = std::shared_ptr<SkCanvas>(std::move(new_canvase));
+#endif
     //--
     //     SkPaint mPaint;
     //     mPaint.setColor(0xff1162ff);
@@ -200,8 +210,10 @@ void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
         canvas_->clear(background_color_);
     }
 
-    // Transfer region ownership to the browser process.
-    layered_window_updater_->OnAllocatedBitmapMemory(viewport_pixel_size_, canvas_.get(), bitmap_pixels_, &canvas_lock_);
+    // This custom in-process updater accepts a copied shared allocation owner,
+    // not an owning transfer of raw canvas/pixel pointers.
+    bitmap_owner_ = { canvas_, bitmap_lifetime_ };
+    layered_window_updater_->OnAllocatedBitmapMemory(viewport_pixel_size_, &bitmap_owner_, bitmap_pixels_, &canvas_lock_);
 }
 
 SkCanvas* SoftwareOutputDeviceWinOrLinux::BeginPaintDelegated()
@@ -219,6 +231,10 @@ SkCanvas* SoftwareOutputDeviceWinOrLinux::BeginPaintDelegated()
 void SoftwareOutputDeviceWinOrLinux::EndPaintDelegated(const gfx::Rect& damage_rect)
 {
     DCHECK(!waiting_on_draw_ack_);
+    if (damage_rect.IsEmpty()) {
+        canvas_lock_.Release();
+        return;
+    }
     if (!canvas_) {
         canvas_lock_.Release();
         return;
@@ -244,11 +260,7 @@ void SoftwareOutputDeviceWinOrLinux::EndPaintDelegated(const gfx::Rect& damage_r
     }
     canvas_lock_.Release();
 
-    if (layered_window_updater_.is_bound() && layered_window_updater_.get())
-        layered_window_updater_->Draw(damage_rect, base::BindOnce(&SoftwareOutputDeviceWinOrLinux::DrawAck, base::Unretained(this)));
-    waiting_on_draw_ack_ = true;
-
-    TRACE_EVENT_ASYNC_BEGIN0("viz", "SoftwareOutputDeviceWinOrLinux::Draw", this);
+    pending_damage_rect_.Union(damage_rect);
 }
 
 void SoftwareOutputDeviceWinOrLinux::DrawAck()
@@ -259,10 +271,8 @@ void SoftwareOutputDeviceWinOrLinux::DrawAck()
 
     waiting_on_draw_ack_ = false;
 
-    // It's possible the display compositor won't call SwapBuffers() so there will
-    // be no callback to run.
-    if (swap_ack_callback_)
-        std::move(swap_ack_callback_).Run();
+    DCHECK(!swap_ack_callback_.is_null());
+    std::move(swap_ack_callback_).Run();
 }
 
 std::unique_ptr<SoftwareOutputDevice> CreateSoftwareOutputDeviceWinOrLinux(HWND hwnd, mojom::DisplayClient* display_client)

@@ -11,6 +11,7 @@
 #endif // _WIN32
 #if defined(__APPLE__)
 #include <dispatch/dispatch.h>
+#include "base/synchronization/waitable_event.h"
 #endif
 #include "base/task/sequenced_task_runner.h"
 #include "v8.h"
@@ -33,6 +34,12 @@ void RunUiClosureAndDelete(void* context)
 void RunUiClosure(void* context)
 {
     (*static_cast<std::function<void(void)>*>(context))();
+}
+
+void RunUiOnceClosureAndDelete(void* context)
+{
+    std::unique_ptr<base::OnceClosure> closure(static_cast<base::OnceClosure*>(context));
+    std::move(*closure).Run();
 }
 } // namespace
 #endif
@@ -126,6 +133,17 @@ void ThreadCall::callUiThreadAsync(const TraceLocation& caller, std::function<vo
 #endif
 }
 
+void ThreadCall::callUiThreadAsync(const TraceLocation& caller, base::OnceClosure closure)
+{
+#if defined(__APPLE__)
+    auto* task = new base::OnceClosure(std::move(closure));
+    dispatch_async_f(dispatch_get_main_queue(), task, RunUiOnceClosureAndDelete);
+#else
+    m_inst->m_uiThreadTask->PostNonNestableTask(caller, std::move(closure));
+#endif
+}
+
+#if !defined(__APPLE__)
 typedef void (*CoreMainTask)(void* data);
 struct TaskAsyncData {
     CoreMainTask call;
@@ -151,9 +169,22 @@ TaskAsyncData* cretaeAsyncData(const TraceLocation& caller, void* dataEx, DWORD 
 
     return asyncData;
 }
+#endif
 
 void ThreadCall::callThreadSync(const TraceLocation& caller, std::function<void(void)>&& closure, scoped_refptr<base::SingleThreadTaskRunner> runner)
 {
+#if defined(__APPLE__)
+    base::WaitableEvent completed(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
+    runner->PostTask(caller, base::BindOnce([](
+        std::function<void(void)>* closure, base::WaitableEvent* completed) {
+        (*closure)();
+        completed->Signal();
+    }, base::Unretained(&closure), base::Unretained(&completed)));
+    // The callback's final signal publishes its results and keeps both stack
+    // references alive until the work and Signal() have finished.
+    completed.Wait();
+#else
     TaskAsyncData* asyncData = cretaeAsyncData(caller, &closure, ::GetCurrentThreadId());
 
     runner->PostTask(caller, base::BindOnce([](
@@ -171,6 +202,7 @@ void ThreadCall::callThreadSync(const TraceLocation& caller, std::function<void(
         waitForCallThreadAsync(asyncData);
     }
     delete asyncData;
+#endif
 }
 
 void ThreadCall::callUiThreadSync(const TraceLocation& caller, std::function<void(void)>&& closure)
@@ -195,6 +227,7 @@ void ThreadCall::callBlinkThreadSync(const TraceLocation& caller, std::function<
     callThreadSync(caller, std::move(closure), RenderThreadImpl::get()->getTaskRunner());
 }
 
+#if !defined(__APPLE__)
 bool ThreadCall::waitForCallThreadAsync(TaskAsyncData* asyncData)
 {
     bool ok = false;
@@ -230,6 +263,7 @@ bool ThreadCall::waitForCallThreadAsync(TaskAsyncData* asyncData)
 
     return true;
 }
+#endif
 
 bool ThreadCall::isBlinkThread()
 {

@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/win/scoped_handle.h"
 #include "runtime/electron/common/renderer_protocol.h"
 
@@ -85,6 +87,31 @@ std::wstring HandleArgument(const wchar_t* name, HANDLE handle)
 }
 
 } // namespace
+
+std::vector<std::string> GetPreferredSystemLanguages()
+{
+    ULONG count = 0;
+    ULONG size = 0;
+    std::vector<std::string> languages;
+    if (::GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &count, nullptr, &size)) {
+        std::vector<wchar_t> buffer(size);
+        if (::GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &count, buffer.data(), &size)) {
+            languages.reserve(count);
+            const wchar_t* tag = buffer.data();
+            for (ULONG index = 0; index < count && *tag; ++index) {
+                const std::wstring_view language(tag);
+                languages.push_back(base::WideToUTF8(language));
+                tag += language.size() + 1;
+            }
+        }
+    }
+    if (languages.empty()) {
+        wchar_t locale[LOCALE_NAME_MAX_LENGTH];
+        if (::GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH))
+            languages.push_back(base::WideToUTF8(locale));
+    }
+    return languages;
+}
 
 bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     RendererPlatformProcess* output, std::string* error)

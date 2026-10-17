@@ -923,6 +923,7 @@ bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protoco
                 const std::string* reason = event.FindString("reason");
                 bool clean = event.FindBool("clean").value_or(false);
                 channel->m_brokerSocketId = 0;
+                channel->m_client->DidStartClosingHandshake();
                 channel->m_client->DidClose(clean
                         ? blink::WebSocketChannelClient::kClosingHandshakeComplete
                         : blink::WebSocketChannelClient::kClosingHandshakeIncomplete,

@@ -154,22 +154,21 @@ void WebkitGetAsEntryOperationCallback(const v8::FunctionCallbackInfo<v8::Value>
 {
     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DataTransferItem_webkitGetAsEntry");
     BLINK_BINDINGS_TRACE_EVENT("DataTransferItem.webkitGetAsEntry");
-    *(int*)1 = 1;
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kV8DataTransferItem_WebkitGetAsEntry_Method);
-// 
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     DataTransferItem* blink_receiver = V8DataTransferItem::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = DataTransferItemFileSystem::webkitGetAsEntry(script_state, *blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<IDLNullable<Entry>, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kV8DataTransferItem_WebkitGetAsEntry_Method);
+
+    v8::Local<v8::Object> v8_receiver = info.This();
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    DataTransferItem* blink_receiver = V8DataTransferItem::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = DataTransferItemFileSystem::webkitGetAsEntry(script_state, *blink_receiver);
+    static_assert(bindings::IsReturnTypeCompatible<IDLNullable<Entry>, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    bindings::V8SetReturnValue(info, return_value, blink_receiver);
 }
 
 } // namespace v8_data_transfer_item

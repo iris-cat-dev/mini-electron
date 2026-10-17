@@ -38,6 +38,7 @@ struct RendererLaunchOptions {
     bool web_security = true;
     bool allow_running_insecure_content = false;
     bool transparent = false;
+    std::string background_color;
     base::Value::Dict preload_process_metadata;
 };
 
@@ -75,6 +76,8 @@ public:
 
     virtual int GetProcessId() const = 0;
     virtual bool IsAlive() const = 0;
+    // On failure the destination's bytes may be incomplete; callers must keep
+    // any previously presented frame in separate storage.
     virtual bool CopyFrame(RendererFrameSnapshot* snapshot) const = 0;
     // Makes this renderer's read-only frame mapping available to |target| for
     // webview compositing. The OS handle is transferred out-of-band and is

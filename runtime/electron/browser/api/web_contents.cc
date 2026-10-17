@@ -33,6 +33,10 @@
 #include "third_party/libnode/src/node_binding.h"
 #include "url/gurl.h"
 #include "url/origin.h"
+#if BUILDFLAG(IS_MAC)
+#include "platform/macos/clipboard_mac.h"
+#include "base/strings/utf_string_conversions.h"
+#endif
 
 namespace atom {
 namespace {
@@ -181,9 +185,11 @@ void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node:
     builder.SetMethod("_sendCommand", &WebContents::sendCommandApi);
     builder.SetMethod("sendInputEvent", &WebContents::sendInputEventApi);
     builder.SetMethod("capturePage", &WebContents::capturePageApi);
+    builder.SetMethod("prepareToShow", &WebContents::prepareToShowApi);
     builder.SetMethod("_respond", &WebContents::respondApi);
     builder.SetMethod("_attachGuest", &WebContents::attachGuestApi);
     builder.SetMethod("_authorizeFileSelection", &WebContents::authorizeFileSelectionApi);
+    builder.SetMethod("_getFrame", &WebContents::getFrameApi);
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     builder.SetMethod("_debuggerAttach", &WebContents::debuggerAttachApi);
     builder.SetMethod("_debuggerDetach", &WebContents::debuggerDetachApi);
@@ -212,7 +218,6 @@ void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node:
     builder.SetMethod("_canGoForward", &WebContents::canGoForwardApi);
     builder.SetProperty("id", &WebContents::getIdApi);
     builder.SetProperty("session", &WebContents::getSessionApi);
-    builder.SetProperty("mainFrame", &WebContents::getMainFrameApi);
 
     v8::Local<v8::Function> constructor = prototype->GetFunction(context).ToLocalChecked();
     gin_helper::Dictionary web_contents_class(isolate, constructor);
@@ -300,6 +305,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     launch.allow_running_insecure_content = allow_insecure;
     launch.preload_all_frames = preload_all_frames;
     launch.transparent = transparent;
+    options.GetBydefaultVal("backgroundColor", "", &launch.background_color);
     launch.preload_process_metadata.Set("sandboxed", true);
     launch.preload_process_metadata.Set("type", "renderer");
     launch.preload_process_metadata.Set("isGuest", m_type == "webview");
@@ -336,7 +342,6 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
         [this](base::Value::Dict event) { onRendererEvent(std::move(event)); });
     if (!m_renderer) {
         m_crashed = true;
-        m_destroyed = true;
     }
 }
 
@@ -364,10 +369,6 @@ void WebContents::unregisterAndNotify()
 
 void WebContents::destroyed()
 {
-    if (!m_destroy_event_emitted) {
-        m_destroy_event_emitted = true;
-        mate::EventEmitter<WebContents>::emit("destroyed");
-    }
     destroyApi();
 }
 
@@ -398,6 +399,7 @@ void WebContents::destroyApi()
 
 void WebContents::closeRenderer()
 {
+    cancelPreparedFrames("Renderer closed before native presentation");
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     m_devtools_gateway.reset();
     m_debugger_attached = false;
@@ -423,7 +425,7 @@ bool WebContents::isAlive() const
 
 bool WebContents::isDestroyedApi() const
 {
-    return !isAlive();
+    return m_destroyed;
 }
 
 void WebContents::addObserver(WebContentsObserver* observer)
@@ -435,6 +437,9 @@ void WebContents::addObserver(WebContentsObserver* observer)
 void WebContents::removeObserver(WebContentsObserver* observer)
 {
     m_observers.erase(observer);
+    if (std::none_of(m_observers.begin(), m_observers.end(),
+            [](WebContentsObserver* remaining) { return remaining->supportsFramePreparation(); }))
+        cancelPreparedFrames("Native presentation host was removed");
 }
 
 WebContents* WebContents::fromId(int id)
@@ -590,6 +595,8 @@ bool WebContents::commitRendererFrame(
         ? std::move(inherited_origin)
         : (origin.opaque() ? std::string() : origin.Serialize());
     frame.committed_url = target.spec();
+    if (frame.main_frame)
+        cancelPreparedFrames("Document replaced before native presentation");
     frame.generation = ++m_frame_generation;
     frame.response_url.clear();
     frame.navigation = {};
@@ -687,10 +694,11 @@ void WebContents::authorizeFileSelectionApi(
                 "Owning WebContents is unavailable for file selection")));
         return;
     }
+    RendererFrameEpoch authorized_frame = chooser->second;
     m_file_chooser_frames.erase(chooser);
     std::string error;
-    base::Value::List files =
-        session->authorizeSelectedFiles(m_id, paths, &error);
+    base::Value::List files = session->authorizeSelectedFiles(m_id,
+        authorized_frame.frame_id, authorized_frame.generation, paths, &error);
     if (!error.empty()) {
         info.GetIsolate()->ThrowException(v8::Exception::Error(
             gin_helper::StringToV8(info.GetIsolate(), error)));
@@ -700,14 +708,27 @@ void WebContents::authorizeFileSelectionApi(
         gin_helper::ConvertToV8(info.GetIsolate(), files));
 }
 
-void WebContents::getMainFrameApi(const v8::FunctionCallbackInfo<v8::Value>& info) const
+void WebContents::getFrameApi(const v8::FunctionCallbackInfo<v8::Value>& info) const
 {
-    // JavaScript augments this descriptor with send()/framesInSubtree. Keeping
-    // the native identity data here avoids exposing renderer pointers.
+    uint64_t frame_id = m_main_frame_id;
+    if (info.Length() > 0 && !info[0]->IsUndefined()) {
+        std::string identity;
+        if (!gin_helper::ConvertFromV8(info.GetIsolate(), info[0], &identity)
+            || !base::StringToUint64(identity, &frame_id)
+            || base::NumberToString(frame_id) != identity)
+            frame_id = 0;
+    }
+    if (m_destroyed || !isRendererFrameCurrent(frame_id)) {
+        info.GetReturnValue().Set(v8::Null(info.GetIsolate()));
+        return;
+    }
+    const RendererFrameState& state = m_renderer_frames.at(frame_id);
     base::Value::Dict frame;
+    frame.Set("frameId", base::NumberToString(frame_id));
+    frame.Set("generation", base::NumberToString(state.generation));
     frame.Set("processId", getProcessIdApi());
-    frame.Set("routingId", m_id);
-    frame.Set("detached", isDestroyedApi());
+    frame.Set("routingId", static_cast<double>(state.generation));
+    frame.Set("url", state.committed_url);
     info.GetReturnValue().Set(gin_helper::ConvertToV8(info.GetIsolate(), frame));
 }
 
@@ -720,6 +741,7 @@ void WebContents::loadURLApi(const std::string& url)
     GURL target(url);
     if (!target.is_valid())
         return;
+    cancelPreparedFrames("Navigation superseded native presentation");
     m_isLoading = true;
     if (target.SchemeIsFile()) {
         base::FilePath file;
@@ -849,11 +871,18 @@ void WebContents::resize(int width, int height, double scale_factor)
 {
     if (!isAlive() || width <= 0 || height <= 0)
         return;
+    if (width == m_viewport_width && height == m_viewport_height
+        && scale_factor == m_viewport_scale)
+        return;
     base::Value::Dict params;
     params.Set("width", width);
     params.Set("height", height);
     params.Set("scaleFactor", scale_factor);
-    m_renderer->Send("setViewport", std::move(params));
+    if (m_renderer->Send("setViewport", std::move(params))) {
+        m_viewport_width = width;
+        m_viewport_height = height;
+        m_viewport_scale = scale_factor;
+    }
 }
 
 void WebContents::setFocus(bool focused)
@@ -872,6 +901,93 @@ bool WebContents::sendInput(base::Value::Dict event)
     base::Value::Dict params;
     params.Set("event", std::move(event));
     return m_renderer->Send("input", std::move(params));
+}
+
+bool WebContents::sendNativeFileDrag(base::Value::Dict event,
+    const std::vector<std::string>& paths)
+{
+    const std::string* type = event.FindString("type");
+    if (!isAlive() || !type)
+        return false;
+    if (*type == "dragEnter") {
+        ApiSession* session = SessionMgr::get()->findOrCreateSession(
+            isolate(), m_partition, false);
+        auto target_frame = m_renderer_frames.find(m_main_frame_id);
+        if (!session || target_frame == m_renderer_frames.end()
+            || !isRendererFrameCurrent(m_main_frame_id))
+            return false;
+        if (m_native_drag_active) {
+            base::Value::Dict leave;
+            leave.Set("type", "dragLeave");
+            leave.Set("generation", base::NumberToString(
+                m_native_drag_generation));
+            leave.Set("x", event.FindInt("x").value_or(0));
+            leave.Set("y", event.FindInt("y").value_or(0));
+            leave.Set("screenX", event.FindInt("screenX").value_or(0));
+            leave.Set("screenY", event.FindInt("screenY").value_or(0));
+            leave.Set("modifiers", event.FindInt("modifiers").value_or(0));
+            sendInput(std::move(leave));
+        }
+        for (const std::string& token : m_native_drag_tokens)
+            session->revokeFile(token);
+        m_native_drag_tokens.clear();
+        if (++m_native_drag_generation == 0)
+            ++m_native_drag_generation;
+        m_native_drag_operation_known = false;
+        m_native_drag_operation_accepted = false;
+        std::string error;
+        base::Value::List files = session->authorizeDroppedFiles(
+            m_id, m_main_frame_id, target_frame->second.generation,
+            paths, &error);
+        if (!error.empty() || files.empty()) {
+            m_native_drag_active = false;
+            return false;
+        }
+        for (const base::Value& file : files) {
+            if (const std::string* token = file.GetDict().FindString("token"))
+                m_native_drag_tokens.push_back(*token);
+        }
+        event.Set("generation", base::NumberToString(
+            m_native_drag_generation));
+        event.Set("files", std::move(files));
+        m_native_drag_active = sendInput(std::move(event));
+        if (!m_native_drag_active) {
+            for (const std::string& token : m_native_drag_tokens)
+                session->revokeFile(token);
+            m_native_drag_tokens.clear();
+        }
+        return m_native_drag_active;
+    }
+    if ((*type != "dragOver" && *type != "dragLeave" && *type != "drop")
+        || !m_native_drag_active || !paths.empty()) {
+        return false;
+    }
+    const bool over = *type == "dragOver";
+    const bool explicit_leave = *type == "dragLeave";
+    const bool dropping = *type == "drop";
+    const bool rejected_drop = dropping
+        && (!m_native_drag_operation_known
+            || !m_native_drag_operation_accepted);
+    if (rejected_drop)
+        event.Set("type", "dragLeave");
+    event.Set("generation", base::NumberToString(m_native_drag_generation));
+    const bool leaving = explicit_leave || rejected_drop;
+    const bool terminal = leaving || dropping;
+    bool sent = sendInput(std::move(event));
+    if (!sent && terminal) {
+        if (ApiSession* session = SessionMgr::get()->findOrCreateSession(
+                isolate(), m_partition, false)) {
+            for (const std::string& token : m_native_drag_tokens)
+                session->revokeFile(token);
+        }
+        m_native_drag_tokens.clear();
+    }
+    if (terminal)
+        m_native_drag_active = false;
+    if (rejected_drop)
+        return false;
+    return sent && (!over || !m_native_drag_operation_known
+        || m_native_drag_operation_accepted);
 }
 
 #if defined(_WIN32)
@@ -917,21 +1033,56 @@ void WebContents::sendInputEventApi(const v8::FunctionCallbackInfo<v8::Value>& i
 bool WebContents::sendApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     gin_helper::Arguments args(info);
-    int64_t frame_id = 0;
+    std::string frame_identity;
     bool all_frames = false;
     std::string channel;
     base::Value::List values;
-    if (!args.GetNext(&frame_id) || !args.GetNext(&all_frames)
+    if (!args.GetNext(&frame_identity) || !args.GetNext(&all_frames)
         || !args.GetNext(&channel) || !args.GetRemaining(&values)) {
         args.ThrowError();
         return false;
     }
+    if (!isAlive())
+        return false;
+
+    uint64_t frame_id = 0;
+    if (!all_frames) {
+        // Electron exposes routingId as a Number. Resolve the browser-assigned
+        // live frame generation, while internal sends stay lossless.
+        if (frame_identity.empty()) {
+            frame_id = m_main_frame_id;
+        } else if (frame_identity.rfind("routing:", 0) == 0) {
+            double routing_id = 0;
+            if (!base::StringToDouble(frame_identity.substr(8), &routing_id)
+                || !std::isfinite(routing_id) || routing_id <= 0
+                || std::floor(routing_id) != routing_id) {
+                return false;
+            }
+            for (const auto& entry : m_renderer_frames) {
+                if (static_cast<double>(entry.second.generation) != routing_id
+                    || !isRendererFrameCurrent(entry.first)) {
+                    continue;
+                }
+                if (frame_id)
+                    return false;
+                frame_id = entry.first;
+            }
+            if (!frame_id)
+                return false;
+        } else if (!base::StringToUint64(frame_identity, &frame_id)
+            || base::NumberToString(frame_id) != frame_identity || !frame_id) {
+            return false;
+        }
+        if (!isRendererFrameCurrent(frame_id))
+            return false;
+    }
+
     base::Value::Dict params;
-    params.Set("frameId", static_cast<double>(frame_id));
+    params.Set("frameId", base::NumberToString(frame_id));
     params.Set("allFrames", all_frames);
     params.Set("channel", channel);
     params.Set("args", std::move(values));
-    return isAlive() && m_renderer->Send("ipc-message", std::move(params));
+    return m_renderer->Send("ipc-message", std::move(params));
 }
 
 bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -1162,6 +1313,83 @@ void WebContents::requestApi(const v8::FunctionCallbackInfo<v8::Value>& info)
     }
 }
 
+void WebContents::prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto promise = std::make_shared<gin_helper::Promise<void>>(info.GetIsolate());
+    info.GetReturnValue().Set(promise->GetHandle());
+    if (!isAlive()) {
+        promise->RejectWithErrorMessage("WebContents is destroyed");
+        return;
+    }
+    const int contents_id = m_id;
+    const uint64_t presentation_epoch = m_presentation_epoch;
+    if (std::none_of(m_observers.begin(), m_observers.end(),
+            [](WebContentsObserver* observer) { return observer->supportsFramePreparation(); })) {
+        promise->RejectWithErrorMessage("Native frame preparation is unavailable for this WebContents");
+        return;
+    }
+    if (!m_renderer->Request("prepare-to-show", {},
+        [contents_id, presentation_epoch, promise](base::Value::Dict result, std::string error) {
+            WebContents* contents = WebContents::fromId(contents_id);
+            uint64_t generation = 0;
+            const std::string* token = result.FindString("generation");
+            if (error.empty() && (!contents || !contents->isAlive()))
+                error = "WebContents closed before presentation";
+            if (error.empty() && contents->m_presentation_epoch != presentation_epoch)
+                error = "Document changed before native presentation";
+            if (error.empty() && (!token || !base::StringToUint64(*token, &generation) || !generation))
+                error = "Renderer did not publish a prepared frame";
+            if (!error.empty()) {
+                promise->RejectWithErrorMessage(error);
+                return;
+            }
+            contents->m_prepared_frames.push_back({generation,
+                [promise](const std::string& failure) {
+                    if (failure.empty())
+                        promise->Resolve();
+                    else
+                        promise->RejectWithErrorMessage(failure);
+                }});
+            contents->completePreparedFrames();
+        })) {
+        // Request may also deliver a deferred write-failure callback. Shared
+        // ownership keeps both paths safe; a settled V8 promise is immutable.
+        promise->RejectWithErrorMessage("Renderer preparation could not be queued");
+    }
+}
+
+void WebContents::completePreparedFrames()
+{
+    if (m_prepared_frames.empty())
+        return;
+    // Detach before native drawing or resolving promises: either can reenter.
+    auto pending = std::move(m_prepared_frames);
+    m_prepared_frames.clear();
+    for (auto& frame : pending) {
+        uint64_t drawn = 0;
+        for (WebContentsObserver* observer : m_observers)
+            drawn = std::max(drawn, observer->prepareWebContentsFrame(this, frame.generation));
+        if (drawn >= frame.generation)
+            frame.complete({});
+        else if (!isAlive())
+            frame.complete("Renderer closed before native presentation");
+        else if (std::none_of(m_observers.begin(), m_observers.end(),
+                     [](WebContentsObserver* observer) { return observer->supportsFramePreparation(); }))
+            frame.complete("Native presentation host is unavailable");
+        else
+            m_prepared_frames.push_back(std::move(frame));
+    }
+}
+
+void WebContents::cancelPreparedFrames(const std::string& error)
+{
+    ++m_presentation_epoch;
+    auto pending = std::move(m_prepared_frames);
+    m_prepared_frames.clear();
+    for (auto& frame : pending)
+        frame.complete(error);
+}
+
 bool WebContents::copyFrame(RendererFrameSnapshot* snapshot) const
 {
     return snapshot && isAlive() && m_renderer->CopyFrame(snapshot);
@@ -1306,6 +1534,41 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     const std::string type = ReadString(event, "type");
     const base::Value::Dict& payload = PayloadFrom(event);
     const uint64_t request_id = RequestIdFrom(event);
+    if (type == "native-drag-materialized") {
+        const std::string* generation_text = payload.FindString("generation");
+        std::optional<bool> success = payload.FindBool("success");
+        uint64_t generation = 0;
+        if (generation_text && success
+            && base::StringToUint64(*generation_text, &generation)
+            && generation == m_native_drag_generation
+            && base::NumberToString(generation) == *generation_text) {
+            if (ApiSession* session =
+                    SessionMgr::get()->findOrCreateSession(
+                        isolate(), m_partition, false)) {
+                for (const std::string& token : m_native_drag_tokens)
+                    session->revokeFile(token);
+            }
+            m_native_drag_tokens.clear();
+            if (!*success)
+                m_native_drag_active = false;
+        }
+        return;
+    }
+    if (type == "native-drag-operation") {
+        const std::string* generation_text = payload.FindString("generation");
+        std::optional<bool> accepted = payload.FindBool("accepted");
+        uint64_t generation = 0;
+        if (generation_text && accepted
+            && base::StringToUint64(*generation_text, &generation)
+            && generation == m_native_drag_generation
+            && base::NumberToString(generation) == *generation_text) {
+            m_native_drag_operation_known = true;
+            m_native_drag_operation_accepted = *accepted;
+        }
+        return;
+    }
+
+
 
     if (type == "frame-created" || type == "frame-committed") {
         uint64_t frame_id = 0;
@@ -1317,11 +1580,21 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             || !registerRendererFrame(frame_id, parent_id, *main_frame))
             return;
         if (type == "frame-committed") {
+            const uint64_t previous_generation =
+                m_renderer_frames.at(frame_id).generation;
             if (!commitRendererFrame(frame_id, ReadString(payload, "url")))
                 return;
+            ApiSession* session = SessionMgr::get()->findOrCreateSession(
+                isolate(), m_partition, false);
+            if (session) {
+                session->revokeFilesForFrame(
+                    m_id, frame_id, previous_generation);
+            }
             const std::string committed_url =
                 m_renderer_frames.at(frame_id).committed_url;
             if (*main_frame) {
+                m_native_drag_tokens.clear();
+                m_native_drag_active = false;
                 m_url = committed_url;
                 mate::EventEmitter<WebContents>::emit("did-navigate", m_url);
                 if (!isAlive())
@@ -1335,10 +1608,43 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     if (type == "frame-detached") {
         uint64_t frame_id = 0;
         if (ReadFrameIdentity(event, "frameId", &frame_id)) {
-            m_renderer_frames.erase(frame_id);
-            if (m_main_frame_id == frame_id)
+            auto frame = m_renderer_frames.find(frame_id);
+            if (frame != m_renderer_frames.end()) {
+                if (ApiSession* session = SessionMgr::get()->findOrCreateSession(
+                        isolate(), m_partition, false)) {
+                    session->revokeFilesForFrame(
+                        m_id, frame_id, frame->second.generation);
+                }
+                m_renderer_frames.erase(frame);
+            }
+            if (m_main_frame_id == frame_id) {
+                m_native_drag_tokens.clear();
+                m_native_drag_active = false;
                 m_main_frame_id = 0;
+            }
+            mate::EventEmitter<WebContents>::emit(
+                "_renderer-frame-detached", base::NumberToString(frame_id));
         }
+        return;
+    }
+
+    if (type == "ipc-invoke" || type == "ipc-message" || type == "ipc-message-sync") {
+        uint64_t frame_id = 0;
+        if (!ReadFrameIdentity(event, "frameId", &frame_id)
+            || !isRendererFrameCurrent(frame_id)) {
+            if (request_id && m_renderer)
+                m_renderer->Respond(request_id, {}, "IPC source frame is unavailable");
+            return;
+        }
+        // Use the transport's source frame, never payload-supplied identity.
+        v8::Local<v8::Object> ipc_event =
+            mate::internal::createJSEvent(isolate(), getWrapper());
+        gin_helper::Dictionary descriptor(isolate(), ipc_event);
+        descriptor.Set("frameId", base::NumberToString(frame_id));
+        descriptor.Set("frameGeneration",
+            base::NumberToString(m_renderer_frames.at(frame_id).generation));
+        mate::EventEmitter<WebContents>::emitCustomEvent(
+            "_renderer-event", ipc_event, type, payload, request_id);
         return;
     }
 
@@ -1382,6 +1688,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         RendererFrameState& frame = m_renderer_frames.at(frame_id);
         ApiSession::BrokerFrameContext context;
         context.frame_id = frame_id;
+        context.frame_generation = frame.generation;
         context.committed_url = frame.committed_url;
         context.committed_origin = frame.committed_origin;
         auto top = m_renderer_frames.find(m_main_frame_id);
@@ -1418,6 +1725,54 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 "Frame has not committed an authorized document");
             return;
         }
+#if BUILDFLAG(IS_MAC)
+        if (ReadString(payload, "kind") == "clipboard") {
+            base::Value::Dict result;
+            const std::string operation = ReadString(payload, "operation");
+            if (operation == "sequence") {
+                result.Set("sequence", base::NumberToString(
+                    mini_electron::mac::ClipboardSequenceNumber()));
+            } else if (operation == "hasText") {
+                result.Set("value", mini_electron::mac::ClipboardHasText());
+            } else if (operation == "hasHtml") {
+                result.Set("value", mini_electron::mac::ClipboardHasHtml());
+            } else if (operation == "readText") {
+                result.Set("value", base::UTF16ToUTF8(
+                    mini_electron::mac::ReadClipboardText()));
+            } else if (operation == "readHtml") {
+                result.Set("value", base::UTF16ToUTF8(
+                    mini_electron::mac::ReadClipboardHtml()));
+            } else if (operation == "readPng") {
+                std::vector<uint8_t> png =
+                    mini_electron::mac::ReadClipboardPng();
+                result.Set("data", base::Value(std::move(png)));
+            } else if (operation == "availableFormats") {
+                base::Value::List formats;
+                for (const auto& format : mini_electron::mac::AvailableClipboardFormats())
+                    formats.Append(base::UTF16ToUTF8(format));
+                result.Set("formats", std::move(formats));
+            } else if (operation == "write") {
+                std::optional<std::u16string> text;
+                std::optional<std::u16string> html;
+                if (const std::string* value = payload.FindString("text"))
+                    text = base::UTF8ToUTF16(*value);
+                if (const std::string* value = payload.FindString("html"))
+                    html = base::UTF8ToUTF16(*value);
+                mini_electron::mac::ClipboardContent content;
+                content.text = text ? &*text : nullptr;
+                content.html = html ? &*html : nullptr;
+                result.Set("value", mini_electron::mac::WriteClipboard(content));
+            } else {
+                m_renderer->Respond(request_id, {}, "Unsupported clipboard operation");
+                return;
+            }
+            if (!m_renderer->Respond(request_id, std::move(result), {})) {
+                m_renderer->Respond(request_id, {},
+                    "Clipboard response exceeded the IPC limit");
+            }
+            return;
+        }
+#endif
         const int contents_id = m_id;
         const uint64_t generation = frame.generation;
         session->handleBrokerRequest(contents_id, context, payload,
@@ -1762,6 +2117,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     } else if (type == "paint") {
         for (WebContentsObserver* observer : m_observers)
             observer->onWebContentsPaint(this);
+        completePreparedFrames();
         if (!m_ready_to_show_emitted) {
             m_ready_to_show_emitted = true;
             for (WebContentsObserver* observer : m_observers)

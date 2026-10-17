@@ -42,8 +42,11 @@ bool RequestRendererStorage(uint64_t frame_id, base::Value::Dict request,
             *result = std::move(value);
             *error = std::move(broker_error);
             done = true;
+            // The waiter may return without sleeping once done is true. Notify
+            // before releasing the lock so its stack condition variable cannot
+            // be destroyed while the reply thread still uses it.
+            replied.notify_one();
         }
-        replied.notify_one();
         });
     std::unique_lock<std::mutex> lock(reply_lock);
     replied.wait(lock, [&] { return done; });

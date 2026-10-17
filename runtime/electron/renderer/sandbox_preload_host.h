@@ -70,6 +70,7 @@ private:
     mini_electron_web_view view_ = NULL_WEBVIEW;
     v8::Isolate* isolate_ = nullptr;
     mini_electron_web_frame_handle main_frame_ = nullptr;
+    uint64_t frame_id_ = 0;
     std::vector<RendererPreload> preloads_;
     base::Value::Dict process_metadata_;
     SendCallback send_;

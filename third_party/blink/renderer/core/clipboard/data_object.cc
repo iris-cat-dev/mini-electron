@@ -403,6 +403,8 @@ DataObject* DataObject::Create(ExecutionContext* context, const WebDragData& dat
                     has_file_system = true;
                     FileMetadata file_metadata;
                     file_metadata.length = item.size;
+                    file_metadata.modification_time =
+                        item.blob_info.LastModified();
                     data_object->Add(
                         File::CreateForFileSystemFile(item.url, file_metadata, File::kIsNotUserVisible, std::move(blob_data_handle)), item.file_system_id);
                 },

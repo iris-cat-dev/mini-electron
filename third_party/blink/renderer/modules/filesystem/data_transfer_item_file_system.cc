@@ -29,6 +29,7 @@
  */
 
 #include "third_party/blink/renderer/modules/filesystem/data_transfer_item_file_system.h"
+#include "runtime/engine/renderer/brokered_file_registry.h"
 
 #include "third_party/blink/renderer/core/clipboard/data_object.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer.h"
@@ -43,6 +44,17 @@
 #include "third_party/blink/renderer/modules/filesystem/file_entry.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
+#include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink.h"
+
+namespace blink::mojom::blink {
+
+// The lightweight runtime uses the filesystem interfaces only as opaque
+// receiver identities; their generated proxy implementation is not linked.
+const char FileSystemManager::Name_[] = "blink.mojom.FileSystemManager";
+const char FileSystemOperationListener::Name_[] =
+    "blink.mojom.FileSystemOperationListener";
+
+} // namespace blink::mojom::blink
 
 namespace blink {
 
@@ -73,6 +85,14 @@ Entry* DataTransferItemFileSystem::webkitGetAsEntry(ScriptState* script_state, D
     // The dropped entries are mapped as top-level entries in the isolated
     // filesystem.
     String virtual_path = DOMFilePath::Append("/", To<File>(file)->name());
+
+    bool brokered_directory = false;
+    if (content::GetBrokeredFileDirectory(
+            To<File>(*file), &brokered_directory)) {
+        if (brokered_directory)
+            return MakeGarbageCollected<DirectoryEntry>(dom_file_system, virtual_path);
+        return MakeGarbageCollected<FileEntry>(dom_file_system, virtual_path);
+    }
 
     // FIXME: This involves synchronous file operation. Consider passing file type
     // data when we dispatch drag event.

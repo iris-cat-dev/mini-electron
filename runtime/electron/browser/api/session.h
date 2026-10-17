@@ -14,8 +14,10 @@
 #include <string>
 #include <vector>
 
+#include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/synchronization/lock.h"
+#include "base/memory/weak_ptr.h"
 #include "runtime/electron/common/renderer_client.h"
 #include "base/values.h"
 #include "runtime/electron/common/api/event_emitter.h"
@@ -36,6 +38,7 @@ public:
     using BrokerReply = std::function<void(base::Value::Dict, std::string)>;
     struct BrokerFrameContext {
         uint64_t frame_id = 0;
+        uint64_t frame_generation = 0;
         std::string committed_url;
         std::string committed_origin;
         std::string top_origin;
@@ -79,12 +82,23 @@ public:
         const base::Value::Dict& details);
     void requestPermission(int contentsId, const std::string& permission,
         const base::Value::Dict& details, std::function<void(bool)> callback);
-    std::string authorizeFile(int contentsId, const base::FilePath& path);
+    std::string authorizeFile(int contentsId, uint64_t frame_id,
+        uint64_t frame_generation, const base::FilePath& path,
+        int64_t* authorized_size = nullptr,
+        base::Time* authorized_modified = nullptr);
     bool authorizeUploadPaths(int contents_id,
         const std::vector<std::string>& paths, std::string* error);
     base::Value::List authorizeSelectedFiles(int contentsId,
+        uint64_t frame_id, uint64_t frame_generation,
+        const std::vector<std::string>& paths, std::string* error);
+    // Authorizes direct native drag selections without traversing directories.
+    // Regular files receive read tokens; directories expose metadata only.
+    base::Value::List authorizeDroppedFiles(int contentsId,
+        uint64_t frame_id, uint64_t frame_generation,
         const std::vector<std::string>& paths, std::string* error);
     void revokeFile(const std::string& token);
+    void revokeFilesForFrame(int contents_id, uint64_t frame_id,
+        uint64_t frame_generation = 0);
     bool checkDevicePermission(int contentsId,
         const base::Value::Dict& details);
     std::vector<RendererPrivilegedScheme> getPrivilegedSchemes() const;
@@ -118,6 +132,7 @@ private:
         const BrokerFrameContext& frameContext,
         const base::Value::Dict& payload, BrokerReply reply);
     void handleFileBroker(int contentsId,
+        const BrokerFrameContext& frameContext,
         const base::Value::Dict& payload, BrokerReply reply);
     void handleNetworkBroker(int contentsId,
         const BrokerFrameContext& frameContext,
@@ -150,6 +165,10 @@ private:
         base::FilePath path;
         int64_t size = 0;
         int contents_id = 0;
+        uint64_t frame_id = 0;
+        uint64_t frame_generation = 0;
+        std::shared_ptr<base::File> file;
+        base::Time last_modified;
     };
     std::map<std::string, AuthorizedFile> m_authorizedFiles;
     std::shared_ptr<BrokerSocketRegistry> m_brokerSocketRegistry;
@@ -159,6 +178,8 @@ private:
     void* m_brokerCookieShare = nullptr;
     base::Lock m_brokerCookieShareLock;
     bool m_removePathOnDestroy = false;
+
+    base::WeakPtrFactory<ApiSession> m_weakFactory { this };
 
 public:
     static gin::WrapperInfo kWrapperInfo;

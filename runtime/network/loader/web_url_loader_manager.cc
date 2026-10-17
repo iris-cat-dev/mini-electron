@@ -1613,7 +1613,11 @@ void onNetSetMIMEType(mini_electron_net_job jobPtr, const char* type)
 {
     //wke::checkThreadCallIsValid(__FUNCTION__);
     WebURLLoaderInternal* job = (WebURLLoaderInternal*)jobPtr;
-    job->m_response.SetMimeType(blink::WebString::FromUTF8(type));
+    const blink::WebString contentType = blink::WebString::FromUTF8(type);
+    job->m_response.SetMimeType(blink::ExtractMIMETypeFromMediaType(contentType).LowerASCII());
+    const std::string charset = extractCharset(contentType);
+    if (!charset.empty())
+        job->m_response.SetTextEncodingName(blink::WebString::FromUTF8(charset));
 }
 void onNetSetHTTPStatus(mini_electron_net_job jobPtr, int status,
     const char* status_text)
@@ -1637,6 +1641,8 @@ void onNetSetHTTPHeaderField(mini_electron_net_job jobPtr, const utf8* key, cons
     WebURLLoaderInternal* job = (WebURLLoaderInternal*)jobPtr;
     if (response) {
         job->m_response.SetHttpHeaderField(String(key), String(value));
+        if (base::EqualsCaseInsensitiveASCII(key, "Content-Type"))
+            onNetSetMIMEType(jobPtr, value);
     } else {
 //         WTF::String keyString(key);
 //         if (equalIgnoringCase(keyString, "referer"))

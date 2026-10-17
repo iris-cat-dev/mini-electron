@@ -11,6 +11,7 @@ import("sources/node.gni")
 
 declare_args() {
   mini_electron_nghttp2_root = "//.build-tools/nghttp2-1.61.0-darwin-arm64"
+  mini_electron_curl_root = "//.build-tools/curl-8.23.0-darwin-arm64"
 }
 
 source_set("engine_probe") {
@@ -405,6 +406,8 @@ source_set("mini_electron_platform_mac") {
     "//ui/display/mac/ca_display_link_mac.mm",
     "//ui/display/mac/cv_display_link_mac.mm",
     "//ui/display/mac/display_link_mac.mm",
+    "//ui/events/cocoa/cocoa_event_utils.mm",
+    "//ui/events/keycodes/keyboard_code_conversion_mac.mm",
     "//ui/gfx/codec/jpeg_codec.cc",
     "//ui/gfx/mac/coordinate_conversion.mm",
     "//ui/gfx/mac/io_surface.cc",
@@ -502,10 +505,17 @@ executable("mini_electron_browser") {
   deps = [
     ":mini_electron_engine",
     ":mini_electron_engine_api",
+    ":mini_electron_openssl",
   ]
   libs = [
-    "curl",
+    rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+    rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+    "z",
     "iconv",
+  ]
+  inputs = [
+    "$mini_electron_curl_root/lib/libcurl.a",
+    "$mini_electron_nghttp2_root/lib/libnghttp2.a",
   ]
   frameworks = [
     "Carbon.framework",
@@ -519,6 +529,7 @@ executable("mini_electron_browser") {
     "IOSurface.framework",
     "QuartzCore.framework",
     "Security.framework",
+    "SystemConfiguration.framework",
     "UniformTypeIdentifiers.framework",
   ]
 }
@@ -552,10 +563,12 @@ executable("mini_electron") {
   ]
   libs = [
     rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
-    "curl",
+    rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+    "z",
     "iconv",
   ]
   inputs = [
+    "$mini_electron_curl_root/lib/libcurl.a",
     "$mini_electron_nghttp2_root/lib/libnghttp2.a",
     "//platform/macos/node_exports.txt",
   ]
@@ -581,6 +594,7 @@ executable("mini_electron") {
     "QuartzCore.framework",
     "Security.framework",
     "ServiceManagement.framework",
+    "SystemConfiguration.framework",
     "UniformTypeIdentifiers.framework",
   ]
 }

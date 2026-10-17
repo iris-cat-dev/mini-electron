@@ -10,16 +10,17 @@
 namespace atom {
 
 bool GetAuthorizedPathForFile(v8::Local<v8::Context> context,
-    v8::Local<v8::Value> file, std::string* authorized_path)
+    uint64_t frame_id, v8::Local<v8::Value> file,
+    std::string* authorized_path)
 {
-    if (!authorized_path
+    if (!frame_id || !authorized_path
         || !blink::V8File::HasInstance(context->GetIsolate(), file))
         return false;
     blink::File* blink_file =
         blink::V8File::ToWrappable(context->GetIsolate(), file);
     return blink_file
         && content::GetAuthorizedPathForBrokeredFile(
-            *blink_file, authorized_path);
+            frame_id, *blink_file, authorized_path);
 }
 
 } // namespace atom

@@ -39,9 +39,11 @@
 #include "third_party/blink/public/common/page/browsing_context_group_info.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
+#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/page_scale_constraints_set.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/testing/internal_runtime_flags.h"
@@ -83,7 +85,9 @@ bool g_enableNativeSetFocus = true;
 void freeTempCharStrings();
 void clearWebViewInContextMenuIfNeeded(WebViewHost* webview);
 
-WebViewHost::WebViewHost(bool isPopup)
+WebViewHost::WebViewHost(bool isPopup, COLORREF backgroundColor, bool isTransparent)
+    : m_isTransparent(isTransparent)
+    , m_backgroundColor(backgroundColor)
 {
     m_id = common::LiveIdDetect::getWebViewIds()->constructed(this);
     m_clientSize.cx = 0;
@@ -407,7 +411,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
         blink::CrossVariantMojoAssociatedReceiver<blink::mojom::PageBroadcastInterfaceBase>(),
         *(content::RenderThreadImpl::get()->m_agentGroupScheduler), 
         m_sessionStorageNamespaceId, 
-        absl::optional<SkColor>(0xffffffff),
+        absl::optional<SkColor>(m_isTransparent ? SK_ColorTRANSPARENT : m_backgroundColor),
         browsingContextGroupInfo,
         nullptr, // const ColorProviderColorMaps * color_provider_colors,
         nullptr // blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params
@@ -553,6 +557,16 @@ void WebViewHost::setBackgroundColor(COLORREF c)
             blink::WebViewImpl* webview = (blink::WebViewImpl*)self->m_renderWidgetHostImpl->m_webWiew;
             absl::optional<SkColor> color(c);
             webview->SetPageBaseBackgroundColor(color);
+            // The initial empty document defers compositor updates until a
+            // navigation normally starts lifecycle painting. An explicit
+            // background change must present without requiring navigation.
+            auto* frame = self->m_renderWidgetHostImpl->m_mainFrame;
+            if (frame) {
+                blink::Document* document =
+                    static_cast<blink::WebLocalFrameImpl*>(frame)->GetFrame()->GetDocument();
+                if (document && document->IsInitialEmptyDocument())
+                    webview->StopDeferringMainFrameUpdate();
+            }
         }
     });
 }
@@ -1035,37 +1049,55 @@ void WebViewHost::onPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, 
     ::EnterCriticalSection(&m_clientSizeLock);
     m_clientSizeDirty = false;
     m_isAsynResizing = false;
-    bool sizeChange = !(m_clientSizeCache.cx == m_clientSize.cx && m_clientSizeCache.cy == m_clientSize.cy);
+    bool sizeChange = !(m_clientSizeCache.cx == m_clientSize.cx && m_clientSizeCache.cy == m_clientSize.cy)
+        || m_clientScaleCache != (m_pendingDeviceScaleFactor > 0.f ? m_pendingDeviceScaleFactor : 1.f);
     ::LeaveCriticalSection(&m_clientSizeLock);
 
-    if (sizeChange) // ����ϴ�resize��ʱ��ûPaint��Ϣ���ͻ�ȱһ��resize
+    if (sizeChange)
         updataBlinkSize();
 }
 
 void WebViewHost::updataBlinkSize()
 {
     mini_electron_web_view webviewHandle = (mini_electron_web_view)m_id;
-    if (m_updataBlinkSizeAsyn || m_isAsynResizing)
+    ::EnterCriticalSection(&m_clientSizeLock);
+    const float scale = m_pendingDeviceScaleFactor > 0.f ? m_pendingDeviceScaleFactor : 1.f;
+    const bool unchanged = m_clientSizeCache.cx == m_clientSize.cx
+        && m_clientSizeCache.cy == m_clientSize.cy && m_clientScaleCache == scale;
+    if (m_updataBlinkSizeAsyn || m_isAsynResizing || unchanged) {
+        ::LeaveCriticalSection(&m_clientSizeLock);
         return;
+    }
     m_updataBlinkSizeAsyn = true;
+    ::LeaveCriticalSection(&m_clientSizeLock);
 
     ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, webviewHandle, [](WebViewHost* self) {
-        SIZE clientSize = self->getClientSizeLocked();
+        const bool sinkReady = self->m_host && self->m_renderWidgetHostImpl
+            && self->m_renderWidgetHostImpl->isSinkReady();
+        const bool canResize = sinkReady && self->m_renderWidgetHostImpl->isAllowResize();
+        ::EnterCriticalSection(&self->m_clientSizeLock);
         self->m_updataBlinkSizeAsyn = false;
-
-        if (self->m_host && self->m_renderWidgetHostImpl && self->m_renderWidgetHostImpl->isSinkReady()) {
-            //RenderFrameMetadataObserverClientImpl::OnRenderFrameMetadataChangedû�ߵ�ʱ��isAllowResizeΪfalse
-            if (self->m_renderWidgetHostImpl->isAllowResize()) {
-                ::EnterCriticalSection(&self->m_clientSizeLock);
-                self->m_clientSizeCache = clientSize;
-                self->m_isAsynResizing = true; // һ֡������������resize
-                ::LeaveCriticalSection(&self->m_clientSizeLock);
-
-                self->m_renderWidgetHostImpl->resizeOnBlinkThread(clientSize.cx, clientSize.cy);
-            }
-        } else {
-            self->updataBlinkSize();
+        SIZE clientSize = self->m_clientSize;
+        float scale = self->m_pendingDeviceScaleFactor > 0.f ? self->m_pendingDeviceScaleFactor : 1.f;
+        const bool unchanged = self->m_clientSizeCache.cx == clientSize.cx
+            && self->m_clientSizeCache.cy == clientSize.cy && self->m_clientScaleCache == scale;
+        if (!canResize || self->m_isAsynResizing || unchanged || clientSize.cx <= 0 || clientSize.cy <= 0) {
+            ::LeaveCriticalSection(&self->m_clientSizeLock);
+            // An unready child retries on its readiness transition; a pending
+            // publication retries on completion. Neither relies on animation.
+            if (!sinkReady)
+                self->updataBlinkSize();
+            return;
         }
+        bool scaleChanged = self->m_clientScaleCache != scale;
+        self->m_clientSizeCache = clientSize;
+        self->m_clientScaleCache = scale;
+        self->m_isAsynResizing = true;
+        ::LeaveCriticalSection(&self->m_clientSizeLock);
+
+        if (scaleChanged)
+            self->m_renderWidgetHostImpl->setDeviceScaleFactor(scale);
+        self->m_renderWidgetHostImpl->resizeOnBlinkThread(clientSize.cx, clientSize.cy);
     });
 }
 
@@ -1109,15 +1141,15 @@ void WebViewHost::setDeviceScaleFactor(float device_scale_factor)
 {
     if (device_scale_factor <= 0.f)
         device_scale_factor = 1.f;
-    m_pendingDeviceScaleFactor = device_scale_factor;
-    if (!m_renderWidgetHostImpl)
+    ::EnterCriticalSection(&m_clientSizeLock);
+    if (m_pendingDeviceScaleFactor == device_scale_factor) {
+        ::LeaveCriticalSection(&m_clientSizeLock);
         return;
-    m_renderWidgetHostImpl->setDeviceScaleFactor(device_scale_factor);
-    SIZE size = getClientSizeLocked();
-    if (size.cx > 0 && size.cy > 0 && m_renderWidgetHostImpl->isSinkReady() &&
-        m_renderWidgetHostImpl->isAllowResize()) {
-        m_renderWidgetHostImpl->resizeOnBlinkThread(size.cx, size.cy);
     }
+    m_pendingDeviceScaleFactor = device_scale_factor;
+    ::LeaveCriticalSection(&m_clientSizeLock);
+    if (m_renderWidgetHostImpl)
+        updataBlinkSize();
 }
 
 
@@ -1263,6 +1295,12 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
         self->delayDoMouseMsgInCompositorThread();
         common::LiveIdDetect::getWebViewIds()->unlock(id, self);
     }, id));
+}
+
+void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event)
+{
+    if (m_platformEventHandler)
+        m_platformEventHandler->fireInputEventToCompositingThread(event);
 }
 
 bool WebViewHost::onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey)
@@ -1507,7 +1545,7 @@ void WebViewHost::unlockViewDC()
     }
 }
 
-void WebViewHost::onAllocatedBitmapMemory(const gfx::Size& pixelSize, void* surface, unsigned char* bitmap, void* lock)
+void WebViewHost::onAllocatedBitmapMemory(const gfx::Size& pixelSize, void* surface, unsigned char* bitmap, void* lock, std::shared_ptr<void> owner)
 {
     if (!m_memoryCanvasLock)
         m_memoryCanvasLock = (base::Lock*)lock;
@@ -1517,6 +1555,9 @@ void WebViewHost::onAllocatedBitmapMemory(const gfx::Size& pixelSize, void* surf
     m_bitmapByteSize = pixelSize;
     m_bitmapByte = bitmap;
     m_surface = surface;
+    // Called under the canvas lock only after this allocation has been painted.
+    // Keep the previous completed bitmap alive until its replacement is ready.
+    m_bitmapOwner = std::move(owner);
 }
 
 void WebViewHost::onAllocatedSharedMemory(const gfx::Size& pixelSize, HDC dibDC, void* lock)

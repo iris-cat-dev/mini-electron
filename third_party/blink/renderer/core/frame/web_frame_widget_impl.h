@@ -645,6 +645,8 @@ protected:
 
     // WebFrameWidget overrides.
     cc::LayerTreeHost* LayerTreeHost() override;
+    bool RequestSuccessfulPresentationWithForcedRedraw(
+        base::OnceClosure callback) override;
 
     // Determines whether the drag source is currently dragging.
     bool doing_drag_and_drop_ = false;

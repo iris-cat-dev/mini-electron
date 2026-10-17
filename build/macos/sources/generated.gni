@@ -1134,6 +1134,7 @@ mini_electron_generated_core_sources = [
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_picker_accept_type.cc",
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_picker_options.cc",
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_system_permission_mode.cc",
+  "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_system_flags.cc",
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_writer.cc",
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_writer_callback.cc",
   "//gen/third_party/blink/renderer/bindings/modules/v8/v8_file_writer_sync.cc",

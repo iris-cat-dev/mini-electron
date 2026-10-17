@@ -206,10 +206,7 @@ public:
         ::mojo::PendingRemote<::cc::mojom::blink::RenderFrameMetadataObserver> render_frame_metadata_observer) override;
 
     // HostFrameSinkClient
-    virtual void OnFirstSurfaceActivation(const viz::SurfaceInfo& surface_info) override
-    {
-        //OutputDebugStringA("RenderWidgetHostImpl::OnFirstSurfaceActivation not impl \n");
-    }
+    void OnFirstSurfaceActivation(const viz::SurfaceInfo& surface_info) override;
 
     virtual void OnFrameTokenChanged(uint32_t frame_token, base::TimeTicks activation_time) override
     {

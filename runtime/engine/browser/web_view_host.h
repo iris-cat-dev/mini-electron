@@ -19,6 +19,7 @@ namespace blink {
 class WebNavigationControl;
 class WebViewImpl;
 class WebView;
+class WebKeyboardEvent;
 }
 
 namespace mini_electron::engine {
@@ -38,7 +39,8 @@ const uint32_t kUnusedColor = 0xFFA8456B;
 
 class WebViewHost {
 public:
-    WebViewHost(bool isPopup);
+    WebViewHost(bool isPopup, COLORREF backgroundColor = 0xffffffff,
+        bool isTransparent = false);
     ~WebViewHost();
     bool preDestroyOnUiThread();
     void preDestroyOnBlinkThread();
@@ -152,6 +154,7 @@ public:
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyDown(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyPress(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
+    void onKeyboardEvent(const blink::WebKeyboardEvent& event);
 
     enum ImeCompositioType {
         kImeCompositioTypeStart,
@@ -216,7 +219,7 @@ public:
     void unlockViewDC();
 
     void onAllocatedSharedMemory(const gfx::Size& pixelSize, HDC dibDC, void* lock);
-    void onAllocatedBitmapMemory(const gfx::Size& pixelSize, void* surface, unsigned char* bitmap, void* lock);
+    void onAllocatedBitmapMemory(const gfx::Size& pixelSize, void* surface, unsigned char* bitmap, void* lock, std::shared_ptr<void> owner);
 
     void setSessionStorageNamespaceId(const std::string& sessionStorageNamespaceId)
     {
@@ -317,6 +320,7 @@ private:
     gfx::Size m_bitmapByteSize;
     unsigned char* m_bitmapByte = nullptr;
     void* m_surface = nullptr;
+    std::shared_ptr<void> m_bitmapOwner;
     SkCanvas* m_memoryCanvas = nullptr;
     friend void* mini_electron::engine::getWindowScreenshotSync(void* webview);
 
@@ -356,7 +360,8 @@ private:
 
     mutable CRITICAL_SECTION m_clientSizeLock;
     SIZE m_clientSize;
-    SIZE m_clientSizeCache;
+    SIZE m_clientSizeCache = {};
+    float m_clientScaleCache = 0.f;
     bool m_clientSizeDirty = true;
     bool m_clientResizeRepaintDirty = true;
     bool m_isAsynResizing = false;

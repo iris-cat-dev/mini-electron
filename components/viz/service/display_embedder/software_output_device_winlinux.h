@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/threading/thread_checker.h"
 #include "base/synchronization/lock.h"
 #include "components/viz/service/display/software_output_device.h"
@@ -21,6 +22,18 @@
 #include "third_party/skia/include/core/SkCanvas.h"
 
 namespace viz {
+
+// The in-process bitmap updater copies this owner when an allocation is
+// installed. Publication tasks retain it independently of output-device teardown.
+struct SoftwareOutputDeviceBitmapLifetime {
+    base::Lock lock;
+    bool alive = true; // Protected by lock.
+};
+
+struct SoftwareOutputDeviceBitmap {
+    std::shared_ptr<SkCanvas> canvas;
+    std::shared_ptr<SoftwareOutputDeviceBitmapLifetime> lifetime;
+};
 
 // Shared base class for Linux SoftwareOutputDevice implementations.
 class VIZ_SERVICE_EXPORT SoftwareOutputDeviceWinOrLinuxBase : public SoftwareOutputDevice {
@@ -80,7 +93,7 @@ private:
 
     mojo::Remote<mojom::LayeredWindowUpdater> layered_window_updater_;
 
-    std::unique_ptr<SkCanvas> canvas_;
+    std::shared_ptr<SkCanvas> canvas_;
 
     std::unique_ptr<SkCanvas> transparent_background_canvas_;
     uint8_t* transparent_background_pixels_ = nullptr;
@@ -92,9 +105,13 @@ private:
     gfx::Size bitmap_pixels_size_;
 
     bool waiting_on_draw_ack_ = false;
+    gfx::Rect pending_damage_rect_;
     base::OnceClosure swap_ack_callback_;
 
-    base::Lock canvas_lock_;
+    std::shared_ptr<SoftwareOutputDeviceBitmapLifetime> bitmap_lifetime_ = std::make_shared<SoftwareOutputDeviceBitmapLifetime>();
+    base::Lock& canvas_lock_ = bitmap_lifetime_->lock;
+    SoftwareOutputDeviceBitmap bitmap_owner_;
+    base::WeakPtrFactory<SoftwareOutputDeviceWinOrLinux> weak_ptr_factory_ { this };
 };
 
 // Creates an appropriate SoftwareOutputDevice implementation.

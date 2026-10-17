@@ -156,8 +156,11 @@ File* DataObjectItem::GetAsFile() const
 
     DCHECK_EQ(source_, DataSource::kClipboardSource);
     if (GetType() == kMimeTypeImagePng) {
-        mojo_base::BigBuffer png_data = system_clipboard_->ReadPng(mojom::blink::ClipboardBuffer::kStandard);
-
+        mojo_base::BigBuffer png_data = system_clipboard_->ReadPng(
+            mojom::blink::ClipboardBuffer::kStandard);
+        if (png_data.size() == 0
+            || system_clipboard_->SequenceNumber() != sequence_number_)
+            return nullptr;
         std::unique_ptr<BlobData> data = std::make_unique<BlobData>();
         data->SetContentType(kMimeTypeImagePng);
         data->AppendBytes(base::span<const uint8_t>(png_data.data(), png_data.size()));

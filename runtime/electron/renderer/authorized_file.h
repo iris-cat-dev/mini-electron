@@ -12,9 +12,11 @@ namespace atom {
 
 
 // Synchronous webUtils accessor. It accepts only File objects materialized from
-// an opaque browser-authorized chooser capability; File.name is never used.
+// an opaque browser-authorized chooser capability owned by the calling frame;
+// File.name is never used.
 bool GetAuthorizedPathForFile(v8::Local<v8::Context> context,
-    v8::Local<v8::Value> file, std::string* authorized_path);
+    uint64_t frame_id, v8::Local<v8::Value> file,
+    std::string* authorized_path);
 
 } // namespace atom
 

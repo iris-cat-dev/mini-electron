@@ -100,7 +100,6 @@ PlatformEventHandler::PlatformEventHandler(int64_t webviewid, blink::WebWidget* 
     m_isDispatchDirectlyToWidget = !webViewImpl;
     m_isDraggableRegionNcHitTest = false;
     m_postMouseLeave = false;
-    m_mouseInWindow = false;
     m_isAlert = false;
     m_webviewid = webviewid;
     m_isDraggableNodeMousedown = false;
@@ -679,11 +678,8 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
         bool b = false;
         switch (message) {
         case WM_MOUSEMOVE:
-            if (!m_mouseInWindow) {
-                webMouseEvent.SetType(blink::mojom::EventType::kMouseEnter);
-                m_mouseInWindow = true;
-            } else
-                webMouseEvent.SetType(blink::mojom::EventType::kMouseMove);
+            // Blink derives DOM enter/over transitions from the actual move.
+            webMouseEvent.SetType(blink::mojom::EventType::kMouseMove);
 
             fireInputEventToCompositingThread(webMouseEvent);
             break;
@@ -699,7 +695,6 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
                 );
             }
             fireInputEventToCompositingThread(webMouseEvent);
-            m_mouseInWindow = false;
             break;
         }
     }
@@ -762,6 +757,12 @@ blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(blink::WebInput
         keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kControlKey);
     if (flags & MINI_ELECTRON_SHIFT)
         keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kShiftKey);
+    if (flags & MINI_ELECTRON_META)
+        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kMetaKey);
+    if (flags & MINI_ELECTRON_ALT)
+        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kAltKey);
+    if (flags & MINI_ELECTRON_REPEAT)
+        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kIsAutoRepeat);
 
     if (isKeypadEvent(wParam, keyData, type))
         keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kIsKeyPad);

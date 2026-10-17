@@ -22,22 +22,40 @@ namespace content {
 
 void RenderFrameMetadataObserverClientImpl::OnRenderFrameMetadataChanged(uint32_t frame_token, const ::cc::RenderFrameMetadata& metadata)
 {
-    m_parent->allowResize();
-    if (m_parent->m_sinkClient)
-        m_parent->m_sinkClient->m_firstSetEmbeds = true;
-
-    if (m_parent->m_visualProperties.local_surface_id == metadata.local_surface_id)
+    if (!metadata.local_surface_id || !metadata.local_surface_id->is_valid()
+        || !m_parent->m_allocator.HasValidLocalSurfaceId())
+        return;
+    const viz::LocalSurfaceId& reported = *metadata.local_surface_id;
+    if (reported.embed_token() != m_parent->m_allocator.GetEmbedToken())
         return;
 
-    m_parent->m_visualProperties.local_surface_id = metadata.local_surface_id;
-
-    m_parent->m_runner->PostTask(FROM_HERE,
-        base::BindOnce(
-            [](base::WeakPtr<RenderWidgetHostImpl> self) {
-                if (self->m_blinkWidget.get())
+    // Child sequence advances are merged into the current parent request;
+    // delayed metadata must never rewind its parent ID while retaining new size.
+    m_parent->m_allocator.UpdateFromChild(reported);
+    const viz::LocalSurfaceId canonical = m_parent->m_allocator.GetCurrentLocalSurfaceId();
+    if (m_parent->m_visualProperties.local_surface_id != canonical) {
+        m_parent->m_visualProperties.local_surface_id = canonical;
+        if (m_parent->m_sinkClient) {
+            m_parent->m_sinkClient->embedOnBlinkThread(m_parent->m_frameSinkId,
+                m_parent->m_visualProperties.compositor_viewport_pixel_rect, canonical);
+        }
+        m_parent->m_runner->PostTask(FROM_HERE,
+            base::BindOnce([](base::WeakPtr<RenderWidgetHostImpl> self) {
+                if (self && self->m_blinkWidget.get())
                     self->m_blinkWidget->UpdateVisualProperties(self->m_visualProperties);
-            },
-            m_parent->m_weakPtr.GetWeakPtr()));
+            }, m_parent->m_weakPtr.GetWeakPtr()));
+    }
+
+    if (reported.parent_sequence_number() == canonical.parent_sequence_number()
+        && metadata.viewport_size_in_pixels == m_parent->m_visualProperties.compositor_viewport_pixel_rect.size()
+        && metadata.device_scale_factor == m_parent->deviceScaleFactor())
+        m_parent->allowResize();
+}
+
+void RenderWidgetHostImpl::OnFirstSurfaceActivation(const viz::SurfaceInfo& surface_info)
+{
+    if (m_sinkClient)
+        m_sinkClient->onChildSurfaceActivated(surface_info.id());
 }
 
 void RenderFrameMetadataObserverClientImpl::OnFrameSubmissionForTesting(uint32_t frame_token)
@@ -123,7 +141,11 @@ void RenderWidgetHostImpl::setDeviceScaleFactor(float dsf)
 
 void RenderWidgetHostImpl::allowResize()
 {
+    if (m_allowResize)
+        return;
     m_allowResize = true;
+    if (m_engineWebView)
+        m_engineWebView->updataBlinkSize();
 }
 
 void RenderWidgetHostImpl::resizeOnBlinkThread(int w, int h)
@@ -278,7 +300,7 @@ void RenderWidgetHostImpl::CreateFrameSink(
     m_sinkClient = m_sinkHost->getRootClient();
     m_sinkClient->setWebviewId(m_engineWebView->getId());
 
-    getHostFrameSinkManager()->RegisterFrameSinkId(m_frameSinkId, this, viz::ReportFirstSurfaceActivation::kNo);
+    getHostFrameSinkManager()->RegisterFrameSinkId(m_frameSinkId, this, viz::ReportFirstSurfaceActivation::kYes);
     getHostFrameSinkManager()->RegisterFrameSinkHierarchy(m_sinkClient->frameSinkId(), m_frameSinkId);
     //viz::FrameSinkId rootGrameSinkId(0xdead, 0xbeef);
     //getHostFrameSinkManager()->RegisterFrameSinkHierarchy(rootGrameSinkId/*m_sinkClient->frame_sink_id()*/, m_frameSinkId);

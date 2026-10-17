@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <functional>
 
 #include "base/files/file_path.h"
 #include "base/values.h"
@@ -52,6 +53,9 @@ public:
     virtual void onWebContentsDeleted(WebContents*) { }
     virtual void onWebContentsReadyToShow(WebContents*) { }
     virtual void onWebContentsPaint(WebContents*) { }
+    virtual bool supportsFramePreparation() const { return false; }
+    // Returns the generation actually drawn into the hidden native backing.
+    virtual uint64_t prepareWebContentsFrame(WebContents*, uint64_t) { return 0; }
     virtual void onWebContentsDraggableRegions(
         WebContents*, const base::Value::List&) { }
 };
@@ -107,7 +111,9 @@ public:
     WindowInterface* getOwner() const { return m_owner; }
     WebContents* host() const { return m_host; }
     int getIdApi() const { return m_id; }
+    // Object lifetime is independent of whether its renderer child is alive.
     bool isDestroyedApi() const;
+    // Renderer-dependent operations must use this transport-liveness guard.
     bool isAlive() const;
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
@@ -115,8 +121,20 @@ public:
     void setFocus(bool focused);
     bool sendInput(base::Value::Dict event);
     void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
+    // Browser-native drag input. Native paths are canonicalized and replaced
+    // with Session capabilities before crossing into the renderer.
+    bool sendNativeFileDrag(base::Value::Dict event,
+        const std::vector<std::string>& paths = {});
+    bool canPerformNativeFileDrop() const
+    {
+        return m_native_drag_active && m_native_drag_operation_known
+            && m_native_drag_operation_accepted;
+    }
     void sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags);
     bool copyFrame(RendererFrameSnapshot* snapshot) const;
+    void prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void completePreparedFrames();
+    void cancelPreparedFrames(const std::string& error);
 #if defined(_WIN32)
     bool paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y, int width, int height) const;
 #endif
@@ -135,7 +153,7 @@ private:
 
     void getSessionApi(const v8::FunctionCallbackInfo<v8::Value>&) const;
     void authorizeFileSelectionApi(const v8::FunctionCallbackInfo<v8::Value>&);
-    void getMainFrameApi(const v8::FunctionCallbackInfo<v8::Value>&) const;
+    void getFrameApi(const v8::FunctionCallbackInfo<v8::Value>&) const;
     void requestApi(const v8::FunctionCallbackInfo<v8::Value>&);
     bool sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>&);
     bool sendApi(const v8::FunctionCallbackInfo<v8::Value>&);
@@ -236,6 +254,12 @@ private:
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;
 #endif
     std::set<WebContentsObserver*> m_observers;
+    struct PreparedFrame {
+        uint64_t generation;
+        std::function<void(const std::string&)> complete;
+    };
+    std::vector<PreparedFrame> m_prepared_frames;
+    uint64_t m_presentation_epoch = 0;
     std::set<int> m_guest_ids;
     std::unordered_map<uint64_t, RendererFrameState> m_renderer_frames;
     std::unordered_map<uint64_t, RendererFrameEpoch> m_file_chooser_frames;
@@ -243,6 +267,11 @@ private:
     uint64_t m_frame_generation = 0;
     RendererNavigation m_pending_main_navigation;
     std::vector<base::FilePath> m_application_resource_roots;
+    uint64_t m_native_drag_generation = 0;
+    bool m_native_drag_active = false;
+    bool m_native_drag_operation_known = false;
+    bool m_native_drag_operation_accepted = false;
+    std::vector<std::string> m_native_drag_tokens;
 
     bool m_isLoading = false;
     bool m_canGoBack = false;
@@ -252,6 +281,9 @@ private:
     bool m_destroy_event_emitted = false;
     bool m_ready_to_show_emitted = false;
     bool m_focused = false;
+    int m_viewport_width = 0;
+    int m_viewport_height = 0;
+    double m_viewport_scale = 0.0;
     bool m_ignore_menu_shortcuts = false;
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     bool m_debugger_attached = false;

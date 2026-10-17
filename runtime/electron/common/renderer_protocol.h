@@ -66,7 +66,7 @@ static_assert(sizeof(FrameControlMessage) == 24);
 
 
 // generation is a seqlock: odd while the renderer writes, even while stable.
-// Pixels immediately follow this header and are tightly bounded by capacity.
+// Premultiplied RGBA pixels follow this header, bounded by capacity and stride.
 struct alignas(64) FrameBufferHeader {
     uint32_t magic = kFrameMagic;
     uint32_t capacity = 0;

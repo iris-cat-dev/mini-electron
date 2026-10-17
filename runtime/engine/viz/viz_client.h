@@ -13,6 +13,7 @@
 #include "components/viz/common/frame_timing_details_map.h"
 #include "components/viz/common/quads/compositor_frame_metadata.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
+#include "components/viz/common/surfaces/surface_id.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -81,6 +82,7 @@ public:
     // the client represented by |frame_sink_id|) should use the returned
     // LocalSurfaceId to submit visual content (CompositorFrame).
     viz::LocalSurfaceId embedOnBlinkThread(const viz::FrameSinkId& frame_sink_id, const gfx::Rect& bounds, const viz::LocalSurfaceId& newLocalSurfaceId);
+    void onChildSurfaceActivated(const viz::SurfaceId& surfaceId);
 
     // When this client is resized, it is important that it also receives a new
     // LocalSurfaceId with the new size.
@@ -123,7 +125,7 @@ private:
     struct EmbedInfo {
         viz::LocalSurfaceId lsid;
         gfx::Rect bounds;
-        float degrees = 0.f;
+        viz::LocalSurfaceId active_lsid;
     };
 
     viz::CompositorFrame createFrame(const viz::BeginFrameArgs& args) EXCLUSIVE_LOCKS_REQUIRED(m_lock);
@@ -173,7 +175,7 @@ private:
     // embeds other clients.
     viz::ParentLocalSurfaceIdAllocator m_allocator;
     std::map<viz::FrameSinkId, EmbedInfo> m_embeds /*GUARDED_BY(m_lock)*/;
-    bool m_firstSetEmbeds = false;
+    uint64_t m_frameRevision = 0;
 
     bool m_isRootClient = false;
     content::RenderWidgetHostImpl* m_widgetHost = nullptr;

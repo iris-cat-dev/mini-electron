@@ -5,6 +5,7 @@
 #include "runtime/engine/viz/viz_client.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "components/viz/common/quads/solid_color_draw_quad.h"
 #include "components/viz/common/quads/surface_draw_quad.h"
 #include "components/viz/service/frame_sinks/compositor_frame_sink_support.h"
+#include "components/viz/service/frame_sinks/frame_sink_manager_impl.h"
 #include "runtime/engine/browser/render_widget_host_impl.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/common/thread_call.h"
@@ -100,10 +102,9 @@ viz::LocalSurfaceId VizClient::embedOnBlinkThread(const viz::FrameSinkId& frameS
     // |m_embeds| is used on the client-thread in CreateFrame(). So this needs to
     // be mutated under a lock.
     base::AutoLock lock(m_lock);
-    //m_allocator.GenerateId();
-    //viz::LocalSurfaceId newLocalSurfaceId = m_allocator.GetCurrentLocalSurfaceId();
-    m_embeds[frameSinkId] = { newLocalSurfaceId, bounds };
-    m_firstSetEmbeds = false; // ��һ�ε�OnBeginFrame��ʱ������������ʵ���ݣ������Ƴ�һ֡���ƣ�����������surfaceid���õ�viz�߳�
+    EmbedInfo& embed = m_embeds[frameSinkId];
+    embed.lsid = newLocalSurfaceId;
+    embed.bounds = bounds;
 
     //     char* output = (char*)malloc(0x500);
     //     sprintf_s(output, 0x499, "VizClient::Embed: %p (newLocalSurfaceId:%d)(m_hostLocalSurfaceId:%d)(width:%d)(tid:%d)\n",
@@ -117,6 +118,34 @@ viz::LocalSurfaceId VizClient::embedOnBlinkThread(const viz::FrameSinkId& frameS
     //     free(output);
 
     return newLocalSurfaceId;
+}
+
+void VizClient::onChildSurfaceActivated(const viz::SurfaceId& surfaceId)
+{
+    {
+        base::AutoLock lock(m_lock);
+        auto iter = m_embeds.find(surfaceId.frame_sink_id());
+        if (iter == m_embeds.end())
+            return;
+        EmbedInfo& embed = iter->second;
+        const viz::LocalSurfaceId& activated = surfaceId.local_surface_id();
+        // A delayed notification must not retire a newer complete fallback.
+        if (embed.active_lsid.is_valid()
+            && activated.embed_token() == embed.active_lsid.embed_token()
+            && activated.parent_sequence_number() < embed.active_lsid.parent_sequence_number())
+            return;
+        embed.active_lsid = activated;
+        if (activated.embed_token() == embed.lsid.embed_token()
+            && activated.parent_sequence_number() == embed.lsid.parent_sequence_number()
+            && activated.child_sequence_number() >= embed.lsid.child_sequence_number())
+            embed.lsid = activated;
+        ++m_frameRevision;
+    }
+    m_vizCompositorRunner->PostTask(FROM_HERE, base::BindOnce([](int64_t id) {
+        VizClient* self = (VizClient*)common::LiveIdDetect::get()->getPtr(id);
+        if (self && self->getPtrImpl())
+            self->getPtrImpl()->SetNeedsBeginFrame(true);
+    }, m_id));
 }
 
 viz::LocalSurfaceId VizClient::GetLocalSurfaceId()
@@ -144,6 +173,7 @@ void VizClient::resizeOnHostThread(const gfx::Size& size, const viz::LocalSurfac
     m_bounds.set_size(size);
     m_hostLocalSurfaceId = localSurfaceId; // ����Ǹ�surfaceid����ΪSubmitCompositorFrame�Ĳ���
     m_deviceScaleFactor = device_scale_factor > 0.f ? device_scale_factor : 1.f;
+    ++m_frameRevision;
     //m_forbidResize = true;
     //m_canCommitFrame = false;// ���ڸĳ�һֱ����
     scoped_refptr<base::SequencedTaskRunner> runner = base::SequencedTaskRunner::GetCurrentDefault();
@@ -271,14 +301,11 @@ viz::CompositorFrame VizClient::createFrame(const viz::BeginFrameArgs& args)
     //         viz::SubtreeCaptureId(), gfx::Size(), viz::SharedElementResourceId(), true /*has_transparent_background*/,
     //         false /*cache_render_pass*/, false /*has_damage_from_contributing_content*/, false /*generate_mipmap*/, false /*per_quad_damage*/);
 
-    // The content of the client is one big solid-color rectangle, which includes
-    // the other clients above it (in z-order). The embedded clients are first
-    // added to the CompositorFrame using their SurfaceId (i.e. the FrameSinkId
-    // and LocalSurfaceId), and then the big rectangle is added afterwards.
+    // Keep child geometry at Viz's uniform device-scale ratio. For a smaller
+    // fallback, SurfaceAggregator fills only the uncovered gutters from the
+    // active child's root_background_color, preserving translucent backgrounds.
     for (std::map<viz::FrameSinkId, EmbedInfo>::const_iterator iter = m_embeds.begin(); iter != m_embeds.end(); ++iter) {
         if (!g_canCommitFrame)
-            continue;
-        if (!m_firstSetEmbeds)
             continue;
 
         const gfx::Rect& childBounds = iter->second.bounds;
@@ -307,11 +334,16 @@ viz::CompositorFrame VizClient::createFrame(const viz::BeginFrameArgs& args)
         viz::SurfaceDrawQuad* embedSurfaceDrawquad = renderPass->CreateAndAppendDrawQuad<viz::SurfaceDrawQuad>();
 
         viz::SurfaceId surfaceId(iter->first, iter->second.lsid);
+        std::optional<viz::SurfaceId> fallback;
+        if (iter->second.active_lsid.is_valid() && iter->second.active_lsid != iter->second.lsid)
+            fallback = viz::SurfaceId(iter->first, iter->second.active_lsid);
+        const viz::SurfaceRange surfaceRange(fallback, surfaceId);
+        frame.metadata.referenced_surfaces.push_back(surfaceRange);
         // |rect| and |visible_rect| needs to be in the quad's coord-space, so to draw the whole quad, it needs to use origin (0, 0).
         embedSurfaceDrawquad->SetNew(quadState1,
             /*rect=*/gfx::Rect(childBounds.size()),
-            /*visible_rect=*/gfx::Rect(childBounds.size()), viz::SurfaceRange(surfaceId),
-            SkColors::kGray, //SkColors::kTransparent, // ��ʼ��������Ǹ���ɫ
+            /*visible_rect=*/gfx::Rect(childBounds.size()), surfaceRange,
+            SkColors::kTransparent,
             /*stretch_content_to_fill_bounds=*/false);
     }
 
@@ -337,40 +369,57 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
     // deadline for the client before it needs to submit the compositor-frame.
     viz::CompositorFrame frame = createFrame(args);
     viz::LocalSurfaceId localSurfaceId = m_hostLocalSurfaceId;
+    const uint64_t frameRevision = m_frameRevision;
 
 
     m_vizCompositorRunner->PostTask(FROM_HERE,
         base::BindOnce(
-            [](VizClient* self, viz::CompositorFrame frame, viz::LocalSurfaceId localSurfaceId) {
+            [](VizClient* self, viz::CompositorFrame frame, viz::LocalSurfaceId localSurfaceId, uint64_t frameRevision) {
                 viz::mojom::CompositorFrameSink* ptr = self->getPtrImpl();
                 // ���ߵ�SurfaceManager::GetOrCreateAllocationGroupForSurfaceId
-                if (self->m_canCommitFrame && ptr)
+                if (self->m_canCommitFrame && ptr) {
+                    // Activation notifications can still be queued on Blink,
+                    // which is waiting for this root acknowledgment. Query the
+                    // service's actual active child before choosing fallback.
+                    auto* support = static_cast<viz::CompositorFrameSinkSupport*>(self->m_vizServer);
+                    if (support) {
+                        size_t rangeIndex = 0;
+                        for (auto& pass : frame.render_pass_list) {
+                            for (auto iter = pass->quad_list.begin(); iter != pass->quad_list.end(); ++iter) {
+                                if ((*iter)->material != viz::DrawQuad::Material::kSurfaceContent)
+                                    continue;
+                                auto* quad = static_cast<viz::SurfaceDrawQuad*>(*iter);
+                                const viz::SurfaceId requested = quad->surface_range.end();
+                                auto* child = support->frame_sink_manager()->GetFrameSinkForId(requested.frame_sink_id());
+                                if (child && child->last_activated_surface_id().is_valid()) {
+                                    const viz::SurfaceId& active = child->last_activated_surface_id();
+                                    const auto& activeId = active.local_surface_id();
+                                    const auto& requestedId = requested.local_surface_id();
+                                    const bool reachedRequest = activeId.embed_token() == requestedId.embed_token()
+                                        && activeId.parent_sequence_number() >= requestedId.parent_sequence_number()
+                                        && activeId.child_sequence_number() >= requestedId.child_sequence_number();
+                                    quad->surface_range = reachedRequest
+                                        ? viz::SurfaceRange(active) : viz::SurfaceRange(active, requested);
+                                }
+                                frame.metadata.referenced_surfaces[rangeIndex++] = quad->surface_range;
+                            }
+                        }
+                    }
                     ptr->SubmitCompositorFrame(localSurfaceId, std::move(frame), absl::optional<viz::HitTestRegionList>(), /*trace_time=*/0);
+                }
                 else
                     self->allowResize();
 
-                //         DWORD time = ::GetTickCount();
-                //         if (time - g_lastBeginFrameTime > 400) {
-                //             char* output = (char*)malloc(0x500);
-                //             sprintf(output, "VizClient::OnBeginFrame on viz compos thread: (%d), w:%d %d tid:%d\n",
-                //                 self->m_hostLocalSurfaceId.hash(), self->m_bounds.width(), self->m_firstSetEmbeds, ::GetCurrentThreadId());
-                //             OutputDebugStringA(output);
-                //             free(output);
-                //         }
-                //         g_lastBeginFrameTime = time;
 
                 if (!self->getPtr())
                     return;
 
-                if (!self->m_firstSetEmbeds) { // Ԥ��һ֡����һ֡������ʵ����
-                    //self->m_firstSetEmbeds = true;
-                    //self->allowResize(); // ��һ��ֻ��Ԥ�ȣ����Կ����߲���DidReceiveCompositorFrameAck
-                    self->getPtr()->SetNeedsBeginFrame(true); // �ٴ���һ��OnBeginFrame
-                } else {
-                    self->getPtr()->SetNeedsBeginFrame(false);
-                }
+                // Child activation explicitly requests the cutover frame. Root
+                // acknowledgments still release resize while fallback is drawn.
+                base::AutoLock lock(self->m_lock);
+                self->getPtr()->SetNeedsBeginFrame(self->m_frameRevision != frameRevision);
             },
-            base::Unretained(this), std::move(frame), localSurfaceId));
+            base::Unretained(this), std::move(frame), localSurfaceId, frameRevision));
 }
 
 void VizClient::OnBeginFramePausedChanged(bool paused)

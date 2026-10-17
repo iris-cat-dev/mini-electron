@@ -5,6 +5,8 @@
 
 #if BUILDFLAG(IS_MAC)
 
+#include <CoreFoundation/CoreFoundation.h>
+
 #include <mach-o/dyld.h>
 #include <fcntl.h>
 #include <sandbox.h>
@@ -73,6 +75,24 @@ std::string SandboxQuoted(std::string value)
 }
 
 } // namespace
+
+std::vector<std::string> GetPreferredSystemLanguages()
+{
+    CFArrayRef preferred = CFLocaleCopyPreferredLanguages();
+    if (!preferred)
+        return {};
+    const CFIndex count = CFArrayGetCount(preferred);
+    std::vector<std::string> languages;
+    languages.reserve(count);
+    for (CFIndex index = 0; index < count; ++index) {
+        auto language = static_cast<CFStringRef>(CFArrayGetValueAtIndex(preferred, index));
+        char tag[256];
+        if (CFStringGetCString(language, tag, sizeof(tag), kCFStringEncodingUTF8))
+            languages.emplace_back(tag);
+    }
+    CFRelease(preferred);
+    return languages;
+}
 
 bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     RendererPlatformProcess* output, std::string* error)
@@ -177,6 +197,10 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
 
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
+    // CLOEXEC_DEFAULT closes even standard streams unless explicitly inherited.
+    // Preserve the browser's diagnostic stream without inheriting other handles.
+    if (::fcntl(STDERR_FILENO, F_GETFD) != -1)
+        posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDERR_FILENO);
     posix_spawn_file_actions_adddup2(&actions, to_child[0], kRendererReadFd);
     posix_spawn_file_actions_adddup2(&actions, from_child[1], kRendererWriteFd);
     posix_spawn_file_actions_adddup2(&actions, frame_fd, kRendererFrameFd);
@@ -329,6 +353,9 @@ bool EnterRendererSandbox(std::string* error)
         "(allow process-info*)\n"
         "(allow sysctl-read)\n"
         "(allow ipc-posix*)\n"
+        // CoreText checks the /System ancestor when resolving system-ui CJK
+        // fonts. Reading /System/Library alone leaves their glyphs unavailable.
+        "(allow file-read-metadata (literal \"/System\"))\n"
         "(allow file-read* (literal \"/dev/null\") (literal \"/dev/urandom\") "
         "(subpath \"/System/Library\") (subpath \"/Library/Fonts\") (subpath "
         + SandboxQuoted(bundle_directory) + "))\n"

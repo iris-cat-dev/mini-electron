@@ -15,6 +15,38 @@ const popupWindows = new Map();
 const guestOwners = new Map();
 const guestInstances = new Map();
 const devToolsWindows = new WeakMap();
+const rendererFrames = new WeakMap();
+
+function getRendererFrame(contents, frameId, generation) {
+  const details = contents._getFrame(frameId);
+  if (!details || (generation !== undefined && details.generation !== generation))
+    return null;
+  let frames = rendererFrames.get(contents);
+  if (!frames) {
+    frames = new Map();
+    rendererFrames.set(contents, frames);
+  }
+  const existing = frames.get(details.frameId);
+  if (existing && existing.generation === details.generation)
+    return existing.frame;
+  const currentDetails = () => {
+    const current = contents._getFrame(details.frameId);
+    return current && current.generation === details.generation ? current : null;
+  };
+  const frame = {
+    get processId() { return details.processId; },
+    get routingId() { return details.routingId; },
+    get url() { return currentDetails()?.url || ''; },
+    get detached() { return currentDetails() === null; },
+    send(channel, ...args) {
+      if (!currentDetails()) throw new Error('Render frame is detached');
+      return contents._send(details.frameId, false, channel, ...args);
+    }
+  };
+  frame.framesInSubtree = [frame];
+  frames.set(details.frameId, { generation: details.generation, frame });
+  return frame;
+}
 
 function createReplyEvent(contents, nativeEvent, requestId, innerChannel) {
   let prevented = false;
@@ -25,14 +57,22 @@ function createReplyEvent(contents, nativeEvent, requestId, innerChannel) {
       contents._respond(requestId, { value });
     }
   };
+  const senderFrame = nativeEvent && typeof nativeEvent.frameId === 'string'
+    ? getRendererFrame(contents, nativeEvent.frameId, nativeEvent.frameGeneration)
+    : null;
   const event = {
     sender: contents,
-    frameId: nativeEvent && nativeEvent.frameId,
+    senderFrame,
+    frameId: senderFrame?.routingId,
     innnerChannel: innerChannel,
     preventDefault() { prevented = true; },
     get defaultPrevented() { return prevented; },
     get responded() { return responded; },
-    reply(channel, ...args) { contents.send(channel, ...args); },
+    reply(channel, ...args) {
+      return senderFrame
+        ? senderFrame.send(channel, ...args)
+        : contents.send(channel, ...args);
+    },
     sendReply(value) { respond(value); }
   };
   Object.defineProperty(event, 'returnValue', {
@@ -188,32 +228,27 @@ WebContents.prototype._init = function () {
   this.on('_renderer-event', (nativeEvent, type, payload, requestId) => {
     dispatchRendererEvent(this, nativeEvent, type, payload, requestId);
   });
+  this.on('_renderer-frame-detached', (_event, frameId) => {
+    rendererFrames.get(this)?.delete(frameId);
+  });
+  this.once('destroyed', () => rendererFrames.delete(this));
   Object.defineProperty(this, 'mainFrame', {
     configurable: true,
-    get: () => {
-      const frame = {
-        processId: this.getProcessId(),
-        routingId: this.id,
-        detached: this.isDestroyed(),
-        send: (channel, ...args) => this.sendToFrame(this.id, channel, ...args)
-      };
-      frame.framesInSubtree = [frame];
-      return frame;
-    }
+    get: () => getRendererFrame(this)
   });
 };
 
 WebContents.prototype.send = function (channel, ...args) {
   if (channel == null) throw new TypeError('Missing required channel argument');
-  return this._send(0, false, channel, ...args);
+  return this._send('', false, channel, ...args);
 };
 WebContents.prototype.sendToAll = function (channel, ...args) {
   if (channel == null) throw new TypeError('Missing required channel argument');
-  return this._send(0, true, channel, ...args);
+  return this._send('', true, channel, ...args);
 };
 WebContents.prototype.sendToFrame = function (frameId, channel, ...args) {
   if (channel == null) throw new TypeError('Missing required channel argument');
-  return this._send(frameId, false, channel, ...args);
+  return this._send(`routing:${String(frameId)}`, false, channel, ...args);
 };
 WebContents.prototype.postMessage = function (channel, data) { return this.send(channel, data); };
 WebContents.prototype.getURL = function () { return this._getURL(); };

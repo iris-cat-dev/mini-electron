@@ -715,4 +715,5 @@ struct TraceFormatTraits<std::nullptr_t> {
 
 #endif // if 0
 
+
 #endif // INCLUDE_PERFETTO_TRACING_TRACED_VALUE_H_

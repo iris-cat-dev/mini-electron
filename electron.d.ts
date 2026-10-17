@@ -57,6 +57,10 @@ export interface BrowserWindowConstructorOptions {
   parent?: BrowserWindow;
   icon?: NativeImage | string;
   frame?: boolean;
+  transparent?: boolean;
+  focusable?: boolean;
+  alwaysOnTop?: boolean;
+  hasShadow?: boolean;
   backgroundColor?: string;
   autoHideMenuBar?: boolean;
   titleBarStyle?: "default" | "hidden" | "hiddenInset" | "customButtonsOnHover";
@@ -119,6 +123,7 @@ export interface MenuItemConstructorOptions {
   role?: string;
   type?: "normal" | "separator" | "submenu" | "checkbox" | "radio";
   accelerator?: Accelerator;
+  registerAccelerator?: boolean;
   enabled?: boolean;
   visible?: boolean;
   checked?: boolean;
@@ -223,6 +228,10 @@ export class BrowserWindow extends BaseWindow {
   loadURL(url: string, options?: { extraHeaders?: string }): Promise<void>;
   loadFile(filePath: string): Promise<void>;
   isVisible(): boolean;
+  showInactive(): void;
+  setIgnoreMouseEvents(ignore: boolean, options?: { forward?: boolean }): void;
+  setVisibleOnAllWorkspaces(visible: boolean, options?: { visibleOnFullScreen?: boolean }): void;
+  getNativeWindowHandle(): Buffer;
   isMinimized(): boolean;
   isMaximized(): boolean;
   isFullScreen(): boolean;

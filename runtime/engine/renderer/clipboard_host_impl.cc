@@ -63,6 +63,20 @@ bool blink::mojom::blink::ClipboardHost::ReadAvailableCustomAndStandardFormats(W
 
 namespace {
 
+#if BUILDFLAG(IS_MAC)
+std::u16string clipboardStringToUTF16(const WTF::String& value)
+{
+    if (value.empty())
+        return {};
+    if (!value.Is8Bit())
+        return std::u16string(reinterpret_cast<const char16_t*>(value.Characters16()), value.length());
+    std::u16string result(value.length(), u'\0');
+    for (size_t i = 0; i < value.length(); ++i)
+        result[i] = value.Characters8()[i];
+    return result;
+}
+#endif
+
 void freeData(unsigned int format, HANDLE data)
 {
     if (format == CF_BITMAP)
@@ -377,6 +391,8 @@ bool ClipboardHostImpl::ReadAvailableTypes(::blink::mojom::blink::ClipboardBuffe
         types->push_back(WTF::String::FromUTF8(kMimeTypeText));
     if (mini_electron::mac::ClipboardHasHtml())
         types->push_back(WTF::String::FromUTF8(kMimeTypeHTML));
+    if (mini_electron::mac::ClipboardHasFormat(kMimeTypePNG))
+        types->push_back(WTF::String::FromUTF8(kMimeTypePNG));
     return true;
 #endif
     bool containsFilenames = false;
@@ -750,6 +766,15 @@ static void onReleaseProc(void* addr, void* context)
 
 bool ClipboardHostImpl::ReadPng(::blink::mojom::blink::ClipboardBuffer buffer, ::mojo_base::BigBuffer* outPng)
 {
+#if BUILDFLAG(IS_MAC)
+    if (buffer != blink::mojom::blink::ClipboardBuffer::kStandard) {
+        *outPng = ::mojo_base::BigBuffer();
+        return false;
+    }
+    std::vector<uint8_t> png = mini_electron::mac::ReadClipboardPng();
+    *outPng = ::mojo_base::BigBuffer(base::span<const uint8_t>(png));
+    return !png.empty();
+#else
     ClipboardType clipboardType;
     if (!convertBufferType(buffer, &clipboardType))
         return false;
@@ -867,12 +892,15 @@ bool ClipboardHostImpl::ReadPng(::blink::mojom::blink::ClipboardBuffer buffer, :
     *outPng = std::move(bigBuf);
 
     return true;
+#endif
 }
 
 //using ReadPngCallback = base::OnceCallback<void(::mojo_base::BigBuffer)>;
 void ClipboardHostImpl::ReadPng(::blink::mojom::blink::ClipboardBuffer buffer, ReadPngCallback callback)
 {
-    std::move(callback).Run(::mojo_base::BigBuffer());
+    ::mojo_base::BigBuffer png;
+    ReadPng(buffer, &png);
+    std::move(callback).Run(std::move(png));
 }
 
 bool ClipboardHostImpl::ReadFiles(::blink::mojom::blink::ClipboardBuffer buffer, ::blink::mojom::blink::ClipboardFilesPtr* out_result)
@@ -997,6 +1025,9 @@ void ClipboardHostImpl::writeTextInternal(const WTF::String& string)
 
 void ClipboardHostImpl::WriteText(const ::WTF::String& text)
 {
+#if BUILDFLAG(IS_MAC)
+    m_pendingText = clipboardStringToUTF16(text);
+#else
     ScopedClipboard clipboard;
     if (!clipboard.acquire(getClipboardWindow()))
         return;
@@ -1004,10 +1035,14 @@ void ClipboardHostImpl::WriteText(const ::WTF::String& text)
     ::EmptyClipboard();
 
     writeTextInternal(text);
+#endif
 }
 
 void ClipboardHostImpl::WriteHtml(const ::WTF::String& markup, const ::blink::KURL& url)
 {
+#if BUILDFLAG(IS_MAC)
+    m_pendingHtml = clipboardStringToUTF16(markup);
+#endif
 }
 
 void ClipboardHostImpl::WriteSvg(const ::WTF::String& markup)
@@ -1032,6 +1067,16 @@ void ClipboardHostImpl::WriteUnsanitizedCustomFormat(const ::WTF::String& format
 
 void ClipboardHostImpl::CommitWrite()
 {
+#if BUILDFLAG(IS_MAC)
+    if (!m_pendingText && !m_pendingHtml)
+        return;
+    mini_electron::mac::ClipboardContent content;
+    content.text = m_pendingText ? &*m_pendingText : nullptr;
+    content.html = m_pendingHtml ? &*m_pendingHtml : nullptr;
+    mini_electron::mac::WriteClipboard(content);
+    m_pendingText.reset();
+    m_pendingHtml.reset();
+#endif
 }
 
 extern "C" LRESULT __stdcall clipboardOwnerWndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam)

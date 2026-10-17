@@ -24,6 +24,7 @@ from .node_sources import generate_node_bootstraps
 from .distribution import (
     copy_release_notices,
     copy_runtime_javascript,
+    path_is_link,
     publish_distribution,
     release_metadata,
     staging_directory,
@@ -804,7 +805,7 @@ def _package_runtime_distribution(
     destination = Path(str(requested)) if requested else output / "runtime-dist"
     if not destination.is_absolute():
         destination = root / destination
-    if destination.is_symlink() or destination.is_junction():
+    if path_is_link(destination):
         raise BuildError(
             f"--dist-output must not be a symlink or junction: {destination}"
         )

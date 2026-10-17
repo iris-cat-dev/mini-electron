@@ -165,7 +165,6 @@ private:
 
     bool m_isDraggableRegionNcHitTest;
     bool m_postMouseLeave;
-    bool m_mouseInWindow;
     bool m_isAlert;
     bool m_isDraggableNodeMousedown;
     bool m_isLeftMousedown;

@@ -33,7 +33,6 @@
 #include <memory>
 #include <utility>
 
-#include "storage/common/database/database_identifier.h"
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/modules/filesystem/directory_entry.h"
@@ -68,7 +67,7 @@ DOMFileSystem* DOMFileSystem::CreateIsolatedFileSystem(ExecutionContext* context
         return nullptr;
 
     StringBuilder filesystem_name;
-    filesystem_name.Append(String::FromUTF8(storage::GetIdentifierFromOrigin(context->GetSecurityOrigin()->ToUrlOrigin())));
+    filesystem_name.Append(context->GetSecurityOrigin()->ToString());
     filesystem_name.Append(":Isolated_");
     filesystem_name.Append(filesystem_id);
 

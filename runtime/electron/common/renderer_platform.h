@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "runtime/electron/common/renderer_protocol.h"
 
@@ -29,6 +30,9 @@ struct RendererPlatformProcess {
     int control_socket = -1;
 #endif
 };
+
+// Read in the browser process, before the renderer enters its sandbox.
+std::vector<std::string> GetPreferredSystemLanguages();
 
 bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     RendererPlatformProcess* process, std::string* error);

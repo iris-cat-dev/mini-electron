@@ -20,6 +20,7 @@ from typing import Optional
 from .distribution import (
     copy_release_notices,
     copy_runtime_javascript,
+    path_is_link,
     publish_distribution,
     release_metadata,
     staging_directory,
@@ -34,6 +35,8 @@ ELECTRON_TARGET = "mini_electron"
 ELECTRON_BINARY = "mini-electron"
 NGHTTP2_VERSION = "1.61.0"
 NGHTTP2_SHA256 = "c0e660175b9dc429f11d25b9507a834fb752eea9135ab420bb7cb7e9dbcc9654"
+CURL_VERSION = "8.23.0"
+CURL_SHA256 = "8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5"
 
 
 ELECTRON_BUILDER_VERSION = "26.8.1"
@@ -375,6 +378,102 @@ def ensure_nghttp2(root: Path, clang_base: Path) -> Path:
     return installation
 
 
+def ensure_curl(root: Path, out_dir: Path, clang_base: Path, jobs: int) -> Path:
+    # Apple's libcurl exports the WebSocket API but builds it without ws/wss.
+    # Reuse our existing OpenSSL archive rather than shipping a second TLS stack.
+    tools_dir = root / ".build-tools"
+    installation = tools_dir / f"curl-{CURL_VERSION}-darwin-arm64"
+    openssl = out_dir / "obj/build/macos/libmini_electron_openssl.a"
+    library = installation / "lib/libcurl.a"
+    if (
+        (installation / "include/curl/curl.h").is_file()
+        and (installation / "COPYING").is_file()
+        and library.is_file()
+        and library.stat().st_mtime_ns >= openssl.stat().st_mtime_ns
+    ):
+        return installation
+
+    tools_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=tools_dir) as temporary:
+        temporary_dir = Path(temporary)
+        archive = temporary_dir / f"curl-{CURL_VERSION}.tar.xz"
+        download(f"https://curl.se/download/{archive.name}", archive)
+        actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+        if actual != CURL_SHA256:
+            raise RuntimeError(
+                f"curl archive checksum mismatch: expected {CURL_SHA256}, got {actual}"
+            )
+        with tarfile.open(archive, "r:xz") as package:
+            package.extractall(temporary_dir, filter="data")
+        source = temporary_dir / f"curl-{CURL_VERSION}"
+        staged = temporary_dir / "install"
+        tls_libraries = temporary_dir / "tls"
+        tls_libraries.mkdir()
+        for name in ("libssl.a", "libcrypto.a"):
+            (tls_libraries / name).symlink_to(openssl.resolve())
+
+        build_environment = os.environ.copy()
+        build_environment["DEVELOPER_DIR"] = str(clang_base.parents[2])
+        sdk = subprocess.check_output(
+            ["xcrun", "--sdk", "macosx", "--show-sdk-path"],
+            env=build_environment,
+            text=True,
+        ).strip()
+        build_environment["SDKROOT"] = sdk
+        build_environment["CC"] = str(clang_base / "bin/clang")
+        build_environment["CFLAGS"] = (
+            f"-Os -arch arm64 -isysroot {sdk} -mmacosx-version-min=13.0"
+        )
+        build_environment["CPPFLAGS"] = (
+            f"-isysroot {sdk} -I{root / 'third_party/openssl'}"
+        )
+        build_environment["LDFLAGS"] = (
+            f"-arch arm64 -isysroot {sdk} -mmacosx-version-min=13.0 -L{tls_libraries}"
+        )
+        # Do not accidentally acquire Homebrew libraries on the build machine.
+        build_environment["PKG_CONFIG"] = "/usr/bin/false"
+        run(
+            [
+                str(source / "configure"),
+                f"--prefix={staged}",
+                "--disable-shared",
+                "--enable-static",
+                "--enable-websockets",
+                "--disable-docs",
+                "--disable-manual",
+                "--disable-ldap",
+                "--disable-ldaps",
+                f"--with-openssl={root / 'third_party/openssl/openssl'}",
+                "--with-apple-sectrust",
+                "--enable-ca-native",
+                "--without-ca-bundle",
+                "--without-ca-path",
+                f"--with-nghttp2={tools_dir / f'nghttp2-{NGHTTP2_VERSION}-darwin-arm64'}",
+                "--without-libpsl",
+                "--without-libidn2",
+                "--without-brotli",
+                "--without-zstd",
+                "--without-libssh",
+                "--without-libssh2",
+                "--without-libgsasl",
+                "--without-nghttp3",
+                "--without-ngtcp2",
+            ],
+            cwd=source,
+            env=build_environment,
+        )
+        run(["make", "-C", "lib", "-j", str(jobs)], cwd=source, env=build_environment)
+        run(["make", "-C", "lib", "install"], cwd=source, env=build_environment)
+        run(["make", "-C", "include", "install"], cwd=source, env=build_environment)
+        shutil.copy2(source / "COPYING", staged / "COPYING")
+        if not (staged / "lib/libcurl.a").is_file():
+            raise RuntimeError("curl build did not produce the static library")
+        if installation.exists():
+            shutil.rmtree(installation)
+        shutil.move(str(staged), installation)
+    return installation
+
+
 def _require_file(path: Path, label: str) -> None:
     if not path.is_file() or path.stat().st_size == 0:
         raise RuntimeError(f"{label} is missing or empty: {path}")
@@ -458,53 +557,23 @@ def _stage_electron_bundle(
         "CFBundleShortVersionString": str(metadata["runtimeVersion"]),
         "CFBundleVersion": str(metadata["runtimeVersion"]),
         "LSMinimumSystemVersion": "13.0",
+        # Every process uses this bundle. Only a GUI BrowserWindow promotes its
+        # host to a regular application; renderers and Node workers stay hidden.
+        "LSUIElement": True,
         "NSHighResolutionCapable": True,
     }
     with (contents / "Info.plist").open("wb") as output:
         plistlib.dump(info, output, sort_keys=True)
     (contents / "PkgInfo").write_bytes(b"APPL????")
 
-    helper_names = (
-        "Electron Helper",
-        "Electron Helper (GPU)",
-        "Electron Helper (Plugin)",
-        "Electron Helper (Renderer)",
-    )
-    for helper_name in helper_names:
-        helper = frameworks / f"{helper_name}.app" / "Contents"
-        helper_macos = helper / "MacOS"
-        helper_macos.mkdir(parents=True)
-        helper_executable = helper_macos / helper_name
-        os.link(executable, helper_executable)
-        helper_executable.chmod(0o755)
-        helper_info = {
-            "CFBundleDevelopmentRegion": "en",
-            "CFBundleDisplayName": helper_name,
-            "CFBundleExecutable": helper_name,
-            "CFBundleIdentifier": (
-                "dev.mini-electron.runtime."
-                + helper_name.removeprefix("Electron ")
-                .lower()
-                .replace(" ", "-")
-                .replace("(", "")
-                .replace(")", "")
-            ),
-            "CFBundleInfoDictionaryVersion": "6.0",
-            "CFBundleName": helper_name,
-            "CFBundlePackageType": "APPL",
-            "CFBundleShortVersionString": str(metadata["runtimeVersion"]),
-            "CFBundleVersion": str(metadata["runtimeVersion"]),
-            "LSBackgroundOnly": True,
-            "LSMinimumSystemVersion": "13.0",
-        }
-        with (helper / "Info.plist").open("wb") as output:
-            plistlib.dump(helper_info, output, sort_keys=True)
-        (helper / "PkgInfo").write_bytes(b"APPL????")
-
     copy_squirrel_frameworks(out_dir, frameworks)
     copy_runtime_javascript(root, resources)
     copy_release_notices(root, resources)
     copy_squirrel_notices(root, resources)
+    shutil.copy2(
+        root / ".build-tools" / f"curl-{CURL_VERSION}-darwin-arm64" / "COPYING",
+        resources / "LICENSE.curl",
+    )
     _validate_framework_layout(frameworks)
 
 
@@ -549,10 +618,8 @@ def _resolve_omp_output(
     candidate = Path(requested_output) if requested_output else out_dir / "OMP Desktop.app"
     if not candidate.is_absolute():
         candidate = root / candidate
-    if candidate.is_symlink() or candidate.is_junction():
-        raise RuntimeError(
-            f"--app-output must not be a symlink or junction: {candidate}"
-        )
+    if candidate.is_symlink():
+        raise RuntimeError(f"--app-output must not be a symlink: {candidate}")
     destination = candidate.resolve()
     root = root.resolve()
     out_dir = out_dir.resolve()
@@ -573,31 +640,6 @@ def _resolve_omp_output(
     return destination
 
 
-def _validate_omp_asar(node: str, source: Path, archive: Path) -> None:
-    script = r"""
-const asar = require('@electron/asar');
-const archive = process.argv[1];
-const manifest = JSON.parse(asar.extractFile(archive, 'package.json').toString('utf8'));
-if (manifest.main !== 'dist/main.js') throw new Error(`unexpected main entry: ${manifest.main}`);
-for (const entry of [
-  'dist/main.js',
-  'dist/preload.js',
-  'node_modules/@omp-desktop/cli/dist/run.js',
-  'node_modules/@omp-desktop/server/package.json',
-]) {
-  if (asar.extractFile(archive, entry).length === 0) throw new Error(`missing ${entry}`);
-}
-"""
-    result = subprocess.run(
-        [node, "-e", script, str(archive)],
-        cwd=source,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        detail = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(f"Packaged OMP Desktop app.asar is invalid: {detail}")
 
 
 def _validate_omp_app(app: Path) -> None:
@@ -605,12 +647,14 @@ def _validate_omp_app(app: Path) -> None:
     resources = contents / "Resources"
     required = (
         contents / "MacOS" / "OMP Desktop",
-        resources / "app.asar",
-        resources / "app.asar.unpacked" / "dist" / "daemon" / "node-entrypoint-runner.js",
+        resources / "app" / "package.json",
+        resources / "app" / "dist" / "main.js",
+        resources / "app" / "dist" / "preload.js",
+        resources / "app" / "dist" / "daemon" / "node-entrypoint-runner.js",
         resources / "app-dist" / "index.html",
         resources / "remote-backend" / "manifest.json",
         resources
-        / "app.asar.unpacked"
+        / "app"
         / "node_modules"
         / "@omp-desktop"
         / "server"
@@ -621,6 +665,13 @@ def _validate_omp_app(app: Path) -> None:
         / "providers"
         / "omp"
         / "background-jobs-extension.js",
+        resources
+        / "app"
+        / "node_modules"
+        / "@omp-desktop"
+        / "cli"
+        / "dist"
+        / "run.js",
         resources / "bin" / "omp",
         resources / "bin" / "omp-desktop",
         resources / "mini-electron" / "lib" / "browser" / "init.js",
@@ -707,11 +758,13 @@ def package_omp_desktop(
         if isinstance(mini_runtime, dict)
         else None
     )
-    development = desktop_package.get("devDependencies")
+    electron_package = _read_json(
+        source / "node_modules" / "electron" / "package.json",
+        "Electron package manifest",
+    )
     if (
         not isinstance(electron_version, str)
-        or not isinstance(development, dict)
-        or development.get("electron") != electron_version
+        or electron_package.get("version") != electron_version
     ):
         raise RuntimeError("OMP Desktop Electron API version does not match mini-electron")
 
@@ -762,7 +815,6 @@ def package_omp_desktop(
         copy_release_notices(root, resources)
         copy_squirrel_notices(root, resources)
         _validate_omp_app(packaged)
-        _validate_omp_asar(node, source, resources / "app.asar")
         run(["codesign", "--force", "--deep", "--sign", "-", str(packaged)], cwd=root)
 
         previous = temporary_root / "previous-app"
@@ -787,7 +839,7 @@ def package_runtime_distribution(
     )
     if not destination.is_absolute():
         destination = root / destination
-    if destination.is_symlink() or destination.is_junction():
+    if path_is_link(destination):
         raise RuntimeError(
             f"--dist-output must not be a symlink or junction: {destination}"
         )
@@ -841,12 +893,19 @@ def build(root: Path, args: argparse.Namespace) -> int:
         if target == GUI_TARGET
         else HEADLESS_BINARY
     )
-    if target == ELECTRON_TARGET:
+    if target in (ELECTRON_TARGET, GUI_TARGET):
         ensure_nghttp2(root, clang_base)
+    if target == ELECTRON_TARGET:
         from .node_sources import generate_node_bootstraps
 
         generate_node_bootstraps(root)
     run([gn, "gen", str(out_dir), f"--args={gn_args(clang_base, clang_version)}"], cwd=root)
+    if target in (ELECTRON_TARGET, GUI_TARGET):
+        run(
+            [ninja, "-C", str(out_dir), "-j", str(args.jobs), "mini_electron_openssl"],
+            cwd=root,
+        )
+        ensure_curl(root, out_dir, clang_base, args.jobs)
     run([ninja, "-C", str(out_dir), "-j", str(args.jobs), target], cwd=root)
     if args.package_dist:
         package_runtime_distribution(

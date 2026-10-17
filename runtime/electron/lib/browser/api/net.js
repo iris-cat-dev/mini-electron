@@ -104,8 +104,11 @@ Net.fetch = async function(input, options) {
         'content-type': types[path.extname(file).toLowerCase()] || 'application/octet-stream',
         'content-length': String(stat.size),
     };
+    // Amortize native main-loop pumping for large assets without buffering whole files.
     return new Response(request.method === 'HEAD' ? null :
-        Readable.toWeb(fs.createReadStream(file)), { headers });
+        Readable.toWeb(fs.createReadStream(file, {
+            highWaterMark: Math.max(1, Math.min(stat.size, 1024 * 1024)),
+        })), { headers });
 };
 
 Net.isOnline = function() {
