@@ -316,6 +316,9 @@ void AppSetPackaged(const v8::FunctionCallbackInfo<v8::Value>& info) {
 
 void AppSetReady(const v8::FunctionCallbackInfo<v8::Value>& info) {
   State().ready = true;
+  // NSApp.run used to finish launch implicitly. The libuv-owned event loop
+  // must finish AppKit startup once so Dock, activation and accessibility work.
+  [NSApp finishLaunching];
 }
 
 void AppIsReady(const v8::FunctionCallbackInfo<v8::Value>& info) {
