@@ -291,6 +291,9 @@ Candidate anchors and a hidden native system caret use its asynchronous physical
 caret snapshot, including BrowserView offsets, without applying DPI/page zoom twice.
 Geometry follows page/editor scrolling and window movement; cancel, blur, non-editable
 focus, and BrowserView detach clear stale native state.
+Unstyled Windows preedit text uses a translucent neutral-gray background, preserving
+the editor foreground in light and dark schemes. Explicit IME span colors and
+selection/forced-color handling are unchanged.
 
 Run the real Windows input regressions sequentially on an unlocked interactive desktop:
 
@@ -300,13 +303,17 @@ python build.py --package-dist
 ./out/windows-x64/runtime-dist/electron.exe test/windows-editor-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/windows-caption-overlay-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/same-document-navigation-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-pointer-interaction-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-image-preview-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-composition-colors-smoke.js
 ```
 
 The Windows input tests compile a shared WinForms helper with the system .NET Framework 4 C# compiler
 and send real keyboard, pointer, and OLE input. Clipboard-mutating tests snapshot
 and restore the original clipboard, refusing formats that cannot be preserved losslessly.
-The caption and navigation regressions never read or change clipboard content. The editor
-regression requires Microsoft Pinyin already selected and samples actual active/inactive
+The caption, navigation, pointer, image-preview, and composition-color regressions
+never read or change clipboard content. The editor and composition-color regressions
+require Microsoft Pinyin already selected. The editor regression samples active/inactive
 selection pixels, decodes pasted image Files, and checks native/DOM caret geometry,
 composition, cancellation, selection replacement, scrolling, zoom, and BrowserView focus.
 It never changes the system input source, theme, or high-contrast settings. Set
@@ -314,6 +321,11 @@ It never changes the system input source, theme, or high-contrast settings. Set
 The caption regression samples transparent, partial-alpha, and opaque native pixels,
 checks hover clearing, and clicks minimize/maximize/restore/close controls. Closing
 must emit each lifecycle event once and expose the destroyed state to its listeners.
+The pointer regression checks full-edge hover and captured pane drags on both axes
+without moving the native window. The image regression persists and decodes a
+491,978-byte PNG through nested sliced binary IPC, verifies exact bytes and bounds,
+and checks real mouse input and timers afterward. The composition-color regression
+samples native marked-text pixels in both schemes and exercises cancellation/commit.
 Inspector/CDP and renderer permission bypasses are not used.
 
 CSS drag rectangles reach the native window through the renderer callback and

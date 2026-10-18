@@ -38,6 +38,8 @@ internal static class NativeInputHelper
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
     [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr window, ref Point point);
+    [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
+    [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
@@ -48,6 +50,8 @@ internal static class NativeInputHelper
     [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint thread);
     [DllImport("user32.dll")] private static extern uint GetDoubleClickTime();
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int key);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint key, uint mode);
@@ -73,6 +77,8 @@ internal static class NativeInputHelper
     private static Dictionary<string, object> drag;
     private static List<ClipboardItem> savedClipboard;
     private static int accepted;
+    private static bool heldLeftButton;
+    private static IntPtr heldPointerWindow;
 
     private static int Number(Dictionary<string, object> command, string key) { return Convert.ToInt32(command[key]); }
     private static bool Flag(Dictionary<string, object> command, string key) { return command.ContainsKey(key) && Convert.ToBoolean(command[key]); }
@@ -99,6 +105,35 @@ internal static class NativeInputHelper
     private static void Click(int x, int y) {
         if (!SetCursorPos(x, y)) throw new Win32Exception();
         Mouse(false); Thread.Sleep(50); Mouse(true);
+    }
+    private static void ValidateClientPoint(IntPtr window, int x, int y) {
+        Rect client; Point origin = new Point();
+        if (GetForegroundWindow() != window || !GetClientRect(window, out client)
+            || !ClientToScreen(window, ref origin))
+            throw new InvalidOperationException("Refusing pointer input for an unexpected foreground window");
+        if (x < origin.X || x >= origin.X + client.Right - client.Left
+            || y < origin.Y || y >= origin.Y + client.Bottom - client.Top)
+            throw new InvalidOperationException("Pointer target is outside the native test window client");
+    }
+    private static void MovePointer(IntPtr window, int x, int y) {
+        ValidateClientPoint(window, x, y);
+        int left = GetSystemMetrics(76), top = GetSystemMetrics(77);
+        int width = GetSystemMetrics(78), height = GetSystemMetrics(79);
+        if (width <= 1 || height <= 1)
+            throw new InvalidOperationException("Windows virtual desktop has invalid dimensions");
+        if (x < left || x >= left + width || y < top || y >= top + height)
+            throw new InvalidOperationException("Pointer target is outside the Windows virtual desktop");
+        long normalizedX = (long)(x - left) * 65535 / (width - 1);
+        long normalizedY = (long)(y - top) * 65535 / (height - 1);
+        Send(new Input { Type = 0, Data = new InputUnion { Mouse = new MouseInput {
+            X = (int)normalizedX, Y = (int)normalizedY, Flags = 0x0001u | 0x4000u | 0x8000u
+        } } });
+        Thread.Sleep(50);
+    }
+    private static void ReleaseHeldPointer() {
+        if (!heldLeftButton) return;
+        try { Mouse(true); }
+        finally { heldLeftButton = false; heldPointerWindow = IntPtr.Zero; }
     }
     private static IntPtr Window(Dictionary<string, object> command) {
         IntPtr window = command.ContainsKey("hwnd") ? new IntPtr(Convert.ToInt64(command["hwnd"])) : FindWindow(null, Convert.ToString(command["title"]));
@@ -270,14 +305,61 @@ internal static class NativeInputHelper
             return true;
         }
         if (action == "pointerMove") {
-            IntPtr window = Window(command); Rect rect;
-            if (GetForegroundWindow() != window || !GetWindowRect(window, out rect))
-                throw new InvalidOperationException("Refusing to move the pointer over an unexpected foreground window");
-            int x = Number(command, "x"), y = Number(command, "y");
-            if (x < rect.Left || x >= rect.Right || y < rect.Top || y >= rect.Bottom)
-                throw new InvalidOperationException("Pointer target is outside the native test window");
-            if (!SetCursorPos(x, y)) throw new Win32Exception();
-            Thread.Sleep(50);
+            IntPtr window = Window(command);
+            if (heldLeftButton && heldPointerWindow != window)
+                throw new InvalidOperationException("Refusing to move a held pointer over another window");
+            MovePointer(window, Number(command, "x"), Number(command, "y"));
+            return true;
+        }
+        if (action == "pointerProbe") {
+            IntPtr window = Window(command);
+            Point cursor;
+            if (!GetCursorPos(out cursor)) throw new Win32Exception();
+            Point expected = new Point { X = Number(command, "x"), Y = Number(command, "y") };
+            uint owner; uint thread = GetWindowThreadProcessId(window, out owner);
+            var info = new GuiThreadInfo { Size = (uint)Marshal.SizeOf(typeof(GuiThreadInfo)) };
+            if (!GetGUIThreadInfo(thread, ref info)) throw new Win32Exception();
+            IntPtr foreground = GetForegroundWindow();
+            uint foregroundOwner, helperOwner;
+            GetWindowThreadProcessId(foreground, out foregroundOwner);
+            GetWindowThreadProcessId(form.Handle, out helperOwner);
+            string foregroundProcessName = "";
+            if (foregroundOwner != owner) {
+                try { using (var process = System.Diagnostics.Process.GetProcessById((int)foregroundOwner)) foregroundProcessName = process.ProcessName; }
+                catch (ArgumentException) { foregroundProcessName = "exited"; }
+                catch (Win32Exception) { foregroundProcessName = "unavailable"; }
+            }
+            return new {
+                expected = new { x = expected.X, y = expected.Y },
+                cursor = new { x = cursor.X, y = cursor.Y },
+                target = window.ToInt64(),
+                foreground = foreground.ToInt64(),
+                targetProcess = owner, foregroundProcess = foregroundOwner, helperProcess = helperOwner,
+                foregroundProcessName,
+                windowAtExpected = WindowFromPoint(expected).ToInt64(),
+                windowAtCursor = WindowFromPoint(cursor).ToInt64(),
+                active = info.Active.ToInt64(),
+                focus = info.Focus.ToInt64(),
+                capture = info.Capture.ToInt64()
+            };
+        }
+        if (action == "pointerDown") {
+            IntPtr window = Window(command);
+            Focus(window);
+            if (heldLeftButton || (GetAsyncKeyState(1) & 0x8000) != 0)
+                throw new InvalidOperationException("Refusing to press an already-held left pointer button");
+            MovePointer(window, Number(command, "x"), Number(command, "y"));
+            Mouse(false);
+            heldLeftButton = true;
+            heldPointerWindow = window;
+            return true;
+        }
+        if (action == "pointerUp") {
+            IntPtr window = Window(command);
+            if (!heldLeftButton || heldPointerWindow != window)
+                throw new InvalidOperationException("No held pointer belongs to the native test window");
+            try { MovePointer(window, Number(command, "x"), Number(command, "y")); }
+            finally { ReleaseHeldPointer(); }
             return true;
         }
         if (action == "wheel") {
@@ -311,7 +393,7 @@ internal static class NativeInputHelper
             }
             return true;
         }
-        if (action == "quit") { RestoreClipboard(); form.Close(); return true; }
+        if (action == "quit") { ReleaseHeldPointer(); RestoreClipboard(); form.Close(); return true; }
         throw new InvalidOperationException("Unknown native command " + action);
     }
     private static void BeginDrag(Dictionary<string, object> command) {
@@ -383,7 +465,7 @@ internal static class NativeInputHelper
                 if (!form.IsDisposed) form.BeginInvoke(new Action(() => form.Close()));
             }) { IsBackground = true }.Start();
         };
-        form.FormClosing += (sender, e) => { RestoreClipboard(); };
+        form.FormClosing += (sender, e) => { ReleaseHeldPointer(); RestoreClipboard(); };
         Application.Run(form);
     }
 }

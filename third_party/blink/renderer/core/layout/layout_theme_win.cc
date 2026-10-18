@@ -35,4 +35,10 @@ Color LayoutThemeWin::PlatformInactiveSelectionForegroundColor(mojom::blink::Col
     return LayoutThemeDefault::PlatformInactiveSelectionForegroundColor(color_scheme);
 }
 
+Color LayoutThemeWin::PlatformDefaultCompositionBackgroundColor() const
+{
+    // A translucent neutral tint keeps marked text legible in both color schemes.
+    return Color(128, 128, 128, 64);
+}
+
 } // namespace blink
