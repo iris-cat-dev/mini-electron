@@ -685,7 +685,7 @@ void WebLocalFrameClientImpl::DidCommitNavigation(blink::WebHistoryCommitType co
             m_engineViewId, webview->getClosure().m_FrameURLChangedParam,
             reinterpret_cast<mini_electron_web_frame_handle>(
                 static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frame))),
-            url.c_str(), parent_frame_id, parent ? FALSE : TRUE);
+            url.c_str(), parent_frame_id, parent ? FALSE : TRUE, FALSE);
     }
 
     webview->didCommitProvisionalLoad(m_frame, m_frame->GetCurrentHistoryItem(), commitType, false);
@@ -728,7 +728,7 @@ void WebLocalFrameClientImpl::DidFinishSameDocumentNavigation(
             m_engineViewId, webview->getClosure().m_FrameURLChangedParam,
             reinterpret_cast<mini_electron_web_frame_handle>(
                 static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frame))),
-            url.c_str(), parent_frame_id, parent ? FALSE : TRUE);
+            url.c_str(), parent_frame_id, parent ? FALSE : TRUE, TRUE);
     }
 
     webview->didCommitProvisionalLoad(m_frame, m_frame->GetCurrentHistoryItem(), commitType, true);
@@ -875,6 +875,16 @@ void WebLocalFrameClientImpl::loadHistoryItem(blink::WebLocalFrame* frame, const
     blink::WebLocalFrameImpl* impl = blink::To<blink::WebLocalFrameImpl>(frame);
     blink::HistoryItem* historyItem = item;
 
+    if (isSameDocument) {
+        impl->CommitSameDocumentNavigation(historyItem->Url(),
+            blink::WebFrameLoadType::kBackForward, item,
+            false /* is_client_redirect */,
+            false /* has_transient_user_activation */,
+            blink::WebSecurityOrigin(), /* is_browser_initiated */ true,
+            /* has_ua_visual_transition */ false, std::nullopt);
+        return;
+    }
+
     std::unique_ptr<blink::WebNavigationParams> params = std::make_unique<blink::WebNavigationParams>();
 
     params->response.SetMimeType("text/html"); // TODO: ���Ҫ���ϴ�WebHistoryItem���¼����
@@ -945,13 +955,7 @@ void WebLocalFrameClientImpl::loadHistoryItem(blink::WebLocalFrame* frame, const
     info->frame_load_type = blink::WebFrameLoadType::kBackForward;
     beginNavigation(std::move(info), impl, client->m_engineViewId, dataPipeProducerHandle, frame, nullptr);
 
-    if (!isSameDocument) {
-        impl->CommitNavigation(std::move(params), nullptr /* extra_data */);
-    } else {
-        impl->CommitSameDocumentNavigation(historyItem->Url(), blink::WebFrameLoadType::kBackForward, item, false /*is_client_redirect*/,
-            false /*has_transient_user_activation*/, blink::WebSecurityOrigin(), /*is_browser_initiated*/ true, /*has_ua_visual_transition*/false,
-            std::nullopt);
-    }
+    impl->CommitNavigation(std::move(params), nullptr /* extra_data */);
 }
 
 void WebLocalFrameClientImpl::loadUrl(blink::WebLocalFrame* frame, const blink::KURL& url)

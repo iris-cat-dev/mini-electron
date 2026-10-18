@@ -1,5 +1,9 @@
 
 #include "runtime/engine/renderer/platform_event_handler.h"
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
+
 
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
@@ -17,54 +21,15 @@
 #include "ui/latency/latency_info.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/dom_key.h"
+#include "ui/events/event_constants.h"
+#include "ui/events/keycodes/dom/keycode_converter.h"
+#include "ui/events/keycodes/keyboard_code_conversion.h"
 #include <windowsx.h>
 
 namespace content {
 
 static const unsigned short HIGH_BIT_MASK_SHORT = 0x8000;
 
-// Source\WebCore\platform\win\KeyEventWin.cpp
-static bool isKeypadEvent(WPARAM code, LPARAM keyData, blink::WebInputEvent::Type type)
-{
-    if (blink::WebInputEvent::Type::kRawKeyDown != type && blink::WebInputEvent::Type::kKeyUp != type)
-        return false;
-
-    switch (code) {
-    case VK_NUMLOCK:
-    case VK_NUMPAD0:
-    case VK_NUMPAD1:
-    case VK_NUMPAD2:
-    case VK_NUMPAD3:
-    case VK_NUMPAD4:
-    case VK_NUMPAD5:
-    case VK_NUMPAD6:
-    case VK_NUMPAD7:
-    case VK_NUMPAD8:
-    case VK_NUMPAD9:
-    case VK_MULTIPLY:
-    case VK_ADD:
-    case VK_SEPARATOR:
-    case VK_SUBTRACT:
-    case VK_DECIMAL:
-    case VK_DIVIDE:
-        return true;
-    case VK_RETURN:
-        return HIWORD(keyData) & KF_EXTENDED;
-    case VK_INSERT:
-    case VK_DELETE:
-    case VK_PRIOR:
-    case VK_NEXT:
-    case VK_END:
-    case VK_HOME:
-    case VK_LEFT:
-    case VK_UP:
-    case VK_RIGHT:
-    case VK_DOWN:
-        return !(HIWORD(keyData) & KF_EXTENDED);
-    default:
-        return false;
-    }
-}
 
 int verticalScrollLines()
 {
@@ -82,9 +47,12 @@ int horizontalScrollChars()
     return scrollChars;
 }
 
-static bool isNearPos(const gfx::Point& a, const gfx::Point& b)
+static bool isWithinDoubleClickBounds(const gfx::Point& first, const gfx::Point& second)
 {
-    return std::abs(a.x() - b.x()) + std::abs(a.y() - b.y()) < 15;
+    const int halfWidth = std::max(1, ::GetSystemMetrics(SM_CXDOUBLECLK) / 2);
+    const int halfHeight = std::max(1, ::GetSystemMetrics(SM_CYDOUBLECLK) / 2);
+    return std::abs(first.x() - second.x()) <= halfWidth
+        && std::abs(first.y() - second.y()) <= halfHeight;
 }
 
 static void postDragMessageImpl(HWND hWnd, void* param)
@@ -105,6 +73,10 @@ PlatformEventHandler::PlatformEventHandler(int64_t webviewid, blink::WebWidget* 
     m_isDraggableNodeMousedown = false;
     m_isLeftMousedown = false;
     m_lastTimeMouseDown = 0;
+    m_lastMouseDownButton = 0;
+    m_activeMouseButton = 0;
+    m_lastMouseDownClickCount = 0;
+    m_activeMouseClickCount = 0;
     m_isValidLastTouchDownPoint = false;
     m_webWidget = webWidget;
     m_webViewImpl = webViewImpl;
@@ -562,8 +534,6 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     if (fireMouseUpEventIfNeeded(hWnd, message, wParam, lParam, info, bHandle))
         return 0;
 
-    bool shift = false, ctrl = false, alt = false, meta = false;
-    int clickCount = 0;
 
     gfx::Point pos;
     gfx::Point globalPos;
@@ -591,20 +561,37 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     webMouseEvent.movement_y = pos.y() - m_lastPosMouseMove.y();
     m_lastPosMouseMove = pos;
 
-    webMouseEvent.click_count = 1;
+    webMouseEvent.click_count = 0;
     buildModifiers(&webMouseEvent);
 
-    if (WM_LBUTTONDOWN == message || WM_MBUTTONDOWN == message || WM_RBUTTONDOWN == message || WM_LBUTTONDBLCLK == message) {
+    if (WM_LBUTTONDOWN == message || WM_MBUTTONDOWN == message
+        || WM_RBUTTONDOWN == message || WM_LBUTTONDBLCLK == message
+        || WM_MBUTTONDBLCLK == message || WM_RBUTTONDBLCLK == message) {
         handle = true;
 
-        const static int64_t minInterval = GetDoubleClickTime() * 360;
-        int64_t ticks = time.ToInternalValue() - m_lastTimeMouseDown;
-
-        if (ticks < minInterval && isNearPos(m_lastPosMouseDown, pos))
-            webMouseEvent.click_count = 2;
-
+        const UINT button = message == WM_LBUTTONDOWN || message == WM_LBUTTONDBLCLK
+            ? WM_LBUTTONDOWN
+            : message == WM_MBUTTONDOWN || message == WM_MBUTTONDBLCLK
+                ? WM_MBUTTONDOWN
+                : WM_RBUTTONDOWN;
+        const int64_t interval = static_cast<int64_t>(::GetDoubleClickTime()) * 1000;
+        const int64_t ticks = time.ToInternalValue() - m_lastTimeMouseDown;
+        const bool continuesClickSequence = m_lastTimeMouseDown != 0
+            && button == m_lastMouseDownButton && ticks >= 0 && ticks <= interval
+            && isWithinDoubleClickBounds(m_lastPosMouseDown, pos);
+        int clickCount = continuesClickSequence ? m_lastMouseDownClickCount + 1 : 1;
+        if ((message == WM_LBUTTONDBLCLK || message == WM_MBUTTONDBLCLK
+                || message == WM_RBUTTONDBLCLK)
+            && clickCount < 2) {
+            clickCount = 2;
+        }
+        webMouseEvent.click_count = clickCount;
         m_lastTimeMouseDown = time.ToInternalValue();
         m_lastPosMouseDown = pos;
+        m_lastMouseDownButton = button;
+        m_lastMouseDownClickCount = clickCount;
+        m_activeMouseButton = button;
+        m_activeMouseClickCount = clickCount;
 
         if (hWnd && info.isNeedSetFocus) {
             if (m_webViewImpl && isValideWindow && ::GetFocus() != hWnd) {
@@ -621,10 +608,12 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
             webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kLeftButtonDown);
             break;
         case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
             webMouseEvent.button = blink::WebPointerProperties::Button::kMiddle;
             webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kMiddleButtonDown);
             break;
         case WM_RBUTTONDOWN:
+        case WM_RBUTTONDBLCLK:
             webMouseEvent.button = blink::WebPointerProperties::Button::kRight;
             webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kRightButtonDown);
             break;
@@ -636,21 +625,28 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
         m_isDraggableNodeMousedown = false;
     } else if (WM_LBUTTONUP == message || WM_MBUTTONUP == message || WM_RBUTTONUP == message) {
         handle = true;
+        const UINT button = message == WM_LBUTTONUP
+            ? WM_LBUTTONDOWN
+            : message == WM_MBUTTONUP ? WM_MBUTTONDOWN : WM_RBUTTONDOWN;
+        webMouseEvent.click_count = button == m_activeMouseButton
+            ? m_activeMouseClickCount
+            : 1;
 
         switch (message) {
         case WM_LBUTTONUP:
             m_isLeftMousedown = false;
             webMouseEvent.button = blink::WebPointerProperties::Button::kLeft;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kLeftButtonDown);
             break;
         case WM_MBUTTONUP:
             webMouseEvent.button = blink::WebPointerProperties::Button::kMiddle;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kMiddleButtonDown);
             break;
         case WM_RBUTTONUP:
             webMouseEvent.button = blink::WebPointerProperties::Button::kRight;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebMouseEvent::kRightButtonDown);
             break;
+        }
+        if (button == m_activeMouseButton) {
+            m_activeMouseButton = 0;
+            m_activeMouseClickCount = 0;
         }
         if (isValideWindow)
             ::ReleaseCapture();
@@ -704,107 +700,178 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     return 0;
 }
 
-static void buildDomCode(blink::WebKeyboardEvent* keyEvent)
+static ui::DomCode domCodeFromWindowsEvent(WPARAM virtualKey, LPARAM keyData,
+    HKL keyboardLayout)
 {
-    int domCode = keyEvent->dom_code;
-    if (VK_CONTROL == domCode) {
-        keyEvent->dom_code = (int)ui::DomCode::CONTROL_LEFT;
-    } else if (VK_SHIFT == domCode) {
-        keyEvent->dom_code = (int)ui::DomCode::SHIFT_LEFT;
-    } else if (VK_MENU == domCode) {
-        keyEvent->dom_code = (int)ui::DomCode::ALT_LEFT;
-    } else if (VK_TAB == domCode) {
-        keyEvent->dom_code = (int)ui::DomCode::TAB;
-    } else if (VK_CAPITAL == domCode) {
-        keyEvent->dom_code = (int)ui::DomCode::CAPS_LOCK;
-    } else if (0x30 <= domCode && domCode <= 0x39) {
-        keyEvent->dom_code = domCode - 0x31 + (int)ui::DomCode::DIGIT1;
-    } else if (0x41 <= domCode && domCode <= 0x5A) {
-        keyEvent->dom_code = domCode + (int)ui::DomCode::US_A - (int)'A';
-    } else if (VK_NUMPAD0 <= domCode && domCode <= VK_NUMPAD9) {
-        keyEvent->dom_code = domCode - VK_NUMPAD0 - 1 + (int)ui::DomCode::NUMPAD1;
-    } else if (VK_F1 <= domCode && domCode <= VK_F12) {
-        keyEvent->dom_code = domCode - VK_F1 + (int)ui::DomCode::F1;
-    } else if (VK_F13 <= domCode && domCode <= VK_F24) {
-        keyEvent->dom_code = domCode - VK_F13 + (int)ui::DomCode::F13;
+    const uintptr_t nativeData = static_cast<uintptr_t>(keyData);
+    UINT scanCode = static_cast<UINT>((nativeData >> 16) & 0xff);
+    if (nativeData & (uintptr_t { 1 } << 24))
+        scanCode |= 0xe000;
+    if (!scanCode && virtualKey) {
+        scanCode = ::MapVirtualKeyExW(static_cast<UINT>(virtualKey),
+            MAPVK_VK_TO_VSC_EX, keyboardLayout);
     }
+
+    const ui::DomCode code =
+        ui::KeycodeConverter::NativeKeycodeToDomCode(static_cast<int>(scanCode));
+    if (code != ui::DomCode::NONE)
+        return code;
+    return ui::UsLayoutKeyboardCodeToDomCode(
+        static_cast<ui::KeyboardCode>(virtualKey));
 }
 
-static uint32_t windowsKeyCodeToDomKey(int windowsKeyCode)
-{
-    if (0x0008 == windowsKeyCode || 0x0009 == windowsKeyCode ||
-        0x000D == windowsKeyCode || 0x001B == windowsKeyCode || 0x001B == 0x007F)
-        return windowsKeyCode | 0x400000;
-    return  windowsKeyCode | 0x200000;
-}
 
-blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags)
+static ui::DomKey domKeyFromWindowsEvent(WPARAM virtualKey, ui::DomCode domCode,
+    unsigned int flags, HKL keyboardLayout)
 {
-    base::TimeTicks time = base::TimeTicks::Now();
-    LPARAM keyData = lParam; // MAKELPARAM(0, (WORD)flags);
-    blink::WebKeyboardEvent keyEvent;
-    keyEvent.windows_key_code = (type == blink::WebInputEvent::Type::kRawKeyDown || type == blink::WebInputEvent::Type::kKeyUp) ? wParam : 0;
-    keyEvent.native_key_code = wParam;
-    keyEvent.dom_code = (keyEvent.windows_key_code);
-    keyEvent.dom_key = windowsKeyCodeToDomKey(keyEvent.windows_key_code);
-    buildDomCode(&keyEvent);
-    keyEvent.SetTimeStamp(time);
-    //keyEvent.SetSize(sizeof(WebKeyboardEvent));
-    keyEvent.SetType(type);
+    const bool altGraph = (flags & MINI_ELECTRON_ALT_GRAPH) != 0;
+    if (domCode == ui::DomCode::ALT_RIGHT && altGraph)
+        return ui::DomKey::ALT_GRAPH;
+    ui::DomKey domKey;
+    ui::KeyboardCode keyCode;
+    if (ui::DomCodeToNonPrintableDomKey(domCode, &domKey, &keyCode))
+        return domKey;
 
-    // Modifier state belongs to the input sender, not this renderer's thread.
-    if (flags & MINI_ELECTRON_CONTROL)
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kControlKey);
+    BYTE keyboardState[256] = {};
+    ::GetKeyboardState(keyboardState);
+    auto setPressed = [&keyboardState](int key, bool pressed) {
+        keyboardState[key] = static_cast<BYTE>(
+            (keyboardState[key] & 0x01) | (pressed ? 0x80 : 0));
+    };
+    setPressed(VK_SHIFT, (flags & MINI_ELECTRON_SHIFT) != 0);
+    setPressed(VK_CONTROL, (flags & MINI_ELECTRON_CONTROL) != 0);
+    setPressed(VK_MENU, (flags & MINI_ELECTRON_ALT) != 0);
+    keyboardState[VK_CAPITAL] = static_cast<BYTE>(
+        (keyboardState[VK_CAPITAL] & 0x80)
+        | ((flags & MINI_ELECTRON_CAPS_LOCK) ? 0x01 : 0));
+    keyboardState[VK_NUMLOCK] = static_cast<BYTE>(
+        (keyboardState[VK_NUMLOCK] & 0x80)
+        | ((flags & MINI_ELECTRON_NUM_LOCK) ? 0x01 : 0));
+
+    setPressed(VK_RMENU, altGraph);
+    if (!altGraph) {
+        setPressed(VK_CONTROL, false);
+        setPressed(VK_LCONTROL, false);
+        setPressed(VK_RCONTROL, false);
+        setPressed(VK_MENU, false);
+        setPressed(VK_LMENU, false);
+        setPressed(VK_RMENU, false);
+    }
+
+    WCHAR characters[4] = {};
+    const UINT scanCode = static_cast<UINT>(
+        ui::KeycodeConverter::DomCodeToNativeKeycode(domCode)) & 0xff;
+    const int characterCount = ::ToUnicodeEx(static_cast<UINT>(virtualKey),
+        scanCode, keyboardState, characters,
+        static_cast<int>(std::size(characters)),
+        4 /* Do not mutate the keyboard's dead-key state. */, keyboardLayout);
+    if (characterCount > 0) {
+        uint32_t character = characters[0];
+        if (characterCount > 1 && characters[0] >= 0xd800
+            && characters[0] <= 0xdbff && characters[1] >= 0xdc00
+            && characters[1] <= 0xdfff) {
+            character = 0x10000
+                + ((static_cast<uint32_t>(characters[0]) - 0xd800) << 10)
+                + (static_cast<uint32_t>(characters[1]) - 0xdc00);
+        }
+        return ui::DomKey::FromCharacter(character);
+    }
+    if (characterCount < 0 && characters[0])
+        return ui::DomKey::DeadKeyFromCombiningCharacter(characters[0]);
+    const ui::DomCode semanticCode = ui::UsLayoutKeyboardCodeToDomCode(
+        static_cast<ui::KeyboardCode>(virtualKey));
+    if (ui::DomCodeToNonPrintableDomKey(semanticCode, &domKey, &keyCode))
+        return domKey;
+
+    int fallbackFlags = ui::EF_NONE;
     if (flags & MINI_ELECTRON_SHIFT)
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kShiftKey);
+        fallbackFlags |= ui::EF_SHIFT_DOWN;
+    if (altGraph)
+        fallbackFlags |= ui::EF_ALTGR_DOWN;
+    if (flags & MINI_ELECTRON_CAPS_LOCK)
+        fallbackFlags |= ui::EF_CAPS_LOCK_ON;
+    if (flags & MINI_ELECTRON_NUM_LOCK)
+        fallbackFlags |= ui::EF_NUM_LOCK_ON;
+    if (ui::DomCodeToUsLayoutDomKey(domCode, fallbackFlags, &domKey, &keyCode))
+        return domKey;
+    return ui::DomKey::UNIDENTIFIED;
+}
+
+blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(
+    blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam,
+    unsigned int flags, HKL keyboardLayout)
+{
+    if (!keyboardLayout)
+        keyboardLayout = ::GetKeyboardLayout(0);
+
+    const bool isCharacter = type == blink::WebInputEvent::Type::kChar;
+    const WPARAM virtualKey = isCharacter ? 0 : wParam;
+    const ui::DomCode domCode =
+        domCodeFromWindowsEvent(virtualKey, lParam, keyboardLayout);
+    const ui::DomKey domKey = isCharacter
+        ? ui::DomKey::FromCharacter(static_cast<uint32_t>(wParam))
+        : domKeyFromWindowsEvent(virtualKey, domCode, flags, keyboardLayout);
+
+    blink::WebKeyboardEvent keyEvent;
+    keyEvent.SetTimeStamp(base::TimeTicks::Now());
+    keyEvent.SetType(type);
+    keyEvent.windows_key_code =
+        static_cast<int>(static_cast<uint16_t>(wParam));
+    keyEvent.native_key_code =
+        ui::KeycodeConverter::DomCodeToNativeKeycode(domCode);
+    keyEvent.dom_code = static_cast<int>(domCode);
+    keyEvent.dom_key = static_cast<uint32_t>(domKey);
+    keyEvent.is_system_key = !(flags & MINI_ELECTRON_ALT_GRAPH)
+        && (message == WM_SYSKEYDOWN || message == WM_SYSKEYUP
+            || message == WM_SYSCHAR);
+
+    int modifiers = 0;
+    const bool altGraph = (flags & MINI_ELECTRON_ALT_GRAPH) != 0;
+    if ((flags & MINI_ELECTRON_CONTROL) && !altGraph)
+        modifiers |= blink::WebInputEvent::kControlKey;
+    if (flags & MINI_ELECTRON_SHIFT)
+        modifiers |= blink::WebInputEvent::kShiftKey;
     if (flags & MINI_ELECTRON_META)
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kMetaKey);
-    if (flags & MINI_ELECTRON_ALT)
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kAltKey);
-    if (flags & MINI_ELECTRON_REPEAT)
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kIsAutoRepeat);
+        modifiers |= blink::WebInputEvent::kMetaKey;
+    if ((flags & MINI_ELECTRON_ALT) && !altGraph)
+        modifiers |= blink::WebInputEvent::kAltKey;
+    if (altGraph)
+        modifiers |= blink::WebInputEvent::kAltGrKey;
+    // KF_REPEAT is the previous-key-state bit. It is set on every keyup,
+    // but key release events are never auto-repeat events.
+    if (type != blink::WebInputEvent::Type::kKeyUp
+        && (flags & MINI_ELECTRON_REPEAT)) {
+        modifiers |= blink::WebInputEvent::kIsAutoRepeat;
+    }
 
-    if (isKeypadEvent(wParam, keyData, type))
-        keyEvent.SetModifiers(keyEvent.GetModifiers() | blink::WebInputEvent::kIsKeyPad);
+    if (flags & MINI_ELECTRON_CAPS_LOCK)
+        modifiers |= blink::WebInputEvent::kCapsLockOn;
+    if (flags & MINI_ELECTRON_NUM_LOCK)
+        modifiers |= blink::WebInputEvent::kNumLockOn;
+    const ui::DomKeyLocation location =
+        ui::KeycodeConverter::DomCodeToLocation(domCode);
+    if (location == ui::DomKeyLocation::NUMPAD)
+        modifiers |= blink::WebInputEvent::kIsKeyPad;
+    else if (location == ui::DomKeyLocation::LEFT)
+        modifiers |= blink::WebInputEvent::kIsLeft;
+    else if (location == ui::DomKeyLocation::RIGHT)
+        modifiers |= blink::WebInputEvent::kIsRight;
+    keyEvent.SetModifiers(modifiers);
 
-        //printf("PlatformEventHandler::buildKeyboardEvent: %x\n", keyEvent.modifiers());
-
-        //     char* output = (char*)malloc(0x100);
-        //     sprintf(output, "PlatformEventHandler::buildKeyboardEvent: modifiers:%x, windows_key_code:%x\n", keyEvent.GetModifiers(), keyEvent.windows_key_code);
-        //     OutputDebugStringA(output);
-        //     free(output);
-
-#if defined(OS_WIN)
-    if (VK_LEFT == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Left");
-    else if (VK_UP == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Up");
-    else if (VK_RIGHT == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Right");
-    else if (VK_DOWN == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Down");
-
-    else if (VK_NEXT == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"PageDown");
-    else if (VK_PRIOR == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"PageUp");
-
-    else if (VK_HOME == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Home");
-    else if (VK_END == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"End");
-
-    else if (VK_TAB == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"U+0009");
-    else if (VK_BACK == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"U+0008");
-    else if (VK_ESCAPE == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"U+001B");
-    else if (VK_RETURN == keyEvent.windows_key_code)
-        wcscpy((WCHAR*)keyEvent.text.data(), L"Enter");
-#endif
-    memset((WCHAR*)keyEvent.text.data(), 0, sizeof(char16_t) * blink::WebKeyboardEvent::kTextLengthCap);
-    keyEvent.text[0] = (char16_t)wParam;
+    std::fill(keyEvent.text.begin(), keyEvent.text.end(), 0);
+    std::fill(keyEvent.unmodified_text.begin(), keyEvent.unmodified_text.end(), 0);
+    if (isCharacter) {
+        keyEvent.text[0] = static_cast<char16_t>(wParam);
+        keyEvent.unmodified_text[0] = static_cast<char16_t>(wParam);
+    } else if (domKey.IsCharacter() && domKey.ToCharacter() <= 0xffff) {
+        char16_t character = static_cast<char16_t>(domKey.ToCharacter());
+        keyEvent.unmodified_text[0] = character;
+        if ((flags & MINI_ELECTRON_CONTROL) && !(flags & MINI_ELECTRON_ALT)
+            && character >= 0x40 && character <= 0x7f) {
+            character &= 0x1f;
+        }
+        keyEvent.text[0] = character;
+    }
     return keyEvent;
 }
 

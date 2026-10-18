@@ -16,6 +16,7 @@
 #include <memory>
 #include <functional>
 #include <utility>
+#include <optional>
 
 namespace blink {
 class WebNavigationControl;
@@ -389,6 +390,7 @@ private:
     float m_zoomFactor = 1.0f;
     float m_pendingDeviceScaleFactor = 0.f;
     bool m_hasSetZoomFactor = false;
+    std::optional<std::string> m_pendingLanguage;
 
     bool m_isInNotClient = false; // �Ƿ��ڷǿͻ���
 

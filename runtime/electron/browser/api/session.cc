@@ -492,6 +492,46 @@ bool HeaderListContains(const std::string& list, std::string_view token)
     return false;
 }
 
+bool IsPathFreeOfReparsePoints(const base::FilePath& absolute)
+{
+#if BUILDFLAG(IS_WIN)
+    const std::vector<base::FilePath::StringType> components =
+        absolute.StripTrailingSeparators().GetComponents();
+    const bool network_path = absolute.IsNetwork();
+    const size_t root_components = network_path ? 3 : 2;
+    if (components.size() < root_components)
+        return false;
+
+    base::FilePath::StringType root = components[0];
+    root.append(components[1]);
+    if (network_path) {
+        root.push_back(L'\\');
+        root.append(components[2]);
+    }
+    base::FilePath current(std::move(root));
+    const auto is_ordinary_path = [](const base::FilePath& path) {
+        const DWORD attributes =
+            ::GetFileAttributesW(path.value().c_str());
+        return attributes != INVALID_FILE_ATTRIBUTES
+            && !(attributes & FILE_ATTRIBUTE_REPARSE_POINT);
+    };
+    if (!is_ordinary_path(current))
+        return false;
+    for (size_t index = root_components; index < components.size(); ++index) {
+        current = current.Append(components[index]);
+        // Check root-to-leaf so GetFileAttributesW never follows an unchecked
+        // ancestor junction while inspecting a later path component.
+        if (!is_ordinary_path(current))
+            return false;
+    }
+    return true;
+#else
+    (void)absolute;
+    return true;
+#endif
+}
+
+
 bool IsBrokerFileAllowed(const base::FilePath& path,
     const BrokerNetworkRequest& request)
 {
@@ -2599,7 +2639,7 @@ bool ApiSession::authorizeUploadPaths(int contents_id,
         base::FilePath path = base::FilePath::FromUTF8Unsafe(raw_path);
         base::FilePath absolute = base::MakeAbsoluteFilePath(path);
         base::FilePath canonical;
-        if (absolute.empty()
+        if (absolute.empty() || !IsPathFreeOfReparsePoints(absolute)
             || !base::NormalizeFilePath(absolute, &canonical)) {
             *error = "Upload file is unreadable or exceeds platform limits";
             return false;
@@ -2632,6 +2672,7 @@ std::string ApiSession::authorizeFile(int contentsId, uint64_t frame_id,
     base::FilePath absolute = base::MakeAbsoluteFilePath(path);
     base::FilePath canonical;
     if (contentsId <= 0 || !frame_id || !frame_generation || absolute.empty()
+        || !IsPathFreeOfReparsePoints(absolute)
         || !base::NormalizeFilePath(absolute, &canonical)) {
         return std::string();
     }
@@ -2696,7 +2737,8 @@ base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
         base::FilePath absolute = base::MakeAbsoluteFilePath(input);
         base::FilePath canonical;
         base::File::Info info;
-        if (absolute.empty() || base::IsLink(absolute)
+        if (absolute.empty() || !IsPathFreeOfReparsePoints(absolute)
+            || base::IsLink(absolute)
             || !base::NormalizeFilePath(absolute, &canonical)
             || canonical != absolute || !base::PathIsReadable(canonical)
             || !base::GetFileInfo(canonical, &info) || info.is_directory
@@ -2720,7 +2762,8 @@ base::Value::List ApiSession::authorizeSelectedFiles(int contentsId,
             base::FilePath::FromUTF8Unsafe(raw_path));
         base::FilePath canonical;
         base::File::Info info;
-        if (absolute.empty() || base::IsLink(absolute)
+        if (absolute.empty() || !IsPathFreeOfReparsePoints(absolute)
+            || base::IsLink(absolute)
             || !base::NormalizeFilePath(absolute, &canonical)
             || canonical != absolute
             || !base::GetFileInfo(canonical, &info)) {
@@ -2821,7 +2864,8 @@ base::Value::List ApiSession::authorizeDroppedFiles(int contentsId,
             base::FilePath::FromUTF8Unsafe(raw_path));
         base::FilePath canonical;
         base::File::Info info;
-        if (absolute.empty() || base::IsLink(absolute)
+        if (absolute.empty() || !IsPathFreeOfReparsePoints(absolute)
+            || base::IsLink(absolute)
             || !base::NormalizeFilePath(absolute, &canonical)
             || canonical.empty() || !base::PathIsReadable(canonical)
             || !base::GetFileInfo(canonical, &info)
@@ -2851,7 +2895,7 @@ base::Value::List ApiSession::authorizeDroppedFiles(int contentsId,
             int64_t authorized_size = 0;
             base::Time authorized_modified;
             std::string token = authorizeFile(contentsId, frame_id,
-                frame_generation, canonical, &authorized_size,
+                frame_generation, absolute, &authorized_size,
                 &authorized_modified);
             if (token.empty())
                 return fail("Native drag file changed before authorization");
@@ -2936,7 +2980,8 @@ void ApiSession::handleFileBroker(int contentsId,
         if (requested_path) {
             base::FilePath absolute = base::MakeAbsoluteFilePath(
                 base::FilePath::FromUTF8Unsafe(*requested_path));
-            base::NormalizeFilePath(absolute, &canonical);
+            if (!absolute.empty() && IsPathFreeOfReparsePoints(absolute))
+                base::NormalizeFilePath(absolute, &canonical);
         }
         if (!requested_path || canonical.empty()) {
             reply({}, "Upload path is not authorized");

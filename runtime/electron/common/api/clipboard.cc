@@ -24,7 +24,7 @@
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libnode/src/node_buffer.h"
 #if BUILDFLAG(IS_MAC)
-#include "platform/macos/clipboard_mac.h"
+#include "platform/clipboard.h"
 #else
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
@@ -100,7 +100,7 @@ public:
     std::u16string readHTMLApi()
     {
 #if BUILDFLAG(IS_MAC)
-        return mini_electron::mac::ReadClipboardHtml();
+        return mini_electron::ReadClipboardHtml().markup;
 #else
         std::u16string html;
         std::string url;
@@ -117,9 +117,9 @@ public:
     void writeHTMLApi(const std::u16string& html)
     {
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         content.html = &html;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         writer.WriteHTML(html, std::string());
@@ -131,7 +131,7 @@ public:
         std::u16string title;
         std::string url;
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ReadClipboardBookmark(&title, &url);
+        mini_electron::ReadClipboardBookmark(&title, &url);
 #else
         ui::Clipboard::GetForCurrentThread()->ReadBookmark(nullptr, &title, &url);
 #endif
@@ -145,10 +145,10 @@ public:
         const std::u16string& title, const std::string& url)
     {
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         content.bookmark_title = &title;
         content.bookmark_url = &url;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         writer.WriteBookmark(title, url);
@@ -158,9 +158,9 @@ public:
     void writeRTFApi(const std::string& text)
     {
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         content.rtf = &text;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         writer.WriteRTF(text);
@@ -170,7 +170,7 @@ public:
     std::u16string readRTFApi()
     {
 #if BUILDFLAG(IS_MAC)
-        return base::UTF8ToUTF16(mini_electron::mac::ReadClipboardRtf());
+        return base::UTF8ToUTF16(mini_electron::ReadClipboardRtf());
 #else
         std::string data;
         ui::Clipboard::GetForCurrentThread()->ReadRTF(
@@ -202,7 +202,7 @@ public:
             image = NativeImage::GetSelf(image_value.As<v8::Object>());
 
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         std::string rtf_bytes;
         std::string bookmark_url;
         const std::vector<uint8_t> png = PngBytes(image);
@@ -222,7 +222,7 @@ public:
             content.html = &html;
         if (!png.empty())
             content.png = &png;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         if (data.Get("text", &text)) {
@@ -242,7 +242,7 @@ public:
     bool hasApi(const std::string& format_name)
     {
 #if BUILDFLAG(IS_MAC)
-        return mini_electron::mac::ClipboardHasFormat(format_name);
+        return mini_electron::ClipboardHasFormat(format_name);
 #else
         ui::ClipboardFormatType format(
             ui::ClipboardFormatType::GetType(format_name));
@@ -256,7 +256,7 @@ public:
     void clearApi(const std::string&)
     {
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClearClipboard();
+        mini_electron::ClearClipboard();
 #else
         ui::Clipboard::GetForCurrentThread()->Clear(
             ui::ClipboardBuffer::kCopyPaste);
@@ -266,7 +266,7 @@ public:
     std::vector<std::u16string> availableFormatsApi()
     {
 #if BUILDFLAG(IS_MAC)
-        return mini_electron::mac::AvailableClipboardFormats();
+        return mini_electron::AvailableClipboardFormats();
 #else
         return ui::Clipboard::GetForCurrentThread()
             ->ReadAvailableStandardAndCustomFormatNames(
@@ -277,7 +277,7 @@ public:
     std::string readImpl(const std::string& format_name)
     {
 #if BUILDFLAG(IS_MAC)
-        return mini_electron::mac::ReadClipboardData(format_name);
+        return mini_electron::ReadClipboardData(format_name);
 #else
         ui::Clipboard* clipboard = ui::Clipboard::GetForCurrentThread();
         ui::ClipboardFormatType raw_format(
@@ -324,7 +324,7 @@ public:
             node::Buffer::Data(buffer));
         const size_t size = node::Buffer::Length(buffer);
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::WriteClipboardData(
+        mini_electron::WriteClipboardData(
             format, std::vector<uint8_t>(bytes, bytes + size));
 #else
         mojo_base::BigBuffer copy(size);
@@ -343,9 +343,9 @@ public:
             return;
 #if BUILDFLAG(IS_MAC)
         const std::vector<uint8_t> png = PngBytes(image);
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         content.png = &png;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         writer.WriteImage(image->bitmap());
@@ -355,7 +355,7 @@ public:
     std::u16string readTextApi(const std::string&)
     {
 #if BUILDFLAG(IS_MAC)
-        return mini_electron::mac::ReadClipboardText();
+        return mini_electron::ReadClipboardText();
 #else
         std::u16string text;
         ui::Clipboard::GetForCurrentThread()->ReadText(
@@ -367,9 +367,9 @@ public:
     void writeTextApi(const std::u16string& text, const std::string&)
     {
 #if BUILDFLAG(IS_MAC)
-        mini_electron::mac::ClipboardContent content;
+        mini_electron::ClipboardContent content;
         content.text = &text;
-        mini_electron::mac::WriteClipboard(content);
+        mini_electron::WriteClipboard(content);
 #else
         ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
         writer.WriteText(text);
@@ -380,7 +380,7 @@ public:
     {
 #if BUILDFLAG(IS_MAC)
         const std::vector<uint8_t> png =
-            mini_electron::mac::ReadClipboardPng();
+            mini_electron::ReadClipboardPng();
         return NativeImage::createNativeImageFromBuffer(
             isolate(), png.data(), png.size());
 #elif BUILDFLAG(IS_WIN)

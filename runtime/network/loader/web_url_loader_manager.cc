@@ -1787,12 +1787,14 @@ void WebURLLoaderManager::applyAuthenticationToRequest(WebURLLoaderInternal* han
     //curl_easy_setopt(job->m_handle, CURLOPT_USERPWD, ":");
 }
 
-String getMIMETypeForPath(const String& path)
+String getMIMETypeForPath(const WTF::StringView& path)
 {
-    int pos = path.ReverseFind('.');
-    if (pos < 0)
+    unsigned extension_start = path.length();
+    while (extension_start && path[extension_start - 1] != '.')
+        --extension_start;
+    if (!extension_start)
         return "application/octet-stream";
-    String extension = path.Substring(pos + 1);
+    String extension = WTF::StringView(path, extension_start).ToString();
     String mimeType = blink::MIMETypeRegistry::GetMIMETypeForExtension(extension);
     //     if (mimeType.empty()) {
     //         // If there's no mimetype registered for the extension, check to see
@@ -1831,7 +1833,7 @@ InitializeHandleInfo* WebURLLoaderManager::preInitializeHandleOnMainThread(WebUR
     // Remove any fragment part, otherwise curl will send it as part of the request.
     url.RemoveFragmentIdentifier();
     String urlString = url.GetString();
-    if (checkNeedFixMime(url)) {
+    if (url.ProtocolIs("file")) {
         // Remove any query part sent to a local file.
         if (!url.Query().empty()) {
             // By setting the query to a null string it'll be removed.
@@ -1842,9 +1844,11 @@ InitializeHandleInfo* WebURLLoaderManager::preInitializeHandleOnMainThread(WebUR
         size_t questionMaskPos = urlString.find('?');
         if (WTF::kNotFound != questionMaskPos)
             urlString = urlString.Substring(0, questionMaskPos);
+    }
 
+    if (checkNeedFixMime(url)) {
         // Determine the MIME type based on the path.
-        String mime = getMIMETypeForPath(urlString);
+        String mime = getMIMETypeForPath(url.GetPath());
         job->m_response.SetMimeType(mime);
         job->m_response.AddHttpHeaderField(blink::WebString::FromASCII("Content-Type"), mime); // for ModuleScriptFetcher::WasModuleLoadSuccessful
     }

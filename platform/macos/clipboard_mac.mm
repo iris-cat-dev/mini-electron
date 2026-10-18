@@ -4,23 +4,20 @@
 #import <AppKit/AppKit.h>
 #import <ImageIO/ImageIO.h>
 
-#include "platform/macos/clipboard_mac.h"
+#include "platform/clipboard.h"
 #include <algorithm>
 #include <mutex>
 #include <utility>
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 
-namespace mini_electron::mac {
+namespace mini_electron {
 namespace {
 
 std::mutex clipboard_broker_lock;
 ClipboardBroker clipboard_broker;
 bool renderer_broker_required = false;
 
-constexpr NSUInteger kMaximumClipboardImageBytes = 32 * 1024 * 1024;
-constexpr size_t kMaximumClipboardImageDimension = 8192;
-constexpr uint64_t kMaximumClipboardImagePixels = 40ULL * 1024 * 1024;
 
 bool IsDecodableImage(NSData* data, CFStringRef expected_type) {
   if (!data || data.length == 0
@@ -156,43 +153,34 @@ void SetRendererClipboardBroker(ClipboardBroker broker) {
   clipboard_broker = std::move(broker);
 }
 
-uint64_t ClipboardSequenceNumber() {
+ClipboardSequence GetClipboardSequence() {
   auto broker = BrokerRequest("sequence");
   if (broker.required) {
-    uint64_t sequence = 0;
-    const std::string* value = broker.succeeded
-        ? broker.value.FindString("sequence") : nullptr;
-    if (value)
-      base::StringToUint64(*value, &sequence);
+    ClipboardSequence sequence;
+    const std::string* high = broker.succeeded
+        ? broker.value.FindString("high") : nullptr;
+    const std::string* low = broker.succeeded
+        ? broker.value.FindString("low") : nullptr;
+    if (!high || !low
+        || !base::StringToUint64(*high, &sequence.high)
+        || !base::StringToUint64(*low, &sequence.low)) {
+      return {};
+    }
     return sequence;
   }
   @autoreleasepool {
-    return static_cast<uint64_t>([[NSPasteboard generalPasteboard] changeCount]);
+    return {static_cast<uint64_t>(
+                [[NSPasteboard generalPasteboard] changeCount]) + 1,
+            0};
   }
 }
 
 bool ClipboardHasText() {
-  auto broker = BrokerRequest("hasText");
-  if (broker.required) {
-    return broker.succeeded
-        && broker.value.FindBool("value").value_or(false);
-  }
-  @autoreleasepool {
-    return [[NSPasteboard generalPasteboard]
-        canReadItemWithDataConformingToTypes:@[ NSPasteboardTypeString ]];
-  }
+  return ClipboardHasFormat("text/plain");
 }
 
 bool ClipboardHasHtml() {
-  auto broker = BrokerRequest("hasHtml");
-  if (broker.required) {
-    return broker.succeeded
-        && broker.value.FindBool("value").value_or(false);
-  }
-  @autoreleasepool {
-    return [[NSPasteboard generalPasteboard]
-        canReadItemWithDataConformingToTypes:@[ NSPasteboardTypeHTML ]];
-  }
+  return ClipboardHasFormat("text/html");
 }
 
 std::u16string ReadClipboardText() {
@@ -208,16 +196,32 @@ std::u16string ReadClipboardText() {
   }
 }
 
-std::u16string ReadClipboardHtml() {
+ClipboardHtml ReadClipboardHtml() {
   auto broker = BrokerRequest("readHtml");
   if (broker.required) {
-    const std::string* value = broker.succeeded
-        ? broker.value.FindString("value") : nullptr;
-    return value ? base::UTF8ToUTF16(*value) : std::u16string();
+    ClipboardHtml html;
+    if (!broker.succeeded)
+      return html;
+    if (const std::string* value = broker.value.FindString("markup"))
+      html.markup = base::UTF8ToUTF16(*value);
+    if (const std::string* value = broker.value.FindString("sourceUrl"))
+      html.source_url = *value;
+    html.fragment_start = static_cast<uint32_t>(
+        broker.value.FindInt("fragmentStart").value_or(0));
+    html.fragment_end = static_cast<uint32_t>(
+        broker.value.FindInt("fragmentEnd").value_or(0));
+    if (html.fragment_start > html.fragment_end
+        || html.fragment_end > html.markup.size()) {
+      return {};
+    }
+    return html;
   }
   @autoreleasepool {
-    return ToUTF16([[NSPasteboard generalPasteboard]
+    ClipboardHtml html;
+    html.markup = ToUTF16([[NSPasteboard generalPasteboard]
         stringForType:NSPasteboardTypeHTML]);
+    html.fragment_end = static_cast<uint32_t>(html.markup.size());
+    return html;
   }
 }
 
@@ -227,7 +231,13 @@ std::vector<uint8_t> ReadClipboardPng() {
   if (broker.required) {
     base::Value::BlobStorage* data = broker.succeeded
         ? broker.value.FindBlob("data") : nullptr;
-    return data ? std::move(*data) : std::vector<uint8_t>();
+    if (!data)
+      return {};
+    @autoreleasepool {
+      NSData* image =
+          [NSData dataWithBytes:data->data() length:data->size()];
+      return CopyValidatedPng(image);
+    }
   }
   @autoreleasepool {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
@@ -340,7 +350,10 @@ bool WriteClipboard(const ClipboardContent& content) {
   ClipboardBroker broker = SnapshotClipboardBroker(&broker_required);
   if (broker_required) {
     if (!broker || content.rtf || content.bookmark_title
-        || content.bookmark_url) {
+        || content.bookmark_url
+        || (content.png
+            && (content.png->empty()
+                || content.png->size() > kMaximumClipboardImageBytes))) {
       return false;
     }
     base::Value::Dict request;
@@ -349,16 +362,18 @@ bool WriteClipboard(const ClipboardContent& content) {
       request.Set("text", base::UTF16ToUTF8(*content.text));
     if (content.html)
       request.Set("html", base::UTF16ToUTF8(*content.html));
+    if (content.html_source_url)
+      request.Set("htmlSourceUrl", *content.html_source_url);
     if (content.png)
-      request.Set("png", base::Value(*content.png));
+      request.Set("png", base::Value(std::vector<uint8_t>(*content.png)));
     base::Value::Dict result;
     return broker(std::move(request), &result)
         && result.FindBool("value").value_or(false);
   }
   @autoreleasepool {
     NSData* image = nil;
-    if (content.png && !content.png->empty()) {
-      if (content.png->size() > kMaximumClipboardImageBytes)
+    if (content.png) {
+      if (content.png->empty() || content.png->size() > kMaximumClipboardImageBytes)
         return false;
       image = [NSData dataWithBytes:content.png->data()
                             length:content.png->size()];
@@ -425,4 +440,4 @@ void ClearClipboard() {
     [[NSPasteboard generalPasteboard] clearContents];
   }
 }
-}  // namespace mini_electron::mac
+}  // namespace mini_electron

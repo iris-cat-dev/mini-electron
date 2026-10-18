@@ -106,6 +106,13 @@ public:
     {
         return m_clickCallbackValue.Get(m_isolate);
     }
+    void setItemObject(v8::Local<v8::Object> item)
+    {
+        m_itemObject.Reset(m_isolate, item);
+    }
+
+    void syncStateFromJavaScript();
+
 
     void setId(int id)
     {
@@ -144,6 +151,7 @@ private:
     UINT m_acceleratorKey;
     UINT m_action;
     v8::Persistent<v8::Value> m_clickCallbackValue;
+    v8::Persistent<v8::Object> m_itemObject;
     Menu* m_menu;
     int m_id;
     v8::Isolate* m_isolate;
@@ -271,6 +279,7 @@ public:
         std::string role;
 
         MenuItem* item = new MenuItem(isolate, this);
+        item->setItemObject(args[1].As<v8::Object>());
 
         for (size_t i = 0; i < size; ++i) {
             v8::MaybeLocal<v8::Value> keyNameValueMaybe = v8ObjProps->Get(context, i);
@@ -421,9 +430,13 @@ public:
         m_items.clear();
     }
 
-    void onCommon(MenuItem* item, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    void onCommon(MenuItem* item, UINT uMsg, WPARAM wParam, LPARAM lParam,
+        bool triggeredByAccelerator)
     {
-        if (!item || !item->isEnabled() || !item->isVisible())
+        if (!item)
+            return;
+        item->syncStateFromJavaScript();
+        if (!item->isEnabled() || !item->isVisible())
             return;
 
         if (MenuItem::CheckableActionType == item->getType()) {
@@ -444,8 +457,14 @@ public:
 
         v8::Local<v8::Value> focusedWindow = WindowInterface::getFocusedWindow(isolate());
         v8::Local<v8::Value> focusedWebContents = WindowInterface::getFocusedContents(isolate());
-        item->getMenu()->mate::EventEmitter<Menu>::emit(
-            "click", item->getClickCallbackValue(), focusedWindow, focusedWebContents);
+        v8::Local<v8::Object> event =
+            mate::internal::createJSEvent(isolate(), getWrapper());
+        event->Set(isolate()->GetCurrentContext(),
+            v8::String::NewFromUtf8(isolate(), "triggeredByAccelerator").ToLocalChecked(),
+            v8::Boolean::New(isolate(), triggeredByAccelerator)).Check();
+        item->getMenu()->mate::EventEmitter<Menu>::emitCustomEvent(
+            "click", event, item->getClickCallbackValue(), focusedWindow,
+            focusedWebContents);
     }
 
     static bool dispatchAccelerator(HMENU nativeMenu, UINT virtualKeyCode)
@@ -458,7 +477,8 @@ public:
             MenuItem* item = menu->findAccelerator(virtualKeyCode);
             if (!item)
                 return false;
-            item->getMenu()->onCommon(item, WM_COMMAND, MAKEWPARAM(item->getAction(), 0), 0);
+            item->getMenu()->onCommon(item, WM_COMMAND,
+                MAKEWPARAM(item->getAction(), 0), 0, true);
             return true;
         }
         return false;
@@ -517,6 +537,7 @@ private:
     MenuItem* findAccelerator(UINT virtualKeyCode)
     {
         for (MenuItem* item : m_items) {
+            item->syncStateFromJavaScript();
             if (!item->isEnabled() || !item->isVisible())
                 continue;
             if (item->getType() == MenuItem::SubmenuType) {
@@ -597,7 +618,28 @@ MenuItem::MenuItem(v8::Isolate* isolate, Menu* menu)
 
 MenuItem::~MenuItem()
 {
+    m_itemObject.Reset();
     Menu::m_liveMenuItem->erase(this);
+}
+
+void MenuItem::syncStateFromJavaScript()
+{
+    if (m_itemObject.IsEmpty())
+        return;
+    v8::Local<v8::Context> context = m_isolate->GetCurrentContext();
+    v8::Local<v8::Object> item = m_itemObject.Get(m_isolate);
+    auto readBoolean = [&](const char* name, bool* result) {
+        v8::MaybeLocal<v8::Value> maybeValue = item->Get(context,
+            v8::String::NewFromUtf8(m_isolate, name).ToLocalChecked());
+        if (maybeValue.IsEmpty())
+            return;
+        v8::Local<v8::Value> value = maybeValue.ToLocalChecked();
+        if (value->IsBoolean())
+            *result = value->BooleanValue(m_isolate);
+    };
+    readBoolean("enabled", &m_isEnabled);
+    readBoolean("visible", &m_isVisible);
+    readBoolean("checked", &m_isChecked);
 }
 
 static std::string lowerAcceleratorToken(const std::string& token)
@@ -656,6 +698,24 @@ void MenuItem::setAccelerator(const std::string& accelerator)
             } else if (token == "-" || token == "minus" || token == "subtract") {
                 key = VK_OEM_MINUS;
                 m_acceleratorMinus = true;
+            } else if (token == "," || token == "comma") {
+                key = VK_OEM_COMMA;
+            } else if (token == "." || token == "period") {
+                key = VK_OEM_PERIOD;
+            } else if (token == "/" || token == "slash") {
+                key = VK_OEM_2;
+            } else if (token == ";" || token == "semicolon") {
+                key = VK_OEM_1;
+            } else if (token == "'" || token == "quote") {
+                key = VK_OEM_7;
+            } else if (token == "[" || token == "leftbracket") {
+                key = VK_OEM_4;
+            } else if (token == "]" || token == "rightbracket") {
+                key = VK_OEM_6;
+            } else if (token == "\\" || token == "backslash") {
+                key = VK_OEM_5;
+            } else if (token == "`" || token == "backquote") {
+                key = VK_OEM_3;
             } else if (token == "space") {
                 key = VK_SPACE;
             } else if (token == "tab") {
@@ -836,7 +896,7 @@ void MenuEventNotif::onMenuCommon(UINT uMsg, WPARAM wParam, LPARAM lParam)
     for (std::set<MenuItem*>::const_iterator it = Menu::m_liveMenuItem->begin(); it != Menu::m_liveMenuItem->end(); ++it) {
         MenuItem* item = *it;
         if (item->getAction() == menuID) {
-            item->getMenu()->onCommon(item, uMsg, wParam, lParam);
+            item->getMenu()->onCommon(item, uMsg, wParam, lParam, false);
             return;
         }
     }

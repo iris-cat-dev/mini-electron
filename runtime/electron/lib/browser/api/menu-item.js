@@ -16,6 +16,7 @@ const MenuItem = function (options) {
   this.enabled = options.enabled
   this.visible = options.visible
   this.checked = options.checked
+  this.registerAccelerator = options.registerAccelerator !== false
 
   this.submenu = options.submenu
   if (this.submenu != null && this.submenu.constructor !== Menu) {
@@ -43,7 +44,9 @@ const MenuItem = function (options) {
   // Keep the public accelerator property aligned with Electron while passing
   // role defaults to the native Windows menu.
   Object.defineProperty(this, '_accelerator', {
-    value: this.accelerator != null ? this.accelerator : roles.getDefaultAccelerator(this.role)
+    value: this.registerAccelerator
+      ? (this.accelerator != null ? this.accelerator : roles.getDefaultAccelerator(this.role))
+      : null
   })
 
   if (!MenuItem.types.includes(this.type)) {

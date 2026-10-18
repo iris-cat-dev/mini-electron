@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <iterator>
 #include <limits>
@@ -33,9 +34,9 @@
 #include "third_party/libnode/src/node_binding.h"
 #include "url/gurl.h"
 #include "url/origin.h"
-#if BUILDFLAG(IS_MAC)
-#include "platform/macos/clipboard_mac.h"
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "base/strings/utf_string_conversions.h"
+#include "platform/clipboard.h"
 #endif
 
 namespace atom {
@@ -577,14 +578,8 @@ bool WebContents::commitRendererFrame(
                 && SameDocumentUrl(url, frame.navigation.url))
             || (frame.committed_url.empty()
                 && (target.IsAboutBlank() || target.IsAboutSrcdoc())));
-    if (!observed_document && !approved_intrinsic) {
-        if (!frame.committed_url.empty()
-            && SameDocumentUrl(url, frame.committed_url)) {
-            frame.committed_url = target.spec();
-            return true;
-        }
+    if (!observed_document && !approved_intrinsic)
         return false;
-    }
     url::Origin origin = url::Origin::Create(target);
     std::string inherited_origin = frame.parent_id
         ? m_renderer_frames.at(frame.parent_id).committed_origin
@@ -744,7 +739,6 @@ void WebContents::loadURLApi(const std::string& url)
     if (!target.is_valid())
         return;
     cancelPreparedFrames("Navigation superseded native presentation");
-    m_isLoading = true;
     if (target.SchemeIsFile()) {
         base::FilePath file;
         if (net::FileURLToFilePath(target, &file))
@@ -1003,7 +997,10 @@ void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y, unsigned
         return;
     const char* type = "mouseMove";
     switch (message) {
-    case WM_LBUTTONDOWN: case WM_MBUTTONDOWN: case WM_RBUTTONDOWN: type = "mouseDown"; break;
+    case WM_LBUTTONDOWN: case WM_MBUTTONDOWN: case WM_RBUTTONDOWN:
+    case WM_LBUTTONDBLCLK: case WM_MBUTTONDBLCLK: case WM_RBUTTONDBLCLK:
+        type = "mouseDown";
+        break;
     case WM_LBUTTONUP: case WM_MBUTTONUP: case WM_RBUTTONUP: type = "mouseUp"; break;
     case WM_MOUSEWHEEL: type = "mouseWheel"; break;
     case WM_CONTEXTMENU: type = "contextMenu"; break;
@@ -1013,20 +1010,46 @@ void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y, unsigned
 }
 #endif
 
-void WebContents::sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags)
-{
 #if BUILDFLAG(IS_WIN)
+void WebContents::sendWindowsKeyEvent(const char* type, unsigned key_code,
+    unsigned flags, unsigned message, LPARAM l_param)
+{
     if (::GetKeyState(VK_CONTROL) & 0x8000)
         flags |= MINI_ELECTRON_CONTROL;
     if (::GetKeyState(VK_SHIFT) & 0x8000)
         flags |= MINI_ELECTRON_SHIFT;
-#endif
+    if (::GetKeyState(VK_MENU) & 0x8000)
+        flags |= MINI_ELECTRON_ALT;
+    if ((::GetKeyState(VK_LWIN) | ::GetKeyState(VK_RWIN)) & 0x8000)
+        flags |= MINI_ELECTRON_META;
+    const bool rightAlt = (::GetKeyState(VK_RMENU) & 0x8000)
+        || (key_code == VK_MENU
+            && (static_cast<uintptr_t>(l_param) & (uintptr_t { 1 } << 24)));
+    if (rightAlt && (flags & MINI_ELECTRON_CONTROL))
+        flags |= MINI_ELECTRON_ALT_GRAPH;
+
+    if (::GetKeyState(VK_CAPITAL) & 0x0001)
+        flags |= MINI_ELECTRON_CAPS_LOCK;
+    if (::GetKeyState(VK_NUMLOCK) & 0x0001)
+        flags |= MINI_ELECTRON_NUM_LOCK;
+
     base::Value::Dict input;
     input.Set("type", type);
     input.Set("keyCode", static_cast<int>(key_code));
+    if (message == WM_CHAR || message == WM_SYSCHAR)
+        input.Set("charCode", static_cast<int>(key_code));
     input.Set("modifiers", static_cast<int>(flags));
+    input.Set("nativeMessage", static_cast<int>(message));
+    input.Set("nativeLParam",
+        static_cast<int>(static_cast<uint32_t>(l_param)));
+    input.Set("keyboardLayout", base::NumberToString(
+        reinterpret_cast<uintptr_t>(::GetKeyboardLayout(0))));
+    input.Set("systemKey", !(flags & MINI_ELECTRON_ALT_GRAPH)
+        && (message == WM_SYSKEYDOWN || message == WM_SYSKEYUP
+            || message == WM_SYSCHAR));
     sendInput(std::move(input));
 }
+#endif
 
 void WebContents::sendInputEventApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
@@ -1416,23 +1439,41 @@ bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int 
     if (width <= 0 || height <= 0)
         return false;
 
-    // GDI's 32-bit BI_RGB byte order is BGRA. CopyFrame owns this snapshot, so
-    // convert in place without another frame-sized allocation.
-    for (int row = 0; row < frame.height; ++row) {
-        uint8_t* pixel = frame.rgba.data() + static_cast<size_t>(row) * frame.stride;
-        for (int column = 0; column < frame.width; ++column, pixel += 4)
-            std::swap(pixel[0], pixel[2]);
+    // Compact the requested crop in this owned snapshot while converting RGBA
+    // to GDI's BGRA. A complete cropped DIB avoids StretchDIBits selecting the
+    // wrong rows for a partial source rectangle of a top-down bitmap.
+    uint8_t* output = frame.rgba.data();
+    for (int row = 0; row < height; ++row) {
+        uint8_t* pixel = frame.rgba.data()
+            + static_cast<size_t>(src_y + row) * frame.stride
+            + static_cast<size_t>(src_x) * 4;
+        if (output == pixel) {
+            for (int column = 0; column < width; ++column, pixel += 4)
+                std::swap(pixel[0], pixel[2]);
+            output += static_cast<size_t>(width) * 4;
+        } else {
+            for (int column = 0; column < width; ++column, pixel += 4, output += 4) {
+                const uint8_t red = pixel[0];
+                const uint8_t green = pixel[1];
+                const uint8_t blue = pixel[2];
+                const uint8_t alpha = pixel[3];
+                output[0] = blue;
+                output[1] = green;
+                output[2] = red;
+                output[3] = alpha;
+            }
+        }
     }
 
     BITMAPINFO info = {};
     info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    info.bmiHeader.biWidth = frame.width;
-    info.bmiHeader.biHeight = -frame.height;
+    info.bmiHeader.biWidth = width;
+    info.bmiHeader.biHeight = -height;
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
     return ::StretchDIBits(target, dest_x, dest_y, width, height,
-               src_x, src_y, width, height, frame.rgba.data(), &info,
+               0, 0, width, height, frame.rgba.data(), &info,
                DIB_RGB_COLORS, SRCCOPY)
         != GDI_ERROR;
 }
@@ -1585,6 +1626,39 @@ void WebContents::onRendererEvent(base::Value::Dict event)
 
 
 
+    if (type == "frame-navigated-in-page") {
+        uint64_t frame_id = 0;
+        uint64_t parent_id = 0;
+        std::optional<bool> main_frame = payload.FindBool("isMainFrame");
+        if (!ReadFrameIdentity(event, "frameId", &frame_id)
+            || !ReadFrameIdentity(payload, "parentFrameId", &parent_id, true)
+            || !main_frame || !isRendererFrameCurrent(frame_id))
+            return;
+        RendererFrameState& frame = m_renderer_frames.at(frame_id);
+        GURL target(ReadString(payload, "url"));
+        if (!target.is_valid() || frame.committed_url.empty()
+            || frame.parent_id != parent_id || frame.main_frame != *main_frame)
+            return;
+        url::Origin target_origin = url::Origin::Create(target);
+        if (!target.IsAboutBlank() && !target.IsAboutSrcdoc()
+            && (frame.committed_origin.empty()
+                    ? !target_origin.opaque()
+                    : target_origin.opaque()
+                        || target_origin.Serialize() != frame.committed_origin))
+            return;
+        const std::string url = target.spec();
+        mate::EventEmitter<WebContents>::emit("did-start-navigation", url,
+            true, *main_frame, getProcessIdApi(), m_id);
+        if (!isAlive())
+            return;
+        frame.committed_url = url;
+        if (*main_frame)
+            m_url = url;
+        mate::EventEmitter<WebContents>::emit("did-navigate-in-page", url,
+            *main_frame, getProcessIdApi(), m_id);
+        return;
+    }
+
     if (type == "frame-created" || type == "frame-committed") {
         uint64_t frame_id = 0;
         uint64_t parent_id = 0;
@@ -1728,7 +1802,9 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             navigation_token = frame.navigation.token;
             frame.navigation.consumed = true;
             navigation_url = frame.navigation.url;
-            context.approved_navigation_url = navigation_url;
+            // Scope downstream approval to the exact resource URL validated
+            // above; the navigation URL may also contain a document fragment.
+            context.approved_navigation_url = url;
             context.approved_navigation_method = frame.navigation.method;
             context.navigation_initiator_origin =
                 frame.navigation.initiator_origin;
@@ -1740,46 +1816,73 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 "Frame has not committed an authorized document");
             return;
         }
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         if (ReadString(payload, "kind") == "clipboard") {
             base::Value::Dict result;
             const std::string operation = ReadString(payload, "operation");
             if (operation == "sequence") {
-                result.Set("sequence", base::NumberToString(
-                    mini_electron::mac::ClipboardSequenceNumber()));
-            } else if (operation == "hasText") {
-                result.Set("value", mini_electron::mac::ClipboardHasText());
-            } else if (operation == "hasHtml") {
-                result.Set("value", mini_electron::mac::ClipboardHasHtml());
+                const mini_electron::ClipboardSequence sequence =
+                    mini_electron::GetClipboardSequence();
+                result.Set("high", base::NumberToString(sequence.high));
+                result.Set("low", base::NumberToString(sequence.low));
             } else if (operation == "readText") {
                 result.Set("value", base::UTF16ToUTF8(
-                    mini_electron::mac::ReadClipboardText()));
+                    mini_electron::ReadClipboardText()));
             } else if (operation == "readHtml") {
-                result.Set("value", base::UTF16ToUTF8(
-                    mini_electron::mac::ReadClipboardHtml()));
+                const mini_electron::ClipboardHtml html =
+                    mini_electron::ReadClipboardHtml();
+                result.Set("markup", base::UTF16ToUTF8(html.markup));
+                result.Set("sourceUrl", html.source_url);
+                result.Set("fragmentStart",
+                    static_cast<int>(html.fragment_start));
+                result.Set("fragmentEnd",
+                    static_cast<int>(html.fragment_end));
             } else if (operation == "readPng") {
                 std::vector<uint8_t> png =
-                    mini_electron::mac::ReadClipboardPng();
+                    mini_electron::ReadClipboardPng();
                 result.Set("data", base::Value(std::move(png)));
             } else if (operation == "availableFormats") {
                 base::Value::List formats;
-                for (const auto& format : mini_electron::mac::AvailableClipboardFormats())
+                for (const auto& format :
+                    mini_electron::AvailableClipboardFormats()) {
                     formats.Append(base::UTF16ToUTF8(format));
+                }
                 result.Set("formats", std::move(formats));
             } else if (operation == "write") {
                 std::optional<std::u16string> text;
                 std::optional<std::u16string> html;
+                std::optional<std::string> html_source_url;
+                std::optional<std::vector<uint8_t>> png;
                 if (const std::string* value = payload.FindString("text"))
                     text = base::UTF8ToUTF16(*value);
                 if (const std::string* value = payload.FindString("html"))
                     html = base::UTF8ToUTF16(*value);
-                mini_electron::mac::ClipboardContent content;
+                if (const std::string* value =
+                    payload.FindString("htmlSourceUrl")) {
+                    html_source_url = *value;
+                }
+                if (const base::Value::BlobStorage* value =
+                    payload.FindBlob("png")) {
+                    if (value->empty()
+                        || value->size()
+                            > mini_electron::kMaximumClipboardImageBytes) {
+                        m_renderer->Respond(request_id, {},
+                            "Invalid clipboard image payload");
+                        return;
+                    }
+                    png = *value;
+                }
+                mini_electron::ClipboardContent content;
                 content.text = text ? &*text : nullptr;
                 content.html = html ? &*html : nullptr;
-                content.png = payload.FindBlob("png");
-                result.Set("value", mini_electron::mac::WriteClipboard(content));
+                content.html_source_url = html_source_url
+                    ? &*html_source_url : nullptr;
+                content.png = png ? &*png : nullptr;
+                result.Set("value",
+                    mini_electron::WriteClipboard(content));
             } else {
-                m_renderer->Respond(request_id, {}, "Unsupported clipboard operation");
+                m_renderer->Respond(request_id, {},
+                    "Unsupported clipboard operation");
                 return;
             }
             if (!m_renderer->Respond(request_id, std::move(result), {})) {
@@ -1982,10 +2085,13 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 m_pending_main_navigation = {};
             return;
         }
-        if (*main_frame)
+        const bool started_loading = *main_frame && !m_isLoading;
+        if (started_loading)
             m_isLoading = true;
         mate::EventEmitter<WebContents>::emit("did-start-navigation", url,
             false, *main_frame, getProcessIdApi(), m_id);
+        if (started_loading && isAlive())
+            mate::EventEmitter<WebContents>::emit("did-start-loading");
     } else if (type == "navigation-redirect") {
         const std::string url = ReadString(payload, "url");
         v8::Local<v8::Object> redirect_event = mate::internal::createJSEvent(

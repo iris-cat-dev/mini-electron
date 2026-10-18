@@ -3253,6 +3253,7 @@
     <ClCompile Include="..\..\..\ui\display\win\uwp_text_scale_factor.cc" />
     <ClCompile Include="..\..\..\ui\events\base_event_utils.cc" />
     <ClCompile Include="..\..\..\ui\events\keycodes\dom\keycode_converter.cc" />
+    <ClCompile Include="..\..\..\ui\events\keycodes\keyboard_code_conversion.cc" />
     <ClCompile Include="..\..\..\ui\gfx\animation\keyframe\animation_curve.cc" />
     <ClCompile Include="..\..\..\ui\gfx\animation\keyframe\keyframed_animation_curve.cc" />
     <ClCompile Include="..\..\..\ui\gfx\animation\keyframe\keyframe_effect_gfx.cc" />

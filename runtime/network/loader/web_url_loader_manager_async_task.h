@@ -7,6 +7,7 @@
 #include "runtime/engine/common/live_id_detect.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_view.h"
 #include "base/threading/thread.h"
 
 namespace mini_electron {
@@ -69,7 +70,7 @@ static void releaseJobWithoutCurl(WebURLLoaderManager* manager, WebURLLoaderInte
 }
 
 
-String getMIMETypeForPath(const String& path);
+String getMIMETypeForPath(const WTF::StringView& path);
 
 class HookAsynTask {
 public:

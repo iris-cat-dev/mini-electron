@@ -28,4 +28,11 @@ Color LayoutThemeWin::SystemHighlightFromColorProvider(mojom::blink::ColorScheme
     return Color::FromSkColor(system_highlight_color);
 }
 
+Color LayoutThemeWin::PlatformInactiveSelectionForegroundColor(mojom::blink::ColorScheme color_scheme) const
+{
+    if (color_scheme == mojom::blink::ColorScheme::kDark)
+        return Color::kWhite;
+    return LayoutThemeDefault::PlatformInactiveSelectionForegroundColor(color_scheme);
+}
+
 } // namespace blink

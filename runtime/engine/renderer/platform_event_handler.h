@@ -101,7 +101,9 @@ public:
     void SetAutoscrollSelectionActiveInMainFrame(bool autoscroll_selection) override {}
     //----
 
-    static blink::WebKeyboardEvent buildKeyboardEvent(blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags);
+    static blink::WebKeyboardEvent buildKeyboardEvent(blink::WebInputEvent::Type type,
+        UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags,
+        HKL keyboardLayout = nullptr);
 
     struct MouseEvtInfo {
         bool isNeedSetFocus;
@@ -173,6 +175,10 @@ private:
     gfx::Point m_offset;
     gfx::Point m_lastPosMouseDown;
     gfx::Point m_lastPosMouseMove;
+    UINT m_lastMouseDownButton;
+    UINT m_activeMouseButton;
+    int m_lastMouseDownClickCount;
+    int m_activeMouseClickCount;
     gfx::Rect m_lastPosForDrag;
     blink::WebViewImpl* m_webViewImpl;
     blink::WebWidget* m_webWidget;

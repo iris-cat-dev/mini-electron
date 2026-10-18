@@ -1,12 +1,8 @@
 const app = require('electron').app;
 
-const keyCommand = (keyCode, modifiers = 0) => (webContents) => {
-  webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
-  webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+const editCommand = (command) => (webContents) => {
+  webContents.sendInputEvent({ type: 'editCommand', command })
 }
-
-const controlKeyCommand = (keyCode, shift = false) =>
-  keyCommand(keyCode, 0x08 | (shift ? 0x04 : 0))
 
 const roles = {
   about: {
@@ -22,16 +18,16 @@ const roles = {
   copy: {
     label: 'Copy',
     accelerator: 'CommandOrControl+C',
-    webContentsMethod: controlKeyCommand(0x43)
+    webContentsMethod: editCommand('Copy')
   },
   cut: {
     label: 'Cut',
     accelerator: 'CommandOrControl+X',
-    webContentsMethod: controlKeyCommand(0x58)
+    webContentsMethod: editCommand('Cut')
   },
   delete: {
     label: 'Delete',
-    webContentsMethod: keyCommand(0x2e)
+    webContentsMethod: editCommand('Delete')
   },
   front: {
     label: 'Bring All to Front'
@@ -57,12 +53,12 @@ const roles = {
   paste: {
     label: 'Paste',
     accelerator: 'CommandOrControl+V',
-    webContentsMethod: controlKeyCommand(0x56)
+    webContentsMethod: editCommand('Paste')
   },
   pasteandmatchstyle: {
     label: 'Paste and Match Style',
     accelerator: 'Shift+CommandOrControl+V',
-    webContentsMethod: controlKeyCommand(0x56, true)
+    webContentsMethod: editCommand('PasteAndMatchStyle')
   },
   quit: {
     get label () {
@@ -77,8 +73,10 @@ const roles = {
   },
   redo: {
     label: 'Redo',
-    accelerator: 'Shift+CommandOrControl+Z',
-    webContentsMethod: controlKeyCommand(0x5a, true)
+    accelerator: process.platform === 'darwin'
+      ? 'Shift+CommandOrControl+Z'
+      : 'CommandOrControl+Y',
+    webContentsMethod: editCommand('Redo')
   },
   resetzoom: {
     label: 'Actual Size',
@@ -90,7 +88,7 @@ const roles = {
   selectall: {
     label: 'Select All',
     accelerator: 'CommandOrControl+A',
-    webContentsMethod: controlKeyCommand(0x41)
+    webContentsMethod: editCommand('SelectAll')
   },
   services: {
     label: 'Services'
@@ -111,7 +109,7 @@ const roles = {
   undo: {
     label: 'Undo',
     accelerator: 'CommandOrControl+Z',
-    webContentsMethod: controlKeyCommand(0x5a)
+    webContentsMethod: editCommand('Undo')
   },
   unhide: {
     label: 'Show All'

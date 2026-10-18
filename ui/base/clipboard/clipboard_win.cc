@@ -34,8 +34,6 @@
 #include "base/strings/utf_offset_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/current_thread.h"
-#include "base/task/task_traits.h"
-#include "base/task/thread_pool.h"
 #include "base/win/message_window.h"
 #include "base/win/scoped_gdi_object.h"
 #include "base/win/scoped_hdc.h"
@@ -45,6 +43,10 @@
 #include "skia/ext/skia_utils_base.h"
 #include "skia/ext/skia_utils_win.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/codec/SkCodec.h"
+#include "third_party/skia/include/codec/SkEncodedImageFormat.h"
+#include "third_party/skia/include/codec/SkPngDecoder.h"
+#include "third_party/skia/include/core/SkData.h"
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/clipboard/clipboard_metrics.h"
 #include "ui/base/clipboard/clipboard_monitor.h"
@@ -214,6 +216,29 @@ template <typename StringType> void TrimAfterNull(StringType* result)
     size_t pos = result->find_first_of(kNull);
     if (pos != StringType::npos)
         result->resize(pos);
+}
+
+bool IsValidClipboardPng(const std::vector<uint8_t>& data)
+{
+    if (data.empty())
+        return false;
+    sk_sp<SkData> encoded = SkData::MakeWithoutCopy(data.data(), data.size());
+    std::unique_ptr<SkCodec> codec = SkPngDecoder::Decode(std::move(encoded), nullptr);
+    if (!codec || codec->getEncodedFormat() != SkEncodedImageFormat::kPNG)
+        return false;
+    const int width = codec->dimensions().width();
+    const int height = codec->dimensions().height();
+    constexpr int kMaximumDimension = 8192;
+    constexpr uint64_t kMaximumPixels = 40ULL * 1024 * 1024;
+    if (width <= 0 || height <= 0
+        || width > kMaximumDimension || height > kMaximumDimension
+        || static_cast<uint64_t>(width)
+            > kMaximumPixels / static_cast<uint64_t>(height)) {
+        return false;
+    }
+    SkBitmap bitmap = gfx::PNGCodec::Decode(data);
+    return !bitmap.drawsNothing()
+        && bitmap.width() == width && bitmap.height() == height;
 }
 
 bool ReadFilenamesAvailable()
@@ -495,16 +520,18 @@ void ClipboardWin::ReadPng(ClipboardBuffer buffer, const DataTransferEndpoint* d
 {
     RecordRead(ClipboardFormatMetric::kPng);
     std::vector<uint8_t> data = ReadPngInternal(buffer);
-    // On Windows, PNG and bitmap are separate formats. Read PNG if possible,
-    // otherwise fall back to reading as a bitmap.
-    if (!data.empty()) {
+    // Prefer the registered PNG representation, but only after bounded decode
+    // validation. Malformed PNG must not suppress a valid native DIB fallback.
+    if (IsValidClipboardPng(data)) {
         std::move(callback).Run(data);
         return;
     }
 
+    // The authenticated renderer broker waits synchronously. Complete bounded
+    // DIB conversion here rather than posting a reply to that blocked UI loop.
     SkBitmap bitmap = ReadBitmapInternal(buffer);
-    base::ThreadPool::PostTaskAndReplyWithResult(
-        FROM_HERE, { base::MayBlock(), base::TaskPriority::USER_BLOCKING }, base::BindOnce(&clipboard_util::EncodeBitmapToPng, bitmap), std::move(callback));
+    std::vector<uint8_t> png = clipboard_util::EncodeBitmapToPng(bitmap);
+    std::move(callback).Run(png);
 }
 
 // |data_dst| is not used. It's only passed to be consistent with other
@@ -814,108 +841,131 @@ std::vector<uint8_t> ClipboardWin::ReadPngInternal(ClipboardBuffer buffer) const
     if (!clipboard.Acquire(GetClipboardWindow()))
         return std::vector<uint8_t>();
 
-    HANDLE data = ::GetClipboardData(ClipboardFormatType::PngType().ToFormatEtc().cfFormat);
-
+    HANDLE data = ::GetClipboardData(
+        ClipboardFormatType::PngType().ToFormatEtc().cfFormat);
     if (!data)
-        return std::vector<uint8_t>();
-
-    std::string result(static_cast<const char*>(::GlobalLock(data)), ::GlobalSize(data));
+        return {};
+    constexpr SIZE_T kMaximumPngBytes = 32 * 1024 * 1024;
+    const SIZE_T size = ::GlobalSize(data);
+    if (size == 0 || size > kMaximumPngBytes)
+        return {};
+    const char* bytes = static_cast<const char*>(::GlobalLock(data));
+    if (!bytes)
+        return {};
+    std::vector<uint8_t> result(bytes, bytes + size);
     ::GlobalUnlock(data);
-    return std::vector<uint8_t>(result.begin(), result.end());
+    return result;
 }
 
 SkBitmap ClipboardWin::ReadBitmapInternal(ClipboardBuffer buffer) const
 {
     DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
 
-    // Acquire the clipboard.
     ScopedClipboard clipboard;
     if (!clipboard.Acquire(GetClipboardWindow()))
-        return SkBitmap();
+        return {};
 
-    // We use a DIB rather than a DDB here since ::GetObject() with the
-    // HBITMAP returned from ::GetClipboardData(CF_BITMAP) always reports a color
-    // depth of 32bpp.
-    BITMAPINFO* bitmap = static_cast<BITMAPINFO*>(::GetClipboardData(CF_DIB));
-    if (!bitmap)
-        return SkBitmap();
-    int color_table_length = 0;
+    HANDLE dib = ::GetClipboardData(CF_DIB);
+    if (!dib)
+        return {};
+    const SIZE_T dib_size = ::GlobalSize(dib);
+    constexpr SIZE_T kMaximumDibBytes = 192 * 1024 * 1024;
+    if (dib_size < sizeof(BITMAPINFOHEADER)
+        || dib_size > kMaximumDibBytes)
+        return {};
+    base::win::ScopedHGlobal<const uint8_t*> locked_data(dib);
+    if (!locked_data.data() || locked_data.size() != dib_size)
+        return {};
 
-    // Image is too large, and may cause an allocation failure.
-    // See https://crbug.com/1164680.
-    constexpr size_t kMaxImageSizeBytes = 1 << 27; // 128 MiB
-    size_t image_size_bytes;
-    // Estimate the number of bytes per pixel. For images with fewer than one byte
-    // pixel we will over-estimate the size. For compressed images we will
-    // over-estimate the size, but some overestimating of the storage size is okay
-    // and the calculation will be a good estimate of the decompressed size. The
-    // reported bug was for uncompressed 32-bit images where this code will give
-    // correct results.
-    size_t bytes_per_pixel = bitmap->bmiHeader.biBitCount / 8;
-    if (bytes_per_pixel == 0)
-        bytes_per_pixel = 1;
-    // Calculate the size of the bitmap. This is not an exact calculation but that
-    // doesn't matter for this purpose. If the calculation overflows then the
-    // image is too big. Return an empty image.
-    if (!base::CheckMul(bitmap->bmiHeader.biWidth, base::CheckMul(bitmap->bmiHeader.biHeight, bytes_per_pixel)).AssignIfValid(&image_size_bytes))
-        return SkBitmap();
-    // If the image size is too big then return an empty image.
-    if (image_size_bytes > kMaxImageSizeBytes)
-        return SkBitmap();
+    const auto* bitmap =
+        reinterpret_cast<const BITMAPINFO*>(locked_data.data());
+    const BITMAPINFOHEADER& header = bitmap->bmiHeader;
+    if (header.biSize < sizeof(BITMAPINFOHEADER)
+        || header.biSize > dib_size || header.biWidth <= 0
+        || header.biHeight == 0 || header.biHeight == LONG_MIN
+        || (header.biCompression != BI_RGB
+            && header.biCompression != BI_BITFIELDS)) {
+        return {};
+    }
 
-    // For more information on BITMAPINFOHEADER and biBitCount definition,
-    // see https://docs.microsoft.com/en-us/windows/win32/wmdm/-bitmapinfoheader
-    switch (bitmap->bmiHeader.biBitCount) {
+    const int width = header.biWidth;
+    const int height = std::abs(header.biHeight);
+    constexpr int kMaximumDimension = 8192;
+    constexpr uint64_t kMaximumPixels = 40ULL * 1024 * 1024;
+    if (width > kMaximumDimension || height > kMaximumDimension
+        || static_cast<uint64_t>(width)
+            > kMaximumPixels / static_cast<uint64_t>(height)) {
+        return {};
+    }
+
+    size_t color_table_length = 0;
+    switch (header.biBitCount) {
     case 1:
     case 4:
     case 8:
-        color_table_length = bitmap->bmiHeader.biClrUsed ? bitmap->bmiHeader.biClrUsed : 1 << bitmap->bmiHeader.biBitCount;
+        color_table_length =
+            header.biClrUsed ? header.biClrUsed : 1u << header.biBitCount;
         break;
     case 16:
     case 32:
-        if (bitmap->bmiHeader.biCompression == BI_BITFIELDS)
+        if (header.biCompression == BI_BITFIELDS
+            && header.biSize == sizeof(BITMAPINFOHEADER)) {
             color_table_length = 3;
+        }
         break;
     case 24:
         break;
     default:
-        NOTREACHED();
+        return {};
     }
-    const void* bitmap_bits = reinterpret_cast<const char*>(bitmap) + bitmap->bmiHeader.biSize + color_table_length * sizeof(RGBQUAD);
 
-    void* dst_bits;
-    // dst_hbitmap is freed by the release_proc in skia_bitmap (below)
-    base::win::ScopedBitmap dst_hbitmap = skia::CreateHBitmapXRGB8888(bitmap->bmiHeader.biWidth, bitmap->bmiHeader.biHeight, 0, &dst_bits);
+    const uint64_t pixel_offset = static_cast<uint64_t>(header.biSize)
+        + static_cast<uint64_t>(color_table_length) * sizeof(RGBQUAD);
+    const uint64_t row_bytes =
+        ((static_cast<uint64_t>(width) * header.biBitCount + 31) / 32) * 4;
+    const uint64_t pixel_bytes =
+        row_bytes * static_cast<uint64_t>(height);
+    if (pixel_offset > dib_size || pixel_bytes > dib_size - pixel_offset)
+        return {};
+    const void* bitmap_bits = locked_data.data() + pixel_offset;
+
+    void* destination_bits = nullptr;
+    base::win::ScopedBitmap destination =
+        skia::CreateHBitmapXRGB8888(width, height, 0, &destination_bits);
+    if (!destination.is_valid() || !destination_bits)
+        return {};
 
     {
         base::win::ScopedCreateDC hdc(CreateCompatibleDC(nullptr));
-        HBITMAP old_hbitmap = static_cast<HBITMAP>(SelectObject(hdc.Get(), dst_hbitmap.get()));
-        ::SetDIBitsToDevice(
-            hdc.Get(), 0, 0, bitmap->bmiHeader.biWidth, bitmap->bmiHeader.biHeight, 0, 0, 0, bitmap->bmiHeader.biHeight, bitmap_bits, bitmap, DIB_RGB_COLORS);
-        SelectObject(hdc.Get(), old_hbitmap);
-    }
-    // Windows doesn't really handle alpha channels well in many situations. When
-    // the source image is < 32 bpp, we force the bitmap to be opaque. When the
-    // source image is 32 bpp, the alpha channel might still contain garbage data.
-    // Since Windows uses premultiplied alpha, we scan for instances where
-    // (R, G, B) > A. If there are any invalid premultiplied colors in the image,
-    // we assume the alpha channel contains garbage and force the bitmap to be
-    // opaque as well. This heuristic will fail on a transparent bitmap
-    // containing only black pixels...
-    SkPixmap device_pixels(SkImageInfo::MakeN32Premul(bitmap->bmiHeader.biWidth, bitmap->bmiHeader.biHeight), dst_bits, bitmap->bmiHeader.biWidth * 4);
-
-    {
-        bool has_invalid_alpha_channel = bitmap->bmiHeader.biBitCount < 32 || BitmapHasInvalidPremultipliedColors(device_pixels);
-        if (has_invalid_alpha_channel) {
-            MakeBitmapOpaque(&device_pixels);
-        }
+        if (!hdc.Get())
+            return {};
+        HBITMAP old_bitmap =
+            static_cast<HBITMAP>(SelectObject(hdc.Get(), destination.get()));
+        const int copied = ::SetDIBitsToDevice(
+            hdc.Get(), 0, 0, width, height, 0, 0, 0, height,
+            bitmap_bits, bitmap, DIB_RGB_COLORS);
+        SelectObject(hdc.Get(), old_bitmap);
+        if (copied == 0)
+            return {};
     }
 
-    SkBitmap skia_bitmap;
-    skia_bitmap.installPixels(
-        device_pixels.info(), device_pixels.writable_addr(), device_pixels.rowBytes(),
-        [](void* pixels, void* hbitmap) { DeleteObject(static_cast<HBITMAP>(hbitmap)); }, dst_hbitmap.release());
-    return skia_bitmap;
+    SkPixmap pixels(SkImageInfo::MakeN32Premul(width, height),
+        destination_bits, static_cast<size_t>(width) * 4);
+    if (header.biBitCount < 32
+        || BitmapHasInvalidPremultipliedColors(pixels)) {
+        MakeBitmapOpaque(&pixels);
+    }
+
+    SkBitmap result;
+    if (!result.installPixels(
+            pixels.info(), pixels.writable_addr(), pixels.rowBytes(),
+            [](void*, void* bitmap) {
+                DeleteObject(static_cast<HBITMAP>(bitmap));
+            },
+            destination.release())) {
+        return {};
+    }
+    return result;
 }
 
 void ClipboardWin::WriteToClipboard(ClipboardFormatType format, HANDLE handle)

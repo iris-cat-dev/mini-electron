@@ -8,6 +8,7 @@
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
 #include "third_party/blink/public/common/page_state/page_state.h"
 #include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/web/web_view.h"
 
 namespace content {
 
@@ -98,17 +99,18 @@ void PageNavController::FrameHistoryItem::loadFromHistoryItem(
 
 void PageNavController::navigate(int offset)
 {
-    m_protectReentryBackForwardCommit = true;
-
     int pos = m_currentOffset + offset;
-    if (pos < 0 || pos > (int)(m_frameHistoryStates.size() - 1))
+    if (pos < 0 || pos >= static_cast<int>(m_frameHistoryStates.size()))
         return;
     AllFrameHistoryItemSet* newItems = m_frameHistoryStates[pos];
     AllFrameHistoryItemSet* curItems = nullptr;
-    if (m_currentOffset >= 0 && m_currentOffset < (int)m_frameHistoryStates.size())
+    if (m_currentOffset >= 0 && m_currentOffset < static_cast<int>(m_frameHistoryStates.size()))
         curItems = m_frameHistoryStates[m_currentOffset];
     if (!curItems)
         return;
+
+    m_protectReentryBackForwardCommit = true;
+    m_page->getWebView()->SetHistoryListFromNavigation(pos, std::nullopt);
 
     for (size_t i = 0; i < newItems->m_frameHistoryItems.size(); ++i) {
         FrameHistoryItem* newItem = newItems->m_frameHistoryItems[i];

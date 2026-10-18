@@ -574,12 +574,6 @@ void WebViewHost::setBackgroundColor(COLORREF c)
 
 void WebViewHost::setDefaultPreferences(blink::WebViewImpl* webWiew)
 {
-#if defined(OS_WIN)
-    LANGID langId = GetUserDefaultUILanguage();
-    if (0x0804 == langId) {
-        setSetLanguage("zh-cn");
-    }
-#endif
 
     blink::web_pref::WebPreferences webPreferences = webWiew->GetWebPreferences();
     webPreferences.touch_event_feature_detection_enabled = false; // ����治�ṩontouchstart��document
@@ -637,6 +631,10 @@ void WebViewHost::setDefaultPreferences(blink::WebViewImpl* webWiew)
     preferences.accept_languages = "zh-CN";
 #endif
     //(preferences.local_storage_enabled);
+    if (m_pendingLanguage) {
+        preferences.accept_languages = std::move(*m_pendingLanguage);
+        m_pendingLanguage.reset();
+    }
     webWiew->UpdateRendererPreferences(preferences);
 
     propagatedZoomFactor();
@@ -2085,6 +2083,10 @@ const mini_electron_proxy* WebViewHost::getProxy() const
 
 void WebViewHost::setSetLanguage(const std::string& lang)
 {
+    if (!m_renderWidgetHostImpl || !m_renderWidgetHostImpl->m_webWiew) {
+        m_pendingLanguage = lang;
+        return;
+    }
     blink::RendererPreferences pref = m_renderWidgetHostImpl->m_webWiew->GetRendererPreferences();
     pref.accept_languages = lang;// WTF::String::FromUTF8((const uint8_t*)lang.c_str(), lang.size());
     m_renderWidgetHostImpl->m_webWiew->SetRendererPreferences(pref);
@@ -2094,7 +2096,7 @@ std::string WebViewHost::getSetLanguage() const
 {
     std::string result = "en";
     if (!m_renderWidgetHostImpl || !m_renderWidgetHostImpl->m_webWiew)
-        return result;
+        return m_pendingLanguage.value_or(result);
     const blink::RendererPreferences& pref = m_renderWidgetHostImpl->m_webWiew->GetRendererPreferences();
     if (pref.accept_languages.empty())
         return result;

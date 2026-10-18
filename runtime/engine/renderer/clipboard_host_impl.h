@@ -2,21 +2,14 @@
 #ifndef content_renderer_ClipboardHostImpl_h
 #define content_renderer_ClipboardHostImpl_h
 
-#include "third_party/blink/public/mojom/clipboard/clipboard.mojom-blink.h"
-#include "build/build_config.h"
-#if BUILDFLAG(IS_MAC)
 #include <optional>
 #include <string>
 #include <vector>
-#endif
-#include <windows.h>
+
+#include "third_party/blink/public/mojom/clipboard/clipboard.mojom-blink.h"
 
 namespace content {
 
-// This type designates which clipboard the action should be applied to.
-// Only platforms that use the X Window System support the selection buffer.
-// Drag type is only supported on Mac OS X.
-enum ClipboardType { CLIPBOARD_TYPE_COPY_PASTE, CLIPBOARD_TYPE_SELECTION, CLIPBOARD_TYPE_DRAG, CLIPBOARD_TYPE_LAST = CLIPBOARD_TYPE_DRAG };
 
 class ClipboardHostImpl : public ::blink::mojom::blink::ClipboardHost {
 public:
@@ -100,18 +93,12 @@ public:
     void CommitWrite() override;
 
 private:
-    HWND getClipboardWindow();
-    void readAvailableTypes(ClipboardType type, WTF::Vector<WTF::String>* types, bool* containsFilenames) const;
-    void writeToClipboardInternal(unsigned int format, HANDLE handle);
-    void writeTextInternal(const WTF::String& string);
-
-    static HWND m_clipboardOwner;
-#if BUILDFLAG(IS_MAC)
-    // Keep representations together until Blink completes this write.
+    // Blink submits a clipboard item representation-by-representation. Keep the
+    // complete item together until CommitWrite performs one broker transaction.
     std::optional<std::u16string> m_pendingText;
     std::optional<std::u16string> m_pendingHtml;
+    std::optional<std::string> m_pendingHtmlSourceUrl;
     std::optional<std::vector<uint8_t>> m_pendingPng;
-#endif
 };
 
 

@@ -132,7 +132,10 @@ public:
         return m_native_drag_active && m_native_drag_operation_known
             && m_native_drag_operation_accepted;
     }
-    void sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags);
+#if defined(_WIN32)
+    void sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags,
+        unsigned message, LPARAM l_param);
+#endif
     bool copyFrame(RendererFrameSnapshot* snapshot) const;
     void prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>&);
     void completePreparedFrames();

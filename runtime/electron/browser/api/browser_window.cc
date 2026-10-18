@@ -38,13 +38,18 @@
 #include "base/no_destructor.h"
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/win/windows_version.h"
 #include "platform/windows/resources/resource.h"
 #include <shellapi.h>
 #include <ole2.h>
 #include <dwmapi.h>
 #include <algorithm>
-#include <cstdlib>
+#include <cstdint>
+#include <cmath>
+#include <limits>
+#include <optional>
+#include <string>
 #include <vector>
 
 #pragma comment(lib, "dwmapi.lib")
@@ -80,6 +85,52 @@ v8::Local<v8::Value> toBuffer(v8::Isolate* isolate, void* val, int size)
         return buffer.ToLocalChecked();
 }
 
+class BrowserWindow;
+// Registered and invoked by OLE on the BrowserWindow UI STA. The owner is
+// detached before revocation so a late COM release/callback cannot reach it.
+
+class BrowserWindowDropTarget final : public IDropTarget {
+public:
+    explicit BrowserWindowDropTarget(BrowserWindow* owner);
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override;
+    ULONG STDMETHODCALLTYPE AddRef() override;
+    ULONG STDMETHODCALLTYPE Release() override;
+    HRESULT STDMETHODCALLTYPE DragEnter(
+        IDataObject* data_object, DWORD key_state, POINTL point, DWORD* effect) override;
+    HRESULT STDMETHODCALLTYPE DragOver(
+        DWORD key_state, POINTL point, DWORD* effect) override;
+    HRESULT STDMETHODCALLTYPE DragLeave() override;
+    HRESULT STDMETHODCALLTYPE Drop(
+        IDataObject* data_object, DWORD key_state, POINTL point, DWORD* effect) override;
+
+    void cancelDrag();
+    void browserViewWillDetach(BrowserView* view);
+    void detachOwner();
+
+private:
+    ~BrowserWindowDropTarget() = default;
+
+    static bool readPaths(IDataObject* data_object, std::vector<std::string>* paths);
+    bool updateDestination(POINTL point, DWORD key_state);
+    void leaveDestination(POINTL point, DWORD key_state);
+    void resetDrag();
+    WebContents* currentContents() const;
+
+    BrowserWindow* owner_;
+    volatile LONG references_;
+    bool tracking_;
+    bool destination_selected_;
+    bool destination_active_;
+    bool destination_is_main_;
+    BrowserView* destination_view_;
+    bool source_allows_copy_;
+    POINTL last_point_;
+    DWORD last_key_state_;
+    std::vector<std::string> paths_;
+};
+
+
 class BrowserWindow : public mate::EventEmitter<BrowserWindow>, public WindowInterface, public WebContentsObserver {
 public:
     explicit BrowserWindow(v8::Isolate* isolate, v8::Local<v8::Object> wrapper)
@@ -93,7 +144,19 @@ public:
         m_createWindowParam = nullptr;
         m_state = WindowUninited;
         m_hWnd = nullptr;
-        m_hIMC = nullptr;
+        m_focusedWebContents = nullptr;
+        m_textInputContents = nullptr;
+        m_pendingImeContents = nullptr;
+        m_imeTarget = nullptr;
+        m_textInputCaret = {};
+        m_textInputEditable = false;
+        m_nativeImeActive = false;
+        m_rendererCompositionActive = false;
+        m_imeCleanup = false;
+        m_ownsImeCaret = false;
+        m_imeCaretHeight = 0;
+        m_imeSerial = 0;
+        m_pendingImeSerial = 0;
         m_cursorInfoType = 0;
         m_isCursorInfoTypeAsynGetting = false;
         m_memoryBMP = nullptr;
@@ -109,8 +172,8 @@ public:
         m_isMouseDown = false;
         m_titleBarOverlayEnabled = false;
         m_titleBarOverlayHeight = 30;
-        m_titleBarOverlayColor = RGB(0x18, 0x1b, 0x1a);
-        m_titleBarOverlaySymbolColor = RGB(0xe4, 0xe4, 0xe7);
+        m_titleBarOverlayColor = SkColorSetRGB(0x18, 0x1b, 0x1a);
+        m_titleBarOverlaySymbolColor = SkColorSetRGB(0xe4, 0xe4, 0xe7);
         m_captionHoverButton = CaptionButtonNone;
         m_captionPressedButton = CaptionButtonNone;
         m_trackingMouseLeave = false;
@@ -123,6 +186,7 @@ public:
         m_fullScreenExStyle = 0;
         ::ZeroMemory(&m_windowPlacement, sizeof(m_windowPlacement));
         m_windowPlacement.length = sizeof(m_windowPlacement);
+        m_dropTarget = nullptr;
 
         m_clientRect.left = 0;
         m_clientRect.top = 0;
@@ -151,6 +215,12 @@ public:
         OutputDebugStringA(output);
         free(output);
 
+
+        if (m_dropTarget) {
+            m_dropTarget->detachOwner();
+            m_dropTarget->Release();
+            m_dropTarget = nullptr;
+        }
         delete m_createWindowParam;
 
         ::DeleteObject(m_draggableRegion);
@@ -185,7 +255,6 @@ public:
         if (hDllInst) {
             CHANGEWINDOWMESSAGEFILTER* pAddMessageFilterFunc = (CHANGEWINDOWMESSAGEFILTER*)GetProcAddress(hDllInst, "ChangeWindowMessageFilter");
             if (pAddMessageFilterFunc) {
-                pAddMessageFilterFunc(WM_DROPFILES, MSG_FLT_ADD);
                 pAddMessageFilterFunc(WM_COPYDATA, MSG_FLT_ADD);
                 pAddMessageFilterFunc(WM_COPYGLOBALDATA, MSG_FLT_ADD);
             }
@@ -363,15 +432,17 @@ public:
         return m_hWnd;
     }
 
-    void onWebContentsPaint(WebContents*) override
+    void onWebContentsPaint(WebContents* contents) override
     {
-        if (::IsWindow(m_hWnd))
+        if (contents == m_webContents && ::IsWindow(m_hWnd))
             ::InvalidateRect(m_hWnd, nullptr, FALSE);
     }
 
     void onWebContentsDraggableRegions(
-        WebContents*, const base::Value::List& regions) override
+        WebContents* contents, const base::Value::List& regions) override
     {
+        if (contents != m_webContents)
+            return;
         m_draggableRegions.clear();
         m_draggableRegions.reserve(regions.size());
         for (const base::Value& value : regions) {
@@ -426,36 +497,43 @@ public:
         CaptionButtonClose = 2,
     };
 
-    static bool parseOverlayColor(const std::string& input, COLORREF* result)
+    static bool parseOverlayColor(const std::string& input, SkColor* result)
     {
         if (!result || input.empty() || input[0] != '#')
             return false;
 
-        const char* digits = input.c_str() + 1;
-        size_t length = input.size() - 1;
-        char expanded[7] = { 0 };
-        if (length == 3 || length == 4) {
-            for (size_t i = 0; i < 3; ++i) {
-                expanded[i * 2] = digits[i];
-                expanded[i * 2 + 1] = digits[i];
-            }
-            digits = expanded;
-            length = 6;
-        }
-        if (length != 6 && length != 8)
+        const size_t length = input.size() - 1;
+        if (length != 3 && length != 4 && length != 6 && length != 8)
             return false;
 
-        for (size_t i = 0; i < length; ++i) {
-            const char c = digits[i];
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+        const bool shortForm = length <= 4;
+        const size_t componentCount = (length == 4 || length == 8) ? 4 : 3;
+        const auto hexValue = [](char digit) -> int {
+            if (digit >= '0' && digit <= '9')
+                return digit - '0';
+            if (digit >= 'a' && digit <= 'f')
+                return digit - 'a' + 10;
+            if (digit >= 'A' && digit <= 'F')
+                return digit - 'A' + 10;
+            return -1;
+        };
+        uint8_t components[4] = { 0, 0, 0, 0xff };
+        for (size_t component = 0; component < componentCount; ++component) {
+            const size_t offset = 1 + component * (shortForm ? 1 : 2);
+            const int high = hexValue(input[offset]);
+            if (high < 0)
                 return false;
+            if (shortForm) {
+                components[component] = static_cast<uint8_t>(high * 0x11);
+                continue;
+            }
+            const int low = hexValue(input[offset + 1]);
+            if (low < 0)
+                return false;
+            components[component] = static_cast<uint8_t>((high << 4) | low);
         }
-        std::string rgbDigits(digits, 6);
-        char* end = nullptr;
-        unsigned long rgb = std::strtoul(rgbDigits.c_str(), &end, 16);
-        if (!end || *end != '\0')
-            return false;
-        *result = RGB((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+
+        *result = SkColorSetARGB(components[3], components[0], components[1], components[2]);
         return true;
     }
 
@@ -539,13 +617,24 @@ public:
         return false;
     }
 
-    static COLORREF blendColor(COLORREF from, COLORREF to, int toPercent)
+    static SkColor sourceOver(SkColor under, SkColor over)
     {
-        const int fromPercent = 100 - toPercent;
-        return RGB(
-            (GetRValue(from) * fromPercent + GetRValue(to) * toPercent) / 100,
-            (GetGValue(from) * fromPercent + GetGValue(to) * toPercent) / 100,
-            (GetBValue(from) * fromPercent + GetBValue(to) * toPercent) / 100);
+        const int overAlpha = SkColorGetA(over);
+        const int underAlpha = SkColorGetA(under);
+        const int inverseAlpha = 0xff - overAlpha;
+        const int outputAlpha = overAlpha + (underAlpha * inverseAlpha + 0x7f) / 0xff;
+        if (!outputAlpha)
+            return SK_ColorTRANSPARENT;
+
+        const auto compositeChannel = [&](int underChannel, int overChannel) {
+            const int premultiplied = overChannel * overAlpha
+                + (underChannel * underAlpha * inverseAlpha + 0x7f) / 0xff;
+            return (premultiplied + outputAlpha / 2) / outputAlpha;
+        };
+        return SkColorSetARGB(outputAlpha,
+            compositeChannel(SkColorGetR(under), SkColorGetR(over)),
+            compositeChannel(SkColorGetG(under), SkColorGetG(over)),
+            compositeChannel(SkColorGetB(under), SkColorGetB(over)));
     }
 
     void invalidateCaptionButtons()
@@ -598,6 +687,7 @@ public:
 
         ::GdiFlush();
         SkCanvas* canvas = m_captionSurface->getCanvas();
+        canvas->clear(SK_ColorTRANSPARENT);
         canvas->save();
         canvas->translate(-buttons.left, -buttons.top);
         SkPaint paint;
@@ -606,26 +696,34 @@ public:
         for (int value = CaptionButtonMinimize; value <= CaptionButtonClose; ++value) {
             CaptionButton button = static_cast<CaptionButton>(value);
             RECT rect = captionButtonRect(button);
-            COLORREF background = m_titleBarOverlayColor;
-            if (button == m_captionPressedButton && button == m_captionHoverButton) {
-                background = button == CaptionButtonClose
-                    ? RGB(0xb4, 0x26, 0x35)
-                    : blendColor(background, RGB(0xff, 0xff, 0xff), 20);
-            } else if (button == m_captionHoverButton) {
-                background = button == CaptionButtonClose
-                    ? RGB(0xc4, 0x2b, 0x3a)
-                    : blendColor(background, RGB(0xff, 0xff, 0xff), 12);
+            SkColor backgroundColor = m_titleBarOverlayColor;
+            if (button == m_captionHoverButton) {
+                const bool pressed = button == m_captionPressedButton;
+                if (button == CaptionButtonClose) {
+                    backgroundColor = pressed
+                        ? SkColorSetRGB(0xb4, 0x26, 0x35)
+                        : SkColorSetRGB(0xc4, 0x2b, 0x3a);
+                } else {
+                    const int tintAlpha = pressed ? 0x33 : 0x1f;
+                    const SkColor tint = SkColorSetARGB(tintAlpha,
+                        SkColorGetR(m_titleBarOverlaySymbolColor),
+                        SkColorGetG(m_titleBarOverlaySymbolColor),
+                        SkColorGetB(m_titleBarOverlaySymbolColor));
+                    backgroundColor = sourceOver(backgroundColor, tint);
+                }
             }
-            const SkColor backgroundColor = SkColorSetRGB(GetRValue(background), GetGValue(background), GetBValue(background));
             paint.setStyle(SkPaint::kFill_Style);
             paint.setAntiAlias(false);
+            paint.setBlendMode(SkBlendMode::kSrcOver);
             paint.setColor(backgroundColor);
             canvas->drawRect(SkRect::MakeLTRB(rect.left, buttons.top, rect.right, rect.bottom), paint);
 
-            COLORREF symbol = isCaptionButtonEnabled(button)
-                ? m_titleBarOverlaySymbolColor
-                : blendColor(m_titleBarOverlayColor, m_titleBarOverlaySymbolColor, 40);
-            paint.setColor(SkColorSetRGB(GetRValue(symbol), GetGValue(symbol), GetBValue(symbol)));
+            SkColor symbolColor = m_titleBarOverlaySymbolColor;
+            if (!isCaptionButtonEnabled(button)) {
+                symbolColor = SkColorSetA(symbolColor,
+                    (SkColorGetA(symbolColor) * 40 + 50) / 100);
+            }
+            paint.setColor(symbolColor);
             paint.setStyle(SkPaint::kStroke_Style);
             paint.setStrokeWidth(strokeWidth);
             const int left = (rect.left + rect.right - symbolSize) / 2;
@@ -644,11 +742,12 @@ public:
                     canvas->drawRect(back, paint);
                     const SkColor symbolColor = paint.getColor();
                     paint.setStyle(SkPaint::kFill_Style);
+                    paint.setBlendMode(SkBlendMode::kSrc);
                     paint.setColor(backgroundColor);
                     canvas->drawRect(front, paint);
                     paint.setStyle(SkPaint::kStroke_Style);
+                    paint.setBlendMode(SkBlendMode::kSrcOver);
                     paint.setColor(symbolColor);
-                    canvas->drawRect(front, paint);
                 } else {
                     canvas->drawRect(glyph, paint);
                 }
@@ -662,8 +761,8 @@ public:
         }
         canvas->restore();
 
-        // GDI drawing clears alpha on DWM glass. Composite the cached opaque
-        // raster surface instead, keeping both the caption edge and shadow.
+        // GDI drawing clears alpha on DWM glass. Alpha-composite the cached
+        // premultiplied raster surface over the browser's painted header.
         HGDIOBJ oldBitmap = ::SelectObject(m_captionDC, m_captionBitmap);
         const BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
         ::GdiAlphaBlend(dc, intersection.left, intersection.top,
@@ -875,38 +974,331 @@ public:
 
 
 
+    static bool parseTextInputRect(
+        const base::Value::Dict& state, const char* name, RECT* result)
+    {
+        const base::Value::Dict* value = state.FindDict(name);
+        if (!value)
+            return false;
+        const std::optional<int> x = value->FindInt("x");
+        const std::optional<int> y = value->FindInt("y");
+        const std::optional<int> width = value->FindInt("width");
+        const std::optional<int> height = value->FindInt("height");
+        if (!x || !y || !width || !height || *width < 0 || *height <= 0)
+            return false;
+        const int64_t right = static_cast<int64_t>(*x) + *width;
+        const int64_t bottom = static_cast<int64_t>(*y) + *height;
+        if (right > std::numeric_limits<LONG>::max()
+            || right < std::numeric_limits<LONG>::min()
+            || bottom > std::numeric_limits<LONG>::max()
+            || bottom < std::numeric_limits<LONG>::min()) {
+            return false;
+        }
+        result->left = *x;
+        result->top = *y;
+        result->right = static_cast<LONG>(right);
+        result->bottom = static_cast<LONG>(bottom);
+        return true;
+    }
+
+    void clearTextInputState()
+    {
+        m_textInputContents = nullptr;
+        m_textInputCaret = {};
+        m_textInputEditable = false;
+        m_pendingImeContents = nullptr;
+        m_pendingImeSerial = 0;
+    }
+
+    bool sendImeInput(WebContents* contents, base::Value::Dict input)
+    {
+        if (!contents)
+            return false;
+        if (m_imeSerial == std::numeric_limits<uint64_t>::max())
+            m_imeSerial = 1;
+        else
+            ++m_imeSerial;
+        input.Set("imeSerial", base::NumberToString(m_imeSerial));
+        if (!contents->sendInput(std::move(input)))
+            return false;
+        m_pendingImeContents = contents;
+        m_pendingImeSerial = m_imeSerial;
+        return true;
+    }
+
+    bool sendImeSetComposition(
+        WebContents* contents, const std::string& text, int cursor)
+    {
+        base::Value::Dict input;
+        input.Set("type", "imeSetComposition");
+        input.Set("text", text);
+        input.Set("selectionStart", cursor);
+        input.Set("selectionEnd", cursor);
+        return sendImeInput(contents, std::move(input));
+    }
+
+    bool sendImeCommitText(WebContents* contents, const std::string& text)
+    {
+        base::Value::Dict input;
+        input.Set("type", "imeCommitText");
+        input.Set("text", text);
+        input.Set("relativeCursorPosition", 0);
+        return sendImeInput(contents, std::move(input));
+    }
+
+    bool sendImeFinishComposition(WebContents* contents)
+    {
+        base::Value::Dict input;
+        input.Set("type", "imeFinishComposition");
+        return sendImeInput(contents, std::move(input));
+    }
+
+    static bool readImeString(
+        HIMC context, DWORD index, std::wstring* result)
+    {
+        constexpr LONG kMaximumCompositionBytes = 1024 * 1024;
+        const LONG bytes = ::ImmGetCompositionStringW(
+            context, index, nullptr, 0);
+        if (bytes < 0 || bytes > kMaximumCompositionBytes
+            || bytes % sizeof(wchar_t) != 0) {
+            return false;
+        }
+        result->resize(bytes / sizeof(wchar_t));
+        if (bytes == 0)
+            return true;
+        return ::ImmGetCompositionStringW(
+                   context, index, result->data(), bytes)
+            == bytes;
+    }
+
+    void destroyImeCaret()
+    {
+        if (m_ownsImeCaret)
+            ::DestroyCaret();
+        m_ownsImeCaret = false;
+        m_imeCaretHeight = 0;
+    }
+
+    bool currentTextInputCaret(RECT* result)
+    {
+        if (!m_textInputEditable || !m_textInputContents
+            || m_textInputContents != m_focusedWebContents) {
+            return false;
+        }
+        *result = m_textInputCaret;
+        if (m_textInputContents == m_webContents)
+            return true;
+        BrowserView* owner = nullptr;
+        for (BrowserView* view : m_browserViews) {
+            if (view && view->getWebContents() == m_textInputContents) {
+                owner = view;
+                break;
+            }
+        }
+        if (!owner)
+            return false;
+        const RECT bounds = owner->getClientRect();
+        const int64_t left = static_cast<int64_t>(result->left) + bounds.left;
+        const int64_t top = static_cast<int64_t>(result->top) + bounds.top;
+        const int64_t right = static_cast<int64_t>(result->right) + bounds.left;
+        const int64_t bottom = static_cast<int64_t>(result->bottom) + bounds.top;
+        if (left > std::numeric_limits<LONG>::max()
+            || left < std::numeric_limits<LONG>::min()
+            || top > std::numeric_limits<LONG>::max()
+            || top < std::numeric_limits<LONG>::min()
+            || right > std::numeric_limits<LONG>::max()
+            || right < std::numeric_limits<LONG>::min()
+            || bottom > std::numeric_limits<LONG>::max()
+            || bottom < std::numeric_limits<LONG>::min()) {
+            return false;
+        }
+        result->left = static_cast<LONG>(left);
+        result->top = static_cast<LONG>(top);
+        result->right = static_cast<LONG>(right);
+        result->bottom = static_cast<LONG>(bottom);
+        return true;
+    }
+
+    void updateImePosition()
+    {
+        if (!m_nativeImeActive || m_imeTarget != m_focusedWebContents
+            || ::GetFocus() != m_hWnd) {
+            return;
+        }
+        RECT caret;
+        if (!currentTextInputCaret(&caret))
+            return;
+        const int height = std::max<LONG>(1, caret.bottom - caret.top);
+        if (!m_ownsImeCaret || m_imeCaretHeight != height) {
+            destroyImeCaret();
+            m_ownsImeCaret = !!::CreateCaret(m_hWnd, nullptr, 1, height);
+            if (m_ownsImeCaret)
+                m_imeCaretHeight = height;
+        }
+        if (m_ownsImeCaret)
+            ::SetCaretPos(caret.left, caret.top);
+
+        HIMC context = ::ImmGetContext(m_hWnd);
+        if (!context)
+            return;
+        COMPOSITIONFORM composition = {};
+        composition.dwStyle = CFS_FORCE_POSITION;
+        composition.ptCurrentPos = { caret.left, caret.top };
+        ::ImmSetCompositionWindow(context, &composition);
+
+        CANDIDATEFORM candidate = {};
+        candidate.dwIndex = 0;
+        candidate.dwStyle = CFS_EXCLUDE;
+        candidate.ptCurrentPos = { caret.left, caret.top };
+        candidate.rcArea = caret;
+        ::ImmSetCandidateWindow(context, &candidate);
+        ::ImmReleaseContext(m_hWnd, context);
+    }
+
+    void resetImeState()
+    {
+        m_nativeImeActive = false;
+        m_rendererCompositionActive = false;
+        m_imeTarget = nullptr;
+        destroyImeCaret();
+    }
+
+    void stopImeComposition(bool finish_renderer)
+    {
+        WebContents* target = m_imeTarget;
+        const bool had_native_composition = m_nativeImeActive;
+        const bool had_renderer_composition = m_rendererCompositionActive;
+        resetImeState();
+        if (had_native_composition && ::IsWindow(m_hWnd)) {
+            HIMC context = ::ImmGetContext(m_hWnd);
+            if (context) {
+                m_imeCleanup = true;
+                ::ImmNotifyIME(context, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
+                m_imeCleanup = false;
+                ::ImmReleaseContext(m_hWnd, context);
+            }
+        }
+        if (finish_renderer && had_renderer_composition)
+            sendImeFinishComposition(target);
+    }
+
+    bool beginImeComposition()
+    {
+        WebContents* target = focusedWebContents();
+        if (!target || ::GetFocus() != m_hWnd)
+            return false;
+        if (m_nativeImeActive && m_imeTarget == target)
+            return true;
+        if (m_nativeImeActive || m_rendererCompositionActive)
+            stopImeComposition(true);
+        m_nativeImeActive = true;
+        m_imeTarget = target;
+        updateImePosition();
+        return true;
+    }
+
+    LRESULT onImeComposition(LPARAM flags)
+    {
+        if (m_imeCleanup)
+            return 0;
+        if (flags == 0) {
+            if (m_rendererCompositionActive)
+                sendImeSetComposition(m_imeTarget, std::string(), 0);
+            resetImeState();
+            return 0;
+        }
+        if (!m_nativeImeActive && !beginImeComposition())
+            return 0;
+        WebContents* target = m_imeTarget;
+        HIMC context = ::ImmGetContext(m_hWnd);
+        if (!context)
+            return 0;
+
+        if (flags & GCS_RESULTSTR) {
+            std::wstring result;
+            if (readImeString(context, GCS_RESULTSTR, &result)
+                && sendImeCommitText(target, base::WideToUTF8(result))) {
+                m_rendererCompositionActive = false;
+            }
+        }
+        if (flags & GCS_COMPSTR) {
+            std::wstring composition;
+            if (readImeString(context, GCS_COMPSTR, &composition)) {
+                LONG cursor = ::ImmGetCompositionStringW(
+                    context, GCS_CURSORPOS, nullptr, 0);
+                if (cursor < 0)
+                    cursor = static_cast<LONG>(composition.size());
+                cursor = std::clamp<LONG>(
+                    cursor, 0, static_cast<LONG>(composition.size()));
+                if (flags & CS_NOMOVECARET)
+                    cursor = 0;
+                if (sendImeSetComposition(
+                        target, base::WideToUTF8(composition), cursor)) {
+                    m_rendererCompositionActive = !composition.empty();
+                }
+            }
+        }
+        ::ImmReleaseContext(m_hWnd, context);
+        updateImePosition();
+        return 0;
+    }
+
+    LRESULT onImeEndComposition()
+    {
+        if (m_imeCleanup)
+            return 0;
+        if (m_rendererCompositionActive)
+            sendImeSetComposition(m_imeTarget, std::string(), 0);
+        resetImeState();
+        return 0;
+    }
+
+    void setFocusedBrowserView(BrowserView* view)
+    {
+        WebContents* next = view ? view->getWebContents() : m_webContents;
+        WebContents* previous = focusedWebContents();
+        if (view == m_foucsBrowserView && next == previous)
+            return;
+        stopImeComposition(true);
+        if (previous)
+            previous->setFocus(false);
+        if (previous && previous != m_webContents)
+            previous->removeObserver(this);
+        clearTextInputState();
+        m_foucsBrowserView = view;
+        m_focusedWebContents = next;
+        if (next && next != m_webContents)
+            next->addObserver(this);
+        if (next && ::GetFocus() == m_hWnd)
+            next->setFocus(true);
+    }
+
     bool mouseMsgToBrowserViews(unsigned int message, int x, int y, unsigned int flags)
     {
         if (m_foucsBrowserView && !m_foucsBrowserView->getWebContents())
-            m_foucsBrowserView = nullptr;
+            setFocusedBrowserView(nullptr);
         bool isHandled = false;
         BrowserView* hittestView = findHittestBrowserview(x, y);
-        // 如果是WM_LBUTTONDOWN消息，就先找到焦点view，发送过去
-        // 如果不是WM_LBUTTONDOWN，就看是否是mouse down状态。是的话，还是发给焦点view。否则发给hittest的view
+        // If this is a left-button press, route keyboard and IME focus before
+        // delivering the click. Otherwise preserve capture routing.
         if (WM_LBUTTONDOWN == message) {
             m_isMouseDown = true;
-
+            setFocusedBrowserView(hittestView);
             if (hittestView) {
                 isHandled = true;
-                m_foucsBrowserView = hittestView;
-                m_foucsBrowserView->handleMouseMsgInUiThread(message, x, y, flags);
-            } else
-                m_foucsBrowserView = nullptr;
-        } else {
-            if (WM_LBUTTONUP == message) {
-                m_isMouseDown = false;
+                hittestView->handleMouseMsgInUiThread(message, x, y, flags);
             }
-
+        } else {
+            if (WM_LBUTTONUP == message)
+                m_isMouseDown = false;
             if (m_isMouseDown) {
                 if (m_foucsBrowserView) {
                     isHandled = true;
                     m_foucsBrowserView->handleMouseMsgInUiThread(message, x, y, flags);
                 }
-            } else {
-                if (hittestView) {
-                    isHandled = true;
-                    hittestView->handleMouseMsgInUiThread(message, x, y, flags);
-                }
+            } else if (hittestView) {
+                isHandled = true;
+                hittestView->handleMouseMsgInUiThread(message, x, y, flags);
             }
         }
         return isHandled;
@@ -977,12 +1369,118 @@ public:
     {
         if (m_foucsBrowserView) {
             WebContents* contents = m_foucsBrowserView->getWebContents();
-            if (contents)
+            if (contents) {
+                m_focusedWebContents = contents;
                 return contents;
+            }
             m_foucsBrowserView = nullptr;
         }
+        m_focusedWebContents = m_webContents;
         return m_webContents;
     }
+
+    WebContents* nativeDragContents(BrowserView* view) const
+    {
+        if (!view)
+            return m_webContents;
+        if (std::find(m_browserViews.begin(), m_browserViews.end(), view)
+            == m_browserViews.end()) {
+            return nullptr;
+        }
+        return view->getWebContents();
+    }
+
+    bool nativeDragDestinationAt(
+        POINTL screen_point, BrowserView** view, WebContents** contents)
+    {
+        if (!view || !contents || !::IsWindow(m_hWnd))
+            return false;
+        POINT client_point = { screen_point.x, screen_point.y };
+        if (!::ScreenToClient(m_hWnd, &client_point))
+            return false;
+        RECT client_rect = {};
+        if (!::GetClientRect(m_hWnd, &client_rect)
+            || !::PtInRect(&client_rect, client_point)) {
+            return false;
+        }
+        *view = findHittestBrowserview(client_point.x, client_point.y);
+        *contents = nativeDragContents(*view);
+        return *contents != nullptr;
+    }
+
+    bool buildNativeDragEvent(const char* type, POINTL screen_point,
+        DWORD key_state, BrowserView* view, base::Value::Dict* event) const
+    {
+        if (!type || !event || !::IsWindow(m_hWnd)
+            || !nativeDragContents(view)) {
+            return false;
+        }
+        POINT client_point = { screen_point.x, screen_point.y };
+        if (!::ScreenToClient(m_hWnd, &client_point))
+            return false;
+        if (view) {
+            const RECT bounds = view->getClientRect();
+            client_point.x -= bounds.left;
+            client_point.y -= bounds.top;
+        }
+        const gfx::Point client_dip =
+            display::win::ScreenWin::ClientToDIPPoint(
+                m_hWnd, gfx::Point(client_point.x, client_point.y));
+        const gfx::PointF screen_dip =
+            display::win::ScreenWin::ScreenToDIPPoint(
+                gfx::PointF(screen_point.x, screen_point.y));
+        int modifiers = 0;
+        if (key_state & MK_SHIFT)
+            modifiers |= MINI_ELECTRON_SHIFT;
+        if (key_state & MK_CONTROL)
+            modifiers |= MINI_ELECTRON_CONTROL;
+        if (key_state & MK_LBUTTON)
+            modifiers |= MINI_ELECTRON_LBUTTON;
+        if (key_state & MK_MBUTTON)
+            modifiers |= MINI_ELECTRON_MBUTTON;
+        if (key_state & MK_RBUTTON)
+            modifiers |= MINI_ELECTRON_RBUTTON;
+        if (::GetKeyState(VK_MENU) & 0x8000)
+            modifiers |= MINI_ELECTRON_ALT;
+        if ((::GetKeyState(VK_LWIN) & 0x8000)
+            || (::GetKeyState(VK_RWIN) & 0x8000)) {
+            modifiers |= MINI_ELECTRON_META;
+        }
+        event->Set("type", type);
+        event->Set("x", client_dip.x());
+        event->Set("y", client_dip.y());
+        event->Set("screenX", static_cast<int>(std::lround(screen_dip.x())));
+        event->Set("screenY", static_cast<int>(std::lround(screen_dip.y())));
+        event->Set("modifiers", modifiers);
+        return true;
+    }
+
+    void registerNativeDropTarget()
+    {
+        if (m_dropTarget || !::IsWindow(m_hWnd))
+            return;
+        BrowserWindowDropTarget* target = new BrowserWindowDropTarget(this);
+        if (SUCCEEDED(::RegisterDragDrop(m_hWnd, target))) {
+            m_dropTarget = target;
+            return;
+        }
+        target->detachOwner();
+        target->Release();
+    }
+
+    void unregisterNativeDropTarget(HWND hWnd)
+    {
+        BrowserWindowDropTarget* target = m_dropTarget;
+        if (!target)
+            return;
+        m_dropTarget = nullptr;
+        target->cancelDrag();
+        target->detachOwner();
+        if (hWnd)
+            ::RevokeDragDrop(hWnd);
+        target->Release();
+    }
+
 
     void onCursorChange()
     {
@@ -1146,11 +1644,14 @@ public:
         } break;
 
         case WM_NCDESTROY:
+            stopImeComposition(true);
+            clearTextInputState();
+            m_state = WindowDestroyed;
             mate::EventEmitter<BrowserWindow>::emit("closed");
 
             ::KillTimer(hWnd, (UINT_PTR)this);
+            unregisterNativeDropTarget(hWnd);
             ::RemovePropW(hWnd, kPropW);
-            ::RevokeDragDrop(m_hWnd);
             if (m_webContents)
                 m_webContents->closeRenderer();
 
@@ -1166,7 +1667,6 @@ public:
             if (WindowList::getInstance()->empty())
                 App::getInstance()->onWindowAllClosed();
 
-            m_state = WindowDestroyed;
             m_webContents = nullptr;
 
             IdLiveDetect::get()->deconstructed(m_id);
@@ -1182,7 +1682,7 @@ public:
         case WM_EXITMENULOOP:
             hideAutoMenuBar();
             break;
-        case WM_SYSKEYDOWN:
+        case WM_SYSKEYDOWN: {
             if (wParam != VK_MENU && ::GetForegroundWindow() == hWnd
                 && MenuEventNotif::onAccelerator(m_nativeMenu, static_cast<UINT>(wParam))) {
                 m_lastAcceleratorKey = static_cast<UINT>(wParam);
@@ -1194,13 +1694,33 @@ public:
                 if (!m_menuBarAltVisible)
                     return 0;
             }
-            break;
-        case WM_SYSKEYUP:
+            unsigned int flags = 0;
+            if (HIWORD(lParam) & KF_REPEAT)
+                flags |= MINI_ELECTRON_REPEAT;
+            if (HIWORD(lParam) & KF_EXTENDED)
+                flags |= MINI_ELECTRON_EXTENDED;
+            if (WebContents* target = focusedWebContents()) {
+                target->sendWindowsKeyEvent(
+                    "keyDown", static_cast<unsigned int>(wParam), flags, message, lParam);
+            }
+            return 0;
+        }
+        case WM_SYSKEYUP: {
             if (m_lastAcceleratorKey == static_cast<UINT>(wParam)) {
                 m_lastAcceleratorKey = 0;
                 return 0;
             }
-            break;
+            unsigned int flags = 0;
+            if (HIWORD(lParam) & KF_REPEAT)
+                flags |= MINI_ELECTRON_REPEAT;
+            if (HIWORD(lParam) & KF_EXTENDED)
+                flags |= MINI_ELECTRON_EXTENDED;
+            if (WebContents* target = focusedWebContents()) {
+                target->sendWindowsKeyEvent(
+                    "keyUp", static_cast<unsigned int>(wParam), flags, message, lParam);
+            }
+            return 0;
+        }
 
         case WM_PAINT:
             onPaintMessage(hWnd);
@@ -1239,6 +1759,7 @@ public:
         } break;
 
         case WM_MOVE:
+            updateImePosition();
             mate::EventEmitter<BrowserWindow>::emit("move");
             break;
 
@@ -1295,10 +1816,7 @@ public:
 
             setIcon(hWnd); // !!
 
-            if (m_hIMC) {
-                ::ImmAssociateContext(hWnd, m_hIMC);
-                m_hIMC = nullptr;
-            }
+
 
             unsigned int virtualKeyCode = wParam;
             unsigned int flags = 0;
@@ -1307,8 +1825,10 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (WebContents* target = focusedWebContents())
-                target->sendWindowsKeyEvent("keyDown", virtualKeyCode, flags);
+            if (WebContents* target = focusedWebContents()) {
+                target->sendWindowsKeyEvent(
+                    "keyDown", virtualKeyCode, flags, message, lParam);
+            }
 
             return 0;
             break;
@@ -1326,8 +1846,10 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (WebContents* target = focusedWebContents())
-                target->sendWindowsKeyEvent("keyUp", virtualKeyCode, flags);
+            if (WebContents* target = focusedWebContents()) {
+                target->sendWindowsKeyEvent(
+                    "keyUp", virtualKeyCode, flags, message, lParam);
+            }
 
             return 0;
             break;
@@ -1340,13 +1862,26 @@ public:
             if (HIWORD(lParam) & KF_EXTENDED)
                 flags |= MINI_ELECTRON_EXTENDED;
 
-            if (WebContents* target = focusedWebContents())
-                target->sendWindowsKeyEvent("char", charCode, flags);
+            if (WebContents* target = focusedWebContents()) {
+                target->sendWindowsKeyEvent(
+                    "char", charCode, flags, message, lParam);
+            }
             return 0;
             break;
         }
         case WM_IME_COMPOSITION:
-            break;
+            return onImeComposition(lParam);
+        case WM_IME_ENDCOMPOSITION:
+            return onImeEndComposition();
+        case WM_IME_CHAR:
+            // GCS_RESULTSTR is committed directly above. Letting DefWindowProc
+            // translate WM_IME_CHAR would produce a duplicate WM_CHAR.
+            return 0;
+        case WM_IME_SETCONTEXT:
+            // Blink renders preedit text. Keep the native candidate UI, but
+            // suppress the legacy OS composition window.
+            lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
+            return ::DefWindowProcW(hWnd, message, wParam, lParam);
         case WM_LBUTTONDOWN:
         case WM_MBUTTONDOWN:
         case WM_RBUTTONDOWN:
@@ -1428,15 +1963,21 @@ public:
         }
         case WM_SETFOCUS:
             mate::EventEmitter<BrowserWindow>::emit("focus");
-            m_webContents->setFocus(true);
+            if (WebContents* target = focusedWebContents())
+                target->setFocus(true);
             return 0;
 
-        case WM_KILLFOCUS:
+        case WM_KILLFOCUS: {
             m_lastAcceleratorKey = 0;
             mate::EventEmitter<BrowserWindow>::emit("blur");
             hideAutoMenuBar();
-            m_webContents->setFocus(false);
+            WebContents* target = focusedWebContents();
+            stopImeComposition(true);
+            clearTextInputState();
+            if (target)
+                target->setFocus(false);
             return 0;
+        }
 
         case WM_SETCURSOR: {
             POINT point;
@@ -1450,31 +1991,9 @@ public:
                 return 0;
             break;
         }
-        case WM_IME_STARTCOMPOSITION: {
-            RECT* caret = new RECT { 0, 0, 0, 1 };
-            ::PostMessage(hWnd, WM_IME_STARTCOMPOSITION_ASYN, (WPARAM)caret, 0);
+        case WM_IME_STARTCOMPOSITION:
+            beginImeComposition();
             return 0;
-        }
-        case WM_IME_STARTCOMPOSITION_ASYN: {
-            RECT* caret = reinterpret_cast<RECT*>(wParam);
-            COMPOSITIONFORM compositionForm;
-            compositionForm.dwStyle = CFS_POINT | CFS_FORCE_POSITION;
-            compositionForm.ptCurrentPos.x = caret->left;
-            compositionForm.ptCurrentPos.y = caret->top;
-            HIMC hIMC = ::ImmGetContext(hWnd);
-            ::ImmSetCompositionWindow(hIMC, &compositionForm);
-            ::ImmReleaseContext(hWnd, hIMC);
-            delete caret;
-            break;
-        }
-        case WM_DROPFILES:
-            //onDragFiles((HDROP)wParam);
-            break; //         if (message != WM_TIMER) {
-            //             char* output = (char*)malloc(0x100);
-            //             sprintf_s(output, 0x99, "staticWindowProc: %x, %p\n", message, self);
-            //             OutputDebugStringA(output);
-            //             free(output);
-            //         }
         case WM_NCLBUTTONDOWN: {
             if (HTCAPTION == wParam && !m_createWindowParam->isMovable) {
                 return 0;
@@ -1765,6 +2284,8 @@ private:
             m_browserViews.push_back(browserView);
         }
         browserView->attachBrowserWindow(m_hWnd);
+        if (browserView != m_foucsBrowserView)
+            browserView->getWebContents()->setFocus(false);
     }
 
     void removeBrowserViewApi(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -1776,8 +2297,10 @@ private:
             BrowserView* view = *it;
             if (view != browserView)
                 continue;
+            if (m_dropTarget)
+                m_dropTarget->browserViewWillDetach(browserView);
             if (m_foucsBrowserView == browserView)
-                m_foucsBrowserView = nullptr;
+                setFocusedBrowserView(nullptr);
             m_browserViews.erase(it);
             browserView->detachBrowserWindow();
             ::InvalidateRect(m_hWnd, nullptr, FALSE);
@@ -2195,6 +2718,7 @@ private:
 
     void focusOnWebViewApi()
     {
+        setFocusedBrowserView(nullptr);
         m_webContents->setFocus(true);
     }
 
@@ -2289,7 +2813,7 @@ private:
 
     bool isDestroyedApi() const
     {
-        return false;
+        return m_state == WindowDestroyed;
     }
 
     void moveTopApi() const
@@ -2554,13 +3078,13 @@ private:
 
         if (createWindowParam->isResizable && (createWindowParam->isFrame || !createWindowParam->transparent))
             createWindowParam->styles |= WS_THICKFRAME;
-        createWindowParam->styleEx |= WS_EX_ACCEPTFILES;
 
         if (createWindowParam->isShow)
             createWindowParam->styles |= WS_VISIBLE;
 
         webContents = WebContents::create(options->isolate(), webPreferences, self);
         self->m_webContents = webContents;
+        self->m_focusedWebContents = webContents;
         self->m_webContents->addObserver(self);
         self->newWindowTaskInUiThread(createWindowParam);
 
@@ -2578,6 +3102,8 @@ private:
 
         if (!::IsWindow(m_hWnd))
             return;
+
+        registerNativeDropTarget();
 
         HWND dwFlag = HWND_NOTOPMOST;
         if (createWindowParam->isAlwaysOnTop)
@@ -2620,10 +3146,77 @@ private:
 
     virtual void onWebContentsDeleted(WebContents* contents) override
     {
+        const bool was_focused = contents == m_focusedWebContents;
+        if (contents == m_textInputContents || contents == m_imeTarget) {
+            stopImeComposition(false);
+            clearTextInputState();
+        }
+        if (!was_focused)
+            return;
+        if (contents != m_webContents)
+            m_foucsBrowserView = nullptr;
+        m_focusedWebContents = contents == m_webContents ? nullptr : m_webContents;
+        if (m_focusedWebContents && m_state == WindowInited
+            && ::GetFocus() == m_hWnd) {
+            m_focusedWebContents->setFocus(true);
+        }
     }
+
     virtual void onWebContentsReadyToShow(WebContents* contents) override
     {
-        mate::EventEmitter<BrowserWindow>::emit("ready-to-show");
+        if (contents == m_webContents)
+            mate::EventEmitter<BrowserWindow>::emit("ready-to-show");
+    }
+
+    void onWebContentsTextInputState(
+        WebContents* contents, const base::Value::Dict& state) override
+    {
+        if (!contents || contents != m_focusedWebContents
+            || ::GetFocus() != m_hWnd) {
+            return;
+        }
+        const std::optional<bool> editable = state.FindBool("editable");
+        if (state.empty() || !editable || !*editable) {
+            stopImeComposition(false);
+            clearTextInputState();
+            return;
+        }
+        const std::string* serial_value = state.FindString("imeSerial");
+        uint64_t serial = 0;
+        if (!serial_value
+            || !base::StringToUint64(*serial_value, &serial)) {
+            stopImeComposition(false);
+            clearTextInputState();
+            return;
+        }
+        if (m_pendingImeContents == contents && serial < m_pendingImeSerial)
+            return;
+
+        const std::optional<int> selection_start = state.FindInt("selectionStart");
+        const std::optional<int> selection_length = state.FindInt("selectionLength");
+        const std::optional<int> marked_start = state.FindInt("markedStart");
+        const std::optional<int> marked_length = state.FindInt("markedLength");
+        const std::optional<double> scale = state.FindDouble("scale");
+        RECT caret;
+        if (!selection_start || *selection_start < 0
+            || !selection_length || *selection_length < 0
+            || !marked_start || *marked_start < -1
+            || !marked_length || *marked_length < 0
+            || !scale || !std::isfinite(*scale) || *scale <= 0
+            || !parseTextInputRect(state, "selectionRect", &caret)) {
+            stopImeComposition(false);
+            clearTextInputState();
+            return;
+        }
+
+        m_pendingImeContents = nullptr;
+        m_pendingImeSerial = 0;
+        m_textInputContents = contents;
+        m_textInputCaret = caret;
+        m_textInputEditable = true;
+        m_rendererCompositionActive = *marked_start >= 0 && *marked_length > 0;
+        if (m_nativeImeActive && m_imeTarget == contents)
+            updateImePosition();
     }
 
     static void newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -2666,7 +3259,20 @@ private:
     bool m_isDestroyApiBeCalled;
 
     HWND m_hWnd;
-    HIMC m_hIMC;
+
+    WebContents* m_focusedWebContents;
+    WebContents* m_textInputContents;
+    WebContents* m_pendingImeContents;
+    WebContents* m_imeTarget;
+    RECT m_textInputCaret;
+    bool m_textInputEditable;
+    bool m_nativeImeActive;
+    bool m_rendererCompositionActive;
+    bool m_imeCleanup;
+    bool m_ownsImeCaret;
+    int m_imeCaretHeight;
+    uint64_t m_imeSerial;
+    uint64_t m_pendingImeSerial;
 
     int m_cursorInfoType;
     bool m_isCursorInfoTypeAsynGetting;
@@ -2695,8 +3301,8 @@ private:
 
     bool m_titleBarOverlayEnabled;
     int m_titleBarOverlayHeight;
-    COLORREF m_titleBarOverlayColor;
-    COLORREF m_titleBarOverlaySymbolColor;
+    SkColor m_titleBarOverlayColor;
+    SkColor m_titleBarOverlaySymbolColor;
     CaptionButton m_captionHoverButton;
     CaptionButton m_captionPressedButton;
     bool m_trackingMouseLeave;
@@ -2715,6 +3321,7 @@ private:
 
     WebContents::BrowserWindowConstructorOptions* m_createWindowParam;
     //DragAction* m_dragAction;
+    BrowserWindowDropTarget* m_dropTarget;
 
     CRITICAL_SECTION m_mouseMsgQueueLock;
     struct MouseMsg {
@@ -2748,6 +3355,272 @@ private:
     int m_id;
 };
 
+BrowserWindowDropTarget::BrowserWindowDropTarget(BrowserWindow* owner)
+    : owner_(owner)
+    , references_(1)
+    , tracking_(false)
+    , destination_selected_(false)
+    , destination_active_(false)
+    , destination_is_main_(false)
+    , destination_view_(nullptr)
+    , source_allows_copy_(false)
+    , last_point_({ 0, 0 })
+    , last_key_state_(0)
+{
+}
+
+HRESULT STDMETHODCALLTYPE BrowserWindowDropTarget::QueryInterface(
+    REFIID iid, void** object)
+{
+    if (!object)
+        return E_POINTER;
+    *object = nullptr;
+    if (IsEqualIID(iid, IID_IUnknown) || IsEqualIID(iid, IID_IDropTarget)) {
+        *object = static_cast<IDropTarget*>(this);
+        AddRef();
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+ULONG STDMETHODCALLTYPE BrowserWindowDropTarget::AddRef()
+{
+    return static_cast<ULONG>(::InterlockedIncrement(&references_));
+}
+
+ULONG STDMETHODCALLTYPE BrowserWindowDropTarget::Release()
+{
+    const LONG references = ::InterlockedDecrement(&references_);
+    if (!references)
+        delete this;
+    return static_cast<ULONG>(references);
+}
+
+bool BrowserWindowDropTarget::readPaths(
+    IDataObject* data_object, std::vector<std::string>* paths)
+{
+    if (!data_object || !paths)
+        return false;
+    paths->clear();
+    FORMATETC format = {
+        static_cast<CLIPFORMAT>(CF_HDROP), nullptr, DVASPECT_CONTENT, -1,
+        TYMED_HGLOBAL
+    };
+    if (FAILED(data_object->QueryGetData(&format)))
+        return false;
+    STGMEDIUM medium = {};
+    if (FAILED(data_object->GetData(&format, &medium)))
+        return false;
+
+    bool valid = false;
+    if (medium.tymed == TYMED_HGLOBAL && medium.hGlobal) {
+        const HDROP drop = reinterpret_cast<HDROP>(medium.hGlobal);
+        const UINT count = ::DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+        if (count > 0 && count <= 1024) {
+            std::vector<std::string> extracted;
+            extracted.reserve(count);
+            valid = true;
+            for (UINT index = 0; index < count; ++index) {
+                const UINT length =
+                    ::DragQueryFileW(drop, index, nullptr, 0);
+                if (!length || length > 4096) {
+                    valid = false;
+                    break;
+                }
+                std::vector<wchar_t> buffer(
+                    static_cast<size_t>(length) + 1, L'\0');
+                const UINT copied = ::DragQueryFileW(
+                    drop, index, buffer.data(), length + 1);
+                if (copied != length) {
+                    valid = false;
+                    break;
+                }
+                std::string path = base::WideToUTF8(
+                    std::wstring(buffer.data(), copied));
+                if (path.empty() || path.size() > 4096) {
+                    valid = false;
+                    break;
+                }
+                extracted.push_back(std::move(path));
+            }
+            if (valid)
+                *paths = std::move(extracted);
+        }
+    }
+    ::ReleaseStgMedium(&medium);
+    return valid && !paths->empty();
+}
+
+WebContents* BrowserWindowDropTarget::currentContents() const
+{
+    if (!owner_ || !destination_selected_)
+        return nullptr;
+    return owner_->nativeDragContents(
+        destination_is_main_ ? nullptr : destination_view_);
+}
+
+void BrowserWindowDropTarget::leaveDestination(
+    POINTL point, DWORD key_state)
+{
+    WebContents* contents = currentContents();
+    if (destination_active_ && contents) {
+        base::Value::Dict event;
+        if (owner_->buildNativeDragEvent("dragLeave", point, key_state,
+                destination_is_main_ ? nullptr : destination_view_, &event)) {
+            contents->sendNativeFileDrag(std::move(event));
+        }
+    }
+    destination_selected_ = false;
+    destination_active_ = false;
+    destination_is_main_ = false;
+    destination_view_ = nullptr;
+}
+
+bool BrowserWindowDropTarget::updateDestination(
+    POINTL point, DWORD key_state)
+{
+    if (!owner_ || !tracking_)
+        return false;
+    BrowserView* view = nullptr;
+    WebContents* contents = nullptr;
+    if (!owner_->nativeDragDestinationAt(point, &view, &contents)) {
+        leaveDestination(point, key_state);
+        return false;
+    }
+    const bool is_main = view == nullptr;
+    const bool same_destination = destination_selected_
+        && destination_is_main_ == is_main
+        && (is_main || destination_view_ == view);
+    if (same_destination) {
+        if (!destination_active_)
+            return false;
+        base::Value::Dict event;
+        if (!owner_->buildNativeDragEvent(
+                "dragOver", point, key_state, view, &event)) {
+            return false;
+        }
+        return contents->sendNativeFileDrag(std::move(event));
+    }
+
+    leaveDestination(point, key_state);
+    destination_selected_ = true;
+    destination_is_main_ = is_main;
+    destination_view_ = view;
+    base::Value::Dict event;
+    if (!owner_->buildNativeDragEvent(
+            "dragEnter", point, key_state, view, &event)) {
+        return false;
+    }
+    destination_active_ =
+        contents->sendNativeFileDrag(std::move(event), paths_);
+    return destination_active_;
+}
+
+void BrowserWindowDropTarget::resetDrag()
+{
+    tracking_ = false;
+    destination_selected_ = false;
+    destination_active_ = false;
+    destination_is_main_ = false;
+    destination_view_ = nullptr;
+    source_allows_copy_ = false;
+    last_point_ = { 0, 0 };
+    last_key_state_ = 0;
+    paths_.clear();
+}
+
+void BrowserWindowDropTarget::cancelDrag()
+{
+    if (owner_ && destination_selected_)
+        leaveDestination(last_point_, last_key_state_);
+    resetDrag();
+}
+
+void BrowserWindowDropTarget::browserViewWillDetach(BrowserView* view)
+{
+    if (!owner_ || !destination_selected_ || destination_is_main_
+        || destination_view_ != view) {
+        return;
+    }
+    leaveDestination(last_point_, last_key_state_);
+}
+
+void BrowserWindowDropTarget::detachOwner()
+{
+    owner_ = nullptr;
+    resetDrag();
+}
+
+HRESULT STDMETHODCALLTYPE BrowserWindowDropTarget::DragEnter(
+    IDataObject* data_object, DWORD key_state, POINTL point, DWORD* effect)
+{
+    if (!effect)
+        return E_INVALIDARG;
+    const bool copy_allowed = (*effect & DROPEFFECT_COPY) != 0;
+    cancelDrag();
+    last_point_ = point;
+    last_key_state_ = key_state;
+    source_allows_copy_ = copy_allowed;
+    if (!owner_ || !copy_allowed || !readPaths(data_object, &paths_)) {
+        *effect = DROPEFFECT_NONE;
+        resetDrag();
+        return S_OK;
+    }
+    tracking_ = true;
+    *effect = updateDestination(point, key_state)
+        ? DROPEFFECT_COPY
+        : DROPEFFECT_NONE;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE BrowserWindowDropTarget::DragOver(
+    DWORD key_state, POINTL point, DWORD* effect)
+{
+    if (!effect)
+        return E_INVALIDARG;
+    last_point_ = point;
+    last_key_state_ = key_state;
+    const bool accepted = owner_ && tracking_ && source_allows_copy_
+        && ((*effect & DROPEFFECT_COPY) != 0)
+        && updateDestination(point, key_state);
+    *effect = accepted ? DROPEFFECT_COPY : DROPEFFECT_NONE;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE BrowserWindowDropTarget::DragLeave()
+{
+    cancelDrag();
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE BrowserWindowDropTarget::Drop(
+    IDataObject* data_object, DWORD key_state, POINTL point, DWORD* effect)
+{
+    if (!effect)
+        return E_INVALIDARG;
+    (void)data_object;
+    last_point_ = point;
+    last_key_state_ = key_state;
+    const bool routed = owner_ && tracking_ && source_allows_copy_
+        && ((*effect & DROPEFFECT_COPY) != 0)
+        && updateDestination(point, key_state);
+    WebContents* contents = routed ? currentContents() : nullptr;
+    bool sent = false;
+    if (contents && contents->canPerformNativeFileDrop()) {
+        base::Value::Dict event;
+        if (owner_->buildNativeDragEvent("drop", point, key_state,
+                destination_is_main_ ? nullptr : destination_view_, &event)) {
+            sent = contents->sendNativeFileDrag(std::move(event));
+        }
+    }
+    if (!sent)
+        leaveDestination(point, key_state);
+    resetDrag();
+    *effect = sent ? DROPEFFECT_COPY : DROPEFFECT_NONE;
+    return S_OK;
+}
+
+
 void WindowInterface::setNativeMenu(HMENU menu)
 {
     HWND window = getHWND();
@@ -2777,7 +3650,7 @@ v8::Local<v8::Value> WindowInterface::getFocusedContents(v8::Isolate* isolate)
     if (!self)
         return v8::Null(isolate);
 
-    WebContents* content = self->getWebContents();
+    WebContents* content = self->focusedWebContents();
     if (!content)
         return v8::Null(isolate);
     result = content->GetWrapper(isolate);

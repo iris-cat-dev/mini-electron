@@ -2,7 +2,7 @@
 # Use of this source code is governed by the Apache-2.0 license.
 
 mini_electron_mac_host_sources = [
-  "//platform/macos/clipboard_mac.h",
+  "//platform/clipboard.h",
   "//platform/macos/clipboard_mac.mm",
   "//platform/macos/electron/desktop_api_mac.h",
   "//platform/macos/electron/desktop_api_mac.mm",

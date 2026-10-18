@@ -81,10 +81,13 @@ typedef enum {
     MINI_ELECTRON_MBUTTON = 0x10,
     MINI_ELECTRON_META = 0x20,
     MINI_ELECTRON_ALT = 0x40,
+    MINI_ELECTRON_ALT_GRAPH = 0x80,
 } mini_electron_mouse_flags;
 
 typedef enum {
     MINI_ELECTRON_EXTENDED = 0x0100,
+    MINI_ELECTRON_CAPS_LOCK = 0x0200,
+    MINI_ELECTRON_NUM_LOCK = 0x0400,
     MINI_ELECTRON_REPEAT = 0x4000,
 } mini_electron_key_flags;
 
@@ -434,7 +437,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_url_changed_callback)(mini_e
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_url_changed_callback2)(
     mini_electron_web_view webView, void* param,
     mini_electron_web_frame_handle frameId, const utf8* url,
-    uint64_t parent_frame_id, BOOL is_main_frame);
+    uint64_t parent_frame_id, BOOL is_main_frame, BOOL is_same_document);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_frame_detached_callback)(
     mini_electron_web_view webView, void* param,
     mini_electron_web_frame_handle frameId);

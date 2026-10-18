@@ -191,10 +191,15 @@ discovers packaged `Contents/Resources/app.asar` or `app`. Its
 
 Requirements:
 
-- Visual Studio 2022 with the Desktop development with C++ workload (v143)
+- Visual Studio 2022 with the Desktop development with C++ workload (v143) and
+  the matching C++ ATL x64 headers and libraries
 - Windows SDK `10.0.26100.0`
 - LLVM 22 with `clang-cl`, `lld-link`, and `llvm-lib`; install in the standard
   LLVM location or set `LLVM_INSTALL_DIR`
+
+The backend selects the newest installed v143 toolchain with matching ATL and
+passes that exact `VCToolsVersion` to MSBuild. A stale Visual Studio default must
+not select a different toolchain with missing `atldef.h` or ATL libraries.
 
 NASM 2.16.03, pinned VSNASM customizations, and nghttp2 1.61.0 sources are
 downloaded into `.build-tools` with SHA-256 verification. The Windows Node
@@ -236,14 +241,18 @@ option. OMP Desktop packaging is supported on both desktop targets.
 
 Windows hidden-title windows honor `titleBarStyle`, `titleBarOverlay`, and
 `setTitleBarOverlay()`. Minimize/maximize/restore/close controls are rasterized
-into a cached, opaque Skia surface and alpha-composited onto the Win32 window,
-using its DPI and the requested overlay height/colors. The background covers
-the restored top inset as well, so page scrollbars cannot expose a white caption
-edge. Opaque borderless windows retain their native DWM shadow without a rounded
-window region; maximized client bounds match the visible work area. CSS
+into a cached premultiplied-alpha Skia surface and composited over the painted
+HTML titlebar. Short/long RGB and RGBA hex colors retain their alpha, so
+`#00000000` exposes the real header rather than becoming an opaque black patch.
+Repainting clears cached pixels; clipped frame blits use a complete cropped DIB
+so partial invalidation cannot select the wrong underlying rows. Opaque borderless
+windows retain their native DWM shadow without a rounded window region;
+maximized client bounds match the visible work area. CSS
 app-region dragging and no-drag elements remain active. `autoHideMenuBar`,
 explicit menu visibility, Alt activation, menu replacement, and null clearing
 are supported; ordinary framed windows retain their native title bar and menu.
+Native close transitions to the destroyed state before `closed` listeners run;
+`isDestroyed()` reports that state rather than retaining a live-window result.
 
 The Windows host declares Per-Monitor V2 DPI awareness and initializes its native
 screen before creating the first window. Window and viewport sizes remain in DIP;
@@ -251,6 +260,57 @@ Viz renders a physical-pixel bitmap at the window's device scale, and Win32 pain
 it 1:1. Native mouse coordinates stay in device pixels until Blink applies that
 scale. Page zoom is independent of display scaling; factor/level conversion also
 preserves `setZoomFactor(1)` as a true reset.
+
+The renderer receives the full Windows preferred UI-language list. Language
+configuration made before asynchronous Blink view creation is retained and
+applied with the initial renderer preferences, before the first document attaches.
+It must neither dereference the uninitialized view nor discard the configured
+languages in favor of platform defaults.
+
+Windows renderer editing uses an authenticated clipboard broker; no direct OS
+clipboard privileges are granted to the sandbox. Text and HTML commit together,
+including explicitly empty text. PNG and bounded native DIB/DIBV5 images become
+real DOM PNG files; malformed images are rejected, and an invalid registered PNG
+does not hide a valid DIB. DIB conversion completes on the browser thread without
+pumping a nested message loop while a renderer is waiting synchronously.
+Keyboard descriptors retain scan code, layout, modifiers and keyup state;
+disabled and `registerAccelerator: false` shortcuts reach the DOM instead of
+invoking a menu action. Native click counts honor the Windows double-click time
+and distance on both press and release.
+
+Dark inactive selections use a readable foreground without changing light-scheme,
+active, forced-color, or author `::selection` behavior. `webContents.copyImageAt()`
+copies decoded pixels; PNG/DIB images pasted alongside HTML/URL data remain readable
+DOM PNG files, while HTML/URL-only data does not create an image attachment.
+Windows IMM32 composition updates and commits reach the focused Blink editor once.
+Candidate anchors and a hidden native system caret use its asynchronous physical-pixel
+caret snapshot, including BrowserView offsets, without applying DPI/page zoom twice.
+Geometry follows page/editor scrolling and window movement; cancel, blur, non-editable
+focus, and BrowserView detach clear stale native state.
+
+Run the real Windows input regressions sequentially on an unlocked interactive desktop:
+
+```sh
+python build.py --package-dist
+./out/windows-x64/runtime-dist/electron.exe test/windows-native-input-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-editor-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-caption-overlay-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/same-document-navigation-smoke.js
+```
+
+The Windows input tests compile a shared WinForms helper with the system .NET Framework 4 C# compiler
+and send real keyboard, pointer, and OLE input. Clipboard-mutating tests snapshot
+and restore the original clipboard, refusing formats that cannot be preserved losslessly.
+The caption and navigation regressions never read or change clipboard content. The editor
+regression requires Microsoft Pinyin already selected and samples actual active/inactive
+selection pixels, decodes pasted image Files, and checks native/DOM caret geometry,
+composition, cancellation, selection replacement, scrolling, zoom, and BrowserView focus.
+It never changes the system input source, theme, or high-contrast settings. Set
+`MINI_NATIVE_INPUT_ARTIFACTS` to retain native screenshots and a JSON editor report.
+The caption regression samples transparent, partial-alpha, and opaque native pixels,
+checks hover clearing, and clicks minimize/maximize/restore/close controls. Closing
+must emit each lifecycle event once and expose the destroyed state to its listeners.
+Inspector/CDP and renderer permission bypasses are not used.
 
 CSS drag rectangles reach the native window through the renderer callback and
 authenticated IPC. Win32 `WM_NCHITTEST` returns `HTCAPTION` only for eligible drag
@@ -428,16 +488,18 @@ typed-array view's offset and length instead of enumerating each byte into a
 numeric-key dictionary, which stalled previews and exceeded the object-entry
 limit for larger files.
 
-Native AppKit file drags are exposed as brokered DOM `File` objects only after
-the browser authorizes the current document. Regular files are limited to 50 MiB
-each and 256 MiB per drag; symbolic links, special files, stale documents, and
-forged `File` objects cannot disclose host paths. Directories expose entry
-metadata without granting renderer traversal. Clipboard PNG/TIFF input is
-decoded and bounded before Blink receives it, and malformed images are omitted.
-Drag hit testing converts AppKit logical view coordinates to Blink viewport
+Native AppKit file drags and Windows Explorer OLE `CF_HDROP` file/folder drags
+are exposed as brokered DOM `File` objects only after the browser authorizes the
+current document. Regular files are limited to 50 MiB each and 256 MiB per drag;
+symbolic links, Windows reparse-point path components, special files, stale
+documents, and forged `File` objects cannot disclose host paths. Directories
+expose entry metadata without granting renderer traversal. Clipboard PNG/TIFF
+input on macOS and PNG/native DIB input on Windows are decoded and bounded before
+Blink receives them; malformed images are omitted. Native drag hit testing converts AppKit
+logical view coordinates or Win32 physical client coordinates to Blink viewport
 pixels using the current display scale; screen coordinates remain logical.
-The file-drag regression uses a bounded target so Retina coordinate errors
-cannot pass through document-wide acceptance.
+Bounded drag targets ensure DPI conversion errors cannot pass through
+document-wide acceptance.
 
 Custom protocol `Response` headers preserve MIME type, charset, and binary data;
 HTML with `Content-Type: text/html; charset=utf-8` is parsed as a document.
@@ -540,6 +602,17 @@ application after changing system language preferences to refresh existing UI.
 IPC `senderFrame` and `mainFrame` share stable, native-validated frame identities.
 Subframes remain distinct and replaced documents become detached; consumers
 can enforce main-frame authorization without disabling their checks.
+
+Blink classifies same-document history and fragment commits explicitly. In-page
+navigation updates the URL and emits `did-navigate-in-page` without replacing frame
+identity, rerunning preload, revoking file authority, or creating a loading cycle.
+Back/forward traversal keeps Blink's history offset aligned with stored entries.
+Full navigation and reload, including the same URL, replace the document. Brokered
+documents require an observed authorized response; intrinsic documents retain their
+existing checks. Custom-protocol requests preserve their path and query. Resource
+authorization ignores fragments while retaining exact path, query, and method checks.
+The navigation regression covers state/IPC continuity, same-URL custom-protocol and
+HTTP reloads with query/fragment URLs, and detachment of previous-document frames.
 
 Local-storage mutation acknowledgements are posted after the native setter
 returns, matching Mojo ordering and allowing Blink to register its pending

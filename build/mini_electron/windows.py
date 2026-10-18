@@ -466,7 +466,7 @@ def _find_llvm(required_major: int) -> Path:
     )
 
 
-def _verify_toolchain(msbuild: Path, sdk_version: str) -> None:
+def _verify_toolchain(msbuild: Path, sdk_version: str) -> str:
     version = subprocess.run(
         [str(msbuild), "-version", "-nologo"],
         check=False,
@@ -480,9 +480,25 @@ def _verify_toolchain(msbuild: Path, sdk_version: str) -> None:
         raise BuildError(f"Visual Studio 2022 MSBuild is required; found: {version.stdout.strip()}")
 
     vs_root = _visual_studio_root(msbuild)
-    msvc_roots = sorted((vs_root / "VC" / "Tools" / "MSVC").glob("*"), reverse=True)
-    if not any((path / "bin" / "Hostx64" / "x64" / "cl.exe").is_file() for path in msvc_roots):
-        raise BuildError(f"The Visual Studio v143 x64 C++ toolchain is missing under {vs_root}")
+    msvc_roots = sorted(
+        (vs_root / "VC" / "Tools" / "MSVC").glob("*"),
+        key=lambda path: tuple(int(part) for part in path.name.split(".")),
+        reverse=True,
+    )
+    msvc = next(
+        (
+            path for path in msvc_roots
+            if (path / "bin" / "Hostx64" / "x64" / "cl.exe").is_file()
+            and (path / "atlmfc" / "include" / "atldef.h").is_file()
+            and (path / "atlmfc" / "lib" / "x64" / "atls.lib").is_file()
+        ),
+        None,
+    )
+    if msvc is None:
+        raise BuildError(
+            f"A complete Visual Studio v143 x64 C++ toolchain with matching ATL is "
+            f"required under {vs_root}. Install MSVC v143 and C++ ATL for that version."
+        )
 
     program_files_x86 = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
     kits = program_files_x86 / "Windows Kits" / "10"
@@ -497,6 +513,7 @@ def _verify_toolchain(msbuild: Path, sdk_version: str) -> None:
         raise BuildError(
             f"Windows SDK {sdk_version} is incomplete; missing: " + ", ".join(missing)
         )
+    return msvc.name
 
 
 def _same_file(first: Path, second: Path) -> bool:
@@ -619,6 +636,7 @@ def _build_projects(
     output: Path,
     manifest: dict[str, object],
     msbuild: Path,
+    msvc_version: str,
     llvm_bin: Path,
     nasm_dir: Path,
     vsnasm_dir: Path,
@@ -663,6 +681,7 @@ def _build_projects(
             f"-p:OutDir={_windows_path(stage, trailing_separator=True)}",
             f"-p:IntDir={_windows_path(intermediate, trailing_separator=True)}",
             "-p:PlatformToolset=v143",
+            f"-p:VCToolsVersion={msvc_version}",
             f"-p:WindowsTargetPlatformVersion={sdk}",
             "-p:UseMultiToolTask=true",
             f"-p:MultiProcMaxCount={jobs}",
@@ -1010,7 +1029,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
         _generate_asar_source_header(asar_header)
 
         msbuild = _find_msbuild()
-        _verify_toolchain(msbuild, sdk_version)
+        msvc_version = _verify_toolchain(msbuild, sdk_version)
         llvm_bin = _find_llvm(llvm_major)
         nasm_dir = _ensure_nasm(root)
         nghttp2_root = _ensure_nghttp2(root)
@@ -1020,6 +1039,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
             output,
             manifest,
             msbuild,
+            msvc_version,
             llvm_bin,
             nasm_dir,
             vsnasm_dir,

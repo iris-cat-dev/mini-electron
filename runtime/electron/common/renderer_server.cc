@@ -81,8 +81,8 @@
 #include "third_party/skia/include/core/SkPixmap.h"
 #include "url/gurl.h"
 #include "url/url_util.h"
-#if BUILDFLAG(IS_MAC)
-#include "platform/macos/clipboard_mac.h"
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#include "platform/clipboard.h"
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -103,6 +103,15 @@ std::string FrameIdString(mini_electron_web_frame_handle frame)
 {
     return base::NumberToString(
         static_cast<uint64_t>(reinterpret_cast<uintptr_t>(frame)));
+}
+
+bool SameNavigationResource(const std::string& approved_url,
+    const std::string& request_url)
+{
+    GURL approved(approved_url);
+    GURL request(request_url);
+    return approved.is_valid() && request.is_valid()
+        && approved.GetWithoutRef() == request.GetWithoutRef();
 }
 
 const char* ResourceTypeName(int resource_type)
@@ -343,8 +352,8 @@ public:
     ~RendererServerImpl()
     {
         content::SetRendererStorageBroker({});
-#if BUILDFLAG(IS_MAC)
-        mini_electron::mac::SetRendererClipboardBroker({});
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+        mini_electron::SetRendererClipboardBroker({});
 #endif
         content::SetRendererPermissionBroker({});
         StopControlThread();
@@ -401,8 +410,8 @@ public:
                     failure_reply({}, "storage broker channel is closed");
                 }
             });
-#if BUILDFLAG(IS_MAC)
-        mini_electron::mac::SetRendererClipboardBroker(
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+        mini_electron::SetRendererClipboardBroker(
             [this](base::Value::Dict payload, base::Value::Dict* result) {
                 payload.Set("kind", "clipboard");
                 std::string error;
@@ -578,8 +587,8 @@ public:
         }, this, nullptr);
         // ClipboardHost runs on Blink's sequence. Keep its browser transport
         // installed until view/context teardown and queued Blink work drain.
-#if BUILDFLAG(IS_MAC)
-        mini_electron::mac::SetRendererClipboardBroker({});
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+        mini_electron::SetRendererClipboardBroker({});
 #endif
         mini_electron_uninit();
     }
@@ -835,7 +844,8 @@ private:
         std::lock_guard<std::mutex> lock(navigation_lock_);
         auto found = pending_navigations_.find(frame_id);
         if (found == pending_navigations_.end()
-            || found->second.url != url || found->second.method != method)
+            || !SameNavigationResource(found->second.url, url)
+            || found->second.method != method)
             return {};
         std::string token = std::move(found->second.token);
         pending_navigations_.erase(found);
@@ -848,7 +858,8 @@ private:
         std::lock_guard<std::mutex> lock(navigation_lock_);
         auto found = pending_navigations_.find(frame_id);
         return found != pending_navigations_.end()
-            && found->second.url == url && found->second.method == method;
+            && SameNavigationResource(found->second.url, url)
+            && found->second.method == method;
     }
     uint64_t RequestParentWithId(std::string type, base::Value::Dict payload,
         std::function<void(uint64_t, base::Value::Dict, std::string)> callback,
@@ -1765,16 +1776,77 @@ private:
                 else if (*name == "middle")
                     button = 1;
             }
+#if BUILDFLAG(IS_WIN)
+            const int native_message =
+                event.FindInt("nativeMessage").value_or(0);
+            switch (native_message) {
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONDBLCLK:
+            case WM_MBUTTONUP:
+                button = 1;
+                break;
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONDBLCLK:
+            case WM_RBUTTONUP:
+                button = 2;
+                break;
+            default:
+                break;
+            }
+#endif
             if (*type == "mouseDown")
                 message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONDOWN
                     : button == 1 ? MINI_ELECTRON_MSG_MBUTTONDOWN : MINI_ELECTRON_MSG_LBUTTONDOWN;
             else if (*type == "mouseUp")
                 message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONUP
                     : button == 1 ? MINI_ELECTRON_MSG_MBUTTONUP : MINI_ELECTRON_MSG_LBUTTONUP;
+#if BUILDFLAG(IS_WIN)
+            switch (native_message) {
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONDBLCLK:
+            case WM_LBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONDBLCLK:
+            case WM_MBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONDBLCLK:
+            case WM_RBUTTONUP:
+                message = static_cast<unsigned>(native_message);
+                break;
+            default:
+                break;
+            }
+#endif
             return !!mini_electron_fire_mouse_event(view_, message, x, y, flags);
         }
         unsigned key = static_cast<unsigned>(event.FindInt("keyCode").value_or(0));
         bool system = event.FindBool("systemKey").value_or(false);
+#if BUILDFLAG(IS_WIN)
+        if ((*type == "keyDown" || *type == "keyUp" || *type == "char")
+            && event.FindInt("nativeMessage") && event.FindInt("nativeLParam")) {
+            auto event_type = *type == "keyDown"
+                ? blink::WebInputEvent::Type::kRawKeyDown
+                : *type == "keyUp" ? blink::WebInputEvent::Type::kKeyUp
+                                   : blink::WebInputEvent::Type::kChar;
+            uint64_t keyboard_layout = 0;
+            if (const std::string* layout = event.FindString("keyboardLayout"))
+                base::StringToUint64(*layout, &keyboard_layout);
+            auto input = content::PlatformEventHandler::buildKeyboardEvent(
+                event_type, static_cast<UINT>(*event.FindInt("nativeMessage")),
+                *type == "char" ? event.FindInt("charCode").value_or(key) : key,
+                static_cast<LPARAM>(static_cast<uint32_t>(
+                    *event.FindInt("nativeLParam"))),
+                flags, reinterpret_cast<HKL>(
+                    static_cast<uintptr_t>(keyboard_layout)));
+            input.is_system_key = system;
+            content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
+                [input](content::WebViewHost* view) {
+                    view->onKeyboardEvent(input);
+                });
+            return true;
+        }
+#endif
         if ((*type == "keyDown" || *type == "keyUp" || *type == "char") &&
             event.FindInt("nativeKeyCode") && event.FindInt("domCode") &&
             event.FindInt("domKey")) {
@@ -2993,11 +3065,21 @@ private:
     static void MINI_ELECTRON_CALL_TYPE FrameUrlChanged(
         mini_electron_web_view, void* parameter,
         mini_electron_web_frame_handle frame, const utf8* url,
-        uint64_t parent_frame_id, BOOL is_main_frame)
+        uint64_t parent_frame_id, BOOL is_main_frame, BOOL is_same_document)
     {
         auto* self = static_cast<RendererServerImpl*>(parameter);
         const uint64_t frame_id = static_cast<uint64_t>(
             reinterpret_cast<uintptr_t>(frame));
+        base::Value::Dict payload;
+        payload.Set("frameId", base::NumberToString(frame_id));
+        payload.Set("url", url ? url : "");
+        payload.Set("parentFrameId", base::NumberToString(parent_frame_id));
+        payload.Set("isMainFrame", !!is_main_frame);
+        if (is_same_document) {
+            self->SendEvent(
+                "frame-navigated-in-page", std::move(payload), frame);
+            return;
+        }
         content::ClearBrokeredFilesForFrame(frame_id);
         uint64_t& document_epoch = self->frame_document_epochs_[frame_id];
         document_epoch = document_epoch == std::numeric_limits<uint64_t>::max()
@@ -3007,18 +3089,12 @@ private:
         self->text_input_state_.reset();
         self->SendEvent("text-input-state", {});
         self->ScheduleTextInputState();
-        base::Value::Dict payload;
-        payload.Set("frameId", base::NumberToString(frame_id));
-        payload.Set("url", url ? url : "");
         {
             std::lock_guard<std::mutex> lock(self->navigation_lock_);
             self->frame_hierarchy_[frame_id] = {
                 parent_frame_id, !!is_main_frame
             };
         }
-        payload.Set("parentFrameId",
-            base::NumberToString(parent_frame_id));
-        payload.Set("isMainFrame", !!is_main_frame);
         self->SendEvent("frame-committed", std::move(payload), frame);
     }
 

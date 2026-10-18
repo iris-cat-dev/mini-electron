@@ -14,6 +14,7 @@ public:
     static scoped_refptr<LayoutTheme> Create();
 
     Color SystemHighlightFromColorProvider(mojom::blink::ColorScheme color_scheme, const ui::ColorProvider* color_provider) const override;
+    Color PlatformInactiveSelectionForegroundColor(mojom::blink::ColorScheme color_scheme) const override;
 
     // TODO(crbug.com/1092093): Implement IsAccentColorCustomized and
     // GetAccentColor to support system accent colors in windows.

@@ -256,10 +256,7 @@ void Clipboard::DispatchPortableRepresentation(const ObjectMapParams& params)
                         WriteBookmark(data.title, data.url);
                     },
                     [&](const TextData& data) {
-                        if (data.data.empty()) {
-                            return;
-                        }
-
+                        // Empty text is an explicit representation, not an omitted write.
                         WriteText(data.data);
                     },
                     [&](const WebkitData& data) { WriteWebSmartPaste(); },

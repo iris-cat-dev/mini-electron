@@ -152,6 +152,7 @@
     <ClCompile Include="..\..\..\third_party\leveldb\util\logging.cc" />
     <ClCompile Include="..\..\..\third_party\leveldb\util\options.cc" />
     <ClCompile Include="..\..\..\third_party\leveldb\util\status.cc" />
+    <ClCompile Include="..\..\..\platform\windows\clipboard_win.cc" />
     <ClCompile Include="..\..\..\platform\windows\compat\atomic.cc" />
     <ClCompile Include="..\..\..\platform\windows\main.cc">
       <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</PreprocessToFile>
@@ -235,6 +236,7 @@
     <ClInclude Include="..\..\..\runtime\electron\node_bindings.h" />
     <ClInclude Include="..\..\..\runtime\electron\renderer\api\context_bridge.h" />
     <ClInclude Include="..\..\..\runtime\electron\renderer\api\object_cache.h" />
+    <ClInclude Include="..\..\..\platform\clipboard.h" />
     <ClInclude Include="..\..\..\platform\windows\resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
