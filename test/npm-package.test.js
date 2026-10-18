@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const artifacts = require('../artifacts.json');
 
 const ROOT = path.resolve(__dirname, '..');
 const PACKAGE_FILES = ['artifacts.json', 'cli.js', 'index.js', 'install.js', 'package.json'];
@@ -53,8 +54,8 @@ function createDistribution(directory) {
   fs.writeFileSync(
     path.join(directory, 'version.json'),
     `${JSON.stringify({
-      packageVersion: '0.1.6',
-      runtimeVersion: '0.1.6',
+      packageVersion: artifacts.packageVersion,
+      runtimeVersion: artifacts.runtimeVersion,
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -135,8 +136,8 @@ const macTargetEnvironment = {
 
 function macVersion(files, links) {
   return {
-    packageVersion: '0.1.6',
-    runtimeVersion: '0.1.6',
+    packageVersion: artifacts.packageVersion,
+    runtimeVersion: artifacts.runtimeVersion,
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -257,8 +258,8 @@ test('verified offline zip installs through the same contract as release archive
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
   const version = {
-    packageVersion: '0.1.6',
-    runtimeVersion: '0.1.6',
+    packageVersion: artifacts.packageVersion,
+    runtimeVersion: artifacts.runtimeVersion,
     electronApiVersion: '41.2.0',
     nodeVersion: '24.0.0',
     nodeModuleAbi: 134,
@@ -408,8 +409,8 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
     const fixture = packageFixture(t);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
-      packageVersion: '0.1.6',
-      runtimeVersion: '0.1.6',
+      packageVersion: artifacts.packageVersion,
+      runtimeVersion: artifacts.runtimeVersion,
       electronApiVersion: '41.2.0',
       nodeVersion: '24.0.0',
       nodeModuleAbi: 134,
@@ -464,8 +465,10 @@ test('electron bin preserves argv, stdout, stderr, and exit code', (t) => {
   const fixture = packageFixture(t);
   const override = path.join(temporaryDirectory(t), 'override');
   fs.mkdirSync(override);
-  // Link rather than copy: Homebrew's node resolves @rpath/libnode next to its real path.
-  fs.symlinkSync(process.execPath, path.join(override, 'electron.exe'));
+  // Homebrew node needs its real path for @rpath/libnode; Windows needs no symlink privilege.
+  const executable = path.join(override, 'electron.exe');
+  if (process.platform === 'win32') fs.copyFileSync(process.execPath, executable);
+  else fs.symlinkSync(process.execPath, executable);
   const child = path.join(temporaryDirectory(t), 'child.js');
   fs.writeFileSync(child, "process.stdout.write(process.argv[2]); process.stderr.write(process.argv[3]); process.exit(23);\n");
   const result = runNode([path.join(fixture, 'cli.js'), child, 'stdout-value', 'stderr-value'], {

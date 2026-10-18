@@ -1,6 +1,8 @@
 'use strict';
 
-// ELECTRON_RUN_AS_NODE=1 out/mac-arm64/mini-electron test/node-sqlite-smoke.js
+// Run with ELECTRON_RUN_AS_NODE=1 and either packaged runtime:
+// out/windows-x64/runtime-dist/electron.exe test/node-sqlite-smoke.js
+// out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron test/node-sqlite-smoke.js
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -19,6 +21,10 @@ async function main() {
   try {
     const file = path.join(temporary, 'agent.db');
     const database = open(file);
+    assert.throws(() => database.enableLoadExtension(true), { code: 'ERR_INVALID_STATE' });
+    assert.throws(() => database.loadExtension(path.join(temporary, 'not-authorized-extension')), {
+      code: 'ERR_INVALID_STATE',
+    });
     database.exec(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE auth_credentials (
@@ -87,7 +93,7 @@ async function main() {
         } catch (error) { reject(error); }
       });
     });
-    console.log(`PASS: native SQLite ${process.versions.sqlite}, OAuth-style filtering, WAL, rollback, read-only access, metadata, backup, changesets, and worker binding`);
+    console.log(`PASS: native SQLite ${process.versions.sqlite}, OAuth-style filtering, WAL, rollback, read-only access, metadata, backup, changesets, worker binding, and extension-loading restrictions`);
   } finally {
     for (const database of databases) database.close();
     fs.rmSync(temporary, { recursive: true, force: true });

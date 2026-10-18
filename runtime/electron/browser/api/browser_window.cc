@@ -1003,6 +1003,8 @@ public:
 
     void clearTextInputState()
     {
+        if (m_textInputEditable && ::IsWindow(m_hWnd))
+            ::ImmAssociateContextEx(m_hWnd, nullptr, 0);
         m_textInputContents = nullptr;
         m_textInputCaret = {};
         m_textInputEditable = false;
@@ -3102,6 +3104,8 @@ private:
 
         if (!::IsWindow(m_hWnd))
             return;
+        // Only associate the native IME while Blink has an editable text client.
+        ::ImmAssociateContextEx(m_hWnd, nullptr, 0);
 
         registerNativeDropTarget();
 
@@ -3213,6 +3217,8 @@ private:
         m_pendingImeSerial = 0;
         m_textInputContents = contents;
         m_textInputCaret = caret;
+        if (!m_textInputEditable)
+            ::ImmAssociateContextEx(m_hWnd, nullptr, IACE_DEFAULT);
         m_textInputEditable = true;
         m_rendererCompositionActive = *marked_start >= 0 && *marked_length > 0;
         if (m_nativeImeActive && m_imeTarget == contents)

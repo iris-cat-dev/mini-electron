@@ -231,6 +231,7 @@
     <ClInclude Include="..\..\..\third_party\libnode\src\node_snapshot_builder.h" />
     <ClInclude Include="..\..\..\third_party\libnode\src\node_sockaddr-inl.h" />
     <ClInclude Include="..\..\..\third_party\libnode\src\node_sockaddr.h" />
+    <ClInclude Include="..\..\..\third_party\libnode\src\node_sqlite.h" />
     <ClInclude Include="..\..\..\third_party\libnode\src\node_stat_watcher.h" />
     <ClInclude Include="..\..\..\third_party\libnode\src\node_task_runner.h" />
     <ClInclude Include="..\..\..\third_party\libnode\src\node_threadsafe_cow-inl.h" />
@@ -588,6 +589,7 @@
     <ClCompile Include="..\..\..\third_party\libnode\src\node_snapshotable.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\node_snapshot_stub.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\node_sockaddr.cc" />
+    <ClCompile Include="..\..\..\third_party\libnode\src\node_sqlite.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\node_stat_watcher.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\node_symbols.cc" />
     <ClCompile Include="..\..\..\third_party\libnode\src\node_task_queue.cc" />
@@ -908,7 +910,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(MiniElectronNGHTTP2Root)\lib\includes;$(SolutionDir)../third_party/libnode/deps/zstd/lib;$(SolutionDir)../gen;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../third_party/abseil-cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HAVE_SQLITE=1;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_PREUPDATE_HOOK;SQLITE_ENABLE_SESSION;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sqlite;$(MiniElectronNGHTTP2Root)\lib\includes;$(SolutionDir)../third_party/libnode/deps/zstd/lib;$(SolutionDir)../gen;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../third_party/abseil-cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -191,8 +191,9 @@ app.whenReady().then(async () => {
   }
   window.webContents.setZoomFactor(1);await pause(100);await focus('rich');await preedit('rich');
   const beforeScroll=await request('guiState');
+  await evaluate('window.editorScrollEnded=false;addEventListener("scrollend",()=>{editorScrollEnded=true},{once:true});true');
   await request('wheel',{x:initialGeometry.clientX+20,y:initialGeometry.clientY+20,delta:-120});
-  await eventually(()=>evaluate('scrollY'),y=>y>0,'real page wheel scroll');
+  await eventually(()=>evaluate('scrollY>0&&window.editorScrollEnded'),Boolean,'real page wheel scroll completed');
   const scrolled=await caret('rich');assert(scrolled.top<beforeScroll.top);await capture('editor-ime-page-scroll');
   const beforeMove=await request('geometry');await request('move',{x:beforeMove.left+70,y:beforeMove.top+50});
   const moved=await caret('rich');assert.equal(moved.screenX-scrolled.screenX,70);assert.equal(moved.screenY-scrolled.screenY,50);

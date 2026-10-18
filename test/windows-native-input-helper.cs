@@ -43,6 +43,7 @@ internal static class NativeInputHelper
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr window);
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
@@ -398,7 +399,6 @@ internal static class NativeInputHelper
     }
     private static void BeginDrag(Dictionary<string, object> command) {
         if (drag != null) throw new InvalidOperationException("A native drag is already active");
-        drag = command; accepted = 0;
         Point origin = new Point { X = source.Width / 2, Y = source.Height / 2 };
         ClientToScreen(source.Handle, ref origin);
         Point destination = new Point { X = Number(command, "x"), Y = Number(command, "y") };
@@ -406,7 +406,10 @@ internal static class NativeInputHelper
             destination = new Point { X = control.Width / 2, Y = control.Height / 2 };
             ClientToScreen(control.Handle, ref destination);
         }
-        form.Activate();
+        Focus(form.Handle);
+        if (WindowFromPoint(origin) != source.Handle)
+            throw new InvalidOperationException("Native OLE source is obscured; refusing pointer input");
+        drag = command; accepted = 0;
         new Thread(() => {
             try {
                 SetCursorPos(origin.X, origin.Y); Thread.Sleep(80); Mouse(false); Thread.Sleep(100);
@@ -450,6 +453,8 @@ internal static class NativeInputHelper
         };
         form.Controls.Add(source); form.Controls.Add(control);
         form.Shown += (sender, e) => {
+            // Keep Node's console hidden, but undo its startup hide flag for the OLE source.
+            ShowWindow(form.Handle, 5);
             Console.WriteLine("NATIVE_READY"); Console.Out.Flush();
             new Thread(() => {
                 string line;

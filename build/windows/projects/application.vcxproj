@@ -116,6 +116,7 @@
     <ClCompile Include="..\..\..\runtime\storage\stock_profile_migrator.cc" />
     <ClCompile Include="..\..\..\third_party\sqlite\sqlite3.c">
       <CompileAs>CompileAsC</CompileAs>
+      <PreprocessorDefinitions>SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_PREUPDATE_HOOK;SQLITE_ENABLE_SESSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="..\..\..\third_party\leveldb\db\builder.cc" />
     <ClCompile Include="..\..\..\third_party\leveldb\db\db_impl.cc" />
