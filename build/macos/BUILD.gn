@@ -358,7 +358,10 @@ source_set("mini_electron_net_data_url") {
 
 static_library("mini_electron_content") {
   sources = mini_electron_content_sources
-  sources += [ "//platform/macos/clipboard_mac.mm" ]
+  sources += [
+    "//platform/macos/clipboard_mac.mm",
+    "//platform/macos/sandbox_support_mac.mm",
+  ]
   configs += [ ":mini_electron_engine_config" ]
   deps = [ ":mini_electron_net_data_url" ]
 }

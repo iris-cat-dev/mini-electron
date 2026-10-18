@@ -91,16 +91,19 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   size_t count = 1; napi_value arg;
   napi_get_cb_info(env, info, &count, &arg, nullptr, nullptr);
   NSString* format = count == 1 ? Text(env, arg) : nil;
+  const bool web = [format hasPrefix:@"web-"];
+  if (web) format = [format substringFromIndex:4];
   if (![format isEqualToString:@"png"] && ![format isEqualToString:@"tiff"]
       && ![format isEqualToString:@"malformed-png"]
-      && ![format isEqualToString:@"oversized-png"]) {
+      && ![format isEqualToString:@"oversized-png"]
+      && ![format isEqualToString:@"no-image"]) {
     napi_throw_type_error(env, nullptr,
                           "imageClipboard expects a supported image fixture");
     return nullptr;
   }
   // Fixed 1x1 PNG and TIFF fixtures avoid encoder availability differences.
   NSData* png = [[NSData alloc] initWithBase64EncodedString:
-      @"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL9WQAAAABJRU5ErkJggg=="
+      @"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="
       options:0];
   NSData* data = png;
   NSPasteboardType type = NSPasteboardTypePNG;
@@ -116,7 +119,16 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   }
   if (!data) { napi_throw_error(env, nullptr, "Failed to create clipboard image"); return nullptr; }
   NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
-  [item setData:data forType:type];
+  if (![format isEqualToString:@"no-image"])
+    [item setData:data forType:type];
+  if (web) {
+    NSString* url = @"https://example.invalid/copied-image.png";
+    [item setString:[NSString stringWithFormat:@"<img src=\"%@\" alt=\"copied web image\">", url]
+            forType:NSPasteboardTypeHTML];
+    [item setString:url forType:NSPasteboardTypeURL];
+    [item setString:url forType:NSPasteboardTypeString];
+    [item setString:@"copied web image" forType:@"public.url-name"];
+  }
   NSPasteboard* board = NSPasteboard.generalPasteboard;
   [board clearContents];
   if (![board writeObjects:@[ item ]]) {

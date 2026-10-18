@@ -341,18 +341,27 @@ void RenderWidgetHostImpl::SetCursor(const ::ui::Cursor& cursor)
 
 void RenderWidgetHostImpl::TextInputStateChanged(::ui::mojom::blink::TextInputStatePtr state)
 {
+    m_engineWebView->notifyTextInputStateChanged();
     if (!m_engineWebView->getWebView())
         return;
     blink::WebLocalFrame* focusedFrame = m_engineWebView->getWebView()->FocusedFrame();
     if (!focusedFrame)
         return;
     gfx::Rect rect;
-    focusedFrame->FirstRectForCharacterRange(0, state->selection.end(), rect);
+    focusedFrame->FirstRectForCharacterRange(state->selection.end(), 0, rect);
 
     gfx::Point p = rect.origin();
     p.Offset(rect.width(), 0);
 
     m_engineWebView->setCaretPos(p);
+}
+
+void RenderWidgetHostImpl::SelectionBoundsChanged(const gfx::Rect& anchor_rect,
+    base::i18n::TextDirection anchor_dir, const gfx::Rect& focus_rect,
+    base::i18n::TextDirection focus_dir, const gfx::Rect& bounding_box_rect,
+    bool is_anchor_first)
+{
+    m_engineWebView->notifyTextInputStateChanged();
 }
 
 void RenderWidgetHostImpl::onClientConnectionLost()

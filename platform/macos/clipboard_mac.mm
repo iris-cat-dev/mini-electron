@@ -340,7 +340,7 @@ bool WriteClipboard(const ClipboardContent& content) {
   ClipboardBroker broker = SnapshotClipboardBroker(&broker_required);
   if (broker_required) {
     if (!broker || content.rtf || content.bookmark_title
-        || content.bookmark_url || content.png) {
+        || content.bookmark_url) {
       return false;
     }
     base::Value::Dict request;
@@ -349,11 +349,22 @@ bool WriteClipboard(const ClipboardContent& content) {
       request.Set("text", base::UTF16ToUTF8(*content.text));
     if (content.html)
       request.Set("html", base::UTF16ToUTF8(*content.html));
+    if (content.png)
+      request.Set("png", base::Value(*content.png));
     base::Value::Dict result;
     return broker(std::move(request), &result)
         && result.FindBool("value").value_or(false);
   }
   @autoreleasepool {
+    NSData* image = nil;
+    if (content.png && !content.png->empty()) {
+      if (content.png->size() > kMaximumClipboardImageBytes)
+        return false;
+      image = [NSData dataWithBytes:content.png->data()
+                            length:content.png->size()];
+      if (!IsDecodableImage(image, CFSTR("public.png")))
+        return false;
+    }
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard clearContents];
     NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
@@ -383,9 +394,7 @@ bool WriteClipboard(const ClipboardContent& content) {
       if (!content.text && ![item setString:url forType:NSPasteboardTypeString])
         return false;
     }
-    if (content.png && !content.png->empty()) {
-      NSData* image = [NSData dataWithBytes:content.png->data()
-                                     length:content.png->size()];
+    if (image) {
       if (![item setData:image forType:NSPasteboardTypePNG])
         return false;
     }

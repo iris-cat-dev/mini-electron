@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -724,6 +725,8 @@ class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
 
   void onWebContentsDeleted(atom::WebContents* contents) override;
   void onWebContentsPaint(atom::WebContents*) override;
+  void onWebContentsTextInputState(
+      atom::WebContents*, const base::Value::Dict& state) override;
   bool supportsFramePreparation() const override { return view_ && view_.window; }
   uint64_t prepareWebContentsFrame(atom::WebContents*, uint64_t) override;
 
@@ -779,6 +782,8 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
 
   void onWebContentsDeleted(atom::WebContents* contents) override;
   void onWebContentsPaint(atom::WebContents*) override;
+  void onWebContentsTextInputState(
+      atom::WebContents*, const base::Value::Dict& state) override;
   bool supportsFramePreparation() const override { return true; }
   uint64_t prepareWebContentsFrame(atom::WebContents*, uint64_t) override;
   void onWebContentsReadyToShow(atom::WebContents*) override;
@@ -1096,6 +1101,7 @@ static bool IsPointerEvent(NSEventType type) {
 @interface MiniElectronRendererView : NSView <NSTextInputClient>
 - (instancetype)initWithFrame:(NSRect)frame owner:(RendererSurfaceHost*)owner;
 - (void)cancelNativeDrag;
+- (void)updateTextInputState:(const base::Value::Dict&)state;
 @end
 
 @interface MiniElectronWindowDelegate : NSObject <NSWindowDelegate>
@@ -1104,7 +1110,14 @@ static bool IsPointerEvent(NSEventType type) {
 
 @implementation MiniElectronRendererView {
   RendererSurfaceHost* _owner;
-  NSMutableAttributedString* _markedText;
+  NSRange _textSelection;
+  NSRange _textMarkedRange;
+  NSRect _textSelectionRect;
+  NSRect _textMarkedRect;
+  BOOL _textInputEditable;
+  BOOL _composing;
+  uint64_t _imeSerial;
+  uint64_t _pendingImeSerial;
   NSEvent* _interpretingKey;
   BOOL _nativeDragActive;
 }
@@ -1113,7 +1126,8 @@ static bool IsPointerEvent(NSEventType type) {
   self = [super initWithFrame:frame];
   if (self) {
     _owner = owner;
-    _markedText = [[NSMutableAttributedString alloc] init];
+    _textSelection = NSMakeRange(NSNotFound, 0);
+    _textMarkedRange = NSMakeRange(NSNotFound, 0);
     self.wantsLayer = YES;
     [self registerForDraggedTypes:@[ NSPasteboardTypeFileURL ]];
   }
@@ -1121,8 +1135,8 @@ static bool IsPointerEvent(NSEventType type) {
 }
 - (void)dealloc {
   [self unregisterDraggedTypes];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 #if !__has_feature(objc_arc)
-  [_markedText release];
   [super dealloc];
 #endif
 }
@@ -1135,6 +1149,18 @@ static bool IsPointerEvent(NSEventType type) {
 }
 - (void)viewDidMoveToWindow {
   [super viewDidMoveToWindow];
+  NSNotificationCenter* notifications = NSNotificationCenter.defaultCenter;
+  [notifications removeObserver:self];
+  if (self.window) {
+    for (NSNotificationName name in @[
+        NSWindowDidMoveNotification, NSWindowDidChangeBackingPropertiesNotification,
+        NSWindowDidBecomeKeyNotification, NSWindowDidResignKeyNotification ]) {
+      [notifications addObserver:self selector:@selector(textInputWindowChanged:)
+                           name:name object:self.window];
+    }
+  } else {
+    [self updateTextInputState:base::Value::Dict()];
+  }
   // A custom NSView is not automatically selected like an NSTextView. Seed
   // the responder chain on attachment, without stealing an existing child
   // renderer's focus or activating a nonfocusable companion panel.
@@ -1143,10 +1169,22 @@ static bool IsPointerEvent(NSEventType type) {
       (!window.firstResponder || window.firstResponder == window))
     [window makeFirstResponder:self];
 }
+- (void)textInputWindowChanged:(NSNotification*)notification {
+  if ([notification.name isEqual:NSWindowDidChangeBackingPropertiesNotification])
+    _owner->Resize();
+  if ([notification.name isEqual:NSWindowDidResignKeyNotification]) {
+    [self updateTextInputState:base::Value::Dict()];
+    _owner->Focus(false);
+  } else if ([notification.name isEqual:NSWindowDidBecomeKeyNotification]) {
+    _owner->Focus(self.window.firstResponder == self);
+  }
+  [self.inputContext invalidateCharacterCoordinates];
+}
 - (void)drawRect:(NSRect)dirtyRect { _owner->Draw(dirtyRect); }
 - (void)setFrameSize:(NSSize)newSize {
   [super setFrameSize:newSize];
   _owner->Resize();
+  [self.inputContext invalidateCharacterCoordinates];
 }
 - (void)resetCursorRects {
   [super resetCursorRects];
@@ -1178,7 +1216,13 @@ static bool IsPointerEvent(NSEventType type) {
   }
 }
 - (BOOL)becomeFirstResponder { _owner->Focus(true); return YES; }
-- (BOOL)resignFirstResponder { _owner->Focus(false); return YES; }
+- (BOOL)resignFirstResponder {
+  if (_composing)
+    [self unmarkText];
+  [self updateTextInputState:base::Value::Dict()];
+  _owner->Focus(false);
+  return YES;
+}
 
 - (int)inputModifiers:(NSEvent*)event {
   NSEventModifierFlags flags = event.modifierFlags;
@@ -1413,10 +1457,88 @@ static bool IsPointerEvent(NSEventType type) {
 }
 
 
+- (BOOL)hasNativeTextFocus {
+  return self.window.isKeyWindow && self.window.firstResponder == self;
+}
+
+- (void)updateTextInputState:(const base::Value::Dict&)state {
+  const bool editable = state.FindBool("editable").value_or(false);
+  uint64_t serial = 0;
+  if (const std::string* value = state.FindString("imeSerial"))
+    base::StringToUint64(*value, &serial);
+  // Native composition calls may outpace IPC delivery. An older renderer
+  // snapshot must not undo a newer marked/selected range while it is in flight.
+  if (editable && serial < _pendingImeSerial)
+    return;
+  const double scale = state.FindDouble("scale").value_or(0);
+  auto read_rect = [scale](const base::Value::Dict* rect) {
+    if (!rect || !std::isfinite(scale) || scale <= 0)
+      return NSZeroRect;
+    return NSMakeRect(rect->FindInt("x").value_or(0) / scale,
+        rect->FindInt("y").value_or(0) / scale,
+        rect->FindInt("width").value_or(0) / scale,
+        rect->FindInt("height").value_or(0) / scale);
+  };
+  const int start = state.FindInt("selectionStart").value_or(-1);
+  const int length = state.FindInt("selectionLength").value_or(0);
+  const NSRect rect = read_rect(state.FindDict("selectionRect"));
+  _textInputEditable = editable && [self hasNativeTextFocus]
+      && start >= 0 && length >= 0 && rect.size.height > 0;
+  _pendingImeSerial = 0;
+  if (!_textInputEditable) {
+    _textSelection = NSMakeRange(NSNotFound, 0);
+    _textMarkedRange = NSMakeRange(NSNotFound, 0);
+    _textSelectionRect = NSZeroRect;
+    _textMarkedRect = NSZeroRect;
+    _composing = NO;
+    [self.inputContext discardMarkedText];
+  } else {
+    _textSelection = NSMakeRange(start, length);
+    _textSelectionRect = rect;
+    const int marked_start = state.FindInt("markedStart").value_or(-1);
+    const int marked_length = state.FindInt("markedLength").value_or(0);
+    _textMarkedRange = marked_start >= 0 && marked_length > 0
+        ? NSMakeRange(marked_start, marked_length) : NSMakeRange(NSNotFound, 0);
+    _textMarkedRect = read_rect(state.FindDict("markedRect"));
+    _composing = _textMarkedRange.location != NSNotFound;
+  }
+  [self.inputContext invalidateCharacterCoordinates];
+}
+
+- (BOOL)sendImeInput:(base::Value::Dict)input replacementRange:(NSRange)range {
+  const NSUInteger limit = std::numeric_limits<int>::max();
+  if (range.location != NSNotFound) {
+    if (range.location > limit || range.length > limit - range.location)
+      return NO;
+    input.Set("replacementStart", static_cast<int>(range.location));
+    input.Set("replacementLength", static_cast<int>(range.length));
+  }
+  _pendingImeSerial = ++_imeSerial;
+  input.Set("imeSerial", base::NumberToString(_pendingImeSerial));
+  if (_owner->SendInput(std::move(input)))
+    return YES;
+  _pendingImeSerial = 0;
+  return NO;
+}
+
 - (void)insertText:(id)value replacementRange:(NSRange)replacementRange {
-  [_markedText deleteCharactersInRange:NSMakeRange(0, _markedText.length)];
+  const BOOL was_composing = _composing;
   NSString* text = [value isKindOfClass:[NSAttributedString class]]
       ? [value string] : value;
+  if (was_composing || replacementRange.location != NSNotFound || !_interpretingKey) {
+    base::Value::Dict input;
+    input.Set("type", "imeCommitText");
+    input.Set("text", text.UTF8String ?: "");
+    if (![self sendImeInput:std::move(input) replacementRange:replacementRange])
+      return;
+    const NSRange replaced = replacementRange.location != NSNotFound
+        ? replacementRange : was_composing ? _textMarkedRange : _textSelection;
+    if (replaced.location != NSNotFound)
+      _textSelection = NSMakeRange(replaced.location + text.length, 0);
+    _textMarkedRange = NSMakeRange(NSNotFound, 0);
+    _composing = NO;
+    return;
+  }
   for (NSUInteger index = 0; index < text.length; ++index) {
     base::Value::Dict input;
     input.Set("type", "char");
@@ -1431,29 +1553,71 @@ static bool IsPointerEvent(NSEventType type) {
     }
     _owner->SendInput(std::move(input));
   }
-  (void)replacementRange;
 }
 - (void)insertText:(id)value { [self insertText:value replacementRange:NSMakeRange(NSNotFound, 0)]; }
 - (void)setMarkedText:(id)value selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
-  NSAttributedString* text = [value isKindOfClass:[NSAttributedString class]]
-      ? value : [[NSAttributedString alloc] initWithString:value];
-  [_markedText setAttributedString:text];
-  (void)selectedRange;
-  (void)replacementRange;
-#if !__has_feature(objc_arc)
-  if (![value isKindOfClass:[NSAttributedString class]]) [text release];
-#endif
+  NSString* text = [value isKindOfClass:[NSAttributedString class]]
+      ? [value string] : value;
+  const NSUInteger start = std::min(selectedRange.location, text.length);
+  const NSUInteger length = std::min(selectedRange.length, text.length - start);
+  if (text.length > static_cast<NSUInteger>(std::numeric_limits<int>::max()))
+    return;
+  base::Value::Dict input;
+  input.Set("type", "imeSetComposition");
+  input.Set("text", text.UTF8String ?: "");
+  input.Set("selectionStart", static_cast<int>(start));
+  input.Set("selectionLength", static_cast<int>(length));
+  if (![self sendImeInput:std::move(input) replacementRange:replacementRange])
+    return;
+  const NSRange replaced = replacementRange.location != NSNotFound
+      ? replacementRange : _composing ? _textMarkedRange : _textSelection;
+  if (replaced.location != NSNotFound) {
+    _textMarkedRange = text.length ? NSMakeRange(replaced.location, text.length)
+                                 : NSMakeRange(NSNotFound, 0);
+    _textSelection = NSMakeRange(replaced.location + start, length);
+  }
+  _composing = text.length != 0;
 }
-- (void)unmarkText { [_markedText deleteCharactersInRange:NSMakeRange(0, _markedText.length)]; }
-- (BOOL)hasMarkedText { return _markedText.length != 0; }
-- (NSRange)markedRange { return self.hasMarkedText ? NSMakeRange(0, _markedText.length) : NSMakeRange(NSNotFound, 0); }
-- (NSRange)selectedRange { return NSMakeRange(NSNotFound, 0); }
+- (void)unmarkText {
+  if (_composing) {
+    base::Value::Dict input;
+    input.Set("type", "imeFinishComposition");
+    [self sendImeInput:std::move(input) replacementRange:NSMakeRange(NSNotFound, 0)];
+  }
+  _textMarkedRange = NSMakeRange(NSNotFound, 0);
+  _composing = NO;
+}
+- (BOOL)hasMarkedText { return [self markedRange].location != NSNotFound; }
+- (NSRange)markedRange {
+  return [self hasNativeTextFocus] ? _textMarkedRange : NSMakeRange(NSNotFound, 0);
+}
+- (NSRange)selectedRange {
+  return _textInputEditable && [self hasNativeTextFocus]
+      ? _textSelection : NSMakeRange(NSNotFound, 0);
+}
 - (NSArray<NSAttributedStringKey>*)validAttributesForMarkedText { return @[]; }
-- (NSAttributedString*)attributedSubstringForProposedRange:(NSRange)range actualRange:(NSRangePointer)actualRange { return nil; }
+- (NSAttributedString*)attributedSubstringForProposedRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
+  if (actualRange) *actualRange = NSMakeRange(NSNotFound, 0);
+  return nil;
+}
 - (NSUInteger)characterIndexForPoint:(NSPoint)point { return NSNotFound; }
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
-  if (actualRange) *actualRange = range;
-  return [self.window convertRectToScreen:[self convertRect:NSMakeRect(0, 0, 1, 20) toView:nil]];
+  if (!_textInputEditable || ![self hasNativeTextFocus]) {
+    if (actualRange) *actualRange = NSMakeRange(NSNotFound, 0);
+    return NSZeroRect;
+  }
+  NSRect rect = _textSelectionRect;
+  NSRange represented = _textSelection;
+  if (_textMarkedRange.location != NSNotFound
+      && NSEqualRanges(range, _textMarkedRange) && _textMarkedRect.size.height > 0) {
+    rect = _textMarkedRect;
+    represented = _textMarkedRange;
+  }
+  if (actualRange) *actualRange = represented;
+  // The view is flipped (Blink's top-left origin). AppKit performs both the
+  // flipped view/window conversion and the bottom-left screen conversion.
+  // Resolve window placement at query time so moving a window never stales IPC.
+  return [self.window convertRectToScreen:[self convertRect:rect toView:nil]];
 }
 - (void)doCommandBySelector:(SEL)selector { (void)selector; }
 @end
@@ -1913,6 +2077,11 @@ void MacBrowserWindow::Draw(NSRect dirty_rect) {
   DrawFrame(web_contents_, renderer_view_, dirty_rect);
 }
 
+void MacBrowserWindow::onWebContentsTextInputState(
+    atom::WebContents*, const base::Value::Dict& state) {
+  [(MiniElectronRendererView*)renderer_view_ updateTextInputState:state];
+}
+
 uint64_t MacBrowserWindow::prepareWebContentsFrame(atom::WebContents* contents,
                                                   uint64_t generation) {
   if (contents != web_contents_ || !renderer_view_ || !window_ || closed_)
@@ -1995,6 +2164,11 @@ void MacBrowserView::onWebContentsDeleted(atom::WebContents* contents) {
 void MacBrowserView::onWebContentsPaint(atom::WebContents*) {
   InvalidateFrame();
   [view_ setNeedsDisplay:YES];
+}
+
+void MacBrowserView::onWebContentsTextInputState(
+    atom::WebContents*, const base::Value::Dict& state) {
+  [(MiniElectronRendererView*)view_ updateTextInputState:state];
 }
 
 void MacBrowserView::Draw(NSRect dirty_rect) {

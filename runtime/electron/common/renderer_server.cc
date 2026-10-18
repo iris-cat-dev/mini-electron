@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -57,6 +58,7 @@
 #include "third_party/blink/public/platform/web_blob_info.h"
 #include "third_party/blink/public/platform/web_drag_data.h"
 #include "third_party/blink/public/web/web_frame_widget.h"
+#include "third_party/blink/public/web/web_input_method_controller.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "base/strings/escape.h"
@@ -72,6 +74,8 @@
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/gfx/geometry/point.h"
+#include "ui/display/screen_info.h"
 #include "ui/gfx/geometry/point_f.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkPixmap.h"
@@ -430,6 +434,8 @@ public:
             if (!host)
                 return;
             host->setSetLanguage(self->options_.accept_languages);
+            host->setTextInputStateCallback(
+                [self] { self->ScheduleTextInputState(); });
             if (blink::WebView* web_view = host->getWebView()) {
                 blink::WebSettings* settings = web_view->GetSettings();
                 settings->SetWebSecurityEnabled(self->options_.web_security);
@@ -555,6 +561,8 @@ public:
             content::SetRendererWebSocketCommand({});
             content::SetRendererFileChooserBroker({});
             content::ClearBrokeredFiles();
+            if (content::WebViewHost* host = self->View())
+                host->setTextInputStateCallback({});
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
             self->cdp_service_.reset();
 #endif
@@ -577,6 +585,30 @@ public:
     }
 
 private:
+    struct TextInputSnapshot {
+        bool editable = false;
+        uint64_t ime_serial = 0;
+        int selection_start = -1;
+        int selection_length = 0;
+        int marked_start = -1;
+        int marked_length = 0;
+        float scale = 1.f;
+        gfx::Rect selection_rect;
+        gfx::Rect marked_rect;
+
+        bool operator==(const TextInputSnapshot& other) const
+        {
+            return editable == other.editable
+                && ime_serial == other.ime_serial
+                && selection_start == other.selection_start
+                && selection_length == other.selection_length
+                && marked_start == other.marked_start
+                && marked_length == other.marked_length
+                && scale == other.scale
+                && selection_rect == other.selection_rect
+                && marked_rect == other.marked_rect;
+        }
+    };
     struct GuestFrame {
         void* memory = nullptr;
         size_t mapping_size = 0;
@@ -615,6 +647,76 @@ private:
     {
         return static_cast<content::WebViewHost*>(
             common::LiveIdDetect::getWebViewIds()->getPtr(view_));
+    }
+
+    void ScheduleTextInputState()
+    {
+        // Called only on Blink's sequence. Query after the current lifecycle/
+        // input update, never re-enter layout from a widget-host notification.
+        if (text_input_pending_ || closing_)
+            return;
+        text_input_pending_ = true;
+        PostBlink([this] {
+            text_input_pending_ = false;
+            if (!closing_)
+                PublishTextInputState();
+        });
+    }
+
+    void PublishTextInputState()
+    {
+        TextInputSnapshot state;
+        state.ime_serial = text_input_serial_;
+        content::WebViewHost* host = View();
+        blink::WebView* web_view = host ? host->getWebView() : nullptr;
+        blink::WebFrameWidget* widget = web_view ? web_view->MainFrameWidget() : nullptr;
+        blink::WebLocalFrame* frame = web_view ? web_view->FocusedFrame() : nullptr;
+        blink::WebInputMethodController* controller = widget
+            ? widget->GetActiveWebInputMethodController() : nullptr;
+        if (widget && widget->HasFocus() && frame && controller
+            && controller->TextInputType() != blink::kWebTextInputTypeNone) {
+            const blink::WebRange selection = controller->GetSelectionOffsets();
+            if (!selection.IsNull()
+                && frame->FirstRectForCharacterRange(selection.StartOffset(),
+                    selection.length(), state.selection_rect)
+                && state.selection_rect.height() > 0) {
+                state.editable = true;
+                state.selection_start = selection.StartOffset();
+                state.selection_length = selection.length();
+                // Blink viewport geometry is in physical pixels; publish the
+                // scale from the same widget, not the host's pending resize.
+                state.scale = widget->GetScreenInfo().device_scale_factor;
+                const blink::WebRange marked = controller->CompositionRange();
+                if (!marked.IsNull()) {
+                    state.marked_start = marked.StartOffset();
+                    state.marked_length = marked.length();
+                    frame->FirstRectForCharacterRange(marked.StartOffset(),
+                        marked.length(), state.marked_rect);
+                }
+            }
+        }
+        if (text_input_state_ && *text_input_state_ == state)
+            return;
+        text_input_state_ = state;
+        base::Value::Dict payload;
+        payload.Set("editable", state.editable);
+        payload.Set("imeSerial", base::NumberToString(state.ime_serial));
+        payload.Set("selectionStart", state.selection_start);
+        payload.Set("selectionLength", state.selection_length);
+        payload.Set("markedStart", state.marked_start);
+        payload.Set("markedLength", state.marked_length);
+        payload.Set("scale", static_cast<double>(state.scale));
+        auto rect_value = [](const gfx::Rect& rect) {
+            base::Value::Dict value;
+            value.Set("x", rect.x());
+            value.Set("y", rect.y());
+            value.Set("width", rect.width());
+            value.Set("height", rect.height());
+            return value;
+        };
+        payload.Set("selectionRect", rect_value(state.selection_rect));
+        payload.Set("markedRect", rect_value(state.marked_rect));
+        SendEvent("text-input-state", std::move(payload));
     }
 
     void RegisterSchemes()
@@ -988,10 +1090,24 @@ private:
             }
             Reply(request_id);
         } else if (method == "setFocus") {
-            if (params.FindBool("focused").value_or(false))
-                mini_electron_set_focus(view_);
-            else
-                mini_electron_kill_focus(view_);
+            const bool focused = params.FindBool("focused").value_or(false);
+            content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
+                [this, focused](content::WebViewHost* view) {
+                    if (focused) {
+                        view->setFocus();
+                    } else {
+                        blink::WebFrameWidget* widget = view->getWebView()
+                            ? view->getWebView()->MainFrameWidget() : nullptr;
+                        blink::WebInputMethodController* controller = widget
+                            ? widget->GetActiveWebInputMethodController() : nullptr;
+                        if (controller && !controller->CompositionRange().IsNull())
+                            controller->FinishComposingText(
+                                blink::WebInputMethodController::kKeepSelection);
+                        view->killFocus();
+                    }
+                    text_input_state_.reset();
+                    ScheduleTextInputState();
+                });
             Reply(request_id);
         } else if (method == "input") {
             base::Value::Dict* event = params.FindDict("event");
@@ -999,6 +1115,23 @@ private:
                 Reply(request_id, {}, "invalid input event");
             else
                 Reply(request_id);
+        } else if (method == "copyImageAt") {
+            const int x = params.FindInt("x").value_or(0);
+            const int y = params.FindInt("y").value_or(0);
+            PostBlink([this, x, y, request_id] {
+                content::WebViewHost* view = View();
+                blink::WebFrame* frame = view ? view->getMainFrame() : nullptr;
+                blink::WebFrameWidget* widget = view && view->getWebView()
+                    ? view->getWebView()->MainFrameWidget() : nullptr;
+                if (!frame || !frame->IsWebLocalFrame() || !widget) {
+                    Reply(request_id, {}, "renderer view was destroyed");
+                    return;
+                }
+                const float scale = widget->GetOriginalScreenInfo().device_scale_factor;
+                frame->ToWebLocalFrame()->CopyImageAtForTesting(
+                    gfx::ScaleToRoundedPoint(gfx::Point(x, y), scale));
+                Reply(request_id);
+            });
         } else if (method == "executeJavaScript") {
             std::string* code = params.FindString("code");
             if (!code) {
@@ -1562,6 +1695,57 @@ private:
             SendEvent("guest-input", std::move(payload));
             return true;
         }
+        if (*type == "imeSetComposition" || *type == "imeCommitText"
+            || *type == "imeFinishComposition") {
+            const std::string* text = event.FindString("text");
+            if (*type != "imeFinishComposition" && !text)
+                return false;
+            const int replacement_start = event.FindInt("replacementStart").value_or(-1);
+            const int replacement_length = event.FindInt("replacementLength").value_or(0);
+            const int selection_start = event.FindInt("selectionStart").value_or(0);
+            const int selection_length = event.FindInt("selectionLength").value_or(0);
+            if (replacement_start < -1 || replacement_length < 0
+                || selection_start < 0 || selection_length < 0
+                || (replacement_start >= 0 && replacement_length
+                    > std::numeric_limits<int>::max() - replacement_start)
+                || selection_length > std::numeric_limits<int>::max() - selection_start)
+                return false;
+            uint64_t ime_serial = 0;
+            if (const std::string* serial = event.FindString("imeSerial")) {
+                if (!base::StringToUint64(*serial, &ime_serial))
+                    return false;
+            }
+            PostBlink([this, type = *type, text = text ? *text : std::string(),
+                          replacement_start, replacement_length,
+                          selection_start, selection_length, ime_serial] {
+                content::WebViewHost* host = View();
+                text_input_serial_ = ime_serial;
+                blink::WebFrameWidget* widget = host && host->getWebView()
+                    ? host->getWebView()->MainFrameWidget() : nullptr;
+                blink::WebInputMethodController* controller = widget
+                    ? widget->GetActiveWebInputMethodController() : nullptr;
+                if (!controller || !widget->HasFocus()) {
+                    ScheduleTextInputState();
+                    return;
+                }
+                const blink::WebRange replacement = replacement_start < 0
+                    ? blink::WebRange()
+                    : blink::WebRange(replacement_start, replacement_length);
+                if (type == "imeSetComposition") {
+                    controller->SetComposition(blink::WebString::FromUTF8(text),
+                        {}, replacement, selection_start,
+                        selection_start + selection_length);
+                } else if (type == "imeCommitText") {
+                    controller->CommitText(blink::WebString::FromUTF8(text),
+                        {}, replacement, 0);
+                } else {
+                    controller->FinishComposingText(
+                        blink::WebInputMethodController::kKeepSelection);
+                }
+                ScheduleTextInputState();
+            });
+            return true;
+        }
         if (*type == "editCommand") {
             const std::string* command = event.FindString("command");
             if (!command)
@@ -1685,7 +1869,9 @@ private:
     int HitTestGuest(int x, int y, const std::string& type)
     {
         std::lock_guard<std::mutex> lock(guest_lock_);
-        if (type == "keyDown" || type == "keyUp" || type == "char" || type == "editCommand") {
+        if (type == "keyDown" || type == "keyUp" || type == "char" || type == "editCommand"
+            || type == "imeSetComposition" || type == "imeCommitText"
+            || type == "imeFinishComposition") {
             for (auto& [id, guest] : guests_) {
                 if (guest.attached && guest.focused)
                     return id;
@@ -2818,6 +3004,9 @@ private:
             ? 1 : document_epoch + 1;
         if (is_main_frame)
             self->ResetNativeDragOnBlink();
+        self->text_input_state_.reset();
+        self->SendEvent("text-input-state", {});
+        self->ScheduleTextInputState();
         base::Value::Dict payload;
         payload.Set("frameId", base::NumberToString(frame_id));
         payload.Set("url", url ? url : "");
@@ -2852,6 +3041,9 @@ private:
         content::ClearBrokeredFilesForFrame(frame_id);
         if (frame == self->main_frame_)
             self->ResetNativeDragOnBlink();
+        self->text_input_state_.reset();
+        self->SendEvent("text-input-state", {});
+        self->ScheduleTextInputState();
         self->SendEvent("frame-detached", {}, frame);
     }
 
@@ -3221,6 +3413,10 @@ private:
     blink::WebDragData native_drag_data_;
     std::vector<base::Value::Dict> native_drag_pending_;
     std::vector<std::string> native_drag_broker_urls_;
+    // Accessed only on Blink's sequence.
+    bool text_input_pending_ = false;
+    std::optional<TextInputSnapshot> text_input_state_;
+    uint64_t text_input_serial_ = 0;
     scoped_refptr<base::SequencedTaskRunner> owner_runner_;
     base::WeakPtr<RendererServerImpl> owner_weak_;
     // Renderer owner sequence only; compositor callbacks marshal back here.

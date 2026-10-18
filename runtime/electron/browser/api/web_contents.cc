@@ -400,6 +400,8 @@ void WebContents::destroyApi()
 void WebContents::closeRenderer()
 {
     cancelPreparedFrames("Renderer closed before native presentation");
+    for (WebContentsObserver* observer : m_observers)
+        observer->onWebContentsTextInputState(this, {});
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     m_devtools_gateway.reset();
     m_debugger_attached = false;
@@ -888,6 +890,10 @@ void WebContents::resize(int width, int height, double scale_factor)
 void WebContents::setFocus(bool focused)
 {
     m_focused = focused;
+    if (!focused) {
+        for (WebContentsObserver* observer : m_observers)
+            observer->onWebContentsTextInputState(this, {});
+    }
     base::Value::Dict params;
     params.Set("focused", focused);
     if (isAlive())
@@ -1534,6 +1540,15 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     const std::string type = ReadString(event, "type");
     const base::Value::Dict& payload = PayloadFrom(event);
     const uint64_t request_id = RequestIdFrom(event);
+    if (type == "text-input-state") {
+        // Renderer snapshots are asynchronous; never let a late snapshot
+        // restore a text client after native focus has already left.
+        if (m_focused) {
+            for (WebContentsObserver* observer : m_observers)
+                observer->onWebContentsTextInputState(this, payload);
+        }
+        return;
+    }
     if (type == "native-drag-materialized") {
         const std::string* generation_text = payload.FindString("generation");
         std::optional<bool> success = payload.FindBool("success");
@@ -1761,6 +1776,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 mini_electron::mac::ClipboardContent content;
                 content.text = text ? &*text : nullptr;
                 content.html = html ? &*html : nullptr;
+                content.png = payload.FindBlob("png");
                 result.Set("value", mini_electron::mac::WriteClipboard(content));
             } else {
                 m_renderer->Respond(request_id, {}, "Unsupported clipboard operation");

@@ -53,6 +53,8 @@ public:
     virtual void onWebContentsDeleted(WebContents*) { }
     virtual void onWebContentsReadyToShow(WebContents*) { }
     virtual void onWebContentsPaint(WebContents*) { }
+    virtual void onWebContentsTextInputState(
+        WebContents*, const base::Value::Dict&) { }
     virtual bool supportsFramePreparation() const { return false; }
     // Returns the generation actually drawn into the hidden native backing.
     virtual uint64_t prepareWebContentsFrame(WebContents*, uint64_t) { return 0; }

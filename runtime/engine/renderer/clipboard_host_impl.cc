@@ -3,6 +3,7 @@
 #include "build/build_config.h"
 #if BUILDFLAG(IS_MAC)
 #include "platform/macos/clipboard_mac.h"
+#include "ui/gfx/codec/png_codec.h"
 #endif
 #include "runtime/engine/ui/clipboard_util.h"
 #include "runtime/engine/common/utf16.h"
@@ -1059,6 +1060,16 @@ void ClipboardHostImpl::WriteBookmark(const WTF::String& url, const ::WTF::Strin
 
 void ClipboardHostImpl::WriteImage(const ::SkBitmap& image)
 {
+#if BUILDFLAG(IS_MAC)
+    m_pendingPng.reset();
+    if (image.drawsNothing() || image.width() > 8192 || image.height() > 8192
+        || static_cast<uint64_t>(image.width()) * image.height() > 40ULL * 1024 * 1024) {
+        return;
+    }
+    m_pendingPng = gfx::PNGCodec::EncodeBGRASkBitmap(image, false);
+    if (m_pendingPng && m_pendingPng->size() > 32 * 1024 * 1024)
+        m_pendingPng.reset();
+#endif
 }
 
 void ClipboardHostImpl::WriteUnsanitizedCustomFormat(const ::WTF::String& format, ::mojo_base::BigBuffer data)
@@ -1068,14 +1079,16 @@ void ClipboardHostImpl::WriteUnsanitizedCustomFormat(const ::WTF::String& format
 void ClipboardHostImpl::CommitWrite()
 {
 #if BUILDFLAG(IS_MAC)
-    if (!m_pendingText && !m_pendingHtml)
+    if (!m_pendingText && !m_pendingHtml && !m_pendingPng)
         return;
     mini_electron::mac::ClipboardContent content;
     content.text = m_pendingText ? &*m_pendingText : nullptr;
     content.html = m_pendingHtml ? &*m_pendingHtml : nullptr;
+    content.png = m_pendingPng ? &*m_pendingPng : nullptr;
     mini_electron::mac::WriteClipboard(content);
     m_pendingText.reset();
     m_pendingHtml.reset();
+    m_pendingPng.reset();
 #endif
 }
 

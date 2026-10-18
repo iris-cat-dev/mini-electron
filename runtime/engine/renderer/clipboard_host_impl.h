@@ -7,6 +7,7 @@
 #if BUILDFLAG(IS_MAC)
 #include <optional>
 #include <string>
+#include <vector>
 #endif
 #include <windows.h>
 
@@ -109,6 +110,7 @@ private:
     // Keep representations together until Blink completes this write.
     std::optional<std::u16string> m_pendingText;
     std::optional<std::u16string> m_pendingHtml;
+    std::optional<std::vector<uint8_t>> m_pendingPng;
 #endif
 };
 

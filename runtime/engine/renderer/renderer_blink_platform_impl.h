@@ -63,6 +63,9 @@ public:
 //         blink::CrossVariantMojoRemote<network::mojom::URLLoaderFactoryInterfaceBase> url_loader_factory) override;
     blink::ThreadSafeBrowserInterfaceBrokerProxy* GetBrowserInterfaceBroker() override;
     blink::WebString DefaultLocale() override;
+#if BUILDFLAG(IS_MAC)
+    blink::WebSandboxSupport* GetSandboxSupport() override;
+#endif
     std::unique_ptr<blink::URLLoaderThrottleProvider> CreateURLLoaderThrottleProviderForWorker(blink::URLLoaderThrottleProviderType provider_type) override;
 
     blink::WebData GetDataResource(int resource_id, ui::ResourceScaleFactor scale_factor = ui::kScaleFactorNone) override;

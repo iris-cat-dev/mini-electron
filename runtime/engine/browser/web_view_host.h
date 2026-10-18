@@ -14,6 +14,8 @@
 #include "third_party/blink/public/mojom/page/widget.mojom-blink.h"
 #include "v8.h"
 #include <memory>
+#include <functional>
+#include <utility>
 
 namespace blink {
 class WebNavigationControl;
@@ -164,6 +166,18 @@ public:
     };
     void onImeComposition(ImeCompositioType type, WCHAR c);
     void onImeText(const std::u16string& text, bool committed);
+
+    // Blink-thread notifications, including selection geometry-only changes
+    // (scroll/layout), for native text clients that cache renderer state.
+    void setTextInputStateCallback(std::function<void()> callback)
+    {
+        m_textInputStateCallback = std::move(callback);
+    }
+    void notifyTextInputStateChanged()
+    {
+        if (m_textInputStateCallback)
+            m_textInputStateCallback();
+    }
 
     bool setCursorInfoTypeByCache();
     void setCursor(const ::ui::Cursor& cursor);
@@ -328,6 +342,7 @@ private:
     bool m_hasBackgroundColor = false;
 
     gfx::Point m_caretPos;
+    std::function<void()> m_textInputStateCallback;
 
     CRITICAL_SECTION m_mouseMsgQueueLock;
     struct MouseMsg {

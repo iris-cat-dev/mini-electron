@@ -392,10 +392,24 @@ painting without changing loaded-document rendering deferrals.
 
 Application menus register native Command/Control accelerators and standard Edit
 roles. Editing targets the focused Blink frame; sandboxed clipboard operations use
-the authenticated browser broker, preserving text and HTML in one pasteboard
-transaction without granting the renderer direct pasteboard access. Page zoom uses
-the existing WebContents zoom level, not CSS scaling. Disabled and unregistered
-accelerators do not invoke menu actions.
+the authenticated browser broker, preserving text, HTML, and copied-image PNG
+data in one pasteboard transaction without granting the renderer direct
+pasteboard access. `webContents.copyImageAt()` copies actual decoded image pixels;
+native PNG/TIFF clipboard images expose readable `File` items on paste into
+textarea and contenteditable inputs even alongside HTML/URL representations.
+HTML/URL-only clipboard content is not synthesized into an image attachment.
+Page zoom uses the existing WebContents zoom level, not CSS scaling. Disabled
+and unregistered accelerators do not invoke menu actions.
+
+Blink's macOS selection and focus colors resolve through AppKit's native system
+colors for the document's light/dark appearance, rather than falling back to
+black when sandbox support is absent.
+
+Native input methods receive the focused Blink editor's UTF-16 selection,
+composition range, and caret rectangle asynchronously. Candidate anchors follow
+the caret through page/editor scrolling, Retina scale, and native window movement;
+blur and non-editable focus clear stale anchors. Marked-text updates and Unicode
+commits use Blink's composition controller instead of remaining local to AppKit.
 
 Native AppKit file drags are exposed as brokered DOM `File` objects only after
 the browser authorizes the current document. Regular files are limited to 50 MiB
@@ -421,6 +435,7 @@ pending preload IPC, and companion windows can exit without late handle access.
 
 Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
+`test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
 `test/macos-window-buttons-smoke.js`, and `test/macos-exit-lifecycle-smoke.js`.
@@ -428,6 +443,20 @@ Input helpers require Xcode. The initial-background regression captures actual
 composed display pixels and requires Screen Recording permission and unobstructed
 test windows. Optional physical passthrough verification uses
 `MINI_COMPANION_PHYSICAL=1` and macOS Accessibility permission.
+
+Run the selection, image-clipboard, and IME regressions against a rebuilt runtime:
+
+```sh
+out/mac-arm64/mini-electron --app=test/macos-selection-colors-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
+```
+
+The selection regression captures actual native renderer-view pixels in both
+color schemes. The IME regression clicks real native editor targets, checks the
+`NSTextInputClient` screen rectangles and composition lifecycle, and does not
+change the system keyboard input source; the system candidate panel itself
+remains a manual visual check.
 
 Hidden-titlebar traffic lights retain AppKit's native button size and gap when
 `trafficLightPosition` or `setWindowButtonPosition()` moves them. Their title-bar

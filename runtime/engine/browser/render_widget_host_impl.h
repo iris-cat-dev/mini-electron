@@ -197,10 +197,7 @@ public:
     virtual void TextInputStateChanged(::ui::mojom::blink::TextInputStatePtr state) override;
 
     virtual void SelectionBoundsChanged(const ::gfx::Rect& anchor_rect, ::base::i18n::TextDirection anchor_dir, const ::gfx::Rect& focus_rect,
-        ::base::i18n::TextDirection focus_dir, const ::gfx::Rect& bounding_box_rect, bool is_anchor_first) override
-    {
-        //OutputDebugStringA("RenderWidgetHostImpl::SelectionBoundsChanged not impl \n");
-    }
+        ::base::i18n::TextDirection focus_dir, const ::gfx::Rect& bounding_box_rect, bool is_anchor_first) override;
 
     virtual void RegisterRenderFrameMetadataObserver(::mojo::PendingReceiver<::cc::mojom::blink::RenderFrameMetadataObserverClient> receiver,
         ::mojo::PendingRemote<::cc::mojom::blink::RenderFrameMetadataObserver> render_frame_metadata_observer) override;
