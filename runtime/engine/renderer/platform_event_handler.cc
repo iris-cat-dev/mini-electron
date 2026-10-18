@@ -49,10 +49,15 @@ int horizontalScrollChars()
 
 static bool isWithinDoubleClickBounds(const gfx::Point& first, const gfx::Point& second)
 {
+#if defined(_WIN32)
     const int halfWidth = std::max(1, ::GetSystemMetrics(SM_CXDOUBLECLK) / 2);
     const int halfHeight = std::max(1, ::GetSystemMetrics(SM_CYDOUBLECLK) / 2);
     return std::abs(first.x() - second.x()) <= halfWidth
         && std::abs(first.y() - second.y()) <= halfHeight;
+#else
+    return std::abs(first.x() - second.x())
+        + std::abs(first.y() - second.y()) < 15;
+#endif
 }
 
 static void postDragMessageImpl(HWND hWnd, void* param)
@@ -700,6 +705,7 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     return 0;
 }
 
+#if defined(_WIN32)
 static ui::DomCode domCodeFromWindowsEvent(WPARAM virtualKey, LPARAM keyData,
     HKL keyboardLayout)
 {
@@ -796,21 +802,45 @@ static ui::DomKey domKeyFromWindowsEvent(WPARAM virtualKey, ui::DomCode domCode,
         return domKey;
     return ui::DomKey::UNIDENTIFIED;
 }
+#endif
 
 blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(
     blink::WebInputEvent::Type type, UINT message, WPARAM wParam, LPARAM lParam,
-    unsigned int flags, HKL keyboardLayout)
+    unsigned int flags
+#if defined(_WIN32)
+    , HKL keyboardLayout
+#endif
+)
 {
-    if (!keyboardLayout)
-        keyboardLayout = ::GetKeyboardLayout(0);
-
     const bool isCharacter = type == blink::WebInputEvent::Type::kChar;
     const WPARAM virtualKey = isCharacter ? 0 : wParam;
+#if defined(_WIN32)
+    if (!keyboardLayout)
+        keyboardLayout = ::GetKeyboardLayout(0);
     const ui::DomCode domCode =
         domCodeFromWindowsEvent(virtualKey, lParam, keyboardLayout);
     const ui::DomKey domKey = isCharacter
         ? ui::DomKey::FromCharacter(static_cast<uint32_t>(wParam))
         : domKeyFromWindowsEvent(virtualKey, domCode, flags, keyboardLayout);
+#else
+    const ui::DomCode domCode = ui::UsLayoutKeyboardCodeToDomCode(
+        static_cast<ui::KeyboardCode>(virtualKey));
+    ui::DomKey domKey = isCharacter
+        ? ui::DomKey::FromCharacter(static_cast<uint32_t>(wParam))
+        : ui::DomKey::UNIDENTIFIED;
+    if (!isCharacter) {
+        int keyFlags = ui::EF_NONE;
+        if (flags & MINI_ELECTRON_SHIFT)
+            keyFlags |= ui::EF_SHIFT_DOWN;
+        if (flags & MINI_ELECTRON_CAPS_LOCK)
+            keyFlags |= ui::EF_CAPS_LOCK_ON;
+        if (flags & MINI_ELECTRON_NUM_LOCK)
+            keyFlags |= ui::EF_NUM_LOCK_ON;
+        ui::KeyboardCode keyCode;
+        if (!ui::DomCodeToUsLayoutDomKey(domCode, keyFlags, &domKey, &keyCode))
+            domKey = ui::DomKey::UNIDENTIFIED;
+    }
+#endif
 
     blink::WebKeyboardEvent keyEvent;
     keyEvent.SetTimeStamp(base::TimeTicks::Now());
@@ -823,7 +853,10 @@ blink::WebKeyboardEvent PlatformEventHandler::buildKeyboardEvent(
     keyEvent.dom_key = static_cast<uint32_t>(domKey);
     keyEvent.is_system_key = !(flags & MINI_ELECTRON_ALT_GRAPH)
         && (message == WM_SYSKEYDOWN || message == WM_SYSKEYUP
-            || message == WM_SYSCHAR);
+#if defined(_WIN32)
+            || message == WM_SYSCHAR
+#endif
+        );
 
     int modifiers = 0;
     const bool altGraph = (flags & MINI_ELECTRON_ALT_GRAPH) != 0;

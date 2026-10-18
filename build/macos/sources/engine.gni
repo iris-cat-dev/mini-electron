@@ -4174,6 +4174,7 @@ mini_electron_chromium_sources = [
   "//ui/display/util/display_util2.cc",
   "//ui/events/base_event_utils.cc",
   "//ui/events/keycodes/dom/keycode_converter.cc",
+  "//ui/events/keycodes/keyboard_code_conversion.cc",
   "//ui/gfx/animation/keyframe/animation_curve.cc",
   "//ui/gfx/animation/keyframe/keyframed_animation_curve.cc",
   "//ui/gfx/animation/keyframe/keyframe_effect_gfx.cc",

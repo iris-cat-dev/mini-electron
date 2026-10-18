@@ -28,7 +28,9 @@ release. The macOS runtime is a native build of this tree with a stripped
 Version `0.1.5` includes the macOS selection, clipboard image paste, IME
 positioning/composition colors, sidebar resizing, and image-preview IPC fixes.
 Version `0.1.6` adds the macOS native `node:sqlite` binding, including column
-metadata, backup, session/changesets, and Worker support.
+metadata, backup, session/changesets, and Worker support. It also keeps Win32
+keyboard-layout APIs Windows-only, links the shared keycode conversion on macOS,
+and preserves native AppKit keyboard metadata.
 
 The npm tarball contains the installer, CLI, types, and manifests, not the native
 executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the

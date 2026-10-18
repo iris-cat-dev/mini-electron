@@ -102,8 +102,11 @@ public:
     //----
 
     static blink::WebKeyboardEvent buildKeyboardEvent(blink::WebInputEvent::Type type,
-        UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags,
-        HKL keyboardLayout = nullptr);
+        UINT message, WPARAM wParam, LPARAM lParam, unsigned int flags
+#if defined(_WIN32)
+        , HKL keyboardLayout = nullptr
+#endif
+    );
 
     struct MouseEvtInfo {
         bool isNeedSetFocus;
