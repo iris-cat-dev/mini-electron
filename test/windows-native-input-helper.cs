@@ -57,6 +57,9 @@ internal static class NativeInputHelper
     [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint key, uint mode);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
+    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
+    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern uint GetPixel(IntPtr dc, int x, int y);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool OpenClipboard(IntPtr owner);
     [DllImport("user32.dll")] private static extern bool CloseClipboard();
     [DllImport("user32.dll")] private static extern bool EmptyClipboard();
@@ -157,6 +160,58 @@ internal static class NativeInputHelper
                 + "; accepted=" + accepted + ", foreground=" + foreground.ToInt64()
                 + ", foreground PID=" + owner + ", helper PID=" + helperOwner);
         }
+    }
+    private static object SamplePointerMotion(Dictionary<string, object> command) {
+        IntPtr window = Window(command);
+        var moves = new List<Point>();
+        var samples = new List<Point>();
+        foreach (Dictionary<string, object> point in (IEnumerable)command["moves"])
+            moves.Add(new Point { X = Number(point, "x"), Y = Number(point, "y") });
+        foreach (Dictionary<string, object> point in (IEnumerable)command["samples"])
+            samples.Add(new Point { X = Number(point, "x"), Y = Number(point, "y") });
+        int cycles = Number(command, "cycles");
+        if (moves.Count < 2 || moves.Count > 16 || samples.Count == 0 || samples.Count > 16 || cycles < 1 || cycles > 10)
+            throw new InvalidOperationException("Invalid pointer motion sample");
+        foreach (Point point in moves) ValidateClientPoint(window, point.X, point.Y);
+        foreach (Point point in samples) ValidateClientPoint(window, point.X, point.Y);
+        Point origin = new Point();
+        if (!ClientToScreen(window, ref origin)) throw new Win32Exception();
+        IntPtr dc = GetDC(window);
+        if (dc == IntPtr.Zero) throw new Win32Exception();
+        Exception movementError = null;
+        var worker = new Thread(() => {
+            try {
+                for (int cycle = 0; cycle < cycles; ++cycle)
+                    foreach (Point point in moves) {
+                        Focus(window);
+                        MovePointer(window, point.X, point.Y);
+                    }
+            } catch (Exception error) { movementError = error; }
+        });
+        int frames = 0;
+        var missing = new int[samples.Count];
+        uint lastMissingColor = 0;
+        try {
+            worker.Start();
+            do {
+                for (int index = 0; index < samples.Count; ++index) {
+                    Point point = samples[index];
+                    uint rgb = GetPixel(dc, point.X - origin.X, point.Y - origin.Y);
+                    if (rgb == 0xffffffff) throw new Win32Exception("Cannot read native caption pixel");
+                    if ((rgb & 255) < 240 || ((rgb >> 8) & 255) < 240 || ((rgb >> 16) & 255) < 240) {
+                        missing[index]++;
+                        lastMissingColor = rgb;
+                    }
+                }
+                frames++;
+                Thread.Sleep(1);
+            } while (worker.IsAlive);
+        } finally {
+            if (worker.IsAlive) worker.Join();
+            ReleaseDC(window, dc);
+        }
+        if (movementError != null) throw movementError;
+        return new { frames, missing, lastMissingColor, source = "windowDC.GetPixel" };
     }
     private static void Open() {
         for (int i = 0; i != 30; ++i) { if (OpenClipboard(form.Handle)) return; Thread.Sleep(10); }
@@ -305,6 +360,7 @@ internal static class NativeInputHelper
                 throw new Win32Exception();
             return true;
         }
+        if (action == "samplePointerMotion") return SamplePointerMotion(command);
         if (action == "pointerMove") {
             IntPtr window = Window(command);
             if (heldLeftButton && heldPointerWindow != window)

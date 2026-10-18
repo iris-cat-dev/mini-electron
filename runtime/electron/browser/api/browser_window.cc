@@ -748,6 +748,7 @@ public:
                     paint.setStyle(SkPaint::kStroke_Style);
                     paint.setBlendMode(SkBlendMode::kSrcOver);
                     paint.setColor(symbolColor);
+                    canvas->drawRect(front, paint);
                 } else {
                     canvas->drawRect(glyph, paint);
                 }
@@ -860,7 +861,7 @@ public:
     }
 
 
-    bool ensureLayeredSurface(int width, int height)
+    bool ensurePaintSurface(int width, int height)
     {
         if (width <= 0 || height <= 0)
             return false;
@@ -931,6 +932,7 @@ public:
         ::GetClientRect(hWnd, &rcClient);
 
         const bool transparent = m_createWindowParam->transparent;
+        const bool buffered = transparent || isCustomTitleBar();
         RECT rcInvalid = rcClient;
         if (!transparent && rcClip.right != rcClip.left
             && rcClip.bottom != rcClip.top) {
@@ -942,10 +944,10 @@ public:
         const int width = rcInvalid.right - rcInvalid.left;
         const int height = rcInvalid.bottom - rcInvalid.top;
         HDC targetDC = paintDC;
-        if (transparent) {
+        if (buffered) {
             const int clientWidth = rcClient.right - rcClient.left;
             const int clientHeight = rcClient.bottom - rcClient.top;
-            targetDC = ensureLayeredSurface(clientWidth, clientHeight)
+            targetDC = ensurePaintSurface(clientWidth, clientHeight)
                 ? m_memoryDC
                 : nullptr;
         }
@@ -960,6 +962,12 @@ public:
         }
         if (transparent && targetDC)
             updateLayeredWindow();
+        else if (buffered && targetDC && width > 0 && height > 0) {
+            // Present the webpage, BrowserViews and caption buttons together.
+            // Reuse the backing DIB and copy only the dirty region.
+            ::BitBlt(paintDC, rcInvalid.left, rcInvalid.top, width, height,
+                targetDC, srcX, srcY, SRCCOPY);
+        }
 
         ::EndPaint(hWnd, &ps);
     }

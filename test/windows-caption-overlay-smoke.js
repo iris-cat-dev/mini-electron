@@ -103,9 +103,9 @@ async function moveAway(geometry) {
   return geometry;
 }
 
-async function readPixel(point) {
+async function readPixel(point, size = 5) {
   await request('focus');
-  const colors = await request('sample', { x: point.x, y: point.y, width: 5, height: 5 });
+  const colors = await request('sample', { x: point.x, y: point.y, width: size, height: size });
   return colors[0].rgb;
 }
 
@@ -114,6 +114,48 @@ async function expectPixel(point, expected, tolerance, label) {
   const actual = await eventually(() => readPixel(point), value => colorDelta(value, expected) <= tolerance, label);
   evidence.stages.push({ label, point, expected, actual, tolerance });
   return actual;
+}
+
+async function expectRestoreGlyph(geometry, label) {
+  const rect = captionRects(geometry).maximize;
+  const size = dip(10, geometry.dpi), offset = dip(2, geometry.dpi);
+  const left = Math.floor((rect.left + rect.right - size) / 2);
+  const top = Math.floor((rect.top + rect.bottom - size) / 2);
+  const frontMiddle = Math.floor((size - offset) / 2);
+  const points = {
+    frontLeft: { x: left, y: top + offset + frontMiddle },
+    frontTop: { x: left + frontMiddle, y: top + offset },
+    frontBottom: { x: left + frontMiddle, y: top + size - 1 },
+    backTop: { x: left + Math.floor(size / 2), y: top },
+    backRight: { x: left + size - 1, y: top + frontMiddle },
+  };
+  for (const [edge, point] of Object.entries(points)) {
+    const actual = await eventually(() => readPixel(point, 1),
+      value => colorDelta(value, [255, 255, 255]) <= 3, `${label} ${edge}`);
+    evidence.stages.push({ label: `${label} ${edge}`, point, actual });
+  }
+}
+
+async function expectStableCaptionDuringMotion(geometry, label) {
+  await request('focus');
+  const buttons = captionRects(geometry);
+  const size = dip(10, geometry.dpi);
+  const samples = Object.entries(buttons).map(([name, rect]) => {
+    const left = Math.floor((rect.left + rect.right - size) / 2);
+    const top = Math.floor((rect.top + rect.bottom - size) / 2);
+    return { x: left + Math.floor(size / 2), y: top + (name === 'maximize' ? 0 : Math.floor(size / 2)) };
+  });
+  for (const point of samples) {
+    const actual = await readPixel(point, 1);
+    assert.ok(actual.every(channel => channel >= 240), `${label} initial glyph: ${JSON.stringify(actual)}`);
+  }
+  const moves = Object.values(buttons).map(rect => pointIn(rect, geometry.dpi));
+  moves.push({ x: geometry.clientX + dip(20, geometry.dpi), y: geometry.clientY + dip(overlayHeight + 18, geometry.dpi) });
+  const motion = await request('samplePointerMotion', { moves, samples, cycles: 6 });
+  evidence.stages.push({ label, samples, ...motion });
+  assert.ok(motion.frames > 0, `${label} must sample native presentation`);
+  assert.deepEqual(motion.missing, [0, 0, 0], `${label}: caption glyphs disappeared during pointer movement`);
+  await moveAway(geometry);
 }
 
 function composite(foreground, alpha, background) {
@@ -195,15 +237,32 @@ app.whenReady().then(async () => {
   evidence.stages.push({ label: 'native caption hover appearance', point: samplePoint, baseline, actual: hovered });
   await moveAway(geometry);
   await expectPixel(samplePoint, baseline, 3, 'caption hover clearing');
+  await expectStableCaptionDuringMotion(geometry, 'restored opaque caption motion');
 
   await clickCaption('maximize');
   await eventually(async () => ({ native: await request('geometry'), javascript: window.isMaximized() }),
     state => state.native.maximized && state.javascript, 'native maximize action');
   evidence.actions.push({ action: 'maximized', geometry: await request('geometry') });
+  geometry = await moveAway();
+  await expectRestoreGlyph(geometry, 'opaque maximized restore glyph');
+  await expectStableCaptionDuringMotion(geometry, 'maximized opaque caption motion');
+  await setOverlay('#00000000');
+  await expectRestoreGlyph(geometry, 'transparent maximized restore glyph');
+  await expectStableCaptionDuringMotion(geometry, 'maximized transparent caption motion');
+  await request('pointerMove', pointIn(captionRects(geometry).maximize, geometry.dpi, true));
+  await expectRestoreGlyph(geometry, 'hovered transparent restore glyph');
+  await moveAway(geometry);
+  if (artifacts) {
+    fs.mkdirSync(artifacts, { recursive: true });
+    const capturePath = path.join(artifacts, `${artifactStem}-maximized.png`);
+    await request('capture', { path: capturePath });
+    evidence.maximizedCapture = capturePath;
+  }
   await clickCaption('maximize');
   await eventually(async () => ({ native: await request('geometry'), javascript: window.isMaximized() }),
     state => !state.native.maximized && !state.javascript, 'native restore action');
   evidence.actions.push({ action: 'restored', geometry: await request('geometry') });
+  await expectStableCaptionDuringMotion(await moveAway(), 'restored transparent caption motion');
 
   await clickCaption('minimize');
   await eventually(async () => ({ native: await request('geometry'), javascript: window.isMinimized() }),

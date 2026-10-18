@@ -336,8 +336,14 @@ composition, cancellation, selection replacement, scrolling, zoom, and BrowserVi
 It never changes the system input source, theme, or high-contrast settings. Set
 `MINI_NATIVE_INPUT_ARTIFACTS` to retain native screenshots and a JSON editor report.
 The caption regression samples transparent, partial-alpha, and opaque native pixels,
-checks hover clearing, and clicks minimize/maximize/restore/close controls. Closing
-must emit each lifecycle event once and expose the destroyed state to its listeners.
+checks hover clearing and both restore-square outlines while maximized under opaque,
+transparent, and hovered overlays, and clicks minimize/maximize/restore/close controls.
+Closing must emit each lifecycle event once and expose the destroyed state to its listeners.
+Opaque hidden-titlebar windows compose webpage content, BrowserViews, and native
+caption controls in a reused backing DIB before presenting the dirty region.
+Pointer-driven redraws therefore cannot expose a glyph-free intermediate frame.
+The caption regression continuously samples all three glyphs during real pointer
+sweeps in restored/maximized windows with opaque and transparent overlays.
 The pointer regression checks full-edge hover and captured pane drags on both axes
 without moving the native window. The image regression persists and decodes a
 491,978-byte PNG through nested sliced binary IPC, verifies exact bytes and bounds,
