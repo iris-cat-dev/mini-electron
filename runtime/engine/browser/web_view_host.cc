@@ -48,6 +48,7 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/testing/internal_runtime_flags.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+#include "ui/base/pointer/pointer_device.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
 #include "gen/ui/base/cursor/mojom/cursor_type.mojom-shared.h"
@@ -582,6 +583,12 @@ void WebViewHost::setDefaultPreferences(blink::WebViewImpl* webWiew)
 
     blink::web_pref::WebPreferences webPreferences = webWiew->GetWebPreferences();
     webPreferences.touch_event_feature_detection_enabled = false; // ����治�ṩontouchstart��document
+    // Both desktop hosts deliver mouse/trackpad input. Leaving these unset
+    // makes responsive interfaces choose touch-only hit targets and gestures.
+    webPreferences.available_pointer_types = ui::POINTER_TYPE_FINE;
+    webPreferences.primary_pointer_type = blink::mojom::PointerType::kPointerFineType;
+    webPreferences.available_hover_types = ui::HOVER_TYPE_HOVER;
+    webPreferences.primary_hover_type = blink::mojom::HoverType::kHoverHoverType;
     webPreferences.allow_universal_access_from_file_urls = true;
     webPreferences.allow_file_access_from_file_urls = true;
     webWiew->SetWebPreferences(webPreferences);

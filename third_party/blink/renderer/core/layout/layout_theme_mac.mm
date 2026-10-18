@@ -72,6 +72,11 @@ Color LayoutThemeMac::PlatformActiveSelectionForegroundColor(
   return Color::kBlack;
 }
 
+Color LayoutThemeMac::PlatformDefaultCompositionBackgroundColor() const {
+  // A translucent neutral tint keeps marked text legible in both color schemes.
+  return Color(128, 128, 128, 64);
+}
+
 Color LayoutThemeMac::PlatformSpellingMarkerUnderlineColor() const {
   // Using the same color than WebKit (see
   // https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/graphics/cocoa/GraphicsContextCocoa.mm#L167).

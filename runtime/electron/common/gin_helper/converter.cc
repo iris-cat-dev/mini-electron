@@ -489,6 +489,9 @@ v8::Local<v8::Value> Converter<base::Value::Dict>::ToV8(v8::Isolate* isolate, co
             dictionaryValue = outValue.GetIfDict();
             v8Ojb->Set(context, v8Key, Converter<base::Value::Dict>::ToV8(isolate, *dictionaryValue));
             break;
+        case base::Value::Type::BINARY:
+            v8Ojb->Set(context, v8Key, ConvertToV8(isolate, outValue));
+            break;
         case base::Value::Type::NONE:
             v8Ojb->Set(context, v8Key, v8::Null(isolate));
             break;
@@ -545,6 +548,11 @@ bool Converter<base::Value::Dict>::FromV8(Isolate* isolate, v8::Local<v8::Value>
                 return false;
             }
             out->Set(keyNameStr, std::move(arrayOut));
+        } else if (outValue->IsArrayBuffer() || outValue->IsArrayBufferView()) {
+            base::Value binary;
+            if (!Converter<base::Value>::FromV8(isolate, outValue, &binary))
+                return false;
+            out->Set(keyNameStr, std::move(binary));
         } else if (outValue->IsObject()) {
             base::Value::Dict dictionaryOut;
             if (!Converter<base::Value::Dict>::FromV8(isolate, outValue, &dictionaryOut)) {

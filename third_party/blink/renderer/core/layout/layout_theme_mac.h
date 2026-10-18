@@ -41,6 +41,7 @@ public:
     Color PlatformActiveSelectionBackgroundColor(mojom::blink::ColorScheme color_scheme) const override;
     Color PlatformInactiveSelectionBackgroundColor(mojom::blink::ColorScheme color_scheme) const override;
     Color PlatformActiveSelectionForegroundColor(mojom::blink::ColorScheme color_scheme) const override;
+    Color PlatformDefaultCompositionBackgroundColor() const override;
     Color PlatformSpellingMarkerUnderlineColor() const override;
     Color PlatformGrammarMarkerUnderlineColor() const override;
     Color FocusRingColor(mojom::blink::ColorScheme color_scheme) const override;

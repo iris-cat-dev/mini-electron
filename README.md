@@ -405,11 +405,26 @@ Blink's macOS selection and focus colors resolve through AppKit's native system
 colors for the document's light/dark appearance, rather than falling back to
 black when sandbox support is absent.
 
+Desktop views advertise a fine pointer with hover capability through both
+primary and available-pointer media queries. Mouse/trackpad users therefore get
+full-height sidebar resize targets and hover feedback instead of touch-only
+grips. Native pointer capture retains drag input across the content pane and
+releases it on mouse-up.
+
 Native input methods receive the focused Blink editor's UTF-16 selection,
 composition range, and caret rectangle asynchronously. Candidate anchors follow
 the caret through page/editor scrolling, Retina scale, and native window movement;
 blur and non-editable focus clear stale anchors. Marked-text updates and Unicode
 commits use Blink's composition controller instead of remaining local to AppKit.
+On macOS, marked text without explicit IME styling uses a translucent neutral-gray
+background instead of yellow, preserving the editor's foreground color in light
+and dark themes. Native selection colors and candidate-panel styling are unchanged.
+
+Sandbox IPC preserves nested `ArrayBuffer` and typed-array properties as binary
+structured-clone data in both directions. Image attachment writes retain the
+typed-array view's offset and length instead of enumerating each byte into a
+numeric-key dictionary, which stalled previews and exceeded the object-entry
+limit for larger files.
 
 Native AppKit file drags are exposed as brokered DOM `File` objects only after
 the browser authorizes the current document. Regular files are limited to 50 MiB
@@ -436,6 +451,7 @@ pending preload IPC, and companion windows can exit without late handle access.
 Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
 `test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
+`test/macos-pointer-interaction-smoke.js`, `test/macos-image-preview-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
 `test/macos-window-buttons-smoke.js`, and `test/macos-exit-lifecycle-smoke.js`.
@@ -444,12 +460,15 @@ composed display pixels and requires Screen Recording permission and unobstructe
 test windows. Optional physical passthrough verification uses
 `MINI_COMPANION_PHYSICAL=1` and macOS Accessibility permission.
 
-Run the selection, image-clipboard, and IME regressions against a rebuilt runtime:
+Run the selection, image-clipboard, IME, pointer, and image-preview regressions
+against a rebuilt runtime:
 
 ```sh
 out/mac-arm64/mini-electron --app=test/macos-selection-colors-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-pointer-interaction-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-image-preview-smoke.js
 ```
 
 The selection regression captures actual native renderer-view pixels in both
@@ -457,6 +476,13 @@ color schemes. The IME regression clicks real native editor targets, checks the
 `NSTextInputClient` screen rectangles and composition lifecycle, and does not
 change the system keyboard input source; the system candidate panel itself
 remains a manual visual check.
+The pointer regression sends actual AppKit movement/drag events, verifies hover
+feedback along the whole divider and width changes across captured drags, and
+retains native PNG evidence without requiring Screen Recording permission.
+The image-preview regression sends a large PNG in a nested sliced `Uint8Array`
+through the isolated preload, writes and reads its exact bytes on disk, decodes
+the returned Blob URL, and verifies that renderer mouse input and timers still
+work afterward.
 
 Hidden-titlebar traffic lights retain AppKit's native button size and gap when
 `trafficLightPosition` or `setWindowButtonPosition()` moves them. Their title-bar
