@@ -26,8 +26,11 @@
 #include "node.h"
 #include "simdjson.h"
 #include "simdutf.h"
-//#include "sqlite3.h"
+#if HAVE_SQLITE
+#include "sqlite3.h"
+#else
 #define SQLITE_VERSION "3.49.1"
+#endif
 #include "undici_version.h"
 #include "util.h"
 #include "uv.h"

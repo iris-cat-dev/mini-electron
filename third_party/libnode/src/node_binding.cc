@@ -27,6 +27,11 @@
 #define NODE_BUILTIN_DEBUG_BINDINGS(V)
 #endif
 
+#if HAVE_SQLITE
+#define NODE_BUILTIN_SQLITE_BINDINGS(V) V(sqlite)
+#else
+#define NODE_BUILTIN_SQLITE_BINDINGS(V)
+#endif
 
 // A list of built-in bindings. In order to do binding registration
 // in node::Init(), need to add built-in bindings in the following list.
@@ -76,7 +81,6 @@
     V(serdes)                                                                                                                                                  \
     V(signal_wrap)                                                                                                                                             \
     V(spawn_sync)                                                                                                                                              \
-    /*V(sqlite)*/                                                                                                                                                  \
     V(stream_pipe)                                                                                                                                             \
     V(stream_wrap)                                                                                                                                             \
     V(string_decoder)                                                                                                                                          \
@@ -106,6 +110,7 @@
     NODE_BUILTIN_ICU_BINDINGS(V)                                                                                                                               \
     NODE_BUILTIN_PROFILER_BINDINGS(V)                                                                                                                          \
     NODE_BUILTIN_DEBUG_BINDINGS(V)                                                                                                                             \
+    NODE_BUILTIN_SQLITE_BINDINGS(V)                                                                                                                            \
     NODE_BUILTIN_QUIC_BINDINGS(V)
 
 // This is used to load built-in bindings. Instead of using

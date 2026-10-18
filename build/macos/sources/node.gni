@@ -107,6 +107,7 @@ mini_electron_node_sources = [
   "//third_party/libnode/src/node_snapshot_stub.cc",
   "//third_party/libnode/src/node_snapshotable.cc",
   "//third_party/libnode/src/node_sockaddr.cc",
+  "//third_party/libnode/src/node_sqlite.cc",
   "//third_party/libnode/src/node_stat_watcher.cc",
   "//third_party/libnode/src/node_symbols.cc",
   "//third_party/libnode/src/node_task_queue.cc",
