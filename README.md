@@ -26,10 +26,19 @@ It also fixes mixed GPU/CPU guest composition, resize completion, image alpha,
 macOS UI-thread identification, and shutdown lifetime. See
 [rendering verification and remaining limits](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
 
-Source builds also increase macOS mouse-wheel scrolling to 120 logical pixels per
-vertical notch, preserve multi-notch input, and accept ImageIO-supported native
+Runtime `0.1.11` increases macOS mouse-wheel scrolling to 120 logical pixels per
+vertical notch, preserves multi-notch input, and accepts ImageIO-supported native
 clipboard image formats such as JPEG and multi-representation TIFF. Trackpad
 pixel scrolling remains unchanged.
+
+Source runtime `0.1.12` also accepts native image bytes whose encoding differs
+from their pasteboard type, including QQ's PNG data advertised as TIFF. ImageIO
+identifies and validates the actual encoding; existing byte, dimension, and
+pixel limits remain enforced. Valid PNG bytes are retained without re-encoding.
+
+Source runtime `0.1.13` sets ordinary mouse-wheel scrolling to 80 logical pixels
+per vertical notch. Multi-notch distances remain proportional, and precise
+trackpad scrolling is unchanged.
 
 The `0.1.9` macOS runtime fixes trackpad scrolling by preserving AppKit's
 precise logical-pixel deltas instead of multiplying them into wheel ticks.
@@ -650,8 +659,9 @@ native bitmap clipboard images supported by ImageIO (including PNG, TIFF, and
 JPEG) expose readable PNG `File` items on paste into textarea and contenteditable
 inputs even alongside HTML/URL representations. Multi-representation images use
 their first image, and an invalid preferred representation does not hide another
-valid image format. HTML/URL-only clipboard content is not fetched or synthesized
-into an image attachment.
+valid image format. Native image labels are hints: the actual encoding is decoded
+even when an application advertises PNG bytes as TIFF. HTML/URL-only clipboard
+content is not fetched or synthesized into an image attachment.
 Page zoom uses the existing WebContents zoom level, not CSS scaling. Disabled
 and unregistered accelerators do not invoke menu actions.
 
@@ -769,8 +779,9 @@ notches in one event, retaining compositor PNG evidence through `capturePage()`.
 The clipboard regression invokes actual AppKit editing actions on its owned
 renderer without activating the application. It checks decoded image dimensions
 and pixels from PNG, TIFF, JPEG with HTML/URL co-representations, multi-image TIFF,
-and invalid-PNG/valid-TIFF input in both textarea and contenteditable targets,
-alongside rich-text copy/cut/paste and malformed-image rejection.
+PNG bytes advertised as TIFF alongside a file URL, and invalid-PNG/valid-TIFF
+input in both textarea and contenteditable targets, alongside rich-text
+copy/cut/paste and malformed-image rejection.
 The image-preview regression sends a large PNG in a nested sliced `Uint8Array`
 through the isolated preload, writes and reads its exact bytes on disk, decodes
 the returned Blob URL, and verifies that renderer mouse input and timers still
@@ -796,7 +807,7 @@ AppKit's directional frame cursors; older systems use axis resize cursors.
 Mouse dragging preserves the event's held-button state. AppKit precise wheel
 events retain fractional pixel deltas and both axes through IPC and Blink, with
 Retina scaling applied once. Trackpad motion bypasses the legacy 120-unit wheel
-tick conversion; ordinary mouse wheels scroll 120 logical pixels per vertical
+tick conversion; ordinary mouse wheels scroll 80 logical pixels per vertical
 notch and retain multi-notch distances instead of clamping each event to one
 step. The renderer recognizes left, middle, and right buttons
 rather than interpreting native string names as left clicks.

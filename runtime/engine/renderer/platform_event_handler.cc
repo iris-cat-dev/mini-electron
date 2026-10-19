@@ -227,7 +227,7 @@ LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lP
 #if defined(__APPLE__)
     // Use logical pixels on macOS so Retina does not halve the wheel step.
     const float cScrollbarPixelsPerLine =
-        40.0f * m_webViewImpl->MainFrameWidget()->GetOriginalScreenInfo().device_scale_factor;
+        (80.0f / 3.0f) * m_webViewImpl->MainFrameWidget()->GetOriginalScreenInfo().device_scale_factor;
 #else
     static const float cScrollbarPixelsPerLine = 100.0f / 3.0f;
 #endif

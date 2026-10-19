@@ -19,7 +19,7 @@ ClipboardBroker clipboard_broker;
 bool renderer_broker_required = false;
 
 
-CGImageRef DecodeClipboardImage(NSData* data, CFStringRef expected_type) {
+CGImageRef DecodeClipboardImage(NSData* data, bool require_png, bool* is_png) {
   if (!data || data.length == 0
       || data.length > kMaximumClipboardImageBytes) {
     return nullptr;
@@ -27,10 +27,10 @@ CGImageRef DecodeClipboardImage(NSData* data, CFStringRef expected_type) {
   CGImageSourceRef source = CGImageSourceCreateWithData(
       (__bridge CFDataRef)data, nullptr);
   CFStringRef actual_type = source ? CGImageSourceGetType(source) : nullptr;
+  const bool png = actual_type && CFEqual(actual_type, CFSTR("public.png"));
   if (!source || CGImageSourceGetCount(source) == 0 || !actual_type
-      || !CFEqual(actual_type, expected_type)
-      || (CFEqual(expected_type, CFSTR("public.png"))
-          && CGImageSourceGetCount(source) != 1)) {
+      || (require_png && !png)
+      || (png && CGImageSourceGetCount(source) != 1)) {
     if (source)
       CFRelease(source);
     return nullptr;
@@ -65,11 +65,13 @@ CGImageRef DecodeClipboardImage(NSData* data, CFStringRef expected_type) {
   CFRelease(source);
   if (!valid && image)
     CGImageRelease(image);
+  if (valid && is_png)
+    *is_png = png;
   return valid ? image : nullptr;
 }
 
 std::vector<uint8_t> CopyValidatedPng(NSData* data) {
-  CGImageRef image = DecodeClipboardImage(data, CFSTR("public.png"));
+  CGImageRef image = DecodeClipboardImage(data, true, nullptr);
   if (!image)
     return {};
   CGImageRelease(image);
@@ -262,23 +264,22 @@ std::vector<uint8_t> ReadClipboardPng() {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     for (NSPasteboardType type in ClipboardImageTypes()) {
       NSData* data = [pasteboard dataForType:type];
-      if ([type isEqualToString:NSPasteboardTypePNG]) {
-        auto png = CopyValidatedPng(data);
-        if (!png.empty())
-          return png;
-        continue;
-      }
-      // Decode only bounded native image bytes, never HTML or a file/remote URL.
-      CGImageRef image = DecodeClipboardImage(data, (__bridge CFStringRef)type);
+      // Native image labels can be wrong (for example PNG bytes advertised as
+      // TIFF). Sniff bounded image data, never HTML or a file/remote URL.
+      bool is_png = false;
+      CGImageRef image = DecodeClipboardImage(data, false, &is_png);
       if (!image)
         continue;
-      NSBitmapImageRep* bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
-      CGImageRelease(image);
-      NSData* png = [bitmap representationUsingType:NSBitmapImageFileTypePNG
-                                       properties:@{}];
+      NSData* png = data;
+      if (!is_png) {
+        NSBitmapImageRep* bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
+        png = [bitmap representationUsingType:NSBitmapImageFileTypePNG
+                                  properties:@{}];
 #if !__has_feature(objc_arc)
-      [bitmap release];
+        [bitmap release];
 #endif
+      }
+      CGImageRelease(image);
       if (!png || png.length == 0 || png.length > kMaximumClipboardImageBytes)
         continue;
       const auto* bytes = static_cast<const uint8_t*>(png.bytes);
@@ -410,7 +411,7 @@ bool WriteClipboard(const ClipboardContent& content) {
         return false;
       image = [NSData dataWithBytes:content.png->data()
                             length:content.png->size()];
-      CGImageRef decoded = DecodeClipboardImage(image, CFSTR("public.png"));
+      CGImageRef decoded = DecodeClipboardImage(image, true, nullptr);
       if (!decoded)
         return false;
       CGImageRelease(decoded);

@@ -112,6 +112,7 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   if (web) format = [format substringFromIndex:4];
   if (![format isEqualToString:@"png"] && ![format isEqualToString:@"tiff"]
       && ![format isEqualToString:@"jpeg"]
+      && ![format isEqualToString:@"png-as-tiff"]
       && ![format isEqualToString:@"multi-tiff"]
       && ![format isEqualToString:@"malformed-png-valid-tiff"]
       && ![format isEqualToString:@"malformed-png"]
@@ -127,7 +128,9 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
       options:0];
   NSData* data = png;
   NSPasteboardType type = NSPasteboardTypePNG;
-  if ([format isEqualToString:@"tiff"]
+  if ([format isEqualToString:@"png-as-tiff"]) {
+    type = NSPasteboardTypeTIFF;
+  } else if ([format isEqualToString:@"tiff"]
       || [format isEqualToString:@"malformed-png-valid-tiff"]) {
     data = [[NSData alloc] initWithBase64EncodedString:
         @"SUkqAAgAAAALAAABBAABAAAAAQAAAAEBBAABAAAAAQAAAAIBAwAEAAAAkgAAAAMBAwABAAAAAQAAAAYBAwABAAAAAgAAABEBBAABAAAAmgAAABUBAwABAAAABAAAABYBBAABAAAAAQAAABcBBAABAAAABAAAABwBAwABAAAAAQAAAFIBAwABAAAAAgAAAAAAAAAIAAgACAAIAP8AAP8="
@@ -158,6 +161,8 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
   if (![format isEqualToString:@"no-image"])
     [item setData:data forType:type];
+  if ([format isEqualToString:@"png-as-tiff"])
+    [item setString:@"file:///nonexistent/copied-image.png" forType:NSPasteboardTypeFileURL];
   if ([format isEqualToString:@"malformed-png-valid-tiff"])
     [item setData:[@"not a PNG" dataUsingEncoding:NSUTF8StringEncoding]
           forType:NSPasteboardTypePNG];

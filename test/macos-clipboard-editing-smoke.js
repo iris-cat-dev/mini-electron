@@ -170,6 +170,7 @@ app.whenReady().then(async () => {
     await pasteNativeImage('web-png', id);
     await pasteNativeImage('web-tiff', id);
     await pasteNativeImage('web-jpeg', id);
+    await pasteNativeImage('png-as-tiff', id);
     await pasteNativeImage('multi-tiff', id);
     await pasteNativeImage('malformed-png-valid-tiff', id);
     await rejectNativeImage('web-malformed-png', id);

@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
   await pause(500);
   const mouse = await state();
   const step = mouse.top - 1000;
-  assert.ok(step >= 80 && step < 400, `One mouse-wheel notch must advance several rows, not a whole pane: ${step}`);
+  assert.equal(step, 80, 'One mouse-wheel notch must move 80 logical pixels regardless of display scale');
   assert.equal(mouse.left, 1000, 'Vertical wheel input must not move the horizontal axis');
   assert.equal(mouse.otherTop, 0, 'Wheel input must target the pane under the pointer');
   assert.equal(mouse.pageTop, 0, 'Nested wheel input must not scroll the document');
