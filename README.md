@@ -9,38 +9,37 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 
 ## npm distribution
 
-The npm package is `@iriscat/mini-electron`. Version `0.1.8` publishes the
-Windows x64 runtime only; macOS packaging is deferred for this release.
-`package.json` declares only `win32`/`x64`, matching the published artifacts.
-Apple Silicon macOS users should keep `@iriscat/mini-electron@0.1.7`.
+The npm package is `@iriscat/mini-electron`. Version `0.1.9` publishes the
+Apple Silicon macOS runtime only; Windows remains on version `0.1.8`.
+`package.json` declares only `darwin`/`arm64`, matching the published artifact.
+Intel macOS is not supported.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.8
+npm install --save-dev @iriscat/mini-electron@0.1.9
 node -p "require('@iriscat/mini-electron')"
 ```
 
-The `0.1.8` Windows runtime fixes filesystem identity and temporary-directory
-creation, initial programmatic navigation, transparent companion-window display
-and taskbar visibility, retained presentation after minimizing, and pointer-hover
-repaints. It also includes the corrected ASAR-enabled `child_process`
-promisification contract, including resolved output and child-process access;
-this bootstrap also runs when the application itself is not packaged in ASAR.
-The binary uses Node `24.0.0-pre` with Node module ABI `134`.
-The macOS runtime remains at `0.1.7`; macOS source changes are not included in
-this npm release. Its executable is ad-hoc signed and not notarized.
+The `0.1.9` macOS runtime fixes trackpad scrolling by preserving AppKit's
+precise logical-pixel deltas instead of multiplying them into wheel ticks.
+Traditional mouse wheels continue to use 120-unit tick deltas. The executable
+is stripped (`strip -x`), ad-hoc signed, and not notarized.
 Version `0.1.5` includes the macOS selection, clipboard image paste, IME
 positioning/composition colors, sidebar resizing, and image-preview IPC fixes.
 Version `0.1.6` adds the macOS native `node:sqlite` binding, including column
 metadata, backup, session/changesets, and Worker support. It also keeps Win32
 keyboard-layout APIs Windows-only, links the shared keycode conversion on macOS,
 and preserves native AppKit keyboard metadata.
+The Windows runtime remains at `0.1.8`; that release fixes filesystem identity,
+temporary-directory creation, navigation, companion-window presentation,
+pointer-hover repaints, and the ASAR-enabled `child_process` promisification
+contract.
 
 The npm tarball contains the installer, CLI, types, and manifests, not the native
 executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
 matching GitHub Release, verifies the archive and its complete file inventory,
 then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
 executable path outside the runtime; application main/preload code still imports
-the built-in `electron` API. The package and runtime version is `0.1.8`; the
+the built-in `electron` API. The package and runtime version is `0.1.9`; the
 Electron API version remains `41.2.0`.
 
 For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
@@ -48,40 +47,29 @@ For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
 `MINI_ELECTRON_MIRROR` to a directory server that hosts `v<version>/` release
 assets. Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and
 `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when installing into a fresh package directory.
-In macOS version `0.1.7`, the installed executable is
+On macOS the installed executable is
 `dist/Electron.app/Contents/MacOS/Electron`; `npx mini-electron app.js` and
-`ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as on Windows.
+`ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as expected.
 
-OMP Desktop can retain its existing Electron development types and explicitly
-select this runtime for packaging (Git Bash):
+Use this runtime directly for development or as an explicit Electron
+distribution when packaging an Apple Silicon macOS application. Keep the
+original `npmRebuild: false` setting and application imports. Both development
+packages expose an `electron` command; use the explicit `mini-electron` CLI
+rather than depending on which shared command wins.
 
-```sh
-cd D:/Project/omp-desktop
-npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.8
-cd packages/desktop
-ELECTRON_DIST="$(node -p "require('node:path').dirname(require('@iriscat/mini-electron'))")"
-cd ../..
-npm run build:desktop -- --win --x64 --publish never \
-  --config.electronDist="$ELECTRON_DIST" --config.electronVersion=41.2.0
-```
-
-Keep the original `npmRebuild: false` setting and application imports. Both
-development packages expose an `electron` command; use the explicit
-`mini-electron` CLI rather than depending on which shared command wins.
-
-To prepare the Windows-only npm release, build and assemble its runtime:
+To prepare the macOS-only npm release, build and assemble its runtime:
 
 ```sh
 python build.py --jobs 16 --package-dist
 python scripts/build_runtime_release.py \
-  --windows-dist out/windows-x64/runtime-dist --output out/runtime-release
+  --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
 ```
 
-The assembler writes the declared `v0.1.8` runtime ZIP, `SHASUMS256.txt`, and an
-`npm-package` directory with the README and installer. Each runtime's
+The assembler writes the declared `v0.1.9` runtime ZIP, `SHASUMS256.txt`, and an
+`npm-package` directory with the README and installer. The runtime's
 `version.json` must carry the package version. For dual-platform release
-manifests, build both native targets and also supply `--macos-dist` to the
-assembler. Publish the declared ZIPs and `SHASUMS256.txt` to GitHub before
+manifests, build both native targets and also supply `--windows-dist` to the
+assembler. Publish the declared ZIP and `SHASUMS256.txt` to GitHub before
 publishing the npm package with public access.
 
 
@@ -879,7 +867,7 @@ Use automated mode for matched-viewport comparisons.
 
 ### Runtime distribution
 
-macOS packaging is not part of the `0.1.8` release. For a release declaring
+Version `0.1.9` publishes this macOS runtime. The release declares
 `darwin`/`arm64` in `package.json` and `darwin-arm64` in `artifacts.json`:
 
 ```sh

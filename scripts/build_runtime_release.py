@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "build"))
 from mini_electron.distribution import (  # noqa: E402
     DistributionError,
     create_zip,
+    path_is_link,
     release_metadata,
     sha256,
     validate_distribution,
@@ -86,7 +87,7 @@ def assemble(args: argparse.Namespace) -> Path:
     output = Path(args.output)
     if not output.is_absolute():
         output = ROOT / output
-    if output.is_symlink() or output.is_junction():
+    if path_is_link(output):
         raise DistributionError(
             f"Release output must not be a symlink or junction: {output}"
         )

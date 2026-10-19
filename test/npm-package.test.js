@@ -11,6 +11,19 @@ const artifacts = require('../artifacts.json');
 
 const ROOT = path.resolve(__dirname, '..');
 const PACKAGE_FILES = ['artifacts.json', 'cli.js', 'index.js', 'install.js', 'package.json'];
+const WINDOWS_TARGET = {
+  platform: 'win32',
+  arch: 'x64',
+  archive: `mini-electron-v${artifacts.runtimeVersion}-win32-x64.zip`,
+  executable: 'electron.exe',
+};
+const MAC_TARGET = {
+  platform: 'darwin',
+  arch: 'arm64',
+  archive: `mini-electron-v${artifacts.runtimeVersion}-darwin-arm64.zip`,
+  executable: 'Electron.app/Contents/MacOS/Electron',
+};
+
 
 function temporaryDirectory(t) {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mini-electron-test-')));
@@ -29,6 +42,15 @@ function packageFixture(t, target) {
     manifest.os = [target.platform];
     manifest.cpu = [target.arch];
     fs.writeFileSync(manifestFile, `${JSON.stringify(manifest)}\n`);
+    const artifactsFile = path.join(directory, 'artifacts.json');
+    const fixtureArtifacts = JSON.parse(fs.readFileSync(artifactsFile, 'utf8'));
+    fixtureArtifacts.platforms = {
+      [`${target.platform}-${target.arch}`]: {
+        archive: target.archive,
+        executable: target.executable,
+      },
+    };
+    fs.writeFileSync(artifactsFile, `${JSON.stringify(fixtureArtifacts)}\n`);
   }
   return directory;
 }
@@ -199,7 +221,7 @@ test('installer rejects unsupported targets before creating an install marker', 
 });
 
 test('skip-download fails clearly when no verified binary exists', (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const result = runNode(['install.js'], {
     cwd: fixture,
     env: { ...targetEnvironment, MINI_ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
@@ -210,7 +232,7 @@ test('skip-download fails clearly when no verified binary exists', (t) => {
 });
 
 test('offline distribution override installs atomically and require returns the real executable', (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const distribution = path.join(temporaryDirectory(t), 'runtime-dist');
   createDistribution(distribution);
   const installed = runNode(['install.js'], {
@@ -228,7 +250,7 @@ test('offline distribution override installs atomically and require returns the 
 
 test('installer rejects stale and unlisted runtime resources', (t) => {
   for (const scenario of ['stale', 'unlisted']) {
-    const fixture = packageFixture(t);
+    const fixture = packageFixture(t, WINDOWS_TARGET);
     const distribution = path.join(temporaryDirectory(t), `runtime-${scenario}`);
     createDistribution(distribution);
     const resource = path.join(distribution, 'resources', 'mini-electron', 'lib', 'browser', 'init.js');
@@ -253,7 +275,7 @@ test('installer rejects stale and unlisted runtime resources', (t) => {
 });
 
 test('verified offline zip installs through the same contract as release archives', (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const archive = path.join(temporaryDirectory(t), 'runtime.zip');
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
@@ -287,7 +309,7 @@ test('verified offline zip installs through the same contract as release archive
 });
 
 test('authenticated macOS framework symlinks survive ZIP installation', { skip: process.platform === 'win32' }, (t) => {
-  const fixture = packageFixture(t, { platform: 'darwin', arch: 'arm64' });
+  const fixture = packageFixture(t, MAC_TARGET);
   const archive = path.join(temporaryDirectory(t), 'mac-runtime.zip');
   const executableRelative = 'Electron.app/Contents/MacOS/Electron';
   const framework = 'Electron.app/Contents/Frameworks/Squirrel.framework';
@@ -331,7 +353,7 @@ test('authenticated macOS framework symlinks survive ZIP installation', { skip: 
 });
 
 test('authenticated macOS framework symlinks survive a local distribution override', { skip: process.platform === 'win32' }, (t) => {
-  const fixture = packageFixture(t, { platform: 'darwin', arch: 'arm64' });
+  const fixture = packageFixture(t, MAC_TARGET);
   const distribution = path.join(temporaryDirectory(t), 'mac-runtime');
   fs.mkdirSync(distribution);
   const { framework, links } = createMacDistribution(distribution);
@@ -406,7 +428,7 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
   ];
 
   for (const scenario of scenarios) {
-    const fixture = packageFixture(t);
+    const fixture = packageFixture(t, WINDOWS_TARGET);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
       packageVersion: artifacts.packageVersion,
@@ -443,7 +465,7 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
 });
 
 test('installer rejects traversal archives without leaving a binary or escaped file', (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const archive = path.join(temporaryDirectory(t), 'malicious.zip');
   storedZip(archive, [['../escaped.exe', 'not an executable']]);
   const result = runNode(['install.js'], {
@@ -462,7 +484,7 @@ test('installer rejects traversal archives without leaving a binary or escaped f
 });
 
 test('electron bin preserves argv, stdout, stderr, and exit code', (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const override = path.join(temporaryDirectory(t), 'override');
   fs.mkdirSync(override);
   // Homebrew node needs its real path for @rpath/libnode; Windows needs no symlink privilege.
@@ -480,7 +502,7 @@ test('electron bin preserves argv, stdout, stderr, and exit code', (t) => {
 });
 
 test('electron bin forwards termination signals and reports the child signal', { skip: process.platform === 'win32' }, async (t) => {
-  const fixture = packageFixture(t);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
   const override = path.join(temporaryDirectory(t), 'override');
   fs.mkdirSync(override);
   fs.symlinkSync(process.execPath, path.join(override, 'electron.exe'));
