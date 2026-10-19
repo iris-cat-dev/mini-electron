@@ -591,6 +591,44 @@ async function releaseServer(t, releases) {
   return { assets, env };
 }
 
+test('Windows target channel installs independently and exact version pins take precedence', async (t) => {
+  const channelRelease = releaseFixture(t, '0.1.14');
+  const pinnedRelease = releaseFixture(t, '0.1.15');
+  const { assets, env } = await releaseServer(t, [channelRelease, pinnedRelease]);
+  const legacyManifest = {
+    ...channelRelease.manifest,
+    runtimeVersion: '0.1.13',
+    platforms: {
+      'darwin-arm64': {
+        archive: 'mini-electron-v0.1.13-darwin-arm64.zip',
+        executable: 'Electron.app/Contents/MacOS/Electron',
+        sha256: '0'.repeat(64),
+      },
+    },
+  };
+  assets.set('/runtime-v1/artifacts.json', JSON.stringify(legacyManifest));
+  assets.set('/runtime-v1-win32-x64/artifacts.json', JSON.stringify(channelRelease.manifest));
+
+  const channelFixture = packageFixture(t);
+  let result = await runNodeAsync(['install.js'], { cwd: channelFixture, env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    fs.readFileSync(path.join(channelFixture, 'dist', 'electron.exe'), 'utf8'),
+    channelRelease.executable,
+  );
+
+  const pinnedFixture = packageFixture(t);
+  result = await runNodeAsync(['install.js'], {
+    cwd: pinnedFixture,
+    env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.15' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    fs.readFileSync(path.join(pinnedFixture, 'dist', 'electron.exe'), 'utf8'),
+    pinnedRelease.executable,
+  );
+});
+
 test('runtime channel upgrades independently without changing npm or updating on ordinary install', async (t) => {
   const oldRelease = releaseFixture(t, '0.1.12');
   const newRelease = releaseFixture(t, '0.1.13');

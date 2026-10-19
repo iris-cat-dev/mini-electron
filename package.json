@@ -1,7 +1,7 @@
 {
   "name": "@iriscat/mini-electron",
-  "version": "0.1.11",
-  "description": "Electron-compatible desktop runtime for Apple Silicon macOS",
+  "version": "0.1.12",
+  "description": "Electron-compatible desktop runtime for Windows x64 and Apple Silicon macOS",
   "license": "Apache-2.0",
   "author": "mini-electron contributors",
   "main": "index.js",
@@ -33,10 +33,12 @@
     "node": ">=18.17"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "cpu": [
-    "arm64"
+    "arm64",
+    "x64"
   ],
   "miniElectron": {
     "installerProtocol": 1,
@@ -44,7 +46,12 @@
     "downloadBaseUrl": "https://github.com/iris-cat-dev/mini-electron/releases/download",
     "platforms": {
       "darwin-arm64": {
-        "executable": "Electron.app/Contents/MacOS/Electron"
+        "executable": "Electron.app/Contents/MacOS/Electron",
+        "runtimeChannel": "runtime-v1"
+      },
+      "win32-x64": {
+        "executable": "electron.exe",
+        "runtimeChannel": "runtime-v1-win32-x64"
       }
     }
   },

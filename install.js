@@ -357,7 +357,9 @@ function selectRuntime(manifest, target, requestedVersion) {
 }
 
 async function resolveRuntime(target, env, temporaryDirectory, requestedVersion) {
-  const selector = requestedVersion ? `v${requestedVersion}` : `runtime-v${config.installerProtocol}`;
+  const selector = requestedVersion
+    ? `v${requestedVersion}`
+    : target.runtimeChannel || `runtime-v${config.installerProtocol}`;
   const cache = defaultCacheDirectory(env);
   const cachedManifest = path.join(cache, `${selector}-artifacts.json`);
   let manifest;

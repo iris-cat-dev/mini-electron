@@ -108,6 +108,61 @@ class RuntimeReleaseTest(unittest.TestCase):
         self.assertEqual(metadata["runtimeVersion"], "9.8.8")
         self.assertNotIn("packageVersion", metadata)
 
+    def test_windows_channel_does_not_update_legacy_channel(self) -> None:
+        self.manifest["platforms"]["win32-x64"]["runtimeChannel"] = (
+            "runtime-v1-win32-x64"
+        )
+        self.manifest["platforms"]["darwin-arm64"] = {
+            "archive": "mini-electron-v9.8.7-darwin-arm64.zip",
+            "executable": "Mini Electron.app/Contents/MacOS/Mini Electron",
+            "runtimeChannel": "runtime-v1",
+        }
+        self.write_manifest()
+        self.args.runtime_only = True
+
+        output = self.assemble()
+        immutable_manifest = output / "v9.8.7" / "artifacts.json"
+        windows_channel = output / "runtime-v1-win32-x64" / "artifacts.json"
+        self.assertEqual(immutable_manifest.read_bytes(), windows_channel.read_bytes())
+        self.assertFalse((output / "runtime-v1").exists())
+        self.assertFalse((output / "npm-package").exists())
+        remote = json.loads(immutable_manifest.read_text(encoding="utf-8"))
+        self.assertEqual(set(remote["platforms"]), {"win32-x64"})
+
+    def test_partial_assembly_rejects_omitted_target_on_selected_channel(self) -> None:
+        output = self.assemble()
+        channel = output / "runtime-v1" / "artifacts.json"
+        original = channel.read_bytes()
+        self.manifest["platforms"]["darwin-arm64"] = {
+            "archive": "mini-electron-v9.8.7-darwin-arm64.zip",
+            "executable": "Mini Electron.app/Contents/MacOS/Mini Electron",
+        }
+        self.write_manifest()
+
+        with self.assertRaisesRegex(
+            DistributionError, "sharing selected channel runtime-v1 is required"
+        ):
+            self.assemble()
+
+        self.assertEqual(channel.read_bytes(), original)
+
+    def test_unsafe_channel_preserves_existing_release(self) -> None:
+        self.manifest["platforms"]["win32-x64"]["runtimeChannel"] = (
+            "runtime-v1-win32-x64"
+        )
+        self.write_manifest()
+        output = self.assemble()
+        channel = output / "runtime-v1-win32-x64" / "artifacts.json"
+        original = channel.read_bytes()
+
+        self.manifest["platforms"]["win32-x64"]["runtimeChannel"] = "../escaped"
+        self.write_manifest()
+        with self.assertRaisesRegex(DistributionError, "channel name is unsafe"):
+            self.assemble()
+
+        self.assertEqual(channel.read_bytes(), original)
+        self.assertFalse((output.parent / "escaped").exists())
+
     def test_runtime_only_needs_no_npm_inputs(self) -> None:
         for name in release._PACKAGE_FILES:
             (self.root / name).unlink()

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -37,6 +38,20 @@ _TARGETS = (
     ("win32", "x64", "windows_dist"),
     ("darwin", "arm64", "macos_dist"),
 )
+
+_CHANNEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+
+def _runtime_channel(platform: object, installer_protocol: object) -> str:
+    if not isinstance(platform, dict):
+        raise DistributionError("Runtime platform metadata is invalid")
+    channel = platform.get("runtimeChannel")
+    if channel is None:
+        channel = f"runtime-v{installer_protocol}"
+    if not isinstance(channel, str) or _CHANNEL_NAME.fullmatch(channel) is None:
+        raise DistributionError(f"Runtime channel name is unsafe: {channel!r}")
+    return channel
+
 
 
 def _validate_distribution(
@@ -99,15 +114,39 @@ def assemble(args: argparse.Namespace) -> Path:
     unsupported = platforms.keys() - supported
     if unsupported:
         raise DistributionError("Unsupported runtime targets: " + ", ".join(sorted(unsupported)))
-    inputs: list[tuple[Path, dict[str, object]]] = []
+    declared: list[tuple[str, str, str, str]] = []
     for platform_name, arch, argument in _TARGETS:
-        if f"{platform_name}-{arch}" not in platforms:
+        target = f"{platform_name}-{arch}"
+        if target not in platforms:
             continue
+        declared.append(
+            (
+                platform_name,
+                arch,
+                argument,
+                _runtime_channel(
+                    platforms[target], manifest.get("installerProtocol")
+                ),
+            )
+        )
+    selected_channel_keys = {
+        channel.casefold()
+        for _, _, argument, channel in declared
+        if getattr(args, argument) is not None
+    }
+    if not selected_channel_keys:
+        raise DistributionError("A runtime distribution for a declared target is required")
+
+    inputs: list[tuple[Path, dict[str, object], str]] = []
+    for platform_name, arch, argument, channel in declared:
         input_value = getattr(args, argument)
         if input_value is None:
-            raise DistributionError(
-                f"Runtime distribution for published target {platform_name}-{arch} is required"
-            )
+            if channel.casefold() in selected_channel_keys:
+                raise DistributionError(
+                    f"Runtime distribution for target {platform_name}-{arch} sharing "
+                    f"selected channel {channel} is required"
+                )
+            continue
         directory = Path(input_value)
         if not directory.is_absolute():
             directory = ROOT / directory
@@ -116,9 +155,13 @@ def assemble(args: argparse.Namespace) -> Path:
             raise DistributionError(f"Runtime distribution is missing: {directory}")
         if output == directory or output in directory.parents or directory in output.parents:
             raise DistributionError("Release output and runtime distribution inputs must not overlap")
-        inputs.append((directory, _validate_distribution(directory, platform_name, arch)))
-    if not inputs:
-        raise DistributionError("The runtime artifact manifest does not declare a supported target")
+        inputs.append(
+            (
+                directory,
+                _validate_distribution(directory, platform_name, arch),
+                channel,
+            )
+        )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staged = Path(tempfile.mkdtemp(prefix=f".{output.name}.stage-", dir=output.parent))
@@ -138,7 +181,7 @@ def assemble(args: argparse.Namespace) -> Path:
         }
         release_platforms: dict[str, object] = {}
         release_manifest["platforms"] = release_platforms
-        for directory, metadata in inputs:
+        for directory, metadata, _ in inputs:
             archive_name = metadata["archive"]
             if not isinstance(archive_name, str):
                 raise DistributionError("Runtime archive metadata is invalid")
@@ -156,9 +199,11 @@ def assemble(args: argparse.Namespace) -> Path:
         )
         manifest_text = json.dumps(release_manifest, indent=2) + "\n"
         (release / "artifacts.json").write_text(manifest_text, encoding="utf-8")
-        channel = staged / f"runtime-v{release_manifest['installerProtocol']}"
-        channel.mkdir()
-        (channel / "artifacts.json").write_text(manifest_text, encoding="utf-8")
+        channels = {channel.casefold(): channel for _, _, channel in inputs}
+        for channel_name in sorted(channels.values()):
+            channel = staged / channel_name
+            channel.mkdir()
+            (channel / "artifacts.json").write_text(manifest_text, encoding="utf-8")
 
         backup_holder: Path | None = None
         backup: Path | None = None

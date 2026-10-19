@@ -9,34 +9,35 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 
 ## npm distribution
 
-The npm package is `@iriscat/mini-electron` and currently supports Apple Silicon
-macOS only. `package.json` declares only `darwin`/`arm64`; Intel macOS is not
-supported. Starting with installer `0.1.11`, npm and native runtime versions are
-independent. The previously published Windows runtime remains at `0.1.8`.
+The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
+Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
+`0.1.12` restores Windows installation; npm and native runtime versions remain
+independent. Unpinned installs select Windows runtime `0.1.14` or macOS runtime
+`0.1.13` through separate channels.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.11
+npm install --save-dev @iriscat/mini-electron@0.1.12
 node -p "require('@iriscat/mini-electron')"
 ```
 
-Runtime `0.1.10` adds native Skia/Metal composition and presentation while
+macOS runtime `0.1.10` adds native Skia/Metal composition and presentation while
 retaining CPU tile rasterization, display-aware 60/120 Hz VSync, native image
 and editable-field context menus, and generated `data:`/`blob:` downloads.
 It also fixes mixed GPU/CPU guest composition, resize completion, image alpha,
 macOS UI-thread identification, and shutdown lifetime. See
 [rendering verification and remaining limits](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
 
-Runtime `0.1.11` increases macOS mouse-wheel scrolling to 120 logical pixels per
+macOS runtime `0.1.11` increases mouse-wheel scrolling to 120 logical pixels per
 vertical notch, preserves multi-notch input, and accepts ImageIO-supported native
 clipboard image formats such as JPEG and multi-representation TIFF. Trackpad
 pixel scrolling remains unchanged.
 
-Source runtime `0.1.12` also accepts native image bytes whose encoding differs
+macOS runtime `0.1.12` also accepts native image bytes whose encoding differs
 from their pasteboard type, including QQ's PNG data advertised as TIFF. ImageIO
 identifies and validates the actual encoding; existing byte, dimension, and
 pixel limits remain enforced. Valid PNG bytes are retained without re-encoding.
 
-Source runtime `0.1.13` sets ordinary mouse-wheel scrolling to 80 logical pixels
+macOS runtime `0.1.13` sets ordinary mouse-wheel scrolling to 80 logical pixels
 per vertical notch. Multi-notch distances remain proportional, and precise
 trackpad scrolling is unchanged.
 
@@ -50,15 +51,20 @@ Version `0.1.6` adds the macOS native `node:sqlite` binding, including column
 metadata, backup, session/changesets, and Worker support. It also keeps Win32
 keyboard-layout APIs Windows-only, links the shared keycode conversion on macOS,
 and preserves native AppKit keyboard metadata.
-The Windows runtime remains at `0.1.8`; that release fixes filesystem identity,
-temporary-directory creation, navigation, companion-window presentation,
-pointer-hover repaints, and the ASAR-enabled `child_process` promisification
-contract.
+Windows runtime `0.1.14` adds GPU acceleration and VSync, and fixes deadlocks and
+white flashes during repeated native edge resizing. DirectComposition retains
+the previous surface until the replacement is ready, initializes both flip
+buffers, and avoids blocking the UI thread on GPU completion. The GDI fallback
+stretches the retained frame to cover the resized viewport.
+Earlier Windows `0.1.8` fixes remain included: filesystem identity, temporary
+directories, navigation, transparent companion windows, pointer-hover repaints,
+and the ASAR-enabled `child_process` promisification contract.
 
 The npm tarball contains the installer, CLI, types, and package metadata, not the
 native executable or a pinned runtime manifest. Fresh installation reads
-`runtime-v1/artifacts.json` from GitHub Release assets, then downloads the selected
-runtime's ZIP and `SHASUMS256.txt` from its immutable `v<runtimeVersion>` release.
+`runtime-v1-win32-x64/artifacts.json` for Windows or `runtime-v1/artifacts.json`
+for macOS, then downloads the selected runtime's ZIP and `SHASUMS256.txt` from
+its immutable `v<runtimeVersion>` release.
 It verifies the archive against both manifests, validates the complete file/link
 inventory, and atomically installs `dist`.
 `require('@iriscat/mini-electron')` returns the executable path outside the runtime;
@@ -72,11 +78,14 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.11` can install runtimes `0.1.12` and `0.1.13`.
+  For example, npm `0.1.12` installs Windows `0.1.14` and macOS `0.1.13`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
   existing protocol channel at an incompatible runtime.
+- Per-target `runtimeChannel` metadata selects the mutable release channel.
+  Windows uses `runtime-v1-win32-x64`; macOS keeps `runtime-v1`. This allows
+  publishing a Windows-only runtime without rebuilding or changing macOS assets.
 
 Existing valid installations are reused by ordinary postinstall runs. Application
 startup and `require()` do not check the network or silently upgrade the runtime.
@@ -84,15 +93,16 @@ Update only the local binary explicitly:
 
 ```sh
 npx mini-electron --update-runtime
-# Select an exact runtime instead of the channel, including an intentional downgrade:
-npx mini-electron --update-runtime 0.1.12
+# Select an exact runtime that includes your platform (Windows example):
+npx mini-electron --update-runtime 0.1.14
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
-For reproducible fresh installations, pin the runtime separately from npm:
+For reproducible fresh installations, pin the runtime separately from npm
+(`0.1.14` for Windows; `0.1.13` for the existing macOS release):
 
 ```sh
-MINI_ELECTRON_RUNTIME_VERSION=0.1.12 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.14 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
@@ -107,33 +117,35 @@ release directory containing `artifacts.json`, the ZIP, and `SHASUMS256.txt`.
 Local inputs bypass remote discovery but still enforce protocol, API, inventory,
 and any explicit runtime pin. `MINI_ELECTRON_OFFLINE=1` can also install from a
 previously verified download cache; use `MINI_ELECTRON_CACHE` to relocate it.
-Set `MINI_ELECTRON_MIRROR` to an asset-server base URL hosting both
-`runtime-v1/artifacts.json` and `v<version>/` release assets. A version-pinned
-installation needs only its `v<version>/` assets, not the channel.
+Set `MINI_ELECTRON_MIRROR` to an asset-server base URL hosting your target's
+channel (`runtime-v1-win32-x64/artifacts.json` or `runtime-v1/artifacts.json`) and
+`v<version>/` release assets. A version-pinned installation needs only its
+`v<version>/` assets, not the channel.
 Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD`
 when installing into a fresh package directory or explicitly updating.
-On macOS the installed executable is
-`dist/Electron.app/Contents/MacOS/Electron`; `npx mini-electron app.js` and
-`ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as expected.
+The installed executable is `dist/electron.exe` on Windows or
+`dist/Electron.app/Contents/MacOS/Electron` on macOS; `npx mini-electron app.js`
+and `ELECTRON_RUN_AS_NODE=1 npx mini-electron` launch the selected runtime.
 
 Use this runtime directly for development or as an explicit Electron
-distribution when packaging an Apple Silicon macOS application. Keep the
-original `npmRebuild: false` setting and application imports. Both development
-packages expose an `electron` command; use the explicit `mini-electron` CLI
-rather than depending on which shared command wins.
+distribution when packaging a Windows x64 or Apple Silicon macOS application.
+Keep the original `npmRebuild: false` setting and application imports.
+Both development packages expose an `electron` command; use the explicit
+`mini-electron` CLI rather than depending on which shared command wins.
 
 ### Publishing a binary-only update
 
-1. Change only the runtime version, platform archive names, and any changed native
-   version fields in root `artifacts.json`; leave `package.json` unchanged unless
-   npm-shipped inputs also changed. Rebuild/package the native distribution so
-   `version.json` carries the new runtime identity and file hashes.
+1. Update the runtime version and platform archive names in root `artifacts.json`
+   and the native version constant in `runtime/electron/common/atom_version.h`.
+   Leave `package.json` unchanged unless npm-shipped inputs also changed.
+   Rebuild/package the native distribution so the executable and `version.json`
+   carry the new runtime identity and file hashes.
 2. Assemble without staging an npm package:
 
    ```sh
-   python build.py --jobs 16 --package-dist
+   python build.py --jobs 12 --package-dist
    python scripts/build_runtime_release.py \
-     --macos-dist out/mac-arm64/runtime-dist \
+     --windows-dist out/windows-x64/runtime-dist \
      --runtime-only --output out/runtime-release
    ```
 
@@ -142,24 +154,26 @@ rather than depending on which shared command wins.
    the declared ZIP, `SHASUMS256.txt`, and `artifacts.json`. The assembler computes
    the ZIP SHA256 in the emitted manifest. Never overwrite a released version's
    assets; fixed versions and caches depend on immutability.
-4. Only after those assets are available, upload
-   `out/runtime-release/runtime-v1/artifacts.json` as `artifacts.json` on the
-   separate `runtime-v1` GitHub Release, replacing the previous channel asset.
-   Create that release once, preferably as a prerelease so it is not mistaken
-   for a versioned runtime release. This is the mutable pointer used by fresh
-   unpinned installs and explicit unpinned updates.
+4. Only after those assets are available, upload each emitted channel's
+   `artifacts.json` to the matching channel GitHub Release, replacing only that
+   channel asset. The Windows-only command above emits
+   `out/runtime-release/runtime-v1-win32-x64/artifacts.json`; do not change the
+   existing macOS `runtime-v1` release. Create a new channel release once,
+   preferably as a prerelease so it is not mistaken for an immutable runtime
+   release. Fresh unpinned installs and explicit unpinned updates use this pointer.
 
 For example, after uploading a new version's immutable assets:
 
 ```sh
-gh release upload runtime-v1 \
-  out/runtime-release/runtime-v1/artifacts.json --clobber
+gh release upload runtime-v1-win32-x64 \
+  out/runtime-release/runtime-v1-win32-x64/artifacts.json --clobber
 ```
 
-No `npm publish` is needed for this workflow. For a dual-platform runtime
-manifest, build all platforms declared in `artifacts.json` and also supply
-`--windows-dist` to the assembler; target selection no longer depends on npm's
-`os`/`cpu` declarations.
+No `npm publish` is needed for this workflow. Supply `--macos-dist` for a macOS
+build, or both distribution arguments for a dual-platform release. Partial
+assembly is allowed only when omitted targets use different channels; omitting
+a target that shares a selected channel is rejected to avoid dropping support.
+Target selection does not depend on npm's `os`/`cpu` declarations.
 
 ### Publishing an installer update
 
@@ -167,6 +181,11 @@ Omit `--runtime-only` to also stage `out/runtime-release/npm-package`, then publ
 that directory with public access when installer/CLI/types/package inputs change.
 The staged npm package excludes `artifacts.json`, so a runtime-only manifest bump
 does not change its installer inputs.
+
+Installer `0.1.12` requires publishing Windows runtime `0.1.14` and its new
+`runtime-v1-win32-x64` channel before npm publication. Keep macOS runtime
+`0.1.13` and the existing `runtime-v1` channel unchanged; no macOS rebuild is
+needed for this installer update.
 
 The initial `0.1.11` cutover requires publishing both a protocol-1 runtime and its
 channel before publishing the new npm installer. Older `0.1.10` installers remain
