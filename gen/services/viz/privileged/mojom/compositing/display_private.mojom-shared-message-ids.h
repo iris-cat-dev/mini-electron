@@ -8,6 +8,7 @@
 #define SERVICES_VIZ_PRIVILEGED_MOJOM_COMPOSITING_DISPLAY_PRIVATE_MOJOM_SHARED_MESSAGE_IDS_H_
 
 #include <stdint.h>
+#include "build/build_config.h"
 
 namespace viz::mojom {
 namespace messages {
@@ -25,6 +26,9 @@ enum class DisplayPrivate : uint32_t {
     kSetDelegatedInkPointRenderer = 9,
     kSetStandaloneBeginFrameObserver = 10,
     kSetMaxVSyncAndVrr = 11,
+    #if BUILDFLAG(IS_MAC)
+    kSetVSyncDisplayID = 12,
+    #endif
 };
 enum class DisplayClient : uint32_t {
     kCreateLayeredWindowUpdater = 0,

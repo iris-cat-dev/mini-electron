@@ -19,6 +19,9 @@ class DisplayPrivateInterceptorForTesting : public DisplayPrivate {
     void SetDisplayColorMatrix(const ::gfx::Transform& color_matrix) override;
     void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) override;
     void SetOutputIsSecure(bool secure) override;
+    #if BUILDFLAG(IS_MAC)
+    void SetVSyncDisplayID(int64_t display_id) override;
+    #endif
     void SetDisplayVSyncParameters(::base::TimeTicks timebase, ::base::TimeDelta interval) override;
     void ForceImmediateDrawAndSwapIfPossible() override;
     void AddVSyncParameterObserver(::mojo::PendingRemote<::viz::mojom::VSyncParameterObserver> observer) override;

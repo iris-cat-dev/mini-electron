@@ -1154,10 +1154,15 @@ static bool IsPointerEvent(NSEventType type) {
   if (self.window) {
     for (NSNotificationName name in @[
         NSWindowDidMoveNotification, NSWindowDidChangeBackingPropertiesNotification,
-        NSWindowDidBecomeKeyNotification, NSWindowDidResignKeyNotification ]) {
+        NSWindowDidChangeScreenNotification, NSWindowDidBecomeKeyNotification,
+        NSWindowDidResignKeyNotification ]) {
       [notifications addObserver:self selector:@selector(textInputWindowChanged:)
                            name:name object:self.window];
     }
+    [notifications addObserver:self selector:@selector(textInputWindowChanged:)
+                         name:NSApplicationDidChangeScreenParametersNotification
+                       object:nil];
+    _owner->Resize();
   } else {
     [self updateTextInputState:base::Value::Dict()];
   }
@@ -1170,7 +1175,9 @@ static bool IsPointerEvent(NSEventType type) {
     [window makeFirstResponder:self];
 }
 - (void)textInputWindowChanged:(NSNotification*)notification {
-  if ([notification.name isEqual:NSWindowDidChangeBackingPropertiesNotification])
+  if ([notification.name isEqual:NSWindowDidChangeBackingPropertiesNotification] ||
+      [notification.name isEqual:NSWindowDidChangeScreenNotification] ||
+      [notification.name isEqual:NSApplicationDidChangeScreenParametersNotification])
     _owner->Resize();
   if ([notification.name isEqual:NSWindowDidResignKeyNotification]) {
     [self updateTextInputState:base::Value::Dict()];
@@ -2071,6 +2078,10 @@ void RendererSurfaceHost::DrawFrame(atom::WebContents* contents, NSView* view,
 void ResizeWebContents(atom::WebContents* contents, NSView* view) {
   if (!contents || !view)
     return;
+  NSScreen* screen = view.window.screen ?: NSScreen.mainScreen;
+  NSNumber* display_number = screen.deviceDescription[@"NSScreenNumber"];
+  contents->setVSyncDisplayId(
+      display_number ? static_cast<int64_t>(display_number.unsignedIntValue) : -1);
   NSSize size = view.bounds.size;
   const double scale = view.window ? view.window.backingScaleFactor
                                    : NSScreen.mainScreen.backingScaleFactor;

@@ -526,9 +526,9 @@ RootCompositorFrameSinkImpl::RootCompositorFrameSinkImpl(FrameSinkManagerImpl* f
     std::unique_ptr<SyntheticBeginFrameSource> synthetic_begin_frame_source, std::unique_ptr<ExternalBeginFrameSource> external_begin_frame_source,
     std::unique_ptr<Display> display, bool hw_support_for_multiple_refresh_rates)
     : compositor_frame_sink_client_(std::move(frame_sink_client))
-    , compositor_frame_sink_receiver_(this, std::move(frame_sink_receiver))
+    , compositor_frame_sink_receiver_(this, std::move(frame_sink_receiver), base::SingleThreadTaskRunner::GetCurrentDefault())
     , display_client_(std::move(display_client))
-    , display_private_receiver_(this, std::move(display_receiver))
+    , display_private_receiver_(this, std::move(display_receiver), base::SingleThreadTaskRunner::GetCurrentDefault())
     , support_(std::make_unique<CompositorFrameSinkSupport>(compositor_frame_sink_client_.get(), frame_sink_manager, frame_sink_id,
           /*is_root=*/true))
     , synthetic_begin_frame_source_(std::move(synthetic_begin_frame_source))

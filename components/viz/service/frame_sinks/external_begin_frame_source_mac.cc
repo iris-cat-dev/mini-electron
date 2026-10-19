@@ -118,6 +118,16 @@ void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id)
 
     display_id_ = display_id;
 
+    // A new display must not inherit subsampling or refresh-rate limits from
+    // the previous source, including when DisplayLink creation fails.
+    vsync_subsampling_factor_ = 1;
+    vsyncs_to_skip_ = 0;
+    nominal_refresh_period_ = BeginFrameArgs::DefaultInterval();
+    preferred_interval_ = nominal_refresh_period_;
+    min_refresh_interval_ = base::TimeDelta();
+    max_refresh_interval_ = base::TimeDelta();
+    granularity_ = base::TimeDelta();
+
     // Get DisplayLinkMac with the new CGDirectDisplayID.
     if (display_id != display::kInvalidDisplayId) {
         display_link_mac_ = ui::DisplayLinkMac::GetForDisplay(display_id);
@@ -163,6 +173,13 @@ void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id)
         if (multiple_hw_refresh_rates_callback_) {
             multiple_hw_refresh_rates_callback_.Run(false);
         }
+        const auto now = base::TimeTicks::Now();
+        if (time_source_) {
+            time_source_->SetTimebaseAndInterval(now, preferred_interval_);
+        }
+        if (update_vsync_params_callback_) {
+            update_vsync_params_callback_.Run(now, nominal_refresh_period_);
+        }
     }
 
     if (needs_begin_frames_) {
@@ -186,10 +203,28 @@ void ExternalBeginFrameSourceMac::StartBeginFrame()
         display_link_mac_.reset();
         RecordDisplayLinkCreateStatus(DisplayLinkResult::kFailedRegisterCallback);
         DLOG(ERROR) << "Fail to start CVDisplayLink callback for DisplayID: " << display_id_ << ". Switch to the timer";
+
+        // The hardware source could be queried but not started. Publish the
+        // timer's default interval/range instead of retaining its old limits.
+        nominal_refresh_period_ = BeginFrameArgs::DefaultInterval();
+        preferred_interval_ = nominal_refresh_period_;
+        min_refresh_interval_ = base::TimeDelta();
+        max_refresh_interval_ = base::TimeDelta();
+        granularity_ = base::TimeDelta();
+        vsync_subsampling_factor_ = 1;
+        vsyncs_to_skip_ = 0;
+        hw_takes_any_refresh_rate_ = false;
+        if (multiple_hw_refresh_rates_callback_) {
+            multiple_hw_refresh_rates_callback_.Run(false);
+        }
+        if (update_vsync_params_callback_) {
+            update_vsync_params_callback_.Run(base::TimeTicks::Now(), nominal_refresh_period_);
+        }
     }
 
     // Start the timer.
     CreateDelayBasedTimeSourceIfNeeded();
+    time_source_->SetTimebaseAndInterval(base::TimeTicks::Now(), preferred_interval_);
     time_source_->SetActive(/*active=*/true);
 }
 
@@ -353,7 +388,13 @@ void ExternalBeginFrameSourceMac::SetPreferredInterval(base::TimeDelta interval)
                        << "::SetPreferredInterval: ID: " << display_id_ << ", Interval: " << interval;
 
     if (!display_link_mac_) {
-        time_source_->SetTimebaseAndInterval(last_frame_time_, interval);
+        // FrameRateDecider may still hold the preceding display's preference.
+        // Cache it safely before the first timer is needed, but do not run the
+        // fallback faster than its advertised default refresh interval.
+        preferred_interval_ = std::max(interval, nominal_refresh_period_);
+        if (time_source_) {
+            time_source_->SetTimebaseAndInterval(last_frame_time_, preferred_interval_);
+        }
         return;
     }
 

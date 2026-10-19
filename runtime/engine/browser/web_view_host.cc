@@ -259,11 +259,26 @@ void WebViewHost::initializeCompositorInBlinkThread(/*gfx::AcceleratedWidget hwn
         //m_hWnd,
         isTransparent, gfx::Size(1, 1), // �����дһ���ٵĴ�С��������һ��С��ɫ������
         std::move(frameSinkManagerClientReceiver), std::move(frameSinkManager), content::RenderThreadImpl::get()->m_hostThread.task_runner(),
+#if BUILDFLAG(IS_MAC)
+        m_vsyncDisplayId,
+#endif
         m_service->GetCompositorThreadRunner());
 
     if (m_renderWidgetHostImpl)
         m_renderWidgetHostImpl->setSinkHost(m_host.get());
 }
+
+#if BUILDFLAG(IS_MAC)
+void WebViewHost::setVSyncDisplayId(int64_t display_id)
+{
+    DCHECK(ThreadCall::isBlinkThread());
+    if (m_vsyncDisplayId == display_id)
+        return;
+    m_vsyncDisplayId = display_id;
+    if (m_host)
+        m_host->setVSyncDisplayIdOnBlinkThread(display_id);
+}
+#endif
 
 void WebViewHost::setHostWnd(HWND hWnd)
 {

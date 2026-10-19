@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "base/types/cxx23_to_underlying.h"
+#include "build/build_config.h"
 #include "mojo/public/cpp/bindings/clone_traits.h"
 #include "mojo/public/cpp/bindings/equals_traits.h"
 #include "mojo/public/cpp/bindings/lib/serialization.h"
@@ -88,6 +89,9 @@ public:
         kAddVSyncParameterObserverMinVersion = 0,
         kSetDelegatedInkPointRendererMinVersion = 0,
         kSetStandaloneBeginFrameObserverMinVersion = 0,
+        #if BUILDFLAG(IS_MAC)
+        kSetVSyncDisplayIDMinVersion = 0,
+        #endif
         kSetMaxVSyncAndVrrMinVersion = 0,
     };
 
@@ -127,6 +131,11 @@ public:
     struct SetStandaloneBeginFrameObserver_Sym {
         NOINLINE static uint32_t IPCStableHash();
     };
+    #if BUILDFLAG(IS_MAC)
+    struct SetVSyncDisplayID_Sym {
+        NOINLINE static uint32_t IPCStableHash();
+    };
+    #endif
     struct SetMaxVSyncAndVrr_Sym {
         NOINLINE static uint32_t IPCStableHash();
     };
@@ -151,6 +160,9 @@ public:
     virtual void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) = 0;
 
     virtual void SetOutputIsSecure(bool secure) = 0;
+    #if BUILDFLAG(IS_MAC)
+    virtual void SetVSyncDisplayID(int64_t display_id) = 0;
+    #endif
 
     virtual void SetDisplayVSyncParameters(::base::TimeTicks timebase, ::base::TimeDelta interval) = 0;
 
@@ -230,6 +242,9 @@ public:
     void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) final;
 
     void SetOutputIsSecure(bool secure) final;
+    #if BUILDFLAG(IS_MAC)
+    void SetVSyncDisplayID(int64_t display_id) final;
+    #endif
 
     void SetDisplayVSyncParameters(::base::TimeTicks timebase, ::base::TimeDelta interval) final;
 

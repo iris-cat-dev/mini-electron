@@ -506,6 +506,14 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_set_device_scale_factor(mini_electron
       });
 }
 
+void mini_electron_mac_set_vsync_display_id(
+    mini_electron_web_view handle, int64_t display_id) {
+  content::ThreadCall::callBlinkThreadAsyncWithValid(
+      FROM_HERE, handle, [display_id](content::WebViewHost* view) {
+        view->setVSyncDisplayId(display_id);
+      });
+}
+
 void mini_electron_mac_set_composition(mini_electron_web_view handle,
                          const char16_t* text,
                          size_t length,

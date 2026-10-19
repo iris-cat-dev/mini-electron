@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/threading/thread.h"
+#include "base/synchronization/waitable_event.h"
 #include "base/time/time.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "components/viz/host/host_display_client.h"
@@ -21,6 +22,10 @@
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "ui/gfx/native_widget_types.h"
 #include "base/task/single_thread_task_runner.h"
+#include "build/build_config.h"
+#if BUILDFLAG(IS_MAC)
+#include "ui/display/types/display_constants.h"
+#endif
 
 namespace viz {
 class HostDisplayClient;
@@ -41,6 +46,9 @@ public:
         //gfx::AcceleratedWidget widget,
         const gfx::Size& size, mojo::PendingReceiver<viz::mojom::FrameSinkManagerClient> client_receiver,
         mojo::PendingRemote<viz::mojom::FrameSinkManager> frame_sink_manager_remote, scoped_refptr<base::SingleThreadTaskRunner> work_runner,
+#if BUILDFLAG(IS_MAC)
+        int64_t vsync_display_id,
+#endif
         scoped_refptr<base::SingleThreadTaskRunner> service_runner);
 
     VizHost(const VizHost&) = delete;
@@ -50,6 +58,9 @@ public:
     void destroy(std::function<void(void)>&& callback);
 
     void resizeOnBlinkThread(const gfx::Size& size, float device_scale_factor);
+#if BUILDFLAG(IS_MAC)
+    void setVSyncDisplayIdOnBlinkThread(int64_t display_id);
+#endif
 
     viz::HostFrameSinkManager* host_frame_sink_manager()
     {
@@ -66,6 +77,9 @@ public:
 private:
     void delayResizeDisplayOnVizThread(base::WaitableEvent* waitEvt);
     void resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt);
+#if BUILDFLAG(IS_MAC)
+    void setVSyncDisplayIdOnHostThread(int64_t display_id);
+#endif
 
     void embedClients(VizClient* embedder_client, const gfx::Rect& child_bounds);
 
@@ -96,11 +110,21 @@ private:
     // though.
     //base::Thread m_thread;
 
-    bool m_hadInited = false;
+    base::WaitableEvent m_initialized;
+#if BUILDFLAG(IS_MAC)
+    int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
+    // Created on the host sequence and published by constructor completion.
+    base::WeakPtr<VizHost> m_hostWeakPtr;
+#endif
 
     scoped_refptr<base::SingleThreadTaskRunner> m_workRunner;
     scoped_refptr<base::SingleThreadTaskRunner> m_serviceRunner;
     base::WeakPtrFactory<VizHost> m_weakPtrFactory { this };
+#if BUILDFLAG(IS_MAC)
+    // The legacy factory also serves service-runner callbacks. Keep screen
+    // updates bound exclusively to the sequence owning m_displayPrivate.
+    base::WeakPtrFactory<VizHost> m_hostWeakPtrFactory { this };
+#endif
 };
 
 } // namespace demo

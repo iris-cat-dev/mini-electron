@@ -192,6 +192,25 @@ DisplayPrivate_SetOutputIsSecure_Params_Data::DisplayPrivate_SetOutputIsSecure_P
 {
 }
 
+#if BUILDFLAG(IS_MAC)
+// static
+bool DisplayPrivate_SetVSyncDisplayID_Params_Data::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
+{
+    if (!data)
+        return true;
+    if (!ValidateUnversionedStructHeaderAndSizeAndClaimMemory(data, 16, validation_context)) {
+        return false;
+    }
+
+    return true;
+}
+
+DisplayPrivate_SetVSyncDisplayID_Params_Data::DisplayPrivate_SetVSyncDisplayID_Params_Data()
+    : header_({ sizeof(*this), 0 })
+{
+}
+#endif
+
 // static
 bool DisplayPrivate_SetDisplayVSyncParameters_Params_Data::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -417,6 +417,10 @@ void ClosePipe(PipeHandle pipe)
 
 bool IsBrowserToRendererMethod(const std::string& method)
 {
+#if BUILDFLAG(IS_MAC)
+    if (method == "setVSyncDisplayId")
+        return true;
+#endif
     static constexpr std::string_view kMethods[] = {
         "navigate", "stop", "reload", "goBack", "goForward", "goToOffset",
         "goToIndex", "setViewport", "setFocus", "input", "ipc-message",

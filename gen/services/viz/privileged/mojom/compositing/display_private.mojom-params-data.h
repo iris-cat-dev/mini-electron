@@ -9,6 +9,7 @@
 
 #include "mojo/public/cpp/bindings/lib/bindings_internal.h"
 #include "mojo/public/cpp/bindings/lib/buffer.h"
+#include "build/build_config.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -119,6 +120,23 @@ private:
     ~DisplayPrivate_SetOutputIsSecure_Params_Data() = delete;
 };
 static_assert(sizeof(DisplayPrivate_SetOutputIsSecure_Params_Data) == 16, "Bad sizeof(DisplayPrivate_SetOutputIsSecure_Params_Data)");
+#if BUILDFLAG(IS_MAC)
+class DisplayPrivate_SetVSyncDisplayID_Params_Data {
+public:
+    static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
+
+    mojo::internal::StructHeader header_;
+    int64_t display_id;
+
+private:
+    friend class mojo::internal::MessageFragment<DisplayPrivate_SetVSyncDisplayID_Params_Data>;
+
+    DisplayPrivate_SetVSyncDisplayID_Params_Data();
+    ~DisplayPrivate_SetVSyncDisplayID_Params_Data() = delete;
+};
+static_assert(sizeof(DisplayPrivate_SetVSyncDisplayID_Params_Data) == 16, "Bad sizeof(DisplayPrivate_SetVSyncDisplayID_Params_Data)");
+#endif
+
 class DisplayPrivate_SetDisplayVSyncParameters_Params_Data {
 public:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -404,6 +422,30 @@ public:
 private:
     internal::DisplayPrivate_SetOutputIsSecure_Params_Data* data_ = nullptr;
 };
+
+#if BUILDFLAG(IS_MAC)
+class DisplayPrivate_SetVSyncDisplayID_ParamsDataView {
+public:
+    DisplayPrivate_SetVSyncDisplayID_ParamsDataView() = default;
+
+    DisplayPrivate_SetVSyncDisplayID_ParamsDataView(internal::DisplayPrivate_SetVSyncDisplayID_Params_Data* data, mojo::Message* message)
+        : data_(data)
+    {
+    }
+
+    bool is_null() const
+    {
+        return !data_;
+    }
+    int64_t display_id() const
+    {
+        return data_->display_id;
+    }
+
+private:
+    internal::DisplayPrivate_SetVSyncDisplayID_Params_Data* data_ = nullptr;
+};
+#endif
 
 class DisplayPrivate_SetDisplayVSyncParameters_ParamsDataView {
 public:

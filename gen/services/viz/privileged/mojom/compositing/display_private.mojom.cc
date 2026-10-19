@@ -68,6 +68,11 @@ DisplayPrivate::IPCStableHashFunction DisplayPrivate::MessageToMethodInfo_(mojo:
     case messages::DisplayPrivate::kSetOutputIsSecure: {
         return &DisplayPrivate::SetOutputIsSecure_Sym::IPCStableHash;
     }
+    #if BUILDFLAG(IS_MAC)
+    case messages::DisplayPrivate::kSetVSyncDisplayID: {
+        return &DisplayPrivate::SetVSyncDisplayID_Sym::IPCStableHash;
+    }
+    #endif
     case messages::DisplayPrivate::kSetDisplayVSyncParameters: {
         return &DisplayPrivate::SetDisplayVSyncParameters_Sym::IPCStableHash;
     }
@@ -109,6 +114,10 @@ const char* DisplayPrivate::MessageToMethodName_(mojo::Message& message)
             return "Receive viz::mojom::DisplayPrivate::SetDisplayColorSpaces";
         case messages::DisplayPrivate::kSetOutputIsSecure:
             return "Receive viz::mojom::DisplayPrivate::SetOutputIsSecure";
+        #if BUILDFLAG(IS_MAC)
+        case messages::DisplayPrivate::kSetVSyncDisplayID:
+            return "Receive viz::mojom::DisplayPrivate::SetVSyncDisplayID";
+        #endif
         case messages::DisplayPrivate::kSetDisplayVSyncParameters:
             return "Receive viz::mojom::DisplayPrivate::SetDisplayVSyncParameters";
         case messages::DisplayPrivate::kForceImmediateDrawAndSwapIfPossible:
@@ -136,6 +145,10 @@ const char* DisplayPrivate::MessageToMethodName_(mojo::Message& message)
             return "Receive reply viz::mojom::DisplayPrivate::SetDisplayColorSpaces";
         case messages::DisplayPrivate::kSetOutputIsSecure:
             return "Receive reply viz::mojom::DisplayPrivate::SetOutputIsSecure";
+        #if BUILDFLAG(IS_MAC)
+        case messages::DisplayPrivate::kSetVSyncDisplayID:
+            return "Receive reply viz::mojom::DisplayPrivate::SetVSyncDisplayID";
+        #endif
         case messages::DisplayPrivate::kSetDisplayVSyncParameters:
             return "Receive reply viz::mojom::DisplayPrivate::SetDisplayVSyncParameters";
         case messages::DisplayPrivate::kForceImmediateDrawAndSwapIfPossible:
@@ -240,6 +253,17 @@ uint32_t DisplayPrivate::SetOutputIsSecure_Sym::IPCStableHash()
     base::debug::Alias(&hash);
     return hash;
 }
+#if BUILDFLAG(IS_MAC)
+uint32_t DisplayPrivate::SetVSyncDisplayID_Sym::IPCStableHash()
+{
+    // Keep a unique address for symbolized IPC method identification.
+    constexpr uint32_t kHash = base::MD5Hash32Constexpr("(Impl)viz::mojom::DisplayPrivate::SetVSyncDisplayID");
+    const uint32_t hash = kHash;
+    base::debug::Alias(&hash);
+    return hash;
+}
+#endif
+
 uint32_t DisplayPrivate::SetDisplayVSyncParameters_Sym::IPCStableHash()
 {
     // This method's address is used for indetifiying the mojo method name after
@@ -594,6 +618,39 @@ void DisplayPrivateProxy::SetOutputIsSecure(bool in_secure)
     // encountered an error, which will be visible through other means.
     ::mojo::internal::SendMojoMessage(*receiver_, message);
 }
+
+#if BUILDFLAG(IS_MAC)
+void DisplayPrivateProxy::SetVSyncDisplayID(int64_t in_display_id)
+{
+#if BUILDFLAG(MOJO_TRACE_ENABLED)
+    TRACE_EVENT1("mojom", "Send viz::mojom::DisplayPrivate::SetVSyncDisplayID", "input_parameters", [&](perfetto::TracedValue context) {
+        auto dict = std::move(context).WriteDictionary();
+        perfetto::WriteIntoTracedValueWithFallback(dict.AddItem("display_id"), in_display_id, "<value of type int64_t>");
+    });
+#endif
+
+    const bool kExpectsResponse = false;
+    const bool kIsSync = false;
+    const bool kAllowInterrupt = true;
+    const bool is_urgent = false;
+
+    const uint32_t kFlags = ((kExpectsResponse) ? mojo::Message::kFlagExpectsResponse : 0) | ((kIsSync) ? mojo::Message::kFlagIsSync : 0)
+        | ((kAllowInterrupt) ? 0 : mojo::Message::kFlagNoInterrupt) | ((is_urgent) ? mojo::Message::kFlagIsUrgent : 0);
+
+    const size_t estimated_payload_size = 0;
+    mojo::Message message(base::to_underlying(messages::DisplayPrivate::kSetVSyncDisplayID), kFlags, estimated_payload_size);
+    mojo::internal::MessageFragment<::viz::mojom::internal::DisplayPrivate_SetVSyncDisplayID_Params_Data> params(message);
+    params.Allocate();
+    params->display_id = in_display_id;
+
+#if defined(ENABLE_IPC_FUZZER)
+    message.set_interface_name(DisplayPrivate::Name_);
+    message.set_method_name("SetVSyncDisplayID");
+#endif
+    // A false return indicates a Connector error, observable by its owner.
+    ::mojo::internal::SendMojoMessage(*receiver_, message);
+}
+#endif
 
 void DisplayPrivateProxy::SetDisplayVSyncParameters(::base::TimeTicks in_timebase, ::base::TimeDelta in_interval)
 {
@@ -1030,6 +1087,20 @@ bool DisplayPrivateStubDispatch::Accept(DisplayPrivate* impl, mojo::Message* mes
         impl->SetOutputIsSecure(std::move(p_secure));
         return true;
     }
+    #if BUILDFLAG(IS_MAC)
+    case messages::DisplayPrivate::kSetVSyncDisplayID: {
+        DCHECK(message->is_serialized());
+        internal::DisplayPrivate_SetVSyncDisplayID_Params_Data* params
+            = reinterpret_cast<internal::DisplayPrivate_SetVSyncDisplayID_Params_Data*>(message->mutable_payload());
+
+        DisplayPrivate_SetVSyncDisplayID_ParamsDataView input_data_view(params, message);
+        int64_t p_display_id = input_data_view.display_id();
+        // Primitive payload validity has already been checked by the validator.
+        DCHECK(impl);
+        impl->SetVSyncDisplayID(std::move(p_display_id));
+        return true;
+    }
+    #endif
     case messages::DisplayPrivate::kSetDisplayVSyncParameters: {
         DCHECK(message->is_serialized());
         internal::DisplayPrivate_SetDisplayVSyncParameters_Params_Data* params
@@ -1206,6 +1277,11 @@ bool DisplayPrivateStubDispatch::AcceptWithResponder(DisplayPrivate* impl, mojo:
     case messages::DisplayPrivate::kSetOutputIsSecure: {
         break;
     }
+    #if BUILDFLAG(IS_MAC)
+    case messages::DisplayPrivate::kSetVSyncDisplayID: {
+        break;
+    }
+    #endif
     case messages::DisplayPrivate::kSetDisplayVSyncParameters: {
         break;
     }
@@ -1242,6 +1318,9 @@ static const mojo::internal::GenericValidationInfo kDisplayPrivateValidationInfo
     { &internal::DisplayPrivate_SetDelegatedInkPointRenderer_Params_Data::Validate, nullptr /* no response */ },
     { &internal::DisplayPrivate_SetStandaloneBeginFrameObserver_Params_Data::Validate, nullptr /* no response */ },
     { &internal::DisplayPrivate_SetMaxVSyncAndVrr_Params_Data::Validate, nullptr /* no response */ },
+    #if BUILDFLAG(IS_MAC)
+    { &internal::DisplayPrivate_SetVSyncDisplayID_Params_Data::Validate, nullptr /* no response */ },
+    #endif
 };
 
 bool DisplayPrivateRequestValidator::Accept(mojo::Message* message)
@@ -1522,6 +1601,12 @@ void DisplayPrivateInterceptorForTesting::SetOutputIsSecure(bool secure)
 {
     GetForwardingInterface()->SetOutputIsSecure(std::move(secure));
 }
+#if BUILDFLAG(IS_MAC)
+void DisplayPrivateInterceptorForTesting::SetVSyncDisplayID(int64_t display_id)
+{
+    GetForwardingInterface()->SetVSyncDisplayID(std::move(display_id));
+}
+#endif
 void DisplayPrivateInterceptorForTesting::SetDisplayVSyncParameters(::base::TimeTicks timebase, ::base::TimeDelta interval)
 {
     GetForwardingInterface()->SetDisplayVSyncParameters(std::move(timebase), std::move(interval));

@@ -865,6 +865,25 @@ Open the printed URL, keep the page at the top, and click **Run benchmark**.
 This manual mode uses the current window's viewport; reload to run again.
 Use automated mode for matched-viewport comparisons.
 
+The diagnosis, optimization priorities, and macOS display-timing results are
+recorded in [Rendering performance](docs/RENDERING_PERFORMANCE.md). The P0 native
+regression exercises actual 60/120 Hz screens, equal-size/DPR window movement,
+BrowserView reparenting, display-timing fallback/recovery, and static CPU/wakeups:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  out/mac-arm64/mini-electron --app=test/macos-vsync-smoke.js
+```
+
+This requires two attached displays with different refresh rates and equal DPR
+for full screen-switch coverage; unavailable required coverage is reported as
+incomplete, not passed. It moves only test-owned windows and does not change
+display settings. JSON/PNG evidence goes to `out/rendering-vsync/`; set
+`MINI_VSYNC_ARTIFACTS` to choose a directory. CPU counters use the native Mach
+timebase, independently calibrated against `getrusage`. They and wakeup counts
+are power proxies, not electrical-power measurements. `MINI_VSYNC_BASELINE=1`
+collects an older binary's observations without invoking the new display command.
+
 ### Runtime distribution
 
 Version `0.1.9` publishes this macOS runtime. The release declares

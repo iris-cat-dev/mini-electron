@@ -21,11 +21,17 @@ VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     //gfx::AcceleratedWidget widget,
     const gfx::Size& size, mojo::PendingReceiver<viz::mojom::FrameSinkManagerClient> clientReceiver,
     mojo::PendingRemote<viz::mojom::FrameSinkManager> frameSinkManagerRemote, scoped_refptr<base::SingleThreadTaskRunner> workRunner,
+#if BUILDFLAG(IS_MAC)
+    int64_t vsyncDisplayId,
+#endif
     scoped_refptr<base::SingleThreadTaskRunner> serviceRunner)
     : m_widget(gfx::kNullAcceleratedWidget)
     , m_engineViewHost(mbwebview)
     , m_isTransparent(isTransparent)
     , m_size(size)
+#if BUILDFLAG(IS_MAC)
+    , m_vsyncDisplayId(vsyncDisplayId)
+#endif
     //, m_thread("VizHost")
     , m_workRunner(workRunner)
     , m_serviceRunner(serviceRunner)
@@ -33,11 +39,9 @@ VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     //CHECK(m_thread.Start());
 
     m_hostFrameSinkManager.SetServiceRunner(serviceRunner);
-    m_workRunner->PostTask(
-        FROM_HERE, base::BindOnce(&VizHost::initialize, base::Unretained(this), std::move(clientReceiver), std::move(frameSinkManagerRemote)));
-    while (!m_hadInited) {
-        ::Sleep(1);
-    }
+    CHECK(m_workRunner->PostTask(
+        FROM_HERE, base::BindOnce(&VizHost::initialize, base::Unretained(this), std::move(clientReceiver), std::move(frameSinkManagerRemote))));
+    m_initialized.Wait();
 }
 
 VizHost::~VizHost()
@@ -82,6 +86,50 @@ void VizHost::resizeOnBlinkThread(const gfx::Size& size, float device_scale_fact
     m_workRunner->PostTask(FROM_HERE, base::BindOnce(&VizHost::resizeOnHostThread, base::Unretained(this), size, device_scale_factor, &waitEvt));
     waitEvt.Wait();
 }
+
+#if BUILDFLAG(IS_MAC)
+void VizHost::setVSyncDisplayIdOnBlinkThread(int64_t display_id)
+{
+    DCHECK(ThreadCall::isBlinkThread());
+    // Do not obtain or dereference a host-sequence WeakPtr on Blink.
+    m_workRunner->PostTask(FROM_HERE,
+        base::BindOnce(&VizHost::setVSyncDisplayIdOnHostThread, m_hostWeakPtr, display_id));
+}
+
+void VizHost::setVSyncDisplayIdOnHostThread(int64_t display_id)
+{
+    DCHECK(m_workRunner->RunsTasksInCurrentSequence());
+    if (m_vsyncDisplayId == display_id)
+        return;
+    m_vsyncDisplayId = display_id;
+    // This runtime's Mojo Remote exposes the receiver directly, rather than a
+    // proxy which marshals calls. Use the same runner that creates the root
+    // sink and its DisplayScheduler, not the host runner owning this Remote.
+    if (m_serviceRunner->RunsTasksInCurrentSequence()) {
+        if (auto* display = m_displayPrivate.TryGet())
+            display->SetVSyncDisplayID(display_id);
+        return;
+    }
+
+    // Completion bounds the raw captures' lifetime: host destruction runs on
+    // m_workRunner and cannot overtake this task while it is waiting. Resolve
+    // the receiver only on Viz so a preceding teardown cannot leave a raw sink.
+    // initialize() queues root creation on this same runner before publishing
+    // completion, so this update cannot overtake initial receiver binding.
+    base::WaitableEvent updated;
+    if (m_serviceRunner->PostTask(FROM_HERE,
+            base::BindOnce(
+                [](VizHost* self, int64_t display_id, base::WaitableEvent* updated) {
+                    DCHECK(self->m_serviceRunner->RunsTasksInCurrentSequence());
+                    if (auto* display = self->m_displayPrivate.TryGet())
+                        display->SetVSyncDisplayID(display_id);
+                    updated->Signal();
+                },
+                base::Unretained(this), display_id, &updated))) {
+        updated.Wait();
+    }
+}
+#endif
 
 void VizHost::resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt)
 {
@@ -216,6 +264,10 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     rootParams->gpu_compositing = false;
     rootParams->renderer_settings = viz::CreateRendererSettings();
     rootParams->renderer_settings.should_clear_root_render_pass = false;
+#if BUILDFLAG(IS_MAC)
+    rootParams->renderer_settings.display_id = m_vsyncDisplayId;
+    m_hostWeakPtr = m_hostWeakPtrFactory.GetWeakPtr();
+#endif
 
     if (m_isTransparent) {
         rootParams->renderer_settings.should_clear_root_render_pass = true;
@@ -258,8 +310,8 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     // device-scale-factor etc.).
     m_rootClient->initialize(std::move(client_receiver), std::move(sink_remote));
 
-    // Embed a new client into the root after the first second.
-    m_hadInited = true;
+    // Publish initialized Mojo endpoints and the host-sequence WeakPtr to Blink.
+    m_initialized.Signal();
 }
 
 void VizHost::OnFirstSurfaceActivation(const viz::SurfaceInfo& surface_info)

@@ -70,7 +70,7 @@ public:
     void SetDisplayColorMatrix(const gfx::Transform& color_matrix) override;
     void SetDisplayColorSpaces(const gfx::DisplayColorSpaces& display_color_spaces) override;
 #if BUILDFLAG(IS_MAC)
-    void SetVSyncDisplayID(int64_t display_id);
+    void SetVSyncDisplayID(int64_t display_id) override;
 #endif
     void SetOutputIsSecure(bool secure) override;
     void SetDisplayVSyncParameters(base::TimeTicks timebase, base::TimeDelta interval) override;

@@ -881,6 +881,18 @@ void WebContents::resize(int width, int height, double scale_factor)
     }
 }
 
+#if BUILDFLAG(IS_MAC)
+void WebContents::setVSyncDisplayId(int64_t display_id)
+{
+    if (!isAlive() || display_id == m_vsync_display_id)
+        return;
+    base::Value::Dict params;
+    params.Set("displayId", static_cast<double>(display_id));
+    if (m_renderer->Send("setVSyncDisplayId", std::move(params)))
+        m_vsync_display_id = display_id;
+}
+#endif
+
 void WebContents::setFocus(bool focused)
 {
     m_focused = focused;

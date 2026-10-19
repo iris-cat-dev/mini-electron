@@ -6,6 +6,7 @@
 #endif
 
 #include <memory>
+#include <cstdint>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -13,6 +14,7 @@
 #include <functional>
 
 #include "base/files/file_path.h"
+#include "build/build_config.h"
 #include "base/values.h"
 #include "runtime/electron/common/api/event_emitter.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
@@ -124,6 +126,9 @@ public:
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
     void resize(int width, int height, double scale_factor = 1.0);
+#if BUILDFLAG(IS_MAC)
+    void setVSyncDisplayId(int64_t display_id);
+#endif
     void setFocus(bool focused);
     bool sendInput(base::Value::Dict event);
     void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
@@ -298,6 +303,9 @@ private:
     int m_viewport_width = 0;
     int m_viewport_height = 0;
     double m_viewport_scale = 0.0;
+#if BUILDFLAG(IS_MAC)
+    int64_t m_vsync_display_id = -1;
+#endif
     bool m_ignore_menu_shortcuts = false;
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     bool m_debugger_attached = false;

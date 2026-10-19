@@ -78,6 +78,7 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 }
 
 - (void)dealloc {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
   if (_webView != NULL_WEBVIEW)
     mini_electron_destroy_web_view(_webView);
 #if !__has_feature(objc_arc)
@@ -127,10 +128,29 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
   mini_electron_resize(_webView, std::max(1, static_cast<int>(size.width)),
            std::max(1, static_cast<int>(size.height)));
   mini_electron_set_device_scale_factor(_webView, scale);
+  NSScreen* screen = self.window.screen ?: NSScreen.mainScreen;
+  NSNumber* display_number = screen.deviceDescription[@"NSScreenNumber"];
+  mini_electron_mac_set_vsync_display_id(
+      _webView, display_number
+          ? static_cast<int64_t>(display_number.unsignedIntValue) : -1);
 }
 
 - (void)viewDidMoveToWindow {
   [super viewDidMoveToWindow];
+  NSNotificationCenter* notifications = NSNotificationCenter.defaultCenter;
+  [notifications removeObserver:self];
+  if (self.window) {
+    [notifications addObserver:self selector:@selector(screenChanged:)
+                         name:NSWindowDidChangeScreenNotification
+                       object:self.window];
+    [notifications addObserver:self selector:@selector(screenChanged:)
+                         name:NSApplicationDidChangeScreenParametersNotification
+                       object:nil];
+  }
+  [self syncRendererMetrics];
+}
+
+- (void)screenChanged:(NSNotification*)notification {
   [self syncRendererMetrics];
 }
 

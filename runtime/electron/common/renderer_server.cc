@@ -1100,6 +1100,22 @@ private:
                 });
             }
             Reply(request_id);
+#if BUILDFLAG(IS_MAC)
+        } else if (method == "setVSyncDisplayId") {
+            const auto display_id = params.FindDouble("displayId");
+            if (!display_id || !std::isfinite(*display_id)
+                || std::floor(*display_id) != *display_id
+                || (*display_id != -1.0 && (*display_id <= 0
+                    || *display_id > std::numeric_limits<uint32_t>::max()))) {
+                Reply(request_id, {}, "invalid display ID");
+                return;
+            }
+            PostBlink([this, display_id = static_cast<int64_t>(*display_id)] {
+                if (content::WebViewHost* view = View())
+                    view->setVSyncDisplayId(display_id);
+            });
+            Reply(request_id);
+#endif
         } else if (method == "setFocus") {
             const bool focused = params.FindBool("focused").value_or(false);
             content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,

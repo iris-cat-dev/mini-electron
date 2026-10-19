@@ -221,6 +221,10 @@ public:
 
     void onResize(int w, int h, bool needSetHostWnd);
     void setDeviceScaleFactor(float device_scale_factor);
+#if BUILDFLAG(IS_MAC)
+    // Blink-thread only; retained until compositor initialization if necessary.
+    void setVSyncDisplayId(int64_t display_id);
+#endif
     LRESULT onNcHittest(LPARAM lParam);
 
     void didCommitProvisionalLoad(blink::WebLocalFrame* frame, const blink::WebHistoryItem& history, blink::WebHistoryCommitType type, bool isSameDocument);
@@ -303,6 +307,9 @@ private:
     HWND m_hWnd = nullptr;
     std::unique_ptr<VizService> m_service;
     std::unique_ptr<VizHost> m_host;
+#if BUILDFLAG(IS_MAC)
+    int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
+#endif
     std::unique_ptr<RenderWidgetHostImpl> m_renderWidgetHostImpl;
     std::unique_ptr<PlatformEventHandler> m_platformEventHandler;
 
