@@ -9,28 +9,26 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 
 ## npm distribution (Windows x64, Apple Silicon macOS)
 
-The npm package is `@iriscat/mini-electron`. Version `0.1.7` publishes both
+The npm package is `@iriscat/mini-electron`. Version `0.1.8` publishes both
 Windows x64 and Apple Silicon macOS runtimes; `0.1.0` was Windows-only.
 `package.json` declares `win32`/`x64` and `darwin`/`arm64`; the installer maps
 Rosetta-translated Node on Apple Silicon to `darwin-arm64` and rejects Intel
 macOS.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.7
+npm install --save-dev @iriscat/mini-electron@0.1.8
 node -p "require('@iriscat/mini-electron')"
 ```
 
-The `0.1.7` Windows runtime is rebuilt from the current sources, including native
-clipboard image/text editing, keyboard and mouse input, OLE file drops, IME caret
-and composition handling, caption-overlay alpha, and same-document navigation
-fixes. Unstyled Windows preedit text uses a neutral, translucent background in
-both light and dark editors.
-It also enables the native Windows `node:sqlite` binding, including column
-metadata, backup, session/changesets, and Worker support.
-The macOS runtime reissues the native `0.1.6` build with its embedded runtime
-version, bundle versions, and file manifest updated to `0.1.7`, then receives a new
-ad-hoc signature. No macOS feature changes are included in this release; the
-executable remains stripped (`strip -x`) and is not notarized.
+The `0.1.8` Windows runtime fixes filesystem identity and temporary-directory
+creation, initial programmatic navigation, transparent companion-window display
+and taskbar visibility, retained presentation after minimizing, and pointer-hover
+repaints. Both platforms include the corrected ASAR-enabled `child_process`
+promisification contract, including resolved output and child-process access;
+this bootstrap also runs when the application itself is not packaged in ASAR.
+The macOS runtime is rebuilt from source and includes native precision-trackpad
+scroll handling. Its executable remains stripped (`strip -x`), ad-hoc signed,
+and not notarized.
 Version `0.1.5` includes the macOS selection, clipboard image paste, IME
 positioning/composition colors, sidebar resizing, and image-preview IPC fixes.
 Version `0.1.6` adds the macOS native `node:sqlite` binding, including column
@@ -43,7 +41,7 @@ executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
 matching GitHub Release, verifies the archive and its complete file inventory,
 then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
 executable path outside the runtime; application main/preload code still imports
-the built-in `electron` API. The package and runtime version is `0.1.7`; the
+the built-in `electron` API. The package and runtime version is `0.1.8`; the
 Electron API version remains `41.2.0`.
 
 For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
@@ -60,7 +58,7 @@ select this runtime for packaging (Git Bash):
 
 ```sh
 cd D:/Project/omp-desktop
-npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.7
+npm install --save-dev --workspace=@omp-desktop/desktop @iriscat/mini-electron@0.1.8
 cd packages/desktop
 ELECTRON_DIST="$(node -p "require('node:path').dirname(require('@iriscat/mini-electron'))")"
 cd ../..
@@ -82,7 +80,7 @@ python scripts/build_runtime_release.py \
   --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
 ```
 
-The assembler writes `v0.1.7` runtime assets, one `SHASUMS256.txt` covering
+The assembler writes `v0.1.8` runtime assets, one `SHASUMS256.txt` covering
 both ZIPs, and an `npm-package` directory with the README and installer. Each
 runtime's `version.json` must carry the package version. Rebuild changed runtimes
 and regenerate metadata when reissuing an unchanged platform. Publish the ZIPs and `SHASUMS256.txt`
@@ -832,7 +830,7 @@ python build.py --package-dist
 ```
 
 This writes `out/mac-arm64/runtime-dist` and
-`out/mac-arm64/mini-electron-v0.1.7-darwin-arm64.zip`. The runtime is an
+`out/mac-arm64/mini-electron-v0.1.8-darwin-arm64.zip`. The runtime is an
 ad-hoc-signed `Electron.app` with one stripped host executable, the
 Squirrel/Mantle/ReactiveObjC update frameworks, runtime JavaScript, and license
 notices. No Electron Helper bundles are generated. Renderers start the same
