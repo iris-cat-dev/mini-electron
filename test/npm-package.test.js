@@ -4,13 +4,14 @@ const assert = require('node:assert/strict');
 const childProcess = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const artifacts = require('../artifacts.json');
 
 const ROOT = path.resolve(__dirname, '..');
-const PACKAGE_FILES = ['artifacts.json', 'cli.js', 'index.js', 'install.js', 'package.json'];
+const PACKAGE_FILES = ['cli.js', 'index.js', 'install.js', 'package.json'];
 const WINDOWS_TARGET = {
   platform: 'win32',
   arch: 'x64',
@@ -41,16 +42,10 @@ function packageFixture(t, target) {
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
     manifest.os = [target.platform];
     manifest.cpu = [target.arch];
-    fs.writeFileSync(manifestFile, `${JSON.stringify(manifest)}\n`);
-    const artifactsFile = path.join(directory, 'artifacts.json');
-    const fixtureArtifacts = JSON.parse(fs.readFileSync(artifactsFile, 'utf8'));
-    fixtureArtifacts.platforms = {
-      [`${target.platform}-${target.arch}`]: {
-        archive: target.archive,
-        executable: target.executable,
-      },
+    manifest.miniElectron.platforms = {
+      [`${target.platform}-${target.arch}`]: { executable: target.executable },
     };
-    fs.writeFileSync(artifactsFile, `${JSON.stringify(fixtureArtifacts)}\n`);
+    fs.writeFileSync(manifestFile, `${JSON.stringify(manifest)}\n`);
   }
   return directory;
 }
@@ -61,6 +56,23 @@ function runNode(args, options = {}) {
     env: { ...process.env, ...options.env },
     encoding: 'utf8',
     timeout: 15000,
+  });
+}
+
+function runNodeAsync(args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = childProcess.spawn(process.execPath, args, {
+      cwd: options.cwd,
+      env: { ...process.env, ...options.env },
+      timeout: 15000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', (status, signal) => resolve({ status, signal, stdout, stderr }));
   });
 }
 
@@ -76,7 +88,7 @@ function createDistribution(directory) {
   fs.writeFileSync(
     path.join(directory, 'version.json'),
     `${JSON.stringify({
-      packageVersion: artifacts.packageVersion,
+      installerProtocol: artifacts.installerProtocol,
       runtimeVersion: artifacts.runtimeVersion,
       electronApiVersion: '41.2.0',
       nodeVersion: artifacts.nodeVersion,
@@ -158,7 +170,7 @@ const macTargetEnvironment = {
 
 function macVersion(files, links) {
   return {
-    packageVersion: artifacts.packageVersion,
+    installerProtocol: artifacts.installerProtocol,
     runtimeVersion: artifacts.runtimeVersion,
     electronApiVersion: '41.2.0',
     nodeVersion: artifacts.nodeVersion,
@@ -280,7 +292,7 @@ test('verified offline zip installs through the same contract as release archive
   const executable = Buffer.from('verified mini-electron runtime');
   const executableHash = crypto.createHash('sha256').update(executable).digest('hex');
   const version = {
-    packageVersion: artifacts.packageVersion,
+    installerProtocol: artifacts.installerProtocol,
     runtimeVersion: artifacts.runtimeVersion,
     electronApiVersion: '41.2.0',
     nodeVersion: artifacts.nodeVersion,
@@ -431,7 +443,7 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
     const fixture = packageFixture(t, WINDOWS_TARGET);
     const archive = path.join(temporaryDirectory(t), `${scenario.name}.zip`);
     const version = {
-      packageVersion: artifacts.packageVersion,
+      installerProtocol: artifacts.installerProtocol,
       runtimeVersion: artifacts.runtimeVersion,
       electronApiVersion: '41.2.0',
       nodeVersion: artifacts.nodeVersion,
@@ -519,4 +531,161 @@ test('electron bin forwards termination signals and reports the child signal', {
   cli.kill('SIGTERM');
   const result = await new Promise((resolve) => cli.once('close', (code, signal) => resolve({ code, signal })));
   assert.deepEqual(result, { code: null, signal: 'SIGTERM' });
+});
+
+function releaseFixture(t, version) {
+  const archiveName = `mini-electron-v${version}-win32-x64.zip`;
+  const archive = path.join(temporaryDirectory(t), archiveName);
+  const executable = `runtime v${version}\n`;
+  const metadata = {
+    installerProtocol: artifacts.installerProtocol,
+    runtimeVersion: version,
+    electronApiVersion: artifacts.electronApiVersion,
+    nodeVersion: artifacts.nodeVersion,
+    nodeModuleAbi: artifacts.nodeModuleAbi,
+    chromiumMajorVersion: artifacts.chromiumMajorVersion,
+    platform: 'win32',
+    arch: 'x64',
+    files: { 'electron.exe': crypto.createHash('sha256').update(executable).digest('hex') },
+    links: {},
+  };
+  storedZip(archive, [['electron.exe', executable], ['version.json', JSON.stringify(metadata)]]);
+  const manifest = {
+    ...artifacts,
+    runtimeVersion: version,
+    platforms: {
+      'win32-x64': { archive: archiveName, executable: 'electron.exe', sha256: hash(archive) },
+    },
+  };
+  return { manifest, archive: fs.readFileSync(archive), executable };
+}
+
+async function releaseServer(t, releases) {
+  const assets = new Map();
+  for (const release of releases) {
+    const { runtimeVersion: version, platforms } = release.manifest;
+    const artifact = platforms['win32-x64'];
+    assets.set(`/v${version}/artifacts.json`, JSON.stringify(release.manifest));
+    assets.set(`/v${version}/${artifact.archive}`, release.archive);
+    assets.set(`/v${version}/SHASUMS256.txt`, `${artifact.sha256}  ${artifact.archive}\n`);
+  }
+  const server = http.createServer((request, response) => {
+    const body = assets.get(request.url);
+    response.writeHead(body === undefined ? 404 : 200);
+    response.end(body);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const env = {
+    ...targetEnvironment,
+    MINI_ELECTRON_OFFLINE: '0',
+    MINI_ELECTRON_CACHE: temporaryDirectory(t),
+    MINI_ELECTRON_MIRROR: `http://127.0.0.1:${server.address().port}`,
+    MINI_ELECTRON_DIST_PATH: '',
+    MINI_ELECTRON_SKIP_BINARY_DOWNLOAD: '0',
+    ELECTRON_SKIP_BINARY_DOWNLOAD: '0',
+  };
+  return { assets, env };
+}
+
+test('runtime channel upgrades independently without changing npm or updating on ordinary install', async (t) => {
+  const oldRelease = releaseFixture(t, '0.1.12');
+  const newRelease = releaseFixture(t, '0.1.13');
+  const { assets, env } = await releaseServer(t, [oldRelease, newRelease]);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
+  const npmManifest = fs.readFileSync(path.join(fixture, 'package.json'), 'utf8');
+  assets.set('/runtime-v1/artifacts.json', JSON.stringify(oldRelease.manifest));
+  let result = await runNodeAsync(['install.js'], { cwd: fixture, env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), oldRelease.executable);
+
+  assets.set('/runtime-v1/artifacts.json', JSON.stringify(newRelease.manifest));
+  result = await runNodeAsync(['install.js'], { cwd: fixture, env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), oldRelease.executable);
+
+  result = await runNodeAsync(['cli.js', '--update-runtime'], { cwd: fixture, env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), newRelease.executable);
+  assert.equal(fs.readFileSync(path.join(fixture, 'package.json'), 'utf8'), npmManifest);
+});
+
+test('runtime pins override channel selection and mismatched releases leave the installed runtime usable', async (t) => {
+  const pinned = releaseFixture(t, '0.1.12');
+  const latest = releaseFixture(t, '0.1.13');
+  const { assets, env } = await releaseServer(t, [pinned, latest]);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
+  assets.set('/runtime-v1/artifacts.json', JSON.stringify(latest.manifest));
+  let result = await runNodeAsync(['install.js'], {
+    cwd: fixture, env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.12' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), pinned.executable);
+  result = await runNodeAsync(['cli.js', '--update-runtime', '0.1.13'], {
+    cwd: fixture, env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.12' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), latest.executable);
+
+  assets.set('/v0.1.14/artifacts.json', JSON.stringify(latest.manifest));
+  result = await runNodeAsync(['cli.js', '--update-runtime', '0.1.14'], { cwd: fixture, env });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /runtime manifest version mismatch/u);
+  const required = runNode(['-p', 'require("./")'], { cwd: fixture, env });
+  assert.equal(required.status, 0, required.stderr);
+  assert.equal(required.stdout.trim(), path.join(fixture, 'dist', 'electron.exe'));
+  assert.equal(fs.readFileSync(required.stdout.trim(), 'utf8'), latest.executable);
+});
+
+test('incompatible manifests and corrupt downloads cannot replace a verified runtime or its marker', async (t) => {
+  const release = releaseFixture(t, '0.1.12');
+  const { assets, env } = await releaseServer(t, [release]);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
+  const local = path.join(temporaryDirectory(t), 'runtime');
+  createDistribution(local);
+  const installed = runNode(['install.js'], {
+    cwd: fixture, env: { ...env, MINI_ELECTRON_DIST_PATH: local },
+  });
+  assert.equal(installed.status, 0, installed.stderr);
+  const originalHash = hash(path.join(fixture, 'dist', 'electron.exe'));
+  const originalMarker = fs.readFileSync(path.join(fixture, 'path.txt'), 'utf8');
+  for (const [changes, error] of [
+    [{ installerProtocol: 2 }, /installerProtocol mismatch/u],
+    [{ electronApiVersion: '42.0.0' }, /electronApiVersion mismatch/u],
+    [{ runtimeVersion: '../escape' }, /invalid runtime version/u],
+    [{ schemaVersion: 99 }, /unsupported runtime manifest schema/u],
+    [{ platforms: {} }, /no valid artifact/u],
+    [{}, /downloaded runtime SHA256 mismatch/u],
+  ]) {
+    assets.set('/runtime-v1/artifacts.json', JSON.stringify({ ...release.manifest, ...changes }));
+    if (Object.keys(changes).length === 0) {
+      assets.set(`/v0.1.12/${release.manifest.platforms['win32-x64'].archive}`, 'corrupt ZIP');
+    }
+    const result = await runNodeAsync(['cli.js', '--update-runtime'], { cwd: fixture, env });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, error);
+    assert.equal(hash(path.join(fixture, 'dist', 'electron.exe')), originalHash);
+    assert.equal(fs.readFileSync(path.join(fixture, 'path.txt'), 'utf8'), originalMarker);
+  }
+});
+
+test('a fresh offline installation can use a version-pinned verified download cache', async (t) => {
+  const release = releaseFixture(t, '0.1.12');
+  const { assets, env } = await releaseServer(t, [release]);
+  assets.set('/runtime-v1/artifacts.json', JSON.stringify(release.manifest));
+  const downloaded = await runNodeAsync(['install.js'], { cwd: packageFixture(t, WINDOWS_TARGET), env });
+  assert.equal(downloaded.status, 0, downloaded.stderr);
+  const fixture = packageFixture(t, WINDOWS_TARGET);
+  const offline = await runNodeAsync(['install.js'], {
+    cwd: fixture,
+    env: {
+      ...env, MINI_ELECTRON_OFFLINE: '1', MINI_ELECTRON_MIRROR: 'http://127.0.0.1:1',
+      MINI_ELECTRON_RUNTIME_VERSION: '0.1.12',
+    },
+  });
+  assert.equal(offline.status, 0, offline.stderr);
+  assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), release.executable);
 });

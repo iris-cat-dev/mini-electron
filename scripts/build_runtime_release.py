@@ -25,7 +25,6 @@ from mini_electron.distribution import (  # noqa: E402
 
 
 _PACKAGE_FILES = (
-    "artifacts.json",
     "cli.js",
     "electron.d.ts",
     "index.js",
@@ -92,10 +91,17 @@ def assemble(args: argparse.Namespace) -> Path:
             f"Release output must not be a symlink or junction: {output}"
         )
     output = output.resolve()
-    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "artifacts.json").read_text(encoding="utf-8"))
+    platforms = manifest.get("platforms")
+    if not isinstance(platforms, dict) or not platforms:
+        raise DistributionError("Runtime artifact manifest must declare platforms")
+    supported = {f"{platform}-{arch}" for platform, arch, _ in _TARGETS}
+    unsupported = platforms.keys() - supported
+    if unsupported:
+        raise DistributionError("Unsupported runtime targets: " + ", ".join(sorted(unsupported)))
     inputs: list[tuple[Path, dict[str, object]]] = []
     for platform_name, arch, argument in _TARGETS:
-        if platform_name not in package["os"] or arch not in package["cpu"]:
+        if f"{platform_name}-{arch}" not in platforms:
             continue
         input_value = getattr(args, argument)
         if input_value is None:
@@ -112,26 +118,47 @@ def assemble(args: argparse.Namespace) -> Path:
             raise DistributionError("Release output and runtime distribution inputs must not overlap")
         inputs.append((directory, _validate_distribution(directory, platform_name, arch)))
     if not inputs:
-        raise DistributionError("The npm package does not declare a supported runtime target")
+        raise DistributionError("The runtime artifact manifest does not declare a supported target")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staged = Path(tempfile.mkdtemp(prefix=f".{output.name}.stage-", dir=output.parent))
     try:
-        npm_package = staged / "npm-package"
-        _copy_npm_package(npm_package)
+        if not getattr(args, "runtime_only", False):
+            _copy_npm_package(staged / "npm-package")
         checksums: list[str] = []
         release = staged / f"v{inputs[0][1]['runtimeVersion']}"
         release.mkdir()
+        release_manifest = {
+            name: manifest[name]
+            for name in (
+                "schemaVersion", "installerProtocol", "runtimeVersion",
+                "electronApiVersion", "nodeVersion", "nodeModuleAbi",
+                "chromiumMajorVersion", "downloadBaseUrl",
+            )
+        }
+        release_platforms: dict[str, object] = {}
+        release_manifest["platforms"] = release_platforms
         for directory, metadata in inputs:
             archive_name = metadata["archive"]
             if not isinstance(archive_name, str):
                 raise DistributionError("Runtime archive metadata is invalid")
             archive = release / archive_name
             create_zip(directory, archive)
-            checksums.append(f"{sha256(archive)}  {archive.name}")
+            digest = sha256(archive)
+            checksums.append(f"{digest}  {archive.name}")
+            release_platforms[f"{metadata['platform']}-{metadata['arch']}"] = {
+                "archive": archive.name,
+                "executable": metadata["executable"],
+                "sha256": digest,
+            }
         (release / "SHASUMS256.txt").write_text(
             "\n".join(sorted(checksums)) + "\n", encoding="ascii"
         )
+        manifest_text = json.dumps(release_manifest, indent=2) + "\n"
+        (release / "artifacts.json").write_text(manifest_text, encoding="utf-8")
+        channel = staged / f"runtime-v{release_manifest['installerProtocol']}"
+        channel.mkdir()
+        (channel / "artifacts.json").write_text(manifest_text, encoding="utf-8")
 
         backup_holder: Path | None = None
         backup: Path | None = None
@@ -161,11 +188,12 @@ def assemble(args: argparse.Namespace) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Assemble the declared npm runtime targets and the publishable mini-electron package."
+        description="Assemble declared runtime artifacts and optionally the mini-electron npm package."
     )
     parser.add_argument("--windows-dist", help="win32-x64 runtime-dist directory")
     parser.add_argument("--macos-dist", help="darwin-arm64 runtime-dist directory")
     parser.add_argument("--output", default="out/runtime-release", help="release output directory")
+    parser.add_argument("--runtime-only", action="store_true", help="skip staging the npm package")
     args = parser.parse_args()
     try:
         output = assemble(args)
@@ -173,7 +201,8 @@ def main() -> int:
         print(f"release assembly failed: {error}", file=sys.stderr)
         return 1
     print(f"Runtime release: {output}")
-    print(f"npm pack input: {output / 'npm-package'}")
+    if not args.runtime_only:
+        print(f"npm pack input: {output / 'npm-package'}")
     return 0
 
 

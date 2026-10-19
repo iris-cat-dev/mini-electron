@@ -1,6 +1,6 @@
 {
   "name": "@iriscat/mini-electron",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Electron-compatible desktop runtime for Apple Silicon macOS",
   "license": "Apache-2.0",
   "author": "mini-electron contributors",
@@ -19,7 +19,6 @@
     "benchmark:render": "node benchmarks/rendering/run.js"
   },
   "files": [
-    "artifacts.json",
     "cli.js",
     "electron.d.ts",
     "index.js",
@@ -40,11 +39,14 @@
     "arm64"
   ],
   "miniElectron": {
-    "runtimeVersion": "0.1.10",
+    "installerProtocol": 1,
     "electronApiVersion": "41.2.0",
-    "nodeVersion": "24.0.0-pre",
-    "nodeModuleAbi": 134,
-    "chromiumMajorVersion": 132
+    "downloadBaseUrl": "https://github.com/iris-cat-dev/mini-electron/releases/download",
+    "platforms": {
+      "darwin-arm64": {
+        "executable": "Electron.app/Contents/MacOS/Electron"
+      }
+    }
   },
   "repository": {
     "type": "git",

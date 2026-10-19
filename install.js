@@ -7,7 +7,7 @@ const http = require('node:http');
 const https = require('node:https');
 const os = require('node:os');
 const path = require('node:path');
-const artifacts = require('./artifacts.json');
+const packageManifest = require('./package.json');
 const { executableIn, targetFromEnvironment } = require('./lib/paths');
 const { extractZip, resolvedLinkTarget, safeRelativeName } = require('./lib/zip');
 
@@ -16,6 +16,35 @@ const DIST = path.join(PACKAGE_ROOT, 'dist');
 const PATH_MARKER = path.join(PACKAGE_ROOT, 'path.txt');
 const HASH_PATTERN = /^[a-f0-9]{64}$/u;
 const MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024;
+const config = packageManifest.miniElectron;
+const RUNTIME_FIELDS = [
+  'installerProtocol', 'runtimeVersion', 'electronApiVersion',
+  'nodeVersion', 'nodeModuleAbi', 'chromiumMajorVersion',
+];
+
+function runtimeVersion(value) {
+  if (typeof value !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/u.test(value)) {
+    throw new Error(`invalid runtime version: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
+function validateRuntimeIdentity(metadata) {
+  if (metadata.installerProtocol !== config.installerProtocol) {
+    throw new Error(`runtime installerProtocol mismatch: expected ${config.installerProtocol}, got ${metadata.installerProtocol}`);
+  }
+  if (metadata.electronApiVersion !== config.electronApiVersion) {
+    throw new Error(`runtime electronApiVersion mismatch: expected ${config.electronApiVersion}, got ${metadata.electronApiVersion}`);
+  }
+  runtimeVersion(metadata.runtimeVersion);
+  if (
+    typeof metadata.nodeVersion !== 'string' || !metadata.nodeVersion ||
+    !Number.isSafeInteger(metadata.nodeModuleAbi) || metadata.nodeModuleAbi <= 0 ||
+    !Number.isSafeInteger(metadata.chromiumMajorVersion) || metadata.chromiumMajorVersion <= 0
+  ) {
+    throw new Error('runtime native version metadata is invalid');
+  }
+}
 
 function truthy(value) {
   return typeof value === 'string' && value !== '' && value !== '0' && value.toLowerCase() !== 'false';
@@ -57,20 +86,16 @@ function isRegularFile(file) {
   }
 }
 
-function validateDistribution(directory, target) {
+function validateDistribution(directory, target, expected = {}) {
   const metadataFile = path.join(directory, 'version.json');
   const metadataStatus = fs.lstatSync(metadataFile);
   if (!metadataStatus.isFile() || metadataStatus.isSymbolicLink()) {
     throw new Error(`runtime version metadata is missing or unsafe: ${metadataFile}`);
   }
   const metadata = readJson(metadataFile, 'runtime version metadata');
+  validateRuntimeIdentity(metadata);
   const required = {
-    packageVersion: artifacts.packageVersion,
-    runtimeVersion: artifacts.runtimeVersion,
-    electronApiVersion: artifacts.electronApiVersion,
-    nodeVersion: artifacts.nodeVersion,
-    nodeModuleAbi: artifacts.nodeModuleAbi,
-    chromiumMajorVersion: artifacts.chromiumMajorVersion,
+    ...expected,
     platform: target.platform,
     arch: target.arch,
   };
@@ -256,7 +281,7 @@ function download(url, destination, redirects = 0, maxBytes = MAX_ARCHIVE_BYTES)
       return;
     }
     const client = parsed.protocol === 'https:' ? https : http;
-    const request = client.get(parsed, { headers: { 'User-Agent': `mini-electron/${artifacts.packageVersion}` } }, (response) => {
+    const request = client.get(parsed, { headers: { 'User-Agent': `mini-electron/${packageManifest.version}` } }, (response) => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         response.resume();
         const redirect = new URL(response.headers.location, parsed).toString();
@@ -301,6 +326,61 @@ async function downloadText(url, temporaryDirectory) {
   } finally {
     fs.rmSync(file, { force: true });
   }
+}
+
+function downloadBase(env) {
+  const base = (env.MINI_ELECTRON_MIRROR || env.ELECTRON_MIRROR || config.downloadBaseUrl).replace(/\/+$/u, '');
+  if (!base) throw new Error('no mini-electron download mirror is configured');
+  return base;
+}
+
+function selectRuntime(manifest, target, requestedVersion) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest) || manifest.schemaVersion !== 2) {
+    throw new Error('unsupported runtime manifest schema');
+  }
+  validateRuntimeIdentity(manifest);
+  if (requestedVersion && manifest.runtimeVersion !== requestedVersion) {
+    throw new Error(`runtime manifest version mismatch: expected ${requestedVersion}, got ${manifest.runtimeVersion}`);
+  }
+  const artifact = manifest.platforms?.[target.key];
+  if (
+    !artifact || artifact.executable !== target.executable ||
+    artifact.archive !== `mini-electron-v${manifest.runtimeVersion}-${target.key}.zip` ||
+    typeof artifact.sha256 !== 'string' || !HASH_PATTERN.test(artifact.sha256)
+  ) {
+    throw new Error(`runtime manifest has no valid artifact for ${target.key}`);
+  }
+  return {
+    target: { ...target, ...artifact },
+    expected: Object.fromEntries(RUNTIME_FIELDS.map((name) => [name, manifest[name]])),
+  };
+}
+
+async function resolveRuntime(target, env, temporaryDirectory, requestedVersion) {
+  const selector = requestedVersion ? `v${requestedVersion}` : `runtime-v${config.installerProtocol}`;
+  const cache = defaultCacheDirectory(env);
+  const cachedManifest = path.join(cache, `${selector}-artifacts.json`);
+  let manifest;
+  if (truthy(env.MINI_ELECTRON_OFFLINE)) {
+    manifest = readJson(cachedManifest, 'cached runtime manifest');
+  } else {
+    manifest = JSON.parse(await downloadText(`${downloadBase(env)}/${selector}/artifacts.json`, temporaryDirectory));
+  }
+  const selected = selectRuntime(manifest, target, requestedVersion);
+  if (!truthy(env.MINI_ELECTRON_OFFLINE)) {
+    fs.mkdirSync(cache, { recursive: true });
+    for (const name of new Set([selector, `v${manifest.runtimeVersion}`])) {
+      const destination = path.join(cache, `${name}-artifacts.json`);
+      const temporary = `${destination}.${process.pid}.${crypto.randomUUID()}.tmp`;
+      try {
+        fs.writeFileSync(temporary, `${JSON.stringify(manifest)}\n`, { mode: 0o600 });
+        fs.renameSync(temporary, destination);
+      } finally {
+        fs.rmSync(temporary, { force: true });
+      }
+    }
+  }
+  return selected;
 }
 
 function copyDistribution(source, destination) {
@@ -354,7 +434,7 @@ function copyDistribution(source, destination) {
   }
 }
 
-async function acquireArchive(target, env, temporaryDirectory) {
+async function acquireArchive(target, env, temporaryDirectory, selectedVersion) {
   const overrideValue = env.MINI_ELECTRON_DIST_PATH;
   if (overrideValue) {
     const override = path.resolve(overrideValue);
@@ -363,9 +443,7 @@ async function acquireArchive(target, env, temporaryDirectory) {
       const directExecutable = executableIn(override, target);
       if (isRegularFile(directExecutable)) return { directory: override };
       const archive = path.join(override, target.archive);
-      if (!isRegularFile(archive)) {
-        throw new Error(`MINI_ELECTRON_DIST_PATH has neither ${target.executable} nor ${target.archive}: ${override}`);
-      }
+      if (!isRegularFile(archive)) throw new Error(`MINI_ELECTRON_DIST_PATH does not contain ${target.archive}: ${override}`);
       return { archive, expectedHash: checksumForLocalArchive(archive, env) };
     }
     if (!status.isFile()) throw new Error(`MINI_ELECTRON_DIST_PATH is not a file or directory: ${override}`);
@@ -378,7 +456,9 @@ async function acquireArchive(target, env, temporaryDirectory) {
   fs.mkdirSync(cache, { recursive: true });
   if (isRegularFile(archive) && isRegularFile(checksumFile)) {
     const expectedHash = fs.readFileSync(checksumFile, 'utf8').trim().toLowerCase();
-    if (HASH_PATTERN.test(expectedHash) && sha256(archive) === expectedHash) return { archive, expectedHash };
+    if (HASH_PATTERN.test(expectedHash) && expectedHash === target.sha256 && sha256(archive) === expectedHash) {
+      return { archive, expectedHash };
+    }
     fs.rmSync(archive, { force: true });
     fs.rmSync(checksumFile, { force: true });
   }
@@ -386,11 +466,10 @@ async function acquireArchive(target, env, temporaryDirectory) {
     throw new Error(`offline mode is enabled and no verified cached runtime exists at ${archive}`);
   }
 
-  const base = (env.MINI_ELECTRON_MIRROR || env.ELECTRON_MIRROR || artifacts.downloadBaseUrl).replace(/\/+$/u, '');
-  if (!base) throw new Error('no mini-electron download mirror is configured');
-  const release = `${base}/v${artifacts.runtimeVersion}`;
+  const release = `${downloadBase(env)}/v${selectedVersion}`;
   const checksumText = await downloadText(`${release}/SHASUMS256.txt`, temporaryDirectory);
   const expectedHash = parseChecksums(checksumText, target.archive);
+  if (expectedHash !== target.sha256) throw new Error('release SHA256 does not match runtime manifest');
   const temporaryArchive = path.join(temporaryDirectory, target.archive);
   await download(`${release}/${encodeURIComponent(target.archive)}`, temporaryArchive);
   const actualHash = sha256(temporaryArchive);
@@ -417,7 +496,6 @@ function writePathMarker(relative) {
   const temporary = `${PATH_MARKER}.${process.pid}.${crypto.randomUUID()}.tmp`;
   try {
     fs.writeFileSync(temporary, `${relative}\n`, { mode: 0o600 });
-    fs.rmSync(PATH_MARKER, { force: true });
     fs.renameSync(temporary, PATH_MARKER);
   } finally {
     fs.rmSync(temporary, { force: true });
@@ -425,8 +503,9 @@ function writePathMarker(relative) {
 }
 
 
-function installAtomically(staged, target) {
-  validateDistribution(staged, target);
+function installAtomically(staged, target, expected) {
+  validateDistribution(staged, target, expected);
+  const previousMarker = isRegularFile(PATH_MARKER) ? fs.readFileSync(PATH_MARKER, 'utf8') : null;
   const backup = `${DIST}.previous-${process.pid}-${crypto.randomUUID()}`;
   let movedExisting = false;
   let installedNew = false;
@@ -437,32 +516,39 @@ function installAtomically(staged, target) {
     }
     fs.renameSync(staged, DIST);
     installedNew = true;
-    const executable = validateDistribution(DIST, target);
+    const executable = validateDistribution(DIST, target, expected);
     const relative = path.relative(PACKAGE_ROOT, executable);
     writePathMarker(relative);
-    if (movedExisting) fs.rmSync(backup, { recursive: true, force: true });
   } catch (error) {
-    fs.rmSync(PATH_MARKER, { force: true });
+    if (previousMarker === null) fs.rmSync(PATH_MARKER, { force: true });
     if (installedNew && fs.existsSync(DIST)) fs.rmSync(DIST, { recursive: true, force: true });
     if (movedExisting && fs.existsSync(backup)) fs.renameSync(backup, DIST);
+    if (previousMarker !== null && movedExisting) writePathMarker(previousMarker.trim());
     throw error;
   }
+  if (movedExisting) fs.rmSync(backup, { recursive: true, force: true });
 }
 
-async function install(env = process.env) {
-  const target = targetFromEnvironment(env);
+async function install(env = process.env, { update = false } = {}) {
+  let target = targetFromEnvironment(env);
+  const requestedVersion = env.MINI_ELECTRON_RUNTIME_VERSION === undefined
+    ? undefined : runtimeVersion(env.MINI_ELECTRON_RUNTIME_VERSION);
+  const pinned = requestedVersion ? { runtimeVersion: requestedVersion } : {};
+  let installedVersion;
   try {
     validateDistribution(DIST, target);
-    const relative = path.join('dist', ...target.executable.split('/'));
-    writePathMarker(relative);
-    return;
+    installedVersion = readJson(path.join(DIST, 'version.json'), 'installed runtime metadata').runtimeVersion;
   } catch {
     fs.rmSync(PATH_MARKER, { force: true });
+  }
+  if (installedVersion && !update && (!requestedVersion || installedVersion === requestedVersion)) {
+    writePathMarker(path.join('dist', ...target.executable.split('/')));
+    return;
   }
 
   if (truthy(env.MINI_ELECTRON_SKIP_BINARY_DOWNLOAD) || truthy(env.ELECTRON_SKIP_BINARY_DOWNLOAD)) {
     throw new Error(
-      `mini-electron binary download was skipped, but no valid ${target.key} runtime is installed; ` +
+      `mini-electron binary download was skipped, but no valid ${target.key} runtime is installed for this request; ` +
         'set MINI_ELECTRON_DIST_PATH to a built distribution or reinstall without the skip flag',
     );
   }
@@ -470,9 +556,22 @@ async function install(env = process.env) {
   const temporary = fs.mkdtempSync(path.join(PACKAGE_ROOT, '.mini-electron-install-'));
   const staged = path.join(temporary, 'dist');
   try {
-    const source = await acquireArchive(target, env, temporary);
+    let expected = pinned;
+    if (!env.MINI_ELECTRON_DIST_PATH) {
+      const resolved = await resolveRuntime(target, env, temporary, requestedVersion);
+      target = resolved.target;
+      expected = resolved.expected;
+    } else {
+      const local = path.resolve(env.MINI_ELECTRON_DIST_PATH);
+      if (fs.statSync(local).isDirectory() && !isRegularFile(executableIn(local, target))) {
+        const resolved = selectRuntime(readJson(path.join(local, 'artifacts.json'), 'local runtime manifest'), target, requestedVersion);
+        target = resolved.target;
+        expected = resolved.expected;
+      }
+    }
+    const source = await acquireArchive(target, env, temporary, expected.runtimeVersion);
     if (source.directory) {
-      validateDistribution(source.directory, target);
+      validateDistribution(source.directory, target, expected);
       copyDistribution(source.directory, staged);
     } else {
       if (fs.statSync(source.archive).size > MAX_ARCHIVE_BYTES) {
@@ -482,13 +581,20 @@ async function install(env = process.env) {
       if (actualHash !== source.expectedHash) {
         throw new Error(`runtime archive SHA256 mismatch: expected ${source.expectedHash}, got ${actualHash}`);
       }
+      if (target.sha256 && actualHash !== target.sha256) {
+        throw new Error('local runtime archive SHA256 does not match runtime manifest');
+      }
       extractZip(source.archive, staged);
     }
-    installAtomically(staged, target);
+    installAtomically(staged, target, expected);
+    const metadata = readJson(path.join(DIST, 'version.json'), 'installed runtime metadata');
+    console.log(`mini-electron runtime v${metadata.runtimeVersion} installed`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
 }
+
+module.exports = { install };
 
 if (require.main === module) {
   install().catch((error) => {

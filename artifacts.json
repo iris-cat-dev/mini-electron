@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
-  "packageVersion": "0.1.10",
-  "runtimeVersion": "0.1.10",
+  "schemaVersion": 2,
+  "installerProtocol": 1,
+  "runtimeVersion": "0.1.11",
   "electronApiVersion": "41.2.0",
   "nodeVersion": "24.0.0-pre",
   "nodeModuleAbi": 134,
@@ -9,7 +9,7 @@
   "downloadBaseUrl": "https://github.com/iris-cat-dev/mini-electron/releases/download",
   "platforms": {
     "darwin-arm64": {
-      "archive": "mini-electron-v0.1.10-darwin-arm64.zip",
+      "archive": "mini-electron-v0.1.11-darwin-arm64.zip",
       "executable": "Electron.app/Contents/MacOS/Electron"
     }
   }

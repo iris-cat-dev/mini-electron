@@ -69,4 +69,20 @@ function run(argv = process.argv.slice(2)) {
   return child;
 }
 
-if (require.main === module) run();
+if (require.main === module) {
+  const argv = process.argv.slice(2);
+  if (argv[0] === '--update-runtime') {
+    if (argv.length > 2) {
+      console.error('usage: mini-electron --update-runtime [version]');
+      process.exitCode = 1;
+    } else {
+      const env = argv[1] === undefined ? process.env : { ...process.env, MINI_ELECTRON_RUNTIME_VERSION: argv[1] };
+      require('./install').install(env, { update: true }).catch((error) => {
+        console.error(`mini-electron runtime update failed: ${error.message}`);
+        process.exitCode = 1;
+      });
+    }
+  } else {
+    run(argv);
+  }
+}

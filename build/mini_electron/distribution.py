@@ -197,11 +197,9 @@ def _read_json(path: Path, label: str) -> dict[str, object]:
 
 
 def release_metadata(root: Path, platform_name: str, arch: str) -> dict[str, object]:
-    package = _read_json(root / "package.json", "npm package manifest")
     artifacts = _read_json(root / "artifacts.json", "runtime artifact manifest")
-    package_version = package.get("version")
-    if package_version != artifacts.get("packageVersion"):
-        raise DistributionError("package.json and artifacts.json package versions do not match")
+    if artifacts.get("schemaVersion") != 2 or artifacts.get("installerProtocol") != 1:
+        raise DistributionError("Runtime artifact metadata requires schemaVersion 2 and installerProtocol 1")
     key = f"{platform_name}-{arch}"
     platforms = artifacts.get("platforms")
     if not isinstance(platforms, dict) or key not in platforms:
@@ -224,7 +222,7 @@ def release_metadata(root: Path, platform_name: str, arch: str) -> dict[str, obj
     if missing:
         raise DistributionError("Runtime artifact metadata is missing: " + ", ".join(missing))
     return {
-        "packageVersion": package_version,
+        "installerProtocol": artifacts["installerProtocol"],
         **{name: artifacts[name] for name in required},
         "platform": platform_name,
         "arch": arch,
@@ -413,7 +411,7 @@ def write_version_metadata(directory: Path, metadata: dict[str, object]) -> None
     document = {
         name: metadata[name]
         for name in (
-            "packageVersion",
+            "installerProtocol",
             "runtimeVersion",
             "electronApiVersion",
             "nodeVersion",
@@ -443,8 +441,10 @@ def validate_distribution(
             f"Runtime version metadata is missing or unsafe: {version_path}"
         )
     document = _read_json(version_path, "runtime version metadata")
+    if document.get("installerProtocol") != 1:
+        raise DistributionError(f"Runtime metadata requires installerProtocol 1: {version_path}")
     identity_fields = (
-        "packageVersion",
+        "installerProtocol",
         "runtimeVersion",
         "electronApiVersion",
         "nodeVersion",

@@ -9,17 +9,17 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 
 ## npm distribution
 
-The npm package is `@iriscat/mini-electron`. Version `0.1.10` publishes the
-Apple Silicon macOS runtime only; Windows remains on version `0.1.8`.
-`package.json` declares only `darwin`/`arm64`, matching the published artifact.
-Intel macOS is not supported.
+The npm package is `@iriscat/mini-electron` and currently supports Apple Silicon
+macOS only. `package.json` declares only `darwin`/`arm64`; Intel macOS is not
+supported. Starting with installer `0.1.11`, npm and native runtime versions are
+independent. The previously published Windows runtime remains at `0.1.8`.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.10
+npm install --save-dev @iriscat/mini-electron@0.1.11
 node -p "require('@iriscat/mini-electron')"
 ```
 
-Version `0.1.10` adds native Skia/Metal composition and presentation while
+Runtime `0.1.10` adds native Skia/Metal composition and presentation while
 retaining CPU tile rasterization, display-aware 60/120 Hz VSync, native image
 and editable-field context menus, and generated `data:`/`blob:` downloads.
 It also fixes mixed GPU/CPU guest composition, resize completion, image alpha,
@@ -41,19 +41,63 @@ temporary-directory creation, navigation, companion-window presentation,
 pointer-hover repaints, and the ASAR-enabled `child_process` promisification
 contract.
 
-The npm tarball contains the installer, CLI, types, and manifests, not the native
-executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
-matching GitHub Release, verifies the archive and its complete file inventory,
-then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
-executable path outside the runtime; application main/preload code still imports
-the built-in `electron` API. The package and runtime version is `0.1.10`; the
-Electron API version remains `41.2.0`.
+The npm tarball contains the installer, CLI, types, and package metadata, not the
+native executable or a pinned runtime manifest. Fresh installation reads
+`runtime-v1/artifacts.json` from GitHub Release assets, then downloads the selected
+runtime's ZIP and `SHASUMS256.txt` from its immutable `v<runtimeVersion>` release.
+It verifies the archive against both manifests, validates the complete file/link
+inventory, and atomically installs `dist`.
+`require('@iriscat/mini-electron')` returns the executable path outside the runtime;
+application main/preload code still imports the built-in `electron` API.
+The Electron API compatibility version remains `41.2.0`.
 
-For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
-`runtime-dist` directory or a ZIP accompanied by its `.sha256` file, or set
-`MINI_ELECTRON_MIRROR` to a directory server that hosts `v<version>/` release
-assets. Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and
-`MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when installing into a fresh package directory.
+### Independent npm and runtime versions
+
+- `package.json.version` versions the npm installer, CLI, types, and package
+  contract. Publish npm only when those shipped inputs change.
+- Root `artifacts.json.runtimeVersion` versions the native distribution, including
+  its embedded runtime JavaScript. Binary-only changes update this manifest and
+  GitHub assets; they do **not** require an npm version bump or npm publication.
+  For example, npm `0.1.11` can install runtimes `0.1.12` and `0.1.13`.
+- `installerProtocol` replaces the old npm `packageVersion` equality check in
+  runtime `version.json`. The remote manifest uses schema version `2`; protocol
+  and Electron API compatibility must match the installer. Never point an
+  existing protocol channel at an incompatible runtime.
+
+Existing valid installations are reused by ordinary postinstall runs. Application
+startup and `require()` do not check the network or silently upgrade the runtime.
+Update only the local binary explicitly:
+
+```sh
+npx mini-electron --update-runtime
+# Select an exact runtime instead of the channel, including an intentional downgrade:
+npx mini-electron --update-runtime 0.1.12
+node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
+```
+
+For reproducible fresh installations, pin the runtime separately from npm:
+
+```sh
+MINI_ELECTRON_RUNTIME_VERSION=0.1.12 npm ci
+```
+
+Keep that environment setting in CI/build configuration: npm's lockfile fixes
+the installer, **not** the runtime selected by a mutable channel. An explicit
+update-command version overrides the environment pin for that invocation; it does
+not persist a new project pin. A failed manifest/download/integrity check leaves
+the previous distribution and executable marker intact.
+
+For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to a protocol-1
+`runtime-dist` directory, a ZIP accompanied by its `.sha256` file, or an assembled
+release directory containing `artifacts.json`, the ZIP, and `SHASUMS256.txt`.
+Local inputs bypass remote discovery but still enforce protocol, API, inventory,
+and any explicit runtime pin. `MINI_ELECTRON_OFFLINE=1` can also install from a
+previously verified download cache; use `MINI_ELECTRON_CACHE` to relocate it.
+Set `MINI_ELECTRON_MIRROR` to an asset-server base URL hosting both
+`runtime-v1/artifacts.json` and `v<version>/` release assets. A version-pinned
+installation needs only its `v<version>/` assets, not the channel.
+Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD`
+when installing into a fresh package directory or explicitly updating.
 On macOS the installed executable is
 `dist/Electron.app/Contents/MacOS/Electron`; `npx mini-electron app.js` and
 `ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as expected.
@@ -64,20 +108,58 @@ original `npmRebuild: false` setting and application imports. Both development
 packages expose an `electron` command; use the explicit `mini-electron` CLI
 rather than depending on which shared command wins.
 
-To prepare the macOS-only npm release, build and assemble its runtime:
+### Publishing a binary-only update
+
+1. Change only the runtime version, platform archive names, and any changed native
+   version fields in root `artifacts.json`; leave `package.json` unchanged unless
+   npm-shipped inputs also changed. Rebuild/package the native distribution so
+   `version.json` carries the new runtime identity and file hashes.
+2. Assemble without staging an npm package:
+
+   ```sh
+   python build.py --jobs 16 --package-dist
+   python scripts/build_runtime_release.py \
+     --macos-dist out/mac-arm64/runtime-dist \
+     --runtime-only --output out/runtime-release
+   ```
+
+3. Publish **all three** immutable assets from
+   `out/runtime-release/v<runtimeVersion>/` to GitHub Release `v<runtimeVersion>`:
+   the declared ZIP, `SHASUMS256.txt`, and `artifacts.json`. The assembler computes
+   the ZIP SHA256 in the emitted manifest. Never overwrite a released version's
+   assets; fixed versions and caches depend on immutability.
+4. Only after those assets are available, upload
+   `out/runtime-release/runtime-v1/artifacts.json` as `artifacts.json` on the
+   separate `runtime-v1` GitHub Release, replacing the previous channel asset.
+   Create that release once, preferably as a prerelease so it is not mistaken
+   for a versioned runtime release. This is the mutable pointer used by fresh
+   unpinned installs and explicit unpinned updates.
+
+For example, after uploading a new version's immutable assets:
 
 ```sh
-python build.py --jobs 16 --package-dist
-python scripts/build_runtime_release.py \
-  --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
+gh release upload runtime-v1 \
+  out/runtime-release/runtime-v1/artifacts.json --clobber
 ```
 
-The assembler writes the declared `v0.1.10` runtime ZIP, `SHASUMS256.txt`, and an
-`npm-package` directory with the README and installer. The runtime's
-`version.json` must carry the package version. For dual-platform release
-manifests, build both native targets and also supply `--windows-dist` to the
-assembler. Publish the declared ZIP and `SHASUMS256.txt` to GitHub before
-publishing the npm package with public access.
+No `npm publish` is needed for this workflow. For a dual-platform runtime
+manifest, build all platforms declared in `artifacts.json` and also supply
+`--windows-dist` to the assembler; target selection no longer depends on npm's
+`os`/`cpu` declarations.
+
+### Publishing an installer update
+
+Omit `--runtime-only` to also stage `out/runtime-release/npm-package`, then publish
+that directory with public access when installer/CLI/types/package inputs change.
+The staged npm package excludes `artifacts.json`, so a runtime-only manifest bump
+does not change its installer inputs.
+
+The initial `0.1.11` cutover requires publishing both a protocol-1 runtime and its
+channel before publishing the new npm installer. Older `0.1.10` installers remain
+pinned to their original runtime; existing protocol-less binaries must be rebuilt
+for the new installer. Future incompatible protocol or Electron API changes
+require a new npm installer and a separate protocol channel, preserving the old
+channel for existing installers.
 
 
 ## Repository layout
