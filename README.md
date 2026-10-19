@@ -821,6 +821,62 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   --app=test/macos-resize-geometry-smoke.js
 ```
 
+### Rendering performance comparison (local Chrome)
+
+Compare the built macOS runtime with the Chrome already installed on this
+machine. This does not download or update either browser. Requires Node.js 22+
+and a graphical macOS session:
+
+```sh
+npm run benchmark:render
+# Override executable paths or increase repetitions:
+npm run benchmark:render -- --trials 5 \
+  --runtime out/mac-arm64/mini-electron \
+  --chrome "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
+The runner serves the identical local page to both engines, opens only one
+engine at a time, alternates the first engine across trials, and uses fresh
+owned profiles. Defaults: three trials per engine, a 1000×700 actual content
+viewport, two-second animated measurements after 500 ms warmups, and 20
+operation samples after three discarded warmup operations. Chrome keeps its
+default rendering/GPU configuration; mini-electron keeps its software
+compositing path. Viewport/DPR mismatches, hidden pages, renderer failures, or
+failed workload invariants reject the run instead of producing comparison ratios.
+Keep the test window unobscured, do not resize or interact with it, and leave
+the machine otherwise idle.
+
+The six scenarios are an empty rAF baseline, creation/layout of 2,000 text
+rows, updates/layout of 1,000 grid items, Canvas2D repaint of 1,000 primitives
+per callback, transforms of 150 cards, and programmatic scrolling of 3,000 rows.
+The scroll case does not measure native input latency.
+
+Artifacts go to `out/rendering-benchmark/<timestamp>/`: `report.md` contains
+side-by-side medians/ranges and mini/Chrome ratios; `results.json` and
+`trial-*.json` retain raw samples, workload checks, engine/environment metadata,
+page source hashes, display/power snapshots, and process logs. Aggregates are
+medians of per-trial metrics, not pooled quantiles. Costs use lower-is-better;
+rAF callback frequency uses higher-is-better. There is no composite score.
+
+Work time measures synchronous JavaScript and explicitly forced layout or
+canvas submission, not completed GPU work. Double-rAF opportunity time is a
+next-render-opportunity proxy, not presentation latency. rAF frequency is
+**not actual presented FPS**; intervals above 25 ms use a fixed 60 Hz reference,
+not a measured dropped-frame count. Display refresh rate and engine scheduling
+caps matter. Startup, network, native input, and actual display presentation
+are outside this benchmark; it is a synthetic rendering comparison, not an
+overall application-speed score.
+
+For an interactive page without launching either engine:
+
+```sh
+npm run benchmark:render -- --serve
+```
+
+Open the printed URL, keep the page at the top, and click **Run benchmark**.
+This manual mode uses the current window's viewport; reload to run again.
+Use automated mode for matched-viewport comparisons.
+
 ### Runtime distribution
 
 macOS packaging is not part of the `0.1.8` release. For a release declaring
@@ -1095,8 +1151,9 @@ are not supplied by renderer JavaScript. File access is limited to application
 roots, trusted `loadFile` roots, and opaque capabilities issued by native file
 selection; profile directories are not application roots. The obsolete renderer
 bootstrap, compatibility aliases, and incomplete extension surface were removed.
-Windows no longer stages disabled DevTools resources; macOS retains its live
-Inspector, DevTools, and updater framework inputs.
+Windows no longer stages disabled DevTools resources. CDP/DevTools and Node
+Inspector are disabled at compile time in the macOS host and Windows
+`Release|x64` build; macOS retains its updater framework inputs.
 
 Windows runtime evidence is under `out/windows-x64/verification/cleanup-*.json`
 and matching PNGs. Reports identify the particular native input exercised; older

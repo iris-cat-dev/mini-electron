@@ -15,7 +15,8 @@
   },
   "scripts": {
     "postinstall": "node install.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "benchmark:render": "node benchmarks/rendering/run.js"
   },
   "files": [
     "artifacts.json",
