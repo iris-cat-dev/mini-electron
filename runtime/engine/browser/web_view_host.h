@@ -153,6 +153,7 @@ public:
         mini_electron_web_frame_handle frameId, int worldId, std::string* scriptString, BOOL isInClosure, mini_electron_run_js_callback callback, void* param);
 
     LRESULT fireWheelEventOnUiThread(WPARAM wParam, LPARAM lParam);
+    void onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
     void onMouseMessage(unsigned int message, int x, int y, unsigned int flags);
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyDown(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);

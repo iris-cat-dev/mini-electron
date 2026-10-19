@@ -1398,8 +1398,14 @@ static bool IsPointerEvent(NSEventType type) {
   input.Set("type", "mouseWheel");
   input.Set("x", static_cast<int>(std::lround(point.x)));
   input.Set("y", static_cast<int>(std::lround(point.y)));
-  // The engine wheel API uses 120 units per tick, not AppKit's tick units.
-  input.Set("deltaY", event.scrollingDeltaY * 120.0);
+  if (event.hasPreciseScrollingDeltas) {
+    // Trackpads already report logical pixels; do not turn them into wheel ticks.
+    input.Set("precise", true);
+    input.Set("deltaX", event.scrollingDeltaX);
+    input.Set("deltaY", event.scrollingDeltaY);
+  } else {
+    input.Set("deltaY", event.scrollingDeltaY * 120.0);
+  }
   input.Set("modifiers", [self mouseModifiers:event]);
   _owner->SendInput(std::move(input));
 }

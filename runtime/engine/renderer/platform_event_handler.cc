@@ -130,7 +130,7 @@ bool PlatformEventHandler::isDraggableRegionNcHitTest(HWND hWnd, const gfx::Poin
     return draggable;
 }
 
-void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers)
+void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers, bool precise)
 {
     if (!m_blinkWidgetInputHandler.is_bound())
         return;
@@ -150,12 +150,19 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool s
     mouseWheelEvent.phase = blink::WebMouseWheelEvent::kPhaseNone;
     mouseWheelEvent.dispatch_type = blink::WebMouseWheelEvent::DispatchType::kBlocking;
     mouseWheelEvent.event_action = blink::WebMouseWheelEvent::EventAction::kPageZoom;
+    if (precise) {
+        mouseWheelEvent.SetModifiers(modifiers);
+        mouseWheelEvent.delta_units = ui::ScrollGranularity::kScrollByPrecisePixel;
+        mouseWheelEvent.event_action = blink::WebMouseWheelEvent::GetPlatformSpecificDefaultEventAction(mouseWheelEvent);
+    }
 
     std::unique_ptr<blink::WebCoalescedInputEvent> mouseWheelCoalescedEvent
         = std::make_unique<blink::WebCoalescedInputEvent>(mouseWheelEvent, ui::LatencyInfo());
     m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::move(mouseWheelCoalescedEvent));
 
     blink::WebGestureEvent webGestureEvent;
+    if (precise)
+        webGestureEvent.SetModifiers(modifiers);
     webGestureEvent.SetType(blink::mojom::EventType::kGestureScrollBegin);
     webGestureEvent.SetSourceDevice(blink::mojom::GestureDevice::kTouchpad);
     webGestureEvent.SetPositionInWidget(gfx::PointF(x, y));
@@ -163,7 +170,7 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool s
     webGestureEvent.SetTimeStamp(base::TimeTicks::Now());
     webGestureEvent.data.scroll_begin.delta_x_hint = deltaX;
     webGestureEvent.data.scroll_begin.delta_y_hint = deltaY;
-    webGestureEvent.data.scroll_begin.delta_hint_units = ui::ScrollGranularity::kScrollByPixel;
+    webGestureEvent.data.scroll_begin.delta_hint_units = mouseWheelEvent.delta_units;
     webGestureEvent.data.scroll_begin.target_viewport = false;
     webGestureEvent.data.scroll_begin.inertial_phase = blink::mojom::InertialPhaseState::kNonMomentum;
     webGestureEvent.data.scroll_begin.synthetic = true;
@@ -176,15 +183,30 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool s
 //     webGestureEvent.data.scroll_update.velocity_x = deltaX;
 //     webGestureEvent.data.scroll_update.velocity_y = deltaY;
     webGestureEvent.data.scroll_update.inertial_phase = blink::mojom::InertialPhaseState::kNonMomentum;
-    webGestureEvent.data.scroll_update.delta_units = ui::ScrollGranularity::kScrollByPixel;
+    webGestureEvent.data.scroll_update.delta_units = mouseWheelEvent.delta_units;
     m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::make_unique<blink::WebCoalescedInputEvent>(webGestureEvent, ui::LatencyInfo()));
 
     webGestureEvent.SetType(blink::mojom::EventType::kGestureScrollEnd);
     webGestureEvent.data.scroll_end.inertial_phase = blink::mojom::InertialPhaseState::kNonMomentum;
     webGestureEvent.data.scroll_end.synthetic = true;
     webGestureEvent.data.scroll_end.generated_by_fling_controller = true;
-    webGestureEvent.data.scroll_end.delta_units = ui::ScrollGranularity::kScrollByPixel;
+    webGestureEvent.data.scroll_end.delta_units = mouseWheelEvent.delta_units;
     m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::make_unique<blink::WebCoalescedInputEvent>(webGestureEvent, ui::LatencyInfo()));
+}
+
+void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
+{
+    if (deltaX == 0 && deltaY == 0)
+        return;
+    scoped_refptr<base::SingleThreadTaskRunner> runner = blink::ThreadScheduler::CompositorThreadScheduler()->InputTaskRunner();
+    if (m_isDispatchDirectlyToWidget)
+        runner = RenderThreadImpl::get()->getTaskRunner();
+    runner->PostTask(FROM_HERE, base::BindOnce(
+        [](PlatformEventHandler* self, int x, int y, float deltaX, float deltaY, int modifiers) {
+            base::AutoLock lock(self->m_lock);
+            self->fireWheelEventOnCompositorThread(x, y, false, false, 0, deltaX, deltaY, modifiers, true);
+        },
+        base::Unretained(this), x, y, deltaX, deltaY, modifiers));
 }
 
 LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lParam)

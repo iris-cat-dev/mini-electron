@@ -9,6 +9,7 @@
 #include <string>
 
 #include "runtime/engine/public/engine_api.h"
+#include "runtime/engine/api/internal_api.h"
 
 extern "C" void mini_electron_mac_set_composition(mini_electron_web_view web_view,
                                     const char16_t* text,
@@ -310,6 +311,12 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 }
 - (void)scrollWheel:(NSEvent*)event {
   NSPoint point = [self convertPoint:[event locationInWindow] fromView:nil];
+  if (event.hasPreciseScrollingDeltas) {
+    mini_electron_fire_precise_wheel_event(_webView, static_cast<int>(point.x),
+        static_cast<int>(point.y), event.scrollingDeltaX, event.scrollingDeltaY,
+        [self mouseFlagsForEvent:event]);
+    return;
+  }
   int delta = static_cast<int>([event scrollingDeltaY] * 120.0);
   mini_electron_fire_mouse_wheel_event(_webView, static_cast<int>(point.x),
                         static_cast<int>(point.y), delta,

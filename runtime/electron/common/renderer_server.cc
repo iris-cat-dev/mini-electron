@@ -1764,9 +1764,16 @@ private:
             mini_electron_execute_edit_command(view_, command->c_str());
             return true;
         }
-        if (*type == "mouseWheel")
+        if (*type == "mouseWheel") {
+#if BUILDFLAG(IS_MAC)
+            if (event.FindBool("precise").value_or(false))
+                return !!mini_electron_fire_precise_wheel_event(view_, x, y,
+                    event.FindDouble("deltaX").value_or(0),
+                    event.FindDouble("deltaY").value_or(0), flags);
+#endif
             return !!mini_electron_fire_mouse_wheel_event(view_, x, y,
                 static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0))), flags);
+        }
         if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp") {
             unsigned message = MINI_ELECTRON_MSG_MOUSEMOVE;
             int button = event.FindInt("button").value_or(0);

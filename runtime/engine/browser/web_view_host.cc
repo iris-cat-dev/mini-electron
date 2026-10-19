@@ -1308,6 +1308,12 @@ void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event)
         m_platformEventHandler->fireInputEventToCompositingThread(event);
 }
 
+void WebViewHost::onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
+{
+    if (m_platformEventHandler)
+        m_platformEventHandler->firePreciseWheelEvent(x, y, deltaX, deltaY, modifiers);
+}
+
 bool WebViewHost::onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey)
 {
     WPARAM wParam = virtualKeyCode;

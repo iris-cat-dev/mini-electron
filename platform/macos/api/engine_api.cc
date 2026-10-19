@@ -376,6 +376,30 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(mini_electron_
   return TRUE;
 }
 
+BOOL mini_electron_fire_precise_wheel_event(mini_electron_web_view handle,
+                                           int x, int y,
+                                           float delta_x, float delta_y,
+                                           unsigned int flags) {
+  if (!ViewFor(handle))
+    return FALSE;
+  content::ThreadCall::callBlinkThreadAsyncWithValid(
+      FROM_HERE, handle, [x, y, delta_x, delta_y, flags](content::WebViewHost* view) {
+        const float scale = view->getWebView()->MainFrameWidget()
+                                ->GetOriginalScreenInfo().device_scale_factor;
+        const int modifiers =
+            (flags & MINI_ELECTRON_SHIFT ? blink::WebInputEvent::kShiftKey : 0) |
+            (flags & MINI_ELECTRON_CONTROL ? blink::WebInputEvent::kControlKey : 0) |
+            (flags & MINI_ELECTRON_META ? blink::WebInputEvent::kMetaKey : 0) |
+            (flags & MINI_ELECTRON_ALT ? blink::WebInputEvent::kAltKey : 0) |
+            (flags & MINI_ELECTRON_LBUTTON ? blink::WebInputEvent::kLeftButtonDown : 0) |
+            (flags & MINI_ELECTRON_RBUTTON ? blink::WebInputEvent::kRightButtonDown : 0) |
+            (flags & MINI_ELECTRON_MBUTTON ? blink::WebInputEvent::kMiddleButtonDown : 0);
+        view->onPreciseWheelEvent(std::lround(x * scale), std::lround(y * scale),
+                                 delta_x * scale, delta_y * scale, modifiers);
+      });
+  return TRUE;
+}
+
 BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_key_down_event(mini_electron_web_view handle,
                                      unsigned int virtual_key,
                                      unsigned int flags,

@@ -116,6 +116,7 @@ public:
     };
     LRESULT fireMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, const MouseEvtInfo& info, BOOL* bHandle);
     LRESULT fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lParam);
+    void firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
     void fireCaptureChangedEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireRealTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -164,7 +165,7 @@ public:
     void fireImeText(const std::u16string& text, bool committed);
 
 private:
-    void fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers);
+    void fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers, bool precise = false);
 
     friend class RenderWidgetHostImpl;
 

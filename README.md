@@ -548,7 +548,8 @@ pending preload IPC, and companion windows can exit without late handle access.
 Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
 `test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
-`test/macos-pointer-interaction-smoke.js`, `test/macos-image-preview-smoke.js`,
+`test/macos-pointer-interaction-smoke.js`, `test/macos-scroll-smoke.js`,
+`test/macos-image-preview-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
 `test/macos-window-buttons-smoke.js`, and `test/macos-exit-lifecycle-smoke.js`.
@@ -557,7 +558,7 @@ composed display pixels and requires Screen Recording permission and unobstructe
 test windows. Optional physical passthrough verification uses
 `MINI_COMPANION_PHYSICAL=1` and macOS Accessibility permission.
 
-Run the selection, image-clipboard, IME, pointer, and image-preview regressions
+Run the selection, image-clipboard, IME, pointer, scroll, and image-preview regressions
 against a rebuilt runtime:
 
 ```sh
@@ -565,6 +566,7 @@ out/mac-arm64/mini-electron --app=test/macos-selection-colors-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-pointer-interaction-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-scroll-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-image-preview-smoke.js
 ```
 
@@ -576,6 +578,10 @@ remains a manual visual check.
 The pointer regression sends actual AppKit movement/drag events, verifies hover
 feedback along the whole divider and width changes across captured drags, and
 retains native PNG evidence without requiring Screen Recording permission.
+The scroll regression sends native AppKit pixel/line wheel events to an owned
+renderer view without activating its window. It checks proportional trackpad
+motion, high-frequency and fractional input, both axes, nested scroll hit testing,
+and the unchanged ordinary mouse-wheel step, retaining native PNG evidence.
 The image-preview regression sends a large PNG in a nested sliced `Uint8Array`
 through the isolated preload, writes and reads its exact bytes on disk, decodes
 the returned Blob URL, and verifies that renderer mouse input and timers still
@@ -598,9 +604,12 @@ input, keep the opposite edge anchored, and honor window minimum/maximum sizes.
 Non-resizable and full-screen windows do not use this border. macOS 15+ uses
 AppKit's directional frame cursors; older systems use axis resize cursors.
 
-Mouse dragging preserves the event's held-button state, and wheel deltas remain
-numeric until the engine API boundary. The renderer recognizes left, middle,
-and right buttons rather than interpreting native string names as left clicks.
+Mouse dragging preserves the event's held-button state. AppKit precise wheel
+events retain fractional pixel deltas and both axes through IPC and Blink, with
+Retina scaling applied once. Trackpad motion bypasses the legacy 120-unit wheel
+tick conversion and fixed per-event scroll step; ordinary mouse wheels keep
+their existing behavior. The renderer recognizes left, middle, and right buttons
+rather than interpreting native string names as left clicks.
 Native window and BrowserView drawing retain the last complete image while the
 renderer writes a newer shared frame. Pending and presented pixel buffers are
 separate and reused; a failed seqlock read never exposes partial pixels or

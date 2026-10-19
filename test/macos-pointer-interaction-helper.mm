@@ -69,6 +69,46 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
   napi_get_undefined(env, &result);
   return result;
 }
+static napi_value Scroll(napi_env env, napi_callback_info info) {
+  size_t count = 6;
+  napi_value args[6];
+  double x = 0, y = 0, deltaX = 0, deltaY = 0;
+  bool precise = false;
+  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
+  if (count != 6 || napi_get_value_double(env, args[1], &x) != napi_ok ||
+      napi_get_value_double(env, args[2], &y) != napi_ok ||
+      napi_get_value_double(env, args[3], &deltaX) != napi_ok ||
+      napi_get_value_double(env, args[4], &deltaY) != napi_ok ||
+      napi_get_value_bool(env, args[5], &precise) != napi_ok ||
+      !std::isfinite(x) || !std::isfinite(y) ||
+      !std::isfinite(deltaX) || !std::isfinite(deltaY)) {
+    napi_throw_type_error(env, nullptr, "scroll(title, pageX, pageY, deltaX, deltaY, precise)");
+    return nullptr;
+  }
+  NSView* view = View(env, args[0]);
+  if (!view) return nullptr;
+  const NSPoint local = NSMakePoint(NSMinX(view.bounds) + x,
+      view.isFlipped ? NSMinY(view.bounds) + y : NSMaxY(view.bounds) - y);
+  const NSPoint point = [view convertPoint:local toView:nil];
+  CGEventRef scroll = CGEventCreateScrollWheelEvent(nullptr,
+      precise ? kCGScrollEventUnitPixel : kCGScrollEventUnitLine, 2,
+      static_cast<int32_t>(deltaY), static_cast<int32_t>(deltaX));
+  // NSEvent's CGEvent bridge flips using the primary screen, even for a window event.
+  CGEventSetLocation(scroll, CGPointMake(point.x,
+      NSHeight(NSScreen.screens.firstObject.frame) - point.y));
+  CGEventSetFlags(scroll, 0);
+  CGEventSetIntegerValueField(scroll, kCGMouseEventWindowUnderMousePointer,
+      view.window.windowNumber);
+  CGEventSetIntegerValueField(scroll, kCGMouseEventWindowUnderMousePointerThatCanHandleThisEvent,
+      view.window.windowNumber);
+  NSEvent* event = [NSEvent eventWithCGEvent:scroll];
+  [event setValue:view.window forKey:@"_window"];
+  [view scrollWheel:event];
+  CFRelease(scroll);
+  napi_value result;
+  napi_get_undefined(env, &result);
+  return result;
+}
 static napi_value Snapshot(napi_env env, napi_callback_info info) {
   size_t count = 2;
   napi_value args[2];
@@ -94,8 +134,9 @@ static napi_value Snapshot(napi_env env, napi_callback_info info) {
 NAPI_MODULE_INIT() {
   napi_property_descriptor methods[] = {
       {"mouse", nullptr, Mouse, nullptr, nullptr, nullptr, napi_default, nullptr},
+      {"scroll", nullptr, Scroll, nullptr, nullptr, nullptr, napi_default, nullptr},
       {"snapshot", nullptr, Snapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
   };
-  napi_define_properties(env, exports, 2, methods);
+  napi_define_properties(env, exports, 3, methods);
   return exports;
 }
