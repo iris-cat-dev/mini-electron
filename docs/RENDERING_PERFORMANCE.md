@@ -291,6 +291,23 @@ cached capacity permits. A replacement chain attempts its initial presentation
 before waiting for consumption, so a final static frame cannot depend on
 another renderer update.
 
+New composition swapchains initialize both physical flip buffers before
+attachment. A first, unattached presentation rotates the buffers; a GPU copy
+fills the other buffer, and an event-backed worker waits for completion while
+the previous visual remains attached. Ordinary subsequent presents retain
+`SyncInterval=1` and `DXGI_PRESENT_DO_NOT_WAIT`. This follows Chromium's
+[first-present buffer initialization workaround](https://github.com/chromium/chromium/blob/main/ui/gl/swap_chain_presenter.cc)
+without putting the GPU completion wait on the browser UI thread.
+
+Root BeginFrame demand changes run outside `VizClient::m_lock`: enabling an
+observer can synchronously deliver a cached BeginFrame and reenter
+`OnBeginFrame()`. Holding that nonrecursive lock previously deadlocked the
+compositor and Blink during rapid OMP Desktop resizing. Root geometry changes
+damage the complete output, and Windows stretches an older child surface only
+until the requested surface activates. GDI resize presentation likewise fills
+the current viewport from the complete retained frame, with a cached BGRA
+conversion and dirty-region clipping, rather than copying uncovered zeros.
+
 Explicit Windows captures use independent per-request shared mappings.
 GPU readback runs asynchronously on Viz, leaving renderer UI publication
 and frame consumption unblocked. The browser composites captured guest
@@ -322,7 +339,7 @@ of the entire delay to the frame clock.
 
 ### Windows GPU verification
 
-The final source executable passed 22 required native scenarios, covering
+The GPU/VSync baseline executable passed 22 required native scenarios, covering
 hardware composition, CLI/API GPU disable, CPU renderer fallback through
 DirectComposition, all four CPU/GPU host/guest combinations, concurrent
 cropped captures, transparent companion/taskbar/focus behavior, captions,
@@ -330,6 +347,26 @@ minimize/restore, pointer routing, wheel input, Pinyin, clipboard, image
 preview/download, JavaScript, and navigation. The complete final acceptance
 report is `out/verification/windows-gpu-vsync/verification-final.json`.
 Pre-fix diagnostic failures remain in the adjacent historical reports.
+
+`test/windows-resize-presentation-smoke.js` drives three batches of twenty real
+Win32 edge/corner sizing loops, with responsive blur layers and active rAF.
+It samples a fixed page pixel and a pixel following the moving bottom edge
+throughout dragging, then requires a different color to reach the real desktop
+after each batch. Hardware D3D12/DirectComposition, CPU renderer/DirectComposition,
+and fully disabled GPU/GDI runs each completed all 60 loops with zero
+missing/white samples; GPU rendering and imports advanced with zero ordinary
+readbacks. Raw reports and native screenshots are under
+`out/verification/windows-resize-freeze/primed-gpu/`, `primed-cpu/`, and `primed-gdi/`.
+Earlier post-resize-only checks did not catch the during-drag white flashes.
+
+The rebuilt OMP Desktop 0.5.2 Windows package also completed three batches of
+twenty native edge resizes. After each batch, a different injected diagnostic
+color reached the actual desktop, rather than only updating DOM state. Its
+renderer continued D3D12 rendering/imports with zero ordinary readbacks.
+The actual application capture and progress log are
+`out/verification/windows-resize-freeze/omp-after-batch-3.png` and `omp-after.jsonl`.
+These application checks prove post-resize liveness; the controlled page above
+provides the fixed-color invariants for detecting flashes during dragging.
 
 On the observed selected output, the 640×420 CSS-pixel window at DPR 1.5
 recorded 240 intervals per workload. Both the empty-rAF and animated-transform

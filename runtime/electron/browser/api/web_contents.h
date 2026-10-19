@@ -156,7 +156,8 @@ public:
     void completePreparedFrames();
     void cancelPreparedFrames(const std::string& error);
 #if defined(_WIN32)
-    bool paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y, int width, int height) const;
+    bool paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y,
+        int width, int height, const gfx::Size& target_size) const;
     void appendDCompLayers(std::vector<mini_electron::win::DCompLayer>& layers,
         const RECT& bounds, const RECT& clip, unsigned depth = 0) const;
     void getCompositorInfoApi(const v8::FunctionCallbackInfo<v8::Value>&);
@@ -286,6 +287,7 @@ private:
 #if defined(_WIN32)
     mutable RendererFrameSnapshot m_windowsPaintFrame;
     mutable std::vector<uint8_t> m_windowsPaintPixels;
+    mutable uint64_t m_windowsPaintPixelsGeneration = 0;
     mutable bool m_windowsPaintNeedsFullRepaint = false;
     std::unordered_map<int, gfx::Rect> m_windowsGuestBounds;
 #endif

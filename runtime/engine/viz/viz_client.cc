@@ -292,7 +292,7 @@ viz::CompositorFrame VizClient::createFrame(const viz::BeginFrameArgs& args)
 
     const viz::CompositorRenderPassId kRenderPassId { 10010 };
     const gfx::Rect& outputRect = m_bounds;
-    const gfx::Rect& damageRect = gfx::Rect(0, 0, 0, 0); // gfx::Rect(0, 0, 0, 0);//outputRect
+    const gfx::Rect& damageRect = outputRect;
     std::unique_ptr<viz::CompositorRenderPass> renderPass = viz::CompositorRenderPass::Create();
     renderPass->SetNew(kRenderPassId, outputRect, damageRect, gfx::Transform());
 
@@ -301,9 +301,9 @@ viz::CompositorFrame VizClient::createFrame(const viz::BeginFrameArgs& args)
     //         viz::SubtreeCaptureId(), gfx::Size(), viz::SharedElementResourceId(), true /*has_transparent_background*/,
     //         false /*cache_render_pass*/, false /*has_damage_from_contributing_content*/, false /*generate_mipmap*/, false /*per_quad_damage*/);
 
-    // Keep child geometry at Viz's uniform device-scale ratio. For a smaller
-    // fallback, SurfaceAggregator fills only the uncovered gutters from the
-    // active child's root_background_color, preserving translucent backgrounds.
+    // Child geometry normally follows Viz's uniform device-scale ratio.
+    // Windows temporarily stretches an older active surface below until the
+    // requested resize activates, rather than exposing incomplete gutters.
     for (std::map<viz::FrameSinkId, EmbedInfo>::const_iterator iter = m_embeds.begin(); iter != m_embeds.end(); ++iter) {
         if (!g_canCommitFrame)
             continue;
@@ -401,6 +401,9 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
                                     quad->surface_range = reachedRequest
                                         ? viz::SurfaceRange(active) : viz::SurfaceRange(active, requested);
                                 }
+#if BUILDFLAG(IS_WIN)
+                                quad->stretch_content_to_fill_bounds = quad->surface_range.start().has_value();
+#endif
                                 frame.metadata.referenced_surfaces[rangeIndex++] = quad->surface_range;
                             }
                         }
@@ -416,8 +419,14 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
 
                 // Child activation explicitly requests the cutover frame. Root
                 // acknowledgments still release resize while fallback is drawn.
-                base::AutoLock lock(self->m_lock);
-                self->getPtr()->SetNeedsBeginFrame(self->m_frameRevision != frameRevision);
+                bool needsBeginFrame;
+                {
+                    base::AutoLock lock(self->m_lock);
+                    needsBeginFrame = self->m_frameRevision != frameRevision;
+                }
+                // Enabling BeginFrames can synchronously deliver a cached
+                // frame and reenter OnBeginFrame(), which takes m_lock.
+                self->getPtr()->SetNeedsBeginFrame(needsBeginFrame);
             },
             base::Unretained(this), std::move(frame), localSurfaceId, frameRevision));
 }

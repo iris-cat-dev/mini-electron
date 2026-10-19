@@ -232,7 +232,8 @@ void BrowserView::onPaintInUiThread(HDC hdc, const RECT& parentPaintRect)
         return;
     m_webContents->paintFrame(hdc, paintRect.left, paintRect.top,
         paintRect.left - bounds.left, paintRect.top - bounds.top,
-        paintRect.right - paintRect.left, paintRect.bottom - paintRect.top);
+        paintRect.right - paintRect.left, paintRect.bottom - paintRect.top,
+        gfx::Size(bounds.right - bounds.left, bounds.bottom - bounds.top));
 }
 
 void BrowserView::onWebContentsPaint(WebContents* contents, const gfx::Rect& damage)

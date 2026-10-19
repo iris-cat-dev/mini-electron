@@ -94,6 +94,7 @@ internal static class NativeInputHelper
 
     private sealed class PresentationPoint {
         public int X, Y, Red, Green, Blue, Tolerance;
+        public bool FollowBottom;
         public int MatchingFrames, WhiteFrames;
         public double FirstMatchMs = -1, LastMismatchMs = -1;
         public readonly int[] FirstRgb = new int[3], LastRgb = new int[3];
@@ -105,6 +106,8 @@ internal static class NativeInputHelper
         public Thread Worker;
         public readonly ManualResetEvent Ready = new ManualResetEvent(false);
         public Exception Error;
+        public volatile bool Stop;
+        public string FailurePath;
         public int Frames, PresentedFrames, MissingFrames, AllWhiteFrames, AnyWhiteFrames;
         public int MissingAfterStableFrames, WhiteAfterStableFrames;
         public double ActualDurationMs, FirstPresentedMs = -1, FirstStablePresentedMs = -1;
@@ -176,6 +179,130 @@ internal static class NativeInputHelper
         if (!heldLeftButton) return;
         try { Mouse(true); }
         finally { heldLeftButton = false; heldPointerWindow = IntPtr.Zero; }
+    }
+    private static object ResizeCycles(Dictionary<string, object> command) {
+        if (!command.ContainsKey("samples")) return ResizeCyclesCore(command);
+        IntPtr window = Window(command);
+        Focus(window);
+        Point origin = new Point();
+        if (!ClientToScreen(window, ref origin)) throw new Win32Exception();
+        double scale = GetDpiForWindow(window) / 96.0;
+        var points = new List<PresentationPoint>();
+        foreach (Dictionary<string, object> input in (IEnumerable)command["samples"]) {
+            var rgb = new List<int>();
+            foreach (object channel in (IEnumerable)input["rgb"]) rgb.Add(Convert.ToInt32(channel));
+            if (rgb.Count != 3) throw new InvalidOperationException("Invalid resize sample color");
+            bool bottom = Flag(input, "bottom");
+            points.Add(new PresentationPoint {
+                X = origin.X + (int)Math.Round(Number(input, "x") * scale),
+                Y = (bottom ? 0 : origin.Y) + (int)Math.Round(Number(input, "y") * scale),
+                Red = rgb[0], Green = rgb[1], Blue = rgb[2], Tolerance = 5, FollowBottom = bottom
+            });
+        }
+        var sampler = new RestorePresentationSampler {
+            Window = window, DurationMs = 20000, StableMs = 10, Points = points,
+            FailurePath = command.ContainsKey("failurePath") ? Convert.ToString(command["failurePath"]) : null
+        };
+        sampler.Worker = new Thread(() => SampleRestorePresentation(sampler)) { IsBackground = true };
+        sampler.Worker.Start();
+        object resizing;
+        try {
+            if (!sampler.Ready.WaitOne(2000)) throw new InvalidOperationException("Resize presentation sampler did not start");
+            resizing = ResizeCyclesCore(command);
+        } finally {
+            sampler.Stop = true;
+            if (!sampler.Worker.Join(3000)) throw new InvalidOperationException("Resize presentation sampler did not stop");
+        }
+        if (sampler.Error != null) throw sampler.Error;
+        return new { resizing, presentation = new {
+            source = "desktop.GetDC/GetPixel", frames = sampler.Frames, missingFrames = sampler.MissingFrames,
+            whiteFrames = sampler.AnyWhiteFrames, missingMs = sampler.MissingDurationMs,
+            longestMissingMs = sampler.LongestMissingMs, points
+        } };
+    }
+    private static object ResizeCyclesCore(Dictionary<string, object> command) {
+        IntPtr window = Window(command);
+        Focus(window);
+        int cycles = Number(command, "cycles");
+        if (cycles < 1 || cycles > 200 || heldLeftButton || (GetAsyncKeyState(1) & 0x8000) != 0)
+            throw new InvalidOperationException("Invalid native resize cycles or held pointer");
+        var sizes = new List<object>();
+        int distance = command.ContainsKey("distance") ? Number(command, "distance") : 96;
+        int steps = command.ContainsKey("steps") ? Number(command, "steps") : 8;
+        int interval = command.ContainsKey("interval") ? Number(command, "interval") : 8;
+        if (distance < 16 || distance > 1000 || steps < 2 || steps > 40 || interval < 1 || interval > 20)
+            throw new InvalidOperationException("Invalid native resize motion");
+        Rect initial;
+        if (!GetWindowRect(window, out initial)) throw new Win32Exception();
+        uint processId;
+        uint targetThread = GetWindowThreadProcessId(window, out processId);
+        int entered = 0;
+        for (int cycle = 0; cycle < cycles; cycle++) {
+            Rect before;
+            if (GetForegroundWindow() != window || !GetWindowRect(window, out before))
+                throw new InvalidOperationException("Native resize target lost foreground");
+            int edge = (cycle / 2) % 3;
+            int x = before.Right - 2, y = before.Bottom - 2;
+            if (edge == 0) y = (before.Top + before.Bottom) / 2;
+            if (edge == 1) x = (before.Left + before.Right) / 2;
+            UIntPtr hit;
+            long position = (ushort)x | ((long)(ushort)y << 16);
+            if (SendMessageTimeout(window, 0x0084, UIntPtr.Zero, new IntPtr(position), 2, 1000, out hit) == IntPtr.Zero
+                || hit.ToUInt64() < 10 || hit.ToUInt64() > 17)
+                throw new InvalidOperationException("Native resize did not hit a window sizing edge");
+            if (!SetCursorPos(x, y) || WindowFromPoint(new Point { X = x, Y = y }) != window)
+                throw new InvalidOperationException("Native resize edge is obscured");
+            Mouse(false);
+            heldLeftButton = true;
+            heldPointerWindow = window;
+            try {
+                var started = System.Diagnostics.Stopwatch.StartNew();
+                for (;;) {
+                    var info = new GuiThreadInfo { Size = (uint)Marshal.SizeOf(typeof(GuiThreadInfo)) };
+                    if (!GetGUIThreadInfo(targetThread, ref info)) throw new Win32Exception();
+                    if (info.MoveSize == window) break;
+                    if (started.ElapsedMilliseconds > 2000) {
+                        Point cursor; GetCursorPos(out cursor);
+                        throw new InvalidOperationException("Native mouse did not enter the Win32 sizing loop: cycle=" + cycle
+                            + ", hit=" + hit + ", target=" + window + ", foreground=" + GetForegroundWindow()
+                            + ", moveSize=" + info.MoveSize + ", capture=" + info.Capture
+                            + ", expectedPointer=" + x + "," + y + ", actualPointer=" + cursor.X + "," + cursor.Y);
+                    }
+                    Thread.Sleep(2);
+                }
+                entered++;
+                int targetX = initial.Right - 2;
+                int targetY = initial.Bottom - 2;
+                if (cycle % 2 == 0) {
+                    targetX -= Math.Min(distance, initial.Right - initial.Left - 300);
+                    targetY -= Math.Min(distance * 2 / 3, initial.Bottom - initial.Top - 250);
+                }
+                for (int step = 1; step <= steps; step++) {
+                    if (GetForegroundWindow() != window)
+                        throw new InvalidOperationException("Native resize target lost foreground during drag");
+                    int moveX = edge == 1 ? x : x + (targetX - x) * step / steps;
+                    int moveY = edge == 0 ? y : y + (targetY - y) * step / steps;
+                    if (!SetCursorPos(moveX, moveY)) throw new Win32Exception();
+                    Thread.Sleep(interval);
+                }
+            } finally { ReleaseHeldPointer(); }
+            var released = System.Diagnostics.Stopwatch.StartNew();
+            for (;;) {
+                var info = new GuiThreadInfo { Size = (uint)Marshal.SizeOf(typeof(GuiThreadInfo)) };
+                if (!GetGUIThreadInfo(targetThread, ref info)) throw new Win32Exception();
+                if (info.MoveSize != window) break;
+                if (released.ElapsedMilliseconds > 2000)
+                    throw new InvalidOperationException("Native sizing loop did not exit after mouse release");
+                Thread.Sleep(5);
+            }
+            Rect after;
+            if (!GetWindowRect(window, out after)) throw new Win32Exception();
+            if (before.Right - before.Left == after.Right - after.Left
+                && before.Bottom - before.Top == after.Bottom - after.Top)
+                throw new InvalidOperationException("Native sizing loop did not change window geometry");
+            sizes.Add(new { width = after.Right - after.Left, height = after.Bottom - after.Top });
+        }
+        return new { entered, sizes };
     }
     private static IntPtr Window(Dictionary<string, object> command) {
         IntPtr window = command.ContainsKey("hwnd") ? new IntPtr(Convert.ToInt64(command["hwnd"])) : FindWindow(null, Convert.ToString(command["title"]));
@@ -273,7 +400,14 @@ internal static class NativeInputHelper
                 }
                 bool allMatching = true, allWhite = true, anyWhite = false;
                 foreach (PresentationPoint point in sampler.Points) {
-                    uint color = GetPixel(dc, point.X, point.Y);
+                    int y = point.Y;
+                    if (point.FollowBottom) {
+                        Rect client; Point origin = new Point();
+                        if (!GetClientRect(sampler.Window, out client) || !ClientToScreen(sampler.Window, ref origin))
+                            throw new Win32Exception();
+                        y = origin.Y + client.Bottom - point.Y;
+                    }
+                    uint color = GetPixel(dc, point.X, y);
                     if (color == 0xffffffff) throw new Win32Exception("Cannot read desktop presentation pixel");
                     int red = (int)(color & 255), green = (int)((color >> 8) & 255), blue = (int)((color >> 16) & 255);
                     point.LastRgb[0] = red; point.LastRgb[1] = green; point.LastRgb[2] = blue;
@@ -313,6 +447,16 @@ internal static class NativeInputHelper
                     if (missingSinceMs < 0) missingSinceMs = nowMs;
                     if (sampler.FirstStablePresentedMs >= 0) sampler.MissingAfterStableFrames++;
                 }
+                if (!allMatching && sampler.FailurePath != null) {
+                    Rect bounds;
+                    if (!GetWindowRect(sampler.Window, out bounds)) throw new Win32Exception();
+                    using (var bitmap = new Bitmap(bounds.Right - bounds.Left, bounds.Bottom - bounds.Top))
+                    using (var graphics = Graphics.FromImage(bitmap)) {
+                        graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bitmap.Size);
+                        bitmap.Save(sampler.FailurePath, ImageFormat.Png);
+                    }
+                    sampler.FailurePath = null;
+                }
                 if (allWhite) {
                     sampler.AllWhiteFrames++;
                     if (whiteSinceMs < 0) whiteSinceMs = nowMs;
@@ -327,7 +471,7 @@ internal static class NativeInputHelper
                 previousMs = nowMs;
                 previousMissing = !allMatching;
                 previousWhite = allWhite;
-                if (nowMs >= sampler.DurationMs) break;
+                if (nowMs >= sampler.DurationMs || sampler.Stop) break;
                 Thread.Sleep(1);
             } while (true);
             sampler.ActualDurationMs = clock.Elapsed.TotalMilliseconds;
@@ -684,6 +828,7 @@ internal static class NativeInputHelper
                 throw new Win32Exception();
             return true;
         }
+        if (action == "resizeCycles") return ResizeCycles(command);
         if (action == "samplePointerMotion") return SamplePointerMotion(command);
         if (action == "samplePointerPresentation") return SamplePointerPresentation(command);
         if (action == "pointerMove") {

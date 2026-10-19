@@ -426,6 +426,9 @@ void WebContents::closeRenderer()
     m_file_chooser_frames.clear();
     m_main_frame_id = 0;
     m_pending_main_navigation = {};
+#if defined(_WIN32)
+    m_windowsPaintPixelsGeneration = 0;
+#endif
     if (m_renderer) {
         m_renderer->Close();
         m_renderer.reset();
@@ -1587,7 +1590,7 @@ void WebContents::appendDCompLayers(std::vector<mini_electron::win::DCompLayer>&
 }
 
 bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y,
-    int width, int height) const
+    int width, int height, const gfx::Size& target_size) const
 {
     if (!target)
         return false;
@@ -1601,34 +1604,53 @@ bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int 
         return false;
     src_x = std::max(0, src_x);
     src_y = std::max(0, src_y);
-    width = std::min(width, frame.width - src_x);
-    height = std::min(height, frame.height - src_y);
+    width = std::min(width, target_size.width() - src_x);
+    height = std::min(height, target_size.height() - src_y);
     if (width <= 0 || height <= 0)
         return false;
 
-    // Keep the cached protocol RGBA source immutable. Only convert the dirty
-    // crop, reusing storage for GDI's tightly packed top-down BGRA bitmap.
-    m_windowsPaintPixels.resize(static_cast<size_t>(width) * height * 4u);
-    uint8_t* output = m_windowsPaintPixels.data();
-    for (int row = 0; row < height; ++row) {
-        const uint8_t* pixel = frame.rgba.data()
-            + static_cast<size_t>(src_y + row) * frame.stride
-            + static_cast<size_t>(src_x) * 4;
-        for (int column = 0; column < width; ++column, pixel += 4, output += 4) {
-            output[0] = pixel[2];
-            output[1] = pixel[1];
-            output[2] = pixel[0];
-            output[3] = pixel[3];
+    const bool stretch = frame.width != target_size.width()
+        || frame.height != target_size.height();
+    const int copy_width = stretch ? frame.width : width;
+    const int copy_height = stretch ? frame.height : height;
+    // Resize retention needs the complete previous frame. Reuse that BGRA
+    // conversion across native paints until a new publication arrives.
+    if (!stretch || m_windowsPaintPixelsGeneration != frame.generation) {
+        m_windowsPaintPixels.resize(static_cast<size_t>(copy_width) * copy_height * 4u);
+        uint8_t* output = m_windowsPaintPixels.data();
+        for (int row = 0; row < copy_height; ++row) {
+            const uint8_t* pixel = frame.rgba.data()
+                + static_cast<size_t>((stretch ? 0 : src_y) + row) * frame.stride
+                + static_cast<size_t>(stretch ? 0 : src_x) * 4;
+            for (int column = 0; column < copy_width; ++column, pixel += 4, output += 4) {
+                output[0] = pixel[2];
+                output[1] = pixel[1];
+                output[2] = pixel[0];
+                output[3] = pixel[3];
+            }
         }
+        m_windowsPaintPixelsGeneration = stretch ? frame.generation : 0;
     }
 
     BITMAPINFO info = {};
     info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    info.bmiHeader.biWidth = width;
-    info.bmiHeader.biHeight = -height;
+    info.bmiHeader.biWidth = copy_width;
+    info.bmiHeader.biHeight = -copy_height;
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
+    if (stretch) {
+        const int saved = ::SaveDC(target);
+        if (!saved)
+            return false;
+        ::IntersectClipRect(target, dest_x, dest_y, dest_x + width, dest_y + height);
+        ::SetStretchBltMode(target, COLORONCOLOR);
+        const int result = ::StretchDIBits(target, dest_x - src_x, dest_y - src_y,
+            target_size.width(), target_size.height(), 0, 0, copy_width, copy_height,
+            m_windowsPaintPixels.data(), &info, DIB_RGB_COLORS, SRCCOPY);
+        ::RestoreDC(target, saved);
+        return result != GDI_ERROR;
+    }
     return ::StretchDIBits(target, dest_x, dest_y, width, height,
                0, 0, width, height, m_windowsPaintPixels.data(), &info,
                DIB_RGB_COLORS, SRCCOPY)

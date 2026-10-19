@@ -16,6 +16,9 @@
 #include <utility>
 
 #include "base/win/object_watcher.h"
+#include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
+#include "base/task/thread_pool.h"
 
 namespace mini_electron::win {
 namespace {
@@ -327,6 +330,7 @@ D3D11_TEXTURE2D_DESC RetainedTextureDescription(int width, int height) {
 
 enum class PresentResult {
   kPresented,
+  kPrimed,
   kTransient,
   kFailed,
 };
@@ -334,6 +338,74 @@ enum class PresentResult {
 class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
  public:
   void SetWindow(HWND window) { window_ = window; }
+  ~SwapChainWake() { Cancel(); }
+
+  bool IsPriming(IDXGISwapChain1* chain) const {
+    return priming_ && priming_->chain.Get() == chain;
+  }
+
+  PresentResult PrimingResult() const {
+    if (!priming_->complete)
+      return PresentResult::kTransient;
+    if (priming_->failed) {
+      ReportFailure("first-frame GPU completion", E_FAIL);
+      return PresentResult::kFailed;
+    }
+    return PresentResult::kPrimed;
+  }
+
+  bool BeginPriming(IDXGISwapChain1* chain) {
+    Cancel();
+    ComPtr<IDXGIDevice2> device;
+    HRESULT result = SharedDevice().device.As(&device);
+    if (FAILED(result)) {
+      ReportFailure("first-frame completion device", result);
+      return false;
+    }
+    auto state = std::make_shared<Priming>();
+    state->chain = chain;
+    state->ready.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+    if (!state->ready.get()) {
+      ReportFailure("first-frame completion event",
+                    HRESULT_FROM_WIN32(GetLastError()));
+      return false;
+    }
+    priming_ = state;
+    // The task owns the event and swap chain through completion, including
+    // when a newer resize cancels this candidate or destroys the presenter.
+    if (!base::ThreadPool::PostTaskAndReplyWithResult(
+            FROM_HERE,
+            {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
+             base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
+            base::BindOnce([](std::shared_ptr<Priming> state) {
+              return WaitForSingleObject(state->ready.get(), INFINITE)
+                  == WAIT_OBJECT_0;
+            }, state),
+            base::BindOnce([](base::WeakPtr<SwapChainWake> self,
+                              std::shared_ptr<Priming> state, bool ready) {
+              if (!self || self->priming_ != state)
+                return;
+              state->complete = true;
+              state->failed = !ready ||
+                  FAILED(SharedDevice().device->GetDeviceRemovedReason());
+              if (IsWindow(self->window_))
+                InvalidateRect(self->window_, nullptr, FALSE);
+            }, weak_factory_.GetWeakPtr(), state))) {
+      priming_.reset();
+      ReportFailure("first-frame completion task", E_FAIL);
+      return false;
+    }
+    result = device->EnqueueSetEvent(state->ready.get());
+    if (FAILED(result)) {
+      priming_.reset();
+      SetEvent(state->ready.get());
+      ReportFailure("first-frame completion enqueue", result);
+      return false;
+    }
+    SharedDevice().context->Flush();
+    return true;
+  }
+
 
   bool Arm(HANDLE object) {
     if (watcher_.IsWatching()) {
@@ -350,9 +422,17 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
   void Cancel() {
     if (watcher_.IsWatching())
       watcher_.StopWatching();
+    priming_.reset();
   }
 
  private:
+  struct Priming {
+    ComPtr<IDXGISwapChain1> chain;
+    ScopedHandle ready;
+    bool complete = false;
+    bool failed = false;
+  };
+
   void OnObjectSignaled(HANDLE object) override {
     // A wake requests another non-blocking Present; DXGI remains the authority
     // on queue capacity, rather than a cached/consumed event token.
@@ -362,12 +442,15 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
 
   HWND window_ = nullptr;
   base::win::ObjectWatcher watcher_;
+  std::shared_ptr<Priming> priming_;
+  base::WeakPtrFactory<SwapChainWake> weak_factory_{this};
 };
 
 PresentResult PresentSwapChain(IDXGISwapChain1* swap_chain,
                                HANDLE ready,
-                               SwapChainWake* wake) {
-  const HRESULT result = swap_chain->Present(1, DXGI_PRESENT_DO_NOT_WAIT);
+                               SwapChainWake* wake,
+                               UINT interval) {
+  const HRESULT result = swap_chain->Present(interval, DXGI_PRESENT_DO_NOT_WAIT);
   if (result == DXGI_ERROR_WAS_STILL_DRAWING) {
     if (!wake->Arm(ready)) {
       ReportFailure("swap-chain wake registration", E_FAIL);
@@ -427,9 +510,8 @@ PresentResult CopyAndPresent(ID3D11Texture2D* texture,
                              IDXGISwapChain1* swap_chain,
                              SwapChainWake* wake,
                              bool first_present) {
-  // An unattached replacement has never queued a frame. Do not wait for DWM
-  // to consume it before its first Present/SetContent, or keep a watch on the
-  // previous chain while resizing.
+  if (first_present && wake->IsPriming(swap_chain))
+    return wake->PrimingResult();
   if (first_present)
     wake->Cancel();
   else if (wake->IsWatching())
@@ -471,7 +553,27 @@ PresentResult CopyAndPresent(ID3D11Texture2D* texture,
     ReportFailure("device copy", result);
     return PresentResult::kFailed;
   }
-  return PresentSwapChain(swap_chain, ready, wake);
+  if (!first_present)
+    return PresentSwapChain(swap_chain, ready, wake, 1);
+
+  // DirectComposition can briefly show the other physical flip buffer on a
+  // newly attached chain. Rotate once, initialize that buffer too, and wait
+  // asynchronously for the GPU before replacing the retained visual.
+  const PresentResult first = PresentSwapChain(swap_chain, ready, wake, 0);
+  if (first != PresentResult::kPresented)
+    return first;
+  ComPtr<ID3D11Texture2D> next_buffer;
+  ComPtr<ID3D11Texture2D> presented_buffer;
+  result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&next_buffer));
+  if (SUCCEEDED(result))
+    result = swap_chain->GetBuffer(1, IID_PPV_ARGS(&presented_buffer));
+  if (FAILED(result)) {
+    ReportFailure("first-frame flip buffers", result);
+    return PresentResult::kFailed;
+  }
+  SharedDevice().context->CopyResource(next_buffer.Get(), presented_buffer.Get());
+  return wake->BeginPriming(swap_chain) ? PresentResult::kTransient
+                                       : PresentResult::kFailed;
 }
 
 
@@ -936,7 +1038,7 @@ struct DCompPresenter::Impl {
     // A transient result below arms a one-shot watch before returning.
     const PresentResult present =
         CopyAndPresent(texture, candidate.Get(), &state->wake, replacement);
-    if (present != PresentResult::kPresented)
+    if (present == PresentResult::kTransient || present == PresentResult::kFailed)
       return present;
 
     state->wake.Cancel();
@@ -954,6 +1056,14 @@ struct DCompPresenter::Impl {
       state->pending_height = 0;
     }
     state->backing_is_gpu = is_gpu;
+    if (present == PresentResult::kPrimed) {
+      state->retained_frame = retained_frame;
+      state->presented_source_id = 0;
+      state->presented_frame_id = 0;
+      state->presented_cpu_generation = 0;
+      InvalidateRect(window, nullptr, FALSE);
+      return PresentResult::kTransient;
+    }
     if (is_gpu) {
       state->retained_frame = retained_frame;
       state->presented_source_id = source_id;
@@ -1169,7 +1279,7 @@ struct DCompPresenter::Impl {
 
       const PresentResult present = CopyAndPresent(
           overlay.texture.Get(), candidate.Get(), &overlay.wake, replacement);
-      if (present != PresentResult::kPresented)
+      if (present == PresentResult::kTransient || present == PresentResult::kFailed)
         return present;
 
       overlay.wake.Cancel();
@@ -1187,7 +1297,9 @@ struct DCompPresenter::Impl {
         overlay.pending_height = 0;
       }
       overlay.presented_generation = input.generation;
-      overlay.presented = true;
+      overlay.presented = present == PresentResult::kPresented;
+      if (!overlay.presented)
+        InvalidateRect(window, nullptr, FALSE);
     } else {
       overlay.wake.Cancel();
       overlay.pending_swap_chain.Reset();

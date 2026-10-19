@@ -1049,7 +1049,8 @@ public:
         if (targetDC && width > 0 && height > 0) {
             if (m_webContents) {
                 m_webContents->paintFrame(targetDC, rcInvalid.left,
-                    rcInvalid.top, srcX, srcY, width, height);
+                    rcInvalid.top, srcX, srcY, width, height,
+                    gfx::Size(rcClient.right - rcClient.left, rcClient.bottom - rcClient.top));
             }
             paintBrowserViews(targetDC, rcInvalid);
             paintTitleBarOverlay(targetDC, rcInvalid);
