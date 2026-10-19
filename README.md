@@ -7,13 +7,12 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
-## npm distribution (Windows x64, Apple Silicon macOS)
+## npm distribution
 
-The npm package is `@iriscat/mini-electron`. Version `0.1.8` publishes both
-Windows x64 and Apple Silicon macOS runtimes; `0.1.0` was Windows-only.
-`package.json` declares `win32`/`x64` and `darwin`/`arm64`; the installer maps
-Rosetta-translated Node on Apple Silicon to `darwin-arm64` and rejects Intel
-macOS.
+The npm package is `@iriscat/mini-electron`. Version `0.1.8` publishes the
+Windows x64 runtime only; macOS packaging is deferred for this release.
+`package.json` declares only `win32`/`x64`, matching the published artifacts.
+Apple Silicon macOS users should keep `@iriscat/mini-electron@0.1.7`.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.8
@@ -23,12 +22,11 @@ node -p "require('@iriscat/mini-electron')"
 The `0.1.8` Windows runtime fixes filesystem identity and temporary-directory
 creation, initial programmatic navigation, transparent companion-window display
 and taskbar visibility, retained presentation after minimizing, and pointer-hover
-repaints. Both platforms include the corrected ASAR-enabled `child_process`
+repaints. It also includes the corrected ASAR-enabled `child_process`
 promisification contract, including resolved output and child-process access;
 this bootstrap also runs when the application itself is not packaged in ASAR.
-The macOS runtime is rebuilt from source and includes native precision-trackpad
-scroll handling. Its executable remains stripped (`strip -x`), ad-hoc signed,
-and not notarized.
+The macOS runtime remains at `0.1.7`; macOS source changes are not included in
+this npm release. Its executable is ad-hoc signed and not notarized.
 Version `0.1.5` includes the macOS selection, clipboard image paste, IME
 positioning/composition colors, sidebar resizing, and image-preview IPC fixes.
 Version `0.1.6` adds the macOS native `node:sqlite` binding, including column
@@ -49,7 +47,7 @@ For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
 `MINI_ELECTRON_MIRROR` to a directory server that hosts `v<version>/` release
 assets. Unset `ELECTRON_SKIP_BINARY_DOWNLOAD` and
 `MINI_ELECTRON_SKIP_BINARY_DOWNLOAD` when installing into a fresh package directory.
-On macOS the installed executable is
+In macOS version `0.1.7`, the installed executable is
 `dist/Electron.app/Contents/MacOS/Electron`; `npx mini-electron app.js` and
 `ELECTRON_RUN_AS_NODE=1 npx mini-electron` behave as on Windows.
 
@@ -70,21 +68,20 @@ Keep the original `npmRebuild: false` setting and application imports. Both
 development packages expose an `electron` command; use the explicit
 `mini-electron` CLI rather than depending on which shared command wins.
 
-To prepare the declared npm targets, run `--package-dist` on each native host,
-then assemble both runtime directories on one machine:
+To prepare the Windows-only npm release, build and assemble its runtime:
 
 ```sh
 python build.py --jobs 16 --package-dist
 python scripts/build_runtime_release.py \
-  --windows-dist out/windows-x64/runtime-dist \
-  --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
+  --windows-dist out/windows-x64/runtime-dist --output out/runtime-release
 ```
 
-The assembler writes `v0.1.8` runtime assets, one `SHASUMS256.txt` covering
-both ZIPs, and an `npm-package` directory with the README and installer. Each
-runtime's `version.json` must carry the package version. Rebuild changed runtimes
-and regenerate metadata when reissuing an unchanged platform. Publish the ZIPs and `SHASUMS256.txt`
-to GitHub before publishing that npm package with public access.
+The assembler writes the declared `v0.1.8` runtime ZIP, `SHASUMS256.txt`, and an
+`npm-package` directory with the README and installer. Each runtime's
+`version.json` must carry the package version. For dual-platform release
+manifests, build both native targets and also supply `--macos-dist` to the
+assembler. Publish the declared ZIPs and `SHASUMS256.txt` to GitHub before
+publishing the npm package with public access.
 
 
 ## Repository layout
@@ -825,12 +822,15 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ### Runtime distribution
 
+macOS packaging is not part of the `0.1.8` release. For a release declaring
+`darwin`/`arm64` in `package.json` and `darwin-arm64` in `artifacts.json`:
+
 ```sh
 python build.py --package-dist
 ```
 
 This writes `out/mac-arm64/runtime-dist` and
-`out/mac-arm64/mini-electron-v0.1.8-darwin-arm64.zip`. The runtime is an
+`out/mac-arm64/mini-electron-v<runtimeVersion>-darwin-arm64.zip`. The runtime is an
 ad-hoc-signed `Electron.app` with one stripped host executable, the
 Squirrel/Mantle/ReactiveObjC update frameworks, runtime JavaScript, and license
 notices. No Electron Helper bundles are generated. Renderers start the same

@@ -1,7 +1,7 @@
 {
   "name": "@iriscat/mini-electron",
   "version": "0.1.8",
-  "description": "Electron-compatible desktop runtime for Windows x64 and Apple Silicon macOS",
+  "description": "Electron-compatible desktop runtime for Windows x64",
   "license": "Apache-2.0",
   "author": "mini-electron contributors",
   "main": "index.js",
@@ -33,12 +33,10 @@
     "node": ">=18.17"
   },
   "os": [
-    "win32",
-    "darwin"
+    "win32"
   ],
   "cpu": [
-    "x64",
-    "arm64"
+    "x64"
   ],
   "miniElectron": {
     "runtimeVersion": "0.1.8",
