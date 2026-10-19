@@ -19,11 +19,9 @@ const dip = (value, dpi) => Math.floor(value * dpi / 96 + 0.5);
 const WS_EX_TOPMOST = 0x00000008;
 const WS_EX_TOOLWINDOW = 0x00000080;
 const WS_EX_APPWINDOW = 0x00040000;
-const WS_EX_LAYERED = 0x00080000;
 const WS_EX_NOACTIVATE = 0x08000000;
 const hasStyle = (state, flag) => (state.exStyle & flag) === flag;
 function assertCompanionStyles(state, { taskbar, focusable, topmost = true }, label) {
-  assert.equal(hasStyle(state, WS_EX_LAYERED), true, `${label}: per-pixel layered style`);
   assert.equal(hasStyle(state, WS_EX_TOPMOST), topmost, `${label}: topmost style`);
   assert.equal(hasStyle(state, WS_EX_TOOLWINDOW), !taskbar, `${label}: tool-window taskbar exclusion`);
   assert.equal(hasStyle(state, WS_EX_APPWINDOW), taskbar, `${label}: app-window taskbar eligibility`);

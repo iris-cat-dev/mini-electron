@@ -23,7 +23,7 @@
 #include "ui/gfx/native_widget_types.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "ui/display/types/display_constants.h"
 #endif
 
@@ -46,7 +46,7 @@ public:
         //gfx::AcceleratedWidget widget,
         const gfx::Size& size, mojo::PendingReceiver<viz::mojom::FrameSinkManagerClient> client_receiver,
         mojo::PendingRemote<viz::mojom::FrameSinkManager> frame_sink_manager_remote, scoped_refptr<base::SingleThreadTaskRunner> work_runner,
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         int64_t vsync_display_id,
 #endif
         scoped_refptr<base::SingleThreadTaskRunner> service_runner);
@@ -58,7 +58,7 @@ public:
     void destroy(std::function<void(void)>&& callback);
 
     void resizeOnBlinkThread(const gfx::Size& size, float device_scale_factor);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayIdOnBlinkThread(int64_t display_id);
 #endif
 
@@ -77,7 +77,7 @@ public:
 private:
     void delayResizeDisplayOnVizThread(base::WaitableEvent* waitEvt);
     void resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayIdOnHostThread(int64_t display_id);
 #endif
 
@@ -111,7 +111,7 @@ private:
     //base::Thread m_thread;
 
     base::WaitableEvent m_initialized;
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
     // Created on the host sequence and published by constructor completion.
     base::WeakPtr<VizHost> m_hostWeakPtr;
@@ -120,7 +120,7 @@ private:
     scoped_refptr<base::SingleThreadTaskRunner> m_workRunner;
     scoped_refptr<base::SingleThreadTaskRunner> m_serviceRunner;
     base::WeakPtrFactory<VizHost> m_weakPtrFactory { this };
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     // The legacy factory also serves service-runner callbacks. Keep screen
     // updates bound exclusively to the sequence owning m_displayPrivate.
     base::WeakPtrFactory<VizHost> m_hostWeakPtrFactory { this };

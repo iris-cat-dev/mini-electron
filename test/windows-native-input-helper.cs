@@ -63,6 +63,8 @@ internal static class NativeInputHelper
     [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint key, uint mode);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool SystemParametersInfo(uint action, uint parameter, out uint value, uint update);
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
     [DllImport("gdi32.dll")] private static extern uint GetPixel(IntPtr dc, int x, int y);
@@ -461,9 +463,7 @@ internal static class NativeInputHelper
             throw new InvalidOperationException("Invalid pointer motion sample");
         foreach (Point point in moves) ValidateClientPoint(window, point.X, point.Y);
         foreach (Point point in samples) ValidateClientPoint(window, point.X, point.Y);
-        Point origin = new Point();
-        if (!ClientToScreen(window, ref origin)) throw new Win32Exception();
-        IntPtr dc = GetDC(window);
+        IntPtr dc = GetDC(IntPtr.Zero);
         if (dc == IntPtr.Zero) throw new Win32Exception();
         Exception movementError = null;
         var worker = new Thread(() => {
@@ -483,7 +483,7 @@ internal static class NativeInputHelper
             do {
                 for (int index = 0; index < samples.Count; ++index) {
                     Point point = samples[index];
-                    uint rgb = GetPixel(dc, point.X - origin.X, point.Y - origin.Y);
+                    uint rgb = GetPixel(dc, point.X, point.Y);
                     if (rgb == 0xffffffff) throw new Win32Exception("Cannot read native caption pixel");
                     if ((rgb & 255) < 240 || ((rgb >> 8) & 255) < 240 || ((rgb >> 16) & 255) < 240) {
                         missing[index]++;
@@ -495,10 +495,10 @@ internal static class NativeInputHelper
             } while (worker.IsAlive);
         } finally {
             if (worker.IsAlive) worker.Join();
-            ReleaseDC(window, dc);
+            ReleaseDC(IntPtr.Zero, dc);
         }
         if (movementError != null) throw movementError;
-        return new { frames, missing, lastMissingColor, source = "windowDC.GetPixel" };
+        return new { frames, missing, lastMissingColor, source = "desktop.GetDC/GetPixel" };
     }
     private static void Open() {
         for (int i = 0; i != 30; ++i) { if (OpenClipboard(form.Handle)) return; Thread.Sleep(10); }
@@ -744,11 +744,22 @@ internal static class NativeInputHelper
             finally { ReleaseHeldPointer(); }
             return true;
         }
+        if (action == "wheelSettings") {
+            uint lines, chars;
+            if (!SystemParametersInfo(0x0068, 0, out lines, 0)
+                || !SystemParametersInfo(0x006C, 0, out chars, 0))
+                throw new Win32Exception();
+            return new { lines = lines, chars = chars, pageScroll = UInt32.MaxValue };
+        }
         if (action == "wheel") {
-            Focus(Window(command));
-            if (!SetCursorPos(Number(command, "x"), Number(command, "y"))) throw new Win32Exception();
+            IntPtr window = Window(command);
+            Focus(window);
+            int x = Number(command, "x"), y = Number(command, "y");
+            ValidateClientPoint(window, x, y);
+            if (!SetCursorPos(x, y)) throw new Win32Exception();
             Send(new Input { Type = 0, Data = new InputUnion { Mouse = new MouseInput {
-                Data = unchecked((uint)Number(command, "delta")), Flags = 0x800
+                Data = unchecked((uint)Number(command, "delta")),
+                Flags = Flag(command, "horizontal") ? 0x1000u : 0x0800u
             } } });
             return true;
         }

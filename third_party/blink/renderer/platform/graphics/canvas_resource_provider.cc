@@ -60,16 +60,6 @@
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLTypes.h"
 #include <inttypes.h>
 
-//////////////////////////////////////////////////////////////////////////
-void skgpu::ganesh::FlushAndSubmit(sk_sp<SkSurface>)
-{
-
-}
-
-void skgpu::ganesh::FlushAndSubmit(SkSurface*)
-{
-
-}
 
 namespace gpu {
 

@@ -42,9 +42,9 @@ interface DisplayPrivate {
   SetDisplayColorSpaces@4(gfx.mojom.DisplayColorSpaces display_color_spaces);
   SetOutputIsSecure@5(bool secure);
 
-  // Sets CGDirectDisplayID for the macOS begin-frame source, including software
-  // compositing. The shared binding keeps this addition macOS-only.
-  [EnableIf=is_mac]
+  // Selects the native display used by the begin-frame source, including
+  // software compositing: CGDirectDisplayID on macOS, HMONITOR on Windows.
+  [EnableIf=supports_vsync_display_id]
   SetVSyncDisplayID@12(int64 display_id);
 
   // Updates vsync parameters used to generate BeginFrames for this display.

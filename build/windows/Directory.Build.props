@@ -3,4 +3,12 @@
     <LLVMInstallDir Condition="'$(LLVMInstallDir)' == ''">C:\Program Files\LLVM</LLVMInstallDir>
     <LLVMToolsVersion Condition="'$(LLVMToolsVersion)' == ''">22</LLVMToolsVersion>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>SK_GANESH;SK_DIRECT3D;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>d3d12.lib;d3d11.lib;dcomp.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
 </Project>

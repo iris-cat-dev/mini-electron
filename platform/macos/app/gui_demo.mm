@@ -407,10 +407,11 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
         [self mouseFlagsForEvent:event]);
     return;
   }
-  int delta = static_cast<int>([event scrollingDeltaY] * 120.0);
-  mini_electron_fire_mouse_wheel_event(_webView, static_cast<int>(point.x),
-                        static_cast<int>(point.y), delta,
-                        [self mouseFlagsForEvent:event]);
+  int deltaX = static_cast<int>([event scrollingDeltaX] * 120.0);
+  int deltaY = static_cast<int>([event scrollingDeltaY] * 120.0);
+  mini_electron_fire_mouse_wheel_event(
+      _webView, static_cast<int>(point.x), static_cast<int>(point.y),
+      deltaX, deltaY, [self mouseFlagsForEvent:event]);
 }
 
 - (unsigned int)keyForEvent:(NSEvent*)event {

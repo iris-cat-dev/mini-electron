@@ -37,6 +37,7 @@
 
 #if BUILDFLAG(IS_WIN)
 #include "components/viz/service/display_embedder/software_output_device_win.h"
+#include "platform/windows/d3d_compositor.h"
 #endif
 
 #if BUILDFLAG(IS_APPLE)
@@ -101,6 +102,15 @@ std::unique_ptr<OutputSurface> OutputSurfaceProviderImpl::CreateOutputSurface(gp
 #endif
 
     if (!gpu_compositing) {
+#if BUILDFLAG(IS_WIN)
+        if (!headless_) {
+            auto device = mini_electron::win::CreateD3DOutputDevice(
+                static_cast<int64_t>(reinterpret_cast<intptr_t>(surface_handle)),
+                renderer_settings.requires_alpha_channel);
+            if (device)
+                return std::make_unique<SoftwareOutputSurface>(std::move(device));
+        }
+#endif
 #if BUILDFLAG(IS_MAC)
         if (!headless_) {
             auto device = mini_electron::mac::CreateMetalOutputDevice(

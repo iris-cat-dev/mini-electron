@@ -122,9 +122,6 @@ std::unique_ptr<RootCompositorFrameSinkImpl> RootCompositorFrameSinkImpl::Create
 #if BUILDFLAG(IS_MAC)
     bool created_external_begin_frame_source_mac = false;
 #endif
-#if !BUILDFLAG(IS_APPLE)
-    bool wants_vsync_updates = false;
-#endif
 
     if (params->external_begin_frame_controller) {
         auto owned_external_begin_frame_source_mojo
@@ -144,13 +141,10 @@ std::unique_ptr<RootCompositorFrameSinkImpl> RootCompositorFrameSinkImpl::Create
                 = std::make_unique<BackToBackBeginFrameSource>(std::make_unique<DelayBasedTimeSource>(base::SingleThreadTaskRunner::GetCurrentDefault().get()));
         } else {
 #if BUILDFLAG(IS_WIN)
-            // ExternalBeginFrameSourceWin also uses the D3D11 device used by dcomp.
-            if (output_surface->capabilities().dc_support_level != OutputSurface::DCSupportLevel::kNone) {
-                // Vsync updates are required to update the FrameRateDecider with
-                // supported refresh rates.
-                wants_vsync_updates = true;
-                external_begin_frame_source = std::make_unique<ExternalBeginFrameSourceWin>(restart_id, base::SingleThreadTaskRunner::GetCurrentDefault());
-            }
+            external_begin_frame_source =
+                std::make_unique<ExternalBeginFrameSourceWin>(
+                    restart_id, display::kInvalidDisplayId,
+                    base::SingleThreadTaskRunner::GetCurrentDefault());
 #elif BUILDFLAG(IS_MAC)
             if (features::IsCVDisplayLinkBeginFrameSourceEnabled()) {
                 external_begin_frame_source
@@ -206,32 +200,50 @@ std::unique_ptr<RootCompositorFrameSinkImpl> RootCompositorFrameSinkImpl::Create
         std::move(params->compositor_frame_sink_client), std::move(params->display_private), std::move(display_client), std::move(synthetic_begin_frame_source),
         std::move(external_begin_frame_source), std::move(display), hw_support_for_multiple_refresh_rates));
 
-    // Set up the callback for updating VSyncParameters.
-    // The new VSyncParameters will be sent to viz FrameRateDecider through viz
-    // display_->SetSupportedFrameIntervals() in SetDisplayVSyncParameters().
-    // |FrameRateDecider| decides the preferred_frame_interval and calls
-    // RootCompositorFrameSinkImpl::SetPreferredFrameInterval().
-#if !BUILDFLAG(IS_APPLE)
-    // On Mac vsync parameter updates does not come from OutputSurface.
-    if (wants_vsync_updates || impl->synthetic_begin_frame_source_) {
-        // |impl| owns and outlives display, and display owns the output surface so
-        // unretained is safe.
+    // Set up the callback for updating VSyncParameters. The hardware external
+    // sources publish their own selected-display clock; synthetic sources get
+    // updates from their output surface.
+#if BUILDFLAG(IS_WIN)
+    if (impl->external_begin_frame_source_) {
+        impl->external_begin_frame_source()->SetUpdateVSyncParametersCallback(
+            base::BindRepeating(
+                &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
+                base::Unretained(impl.get())));
+    } else if (impl->synthetic_begin_frame_source_) {
         output_surface_ptr->SetUpdateVSyncParametersCallback(
-            base::BindRepeating(&RootCompositorFrameSinkImpl::SetDisplayVSyncParameters, base::Unretained(impl.get())));
+            base::BindRepeating(
+                &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
+                base::Unretained(impl.get())));
+    }
+#elif !BUILDFLAG(IS_APPLE)
+    if (impl->synthetic_begin_frame_source_) {
+        output_surface_ptr->SetUpdateVSyncParametersCallback(
+            base::BindRepeating(
+                &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
+                base::Unretained(impl.get())));
     }
 #elif BUILDFLAG(IS_MAC)
     if (impl->external_begin_frame_source_) {
         impl->external_begin_frame_source()->SetUpdateVSyncParametersCallback(
-            base::BindRepeating(&RootCompositorFrameSinkImpl::SetDisplayVSyncParameters, base::Unretained(impl.get())));
+            base::BindRepeating(
+                &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
+                base::Unretained(impl.get())));
 
         if (created_external_begin_frame_source_mac) {
-            static_cast<ExternalBeginFrameSourceMac*>(impl->external_begin_frame_source())
+            static_cast<ExternalBeginFrameSourceMac*>(
+                impl->external_begin_frame_source())
                 ->SetMultipleHWRefreshRatesCallback(
-                    base::BindRepeating(&RootCompositorFrameSinkImpl::SetHwSupportForMultipleRefreshRates, base::Unretained(impl.get())));
+                    base::BindRepeating(
+                        &RootCompositorFrameSinkImpl::
+                            SetHwSupportForMultipleRefreshRates,
+                        base::Unretained(impl.get())));
         }
     } else if (impl->synthetic_begin_frame_source_) {
-        impl->synthetic_begin_frame_source_->SetUpdateVSyncParametersCallback(
-            base::BindRepeating(&RootCompositorFrameSinkImpl::SetDisplayVSyncParameters, base::Unretained(impl.get())));
+        impl->synthetic_begin_frame_source_
+            ->SetUpdateVSyncParametersCallback(
+                base::BindRepeating(
+                    &RootCompositorFrameSinkImpl::SetDisplayVSyncParameters,
+                    base::Unretained(impl.get())));
     }
 #endif
 
@@ -288,7 +300,7 @@ void RootCompositorFrameSinkImpl::SetDisplayColorSpaces(const gfx::DisplayColorS
     display_->SetDisplayColorSpaces(display_color_spaces);
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void RootCompositorFrameSinkImpl::SetVSyncDisplayID(int64_t display_id)
 {
     begin_frame_source()->SetVSyncDisplayID(display_id);

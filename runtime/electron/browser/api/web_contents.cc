@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <map>
 #include <utility>
 
 #include "base/files/file_path.h"
@@ -38,6 +39,12 @@
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "base/strings/utf_string_conversions.h"
 #include "platform/clipboard.h"
+#endif
+
+#if BUILDFLAG(IS_WIN)
+#include "platform/windows/dcomp_presenter.h"
+#include "ui/gfx/geometry/rect_conversions.h"
+#include "runtime/electron/common/renderer_protocol.h"
 #endif
 
 namespace atom {
@@ -142,7 +149,7 @@ base::Value::Dict InputFromWindows(const char* type, unsigned message, int x, in
     event.Set("y", y);
     event.Set("modifiers", static_cast<int>(flags));
     if (delta)
-        event.Set("deltaY", delta);
+        event.Set(message == WM_MOUSEHWHEEL ? "deltaX" : "deltaY", delta);
     return event;
 }
 #endif
@@ -192,6 +199,9 @@ void WebContents::init(v8::Isolate* isolate, v8::Local<v8::Object> target, node:
     builder.SetMethod("_attachGuest", &WebContents::attachGuestApi);
     builder.SetMethod("_authorizeFileSelection", &WebContents::authorizeFileSelectionApi);
     builder.SetMethod("_getFrame", &WebContents::getFrameApi);
+#if BUILDFLAG(IS_WIN)
+    builder.SetMethod("_getCompositorInfo", &WebContents::getCompositorInfoApi);
+#endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     builder.SetMethod("_debuggerAttach", &WebContents::debuggerAttachApi);
     builder.SetMethod("_debuggerDetach", &WebContents::debuggerDetachApi);
@@ -656,6 +666,9 @@ void WebContents::createGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
     }
     guest->m_host = host;
     host->m_guest_ids.insert(guest->m_id);
+#if BUILDFLAG(IS_WIN)
+    guest->setVSyncDisplayId(host->m_vsync_display_id);
+#endif
     info.GetReturnValue().Set(guest->getWrapper());
 }
 
@@ -889,15 +902,33 @@ void WebContents::resize(int width, int height, double scale_factor)
     }
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void WebContents::setVSyncDisplayId(int64_t display_id)
 {
-    if (!isAlive() || display_id == m_vsync_display_id)
+    if (!isAlive())
         return;
+#if BUILDFLAG(IS_MAC)
+    if (display_id == m_vsync_display_id)
+        return;
+#endif
     base::Value::Dict params;
+#if BUILDFLAG(IS_WIN)
+    params.Set("displayId", base::NumberToString(display_id));
+#else
     params.Set("displayId", static_cast<double>(display_id));
-    if (m_renderer->Send("setVSyncDisplayId", std::move(params)))
-        m_vsync_display_id = display_id;
+#endif
+    if (!m_renderer->Send("setVSyncDisplayId", std::move(params)))
+        return;
+    m_vsync_display_id = display_id;
+
+#if BUILDFLAG(IS_WIN)
+    const std::set<int> guest_ids = m_guest_ids;
+    for (int guest_id : guest_ids) {
+        WebContents* guest = fromId(guest_id);
+        if (guest && guest->m_host == this)
+            guest->setVSyncDisplayId(display_id);
+    }
+#endif
 }
 #endif
 
@@ -1022,7 +1053,7 @@ void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y, unsigned
         type = "mouseDown";
         break;
     case WM_LBUTTONUP: case WM_MBUTTONUP: case WM_RBUTTONUP: type = "mouseUp"; break;
-    case WM_MOUSEWHEEL: type = "mouseWheel"; break;
+    case WM_MOUSEWHEEL: case WM_MOUSEHWHEEL: type = "mouseWheel"; break;
     case WM_CONTEXTMENU: type = "contextMenu"; break;
     default: break;
     }
@@ -1142,6 +1173,24 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
         return false;
     if (info.Length() > 1 && !gin_helper::ConvertFromV8(info.GetIsolate(), info[1], &params))
         return false;
+    #if BUILDFLAG(IS_WIN)
+    if (method == "guest.attach" || method == "guest.bounds" || method == "guest.detach") {
+        const int id = params.FindInt("guestContentsId").value_or(0);
+        if (method == "guest.detach" || m_guest_ids.contains(id)) {
+            if (method == "guest.detach")
+                m_windowsGuestBounds.erase(id);
+            else {
+                m_windowsGuestBounds[id] = gfx::Rect(
+                    std::clamp(params.FindInt("x").value_or(0), -(1 << 20), 1 << 20),
+                    std::clamp(params.FindInt("y").value_or(0), -(1 << 20), 1 << 20),
+                    std::clamp(params.FindInt("width").value_or(0), 0, 1 << 20),
+                    std::clamp(params.FindInt("height").value_or(0), 0, 1 << 20));
+            }
+            for (WebContentsObserver* observer : m_observers)
+                observer->onWebContentsPaint(this, {});
+        }
+    }
+    #endif
     return isAlive() && m_renderer->Send(std::move(method), std::move(params));
 }
 
@@ -1177,6 +1226,11 @@ bool WebContents::attachGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
     if (!guest->m_renderer->ShareFrameBufferWith(*m_renderer, guest_id))
         return false;
     params.Set("guestContentsId", guest_id);
+    #if BUILDFLAG(IS_WIN)
+    m_windowsGuestBounds[guest_id] = gfx::Rect(
+        params.FindInt("x").value_or(0), params.FindInt("y").value_or(0),
+        params.FindInt("width").value_or(1), params.FindInt("height").value_or(1));
+    #endif
     return m_renderer->Send("guest.attach", std::move(params));
 }
 
@@ -1445,6 +1499,93 @@ bool WebContents::copyFrame(RendererFrameSnapshot* snapshot, bool include_native
 }
 
 #if defined(_WIN32)
+void WebContents::getCompositorInfoApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto promise = std::make_shared<gin_helper::Promise<base::Value::Dict>>(info.GetIsolate());
+    info.GetReturnValue().Set(promise->GetHandle());
+    if (!isAlive()) {
+        promise->RejectWithErrorMessage("WebContents is destroyed");
+        return;
+    }
+    const int id = m_id;
+    base::Value::Dict params;
+    params.Set("displayId", base::NumberToString(m_vsync_display_id));
+    if (!m_renderer->Request("getCompositorInfo", std::move(params),
+            [id, promise](base::Value::Dict result, std::string error) mutable {
+                WebContents* contents = fromId(id);
+                if (!contents || !contents->isAlive())
+                    error = "WebContents closed before compositor diagnostics";
+                if (!error.empty()) {
+                    promise->RejectWithErrorMessage(error);
+                    return;
+                }
+                WindowInterface* owner = contents->m_owner;
+                for (WebContents* host = contents->m_host; !owner && host; host = host->m_host)
+                    owner = host->m_owner;
+                const HWND window = owner ? owner->getHWND() : nullptr;
+                const bool native = window && ::GetPropW(window, L"MiniElectronDirectComposition");
+                result.Set("presentation", native ? "directcomposition" : "software");
+                result.Set("importedFrames", contents->m_windowsPaintFrame.gpu_frame
+                    ? static_cast<double>(contents->m_windowsPaintFrame.gpu_frame->imported_frames()) : 0.0);
+                promise->Resolve(result);
+            })) {
+        promise->RejectWithErrorMessage("Compositor diagnostics could not be queued");
+    }
+}
+
+void WebContents::appendDCompLayers(std::vector<mini_electron::win::DCompLayer>& layers,
+    const RECT& bounds, const RECT& clip, unsigned depth) const
+{
+    if (depth >= renderer_protocol::kMaxValueDepth)
+        return;
+    copyFrame(&m_windowsPaintFrame);
+    const auto& snapshot = m_windowsPaintFrame;
+    if (!snapshot.generation || snapshot.width <= 0 || snapshot.height <= 0)
+        return;
+    mini_electron::win::DCompLayer layer;
+    layer.id = m_id;
+    layer.frame = snapshot.gpu_frame;
+    layer.bounds = bounds;
+    layer.clip = clip;
+    layer.width = snapshot.width;
+    layer.height = snapshot.height;
+    layer.stride = snapshot.stride;
+    layer.generation = snapshot.generation;
+    layer.rgba = snapshot.rgba.empty() ? nullptr : snapshot.rgba.data();
+    layers.push_back(std::move(layer));
+    const float pixel_scale = snapshot.output_format ? snapshot.native_scale_factor
+        : static_cast<float>(m_viewport_scale > 0 ? m_viewport_scale : 1.0);
+    if (!std::isfinite(pixel_scale) || pixel_scale <= 0)
+        return;
+    const double scale_x = static_cast<double>(pixel_scale)
+        * (static_cast<double>(bounds.right) - bounds.left) / snapshot.width;
+    const double scale_y = static_cast<double>(pixel_scale)
+        * (static_cast<double>(bounds.bottom) - bounds.top) / snapshot.height;
+    // Metadata comes from a sandbox. Saturation also keeps RECT differences
+    // representable when a forged scale places a guest far outside the client.
+    const auto coordinate = [](double value, bool ceil) {
+        constexpr double limit = std::numeric_limits<LONG>::max() / 2;
+        return static_cast<LONG>(std::clamp(ceil ? std::ceil(value) : std::floor(value), -limit, limit));
+    };
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        auto found = m_windowsGuestBounds.find(id);
+        if (!guest || guest->m_host != this || found == m_windowsGuestBounds.end())
+            continue;
+        const gfx::Rect& logical = found->second;
+        RECT guest_bounds = {
+            coordinate(bounds.left + logical.x() * scale_x, false),
+            coordinate(bounds.top + logical.y() * scale_y, false),
+            coordinate(bounds.left + logical.right() * scale_x, true),
+            coordinate(bounds.top + logical.bottom() * scale_y, true)
+        };
+        RECT guest_clip;
+        if (!::IntersectRect(&guest_clip, &guest_bounds, &clip))
+            continue;
+        guest->appendDCompLayers(layers, guest_bounds, guest_clip, depth + 1);
+    }
+}
+
 bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y,
     int width, int height) const
 {
@@ -1528,6 +1669,157 @@ void WebContents::captureForSoftwareHost()
 }
 #endif
 
+#if BUILDFLAG(IS_WIN)
+namespace {
+
+bool CompositeCapturedGuest(RendererFrameSnapshot* root,
+    const RendererFrameSnapshot& guest, const gfx::Rect& logical_bounds)
+{
+    if (!root || root->width <= 0 || root->height <= 0
+        || root->stride < root->width * 4
+        || root->rgba.size()
+            < static_cast<size_t>(root->stride) * root->height
+        || guest.width <= 0 || guest.height <= 0
+        || guest.stride < guest.width * 4
+        || guest.rgba.size()
+            < static_cast<size_t>(guest.stride) * guest.height
+        || !std::isfinite(root->native_scale_factor)
+        || root->native_scale_factor <= 0)
+        return false;
+    const double scale = root->native_scale_factor;
+    const auto coordinate = [](double value, bool ceil) {
+        constexpr double limit =
+            std::numeric_limits<int32_t>::max() / 2.0;
+        return static_cast<int64_t>(std::clamp(
+            ceil ? std::ceil(value) : std::floor(value), -limit, limit));
+    };
+    const int64_t left_bound =
+        coordinate(logical_bounds.x() * scale, false);
+    const int64_t top_bound =
+        coordinate(logical_bounds.y() * scale, false);
+    const int64_t right_bound =
+        coordinate(logical_bounds.right() * scale, true);
+    const int64_t bottom_bound =
+        coordinate(logical_bounds.bottom() * scale, true);
+    const int64_t bound_width = right_bound - left_bound;
+    const int64_t bound_height = bottom_bound - top_bound;
+    if (bound_width <= 0 || bound_height <= 0)
+        return true;
+    const int left = static_cast<int>(std::max<int64_t>(0, left_bound));
+    const int top = static_cast<int>(std::max<int64_t>(0, top_bound));
+    const int right = static_cast<int>(
+        std::min<int64_t>(root->width, right_bound));
+    const int bottom = static_cast<int>(
+        std::min<int64_t>(root->height, bottom_bound));
+    for (int y = top; y < bottom; ++y) {
+        const int source_y = static_cast<int>(
+            (static_cast<int64_t>(y) - top_bound) * guest.height
+            / bound_height);
+        for (int x = left; x < right; ++x) {
+            const int source_x = static_cast<int>(
+                (static_cast<int64_t>(x) - left_bound) * guest.width
+                / bound_width);
+            uint8_t* target = root->rgba.data()
+                + static_cast<size_t>(y) * root->stride
+                + static_cast<size_t>(x) * 4;
+            const uint8_t* source = guest.rgba.data()
+                + static_cast<size_t>(source_y) * guest.stride
+                + static_cast<size_t>(source_x) * 4;
+            if (source[3] == 255) {
+                std::memcpy(target, source, 4);
+            } else if (source[3]) {
+                const unsigned inverse = 255 - source[3];
+                for (int channel = 0; channel < 4; ++channel) {
+                    target[channel] = static_cast<uint8_t>(std::min(255u,
+                        source[channel]
+                            + (target[channel] * inverse + 127) / 255));
+                }
+            }
+        }
+    }
+    return true;
+}
+
+} // namespace
+
+void WebContents::requestCapture(
+    std::function<void(RendererFrameSnapshot, std::string)> complete,
+    unsigned depth)
+{
+    if (!isAlive()) {
+        complete({}, "WebContents is destroyed");
+        return;
+    }
+    if (depth >= renderer_protocol::kMaxValueDepth) {
+        complete({}, "guest capture tree is too deep");
+        return;
+    }
+    struct CaptureState {
+        size_t remaining = 0;
+        RendererFrameSnapshot root;
+        std::map<int, RendererFrameSnapshot> guests;
+        std::map<int, gfx::Rect> bounds;
+        std::string error;
+        std::function<void(RendererFrameSnapshot, std::string)> complete;
+    };
+    auto state = std::make_shared<CaptureState>();
+    state->complete = std::move(complete);
+    std::vector<int> guests;
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        auto found = m_windowsGuestBounds.find(id);
+        if (guest && guest->m_host == this && guest->isAlive()
+            && found != m_windowsGuestBounds.end()) {
+            guests.push_back(id);
+            state->bounds.emplace(id, found->second);
+        }
+    }
+    state->remaining = guests.size() + 1;
+    auto finish_one = [state](int id, RendererFrameSnapshot frame,
+                          std::string error) mutable {
+        if (state->remaining == 0)
+            return;
+        if (state->error.empty() && !error.empty())
+            state->error = std::move(error);
+        if (id)
+            state->guests.insert_or_assign(id, std::move(frame));
+        else
+            state->root = std::move(frame);
+        if (--state->remaining)
+            return;
+        if (state->error.empty()) {
+            for (auto& [guest_id, guest] : state->guests) {
+                auto bounds = state->bounds.find(guest_id);
+                if (bounds == state->bounds.end()
+                    || !CompositeCapturedGuest(&state->root, guest,
+                        bounds->second)) {
+                    state->error = "guest capture pixels are invalid";
+                    break;
+                }
+            }
+        }
+        state->complete(std::move(state->root), std::move(state->error));
+    };
+    for (int id : guests) {
+        WebContents* guest = fromId(id);
+        guest->requestCapture(
+            [finish_one, id](RendererFrameSnapshot frame,
+                std::string error) mutable {
+                finish_one(id, std::move(frame), std::move(error));
+            },
+            depth + 1);
+    }
+    auto once = std::make_shared<bool>(false);
+    auto root_complete = [finish_one, once](RendererFrameSnapshot frame,
+                             std::string error) mutable {
+        if (std::exchange(*once, true))
+            return;
+        finish_one(0, std::move(frame), std::move(error));
+    };
+    if (!m_renderer->RequestCapture(root_complete))
+        root_complete({}, "Renderer capture could not be queued");
+}
+#else
 void WebContents::requestCapture(std::function<void(std::string)> complete)
 {
     if (!isAlive()) {
@@ -1582,6 +1874,7 @@ void WebContents::requestCapture(std::function<void(std::string)> complete)
         });
     }
 }
+#endif
 
 void WebContents::capturePageApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
@@ -1600,18 +1893,19 @@ void WebContents::capturePageApi(const v8::FunctionCallbackInfo<v8::Value>& info
         has_width = rect.Get("width", &width);
         has_height = rect.Get("height", &height);
     }
+#if !BUILDFLAG(IS_WIN)
     const int contents_id = m_id;
+#endif
     v8::Isolate* isolate = info.GetIsolate();
-    requestCapture([contents_id, isolate, promise, x, y, width, height,
-                       has_width, has_height](std::string error) mutable {
-        WebContents* contents = WebContents::fromId(contents_id);
+    auto resolve_capture = [isolate, promise, x, y, width, height,
+                               has_width, has_height](
+                               RendererFrameSnapshot frame,
+                               std::string error) mutable {
         if (!error.empty()) {
             promise->RejectWithErrorMessage(error);
             return;
         }
-        RendererFrameSnapshot frame;
-        if (!contents || !contents->copyFrame(&frame, true)
-            || frame.width <= 0 || frame.height <= 0
+        if (frame.width <= 0 || frame.height <= 0
             || frame.stride < frame.width * 4 || frame.rgba.empty()) {
             promise->Resolve(NativeImage::createEmpty(isolate));
             return;
@@ -1644,7 +1938,21 @@ void WebContents::capturePageApi(const v8::FunctionCallbackInfo<v8::Value>& info
         }
         bitmap.setImmutable();
         promise->Resolve(NativeImage::createFromBitmap(isolate, bitmap));
+    };
+#if BUILDFLAG(IS_WIN)
+    requestCapture(std::move(resolve_capture));
+#else
+    requestCapture([contents_id,
+                       resolve_capture = std::move(resolve_capture)](
+                       std::string error) mutable {
+        RendererFrameSnapshot frame;
+        WebContents* contents = WebContents::fromId(contents_id);
+        if (error.empty()
+            && (!contents || !contents->copyFrame(&frame, true)))
+            error = "WebContents closed before capture";
+        resolve_capture(std::move(frame), std::move(error));
     });
+#endif
 }
 
 void WebContents::invalidateApi()
@@ -2392,6 +2700,24 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 damage = gfx::Rect(*x, *y, *width, *height);
         }
 #if defined(_WIN32)
+        // Import/release even when hidden or unattached: the renderer's GPU
+        // swap cannot advance until this authenticated consumer acknowledgement.
+        copyFrame(&m_windowsPaintFrame);
+        if (m_host && m_host->isAlive()) {
+            WebContents* host = m_host;
+            while (host->m_host && host->m_host->isAlive())
+                host = host->m_host;
+            const HWND window = host->m_owner
+                ? host->m_owner->getHWND() : nullptr;
+            const bool native_composition = window
+                && ::GetPropW(window, L"MiniElectronDirectComposition");
+            if (!native_composition && !m_windowsPaintFrame.gpu_frame) {
+                m_host->m_renderer->Send("guest.invalidate",
+                    base::Value::Dict().Set("guestContentsId", m_id));
+            }
+            for (WebContentsObserver* observer : host->m_observers)
+                observer->onWebContentsPaint(host, {});
+        }
         // A prior stale-source repaint may have missed damage from an older
         // generation. Refresh all pixels once a new publication is available.
         if (m_windowsPaintNeedsFullRepaint) {

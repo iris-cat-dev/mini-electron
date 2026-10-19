@@ -15,12 +15,12 @@
 #include "third_party/skia/include/codec/SkCodec.h"
 #include "third_party/skia/include/codec/SkEncodedImageFormat.h"
 #include "third_party/skia/include/codec/SkPngDecoder.h"
-#include "third_party/skia/include/core/SkData.h"
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/core/SkImageInfo.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
-#include "ui/gfx/codec/png_codec.h"
 
 namespace mini_electron {
 namespace {
@@ -67,11 +67,12 @@ bool IsValidPng(const std::vector<uint8_t>& png, SkBitmap* decoded) {
           codec->dimensions().width(), codec->dimensions().height())) {
     return false;
   }
-  SkBitmap bitmap = gfx::PNGCodec::Decode(png);
-  if (bitmap.drawsNothing()
-      || bitmap.width() != codec->dimensions().width()
-      || bitmap.height() != codec->dimensions().height()
-      || bitmap.colorType() != kN32_SkColorType) {
+  const SkImageInfo info = SkImageInfo::MakeN32Premul(
+      codec->dimensions().width(), codec->dimensions().height());
+  SkBitmap bitmap;
+  if (!bitmap.tryAllocPixels(info)
+      || codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes())
+          != SkCodec::kSuccess) {
     return false;
   }
   if (decoded)
@@ -203,8 +204,11 @@ std::vector<uint8_t> ReadClipboardPng() {
             *output = value;
           },
           &png));
-  return !png.empty() && png.size() <= kMaximumClipboardImageBytes
-      ? std::move(png) : std::vector<uint8_t>();
+  // ClipboardWin validates PNG pixels or converts a bounded native DIB. Avoid
+  // decoding those pixels a second time; bound the encoded DIB conversion too.
+  if (png.size() > kMaximumClipboardImageBytes)
+    return {};
+  return png;
 }
 
 std::vector<std::u16string> AvailableClipboardFormats() {

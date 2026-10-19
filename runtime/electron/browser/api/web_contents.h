@@ -26,6 +26,10 @@ namespace node {
 class Environment;
 }
 
+#if BUILDFLAG(IS_WIN)
+namespace mini_electron::win { struct DCompLayer; }
+#endif
+
 namespace atom {
 
 static const int kNotSetXYFlag = 400;
@@ -128,7 +132,7 @@ public:
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
     void resize(int width, int height, double scale_factor = 1.0);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayId(int64_t display_id);
 #endif
     void setFocus(bool focused);
@@ -153,6 +157,9 @@ public:
     void cancelPreparedFrames(const std::string& error);
 #if defined(_WIN32)
     bool paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y, int width, int height) const;
+    void appendDCompLayers(std::vector<mini_electron::win::DCompLayer>& layers,
+        const RECT& bounds, const RECT& clip, unsigned depth = 0) const;
+    void getCompositorInfoApi(const v8::FunctionCallbackInfo<v8::Value>&);
 #endif
     void closeRenderer();
 
@@ -260,7 +267,13 @@ private:
         bool main_frame);
     bool commitRendererFrame(uint64_t frame_id, const std::string& url);
     bool isRendererFrameCurrent(uint64_t frame_id) const;
+#if BUILDFLAG(IS_WIN)
+    void requestCapture(
+        std::function<void(RendererFrameSnapshot, std::string)> complete,
+        unsigned depth = 0);
+#else
     void requestCapture(std::function<void(std::string)> complete);
+#endif
 #if BUILDFLAG(IS_MAC)
     void captureForSoftwareHost();
 #endif
@@ -274,6 +287,7 @@ private:
     mutable RendererFrameSnapshot m_windowsPaintFrame;
     mutable std::vector<uint8_t> m_windowsPaintPixels;
     mutable bool m_windowsPaintNeedsFullRepaint = false;
+    std::unordered_map<int, gfx::Rect> m_windowsGuestBounds;
 #endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;
@@ -309,8 +323,10 @@ private:
     int m_viewport_width = 0;
     int m_viewport_height = 0;
     double m_viewport_scale = 0.0;
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t m_vsync_display_id = -1;
+#endif
+#if BUILDFLAG(IS_MAC)
     uint32_t m_native_context_id = 0;
     uint32_t m_guest_context_id = 0;
     int m_guest_native_width = 0;

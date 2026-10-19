@@ -880,7 +880,7 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
                                                                                                                                                                \
     ITERATOR5(BOOL, mini_electron_fire_mouse_event, mini_electron_web_view webView, unsigned int message, int x, int y, unsigned int flags, "")                                           \
     ITERATOR4(BOOL, mini_electron_fire_context_menu_event, mini_electron_web_view webView, int x, int y, unsigned int flags, "")                                                           \
-    ITERATOR5(BOOL, mini_electron_fire_mouse_wheel_event, mini_electron_web_view webView, int x, int y, int delta, unsigned int flags, "")                                                 \
+    ITERATOR6(BOOL, mini_electron_fire_mouse_wheel_event, mini_electron_web_view webView, int x, int y, int deltaX, int deltaY, unsigned int flags, "")                              \
     ITERATOR4(BOOL, mini_electron_fire_key_up_event, mini_electron_web_view webView, unsigned int virtualKeyCode, unsigned int flags, BOOL systemKey, "")                                  \
     ITERATOR4(BOOL, mini_electron_fire_key_down_event, mini_electron_web_view webView, unsigned int virtualKeyCode, unsigned int flags, BOOL systemKey, "")                                \
     ITERATOR4(BOOL, mini_electron_fire_key_press_event, mini_electron_web_view webView, unsigned int charCode, unsigned int flags, BOOL systemKey, "")                                     \

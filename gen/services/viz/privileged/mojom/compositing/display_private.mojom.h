@@ -89,7 +89,7 @@ public:
         kAddVSyncParameterObserverMinVersion = 0,
         kSetDelegatedInkPointRendererMinVersion = 0,
         kSetStandaloneBeginFrameObserverMinVersion = 0,
-        #if BUILDFLAG(IS_MAC)
+        #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         kSetVSyncDisplayIDMinVersion = 0,
         #endif
         kSetMaxVSyncAndVrrMinVersion = 0,
@@ -131,7 +131,7 @@ public:
     struct SetStandaloneBeginFrameObserver_Sym {
         NOINLINE static uint32_t IPCStableHash();
     };
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     struct SetVSyncDisplayID_Sym {
         NOINLINE static uint32_t IPCStableHash();
     };
@@ -160,7 +160,7 @@ public:
     virtual void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) = 0;
 
     virtual void SetOutputIsSecure(bool secure) = 0;
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     virtual void SetVSyncDisplayID(int64_t display_id) = 0;
     #endif
 
@@ -242,7 +242,7 @@ public:
     void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) final;
 
     void SetOutputIsSecure(bool secure) final;
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void SetVSyncDisplayID(int64_t display_id) final;
     #endif
 

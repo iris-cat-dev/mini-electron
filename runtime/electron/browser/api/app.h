@@ -57,9 +57,7 @@ public:
     {
         return false;
     }
-    void disableHardwareAcceleration()
-    {
-    }
+    void disableHardwareAcceleration();
 
     void setVersionApi(const std::string& version)
     {

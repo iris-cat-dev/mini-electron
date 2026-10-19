@@ -116,10 +116,12 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_set_init_settings(mini_electron_setti
         settings->mask = MINI_ELECTRON_ENABLE_DISABLE_CC;
 }
 
-mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view()
+mini_electron_web_view mini_electron_create_web_view_with_background(
+    unsigned background_color, bool transparent)
 {
     checkThreadCallIsValid(__FUNCTION__);
-    content::WebViewHost* result = new content::WebViewHost(false);
+    content::WebViewHost* result = new content::WebViewHost(
+        false, background_color, transparent);
 
     // 之所以要嵌套一层，是为了让isTransparent获取到外部接下来可能设置mini_electron_set_transparent的值
     content::ThreadCall::callUiThreadAsync(FROM_HERE, [result] {
@@ -128,6 +130,11 @@ mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view()
     });
 
     return (int)result->getId();
+}
+
+mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view()
+{
+    return mini_electron_create_web_view_with_background(0xffffffff, false);
 }
 
 static bool s_gtkActivate = false;
@@ -757,43 +764,24 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_event(mini_electron_web_vi
     return mini_electron_fire_mouse_event_impl(webviewHandle, message, x, y, flags);
 }
 
-BOOL mini_electron_fire_mouse_wheel_event_impl(mini_electron_web_view webviewHandle, int x, int y, int wheelDelta, unsigned int flags)
+BOOL mini_electron_fire_mouse_wheel_event_impl(mini_electron_web_view webviewHandle,
+    int x, int y, int deltaX, int deltaY, unsigned int flags)
 {
     checkThreadCallIsValid(__FUNCTION__);
     content::WebViewHost* webview = (content::WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
     if (!webview)
         return FALSE;
 
-    WPARAM wParam = 0;
-
-    HWND hWnd = webview->getHostWnd();
-
-    POINT screenPoint = { x, y };
-    ::ClientToScreen(hWnd, &screenPoint);
-    LPARAM lParam = MAKELPARAM(screenPoint.x, screenPoint.y);
-    if (flags & MINI_ELECTRON_CONTROL)
-        wParam |= MK_CONTROL;
-    if (flags & MINI_ELECTRON_SHIFT)
-        wParam |= MK_SHIFT;
-
-    if (flags & MINI_ELECTRON_LBUTTON)
-        wParam |= MK_LBUTTON;
-    if (flags & MINI_ELECTRON_MBUTTON)
-        wParam |= MK_MBUTTON;
-    if (flags & MINI_ELECTRON_RBUTTON)
-        wParam |= MK_RBUTTON;
-
-    wParam = MAKEWPARAM(wParam, wheelDelta);
-
-    webview->fireWheelEventOnUiThread(wParam, lParam);
-
-
+    webview->onWheelEvent(x, y, deltaX, deltaY, flags);
     return TRUE;
 }
 
-BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(mini_electron_web_view webviewHandle, int x, int y, int wheelDelta, unsigned int flags)
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(
+    mini_electron_web_view webviewHandle, int x, int y, int deltaX, int deltaY,
+    unsigned int flags)
 {
-    return mini_electron_fire_mouse_wheel_event_impl(webviewHandle, x, y, wheelDelta, flags);
+    return mini_electron_fire_mouse_wheel_event_impl(
+        webviewHandle, x, y, deltaX, deltaY, flags);
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_set_navigation_to_new_window_enable(mini_electron_web_view webviewHandle, BOOL b)

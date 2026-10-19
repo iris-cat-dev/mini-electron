@@ -306,6 +306,10 @@ The restored Windows inputs originate from MiniBlink revision
 `191f82c33fc0ff9ddaeedab90e6406a54a8e76c6`; they compile the current shared engine
 sources, including the macOS changes behind their platform guards.
 
+The application Release build must use the same V8 check configuration as the
+V8 and Blink Release libraries. Defining `V8_ENABLE_CHECKS` only for the executable
+instantiates cppgc tracing calls that those libraries do not provide.
+
 The Windows `Release|x64` build disables Blink/V8/Node Inspector and DevTools.
 `process.features.inspector` is `false`; the `node:inspector` modules and
 `webContents` DevTools/inspection methods are unavailable. The F12 shortcut and
@@ -336,13 +340,41 @@ stay below FileTracker's path limit. The backend prefers native x64 MSBuild.
 Windows does not currently provide the macOS-only browser demo or screenshot
 option. OMP Desktop packaging is supported on both desktop targets.
 
+The current release manifest declares only macOS, so use this source-build
+executable for Windows verification, not an old `runtime-dist/electron.exe`.
+`--package-dist` requires a declared Windows artifact; this source verification
+does not change npm's platform policy or publish a Windows runtime.
+
+Windows defaults to Skia Ganesh/D3D12 GPU compositing when hardware setup
+succeeds. Shared textures and fences feed retained D3D11 textures and
+DirectComposition swapchains in the browser process; ordinary presentation
+does not read the page back to CPU memory. Intermediate render passes are
+GPU-backed; DOM/layout and cc tile rasterization remain CPU work. This does
+not enable Chromium's GPU service, WebGL, or WebGPU.
+
+Native-composition windows select `WS_EX_NOREDIRECTIONBITMAP` at creation,
+including transparent companion windows. Premultiplied alpha, `skipTaskbar`,
+nonactivating display, and mouse passthrough do not require another HWND.
+Initial renderer GPU failure can use CPU layers through DirectComposition.
+`--disable-gpu`, `--disable-gpu-compositing`, or
+`app.disableHardwareAcceleration()` before creating windows selects the
+legacy CPU/GDI presentation path. `MINI_ELECTRON_DISABLE_GPU=1` selects CPU
+renderer composition while leaving eligible native presentation enabled.
+
+Windows frame scheduling follows the selected monitor's DXGI VBlank clock,
+with validated DWM timing for the primary monitor or a refresh-calibrated
+timer when hardware timing is unavailable. Non-blocking successful DXGI
+waits are rejected rather than generating a busy loop. BrowserViews and
+webviews inherit the host monitor; moving between monitors updates the clock.
+
 Windows hidden-title windows honor `titleBarStyle`, `titleBarOverlay`, and
 `setTitleBarOverlay()`. Minimize/maximize/restore/close controls are rasterized
 into a cached premultiplied-alpha Skia surface and composited over the painted
 HTML titlebar. Short/long RGB and RGBA hex colors retain their alpha, so
 `#00000000` exposes the real header rather than becoming an opaque black patch.
-Repainting clears cached pixels; clipped frame blits use a complete cropped DIB
-so partial invalidation cannot select the wrong underlying rows. Opaque borderless
+Repainting clears cached caption pixels. GPU presentation uploads the caption
+only when it changes; CPU fallback blits use a complete cropped DIB so partial
+invalidation cannot select the wrong underlying rows. Opaque borderless
 windows retain their native DWM shadow without a rounded window region;
 maximized client bounds match the visible work area. CSS
 app-region dragging and no-drag elements remain active. `autoHideMenuBar`,
@@ -353,10 +385,19 @@ Native close transitions to the destroyed state before `closed` listeners run;
 
 The Windows host declares Per-Monitor V2 DPI awareness and initializes its native
 screen before creating the first window. Window and viewport sizes remain in DIP;
-Viz renders a physical-pixel bitmap at the window's device scale, and Win32 paints
-it 1:1. Native mouse coordinates stay in device pixels until Blink applies that
-scale. Page zoom is independent of display scaling; factor/level conversion also
-preserves `setZoomFactor(1)` as a true reset.
+Viz renders physical pixels at the window's device scale; native textures and
+CPU fallback bitmaps are presented 1:1. Native mouse coordinates stay in device
+pixels until Blink applies that scale. Page zoom is independent of display
+scaling; factor/level conversion preserves `setZoomFactor(1)` as a true reset.
+
+Native Windows wheel input preserves partial and multiple 120-unit notches.
+Vertical lines and horizontal characters follow `SPI_GETWHEELSCROLLLINES` and
+`SPI_GETWHEELSCROLLCHARS`, rather than imposing the macOS 80-pixel wheel policy.
+`WM_MOUSEHWHEEL` is routed through BrowserWindow and BrowserView, with positive
+native horizontal deltas scrolling right. A page-scroll setting uses page
+granularity; regressions read these settings without changing them. The engine
+wheel entry point now accepts independent X/Y tick deltas, so C/C++ embedders
+must rebuild against the updated `engine_api.h`.
 
 The renderer receives the full Windows preferred UI-language list. Language
 configuration made before asynchronous Blink view creation is retained and
@@ -370,6 +411,11 @@ including explicitly empty text. PNG and bounded native DIB/DIBV5 images become
 real DOM PNG files; malformed images are rejected, and an invalid registered PNG
 does not hide a valid DIB. DIB conversion completes on the browser thread without
 pumping a nested message loop while a renderer is waiting synchronously.
+The public main-process `clipboard.readImage()` uses this same PNG/DIB/DIBV5
+pipeline, including malformed-PNG fallback and bounds of 32 MiB encoded PNG,
+8192 pixels per dimension, and 40 × 1024² decoded pixels. Native PNG metadata
+and pixels are validated with one codec before returning or brokering the bytes.
+macOS-only ImageIO JPEG/TIFF pasteboard behavior is not claimed for Windows.
 Keyboard descriptors retain scan code, layout, modifiers and keyup state;
 disabled and `registerAccelerator: false` shortcuts reach the DOM instead of
 invoking a menu action. Native click counts honor the Windows double-click time
@@ -419,30 +465,40 @@ and the embedded `runtime/electron/common/asar/asar_js.cc` initializer and its l
 Run the filesystem and child-process contracts in both runtime modes (Git Bash):
 
 ```sh
-./out/windows-x64/runtime-dist/electron.exe test/node-file-identity-smoke.js
-ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-file-identity-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/node-temp-directory-smoke.js
-ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-temp-directory-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/node-child-process-smoke.js
-ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-child-process-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/node-file-identity-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-file-identity-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/node-temp-directory-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-temp-directory-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/node-child-process-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-child-process-smoke.js
 ```
 
 Run the real Windows input regressions sequentially on an unlocked interactive desktop:
 
 ```sh
-python build.py --package-dist
-./out/windows-x64/runtime-dist/electron.exe test/windows-native-input-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-editor-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-caption-overlay-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-hover-presentation-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-restore-presentation-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-companion-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-screen-coordinates-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/same-document-navigation-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-pointer-interaction-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-image-preview-smoke.js
-./out/windows-x64/runtime-dist/electron.exe test/windows-composition-colors-smoke.js
-ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-sqlite-smoke.js
+python build.py --jobs 16
+./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
+MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 ./out/windows-x64/mini-electron.exe --disable-gpu --app=test/windows-gpu-compositor-smoke.js
+MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_DISABLE_WITH_API=1 ./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
+MINI_ELECTRON_DISABLE_GPU=1 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_EXPECT_NATIVE_CPU=1 ./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-gpu-guests-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/execute-javascript-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/generated-image-download-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-clipboard-image-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-wheel-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-context-menu-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-native-input-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-editor-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-caption-overlay-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-hover-presentation-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-restore-presentation-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-companion-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-screen-coordinates-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/same-document-navigation-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-pointer-interaction-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-image-preview-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-composition-colors-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-sqlite-smoke.js
 ```
 
 The Windows input tests compile a shared WinForms helper with the system .NET Framework 4 C# compiler
@@ -487,9 +543,9 @@ observes the application's ordinary main HWND as foreground, then checks the exa
 foreground HWND after construction, loading, showing, and each passive setter,
 without companion input or a corrective refocus. It also checks native visibility,
 minimized state, topmost/NOACTIVATE/tool-window styles, and taskbar exclusion.
-These source fixes for issue #4 require a rebuilt Windows runtime; the published
-Windows `0.1.8` artifact is unchanged. Native Windows foreground/style acceptance
-has not been run on the current macOS development host.
+These source fixes for issue #4 passed native Windows foreground/style acceptance
+with the rebuilt source executable. The published Windows `0.1.8` artifact is
+unchanged and does not gain these fixes without a new native release.
 
 Windows `screen` display bounds, work areas, matching/nearest-point queries, and
 cursor positions use the same DIP coordinate space as BrowserWindow bounds.

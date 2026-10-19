@@ -28,6 +28,10 @@
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkSurface.h"
+#include "third_party/skia/include/core/SkPixmap.h"
+#include "platform/windows/dcomp_presenter.h"
+#include "base/command_line.h"
+#include "base/auto_reset.h"
 #include "runtime/engine/common/thread_call.h"
 #include "ui/gfx/icon_util.h"
 #include "ui/gfx/geometry/rect.h"
@@ -434,6 +438,22 @@ public:
         return m_hWnd;
     }
 
+    void updateVSyncDisplay(bool force = false)
+    {
+        if (!m_webContents || !::IsWindow(m_hWnd))
+            return;
+        const HMONITOR monitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+        if (!force && monitor == m_vsyncMonitor)
+            return;
+        m_vsyncMonitor = monitor;
+        const int64_t id = static_cast<int64_t>(reinterpret_cast<intptr_t>(monitor));
+        m_webContents->setVSyncDisplayId(id);
+        for (BrowserView* view : m_browserViews) {
+            if (view && view->getWebContents())
+                view->getWebContents()->setVSyncDisplayId(id);
+        }
+    }
+
     void onWebContentsPaint(WebContents* contents, const gfx::Rect& damage) override
     {
         if (contents != m_webContents || !::IsWindow(m_hWnd))
@@ -653,6 +673,7 @@ public:
     {
         if (!m_hWnd || !isCustomTitleBar())
             return;
+        m_gpuCaptionDirty = true;
         RECT rect = captionButtonsRect();
         ::InvalidateRect(m_hWnd, &rect, FALSE);
     }
@@ -774,6 +795,8 @@ public:
         }
         canvas->restore();
 
+        if (!dc)
+            return; // GPU presentation uploads only this cached caption surface.
         // GDI drawing clears alpha on DWM glass. Alpha-composite the cached
         // premultiplied raster surface over the browser's painted header.
         HGDIOBJ oldBitmap = ::SelectObject(m_captionDC, m_captionBitmap);
@@ -934,10 +957,69 @@ public:
     }
 
 
+    bool paintGpuScene()
+    {
+        if (!m_createWindowParam
+            || !(m_createWindowParam->styleEx & WS_EX_NOREDIRECTIONBITMAP)) {
+            return false;
+        }
+        if (m_gpuPresenting)
+            return true;
+        base::AutoReset<bool> presenting(&m_gpuPresenting, true);
+        RECT client;
+        if (!m_webContents || !::GetClientRect(m_hWnd, &client)
+            || client.right <= 0 || client.bottom <= 0)
+            return true;
+        m_gpuLayers.clear();
+        m_webContents->appendDCompLayers(m_gpuLayers, client, client);
+        for (BrowserView* view : m_browserViews) {
+            if (!view || !view->getWebContents())
+                continue;
+            const RECT bounds = view->getClientRect();
+            RECT clip;
+            if (::IntersectRect(&clip, &bounds, &client))
+                view->getWebContents()->appendDCompLayers(m_gpuLayers, bounds, clip);
+        }
+        if (!m_gpuPresenter) {
+            m_gpuPresenter = mini_electron::win::DCompPresenter::Create(m_hWnd);
+            if (!m_gpuPresenter)
+                return true;
+        }
+        mini_electron::win::DCompOverlay overlay;
+        SkPixmap pixels;
+        if (isCustomTitleBar()) {
+            const RECT buttons = captionButtonsRect();
+            if (m_gpuCaptionDirty || !m_captionSurface
+                || m_captionBitmapSize.cx != buttons.right - buttons.left
+                || m_captionBitmapSize.cy != buttons.bottom - buttons.top) {
+                paintTitleBarOverlay(nullptr, client);
+                ++m_gpuCaptionGeneration;
+                m_gpuCaptionDirty = false;
+            }
+            if (m_captionSurface && m_captionSurface->peekPixels(&pixels)) {
+                overlay.bgra = pixels.addr();
+                overlay.width = pixels.width();
+                overlay.height = pixels.height();
+                overlay.stride = static_cast<int>(pixels.rowBytes());
+                overlay.x = buttons.left;
+                overlay.y = buttons.top;
+                overlay.generation = m_gpuCaptionGeneration;
+            }
+        }
+        auto presenter = m_gpuPresenter;
+        if (!presenter->Present(m_gpuLayers, overlay))
+            m_gpuPresenter.reset();
+        return true;
+    }
+
     void onPaintMessage(HWND hWnd)
     {
         PAINTSTRUCT ps = { 0 };
         HDC paintDC = ::BeginPaint(hWnd, &ps);
+        if (paintGpuScene()) {
+            ::EndPaint(hWnd, &ps);
+            return;
+        }
 
         RECT rcClip = ps.rcPaint;
         RECT rcClient;
@@ -1667,6 +1749,8 @@ public:
         } break;
 
         case WM_NCDESTROY:
+            m_gpuPresenter.reset();
+            m_gpuLayers.clear();
             stopImeComposition(true);
             clearTextInputState();
             m_state = WindowDestroyed;
@@ -1782,8 +1866,14 @@ public:
         } break;
 
         case WM_MOVE:
+            updateVSyncDisplay();
             updateImePosition();
             mate::EventEmitter<BrowserWindow>::emit("move");
+            break;
+
+        case WM_DISPLAYCHANGE:
+            display::win::ScreenWin::UpdateDisplayInfos();
+            updateVSyncDisplay(true);
             break;
 
         case WM_SYSCOMMAND: {
@@ -1968,7 +2058,8 @@ public:
             m_webContents->sendWindowsMouseEvent(WM_CONTEXTMENU, pt.x, pt.y, flags);
             break;
         }
-        case WM_MOUSEWHEEL: {
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL: {
             if (m_isIgnoreMouseEvents)
                 break;
             POINT pt;
@@ -2005,7 +2096,7 @@ public:
             if (target) {
                 // Input stays in physical pixels; the renderer applies its DSF.
                 target->sendWindowsMouseEvent(
-                    WM_MOUSEWHEEL, targetX, targetY, flags, delta);
+                    message, targetX, targetY, flags, delta);
             }
             break;
         }
@@ -2075,6 +2166,7 @@ public:
             const gfx::Size viewport = gfx::ScaleToCeiledSize(
                 gfx::Size(client.right - client.left, client.bottom - client.top), 1.f / scale);
             m_webContents->resize(viewport.width(), viewport.height(), scale);
+            updateVSyncDisplay();
             for (BrowserView* view : m_browserViews) {
                 if (view)
                     view->onParentScaleFactorChanged();
@@ -3226,6 +3318,14 @@ private:
     {
         m_createWindowParam = createWindowParam;
         m_webContents->setCreateWindowParam(createWindowParam);
+        const base::CommandLine* commandLine = base::CommandLine::ForCurrentProcess();
+        if (!commandLine->HasSwitch("disable-gpu")
+            && !commandLine->HasSwitch("disable-gpu-compositing")
+            && mini_electron::win::CanUseD3DPresentation()) {
+            createWindowParam->styleEx |= WS_EX_NOREDIRECTIONBITMAP;
+            createWindowParam->styleEx &= ~WS_EX_LAYERED;
+        }
+
 
         m_hWnd = ::CreateWindowEx(createWindowParam->styleEx, kElectronClassName, createWindowParam->title.c_str(), createWindowParam->styles,
             createWindowParam->x, createWindowParam->y, createWindowParam->width, createWindowParam->height, NULL, NULL, ::GetModuleHandleW(NULL), this);
@@ -3263,6 +3363,7 @@ private:
             hWnd, gfx::Size(width, height));
         m_webContents->resize(viewportSize.width(), viewportSize.height(),
             display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
+        updateVSyncDisplay();
         rebuildDraggableRegion();
         m_webContents->setFocus(createWindowParam->isFocusable);
         //setIcon(m_hWnd);
@@ -3423,6 +3524,12 @@ private:
     HBITMAP m_captionBitmap;
     SIZE m_captionBitmapSize;
     sk_sp<SkSurface> m_captionSurface;
+    std::shared_ptr<mini_electron::win::DCompPresenter> m_gpuPresenter;
+    std::vector<mini_electron::win::DCompLayer> m_gpuLayers;
+    bool m_gpuPresenting = false;
+    bool m_gpuCaptionDirty = true;
+    uint64_t m_gpuCaptionGeneration = 1;
+    HMONITOR m_vsyncMonitor = nullptr;
 
     HRGN m_draggableRegion;
     struct DraggableRegion {

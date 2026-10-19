@@ -192,7 +192,7 @@ DisplayPrivate_SetOutputIsSecure_Params_Data::DisplayPrivate_SetOutputIsSecure_P
 {
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 // static
 bool DisplayPrivate_SetVSyncDisplayID_Params_Data::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

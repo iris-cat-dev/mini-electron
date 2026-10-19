@@ -68,7 +68,7 @@ DisplayPrivate::IPCStableHashFunction DisplayPrivate::MessageToMethodInfo_(mojo:
     case messages::DisplayPrivate::kSetOutputIsSecure: {
         return &DisplayPrivate::SetOutputIsSecure_Sym::IPCStableHash;
     }
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     case messages::DisplayPrivate::kSetVSyncDisplayID: {
         return &DisplayPrivate::SetVSyncDisplayID_Sym::IPCStableHash;
     }
@@ -114,7 +114,7 @@ const char* DisplayPrivate::MessageToMethodName_(mojo::Message& message)
             return "Receive viz::mojom::DisplayPrivate::SetDisplayColorSpaces";
         case messages::DisplayPrivate::kSetOutputIsSecure:
             return "Receive viz::mojom::DisplayPrivate::SetOutputIsSecure";
-        #if BUILDFLAG(IS_MAC)
+        #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         case messages::DisplayPrivate::kSetVSyncDisplayID:
             return "Receive viz::mojom::DisplayPrivate::SetVSyncDisplayID";
         #endif
@@ -145,7 +145,7 @@ const char* DisplayPrivate::MessageToMethodName_(mojo::Message& message)
             return "Receive reply viz::mojom::DisplayPrivate::SetDisplayColorSpaces";
         case messages::DisplayPrivate::kSetOutputIsSecure:
             return "Receive reply viz::mojom::DisplayPrivate::SetOutputIsSecure";
-        #if BUILDFLAG(IS_MAC)
+        #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         case messages::DisplayPrivate::kSetVSyncDisplayID:
             return "Receive reply viz::mojom::DisplayPrivate::SetVSyncDisplayID";
         #endif
@@ -253,7 +253,7 @@ uint32_t DisplayPrivate::SetOutputIsSecure_Sym::IPCStableHash()
     base::debug::Alias(&hash);
     return hash;
 }
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 uint32_t DisplayPrivate::SetVSyncDisplayID_Sym::IPCStableHash()
 {
     // Keep a unique address for symbolized IPC method identification.
@@ -619,7 +619,7 @@ void DisplayPrivateProxy::SetOutputIsSecure(bool in_secure)
     ::mojo::internal::SendMojoMessage(*receiver_, message);
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void DisplayPrivateProxy::SetVSyncDisplayID(int64_t in_display_id)
 {
 #if BUILDFLAG(MOJO_TRACE_ENABLED)
@@ -1087,7 +1087,7 @@ bool DisplayPrivateStubDispatch::Accept(DisplayPrivate* impl, mojo::Message* mes
         impl->SetOutputIsSecure(std::move(p_secure));
         return true;
     }
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     case messages::DisplayPrivate::kSetVSyncDisplayID: {
         DCHECK(message->is_serialized());
         internal::DisplayPrivate_SetVSyncDisplayID_Params_Data* params
@@ -1277,7 +1277,7 @@ bool DisplayPrivateStubDispatch::AcceptWithResponder(DisplayPrivate* impl, mojo:
     case messages::DisplayPrivate::kSetOutputIsSecure: {
         break;
     }
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     case messages::DisplayPrivate::kSetVSyncDisplayID: {
         break;
     }
@@ -1318,7 +1318,7 @@ static const mojo::internal::GenericValidationInfo kDisplayPrivateValidationInfo
     { &internal::DisplayPrivate_SetDelegatedInkPointRenderer_Params_Data::Validate, nullptr /* no response */ },
     { &internal::DisplayPrivate_SetStandaloneBeginFrameObserver_Params_Data::Validate, nullptr /* no response */ },
     { &internal::DisplayPrivate_SetMaxVSyncAndVrr_Params_Data::Validate, nullptr /* no response */ },
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     { &internal::DisplayPrivate_SetVSyncDisplayID_Params_Data::Validate, nullptr /* no response */ },
     #endif
 };
@@ -1601,7 +1601,7 @@ void DisplayPrivateInterceptorForTesting::SetOutputIsSecure(bool secure)
 {
     GetForwardingInterface()->SetOutputIsSecure(std::move(secure));
 }
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void DisplayPrivateInterceptorForTesting::SetVSyncDisplayID(int64_t display_id)
 {
     GetForwardingInterface()->SetVSyncDisplayID(std::move(display_id));

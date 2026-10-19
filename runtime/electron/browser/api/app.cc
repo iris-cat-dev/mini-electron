@@ -88,6 +88,11 @@ const WCHAR kHiddenWindowPropName[] = L"mb_app_hidden_window";
 static void registerHiddenWindowClass(LPCWSTR className);
 static void notifySingleProcess(HWND window, base::Value::Dict additionalData);
 
+void App::disableHardwareAcceleration()
+{
+    base::CommandLine::ForCurrentProcess()->AppendSwitch("disable-gpu");
+}
+
 App* App::getInstance()
 {
     return m_instance;

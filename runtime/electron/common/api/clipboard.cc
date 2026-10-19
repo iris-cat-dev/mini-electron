@@ -23,9 +23,10 @@
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libnode/src/node_buffer.h"
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "platform/clipboard.h"
-#else
+#endif
+#if !BUILDFLAG(IS_MAC)
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #endif
@@ -378,34 +379,11 @@ public:
 
     v8::Local<v8::Object> readImageApi(const std::string&)
     {
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         const std::vector<uint8_t> png =
             mini_electron::ReadClipboardPng();
         return NativeImage::createNativeImageFromBuffer(
             isolate(), png.data(), png.size());
-#elif BUILDFLAG(IS_WIN)
-        if (!::OpenClipboard(nullptr))
-            return NativeImage::createEmpty(isolate());
-        HANDLE dib_handle = ::GetClipboardData(CF_DIB);
-        if (!dib_handle) {
-            ::CloseClipboard();
-            return NativeImage::createEmpty(isolate());
-        }
-        const SIZE_T dib_size = ::GlobalSize(dib_handle);
-        if (dib_size < sizeof(BITMAPINFOHEADER)) {
-            ::CloseClipboard();
-            return NativeImage::createEmpty(isolate());
-        }
-        const void* dib = ::GlobalLock(dib_handle);
-        if (!dib) {
-            ::CloseClipboard();
-            return NativeImage::createEmpty(isolate());
-        }
-        v8::Local<v8::Object> result =
-            NativeImage::createFromDIB(isolate(), dib, dib_size);
-        ::GlobalUnlock(dib_handle);
-        ::CloseClipboard();
-        return result;
 #else
         return NativeImage::createEmpty(isolate());
 #endif

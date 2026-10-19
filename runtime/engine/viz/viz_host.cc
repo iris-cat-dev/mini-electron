@@ -11,7 +11,7 @@
 #include "base/time/time.h"
 #include "runtime/engine/viz/viz_client.h"
 #include "runtime/engine/viz/offscreen_display_client.h"
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "runtime/engine/browser/web_view_host.h"
 #endif
 #include "runtime/engine/common/thread_call.h"
@@ -24,7 +24,7 @@ VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     //gfx::AcceleratedWidget widget,
     const gfx::Size& size, mojo::PendingReceiver<viz::mojom::FrameSinkManagerClient> clientReceiver,
     mojo::PendingRemote<viz::mojom::FrameSinkManager> frameSinkManagerRemote, scoped_refptr<base::SingleThreadTaskRunner> workRunner,
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t vsyncDisplayId,
 #endif
     scoped_refptr<base::SingleThreadTaskRunner> serviceRunner)
@@ -32,7 +32,7 @@ VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     , m_engineViewHost(mbwebview)
     , m_isTransparent(isTransparent)
     , m_size(size)
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     , m_vsyncDisplayId(vsyncDisplayId)
 #endif
     //, m_thread("VizHost")
@@ -90,7 +90,7 @@ void VizHost::resizeOnBlinkThread(const gfx::Size& size, float device_scale_fact
     waitEvt.Wait();
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void VizHost::setVSyncDisplayIdOnBlinkThread(int64_t display_id)
 {
     DCHECK(ThreadCall::isBlinkThread());
@@ -102,8 +102,10 @@ void VizHost::setVSyncDisplayIdOnBlinkThread(int64_t display_id)
 void VizHost::setVSyncDisplayIdOnHostThread(int64_t display_id)
 {
     DCHECK(m_workRunner->RunsTasksInCurrentSequence());
+#if BUILDFLAG(IS_MAC)
     if (m_vsyncDisplayId == display_id)
         return;
+#endif
     m_vsyncDisplayId = display_id;
     // This runtime's Mojo Remote exposes the receiver directly, rather than a
     // proxy which marshals calls. Use the same runner that creates the root
@@ -269,11 +271,17 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     // in the renderer process. cc resources remain shared CPU-raster tiles.
     rootParams->widget = static_cast<gfx::AcceleratedWidget>(m_engineViewHost->getId());
 #endif
+#if BUILDFLAG(IS_WIN)
+    rootParams->widget = reinterpret_cast<gfx::AcceleratedWidget>(
+        static_cast<intptr_t>(m_engineViewHost->getId()));
+#endif
     rootParams->gpu_compositing = false;
     rootParams->renderer_settings = viz::CreateRendererSettings();
     rootParams->renderer_settings.should_clear_root_render_pass = false;
 #if BUILDFLAG(IS_MAC)
     rootParams->renderer_settings.display_id = m_vsyncDisplayId;
+#endif
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     m_hostWeakPtr = m_hostWeakPtrFactory.GetWeakPtr();
 #endif
 
@@ -308,6 +316,10 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
             [](base::WeakPtr<VizHost> self, const gfx::Size& size) {
                 self->m_displayPrivate->Resize(size);
                 self->m_displayPrivate->SetDisplayVisible(true);
+#if BUILDFLAG(IS_WIN)
+                self->m_displayPrivate->SetVSyncDisplayID(
+                    self->m_vsyncDisplayId);
+#endif
             },
             m_weakPtrFactory.GetWeakPtr(), m_size));
 

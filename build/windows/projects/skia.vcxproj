@@ -1291,7 +1291,6 @@
     <ClCompile Include="..\..\..\third_party\skia\src\gpu\RectanizerSkyline.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\gpu\ResourceKey.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\gpu\ShaderErrorHandler.cpp" />
-    <ClCompile Include="..\..\..\third_party\skia\src\gpu\SkGpuEmpty.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\gpu\Swizzle.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\image\SkImage.cpp" />
     <ClCompile Include="..\..\..\third_party\skia\src\image\SkImage_Base.cpp" />
@@ -1435,6 +1434,7 @@
     <None Include="..\..\..\third_party\skia\include\sksl\OWNERS" />
     <None Include="..\..\..\third_party\skia\src\opts\SkSwizzler_opts.inc" />
   </ItemGroup>
+  <Import Project="..\skia_gpu_sources.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

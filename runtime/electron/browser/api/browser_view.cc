@@ -203,6 +203,8 @@ void BrowserView::onParentScaleFactorChanged()
     if (!m_webContents || !::IsWindow(m_hWnd))
         return;
     const float scale = display::win::ScreenWin::GetScaleFactorForHWND(m_hWnd);
+    m_webContents->setVSyncDisplayId(static_cast<int64_t>(
+        reinterpret_cast<intptr_t>(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST))));
     int width = 0;
     int height = 0;
     ::EnterCriticalSection(&m_rectLock);

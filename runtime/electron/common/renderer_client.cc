@@ -10,6 +10,7 @@
 #include <map>
 #include <mutex>
 #include <thread>
+#include <new>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -18,6 +19,12 @@
 #include "runtime/electron/common/renderer_platform.h"
 #include "runtime/electron/common/renderer_protocol.h"
 
+#if BUILDFLAG(IS_WIN)
+#include "base/command_line.h"
+#include "base/strings/string_number_conversions.h"
+#include "platform/windows/d3d_compositor.h"
+#include "platform/windows/dcomp_presenter.h"
+#endif
 namespace atom {
 namespace {
 
@@ -32,6 +39,73 @@ struct ClientState {
     std::map<uint64_t, RendererClient::ReplyCallback> replies;
     scoped_refptr<base::SequencedTaskRunner> owner_runner;
 };
+#if BUILDFLAG(IS_WIN)
+struct CaptureMapping {
+    HANDLE handle = nullptr;
+    void* memory = nullptr;
+    size_t size = 0;
+
+    ~CaptureMapping()
+    {
+        if (memory)
+            ::UnmapViewOfFile(memory);
+        if (handle)
+            ::CloseHandle(handle);
+    }
+};
+
+bool CopyCaptureMapping(const CaptureMapping& mapping,
+    RendererFrameSnapshot* snapshot)
+{
+    if (!snapshot || !mapping.memory
+        || mapping.size < sizeof(renderer_protocol::FrameBufferHeader))
+        return false;
+    const auto* header = static_cast<const renderer_protocol::FrameBufferHeader*>(
+        mapping.memory);
+    if (header->magic != renderer_protocol::kFrameMagic
+        || header->capacity != renderer_protocol::kMaxFrameBytes)
+        return false;
+    for (int attempt = 0; attempt < 4; ++attempt) {
+        const uint64_t before =
+            header->generation.load(std::memory_order_acquire);
+        if (!before || (before & 1))
+            continue;
+        const uint32_t width = header->width;
+        const uint32_t height = header->height;
+        const uint32_t stride = header->stride;
+        const uint32_t data_size = header->data_size;
+        const float scale = header->native_scale_factor;
+        if (!width || !height || width > 16384 || height > 16384
+            || stride < static_cast<uint64_t>(width) * 4
+            || data_size > header->capacity
+            || stride > data_size || height > data_size / stride
+            || sizeof(*header) + static_cast<uint64_t>(data_size) > mapping.size
+            || header->output_format != 0 || !std::isfinite(scale) || scale <= 0)
+            return false;
+        std::vector<uint8_t> pixels(data_size);
+        std::memcpy(pixels.data(), header + 1, data_size);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        const uint64_t after =
+            header->generation.load(std::memory_order_relaxed);
+        if (before != after || (after & 1))
+            continue;
+        snapshot->width = static_cast<int>(width);
+        snapshot->height = static_cast<int>(height);
+        snapshot->stride = static_cast<int>(stride);
+        snapshot->generation = after;
+        snapshot->output_format = 0;
+        snapshot->native_context_id = 0;
+        snapshot->native_scale_factor = scale;
+        snapshot->native_flags = 0;
+        snapshot->presented_generation = after;
+        snapshot->rgba = std::move(pixels);
+        snapshot->gpu_frame.reset();
+        return true;
+    }
+    return false;
+}
+#endif
+
 
 class RendererClientImpl final : public RendererClient {
 public:
@@ -57,6 +131,12 @@ public:
         launch.Set("allowRunningInsecureContent", options.allow_running_insecure_content);
         launch.Set("transparent", options.transparent);
         launch.Set("backgroundColor", std::move(options.background_color));
+#if BUILDFLAG(IS_WIN)
+        const auto* command_line = base::CommandLine::ForCurrentProcess();
+        launch.Set("disableGpu", command_line->HasSwitch("disable-gpu")
+            || command_line->HasSwitch("disable-gpu-compositing")
+            || !mini_electron::win::CanUseD3DPresentation());
+#endif
         launch.Set("process", std::move(options.preload_process_metadata));
         std::string accept_languages;
         for (const std::string& language : GetPreferredSystemLanguages()) {
@@ -106,34 +186,79 @@ public:
     {
         if (!renderer_protocol::IsBrowserToRendererMethod(method) || !callback)
             return 0;
-        uint64_t id = next_request_id_.fetch_add(1, std::memory_order_relaxed);
-        if (!id)
-            id = next_request_id_.fetch_add(1, std::memory_order_relaxed);
-        {
-            std::lock_guard<std::mutex> state_lock(state_->lock);
-            if (!state_->alive)
-                return 0;
-            state_->replies.emplace(id, std::move(callback));
-        }
-        base::Value::Dict payload;
-        payload.Set("method", std::move(method));
-        payload.Set("params", std::move(params));
-        if (!Write({ MessageKind::kRequest, id, std::move(payload) })) {
-            ReplyCallback failed;
-            {
-                std::lock_guard<std::mutex> state_lock(state_->lock);
-                auto it = state_->replies.find(id);
-                if (it != state_->replies.end()) {
-                    failed = std::move(it->second);
-                    state_->replies.erase(it);
-                }
-            }
-            if (failed)
-                PostReply(state_, std::move(failed), {}, "renderer IPC write failed");
-            return 0;
-        }
-        return id;
+        return QueueRequest(NextRequestId(), std::move(method),
+            std::move(params), std::move(callback));
     }
+
+#if BUILDFLAG(IS_WIN)
+    uint64_t RequestCapture(CaptureReplyCallback callback) override
+    {
+        if (!callback || !IsAlive() || !process_.process
+            || !process_.control_pipe)
+            return 0;
+        constexpr size_t mapping_size =
+            sizeof(renderer_protocol::FrameBufferHeader)
+            + renderer_protocol::kMaxFrameBytes;
+        auto mapping = std::make_shared<CaptureMapping>();
+        mapping->size = mapping_size;
+        mapping->handle = ::CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr,
+            PAGE_READWRITE, 0, static_cast<DWORD>(mapping_size), nullptr);
+        if (!mapping->handle)
+            return 0;
+        mapping->memory = ::MapViewOfFile(mapping->handle,
+            FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, mapping_size);
+        if (!mapping->memory)
+            return 0;
+        auto* header = new (mapping->memory)
+            renderer_protocol::FrameBufferHeader();
+        header->capacity =
+            static_cast<uint32_t>(renderer_protocol::kMaxFrameBytes);
+
+        const uint64_t id = NextRequestId();
+        HANDLE remote = nullptr;
+        if (!::DuplicateHandle(::GetCurrentProcess(), mapping->handle,
+                process_.process, &remote, FILE_MAP_WRITE, FALSE, 0))
+            return 0;
+        renderer_protocol::FrameControlMessage control {};
+        control.capture_request_id = id;
+        control.frame_handle = reinterpret_cast<uintptr_t>(remote);
+        control.frame_mapping_size = mapping_size;
+        DWORD written = 0;
+        {
+            std::lock_guard<std::mutex> lock(control_write_lock_);
+            if (!::WriteFile(process_.control_pipe, &control, sizeof(control),
+                    &written, nullptr)
+                || written != sizeof(control)) {
+                HANDLE closed = nullptr;
+                ::DuplicateHandle(process_.process, remote,
+                    ::GetCurrentProcess(), &closed, 0, FALSE,
+                    DUPLICATE_CLOSE_SOURCE);
+                if (closed)
+                    ::CloseHandle(closed);
+                return 0;
+            }
+        }
+        ReplyCallback reply = [mapping, callback = std::move(callback)](
+                                  base::Value::Dict, std::string error) mutable {
+            RendererFrameSnapshot snapshot;
+            if (error.empty()
+                && !CopyCaptureMapping(*mapping, &snapshot))
+                error = "renderer capture mapping is invalid";
+            callback(std::move(snapshot), std::move(error));
+        };
+        const uint64_t queued =
+            QueueRequest(id, "capturePage", {}, std::move(reply));
+        if (!queued) {
+            renderer_protocol::FrameControlMessage release {};
+            release.capture_request_id = id;
+            DWORD release_written = 0;
+            std::lock_guard<std::mutex> lock(control_write_lock_);
+            ::WriteFile(process_.control_pipe, &release, sizeof(release),
+                &release_written, nullptr);
+        }
+        return queued;
+    }
+#endif
 
     bool Send(std::string method, base::Value::Dict params) override
     {
@@ -187,11 +312,27 @@ public:
             const float scale = header->native_scale_factor;
             const uint32_t flags = header->native_flags;
             const uint64_t presented_generation = header->presented_generation;
-            const bool native = output_format == 1;
-            if (output_format > 1 || !width || !height
+#if BUILDFLAG(IS_WIN)
+            mini_electron::win::D3DFrame d3d_frame;
+            d3d_frame.texture_handle = header->native_texture_handle;
+            d3d_frame.fence_handle = header->native_fence_handle;
+            d3d_frame.ready_value = header->native_ready_value;
+            d3d_frame.frame_id = header->native_frame_id;
+            d3d_frame.source_id = header->native_source_id;
+            d3d_frame.adapter_luid_low = header->native_adapter_luid_low;
+            d3d_frame.adapter_luid_high = header->native_adapter_luid_high;
+            d3d_frame.width = static_cast<int>(width);
+            d3d_frame.height = static_cast<int>(height);
+            d3d_frame.scale_factor = scale;
+            const bool d3d = output_format == 2;
+#else
+            constexpr bool d3d = false;
+#endif
+            const bool native = output_format == 1 || d3d;
+            if ((output_format > 1 && !d3d) || !width || !height
                 || width > static_cast<uint32_t>(std::numeric_limits<int>::max()) / 4
                 || height > renderer_protocol::kMaxFrameBytes / 4 / width
-                || (native && (!context_id || !std::isfinite(scale) || scale <= 0
+                || (native && ((!d3d && !context_id) || !std::isfinite(scale) || scale <= 0
                     || flags || !presented_generation || (presented_generation & 1)
                     || presented_generation > before)))
                 return false;
@@ -213,6 +354,27 @@ public:
             uint64_t after = header->generation.load(std::memory_order_relaxed);
             if (before != after || (after & 1))
                 continue;
+#if BUILDFLAG(IS_WIN)
+            if (d3d) {
+                if (!gpu_frame_)
+                    gpu_frame_ = std::make_shared<mini_electron::win::D3DFrameConsumer>();
+                const uint64_t imported = gpu_frame_->frame_id();
+                const uint64_t source_id = gpu_frame_->source_id();
+                if (!gpu_frame_->Import(process_.process, d3d_frame))
+                    return false;
+                if (imported != d3d_frame.frame_id || source_id != d3d_frame.source_id) {
+                    base::Value::Dict consumed;
+                    consumed.Set("frameId", base::NumberToString(d3d_frame.frame_id));
+                    consumed.Set("sourceId", base::NumberToString(d3d_frame.source_id));
+                    if (!const_cast<RendererClientImpl*>(this)->Send(
+                            "gpu-frame-consumed", std::move(consumed)))
+                        return false;
+                }
+                snapshot->gpu_frame = gpu_frame_;
+            } else {
+                snapshot->gpu_frame.reset();
+            }
+#endif
             if (!copy_pixels)
                 snapshot->rgba.clear();
             else if (!reuse_pixels)
@@ -269,6 +431,47 @@ public:
     }
 
 private:
+    uint64_t NextRequestId()
+    {
+        uint64_t id = next_request_id_.fetch_add(1,
+            std::memory_order_relaxed);
+        if (!id)
+            id = next_request_id_.fetch_add(1, std::memory_order_relaxed);
+        return id;
+    }
+
+    uint64_t QueueRequest(uint64_t id, std::string method,
+        base::Value::Dict params, ReplyCallback callback)
+    {
+        if (!id || !callback)
+            return 0;
+        {
+            std::lock_guard<std::mutex> state_lock(state_->lock);
+            if (!state_->alive)
+                return 0;
+            state_->replies.emplace(id, std::move(callback));
+        }
+        base::Value::Dict payload;
+        payload.Set("method", std::move(method));
+        payload.Set("params", std::move(params));
+        if (!Write({ MessageKind::kRequest, id, std::move(payload) })) {
+            ReplyCallback failed;
+            {
+                std::lock_guard<std::mutex> state_lock(state_->lock);
+                auto it = state_->replies.find(id);
+                if (it != state_->replies.end()) {
+                    failed = std::move(it->second);
+                    state_->replies.erase(it);
+                }
+            }
+            if (failed)
+                PostReply(state_, std::move(failed), {},
+                    "renderer IPC write failed");
+            return 0;
+        }
+        return id;
+    }
+
     bool Write(WireMessage message, bool during_close = false)
     {
         if (!during_close) {
@@ -393,8 +596,14 @@ private:
     std::atomic<uint64_t> next_request_id_ { 1 };
     std::atomic<bool> closed_ { false };
     std::mutex write_lock_;
+#if BUILDFLAG(IS_WIN)
+    std::mutex control_write_lock_;
+#endif
     mutable std::mutex frame_lock_;
     mutable std::vector<uint8_t> frame_staging_;
+#if BUILDFLAG(IS_WIN)
+    mutable std::shared_ptr<mini_electron::win::D3DFrameConsumer> gpu_frame_;
+#endif
     std::thread reader_;
 };
 

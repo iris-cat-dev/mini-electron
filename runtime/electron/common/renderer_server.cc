@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <cstring>
@@ -43,6 +44,11 @@
 #include "runtime/engine/api/internal_api.h"
 #if BUILDFLAG(IS_MAC)
 #include "platform/macos/metal_compositor.h"
+#endif
+#if BUILDFLAG(IS_WIN)
+#include "base/command_line.h"
+#include "platform/windows/d3d_compositor.h"
+#include "components/viz/service/frame_sinks/external_begin_frame_source_win.h"
 #endif
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/common/live_id_detect.h"
@@ -215,6 +221,7 @@ struct ServerOptions {
     bool web_security = true;
     bool allow_running_insecure_content = false;
     bool transparent = false;
+    bool disable_gpu = false;
     uint32_t background_color = 0xffffffff;
     std::string accept_languages;
     std::vector<RendererPreload> preloads;
@@ -308,6 +315,7 @@ bool ParseOptions(base::Value::Dict launch, ServerOptions* options)
     options->allow_running_insecure_content
         = launch.FindBool("allowRunningInsecureContent").value_or(false);
     options->transparent = launch.FindBool("transparent").value_or(false);
+    options->disable_gpu = launch.FindBool("disableGpu").value_or(false);
     if (const std::string* color = launch.FindString("backgroundColor")) {
         unsigned rgb = 0;
         if (color->size() == 7 && (*color)[0] == '#'
@@ -560,6 +568,9 @@ public:
 #if BUILDFLAG(IS_MAC)
         mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_), {});
 #endif
+#if BUILDFLAG(IS_WIN)
+        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_), {});
+#endif
         content::SetRendererStorageBroker({});
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         mini_electron::SetRendererClipboardBroker({});
@@ -577,6 +588,10 @@ public:
         settings.version = kMiniElectronVersion;
         settings.mask = MINI_ELECTRON_ENABLE_DISABLE_CC;
         mini_electron_init(&settings);
+#if BUILDFLAG(IS_WIN)
+        if (options_.disable_gpu)
+            base::CommandLine::ForCurrentProcess()->AppendSwitch("disable-gpu");
+#endif
         owner_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
         content::SetRendererPermissionBroker(
             [this](const std::string& permission, bool user_gesture,
@@ -629,7 +644,7 @@ public:
             });
 #endif
         RegisterSchemes();
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         view_ = mini_electron_create_web_view_with_background(
             options_.background_color, options_.transparent);
 #else
@@ -754,6 +769,11 @@ public:
             base::BindRepeating(&RendererServerImpl::MetalFrameUpdated,
                 weak_factory_.GetWeakPtr()));
 #endif
+#if BUILDFLAG(IS_WIN)
+        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_),
+            base::BindRepeating(&RendererServerImpl::D3DFrameUpdated,
+                weak_factory_.GetWeakPtr()));
+#endif
         callbacks.setDraggableRegionsChangedCallback(&DraggableRegionsChanged, this);
         callbacks.setConsoleCallback(&Console, this);
         callbacks.setCloseCallback(&CloseRequested, this);
@@ -858,6 +878,49 @@ private:
         uint64_t native_bitmap_generation = 0;
 #endif
     };
+#if BUILDFLAG(IS_WIN)
+    struct CaptureTarget {
+        HANDLE handle = nullptr;
+        void* memory = nullptr;
+        size_t mapping_size = 0;
+
+        CaptureTarget() = default;
+        CaptureTarget(const CaptureTarget&) = delete;
+        CaptureTarget& operator=(const CaptureTarget&) = delete;
+        CaptureTarget(CaptureTarget&& other) noexcept
+            : handle(std::exchange(other.handle, nullptr))
+            , memory(std::exchange(other.memory, nullptr))
+            , mapping_size(std::exchange(other.mapping_size, 0))
+        {
+        }
+        CaptureTarget& operator=(CaptureTarget&& other) noexcept
+        {
+            if (this != &other) {
+                Reset();
+                handle = std::exchange(other.handle, nullptr);
+                memory = std::exchange(other.memory, nullptr);
+                mapping_size = std::exchange(other.mapping_size, 0);
+            }
+            return *this;
+        }
+        ~CaptureTarget() { Reset(); }
+
+        void Reset()
+        {
+            if (memory)
+                ::UnmapViewOfFile(memory);
+            if (handle)
+                ::CloseHandle(handle);
+            memory = nullptr;
+            handle = nullptr;
+            mapping_size = 0;
+        }
+    };
+    struct PendingFrameCapture {
+        uint64_t request_id = 0;
+        CaptureTarget target;
+    };
+#endif
     struct PendingScreenshot {
         uint64_t request_id = 0;
         int width = 0;
@@ -1240,6 +1303,49 @@ private:
     void Dispatch(const std::string& method, base::Value::Dict params,
         uint64_t request_id)
     {
+        #if BUILDFLAG(IS_WIN)
+        if (method == "gpu-frame-consumed") {
+            uint64_t id = 0;
+            uint64_t source_id = 0;
+            const std::string* token = params.FindString("frameId");
+            const std::string* source = params.FindString("sourceId");
+            if (!token || !base::StringToUint64(*token, &id) || !id
+                || !source || !base::StringToUint64(*source, &source_id) || !source_id) {
+                Reply(request_id, {}, "invalid GPU frame acknowledgement");
+                return;
+            }
+            mini_electron::win::AcknowledgeD3DFrame(
+                static_cast<int64_t>(view_), id, source_id);
+            Reply(request_id);
+            return;
+        }
+        if (method == "getCompositorInfo") {
+            const auto gpu = mini_electron::win::GetD3DCompositorInfo(static_cast<int64_t>(view_));
+            int64_t display_id = -1;
+            if (const std::string* token = params.FindString("displayId"))
+                base::StringToInt64(*token, &display_id);
+            using Clock = viz::ExternalBeginFrameSourceWin::WindowsVSyncClock;
+            const auto timing = viz::ExternalBeginFrameSourceWin::GetWindowsVSyncInfo(display_id);
+            const char* source = "unknown";
+            if (timing.source == Clock::kDxgi) source = "dxgi";
+            else if (timing.source == Clock::kDwm) source = "dwm";
+            else if (timing.source == Clock::kTimer) source = "timer";
+            base::Value::Dict vsync;
+            vsync.Set("source", source);
+            vsync.Set("displayId", base::NumberToString(timing.monitor_id));
+            vsync.Set("intervalUs", static_cast<double>(timing.interval_us));
+            vsync.Set("ticks", static_cast<double>(timing.ticks));
+            vsync.Set("active", timing.active);
+            base::Value::Dict result;
+            result.Set("backend", gpu.gpu_active ? "d3d12" : "software");
+            result.Set("frames", gpu.gpu_active ? static_cast<double>(gpu.frames)
+                : static_cast<double>(frame_->presented_generation / 2));
+            result.Set("readbacks", static_cast<double>(gpu.readbacks));
+            result.Set("vsync", std::move(vsync));
+            Reply(request_id, std::move(result));
+            return;
+        }
+        #endif
         if (method == "navigate") {
             std::string* url = params.FindString("url");
             if (!url || !GURL(*url).is_valid()) {
@@ -1324,17 +1430,41 @@ private:
                 });
             }
             Reply(request_id);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         } else if (method == "setVSyncDisplayId") {
-            const auto display_id = params.FindDouble("displayId");
-            if (!display_id || !std::isfinite(*display_id)
-                || std::floor(*display_id) != *display_id
-                || (*display_id != -1.0 && (*display_id <= 0
-                    || *display_id > std::numeric_limits<uint32_t>::max()))) {
+            int64_t display_id = -1;
+            bool valid_display_id = false;
+#if BUILDFLAG(IS_WIN)
+            if (const std::string* text = params.FindString("displayId")) {
+                valid_display_id = base::StringToInt64(*text, &display_id)
+                    && base::NumberToString(display_id) == *text
+                    && (display_id == -1 || display_id > 0);
+            } else if (const auto numeric = params.FindDouble("displayId")) {
+                constexpr double kMaxExactInteger = 9007199254740991.0;
+                valid_display_id = std::isfinite(*numeric)
+                    && std::floor(*numeric) == *numeric
+                    && (*numeric == -1.0
+                        || (*numeric > 0
+                            && *numeric <= kMaxExactInteger));
+                if (valid_display_id)
+                    display_id = static_cast<int64_t>(*numeric);
+            }
+#else
+            const auto numeric = params.FindDouble("displayId");
+            valid_display_id = numeric && std::isfinite(*numeric)
+                && std::floor(*numeric) == *numeric
+                && (*numeric == -1.0
+                    || (*numeric > 0
+                        && *numeric
+                            <= std::numeric_limits<uint32_t>::max()));
+            if (valid_display_id)
+                display_id = static_cast<int64_t>(*numeric);
+#endif
+            if (!valid_display_id) {
                 Reply(request_id, {}, "invalid display ID");
                 return;
             }
-            PostBlink([this, display_id = static_cast<int64_t>(*display_id)] {
+            PostBlink([this, display_id] {
                 if (content::WebViewHost* view = View())
                     view->setVSyncDisplayId(display_id);
             });
@@ -1472,6 +1602,29 @@ private:
                 }
             }
 #endif
+#if BUILDFLAG(IS_WIN)
+            CaptureTarget target;
+            if (!TakeCaptureTarget(request_id, &target)) {
+                Reply(request_id, {}, "capture mapping is unavailable");
+                return;
+            }
+            if (gpu_failed_) {
+                Reply(request_id, {}, "GPU compositor failed");
+                return;
+            }
+            if (pending_frame_captures_.size()
+                >= renderer_protocol::kMaxContainerEntries) {
+                Reply(request_id, {}, "too many pending frame captures");
+                return;
+            }
+            pending_frame_captures_.push_back(
+                { request_id, std::move(target) });
+            if (frame_->output_format == 2)
+                RequestD3DFrameCapture();
+            else
+                RequestRedraw();
+            return;
+#endif
             base::Value::Dict result;
             result.Set("generation", static_cast<double>(
                 frame_->generation.load(std::memory_order_acquire)));
@@ -1598,6 +1751,10 @@ private:
             if (frame_->output_format == 1)
                 UpdateMetalGuests();
             else if (method == "guest.attach" || method == "guest.bounds"
+                || method == "guest.detach" || method == "guest.invalidate")
+                RequestRedraw();
+#elif BUILDFLAG(IS_WIN)
+            if (method == "guest.attach" || method == "guest.bounds"
                 || method == "guest.detach" || method == "guest.invalidate")
                 RequestRedraw();
 #endif
@@ -2164,6 +2321,7 @@ private:
                     event.FindDouble("deltaY").value_or(0), flags);
 #endif
             return !!mini_electron_fire_mouse_wheel_event(view_, x, y,
+                static_cast<int>(std::lround(event.FindDouble("deltaX").value_or(0))),
                 static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0))), flags);
         }
         if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp") {
@@ -2498,8 +2656,8 @@ private:
                     : button && *button == "middle" ? 1 : 0);
                 event.Set("buttons", params.FindInt("buttons").value_or(0));
                 event.Set("clickCount", params.FindInt("clickCount").value_or(0));
-                event.Set("deltaX", static_cast<int>(params.FindDouble("deltaX").value_or(0)));
-                event.Set("deltaY", static_cast<int>(params.FindDouble("deltaY").value_or(0)));
+                event.Set("deltaX", params.FindDouble("deltaX").value_or(0));
+                event.Set("deltaY", params.FindDouble("deltaY").value_or(0));
                 event.Set("modifiers", params.FindInt("modifiers").value_or(0));
                 if (DispatchInput(event))
                     Reply(request_id);
@@ -2642,6 +2800,21 @@ private:
         mini_electron_wake(view_);
     }
 
+    void RestoreScreenshotViewport(const PendingScreenshot* pending)
+    {
+        content::WebViewHost* host = View();
+        blink::WebFrame* frame = host ? host->getMainFrame() : nullptr;
+        if (frame && frame->IsWebLocalFrame()) {
+            frame->ToWebLocalFrame()->ExecuteScript(blink::WebScriptSource(
+                blink::WebString::FromUTF8(
+                    "if(window.__miniElectronCaptureScroll){"
+                    "scrollTo(...window.__miniElectronCaptureScroll);"
+                    "delete window.__miniElectronCaptureScroll;}")));
+        }
+        mini_electron_resize(view_, pending->original_width,
+            pending->original_height);
+    }
+
     void CompleteScreenshot(const void* buffer, int width, int height)
     {
         std::unique_ptr<PendingScreenshot> pending;
@@ -2687,17 +2860,7 @@ private:
                 gfx::Size(pending->output_width, pending->output_height),
                 pending->output_width * 4, false, {});
         }
-        content::WebViewHost* host = View();
-        blink::WebFrame* frame = host ? host->getMainFrame() : nullptr;
-        if (frame && frame->IsWebLocalFrame()) {
-            frame->ToWebLocalFrame()->ExecuteScript(blink::WebScriptSource(
-                blink::WebString::FromUTF8(
-                    "if(window.__miniElectronCaptureScroll){"
-                    "scrollTo(...window.__miniElectronCaptureScroll);"
-                    "delete window.__miniElectronCaptureScroll;}")));
-        }
-        mini_electron_resize(view_, pending->original_width,
-            pending->original_height);
+        RestoreScreenshotViewport(pending.get());
         if (!encoded) {
             Reply(pending->request_id, {}, "screenshot encoding failed");
             return;
@@ -3013,9 +3176,9 @@ private:
             Reply(request_id, {}, "renderer presentation is unavailable");
             return;
         }
-        // CPU DrawAck or Metal GPU completion precedes this owner-sequence reply.
+        // CPU DrawAck or native GPU completion precedes this owner-sequence reply.
         // A readback may advance the seqlock without publishing a new GPU frame.
-        const uint64_t generation = frame_->output_format == 1
+        const uint64_t generation = frame_->output_format != 0
             ? frame_->presented_generation
             : frame_->generation.load(std::memory_order_acquire);
         if (!generation || (generation & 1)
@@ -3043,6 +3206,9 @@ private:
             return;
         FailPreparations("renderer is shutting down");
         dialog_cv_.notify_all();
+#if BUILDFLAG(IS_WIN)
+        capture_target_cv_.notify_all();
+#endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         if (cdp_service_)
             PostBlink([this] { cdp_service_->Detach("target closed"); });
@@ -3085,17 +3251,39 @@ private:
                 return;
             HANDLE handle = reinterpret_cast<HANDLE>(
                 static_cast<uintptr_t>(message.frame_handle));
+            const bool release_capture = message.magic
+                == renderer_protocol::kControlMagic
+                && message.capture_request_id
+                && message.guest_contents_id == 0
+                && !message.frame_handle && !message.frame_mapping_size;
+            if (release_capture) {
+                {
+                    std::lock_guard<std::mutex> lock(capture_target_lock_);
+                    registered_capture_targets_.erase(
+                        message.capture_request_id);
+                }
+                capture_target_cv_.notify_all();
+                continue;
+            }
+            const bool capture = message.capture_request_id
+                && message.guest_contents_id == 0
+                && message.frame_mapping_size
+                    == sizeof(renderer_protocol::FrameBufferHeader)
+                        + renderer_protocol::kMaxFrameBytes;
+            const bool is_guest = !message.capture_request_id
+                && message.guest_contents_id > 0
+                && message.frame_mapping_size
+                    >= sizeof(renderer_protocol::FrameBufferHeader)
+                && message.frame_mapping_size
+                    <= sizeof(renderer_protocol::FrameBufferHeader)
+                        + renderer_protocol::kMaxFrameBytes;
             if (message.magic != renderer_protocol::kControlMagic
-                || message.guest_contents_id <= 0
-                || message.frame_mapping_size
-                    < sizeof(renderer_protocol::FrameBufferHeader)
-                || message.frame_mapping_size
-                    > sizeof(renderer_protocol::FrameBufferHeader)
-                        + renderer_protocol::kMaxFrameBytes) {
+                || (!capture && !is_guest)) {
                 ::CloseHandle(handle);
                 continue;
             }
-            void* memory = ::MapViewOfFile(handle, FILE_MAP_READ, 0, 0,
+            void* memory = ::MapViewOfFile(handle,
+                capture ? FILE_MAP_WRITE : FILE_MAP_READ, 0, 0,
                 static_cast<size_t>(message.frame_mapping_size));
             if (!memory) {
                 ::CloseHandle(handle);
@@ -3118,6 +3306,7 @@ private:
             int handle = -1;
             std::memcpy(&handle, CMSG_DATA(header), sizeof(handle));
             if (message.magic != renderer_protocol::kControlMagic
+                || message.capture_request_id
                 || message.guest_contents_id <= 0
                 || message.frame_mapping_size
                     < sizeof(renderer_protocol::FrameBufferHeader)
@@ -3131,6 +3320,30 @@ private:
                 MAP_SHARED, handle, 0);
             if (memory == MAP_FAILED) {
                 ::close(handle);
+                continue;
+            }
+#endif
+#if BUILDFLAG(IS_WIN)
+            if (message.capture_request_id) {
+                CaptureTarget target;
+                target.handle = handle;
+                target.memory = memory;
+                target.mapping_size =
+                    static_cast<size_t>(message.frame_mapping_size);
+                {
+                    std::lock_guard<std::mutex> lock(capture_target_lock_);
+                    if (rejected_capture_targets_.erase(
+                            message.capture_request_id)) {
+                        continue;
+                    }
+                    if (registered_capture_targets_.size()
+                        >= renderer_protocol::kMaxContainerEntries) {
+                        continue;
+                    }
+                    registered_capture_targets_.insert_or_assign(
+                        message.capture_request_id, std::move(target));
+                }
+                capture_target_cv_.notify_all();
                 continue;
             }
 #endif
@@ -3172,6 +3385,35 @@ private:
 #endif
         }
     }
+
+#if BUILDFLAG(IS_WIN)
+    bool TakeCaptureTarget(uint64_t request_id, CaptureTarget* target)
+    {
+        std::unique_lock<std::mutex> lock(capture_target_lock_);
+        if (!capture_target_cv_.wait_for(lock, std::chrono::seconds(5),
+                [this, request_id] {
+                    return closing_.load()
+                        || registered_capture_targets_.contains(request_id);
+                })) {
+            rejected_capture_targets_.insert(request_id);
+            return false;
+        }
+        auto found = registered_capture_targets_.find(request_id);
+        if (found == registered_capture_targets_.end())
+            return false;
+        *target = std::move(found->second);
+        registered_capture_targets_.erase(found);
+        lock.unlock();
+        const auto* header =
+            static_cast<const renderer_protocol::FrameBufferHeader*>(
+                target->memory);
+        return header
+            && header->magic == renderer_protocol::kFrameMagic
+            && header->capacity == renderer_protocol::kMaxFrameBytes
+            && target->mapping_size
+                == sizeof(*header) + renderer_protocol::kMaxFrameBytes;
+    }
+#endif
 
     void ReleaseGuestFrame(GuestFrame* guest)
     {
@@ -3778,8 +4020,11 @@ private:
                 destination[pixel + 3] = source[pixel + 3];
             }
         }
-        CompositeGuests(destination, width, height, static_cast<int>(stride),
-            output_scale);
+#if BUILDFLAG(IS_WIN)
+        if (options_.disable_gpu)
+#endif
+            CompositeGuests(destination, width, height,
+                static_cast<int>(stride), output_scale);
         frame_->width = width;
         frame_->height = height;
         frame_->stride = static_cast<uint32_t>(stride);
@@ -3924,6 +4169,195 @@ private:
     }
 #endif
 
+#if BUILDFLAG(IS_WIN)
+    bool PublishCapturePixels(CaptureTarget& target, const void* buffer,
+        int width, int height, float output_scale)
+    {
+        if (!target.memory || !buffer || width <= 0 || height <= 0
+            || width > 16384 || height > 16384
+            || !std::isfinite(output_scale) || output_scale <= 0)
+            return false;
+        auto* capture =
+            static_cast<renderer_protocol::FrameBufferHeader*>(target.memory);
+        const size_t stride = static_cast<size_t>(width) * 4;
+        const size_t size = stride * static_cast<size_t>(height);
+        if (capture->magic != renderer_protocol::kFrameMagic
+            || capture->capacity != renderer_protocol::kMaxFrameBytes
+            || size > capture->capacity
+            || sizeof(*capture) + size > target.mapping_size)
+            return false;
+        const uint64_t generation =
+            capture->generation.load(std::memory_order_relaxed);
+        if (generation & 1)
+            return false;
+        capture->generation.store(generation + 1,
+            std::memory_order_release);
+        auto* destination = reinterpret_cast<uint8_t*>(capture + 1);
+        if constexpr (kN32_SkColorType == kRGBA_8888_SkColorType) {
+            std::memcpy(destination, buffer, size);
+        } else {
+            const auto* source = static_cast<const uint8_t*>(buffer);
+            for (size_t pixel = 0; pixel < size; pixel += 4) {
+                destination[pixel] = source[pixel + 2];
+                destination[pixel + 1] = source[pixel + 1];
+                destination[pixel + 2] = source[pixel];
+                destination[pixel + 3] = source[pixel + 3];
+            }
+        }
+        capture->width = static_cast<uint32_t>(width);
+        capture->height = static_cast<uint32_t>(height);
+        capture->stride = static_cast<uint32_t>(stride);
+        capture->data_size = static_cast<uint32_t>(size);
+        capture->output_format = 0;
+        capture->native_context_id = 0;
+        capture->native_scale_factor = output_scale;
+        capture->native_flags = 0;
+        capture->presented_generation = generation + 2;
+        capture->generation.store(generation + 2,
+            std::memory_order_release);
+        return true;
+    }
+
+    void ReplyCapture(uint64_t request_id, const CaptureTarget& target,
+        const std::string& error = {})
+    {
+        base::Value::Dict result;
+        if (error.empty()) {
+            const auto* capture =
+                static_cast<const renderer_protocol::FrameBufferHeader*>(
+                    target.memory);
+            result.Set("generation", static_cast<double>(
+                capture->generation.load(std::memory_order_acquire)));
+            result.Set("width", static_cast<int>(capture->width));
+            result.Set("height", static_cast<int>(capture->height));
+            result.Set("stride", static_cast<int>(capture->stride));
+        }
+        Reply(request_id, std::move(result), error);
+    }
+
+    void ReplyFrameCaptures(const void* buffer, int width, int height,
+        float output_scale, const std::string& error = {})
+    {
+        auto pending = std::move(pending_frame_captures_);
+        pending_frame_captures_.clear();
+        for (auto& capture : pending) {
+            std::string failure = error;
+            if (failure.empty()
+                && !PublishCapturePixels(capture.target, buffer, width,
+                    height, output_scale))
+                failure = "renderer frame capture failed";
+            ReplyCapture(capture.request_id, capture.target, failure);
+        }
+    }
+
+    void FailFrameCaptures(const std::string& error)
+    {
+        ReplyFrameCaptures(nullptr, 0, 0, 1.f, error);
+    }
+
+    void RequestD3DFrameCapture()
+    {
+        if (d3d_capture_in_flight_)
+            return;
+        bool screenshot;
+        {
+            std::lock_guard<std::mutex> lock(screenshot_lock_);
+            screenshot = !!pending_screenshot_;
+        }
+        if (!screenshot && pending_frame_captures_.empty())
+            return;
+        d3d_capture_in_flight_ = true;
+        auto captures = std::move(pending_frame_captures_);
+        pending_frame_captures_.clear();
+        mini_electron::win::CopyD3DFrameAsync(static_cast<int64_t>(view_),
+            base::BindOnce(
+                [](base::WeakPtr<RendererServerImpl> self,
+                    std::vector<PendingFrameCapture> captures,
+                    bool screenshot, SkBitmap bitmap, float output_scale) {
+                    if (!self || self->closing_)
+                        return;
+                    self->d3d_capture_in_flight_ = false;
+                    if (screenshot) {
+                        if (bitmap.empty()) {
+                            std::unique_ptr<PendingScreenshot> pending;
+                            {
+                                std::lock_guard<std::mutex> lock(self->screenshot_lock_);
+                                pending = std::move(self->pending_screenshot_);
+                            }
+                            if (pending) {
+                                self->RestoreScreenshotViewport(pending.get());
+                                self->Reply(pending->request_id, {},
+                                    "D3D frame capture failed");
+                            }
+                        } else {
+                            self->CompleteScreenshot(bitmap.getPixels(),
+                                bitmap.width(), bitmap.height());
+                        }
+                    }
+                    for (auto& capture : captures) {
+                        if (bitmap.empty()
+                            || !self->PublishCapturePixels(capture.target,
+                                bitmap.getPixels(), bitmap.width(),
+                                bitmap.height(), output_scale)) {
+                            self->ReplyCapture(capture.request_id,
+                                capture.target, "D3D frame capture failed");
+                        } else {
+                            self->ReplyCapture(capture.request_id, capture.target);
+                        }
+                    }
+                    if (!self->pending_frame_captures_.empty())
+                        self->RequestD3DFrameCapture();
+                },
+                owner_weak_, std::move(captures), screenshot));
+    }
+
+    void D3DFrameUpdated(const mini_electron::win::D3DFrame& frame)
+    {
+        if (closing_)
+            return;
+        if (frame.error || !frame.texture_handle || !frame.fence_handle
+            || !frame.frame_id || !frame.source_id || frame.width <= 0 || frame.height <= 0
+            || static_cast<uint64_t>(frame.width) * frame.height * 4 > frame_->capacity) {
+            gpu_failed_ = true;
+            FailFrameCaptures("D3D compositor failed");
+            FailPreparations("D3D compositor failed");
+            return;
+        }
+        const uint64_t generation = frame_->generation.load(std::memory_order_relaxed);
+        if (generation & 1)
+            return;
+        frame_->generation.store(generation + 1, std::memory_order_release);
+        if (frame_->width != static_cast<uint32_t>(frame.width)
+            || frame_->height != static_cast<uint32_t>(frame.height)) {
+            frame_->stride = 0;
+            frame_->data_size = 0;
+        }
+        frame_->width = frame.width;
+        frame_->height = frame.height;
+        frame_->output_format = 2;
+        frame_->native_context_id = 0;
+        frame_->native_scale_factor = frame.scale_factor;
+        frame_->native_flags = 0;
+        frame_->presented_generation = generation + 2;
+        frame_->native_texture_handle = frame.texture_handle;
+        frame_->native_fence_handle = frame.fence_handle;
+        frame_->native_ready_value = frame.ready_value;
+        frame_->native_frame_id = frame.frame_id;
+        frame_->native_source_id = frame.source_id;
+        frame_->native_adapter_luid_low = frame.adapter_luid_low;
+        frame_->native_adapter_luid_high = frame.adapter_luid_high;
+        frame_->generation.store(generation + 2, std::memory_order_release);
+        base::Value::Dict payload;
+        payload.Set("generation", static_cast<double>(generation + 2));
+        payload.Set("width", frame.width);
+        payload.Set("height", frame.height);
+        payload.Set("dirty", base::Value::Dict()
+            .Set("x", 0).Set("y", 0).Set("width", frame.width).Set("height", frame.height));
+        SendEvent("paint", std::move(payload));
+        RequestD3DFrameCapture();
+    }
+    #endif
+
     static void MINI_ELECTRON_CALL_TYPE PaintUpdated(mini_electron_web_view,
         void* parameter, const void* buffer, const mini_electron_rect* dirty,
         int width, int height)
@@ -3931,12 +4365,18 @@ private:
         auto* self = static_cast<RendererServerImpl*>(parameter);
         if (!buffer || !self->frame_) {
             self->FailPreparations("renderer frame publication failed");
+            #if BUILDFLAG(IS_WIN)
+            self->FailFrameCaptures("renderer frame publication failed");
+            #endif
             return;
         }
         self->CompleteScreenshot(buffer, width, height);
         const uint64_t generation = self->PublishPixels(buffer, width, height, false);
         if (!generation) {
             self->FailPreparations("renderer frame publication failed");
+            #if BUILDFLAG(IS_WIN)
+            self->FailFrameCaptures("renderer frame publication failed");
+            #endif
             return;
         }
         base::Value::Dict payload;
@@ -3957,6 +4397,14 @@ private:
         }
         payload.Set("dirty", std::move(rect));
         self->SendEvent("paint", std::move(payload));
+#if BUILDFLAG(IS_WIN)
+        float capture_scale;
+        {
+            std::lock_guard<std::mutex> lock(self->viewport_lock_);
+            capture_scale = self->viewport_scale_;
+        }
+        self->ReplyFrameCaptures(buffer, width, height, capture_scale);
+#endif
     }
 
     static void MINI_ELECTRON_CALL_TYPE Console(mini_electron_web_view,
@@ -4171,10 +4619,20 @@ private:
     ParsedArguments arguments_;
     ServerOptions options_;
     renderer_protocol::FrameBufferHeader* frame_;
+#if BUILDFLAG(IS_WIN)
+    std::vector<PendingFrameCapture> pending_frame_captures_;
+    bool d3d_capture_in_flight_ = false;
+    std::mutex capture_target_lock_;
+    std::condition_variable capture_target_cv_;
+    std::map<uint64_t, CaptureTarget> registered_capture_targets_;
+    std::set<uint64_t> rejected_capture_targets_;
+#endif
     static constexpr size_t kMaxGuestFrames = 256;
     mini_electron_web_view view_ = NULL_WEBVIEW;
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     bool gpu_failed_ = false;
+#endif
+#if BUILDFLAG(IS_MAC)
     bool had_gpu_guests_ = false;
 #endif
     mini_electron_web_frame_handle main_frame_ = nullptr;

@@ -21,7 +21,7 @@
 namespace atom::renderer_protocol {
 
 inline constexpr uint32_t kWireMagic = 0x4d455250; // "MERP"
-inline constexpr uint16_t kWireVersion = 2;
+inline constexpr uint16_t kWireVersion = 3;
 inline constexpr size_t kMaxMessageBytes = 64 * 1024 * 1024;
 inline constexpr size_t kMaxContainerEntries = 64 * 1024;
 inline constexpr size_t kMaxValueDepth = 64;
@@ -58,11 +58,15 @@ struct FrameControlMessage {
     int32_t guest_contents_id = 0;
     uint64_t frame_handle = 0; // Windows target-process handle; zero on POSIX.
     uint64_t frame_mapping_size = 0;
+    // Zero identifies the long-lived guest mapping above. A non-zero value
+    // identifies a single capture request and requires guest_contents_id == 0.
+    uint64_t capture_request_id = 0;
 };
 static_assert(offsetof(FrameControlMessage, guest_contents_id) == 4);
 static_assert(offsetof(FrameControlMessage, frame_handle) == 8);
 static_assert(offsetof(FrameControlMessage, frame_mapping_size) == 16);
-static_assert(sizeof(FrameControlMessage) == 24);
+static_assert(offsetof(FrameControlMessage, capture_request_id) == 24);
+static_assert(sizeof(FrameControlMessage) == 32);
 
 
 // generation is a seqlock: odd while the renderer writes, even while stable.
@@ -75,11 +79,18 @@ struct alignas(64) FrameBufferHeader {
     uint32_t height = 0;
     uint32_t stride = 0;
     uint32_t data_size = 0;
-    uint32_t output_format = 0; // 0: CPU RGBA, 1: Metal remote layer.
+    uint32_t output_format = 0; // 0: CPU RGBA, 1: Metal layer, 2: shared D3D12.
     uint32_t native_context_id = 0;
     float native_scale_factor = 1.f;
     uint32_t native_flags = 0;
     uint64_t presented_generation = 0;
+    uint64_t native_texture_handle = 0; // Producer-process NT handles, never JS.
+    uint64_t native_fence_handle = 0;
+    uint64_t native_ready_value = 0;
+    uint64_t native_frame_id = 0;
+    uint32_t native_adapter_luid_low = 0;
+    int32_t native_adapter_luid_high = 0;
+    uint64_t native_source_id = 0;
 };
 static_assert(offsetof(FrameBufferHeader, generation) == 8);
 static_assert(offsetof(FrameBufferHeader, data_size) == 28);
@@ -88,7 +99,10 @@ static_assert(offsetof(FrameBufferHeader, native_context_id) == 36);
 static_assert(offsetof(FrameBufferHeader, native_scale_factor) == 40);
 static_assert(offsetof(FrameBufferHeader, native_flags) == 44);
 static_assert(offsetof(FrameBufferHeader, presented_generation) == 48);
-static_assert(sizeof(FrameBufferHeader) == 64);
+static_assert(offsetof(FrameBufferHeader, native_texture_handle) == 56);
+static_assert(offsetof(FrameBufferHeader, native_frame_id) == 80);
+static_assert(offsetof(FrameBufferHeader, native_source_id) == 96);
+static_assert(sizeof(FrameBufferHeader) == 128);
 
 bool ReadMessage(PipeHandle pipe, uint64_t auth_high, uint64_t auth_low,
     WireMessage* message, std::string* error);

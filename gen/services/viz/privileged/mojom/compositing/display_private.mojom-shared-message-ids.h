@@ -26,7 +26,7 @@ enum class DisplayPrivate : uint32_t {
     kSetDelegatedInkPointRenderer = 9,
     kSetStandaloneBeginFrameObserver = 10,
     kSetMaxVSyncAndVrr = 11,
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     kSetVSyncDisplayID = 12,
     #endif
 };

@@ -223,8 +223,8 @@ env -u SDKROOT DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 Physical unplug/replug, sleep/wake, changing a screen's OS refresh-mode setting,
 actual scanout timestamps and electrical wattage were not measured. Invalid-ID
 injection is reported separately from the real physical window movements.
-Windows interfaces remain conditionally excluded/preserved, but no Windows
-build or hardware test was run for this macOS-only change.
+Windows was not built during that macOS-only verification. The Windows follow-up
+below verifies shared source changes without porting DisplayLink or Metal.
 
 ### Final build and adjacent regression checks
 
@@ -265,6 +265,106 @@ GPU page compositing.
 
 Full report: `out/vsync-verification/rendering-comparison/report.md`;
 raw per-trial samples and provenance are retained next to it.
+
+## Windows GPU compositing and VSync
+
+The pre-GPU Windows source baseline against `eda7e82c6` plus local parity fixes used a
+3840×2160 desktop at DPR 1.5. WMI reported an NVIDIA GeForce RTX 3090 mode at
+143 Hz. A visible, owned 640×420 CSS-pixel window produced 150 rAF intervals
+in 2499.87 ms: 60.003 callbacks/s, with 16.7 ms median and p95 intervals.
+Its actual native desktop image was also captured. These are callback timings,
+not GPU presentation or physical scanout FPS. The raw observation is retained
+under `out/verification/windows-parity-eda7e82c6/windows-vsync-observe.json`
+and the adjacent PNG.
+
+Windows now uses Ganesh/D3D12 root and intermediate surfaces. Shared NT
+textures cross to retained browser-owned D3D11 textures and DirectComposition
+flip swapchains, without a full-page CPU readback in ordinary presentation.
+Producer-ready and consumer-release shared-fence values protect both sides.
+A per-allocation source epoch prevents recycled numeric HANDLE values from
+keeping a stale texture after resize. Native windows opt into
+`WS_EX_NOREDIRECTIONBITMAP` at creation, not through a later style change.
+Transparent content, captions, BrowserViews, and guest trees share that
+native visual tree; CPU renderer fallback layers are uploaded on change.
+Frame-latency events request a retry of non-blocking `Present`; they are not
+cached capacity permits. A replacement chain attempts its initial presentation
+before waiting for consumption, so a final static frame cannot depend on
+another renderer update.
+
+Explicit Windows captures use independent per-request shared mappings.
+GPU readback runs asynchronously on Viz, leaving renderer UI publication
+and frame consumption unblocked. The browser composites captured guest
+trees with clipping and premultiplied alpha without replacing ordinary
+root-only CPU presentation pixels. Capture rectangles retain the runtime's
+existing source-physical-pixel convention.
+
+The Windows root now receives display-aware external BeginFrames.
+DXGI waits must pass blocking and cadence checks; a successful immediate
+return is not a VBlank. Primary-monitor DWM QPC timing is a validated
+fallback; otherwise an absolute, phase-aligned timer follows the selected
+mode. Clock provenance remains `dxgi`, `dwm`, or `timer`, rather than
+labeling timer wakes as hardware VSync. Waits run off UI/Viz, stop when
+there are no observers, and are reselected on monitor/display changes.
+
+This is GPU composition/presentation, not GPU DOM/layout, cc tile raster,
+WebGL/WebGPU, or a complete Chromium GPU service. Initial unsupported
+hardware falls back to software. Mid-session device-loss recovery is not
+implemented; a GPU failure is reported rather than silently relabeled.
+
+Before the GPU cutover, shared render-pass/resource preparation, damage handling,
+completed-frame retention, and resize publication already applied. That baseline executable
+passed native caption-hover, continuous renderer publication, minimize/restore
+with BrowserViews, transparent companion/focus/taskbar, screen-coordinate,
+pointer-drag, image-preview, Pinyin, and clipboard regressions. The file-row
+hover fixture measured 32.14 ms median and 32.98 ms p95 pointer-to-desktop
+latency in this run; this is not a matched Chrome comparison or attribution
+of the entire delay to the frame clock.
+
+### Windows GPU verification
+
+The final source executable passed 22 required native scenarios, covering
+hardware composition, CLI/API GPU disable, CPU renderer fallback through
+DirectComposition, all four CPU/GPU host/guest combinations, concurrent
+cropped captures, transparent companion/taskbar/focus behavior, captions,
+minimize/restore, pointer routing, wheel input, Pinyin, clipboard, image
+preview/download, JavaScript, and navigation. The complete final acceptance
+report is `out/verification/windows-gpu-vsync/verification-final.json`.
+Pre-fix diagnostic failures remain in the adjacent historical reports.
+
+On the observed selected output, the 640×420 CSS-pixel window at DPR 1.5
+recorded 240 intervals per workload. Both the empty-rAF and animated-transform
+samples measured 143.859 callbacks/s, instead of the pre-GPU 60 Hz ceiling.
+Diagnostics reported real `d3d12` composition, `directcomposition` presentation,
+and a validated `dxgi` clock with a 6,951 µs interval. The animation completed
+240 new GPU frames and browser imports, with zero ordinary CPU readbacks.
+After settling, the VSync counter remained 571 across the 650 ms idle sample
+and reported no active observer.
+
+The final file-row hover trial measured 6.882 ms median and 24.753 ms p95
+pointer-to-desktop latency. The fixture now waits for actual native file text
+before measuring steady-state hover; this is not a controlled speedup ratio
+against the earlier startup-unqualified sample. Caption motion samples the
+real desktop, not an unavailable GDI window backing for a no-redirection HWND.
+
+Raw timing samples, native desktop images, and per-scenario reports are retained
+under `out/verification/windows-gpu-vsync/`, including `observe.json` and
+`observe.png`. These are short local callback/presentation observations,
+not physical-scanout FPS, power measurements, or a matched Chrome/macOS benchmark.
+The native wheel page-scroll branch was not exercised because the unchanged
+system setting uses three lines rather than `WHEEL_PAGESCROLL`.
+
+
+The automated Chrome comparison in `benchmarks/rendering/run.js` is still
+macOS-only: its process ownership and system provenance are not Windows
+implementations. Its `--serve` path was exercised on Windows, and the shared
+page completed all six workloads in the native runtime at 1000×700, DPR 1.5,
+400 ms/scenario, 50 ms warmup, and three operation samples. The raw result
+and native screenshot are in
+`out/verification/windows-parity-eda7e82c6/windows-manual-rendering.json`
+and `windows-manual-rendering.png`. This is one manual run, not a matched
+Chrome comparison. No automated Windows Chrome comparison, mixed-refresh
+monitor movement, precision-touchpad hardware, idle wakeup/power, or
+physical-presentation measurement is claimed here.
 
 ## macOS Metal GPU compositing
 

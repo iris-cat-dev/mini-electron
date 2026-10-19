@@ -259,7 +259,7 @@ void WebViewHost::initializeCompositorInBlinkThread(/*gfx::AcceleratedWidget hwn
         //m_hWnd,
         isTransparent, gfx::Size(1, 1), // �����дһ���ٵĴ�С��������һ��С��ɫ������
         std::move(frameSinkManagerClientReceiver), std::move(frameSinkManager), content::RenderThreadImpl::get()->m_hostThread.task_runner(),
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         m_vsyncDisplayId,
 #endif
         m_service->GetCompositorThreadRunner());
@@ -268,12 +268,14 @@ void WebViewHost::initializeCompositorInBlinkThread(/*gfx::AcceleratedWidget hwn
         m_renderWidgetHostImpl->setSinkHost(m_host.get());
 }
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void WebViewHost::setVSyncDisplayId(int64_t display_id)
 {
     DCHECK(ThreadCall::isBlinkThread());
+#if BUILDFLAG(IS_MAC)
     if (m_vsyncDisplayId == display_id)
         return;
+#endif
     m_vsyncDisplayId = display_id;
     if (m_host)
         m_host->setVSyncDisplayIdOnBlinkThread(display_id);
@@ -844,34 +846,9 @@ LRESULT WebViewHost::windowProcImpl(HWND hWnd, UINT message, WPARAM wParam, LPAR
     case WM_CONTEXTMENU: {
         break;
     }
-    case WM_MOUSEWHEEL: {
-        POINT pt;
-        POINT pt2;
-        pt.x = GET_X_LPARAM(lParam);
-        pt.y = GET_Y_LPARAM(lParam);
-
-        ::ScreenToClient(hWnd, &pt);
-
-        int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-
-        unsigned int flags = 0;
-
-        if (wParam & MK_CONTROL)
-            flags |= MINI_ELECTRON_CONTROL;
-        if (wParam & MK_SHIFT)
-            flags |= MINI_ELECTRON_SHIFT;
-
-        if (wParam & MK_LBUTTON)
-            flags |= MINI_ELECTRON_LBUTTON;
-        if (wParam & MK_MBUTTON)
-            flags |= MINI_ELECTRON_MBUTTON;
-        if (wParam & MK_RBUTTON)
-            flags |= MINI_ELECTRON_RBUTTON;
-
-        if (mini_electron_fire_mouse_wheel_event_impl(getWebviewHandle(), pt.x, pt.y, delta, flags))
-            return 0;
-        break;
-    }
+    case WM_MOUSEWHEEL:
+    case WM_MOUSEHWHEEL:
+        return fireWheelEventOnUiThread(message, wParam, lParam);
     case WM_CAPTURECHANGED:
         break;
     case WM_SETFOCUS:
@@ -1326,6 +1303,18 @@ void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event)
 {
     if (m_platformEventHandler)
         m_platformEventHandler->fireInputEventToCompositingThread(event);
+}
+
+void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags)
+{
+    if (!m_platformEventHandler)
+        return;
+    int modifiers = 0;
+    if (flags & MINI_ELECTRON_SHIFT)
+        modifiers |= blink::WebInputEvent::kShiftKey;
+    if (flags & MINI_ELECTRON_CONTROL)
+        modifiers |= blink::WebInputEvent::kControlKey;
+    m_platformEventHandler->fireWheelEvent(x, y, deltaX, deltaY, modifiers);
 }
 
 void WebViewHost::onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
@@ -1822,10 +1811,10 @@ void WebViewHost::reload(bool force)
     m_renderWidgetHostImpl->m_mainFrame->StartReload(force ? blink::WebFrameLoadType::kReload : blink::WebFrameLoadType::kReloadBypassingCache);
 }
 
-LRESULT WebViewHost::fireWheelEventOnUiThread(WPARAM wParam, LPARAM lParam)
+LRESULT WebViewHost::fireWheelEventOnUiThread(UINT message, WPARAM wParam, LPARAM lParam)
 {
-    if (m_platformEventHandler.get())
-        m_platformEventHandler->fireWheelEvent(m_hWnd, wParam, lParam);
+    if (m_platformEventHandler)
+        m_platformEventHandler->fireWheelEvent(m_hWnd, message, wParam, lParam);
     return 0;
 }
 

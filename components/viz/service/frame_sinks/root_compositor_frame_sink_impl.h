@@ -69,7 +69,7 @@ public:
     void Resize(const gfx::Size& size) override;
     void SetDisplayColorMatrix(const gfx::Transform& color_matrix) override;
     void SetDisplayColorSpaces(const gfx::DisplayColorSpaces& display_color_spaces) override;
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void SetVSyncDisplayID(int64_t display_id) override;
 #endif
     void SetOutputIsSecure(bool secure) override;

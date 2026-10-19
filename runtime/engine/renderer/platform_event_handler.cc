@@ -35,18 +35,18 @@ namespace content {
 static const unsigned short HIGH_BIT_MASK_SHORT = 0x8000;
 
 
-int verticalScrollLines()
+ULONG verticalScrollLines()
 {
-    static ULONG scrollLines = 0;
-    if (!scrollLines && !SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &scrollLines, 0))
+    ULONG scrollLines = 3;
+    if (!SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &scrollLines, 0))
         scrollLines = 3;
     return scrollLines;
 }
 
-int horizontalScrollChars()
+ULONG horizontalScrollChars()
 {
-    static ULONG scrollChars = 0;
-    if (!scrollChars && !SystemParametersInfoW(SPI_GETWHEELSCROLLCHARS, 0, &scrollChars, 0))
+    ULONG scrollChars = 1;
+    if (!SystemParametersInfoW(SPI_GETWHEELSCROLLCHARS, 0, &scrollChars, 0))
         scrollChars = 1;
     return scrollChars;
 }
@@ -134,7 +134,9 @@ bool PlatformEventHandler::isDraggableRegionNcHitTest(HWND hWnd, const gfx::Poin
     return draggable;
 }
 
-void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers, bool precise)
+void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y,
+    float wheelTicksX, float wheelTicksY, float deltaX, float deltaY,
+    int modifiers, ui::ScrollGranularity deltaUnits, bool precise)
 {
     if (!m_blinkWidgetInputHandler.is_bound())
         return;
@@ -147,18 +149,16 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y, bool s
 
     mouseWheelEvent.delta_x = deltaX;
     mouseWheelEvent.delta_y = deltaY;
-
-    mouseWheelEvent.wheel_ticks_x = (shiftKey) ? delta : 0;
-    mouseWheelEvent.wheel_ticks_y = (!shiftKey) ? delta : 0;
+    mouseWheelEvent.wheel_ticks_x = wheelTicksX;
+    mouseWheelEvent.wheel_ticks_y = wheelTicksY;
 
     mouseWheelEvent.phase = blink::WebMouseWheelEvent::kPhaseNone;
     mouseWheelEvent.dispatch_type = blink::WebMouseWheelEvent::DispatchType::kBlocking;
     mouseWheelEvent.event_action = blink::WebMouseWheelEvent::EventAction::kPageZoom;
-    if (precise) {
-        mouseWheelEvent.SetModifiers(modifiers);
-        mouseWheelEvent.delta_units = ui::ScrollGranularity::kScrollByPrecisePixel;
+    mouseWheelEvent.delta_units = deltaUnits;
+    mouseWheelEvent.SetModifiers(modifiers);
+    if (precise)
         mouseWheelEvent.event_action = blink::WebMouseWheelEvent::GetPlatformSpecificDefaultEventAction(mouseWheelEvent);
-    }
 
     std::unique_ptr<blink::WebCoalescedInputEvent> mouseWheelCoalescedEvent
         = std::make_unique<blink::WebCoalescedInputEvent>(mouseWheelEvent, ui::LatencyInfo());
@@ -208,101 +208,84 @@ void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, flo
     runner->PostTask(FROM_HERE, base::BindOnce(
         [](PlatformEventHandler* self, int x, int y, float deltaX, float deltaY, int modifiers) {
             base::AutoLock lock(self->m_lock);
-            self->fireWheelEventOnCompositorThread(x, y, false, false, 0, deltaX, deltaY, modifiers, true);
+            self->fireWheelEventOnCompositorThread(x, y, 0, 0, deltaX, deltaY,
+                modifiers, ui::ScrollGranularity::kScrollByPrecisePixel, true);
         },
         base::Unretained(this), x, y, deltaX, deltaY, modifiers));
 }
 
-LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lParam)
+LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    int x = GET_X_LPARAM(lParam);
-    int y = GET_Y_LPARAM(lParam);
-    POINT point = { x, y };
+    POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
     ::ScreenToClient(hWnd, &point);
-    x = point.x;
-    y = point.y;
 
-    int wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
     int modifiers = 0;
-#if defined(__APPLE__)
-    // Use logical pixels on macOS so Retina does not halve the wheel step.
-    const float cScrollbarPixelsPerLine =
-        (80.0f / 3.0f) * m_webViewImpl->MainFrameWidget()->GetOriginalScreenInfo().device_scale_factor;
-#else
-    static const float cScrollbarPixelsPerLine = 100.0f / 3.0f;
-#endif
-    float delta = wheelDelta / static_cast<float>(WHEEL_DELTA);
-
-    float deltaX = 0.f;
-    float deltaY = 0.f;
-
-    bool shiftKey = wParam & MK_SHIFT;
-    bool ctrlKey = wParam & MK_CONTROL;
-
-#if !defined(__APPLE__)
-    if (delta < 0)
-        delta = -1;
-    if (delta > 0)
-        delta = 1;
-#endif
-
-    if (shiftKey) {
-        deltaX = delta * static_cast<float>(horizontalScrollChars()) * cScrollbarPixelsPerLine;
-        deltaY = 0;
-        //granularity = blink::ScrollByPixelWheelEvent;
+    if (wParam & MK_SHIFT)
         modifiers |= blink::WebInputEvent::kShiftKey;
-    } else {
-        deltaX = 0;
-        deltaY = delta;
-        int verticalMultiplier = verticalScrollLines();
-        //         granularity = (verticalMultiplier == WHEEL_PAGESCROLL) ? blink::ScrollByPageWheelEvent : blink::ScrollByPixelWheelEvent;
-        //         if (granularity == blink::ScrollByPixelWheelEvent)
-        if (verticalMultiplier != WHEEL_PAGESCROLL)
-            deltaY *= static_cast<float>(verticalMultiplier) * cScrollbarPixelsPerLine;
-    }
-
-    if (ctrlKey)
+    if (wParam & MK_CONTROL)
         modifiers |= blink::WebInputEvent::kControlKey;
 
+    const float wheelDelta = static_cast<float>(GET_WHEEL_DELTA_WPARAM(wParam));
+    fireWheelEvent(point.x, point.y,
+        message == WM_MOUSEHWHEEL ? wheelDelta : 0,
+        message == WM_MOUSEWHEEL ? wheelDelta : 0, modifiers);
+    return 0;
+}
+
+void PlatformEventHandler::fireWheelEvent(int x, int y, float wheelDeltaX,
+    float wheelDeltaY, int modifiers)
+{
+    if (wheelDeltaX == 0 && wheelDeltaY == 0)
+        return;
+#if defined(_WIN32)
+    // Win32 horizontal ticks point right; Blink's content-motion delta is opposite.
+    wheelDeltaX = -wheelDeltaX;
+#endif
+
+
+    if (wheelDeltaX == 0 && wheelDeltaY != 0
+        && (modifiers & blink::WebInputEvent::kShiftKey)) {
+        wheelDeltaX = wheelDeltaY;
+        wheelDeltaY = 0;
+    }
+
+    const float wheelTicksX = wheelDeltaX / static_cast<float>(WHEEL_DELTA);
+    const float wheelTicksY = wheelDeltaY / static_cast<float>(WHEEL_DELTA);
+#if defined(__APPLE__)
+    // Use logical pixels on macOS so Retina does not halve the wheel step.
+    const float pixelsPerLine =
+        (80.0f / 3.0f) * m_webViewImpl->MainFrameWidget()->GetOriginalScreenInfo().device_scale_factor;
+#else
+    static constexpr float pixelsPerLine = 100.0f / 3.0f;
+#endif
+
+    const ULONG scrollLines = verticalScrollLines();
+    const ui::ScrollGranularity deltaUnits =
+        wheelTicksY != 0 && scrollLines == WHEEL_PAGESCROLL
+        ? ui::ScrollGranularity::kScrollByPage
+        : ui::ScrollGranularity::kScrollByPixel;
+    const float deltaX = wheelTicksX * static_cast<float>(horizontalScrollChars()) * pixelsPerLine;
+    const float deltaY = wheelTicksY == 0 ? 0
+        : deltaUnits == ui::ScrollGranularity::kScrollByPage ? wheelTicksY
+        : wheelTicksY * static_cast<float>(scrollLines) * pixelsPerLine;
+
     CHECK(this);
-    blink::CompositorThreadScheduler* compositingThreadScheduler = blink::ThreadScheduler::CompositorThreadScheduler();
-    scoped_refptr<base::SingleThreadTaskRunner> runner = compositingThreadScheduler->InputTaskRunner();
+    scoped_refptr<base::SingleThreadTaskRunner> runner =
+        blink::ThreadScheduler::CompositorThreadScheduler()->InputTaskRunner();
     if (m_isDispatchDirectlyToWidget)
         runner = RenderThreadImpl::get()->getTaskRunner();
 
     runner->PostTask(FROM_HERE,
         base::BindOnce(
-            [](PlatformEventHandler* self, int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers) {
-                //self->m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::move(evt)); // TODO: û���ǿ���̱����������
-                self->m_lock.Acquire();
-                self->fireWheelEventOnCompositorThread(x, y, shiftKey, ctrlKey, delta, deltaX, deltaY, modifiers);
-                self->m_lock.Release();
+            [](PlatformEventHandler* self, int x, int y, float wheelTicksX,
+                float wheelTicksY, float deltaX, float deltaY, int modifiers,
+                ui::ScrollGranularity deltaUnits) {
+                base::AutoLock lock(self->m_lock);
+                self->fireWheelEventOnCompositorThread(x, y, wheelTicksX,
+                    wheelTicksY, deltaX, deltaY, modifiers, deltaUnits);
             },
-            /*m_weakPtr.GetWeakPtr()*/ base::Unretained(this), x, y, shiftKey, ctrlKey, delta, deltaX, deltaY, modifiers));
-
-    //     std::unique_ptr<blink::WebCoalescedInputEvent> evtToBlink = std::make_unique<blink::WebCoalescedInputEvent>(mouseWheelEvent, ui::LatencyInfo());
-    //     RenderThreadImpl::get()->getTaskRunner()->PostNonNestableTask(FROM_HERE,
-    //         base::BindOnce([](/*base::WeakPtr<PlatformEventHandler>*/PlatformEventHandler* self, std::unique_ptr<blink::WebCoalescedInputEvent> evt) {
-    //             self->m_webWidget->HandleInputEvent(*evt); // TODO: û���ǿ���̱����������
-    //     }, /*m_weakPtr.GetWeakPtr()*/base::Unretained(this), std::move(evtToBlink)));
-
-    //     webGestureEvent.setType(WebInputEvent::GestureScrollUpdate);
-    //     webGestureEvent.data.scrollUpdate.deltaX = deltaX;
-    //     webGestureEvent.data.scrollUpdate.deltaY = deltaY;
-    //     webGestureEvent.data.scrollUpdate.velocityX = x;
-    //     webGestureEvent.data.scrollUpdate.velocityY = y;
-    //     webGestureEvent.data.scrollUpdate.previousUpdateInSequencePrevented = false;
-    //     webGestureEvent.data.scrollUpdate.preventPropagation = false;
-    //     webGestureEvent.data.scrollUpdate.inertialPhase = WebGestureEvent::NonMomentumPhase;
-    //     m_webWidget->handleInputEvent(webGestureEvent);
-    //
-    //     webGestureEvent.setType(WebInputEvent::GestureScrollEnd);
-    //     webGestureEvent.data.scrollEnd.synthetic = true;
-    //     webGestureEvent.data.scrollEnd.inertialPhase = WebGestureEvent::NonMomentumPhase;
-    //     webGestureEvent.data.scrollEnd.deltaUnits = WebGestureEvent::Pixels;
-    //     m_webWidget->handleInputEvent(webGestureEvent);
-
-    return 0;
+            base::Unretained(this), x, y, wheelTicksX, wheelTicksY, deltaX,
+            deltaY, modifiers, deltaUnits));
 }
 
 void PlatformEventHandler::buildMousePosInfo(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, bool* handle, gfx::Point* pos, gfx::Point* globalPos)

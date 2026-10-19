@@ -120,7 +120,7 @@ private:
     ~DisplayPrivate_SetOutputIsSecure_Params_Data() = delete;
 };
 static_assert(sizeof(DisplayPrivate_SetOutputIsSecure_Params_Data) == 16, "Bad sizeof(DisplayPrivate_SetOutputIsSecure_Params_Data)");
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 class DisplayPrivate_SetVSyncDisplayID_Params_Data {
 public:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -423,7 +423,7 @@ private:
     internal::DisplayPrivate_SetOutputIsSecure_Params_Data* data_ = nullptr;
 };
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 class DisplayPrivate_SetVSyncDisplayID_ParamsDataView {
 public:
     DisplayPrivate_SetVSyncDisplayID_ParamsDataView() = default;

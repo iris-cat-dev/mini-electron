@@ -69,6 +69,9 @@ mojom("compositing") {
   if (is_android || is_chromeos_ash) {
     enabled_features += [ "can_set_refresh_rate" ]
   }
+  if (is_mac || is_win) {
+    enabled_features += [ "supports_vsync_display_id" ]
+  }
 
   cpp_typemaps = [
     {

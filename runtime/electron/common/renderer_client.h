@@ -12,6 +12,11 @@
 
 #include "base/values.h"
 
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_WIN)
+namespace mini_electron::win { class D3DFrameConsumer; }
+#endif
 namespace atom {
 
 struct RendererPreload {
@@ -53,12 +58,19 @@ struct RendererFrameSnapshot {
     uint32_t native_flags = 0;
     uint64_t presented_generation = 0;
     std::vector<uint8_t> rgba;
+#if BUILDFLAG(IS_WIN)
+    std::shared_ptr<mini_electron::win::D3DFrameConsumer> gpu_frame;
+#endif
 };
 
 class RendererClient {
 public:
     using EventCallback = std::function<void(base::Value::Dict)>;
     using ReplyCallback = std::function<void(base::Value::Dict, std::string)>;
+#if BUILDFLAG(IS_WIN)
+    using CaptureReplyCallback =
+        std::function<void(RendererFrameSnapshot, std::string)>;
+#endif
 
     virtual ~RendererClient() = default;
 
@@ -72,6 +84,11 @@ public:
     // Closing the renderer completes every outstanding callback with an error.
     virtual uint64_t Request(std::string method, base::Value::Dict params,
         ReplyCallback callback) = 0;
+#if BUILDFLAG(IS_WIN)
+    // Allocates a mapping dedicated to this capture request. The mapping is
+    // released after the callback and never aliases ordinary presentation.
+    virtual uint64_t RequestCapture(CaptureReplyCallback callback) = 0;
+#endif
     virtual bool Send(std::string method, base::Value::Dict params) = 0;
 
     // Completes a renderer-originated request (ipc-invoke, before-input-event,

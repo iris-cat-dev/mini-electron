@@ -26,6 +26,19 @@ async function finish(error) {
   if (finished) return;
   finished = true;
   clearTimeout(deadline);
+  if (error && window && !window.isDestroyed()) {
+    try {
+      evidence.failureState = await window.webContents._getCompositorInfo();
+      evidence.hoveredRows = await evaluate(`Array.from(document.querySelectorAll('.row')).map((row,index)=>
+        ({index,hovered:row.matches(':hover'),background:getComputedStyle(row).backgroundColor})).filter(row=>row.hovered)`);
+      const image = await Promise.race([window.webContents.capturePage(),
+        pause(8000).then(() => { throw new Error('diagnostic capture timed out'); })]);
+      const size = image.getSize(), bitmap = image.toBitmap();
+      const offset = (Math.floor(101 * size.height / 850) * size.width + Math.floor(320 * size.width / 1400)) * 4;
+      evidence.capturedFirstRow = [bitmap[offset + 2], bitmap[offset + 1], bitmap[offset], bitmap[offset + 3]];
+      if (artifacts) fs.writeFileSync(path.join(artifacts, 'hover-failure.png'), image.toPNG());
+    } catch (failure) { evidence.diagnosticError = String(failure); }
+  }
   evidence.passed = !error;
   evidence.error = error ? String(error.stack || error) : null;
   if (artifacts) {
@@ -35,7 +48,7 @@ async function finish(error) {
   if (driver) { try { await driver.close(); } catch (cleanupError) { error ||= cleanupError; } }
   if (window && !window.isDestroyed()) window.destroy();
   fs.rmSync(temporary, { recursive: true, force: true });
-  if (error) console.error(error.stack || error);
+  if (error) console.error(error.stack || error, JSON.stringify(evidence));
   else console.log('PASS: native file-row hover presentation, stable translucent caption backgrounds, and clearing under continuous renderer publication');
   app.exit(error ? 1 : 0);
 }
@@ -66,6 +79,17 @@ app.whenReady().then(async () => {
   evidence.geometry = geometry;
   const dip = value => Math.floor(value * geometry.dpi / 96 + 0.5);
   const point = (x, y) => ({ x: geometry.clientX + dip(x), y: geometry.clientY + dip(y) });
+  // Load completion precedes the first GPU tile presentation. Measure steady
+  // hover latency only after actual file text is visible, not during startup.
+  await driver.request('pointerMove', point(500, 200));
+  const readyDeadline = Date.now() + 5000;
+  let fileTextVisible = false;
+  do {
+    const colors = await driver.request('sample', { ...point(32, 90), width: dip(45), height: dip(22) });
+    fileTextVisible = colors.some(({ rgb }) => rgb.every((value, index) => Math.abs(value - [187, 198, 214][index]) <= 4));
+    if (!fileTextVisible) await pause(20);
+  } while (!fileTextVisible && Date.now() < readyDeadline);
+  assert.ok(fileTextVisible, 'initial file text must reach the actual desktop before latency sampling');
   // Alternate rows so each sample requires a new native hover presentation.
   for (const row of [0, 7, 2, 11, 4, 15, 1, 9, 3, 13, 5, 16]) {
     const target = point(280, 90 + row * 22 + 11);

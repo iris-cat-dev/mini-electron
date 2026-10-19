@@ -236,9 +236,11 @@ bool IsValidClipboardPng(const std::vector<uint8_t>& data)
             > kMaximumPixels / static_cast<uint64_t>(height)) {
         return false;
     }
-    SkBitmap bitmap = gfx::PNGCodec::Decode(data);
-    return !bitmap.drawsNothing()
-        && bitmap.width() == width && bitmap.height() == height;
+    SkBitmap bitmap;
+    const SkImageInfo info = SkImageInfo::MakeN32Premul(width, height);
+    return bitmap.tryAllocPixels(info)
+        && codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes())
+            == SkCodec::kSuccess;
 }
 
 bool ReadFilenamesAvailable()

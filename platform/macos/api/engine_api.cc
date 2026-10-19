@@ -354,24 +354,19 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_event(mini_electron_web_vi
   return TRUE;
 }
 
-BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(mini_electron_web_view handle,
-                                        int x,
-                                        int y,
-                                        int wheel_delta,
-                                        unsigned int flags) {
+BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(
+    mini_electron_web_view handle, int x, int y, int delta_x, int delta_y,
+    unsigned int flags) {
   content::WebViewHost* view = ViewFor(handle);
   if (!view)
     return FALSE;
   content::ThreadCall::callBlinkThreadAsyncWithValid(
-      FROM_HERE, handle, [x, y, wheel_delta, flags](content::WebViewHost* view) {
+      FROM_HERE, handle,
+      [x, y, delta_x, delta_y, flags](content::WebViewHost* view) {
         const float scale = view->getWebView()->MainFrameWidget()
                                 ->GetOriginalScreenInfo().device_scale_factor;
-        const WPARAM wparam = MouseFlags(flags) |
-            (static_cast<WPARAM>(static_cast<uint16_t>(wheel_delta)) << 16);
-        const LPARAM lparam =
-            static_cast<LPARAM>(static_cast<uint16_t>(std::lround(x * scale))) |
-            (static_cast<LPARAM>(static_cast<uint16_t>(std::lround(y * scale))) << 16);
-        view->fireWheelEventOnUiThread(wparam, lparam);
+        view->onWheelEvent(std::lround(x * scale), std::lround(y * scale),
+                           delta_x, delta_y, flags);
       });
   return TRUE;
 }
@@ -865,9 +860,11 @@ BOOL mini_electron_fire_key_down_event_impl(mini_electron_web_view handle,
 BOOL mini_electron_fire_mouse_wheel_event_impl(mini_electron_web_view handle,
                                int x,
                                int y,
-                               int wheel_delta,
+                               int delta_x,
+                               int delta_y,
                                unsigned int flags) {
-  return mini_electron_fire_mouse_wheel_event(handle, x, y, wheel_delta, flags);
+  return mini_electron_fire_mouse_wheel_event(
+      handle, x, y, delta_x, delta_y, flags);
 }
 
 BOOL mini_electron_fire_windows_message_impl(mini_electron_web_view,

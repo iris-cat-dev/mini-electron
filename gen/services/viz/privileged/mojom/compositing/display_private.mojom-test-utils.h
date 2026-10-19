@@ -19,7 +19,7 @@ class DisplayPrivateInterceptorForTesting : public DisplayPrivate {
     void SetDisplayColorMatrix(const ::gfx::Transform& color_matrix) override;
     void SetDisplayColorSpaces(const ::gfx::DisplayColorSpaces& display_color_spaces) override;
     void SetOutputIsSecure(bool secure) override;
-    #if BUILDFLAG(IS_MAC)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void SetVSyncDisplayID(int64_t display_id) override;
     #endif
     void SetDisplayVSyncParameters(::base::TimeTicks timebase, ::base::TimeDelta interval) override;

@@ -328,6 +328,32 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
             "BSD-3-Clause",
             root / "third_party" / "leveldb" / "LICENSE",
         ),
+        (
+            "SPIRV-Cross",
+            "https://github.com/KhronosGroup/SPIRV-Cross/",
+            "Apache-2.0 OR MIT",
+            root / "third_party" / "skia-vendored" / "spirv-cross" / "LICENSE",
+        ),
+        (
+            "D3D12 Memory Allocator",
+            "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/",
+            "MIT",
+            root
+            / "third_party"
+            / "skia-vendored"
+            / "d3d12allocator"
+            / "LICENSE.txt",
+        ),
+        (
+            "D3D12 Memory Allocator third-party notices",
+            "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/",
+            "MIT and BSD-3-Clause",
+            root
+            / "third_party"
+            / "skia-vendored"
+            / "d3d12allocator"
+            / "NOTICES.txt",
+        ),
     )
     for name, url, license_name, license_path in supplemental:
         if not license_path.is_file():

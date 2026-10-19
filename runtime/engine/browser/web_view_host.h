@@ -2,11 +2,15 @@
 #ifndef MINI_ELECTRON_ENGINE_BROWSER_WEB_VIEW_HOST_H_
 #define MINI_ELECTRON_ENGINE_BROWSER_WEB_VIEW_HOST_H_
 
+#include "build/build_config.h"
 #include "runtime/engine/viz/viz_service.h"
 #include "runtime/engine/viz/viz_host.h"
 #include "runtime/engine/browser/page_nav_controller.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/base/cursor/cursor.h"
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#include "ui/display/types/display_constants.h"
+#endif
 #include "runtime/engine/public/engine_api.h"
 #include "runtime/engine/bindings/callback_registry.h"
 #include "runtime/network/loader/page_net_extra_data.h"
@@ -153,7 +157,8 @@ public:
     mini_electron::engine::JsValueBridge* runJsOnBlinkThreadImpl(
         mini_electron_web_frame_handle frameId, int worldId, std::string* scriptString, BOOL isInClosure, mini_electron_run_js_callback callback, void* param);
 
-    LRESULT fireWheelEventOnUiThread(WPARAM wParam, LPARAM lParam);
+    LRESULT fireWheelEventOnUiThread(UINT message, WPARAM wParam, LPARAM lParam);
+    void onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags);
     void onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
     void onMouseMessage(unsigned int message, int x, int y, unsigned int flags);
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
@@ -222,8 +227,9 @@ public:
 
     void onResize(int w, int h, bool needSetHostWnd);
     void setDeviceScaleFactor(float device_scale_factor);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     // Blink-thread only; retained until compositor initialization if necessary.
+    // Windows stores an HMONITOR reinterpreted as int64_t.
     void setVSyncDisplayId(int64_t display_id);
 #endif
     LRESULT onNcHittest(LPARAM lParam);
@@ -308,7 +314,7 @@ private:
     HWND m_hWnd = nullptr;
     std::unique_ptr<VizService> m_service;
     std::unique_ptr<VizHost> m_host;
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
 #endif
     std::unique_ptr<RenderWidgetHostImpl> m_renderWidgetHostImpl;

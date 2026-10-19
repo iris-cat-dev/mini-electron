@@ -438,6 +438,12 @@ viz_component("service") {
       "gl/info_collection_gpu_service_impl.cc",
       "gl/info_collection_gpu_service_impl.h",
     ]
+    deps += [ "//ui/display" ]
+    libs += [
+      "dwmapi.lib",
+      "dxgi.lib",
+    ]
+
 
     # SkiaOutputDeviceBufferQueue doesn't support Windows.
     sources -= [

@@ -19,6 +19,7 @@
 #include "ui/gfx/geometry/point_f.h"
 #include "ui/gfx/geometry/rect.h"
 #include "base/timer/timer.h"
+#include "ui/events/types/scroll_types.h"
 #include <windows.h>
 
 namespace blink {
@@ -115,7 +116,8 @@ public:
         RenderWidgetHostImpl* renderWidgetHost = nullptr;
     };
     LRESULT fireMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, const MouseEvtInfo& info, BOOL* bHandle);
-    LRESULT fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lParam);
+    LRESULT fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+    void fireWheelEvent(int x, int y, float wheelDeltaX, float wheelDeltaY, int modifiers);
     void firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
     void fireCaptureChangedEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -165,7 +167,8 @@ public:
     void fireImeText(const std::u16string& text, bool committed);
 
 private:
-    void fireWheelEventOnCompositorThread(int x, int y, bool shiftKey, bool ctrlKey, float delta, float deltaX, float deltaY, int modifiers, bool precise = false);
+    void fireWheelEventOnCompositorThread(int x, int y, float wheelTicksX, float wheelTicksY,
+        float deltaX, float deltaY, int modifiers, ui::ScrollGranularity deltaUnits, bool precise = false);
 
     friend class RenderWidgetHostImpl;
 
