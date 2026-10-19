@@ -22,7 +22,7 @@ function finish(error) {
   fs.rmSync(path.join(temporary, 'pointer.node'), { force: true });
   console.log(`Native scroll PNG evidence: ${temporary}`);
   if (error) console.error(error.stack || error);
-  else console.log('PASS: pixel-proportional trackpad scrolling, direction, high-frequency input, fractional deltas, hit testing and unchanged mouse wheel');
+  else console.log('PASS: responsive proportional mouse-wheel scrolling, pixel-proportional trackpad motion, fractional deltas and nested hit testing');
   app.exit(error ? 1 : 0);
 }
 const evaluate = source => window.webContents.executeJavaScript(source);
@@ -80,17 +80,32 @@ app.whenReady().then(async () => {
     </script>`));
   await window.webContents.prepareToShow();
   const scroll = (x, y, precise = true) => native.scroll(title, 160, 200, x, y, precise);
+  const snapshot = async filename => {
+    const image = await window.webContents.capturePage();
+    fs.writeFileSync(path.join(temporary, filename), image.toPNG());
+  };
 
   await reset();
   scroll(0, -1, false);
   await pause(500);
   const mouse = await state();
-  assert.equal(mouse.top, 1000 + 100 / mouse.scale, 'Line wheel retains its existing 100-physical-pixel step');
-  assert.deepEqual(mouse.wheels, [{ x: 0, y: 100 / mouse.scale, mode: 0 }]);
-  console.log(JSON.stringify({ scenario: 'mouse-wheel baseline', ...mouse }));
+  const step = mouse.top - 1000;
+  assert.ok(step >= 80 && step < 400, `One mouse-wheel notch must advance several rows, not a whole pane: ${step}`);
+  assert.equal(mouse.left, 1000, 'Vertical wheel input must not move the horizontal axis');
+  assert.equal(mouse.otherTop, 0, 'Wheel input must target the pane under the pointer');
+  assert.equal(mouse.pageTop, 0, 'Nested wheel input must not scroll the document');
+  console.log(JSON.stringify({ scenario: 'single mouse-wheel notch', ...mouse }));
 
   await reset();
-  native.snapshot(title, path.join(temporary, 'before.png'));
+  scroll(0, -3, false);
+  await checkPosition(1000 + 3 * step, 1000, 'three mouse-wheel notches in one native event');
+
+  await reset();
+  scroll(0, 1, false);
+  await checkPosition(1000 - step, 1000, 'upward mouse-wheel notch');
+
+  await reset();
+  await snapshot('before.png');
   scroll(0, -2);
   const small = await checkPosition(1002, 1000, '2-point trackpad motion');
   assert.equal(small.wheels.at(-1).y, 2, 'DOM wheel deltas must use CSS pixels');
@@ -105,13 +120,13 @@ app.whenReady().then(async () => {
   const burst = await checkPosition(1008, 1000, 'high-frequency 4 × 2-point motion');
   assert.equal(burst.wheels.reduce((sum, event) => sum + event.y, 0), 8);
   await window.webContents.prepareToShow();
-  native.snapshot(title, path.join(temporary, 'trackpad-burst.png'));
+  await snapshot('trackpad-burst.png');
 
   await reset();
   scroll(12, -18);
   await checkPosition(1018, 988, 'diagonal trackpad motion');
   await window.webContents.prepareToShow();
-  native.snapshot(title, path.join(temporary, 'trackpad-diagonal.png'));
+  await snapshot('trackpad-diagonal.png');
 
   await reset();
   for (let i = 0; i < 4; ++i) {
@@ -122,12 +137,8 @@ app.whenReady().then(async () => {
 
   await reset();
   scroll(0, -1, false);
-  await pause(500);
-  const mouseAfter = await state();
-  assert.equal(mouseAfter.top, mouse.top, 'Ordinary mouse wheel displacement must remain unchanged');
-  assert.deepEqual(mouseAfter.wheels, mouse.wheels, 'Ordinary mouse wheel DOM input must remain unchanged');
-  console.log(JSON.stringify({ scenario: 'mouse-wheel after trackpad input', ...mouseAfter }));
+  await checkPosition(1000 + step, 1000, 'mouse wheel after trackpad input');
   await window.webContents.prepareToShow();
-  native.snapshot(title, path.join(temporary, 'after.png'));
+  await snapshot('after.png');
   finish();
 }).catch(finish);

@@ -5,7 +5,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { app, BrowserWindow, Menu, clipboard } = require('electron');
+const { app, BrowserWindow, clipboard } = require('electron');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-clipboard-editing-'));
 const title = `mini-clipboard-editing-${process.pid}`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,7 +34,7 @@ async function eventually(read, expected) {
   } while (Date.now() < until);
   assert.equal(actual, expected);
 }
-const key = code => native.key(title, code, 1 << 20);
+const edit = action => native.edit(title, action);
 async function select(id) {
   await evaluate(`(() => { const element = document.getElementById(${JSON.stringify(id)}); element.focus(); const range = document.createRange(); range.selectNodeContents(element); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); return document.activeElement.id; })()`);
 }
@@ -44,17 +44,21 @@ async function focusPasteTarget(id) {
 async function pasteNativeImage(format, id = 'target') {
   await focusPasteTarget(id);
   if (format) native.imageClipboard(format);
-  key(9);
+  edit('paste:');
   await eventually(() => evaluate('window.imagePastes.length'), 1);
   const paste = JSON.parse(await evaluate('JSON.stringify(window.imagePastes[0])'));
   assert.equal(paste.target, id);
+  assert.equal(paste.error, undefined, `${format}: ${paste.error}`);
   assert.ok(paste.types.includes('Files'), `${format}: ${paste.types}`);
   assert.equal(paste.files.length, 1, `${format}: one pasted file`);
   assert.equal(paste.files[0].type, 'image/png');
   assert.equal(paste.files[0].itemType, 'image/png');
   assert.equal(paste.files[0].kind, 'file');
-  assert.ok(paste.files[0].bytes > 8, `${format}: nonempty PNG bytes`);
   assert.deepEqual(paste.files[0].signature, [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.deepEqual(paste.files[0].size, { width: 1, height: 1 });
+  const [red, green, blue, alpha] = paste.files[0].pixel;
+  assert.ok(red >= 250 && green <= 5 && blue <= 5 && alpha === 255,
+    `${format}: copied red pixel survives decoding: ${paste.files[0].pixel}`);
   assert.equal(paste.items.length, 1, `${format}: getAsFile exposes the image`);
   assert.deepEqual(paste.items[0], paste.files[0]);
   if (format && format.startsWith('web-')) {
@@ -62,11 +66,13 @@ async function pasteNativeImage(format, id = 'target') {
     assert.equal(paste.text, 'https://example.invalid/copied-image.png');
     assert.ok(paste.html.includes('<img'));
   }
+  console.log(JSON.stringify({ scenario: 'native image paste', format, target: id,
+    size: paste.files[0].size, pixel: paste.files[0].pixel }));
 }
 async function rejectNativeImage(format, id = 'target') {
   await focusPasteTarget(id);
   native.imageClipboard(format);
-  key(9);
+  edit('paste:');
   await eventually(() => evaluate('window.imagePastes.length'), 1);
   const paste = JSON.parse(await evaluate('JSON.stringify(window.imagePastes[0])'));
   assert.equal(paste.files.length, 0, `${format}: invalid image must not become a File`);
@@ -85,11 +91,7 @@ app.whenReady().then(async () => {
   native = require(helper);
   native.clipboard(false);
   saved = true;
-  window = new BrowserWindow({ width: 600, height: 400, title });
-  Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Edit', submenu: [
-    { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' },
-    { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
-  ] }]));
+  window = new BrowserWindow({ width: 600, height: 400, title, show: false });
   await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><title>${title}</title>
     <div id="rich" contenteditable><b>café 中文 😀</b></div>
     <textarea id="plain">independent λ</textarea><div id="target" contenteditable></div>
@@ -109,51 +111,57 @@ app.whenReady().then(async () => {
       const html = event.clipboardData.getData('text/html');
       const describe = async (file, index) => {
         const bytes = new Uint8Array(await file.arrayBuffer());
+        const image = await createImageBitmap(file);
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width; canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        const pixel = Array.from(context.getImageData(0, 0, 1, 1).data);
+        const size = { width: image.width, height: image.height };
+        image.close();
         const item = fileMetadata[index];
         return { type: file.type, bytes: bytes.length, signature: Array.from(bytes.slice(0, 8)),
-          kind: item && item.kind, itemType: item && item.type };
+          kind: item && item.kind, itemType: item && item.type, size, pixel };
       };
       Promise.all([Promise.all(files.map(describe)), Promise.all(itemFiles.map(describe))])
-        .then(([files, items]) => window.imagePastes.push({ types, target, text, html, files, items }));
+        .then(([files, items]) => window.imagePastes.push({ types, target, text, html, files, items }))
+        .catch(error => window.imagePastes.push({ target, error: String(error) }));
     });
     document.getElementById('empty').addEventListener('copy', event => {
       event.clipboardData.setData('text/plain', ''); event.preventDefault();
     });</script>`));
-  window.show();
-  app.focus();
-  window.focus();
-  await eventually(() => window.isFocused(), true);
+  await window.webContents.prepareToShow();
   assert.equal(await evaluate("document.getElementById('rich').textContent"), 'café 中文 😀');
   assert.equal(await evaluate("document.getElementById('plain').value"), 'independent λ');
 
   clipboard.writeText('stale sentinel');
   await select('rich');
-  key(8); // Cmd+C
+  edit('copy:');
   await eventually(() => clipboard.readText(), 'café 中文 😀');
   assert.equal(clipboard.has('text/html'), true);
   const richHtml = clipboard.readHTML();
   assert.ok(richHtml.includes('café 中文 😀'), richHtml);
   assert.ok(/font-weight|<b[ >]/i.test(richHtml), richHtml);
   await select('target');
-  key(9); // Cmd+V into the real Blink editable.
+  edit('paste:');
   await eventually(() => evaluate("document.getElementById('target').textContent"), 'café 中文 😀');
   assert.equal(await evaluate("!!document.getElementById('target').querySelector('b,span[style*=font-weight]')"), true);
 
   await evaluate("(() => { const element = document.getElementById('plain'); element.focus(); element.select(); return true; })()");
-  key(7); // Cmd+X, a separate text-only transaction.
+  edit('cut:');
   await eventually(() => clipboard.readText(), 'independent λ');
   await eventually(() => evaluate("document.getElementById('plain').value"), '');
   assert.equal(clipboard.has('text/html'), false, 'previous rich representation must not leak across commits');
-  key(9);
+  edit('paste:');
   await eventually(() => evaluate("document.getElementById('plain').value"), 'independent λ');
 
   await select('empty');
-  key(8);
+  edit('copy:');
   await eventually(() => clipboard.readText(), '');
   assert.equal(clipboard.has('text/plain'), true, 'empty text is a written representation, not omitted');
   assert.equal(clipboard.has('text/html'), false);
   await select('rich');
-  key(8);
+  edit('copy:');
   await eventually(() => clipboard.readText(), 'café 中文 😀');
   assert.equal(clipboard.has('text/html'), true, 'subsequent rich commit still includes both representations');
   await pasteNativeImage('png');
@@ -161,6 +169,9 @@ app.whenReady().then(async () => {
   for (const id of ['target', 'plain']) {
     await pasteNativeImage('web-png', id);
     await pasteNativeImage('web-tiff', id);
+    await pasteNativeImage('web-jpeg', id);
+    await pasteNativeImage('multi-tiff', id);
+    await pasteNativeImage('malformed-png-valid-tiff', id);
     await rejectNativeImage('web-malformed-png', id);
     await rejectNativeImage('web-no-image', id);
   }
@@ -176,7 +187,7 @@ app.whenReady().then(async () => {
   await pasteNativeImage(null, 'target');
   await pasteNativeImage(null, 'plain');
   await select('rich');
-  key(8);
+  edit('copy:');
   await eventually(() => clipboard.readText(), 'café 中文 😀');
   assert.equal(clipboard.has('image/png'), false, 'image must not leak into the next text/rich commit');
   await rejectNativeImage('malformed-png');

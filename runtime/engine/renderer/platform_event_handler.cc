@@ -18,6 +18,10 @@
 #include "third_party/blink/public/web/web_widget.h"
 #include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 #include "third_party/blink/public/mojom/page/widget.mojom-blink.h"
+#if defined(__APPLE__)
+#include "third_party/blink/public/web/web_frame_widget.h"
+#include "ui/display/screen_info.h"
+#endif
 #include "ui/latency/latency_info.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/dom_key.h"
@@ -220,7 +224,13 @@ LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lP
 
     int wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
     int modifiers = 0;
+#if defined(__APPLE__)
+    // Use logical pixels on macOS so Retina does not halve the wheel step.
+    const float cScrollbarPixelsPerLine =
+        40.0f * m_webViewImpl->MainFrameWidget()->GetOriginalScreenInfo().device_scale_factor;
+#else
     static const float cScrollbarPixelsPerLine = 100.0f / 3.0f;
+#endif
     float delta = wheelDelta / static_cast<float>(WHEEL_DELTA);
 
     float deltaX = 0.f;
@@ -229,10 +239,12 @@ LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lP
     bool shiftKey = wParam & MK_SHIFT;
     bool ctrlKey = wParam & MK_CONTROL;
 
+#if !defined(__APPLE__)
     if (delta < 0)
         delta = -1;
     if (delta > 0)
         delta = 1;
+#endif
 
     if (shiftKey) {
         deltaX = delta * static_cast<float>(horizontalScrollChars()) * cScrollbarPixelsPerLine;

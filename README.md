@@ -26,6 +26,11 @@ It also fixes mixed GPU/CPU guest composition, resize completion, image alpha,
 macOS UI-thread identification, and shutdown lifetime. See
 [rendering verification and remaining limits](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
 
+Source builds also increase macOS mouse-wheel scrolling to 120 logical pixels per
+vertical notch, preserve multi-notch input, and accept ImageIO-supported native
+clipboard image formats such as JPEG and multi-representation TIFF. Trackpad
+pixel scrolling remains unchanged.
+
 The `0.1.9` macOS runtime fixes trackpad scrolling by preserving AppKit's
 precise logical-pixel deltas instead of multiplying them into wheel ticks.
 Traditional mouse wheels continue to use 120-unit tick deltas. The executable
@@ -641,9 +646,12 @@ roles. Editing targets the focused Blink frame; sandboxed clipboard operations u
 the authenticated browser broker, preserving text, HTML, and copied-image PNG
 data in one pasteboard transaction without granting the renderer direct
 pasteboard access. `webContents.copyImageAt()` copies actual decoded image pixels;
-native PNG/TIFF clipboard images expose readable `File` items on paste into
-textarea and contenteditable inputs even alongside HTML/URL representations.
-HTML/URL-only clipboard content is not synthesized into an image attachment.
+native bitmap clipboard images supported by ImageIO (including PNG, TIFF, and
+JPEG) expose readable PNG `File` items on paste into textarea and contenteditable
+inputs even alongside HTML/URL representations. Multi-representation images use
+their first image, and an invalid preferred representation does not hide another
+valid image format. HTML/URL-only clipboard content is not fetched or synthesized
+into an image attachment.
 Page zoom uses the existing WebContents zoom level, not CSS scaling. Disabled
 and unregistered accelerators do not invoke menu actions.
 
@@ -701,9 +709,9 @@ are exposed as brokered DOM `File` objects only after the browser authorizes the
 current document. Regular files are limited to 50 MiB each and 256 MiB per drag;
 symbolic links, Windows reparse-point path components, special files, stale
 documents, and forged `File` objects cannot disclose host paths. Directories
-expose entry metadata without granting renderer traversal. Clipboard PNG/TIFF
-input on macOS and PNG/native DIB input on Windows are decoded and bounded before
-Blink receives them; malformed images are omitted. Native drag hit testing converts AppKit
+expose entry metadata without granting renderer traversal. Clipboard images in
+ImageIO-supported formats on macOS and PNG/native DIB input on Windows are decoded
+and bounded before Blink receives them; malformed images are omitted. Native drag hit testing converts AppKit
 logical view coordinates or Win32 physical client coordinates to Blink viewport
 pixels using the current display scale; screen coordinates remain logical.
 Bounded drag targets ensure DPI conversion errors cannot pass through
@@ -756,7 +764,13 @@ retains native PNG evidence without requiring Screen Recording permission.
 The scroll regression sends native AppKit pixel/line wheel events to an owned
 renderer view without activating its window. It checks proportional trackpad
 motion, high-frequency and fractional input, both axes, nested scroll hit testing,
-and the unchanged ordinary mouse-wheel step, retaining native PNG evidence.
+and responsive ordinary mouse-wheel steps in both directions, including several
+notches in one event, retaining compositor PNG evidence through `capturePage()`.
+The clipboard regression invokes actual AppKit editing actions on its owned
+renderer without activating the application. It checks decoded image dimensions
+and pixels from PNG, TIFF, JPEG with HTML/URL co-representations, multi-image TIFF,
+and invalid-PNG/valid-TIFF input in both textarea and contenteditable targets,
+alongside rich-text copy/cut/paste and malformed-image rejection.
 The image-preview regression sends a large PNG in a nested sliced `Uint8Array`
 through the isolated preload, writes and reads its exact bytes on disk, decodes
 the returned Blob URL, and verifies that renderer mouse input and timers still
@@ -782,8 +796,9 @@ AppKit's directional frame cursors; older systems use axis resize cursors.
 Mouse dragging preserves the event's held-button state. AppKit precise wheel
 events retain fractional pixel deltas and both axes through IPC and Blink, with
 Retina scaling applied once. Trackpad motion bypasses the legacy 120-unit wheel
-tick conversion and fixed per-event scroll step; ordinary mouse wheels keep
-their existing behavior. The renderer recognizes left, middle, and right buttons
+tick conversion; ordinary mouse wheels scroll 120 logical pixels per vertical
+notch and retain multi-notch distances instead of clamping each event to one
+step. The renderer recognizes left, middle, and right buttons
 rather than interpreting native string names as left clicks.
 Native window and BrowserView drawing retain the last complete image while the
 renderer writes a newer shared frame. Pending and presented pixel buffers are

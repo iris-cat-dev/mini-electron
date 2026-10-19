@@ -1,6 +1,7 @@
 #import <AppKit/AppKit.h>
 #import <Carbon/Carbon.h>
 #include <node_api.h>
+#include <cstring>
 #include <string>
 
 static NSString* Text(napi_env env, napi_value value) {
@@ -51,6 +52,22 @@ static napi_value Key(napi_env env, napi_callback_info info) {
   }
   napi_value result; napi_get_undefined(env, &result); return result;
 }
+static napi_value Edit(napi_env env, napi_callback_info info) {
+  size_t count = 2; napi_value args[2];
+  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
+  if (count != 2) {
+    napi_throw_type_error(env, nullptr, "edit(title, action)"); return nullptr;
+  }
+  NSWindow* window = Window(env, args[0]);
+  NSString* action = Text(env, args[1]);
+  if (!window || !action) return nullptr;
+  if (![@[ @"copy:", @"cut:", @"paste:" ] containsObject:action]
+      || ![window.firstResponder tryToPerform:NSSelectorFromString(action) with:nil]) {
+    napi_throw_error(env, nullptr, "Owned renderer did not handle the editing action");
+    return nullptr;
+  }
+  napi_value result; napi_get_undefined(env, &result); return result;
+}
 static NSMenuItem* FindItem(NSMenu* menu, NSString* title) {
   for (NSMenuItem* item in menu.itemArray) {
     if ([item.title isEqualToString:title]) return item;
@@ -94,6 +111,9 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   const bool web = [format hasPrefix:@"web-"];
   if (web) format = [format substringFromIndex:4];
   if (![format isEqualToString:@"png"] && ![format isEqualToString:@"tiff"]
+      && ![format isEqualToString:@"jpeg"]
+      && ![format isEqualToString:@"multi-tiff"]
+      && ![format isEqualToString:@"malformed-png-valid-tiff"]
       && ![format isEqualToString:@"malformed-png"]
       && ![format isEqualToString:@"oversized-png"]
       && ![format isEqualToString:@"no-image"]) {
@@ -107,11 +127,28 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
       options:0];
   NSData* data = png;
   NSPasteboardType type = NSPasteboardTypePNG;
-  if ([format isEqualToString:@"tiff"]) {
+  if ([format isEqualToString:@"tiff"]
+      || [format isEqualToString:@"malformed-png-valid-tiff"]) {
     data = [[NSData alloc] initWithBase64EncodedString:
         @"SUkqAAgAAAALAAABBAABAAAAAQAAAAEBBAABAAAAAQAAAAIBAwAEAAAAkgAAAAMBAwABAAAAAQAAAAYBAwABAAAAAgAAABEBBAABAAAAmgAAABUBAwABAAAABAAAABYBBAABAAAAAQAAABcBBAABAAAABAAAABwBAwABAAAAAQAAAFIBAwABAAAAAgAAAAAAAAAIAAgACAAIAP8AAP8="
         options:0];
     type = NSPasteboardTypeTIFF;
+  } else if ([format isEqualToString:@"jpeg"]
+             || [format isEqualToString:@"multi-tiff"]) {
+    NSBitmapImageRep* bitmap = [NSBitmapImageRep imageRepWithData:png];
+    if ([format isEqualToString:@"jpeg"]) {
+      data = [bitmap representationUsingType:NSBitmapImageFileTypeJPEG properties:@{}];
+      type = @"public.jpeg";
+    } else {
+      NSBitmapImageRep* alternate = [[NSBitmapImageRep alloc]
+          initWithBitmapDataPlanes:nullptr pixelsWide:1 pixelsHigh:1
+          bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO
+          colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:4 bitsPerPixel:32];
+      const uint8_t blue[] = {0, 0, 255, 255};
+      std::memcpy(alternate.bitmapData, blue, sizeof(blue));
+      data = [NSBitmapImageRep TIFFRepresentationOfImageRepsInArray:@[ bitmap, alternate ]];
+      type = NSPasteboardTypeTIFF;
+    }
   } else if ([format isEqualToString:@"malformed-png"]) {
     data = [@"not a PNG" dataUsingEncoding:NSUTF8StringEncoding];
   } else if ([format isEqualToString:@"oversized-png"]) {
@@ -121,6 +158,9 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
   NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
   if (![format isEqualToString:@"no-image"])
     [item setData:data forType:type];
+  if ([format isEqualToString:@"malformed-png-valid-tiff"])
+    [item setData:[@"not a PNG" dataUsingEncoding:NSUTF8StringEncoding]
+          forType:NSPasteboardTypePNG];
   if (web) {
     NSString* url = @"https://example.invalid/copied-image.png";
     [item setString:[NSString stringWithFormat:@"<img src=\"%@\" alt=\"copied web image\">", url]
@@ -139,9 +179,11 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
 NAPI_MODULE_INIT() {
   napi_property_descriptor methods[] = {
     {"key", nullptr, Key, nullptr, nullptr, nullptr, napi_default, nullptr},
+    {"edit", nullptr, Edit, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"click", nullptr, Click, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"clipboard", nullptr, Clipboard, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"imageClipboard", nullptr, ImageClipboard, nullptr, nullptr, nullptr, napi_default, nullptr},
   };
-  napi_define_properties(env, exports, 4, methods); return exports;
+  napi_define_properties(env, exports, sizeof(methods) / sizeof(methods[0]), methods);
+  return exports;
 }
