@@ -3,7 +3,7 @@
   "packageVersion": "0.1.8",
   "runtimeVersion": "0.1.8",
   "electronApiVersion": "41.2.0",
-  "nodeVersion": "24.0.0",
+  "nodeVersion": "24.0.0-pre",
   "nodeModuleAbi": 134,
   "chromiumMajorVersion": 132,
   "downloadBaseUrl": "https://github.com/iris-cat-dev/mini-electron/releases/download",

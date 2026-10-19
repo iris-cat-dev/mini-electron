@@ -98,8 +98,9 @@ app.whenReady().then(async () => {
     ...companionSize
   };
 
+  // Keep the controlled underlay above existing always-on-top desktop pets.
   base = new BrowserWindow({ ...defaultBounds, title: baseTitle, frame: false, show: false,
-    minWidth: 0, minHeight: 0, backgroundColor: '#184563' });
+    alwaysOnTop: true, minWidth: 0, minHeight: 0, backgroundColor: '#184563' });
   await base.loadURL('data:text/html,' + encodeURIComponent(
     '<title>' + baseTitle + '</title><style>html,body{margin:0;width:100%;height:100%;background:#184563}</style>'));
   base.show();

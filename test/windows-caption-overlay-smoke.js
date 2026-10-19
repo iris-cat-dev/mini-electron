@@ -145,9 +145,10 @@ async function expectStableCaptionDuringMotion(geometry, label) {
     const top = Math.floor((rect.top + rect.bottom - size) / 2);
     return { x: left + Math.floor(size / 2), y: top + (name === 'maximize' ? 0 : Math.floor(size / 2)) };
   });
+  // Native bounds settle before DWM finishes the maximize/restore transition.
   for (const point of samples) {
-    const actual = await readPixel(point, 1);
-    assert.ok(actual.every(channel => channel >= 240), `${label} initial glyph: ${JSON.stringify(actual)}`);
+    await eventually(() => readPixel(point, 1),
+      value => value.every(channel => channel >= 240), `${label} initial glyph`);
   }
   const moves = Object.values(buttons).map(rect => pointIn(rect, geometry.dpi));
   moves.push({ x: geometry.clientX + dip(20, geometry.dpi), y: geometry.clientY + dip(overlayHeight + 18, geometry.dpi) });

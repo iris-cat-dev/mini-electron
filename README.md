@@ -25,6 +25,7 @@ and taskbar visibility, retained presentation after minimizing, and pointer-hove
 repaints. It also includes the corrected ASAR-enabled `child_process`
 promisification contract, including resolved output and child-process access;
 this bootstrap also runs when the application itself is not packaged in ASAR.
+The binary uses Node `24.0.0-pre` with Node module ABI `134`.
 The macOS runtime remains at `0.1.7`; macOS source changes are not included in
 this npm release. Its executable is ad-hoc signed and not notarized.
 Version `0.1.5` includes the macOS selection, clipboard image paste, IME
