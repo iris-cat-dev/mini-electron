@@ -43,6 +43,7 @@
 #include "platform/windows/resources/resource.h"
 #include <shellapi.h>
 #include <ole2.h>
+#include <shobjidl.h>
 #include <dwmapi.h>
 #include <algorithm>
 #include <cstdint>
@@ -166,6 +167,7 @@ public:
         m_captionBitmapSize = { 0, 0 };
         m_isDestroyApiBeCalled = false;
         m_isMaximized = false;
+        m_isMinimized = false;
         m_isFullScreen = false;
         m_isDocumentEdited = false;
         m_isIgnoreMouseEvents = false;
@@ -432,10 +434,20 @@ public:
         return m_hWnd;
     }
 
-    void onWebContentsPaint(WebContents* contents) override
+    void onWebContentsPaint(WebContents* contents, const gfx::Rect& damage) override
     {
-        if (contents == m_webContents && ::IsWindow(m_hWnd))
-            ::InvalidateRect(m_hWnd, nullptr, FALSE);
+        if (contents != m_webContents || !::IsWindow(m_hWnd))
+            return;
+        RECT client;
+        if (!::GetClientRect(m_hWnd, &client))
+            return;
+        gfx::Rect dirty(0, 0, client.right - client.left, client.bottom - client.top);
+        if (!damage.IsEmpty())
+            dirty.Intersect(damage);
+        if (dirty.IsEmpty())
+            return;
+        const RECT rect = { dirty.x(), dirty.y(), dirty.right(), dirty.bottom() };
+        ::InvalidateRect(m_hWnd, &rect, FALSE);
     }
 
     void onWebContentsDraggableRegions(
@@ -1788,31 +1800,56 @@ public:
         } break;
 
         case WM_SIZE: {
-            int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
-            const gfx::Size viewportSize = display::win::ScreenWin::ScreenToDIPSize(m_hWnd, gfx::Size(x, y));
+            const bool wasMinimized = m_isMinimized;
+            if (SIZE_MINIMIZED == wParam) {
+                m_isMinimized = true;
+                if (WindowInited == m_state) {
+                    mate::EventEmitter<BrowserWindow>::emit("resize");
+                    if (!wasMinimized)
+                        mate::EventEmitter<BrowserWindow>::emit("minimize");
+                }
+                invalidateCaptionButtons();
+                return 0;
+            }
+
+            m_isMinimized = false;
+            const int x = LOWORD(lParam);
+            const int y = HIWORD(lParam);
+            const bool becameMaximized = SIZE_MAXIMIZED == wParam && !m_isMaximized;
+            const bool becameUnmaximized = SIZE_RESTORED == wParam && m_isMaximized;
+            if (SIZE_MAXIMIZED == wParam)
+                m_isMaximized = true;
+            else if (SIZE_RESTORED == wParam)
+                m_isMaximized = false;
+
+            const gfx::Size viewportSize = display::win::ScreenWin::ScreenToDIPSize(
+                m_hWnd, gfx::Size(x, y));
             m_webContents->resize(viewportSize.width(), viewportSize.height(),
                 display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
 
-            if (WindowInited == m_state)
-                mate::EventEmitter<BrowserWindow>::emit("resize");
-
-            if (SIZE_MAXIMIZED == wParam) {
-                m_isMaximized = true;
-                mate::EventEmitter<BrowserWindow>::emit("maximize");
-            }
-            if (SIZE_MINIMIZED == wParam)
-                mate::EventEmitter<BrowserWindow>::emit("minimize");
-            if (SIZE_RESTORED == wParam) {
-                if (m_isMaximized)
-                    mate::EventEmitter<BrowserWindow>::emit("unmaximize");
-                m_isMaximized = false;
-            }
-
+            ::EnterCriticalSection(&m_memoryCanvasLock);
             m_contentsSize.cx = x;
             m_contentsSize.cy = y;
+            ::LeaveCriticalSection(&m_memoryCanvasLock);
 
             invalidateCaptionButtons();
+            if (wasMinimized && ::IsWindow(hWnd)) {
+                // A minimized window has no drawable viewport. Present the
+                // retained renderer snapshots synchronously when its real
+                // client returns instead of exposing the DWM clear surface
+                // until the renderer produces another frame.
+                ::InvalidateRect(hWnd, nullptr, FALSE);
+                ::UpdateWindow(hWnd);
+            }
+
+            if (WindowInited == m_state)
+                mate::EventEmitter<BrowserWindow>::emit("resize");
+            if (becameMaximized)
+                mate::EventEmitter<BrowserWindow>::emit("maximize");
+            if (becameUnmaximized)
+                mate::EventEmitter<BrowserWindow>::emit("unmaximize");
+            if (wasMinimized)
+                mate::EventEmitter<BrowserWindow>::emit("restore");
         }
             return 0;
 //         case WM_SETICON:
@@ -1971,6 +2008,11 @@ public:
             }
             break;
         }
+        case WM_MOUSEACTIVATE:
+            if (m_createWindowParam && !m_createWindowParam->isFocusable)
+                return MA_NOACTIVATE;
+            break;
+
         case WM_SETFOCUS:
             mate::EventEmitter<BrowserWindow>::emit("focus");
             if (WebContents* target = focusedWebContents())
@@ -2012,7 +2054,9 @@ public:
             break;
 
         case WM_ACTIVATE:
-            updateWindowFrame(hWnd);
+            // Extending the frame again during activation discards DWM's
+            // retained client presentation for opaque frameless windows.
+            // Creation and WM_DWMCOMPOSITIONCHANGED establish the margins.
             if (LOWORD(wParam) == WA_INACTIVE)
                 hideAutoMenuBar();
             break;
@@ -2154,7 +2198,8 @@ private:
 
     void focusApi()
     {
-        ::SetFocus(m_hWnd);
+        if (m_createWindowParam && m_createWindowParam->isFocusable)
+            ::SetFocus(m_hWnd);
     }
 
     void blurApi()
@@ -2169,13 +2214,27 @@ private:
 
     void showApi()
     {
-        ::ShowWindow(m_hWnd, SW_SHOW);
-        ::SetFocus(m_hWnd);
+        const bool wasVisible = !!::IsWindowVisible(m_hWnd);
+        const bool focusable = m_createWindowParam && m_createWindowParam->isFocusable;
+        ::ShowWindow(m_hWnd, focusable ? SW_SHOW : SW_SHOWNOACTIVATE);
+        if (focusable)
+            ::SetFocus(m_hWnd);
+        if (!wasVisible) {
+            ::InvalidateRect(m_hWnd, nullptr, FALSE);
+            ::UpdateWindow(m_hWnd);
+        }
     }
 
     void showInactiveApi()
     {
-        ::ShowWindow(m_hWnd, SW_SHOWMINNOACTIVE);
+        const bool wasVisible = !!::IsWindowVisible(m_hWnd);
+        ::ShowWindow(m_hWnd, SW_SHOWNOACTIVATE);
+        // Static transparent content may have finished painting while hidden.
+        // Publish the retained frame instead of waiting for another animation.
+        if (!wasVisible) {
+            ::InvalidateRect(m_hWnd, nullptr, FALSE);
+            ::UpdateWindow(m_hWnd);
+        }
     }
 
     void hideApi()
@@ -2683,17 +2742,46 @@ private:
     {
     }
 
-    void setSkipTaskbarApi(bool b)
+    void updateTaskbarVisibility()
     {
-        DWORD style = ::GetWindowLong(m_hWnd, GWL_STYLE);
-        if (b) {
+        if (!m_createWindowParam || !::IsWindow(m_hWnd))
+            return;
+
+        const bool skip = m_createWindowParam->skipTaskbar
+            || !m_createWindowParam->isFocusable;
+        LONG_PTR style = ::GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE);
+        if (skip) {
             style |= WS_EX_TOOLWINDOW;
             style &= ~WS_EX_APPWINDOW;
-        } else { //todo 如果窗口原来的style没有WS_EX_APPWINDOW，就可能有问题
+        } else {
             style &= ~WS_EX_TOOLWINDOW;
             style |= WS_EX_APPWINDOW;
         }
-        ::SetWindowLong(m_hWnd, GWL_EXSTYLE, style);
+        ::SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, style);
+        m_createWindowParam->styleEx = static_cast<unsigned>(style);
+        if (m_isFullScreen)
+            m_fullScreenExStyle = static_cast<DWORD>(style);
+        ::SetWindowPos(m_hWnd, nullptr, 0, 0, 0, 0,
+            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE
+            | SWP_NOZORDER | SWP_NOACTIVATE);
+
+        ITaskbarList* taskbar = nullptr;
+        if (SUCCEEDED(::CoCreateInstance(CLSID_TaskbarList, nullptr,
+                CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar)))) {
+            if (SUCCEEDED(taskbar->HrInit())) {
+                if (skip)
+                    taskbar->DeleteTab(m_hWnd);
+                else
+                    taskbar->AddTab(m_hWnd);
+            }
+            taskbar->Release();
+        }
+    }
+
+    void setSkipTaskbarApi(bool skip)
+    {
+        m_createWindowParam->skipTaskbar = skip;
+        updateTaskbarVisibility();
     }
 
     void setBackgroundColorApi()
@@ -2722,8 +2810,26 @@ private:
     {
     }
 
-    void setFocusableApi()
+    void setFocusableApi(bool focusable)
     {
+        if (!m_createWindowParam || m_createWindowParam->isFocusable == focusable)
+            return;
+        m_createWindowParam->isFocusable = focusable;
+
+        LONG_PTR style = ::GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE);
+        if (focusable)
+            style &= ~WS_EX_NOACTIVATE;
+        else
+            style |= WS_EX_NOACTIVATE;
+        ::SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, style);
+        m_createWindowParam->styleEx = static_cast<unsigned>(style);
+        updateTaskbarVisibility();
+
+        if (!focusable && ::GetFocus() == m_hWnd) {
+            ::SetFocus(nullptr);
+            if (m_focusedWebContents)
+                m_focusedWebContents->setFocus(false);
+        }
     }
 
     void focusOnWebViewApi()
@@ -3030,6 +3136,8 @@ private:
         options->GetBydefaultVal("useContentSize", false, &createWindowParam->isUseContentSize);
         options->GetBydefaultVal("alwaysOnTop", false, &createWindowParam->isAlwaysOnTop);
         options->GetBydefaultVal("closable", true, &createWindowParam->isClosable);
+        options->GetBydefaultVal(options::kFocusable, true, &createWindowParam->isFocusable);
+        options->GetBydefaultVal(options::kSkipTaskbar, false, &createWindowParam->skipTaskbar);
         options->GetBydefaultVal("autoHideMenuBar", false, &self->m_autoHideMenuBar);
 
         std::string titleBarStyle;
@@ -3079,6 +3187,13 @@ private:
 
             if (!createWindowParam->isFrame)
                 createWindowParam->styles = WS_CAPTION | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+        }
+
+        if (!createWindowParam->isFocusable)
+            createWindowParam->styleEx |= WS_EX_NOACTIVATE;
+        if (createWindowParam->skipTaskbar || !createWindowParam->isFocusable) {
+            createWindowParam->styleEx |= WS_EX_TOOLWINDOW;
+            createWindowParam->styleEx &= ~WS_EX_APPWINDOW;
         }
 
         if (createWindowParam->isMinimizable)
@@ -3141,12 +3256,13 @@ private:
         m_webContents->resize(viewportSize.width(), viewportSize.height(),
             display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
         rebuildDraggableRegion();
-        m_webContents->setFocus(true);
+        m_webContents->setFocus(createWindowParam->isFocusable);
         //setIcon(m_hWnd);
 
         MenuEventNotif::onWindowDidCreated(this);
 
-        ::ShowWindow(m_hWnd, createWindowParam->isShow ? SW_SHOWNORMAL : SW_HIDE);
+        ::ShowWindow(m_hWnd, !createWindowParam->isShow ? SW_HIDE
+            : createWindowParam->isFocusable ? SW_SHOWNORMAL : SW_SHOWNOACTIVATE);
         ::UpdateWindow(m_hWnd);
 
         m_state = WindowInited;
@@ -3308,6 +3424,7 @@ private:
     std::vector<DraggableRegion> m_draggableRegions;
 
     bool m_isMaximized;
+    bool m_isMinimized;
     bool m_isFullScreen;
     bool m_isDocumentEdited;
     bool m_isIgnoreMouseEvents;

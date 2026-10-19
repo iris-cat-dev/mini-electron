@@ -65,8 +65,6 @@
 /* A RtlGenRandom() by any other name... */
 extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
 
-extern BOOLEAN WINAPI RtlGenRandomXp(PVOID RandomBuffer, ULONG RandomBufferLength);
-
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char* process_title;
 static CRITICAL_SECTION process_title_lock;
@@ -1643,7 +1641,7 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen)
     if (buflen == 0)
         return 0;
 
-    if (/*SystemFunction036*/RtlGenRandomXp(buf, buflen) == FALSE)
+    if (SystemFunction036(buf, buflen) == FALSE)
         return UV_EIO;
 
     return 0;

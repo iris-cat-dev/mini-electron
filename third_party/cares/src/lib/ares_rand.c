@@ -168,30 +168,6 @@ BOOLEAN WINAPI SystemFunction036(PVOID RandomBuffer, ULONG RandomBufferLength);
 #define RtlGenRandom(a, b) SystemFunction036(a, b)
 #endif
 
-static unsigned int NextRandom(unsigned int* seed)
-{
-    const unsigned int a = 1103515245;
-    const unsigned int c = 12345;
-    const unsigned int m = 1 << 31;  // 2^31
-
-    *seed = (a * (*seed) + c) % m;
-    return *seed;
-}
-
-BOOLEAN WINAPI RtlGenRandomXp(PVOID RandomBuffer, ULONG RandomBufferLength)
-{
-    if (RandomBuffer == NULL || RandomBufferLength == 0) {
-        return FALSE;
-    }
-
-    unsigned int seed = (unsigned int)(&RandomBuffer);
-
-    unsigned char* buffer = (unsigned char*)RandomBuffer;
-    for (size_t i = 0; i < RandomBufferLength; ++i) {
-        buffer[i] = (unsigned char)(NextRandom(&seed) & 0xFF);
-    }
-    return TRUE;
-}
 #endif
 
 static ares_bool_t ares__init_rand_engine(ares_rand_state* state)
@@ -282,7 +258,7 @@ static void ares__rand_bytes_fetch(ares_rand_state* state, unsigned char* buf, s
         switch (state->type) {
         case ARES_RAND_OS:
 #ifdef _WIN32
-            RtlGenRandomXp(buf, (ULONG)len);
+            RtlGenRandom(buf, (ULONG)len);
             return;
 #elif defined(HAVE_ARC4RANDOM_BUF)
             arc4random_buf(buf, len);

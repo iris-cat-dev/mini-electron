@@ -41,6 +41,12 @@
 #include "handle-inl.h"
 #include "fs-fd-hash-inl.h"
 
+#if (NTDDI_VERSION < NTDDI_WIN11_ZN)
+STATIC_ASSERT(offsetof(FILE_STAT_BASIC_INFORMATION, VolumeSerialNumber) == 80);
+STATIC_ASSERT(offsetof(FILE_STAT_BASIC_INFORMATION, FileId128) == 88);
+STATIC_ASSERT(sizeof(FILE_STAT_BASIC_INFORMATION) == 104);
+#endif
+
 #define UV_FS_FREE_PATHS 0x0002
 #define UV_FS_FREE_PTR 0x0008
 #define UV_FS_CLEANEDUP 0x0010
@@ -1608,7 +1614,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf, int do_lsta
         SetLastError(pRtlNtStatusToDosError(nt_status));
         return -1;
     } else {
-        stat_info.VolumeSerialNumber.QuadPart = volume_info.VolumeSerialNumber;
+        stat_info.VolumeSerialNumber.LowPart = volume_info.VolumeSerialNumber;
     }
 
     stat_info.DeviceType = device_info.DeviceType;
@@ -1651,7 +1657,7 @@ INLINE static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf)
 
 INLINE static void fs__stat_assign_statbuf(uv_stat_t* statbuf, FILE_STAT_BASIC_INFORMATION stat_info, int do_lstat)
 {
-    statbuf->st_dev = stat_info.VolumeSerialNumber.QuadPart;
+    statbuf->st_dev = stat_info.VolumeSerialNumber.LowPart;
 
     /* Todo: st_mode should probably always be 0666 for everyone. We might also
    * want to report 0777 if the file is a .exe or a directory.

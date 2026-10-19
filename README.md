@@ -311,6 +311,35 @@ loading remains disabled unless explicitly allowed when the database is created.
 The native regression exercises OAuth-style account filtering, WAL, rollback,
 read-only access, metadata, backup, changesets, Workers, and extension restrictions.
 
+Windows file identity uses the same volume serial for `stat`/`lstat` and `fstat`.
+Number and bigint stats agree across synchronous, callback, and promises APIs;
+replacing a file remains distinguishable from the original open handle.
+This preserves application identity checks, including guarded desktop-pet asset loading.
+
+Windows libuv and c-ares use the system `SystemFunction036` (`RtlGenRandom`) source.
+The removed stack-address-seeded generator repeated temporary-directory suffixes,
+so `mkdtemp` could loop on an existing directory and block OMP Desktop agent history
+loading before its OMP process started. Repeated and concurrent temporary-directory
+creation is covered across sync, callback, and promises APIs.
+
+The ASAR compatibility layer is initialized even for unpacked `resources/app` applications.
+Its `child_process.exec` and `execFile` wrappers preserve Node's custom promisification:
+success returns `{ stdout, stderr }`, failures retain both streams, and the Promise's
+`.child` is the actual child process. ASAR executable rewriting remains active.
+Changes to these wrappers must update both `runtime/electron/lib/common/asar.js`
+and the embedded `runtime/electron/common/asar/asar_js.cc` initializer and its length.
+
+Run the filesystem and child-process contracts in both runtime modes (Git Bash):
+
+```sh
+./out/windows-x64/runtime-dist/electron.exe test/node-file-identity-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-file-identity-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/node-temp-directory-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-temp-directory-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/node-child-process-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-child-process-smoke.js
+```
+
 Run the real Windows input regressions sequentially on an unlocked interactive desktop:
 
 ```sh
@@ -318,6 +347,10 @@ python build.py --package-dist
 ./out/windows-x64/runtime-dist/electron.exe test/windows-native-input-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/windows-editor-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/windows-caption-overlay-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-hover-presentation-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-restore-presentation-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-companion-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/windows-screen-coordinates-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/same-document-navigation-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/windows-pointer-interaction-smoke.js
 ./out/windows-x64/runtime-dist/electron.exe test/windows-image-preview-smoke.js
@@ -328,8 +361,9 @@ ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/runtime-dist/electron.exe test/node-sql
 The Windows input tests compile a shared WinForms helper with the system .NET Framework 4 C# compiler
 and send real keyboard, pointer, and OLE input. Clipboard-mutating tests snapshot
 and restore the original clipboard, refusing formats that cannot be preserved losslessly.
-The caption, navigation, pointer, image-preview, and composition-color regressions
-never read or change clipboard content. The editor and composition-color regressions
+The caption, hover-presentation, restore-presentation, companion, screen-coordinate,
+navigation, pointer, image-preview, and composition-color regressions never read or change clipboard content.
+The editor and composition-color regressions
 require Microsoft Pinyin already selected. The editor regression samples active/inactive
 selection pixels, decodes pasted image Files, and checks native/DOM caret geometry,
 composition, cancellation, selection replacement, scrolling, zoom, and BrowserView focus.
@@ -341,9 +375,35 @@ transparent, and hovered overlays, and clicks minimize/maximize/restore/close co
 Closing must emit each lifecycle event once and expose the destroyed state to its listeners.
 Opaque hidden-titlebar windows compose webpage content, BrowserViews, and native
 caption controls in a reused backing DIB before presenting the dirty region.
-Pointer-driven redraws therefore cannot expose a glyph-free intermediate frame.
+Each Windows WebContents retains an immutable, seqlock-validated source frame and
+reuses separate BGRA crop storage. Failed reads leave the stable source untouched,
+so a busy renderer cannot cause native caption controls to blend over their own
+previous presentation. Renderer damage remains clipped through BrowserWindow and
+BrowserView invalidation instead of turning a row hover into a whole-window repaint.
 The caption regression continuously samples all three glyphs during real pointer
 sweeps in restored/maximized windows with opaque and transparent overlays.
+The hover-presentation regression measures physical-pointer-to-display latency and
+samples once-composited caption backgrounds under continuous renderer publication.
+Hidden renderer context-menu initialization never activates a foreground window.
+Minimization preserves the real content and renderer viewport sizes; restoration
+synchronously presents retained webpage and BrowserView pixels without waiting for
+a fresh renderer frame. Its native desktop sampler covers normal and maximized
+restores of both native-frame and opaque hidden-titlebar windows.
+`showInactive()` shows without minimizing or activating the window. Showing hidden
+static content publishes its retained frame immediately, including per-pixel-alpha
+companion artwork; no opaque background is added to transparent windows.
+Windows `screen` display bounds, work areas, matching/nearest-point queries, and
+cursor positions use the same DIP coordinate space as BrowserWindow bounds.
+Native monitor scale factors come from ScreenWin, avoiding a second DPI scaling
+step when positioning a default bottom-right companion on a scaled display.
+The screen-coordinate regression checks that default placement against physical
+monitor bounds and samples real transparent/artwork pixels.
+Companion `skipTaskbar` is applied during construction and can be changed at runtime
+without overwriting layered or topmost styles. Nonfocusable Windows windows imply
+taskbar exclusion; restoring focusability respects the explicit `skipTaskbar`
+preference. Runtime changes also update an existing Shell taskbar entry.
+Programmatic initial `loadURL()` does not emit cancellable `will-navigate` or
+`will-frame-navigate` events, while renderer-initiated navigation remains cancellable.
 The pointer regression checks full-edge hover and captured pane drags on both axes
 without moving the native window. The image regression persists and decodes a
 491,978-byte PNG through nested sliced binary IPC, verifies exact bytes and bounds,

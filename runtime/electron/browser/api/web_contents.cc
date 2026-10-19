@@ -1428,8 +1428,14 @@ bool WebContents::copyFrame(RendererFrameSnapshot* snapshot) const
 bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int src_y,
     int width, int height) const
 {
-    RendererFrameSnapshot frame;
-    if (!target || !copyFrame(&frame) || frame.width <= 0 || frame.height <= 0
+    if (!target)
+        return false;
+    // A busy producer must not make native controls blend over their own last
+    // presentation. Restore the webpage from the last validated source instead.
+    if (!copyFrame(&m_windowsPaintFrame))
+        m_windowsPaintNeedsFullRepaint = true;
+    const RendererFrameSnapshot& frame = m_windowsPaintFrame;
+    if (!frame.generation || frame.width <= 0 || frame.height <= 0
         || frame.stride < frame.width * 4)
         return false;
     src_x = std::max(0, src_x);
@@ -1439,29 +1445,19 @@ bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int 
     if (width <= 0 || height <= 0)
         return false;
 
-    // Compact the requested crop in this owned snapshot while converting RGBA
-    // to GDI's BGRA. A complete cropped DIB avoids StretchDIBits selecting the
-    // wrong rows for a partial source rectangle of a top-down bitmap.
-    uint8_t* output = frame.rgba.data();
+    // Keep the cached protocol RGBA source immutable. Only convert the dirty
+    // crop, reusing storage for GDI's tightly packed top-down BGRA bitmap.
+    m_windowsPaintPixels.resize(static_cast<size_t>(width) * height * 4u);
+    uint8_t* output = m_windowsPaintPixels.data();
     for (int row = 0; row < height; ++row) {
-        uint8_t* pixel = frame.rgba.data()
+        const uint8_t* pixel = frame.rgba.data()
             + static_cast<size_t>(src_y + row) * frame.stride
             + static_cast<size_t>(src_x) * 4;
-        if (output == pixel) {
-            for (int column = 0; column < width; ++column, pixel += 4)
-                std::swap(pixel[0], pixel[2]);
-            output += static_cast<size_t>(width) * 4;
-        } else {
-            for (int column = 0; column < width; ++column, pixel += 4, output += 4) {
-                const uint8_t red = pixel[0];
-                const uint8_t green = pixel[1];
-                const uint8_t blue = pixel[2];
-                const uint8_t alpha = pixel[3];
-                output[0] = blue;
-                output[1] = green;
-                output[2] = red;
-                output[3] = alpha;
-            }
+        for (int column = 0; column < width; ++column, pixel += 4, output += 4) {
+            output[0] = pixel[2];
+            output[1] = pixel[1];
+            output[2] = pixel[0];
+            output[3] = pixel[3];
         }
     }
 
@@ -1473,7 +1469,7 @@ bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int 
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
     return ::StretchDIBits(target, dest_x, dest_y, width, height,
-               0, 0, width, height, frame.rgba.data(), &info,
+               0, 0, width, height, m_windowsPaintPixels.data(), &info,
                DIB_RGB_COLORS, SRCCOPY)
         != GDI_ERROR;
 }
@@ -1528,7 +1524,7 @@ void WebContents::invalidateApi()
     if (isAlive())
         m_renderer->Send("invalidate", {});
     for (WebContentsObserver* observer : m_observers)
-        observer->onWebContentsPaint(this);
+        observer->onWebContentsPaint(this, {});
 }
 
 v8::Local<v8::Value> WebContents::getOwnerBrowserWindowApi()
@@ -2048,7 +2044,14 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             || !ReadFrameIdentity(event, "frameId", &frame_id)
             || !ReadFrameIdentity(payload, "parentFrameId", &parent_id, true)
             || !main_frame;
-        if (!prevented) {
+        // Programmatic loadURL navigations are already approved by the browser.
+        // Only renderer-initiated navigations emit cancellable will-* events.
+        const bool browser_initiated = main_frame.value_or(false)
+            && !m_pending_main_navigation.token.empty()
+            && m_pending_main_navigation.browser_initiated
+            && SameDocumentUrl(url, m_pending_main_navigation.url)
+            && method == m_pending_main_navigation.method;
+        if (!prevented && !browser_initiated) {
             v8::Local<v8::Object> frame_event = mate::internal::createJSEvent(
                 isolate(), getWrapper());
             gin_helper::Dictionary frame_event_dict(isolate(), frame_event);
@@ -2237,8 +2240,26 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 observer->onWebContentsDraggableRegions(this, *regions);
         }
     } else if (type == "paint") {
+        gfx::Rect damage;
+        if (const base::Value::Dict* dirty = payload.FindDict("dirty")) {
+            const auto x = dirty->FindInt("x");
+            const auto y = dirty->FindInt("y");
+            const auto width = dirty->FindInt("width");
+            const auto height = dirty->FindInt("height");
+            if (x && y && width && height && *x >= 0 && *y >= 0
+                && *width > 0 && *height > 0)
+                damage = gfx::Rect(*x, *y, *width, *height);
+        }
+#if defined(_WIN32)
+        // A prior stale-source repaint may have missed damage from an older
+        // generation. Refresh all pixels once a new publication is available.
+        if (m_windowsPaintNeedsFullRepaint) {
+            damage = {};
+            m_windowsPaintNeedsFullRepaint = false;
+        }
+#endif
         for (WebContentsObserver* observer : m_observers)
-            observer->onWebContentsPaint(this);
+            observer->onWebContentsPaint(this, damage);
         completePreparedFrames();
         if (!m_ready_to_show_emitted) {
             m_ready_to_show_emitted = true;

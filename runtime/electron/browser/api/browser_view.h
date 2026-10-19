@@ -47,7 +47,7 @@ public:
     int getId() const override;
     WebContents* getWebContents() const override;
     HWND getHWND() const override;
-    void onWebContentsPaint(WebContents*) override;
+    void onWebContentsPaint(WebContents*, const gfx::Rect&) override;
     void onWebContentsDeleted(WebContents*) override;
 
     RECT getClientRect() const

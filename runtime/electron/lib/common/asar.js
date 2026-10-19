@@ -2,7 +2,7 @@
     const ArchiveClass = process._linkedBinding('electron_common_asar').Archive; // asar
     const childProcess = require('child_process');
     const path = require('path');
-    //const util = require('util');
+    const customPromisifySymbol = require('util').promisify.custom;
     
     function util_isString(arg) {
         return typeof arg === 'string';
@@ -186,6 +186,30 @@
         })
     }
 
+    const setCustomPromisifier = function (func) {
+        const promisified = function () {
+            const args = Array.prototype.slice.call(arguments);
+            let resolvePromise;
+            let rejectPromise;
+            const promise = new Promise(function (resolve, reject) {
+                resolvePromise = resolve;
+                rejectPromise = reject;
+            });
+            args.push(function (error, stdout, stderr) {
+                if (error !== null) {
+                    error.stdout = stdout;
+                    error.stderr = stderr;
+                    rejectPromise(error);
+                } else {
+                    resolvePromise({ stdout: stdout, stderr: stderr });
+                }
+            });
+            promise.child = func.apply(this, args);
+            return promise;
+        };
+        Object.defineProperty(func, customPromisifySymbol, { value: promisified });
+    };
+
     // Override APIs that rely on passing file path instead of content to C++.
     const overrideAPISync = function (module, name, arg, fromAsync/*: boolean = false */) {
         if (!arg) {
@@ -319,26 +343,26 @@
         }
 
         const statSync = fs.statSync;
-        fs.statSync = function (p) {
+        fs.statSync = function (p, options) {
             const isAsar = splitPath(p)[0];
             if (!isAsar) {
-                return statSync(p);
+                return statSync(p, options);
             }
 
             // Do not distinguish links for now.
-            return fs.lstatSync(p);
+            return fs.lstatSync(p, options);
         }
 
         const stat = fs.stat
-        fs.stat = function (p, callback) {
+        fs.stat = function (p, options, callback) {
             const isAsar = splitPath(p)[0];
             if (!isAsar) {
-                return stat(p, callback);
+                return stat.apply(this, arguments);
             }
 
             // Do not distinguish links for now.
             process.nextTick(function () {
-                fs.lstat(p, callback);
+                fs.lstat(p, options, callback);
             })
         }
 
@@ -756,11 +780,14 @@
             childProcess[functionName] = function () {
                 const processNoAsarOriginalValue = process.noAsar;
                 process.noAsar = true;
-                const result = old.apply(this, arguments);
-                process.noAsar = processNoAsarOriginalValue;
-                return result;
+                try {
+                    return old.apply(this, arguments);
+                } finally {
+                    process.noAsar = processNoAsarOriginalValue;
+                }
             }
         });
+        setCustomPromisifier(childProcess.exec);
         
         // Strictly implementing the flags of fs.copyFile is hard, just do a simple
         // implementation for now. Doing 2 copies won't spend much time more as OS
@@ -772,6 +799,7 @@
         //overrideAPI(fs, 'openFileHandle'); 
         overrideAPI(process.binding('fs'), 'openFileHandle'); 
         overrideAPI(childProcess, 'execFile');
+        setCustomPromisifier(childProcess.execFile);
         overrideAPISync(process, 'dlopen', 1, false);
         overrideAPISync(require('module')._extensions, '.node', 1, false);
         overrideAPISync(fs, 'openSync', 0, false);

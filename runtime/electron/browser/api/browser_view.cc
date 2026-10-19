@@ -233,11 +233,20 @@ void BrowserView::onPaintInUiThread(HDC hdc, const RECT& parentPaintRect)
         paintRect.right - paintRect.left, paintRect.bottom - paintRect.top);
 }
 
-void BrowserView::onWebContentsPaint(WebContents* contents)
+void BrowserView::onWebContentsPaint(WebContents* contents, const gfx::Rect& damage)
 {
     if (contents != m_webContents || !::IsWindow(m_hWnd))
         return;
-    RECT rect = getClientRect();
+    const RECT bounds = getClientRect();
+    gfx::Rect dirty(0, 0, bounds.right - bounds.left, bounds.bottom - bounds.top);
+    if (!damage.IsEmpty())
+        dirty.Intersect(damage);
+    if (dirty.IsEmpty())
+        return;
+    const RECT rect = {
+        bounds.left + dirty.x(), bounds.top + dirty.y(),
+        bounds.left + dirty.right(), bounds.top + dirty.bottom()
+    };
     ::InvalidateRect(m_hWnd, &rect, FALSE);
 }
 

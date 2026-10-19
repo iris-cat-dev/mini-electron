@@ -227,10 +227,21 @@ app.whenReady().then(async () => {
     events.push({ type: 'did-fail-load', code, description, url, isMainFrame }));
   contents.on('render-process-gone', (...args) =>
     finish(new Error('Same-document fixture renderer exited: ' + JSON.stringify(args.at(-1)))));
+  const blockedNavigations = [];
+  const navigationGuards = ['will-frame-navigate', 'will-navigate'].map(type => {
+    const listener = (event, url) => {
+      blockedNavigations.push({ type, url });
+      event.preventDefault();
+    };
+    contents.on(type, listener);
+    return [type, listener];
+  });
 
   phase = 'initial document load';
   const initialUrl = `${scheme}://app/fixture`;
   await window.loadURL(initialUrl);
+  assert.deepEqual(blockedNavigations, [],
+    'programmatic initial loadURL must not emit cancellable navigation events');
   await eventually('initial preload IPC', () => preloads.length === 1);
   assert.equal(responseGeneration, 1);
   assert.equal(preloads.length, 1);
@@ -241,6 +252,18 @@ app.whenReady().then(async () => {
   assert.equal(snapshot.markerIsOriginalObject, true);
   assert.equal(snapshot.preloadToken, preloads[0].token);
   assert.equal(inspections.length, 1);
+
+  phase = 'renderer navigation remains cancellable';
+  const blockedUrl = `${scheme}://app/blocked-by-guard`;
+  await evaluate(`location.href = ${JSON.stringify(blockedUrl)}; true`);
+  await eventually('renderer navigation guard',
+    () => blockedNavigations.some(event => event.url === blockedUrl));
+  await pause(50);
+  assert.equal(await evaluate('location.href'), initialUrl,
+    'preventDefault must still block renderer-initiated navigation');
+  assert.equal(responseGeneration, 1, 'blocked navigation must not load another document');
+  assert.equal(preloads.length, 1, 'blocked navigation must preserve the existing preload');
+  for (const [type, listener] of navigationGuards) contents.removeListener(type, listener);
 
   await evaluate(`window.__sameDocumentMarker.value = 'owned-live-document'`);
   const alphaUrl = `${scheme}://app/alpha?step=1`;

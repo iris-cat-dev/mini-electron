@@ -76,8 +76,8 @@ public:
 
     virtual int GetProcessId() const = 0;
     virtual bool IsAlive() const = 0;
-    // On failure the destination's bytes may be incomplete; callers must keep
-    // any previously presented frame in separate storage.
+    // Updates the owned snapshot only after a complete seqlock-validated read.
+    // On failure its pixels, dimensions and generation remain unchanged.
     virtual bool CopyFrame(RendererFrameSnapshot* snapshot) const = 0;
     // Makes this renderer's read-only frame mapping available to |target| for
     // webview compositing. The OS handle is transferred out-of-band and is

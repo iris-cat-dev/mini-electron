@@ -171,9 +171,10 @@ public:
         const auto* header = static_cast<const renderer_protocol::FrameBufferHeader*>(process_.frame_memory);
         if (header->magic != renderer_protocol::kFrameMagic)
             return false;
+        std::lock_guard<std::mutex> lock(frame_lock_);
         for (int attempt = 0; attempt < 4; ++attempt) {
             uint64_t before = header->generation.load(std::memory_order_acquire);
-            if (before & 1)
+            if (!before || (before & 1))
                 continue;
             if (before && before == snapshot->generation && !snapshot->rgba.empty())
                 return true;
@@ -187,13 +188,13 @@ public:
                 || stride > data_size || height > data_size / stride
                 || sizeof(*header) + data_size > process_.frame_mapping_size)
                 return false;
-            snapshot->generation = 0;
-            snapshot->rgba.resize(data_size);
-            std::memcpy(snapshot->rgba.data(), header + 1, data_size);
+            frame_staging_.resize(data_size);
+            std::memcpy(frame_staging_.data(), header + 1, data_size);
             std::atomic_thread_fence(std::memory_order_acquire);
             uint64_t after = header->generation.load(std::memory_order_relaxed);
             if (before != after || (after & 1))
                 continue;
+            snapshot->rgba.swap(frame_staging_);
             snapshot->width = static_cast<int>(width);
             snapshot->height = static_cast<int>(height);
             snapshot->stride = static_cast<int>(stride);
@@ -365,6 +366,8 @@ private:
     std::atomic<uint64_t> next_request_id_ { 1 };
     std::atomic<bool> closed_ { false };
     std::mutex write_lock_;
+    mutable std::mutex frame_lock_;
+    mutable std::vector<uint8_t> frame_staging_;
     std::thread reader_;
 };
 

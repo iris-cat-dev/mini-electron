@@ -18,6 +18,7 @@
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
 #include "runtime/electron/common/renderer_client.h"
+#include "ui/gfx/geometry/rect.h"
 
 namespace node {
 class Environment;
@@ -52,7 +53,8 @@ public:
     virtual void onWebContentsCreated(WebContents*) { }
     virtual void onWebContentsDeleted(WebContents*) { }
     virtual void onWebContentsReadyToShow(WebContents*) { }
-    virtual void onWebContentsPaint(WebContents*) { }
+    // An empty damage rectangle requests a full repaint.
+    virtual void onWebContentsPaint(WebContents*, const gfx::Rect&) { }
     virtual void onWebContentsTextInputState(
         WebContents*, const base::Value::Dict&) { }
     virtual bool supportsFramePreparation() const { return false; }
@@ -83,6 +85,8 @@ public:
         bool isUseContentSize = false;
         bool isAlwaysOnTop = false;
         bool isClosable = true;
+        bool isFocusable = true;
+        bool skipTaskbar = false;
         int minWidth = 100;
         int minHeight = 100;
         int maxWidth = 500;
@@ -255,6 +259,11 @@ private:
     WebContents* m_host = nullptr;
     BrowserWindowConstructorOptions* m_createWindowParam = nullptr;
     std::unique_ptr<RendererClient> m_renderer;
+#if defined(_WIN32)
+    mutable RendererFrameSnapshot m_windowsPaintFrame;
+    mutable std::vector<uint8_t> m_windowsPaintPixels;
+    mutable bool m_windowsPaintNeedsFullRepaint = false;
+#endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;
 #endif

@@ -724,7 +724,7 @@ class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
   }
 
   void onWebContentsDeleted(atom::WebContents* contents) override;
-  void onWebContentsPaint(atom::WebContents*) override;
+  void onWebContentsPaint(atom::WebContents*, const gfx::Rect&) override;
   void onWebContentsTextInputState(
       atom::WebContents*, const base::Value::Dict& state) override;
   bool supportsFramePreparation() const override { return view_ && view_.window; }
@@ -781,7 +781,7 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   }
 
   void onWebContentsDeleted(atom::WebContents* contents) override;
-  void onWebContentsPaint(atom::WebContents*) override;
+  void onWebContentsPaint(atom::WebContents*, const gfx::Rect&) override;
   void onWebContentsTextInputState(
       atom::WebContents*, const base::Value::Dict& state) override;
   bool supportsFramePreparation() const override { return true; }
@@ -1952,7 +1952,7 @@ void MacBrowserWindow::onWebContentsDeleted(atom::WebContents* contents) {
     web_contents_ = nullptr;
 }
 
-void MacBrowserWindow::onWebContentsPaint(atom::WebContents*) {
+void MacBrowserWindow::onWebContentsPaint(atom::WebContents*, const gfx::Rect&) {
   InvalidateFrame();
   [renderer_view_ setNeedsDisplay:YES];
 }
@@ -2167,7 +2167,7 @@ void MacBrowserView::onWebContentsDeleted(atom::WebContents* contents) {
     web_contents_ = nullptr;
 }
 
-void MacBrowserView::onWebContentsPaint(atom::WebContents*) {
+void MacBrowserView::onWebContentsPaint(atom::WebContents*, const gfx::Rect&) {
   InvalidateFrame();
   [view_ setNeedsDisplay:YES];
 }
