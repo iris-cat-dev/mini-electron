@@ -23,8 +23,7 @@ const watchdog = setTimeout(() => finish(new Error('Windows pointer interaction 
 app.on('window-all-closed', () => {});
 
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && 'value' in result ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 
 const state = () => evaluate('JSON.stringify(window.pointerState())').then(JSON.parse);

@@ -108,7 +108,7 @@ app.whenReady().then(async () => {
     title: document.title, canvas: !!document.querySelector('canvas#pet'),
     inline: window.inlineScriptRan === true, external: window.externalScriptRan === true
   })`);
-  assert.deepEqual(JSON.parse(parsed.value), {
+  assert.deepEqual(JSON.parse(parsed), {
     contentType: 'text/html', charset: 'UTF-8', title: 'native protocol 文档',
     canvas: true, inline: true, external: true,
   });
@@ -119,7 +119,7 @@ app.whenReady().then(async () => {
       result: window.protocolResult || null, error: window.protocolError || null,
       imageReady: document.querySelector('#sprite').complete && document.querySelector('#sprite').naturalWidth === 1
     })`);
-    const value = JSON.parse(state.value);
+    const value = JSON.parse(state);
     assert.equal(value.error, null);
     if (value.result && value.imageReady) { result = JSON.parse(value.result); break; }
     await new Promise(resolve => setTimeout(resolve, 25));
@@ -134,7 +134,7 @@ app.whenReady().then(async () => {
     contentType: document.contentType, charset: document.characterSet,
     title: document.title, script: window.charsetScriptRan === true
   })`);
-  assert.deepEqual(JSON.parse(encoded.value), {
+  assert.deepEqual(JSON.parse(encoded), {
     contentType: 'text/html', charset: 'windows-1252', title: 'café', script: true,
   });
   phase = 'loading exact HTML media type';
@@ -143,7 +143,7 @@ app.whenReady().then(async () => {
     contentType: document.contentType, canvas: !!document.querySelector('canvas#pet'),
     script: window.plainScriptRan === true
   })`);
-  assert.deepEqual(JSON.parse(plain.value), {
+  assert.deepEqual(JSON.parse(plain), {
     contentType: 'text/html', canvas: true, script: true,
   });
   finish();

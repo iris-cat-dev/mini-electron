@@ -374,8 +374,11 @@ WebContents.prototype.executeJavaScript = function (code, hasUserGesture = false
     hasUserGesture = false;
   }
   const promise = this._request('executeJavaScript', { code: String(code), userGesture: !!hasUserGesture })
-    .then(value => Object.prototype.hasOwnProperty.call(value, 'result') ? value.result : value);
-  if (typeof callback === 'function') promise.then(callback);
+    .then(reply => {
+      if (reply.rejected) throw reply.result;
+      return reply.result;
+    });
+  if (typeof callback === 'function') promise.then(callback, () => {});
   return promise;
 };
 WebContents.prototype.insertCSS = function (css) {

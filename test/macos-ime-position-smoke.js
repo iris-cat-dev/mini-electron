@@ -27,7 +27,7 @@ function finish(error) {
   else console.log('PASS: native NSTextInputClient click focus, caret/selection, page/editor scroll, window movement, backing scale, blur reset and textarea/contenteditable composition/update/Unicode commit without duplicates');
   app.exit(error ? 1 : 0);
 }
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 const snapshot = id => evaluate(`JSON.stringify(window.imeSnapshot(${JSON.stringify(id)}))`).then(JSON.parse);
 async function eventually(label, predicate) {
   let last;

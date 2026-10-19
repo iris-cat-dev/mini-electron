@@ -81,8 +81,7 @@ if (artifacts) {
 }
 
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && Object.hasOwn(result, 'value') ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 const value = source => evaluate(`JSON.stringify(${source})`).then(JSON.parse);
 async function eventually(read, predicate, label, timeout = 6000) {

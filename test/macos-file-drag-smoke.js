@@ -41,7 +41,7 @@ function finish(error) {
 }
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 async function eventually(source, predicate, label) {
   const end = Date.now() + 10000;
   let value;

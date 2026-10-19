@@ -37,8 +37,7 @@ function finish(error) {
   }
 }
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && Object.hasOwn(result, 'value') ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 function snapshot(label) {
   const result = native.snapshot(title);

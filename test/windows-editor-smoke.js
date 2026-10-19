@@ -17,8 +17,7 @@ const key = (...keys) => request('key', { keys });
 const deadline = setTimeout(() => finish(new Error('Windows editor smoke timed out')), 150000);
 app.on('window-all-closed', () => {});
 async function evaluate(source, contents = window.webContents) {
-  const result = await contents.executeJavaScript(source);
-  return result && typeof result === 'object' && 'value' in result ? result.value : result;
+  return contents.executeJavaScript(source);
 }
 const value = (source, contents) => evaluate(`JSON.stringify(${source})`, contents).then(JSON.parse);
 async function eventually(read, predicate, label) {

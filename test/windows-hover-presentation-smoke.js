@@ -20,8 +20,7 @@ const deadline = setTimeout(() => finish(new Error('Hover presentation smoke tim
 app.on('window-all-closed', () => {});
 
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && Object.hasOwn(result, 'value') ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 async function finish(error) {
   if (finished) return;

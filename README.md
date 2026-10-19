@@ -376,6 +376,18 @@ restores of both native-frame and opaque hidden-titlebar windows.
 `showInactive()` shows without minimizing or activating the window. Showing hidden
 static content publishes its retained frame immediately, including per-pixel-alpha
 companion artwork; no opaque background is added to transparent windows.
+
+Window construction, topmost/frame changes, and passive geometry setters explicitly
+use `SWP_NOACTIVATE`; geometry-only changes also preserve Z-order. Nonfocusable
+pointer handling does not call native `SetFocus`. The companion regression first
+observes the application's ordinary main HWND as foreground, then checks the exact
+foreground HWND after construction, loading, showing, and each passive setter,
+without companion input or a corrective refocus. It also checks native visibility,
+minimized state, topmost/NOACTIVATE/tool-window styles, and taskbar exclusion.
+These source fixes for issue #4 require a rebuilt Windows runtime; the published
+Windows `0.1.8` artifact is unchanged. Native Windows foreground/style acceptance
+has not been run on the current macOS development host.
+
 Windows `screen` display bounds, work areas, matching/nearest-point queries, and
 cursor positions use the same DIP coordinate space as BrowserWindow bounds.
 Native monitor scale factors come from ScreenWin, avoiding a second DPI scaling
@@ -705,6 +717,30 @@ existing checks. Custom-protocol requests preserve their path and query. Resourc
 authorization ignores fragments while retaining exact path, query, and method checks.
 The navigation regression covers state/IPC continuity, same-URL custom-protocol and
 HTTP reloads with query/fragment URLs, and detachment of previous-document frames.
+
+`webContents.executeJavaScript()` now returns the renderer value directly rather
+than a `{ value: ... }` wrapper. Native Blink execution waits for Promise/thenable
+settlement, propagates synchronous exceptions and asynchronous rejections, and
+uses the existing structured-clone IPC format for objects, arrays, undefined,
+BigInt, cycles, and binary data. Pending execution is rejected when its document
+or window is destroyed. No eval wrapper, preload bridge, or DevTools is required;
+strict-CSP image decoding and asynchronous canvas PNG conversion use this same path.
+Existing application/test callers must consume the direct result, not `.value`.
+
+Run issue #3's real sandboxed-renderer regression after rebuilding:
+
+```sh
+out/mac-arm64/mini-electron test/execute-javascript-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/execute-javascript-smoke.js
+```
+
+The macOS native run covers the seven reported result/error cases, structured
+values, concurrent settlement, source-document/window destruction, and independent
+pixel comparison of an asynchronously decoded canvas PNG. The unmodified OMP Desktop
+`0.5.2` generated installer also converted the bundled Iris PNG and atomically
+installed its 3840-by-960 spritesheet in an isolated profile. This verifies the
+shared execution path on macOS, not the Windows binary; the published Windows
+`0.1.8` artifact does not contain this source fix.
 
 Local-storage mutation acknowledgements are posted after the native setter
 returns, matching Mojo ordering and allowing Blink to register its pending

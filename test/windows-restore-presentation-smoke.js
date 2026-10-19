@@ -75,9 +75,7 @@ const request = (action, values = {}) => driver.request(action, {
   ...values,
 });
 async function rendererValue(contents, expression) {
-  const result = await contents.executeJavaScript(`JSON.stringify(${expression})`);
-  const serialized = result && typeof result === 'object' && 'value' in result ? result.value : result;
-  return JSON.parse(serialized);
+  return JSON.parse(await contents.executeJavaScript(`JSON.stringify(${expression})`));
 }
 const delta = (actual, expected) => Math.max(...actual.map((value, index) => Math.abs(value - expected[index])));
 const snapshot = counts => Object.fromEntries(Object.entries(counts).map(([name, count]) => [name, count]));

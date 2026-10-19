@@ -59,21 +59,21 @@ app.whenReady().then(async () => {
   for (let round = 0; round < 100; ++round) {
     phase = `mutation batch ${round + 1}`;
     const result = await window.webContents.executeJavaScript('window.storageSmokeRound()');
-    assert.deepEqual(JSON.parse(result.value), { removed: null, remaining: 0 });
+    assert.deepEqual(JSON.parse(result), { removed: null, remaining: 0 });
     // Exercise a burst in one JS stack, then allow posted acknowledgements to
-    // drain before the next burst. executeJavaScript returns synchronous values.
+    // drain before the next burst.
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   phase = 'persisting final value';
   const result = await window.webContents.executeJavaScript(
     'localStorage.setItem("__mini_native_storage_probe", "persisted"); localStorage.getItem("__mini_native_storage_probe")');
-  assert.equal(result.value, 'persisted');
+  assert.equal(result, 'persisted');
   assert.equal(window.webContents.isCrashed(), false);
   phase = 'reloading persisted origin';
   const loaded = once(window.webContents, 'did-finish-load');
   window.reload();
   await loaded;
   const persisted = await window.webContents.executeJavaScript('localStorage.getItem("__mini_native_storage_probe")');
-  assert.equal(persisted.value, 'persisted');
+  assert.equal(persisted, 'persisted');
   finish();
 }).catch(finish);

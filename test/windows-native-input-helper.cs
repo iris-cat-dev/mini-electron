@@ -598,6 +598,7 @@ internal static class NativeInputHelper
             GetClassName(window, className, className.Capacity);
             return new {
                 window = window.ToInt64(),
+                foreground = GetForegroundWindow().ToInt64(),
                 style = GetWindowLongPtr(window, -16).ToInt64(),
                 exStyle = GetWindowLongPtr(window, -20).ToInt64(),
                 visible = IsWindowVisible(window),

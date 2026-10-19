@@ -37,7 +37,7 @@ function finish(error) {
 }
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 
 async function eventually(read, expected, message) {
   const until = Date.now() + 4000;

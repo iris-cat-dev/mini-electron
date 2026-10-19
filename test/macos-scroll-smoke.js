@@ -25,7 +25,7 @@ function finish(error) {
   else console.log('PASS: pixel-proportional trackpad scrolling, direction, high-frequency input, fractional deltas, hit testing and unchanged mouse wheel');
   app.exit(error ? 1 : 0);
 }
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 const state = () => evaluate('JSON.stringify(scrollState())').then(JSON.parse);
 async function eventually(label, predicate) {
   let actual;

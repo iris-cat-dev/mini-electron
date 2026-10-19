@@ -22,9 +22,9 @@ const WS_EX_APPWINDOW = 0x00040000;
 const WS_EX_LAYERED = 0x00080000;
 const WS_EX_NOACTIVATE = 0x08000000;
 const hasStyle = (state, flag) => (state.exStyle & flag) === flag;
-function assertCompanionStyles(state, { taskbar, focusable }, label) {
+function assertCompanionStyles(state, { taskbar, focusable, topmost = true }, label) {
   assert.equal(hasStyle(state, WS_EX_LAYERED), true, `${label}: per-pixel layered style`);
-  assert.equal(hasStyle(state, WS_EX_TOPMOST), true, `${label}: topmost style`);
+  assert.equal(hasStyle(state, WS_EX_TOPMOST), topmost, `${label}: topmost style`);
   assert.equal(hasStyle(state, WS_EX_TOOLWINDOW), !taskbar, `${label}: tool-window taskbar exclusion`);
   assert.equal(hasStyle(state, WS_EX_APPWINDOW), taskbar, `${label}: app-window taskbar eligibility`);
   assert.equal(hasStyle(state, WS_EX_NOACTIVATE), !focusable, `${label}: native activation eligibility`);
@@ -56,20 +56,62 @@ app.whenReady().then(async () => {
     title: baseTitle, frame: false, show: false, backgroundColor: '#184563' });
   await base.loadURL('data:text/html,' + encodeURIComponent(
     '<style>html,body{margin:0;width:100%;height:100%;background:#184563}</style>'));
+  // Start the external observer before establishing the initial foreground.
+  // Nothing below refocuses the main window to hide a companion activation.
+  driver = await startNativeInput(temporary, baseTitle);
   base.show();
+  const mainState = await driver.request('nativeWindowState');
+  assert.equal(mainState.visible, true, 'main window is visible before companion creation');
+  assert.equal(mainState.foreground, mainState.window,
+    'precondition: the ordinary main HWND is already the native foreground window');
+  const observeCompanion = async (label, { visible = true, topmost = true, focusable = false } = {}) => {
+    const state = await driver.request('nativeWindowState', { title: petTitle });
+    assert.equal(state.foreground, mainState.window, `${label}: preserve the exact main foreground HWND`);
+    assert.equal(state.visible, visible, `${label}: native visibility`);
+    assert.equal(state.minimized, false, `${label}: native companion is not minimized`);
+    assertCompanionStyles(state, { taskbar: false, focusable, topmost }, label);
+    return state;
+  };
   companion = new BrowserWindow({ ...bounds, title: petTitle, frame: false, show: false,
     transparent: true, focusable: false, alwaysOnTop: true, hasShadow: false, minWidth: 0, minHeight: 0,
     resizable: false, skipTaskbar: true, backgroundColor: '#00000000' });
+  await observeCompanion('immediately after constructor', { visible: false });
   companion.webContents.on('will-navigate', event => event.preventDefault());
   await companion.loadURL('data:text/html,' + encodeURIComponent(
     '<style>html,body{margin:0;background:transparent}#pet{position:absolute;left:40px;top:40px;width:80px;height:80px;background:#db5181}</style><div id="pet"></div>'));
+  await observeCompanion('after loadURL', { visible: false });
   companion.setIgnoreMouseEvents(true, { forward: true });
-  driver = await startNativeInput(temporary, baseTitle);
+  companion.showInactive();
+  await observeCompanion('after showInactive');
 
-  const constructed = await driver.request('nativeWindowState', { title: petTitle });
-  assert.equal(constructed.visible, false, 'constructor keeps show:false companion hidden');
-  assert.equal(constructed.minimized, false, 'constructor does not encode hidden as minimized');
-  assertCompanionStyles(constructed, { taskbar: false, focusable: false }, 'constructor');
+  // These are real native z-order/geometry calls, not JavaScript focus state.
+  // Observe after every operation without pointer input or foreground repair.
+  for (const focusable of [false, true]) {
+    companion.setFocusable(focusable);
+    await observeCompanion(`setFocusable(${focusable})`, { focusable });
+    companion.setAlwaysOnTop(false);
+    await observeCompanion(`setAlwaysOnTop(false), focusable=${focusable}`, { focusable, topmost: false });
+    companion.setAlwaysOnTop(true);
+    await observeCompanion(`setAlwaysOnTop(true), focusable=${focusable}`, { focusable });
+    for (const [label, change] of [
+      ['setPosition', () => companion.setPosition(bounds.x + 8, bounds.y + 8)],
+      ['center', () => companion.center()],
+      ['setBounds', () => companion.setBounds(bounds)],
+      ['setSize', () => companion.setSize(bounds.width, bounds.height)],
+      ['setContentSize', () => companion.setContentSize(bounds.width, bounds.height)],
+      ['setResizable(true)', () => companion.setResizable(true)],
+      ['setResizable(false)', () => companion.setResizable(false)]
+    ]) {
+      change();
+      await observeCompanion(`${label}, focusable=${focusable}`, { focusable });
+    }
+  }
+  companion.setFocusable(false);
+  await observeCompanion('restoring nonfocusable companion');
+  companion.setBounds(bounds);
+  await observeCompanion('restoring companion bounds');
+  companion.hide();
+  await observeCompanion('hidden before external-application checks', { visible: false });
 
   for (const label of ['first show', 'show after hide']) {
     await driver.request('focusSource');

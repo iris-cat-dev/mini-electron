@@ -26,7 +26,7 @@ function finish(error) {
   else console.log('PASS: desktop fine/hover media queries, full-height divider hover, captured drag and released-button state');
   app.exit(error ? 1 : 0);
 }
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 const state = () => evaluate('JSON.stringify(window.pointerState())').then(JSON.parse);
 async function eventually(label, predicate) {
   let actual;

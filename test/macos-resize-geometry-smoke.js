@@ -31,8 +31,7 @@ function finish(error) {
   }
 }
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && Object.hasOwn(result, 'value') ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 async function dom() {
   return JSON.parse(await evaluate(`JSON.stringify({width:innerWidth,height:innerHeight,phase:geometryPhase,

@@ -71,7 +71,7 @@ app.whenReady().then(async () => {
     const window = new BrowserWindow({ title, width: 640, height: 420, show: true,
       webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
     windows.push(window);
-    const evaluate = async script => (await window.webContents.executeJavaScript(script)).value;
+    const evaluate = script => window.webContents.executeJavaScript(script);
     await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
       <meta name="color-scheme" content="${scheme}"><title>${title}</title>
       <style>html{color-scheme:${scheme};background:${dark ? '#181818' : 'white'}}

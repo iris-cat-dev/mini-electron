@@ -23,7 +23,7 @@ function finish(error) {
   else console.log('PASS: native clipboard rich copy/cut/paste, Unicode, independent commits and web image Files in editable/textarea');
   app.exit(error ? 1 : 0);
 }
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 async function eventually(read, expected) {
   const until = Date.now() + 4000;
   let actual;

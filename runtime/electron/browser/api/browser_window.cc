@@ -1333,7 +1333,8 @@ public:
             return;
 
         if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
-            ::SetFocus(hWnd);
+            if (m_createWindowParam && m_createWindowParam->isFocusable)
+                ::SetFocus(hWnd);
             ::SetCapture(hWnd);
         } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
             ::ReleaseCapture();
@@ -2313,7 +2314,7 @@ private:
                 info.rcMonitor.left, info.rcMonitor.top,
                 info.rcMonitor.right - info.rcMonitor.left,
                 info.rcMonitor.bottom - info.rcMonitor.top,
-                SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+                SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
         } else {
             ::SetWindowLong(m_hWnd, GWL_STYLE, m_fullScreenStyle & ~(WS_MAXIMIZE | WS_MINIMIZE));
             ::SetWindowLong(m_hWnd, GWL_EXSTYLE, m_fullScreenExStyle);
@@ -2492,7 +2493,8 @@ private:
         sprintf_s(output, 99, "BrowserWindow::setBoundsApi: %d %d, %d %d\n", x, y, width, height);
         OutputDebugStringA(output);
         const gfx::Rect pixelBounds = display::win::ScreenWin::DIPToScreenRect(nullptr, gfx::Rect(x, y, width, height));
-        ::MoveWindow(m_hWnd, pixelBounds.x(), pixelBounds.y(), pixelBounds.width(), pixelBounds.height(), TRUE);
+        ::SetWindowPos(m_hWnd, nullptr, pixelBounds.x(), pixelBounds.y(),
+            pixelBounds.width(), pixelBounds.height(), SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     v8::Local<v8::Object> getSizeApi()
@@ -2686,7 +2688,8 @@ private:
     void setAlwaysOnTopApi(bool b)
     {
         m_createWindowParam->isAlwaysOnTop = b;
-        ::SetWindowPos(m_hWnd, b ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        ::SetWindowPos(m_hWnd, b ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     bool isAlwaysOnTopApi()
@@ -2702,16 +2705,18 @@ private:
 
         RECT rect;
         ::GetWindowRect(m_hWnd, &rect);
-        rect.left = (screenX - rect.right) / 2;
-        rect.top = (screenY - rect.bottom) / 2;
+        rect.left = (screenX - (rect.right - rect.left)) / 2;
+        rect.top = (screenY - (rect.bottom - rect.top)) / 2;
 
         //设置窗体位置
-        ::SetWindowPos(m_hWnd, NULL, rect.left, rect.top, rect.right, rect.bottom, SWP_NOSIZE);
+        ::SetWindowPos(m_hWnd, nullptr, rect.left, rect.top, 0, 0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     void setPositionApi(int x, int y)
     {
-        ::SetWindowPos(m_hWnd, NULL, x, y, 0, 0, SWP_NOSIZE);
+        ::SetWindowPos(m_hWnd, nullptr, x, y, 0, 0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     std::vector<int> getPositionApi()
@@ -3235,7 +3240,10 @@ private:
         HWND dwFlag = HWND_NOTOPMOST;
         if (createWindowParam->isAlwaysOnTop)
             dwFlag = HWND_TOPMOST;
-        ::SetWindowPos(m_hWnd, dwFlag, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOREPOSITION | SWP_FRAMECHANGED);
+        // Z-order/frame setup is not an activation request, even while hidden.
+        // Presentation below applies the requested show/focus policy.
+        ::SetWindowPos(m_hWnd, dwFlag, 0, 0, 0, 0,
+            SWP_NOSIZE | SWP_NOMOVE | SWP_NOREPOSITION | SWP_FRAMECHANGED | SWP_NOACTIVATE);
         updateWindowFrame(m_hWnd);
 
 
@@ -3245,7 +3253,7 @@ private:
         ::GetClientRect(m_hWnd, &m_clientRect);
 
         if (createWindowParam->isCenter)
-            platform_util::moveToCenter(m_hWnd);
+            centerApi();
 
         int width = m_clientRect.right - m_clientRect.left;
         int height = m_clientRect.bottom - m_clientRect.top;

@@ -34,6 +34,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "runtime/electron/common/world_ids.h"
+#include "runtime/electron/common/v8_util.h"
 #include "build/build_config.h"
 #include "runtime/electron/common/renderer_client.h"
 #include "runtime/electron/common/renderer_platform.h"
@@ -54,6 +55,9 @@
 #include "runtime/engine/renderer/brokered_file_registry.h"
 #include "net/base/mime_util.h"
 #include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/common/messaging/cloneable_message.h"
+#include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
+#include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/common/page/drag_operation.h"
 #include "third_party/blink/public/platform/web_blob_info.h"
 #include "third_party/blink/public/platform/web_drag_data.h"
@@ -71,6 +75,17 @@
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+#include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/script/classic_script.h"
+#include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
+#include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
+#include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/geometry/size.h"
@@ -332,6 +347,184 @@ void PostBlink(Task&& task)
         (*task)();
     }, owned, nullptr);
 }
+// Keep the actual V8 value until it settles, then use the same structured clone
+// format as native IPC. Blink's WebScriptExecutionCallback converts to
+// base::Value, which cannot represent undefined, cycles, or typed arrays and
+// discards script exceptions and promise rejections.
+class ExecuteJavaScriptRequest final
+    : public blink::GarbageCollected<ExecuteJavaScriptRequest>,
+      public blink::ExecutionContextLifecycleObserver {
+public:
+    using ReplyCallback =
+        base::OnceCallback<void(base::Value::Dict, std::string)>;
+
+    ExecuteJavaScriptRequest(blink::ScriptState* script_state, std::string code,
+        bool user_gesture, ReplyCallback reply)
+        : blink::ExecutionContextLifecycleObserver(
+              blink::ExecutionContext::From(script_state))
+        , script_state_(script_state)
+        , code_(std::move(code))
+        , user_gesture_(user_gesture)
+        , reply_(std::move(reply))
+        , keep_alive_(this)
+    {
+    }
+
+    void Run()
+    {
+        // Match RequestExecuteScript's suspension and user-activation behavior,
+        // without its lossy base::Value result conversion.
+        blink::ExecutionContext* context = GetExecutionContext();
+        if (context->IsContextFrozenOrPaused()) {
+            task_ = blink::PostCancellableTask(
+                *context->GetTaskRunner(blink::TaskType::kJavascriptTimerImmediate),
+                FROM_HERE, WTF::BindOnce(&ExecuteJavaScriptRequest::Execute,
+                               blink::WrapPersistent(this)));
+        } else {
+            Execute();
+        }
+    }
+
+    void ContextDestroyed() override
+    {
+        Finish({}, "Script execution was interrupted by frame destruction");
+    }
+
+    void Trace(blink::Visitor* visitor) const override
+    {
+        visitor->Trace(script_state_);
+        blink::ExecutionContextLifecycleObserver::Trace(visitor);
+    }
+
+private:
+    class OnSettled final : public blink::ThenCallable<blink::IDLAny, OnSettled> {
+    public:
+        OnSettled(ExecuteJavaScriptRequest* request, bool rejected)
+            : request_(request)
+            , rejected_(rejected)
+        {
+        }
+
+        void React(blink::ScriptState*, blink::ScriptValue value)
+        {
+            request_->Complete(value.V8Value(), rejected_);
+        }
+
+        void Trace(blink::Visitor* visitor) const override
+        {
+            visitor->Trace(request_);
+            blink::ThenCallable<blink::IDLAny, OnSettled>::Trace(visitor);
+        }
+
+    private:
+        blink::Member<ExecuteJavaScriptRequest> request_;
+        const bool rejected_;
+    };
+
+    void Execute()
+    {
+        if (!reply_)
+            return;
+        if (!script_state_->ContextIsValid()) {
+            ContextDestroyed();
+            return;
+        }
+        blink::ScriptState::Scope scope(script_state_);
+        // Attach settlement handlers before the first microtask checkpoint, so
+        // already-rejected Promises are handled just like timer-driven ones.
+        v8::MicrotasksScope microtasks(script_state_->GetIsolate(),
+            blink::ToMicrotaskQueue(script_state_),
+            v8::MicrotasksScope::kRunMicrotasks);
+        if (user_gesture_) {
+            if (auto* window = DomWindow()) {
+                blink::LocalFrame::NotifyUserActivation(window->GetFrame(),
+                    blink::mojom::blink::UserActivationNotificationType::kWebScriptExec);
+            }
+        }
+        v8::TryCatch exception(script_state_->GetIsolate());
+        const blink::WebScriptSource source(blink::WebString::FromUTF8(code_));
+        blink::ScriptEvaluationResult result =
+            blink::ClassicScript::CreateUnspecifiedScript(
+                source, blink::SanitizeScriptErrors::kDoNotSanitize)
+                ->RunScriptOnScriptStateAndReturnValue(script_state_,
+                    blink::ExecuteScriptPolicy::kDoNotExecuteScriptWhenScriptsDisabled,
+                    blink::V8ScriptRunner::RethrowErrorsOption::Rethrow(WTF::String()));
+        code_ = std::string();
+        // Evaluation can synchronously navigate or detach its own frame.
+        if (!reply_)
+            return;
+        if (!script_state_->ContextIsValid()) {
+            ContextDestroyed();
+            return;
+        }
+        if (exception.HasCaught()) {
+            v8::Local<v8::Value> error = exception.Exception();
+            exception.Reset();
+            Complete(error, true);
+        } else if (result.GetResultType()
+            == blink::ScriptEvaluationResult::ResultType::kSuccess) {
+            v8::Local<v8::Value> value = result.GetSuccessValue();
+            if (!value->IsObject()) {
+                Complete(value, false);
+                return;
+            }
+            // Native Promise resolution also assimilates thenables. Reactions
+            // remain attached across timer turns; no microtask polling is used.
+            blink::ScriptPromise<blink::IDLAny>::FromV8Value(script_state_, value)
+                .React(script_state_,
+                    blink::MakeGarbageCollected<OnSettled>(this, false),
+                    blink::MakeGarbageCollected<OnSettled>(this, true));
+        } else {
+            Finish({}, "Script execution failed");
+        }
+    }
+
+    void Complete(v8::Local<v8::Value> value, bool rejected)
+    {
+        if (!reply_)
+            return;
+        v8::TryCatch exception(script_state_->GetIsolate());
+        blink::CloneableMessage message;
+        if (!serializeV8Value(script_state_->GetIsolate(), value, &message)) {
+            exception.Reset();
+            Finish({}, "An object could not be cloned.");
+            return;
+        }
+        // Serialization may invoke getters that destroy the source context.
+        if (!reply_)
+            return;
+        if (message.encoded_message.size()
+            > renderer_protocol::kMaxMessageBytes - 1024) {
+            Finish({}, "Script result exceeds the renderer IPC message limit");
+            return;
+        }
+        base::Value::Dict result;
+        result.Set("result",
+            base::Value(std::move(message.owned_encoded_message)));
+        result.Set("rejected", rejected);
+        Finish(std::move(result), {});
+    }
+
+    void Finish(base::Value::Dict result, std::string error)
+    {
+        if (!reply_)
+            return;
+        task_.Cancel();
+        if (auto* context = GetExecutionContext();
+            context && !context->ContextLifecycleObserverSet().IsIteratingOverObservers()) {
+            SetExecutionContext(nullptr);
+        }
+        keep_alive_.Clear();
+        std::move(reply_).Run(std::move(result), std::move(error));
+    }
+
+    blink::Member<blink::ScriptState> script_state_;
+    std::string code_;
+    const bool user_gesture_;
+    ReplyCallback reply_;
+    blink::TaskHandle task_;
+    blink::SelfKeepAlive<ExecuteJavaScriptRequest> keep_alive_;
+};
 
 class RendererServerImpl {
 public:
@@ -1165,32 +1358,40 @@ private:
                 Reply(request_id, {}, "missing JavaScript source");
                 return;
             }
-            auto* pending = new std::pair<RendererServerImpl*, uint64_t>(this, request_id);
-            mini_electron_run_js(view_, mini_electron_web_frame_get_main_frame(view_),
-                code->c_str(), FALSE, [](mini_electron_web_view, void* parameter,
-                    mini_electron_js_exec_state state, mini_electron_js_value value) {
-                    std::unique_ptr<std::pair<RendererServerImpl*, uint64_t>> pending(
-                        static_cast<std::pair<RendererServerImpl*, uint64_t>*>(parameter));
-                    base::Value::Dict result;
-                    switch (mini_electron_get_js_value_type(state, value)) {
-                    case kMiniElectronJsTypeNumber:
-                        result.Set("value", mini_electron_js_to_double(state, value));
-                        break;
-                    case kMiniElectronJsTypeBool:
-                        result.Set("value", !!mini_electron_js_to_boolean(state, value));
-                        break;
-                    case kMiniElectronJsTypeNull:
-                    case kMiniElectronJsTypeUndefined:
-                        result.Set("value", base::Value());
-                        break;
-                    default: {
-                        const char* text = mini_electron_js_to_string(state, value);
-                        result.Set("value", text ? text : "");
-                        break;
-                    }
-                    }
-                    pending->first->Reply(pending->second, std::move(result));
-                }, pending, nullptr);
+            auto reply = base::BindOnce(
+                [](scoped_refptr<base::SequencedTaskRunner> owner,
+                    base::WeakPtr<RendererServerImpl> server, uint64_t id,
+                    base::Value::Dict result, std::string error) {
+                    owner->PostTask(FROM_HERE,
+                        base::BindOnce(&RendererServerImpl::Reply, server, id,
+                            std::move(result), std::move(error)));
+                }, owner_runner_, owner_weak_, request_id);
+            PostBlink([view_id = view_, code = std::move(*code),
+                          user_gesture = params.FindBool("userGesture").value_or(false),
+                          reply = std::move(reply)]() mutable {
+                auto* view = static_cast<content::WebViewHost*>(
+                    common::LiveIdDetect::getWebViewIds()->getPtr(view_id));
+                blink::WebFrame* frame = view ? view->getMainFrame() : nullptr;
+                if (!frame || !frame->IsWebLocalFrame()) {
+                    std::move(reply).Run({}, "renderer view was destroyed");
+                    return;
+                }
+                v8::Isolate* isolate = v8::Isolate::GetCurrent();
+                v8::HandleScope scope(isolate);
+                v8::Local<v8::Context> context =
+                    frame->ToWebLocalFrame()->MainWorldScriptContext();
+                if (context.IsEmpty()) {
+                    std::move(reply).Run({}, "renderer script context is unavailable");
+                    return;
+                }
+                auto* script_state = blink::ScriptState::From(isolate, context);
+                if (!script_state || !script_state->ContextIsValid()) {
+                    std::move(reply).Run({}, "renderer script context was destroyed");
+                    return;
+                }
+                blink::MakeGarbageCollected<ExecuteJavaScriptRequest>(
+                    script_state, std::move(code), user_gesture, std::move(reply))->Run();
+            });
         } else if (method == "insertCSS") {
             std::string* css = params.FindString("css");
             if (!css) {

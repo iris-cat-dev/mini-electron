@@ -23,8 +23,7 @@ app.on('window-all-closed', () => {});
 const request = (action, values = {}) => driver.request(action, values);
 const key = (...keys) => request('key', { keys });
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source);
-  return result && typeof result === 'object' && 'value' in result ? result.value : result;
+  return window.webContents.executeJavaScript(source);
 }
 const value = source => evaluate(`JSON.stringify(${source})`).then(JSON.parse);
 async function eventually(read, predicate, label) {

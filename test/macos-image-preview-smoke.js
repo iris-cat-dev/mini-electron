@@ -58,7 +58,7 @@ header[8] = 8; header[9] = 6;
 const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
   chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(pixels, { level: 0 })), chunk('IEND', Buffer.alloc(0))]);
 const savedPath = path.join(temporary, 'preview.png');
-const evaluate = async source => (await window.webContents.executeJavaScript(source)).value;
+const evaluate = source => window.webContents.executeJavaScript(source);
 async function eventually(label, predicate) {
   let last;
   for (let turn = 0; turn < 100; ++turn) {

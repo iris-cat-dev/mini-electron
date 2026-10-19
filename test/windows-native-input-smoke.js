@@ -44,8 +44,7 @@ async function finish(error) {
   app.exit(error ? 1 : 0);
 }
 async function evaluate(source) {
-  const value = await window.webContents.executeJavaScript(source);
-  return value && typeof value === 'object' && 'value' in value ? value.value : value;
+  return window.webContents.executeJavaScript(source);
 }
 async function eventually(read, predicate, label) {
   const until = Date.now() + 5000;

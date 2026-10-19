@@ -26,8 +26,7 @@ async function eventually(check) {
   throw new Error('Native shortcut assertion did not become true')
 }
 async function evaluate(source) {
-  const result = await window.webContents.executeJavaScript(source)
-  return result && typeof result === 'object' && 'value' in result ? result.value : result
+  return window.webContents.executeJavaScript(source)
 }
 app.whenReady().then(async () => {
   const bundle = path.join(temporary, 'helper.node')
