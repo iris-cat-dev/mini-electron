@@ -2,11 +2,11 @@
 
 ## Scope and baseline
 
-This records the local macOS rendering comparison and the order of runtime
-optimizations. The first implementation target is P0: connect the native
-window's display identity to Viz's existing DisplayLink/VSync implementation.
-GPU compositing, DOM/layout algorithms, compiler optimization and the 10 ms
-AppKit/libuv wakeup policy are outside this change.
+This records the local macOS rendering comparison and runtime optimizations.
+The P0 sections document the completed native display-ID → DisplayLink/VSync
+cutover. The later Metal section records subsequent native GPU composition.
+DOM/layout algorithms, compiler optimization and the 10 ms AppKit/libuv wakeup
+policy remain unchanged.
 
 The 2026-10-19 baseline used an Apple M4 Pro, a 120 Hz built-in display,
 1000×700 CSS-pixel viewports, DPR 2, headed windows, and the same local page.
@@ -38,18 +38,18 @@ commands use -O2 for Blink/bindings and -O3 for V8; no JIT-disabled policy was
 found. Compiler flags and source inspection are not a complete binary provenance
 attestation.
 
-## Diagnosis and priorities
+## Original software-baseline diagnosis and priorities
 
 | Priority | Work | Evidence / boundary |
 | --- | --- | --- |
 | P0 | Native display ID → DisplayLink/VSync, including screen changes | Custom Viz root settings leave the display ID invalid; the macOS source falls back to a 1/60-second timer. This matches the baseline, but the fix needs runtime verification. |
 | P1 | Profile text, style/layout and GC, then optimize demonstrated hotspots | The additional synchronous work is predominantly in the forced style/layout phase. GPU work does not directly explain that timing. |
 | P2 | Measure and optimize publication, IPC, pixel copies and native wakeup | Software framebuffer transport has full-frame copy costs; current ownership/retention protections must remain intact. |
-| P3 | Evaluate targeted compiler optimization, engine upgrade or a real GPU path separately | None is a one-flag explanation/fix for the measured gap. GPU context, shared-image, synchronization and native output plumbing are currently disconnected. |
+| P3 | Evaluate targeted compiler optimization, engine upgrade or a real GPU path separately | None is a one-flag explanation/fix for the measured gap. GPU plumbing was disconnected in the original baseline; the later Metal section documents the subsequent native composition path, not the full Chromium GPU service. |
 
-The CPU software renderer and the operating system's final window composition
-are separate. Core Animation may use GPU-backed system composition without
-Blink/Viz GPU raster/compositing being enabled.
+At that software-only baseline, Blink/Viz remained CPU-only even if Core
+Animation used the GPU for the operating system's final window composition.
+That is distinct from the subsequent native Metal canvas implementation below.
 
 ## P0 design and invariants
 
@@ -265,3 +265,254 @@ GPU page compositing.
 
 Full report: `out/vsync-verification/rendering-comparison/report.md`;
 raw per-trial samples and provenance are retained next to it.
+
+## macOS Metal GPU compositing
+
+### Execution and transport
+
+- macOS defaults to Skia Ganesh/Metal when initial device, context and remote-layer
+  setup succeed. `MINI_ELECTRON_DISABLE_GPU=1` selects the existing CPU backend.
+  Initial GPU setup failure also falls back to CPU.
+- DOM/style/layout and cc tile rasterization remain CPU work. Viz's existing
+  quad renderer draws into real GPU-backed `SkSurface`s, including intermediate
+  render passes, transforms, blending, masks and filters. This is not uploading
+  a fully CPU-composited page as a substitute for GPU composition.
+- A persistent BGRA GPU root preserves damage. GPU blits copy the completed
+  backing to a `CAMetalLayer` drawable. Geometry and presentation are committed
+  together; native views host the remote `CAContext` through `CALayerHost`.
+  Ordinary GPU frame events do not force a full AppKit bitmap redraw.
+- The 64-byte shared frame header now carries output format, remote context,
+  scale, error flags and a native completion generation. Wire version is 2:
+  rebuild browser and renderer together. Normal GPU publication updates metadata
+  only. Explicit captures can leave cached RGBA bytes in the mapping; their
+  presence does not mean later normal frames perform readback.
+- `capturePage()` explicitly reads GPU pixels back. Crop coordinates retain the
+  existing physical-pixel convention. The native image wraps an owned,
+  premultiplied bitmap; it must not premultiply transport RGBA a second time.
+- Native GPU guests share remote layers. CPU-fallback guests use owned image
+  layers in a GPU host. A CPU host with a GPU guest uses coalesced explicit guest
+  readback. These compatibility paths are not claimed as fully GPU-only.
+- GPU completion plus a Core Animation commit is not proof of physical scanout.
+  The native completion generation and rAF frequency must not be called actual
+  displayed FPS. Runtime GPU failure rejects preparation/capture; automatic
+  device-loss recovery is not implemented.
+
+The class/resource-protocol names `SoftwareRenderer` and `gpu_compositing=false`
+remain because cc still supplies CPU-rasterized tile resources. The output
+canvas, render-pass surfaces and presentation can nevertheless execute on Metal.
+The full Chromium GPU service, GPU tile rasterization, accelerated Canvas2D,
+WebGL/WebGPU and hardware video decoding are not enabled by this change.
+
+### Sandbox boundary
+
+The renderer opens its Metal device and command queue before Seatbelt lockdown.
+The profile adds only the named compiler XPC lookup:
+
+```scheme
+(allow mach-lookup (xpc-service-name "com.apple.MTLCompilerService"))
+```
+
+A sandboxed cold, unique shader probe compiled a real pipeline, completed GPU
+work and checked its output pixels. No wildcard driver/Mach permissions or
+arbitrary file-write access were added. Metal disk-cache extension-denial
+diagnostics remain visible; successful in-memory compilation does not justify
+broadening the profile. This design gives the renderer GPU capability directly;
+it is not the security boundary of a separately isolated Chromium GPU process.
+
+### Exercised checks before native-capture authorization
+
+On the local M4 Pro, both native executable targets compiled and linked.
+Actual GPU output metadata reported a real remote context, output format 1,
+DPR 2 and 1200×800 pixels for a 600×400 CSS-pixel page. Before the first explicit
+capture, `dataSize` was zero.
+
+Independent PNG decoding checked 20 colored samples per backend across full
+captures, physical-pixel crops and subsequent changes: translated content,
+vacated background, opacity, brightness, backdrop brightness and a corner
+marker. GPU and CPU sampled colors agreed. The native publication generation
+advanced after content changes and stayed fixed across nine static observations.
+Evidence: `out/gpu-verification/gpu-readback-pixel-evidence.json` and the
+`gpu-readback-{gpu,cpu}-*.png` captures.
+
+An additional translucent capture reproduced double alpha multiplication:
+half-transparent red decoded to premultiplied `[64,0,0,128]` rather than
+`[128,0,0,128]`. The corrected owned-bitmap path was rebuilt and exercised;
+its actual decoded result is `[128,0,0,128]`. The GPU regression retains this
+consumer-visible case. PNG decoding, not an assumed native N32 byte order,
+is used for permanent capture color assertions.
+
+GPU renderer-loss lifetime and preload/application exit lifecycle smokes passed.
+The standalone GUI launched with Metal, reported `GUI_READY`, and its 1920×1280
+explicit GPU snapshot was inspected for rendered page content:
+`out/gpu-verification/gui-metal.png`. That image is producer readback, not a
+WindowServer screenshot.
+
+### Restarted-launcher native verification
+
+After the launcher restart, ScreenCaptureKit successfully captured this
+process's actual WindowServer-composed windows. Authorization is no longer the
+blocker; producer readback is still not substituted for native pixels.
+
+Native testing exposed two presentation defects that producer PNGs could not
+detect. AppKit's private drawing sublayer covered the remote Metal surface;
+the surface now sits above that backing, with BrowserViews above the surface.
+Retained remote backings also needed a lower-left-to-top-left position
+adjustment while resized content was pending.
+
+The real-window GPU root regression passed transformed content, opacity,
+brightness/backdrop filters, subsequent changes, explicit full/cropped captures,
+premultiplied transparency, BrowserView attach/reparent/reattach, and paused
+producer shrink/enlarge without stretching. Embedded `<webview>` and matched
+GPU/CPU resource verification continue below; no electrical-power or physical
+scanout-rate claim follows from these pixel checks.
+
+The embedded GPU/GPU native check also passed CSS-positioned attachment,
+premultiplied guest blending, live updates, independent guest updates while the
+host renderer was stopped, and moving the guest without stale old pixels.
+It exposed missing Blink embedder-name authorization for `<webview>` and
+incorrect DPR conversion of guest bounds; both fixes were rebuilt and exercised.
+
+The next check reproduced a resize stall: a guest requested at 200×140 remained
+published at 180×120. The CPU publication callback released the engine resize
+gate, but Metal completion did not. Both backends now share the publication
+acknowledgment without generating CPU pixels for GPU frames. The rebuilt
+embedded regression passed subsequent source resize as well as moving and
+detaching the guest.
+
+CPU-host compatibility exposed additional real defects: merely waking the
+thread loop did not redraw a static host after guest readback/removal, and CPU
+publication copied guest alpha over the page instead of compositing it.
+Host invalidation now requests the existing forced compositor commit; CPU
+guest paint and mapping readiness also notify the host. Guest pixels always
+use premultiplied source-over blending. The regression reproduced
+`[120,40,16,128]` instead of opaque `[136,72,64,255]` before this correction.
+All four GPU/GPU, GPU/CPU, CPU/GPU and CPU/CPU embedded combinations now pass
+actual owned-window pixels, current full/cropped page captures, update, resize,
+move, detach and frame-resource release.
+
+GPU and forced-CPU extreme-aspect geometry, continuous paused resize, writer
+contention/frame retention and later animated-pixel checks have now passed.
+GPU renderer-loss lifetime and preload/application-menu exit checks also passed.
+The owned-window helper
+accounts for ScreenCaptureKit excluding AppKit's border; it samples only actual
+visible pixels, outside native titlebar controls, without resampling or filling
+missing pixels. Geometry still checks marker position/size/aspect and native
+view/layer agreement with the DOM.
+
+The standalone GUI's real 1920×1344 WindowServer screenshot was also inspected:
+`out/gpu-verification/gui-native.png`. It shows the native titlebar and correctly
+positioned red, green and yellow page markers over the expected blue background.
+Unlike the earlier GUI producer PNGs, this is proof of the final owned window.
+
+Resume from the repository root with the native GPU visual regression:
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+unset SDKROOT
+out/mac-arm64/mini-electron --app=test/macos-gpu-compositing-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-gpu-guests-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-frame-presentation-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-resize-geometry-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-resize-presentation-smoke.js
+MINI_VSYNC_ARTIFACTS=out/gpu-verification/vsync-gpu \
+  out/mac-arm64/mini-electron --app=test/macos-vsync-smoke.js
+MINI_ELECTRON_DISABLE_GPU=1 MINI_VSYNC_ARTIFACTS=out/gpu-verification/vsync-cpu \
+  out/mac-arm64/mini-electron --app=test/macos-vsync-smoke.js
+```
+
+Run GPU and CPU resource measurements sequentially on the same rebuilt binary,
+without concurrent builds or other workload activity. Preserve the existing
+60/120 Hz physical-display, same-DPR switching, BrowserView reparenting and
+calibrated static CPU/wakeup criteria. Stop diagnostic DisplayLinks before idle
+measurement. Then rerun the local Chrome comparison with its ordinary GPU
+configuration. Old software baseline reports are not evidence of new GPU speed.
+
+### Matched GPU/CPU resource measurements
+
+The final rebuilt binary was run sequentially with default Metal and with
+`MINI_ELECTRON_DISABLE_GPU=1`, after the concurrent deployment/browser workload
+had finished. The scene was a moving square in a 1000×700 DIP window at DPR 2.
+CPU below sums the actual browser and renderer process counters; 100% means one
+core, not the whole machine.
+
+| Physical screen phase | CPU backend CPU | Metal backend CPU | CPU / Metal rAF Hz |
+| --- | ---: | ---: | ---: |
+| Built-in 120 Hz | 38.8% | 13.7% | 119.99 / 119.99 |
+| HP 60 Hz, same DPR | 21.3% | 9.4% | 59.99 / 60.00 |
+| Return to built-in 120 Hz | 41.0% | 14.4% | 119.99 / 120.00 |
+
+The two 120 Hz observations reduce combined process CPU by approximately 65%
+in this scene. The initial 120 Hz browser component falls from 27.8% to 2.2%;
+renderer CPU is similar (11.0% CPU backend versus 11.5% Metal). This is evidence
+for removing browser-side framebuffer transport/presentation cost, not for
+accelerating DOM/layout or all raster work.
+
+Both runs passed real 120→60→120 equal-DPR window movement, invalid-display
+recovery, six active source replacements, BrowserView cross-screen reparenting,
+owned-window screenshots and all three static observations. All owned frame
+generations stayed unchanged while static. In the final static observation,
+the browser used about 0.74%/0.76% of a core (Metal/CPU); each Metal renderer was
+below 0.005% and each CPU renderer measured zero CPU in that short interval.
+Renderer interrupt wakeups stayed below one per second individually. The
+existing browser wakeup policy remains; there is no claim of zero whole-app
+idle activity.
+
+Evidence: `out/gpu-verification/vsync-{gpu,cpu}/result.json` and the PNGs in
+those directories. These are short, single-scene observations, not universal
+speedups, electrical-watt measurements or physical scanout FPS. Actual physical
+display unplug/reconnect was not run; invalid-ID recovery is not a substitute.
+
+### Final local Chrome comparison
+
+The installed browser reported `Chrome/155.0.8059.84` through CDP.
+
+The final comparison uses three complete alternating trials per engine,
+1000×700 actual content viewports, DPR 2, 500 ms warmups, 2 s animation
+measurements and 20 operation samples. Both native windows are now placed at
+global (40,40); actual Electron/CDP window bounds are retained in every trial.
+Matching DPR alone did not control the earlier 60/120 Hz screen-selection
+variation. Every final mini-electron trial logged an active M4 Pro Metal
+compositor.
+
+| Workload / metric | mini-electron Metal | Installed Chrome | mini / Chrome |
+| --- | ---: | ---: | ---: |
+| Create 2,000 text rows + forced layout, work P50 | 38.5 ms | 11.9 ms | 3.23× |
+| Update 1,000 grid items + forced layout, work P50 | 13.2 ms | 5.1 ms | 2.59× |
+| Canvas2D submission, work P50 | 0.4 ms | 0.3 ms | 1.33× |
+| Empty rAF, median callback frequency | about 120 Hz | about 120 Hz | about 1× |
+| 150 transformed cards, median callback frequency | about 120 Hz | about 120 Hz | about 1× |
+| Programmatic text scrolling, median callback frequency | about 120 Hz | about 120 Hz | about 1× |
+
+This is not uniformly perfect cadence: mini-electron's per-trial empty-rAF
+frequency ranged about 115–120 Hz and Canvas ranged about 113–120 Hz. Its
+Canvas maximum per-trial percentage of intervals over 25 ms was 1.33%, versus
+zero for Chrome in this run. Keep these ranges rather than reporting only
+the approximately equal median. rAF remains a callback metric, not measured
+physical presentation.
+
+The earlier unpinned run and incomplete fixed-window attempts remain diagnostic
+artifacts. Incomplete Chrome attempts (suspended rAF / page not ready) produce
+no comparison ratios and are excluded in full; the final table uses only the
+six complete trials in `out/gpu-verification/rendering-comparison-final/`.
+The driver activates Chrome after native placement/resize and records page
+state on a readiness failure; it does not disable Chrome GPU features, extend
+the stalled-frame timeout, or replay missing results.
+
+Metal substantially reduces the measured transport/presentation CPU cost, but
+does not close the synchronous text/style/layout gap. The next optimization
+target remains a trace of text/style/layout on the 2,000-row and grid workloads,
+followed by changes to demonstrated hotspots. Do not infer GPU tile raster,
+accelerated Canvas2D, WebGL/WebGPU or hardware video support from this result.
+
+```sh
+node benchmarks/rendering/run.js --trials 3 \
+  --output out/gpu-verification/rendering-comparison-final
+```
+
+The final native check index is
+`out/gpu-verification/native-verification.json`. Temporary source probes,
+injected libraries and diagnostic executables were removed after verification;
+JSON/PNG/log evidence and permanent regression fixtures remain. Verification
+uses the current `out/mac-arm64` executables; no new release was published and
+the OMP installation copy was not replaced by this verification task.
+

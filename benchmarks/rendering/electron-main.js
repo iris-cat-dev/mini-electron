@@ -38,11 +38,12 @@ app.whenReady().then(async () => {
       !Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
     throw new Error('Launch this host through benchmarks/rendering/run.js');
   }
-  console.log('MINI_RENDER_HOST ' + JSON.stringify({ versions: process.versions, executable: process.execPath }));
   window = new BrowserWindow({
     title: 'mini-electron rendering benchmark',
     width,
     height,
+    x: 40,
+    y: 40,
     frame: false,
     show: true,
     backgroundColor: '#111827',
@@ -53,5 +54,8 @@ app.whenReady().then(async () => {
   });
   window.show();
   window.focus();
+  console.log('MINI_RENDER_HOST ' + JSON.stringify({
+    versions: process.versions, executable: process.execPath, windowBounds: window.getBounds(),
+  }));
   await window.loadURL(url.href);
 }).catch(fail);

@@ -48,6 +48,7 @@
 #include "url/gurl.h"
 #include "url/origin.h"
 #include "net/base/filename_util.h"
+#include "net/base/data_url.h"
 #include "net/base/ip_address.h"
 #include "net/base/mime_util.h"
 #include "third_party/libcurl/include/curl/curl.h"
@@ -201,6 +202,8 @@ struct BrokerNetworkRequest {
     bool force_preflight = false;
     CURLSH* cookie_share = nullptr;
     std::shared_ptr<std::atomic_bool> canceled;
+    // Only browser-created downloads may resolve generated renderer resources.
+    int download_contents_id = 0;
     std::function<bool(int, const base::Value::Dict&)> headers_sink;
     std::function<size_t(const char*, size_t)> body_sink;
 };
@@ -209,6 +212,127 @@ struct BrokerNetworkResult {
     base::Value::Dict value;
     std::string error;
 };
+
+BrokerNetworkResult PerformGeneratedDownload(const BrokerNetworkRequest& request)
+{
+    BrokerNetworkResult output;
+    const GURL url(request.url);
+    base::Value::Dict headers;
+    std::string data;
+    std::string token;
+    auto renderer_request = [&request](const char* method,
+                                base::Value::Dict params) {
+        struct Reply {
+            std::mutex mutex;
+            std::condition_variable ready;
+            bool done = false;
+            BrokerNetworkResult result;
+        };
+        auto reply = std::make_shared<Reply>();
+        content::ThreadCall::callUiThreadSync(FROM_HERE, [&] {
+            WebContents* contents =
+                WebContents::fromId(request.download_contents_id);
+            auto complete = [reply](base::Value::Dict value, std::string error) {
+                std::lock_guard<std::mutex> lock(reply->mutex);
+                reply->result.value = std::move(value);
+                reply->result.error = std::move(error);
+                reply->done = true;
+                reply->ready.notify_one();
+            };
+            if (!contents || !contents->requestDownloadSource(
+                    method, std::move(params), complete))
+                complete({}, "Download renderer is unavailable");
+        });
+        std::unique_lock<std::mutex> lock(reply->mutex);
+        reply->ready.wait(lock, [&] { return reply->done; });
+        return std::move(reply->result);
+    };
+    if (url.SchemeIs("data")) {
+        std::string mime;
+        std::string charset;
+        if (!net::DataURL::Parse(url, &mime, &charset, &data)) {
+            output.error = "Invalid data download URL";
+            return output;
+        }
+        headers.Set("content-type", charset.empty()
+                ? mime : mime + ";charset=" + charset);
+        headers.Set("content-length", base::NumberToString(data.size()));
+    } else if (url.SchemeIs("blob")) {
+        auto opened = renderer_request("download.open",
+            base::Value::Dict().Set("url", request.url));
+        const std::string* opened_token = opened.value.FindString("token");
+        const base::Value::Dict* opened_headers = opened.value.FindDict("headers");
+        if (!opened.error.empty() || !opened_token || !opened_headers) {
+            output.error = opened.error.empty()
+                ? "Invalid renderer download source" : std::move(opened.error);
+            return output;
+        }
+        token = *opened_token;
+        headers = opened_headers->Clone();
+    } else {
+        output.error = "Unsupported download URL scheme";
+        return output;
+    }
+    auto close = [&] {
+        if (!token.empty())
+            renderer_request("download.close",
+                base::Value::Dict().Set("token", token));
+    };
+    if ((request.canceled && request.canceled->load(std::memory_order_acquire))
+        || !request.headers_sink || !request.headers_sink(200, headers)) {
+        close();
+        output.error = "Download was canceled or its destination is unavailable";
+        return output;
+    }
+    constexpr size_t kChunkSize = 256 * 1024;
+    size_t offset = 0;
+    for (;;) {
+        if (request.canceled && request.canceled->load(std::memory_order_acquire)) {
+            output.error = "Download canceled";
+            break;
+        }
+        BrokerNetworkResult chunk;
+        const char* bytes = nullptr;
+        size_t length = 0;
+        bool done = false;
+        if (token.empty()) {
+            length = std::min(kChunkSize, data.size() - offset);
+            bytes = data.data() + offset;
+            done = offset + length == data.size();
+        } else {
+            chunk = renderer_request("download.read",
+                base::Value::Dict().Set("token", token));
+            const auto* body = chunk.value.FindBlob("data");
+            if (!chunk.error.empty() || !body || body->size() > kChunkSize) {
+                output.error = chunk.error.empty()
+                    ? "Invalid renderer download chunk" : std::move(chunk.error);
+                break;
+            }
+            bytes = reinterpret_cast<const char*>(body->data());
+            length = body->size();
+            done = chunk.value.FindBool("done").value_or(false);
+            if (!length && !done) {
+                output.error = "Renderer download made no progress";
+                break;
+            }
+        }
+        if (length && (!request.body_sink
+                || request.body_sink(bytes, length) != length)) {
+            output.error = "Download canceled or failed to write";
+            break;
+        }
+        offset += length;
+        if (done) {
+            output.value.Set("status", 200);
+            output.value.Set("statusText", "OK");
+            output.value.Set("finalUrl", request.url);
+            output.value.Set("headers", std::move(headers));
+            break;
+        }
+    }
+    close();
+    return output;
+}
 
 struct CurlResponse {
     std::vector<uint8_t> body;
@@ -689,6 +813,8 @@ BrokerNetworkResult PerformBrokerNetworkRequest(BrokerNetworkRequest request)
         output.error = "Invalid network broker URL";
         return output;
     }
+    if (request.download_contents_id && !current.SchemeIsHTTPOrHTTPS())
+        return PerformGeneratedDownload(request);
     if (current.SchemeIsFile()) {
         base::FilePath path;
         if ((request.method != "GET" && request.method != "HEAD")
@@ -1828,12 +1954,6 @@ void ApiSession::setDownloadPathApi(const std::string& path)
 
 void ApiSession::downloadURL(WebContents* contents, const std::string& url)
 {
-    GURL target(url);
-    if (!target.is_valid() || !target.SchemeIsHTTPOrHTTPS()) {
-        isolate()->ThrowException(v8::Exception::TypeError(
-            gin_helper::StringToV8(isolate(), "downloadURL requires an HTTP(S) URL")));
-        return;
-    }
     struct Transfer {
         std::shared_ptr<std::atomic_bool> canceled =
             std::make_shared<std::atomic_bool>(false);
@@ -1852,7 +1972,8 @@ void ApiSession::downloadURL(WebContents* contents, const std::string& url)
     const int contents_id = contents->getIdApi();
     auto runner = base::SequencedTaskRunner::GetCurrentDefault();
     auto offer = [this, contents_id, url, transfer](
-                     const base::Value::Dict& headers, bool select_path) {
+                     const base::Value::Dict& headers, bool select_path,
+                     const std::string& filename) {
         WebContents* owner = WebContents::fromId(contents_id);
         if (!owner || owner->isDestroyedApi())
             return false;
@@ -1863,6 +1984,7 @@ void ApiSession::downloadURL(WebContents* contents, const std::string& url)
             transfer->item = item;
             transfer->item_id = item->m_id;
             item->m_url = url;
+            item->m_filename = filename;
             item->m_canceled = transfer->canceled;
             item->m_paused = transfer->paused;
             if (const std::string* mime = FindHeader(headers, "content-type"))
@@ -1894,18 +2016,28 @@ void ApiSession::downloadURL(WebContents* contents, const std::string& url)
         return !select_path || !transfer->destination.empty();
     };
     BrokerNetworkRequest request;
-    request.url = target.spec();
+    request.url = url;
     request.method = "GET";
     request.mode = "navigate"; // Exact trusted main-process call, never a child field.
     request.credentials_mode = "include";
     request.resource_type = "other";
     request.canceled = transfer->canceled;
     request.cookie_share = static_cast<CURLSH*>(brokerCookieShare());
-    request.headers_sink = [transfer, offer](int status,
+    request.download_contents_id = contents_id;
+    request.headers_sink = [transfer, offer, url](int status,
                                const base::Value::Dict& headers) {
+        const std::string* mime = FindHeader(headers, "content-type");
+        const std::string* disposition = FindHeader(headers, "content-disposition");
+        GURL source(url);
+        // Generated URLs have no meaningful path basename.
+        if (source.SchemeIs("data") || source.SchemeIs("blob"))
+            source = GURL();
+        const std::string filename = net::GenerateFileName(source,
+            disposition ? *disposition : "", "", "",
+            mime ? mime->substr(0, mime->find(';')) : "", "download").AsUTF8Unsafe();
         bool accepted = false;
         content::ThreadCall::callUiThreadSync(FROM_HERE, [&] {
-            accepted = offer(headers, status >= 200 && status < 300);
+            accepted = offer(headers, status >= 200 && status < 300, filename);
         });
         if (!accepted || status < 200 || status >= 300)
             return false;
@@ -1953,7 +2085,7 @@ void ApiSession::downloadURL(WebContents* contents, const std::string& url)
         std::move(request), [transfer, offer](base::Value::Dict result, std::string error) {
             transfer->file.Close();
             if (!transfer->item)
-                offer({}, false);
+                offer({}, false, {});
             ApiDownloadItem* item = transfer->item;
             if (!item || !IdLiveDetect::get()->isLive(transfer->item_id)
                 || item->m_done)

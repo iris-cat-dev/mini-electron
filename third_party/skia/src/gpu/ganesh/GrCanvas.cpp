@@ -6,7 +6,6 @@
  */
 #include "src/gpu/ganesh/GrCanvas.h"
 
-#include "include/android/SkCanvasAndroid.h"
 #include "include/core/SkRect.h"
 #include "include/gpu/ganesh/GrBackendSurface.h"
 #include "src/core/SkCanvasPriv.h"

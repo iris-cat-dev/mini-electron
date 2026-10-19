@@ -47,6 +47,11 @@ struct RendererFrameSnapshot {
     int height = 0;
     int stride = 0;
     uint64_t generation = 0;
+    uint32_t output_format = 0;
+    uint32_t native_context_id = 0;
+    float native_scale_factor = 1.f;
+    uint32_t native_flags = 0;
+    uint64_t presented_generation = 0;
     std::vector<uint8_t> rgba;
 };
 
@@ -78,7 +83,9 @@ public:
     virtual bool IsAlive() const = 0;
     // Updates the owned snapshot only after a complete seqlock-validated read.
     // On failure its pixels, dimensions and generation remain unchanged.
-    virtual bool CopyFrame(RendererFrameSnapshot* snapshot) const = 0;
+    // Native presentation normally reads metadata only, never capture pixels.
+    virtual bool CopyFrame(RendererFrameSnapshot* snapshot,
+        bool include_native_pixels = false) const = 0;
     // Makes this renderer's read-only frame mapping available to |target| for
     // webview compositing. The OS handle is transferred out-of-band and is
     // registered under guest_contents_id; raw handle values never enter JS.

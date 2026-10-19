@@ -2,13 +2,13 @@
 
 // Run using the packaged mini-electron executable, with this source checkout's
 // generated headers present. Only this test's direct-child renderer is stopped.
-// Samples are the actual CALayer tree after AppKit display/CA flush, not drawRect.
+// Samples are real composed owned-window pixels, including remote GPU layers.
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, screen } = require('electron');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-resize-presentation-'));
 const title = `mini-resize-presentation-${process.pid}-${Date.now()}`;
 const initialColor = [37, 118, 162, 255];
@@ -32,15 +32,15 @@ function finish(error) {
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
     if (error) console.error(error.stack || error);
-    else console.log('PASS: committed native layers retain complete color during continuous paused resize and present later real frames within 1800ms');
+    else console.log('PASS: real composed owned-window pixels retain complete color during continuous paused resize and present later real frames within 1800ms');
     app.exit(error ? 1 : 0);
   }
 }
 async function evaluate(source) {
   return window.webContents.executeJavaScript(source);
 }
-function snapshot(label) {
-  const result = native.snapshot(title);
+async function snapshot(label) {
+  const result = await native.snapshot(title);
   console.log(JSON.stringify({ elapsedMs: Date.now() - start, label, ...result }));
   return result;
 }
@@ -80,7 +80,7 @@ async function poll(label, predicate, bound = settleBound) {
   throw new Error(`${label} did not settle within ${bound}ms; last=${JSON.stringify(last)}`);
 }
 async function gesture(axis, color, label) {
-  const before = snapshot(`${label}:before`).frame;
+  const before = (await snapshot(`${label}:before`)).frame;
   const x = axis === 'right' ? before.x + before.width - 1 : before.x + before.width / 2;
   const y = axis === 'bottom' ? before.y + 1 : before.y + before.height / 2;
   let endX = x, endY = y;
@@ -95,9 +95,9 @@ async function gesture(axis, color, label) {
       const frame = native.event(title, 1, endX, endY);
       assert.equal(frame.width, before.width + (axis === 'right' ? delta : 0), `${label}: actual native drag width`);
       assert.equal(frame.height, before.height + (axis === 'bottom' ? delta : 0), `${label}: actual native drag height`);
-      complete(snapshot(`${label}:${index}:dispatch`), color, label);
+      complete(await snapshot(`${label}:${index}:dispatch`), color, label);
       await pause(8);
-      complete(snapshot(`${label}:${index}:timer`), color, label);
+      complete(await snapshot(`${label}:${index}:timer`), color, label);
     }
   } finally {
     native.event(title, 2, endX, endY);
@@ -113,9 +113,15 @@ app.whenReady().then(async () => {
   const includes = ['', 'gen', 'third_party/abseil-cpp', 'base/allocator/partition_allocator/src', 'gen/base/allocator/partition_allocator/src', 'third_party/libnode/src'];
   execFileSync(compiler, ['-std=c++20', '-fobjc-arc', '-bundle', '-undefined', 'dynamic_lookup', '-isysroot', sdk,
     ...includes.map(include => `-I${path.join(root, include)}`), '-framework', 'AppKit', '-framework', 'QuartzCore',
+    '-framework', 'CoreGraphics', '-framework', 'ScreenCaptureKit',
+    path.join(__dirname, 'macos-owned-window-capture.mm'),
     path.join(__dirname, 'macos-resize-presentation-helper.mm'), '-o', helper], { stdio: 'inherit', timeout: 30000 });
   native = require(helper);
-  window = new BrowserWindow({ width: 1200, height: 800, title, titleBarStyle: 'hidden',
+  const area = screen.getPrimaryDisplay().workArea;
+  // The second gesture can grow 240 DIPs beyond the initial size (80 retained
+  // from the first gesture plus its 160-DIP peak). Keep every pixel on-screen.
+  window = new BrowserWindow({ width: Math.min(1200, area.width - 272), height: Math.min(800, area.height - 272),
+    x: area.x + 16, y: area.y + 16, title, titleBarStyle: 'hidden',
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
   await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><title>${title}</title>
     <style>html,body{margin:0;width:100%;height:100%;background:#2576a2;overflow:hidden}
@@ -128,48 +134,48 @@ app.whenReady().then(async () => {
     requestAnimationFrame(animate);
     window.laterPresentation=()=>{document.documentElement.style.background='#c44b19';document.body.style.background='#c44b19'};
     </script>`));
-  await poll('initial committed complete color (unsupported CALayer extraction fails here, never falls back to drawRect)', () => {
-    const result = snapshot('initial');
+  await poll('initial real composed owned-window color (no producer bitmap or layer-rendering fallback)', async () => {
+    const result = await snapshot('initial');
     return hasColor(result, initialColor) || result;
   }, 4000);
   const pid = window.webContents.getProcessId();
   const initialPhase = Number(await evaluate('presentationPhase'));
   const initialGeneration = native.pauseRenderer(pid);
   try {
-    complete(snapshot('paused-initial'), initialColor, 'paused initial');
+    complete(await snapshot('paused-initial'), initialColor, 'paused initial');
     await gesture('right', initialColor, 'paused right');
     await gesture('bottom', initialColor, 'paused bottom');
   } finally {
     native.resumeRenderer();
   }
-  const finalSize = snapshot('resumed').view;
+  const finalSize = (await snapshot('resumed')).view;
   await poll('final real renderer viewport and resize marker', async () => {
     const viewport = JSON.parse(await evaluate('JSON.stringify([innerWidth,innerHeight,...resizeMarker])'));
     const expected = [finalSize.width, finalSize.height, finalSize.width, finalSize.height];
     return JSON.stringify(viewport) === JSON.stringify(expected) || viewport;
   });
   await evaluate('laterPresentation(); true');
-  await poll('later complete orange layer and advancing rAF', async () => {
-    const result = snapshot('later');
+  await poll('later complete orange display pixels and advancing rAF', async () => {
+    const result = await snapshot('later');
     const phase = Number(await evaluate('presentationPhase'));
     return (hasColor(result, laterColor) && phase > initialPhase) || { phase, result };
   });
   await gesture('right', laterColor, 'live right');
   await gesture('bottom', laterColor, 'live bottom');
-  const liveFinal = snapshot('live-final').view;
+  const liveFinal = (await snapshot('live-final')).view;
   await poll('live final viewport and retained later complete color', async () => {
     const viewport = JSON.parse(await evaluate('JSON.stringify([innerWidth,innerHeight,...resizeMarker])'));
     return (JSON.stringify(viewport) === JSON.stringify([liveFinal.width, liveFinal.height, liveFinal.width, liveFinal.height]) &&
-      hasColor(snapshot('live-settled'), laterColor)) || viewport;
+      hasColor(await snapshot('live-settled'), laterColor)) || viewport;
   });
-  await poll('replacement child layout is actually visible, not only the retained old surface', () => {
-    const pixels = [native.sample(title, 208, 208), native.sample(title, 208, liveFinal.height - 208)];
-    return pixels.some(pixel => pixel.every((value, channel) => Math.abs(value - [25, 224, 138, 255][channel]) <= 3)) || pixels;
+  await poll('replacement child layout is actually visible, not only the retained old surface', async () => {
+    const pixel = await native.sample(title, 208, 208);
+    return pixel.every((value, channel) => Math.abs(value - [25, 224, 138, 255][channel]) <= 3) || pixel;
   });
   try {
     const laterGeneration = native.pauseRenderer(pid);
     assert.ok(laterGeneration > initialGeneration, 'A later complete shared publication must really be produced');
-    complete(snapshot('later-paused'), laterColor, 'later complete publication');
+    complete(await snapshot('later-paused'), laterColor, 'later complete publication');
   } finally {
     native.resumeRenderer();
   }

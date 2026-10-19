@@ -1066,6 +1066,11 @@ void WebViewHost::onPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, 
     }
 #endif
 
+    onFramePublishedInUiThread();
+}
+
+void WebViewHost::onFramePublishedInUiThread()
+{
     ::EnterCriticalSection(&m_clientSizeLock);
     m_clientSizeDirty = false;
     m_isAsynResizing = false;

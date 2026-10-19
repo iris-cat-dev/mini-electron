@@ -11,6 +11,7 @@ public:
     struct SecurityOriginAndBlob {
         ::mojo::Remote<::blink::mojom::blink::Blob> blob;
         std::string securityOriginToken;
+        bool revoked = false;
     };
     using UrlToBlobs = std::map<std::string, SecurityOriginAndBlob*>;
 

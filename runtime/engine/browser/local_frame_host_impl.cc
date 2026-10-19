@@ -504,12 +504,19 @@ void LocalFrameHostImpl::CreateNewPopupWidget(::mojo::PendingAssociatedReceiver<
 void LocalFrameHostImpl::ShowContextMenu(
     ::mojo::PendingAssociatedRemote<::blink::mojom::blink::ContextMenuClient> client, const ::blink::UntrustworthyContextMenuParams& params)
 {
-#if defined(OS_WIN)
-    //if (m_contextMenuClient)
-    //    delete m_contextMenuClient;
-    //m_contextMenuClient->Bind(std::move(client));
-
     WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_frameClient->getEngineViewId());
+    if (!webview || !webview->m_isContextMenuEnable)
+        return;
+    auto& callback = webview->getClosure().m_contextMenuCallback;
+    if (callback) {
+        callback(reinterpret_cast<mini_electron_web_frame_handle>(
+                     static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frameClient->getFrame()))),
+            params);
+        return;
+    }
+#if defined(OS_WIN)
+    // Standalone engine consumers retain their default menu. Electron consumers
+    // own the event and must never get a second legacy menu.
     ContextMenu::get()->setCurrentWebview(webview);
     ContextMenu::get()->show(params, getFrameIdByWebLocalFrame(m_frameClient->getFrame()));
 #endif

@@ -377,36 +377,39 @@ sk_sp<SkImage> CrossContextTextureFromPixmap(GrDirectContext* dContext, const Sk
 
 sk_sp<SkImage> TextureFromImage(GrDirectContext* dContext, const SkImage* img, skgpu::Mipmapped mipmapped, skgpu::Budgeted budgeted)
 {
+#if defined(SK_GANESH)
+    if (!dContext || !img) {
+        return nullptr;
+    }
+    auto ib = as_IB(img);
+    if (!dContext->priv().caps()->mipmapSupport() || ib->dimensions().area() <= 1) {
+        mipmapped = skgpu::Mipmapped::kNo;
+    }
+
+    if (ib->isGaneshBacked()) {
+        if (!ib->context()->priv().matches(dContext)) {
+            return nullptr;
+        }
+
+        if (mipmapped == skgpu::Mipmapped::kNo || ib->hasMipmaps()) {
+            return sk_ref_sp(const_cast<SkImage_Base*>(ib));
+        }
+    }
+    GrImageTexGenPolicy policy
+        = budgeted == skgpu::Budgeted::kYes ? GrImageTexGenPolicy::kNew_Uncached_Budgeted : GrImageTexGenPolicy::kNew_Uncached_Unbudgeted;
+    // Direct contexts instantiate and upload raster data before AsView returns.
+    auto [view, ct] = skgpu::ganesh::AsView(dContext, ib, mipmapped, policy);
+    if (!view) {
+        return nullptr;
+    }
+    SkASSERT(view.asTextureProxy());
+    SkASSERT(mipmapped == skgpu::Mipmapped::kNo || view.asTextureProxy()->mipmapped() == skgpu::Mipmapped::kYes);
+    SkColorInfo colorInfo(GrColorTypeToSkColorType(ct), ib->alphaType(), ib->refColorSpace());
+    return sk_make_sp<SkImage_Ganesh>(sk_ref_sp(dContext), ib->uniqueID(), std::move(view), std::move(colorInfo));
+#else
     *(int*)1 = 1;
     return nullptr;
-//     if (!dContext || !img) {
-//         return nullptr;
-//     }
-//     auto ib = as_IB(img);
-//     if (!dContext->priv().caps()->mipmapSupport() || ib->dimensions().area() <= 1) {
-//         mipmapped = skgpu::Mipmapped::kNo;
-//     }
-// 
-//     if (ib->isGaneshBacked()) {
-//         if (!ib->context()->priv().matches(dContext)) {
-//             return nullptr;
-//         }
-// 
-//         if (mipmapped == skgpu::Mipmapped::kNo || ib->hasMipmaps()) {
-//             return sk_ref_sp(const_cast<SkImage_Base*>(ib));
-//         }
-//     }
-//     GrImageTexGenPolicy policy
-//         = budgeted == skgpu::Budgeted::kYes ? GrImageTexGenPolicy::kNew_Uncached_Budgeted : GrImageTexGenPolicy::kNew_Uncached_Unbudgeted;
-//     // TODO: Don't flatten YUVA images here. Add mips to the planes instead.
-//     auto [view, ct] = skgpu::ganesh::AsView(dContext, ib, mipmapped, policy);
-//     if (!view) {
-//         return nullptr;
-//     }
-//     SkASSERT(view.asTextureProxy());
-//     SkASSERT(mipmapped == skgpu::Mipmapped::kNo || view.asTextureProxy()->mipmapped() == skgpu::Mipmapped::kYes);
-//     SkColorInfo colorInfo(GrColorTypeToSkColorType(ct), ib->alphaType(), ib->refColorSpace());
-//     return sk_make_sp<SkImage_Ganesh>(sk_ref_sp(dContext), ib->uniqueID(), std::move(view), std::move(colorInfo));
+#endif
 }
 
 sk_sp<SkImage> TextureFromYUVATextures(GrRecordingContext* context, const GrYUVABackendTextures& yuvaTextures)

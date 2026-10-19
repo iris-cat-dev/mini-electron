@@ -27,7 +27,16 @@ source_set("engine_probe") {
   ]
 }
 
+# These defines affect Skia's ABI, including clients using raster surfaces.
+config("mini_electron_skia_config") {
+  defines = [
+    "SK_GANESH",
+    "SK_METAL",
+  ]
+}
+
 config("mini_electron_engine_config") {
+  configs = [ ":mini_electron_skia_config" ]
   defines = [
     "BLINK_IMPLEMENTATION=1",
     "CPPGC_CAGED_HEAP",
@@ -153,6 +162,7 @@ static_library("mini_electron_base") {
   sources += [
     "//base/apple/call_with_eh_frame_asm.S",
     "//base/base_switches.cc",
+    "//base/i18n/file_util_icu.cc",
     "//base/i18n/icu_string_conversions.cc",
     "//base/i18n/string_search.cc",
     "//base/i18n/time_formatting.cc",
@@ -291,6 +301,36 @@ static_library("mini_electron_generated_bindings") {
 static_library("mini_electron_skia") {
   sources = mini_electron_skia_sources
   configs += [ ":mini_electron_engine_config" ]
+  public_configs = [ ":mini_electron_skia_config" ]
+  deps = [ ":mini_electron_skia_metal" ]
+}
+
+# Ganesh and shared Metal implementation files require Objective-C ARC.
+source_set("mini_electron_skia_metal") {
+  sources = mini_electron_skia_metal_sources
+  configs += [ ":mini_electron_engine_config" ]
+  cflags_objcc = [ "-fobjc-arc" ]
+  frameworks = [
+    "Foundation.framework",
+    "Metal.framework",
+  ]
+}
+
+source_set("mini_electron_metal_compositor") {
+  sources = [
+    "//platform/macos/metal_compositor.h",
+    "//platform/macos/metal_compositor.mm",
+    "//ui/base/cocoa/remote_layer_api.mm",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  cflags_objcc = [ "-fobjc-arc" ]
+  deps = [ ":mini_electron_skia" ]
+  frameworks = [
+    "Foundation.framework",
+    "IOSurface.framework",
+    "Metal.framework",
+    "QuartzCore.framework",
+  ]
 }
 
 static_library("mini_electron_harfbuzz") {
@@ -489,6 +529,7 @@ group("mini_electron_engine") {
     ":mini_electron_libxml",
     ":mini_electron_libxslt",
     ":mini_electron_openssl",
+    ":mini_electron_metal_compositor",
     ":mini_electron_partition_alloc",
     ":mini_electron_partition_alloc_mac",
     ":mini_electron_posix_win_compat",

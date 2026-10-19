@@ -21,7 +21,7 @@
 namespace atom::renderer_protocol {
 
 inline constexpr uint32_t kWireMagic = 0x4d455250; // "MERP"
-inline constexpr uint16_t kWireVersion = 1;
+inline constexpr uint16_t kWireVersion = 2;
 inline constexpr size_t kMaxMessageBytes = 64 * 1024 * 1024;
 inline constexpr size_t kMaxContainerEntries = 64 * 1024;
 inline constexpr size_t kMaxValueDepth = 64;
@@ -66,7 +66,7 @@ static_assert(sizeof(FrameControlMessage) == 24);
 
 
 // generation is a seqlock: odd while the renderer writes, even while stable.
-// Premultiplied RGBA pixels follow this header, bounded by capacity and stride.
+// CPU frames and explicit native captures store premultiplied RGBA after it.
 struct alignas(64) FrameBufferHeader {
     uint32_t magic = kFrameMagic;
     uint32_t capacity = 0;
@@ -75,8 +75,20 @@ struct alignas(64) FrameBufferHeader {
     uint32_t height = 0;
     uint32_t stride = 0;
     uint32_t data_size = 0;
-    uint8_t reserved[24] = {};
+    uint32_t output_format = 0; // 0: CPU RGBA, 1: Metal remote layer.
+    uint32_t native_context_id = 0;
+    float native_scale_factor = 1.f;
+    uint32_t native_flags = 0;
+    uint64_t presented_generation = 0;
 };
+static_assert(offsetof(FrameBufferHeader, generation) == 8);
+static_assert(offsetof(FrameBufferHeader, data_size) == 28);
+static_assert(offsetof(FrameBufferHeader, output_format) == 32);
+static_assert(offsetof(FrameBufferHeader, native_context_id) == 36);
+static_assert(offsetof(FrameBufferHeader, native_scale_factor) == 40);
+static_assert(offsetof(FrameBufferHeader, native_flags) == 44);
+static_assert(offsetof(FrameBufferHeader, presented_generation) == 48);
+static_assert(sizeof(FrameBufferHeader) == 64);
 
 bool ReadMessage(PipeHandle pipe, uint64_t auth_high, uint64_t auth_low,
     WireMessage* message, std::string* error);

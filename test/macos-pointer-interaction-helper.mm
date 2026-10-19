@@ -53,6 +53,8 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
   else if ([type isEqualToString:@"down"]) eventType = NSEventTypeLeftMouseDown;
   else if ([type isEqualToString:@"drag"]) eventType = NSEventTypeLeftMouseDragged;
   else if ([type isEqualToString:@"up"]) eventType = NSEventTypeLeftMouseUp;
+  else if ([type isEqualToString:@"rightDown"]) eventType = NSEventTypeRightMouseDown;
+  else if ([type isEqualToString:@"rightUp"]) eventType = NSEventTypeRightMouseUp;
   else {
     napi_throw_type_error(env, nullptr, "Unknown native mouse event type");
     return nullptr;
@@ -63,7 +65,8 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
       location:[view convertPoint:local toView:nil] modifierFlags:0
       timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:view.window.windowNumber
       context:nil eventNumber:0 clickCount:eventType == NSEventTypeMouseMoved ? 0 : 1
-      pressure:eventType == NSEventTypeLeftMouseDown || eventType == NSEventTypeLeftMouseDragged ? 1 : 0];
+      pressure:eventType == NSEventTypeLeftMouseDown || eventType == NSEventTypeLeftMouseDragged
+          || eventType == NSEventTypeRightMouseDown ? 1 : 0];
   [NSApp sendEvent:event];
   napi_value result;
   napi_get_undefined(env, &result);
@@ -131,12 +134,45 @@ static napi_value Snapshot(napi_env env, napi_callback_info info) {
   napi_get_undefined(env, &result);
   return result;
 }
+static id popupObserver = nil;
+static napi_value SelectNextPopup(napi_env env, napi_callback_info info) {
+  size_t count = 1;
+  napi_value argument;
+  napi_get_cb_info(env, info, &count, &argument, nullptr, nullptr);
+  if (count != 1) {
+    napi_throw_type_error(env, nullptr, "selectNextPopup(label)");
+    return nullptr;
+  }
+  NSString* label = Text(env, argument);
+  if (!label) return nullptr;
+  if (popupObserver)
+    [NSNotificationCenter.defaultCenter removeObserver:popupObserver];
+  popupObserver = [NSNotificationCenter.defaultCenter
+      addObserverForName:NSMenuDidBeginTrackingNotification object:nil queue:nil
+      usingBlock:^(NSNotification* notification) {
+        NSMenu* menu = notification.object;
+        NSInteger index = [menu indexOfItemWithTitle:label];
+        if (index < 0) return;
+        [NSNotificationCenter.defaultCenter removeObserver:popupObserver];
+        popupObserver = nil;
+        NSTimer* timer = [NSTimer timerWithTimeInterval:0.05 repeats:NO
+            block:^(NSTimer*) {
+              [menu performActionForItemAtIndex:index];
+              [menu cancelTracking];
+            }];
+        [NSRunLoop.mainRunLoop addTimer:timer forMode:NSEventTrackingRunLoopMode];
+      }];
+  napi_value result;
+  napi_get_undefined(env, &result);
+  return result;
+}
 NAPI_MODULE_INIT() {
   napi_property_descriptor methods[] = {
       {"mouse", nullptr, Mouse, nullptr, nullptr, nullptr, napi_default, nullptr},
       {"scroll", nullptr, Scroll, nullptr, nullptr, nullptr, napi_default, nullptr},
       {"snapshot", nullptr, Snapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+      {"selectNextPopup", nullptr, SelectNextPopup, nullptr, nullptr, nullptr, napi_default, nullptr},
   };
-  napi_define_properties(env, exports, 3, methods);
+  napi_define_properties(env, exports, 4, methods);
   return exports;
 }

@@ -41,6 +41,9 @@
 #include "runtime/electron/common/renderer_protocol.h"
 #include "runtime/electron/renderer/sandbox_preload_host.h"
 #include "runtime/engine/api/internal_api.h"
+#if BUILDFLAG(IS_MAC)
+#include "platform/macos/metal_compositor.h"
+#endif
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/common/live_id_detect.h"
 #include "runtime/engine/public/engine_api.h"
@@ -53,6 +56,16 @@
 #include "runtime/engine/renderer/renderer_cdp_service.h"
 #endif
 #include "runtime/engine/renderer/brokered_file_registry.h"
+#include "runtime/engine/renderer/blob_registry_impl.h"
+#include "runtime/engine/renderer/blob_url_store_impl.h"
+#include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
+#include "third_party/blink/public/platform/web_security_origin.h"
+#include "runtime/engine/renderer/context_menu_image.h"
+#include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
+#include "third_party/blink/public/common/context_menu_data/edit_flags.h"
+#include "third_party/blink/public/common/context_menu_data/untrustworthy_context_menu_params.h"
+#include "third_party/blink/renderer/core/editing/editing_utilities.h"
+#include "ui/base/mojom/menu_source_type.mojom-shared.h"
 #include "net/base/mime_util.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/common/messaging/cloneable_message.h"
@@ -544,6 +557,9 @@ public:
 
     ~RendererServerImpl()
     {
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_), {});
+#endif
         content::SetRendererStorageBroker({});
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         mini_electron::SetRendererClipboardBroker({});
@@ -726,8 +742,18 @@ public:
         callbacks.setURLChangedCallback(&UrlChanged, this);
         callbacks.setFrameURLChangedCallback(&FrameUrlChanged, this);
         callbacks.setFrameDetachedCallback(&FrameDetached, this);
+        callbacks.m_contextMenuCallback = [this](
+            mini_electron_web_frame_handle frame,
+            const blink::UntrustworthyContextMenuParams& params) {
+            ContextMenu(frame, params);
+        };
         callbacks.setLoadingFinishCallback(&LoadingFinished, this);
         callbacks.setPaintBitUpdatedCallback(&PaintUpdated, this);
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_),
+            base::BindRepeating(&RendererServerImpl::MetalFrameUpdated,
+                weak_factory_.GetWeakPtr()));
+#endif
         callbacks.setDraggableRegionsChangedCallback(&DraggableRegionsChanged, this);
         callbacks.setConsoleCallback(&Console, this);
         callbacks.setCloseCallback(&CloseRequested, this);
@@ -737,6 +763,7 @@ public:
         mini_electron_on_prompt_box(view_, &Prompt, this);
         mini_electron_set_auto_draw_to_hwnd(view_, FALSE);
 
+        owner_weak_ = weak_factory_.GetWeakPtr();
         StartControlThread();
         Write({ MessageKind::kHello, 0,
             base::Value::Dict().Set("ready", true).Set("processId",
@@ -746,7 +773,6 @@ public:
                 static_cast<int>(::getpid())
 #endif
             ) });
-        owner_weak_ = weak_factory_.GetWeakPtr();
         reader_ = std::thread([this] { ReadLoop(); });
         return true;
     }
@@ -777,6 +803,7 @@ public:
         // frame context and drained pending Blink events.
         mini_electron_call_blink_thread_sync([](void* server, void*) {
             static_cast<RendererServerImpl*>(server)->preload_hosts_.clear();
+            static_cast<RendererServerImpl*>(server)->generated_downloads_.clear();
         }, this, nullptr);
         // ClipboardHost runs on Blink's sequence. Keep its browser transport
         // installed until view/context teardown and queued Blink work drain.
@@ -826,6 +853,10 @@ private:
         bool attached = false;
         bool focused = false;
         std::vector<uint8_t> snapshot;
+#if BUILDFLAG(IS_MAC)
+        SkBitmap native_bitmap;
+        uint64_t native_bitmap_generation = 0;
+#endif
     };
     struct PendingScreenshot {
         uint64_t request_id = 0;
@@ -1348,9 +1379,25 @@ private:
                     return;
                 }
                 const float scale = widget->GetOriginalScreenInfo().device_scale_factor;
-                frame->ToWebLocalFrame()->CopyImageAtForTesting(
-                    gfx::ScaleToRoundedPoint(gfx::Point(x, y), scale));
+                const gfx::Point point =
+                    gfx::ScaleToRoundedPoint(gfx::Point(x, y), scale);
+                blink::WebLocalFrame* local_frame = frame->ToWebLocalFrame();
+                auto background =
+                    content::GetContextMenuBackgroundImage(*local_frame, point);
+                if (background.image) {
+                    blink::LocalFrame* core_frame = blink::LocalFrame::FromFrameToken(
+                        local_frame->GetLocalFrameToken());
+                    blink::WriteImageToClipboard(*core_frame->GetSystemClipboard(),
+                        background.image, background.url, WTF::String());
+                } else {
+                    local_frame->CopyImageAtForTesting(point);
+                }
                 Reply(request_id);
+            });
+        } else if (method == "download.open" || method == "download.read"
+            || method == "download.close") {
+            PostBlink([this, method, params = std::move(params), request_id]() mutable {
+                HandleGeneratedDownload(method, std::move(params), request_id);
             });
         } else if (method == "executeJavaScript") {
             std::string* code = params.FindString("code");
@@ -1409,6 +1456,22 @@ private:
                     pending->first->Reply(pending->second, std::move(result));
                 }, pending);
         } else if (method == "capturePage") {
+#if BUILDFLAG(IS_MAC)
+            if (gpu_failed_) {
+                Reply(request_id, {}, "GPU compositor failed");
+                return;
+            }
+            if (frame_->output_format == 1) {
+                SkBitmap bitmap = mini_electron::mac::CopyMetalFrame(static_cast<int64_t>(view_));
+                if (bitmap.empty()
+                    || bitmap.width() != static_cast<int>(frame_->width)
+                    || bitmap.height() != static_cast<int>(frame_->height)
+                    || !PublishPixels(bitmap.getPixels(), bitmap.width(), bitmap.height(), true)) {
+                    Reply(request_id, {}, "GPU capture is unavailable during resize or device failure");
+                    return;
+                }
+            }
+#endif
             base::Value::Dict result;
             result.Set("generation", static_cast<double>(
                 frame_->generation.load(std::memory_order_acquire)));
@@ -1475,9 +1538,7 @@ private:
                     }, std::move(abandoned), std::move(complete)));
             });
         } else if (method == "invalidate") {
-            // Wake schedules a genuine compositor frame; paint notification is
-            // emitted only when the engine produces that frame.
-            mini_electron_wake(view_);
+            RequestRedraw();
             Reply(request_id);
         } else if (method == "getState") {
             PostBlink([this, request_id] {
@@ -1533,6 +1594,13 @@ private:
             });
         } else if (method.rfind("guest.", 0) == 0) {
             DispatchGuest(method, params);
+#if BUILDFLAG(IS_MAC)
+            if (frame_->output_format == 1)
+                UpdateMetalGuests();
+            else if (method == "guest.attach" || method == "guest.bounds"
+                || method == "guest.detach" || method == "guest.invalidate")
+                RequestRedraw();
+#endif
             Reply(request_id);
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
         } else if (method.rfind("cdp.", 0) == 0) {
@@ -1567,6 +1635,113 @@ private:
         auto found = frame_document_epochs_.find(frame_id);
         return found != frame_document_epochs_.end()
             && found->second == document_epoch;
+    }
+
+    struct GeneratedDownload {
+        mojo::Remote<blink::mojom::blink::Blob> blob;
+        std::string uuid;
+        uint64_t frame_id = 0;
+        uint64_t document_epoch = 0;
+        int64_t offset = 0;
+        int64_t size = 0;
+    };
+
+    // Browser-only authenticated commands; never escape this renderer's blob
+    // registry or an owning frame's exact origin, even with webSecurity off.
+    void HandleGeneratedDownload(const std::string& method,
+        base::Value::Dict params, uint64_t request_id)
+    {
+        if (method == "download.open") {
+            const std::string* url = params.FindString("url");
+            blink::KURL target(url ? WTF::String::FromUTF8(*url) : WTF::String());
+            if (!target.IsValid() || !target.ProtocolIs("blob")) {
+                Reply(request_id, {}, "Invalid blob download URL");
+                return;
+            }
+            target.RemoveFragmentIdentifier();
+            content::WebViewHost* view = View();
+            blink::WebFrame* owner = view ? view->getMainFrame() : nullptr;
+            const auto origin = blink::WebSecurityOrigin::Create(blink::WebURL(target));
+            for (; owner; owner = owner->TraverseNext()) {
+                if (owner->IsWebLocalFrame()
+                    && owner->GetSecurityOrigin().IsSameOriginWith(origin))
+                    break;
+            }
+            if (!owner) {
+                Reply(request_id, {}, "Blob download has no authorized owning frame");
+                return;
+            }
+            const uint64_t frame_id = blink::LocalFrameToken::Hasher()(
+                owner->ToWebLocalFrame()->GetLocalFrameToken());
+            auto epoch = frame_document_epochs_.find(frame_id);
+            auto* blob = content::BlobURLStoreSet::get()->getBlobByUrl(
+                target.GetString().Utf8());
+            if (epoch == frame_document_epochs_.end() || !blob || !blob->is_bound()) {
+                Reply(request_id, {}, "Blob download source is unavailable");
+                return;
+            }
+            const std::string token = base::NumberToString(++next_generated_download_);
+            GeneratedDownload source;
+            source.frame_id = frame_id;
+            source.document_epoch = epoch->second;
+            (*blob)->Clone(source.blob.BindNewPipeAndPassReceiver());
+            generated_downloads_.emplace(token, std::move(source));
+            generated_downloads_.at(token).blob->GetInternalUUID(base::BindOnce(
+                [](RendererServerImpl* self, const std::string& token,
+                    uint64_t request_id, const WTF::String& uuid) {
+                    auto found = self->generated_downloads_.find(token);
+                    if (found == self->generated_downloads_.end()) {
+                        self->Reply(request_id, {}, "Blob download was closed");
+                        return;
+                    }
+                    auto& source = found->second;
+                    source.uuid = uuid.Utf8();
+                    content::BlobEntry* entry = content::BlobEntry::findByUuid(source.uuid);
+                    std::vector<char> empty;
+                    if (!self->IsCurrentFrameDocument(source.frame_id, source.document_epoch)
+                        || !entry || entry->read(&empty, 0, 0, &source.size) < 0) {
+                        self->generated_downloads_.erase(found);
+                        self->Reply(request_id, {}, "Blob download source cannot be read");
+                        return;
+                    }
+                    base::Value::Dict headers;
+                    headers.Set("content-type", entry->m_contentType.empty()
+                            ? "application/octet-stream" : entry->m_contentType);
+                    headers.Set("content-length", base::NumberToString(source.size));
+                    if (!entry->m_contentDisposition.empty())
+                        headers.Set("content-disposition", entry->m_contentDisposition);
+                    self->Reply(request_id, base::Value::Dict().Set("token", token)
+                        .Set("headers", std::move(headers)));
+                }, base::Unretained(this), token, request_id));
+            return;
+        }
+        const std::string* token = params.FindString("token");
+        auto found = token ? generated_downloads_.find(*token) : generated_downloads_.end();
+        if (found == generated_downloads_.end()) {
+            Reply(request_id, {}, "Unknown blob download token");
+            return;
+        }
+        if (method == "download.close") {
+            generated_downloads_.erase(found);
+            Reply(request_id);
+            return;
+        }
+        auto& source = found->second;
+        content::BlobEntry* entry = content::BlobEntry::findByUuid(source.uuid);
+        base::Value::BlobStorage bytes;
+        constexpr int64_t kChunkSize = 256 * 1024;
+        int64_t size = 0;
+        const int64_t count = std::min(kChunkSize, source.size - source.offset);
+        if (!IsCurrentFrameDocument(source.frame_id, source.document_epoch)
+            || !entry || entry->read(&bytes, source.offset, count, &size) != count
+            || size != source.size) {
+            generated_downloads_.erase(found);
+            Reply(request_id, {}, "Blob download document or source was replaced");
+            return;
+        }
+        source.offset += count;
+        Reply(request_id, base::Value::Dict().Set("data", base::Value(std::move(bytes)))
+            .Set("done", source.offset == source.size));
     }
 
     void ReportNativeDragOperation(uint64_t generation,
@@ -2120,6 +2295,19 @@ private:
             return !!mini_electron_fire_key_press_event(view_,
                 static_cast<unsigned>(event.FindInt("charCode").value_or(key)), flags, system);
         return false;
+    }
+
+    void RequestRedraw()
+    {
+        // A task-loop wake alone cannot refresh a static CPU embedder after
+        // guest readback or removal. Reuse the real prepare-to-show commit.
+        PostBlink([this] {
+            content::WebViewHost* host = View();
+            blink::WebFrameWidget* widget = host && host->getWebView()
+                ? host->getWebView()->MainFrameWidget() : nullptr;
+            if (widget)
+                widget->RequestSuccessfulPresentationWithForcedRedraw(base::DoNothing());
+        });
     }
 
     void DispatchGuest(const std::string& method, const base::Value::Dict& params)
@@ -2825,10 +3013,14 @@ private:
             Reply(request_id, {}, "renderer presentation is unavailable");
             return;
         }
-        // Software DrawAck follows PaintUpdated publication and precedes
-        // successful presentation feedback. Read only on the publication owner.
-        const uint64_t generation = frame_->generation.load(std::memory_order_acquire);
-        if (!generation || (generation & 1) || !frame_->data_size) {
+        // CPU DrawAck or Metal GPU completion precedes this owner-sequence reply.
+        // A readback may advance the seqlock without publishing a new GPU frame.
+        const uint64_t generation = frame_->output_format == 1
+            ? frame_->presented_generation
+            : frame_->generation.load(std::memory_order_acquire);
+        if (!generation || (generation & 1)
+            || (frame_->output_format == 0 && !frame_->data_size)
+            || frame_->native_flags) {
             Reply(request_id, {}, "renderer frame publication failed");
             return;
         }
@@ -2967,6 +3159,17 @@ private:
 #else
             guest.fd = handle;
 #endif
+#if BUILDFLAG(IS_MAC)
+            owner_runner_->PostTask(FROM_HERE, base::BindOnce(
+                [](base::WeakPtr<RendererServerImpl> self) {
+                    if (!self || self->closing_)
+                        return;
+                    if (self->frame_->output_format == 1)
+                        self->UpdateMetalGuests();
+                    else
+                        self->RequestRedraw();
+                }, owner_weak_));
+#endif
         }
     }
 
@@ -2984,6 +3187,10 @@ private:
         guest->fd = -1;
 #endif
         guest->memory = nullptr;
+#if BUILDFLAG(IS_MAC)
+        guest->native_bitmap.reset();
+        guest->native_bitmap_generation = 0;
+#endif
     }
 
     void CleanupGuestFrames()
@@ -2994,7 +3201,8 @@ private:
         guests_.clear();
     }
 
-    void CompositeGuests(uint8_t* destination, int width, int height, int stride)
+    void CompositeGuests(uint8_t* destination, int width, int height, int stride,
+        float output_scale)
     {
         if (!destination || width <= 0 || height <= 0
             || static_cast<int64_t>(stride)
@@ -3035,24 +3243,33 @@ private:
             if (source->generation.load(std::memory_order_acquire)
                 != generation)
                 continue;
-            int left = std::max(0, guest.x);
-            int top = std::max(0, guest.y);
-            int right = static_cast<int>(std::min<int64_t>(width,
-                static_cast<int64_t>(guest.x) + guest.width));
-            int bottom = static_cast<int>(std::min<int64_t>(height,
-                static_cast<int64_t>(guest.y) + guest.height));
+            // DOM guest bounds are DIPs; the readback/CPU destination is pixels.
+            const gfx::Rect bounds = gfx::ScaleToEnclosingRect(
+                gfx::Rect(guest.x, guest.y, guest.width, guest.height), output_scale);
+            if (bounds.IsEmpty())
+                continue;
+            const int left = std::max(0, bounds.x());
+            const int top = std::max(0, bounds.y());
+            const int right = std::min(width, bounds.right());
+            const int bottom = std::min(height, bounds.bottom());
             for (int y = top; y < bottom; ++y) {
                 uint32_t sy = static_cast<uint32_t>(
-                    static_cast<int64_t>(y - guest.y) * source_height
-                    / guest.height);
+                    (static_cast<int64_t>(y) - bounds.y()) * source_height
+                    / bounds.height());
                 for (int x = left; x < right; ++x) {
                     uint32_t sx = static_cast<uint32_t>(
-                        static_cast<int64_t>(x - guest.x) * source_width
-                        / guest.width);
-                    std::memcpy(destination + y * stride + x * 4,
-                        guest.snapshot.data()
-                            + sy * source_stride + sx * 4,
-                        4);
+                        (static_cast<int64_t>(x) - bounds.x()) * source_width
+                        / bounds.width());
+                    auto* target = destination + y * stride + x * 4;
+                    const auto* pixel = guest.snapshot.data() + sy * source_stride + sx * 4;
+                    if (pixel[3] == 255) {
+                        std::memcpy(target, pixel, 4);
+                    } else if (pixel[3]) {
+                        const unsigned inverse = 255 - pixel[3];
+                        for (int channel = 0; channel < 4; ++channel)
+                            target[channel] = static_cast<uint8_t>(std::min(255u,
+                                pixel[channel] + (target[channel] * inverse + 127) / 255));
+                    }
                 }
             }
         }
@@ -3322,6 +3539,101 @@ private:
         self->SendEvent("frame-committed", std::move(payload), frame);
     }
 
+    void ContextMenu(mini_electron_web_frame_handle frame,
+        const blink::UntrustworthyContextMenuParams& params)
+    {
+        base::Value::Dict payload;
+        payload.Set("x", params.x);
+        payload.Set("y", params.y);
+        payload.Set("linkURL", params.link_url.spec());
+        payload.Set("linkText", base::UTF16ToUTF8(params.link_text));
+        payload.Set("srcURL", params.src_url.spec());
+        payload.Set("hasImageContents", params.has_image_contents);
+        payload.Set("selectionText", base::UTF16ToUTF8(params.selection_text));
+        payload.Set("titleText", base::UTF16ToUTF8(params.title_text));
+        payload.Set("altText", base::UTF16ToUTF8(params.alt_text));
+        payload.Set("suggestedFilename", base::UTF16ToUTF8(params.suggested_filename));
+        payload.Set("isEditable", params.is_editable);
+        payload.Set("misspelledWord", base::UTF16ToUTF8(params.misspelled_word));
+        payload.Set("spellcheckEnabled", params.spellcheck_enabled);
+        base::Value::List suggestions;
+        for (const auto& suggestion : params.dictionary_suggestions)
+            suggestions.Append(base::UTF16ToUTF8(suggestion));
+        payload.Set("dictionarySuggestions", std::move(suggestions));
+        const char* media_type = "none";
+        using MediaType = blink::mojom::ContextMenuDataMediaType;
+        switch (params.media_type) {
+        case MediaType::kNone: break;
+        case MediaType::kImage: media_type = "image"; break;
+        case MediaType::kVideo: media_type = "video"; break;
+        case MediaType::kAudio: media_type = "audio"; break;
+        case MediaType::kCanvas: media_type = "canvas"; break;
+        case MediaType::kFile: media_type = "file"; break;
+        case MediaType::kPlugin: media_type = "plugin"; break;
+        }
+        payload.Set("mediaType", media_type);
+        base::Value::Dict media_flags;
+        using MediaFlags = blink::ContextMenuData;
+        media_flags.Set("inError", !!(params.media_flags & MediaFlags::kMediaInError));
+        media_flags.Set("isPaused", !!(params.media_flags & MediaFlags::kMediaPaused));
+        media_flags.Set("isMuted", !!(params.media_flags & MediaFlags::kMediaMuted));
+        media_flags.Set("hasAudio", !!(params.media_flags & MediaFlags::kMediaHasAudio));
+        media_flags.Set("isLooping", !!(params.media_flags & MediaFlags::kMediaLoop));
+        media_flags.Set("isControlsVisible", !!(params.media_flags & MediaFlags::kMediaControls));
+        media_flags.Set("canToggleControls", !!(params.media_flags & MediaFlags::kMediaCanToggleControls));
+        media_flags.Set("canSave", !!(params.media_flags & MediaFlags::kMediaCanSave));
+        media_flags.Set("canPrint", !!(params.media_flags & MediaFlags::kMediaCanPrint));
+        media_flags.Set("canRotate", !!(params.media_flags & MediaFlags::kMediaCanRotate));
+        media_flags.Set("canShowPictureInPicture", !!(params.media_flags & MediaFlags::kMediaCanPictureInPicture));
+        media_flags.Set("isPictureInPicture", !!(params.media_flags & MediaFlags::kMediaPictureInPicture));
+        media_flags.Set("canLoop", !!(params.media_flags & MediaFlags::kMediaCanLoop));
+        payload.Set("mediaFlags", std::move(media_flags));
+        const char* source_type = "none";
+        using SourceType = ui::mojom::MenuSourceType;
+        switch (params.source_type) {
+        case SourceType::kMouse: source_type = "mouse"; break;
+        case SourceType::kKeyboard: source_type = "keyboard"; break;
+        case SourceType::kTouch: source_type = "touch"; break;
+        case SourceType::kTouchEditMenu: source_type = "touchMenu"; break;
+        case SourceType::kLongPress: source_type = "longPress"; break;
+        case SourceType::kLongTap: source_type = "longTap"; break;
+        case SourceType::kTouchHandle: source_type = "touchHandle"; break;
+        case SourceType::kStylus: source_type = "stylus"; break;
+        case SourceType::kAdjustSelection: source_type = "adjustSelection"; break;
+        case SourceType::kAdjustSelectionReset: source_type = "adjustSelectionReset"; break;
+        default: break;
+        }
+        payload.Set("menuSourceType", source_type);
+        base::Value::Dict edit_flags;
+        edit_flags.Set("canUndo", !!(params.edit_flags & blink::kCanUndo));
+        edit_flags.Set("canRedo", !!(params.edit_flags & blink::kCanRedo));
+        edit_flags.Set("canCut", !!(params.edit_flags & blink::kCanCut));
+        edit_flags.Set("canCopy", !!(params.edit_flags & blink::kCanCopy));
+        edit_flags.Set("canPaste", !!(params.edit_flags & blink::kCanPaste));
+        edit_flags.Set("canDelete", !!(params.edit_flags & blink::kCanDelete));
+        edit_flags.Set("canSelectAll", !!(params.edit_flags & blink::kCanSelectAll));
+        edit_flags.Set("canEditRichly", !!(params.edit_flags & blink::kCanEditRichly));
+        payload.Set("editFlags", std::move(edit_flags));
+        if (params.media_type == MediaType::kNone) {
+            content::WebViewHost* view = View();
+            blink::WebFrame* main_frame = view ? view->getMainFrame() : nullptr;
+            blink::WebFrameWidget* widget = view && view->getWebView()
+                ? view->getWebView()->MainFrameWidget() : nullptr;
+            if (main_frame && main_frame->IsWebLocalFrame() && widget) {
+                const float scale = widget->GetOriginalScreenInfo().device_scale_factor;
+                auto background = content::GetContextMenuBackgroundImage(
+                    *main_frame->ToWebLocalFrame(),
+                    gfx::ScaleToRoundedPoint(gfx::Point(params.x, params.y), scale));
+                if (background.image) {
+                    payload.Set("srcURL", background.url.GetString().Utf8());
+                    payload.Set("hasImageContents", true);
+                    payload.Set("mediaType", "image");
+                }
+            }
+        }
+        SendEvent("context-menu", std::move(payload), frame);
+    }
+
     static void MINI_ELECTRON_CALL_TYPE FrameDetached(
         mini_electron_web_view, void* parameter,
         mini_electron_web_frame_handle frame)
@@ -3437,27 +3749,24 @@ private:
             "draggable-regions", std::move(payload));
     }
 
-    static void MINI_ELECTRON_CALL_TYPE PaintUpdated(mini_electron_web_view,
-        void* parameter, const void* buffer, const mini_electron_rect* dirty,
-        int width, int height)
+    uint64_t PublishPixels(const void* buffer, int width, int height, bool native_capture)
     {
-        auto* self = static_cast<RendererServerImpl*>(parameter);
-        if (!buffer || !self->frame_ || width <= 0 || height <= 0 || width > 16384 || height > 16384) {
-            self->FailPreparations("renderer frame publication failed");
-            return;
+        if (!buffer || width <= 0 || height <= 0 || width > 16384 || height > 16384)
+            return 0;
+        const size_t stride = static_cast<size_t>(width) * 4;
+        const size_t size = stride * static_cast<size_t>(height);
+        if (size > frame_->capacity || sizeof(*frame_) + size > arguments_.frame_size)
+            return 0;
+        float output_scale = frame_->native_scale_factor;
+        if (!native_capture) {
+            std::lock_guard<std::mutex> lock(viewport_lock_);
+            output_scale = viewport_scale_;
         }
-        self->CompleteScreenshot(buffer, width, height);
-        size_t stride = static_cast<size_t>(width) * 4;
-        size_t size = stride * static_cast<size_t>(height);
-        if (size > self->frame_->capacity || sizeof(*self->frame_) + size > self->arguments_.frame_size) {
-            self->FailPreparations("renderer frame publication failed");
-            return;
-        }
-        uint64_t generation = self->frame_->generation.load(std::memory_order_relaxed);
-        self->frame_->generation.store(generation + 1, std::memory_order_release);
-        auto* destination = reinterpret_cast<uint8_t*>(self->frame_ + 1);
-        // Skia's native pixels are RGBA on macOS and BGRA on Windows.
-        // The shared frame protocol always carries RGBA.
+        const uint64_t generation = frame_->generation.load(std::memory_order_relaxed);
+        if (generation & 1)
+            return 0;
+        frame_->generation.store(generation + 1, std::memory_order_release);
+        auto* destination = reinterpret_cast<uint8_t*>(frame_ + 1);
         if constexpr (kN32_SkColorType == kRGBA_8888_SkColorType) {
             std::memcpy(destination, buffer, size);
         } else {
@@ -3469,17 +3778,176 @@ private:
                 destination[pixel + 3] = source[pixel + 3];
             }
         }
-        self->CompositeGuests(destination, width, height, static_cast<int>(stride));
-        self->frame_->width = width;
-        self->frame_->height = height;
-        self->frame_->stride = static_cast<uint32_t>(stride);
-        self->frame_->data_size = static_cast<uint32_t>(size);
-        self->frame_->generation.store(generation + 2, std::memory_order_release);
+        CompositeGuests(destination, width, height, static_cast<int>(stride),
+            output_scale);
+        frame_->width = width;
+        frame_->height = height;
+        frame_->stride = static_cast<uint32_t>(stride);
+        frame_->data_size = static_cast<uint32_t>(size);
+        if (!native_capture) {
+            frame_->output_format = 0;
+            frame_->native_context_id = 0;
+            frame_->native_scale_factor = output_scale;
+            frame_->native_flags = 0;
+            frame_->presented_generation = generation + 2;
+        }
+        frame_->generation.store(generation + 2, std::memory_order_release);
+        return generation + 2;
+    }
+
+#if BUILDFLAG(IS_MAC)
+    void UpdateMetalGuests()
+    {
+        std::vector<mini_electron::mac::MetalGuestLayer> layers;
+        {
+            std::lock_guard<std::mutex> lock(guest_lock_);
+            layers.reserve(guests_.size());
+            for (auto& [id, guest] : guests_) {
+                if (!guest.attached || !guest.memory || guest.width <= 0 || guest.height <= 0)
+                    continue;
+                const auto* source = static_cast<const renderer_protocol::FrameBufferHeader*>(guest.memory);
+                const uint64_t before = source->generation.load(std::memory_order_acquire);
+                if (!before || (before & 1) || source->magic != renderer_protocol::kFrameMagic)
+                    continue;
+                mini_electron::mac::MetalGuestLayer layer;
+                layer.id = id;
+                layer.context_id = source->output_format == 1 ? source->native_context_id : 0;
+                layer.pixel_width = source->width;
+                layer.pixel_height = source->height;
+                layer.scale_factor = source->native_scale_factor;
+                layer.generation = before;
+                layer.bounds = gfx::RectF(guest.x, guest.y, guest.width, guest.height);
+                if (layer.pixel_width <= 0 || layer.pixel_height <= 0
+                    || !std::isfinite(layer.scale_factor) || layer.scale_factor <= 0.f)
+                    continue;
+                if (source->output_format == 0) {
+                    const uint32_t stride = source->stride;
+                    const uint32_t bytes = source->data_size;
+                    const uint64_t minimum = static_cast<uint64_t>(layer.pixel_width) * 4;
+                    if (stride < minimum || bytes > source->capacity
+                        || static_cast<uint64_t>(stride) * layer.pixel_height > bytes
+                        || sizeof(*source) + static_cast<uint64_t>(bytes) > guest.mapping_size)
+                        continue;
+                    if (guest.native_bitmap_generation != before) {
+                        SkBitmap bitmap;
+                        if (!bitmap.tryAllocPixels(SkImageInfo::Make(layer.pixel_width,
+                                layer.pixel_height, kRGBA_8888_SkColorType, kPremul_SkAlphaType)))
+                            continue;
+                        for (int y = 0; y < layer.pixel_height; ++y)
+                            std::memcpy(bitmap.getAddr(0, y),
+                                reinterpret_cast<const uint8_t*>(source + 1) + static_cast<size_t>(y) * stride,
+                                static_cast<size_t>(minimum));
+                        std::atomic_thread_fence(std::memory_order_acquire);
+                        if (source->generation.load(std::memory_order_relaxed) != before)
+                            continue;
+                        bitmap.setImmutable();
+                        guest.native_bitmap = std::move(bitmap);
+                        guest.native_bitmap_generation = before;
+                    }
+                    layer.cpu_bitmap = guest.native_bitmap;
+                } else if (source->output_format != 1 || !layer.context_id) {
+                    continue;
+                }
+                std::atomic_thread_fence(std::memory_order_acquire);
+                if (source->generation.load(std::memory_order_relaxed) != before)
+                    continue;
+                layers.push_back(std::move(layer));
+            }
+        }
+        if (layers.empty() && !had_gpu_guests_)
+            return;
+        had_gpu_guests_ = !layers.empty();
+        mini_electron::mac::UpdateMetalGuestLayers(static_cast<int64_t>(view_), std::move(layers));
+    }
+
+    void MetalFrameUpdated(const mini_electron::mac::MetalFrame& frame)
+    {
+        if (closing_)
+            return;
+        if (frame.error) {
+            gpu_failed_ = true;
+            const uint64_t generation = frame_->generation.load(std::memory_order_relaxed);
+            if (!(generation & 1)) {
+                frame_->generation.store(generation + 1, std::memory_order_release);
+                frame_->native_flags = static_cast<uint32_t>(frame.error);
+                frame_->generation.store(generation + 2, std::memory_order_release);
+            }
+            FailPreparations("GPU compositor failed");
+            return;
+        }
+        if (!frame.context_id || frame.width <= 0 || frame.height <= 0
+            || static_cast<uint64_t>(frame.width) * frame.height * 4 > frame_->capacity) {
+            FailPreparations("GPU frame publication failed");
+            return;
+        }
+        const uint64_t generation = frame_->generation.load(std::memory_order_relaxed);
+        if (generation & 1)
+            return;
+        frame_->generation.store(generation + 1, std::memory_order_release);
+        if (frame_->width != static_cast<uint32_t>(frame.width)
+            || frame_->height != static_cast<uint32_t>(frame.height)) {
+            frame_->stride = 0;
+            frame_->data_size = 0;
+        }
+        frame_->width = frame.width;
+        frame_->height = frame.height;
+        frame_->output_format = 1;
+        frame_->native_context_id = frame.context_id;
+        frame_->native_scale_factor = frame.scale_factor;
+        frame_->native_flags = 0;
+        frame_->presented_generation = generation + 2;
+        frame_->generation.store(generation + 2, std::memory_order_release);
+        UpdateMetalGuests();
+        bool capture_pending = false;
+        {
+            std::lock_guard<std::mutex> lock(screenshot_lock_);
+            capture_pending = !!pending_screenshot_;
+        }
+        if (capture_pending) {
+            SkBitmap bitmap = mini_electron::mac::CopyMetalFrame(static_cast<int64_t>(view_));
+            if (!bitmap.empty())
+                CompleteScreenshot(bitmap.getPixels(), bitmap.width(), bitmap.height());
+        }
         base::Value::Dict payload;
         payload.Set("generation", static_cast<double>(generation + 2));
+        payload.Set("width", frame.width);
+        payload.Set("height", frame.height);
+        payload.Set("nativeContextId", static_cast<double>(frame.context_id));
+        payload.Set("nativeScaleFactor", static_cast<double>(frame.scale_factor));
+        base::Value::Dict dirty;
+        dirty.Set("x", 0);
+        dirty.Set("y", 0);
+        dirty.Set("width", frame.width);
+        dirty.Set("height", frame.height);
+        payload.Set("dirty", std::move(dirty));
+        SendEvent("paint", std::move(payload));
+    }
+#endif
+
+    static void MINI_ELECTRON_CALL_TYPE PaintUpdated(mini_electron_web_view,
+        void* parameter, const void* buffer, const mini_electron_rect* dirty,
+        int width, int height)
+    {
+        auto* self = static_cast<RendererServerImpl*>(parameter);
+        if (!buffer || !self->frame_) {
+            self->FailPreparations("renderer frame publication failed");
+            return;
+        }
+        self->CompleteScreenshot(buffer, width, height);
+        const uint64_t generation = self->PublishPixels(buffer, width, height, false);
+        if (!generation) {
+            self->FailPreparations("renderer frame publication failed");
+            return;
+        }
+        base::Value::Dict payload;
+        payload.Set("generation", static_cast<double>(generation));
         payload.Set("width", width);
         payload.Set("height", height);
-        payload.Set("stride", static_cast<int>(stride));
+        payload.Set("stride", width * 4);
+#if BUILDFLAG(IS_MAC)
+        payload.Set("nativeContextId", 0.0);
+        payload.Set("nativeScaleFactor", 1.0);
+#endif
         base::Value::Dict rect;
         if (dirty) {
             rect.Set("x", dirty->x);
@@ -3705,6 +4173,10 @@ private:
     renderer_protocol::FrameBufferHeader* frame_;
     static constexpr size_t kMaxGuestFrames = 256;
     mini_electron_web_view view_ = NULL_WEBVIEW;
+#if BUILDFLAG(IS_MAC)
+    bool gpu_failed_ = false;
+    bool had_gpu_guests_ = false;
+#endif
     mini_electron_web_frame_handle main_frame_ = nullptr;
     // Accessed only on the Blink thread. Browser generations invalidate stale
     // materialization completions and preserve enter/over/drop ordering.
@@ -3720,6 +4192,8 @@ private:
     scoped_refptr<base::SequencedTaskRunner> owner_runner_;
     base::WeakPtr<RendererServerImpl> owner_weak_;
     // Renderer owner sequence only; compositor callbacks marshal back here.
+    uint64_t next_generated_download_ = 0;
+    std::map<std::string, GeneratedDownload> generated_downloads_; // Blink sequence.
     std::set<uint64_t> pending_preparations_;
     std::unique_ptr<base::RunLoop> run_loop_;
     std::thread reader_;
@@ -3772,6 +4246,9 @@ int RunRenderer(int argc, Char* argv[])
     ParsedArguments arguments;
     if (!ParseArguments(argc, argv, &arguments))
         return 120;
+#if BUILDFLAG(IS_MAC)
+    mini_electron::mac::PrepareMetalDevice();
+#endif
     std::string sandbox_error;
     if (!EnterRendererSandbox(&sandbox_error))
         return 121;

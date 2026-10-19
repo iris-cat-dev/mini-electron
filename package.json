@@ -1,6 +1,6 @@
 {
   "name": "@iriscat/mini-electron",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Electron-compatible desktop runtime for Apple Silicon macOS",
   "license": "Apache-2.0",
   "author": "mini-electron contributors",
@@ -40,7 +40,7 @@
     "arm64"
   ],
   "miniElectron": {
-    "runtimeVersion": "0.1.9",
+    "runtimeVersion": "0.1.10",
     "electronApiVersion": "41.2.0",
     "nodeVersion": "24.0.0-pre",
     "nodeModuleAbi": 134,

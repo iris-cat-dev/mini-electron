@@ -162,24 +162,19 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path)
 
 void GenerateSafeFileName(const std::string& mime_type, bool ignore_extension, base::FilePath* file_path)
 {
-    *(int*)1 = 1;
-//     // Make sure we get the right file extension
-//     EnsureSafeExtension(mime_type, ignore_extension, file_path);
-// 
-// #if BUILDFLAG(IS_WIN)
-//     // Prepend "_" to the file name if it's a reserved name
-//     base::FilePath::StringType leaf_name = file_path->BaseName().value();
-//     DCHECK(!leaf_name.empty());
-//     if (IsReservedNameOnWindows(leaf_name)) {
-//         leaf_name = base::FilePath::StringType(FILE_PATH_LITERAL("_")) + leaf_name;
-//         *file_path = file_path->DirName();
-//         if (file_path->value() == base::FilePath::kCurrentDirectory) {
-//             *file_path = base::FilePath(leaf_name);
-//         } else {
-//             *file_path = file_path->Append(leaf_name);
-//         }
-//     }
-// #endif
+    EnsureSafeExtension(mime_type, ignore_extension, file_path);
+#if BUILDFLAG(IS_WIN)
+    base::FilePath::StringType leaf_name = file_path->BaseName().value();
+    DCHECK(!leaf_name.empty());
+    if (IsReservedNameOnWindows(leaf_name)) {
+        leaf_name = base::FilePath::StringType(FILE_PATH_LITERAL("_")) + leaf_name;
+        *file_path = file_path->DirName();
+        if (file_path->value() == base::FilePath::kCurrentDirectory)
+            *file_path = base::FilePath(leaf_name);
+        else
+            *file_path = file_path->Append(leaf_name);
+    }
+#endif
 }
 
 bool IsReservedNameOnWindows(const base::FilePath::StringType& filename)

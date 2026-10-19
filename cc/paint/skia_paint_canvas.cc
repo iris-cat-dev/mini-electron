@@ -33,11 +33,13 @@
 #include "third_party/skia/include/gpu/ganesh/GrRecordingContext.h"
 #include "third_party/skia/src/core/SkCanvasPriv.h"
 
+#if !defined(SK_GANESH)
 int GrRecordingContext::maxTextureSize(void) const
 {
     *(int*)1 = 1;
     return 0;
 }
+#endif
 
 namespace cc {
 SkiaPaintCanvas::ContextFlushes::ContextFlushes()

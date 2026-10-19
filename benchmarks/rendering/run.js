@@ -272,10 +272,19 @@ async function prepareChrome(owned, profile, url, config, signal, metadata) {
     if (ready) break;
     await sleep(100, signal);
   }
-  if (!ready) throw new Error('Chrome benchmark page did not become ready');
-  await cdp.send('Page.bringToFront', {}, sessionId);
+  if (!ready) {
+    metadata.notReadyPage = await evaluate(`({
+      url: location.href, readyState: document.readyState, visibility: document.visibilityState,
+      focused: document.hasFocus(), title: document.title, text: document.body?.innerText.slice(0, 2000),
+      scripts: [...document.scripts].map(script => script.src),
+      resources: performance.getEntriesByType('resource').map(entry => ({name:entry.name, duration:entry.duration, transferSize:entry.transferSize}))
+    })`);
+    throw new Error('Chrome benchmark page did not become ready: ' + JSON.stringify(metadata.notReadyPage));
+  }
   const { windowId } = await cdp.send('Browser.getWindowForTarget', { targetId: target.targetId });
   await cdp.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
+  // Match the native host's primary-display placement, not the last key screen.
+  await cdp.send('Browser.setWindowBounds', { windowId, bounds: { left: 40, top: 40 } });
   let viewport;
   for (let attempt = 0; attempt < 12; attempt++) {
     viewport = await evaluate('({width:innerWidth,height:innerHeight,outerWidth,outerHeight,dpr:devicePixelRatio,visibility:document.visibilityState})');
@@ -292,6 +301,8 @@ async function prepareChrome(owned, profile, url, config, signal, metadata) {
     throw new Error(`Chrome actual viewport cannot match ${config.width}x${config.height}: ${JSON.stringify(viewport)}. Check the available display area.`);
   }
   metadata.preRunViewport = viewport;
+  metadata.windowBounds = (await cdp.send('Browser.getWindowBounds', { windowId })).bounds;
+  await cdp.send('Page.bringToFront', {}, sessionId);
   // This is the last DevTools command until the page posts its complete result.
   await evaluate('void window.renderBenchmark.run()');
   return metadata;
@@ -356,7 +367,8 @@ function number(value) {
 function reportMarkdown(report) {
   const lines = ['# Rendering comparison', '', `Status: **${report.status}**`, '', `Started: ${report.startedAt}`, `Finished: ${report.finishedAt}`, '', '## Configuration', '', '```json', JSON.stringify(report.config, null, 2), '```', '',
     '- Same localhost page source, fixed actual content viewport, page-managed per-scenario warmups, headed windows, fresh owned session/profile per trial.',
-    '- Engines run sequentially; the first engine alternates by trial. Native mini-electron software compositing architecture is not changed.',
+    '- Engines run sequentially; the first engine alternates by trial. The runner does not override the native rendering backend. Current macOS builds try Metal composition with CPU tile rasterization; CPU fallback/disablement is possible. Runtime logs identify the selected backend.',
+    '- Both native windows are placed at global top-left (40,40) on the primary display; actual host/CDP window bounds are retained per trial. Matching DPR alone is insufficient when attached screens have different refresh rates.',
     '- Work timings measure synchronous JavaScript/DOM/canvas submission cost, not completed GPU execution.',
     '- Operation opportunity timings run from immediately before the synchronous operation through two subsequent rAF callbacks, including the operation itself; this is a rendering opportunity proxy, not proof of presentation.',
     '- rAF metrics measure callback cadence: `rafFps` is derived from callback intervals and is **not actual presented FPS**. `frameP50Ms`/`frameP95Ms` are frame-interval quantiles; `over25MsPct` is the percentage of intervals over 25 ms, a fixed threshold based on a 60 Hz reference, not a display-adaptive dropped-frame count. A 120 Hz display can expose distinct engine rAF caps.',

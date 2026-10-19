@@ -76,6 +76,7 @@ public:
     void createWebWindowInUiThread(mini_electron_window_type type, HWND parent, int x, int y, int width, int height);
 
     void onPaintUpdatedInUiThread(const HDC hdc, int x, int y, int cx, int cy);
+    void onFramePublishedInUiThread();
 
     void setIsMouseKeyMessageEnable(bool b)
     {

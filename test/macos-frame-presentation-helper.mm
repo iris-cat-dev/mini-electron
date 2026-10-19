@@ -33,7 +33,10 @@ static napi_value Probe(napi_env env, napi_callback_info info) {
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   int32_t pid = 0;
   napi_get_value_int32(env, args[0], &pid);
-  if (pid <= 0 || pid == getpid()) {
+  proc_bsdinfo child = {};
+  if (pid <= 0 || pid == getpid() ||
+      proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &child, sizeof(child)) != sizeof(child) ||
+      child.pbi_ppid != getpid()) {
     napi_throw_error(env, nullptr, "Expected the owned renderer process");
     return nullptr;
   }
@@ -72,6 +75,13 @@ static napi_value Probe(napi_env env, napi_callback_info info) {
   }
   if (!header) {
     napi_throw_error(env, nullptr, "No owned shared framebuffer descriptor");
+    return nullptr;
+  }
+  // This legacy synthetic seqlock contention probe is software-only. Metal
+  // coverage pauses the real producer and captures the composed owned window in JS.
+  if (header->output_format != 0) {
+    munmap(header, sizeof(FrameBufferHeader));
+    napi_throw_error(env, nullptr, "CPU contention probe must not mutate a native Metal publication");
     return nullptr;
   }
 

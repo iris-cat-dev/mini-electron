@@ -143,6 +143,8 @@ std::string ApiDownloadItem::getMimeTypeApi() const { return m_mime; }
 bool ApiDownloadItem::hasUserGestureApi() const { return true; }
 std::string ApiDownloadItem::getFilenameApi() const
 {
+    if (!m_filename.empty())
+        return m_filename;
     size_t slash = m_url.find_last_of("/\\");
     return slash == std::string::npos ? m_url : m_url.substr(slash + 1);
 }

@@ -9,15 +9,22 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 
 ## npm distribution
 
-The npm package is `@iriscat/mini-electron`. Version `0.1.9` publishes the
+The npm package is `@iriscat/mini-electron`. Version `0.1.10` publishes the
 Apple Silicon macOS runtime only; Windows remains on version `0.1.8`.
 `package.json` declares only `darwin`/`arm64`, matching the published artifact.
 Intel macOS is not supported.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.9
+npm install --save-dev @iriscat/mini-electron@0.1.10
 node -p "require('@iriscat/mini-electron')"
 ```
+
+Version `0.1.10` adds native Skia/Metal composition and presentation while
+retaining CPU tile rasterization, display-aware 60/120 Hz VSync, native image
+and editable-field context menus, and generated `data:`/`blob:` downloads.
+It also fixes mixed GPU/CPU guest composition, resize completion, image alpha,
+macOS UI-thread identification, and shutdown lifetime. See
+[rendering verification and remaining limits](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
 
 The `0.1.9` macOS runtime fixes trackpad scrolling by preserving AppKit's
 precise logical-pixel deltas instead of multiplying them into wheel ticks.
@@ -39,7 +46,7 @@ executable. Installation downloads the runtime ZIP and `SHASUMS256.txt` from the
 matching GitHub Release, verifies the archive and its complete file inventory,
 then atomically installs `dist`. `require('@iriscat/mini-electron')` returns the
 executable path outside the runtime; application main/preload code still imports
-the built-in `electron` API. The package and runtime version is `0.1.9`; the
+the built-in `electron` API. The package and runtime version is `0.1.10`; the
 Electron API version remains `41.2.0`.
 
 For local/offline installation, set `MINI_ELECTRON_DIST_PATH` to the built
@@ -65,7 +72,7 @@ python scripts/build_runtime_release.py \
   --macos-dist out/mac-arm64/runtime-dist --output out/runtime-release
 ```
 
-The assembler writes the declared `v0.1.9` runtime ZIP, `SHASUMS256.txt`, and an
+The assembler writes the declared `v0.1.10` runtime ZIP, `SHASUMS256.txt`, and an
 `npm-package` directory with the README and installer. The runtime's
 `version.json` must carry the package version. For dual-platform release
 manifests, build both native targets and also supply `--windows-dist` to the
@@ -558,6 +565,30 @@ HTML/URL-only clipboard content is not synthesized into an image attachment.
 Page zoom uses the existing WebContents zoom level, not CSS scaling. Disabled
 and unregistered accelerators do not invoke menu actions.
 
+Blink's native context-menu action emits `webContents`' `context-menu` event with
+image/link targets, selection, editable state, and actual edit capabilities.
+Renderer menus that call `preventDefault()` suppress that native event.
+Popup edit roles target the window passed to `Menu.popup({ window })`, even when
+another window is active.
+Image copying also recognizes loaded CSS image backgrounds used by React Native
+Web, without changing Blink's general hit-test behavior.
+
+`webContents.downloadURL()` supports HTTP(S), base64/percent-encoded `data:` URLs,
+and authorized `blob:` URLs belonging to a current frame in that WebContents.
+Generated-image downloads retain the original bytes and MIME-derived filename,
+use the normal native save dialog and DownloadItem lifecycle, and stream blobs
+in bounded chunks. Revoked, foreign-renderer, or unsupported sources interrupt
+without writing a destination; cancellation preserves an existing destination.
+
+macOS regression probes, after building the runtime:
+
+```sh
+out/mac-arm64/mini-electron test/macos-context-menu-smoke.js
+out/mac-arm64/mini-electron test/generated-image-download-smoke.js
+out/mac-arm64/mini-electron test/macos-clipboard-editing-smoke.js
+```
+
+
 Blink's macOS selection and focus colors resolve through AppKit's native system
 colors for the document's light/dark appearance, rather than falling back to
 black when sandbox support is absent.
@@ -845,6 +876,32 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   --app=test/macos-resize-geometry-smoke.js
 ```
 
+### macOS Metal compositing
+
+The macOS runtime defaults to native Skia Ganesh/Metal composition when device,
+context and remote-layer initialization succeed. Blink layout and cc tile
+rasterization remain CPU work. Viz draws quads, render passes and filters to GPU
+surfaces, then presents through `CAMetalLayer` and a remote `CALayerHost`; normal
+frames publish metadata rather than a CPU RGBA framebuffer.
+
+Force the existing CPU backend for diagnosis or matched comparisons:
+
+```sh
+MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=your-app.js
+```
+
+`capturePage()` explicitly reads GPU pixels back and preserves premultiplied
+transparency. Its existing crop coordinates are physical framebuffer pixels.
+This is not GPU tile rasterization, accelerated Canvas2D, WebGL/WebGPU, hardware
+video decoding, or restoration of Chromium's full GPU service. Metal capability
+is opened in the renderer before sandbox lockdown, not in an isolated GPU
+process; see [rendering architecture and verification](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
+
+Native pixel regressions capture only owned WindowServer windows. They require
+an unlocked graphical session and functioning OS capture authorization; granting
+Screen Recording can require restarting the launcher. Producer GPU readback is
+not accepted as proof of final native-window presentation.
+
 ### Rendering performance comparison (local Chrome)
 
 Compare the built macOS runtime with the Chrome already installed on this
@@ -864,9 +921,11 @@ engine at a time, alternates the first engine across trials, and uses fresh
 owned profiles. Defaults: three trials per engine, a 1000×700 actual content
 viewport, two-second animated measurements after 500 ms warmups, and 20
 operation samples after three discarded warmup operations. Chrome keeps its
-default rendering/GPU configuration; mini-electron keeps its software
-compositing path. Viewport/DPR mismatches, hidden pages, renderer failures, or
-failed workload invariants reject the run instead of producing comparison ratios.
+default rendering/GPU configuration. The runner does not override mini-electron's
+backend: current macOS builds try Metal composition with CPU tile rasterization,
+with CPU fallback or explicit `MINI_ELECTRON_DISABLE_GPU=1`. Viewport/DPR mismatches,
+hidden pages, renderer failures, or failed workload invariants reject the run
+instead of producing comparison ratios.
 Keep the test window unobscured, do not resize or interact with it, and leave
 the machine otherwise idle.
 

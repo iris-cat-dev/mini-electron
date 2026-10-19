@@ -48,6 +48,9 @@ public:
     // The pixels are deep-copied, so the caller may release them on return.
     static v8::Local<v8::Object> createFromRGBA(
         v8::Isolate* isolate, const uint8_t* rgba, int width, int height, int stride);
+    // Shares owned pixel storage; callers must not mutate it after wrapping.
+    static v8::Local<v8::Object> createFromBitmap(
+        v8::Isolate* isolate, const SkBitmap& bitmap);
     static v8::Local<v8::Object> createNativeImageFromBuffer(
         v8::Isolate* isolate, const unsigned char* data, size_t size);
 #if BUILDFLAG(IS_WIN)
@@ -73,8 +76,6 @@ public:
 
 private:
     static void newFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static v8::Local<v8::Object> createFromBitmap(
-        v8::Isolate* isolate, const SkBitmap& bitmap);
 #if BUILDFLAG(IS_WIN)
     static v8::Local<v8::Object> createFromBITMAPINFO(
         v8::Isolate* isolate, const BITMAPINFO* info, const void* pixels,

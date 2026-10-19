@@ -16,6 +16,8 @@
 #include "base/files/file_util.h"
 #include "base/strings/string_util.h"
 #include "base/task/thread_pool.h"
+#include <algorithm>
+#include <limits>
 #include <windows.h>
 
 namespace mini_electron {
@@ -208,7 +210,7 @@ enum class DataElementType : uint32_t {
 
 class DataElementBytesImpl {
 public:
-    uint64_t length; // °´ÀíËµÕâ¸ö³¤¶ÈÒªÃ´=0£¬ÒªÃ´µÈÓÚembeddedDataµÄ³¤¶È¡£²»ÖªµÀÓĞÃ»·´Àı³öÏÖ¡£²»È·¶¨
+    uint64_t length; // æŒ‰ç†è¯´è¿™ä¸ªé•¿åº¦è¦ä¹ˆ=0ï¼Œè¦ä¹ˆç­‰äºembeddedDataçš„é•¿åº¦ã€‚ä¸çŸ¥é“æœ‰æ²¡åä¾‹å‡ºç°ã€‚ä¸ç¡®å®š
     std::vector<uint8_t> embeddedData;
 };
 
@@ -222,9 +224,8 @@ public:
 
 class DataElementBlobImpl {
 public:
-    //::mojo::Remote<::blink::mojom::blink::Blob> blob;
-    //BlobReceiver* blobReceiver = nullptr;
-    ~DataElementBlobImpl();
+    // Retain the actual child, not only its UUID, for sliced/nested blobs.
+    ::mojo::Remote<::blink::mojom::blink::Blob> blob;
     std::string uuid;
     uint64_t offset;
     uint64_t length;
@@ -232,6 +233,14 @@ public:
 
 class DataElementImpl {
 public:
+    ~DataElementImpl()
+    {
+        switch (tag) {
+        case DataElementType::kBytes: delete u.bytes; break;
+        case DataElementType::kFile: delete u.file; break;
+        case DataElementType::kBlob: delete u.blob; break;
+        }
+    }
     DataElementType tag;
     union {
         DataElementBytesImpl* bytes;
@@ -318,7 +327,7 @@ void BlobReceiver::ReadAll(::mojo::ScopedDataPipeProducerHandle pipe, ::mojo::Pe
 
 void BlobReceiver::ReadSideData(ReadSideDataCallback callback)
 {
-    // Ä¿Ç°Ö»ÔÚLocalFrameHostImpl::DownloadURLÀïÓÃµ½£¬ËùÒÔ±¾º¯Êı¼ò»¯ÁËÊµÏÖ
+    // ç›®å‰åªåœ¨LocalFrameHostImpl::DownloadURLé‡Œç”¨åˆ°ï¼Œæ‰€ä»¥æœ¬å‡½æ•°ç®€åŒ–äº†å®ç°
     uint64_t totalSize = 0;
 
     BlobEntry* blobEntry = BlobEntry::findByUuid(m_uuid);
@@ -394,7 +403,7 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
                 info->bytesProvider.Bind(std::move(ele->get_bytes()->data));
                 info->waitForData();
             }
-            //CHECK(!(ele->get_bytes()->data.is_valid())); // Õâ¸öele->get_bytes()->dataÔİÊ±Ã»¸ãÃ÷°×ÓĞÉ¶ÓÃ
+            //CHECK(!(ele->get_bytes()->data.is_valid())); // è¿™ä¸ªele->get_bytes()->dataæš‚æ—¶æ²¡ææ˜ç™½æœ‰å•¥ç”¨
 
             m_elements.push_back(dataEle);
         } else if (ele->is_blob()) {
@@ -402,15 +411,11 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
             dataEle->tag = DataElementType::kBlob;
             dataEle->u.blob = new DataElementBlobImpl();
 
-            //BlobReceiver* cloneBlob = new BlobReceiver(nullptr);
-            //cloneBlob->m_receiver.Bind(std::move(ele->get_blob()->blob)); // TODO: ÄÚ´æĞ¹Â¶
-            //dataEle->u.blob->blobReceiver = cloneBlob;
-
-            // ::mojo::PendingRemote<::blink::mojom::blink::Blob> blob;
-            ::mojo::Remote<::blink::mojom::blink::Blob> blob;
-            blob.Bind(std::move(ele->get_blob()->blob));
-
-            blob->GetInternalUUID(base::BindOnce([](DataElementImpl* dataEle, const WTF::String& uid) { dataEle->u.blob->uuid = uid.Ascii(); }, dataEle));
+            dataEle->u.blob->blob.Bind(std::move(ele->get_blob()->blob));
+            dataEle->u.blob->blob->GetInternalUUID(base::BindOnce(
+                [](DataElementImpl* element, const WTF::String& uuid) {
+                    element->u.blob->uuid = uuid.Utf8();
+                }, dataEle));
 
             dataEle->u.blob->offset = ele->get_blob()->offset;
             dataEle->u.blob->length = ele->get_blob()->length;
@@ -436,12 +441,6 @@ BlobEntry::~BlobEntry()
     }
 }
 
-DataElementBlobImpl::~DataElementBlobImpl()
-{
-    BlobEntry* blob = BlobEntry::findByUuid(uuid);
-    if (!blob)
-        return;
-}
 
 BlobEntry* BlobEntry::findByUuid(const std::string& uuid)
 {
@@ -452,92 +451,125 @@ BlobEntry* BlobEntry::findByUuid(const std::string& uuid)
     return blobEntry;
 }
 
-static void calcReadSize(int64_t len, int64_t elementSize, int64_t* readedLen, int64_t* remaindNeedReadLen, int64_t* startIt)
+namespace {
+
+// A zero-length read obtains metadata without materializing the blob. Every
+// range is relative to the logical blob, including sliced child/file elements.
+template<typename Byte>
+int64_t ReadBlobRange(BlobEntry* source, std::vector<Byte>* buffer,
+    int64_t start, int64_t len, int64_t* allSize)
 {
-    if (len == -1) {
-        *readedLen = elementSize - *startIt;
-        return;
-    }
-    if (*startIt + *remaindNeedReadLen >= elementSize) { // Èç¹û³¬³öÁË±¾³¤¶È
-        *readedLen = elementSize - *startIt;
-        *remaindNeedReadLen -= *readedLen;
-    } else {
-        *readedLen = *remaindNeedReadLen;
-        *remaindNeedReadLen = 0;
-    }
-    *startIt = 0;
+    if (!buffer || !allSize || start < 0 || len < -1)
+        return -1;
+    const size_t original_size = buffer->size();
+    auto visit = [&](auto&& visit, BlobEntry* entry, int64_t offset,
+                     int64_t requested, int64_t* total, unsigned depth) -> int64_t {
+        if (depth > 128)
+            return -1;
+        *total = 0;
+        int64_t received = 0;
+        for (DataElementImpl* element : entry->m_elements) {
+            int64_t size = 0;
+            uint64_t source_offset = 0;
+            BlobEntry* child = nullptr;
+            base::File file;
+            if (element->tag == DataElementType::kBytes) {
+                if (element->u.bytes->embeddedData.size()
+                    != element->u.bytes->length)
+                    return -1;
+                if (element->u.bytes->length > std::numeric_limits<int64_t>::max())
+                    return -1;
+                size = static_cast<int64_t>(element->u.bytes->length);
+            } else if (element->tag == DataElementType::kBlob) {
+                child = BlobEntry::findByUuid(element->u.blob->uuid);
+                int64_t child_size = 0;
+                if (!child || visit(visit, child, 0, 0, &child_size, depth + 1) < 0)
+                    return -1;
+                source_offset = element->u.blob->offset;
+                if (source_offset > static_cast<uint64_t>(child_size))
+                    return -1;
+                size = static_cast<int64_t>((std::min)(
+                    element->u.blob->length,
+                    static_cast<uint64_t>(child_size) - source_offset));
+            } else if (element->tag == DataElementType::kFile) {
+                file = base::File(standardizationFilePath(element->u.file->path),
+                    base::File::FLAG_READ | base::File::FLAG_OPEN);
+                base::File::Info info;
+                if (!file.IsValid() || !file.GetInfo(&info) || info.size < 0
+                    || (element->u.file->expectedModificationTime
+                        && *element->u.file->expectedModificationTime != info.last_modified))
+                    return -1;
+                source_offset = element->u.file->offset;
+                if (source_offset > static_cast<uint64_t>(info.size))
+                    return -1;
+                size = static_cast<int64_t>((std::min)(
+                    element->u.file->length,
+                    static_cast<uint64_t>(info.size) - source_offset));
+            } else {
+                return -1;
+            }
+            if (size > std::numeric_limits<int64_t>::max() - *total)
+                return -1;
+            *total += size;
+            if (offset >= size) {
+                offset -= size;
+                continue;
+            }
+            const int64_t count = requested == -1
+                ? size - offset : (std::min)(size - offset, requested - received);
+            if (count > 0) {
+                if (child) {
+                    int64_t ignored_size = 0;
+                    if (visit(visit, child, source_offset + offset, count,
+                            &ignored_size, depth + 1) != count)
+                        return -1;
+                } else {
+                    if (static_cast<uint64_t>(count) > buffer->max_size() - buffer->size())
+                        return -1;
+                    size_t destination = buffer->size();
+                    buffer->resize(destination + static_cast<size_t>(count));
+                    if (element->tag == DataElementType::kBytes) {
+                        memcpy(buffer->data() + destination,
+                            element->u.bytes->embeddedData.data() + offset,
+                            static_cast<size_t>(count));
+                    } else {
+                        int64_t remaining = count;
+                        int64_t position = source_offset + offset;
+                        while (remaining) {
+                            int chunk = static_cast<int>((std::min)(
+                                remaining, static_cast<int64_t>(std::numeric_limits<int>::max())));
+                            int read = file.Read(position,
+                                reinterpret_cast<char*>(buffer->data() + destination), chunk);
+                            if (read <= 0)
+                                return -1;
+                            position += read;
+                            destination += read;
+                            remaining -= read;
+                        }
+                    }
+                }
+                received += count;
+            }
+            offset = 0;
+        }
+        return received;
+    };
+    int64_t result = visit(visit, source, start, len, allSize, 0);
+    if (result < 0)
+        buffer->resize(original_size);
+    return result;
 }
 
-// ·µ»Ø¶ÁÁË¶àÉÙ
+} // namespace
+
 int64_t BlobEntry::read(std::vector<char>* buffer, int64_t start, int64_t len, int64_t* allSize)
 {
-    // ¶ÁÁË±¾´ÎÒÔºó£¬ÓĞ¿ÉÄÜËùÓĞµÄbytes»¹²»¹»lenµÄ³¤¶È£¬»¹ĞèÒªµ½ÏÂÒ»¸öelementÈ¥¶Á¡£
-    // ÀıÈç----- ---- ---
-    //       ----------
-    // len==-1±íÊ¾È«¶Á
-    //
-    int64_t remaindNeedReadLen = len; // »¹Ê£ÏÂ¶àÉÙÒª¶Á
-    int64_t startIt = start;
-    int64_t allReadedLen = 0; // ÒÑ¾­¶ÁÁË¶àÉÙ
-    for (size_t i = 0; i < m_elements.size(); ++i) {
-        int64_t readedLen = 0;
-        int64_t startItCopy = startIt;
+    return ReadBlobRange(this, buffer, start, len, allSize);
+}
 
-        if (DataElementType::kBytes == m_elements[i]->tag) {
-            DataElementBytesImpl* bytes = m_elements[i]->u.bytes;
-            size_t embedSize = bytes->embeddedData.size();
-            *allSize += embedSize;
-            if (startIt >= embedSize || embedSize == 0) {
-                startIt -= embedSize;
-                continue;
-            }
-
-            calcReadSize(len, embedSize, &readedLen, &remaindNeedReadLen, &startIt);
-            mini_electron::pushBackToBuffer(buffer, (const char*)(bytes->embeddedData.data()) + startItCopy, readedLen);
-            allReadedLen += readedLen;
-        } else if (DataElementType::kFile == m_elements[i]->tag) {
-            base::File file(standardizationFilePath(m_elements[i]->u.file->path), base::File::FLAG_READ | base::File::FLAG_OPEN);
-            if (!file.IsValid())
-                continue;
-            base::File::Info info;
-            if (!file.GetInfo(&info))
-                continue;
-            *allSize += info.size;
-            if (startIt >= info.size) {
-                startIt -= info.size;
-                continue;
-            }
-
-            calcReadSize(len, info.size, &readedLen, &remaindNeedReadLen, &startIt);
-            std::vector<char> temp;
-            temp.resize((size_t)readedLen);
-            file.Seek(base::File::FROM_BEGIN, startItCopy);
-            file.ReadAtCurrentPos(temp.data(), (int)temp.size());
-            mini_electron::pushBackToBuffer(buffer, temp.data(), temp.size());
-            allReadedLen += readedLen;
-        } else if (DataElementType::kBlob == m_elements[i]->tag) {
-            BlobEntry* blobEntry = BlobEntry::findByUuid(m_elements[i]->u.blob->uuid);
-            if (!blobEntry)
-                continue;
-            int64_t blobSize = 0;
-            readedLen = blobEntry->read(buffer, startIt, remaindNeedReadLen, &blobSize);
-            if (len != -1) {
-                allReadedLen += readedLen;
-                remaindNeedReadLen -= readedLen;
-            }
-            if (readedLen > 0) {
-                startIt = 0; // Ö»Òª¶Á¹ı£¬Ñ­»·µÄÏÂÒ»´ÎµÄ¶ÁÈ¡Î»ÖÃ¾ÍÊÇ0ÁË
-            } else if (blobSize) { // Èç¹ûÃ»¶Á¹ı£¬Ôò¼õÈ¥ÌøÁË¶àÉÙ
-                CHECK(startIt >= blobSize);
-                startIt -= blobSize;
-            }
-        }
-
-        if (len == -1 || remaindNeedReadLen > 0)
-            continue;
-        break;
-    }
-    return allReadedLen;
+int64_t BlobEntry::read(std::vector<uint8_t>* buffer, int64_t start, int64_t len, int64_t* allSize)
+{
+    return ReadBlobRange(this, buffer, start, len, allSize);
 }
 
 //-----
@@ -576,6 +608,7 @@ void BlobRegistryImpl::Register(::mojo::PendingReceiver<::blink::mojom::blink::B
 struct RegisterFromStreamAsyncCall {
     ::blink::mojom::blink::BlobRegistry::RegisterFromStreamCallback callback;
     ::mojo::ScopedDataPipeConsumerHandle data;
+    WTF::String contentType;
     mojo::SimpleWatcher dataPipeCloseWatcher;
 
     RegisterFromStreamAsyncCall()
@@ -593,9 +626,10 @@ struct RegisterFromStreamAsyncCall {
     {
         const char* buffer = nullptr;
         uint32_t bufferNumBytes = 0;
-        data->BeginReadData((const void**)(&buffer), &bufferNumBytes, MOJO_READ_DATA_FLAG_NONE); // ²»ĞèÒªend£¬ÒòÎªÕâÀï°ÑÊı¾İ¶¼¶ÁÍêÁË
+        data->BeginReadData((const void**)(&buffer), &bufferNumBytes, MOJO_READ_DATA_FLAG_NONE); // ä¸éœ€è¦endï¼Œå› ä¸ºè¿™é‡ŒæŠŠæ•°æ®éƒ½è¯»å®Œäº†
 
         std::unique_ptr<blink::BlobData> blobData = base::WrapUnique(new blink::BlobData(blink::BlobData::FileCompositionStatus::kNoUnknownSizeFiles));
+        blobData->SetContentType(contentType);
         scoped_refptr<blink::RawData> rawData = blink::RawData::Create();
         rawData->MutableData()->Append(buffer, bufferNumBytes);
         blobData->AppendData(rawData);
@@ -604,7 +638,7 @@ struct RegisterFromStreamAsyncCall {
         RegisterFromStreamAsyncCall* self = this;
         std::move(self->callback).Run(blobDataHandle);
 
-        ThreadCall::callBlinkThreadAsync(FROM_HERE, [self] { // ¸Ğ¾õÒì²½É¾³ı±È½ÏºÃÒ»µã
+        ThreadCall::callBlinkThreadAsync(FROM_HERE, [self] { // æ„Ÿè§‰å¼‚æ­¥åˆ é™¤æ¯”è¾ƒå¥½ä¸€ç‚¹
             delete self;
         });
     }
@@ -618,6 +652,7 @@ void BlobRegistryImpl::RegisterFromStream(const WTF::String& contentType, const 
     RegisterFromStreamAsyncCall* asyncCall = new RegisterFromStreamAsyncCall();
     asyncCall->callback = std::move(callback);
     asyncCall->data = std::move(data);
+    asyncCall->contentType = contentType;
     asyncCall->start();
 }
 

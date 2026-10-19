@@ -7,6 +7,8 @@
 // the secondary physical display. Otherwise JSON explicitly marks it not-run.
 // DEVELOPER_DIR selects Xcode; MINI_VSYNC_SDK can explicitly select its macOS SDK.
 // MINI_VSYNC_ARTIFACTS selects the persistent JSON/PNG evidence directory.
+// PNGs capture only this process's actual composed owned windows in an unlocked
+// graphical session. OS recording authorization may require restarting the launcher.
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -23,7 +25,10 @@ const windows = [];
 const contents = new Set();
 const report = {
   test: 'macos-native-vsync', baseline, binary: process.execPath, pid: process.pid,
-  artifacts, samples: [], idle: [], failures: [], coverage: {}, screenshots: [],
+  artifacts, samples: [], idle: [], failures: [],
+  coverage: { composedWindow: { required: true, status: 'incomplete',
+    source: 'ScreenCaptureKit current-process window capture (macOS 14.4+) or legacy owned WindowServer window capture' } },
+  screenshots: [],
   powerMeasurement: 'Process CPU time and package/interrupt wakeup counters are proxies, not electrical power.',
 };
 let native;
@@ -58,8 +63,9 @@ async function finish(error) {
   fs.rmSync(temporary, { recursive: true, force: true });
   const missing = Object.entries(report.coverage).filter(([, value]) => value.required && value.status !== 'passed');
   report.missingRequiredCoverage = missing.map(([name]) => name);
-  report.status = baseline ? 'baseline-observation' : report.failures.length ? 'failed' : missing.length ? 'incomplete' : 'passed';
-  report.exitCode = baseline ? 0 : report.failures.length ? 1 : missing.length ? 2 : 0;
+  const captureIncomplete = report.coverage.composedWindow.status !== 'passed';
+  report.status = captureIncomplete ? 'incomplete' : baseline ? 'baseline-observation' : report.failures.length ? 'failed' : missing.length ? 'incomplete' : 'passed';
+  report.exitCode = captureIncomplete ? 2 : baseline ? 0 : report.failures.length ? 1 : missing.length ? 2 : 0;
   fs.writeFileSync(path.join(artifacts, 'result.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(`VSYNC_SMOKE_RESULT ${JSON.stringify(report)}`);
   app.exit(report.exitCode);
@@ -100,7 +106,7 @@ function cpuDelta(before, after) {
 const documentURL = title => 'data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
 <title>${title}</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#172d43;color:#fff;font:18px sans-serif}
 #dot{position:absolute;top:140px;left:30px;width:80px;height:80px;background:#7de2b1}h1{margin:40px}</style>
-<h1>Native display-following software presentation</h1><div id="dot"></div><script>
+<h1>Native display-following presentation</h1><div id="dot"></div><script>
 let token=0, running=false, result=null;
 window.vsyncStop=()=>{token++;running=false;return true};
 window.vsyncStart=(duration=2200)=>{
@@ -170,8 +176,14 @@ function targetHz(screen, reference) {
 }
 async function capture(owned, label) {
   const filename = path.join(artifacts, `${label.replace(/[^a-z0-9-]/gi, '-')}.png`);
-  try { report.screenshots.push({ label, file: filename, bytes: native.snapshot(owned.title, filename) }); }
-  catch (error) { report.screenshots.push({ label, status: 'unavailable', reason: String(error) }); }
+  try {
+    const bytes = await native.snapshot(owned.title, filename);
+    report.screenshots.push({ label, file: filename, bytes, status: 'passed',
+      source: 'WindowServer-composed owned window', displayId: native.state(owned.title).displayId });
+  } catch (error) {
+    report.screenshots.push({ label, status: 'incomplete', reason: String(error) });
+  }
+  report.coverage.composedWindow.status = report.screenshots.every(item => item.status === 'passed') ? 'passed' : 'incomplete';
 }
 async function cadence(owned, label, wc = owned.window.webContents, expectedOverride, duration = 2200) {
   const screen = native.state(owned.title);
@@ -203,9 +215,9 @@ async function cadence(owned, label, wc = owned.window.webContents, expectedOver
     result.dateElapsedMs >= duration * 0.9,
     'Cadence must cover the requested real wall-clock interval', { label, callbacks: result.callbacks, dateElapsedMs: result.dateElapsedMs, duration });
   check(framesBefore.length > 0 && framesAfter.some(after => framesBefore.some(before => before.fd === after.fd && after.generation > before.generation)),
-    'Active native software frames must really publish while rAF runs', { label, framesBefore, framesAfter });
+    'Active native frames must really publish while rAF runs (CPU or GPU)', { label, framesBefore, framesAfter });
   check(result.width === 1000 && result.height === 700,
-    'Software workload must remain 1000x700 CSS pixels', { label, width: result.width, height: result.height });
+    'Rendering workload must remain 1000x700 CSS pixels', { label, width: result.width, height: result.height });
   result.status = report.failures.length === startFailures ? 'passed' : 'failed';
   report.samples.push(result);
   emit(result);
@@ -275,7 +287,8 @@ app.whenReady().then(async () => {
   const includes = ['', 'gen', 'third_party/abseil-cpp', 'base/allocator/partition_allocator/src', 'gen/base/allocator/partition_allocator/src', 'third_party/libnode/src'];
   report.toolchain = { sdk, compiler, developerDir: env.DEVELOPER_DIR || null };
   execFileSync(compiler, ['-std=c++20', '-fobjc-arc', '-bundle', '-undefined', 'dynamic_lookup', '-isysroot', sdk,
-    ...includes.map(include => `-I${path.join(root, include)}`), '-framework', 'AppKit', '-framework', 'CoreGraphics', '-framework', 'CoreVideo', '-framework', 'QuartzCore',
+    ...includes.map(include => `-I${path.join(root, include)}`), '-framework', 'AppKit', '-framework', 'CoreGraphics', '-framework', 'CoreVideo', '-framework', 'QuartzCore', '-framework', 'ScreenCaptureKit',
+    path.join(__dirname, 'macos-owned-window-capture.mm'),
     path.join(__dirname, 'macos-vsync-helper.mm'), '-o', helper], { env, stdio: 'inherit', timeout: 30000 });
   native = require(helper);
   report.cpuCounterCalibration = native.processStats(process.pid);

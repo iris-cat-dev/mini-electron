@@ -19,6 +19,7 @@
 #include "ui/gfx/geometry/vector2d.h"
 
 class SkCanvas;
+class SkImage;
 
 namespace gfx {
 class VSyncProvider;
@@ -54,6 +55,14 @@ public:
     // valid SkCanvas of at least size |damage_rect|. This class retains ownership
     // of the SkCanvas.
     virtual SkCanvas* BeginPaint(const gfx::Rect& damage_rect);
+
+    // Creates an offscreen render target compatible with this output device.
+    // Render passes may be allocated before BeginPaint() is called.
+    virtual sk_sp<SkSurface> CreateRenderPassSurface(const SkImageInfo& info);
+
+    // Called while a CPU resource's read lock is held. GPU devices can upload
+    // borrowed pixels here so queued draws do not outlive their ownership.
+    virtual sk_sp<SkImage> PrepareImageForDraw(sk_sp<SkImage> image);
 
     // Called on FinishDrawingFrame. The compositor will no longer mutate the the
     // SkCanvas instance returned by |BeginPaint| and should discard any reference

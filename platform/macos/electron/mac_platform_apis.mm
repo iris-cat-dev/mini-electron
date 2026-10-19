@@ -8,6 +8,7 @@
 #include "platform/macos/electron/mac_electron_bindings.h"
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
@@ -109,6 +110,7 @@ NSImage* ImageFrom(v8::Isolate* isolate, v8::Local<v8::Value> value) {
 class MacMenu;
 class MacTray;
 bool g_menu_accelerator = false;
+NSWindow* g_popup_window = nil;
 
 }  // namespace
 }  // namespace mini_electron::electron
@@ -277,7 +279,25 @@ class MacMenu {
       point.y = info[2]->NumberValue(info.GetIsolate()->GetCurrentContext()).FromMaybe(point.y);
       point.y = NSMaxY(NSScreen.screens.firstObject.frame) - point.y;
     }
-    [self->menu_ popUpMenuPositioningItem:nil atLocation:point inView:nil];
+    NSWindow* owner = nil;
+    if (info.Length() > 0 && node::Buffer::HasInstance(info[0]) &&
+        node::Buffer::Length(info[0]) == sizeof(void*)) {
+      void* handle = nullptr;
+      std::memcpy(&handle, node::Buffer::Data(info[0]), sizeof(handle));
+      for (NSWindow* candidate in NSApp.windows) {
+        if ((__bridge void*)candidate == handle) {
+          owner = candidate;
+          break;
+        }
+      }
+    }
+    NSWindow* previous_owner = g_popup_window;
+    g_popup_window = owner;
+    @try {
+      [self->menu_ popUpMenuPositioningItem:nil atLocation:point inView:nil];
+    } @finally {
+      g_popup_window = previous_owner;
+    }
   }
   static void SetApplicationMenu(const v8::FunctionCallbackInfo<v8::Value>& info) {
     if (!info.Length() || info[0]->IsNullOrUndefined()) {
@@ -295,12 +315,17 @@ class MacMenu {
     if (!Boolean(context, item, "enabled", true) ||
         !Boolean(context, item, "visible", true)) return;
     if (SEL selector = EditSelector(Text(context, item, "role"))) {
-      [NSApp sendAction:selector to:nil from:nil];
+      if (g_popup_window)
+        [g_popup_window.firstResponder tryToPerform:selector with:nil];
+      else
+        [NSApp sendAction:selector to:nil from:nil];
       return;
     }
     v8::Local<v8::Value> click = Get(context, item, "click");
     if (!click->IsFunction()) return;
-    v8::Local<v8::Object> focused = GetFocusedBrowserWindow(isolate_);
+    v8::Local<v8::Object> focused = g_popup_window
+        ? GetBrowserWindowForNativeWindow((__bridge void*)g_popup_window)
+        : GetFocusedBrowserWindow(isolate_);
     v8::Local<v8::Value> window = focused.IsEmpty()
         ? v8::Null(isolate_).As<v8::Value>() : focused.As<v8::Value>();
     v8::Local<v8::Value> contents = focused.IsEmpty()
@@ -523,7 +548,19 @@ NSArray<NSString*>* RunOpenPanel(v8::Local<v8::Context> context,
   const std::string title = Text(context, options, "title");
   const std::string default_path = Text(context, options, "defaultPath");
   if (!title.empty()) panel.title = NSStringFrom(title);
-  if (!default_path.empty()) panel.directoryURL = [NSURL fileURLWithPath:NSStringFrom(default_path)];
+  if (!default_path.empty()) {
+    NSString* path = NSStringFrom(default_path);
+    BOOL is_directory = NO;
+    const BOOL exists = [NSFileManager.defaultManager fileExistsAtPath:path
+                                                          isDirectory:&is_directory];
+    if (save && !(exists && is_directory) && ![path hasSuffix:@"/"]) {
+      panel.directoryURL = [NSURL fileURLWithPath:path.stringByDeletingLastPathComponent
+                                      isDirectory:YES];
+      panel.nameFieldStringValue = path.lastPathComponent;
+    } else {
+      panel.directoryURL = [NSURL fileURLWithPath:path isDirectory:YES];
+    }
+  }
   if (!save) {
     NSOpenPanel* open = (NSOpenPanel*)panel;
     v8::Local<v8::Value> properties = Get(context, options, "properties");

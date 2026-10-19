@@ -2,6 +2,7 @@
 // Use of this source code is governed by the Apache-2.0 license.
 
 #import <AppKit/AppKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import <ServiceManagement/ServiceManagement.h>
 
 #include "platform/macos/electron/mac_electron_bindings.h"
@@ -43,6 +44,12 @@
 #include "third_party/libuv/include/uv.h"
 #include "ui/events/keycodes/keyboard_code_conversion_mac.h"
 #include "ui/events/keycodes/dom/dom_key.h"
+
+// The layer-host class is supplied by QuartzCore; only its context identifier
+// crosses the renderer boundary, never a Mach port or an Objective-C object.
+@interface CALayerHost : CALayer
+@property(nonatomic) uint32_t contextId;
+@end
 
 @class MiniElectronApplicationDelegate;
 
@@ -678,12 +685,15 @@ class RendererSurfaceHost {
 
  protected:
   virtual ~RendererSurfaceHost() {
+    DetachNativeLayer();
     if (frame_image_)
       CGImageRelease(frame_image_);
     if (frame_color_space_)
       CGColorSpaceRelease(frame_color_space_);
   }
   void DrawFrame(atom::WebContents* contents, NSView* view, NSRect dirty_rect);
+  bool UpdateFrame(atom::WebContents* contents, NSView* view);
+  void DetachNativeLayer();
   void InvalidateFrame() { frame_dirty_ = true; }
   uint64_t DrawnGeneration() const { return drawn_generation_; }
 
@@ -692,6 +702,8 @@ class RendererSurfaceHost {
   atom::RendererFrameSnapshot pending_frame_;
   CGImageRef frame_image_ = nullptr;
   CGColorSpaceRef frame_color_space_ = nullptr;
+  CALayer* native_clip_layer_ = nil;
+  CALayerHost* native_host_layer_ = nil;
   bool frame_dirty_ = true;
   uint64_t drawn_generation_ = 0;
 };
@@ -1905,6 +1917,7 @@ void MacBrowserWindow::DestroyNative() {
     return;
   destroying_ = true;
   closed_ = true;
+  DetachNativeLayer();
   auto& windows = State().windows;
   windows.erase(std::remove(windows.begin(), windows.end(), this), windows.end());
   atom::WindowList::removeWindow(this);
@@ -1955,13 +1968,16 @@ bool MacBrowserWindow::RequestClose() {
 }
 
 void MacBrowserWindow::onWebContentsDeleted(atom::WebContents* contents) {
-  if (web_contents_ == contents)
+  if (web_contents_ == contents) {
+    DetachNativeLayer();
     web_contents_ = nullptr;
+  }
 }
 
 void MacBrowserWindow::onWebContentsPaint(atom::WebContents*, const gfx::Rect&) {
   InvalidateFrame();
-  [renderer_view_ setNeedsDisplay:YES];
+  if (!UpdateFrame(web_contents_, renderer_view_))
+    [renderer_view_ setNeedsDisplay:YES];
 }
 
 void MacBrowserWindow::onWebContentsReadyToShow(atom::WebContents*) {
@@ -2019,41 +2035,118 @@ bool MacBrowserWindow::HandleCaptionMouseDown(NSEvent* event, NSPoint point) {
   return true;
 }
 
+void RendererSurfaceHost::DetachNativeLayer() {
+  NSCAssert(NSThread.isMainThread, @"Renderer layers belong to the main sequence");
+  if (!native_clip_layer_)
+    return;
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  native_host_layer_.contextId = 0;
+  [native_clip_layer_ removeFromSuperlayer];
+  [CATransaction commit];
+#if !__has_feature(objc_arc)
+  [native_host_layer_ release];
+  [native_clip_layer_ release];
+#endif
+  native_host_layer_ = nil;
+  native_clip_layer_ = nil;
+  drawn_generation_ = 0;
+}
+
+bool RendererSurfaceHost::UpdateFrame(atom::WebContents* contents, NSView* view) {
+  if (!view || !contents)
+    return false;
+  NSCAssert(NSThread.isMainThread, @"Renderer layers belong to the main sequence");
+  if (frame_dirty_ && contents->copyFrame(&pending_frame_)) {
+    if (pending_frame_.output_format == 1) {
+      if (!native_host_layer_) {
+        Class host_class = NSClassFromString(@"CALayerHost");
+        if (!host_class)
+          return false;
+        native_host_layer_ = [[host_class alloc] init];
+        native_clip_layer_ = [[CALayer alloc] init];
+        // AppKit can store drawRect output in its own z=0 backing sublayer.
+        native_clip_layer_.zPosition = 1;
+        native_clip_layer_.masksToBounds = YES;
+        native_clip_layer_.geometryFlipped = YES;
+      }
+      [CATransaction begin];
+      [CATransaction setDisableActions:YES];
+      view.wantsLayer = YES;
+      if (native_clip_layer_.superlayer != view.layer)
+        [view.layer insertSublayer:native_clip_layer_ atIndex:0];
+      if (native_host_layer_.superlayer != native_clip_layer_)
+        [native_clip_layer_ addSublayer:native_host_layer_];
+      native_host_layer_.contextId = pending_frame_.native_context_id;
+      // Host shared-context coordinates directly; the container owns clipping.
+      native_host_layer_.anchorPoint = CGPointZero;
+      [CATransaction commit];
+      std::swap(presented_frame_, pending_frame_);
+      if (frame_image_) {
+        CGImageRelease(frame_image_);
+        frame_image_ = nullptr;
+      }
+      frame_dirty_ = false;
+    } else if (!pending_frame_.rgba.empty() && pending_frame_.width > 0 &&
+               pending_frame_.height > 0 && pending_frame_.stride > 0) {
+      DetachNativeLayer();
+      if (frame_image_ && pending_frame_.generation == presented_frame_.generation) {
+        frame_dirty_ = false;
+      } else {
+        if (!frame_color_space_)
+          frame_color_space_ = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+        CGDataProviderRef provider = CGDataProviderCreateWithData(
+            nullptr, pending_frame_.rgba.data(), pending_frame_.rgba.size(), nullptr);
+        CGImageRef image = provider ? CGImageCreate(
+            pending_frame_.width, pending_frame_.height, 8, 32,
+            pending_frame_.stride, frame_color_space_,
+            kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast, provider,
+            nullptr, false, kCGRenderingIntentDefault) : nullptr;
+        if (provider)
+          CGDataProviderRelease(provider);
+        if (image) {
+          if (frame_image_)
+            CGImageRelease(frame_image_);
+          std::swap(presented_frame_, pending_frame_);
+          frame_image_ = image;
+          frame_dirty_ = false;
+        }
+      }
+    }
+  }
+  if (!native_host_layer_)
+    return false;
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  native_clip_layer_.anchorPoint = CGPointZero;
+  native_clip_layer_.position = CGPointZero;
+  native_clip_layer_.bounds = CGRectMake(0, 0, view.bounds.size.width,
+                                        view.bounds.size.height);
+  // Remote backing coordinates are lower-left based. Keep its original
+  // density and top-left position while a resized backing is still pending.
+  native_host_layer_.position = CGPointMake(
+      0, view.bounds.size.height -
+          presented_frame_.height / presented_frame_.native_scale_factor);
+  [CATransaction commit];
+  // This commits a renderer GPU-completed backing into the local layer tree.
+  // It is deliberately not a claim about display-server scanout.
+  [CATransaction flush];
+  drawn_generation_ = presented_frame_.presented_generation;
+  return true;
+}
+
 void RendererSurfaceHost::DrawFrame(atom::WebContents* contents, NSView* view,
                                     NSRect dirty_rect) {
   if (!view)
     return;
-  if (contents && frame_dirty_ && contents->copyFrame(&pending_frame_) &&
-      !pending_frame_.rgba.empty() && pending_frame_.width > 0 &&
-      pending_frame_.height > 0 && pending_frame_.stride > 0) {
-    if (frame_image_ && pending_frame_.generation == presented_frame_.generation) {
-      frame_dirty_ = false;
-    } else {
-      if (!frame_color_space_)
-        frame_color_space_ = CGColorSpaceCreateDeviceRGB();
-      CGDataProviderRef provider = CGDataProviderCreateWithData(
-          nullptr, pending_frame_.rgba.data(), pending_frame_.rgba.size(), nullptr);
-      CGImageRef image = provider ? CGImageCreate(
-          pending_frame_.width, pending_frame_.height, 8, 32,
-          pending_frame_.stride, frame_color_space_,
-          kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast, provider,
-          nullptr, false, kCGRenderingIntentDefault) : nullptr;
-      if (provider)
-        CGDataProviderRelease(provider);
-      if (image) {
-        if (frame_image_)
-          CGImageRelease(frame_image_);
-        std::swap(presented_frame_, pending_frame_);
-        frame_image_ = image;
-        frame_dirty_ = false;
-      }
-    }
-  }
+  const bool native = UpdateFrame(contents, view);
 
   // A seqlock miss means a newer frame is being written, not that the window
   // is empty. Redraw the last complete image until a later paint publishes it.
   [(view.window.backgroundColor ?: NSColor.whiteColor) setFill];
   NSRectFillUsingOperation(dirty_rect, NSCompositingOperationCopy);
+  if (native)
+    return;
   if (!contents || !frame_image_)
     return;
   CGContextRef context = NSGraphicsContext.currentContext.CGContext;
@@ -2104,6 +2197,8 @@ uint64_t MacBrowserWindow::prepareWebContentsFrame(atom::WebContents* contents,
   if (contents != web_contents_ || !renderer_view_ || !window_ || closed_)
     return 0;
   InvalidateFrame();
+  if (UpdateFrame(contents, renderer_view_))
+    return DrawnGeneration();
   [renderer_view_ display];
   return DrawnGeneration();
 }
@@ -2113,12 +2208,15 @@ uint64_t MacBrowserView::prepareWebContentsFrame(atom::WebContents* contents,
   if (contents != web_contents_ || !view_ || !view_.window)
     return 0;
   InvalidateFrame();
+  if (UpdateFrame(contents, view_))
+    return DrawnGeneration();
   [view_ display];
   return DrawnGeneration();
 }
 
 void MacBrowserWindow::Resize() {
   ResizeWebContents(web_contents_, renderer_view_);
+  UpdateFrame(web_contents_, renderer_view_);
 }
 
 v8::Persistent<v8::Function> MacBrowserView::constructor;
@@ -2151,6 +2249,7 @@ MacBrowserView::~MacBrowserView() {
 void MacBrowserView::destroy() {
   for (MacBrowserWindow* window : State().windows)
     window->ForgetBrowserView(this);
+  DetachNativeLayer();
   Detach();
   if (web_contents_) {
     web_contents_->removeObserver(this);
@@ -2174,13 +2273,16 @@ MacBrowserView* MacBrowserView::FromValue(v8::Local<v8::Value> value) {
 }
 
 void MacBrowserView::onWebContentsDeleted(atom::WebContents* contents) {
-  if (web_contents_ == contents)
+  if (web_contents_ == contents) {
+    DetachNativeLayer();
     web_contents_ = nullptr;
+  }
 }
 
 void MacBrowserView::onWebContentsPaint(atom::WebContents*, const gfx::Rect&) {
   InvalidateFrame();
-  [view_ setNeedsDisplay:YES];
+  if (!UpdateFrame(web_contents_, view_))
+    [view_ setNeedsDisplay:YES];
 }
 
 void MacBrowserView::onWebContentsTextInputState(
@@ -2192,7 +2294,10 @@ void MacBrowserView::Draw(NSRect dirty_rect) {
   DrawFrame(web_contents_, view_, dirty_rect);
 }
 
-void MacBrowserView::Resize() { ResizeWebContents(web_contents_, view_); }
+void MacBrowserView::Resize() {
+  ResizeWebContents(web_contents_, view_);
+  UpdateFrame(web_contents_, view_);
+}
 
 void MacBrowserView::Focus(bool focused) {
   if (web_contents_)
@@ -2217,6 +2322,8 @@ void MacBrowserView::AttachTo(NSView* parent) {
   if (!view_ || !parent)
     return;
   [parent addSubview:view_ positioned:NSWindowAbove relativeTo:nil];
+  // BrowserViews must remain above the parent's native GPU surface (z=1).
+  view_.layer.zPosition = 2;
   Resize();
 }
 
@@ -2787,6 +2894,14 @@ v8::Local<v8::Object> GetFocusedBrowserWindow(v8::Isolate*) {
   for (MacBrowserWindow* window : State().windows) {
     NSWindow* native = (__bridge NSWindow*)window->getNativeWindowHandle();
     if (native.keyWindow)
+      return window->getWrapper();
+  }
+  return {};
+}
+
+v8::Local<v8::Object> GetBrowserWindowForNativeWindow(void* native_window) {
+  for (MacBrowserWindow* window : State().windows) {
+    if (window->getNativeWindowHandle() == native_window)
       return window->getWrapper();
   }
   return {};

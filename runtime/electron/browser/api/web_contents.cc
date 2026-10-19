@@ -32,6 +32,7 @@
 #include "runtime/electron/node_bindings.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
+#include "third_party/skia/include/core/SkPixmap.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
@@ -771,6 +772,13 @@ void WebContents::downloadURLApi(const std::string& url)
         session->downloadURL(this, url);
 }
 
+bool WebContents::requestDownloadSource(std::string method,
+    base::Value::Dict params,
+    std::function<void(base::Value::Dict, std::string)> reply)
+{
+    return isAlive() && m_renderer->Request(std::move(method), std::move(params), std::move(reply));
+}
+
 int WebContents::getProcessIdApi() const
 {
     return m_renderer ? m_renderer->GetProcessId() : 0;
@@ -1431,9 +1439,9 @@ void WebContents::cancelPreparedFrames(const std::string& error)
         frame.complete(error);
 }
 
-bool WebContents::copyFrame(RendererFrameSnapshot* snapshot) const
+bool WebContents::copyFrame(RendererFrameSnapshot* snapshot, bool include_native_pixels) const
 {
-    return snapshot && isAlive() && m_renderer->CopyFrame(snapshot);
+    return snapshot && isAlive() && m_renderer->CopyFrame(snapshot, include_native_pixels);
 }
 
 #if defined(_WIN32)
@@ -1487,48 +1495,156 @@ bool WebContents::paintFrame(HDC target, int dest_x, int dest_y, int src_x, int 
 }
 #endif
 
-void WebContents::capturePageApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+#if BUILDFLAG(IS_MAC)
+void WebContents::captureForSoftwareHost()
 {
-    auto* promise = new gin_helper::Promise<v8::Local<v8::Object>>(info.GetIsolate());
-    info.GetReturnValue().Set(promise->GetHandle());
-    RendererFrameSnapshot frame;
-    if (!copyFrame(&frame) || frame.width <= 0 || frame.height <= 0
-        || frame.stride < frame.width * 4) {
-        promise->Resolve(NativeImage::createEmpty(info.GetIsolate()));
-        delete promise;
+    m_host_capture_dirty = true;
+    if (m_host_capture_pending || !m_host || !m_host->isAlive()
+        || m_host->m_native_context_id || !isAlive())
+        return;
+    m_host_capture_dirty = false;
+    m_host_capture_pending = true;
+    const int contents_id = m_id;
+    if (!m_renderer->Request("capturePage", {},
+            [contents_id](base::Value::Dict, std::string error) {
+                WebContents* contents = fromId(contents_id);
+                if (!contents)
+                    return;
+                contents->m_host_capture_pending = false;
+                if (!error.empty()) {
+                    contents->m_host_capture_dirty = false;
+                    return;
+                }
+                if (contents->m_host && contents->m_host->isAlive()
+                    && !contents->m_host->m_native_context_id)
+                    contents->m_host->m_renderer->Send("invalidate", {});
+                // Only a real intervening paint requests another capture.
+                if (contents->m_host_capture_dirty)
+                    contents->captureForSoftwareHost();
+            })) {
+        m_host_capture_pending = false;
+        m_host_capture_dirty = false;
+    }
+}
+#endif
+
+void WebContents::requestCapture(std::function<void(std::string)> complete)
+{
+    if (!isAlive()) {
+        complete("WebContents is destroyed");
         return;
     }
+    const int contents_id = m_id;
+    auto completion = std::make_shared<std::function<void(std::string)>>(std::move(complete));
+    auto finish = [completion](std::string error) {
+        if (!*completion)
+            return;
+        auto callback = std::move(*completion);
+        callback(std::move(error));
+    };
+    auto capture_host = [contents_id, finish](std::string error) {
+        WebContents* contents = WebContents::fromId(contents_id);
+        if (!error.empty()) {
+            finish(std::move(error));
+            return;
+        }
+        if (!contents || !contents->isAlive()) {
+            finish("WebContents closed before capture");
+            return;
+        }
+        if (!contents->m_renderer->Request("capturePage", {},
+                [finish](base::Value::Dict, std::string failure) {
+                    finish(std::move(failure));
+                }))
+            finish("Renderer capture could not be queued");
+    };
+    std::vector<int> guests;
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        if (guest && guest->m_host == this && guest->isAlive())
+            guests.push_back(id);
+    }
+    if (guests.empty()) {
+        capture_host({});
+        return;
+    }
+    // The host renderer owns guest placement; refresh each browser-authorized
+    // mapping before it composites the request's root readback.
+    auto remaining = std::make_shared<size_t>(guests.size());
+    auto failure = std::make_shared<std::string>();
+    for (int id : guests) {
+        WebContents* guest = fromId(id);
+        guest->requestCapture([remaining, failure, capture_host](std::string error) {
+            if (failure->empty() && !error.empty())
+                *failure = std::move(error);
+            if (--*remaining == 0)
+                capture_host(std::move(*failure));
+        });
+    }
+}
 
+void WebContents::capturePageApi(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto promise = std::make_shared<gin_helper::Promise<v8::Local<v8::Object>>>(info.GetIsolate());
+    info.GetReturnValue().Set(promise->GetHandle());
     int x = 0;
     int y = 0;
-    int width = frame.width;
-    int height = frame.height;
+    int width = -1;
+    int height = -1;
+    bool has_width = false;
+    bool has_height = false;
     if (info.Length() > 0 && info[0]->IsObject()) {
         gin_helper::Dictionary rect(info.GetIsolate(), info[0].As<v8::Object>());
         rect.GetBydefaultVal("x", 0, &x);
         rect.GetBydefaultVal("y", 0, &y);
-        rect.GetBydefaultVal("width", width, &width);
-        rect.GetBydefaultVal("height", height, &height);
+        has_width = rect.Get("width", &width);
+        has_height = rect.Get("height", &height);
     }
-    x = std::max(0, std::min(x, frame.width));
-    y = std::max(0, std::min(y, frame.height));
-    width = std::max(0, std::min(width, frame.width - x));
-    height = std::max(0, std::min(height, frame.height - y));
-    if (!width || !height) {
-        promise->Resolve(NativeImage::createEmpty(info.GetIsolate()));
-        delete promise;
-        return;
-    }
-
-    std::vector<uint8_t> rgba(static_cast<size_t>(width) * height * 4);
-    for (int row = 0; row < height; ++row) {
-        const uint8_t* source = frame.rgba.data() + static_cast<size_t>(y + row) * frame.stride + x * 4;
-        std::memcpy(rgba.data() + static_cast<size_t>(row) * width * 4, source,
-            static_cast<size_t>(width) * 4);
-    }
-    promise->Resolve(NativeImage::createFromRGBA(info.GetIsolate(), rgba.data(), width,
-        height, width * 4));
-    delete promise;
+    const int contents_id = m_id;
+    v8::Isolate* isolate = info.GetIsolate();
+    requestCapture([contents_id, isolate, promise, x, y, width, height,
+                       has_width, has_height](std::string error) mutable {
+        WebContents* contents = WebContents::fromId(contents_id);
+        if (!error.empty()) {
+            promise->RejectWithErrorMessage(error);
+            return;
+        }
+        RendererFrameSnapshot frame;
+        if (!contents || !contents->copyFrame(&frame, true)
+            || frame.width <= 0 || frame.height <= 0
+            || frame.stride < frame.width * 4 || frame.rgba.empty()) {
+            promise->Resolve(NativeImage::createEmpty(isolate));
+            return;
+        }
+        if (!has_width)
+            width = frame.width;
+        if (!has_height)
+            height = frame.height;
+        x = std::max(0, std::min(x, frame.width));
+        y = std::max(0, std::min(y, frame.height));
+        width = std::max(0, std::min(width, frame.width - x));
+        height = std::max(0, std::min(height, frame.height - y));
+        if (!width || !height) {
+            promise->Resolve(NativeImage::createEmpty(isolate));
+            return;
+        }
+        // Transport already contains premultiplied RGBA. createFromRGBA would
+        // multiply translucent colors a second time.
+        SkBitmap bitmap;
+        if (!bitmap.tryAllocPixels(SkImageInfo::MakeN32Premul(width, height))) {
+            promise->Resolve(NativeImage::createEmpty(isolate));
+            return;
+        }
+        const SkPixmap source(SkImageInfo::Make(frame.width, frame.height,
+            kRGBA_8888_SkColorType, kPremul_SkAlphaType),
+            frame.rgba.data(), frame.stride);
+        if (!source.readPixels(bitmap.pixmap(), x, y)) {
+            promise->Resolve(NativeImage::createEmpty(isolate));
+            return;
+        }
+        bitmap.setImmutable();
+        promise->Resolve(NativeImage::createFromBitmap(isolate, bitmap));
+    });
 }
 
 void WebContents::invalidateApi()
@@ -1589,6 +1705,19 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     const std::string type = ReadString(event, "type");
     const base::Value::Dict& payload = PayloadFrom(event);
     const uint64_t request_id = RequestIdFrom(event);
+    if (type == "context-menu") {
+        uint64_t frame_id = 0;
+        base::Value::Dict* params = event.FindDict("payload");
+        if (!params || !ReadFrameIdentity(event, "frameId", &frame_id)
+            || !isRendererFrameCurrent(frame_id))
+            return;
+        // Frame identity and document URLs belong to the authenticated
+        // transport, not to the renderer's hit-test payload.
+        params->Set("pageURL", m_url);
+        params->Set("frameURL", m_renderer_frames.at(frame_id).committed_url);
+        emitRendererEvent(type, *params, request_id);
+        return;
+    }
     if (type == "text-input-state") {
         // Renderer snapshots are asynchronous; never let a late snapshot
         // restore a text client after native focus has already left.
@@ -2268,6 +2397,38 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         if (m_windowsPaintNeedsFullRepaint) {
             damage = {};
             m_windowsPaintNeedsFullRepaint = false;
+        }
+#endif
+#if BUILDFLAG(IS_MAC)
+        const double native_context = payload.FindDouble("nativeContextId").value_or(0.0);
+        m_native_context_id = std::isfinite(native_context) && native_context > 0
+            && native_context <= std::numeric_limits<uint32_t>::max()
+            ? static_cast<uint32_t>(native_context) : 0;
+        if (m_host && m_host->isAlive() && m_host->m_native_context_id) {
+            const int width = payload.FindInt("width").value_or(0);
+            const int height = payload.FindInt("height").value_or(0);
+            const double scale = payload.FindDouble("nativeScaleFactor").value_or(1.0);
+            // Remote contexts animate independently. Update the embedding only
+            // for new context/geometry; CPU fallback guests need pixel refreshes.
+            if (!m_native_context_id || m_guest_context_id != m_native_context_id
+                || m_guest_native_width != width || m_guest_native_height != height
+                || m_guest_native_scale != scale) {
+                m_guest_context_id = m_native_context_id;
+                m_guest_native_width = width;
+                m_guest_native_height = height;
+                m_guest_native_scale = scale;
+                m_host->m_renderer->Send("guest.invalidate",
+                    base::Value::Dict().Set("guestContentsId", m_id));
+            }
+        }
+        else if (m_host && m_host->isAlive() && m_native_context_id) {
+            // A CPU-fallback embedder consumes actual guest pixels. Keep one
+            // explicit readback in flight rather than an unbounded request queue.
+            captureForSoftwareHost();
+        }
+        else if (m_host && m_host->isAlive()) {
+            m_host->m_renderer->Send("guest.invalidate",
+                base::Value::Dict().Set("guestContentsId", m_id));
         }
 #endif
         for (WebContentsObserver* observer : m_observers)

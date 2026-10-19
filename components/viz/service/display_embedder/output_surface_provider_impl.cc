@@ -44,6 +44,7 @@
 #endif
 
 #if BUILDFLAG(IS_MAC)
+#include "platform/macos/metal_compositor.h"
 #include "ui/base/cocoa/remote_layer_api.h"
 #endif
 
@@ -100,6 +101,15 @@ std::unique_ptr<OutputSurface> OutputSurfaceProviderImpl::CreateOutputSurface(gp
 #endif
 
     if (!gpu_compositing) {
+#if BUILDFLAG(IS_MAC)
+        if (!headless_) {
+            auto device = mini_electron::mac::CreateMetalOutputDevice(
+                static_cast<int64_t>(surface_handle),
+                renderer_settings.requires_alpha_channel);
+            if (device)
+                return std::make_unique<SoftwareOutputSurface>(std::move(device));
+        }
+#endif
         return std::make_unique<SoftwareOutputSurface>(CreateSoftwareOutputDeviceForPlatform(surface_handle, display_client));
     } else {
         *(int*)1 = 1;

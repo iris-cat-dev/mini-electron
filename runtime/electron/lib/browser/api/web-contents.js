@@ -212,7 +212,7 @@ WebContents.prototype._init = function () {
   if (this.m_isInited) return;
   Object.defineProperty(this, 'm_isInited', { value: true });
   this.setMaxListeners(0);
-  this.on('_download-save-dialog', (item, directory) => {
+  this.on('_download-save-dialog', (_event, item, directory) => {
     const owner = electron.BrowserWindow.fromWebContents(this);
     const options = { defaultPath: path.join(directory, item.getFilename()) };
     const selected = owner

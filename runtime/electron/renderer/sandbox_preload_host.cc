@@ -12,6 +12,8 @@
 #include "runtime/electron/renderer/authorized_file.h"
 #include "runtime/electron/renderer/api/context_bridge.h"
 #include "runtime/electron/renderer/api/object_cache.h"
+#include "third_party/blink/public/platform/web_string.h"
+#include "third_party/blink/public/web/web_custom_element.h"
 
 namespace atom {
 namespace {
@@ -353,6 +355,11 @@ void SandboxPreloadHost::InstallGuestBridge(v8::Local<v8::Context> context)
     if (!wrapped->Run(context).ToLocal(&value) || !value->IsFunction())
         return;
     v8::Local<v8::Value> argv[] = { native };
+    // HTML custom-element names normally require a hyphen. Only this trusted
+    // bridge registration may use the embedder's legacy <webview> name.
+    blink::WebCustomElement::AddEmbedderCustomElementName(
+        blink::WebString::FromUTF8("webview"));
+    blink::WebCustomElement::EmbedderNamesAllowedScope embedder_names_scope;
     (void)value.As<v8::Function>()->Call(
         context, v8::Undefined(isolate), 1, argv);
 }

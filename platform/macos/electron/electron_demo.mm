@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/at_exit.h"
 #include "platform/macos/electron/node_runtime.h"
 #include "runtime/electron/common/renderer_server.h"
 
@@ -66,6 +67,7 @@ int main(int argc, char** argv) {
     return mini_electron::electron::RunAsNode(argc, argv);
 
   @autoreleasepool {
+    base::AtExitManager at_exit_manager;
     const std::filesystem::path executable = Absolute(argv[0]);
     const std::filesystem::path resources =
         Absolute([NSBundle.mainBundle.resourcePath fileSystemRepresentation]);

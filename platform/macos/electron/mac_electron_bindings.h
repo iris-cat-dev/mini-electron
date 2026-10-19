@@ -45,6 +45,7 @@ void ShutdownMacRunLoopIntegration();
 bool RunInMainJavaScriptScope(const std::function<void()>& callback);
 // Caller must already be inside the main JavaScript scope.
 v8::Local<v8::Object> GetFocusedBrowserWindow(v8::Isolate* isolate);
+v8::Local<v8::Object> GetBrowserWindowForNativeWindow(void* native_window);
 
 }  // namespace mini_electron::electron
 

@@ -137,7 +137,7 @@
     <h1>前端已在原生窗口中正常渲染</h1>
     <p class="lead">
       这个演示由 mini-electron 的 WebViewHost 创建 Blink Page/LocalFrame，网络响应进入 Blink HTML 解析器，
-      页面脚本由仓库内 V8 执行，最终由 AppKit NSView 显示 Blink 软件光栅位图。
+      页面脚本由仓库内 V8 执行；macOS 默认尝试 Metal 合成并通过原生图层呈现，DOM 排版和页面瓦片光栅化仍由 CPU 完成，不可用时回退到软件呈现。
     </p>
     <div class="status" id="native-input-state">等待原生输入事件</div>
 

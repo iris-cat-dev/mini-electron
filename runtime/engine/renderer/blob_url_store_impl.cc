@@ -49,6 +49,11 @@ void BlobURLStoreSet::addUrlBlob(const std::string& url, const std::string& secu
 
 void BlobURLStoreSet::removeUrlBlob(const std::string& url)
 {
+    auto found = m_urlToBlobs.find(url);
+    if (found == m_urlToBlobs.end() || found->second->revoked)
+        return;
+    // Keep deferred destruction, but revoke authorization immediately.
+    found->second->revoked = true;
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(FROM_HERE, base::BindOnce([](BlobURLStoreSet* self, const std::string& url) {
         UrlToBlobs::iterator it = self->m_urlToBlobs.find(url);
         if (it == self->m_urlToBlobs.end())
@@ -77,7 +82,7 @@ void BlobURLStoreSet::removeBySecurityOriginToken(const std::string& securityOri
 ::mojo::Remote<::blink::mojom::blink::Blob>* BlobURLStoreSet::getBlobByUrl(const std::string& url)
 {
     UrlToBlobs::iterator it = m_urlToBlobs.find(url);
-    if (it == m_urlToBlobs.end())
+    if (it == m_urlToBlobs.end() || it->second->revoked)
         return nullptr;
     //::mojo::Remote<::blink::mojom::blink::Blob>* ret = it->second;
     SecurityOriginAndBlob* securityOriginAndBlob = it->second;
@@ -260,7 +265,7 @@ public:
         new BlobURLStoreLoader(std::move(loader), requestId, options, request, std::move(client), trafficAnnotation);
     }
 
-    // LoaderFactoryForWorker::CreateURLLoader»á×ßµ½Õâ¸öº¯Êı
+    // LoaderFactoryForWorker::CreateURLLoaderä¼šèµ°åˆ°è¿™ä¸ªå‡½æ•°
     void Clone(::mojo::PendingReceiver<network::mojom::URLLoaderFactory> factory) override
     {
         createAndBindInterface<::network::mojom::URLLoaderFactory, BlobURLStoreLoaderFactoryImpl>(factory.PassPipe(), m_url);
@@ -273,8 +278,8 @@ public:
 void BlobURLStoreImpl::ResolveAsURLLoaderFactory(const ::blink::KURL& url, ::mojo::PendingReceiver<::network::mojom::blink::URLLoaderFactory> factory,
     ::blink::mojom::blink::BlobURLStore::ResolveAsURLLoaderFactoryCallback callback)
 {
-    // ÕâÀïÒª×¢ÒâÁË£¬´ÓblinkµÄGetBlobURLStore().ResolveAsURLLoaderFactory´«¹ıÀ´µÄ¾ÓÈ»ÊÇ::network::mojom::blink::URLLoaderFactory£¬
-    // µ«ÔÚÕæÕıÊ¹ÓÃÊ±£¨LoaderFactoryForFrame::CreateURLLoaderÀï£©£¬ÓÖÊÇ::network::mojom::URLLoaderFactoryÁË
+    // è¿™é‡Œè¦æ³¨æ„äº†ï¼Œä»blinkçš„GetBlobURLStore().ResolveAsURLLoaderFactoryä¼ è¿‡æ¥çš„å±…ç„¶æ˜¯::network::mojom::blink::URLLoaderFactoryï¼Œ
+    // ä½†åœ¨çœŸæ­£ä½¿ç”¨æ—¶ï¼ˆLoaderFactoryForFrame::CreateURLLoaderé‡Œï¼‰ï¼Œåˆæ˜¯::network::mojom::URLLoaderFactoryäº†
     createAndBindInterface<::network::mojom::URLLoaderFactory, BlobURLStoreLoaderFactoryImpl>(factory.PassPipe(), url);
     absl::optional<::base::UnguessableToken> token;
     absl::optional<::blink::BlinkSchemefulSite> site;

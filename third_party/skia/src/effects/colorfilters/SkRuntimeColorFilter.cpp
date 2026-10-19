@@ -39,6 +39,7 @@ constexpr bool kLenientSkSLDeserialization = true;
 constexpr bool kLenientSkSLDeserialization = false;
 #endif
 
+#if !defined(SK_GANESH)
 SkRuntimeEffect::Result SkRuntimeEffect::MakeForShader(SkString sksl, const Options& options)
 {
     *(int*)1 = 1;
@@ -196,6 +197,7 @@ void RuntimeEffectRPCallbacks::fromLinearSrgb(void const*)
 {
     *(int*)1 = 1;
 }
+#endif
 
 SkRuntimeColorFilter::SkRuntimeColorFilter(sk_sp<SkRuntimeEffect> effect, sk_sp<const SkData> uniforms, SkSpan<const SkRuntimeEffect::ChildPtr> children)
     : fEffect(std::move(effect))
@@ -211,16 +213,18 @@ bool SkRuntimeColorFilter::appendStages(const SkStageRec& rec, bool) const
         // usage in runtime effects to just #version 100.
         return false;
     }
-//    if (const SkSL::RP::Program* program = fEffect->getRPProgram(/*debugTrace=*/nullptr)) {
-//         SkSpan<const float> uniforms = SkRuntimeEffectPriv::UniformsAsSpan(fEffect->uniforms(), fUniforms,
-//             /*alwaysCopyIntoAlloc=*/false, rec.fDstCS, rec.fAlloc);
-//         SkShaders::MatrixRec matrix(SkMatrix::I());
-//         matrix.markCTMApplied();
-//         RuntimeEffectRPCallbacks callbacks(rec, matrix, fChildren, fEffect->fSampleUsages);
-//         bool success = program->appendStages(rec.fPipeline, rec.fAlloc, &callbacks, uniforms);
-//         return success;
-//    }
+#if defined(SK_GANESH)
+    if (const SkSL::RP::Program* program = fEffect->getRPProgram(/*debugTrace=*/nullptr)) {
+        SkSpan<const float> uniforms = SkRuntimeEffectPriv::UniformsAsSpan(fEffect->uniforms(), fUniforms,
+            /*alwaysCopyIntoAlloc=*/false, rec.fDstCS, rec.fAlloc);
+        SkShaders::MatrixRec matrix(SkMatrix::I());
+        matrix.markCTMApplied();
+        RuntimeEffectRPCallbacks callbacks(rec, matrix, fChildren, fEffect->fSampleUsages);
+        return program->appendStages(rec.fPipeline, rec.fAlloc, &callbacks, uniforms);
+    }
+#else
     *(int*)1 = 1;
+#endif
     return false;
 }
 

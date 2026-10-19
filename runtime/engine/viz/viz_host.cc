@@ -11,6 +11,9 @@
 #include "base/time/time.h"
 #include "runtime/engine/viz/viz_client.h"
 #include "runtime/engine/viz/offscreen_display_client.h"
+#if BUILDFLAG(IS_MAC)
+#include "runtime/engine/browser/web_view_host.h"
+#endif
 #include "runtime/engine/common/thread_call.h"
 #include "components/viz/host/renderer_settings_creation.h"
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
@@ -261,6 +264,11 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     constexpr viz::FrameSinkId rootFrameSinkId(0xdead, 0xbeef);
     rootParams->frame_sink_id = rootFrameSinkId;
     rootParams->widget = /*m_widget*/ 0;
+#if BUILDFLAG(IS_MAC)
+    // This port's output device uses the engine view identity, not an NSView*
+    // in the renderer process. cc resources remain shared CPU-raster tiles.
+    rootParams->widget = static_cast<gfx::AcceleratedWidget>(m_engineViewHost->getId());
+#endif
     rootParams->gpu_compositing = false;
     rootParams->renderer_settings = viz::CreateRendererSettings();
     rootParams->renderer_settings.should_clear_root_render_pass = false;

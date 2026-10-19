@@ -5,6 +5,10 @@
 #include <functional>
 #include "runtime/engine/public/engine_api.h"
 
+namespace blink {
+struct UntrustworthyContextMenuParams;
+}
+
 namespace mini_electron::engine {
 
 class CallbackClosure {
@@ -183,6 +187,10 @@ public:
         m_FrameDetachedCallback = callback;
         m_FrameDetachedParam = param;
     };
+
+    // Blink invokes this only after the DOM contextmenu default action survives.
+    std::function<void(mini_electron_web_frame_handle,
+        const blink::UntrustworthyContextMenuParams&)> m_contextMenuCallback;
 
 
     mini_electron_loading_finish_callback m_LoadingFinishCallback { nullptr };

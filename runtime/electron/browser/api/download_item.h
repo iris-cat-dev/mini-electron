@@ -60,6 +60,7 @@ public:
     static v8::Persistent<v8::Function> constructor;
     std::string m_url;
     std::string m_mime;
+    std::string m_filename;
     size_t m_recvSize;
     size_t m_allSize;
     std::string m_savePath;

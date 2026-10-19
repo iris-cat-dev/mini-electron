@@ -2,6 +2,7 @@
 // Use of this source code is governed by the Apache-2.0 license.
 
 #import <AppKit/AppKit.h>
+#import <QuartzCore/QuartzCore.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -10,6 +11,9 @@
 
 #include "runtime/engine/public/engine_api.h"
 #include "runtime/engine/api/internal_api.h"
+#include "base/functional/bind.h"
+#include "platform/macos/metal_compositor.h"
+#include "ui/base/cocoa/remote_layer_api.h"
 
 extern "C" void mini_electron_mac_set_composition(mini_electron_web_view web_view,
                                     const char16_t* text,
@@ -44,6 +48,7 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 @interface MiniElectronView : NSView <NSTextInputClient>
 - (instancetype)initWithFrame:(NSRect)frame webView:(mini_electron_web_view)webView;
 - (void)acceptPixels:(NSData*)pixels width:(int)width height:(int)height;
+- (void)acceptMetalFrame:(const mini_electron::mac::MetalFrame&)frame;
 - (void)pageDidFinishLoading:(NSString*)url;
 - (BOOL)hasFrame;
 - (void)exerciseInputPath;
@@ -61,6 +66,9 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
   NSData* _pixels;
   int _pixelWidth;
   int _pixelHeight;
+  CALayerHost* _metalHost;
+  float _metalScaleFactor;
+  BOOL _hasMetalFrame;
   NSMutableAttributedString* _markedText;
 }
 
@@ -72,6 +80,10 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
     [self setWantsLayer:YES];
     mini_electron_on_paint_bit_updated(_webView, PaintUpdated, (__bridge void*)self);
     mini_electron_on_loading_finish(_webView, LoadingFinished, (__bridge void*)self);
+    mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(_webView),
+        base::BindRepeating([](void* owner, const mini_electron::mac::MetalFrame& frame) {
+          [(__bridge MiniElectronView*)owner acceptMetalFrame:frame];
+        }, (__bridge void*)self));
     [self syncRendererMetrics];
   }
   return self;
@@ -79,9 +91,12 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(_webView), {});
+  [_metalHost removeFromSuperlayer];
   if (_webView != NULL_WEBVIEW)
     mini_electron_destroy_web_view(_webView);
 #if !__has_feature(objc_arc)
+  [_metalHost release];
   [_pixels release];
   [_markedText release];
   [super dealloc];
@@ -133,6 +148,13 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
   mini_electron_mac_set_vsync_display_id(
       _webView, display_number
           ? static_cast<int64_t>(display_number.unsignedIntValue) : -1);
+  if (_metalHost && _metalScaleFactor > 0) {
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _metalHost.position = CGPointMake(0, size.height - _pixelHeight / _metalScaleFactor);
+    [CATransaction commit];
+    [CATransaction flush];
+  }
 }
 
 - (void)viewDidMoveToWindow {
@@ -164,7 +186,37 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
   [self syncRendererMetrics];
 }
 
+- (void)acceptMetalFrame:(const mini_electron::mac::MetalFrame&)frame {
+  if (frame.error || !frame.context_id || frame.width <= 0 || frame.height <= 0)
+    return;
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  if (!_metalHost) {
+    _metalHost = [[NSClassFromString(@"CALayerHost") alloc] init];
+    _metalHost.zPosition = 1;
+    self.layer.masksToBounds = YES;
+    [self.layer insertSublayer:_metalHost atIndex:0];
+  }
+  _metalHost.contextId = frame.context_id;
+  _metalHost.anchorPoint = CGPointZero;
+  _metalHost.position = CGPointMake(0, self.bounds.size.height - frame.height / frame.scale_factor);
+  _metalScaleFactor = frame.scale_factor;
+  _hasMetalFrame = YES;
+  _pixelWidth = frame.width;
+  _pixelHeight = frame.height;
+  [CATransaction commit];
+  [CATransaction flush];
+}
+
 - (void)acceptPixels:(NSData*)pixels width:(int)width height:(int)height {
+  _hasMetalFrame = NO;
+  if (_metalHost) {
+    [_metalHost removeFromSuperlayer];
+#if !__has_feature(objc_arc)
+    [_metalHost release];
+#endif
+    _metalHost = nil;
+  }
 #if !__has_feature(objc_arc)
   [_pixels release];
 #endif
@@ -175,24 +227,40 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 }
 
 - (BOOL)hasFrame {
-  return _pixels != nil && _pixelWidth > 0 && _pixelHeight > 0;
+  return (_hasMetalFrame || _pixels != nil) && _pixelWidth > 0 && _pixelHeight > 0;
 }
 - (NSData*)snapshotPNG {
-  if (!_pixels)
+  NSData* pixels = _pixels;
+  int width = _pixelWidth;
+  int height = _pixelHeight;
+  if (_hasMetalFrame) {
+    SkBitmap bitmap = mini_electron::mac::CopyMetalFrame(static_cast<int64_t>(_webView));
+    if (bitmap.empty())
+      return nil;
+    width = bitmap.width();
+    height = bitmap.height();
+    NSMutableData* readback = [NSMutableData dataWithLength:static_cast<NSUInteger>(width) * height * 4];
+    if (!bitmap.readPixels(SkImageInfo::Make(width, height, kRGBA_8888_SkColorType,
+            kPremul_SkAlphaType), readback.mutableBytes, static_cast<size_t>(width) * 4, 0, 0))
+      return nil;
+    pixels = readback;
+  }
+  if (!pixels)
     return nil;
-  CGDataProviderRef provider = CGDataProviderCreateWithCFData(
-      (__bridge CFDataRef)_pixels);
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  CGDataProviderRef provider = CGDataProviderCreateWithCFData((__bridge CFDataRef)pixels);
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
   CGImageRef image = CGImageCreate(
-      _pixelWidth, _pixelHeight, 8, 32, _pixelWidth * 4, colorSpace,
+      width, height, 8, 32, width * 4, colorSpace,
       kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,
       provider, nullptr, false, kCGRenderingIntentDefault);
   NSBitmapImageRep* bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
-  NSData* png = [bitmap representationUsingType:NSBitmapImageFileTypePNG
-                                     properties:@{}];
+  NSData* png = [bitmap representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
   CGImageRelease(image);
   CGColorSpaceRelease(colorSpace);
   CGDataProviderRelease(provider);
+#if !__has_feature(objc_arc)
+  [bitmap release];
+#endif
   return png;
 }
 
@@ -250,12 +318,14 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 - (void)drawRect:(NSRect)dirtyRect {
   [[NSColor colorWithRed:0.047 green:0.067 blue:0.106 alpha:1.0] setFill];
   NSRectFill(dirtyRect);
+  if (_hasMetalFrame)
+    return;
   if (!_pixels)
     return;
 
   CGDataProviderRef provider = CGDataProviderCreateWithCFData(
       (__bridge CFDataRef)_pixels);
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
   CGImageRef image = CGImageCreate(
       _pixelWidth, _pixelHeight, 8, 32, _pixelWidth * 4, colorSpace,
       kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,

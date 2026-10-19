@@ -1,5 +1,7 @@
 #import <AppKit/AppKit.h>
 #import <QuartzCore/QuartzCore.h>
+#import <CoreGraphics/CoreGraphics.h>
+#include "macos-owned-window-capture.h"
 #include <node_api.h>
 #include <fcntl.h>
 #include <libproc.h>
@@ -86,169 +88,217 @@ static napi_value Event(napi_env env, napi_callback_info info) {
   Number(env, result, "eventDurationMs", (NSProcessInfo.processInfo.systemUptime - began) * 1000);
   return result;
 }
-static napi_value Snapshot(napi_env env, napi_callback_info info) {
-  size_t count = 1; napi_value args[1];
-  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
-  if (count != 1) return Fail(env, "snapshot(title) requires one argument");
-  NSWindow* window = Window(env, args[0]);
-  if (!window) return nullptr;
-  NSView* view = Renderer(window.contentView);
-  if (!view || !view.layer) return Fail(env, "No layer-backed renderer view; presentation extraction unsupported");
-  // Exercise AppKit's normal backing-store display and commit. Never invoke drawRect.
-  const double began = NSProcessInfo.processInfo.systemUptime;
-  [window displayIfNeeded];
-  [CATransaction flush];
-  const double displayed = NSProcessInfo.processInfo.systemUptime;
-  CALayer* model = view.layer;
-  CALayer* layer = model.presentationLayer ?: model;
-  const CGFloat scale = window.backingScaleFactor;
-  if (view.bounds.size.width <= 0 || view.bounds.size.height <= 0)
-    return Fail(env, "Unsupported layer dimensions");
-  // A small composite keeps observation from slowing a rapid drag into a
-  // low-frequency resize. Uniform-background samples include all four edges.
-  constexpr size_t width = 32;
-  constexpr size_t height = 32;
-  uint8_t pixels[width * height * 4] = {};
-  CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-  CGContextRef context = CGBitmapContextCreate(pixels, width, height, 8, width * 4,
-      space, static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) | kCGBitmapByteOrder32Big);
-  CGColorSpaceRelease(space);
-  if (!context) return Fail(env, "Cannot create CALayer extraction context");
-  CGContextScaleCTM(context, width / view.bounds.size.width,
-                     height / view.bounds.size.height);
-  CGContextTranslateCTM(context, -layer.bounds.origin.x, -layer.bounds.origin.y);
-  [layer renderInContext:context];
-  CGContextRelease(context);
-  napi_value result, samples;
-  napi_create_object(env, &result);
-  napi_set_named_property(env, result, "frame", RectValue(env, window.frame));
-  napi_set_named_property(env, result, "view", RectValue(env, view.bounds));
-  napi_set_named_property(env, result, "layer", RectValue(env, layer.bounds));
-  Number(env, result, "scale", scale);
-  Number(env, result, "bitmapWidth", width); Number(env, result, "bitmapHeight", height);
-  Number(env, result, "displayDurationMs", (displayed - began) * 1000);
-  Number(env, result, "sampleDurationMs", (NSProcessInfo.processInfo.systemUptime - displayed) * 1000);
-  Text(env, result, "source", model.presentationLayer ? "presentationLayer.renderInContext" : "committedLayer.renderInContext");
-  id contents = layer.contents;
-  if (contents && CFGetTypeID((__bridge CFTypeRef)contents) == CGImageGetTypeID()) {
-    CGImageRef image = (__bridge CGImageRef)contents;
-    Number(env, result, "contentsWidth", CGImageGetWidth(image));
-    Number(env, result, "contentsHeight", CGImageGetHeight(image));
-    Text(env, result, "contentsType", "CGImage");
-  } else {
-    Number(env, result, "contentsWidth", 0); Number(env, result, "contentsHeight", 0);
-    Text(env, result, "contentsType", contents ? NSStringFromClass([contents class]).UTF8String : "nil");
-  }
-  napi_create_object(env, &samples);
-  const char* names[] = {"bottomLeft", "bottom", "bottomRight", "left", "center", "right", "topLeft", "top", "topRight"};
-  const size_t xs[] = {0, width / 2, width - 1};
-  const size_t ys[] = {0, height / 2, height - 1};
-  for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 3; ++column) {
-    napi_value pixel, value; napi_create_array_with_length(env, 4, &pixel);
-    size_t offset = (ys[row] * width + xs[column]) * 4;
-    for (uint32_t channel = 0; channel < 4; ++channel) {
-      napi_create_uint32(env, pixels[offset + channel], &value); napi_set_element(env, pixel, channel, value);
-    }
-    napi_set_named_property(env, samples, names[row * 3 + column], pixel);
-  }
-  napi_set_named_property(env, result, "samples", samples);
-  return result;
-}
-static napi_value Sample(napi_env env, napi_callback_info info) {
-  size_t count = 3; napi_value args[3];
-  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
-  if (count != 3) return Fail(env, "sample(title, layerX, layerY) requires three arguments");
-  NSWindow* window = Window(env, args[0]);
-  if (!window) return nullptr;
-  NSView* view = Renderer(window.contentView);
-  double x = NAN, y = NAN;
-  napi_get_value_double(env, args[1], &x); napi_get_value_double(env, args[2], &y);
-  if (!view || !view.layer || !std::isfinite(x) || !std::isfinite(y))
-    return Fail(env, "Invalid presentation sample");
-  [window displayIfNeeded];
-  [CATransaction flush];
-  CALayer* layer = view.layer.presentationLayer ?: view.layer;
-  uint8_t pixel[4] = {};
-  CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-  CGContextRef context = CGBitmapContextCreate(pixel, 1, 1, 8, 4, space,
-      static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) | kCGBitmapByteOrder32Big);
-  CGColorSpaceRelease(space);
-  if (!context) return Fail(env, "Cannot create pixel extraction context");
-  CGContextTranslateCTM(context, -x, -y);
-  [layer renderInContext:context];
-  CGContextRelease(context);
-  napi_value result, value;
+enum class CaptureKind { Snapshot, Sample, Geometry };
+struct CaptureRequest {
+  CaptureKind kind;
+  CGRect renderer;
+  bool flip;
+  double x;
+  double y;
+  double began;
+};
+static napi_value PixelValue(napi_env env, const uint8_t* bytes) {
+  napi_value result;
   napi_create_array_with_length(env, 4, &result);
   for (uint32_t channel = 0; channel < 4; ++channel) {
-    napi_create_uint32(env, pixel[channel], &value);
+    napi_value value;
+    napi_create_uint32(env, bytes[channel], &value);
     napi_set_element(env, result, channel, value);
   }
   return result;
 }
-// One pixel per DIP. The caller calibrates bitmap row orientation against the
-// asymmetric initial DOM markers, then supplies that same flip for every frame.
-static napi_value Geometry(napi_env env, napi_callback_info info) {
-  size_t count = 2; napi_value args[2]; bool flip = false;
+static bool ReadPixel(CGImageRef image, size_t x, size_t y, uint8_t* bytes) {
+  CGImageRef pixel = CGImageCreateWithImageInRect(image, CGRectMake(x, y, 1, 1));
+  CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+  CGContextRef context = CGBitmapContextCreate(bytes, 1, 1, 8, 4, space,
+      static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) | kCGBitmapByteOrder32Big);
+  CGColorSpaceRelease(space);
+  if (pixel && context) CGContextDrawImage(context, CGRectMake(0, 0, 1, 1), pixel);
+  if (context) CGContextRelease(context);
+  if (pixel) CGImageRelease(pixel);
+  return pixel && context;
+}
+static void CompleteCapture(napi_env env, napi_deferred deferred, napi_value result,
+                            CGImageRef image, CGRect screen_rect, const CaptureRequest& request, NSString* error) {
+  auto reject = [&](NSString* reason) {
+    napi_value text, exception;
+    NSString* message = [@"INCOMPLETE: actual composed owned-window capture failed. Use a visible owned window in an unlocked graphical session. " stringByAppendingString:reason];
+    napi_create_string_utf8(env, message.UTF8String, NAPI_AUTO_LENGTH, &text);
+    napi_create_error(env, nullptr, text, &exception);
+    napi_reject_deferred(env, deferred, exception);
+  };
+  if (!image || error) { reject(error ?: @"No composed owned-window image returned."); return; }
+  if (CGRectIsEmpty(screen_rect)) { reject(@"Captured window rectangle is empty."); return; }
+  const double scaleX = CGImageGetWidth(image) / screen_rect.size.width;
+  const double scaleY = CGImageGetHeight(image) / screen_rect.size.height;
+  const double originX = (request.renderer.origin.x - screen_rect.origin.x) * scaleX;
+  const double originY = (request.renderer.origin.y - screen_rect.origin.y) * scaleY;
+  // ScreenCaptureKit excludes AppKit's outer border on titled/full-size-content
+  // windows. Decode only real visible pixels and retain the renderer offset.
+  const CGRect visible = CGRectIntersection(
+      CGRectMake(originX, originY, request.renderer.size.width * scaleX,
+          request.renderer.size.height * scaleY),
+      CGRectMake(0, 0, CGImageGetWidth(image), CGImageGetHeight(image)));
+  if (CGRectIsEmpty(visible)) {
+    reject(@"Renderer has no visible pixels in the captured owned window."); return;
+  }
+  const size_t left = static_cast<size_t>(std::floor(CGRectGetMinX(visible)));
+  const size_t top = static_cast<size_t>(std::floor(CGRectGetMinY(visible)));
+  const size_t width = static_cast<size_t>(std::ceil(CGRectGetMaxX(visible))) - left;
+  const size_t height = static_cast<size_t>(std::ceil(CGRectGetMaxY(visible))) - top;
+  Number(env, result, "scale", scaleX);
+  Number(env, result, "pixelsPerDIP", scaleX);
+  Number(env, result, "pixelsPerDIPY", scaleY);
+  Number(env, result, "bitmapWidth", width); Number(env, result, "bitmapHeight", height);
+  Number(env, result, "windowPixelWidth", CGImageGetWidth(image));
+  Number(env, result, "windowPixelHeight", CGImageGetHeight(image));
+  napi_set_named_property(env, result, "capturedWindowScreenRect", RectValue(env, screen_rect));
+  napi_set_named_property(env, result, "rendererScreenRect", RectValue(env, request.renderer));
+  if (request.kind == CaptureKind::Sample) {
+    uint8_t bytes[4] = {};
+    const double pixelX = std::floor(originX + request.x * scaleX);
+    const double pixelY = std::floor(originY + request.y * scaleY);
+    if (pixelX < 0 || pixelY < 0 || pixelX >= CGImageGetWidth(image) || pixelY >= CGImageGetHeight(image)) {
+      reject(@"Requested renderer sample is outside the visible owned window."); return;
+    }
+    const size_t x = static_cast<size_t>(pixelX);
+    const size_t y = static_cast<size_t>(pixelY);
+    if (!ReadPixel(image, x, y, bytes)) { reject(@"Cannot decode composed owned-window sample."); return; }
+    napi_resolve_deferred(env, deferred, PixelValue(env, bytes)); return;
+  }
+  if (request.kind == CaptureKind::Snapshot) {
+    napi_value samples; napi_create_object(env, &samples);
+    const char* names[] = {"topLeft", "top", "topRight", "left", "center", "right", "bottomLeft", "bottom", "bottomRight"};
+    // Individual real composed owned-window pixels, not a resized/averaged screenshot. The
+    // slight edge inset excludes AppKit's border; corner samples also exclude
+    // rounded native mask and overlaid titlebar controls. Edge centers cover all sides.
+    constexpr double edgeInset = 2;
+    constexpr double cornerInset = 24;
+    Number(env, result, "sampleEdgeInsetDIP", edgeInset);
+    Number(env, result, "sampleCornerInsetDIP", cornerInset);
+    for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 3; ++column) {
+      const double inset = row != 1 && column != 1 ? cornerInset : edgeInset;
+      const size_t pixelX = static_cast<size_t>(std::floor(column == 0 ? CGRectGetMinX(visible) + inset * scaleX
+          : column == 1 ? CGRectGetMidX(visible) : CGRectGetMaxX(visible) - inset * scaleX));
+      const size_t pixelY = static_cast<size_t>(std::floor(row == 0 ? CGRectGetMinY(visible) + inset * scaleY
+          : row == 1 ? CGRectGetMidY(visible) : CGRectGetMaxY(visible) - inset * scaleY));
+      uint8_t bytes[4] = {};
+      if (!ReadPixel(image, pixelX, pixelY, bytes)) {
+        reject([NSString stringWithFormat:@"Cannot decode composed owned-window samples. sample=%zux%zu image=%zux%zu renderer=%@ captured=%@",
+            pixelX, pixelY, CGImageGetWidth(image), CGImageGetHeight(image),
+            NSStringFromRect(request.renderer), NSStringFromRect(screen_rect)]); return;
+      }
+      napi_set_named_property(env, samples, names[row * 3 + column], PixelValue(env, bytes));
+    }
+    napi_set_named_property(env, result, "samples", samples);
+  } else {
+    CGImageRef crop = CGImageCreateWithImageInRect(image, CGRectMake(left, top, width, height));
+    std::vector<uint8_t> pixels(width * height * 4, 0);
+    CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    CGContextRef context = CGBitmapContextCreate(pixels.data(), width, height, 8, width * 4, space,
+        static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(space);
+    if (!crop || !context) {
+      if (crop) CGImageRelease(crop);
+      if (context) CGContextRelease(context);
+      reject(@"Cannot decode native-resolution composed owned-window geometry."); return;
+    }
+    // Decode only: identical source/destination pixel dimensions, no resampling.
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), crop);
+    CGContextRelease(context); CGImageRelease(crop);
+    const char* names[] = {"fixed", "responsive", "circle", "animated"};
+    const int colors[][3] = {{241, 43, 67}, {31, 227, 137}, {47, 113, 251}, {249, 205, 37}};
+    size_t minX[4] = {width, width, width, width}, minY[4] = {height, height, height, height};
+    size_t maxX[4] = {}, maxY[4] = {}, hits[4] = {};
+    for (size_t row = 0; row < height; ++row) for (size_t x = 0; x < width; ++x) {
+      const uint8_t* pixel = pixels.data() + (row * width + x) * 4;
+      if (pixel[3] < 250) continue;
+      for (size_t marker = 0; marker < 4; ++marker) {
+        if (std::abs(int(pixel[0]) - colors[marker][0]) > 4 ||
+            std::abs(int(pixel[1]) - colors[marker][1]) > 4 ||
+            std::abs(int(pixel[2]) - colors[marker][2]) > 4) continue;
+        const size_t y = request.flip ? height - 1 - row : row;
+        minX[marker] = std::min(minX[marker], x); minY[marker] = std::min(minY[marker], y);
+        maxX[marker] = std::max(maxX[marker], x); maxY[marker] = std::max(maxY[marker], y);
+        ++hits[marker];
+      }
+    }
+    napi_value markers; napi_create_object(env, &markers);
+    for (size_t marker = 0; marker < 4; ++marker) {
+      napi_value box = RectValue(env, hits[marker] ? CGRectMake(
+          (left + minX[marker] - originX) / scaleX, (top + minY[marker] - originY) / scaleY,
+          (maxX[marker] - minX[marker] + 1) / scaleX, (maxY[marker] - minY[marker] + 1) / scaleY) : CGRectZero);
+      Number(env, box, "pixels", hits[marker]);
+      napi_set_named_property(env, markers, names[marker], box);
+    }
+    napi_set_named_property(env, result, "markers", markers);
+    Text(env, result, "coordinates", request.flip ? "composed owned-window pixels, reversed decoded rows; view top-left DIPs" : "composed owned-window pixels, unchanged decoded rows; view top-left DIPs");
+  }
+  Number(env, result, "sampleDurationMs", (NSProcessInfo.processInfo.systemUptime - request.began) * 1000);
+  napi_resolve_deferred(env, deferred, result);
+}
+static napi_value Capture(napi_env env, napi_callback_info info, CaptureKind kind) {
+  size_t count = 3; napi_value args[3];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
-  if (count < 1) return Fail(env, "geometry(title, flipRows=false) requires a title");
-  if (count == 2 && napi_get_value_bool(env, args[1], &flip) != napi_ok)
-    return Fail(env, "flipRows must be boolean");
+  if (count < 1 || (kind == CaptureKind::Snapshot && count != 1) ||
+      (kind == CaptureKind::Sample && count != 3) || (kind == CaptureKind::Geometry && count > 2))
+    return Fail(env, "Expected snapshot(title), sample(title, viewX, viewY), or geometry(title, flipRows=false)");
   NSWindow* window = Window(env, args[0]);
   if (!window) return nullptr;
   NSView* view = Renderer(window.contentView);
-  if (!view || !view.layer) return Fail(env, "No layer-backed renderer geometry");
+  if (!view || !view.layer || !window.screen || !window.visible)
+    return Fail(env, "INCOMPLETE: a visible layer-backed renderer on an attached display is required");
+  bool flip = false; double x = NAN, y = NAN;
+  if (kind == CaptureKind::Geometry && count == 2 && napi_get_value_bool(env, args[1], &flip) != napi_ok)
+    return Fail(env, "flipRows must be boolean");
+  if (kind == CaptureKind::Sample) {
+    napi_get_value_double(env, args[1], &x); napi_get_value_double(env, args[2], &y);
+    if (!std::isfinite(x) || !std::isfinite(y) || x < 0 || y < 0 ||
+        x >= view.bounds.size.width || y >= view.bounds.size.height)
+      return Fail(env, "Composed owned-window sample must be inside the renderer in top-left DIPs");
+  }
+  const double began = NSProcessInfo.processInfo.systemUptime;
   [window displayIfNeeded];
   [CATransaction flush];
-  CALayer* model = view.layer;
-  CALayer* layer = model.presentationLayer ?: model;
-  const size_t width = static_cast<size_t>(std::ceil(view.bounds.size.width));
-  const size_t height = static_cast<size_t>(std::ceil(view.bounds.size.height));
-  if (!width || !height || width > 8192 || height > 8192)
-    return Fail(env, "Unsupported geometry bitmap dimensions");
-  std::vector<uint8_t> pixels(width * height * 4, 0);
-  CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-  CGContextRef context = CGBitmapContextCreate(pixels.data(), width, height, 8, width * 4,
-      space, static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) | kCGBitmapByteOrder32Big);
-  CGColorSpaceRelease(space);
-  if (!context) return Fail(env, "Cannot create geometry extraction context");
-  // No scaling of the layer into the capture: one context unit equals one DIP.
-  CGContextTranslateCTM(context, -layer.bounds.origin.x, -layer.bounds.origin.y);
-  [layer renderInContext:context];
-  CGContextRelease(context);
-  const char* names[] = {"fixed", "responsive", "circle", "animated"};
-  const int colors[][3] = {{241, 43, 67}, {31, 227, 137}, {47, 113, 251}, {249, 205, 37}};
-  size_t minX[4] = {width, width, width, width}, minY[4] = {height, height, height, height};
-  size_t maxX[4] = {}, maxY[4] = {}, hits[4] = {};
-  for (size_t row = 0; row < height; ++row) for (size_t x = 0; x < width; ++x) {
-    const uint8_t* pixel = pixels.data() + (row * width + x) * 4;
-    if (pixel[3] < 250) continue;
-    for (size_t marker = 0; marker < 4; ++marker) {
-      if (std::abs(int(pixel[0]) - colors[marker][0]) > 4 ||
-          std::abs(int(pixel[1]) - colors[marker][1]) > 4 ||
-          std::abs(int(pixel[2]) - colors[marker][2]) > 4) continue;
-      const size_t y = flip ? height - 1 - row : row;
-      minX[marker] = std::min(minX[marker], x); minY[marker] = std::min(minY[marker], y);
-      maxX[marker] = std::max(maxX[marker], x); maxY[marker] = std::max(maxY[marker], y);
-      ++hits[marker];
-    }
-  }
-  napi_value result, markers; napi_create_object(env, &result); napi_create_object(env, &markers);
-  for (size_t marker = 0; marker < 4; ++marker) {
-    napi_value box = RectValue(env, hits[marker] ? CGRectMake(minX[marker], minY[marker],
-        maxX[marker] - minX[marker] + 1, maxY[marker] - minY[marker] + 1) : CGRectZero);
-    Number(env, box, "pixels", hits[marker]);
-    napi_set_named_property(env, markers, names[marker], box);
-  }
-  napi_set_named_property(env, result, "markers", markers);
+  const double displayed = NSProcessInfo.processInfo.systemUptime;
+  CGRect renderer = [window convertRectToScreen:[view convertRect:view.bounds toView:nil]];
+  renderer.origin.y = NSMaxY(NSScreen.screens.firstObject.frame) - CGRectGetMaxY(renderer);
+  if (CGRectIsEmpty(renderer)) return Fail(env, "INCOMPLETE: renderer has empty native bounds");
+  const CaptureRequest request{kind, renderer, flip, x, y, displayed};
+  napi_value promise, result; napi_deferred deferred; napi_ref reference;
+  napi_create_object(env, &result);
+  CALayer* layer = view.layer.presentationLayer ?: view.layer;
   napi_set_named_property(env, result, "frame", RectValue(env, window.frame));
   napi_set_named_property(env, result, "view", RectValue(env, view.bounds));
   napi_set_named_property(env, result, "layer", RectValue(env, layer.bounds));
-  napi_set_named_property(env, result, "screen", RectValue(env, window.screen.visibleFrame));
-  Number(env, result, "bitmapWidth", width); Number(env, result, "bitmapHeight", height);
-  Number(env, result, "pixelsPerDIP", 1);
-  Text(env, result, "coordinates", flip ? "bitmap rows reversed; baseline-calibrated view top-left" : "bitmap rows unchanged; baseline-calibrated view top-left");
-  Text(env, result, "source", model.presentationLayer ? "presentationLayer.renderInContext" : "committedLayer.renderInContext");
-  return result;
+  CGRect visible = window.screen.visibleFrame;
+  visible.origin.y = NSMaxY(NSScreen.screens.firstObject.frame) - CGRectGetMaxY(visible);
+  napi_set_named_property(env, result, "screen", RectValue(env, visible));
+  Number(env, result, "displayDurationMs", (displayed - began) * 1000);
+  napi_create_promise(env, &deferred, &promise);
+  napi_create_reference(env, result, 1, &reference);
+  mini_electron::test::CaptureOwnedWindow(window, ^(CGImageRef image, CGRect screen_rect, NSString* error) {
+    if (image) CGImageRetain(image);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      napi_handle_scope scope; napi_open_handle_scope(env, &scope);
+      napi_value retained; napi_get_reference_value(env, reference, &retained);
+      CompleteCapture(env, deferred, retained, image, screen_rect, request, error);
+      napi_delete_reference(env, reference);
+      if (image) CGImageRelease(image);
+      napi_close_handle_scope(env, scope);
+    });
+  });
+  Text(env, result, "source", "WindowServer.composedOwnedWindow");
+  return promise;
+}
+static napi_value Snapshot(napi_env env, napi_callback_info info) {
+  return Capture(env, info, CaptureKind::Snapshot);
+}
+static napi_value Sample(napi_env env, napi_callback_info info) {
+  return Capture(env, info, CaptureKind::Sample);
+}
+static napi_value Geometry(napi_env env, napi_callback_info info) {
+  return Capture(env, info, CaptureKind::Geometry);
 }
 static bool OwnedChild(pid_t pid) {
   proc_bsdinfo info = {};

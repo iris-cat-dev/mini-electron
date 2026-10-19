@@ -13,6 +13,7 @@
 #include "components/viz/service/display/direct_renderer.h"
 #include "components/viz/service/display/display_resource_provider_software.h"
 #include "components/viz/service/viz_service_export.h"
+#include "third_party/skia/include/core/SkSurface.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/latency/latency_info.h"
 
@@ -61,8 +62,8 @@ protected:
     gfx::Rect GetRenderPassBackingDrawnRect(const AggregatedRenderPassId& render_pass_id) const override;
 
 private:
-    struct RenderPassBitmapBacking {
-        SkBitmap bitmap;
+    struct RenderPassSurfaceBacking {
+        sk_sp<SkSurface> surface;
         gfx::Rect drawn_rect;
     };
     void ClearCanvas(SkColor color);
@@ -80,12 +81,12 @@ private:
     void DrawUnsupportedQuad(const DrawQuad* quad);
     bool ShouldApplyBackdropFilters(const cc::FilterOperations* backdrop_filters, const AggregatedRenderPassDrawQuad* quad) const;
     sk_sp<SkImage> ApplyImageFilter(
-        SkImageFilter* filter, const AggregatedRenderPassDrawQuad* quad, const SkBitmap& to_filter, bool offset_expanded_bounds, SkIRect* auto_bounds) const;
+        SkImageFilter* filter, const AggregatedRenderPassDrawQuad* quad, const sk_sp<SkImage>& to_filter, bool offset_expanded_bounds, SkIRect* auto_bounds) const;
     gfx::Rect GetBackdropBoundingBoxForRenderPassQuad(const AggregatedRenderPassDrawQuad* quad, const cc::FilterOperations* backdrop_filters,
         std::optional<gfx::RRectF> backdrop_filter_bounds_input, gfx::Transform contents_device_transform, gfx::Transform* backdrop_filter_bounds_transform,
         std::optional<gfx::RRectF>* backdrop_filter_bounds, gfx::Rect* unclipped_rect) const;
 
-    SkBitmap GetBackdropBitmap(const gfx::Rect& bounding_rect) const;
+    sk_sp<SkImage> GetBackdropImage(const gfx::Rect& bounding_rect) const;
     sk_sp<SkShader> GetBackdropFilterShader(const AggregatedRenderPassDrawQuad* quad, SkTileMode content_tile_mode) const;
 
     DisplayResourceProviderSoftware* resource_provider()
@@ -93,8 +94,8 @@ private:
         return static_cast<DisplayResourceProviderSoftware*>(resource_provider_);
     }
 
-    // A map from RenderPass id to the bitmap used to draw the RenderPass from.
-    base::flat_map<AggregatedRenderPassId, RenderPassBitmapBacking> render_pass_bitmaps_;
+    // A map from RenderPass id to the surface used to draw the RenderPass from.
+    base::flat_map<AggregatedRenderPassId, RenderPassSurfaceBacking> render_pass_surfaces_;
 
     bool is_scissor_enabled_ = false;
     gfx::Rect scissor_rect_;
@@ -102,9 +103,9 @@ private:
     raw_ptr<SoftwareOutputDevice> output_device_;
     raw_ptr<SkCanvas, DanglingUntriaged> root_canvas_ = nullptr;
     raw_ptr<SkCanvas, DanglingUntriaged> current_canvas_ = nullptr;
+    raw_ptr<SkSurface, DanglingUntriaged> current_surface_ = nullptr;
     SkPaint current_paint_;
     SkSamplingOptions current_sampling_;
-    std::unique_ptr<SkCanvas> current_framebuffer_canvas_;
 };
 
 } // namespace viz

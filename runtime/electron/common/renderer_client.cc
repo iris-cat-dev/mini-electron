@@ -4,6 +4,7 @@
 #include "runtime/electron/common/renderer_client.h"
 
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <limits>
 #include <map>
@@ -163,7 +164,8 @@ public:
         return state_->alive && IsRendererProcessAlive(process_);
     }
 
-    bool CopyFrame(RendererFrameSnapshot* snapshot) const override
+    bool CopyFrame(RendererFrameSnapshot* snapshot,
+        bool include_native_pixels) const override
     {
         if (!snapshot || !process_.frame_memory
             || process_.frame_mapping_size < sizeof(renderer_protocol::FrameBufferHeader))
@@ -176,29 +178,54 @@ public:
             uint64_t before = header->generation.load(std::memory_order_acquire);
             if (!before || (before & 1))
                 continue;
-            if (before && before == snapshot->generation && !snapshot->rgba.empty())
-                return true;
             const uint32_t width = header->width;
             const uint32_t height = header->height;
             const uint32_t stride = header->stride;
             const uint32_t data_size = header->data_size;
-            if (!width || !height || width > std::numeric_limits<uint32_t>::max() / 4
-                || stride < width * 4 || data_size > header->capacity
-                || data_size > renderer_protocol::kMaxFrameBytes
-                || stride > data_size || height > data_size / stride
-                || sizeof(*header) + data_size > process_.frame_mapping_size)
+            const uint32_t output_format = header->output_format;
+            const uint32_t context_id = header->native_context_id;
+            const float scale = header->native_scale_factor;
+            const uint32_t flags = header->native_flags;
+            const uint64_t presented_generation = header->presented_generation;
+            const bool native = output_format == 1;
+            if (output_format > 1 || !width || !height
+                || width > static_cast<uint32_t>(std::numeric_limits<int>::max()) / 4
+                || height > renderer_protocol::kMaxFrameBytes / 4 / width
+                || (native && (!context_id || !std::isfinite(scale) || scale <= 0
+                    || flags || !presented_generation || (presented_generation & 1)
+                    || presented_generation > before)))
                 return false;
-            frame_staging_.resize(data_size);
-            std::memcpy(frame_staging_.data(), header + 1, data_size);
+            const bool copy_pixels = !native || include_native_pixels;
+            if (copy_pixels
+                && (stride < width * 4 || stride > static_cast<uint32_t>(std::numeric_limits<int>::max())
+                    || data_size > header->capacity
+                    || data_size > renderer_protocol::kMaxFrameBytes
+                    || stride > data_size || height > data_size / stride
+                    || sizeof(*header) + data_size > process_.frame_mapping_size))
+                return false;
+            const bool reuse_pixels = copy_pixels && before == snapshot->generation
+                && snapshot->output_format == output_format && !snapshot->rgba.empty();
+            if (copy_pixels && !reuse_pixels) {
+                frame_staging_.resize(data_size);
+                std::memcpy(frame_staging_.data(), header + 1, data_size);
+            }
             std::atomic_thread_fence(std::memory_order_acquire);
             uint64_t after = header->generation.load(std::memory_order_relaxed);
             if (before != after || (after & 1))
                 continue;
-            snapshot->rgba.swap(frame_staging_);
+            if (!copy_pixels)
+                snapshot->rgba.clear();
+            else if (!reuse_pixels)
+                snapshot->rgba.swap(frame_staging_);
             snapshot->width = static_cast<int>(width);
             snapshot->height = static_cast<int>(height);
-            snapshot->stride = static_cast<int>(stride);
+            snapshot->stride = copy_pixels ? static_cast<int>(stride) : 0;
             snapshot->generation = after;
+            snapshot->output_format = output_format;
+            snapshot->native_context_id = native ? context_id : 0;
+            snapshot->native_scale_factor = native ? scale : 1.f;
+            snapshot->native_flags = native ? flags : 0;
+            snapshot->presented_generation = native ? presented_generation : after;
             return true;
         }
         return false;

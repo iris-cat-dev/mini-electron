@@ -7,7 +7,6 @@
 
 #include "src/gpu/ganesh/image/SkImage_RasterPinnable.h"
 
-#include "include/android/SkImageAndroid.h"
 #include "include/core/SkBitmap.h"
 #include "include/core/SkImage.h"
 #include "include/core/SkImageInfo.h"

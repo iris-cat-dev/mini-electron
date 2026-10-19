@@ -2,13 +2,13 @@
 
 // Run: /path/to/packaged/omp test/macos-resize-geometry-smoke.js
 // Requires this checkout's generated headers and macOS command-line tools.
-// Captures committed CALayer pixels, never drawRect or a renderer screenshot.
+// Captures real composed owned-window pixels, including remote GPU layers.
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, screen: electronScreen } = require('electron');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-resize-geometry-'));
 const title = `mini-resize-geometry-${process.pid}-${Date.now()}`;
 const bound = 1800;
@@ -39,11 +39,10 @@ async function dom() {
       const r=document.getElementById(id).getBoundingClientRect();
       return [id,{x:r.x,y:r.y,width:r.width,height:r.height}]}))})`));
 }
-function capture() { return native.geometry(title, flipRows); }
+async function capture() { return native.geometry(title, flipRows); }
 function mismatch(pixels, layout, includeAnimated = false) {
   const errors = [];
   for (const [actual, expected, label] of [
-    [pixels.bitmapWidth, layout.width, 'bitmap width'], [pixels.bitmapHeight, layout.height, 'bitmap height'],
     [pixels.view.width, layout.width, 'view width'], [pixels.view.height, layout.height, 'view height'],
     [pixels.layer.width, layout.width, 'layer width'], [pixels.layer.height, layout.height, 'layer height']]) {
     if (Math.abs(actual - expected) > 1) errors.push(`${label}: ${actual} != ${expected}`);
@@ -80,13 +79,13 @@ async function settle(label, predicate, timeout = bound) {
 }
 async function settledGeometry(label) {
   await settle(label, async () => {
-    const layout = await dom(), pixels = capture();
+    const layout = await dom(), pixels = await capture();
     const errors = mismatch(pixels, layout);
     return errors.length ? { errors, layout, pixels } : true;
   });
 }
 async function resize(width, height, label) {
-  const before = capture().frame;
+  const before = (await capture()).frame;
   const x = before.x + before.width - 1, y = before.y + 1;
   let endX = x, endY = y;
   native.event(title, 0, x, y);
@@ -113,9 +112,13 @@ app.whenReady().then(async () => {
   const includes = ['', 'gen', 'third_party/abseil-cpp', 'base/allocator/partition_allocator/src', 'gen/base/allocator/partition_allocator/src', 'third_party/libnode/src'];
   execFileSync(compiler, ['-std=c++20', '-fobjc-arc', '-bundle', '-undefined', 'dynamic_lookup', '-isysroot', sdk,
     ...includes.map(include => `-I${path.join(root, include)}`), '-framework', 'AppKit', '-framework', 'QuartzCore',
+    '-framework', 'CoreGraphics', '-framework', 'ScreenCaptureKit',
+    path.join(__dirname, 'macos-owned-window-capture.mm'),
     path.join(__dirname, 'macos-resize-presentation-helper.mm'), '-o', helper], { stdio: 'inherit', timeout: 30000 });
   native = require(helper);
-  window = new BrowserWindow({ width: 1200, height: 800, title, titleBarStyle: 'hidden',
+  const area = electronScreen.getPrimaryDisplay().workArea;
+  window = new BrowserWindow({ width: Math.min(1200, area.width - 32), height: Math.min(800, area.height - 32),
+    x: area.x + 16, y: area.y + 16, title, titleBarStyle: 'hidden',
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
   await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><title>${title}</title>
     <style>html,body{margin:0;width:100%;height:100%;background:#263545;overflow:hidden}
@@ -145,12 +148,12 @@ app.whenReady().then(async () => {
   await settle('initial pixel extraction and orientation calibration', async () => {
     const layout = await dom();
     for (const candidate of [false, true]) {
-      const pixels = native.geometry(title, candidate);
+      const pixels = await native.geometry(title, candidate);
       if (!mismatch(pixels, layout, true).length) { flipRows = candidate; return true; }
     }
-    return { layout, raw: native.geometry(title, false), reversed: native.geometry(title, true) };
+    return { layout, raw: await native.geometry(title, false), reversed: await native.geometry(title, true) };
   }, 4000);
-  const screen = capture().screen;
+  const screen = (await capture()).screen;
   // Anchor the existing native window near the visible top-left. Only position
   // is set; every accepted size change below is produced by mouse dispatch.
   const maxW = Math.floor(screen.width - 32), maxH = Math.floor(screen.height - 32);
@@ -163,7 +166,7 @@ app.whenReady().then(async () => {
   try {
     native.pauseRenderer(window.webContents.getProcessId());
     await resize(targets[0][0], targets[0][1], 'paused portrait geometry');
-    const pixels = capture();
+    const pixels = await capture();
     for (const key of ['x', 'y', 'width', 'height']) {
       assert.ok(Math.abs(pixels.markers.fixed[key] - initialFixed[key]) <= 2,
         `Retained content must preserve native pixel geometry during resize, not stretch: ${JSON.stringify(pixels)}`);
@@ -194,7 +197,7 @@ app.whenReady().then(async () => {
     for (const anchor of [11, 89]) {
       await evaluate(`animationAnchor=${anchor}; true`);
       await settle(`aspect-${index} later real paint anchor ${anchor}`, async () => {
-        const layout = await dom(), pixels = capture();
+        const layout = await dom(), pixels = await capture();
         const errors = mismatch(pixels, layout, true);
         return layout.phase > phase && !errors.length && Math.abs(layout.markers.animated.x - (180 + anchor)) <= 1
           ? true : { errors, layout, pixels, phaseBefore: phase };
@@ -207,13 +210,13 @@ app.whenReady().then(async () => {
   const pid = window.webContents.getProcessId();
   try {
     const generation = native.pauseRenderer(pid);
-    console.log(JSON.stringify({ label: 'paused-final-observation-only', generation, pixels: capture() }));
+    console.log(JSON.stringify({ label: 'paused-final-observation-only', generation, pixels: await capture() }));
   } finally { native.resumeRenderer(); }
   await settledGeometry('final resumed geometry');
   const finalPhase = (await dom()).phase;
-  const finalAnimatedX = capture().markers.animated.x;
+  const finalAnimatedX = (await capture()).markers.animated.x;
   await settle('final resumed animation produces changing native pixels', async () => {
-    const layout = await dom(), pixels = capture();
+    const layout = await dom(), pixels = await capture();
     const errors = mismatch(pixels, layout);
     return !errors.length && layout.phase > finalPhase && pixels.markers.animated.pixels > 0 &&
       pixels.markers.animated.x !== finalAnimatedX ? true : { errors, layout, pixels, finalPhase, finalAnimatedX };

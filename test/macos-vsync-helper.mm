@@ -1,6 +1,7 @@
 #import <AppKit/AppKit.h>
+#import <CoreGraphics/CoreGraphics.h>
+#include "macos-owned-window-capture.h"
 #import <CoreVideo/CoreVideo.h>
-#import <QuartzCore/QuartzCore.h>
 
 #include <fcntl.h>
 #include <libproc.h>
@@ -244,25 +245,57 @@ napi_value ProcessStats(napi_env env, napi_callback_info info) {
   Number(env, result, "residentBytes", usage.ri_resident_size);
   return result;
 }
+void CompleteSnapshot(napi_env env, napi_deferred deferred, CGImageRef image,
+                      NSString* destination, NSString* error) {
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
+  NSData* png = nil;
+  if (image && !error) {
+    NSBitmapImageRep* bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
+    png = [bitmap representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+    if (!png || ![png writeToFile:destination atomically:YES])
+      error = @"Cannot write composed owned-window PNG.";
+  }
+  if (!image || error) {
+    NSString* message = [@"Actual composed owned-window capture is incomplete. Use a visible owned window in an unlocked graphical macOS session. " stringByAppendingString:error ?: @"No owned-window image returned."];
+    napi_value text, exception;
+    napi_create_string_utf8(env, message.UTF8String, NAPI_AUTO_LENGTH, &text);
+    napi_create_error(env, nullptr, text, &exception);
+    napi_reject_deferred(env, deferred, exception);
+  } else {
+    napi_value result;
+    napi_create_double(env, png.length, &result);
+    napi_resolve_deferred(env, deferred, result);
+  }
+  napi_close_handle_scope(env, scope);
+}
 napi_value Snapshot(napi_env env, napi_callback_info info) {
   size_t count = 2; napi_value args[2];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
   if (count != 2) return Fail(env, "snapshot(title, path) requires two arguments");
   NSWindow* window = Window(env, args[0]);
   if (!window) return nullptr;
+  if (!window.visible || window.miniaturized || !window.screen)
+    return Fail(env, "Composed owned-window evidence requires a visible window on an attached display");
   size_t length = 0;
-  napi_get_value_string_utf8(env, args[1], nullptr, 0, &length);
+  if (napi_get_value_string_utf8(env, args[1], nullptr, 0, &length) != napi_ok)
+    return Fail(env, "Expected snapshot destination path");
   std::string path(length + 1, '\0');
   napi_get_value_string_utf8(env, args[1], path.data(), path.size(), &length);
-  NSView* view = window.contentView;
-  [window displayIfNeeded]; [CATransaction flush];
-  NSBitmapImageRep* bitmap = [view bitmapImageRepForCachingDisplayInRect:view.bounds];
-  if (!bitmap) return Fail(env, "Native snapshot is unavailable");
-  [view cacheDisplayInRect:view.bounds toBitmapImageRep:bitmap];
-  NSData* png = [bitmap representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
   NSString* destination = [[NSString alloc] initWithBytes:path.data() length:length encoding:NSUTF8StringEncoding];
-  if (!png || ![png writeToFile:destination atomically:YES]) return Fail(env, "Cannot write native snapshot PNG");
-  napi_value result; napi_create_double(env, png.length, &result); return result;
+  napi_value promise;
+  napi_deferred deferred;
+  napi_create_promise(env, &deferred, &promise);
+  // Observe the existing native presentation without invalidating a renderer or
+  // forcing a display/transaction that could pollute cadence and idle counters.
+  mini_electron::test::CaptureOwnedWindow(window, ^(CGImageRef image, CGRect screen_rect, NSString* error) {
+    if (image) CGImageRetain(image);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      CompleteSnapshot(env, deferred, image, destination, error);
+      if (image) CGImageRelease(image);
+    });
+  });
+  return promise;
 }
 void Cleanup(void*) {
   timing.reset();

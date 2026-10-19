@@ -418,7 +418,7 @@ void ClosePipe(PipeHandle pipe)
 bool IsBrowserToRendererMethod(const std::string& method)
 {
 #if BUILDFLAG(IS_MAC)
-    if (method == "setVSyncDisplayId")
+    if (method == "setVSyncDisplayId" || method == "guest.invalidate")
         return true;
 #endif
     static constexpr std::string_view kMethods[] = {
@@ -428,6 +428,7 @@ bool IsBrowserToRendererMethod(const std::string& method)
         "setUserAgent", "setZoomLevel", "setVisualZoomLevelLimits",
         "setLayoutZoomLevelLimits", "setIgnoreMenuShortcuts", "set-background-color", "invalidate",
         "prepare-to-show",
+        "download.open", "download.read", "download.close",
         "download", "getState", "window-open-response", "guest.attach",
         "guest.detach", "guest.bounds", "guest.focus", "cdp.attach",
         "cdp.detach", "cdp.dispatch", "cdp.inspectElement",

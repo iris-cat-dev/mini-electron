@@ -11,6 +11,7 @@
 #endif // _WIN32
 #if defined(__APPLE__)
 #include <dispatch/dispatch.h>
+#include <pthread.h>
 #include "base/synchronization/waitable_event.h"
 #endif
 #include "base/task/sequenced_task_runner.h"
@@ -272,9 +273,15 @@ bool ThreadCall::isBlinkThread()
 
 bool ThreadCall::isUiThread()
 {
+#if defined(__APPLE__)
+    // The browser process has no renderer ThreadCall instance. Workers must
+    // still dispatch to AppKit's main thread before entering V8 or native UI.
+    return pthread_main_np() != 0;
+#else
     if (!m_inst)
         return true;
     return m_inst->m_uiThreadId == ::GetCurrentThreadId();
+#endif
 }
 
 void ThreadCall::wake()

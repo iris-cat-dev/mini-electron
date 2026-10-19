@@ -24,6 +24,7 @@ public:
     static BlobEntry* findByUuid(const std::string& uuid);
 
     int64_t read(std::vector<char>* buffer, int64_t start, int64_t len, int64_t* allSize);
+    int64_t read(std::vector<uint8_t>* buffer, int64_t start, int64_t len, int64_t* allSize);
 
     //BlobReceiver* m_blob;
     int m_blobReceiverRefCount = 0;

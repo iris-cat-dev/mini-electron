@@ -13,6 +13,7 @@
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
+#include "third_party/skia/include/core/SkImage.h"
 #include "ui/gfx/vsync_provider.h"
 
 namespace viz {
@@ -51,6 +52,17 @@ SkCanvas* SoftwareOutputDevice::BeginPaint(const gfx::Rect& damage_rect)
 {
     damage_rect_ = damage_rect;
     return surface_ ? surface_->getCanvas() : nullptr;
+}
+
+sk_sp<SkSurface> SoftwareOutputDevice::CreateRenderPassSurface(const SkImageInfo& info)
+{
+    SkSurfaceProps props = skia::LegacyDisplayGlobals::GetSkSurfaceProps();
+    return SkSurfaces::Raster(info, &props);
+}
+
+sk_sp<SkImage> SoftwareOutputDevice::PrepareImageForDraw(sk_sp<SkImage> image)
+{
+    return image;
 }
 
 void SoftwareOutputDevice::EndPaint()

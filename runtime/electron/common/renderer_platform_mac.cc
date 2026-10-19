@@ -30,6 +30,7 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "runtime/electron/common/renderer_protocol.h"
+#include "platform/macos/metal_compositor.h"
 #include "third_party/libcurl/include/curl/curl.h"
 
 extern char** environ;
@@ -362,7 +363,10 @@ bool EnterRendererSandbox(std::string* error)
         "(allow mach-lookup (global-name \"com.apple.FontObjectsServer\") "
         "(global-name \"com.apple.fonts\") "
         "(global-name \"com.apple.coreservices.launchservicesd\") "
-        "(global-name \"com.apple.windowserver.active\"))\n";
+        "(global-name \"com.apple.windowserver.active\"))\n"
+        + (mini_electron::mac::PrepareMetalDevice()
+                ? "(allow mach-lookup (xpc-service-name \"com.apple.MTLCompilerService\"))\n"
+                : "");
     // The system libcurl initializes LibreSSL, which reads
     // /private/etc/ssl/openssl.cnf and calls exit(1) when that read is denied.
     // Initialize it before lockdown and keep this reference for the process

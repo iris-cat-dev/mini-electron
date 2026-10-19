@@ -3,6 +3,10 @@
 
 # Checked-in macOS source manifest; independent of Visual Studio projects.
 
+import("//third_party/skia/gn/core.gni")
+import("//third_party/skia/gn/gpu.gni")
+import("//third_party/skia/gn/sksl.gni")
+
 mini_electron_icu_sources = [
   "//third_party/icu/source/common/appendable.cpp",
   "//third_party/icu/source/common/bmpset.cpp",
@@ -1830,7 +1834,6 @@ mini_electron_skia_sources = [
   "//third_party/skia/src/gpu/RectanizerSkyline.cpp",
   "//third_party/skia/src/gpu/ResourceKey.cpp",
   "//third_party/skia/src/gpu/ShaderErrorHandler.cpp",
-  "//third_party/skia/src/gpu/SkGpuEmpty.cpp",
   "//third_party/skia/src/gpu/Swizzle.cpp",
   "//third_party/skia/src/image/SkImage.cpp",
   "//third_party/skia/src/image/SkImage_Base.cpp",
@@ -1956,6 +1959,20 @@ mini_electron_skia_sources = [
   "//third_party/skia/src/utils/SkShadowUtils.cpp",
   "//third_party/skia/src/utils/SkTextUtils.cpp",
 ]
+
+# Keep the existing CPU/codecs/modules inventory, but obtain the complete real
+# core, Ganesh and shader compiler implementation from Skia's own manifests.
+# filter_exclude avoids compiling shared raster/GPU files twice.
+_mini_electron_skia_gpu_sources =
+    skia_core_sources + skia_ganesh_private + skia_shared_gpu_sources +
+    skia_sksl_core_sources + skia_sksl_core_module_sources +
+    skia_sksl_pipeline_sources + skia_sksl_codegen_sources
+mini_electron_skia_sources +=
+    filter_exclude(_mini_electron_skia_gpu_sources, mini_electron_skia_sources)
+
+mini_electron_skia_metal_sources =
+    skia_gpu_metal_public + skia_gpu_metal_private + skia_gpu_metal_cpp +
+    skia_shared_mtl_sources
 
 mini_electron_harfbuzz_sources = [
   "//third_party/harfbuzz-ng/src/src/harfbuzz.cc",

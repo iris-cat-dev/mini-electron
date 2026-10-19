@@ -123,6 +123,8 @@ public:
     bool isDestroyedApi() const;
     // Renderer-dependent operations must use this transport-liveness guard.
     bool isAlive() const;
+    bool requestDownloadSource(std::string method, base::Value::Dict params,
+        std::function<void(base::Value::Dict, std::string)> reply);
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
     void resize(int width, int height, double scale_factor = 1.0);
@@ -145,7 +147,7 @@ public:
     void sendWindowsKeyEvent(const char* type, unsigned key_code, unsigned flags,
         unsigned message, LPARAM l_param);
 #endif
-    bool copyFrame(RendererFrameSnapshot* snapshot) const;
+    bool copyFrame(RendererFrameSnapshot* snapshot, bool include_native_pixels = false) const;
     void prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>&);
     void completePreparedFrames();
     void cancelPreparedFrames(const std::string& error);
@@ -258,6 +260,10 @@ private:
         bool main_frame);
     bool commitRendererFrame(uint64_t frame_id, const std::string& url);
     bool isRendererFrameCurrent(uint64_t frame_id) const;
+    void requestCapture(std::function<void(std::string)> complete);
+#if BUILDFLAG(IS_MAC)
+    void captureForSoftwareHost();
+#endif
 
     int m_id = 0;
     WindowInterface* m_owner = nullptr;
@@ -305,6 +311,13 @@ private:
     double m_viewport_scale = 0.0;
 #if BUILDFLAG(IS_MAC)
     int64_t m_vsync_display_id = -1;
+    uint32_t m_native_context_id = 0;
+    uint32_t m_guest_context_id = 0;
+    int m_guest_native_width = 0;
+    int m_guest_native_height = 0;
+    double m_guest_native_scale = 0.0;
+    bool m_host_capture_pending = false;
+    bool m_host_capture_dirty = false;
 #endif
     bool m_ignore_menu_shortcuts = false;
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
