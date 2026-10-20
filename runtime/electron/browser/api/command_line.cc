@@ -54,7 +54,7 @@ void ApiCommandLine::init(v8::Isolate* isolate, v8::Local<v8::Object> target, no
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Local<v8::FunctionTemplate> prototype = v8::FunctionTemplate::New(isolate, ApiCommandLine::newFunction);
     gin_helper::ObjectTemplateBuilder builder(isolate, prototype->PrototypeTemplate());
-    gin_helper::ObjectTemplateBuilder builder2(isolate, prototype->InstanceTemplate()); // 实例模板也要调用一下，才能设置实例的SetInternalFieldCount
+    gin_helper::ObjectTemplateBuilder builder2(isolate, prototype->InstanceTemplate()); // 瀹炰緥妯℃澘涔熻璋冪敤涓�涓嬶紝鎵嶈兘璁剧疆瀹炰緥鐨凷etInternalFieldCount
 
     builder.SetMethod("hasSwitch", &ApiCommandLine::hasSwitchApi);
     builder.SetMethod("getSwitchValue", &ApiCommandLine::getSwitchValueApi);
@@ -71,7 +71,7 @@ void ApiCommandLine::newFunction(const v8::FunctionCallbackInfo<v8::Value>& info
     v8::Isolate* isolate = info.GetIsolate();
     CHECK(info.IsConstructCall());
 
-    new ApiCommandLine(isolate, info.This()); // v8管理内存回收
+    new ApiCommandLine(isolate, info.This()); // v8绠＄悊鍐呭瓨鍥炴敹
     info.GetReturnValue().Set(info.This());
 }
 
@@ -110,6 +110,20 @@ std::string ApiCommandLine::getSwitchValueApi(const std::string& switchStr) cons
 
 void ApiCommandLine::appendSwitchApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
+    std::string name;
+    std::string value;
+    if (!info.Length() || !gin_helper::ConvertFromV8(info.GetIsolate(), info[0], &name)
+        || (info.Length() > 1
+            && !gin_helper::ConvertFromV8(info.GetIsolate(), info[1], &value))) {
+        info.GetIsolate()->ThrowException(v8::Exception::TypeError(
+            v8::String::NewFromUtf8Literal(info.GetIsolate(),
+                "Switch name and value must be strings")));
+        return;
+    }
+    if (info.Length() > 1)
+        base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(name, value);
+    else
+        base::CommandLine::ForCurrentProcess()->AppendSwitch(name);
 }
 
 void ApiCommandLine::appendArgumentApi(const std::string& switchStr)

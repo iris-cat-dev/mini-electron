@@ -1,4 +1,6 @@
 
+#include <optional>
+
 #include "runtime/engine/renderer/web_local_frame_client_impl.h"
 #include "build/build_config.h"
 
@@ -425,7 +427,8 @@ bool decidePolicyForNavigation(int64_t mbwebviewId, blink::WebLocalFrame* frame,
     WebViewHost* self = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(mbwebviewId);
     if (!self)
         return true;
-    if (!self->getClosure().m_NavigationCallback)
+    if (!self->getClosure().m_NavigationCallback
+        && !self->getClosure().m_NavigationSyncCallback)
         return true;
 
     GURL gurl = (GURL)(blink::KURL)info.url_request.Url();
@@ -466,6 +469,14 @@ bool decidePolicyForNavigation(int64_t mbwebviewId, blink::WebLocalFrame* frame,
     const BOOL is_main_frame = parent ? FALSE : TRUE;
     std::string url_string = gurl.possibly_invalid_spec();
     std::string method = info.url_request.HttpMethod().Utf8();
+    // A process-local browser must keep its UI sequence free to answer the
+    // renderer's synchronous navigation broker request.
+    if (auto callback = self->getClosure().m_NavigationSyncCallback) {
+        return !!callback(mbwebviewId,
+            self->getClosure().m_NavigationSyncParam, navigationType,
+            url_string.c_str(), frame_id, parent_frame_id, is_main_frame,
+            method.c_str());
+    }
     BOOL result = TRUE;
     ThreadCall::callUiThreadSync(FROM_HERE,
         [&result, mbwebviewId, navigationType, &url_string, frame_id,
@@ -1316,7 +1327,13 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
     } else if ("blink.mojom.SpeculationHost" == name) {
         createAndBindInterface<::blink::mojom::blink::SpeculationHost, SpeculationHostImpl>(receiver.PassPipe());
     } else if ("blink.mojom.PermissionService" == name) {
-        createAndBindInterface<::blink::mojom::blink::PermissionService, PermissionServiceImpl>(receiver.PassPipe());
+        std::optional<uint64_t> frame_id;
+        if (m_frame) {
+            frame_id = static_cast<uint64_t>(
+                getFrameIdByWebLocalFrame(m_frame));
+        }
+        createAndBindInterface<::blink::mojom::blink::PermissionService,
+            PermissionServiceImpl>(receiver.PassPipe(), frame_id);
     } else if ("blink.mojom.SharedWorkerConnector" == name) {
         createAndBindInterface<::blink::mojom::blink::SharedWorkerConnector, SharedWorkerConnectorImpl>(receiver.PassPipe());
     } else

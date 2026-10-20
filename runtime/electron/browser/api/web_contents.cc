@@ -30,6 +30,7 @@
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/id_live_detect.h"
 #include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/common/renderer_server.h"
 #include "runtime/electron/node_bindings.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
@@ -303,7 +304,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     m_web_preferences.Set("webSecurity", web_security);
     m_web_preferences.Set("allowRunningInsecureContent", allow_insecure);
     m_web_preferences.Set("nodeIntegrationInSubFrames", preload_all_frames);
-    m_web_preferences.Set("sandbox", true);
+    m_web_preferences.Set("sandbox", !IsSingleProcessMode());
     m_web_preferences.Set("nodeIntegration", false);
     if (!ApplicationRoot().empty())
         addApplicationResourceRoot(
@@ -318,7 +319,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     launch.preload_all_frames = preload_all_frames;
     launch.transparent = transparent;
     options.GetBydefaultVal("backgroundColor", "", &launch.background_color);
-    launch.preload_process_metadata.Set("sandboxed", true);
+    launch.preload_process_metadata.Set("sandboxed", !IsSingleProcessMode());
     launch.preload_process_metadata.Set("type", "renderer");
     launch.preload_process_metadata.Set("isGuest", m_type == "webview");
     launch.preload_process_metadata.Set("preloadAllFrames", preload_all_frames);

@@ -9,7 +9,7 @@
 
 #include "base/functional/callback.h"
 #include "base/notreached.h"
-#include "gin/public/v8_platform.h"
+#include "gin/public/isolate_holder.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
@@ -70,7 +70,7 @@ private:
 // static
 ThreadState* ThreadState::AttachMainThread()
 {
-    auto* thread_state = new ThreadState(gin::V8Platform::Get());
+    auto* thread_state = new ThreadState(gin::IsolateHolder::GetPlatform());
     ThreadStateStorage::AttachMainThread(*thread_state, thread_state->cpp_heap().GetAllocationHandle(), thread_state->cpp_heap().GetHeapHandle());
     return thread_state;
 }
@@ -87,7 +87,7 @@ ThreadState* ThreadState::AttachMainThreadForTesting(v8::Platform* platform)
 // static
 ThreadState* ThreadState::AttachCurrentThread()
 {
-    auto* thread_state = new ThreadState(gin::V8Platform::Get());
+    auto* thread_state = new ThreadState(gin::IsolateHolder::GetPlatform());
     ThreadStateStorage::AttachNonMainThread(*thread_state, thread_state->cpp_heap().GetAllocationHandle(), thread_state->cpp_heap().GetHeapHandle());
     return thread_state;
 }

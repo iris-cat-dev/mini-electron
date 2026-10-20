@@ -54,7 +54,7 @@ LocalFrameHostImpl::LocalFrameHostImpl(WebLocalFrameClientImpl* frameClient)
 #if defined(OS_WIN)
     base::SequencedTaskRunner::GetCurrentDefault()->PostNonNestableDelayedTask(FROM_HERE,
         base::BindOnce([]() { ContextMenu::get();}), base::Seconds(3));
-#endif // ÑÓ³Ùºó³õÊ¼»¯Ò»ÏÂ£¬ÕâÑùÕæÕýµ¯³ö²Ëµ¥µÄÊ±ºò²»»áÇÀ½¹µãÁË
+#endif // å»¶è¿ŸåŽåˆå§‹åŒ–ä¸€ä¸‹ï¼Œè¿™æ ·çœŸæ­£å¼¹å‡ºèœå•çš„æ—¶å€™ä¸ä¼šæŠ¢ç„¦ç‚¹äº†
 
 }
 
@@ -323,11 +323,15 @@ bool LocalFrameHostImpl::RunModalAlertDialog(const ::WTF::String& alertMsg, bool
         if (!webview || !webview->getClosure().m_AlertBoxCallback)
             break;
 
-        ThreadCall::callUiThreadSync(FROM_HERE, [webviewHandle, txt]() {
+        auto invoke_dialog = [webviewHandle, txt]() {
             WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
             if (webview)
                 webview->getClosure().m_AlertBoxCallback(webviewHandle, webview->getClosure().m_AlertBoxParam, txt->c_str());
-        });
+        };
+        if (webview->getClosure().m_javascriptDialogsOnBlinkThread)
+            invoke_dialog();
+        else
+            ThreadCall::callUiThreadSync(FROM_HERE, std::move(invoke_dialog));
         needPopupNativeMsgBox = false;
     } while (false);
 
@@ -359,11 +363,15 @@ bool LocalFrameHostImpl::RunModalConfirmDialog(const ::WTF::String& alertMsg, bo
         if (!webview || !webview->getClosure().m_ConfirmBoxCallback)
             break;
 
-        ThreadCall::callUiThreadSync(FROM_HERE, [webviewHandle, txt, &ret]() {
+        auto invoke_dialog = [webviewHandle, txt, &ret]() {
             WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
             if (webview)
                 ret = webview->getClosure().m_ConfirmBoxCallback(webviewHandle, webview->getClosure().m_ConfirmBoxParam, txt->c_str());
-        });
+        };
+        if (webview->getClosure().m_javascriptDialogsOnBlinkThread)
+            invoke_dialog();
+        else
+            ThreadCall::callUiThreadSync(FROM_HERE, std::move(invoke_dialog));
         needPopupNativeMsgBox = false;
     } while (false);
 
@@ -397,12 +405,16 @@ bool LocalFrameHostImpl::RunModalPromptDialog(
         if (!webview || !webview->getClosure().m_PromptBoxCallback)
             break;
 
-        ThreadCall::callUiThreadSync(FROM_HERE, [webviewHandle, txt, defaultValue, &ret, &isOk]() {
+        auto invoke_dialog = [webviewHandle, txt, defaultValue, &ret, &isOk]() {
             WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
             if (webview)
                 ret = webview->getClosure().m_PromptBoxCallback(
                     webviewHandle, webview->getClosure().m_PromptBoxParam, txt->c_str(), defaultValue->c_str(), &isOk);
-        });
+        };
+        if (webview->getClosure().m_javascriptDialogsOnBlinkThread)
+            invoke_dialog();
+        else
+            ThreadCall::callUiThreadSync(FROM_HERE, std::move(invoke_dialog));
     } while (false);
 
     delete txt;

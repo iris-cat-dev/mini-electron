@@ -15,6 +15,7 @@
 #include "runtime/electron/common/gin_helper/per_isolate_data.h"
 #include "runtime/electron/common/atom_version.h"
 #include "runtime/electron/common/chrome_version.h"
+#include "runtime/engine/renderer/render_thread_impl.h"
 
 #include "platform/macos/electron/desktop_api_mac.h"
 #include "platform/macos/electron/mac_auto_updater.h"
@@ -130,6 +131,7 @@ int RunMainProcess(const MainProcessOptions& options) {
   PrintErrors("Node initialization", initialization->errors());
   if (initialization->early_return())
     return initialization->exit_code();
+  content::RenderThreadImpl::setV8Platform(initialization->platform());
 
   // libuv's AppKit integration owns event dispatch. Re-entering NSApp.run for
   // every RunUntilIdle turn cancels a native control's in-flight mouse gesture
@@ -195,6 +197,7 @@ int RunMainProcess(const MainProcessOptions& options) {
       (void)node::EmitProcessExit(setup->env());
     ShutdownMacAutoUpdaterBinding();
     ShutdownMacRunLoopIntegration();
+    content::RenderThreadImpl::shutdown();
     node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
     return result;
   }();

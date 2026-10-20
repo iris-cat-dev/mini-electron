@@ -21,6 +21,7 @@
 #include "gin/function_template.h"
 #include "gin/per_isolate_data.h"
 #include "gin/v8_initializer.h"
+#include "gin/public/v8_platform.h"
 #include "gin/v8_isolate_memory_dump_provider.h"
 #include "gin/v8_shared_memory_dump_provider.h"
 #include "v8/include/v8-isolate.h"
@@ -34,6 +35,9 @@ v8::ArrayBuffer::Allocator* g_array_buffer_allocator = nullptr;
 const intptr_t* g_reference_table = nullptr;
 v8::FatalErrorCallback g_fatal_error_callback = nullptr;
 v8::OOMErrorCallback g_oom_error_callback = nullptr;
+v8::Platform* g_external_v8_platform = nullptr;
+IsolateHolder::RegisterIsolateCallback g_register_isolate = nullptr;
+IsolateHolder::UnregisterIsolateCallback g_unregister_isolate = nullptr;
 
 std::unique_ptr<v8::Isolate::CreateParams> getModifiedIsolateParams(std::unique_ptr<v8::Isolate::CreateParams> params,
     IsolateHolder::AllowAtomicsWaitMode atomics_wait_mode, v8::CreateHistogramCallback create_histogram_callback,
@@ -84,6 +88,8 @@ IsolateHolder::IsolateHolder(scoped_refptr<base::SingleThreadTaskRunner> task_ru
     isolate_ = v8::Isolate::Allocate();
     isolate_data_ = std::make_unique<PerIsolateData>(
         isolate_, allocator, access_mode_, task_runner, std::move(user_visible_task_runner), std::move(best_effort_task_runner));
+    if (g_register_isolate)
+        g_register_isolate(isolate_, isolate_data_->task_runner());
     //  TODO(crbug.com/40854483): Refactor such that caller need not
     //  provide params when creating a snapshot.
     if (isolate_creation_mode == IsolateCreationMode::kCreateSnapshot) {
@@ -113,6 +119,8 @@ IsolateHolder::~IsolateHolder()
         v8::Isolate::Scope isolate_scope(isolate_);
         isolate_data_->NotifyBeforeDispose();
     }
+    if (g_unregister_isolate)
+        g_unregister_isolate(isolate_);
     // Calling Isolate::Dispose makes sure all threads which might access
     // PerIsolateData are finished.
     isolate_->Dispose();
@@ -126,7 +134,10 @@ void IsolateHolder::Initialize(ScriptMode mode, v8::ArrayBuffer::Allocator* allo
     v8::FatalErrorCallback fatal_error_callback, v8::OOMErrorCallback oom_error_callback)
 {
     CHECK(allocator);
-    V8Initializer::Initialize(mode, js_command_line_flags, oom_error_callback);
+    if (Initialized())
+        return;
+    if (!g_external_v8_platform)
+        V8Initializer::Initialize(mode, js_command_line_flags, oom_error_callback);
     g_array_buffer_allocator = allocator;
     g_reference_table = reference_table;
     g_fatal_error_callback = fatal_error_callback;
@@ -138,6 +149,35 @@ bool IsolateHolder::Initialized()
 {
     return g_array_buffer_allocator;
 }
+// static
+void IsolateHolder::UseExternalV8Platform(
+    v8::Platform* platform,
+    RegisterIsolateCallback register_isolate,
+    UnregisterIsolateCallback unregister_isolate)
+{
+    CHECK(!Initialized());
+    CHECK(platform);
+    CHECK(register_isolate);
+    CHECK(unregister_isolate);
+    g_external_v8_platform = platform;
+    g_register_isolate = register_isolate;
+    g_unregister_isolate = unregister_isolate;
+}
+
+// static
+bool IsolateHolder::UsesExternalV8Platform()
+{
+    return g_external_v8_platform;
+}
+
+// static
+v8::Platform* IsolateHolder::GetPlatform()
+{
+    return g_external_v8_platform
+        ? g_external_v8_platform
+        : V8Platform::Get();
+}
+
 
 // static
 std::unique_ptr<v8::Isolate::CreateParams> IsolateHolder::getDefaultIsolateParams()

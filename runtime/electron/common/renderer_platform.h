@@ -36,6 +36,9 @@ std::vector<std::string> GetPreferredSystemLanguages();
 
 bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     RendererPlatformProcess* process, std::string* error);
+// Allocates the existing frame surface without creating a process or IPC pipes.
+bool CreateInProcessRendererResources(RendererPlatformProcess* process,
+    std::string* error);
 bool IsRendererProcessAlive(const RendererPlatformProcess& process);
 bool WaitForRendererProcess(RendererPlatformProcess* process,
     int timeout_milliseconds);

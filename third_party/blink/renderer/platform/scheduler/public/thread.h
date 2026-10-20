@@ -96,6 +96,9 @@ public:
     // Create and save (as a global variable) the compositor thread. The thread
     // will be accessible through CompositorThread().
     static void CreateAndSetCompositorThread();
+    // Stops and joins the process-wide compositor thread. Call only after all
+    // renderer views have released their compositor state.
+    static void ShutdownCompositorThread();
 
     // Return an interface to the current thread.
     static Thread* Current();

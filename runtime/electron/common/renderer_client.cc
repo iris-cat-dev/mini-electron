@@ -18,6 +18,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "runtime/electron/common/renderer_platform.h"
 #include "runtime/electron/common/renderer_protocol.h"
+#include "runtime/electron/common/renderer_server.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "base/command_line.h"
@@ -110,8 +111,10 @@ bool CopyCaptureMapping(const CaptureMapping& mapping,
 class RendererClientImpl final : public RendererClient {
 public:
     RendererClientImpl(RendererPlatformProcess process, uint64_t auth_high,
-        uint64_t auth_low, std::shared_ptr<ClientState> state)
+        uint64_t auth_low, std::shared_ptr<ClientState> state,
+        std::unique_ptr<InProcessRenderer> in_process)
         : process_(process)
+        , in_process_(std::move(in_process))
         , auth_high_(auth_high)
         , auth_low_(auth_low)
         , state_(std::move(state))
@@ -166,6 +169,13 @@ public:
         }
         launch.Set("privilegedSchemes", std::move(schemes));
 
+        if (in_process_) {
+            return in_process_->Start(std::move(launch),
+                [state = state_](WireMessage message) {
+                    DeliverMessage(state, std::move(message));
+                });
+        }
+
         std::string error;
         WireMessage hello { MessageKind::kHello, 0, std::move(launch) };
         if (!renderer_protocol::WriteMessage(process_.write_pipe, auth_high_, auth_low_, hello, &error))
@@ -194,7 +204,7 @@ public:
     uint64_t RequestCapture(CaptureReplyCallback callback) override
     {
         if (!callback || !IsAlive() || !process_.process
-            || !process_.control_pipe)
+            || (!in_process_ && !process_.control_pipe))
             return 0;
         constexpr size_t mapping_size =
             sizeof(renderer_protocol::FrameBufferHeader)
@@ -215,16 +225,19 @@ public:
             static_cast<uint32_t>(renderer_protocol::kMaxFrameBytes);
 
         const uint64_t id = NextRequestId();
-        HANDLE remote = nullptr;
-        if (!::DuplicateHandle(::GetCurrentProcess(), mapping->handle,
-                process_.process, &remote, FILE_MAP_WRITE, FALSE, 0))
-            return 0;
-        renderer_protocol::FrameControlMessage control {};
-        control.capture_request_id = id;
-        control.frame_handle = reinterpret_cast<uintptr_t>(remote);
-        control.frame_mapping_size = mapping_size;
-        DWORD written = 0;
-        {
+        if (in_process_) {
+            if (!in_process_->RegisterCapture(id, mapping->handle, mapping_size))
+                return 0;
+        } else {
+            HANDLE remote = nullptr;
+            if (!::DuplicateHandle(::GetCurrentProcess(), mapping->handle,
+                    process_.process, &remote, FILE_MAP_WRITE, FALSE, 0))
+                return 0;
+            renderer_protocol::FrameControlMessage control {};
+            control.capture_request_id = id;
+            control.frame_handle = reinterpret_cast<uintptr_t>(remote);
+            control.frame_mapping_size = mapping_size;
+            DWORD written = 0;
             std::lock_guard<std::mutex> lock(control_write_lock_);
             if (!::WriteFile(process_.control_pipe, &control, sizeof(control),
                     &written, nullptr)
@@ -248,7 +261,9 @@ public:
         };
         const uint64_t queued =
             QueueRequest(id, "capturePage", {}, std::move(reply));
-        if (!queued) {
+        if (!queued && in_process_) {
+            in_process_->CancelCapture(id);
+        } else if (!queued) {
             renderer_protocol::FrameControlMessage release {};
             release.capture_request_id = id;
             DWORD release_written = 0;
@@ -286,7 +301,7 @@ public:
     bool IsAlive() const override
     {
         std::lock_guard<std::mutex> lock(state_->lock);
-        return state_->alive && IsRendererProcessAlive(process_);
+        return state_->alive && (in_process_ || IsRendererProcessAlive(process_));
     }
 
     bool CopyFrame(RendererFrameSnapshot* snapshot,
@@ -360,7 +375,8 @@ public:
                     gpu_frame_ = std::make_shared<mini_electron::win::D3DFrameConsumer>();
                 const uint64_t imported = gpu_frame_->frame_id();
                 const uint64_t source_id = gpu_frame_->source_id();
-                if (!gpu_frame_->Import(process_.process, d3d_frame))
+                if (!gpu_frame_->Import(process_.process, d3d_frame,
+                        static_cast<bool>(in_process_)))
                     return false;
                 if (imported != d3d_frame.frame_id || source_id != d3d_frame.source_id) {
                     base::Value::Dict consumed;
@@ -400,6 +416,10 @@ public:
         auto* target_impl = static_cast<RendererClientImpl*>(&target);
         if (!target_impl || guest_contents_id <= 0 || !IsAlive() || !target_impl->IsAlive())
             return false;
+        if (in_process_ && target_impl->in_process_) {
+            return target_impl->in_process_->RegisterFrameBuffer(
+                guest_contents_id, process_);
+        }
         std::string error;
         return ShareRendererFrameBuffer(process_, &target_impl->process_,
             guest_contents_id, &error);
@@ -415,6 +435,13 @@ public:
             state_->event_callback = {};
         }
         FailOutstanding(state_, "renderer closed");
+
+        if (in_process_) {
+            in_process_->Close();
+            in_process_.reset();
+            CloseRendererPlatformProcess(&process_);
+            return;
+        }
 
         Write({ MessageKind::kShutdown, 0, {} }, true);
         if (!WaitForRendererProcess(&process_, 2000))
@@ -480,6 +507,8 @@ private:
                 return false;
         }
         std::lock_guard<std::mutex> lock(write_lock_);
+        if (in_process_)
+            return in_process_->Send(std::move(message));
         std::string error;
         return process_.write_pipe != renderer_protocol::kInvalidPipe
             && renderer_protocol::WriteMessage(process_.write_pipe, auth_high_, auth_low_, message, &error);
@@ -490,26 +519,7 @@ private:
         std::string error;
         WireMessage message;
         while (renderer_protocol::ReadMessage(process_.read_pipe, auth_high_, auth_low_, &message, &error)) {
-            if (message.kind == MessageKind::kResponse) {
-                {
-                    std::lock_guard<std::mutex> lock(state->lock);
-                    if (!state->alive
-                        || state->replies.find(message.request_id) == state->replies.end())
-                        continue;
-                }
-                base::Value::Dict result;
-                if (base::Value::Dict* found = message.payload.FindDict("result"))
-                    result = found->Clone();
-                std::string reply_error;
-                if (const std::string* found = message.payload.FindString("error"))
-                    reply_error = *found;
-                PostPendingReply(state, message.request_id, std::move(result),
-                    std::move(reply_error));
-            } else if (message.kind == MessageKind::kEvent || message.kind == MessageKind::kRequest) {
-                if (message.kind == MessageKind::kRequest)
-                    message.payload.Set("requestId", static_cast<double>(message.request_id));
-                PostEvent(state, std::move(message.payload));
-            }
+            DeliverMessage(state, std::move(message));
             message = WireMessage();
         }
         bool report_crash = false;
@@ -527,6 +537,27 @@ private:
             payload.Set("reason", "process-exit");
             crash.Set("payload", std::move(payload));
             PostEvent(state, std::move(crash));
+        }
+    }
+
+    static void DeliverMessage(const std::shared_ptr<ClientState>& state,
+        WireMessage message)
+    {
+        if (message.kind == MessageKind::kResponse) {
+            base::Value::Dict result;
+            if (auto* found = message.payload.FindDict("result"))
+                result = std::move(*found);
+            std::string error;
+            if (auto* found = message.payload.FindString("error"))
+                error = std::move(*found);
+            PostPendingReply(state, message.request_id,
+                std::move(result), std::move(error));
+        } else if (message.kind == MessageKind::kEvent
+            || message.kind == MessageKind::kRequest) {
+            if (message.kind == MessageKind::kRequest)
+                message.payload.Set("requestId",
+                    static_cast<double>(message.request_id));
+            PostEvent(state, std::move(message.payload));
         }
     }
 
@@ -590,6 +621,7 @@ private:
     }
 
     mutable RendererPlatformProcess process_;
+    std::unique_ptr<InProcessRenderer> in_process_;
     const uint64_t auth_high_;
     const uint64_t auth_low_;
     std::shared_ptr<ClientState> state_;
@@ -620,13 +652,20 @@ std::unique_ptr<RendererClient> RendererClient::Create(RendererLaunchOptions opt
         auth_low = 1;
     RendererPlatformProcess process;
     std::string error;
-    if (!LaunchRendererSandbox(auth_high, auth_low, &process, &error))
+    std::unique_ptr<InProcessRenderer> in_process;
+    if (IsSingleProcessMode()) {
+        in_process = CreateInProcessRenderer(&process, &error);
+        if (!in_process)
+            return nullptr;
+    } else if (!LaunchRendererSandbox(auth_high, auth_low, &process, &error)) {
         return nullptr;
+    }
     auto state = std::make_shared<ClientState>();
     state->event_callback = std::move(event_callback);
     state->contents_id = options.contents_id;
     state->owner_runner = base::SequencedTaskRunner::GetCurrentDefault();
-    auto client = std::make_unique<RendererClientImpl>(process, auth_high, auth_low, state);
+    auto client = std::make_unique<RendererClientImpl>(process, auth_high,
+        auth_low, state, std::move(in_process));
     if (!client->Start(std::move(options))) {
         client->Close();
         return nullptr;

@@ -17,7 +17,7 @@ if (!packagedRoot && (process.argv[1] === '--version' || process.argv[1] === '-v
   process.stdout.write(`${process.versions.modules}\n`);
   process.exit(0);
 } else if (!packagedRoot && (process.argv[1] === '--help' || process.argv[1] === '-h')) {
-  process.stdout.write('Usage: electron [app-directory | main-script] [arguments]\n');
+  process.stdout.write('Usage: electron [--single-process] [app-directory | main-script] [arguments]\n');
   process.exit(0);
 } else {
   const apiKey = Symbol.for('mini-electron.main-api');

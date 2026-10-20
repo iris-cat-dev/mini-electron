@@ -260,6 +260,41 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     return true;
 }
 
+bool CreateInProcessRendererResources(RendererPlatformProcess* output,
+    std::string* error)
+{
+    const std::string name = "/me-r-"
+        + base::NumberToString(base::RandUint64());
+    int frame_fd = ::shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0600);
+    int read_fd = frame_fd >= 0 ? ::shm_open(name.c_str(), O_RDONLY, 0) : -1;
+    const bool unlinked = frame_fd < 0 || ::shm_unlink(name.c_str()) == 0;
+    void* memory = MAP_FAILED;
+    if (frame_fd >= 0 && read_fd >= 0 && unlinked
+        && SetCloseOnExec(frame_fd) && SetCloseOnExec(read_fd)
+        && ::ftruncate(frame_fd, kFrameMappingSize) == 0) {
+        memory = ::mmap(nullptr, kFrameMappingSize, PROT_READ | PROT_WRITE,
+            MAP_SHARED, frame_fd, 0);
+    }
+    if (memory == MAP_FAILED) {
+        if (frame_fd >= 0)
+            ::close(frame_fd);
+        if (read_fd >= 0)
+            ::close(read_fd);
+        if (!unlinked)
+            ::shm_unlink(name.c_str());
+        *error = "failed to allocate local renderer frame";
+        return false;
+    }
+    auto* header = new (memory) renderer_protocol::FrameBufferHeader();
+    header->capacity = static_cast<uint32_t>(renderer_protocol::kMaxFrameBytes);
+    output->frame_memory = memory;
+    output->frame_mapping_size = kFrameMappingSize;
+    output->frame_fd = frame_fd;
+    output->frame_read_fd = read_fd;
+    output->process_id = static_cast<int>(::getpid());
+    return true;
+}
+
 bool IsRendererProcessAlive(const RendererPlatformProcess& process)
 {
     return process.process_id > 0

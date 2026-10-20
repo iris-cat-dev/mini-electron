@@ -250,6 +250,9 @@ public:
         m_DownloadInBlinkThreadParam = param;
     };
 
+    // Process-local hosts keep their UI sequence free for dialog broker replies.
+    bool m_javascriptDialogsOnBlinkThread { false };
+
     mini_electron_alert_box_callback m_AlertBoxCallback { nullptr };
     void* m_AlertBoxParam { nullptr };
     void setAlertBoxCallback(mini_electron_alert_box_callback callback, void* param)

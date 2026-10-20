@@ -14,6 +14,7 @@
 #include "third_party/blink/public/mojom/dom_storage/dom_storage.mojom-blink.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/modules/storage/storage_area.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
@@ -27,17 +28,14 @@ class LocalDOMWindow;
 class LocalFrame;
 class StorageNamespace;
 
-// Singleton that manages the creation & accounting for DOMStorage objects. It
-// does this by holding weak references to all session storage namespaces, and
-// owning the local storage namespace internally. The total cache size is
-// exposed with `TotalCacheSize()`, and `ClearAreasIfNeeded()` will - if our
-// total cache size is larger than `total_cache_limit` - clear away any cache
-// areas in live namespaces that no longer have references from Blink objects.
+// Singleton that manages the creation and accounting of DOMStorage objects.
+// SessionStorage namespaces are tracked weakly by namespace id. LocalStorage
+// namespaces are owned per Page and tracked weakly here for accounting and
+// connection resets.
 //
-// SessionStorage StorageNamespace objects are created with
-// `CreateSessionStorageNamespace` and live as a supplement on the Page.
-//
-// StorageController delegates GetLocalStorageArea to that namespace.
+// The total cache size is exposed with `TotalCacheSize()`, and
+// `ClearAreasIfNeeded()` clears unreferenced cache areas when the limit is
+// exceeded.
 class MODULES_EXPORT StorageController : public mojom::blink::DomStorageClient {
     USING_FAST_MALLOC(StorageController);
 
@@ -66,8 +64,7 @@ public:
     // Cleans up unused areas if the total cache size is over the cache limit.
     void ClearAreasIfNeeded();
 
-    // Methods that delegate to the internal StorageNamespace used for
-    // LocalStorage:
+    // Delegates LocalStorage access to the namespace owned by the window's Page.
     scoped_refptr<CachedStorageArea> GetLocalStorageArea(LocalDOMWindow* local_dom_window,
         mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area = {},
         StorageNamespace::StorageContext context = StorageNamespace::StorageContext::kStandard);
@@ -82,13 +79,16 @@ public:
     }
 
 private:
-    void EnsureLocalStorageNamespaceCreated();
+    StorageNamespace* GetOrCreateLocalStorageNamespace(LocalDOMWindow*);
 
     // mojom::blink::DomStorageClient:
     void ResetStorageAreaAndNamespaceConnections() override;
 
     Persistent<HeapHashMap<String, WeakMember<StorageNamespace>>> namespaces_;
-    Persistent<StorageNamespace> local_storage_namespace_;
+    Persistent<HeapHashSet<WeakMember<StorageNamespace>>> local_storage_namespaces_;
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+    Persistent<HeapHashSet<WeakMember<InspectorDOMStorageAgent>>> local_storage_inspector_agents_;
+#endif
     size_t total_cache_limit_;
 
     mojo::Remote<mojom::blink::DomStorage> dom_storage_remote_;

@@ -337,6 +337,75 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+## Trusted single-process UI mode
+
+Source builds support an opt-in mode for packaged or otherwise trusted UI.
+The application host and all WebContents run in one OS process, with one shared
+Blink rendering thread and separate page JavaScript contexts. The default remains
+one sandboxed renderer process per WebContents.
+
+```sh
+out/windows-x64/mini-electron.exe --single-process --app=/path/to/main.js
+```
+
+An application can select the same mode before creating its first BrowserWindow,
+BrowserView, webview, or other WebContents:
+
+```js
+const { app, BrowserWindow } = require('electron');
+app.commandLine.appendSwitch('single-process');
+
+app.whenReady().then(() => {
+  const window = new BrowserWindow({ width: 480, height: 320 });
+  window.loadFile('index.html');
+});
+```
+
+The choice is process-wide and fixed when the first WebContents is constructed.
+It is not a per-window `webPreferences` setting; `sandbox: false` alone does not
+select it, and `sandbox: true` cannot isolate a window in single-process mode.
+`webContents.getProcessId()` returns the host PID and preload `process.sandboxed`
+is `false`. Context isolation and the existing preload `electron` API remain
+available; this mode does not enable unrestricted Node `require()` inside pages
+or preload scripts.
+
+Commands, events and renderer replies retain the normal asynchronous client
+interface but move through in-process task delivery rather than serialized
+renderer command pipes. Windows GPU/capture and guest mappings take owned local
+references synchronously. Closing one view does not shut down the shared engine;
+the engine, compositor and Blink isolates stop before Node's V8 platform is
+disposed at application exit.
+
+There is no renderer OS sandbox or crash isolation in this mode. A native page
+crash terminates the application, and a long-running script can block every page
+on the shared Blink thread. Explicit `child_process`, utility-process and Node
+Worker operations keep their normal semantics. This reduces renderer-process
+startup and fixed per-process overhead; it does not remove Blink/V8 from the
+binary, and no memory-saving percentage is promised.
+
+Windows runtime regressions:
+
+```sh
+out/windows-x64/stage/mini-electron.exe --single-process --app=test/single-process-smoke.js
+MINI_SINGLE_PROCESS_API=1 out/windows-x64/stage/mini-electron.exe --app=test/single-process-smoke.js
+MINI_SINGLE_PROCESS_EXPECT_DEFAULT=1 out/windows-x64/stage/mini-electron.exe --app=test/single-process-smoke.js
+```
+
+The smoke checks real process IDs, preload isolation, JavaScript dialogs,
+bidirectional IPC, same-origin storage in distinct session partitions, rendered
+pixels, cancellation of pending work, surviving-window behavior, and reopening
+after all windows close. It passed with CLI/API selection, GPU and software
+rendering, and the unchanged default process model on Windows.
+
+Additional single-process checks passed `execute-javascript-smoke.js`,
+`ipc-frame-smoke.js`, `windows-companion-smoke.js` (real desktop pixels, alpha,
+focus and taskbar transitions), and `webgl-smoke.js` (including Dedicated Worker
+OffscreenCanvas). The full GPU compositor/VSync smoke did not pass: this session
+selects a timer clock in both process modes, rather than hardware DXGI/DWM VSync.
+`websocket-smoke.js` also fails its received text/binary assertion identically
+in single-process mode, default mode and the unchanged released runtime.
+The macOS source path is integrated but has not been built or run for this change.
+
 ## WebGL 1 and 2
 
 Desktop source builds register real `webgl`, `experimental-webgl`, and `webgl2`
@@ -1427,8 +1496,10 @@ native Node modules, strips local symbols, and applies an ad-hoc signature.
 Detailed size measurements and optimization priorities are documented in
 [`docs/OMP_DESKTOP_SIZE_ANALYSIS.md`](docs/OMP_DESKTOP_SIZE_ANALYSIS.md).
 
-Current security boundary: the Electron host runs Blink in separate renderer
+Default security boundary: the Electron host runs Blink in separate renderer
 processes; macOS applies a Seatbelt profile before the renderer protocol starts.
+The opt-in [single-process UI mode](#trusted-single-process-ui-mode) removes this
+OS process/sandbox boundary entirely.
 The shared executable still builds V8 with its sandbox disabled because
 embedded Node's external `ArrayBuffer` APIs are incompatible with that sandbox.
 This is not equivalent to Chromium/Electron's complete sandbox architecture;

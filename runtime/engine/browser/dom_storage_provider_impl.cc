@@ -1,4 +1,7 @@
 
+#include <cstdint>
+#include <string>
+
 #include "runtime/engine/browser/dom_storage_provider_impl.h"
 
 #include "runtime/engine/browser/web_view_host.h"
@@ -49,7 +52,9 @@ public:
     StorageAreaImpl* findOrCreateByStorageKey(bool isLocal,
         const ::blink::BlinkStorageKey& storageKey,
         const base::FilePath& localStorageDirectory,
+        int64_t viewId,
         const WTF::String& namespaceId);
+    void release(StorageAreaImpl*);
     void associateNamespaceFrame(const WTF::String& namespaceId,
         uint64_t frameId)
     {
@@ -92,18 +97,40 @@ private:
 class StorageAreaImpl {
 public:
     StorageAreaImpl(bool isLocal, const ::blink::BlinkStorageKey& storageKey,
-        const WTF::String& namespaceId)
+        const WTF::String& namespaceId, const WTF::String& cacheKey)
         : m_isLocal(isLocal)
         , m_storageKey(storageKey)
         , m_namespaceId(namespaceId)
+        , m_cacheKey(cacheKey)
     {
     }
 
     bool isLocal() const { return m_isLocal; }
 
-    void setStorageAreaMap(blink::StorageAreaMap* areaMap)
+    void setStorageAreaMap(const void* owner, blink::StorageAreaMap* areaMap)
     {
+        if (!areaMap) {
+            clearStorageAreaMap(owner);
+            return;
+        }
+        m_areaMapOwner = owner;
         m_areaMap = areaMap;
+    }
+
+    void clearStorageAreaMap(const void* owner)
+    {
+        if (m_areaMapOwner != owner)
+            return;
+        m_areaMapOwner = nullptr;
+        m_areaMap = nullptr;
+    }
+
+    const WTF::String& cacheKey() const { return m_cacheKey; }
+    void addUser() { ++m_users; }
+    bool removeUser()
+    {
+        CHECK(m_users);
+        return --m_users != 0;
     }
 
     String getItem(const String& key, bool* found) const
@@ -123,14 +150,6 @@ public:
         return m_areaMap->GetLength();
     }
 
-    void destroy()
-    {
-        if (m_isDestroying)
-            return;
-        m_isDestroying = true;
-        StorageAreaImpl* self = this;
-        ThreadCall::callBlinkThreadDelayed(FROM_HERE, [self] { delete self; }, 5000);
-    }
 
     bool clear(uint64_t frameId)
     {
@@ -278,10 +297,12 @@ private:
     }
 
     bool m_isLocal;
-    bool m_isDestroying = false;
     blink::StorageAreaMap* m_areaMap = nullptr;
+    const void* m_areaMapOwner = nullptr;
+    size_t m_users = 0;
     blink::BlinkStorageKey m_storageKey;
     WTF::String m_namespaceId;
+    WTF::String m_cacheKey;
 };
 
 StorageAreaImplMgr* StorageAreaImplMgr::get()
@@ -294,27 +315,50 @@ StorageAreaImplMgr* StorageAreaImplMgr::get()
 
 StorageAreaImpl* StorageAreaImplMgr::findOrCreateByStorageKey(
     bool isLocal, const ::blink::BlinkStorageKey& storageKey,
-    const base::FilePath& localStorageDirectory,
+    const base::FilePath& localStorageDirectory, int64_t viewId,
     const WTF::String& namespaceId)
 {
     WTF::String fileName =
         buildFileNameStringByStorageKey(isLocal, storageKey);
-    std::string storageKeyString = localStorageDirectory.AsUTF8Unsafe() +
-        "|" + fileName.Utf8().c_str() + "|" + namespaceId.Utf8().c_str();
+    std::string storageKeyString = std::to_string(viewId) + "|"
+        + localStorageDirectory.AsUTF8Unsafe() + "|"
+        + fileName.Utf8().c_str() + "|" + namespaceId.Utf8().c_str();
     WTF::String key = WTF::String::FromUTF8(storageKeyString);
     auto it = m_areas.find(key);
-    if (it != m_areas.end())
+    if (it != m_areas.end()) {
+        it->value->addUser();
         return it->value;
+    }
 
     StorageAreaImpl* result =
-        new StorageAreaImpl(isLocal, storageKey, namespaceId);
+        new StorageAreaImpl(isLocal, storageKey, namespaceId, key);
+    result->addUser();
     m_areas.insert(key, result);
     return result;
 }
 
-static base::FilePath getLocalStorageDirByLocalFrameToken(const ::blink::LocalFrameToken& localFrameToken)
+void StorageAreaImplMgr::release(StorageAreaImpl* area)
 {
-    base::FilePath result;
+    auto it = m_areas.find(area->cacheKey());
+    if (it == m_areas.end() || it->value != area)
+        return;
+    if (area->removeUser())
+        return;
+    m_areas.erase(it);
+    delete area;
+}
+
+struct StorageViewContext {
+    base::FilePath local_storage_directory;
+    int64_t view_id = 0;
+};
+
+static StorageViewContext getStorageViewContext(
+    const ::blink::LocalFrameToken& localFrameToken)
+{
+    StorageViewContext result;
+    result.view_id = static_cast<int64_t>(
+        ::blink::LocalFrameToken::Hasher()(localFrameToken));
 
     blink::LocalFrame* frame = blink::LocalFrame::FromFrameToken(localFrameToken);
     if (!frame)
@@ -328,6 +372,8 @@ static base::FilePath getLocalStorageDirByLocalFrameToken(const ::blink::LocalFr
     blink::WebViewImpl* webviewimpl = chromeClient->GetWebView();
     if (!webviewimpl)
         return result;
+    result.view_id = static_cast<int64_t>(
+        reinterpret_cast<intptr_t>(webviewimpl));
     WebViewClientImpl* client = (WebViewClientImpl*)webviewimpl->Client();
     if (!client)
         return result;
@@ -335,7 +381,9 @@ static base::FilePath getLocalStorageDirByLocalFrameToken(const ::blink::LocalFr
     if (!mbwebview)
         return result;
 
-    result = mbwebview->getLocalStorageDir();
+    result.local_storage_directory = mbwebview->getLocalStorageDir();
+    if (mbwebview->getId())
+        result.view_id = mbwebview->getId();
     return result;
 }
 
@@ -351,16 +399,19 @@ public:
         m_frameId = static_cast<uint64_t>(
             ::blink::LocalFrameToken::Hasher()(localFrameToken));
         s_StorageAreaStub++;
-        m_localStorageDir =
-            getLocalStorageDirByLocalFrameToken(localFrameToken);
+        StorageViewContext context = getStorageViewContext(localFrameToken);
+        m_localStorageDir = std::move(context.local_storage_directory);
         m_impl = StorageAreaImplMgr::get()->findOrCreateByStorageKey(
-            isLocal, storageKey, m_localStorageDir, namespaceId);
+            isLocal, storageKey, m_localStorageDir, context.view_id,
+            namespaceId);
 
         m_impl->loadFromBroker(m_frameId, m_localStorageDir, &m_outData);
     }
 
     ~StorageAreaStub()
     {
+        m_impl->clearStorageAreaMap(this);
+        StorageAreaImplMgr::get()->release(m_impl);
         s_StorageAreaStub--;
     }
 
@@ -400,7 +451,8 @@ public:
 
     void SetStorageAreaMap(void* areaMap) override
     {
-        m_impl->setStorageAreaMap((blink::StorageAreaMap*)areaMap);
+        m_impl->setStorageAreaMap(
+            this, static_cast<blink::StorageAreaMap*>(areaMap));
     }
 
     enum DelayDispatchObserversType {

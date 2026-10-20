@@ -123,11 +123,26 @@ mini_electron_web_view mini_electron_create_web_view_with_background(
     content::WebViewHost* result = new content::WebViewHost(
         false, background_color, transparent);
 
-    // 之所以要嵌套一层，是为了让isTransparent获取到外部接下来可能设置mini_electron_set_transparent的值
-    content::ThreadCall::callUiThreadAsync(FROM_HERE, [result] {
+    if (content::RenderThreadImpl::get()->usesHostUiSequence()) {
+        // The host immediately follows creation with a Blink FIFO barrier.
+        // Queue directly so that barrier cannot overtake this task while the
+        // already-running UI sequence is synchronously waiting.
         content::ThreadCall::callBlinkThreadAsync(
-            FROM_HERE, [result] { result->createWebWindowOrViewInBlinkThread(nullptr, nullptr, false, result->isTransparent()); });
-    });
+            FROM_HERE, [result] {
+                result->createWebWindowOrViewInBlinkThread(
+                    nullptr, nullptr, false, result->isTransparent());
+            });
+    } else {
+        // Standalone embedders historically get one UI turn in which to update
+        // transparency before Blink constructs the page.
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [result] {
+            content::ThreadCall::callBlinkThreadAsync(
+                FROM_HERE, [result] {
+                    result->createWebWindowOrViewInBlinkThread(
+                        nullptr, nullptr, false, result->isTransparent());
+                });
+        });
+    }
 
     return (int)result->getId();
 }
@@ -264,6 +279,7 @@ static void onGtkActivate(GtkApplication* app, gpointer user_data)
 #endif
 
 FN_OutputDebugString g_outputDebugString = nullptr;
+static bool s_engineInitialized = false;
 void __cdecl defaultOutputDebugString(const char* str)
 {
     OutputDebugStringA(str);
@@ -271,24 +287,35 @@ void __cdecl defaultOutputDebugString(const char* str)
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_init(const mini_electron_settings* settings)
 {
-    if (content::ThreadCall::isInitUiThread())
+    if (s_engineInitialized)
         return;
+    s_engineInitialized = true;
 
     g_outputDebugString = defaultOutputDebugString;
+    const bool hostSequenceInitialized =
+        content::ThreadCall::isInitUiThread();
 
-    base::AtExitManager* atExitManager = new base::AtExitManager();
 #if defined(OS_WIN)
-    base::win::ScopedCOMInitializer* comInitializer = new base::win::ScopedCOMInitializer();
     s_gtkActivate = true;
+    if (!hostSequenceInitialized) {
+        new base::AtExitManager();
+        new base::win::ScopedCOMInitializer();
+    }
 #else
-    gtk_init(nullptr, nullptr);
+    if (!hostSequenceInitialized) {
+        new base::AtExitManager();
+        gtk_init(nullptr, nullptr);
 
-    GtkApplication* app = gtk_application_new("org.gtk.example", G_APPLICATION_FLAGS_NONE);
-    g_signal_connect(app, "activate", G_CALLBACK(onGtkActivate), NULL);
+        GtkApplication* app = gtk_application_new(
+            "org.gtk.example", G_APPLICATION_FLAGS_NONE);
+        g_signal_connect(
+            app, "activate", G_CALLBACK(onGtkActivate), NULL);
 
-    printf("mini_electron_init: %x\n", ::GetCurrentThreadId());
+        printf("mini_electron_init: %x\n", ::GetCurrentThreadId());
+    }
 #endif
-    base::CommandLine::Init(0, nullptr);
+    if (!base::CommandLine::InitializedForCurrentProcess())
+        base::CommandLine::Init(0, nullptr);
     content::RenderThreadImpl::get()->initializeWebKit();
 
 #if defined(OS_WIN)

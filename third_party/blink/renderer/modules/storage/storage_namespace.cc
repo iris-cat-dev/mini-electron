@@ -66,10 +66,53 @@ void StorageNamespace::ProvideSessionStorageNamespaceTo(Page& page, const Sessio
 {
     if (namespace_id.empty())
         return;
-    auto* ss_namespace = StorageController::GetInstance()->CreateSessionStorageNamespace(page, String(namespace_id));
-    if (!ss_namespace)
+    StorageNamespace* existing_namespace = From(&page);
+    auto* session_namespace = StorageController::GetInstance()
+                                  ->CreateSessionStorageNamespace(
+                                      page, String(namespace_id));
+    if (!session_namespace)
         return;
-    ProvideTo(page, ss_namespace);
+    if (existing_namespace && !existing_namespace->IsSessionStorage()) {
+        session_namespace->local_storage_namespaces_.Set(
+            &page, existing_namespace);
+    }
+    ProvideTo(page, session_namespace);
+}
+
+// static
+StorageNamespace* StorageNamespace::GetOrCreateLocalStorageNamespace(
+    Page& page, StorageController* controller)
+{
+    StorageNamespace* page_namespace = From(&page);
+    if (!page_namespace) {
+        page_namespace = MakeGarbageCollected<StorageNamespace>(controller);
+        ProvideTo(page, page_namespace);
+        return page_namespace;
+    }
+    if (!page_namespace->IsSessionStorage()) {
+        if (page_namespace->controller_ == controller)
+            return page_namespace;
+        page_namespace = MakeGarbageCollected<StorageNamespace>(controller);
+        ProvideTo(page, page_namespace);
+        return page_namespace;
+    }
+    return page_namespace->GetOrCreateOwnedLocalStorageNamespace(
+        page, controller);
+}
+
+StorageNamespace* StorageNamespace::GetOrCreateOwnedLocalStorageNamespace(
+    Page& page, StorageController* controller)
+{
+    DCHECK(IsSessionStorage());
+    auto it = local_storage_namespaces_.find(&page);
+    if (it != local_storage_namespaces_.end()
+        && it->value->controller_ == controller) {
+        return it->value.Get();
+    }
+    StorageNamespace* local_namespace
+        = MakeGarbageCollected<StorageNamespace>(controller);
+    local_storage_namespaces_.Set(&page, local_namespace);
+    return local_namespace;
 }
 
 scoped_refptr<CachedStorageArea> StorageNamespace::GetCachedArea(
@@ -209,6 +252,7 @@ void StorageNamespace::Trace(Visitor* visitor) const
     visitor->Trace(inspector_agents_);
 #endif
     visitor->Trace(namespace_);
+    visitor->Trace(local_storage_namespaces_);
     Supplement<Page>::Trace(visitor);
 }
 

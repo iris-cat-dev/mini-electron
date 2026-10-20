@@ -4,14 +4,20 @@
 #ifndef CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_
 #define CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
-
 #include "gen/third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
 #include "runtime/engine/renderer/renderer_permission_broker.h"
 
 class PermissionServiceImpl : public blink::mojom::blink::PermissionService {
 public:
+    explicit PermissionServiceImpl(std::optional<uint64_t> frame_id)
+        : frame_id_(frame_id)
+    {
+    }
+
     void HasPermission(blink::mojom::blink::PermissionDescriptorPtr permission,
         HasPermissionCallback callback) override
     {
@@ -43,8 +49,12 @@ public:
         WTF::Vector<blink::mojom::blink::PermissionDescriptorPtr> permissions,
         bool user_gesture, RequestPermissionsCallback callback) override
     {
-        if (permissions.empty()) {
-            std::move(callback).Run({});
+        if (permissions.empty() || !frame_id_) {
+            WTF::Vector<blink::mojom::blink::PermissionStatus> statuses;
+            statuses.resize(permissions.size());
+            for (auto& status : statuses)
+                status = blink::mojom::blink::PermissionStatus::DENIED;
+            std::move(callback).Run(statuses);
             return;
         }
         struct State {
@@ -59,7 +69,8 @@ public:
         for (wtf_size_t index = 0; index < permissions.size(); ++index) {
             const int name = static_cast<int>(permissions[index]->name);
             content::RequestRendererPermission(
-                content::RendererPermissionName(name), user_gesture, true,
+                *frame_id_, content::RendererPermissionName(name),
+                user_gesture, true,
                 [state, index](bool granted) mutable {
                     state->statuses[index] = granted
                         ? blink::mojom::blink::PermissionStatus::GRANTED
@@ -100,13 +111,14 @@ private:
     void Query(blink::mojom::blink::PermissionDescriptorPtr permission,
         bool user_gesture, bool is_request, Callback callback)
     {
-        if (!permission) {
+        if (!permission || !frame_id_) {
             std::move(callback).Run(
                 blink::mojom::blink::PermissionStatus::DENIED);
             return;
         }
         auto saved = std::make_shared<Callback>(std::move(callback));
         content::RequestRendererPermission(
+            *frame_id_,
             content::RendererPermissionName(static_cast<int>(permission->name)),
             user_gesture, is_request,
             [saved](bool granted) mutable {
@@ -115,6 +127,8 @@ private:
                     : blink::mojom::blink::PermissionStatus::DENIED);
             });
     }
+    const std::optional<uint64_t> frame_id_;
+
 };
 
 #endif // CONTENT_RENDERER_PERMISSION_SERVICE_IMPL_H_

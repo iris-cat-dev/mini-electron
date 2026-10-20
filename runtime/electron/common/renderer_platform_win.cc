@@ -272,6 +272,39 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     return true;
 }
 
+bool CreateInProcessRendererResources(RendererPlatformProcess* output,
+    std::string* error)
+{
+    base::win::ScopedHandle mapping(::CreateFileMappingW(INVALID_HANDLE_VALUE,
+        nullptr, PAGE_READWRITE, 0, static_cast<DWORD>(kFrameMappingSize), nullptr));
+    if (!mapping.is_valid()) {
+        *error = "failed to create local renderer frame mapping";
+        return false;
+    }
+    HANDLE current_process = nullptr;
+    if (!::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentProcess(),
+            ::GetCurrentProcess(), &current_process, 0, FALSE,
+            DUPLICATE_SAME_ACCESS)) {
+        *error = "failed to open local renderer process handle";
+        return false;
+    }
+    base::win::ScopedHandle process(current_process);
+    void* memory = ::MapViewOfFile(mapping.get(),
+        FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, kFrameMappingSize);
+    if (!memory) {
+        *error = "failed to map local renderer frame";
+        return false;
+    }
+    auto* header = new (memory) renderer_protocol::FrameBufferHeader();
+    header->capacity = static_cast<uint32_t>(renderer_protocol::kMaxFrameBytes);
+    output->frame_memory = memory;
+    output->frame_mapping_size = kFrameMappingSize;
+    output->frame_mapping = mapping.Take();
+    output->process = process.Take();
+    output->process_id = static_cast<int>(::GetCurrentProcessId());
+    return true;
+}
+
 bool IsRendererProcessAlive(const RendererPlatformProcess& process)
 {
     return process.process && ::WaitForSingleObject(process.process, 0) == WAIT_TIMEOUT;
