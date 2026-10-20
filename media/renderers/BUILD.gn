@@ -19,6 +19,7 @@ source_set("renderers") {
     "default_decoder_factory.h",
     "paint_canvas_video_renderer.cc",
     "paint_canvas_video_renderer.h",
+    "paint_canvas_video_renderer_cpu.cc",
     "remote_playback_client_wrapper.h",
     "renderer_impl.cc",
     "renderer_impl.h",

@@ -438,11 +438,37 @@ The class/resource-protocol names `SoftwareRenderer` and `gpu_compositing=false`
 remain because cc still supplies CPU-rasterized tile resources. The output
 canvas, render-pass surfaces and presentation can nevertheless execute on Metal.
 The full Chromium GPU service, GPU tile rasterization, accelerated Canvas2D,
-WebGL/WebGPU and hardware video decoding are not enabled by this change.
+WebGPU and hardware video decoding are not enabled by the compositor change.
+WebGL now has a separate direct ANGLE implementation: see the
+[source-build support and limits](../README.md#webgl-1-and-2).
+
+### WebGL resources
+
+WebGL1/2 draw with native ANGLE Metal contexts, independently of the cc
+`gpu_compositing=false` policy. DrawingBuffer owns local GL textures, resolves
+multisampling and reads actual pixels into premultiplied software resources.
+Viz consumes those resources through the existing legacy shared-bitmap path.
+The Metal output compositor can upload them again; this is not a shared-texture
+or zero-copy path. Selecting CPU composition with
+`MINI_ELECTRON_DISABLE_GPU=1` does not disable ANGLE WebGL.
+
+Image uploads and snapshots use owned CPU pixels rather than unavailable
+SharedImage/mailbox access. Worker OffscreenCanvas publishes images to its
+HTML canvas placeholder without an EmbeddedFrameSink GPU service. Native
+CPU video conversion does not enable hardware decoding or GPU-frame imports.
+
+`test/webgl-smoke.js` exercises real shaders and readback, default depth/stencil
+and multisampled framebuffer paths, texture uploads, WebGL2 instancing/FBO
+operations, read-buffer state preservation, alpha, resize, ImageBitmap
+ownership, context restoration and worker placeholder updates. On macOS it
+checks independent Core Graphics PNG decoding and the actual owned
+WindowServer window in two states. It is a correctness check, not a WebGL
+performance benchmark or a Khronos conformance claim.
 
 ### Sandbox boundary
 
-The renderer opens its Metal device and command queue before Seatbelt lockdown.
+The renderer opens its compositor Metal device/queue and ANGLE Metal display
+before Seatbelt lockdown.
 The profile adds only the named compiler XPC lookup:
 
 ```scheme
@@ -639,7 +665,9 @@ Metal substantially reduces the measured transport/presentation CPU cost, but
 does not close the synchronous text/style/layout gap. The next optimization
 target remains a trace of text/style/layout on the 2,000-row and grid workloads,
 followed by changes to demonstrated hotspots. Do not infer GPU tile raster,
-accelerated Canvas2D, WebGL/WebGPU or hardware video support from this result.
+accelerated Canvas2D, WebGPU or hardware video support from this result.
+The separate WebGL implementation was not part of these benchmark trials;
+these numbers provide no WebGL throughput or latency evidence.
 
 ```sh
 node benchmarks/rendering/run.js --trials 3 \

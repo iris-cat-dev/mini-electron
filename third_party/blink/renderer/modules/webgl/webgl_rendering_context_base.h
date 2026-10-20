@@ -34,7 +34,10 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/numerics/checked_math.h"
 #include "base/task/single_thread_task_runner.h"
-//#include "device/vr/public/mojom/vr_service.mojom-blink.h"
+#include "device/vr/buildflags/buildflags.h"
+#if BUILDFLAG(ENABLE_VR)
+#include "device/vr/public/mojom/vr_service.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
@@ -75,12 +78,11 @@ class GLES2Interface;
 } // namespace gpu
 
 namespace media {
-class PaintCanvasVideoRenderer;
+class VideoFrame;
 }
 
 namespace blink {
 
-class AcceleratedStaticBitmapImage;
 class CanvasResourceProvider;
 class EXTDisjointTimerQuery;
 class EXTDisjointTimerQueryWebGL2;
@@ -685,11 +687,13 @@ protected:
     Member<WebGLRenderbuffer> renderbuffer_binding_;
 
     static bool MakeXrCompatibleSync(CanvasRenderingContextHost* host);
-//     static bool IsXrCompatibleFromResult(device::mojom::blink::XrCompatibleResult result);
-//     static bool DidGpuRestart(device::mojom::blink::XrCompatibleResult result);
+#if BUILDFLAG(ENABLE_VR)
+    static bool IsXrCompatibleFromResult(device::mojom::blink::XrCompatibleResult result);
+    static bool DidGpuRestart(device::mojom::blink::XrCompatibleResult result);
     static XRSystem* GetXrSystemFromHost(CanvasRenderingContextHost* host);
+    void OnMakeXrCompatibleFinished(device::mojom::blink::XrCompatibleResult xr_compatible_result);
+#endif
     void MakeXrCompatibleAsync();
-//     void OnMakeXrCompatibleFinished(device::mojom::blink::XrCompatibleResult xr_compatible_result);
     void CompleteXrCompatiblePromiseIfPending(DOMExceptionCode exception_code);
     bool xr_compatible_;
     Member<ScriptPromiseResolver<IDLUndefined>> make_xr_compatible_resolver_;
@@ -1085,11 +1089,9 @@ protected:
     // `params.internalformat` with the result from ConvertTexInternalFormat.
     void TexImageBase(const TexImageParams& params, const void* pixels);
 
-    // Upload `image` to the specified texture. If `allow_copy_via_gpu` is
-    // true and `image` is an AcceleratedBitmapImage, then the copy may be
-    // performed using TexImageViaGPU. Otherwise, the copy will be be performed
-    // using TexImageSkImage.
-    void TexImageStaticBitmapImage(TexImageParams params, StaticBitmapImage* image, bool image_has_flip_y, bool allow_copy_via_gpu);
+    // Upload the image's raster pixels using TexImageSkImage. Texture-backed
+    // sources are read back by PaintImage before pixel conversion.
+    void TexImageStaticBitmapImage(TexImageParams params, StaticBitmapImage* image, bool image_has_flip_y);
     template <typename T> gfx::Rect GetTextureSourceSize(T* texture_source)
     {
         return gfx::Rect(0, 0, texture_source->width(), texture_source->height());
@@ -1608,14 +1610,8 @@ private:
     static std::unique_ptr<WebGraphicsContext3DProvider> CreateContextProviderInternal(
         CanvasRenderingContextHost*, const CanvasContextCreationAttributesCore&, Platform::ContextType context_type, Platform::GraphicsInfo* graphics_info);
 
-    void TexImageHelperMediaVideoFrame(
-        TexImageParams, WebGLTexture*, scoped_refptr<media::VideoFrame> media_video_frame, media::PaintCanvasVideoRenderer* video_renderer);
+    void TexImageHelperMediaVideoFrame(TexImageParams, WebGLTexture*, scoped_refptr<media::VideoFrame> media_video_frame);
 
-    // Copy from the source directly to texture target specified by `params` via
-    // the gpu, without a read-back to system memory. Source can be an
-    // AcceleratedStaticBitmapImage or WebGLRenderingContextBase.
-    void TexImageViaGPU(TexImageParams, AcceleratedStaticBitmapImage*, WebGLRenderingContextBase*);
-    bool CanUseTexImageViaGPU(const TexImageParams&);
 
     const Platform::ContextType context_type_;
 

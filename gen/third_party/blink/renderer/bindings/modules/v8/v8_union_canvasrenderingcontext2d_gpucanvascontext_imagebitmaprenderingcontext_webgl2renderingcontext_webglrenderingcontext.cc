@@ -16,13 +16,13 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_rendering_context_2d.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_canvas_context.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_image_bitmap_rendering_context.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_union_webgl2renderingcontext_webglrenderingcontext.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_webgl2_rendering_context.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_webgl_rendering_context.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_union_webgl2renderingcontext_webglrenderingcontext.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_webgl2_rendering_context.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_webgl_rendering_context.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering_context_2d.h"
 #include "third_party/blink/renderer/modules/canvas/imagebitmap/image_bitmap_rendering_context.h"
-// #include "third_party/blink/renderer/modules/webgl/webgl2_rendering_context.h"
-// #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context.h"
+#include "third_party/blink/renderer/modules/webgl/webgl2_rendering_context.h"
+#include "third_party/blink/renderer/modules/webgl/webgl_rendering_context.h"
 // #include "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 
@@ -32,16 +32,16 @@ V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOr
 V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext::Create(
     v8::Isolate* isolate, v8::Local<v8::Value> v8_value, ExceptionState& exception_state)
 {
-//     if (V8WebGLRenderingContext::HasInstance(isolate, v8_value)) {
-//         auto&& blink_value = V8WebGLRenderingContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
-//         return MakeGarbageCollected<
-//             V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
-//     }
-//     if (V8WebGL2RenderingContext::HasInstance(isolate, v8_value)) {
-//         auto&& blink_value = V8WebGL2RenderingContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
-//         return MakeGarbageCollected<
-//             V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
-//     }
+    if (V8WebGLRenderingContext::HasInstance(isolate, v8_value)) {
+        auto&& blink_value = V8WebGLRenderingContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
+        return MakeGarbageCollected<
+            V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
+    }
+    if (V8WebGL2RenderingContext::HasInstance(isolate, v8_value)) {
+        auto&& blink_value = V8WebGL2RenderingContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
+        return MakeGarbageCollected<
+            V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
+    }
     if (V8ImageBitmapRenderingContext::HasInstance(isolate, v8_value)) {
         auto&& blink_value = V8ImageBitmapRenderingContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
         return MakeGarbageCollected<
@@ -65,34 +65,27 @@ V8UnionWebGL2RenderingContextOrWebGLRenderingContext*
 V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext::
     GetAsV8UnionWebGL2RenderingContextOrWebGLRenderingContext() const
 {
-//     switch (content_type_) {
-//     case ContentType::kWebGL2RenderingContext: {
-//         return MakeGarbageCollected<V8UnionWebGL2RenderingContextOrWebGLRenderingContext>(GetAsWebGL2RenderingContext());
-//     }
-//     case ContentType::kWebGLRenderingContext: {
-//         return MakeGarbageCollected<V8UnionWebGL2RenderingContextOrWebGLRenderingContext>(GetAsWebGLRenderingContext());
-//     }
-//     default: {
-//         NOTREACHED();
-//     }
-//     }
-    *(int*)1 = 1;
+    switch (content_type_) {
+    case ContentType::kWebGL2RenderingContext:
+        return MakeGarbageCollected<V8UnionWebGL2RenderingContextOrWebGLRenderingContext>(GetAsWebGL2RenderingContext());
+    case ContentType::kWebGLRenderingContext:
+        return MakeGarbageCollected<V8UnionWebGL2RenderingContextOrWebGLRenderingContext>(GetAsWebGLRenderingContext());
+    default:
+        NOTREACHED();
+    }
 }
 
 void V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext::Set(
     const V8UnionWebGL2RenderingContextOrWebGLRenderingContext* value)
 {
-//     switch (value->GetContentType()) {
-//     case V8UnionWebGL2RenderingContextOrWebGLRenderingContext::ContentType::kWebGL2RenderingContext: {
-//         Set(value->GetAsWebGL2RenderingContext());
-//         break;
-//     }
-//     case V8UnionWebGL2RenderingContextOrWebGLRenderingContext::ContentType::kWebGLRenderingContext: {
-//         Set(value->GetAsWebGLRenderingContext());
-//         break;
-//     }
-//     }
-    * (int*)1 = 1;
+    switch (value->GetContentType()) {
+    case V8UnionWebGL2RenderingContextOrWebGLRenderingContext::ContentType::kWebGL2RenderingContext:
+        Set(value->GetAsWebGL2RenderingContext());
+        break;
+    case V8UnionWebGL2RenderingContextOrWebGLRenderingContext::ContentType::kWebGLRenderingContext:
+        Set(value->GetAsWebGLRenderingContext());
+        break;
+    }
 }
 
 v8::Local<v8::Value> V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext::ToV8(
@@ -108,12 +101,10 @@ v8::Local<v8::Value> V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBit
     case ContentType::kImageBitmapRenderingContext: {
         return ToV8Traits<ImageBitmapRenderingContext>::ToV8(script_state, member_image_bitmap_rendering_context_.Get());
     }
-//     case ContentType::kWebGL2RenderingContext: {
-//         return ToV8Traits<WebGL2RenderingContext>::ToV8(script_state, member_webgl2_rendering_context_.Get());
-//     }
-//     case ContentType::kWebGLRenderingContext: {
-//         return ToV8Traits<WebGLRenderingContext>::ToV8(script_state, member_webgl_rendering_context_.Get());
-//     }
+    case ContentType::kWebGL2RenderingContext:
+        return ToV8Traits<WebGL2RenderingContext>::ToV8(script_state, member_webgl2_rendering_context_.Get());
+    case ContentType::kWebGLRenderingContext:
+        return ToV8Traits<WebGLRenderingContext>::ToV8(script_state, member_webgl_rendering_context_.Get());
     }
 
     NOTREACHED();
@@ -124,8 +115,8 @@ void V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingCont
 {
     TraceIfNeeded<Member<CanvasRenderingContext2D>>::Trace(visitor, member_canvas_rendering_context_2d_);
     //TraceIfNeeded<Member<GPUCanvasContext>>::Trace(visitor, member_gpu_canvas_context_);
-    //TraceIfNeeded<Member<WebGL2RenderingContext>>::Trace(visitor, member_webgl2_rendering_context_);
-    //TraceIfNeeded<Member<WebGLRenderingContext>>::Trace(visitor, member_webgl_rendering_context_);
+    TraceIfNeeded<Member<WebGL2RenderingContext>>::Trace(visitor, member_webgl2_rendering_context_);
+    TraceIfNeeded<Member<WebGLRenderingContext>>::Trace(visitor, member_webgl_rendering_context_);
     TraceIfNeeded<Member<ImageBitmapRenderingContext>>::Trace(visitor, member_image_bitmap_rendering_context_);
 
     bindings::UnionBase::Trace(visitor);
@@ -136,8 +127,8 @@ void V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingCont
     member_canvas_rendering_context_2d_.Clear();
     member_image_bitmap_rendering_context_.Clear();
 //     member_gpu_canvas_context_.Clear();
-//     member_webgl2_rendering_context_.Clear();
-//     member_webgl_rendering_context_.Clear();
+    member_webgl2_rendering_context_.Clear();
+    member_webgl_rendering_context_.Clear();
 }
 
 } // namespace blink

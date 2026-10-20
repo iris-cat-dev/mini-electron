@@ -7,6 +7,14 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### Unreleased source changes
+
+- Restores real WebGL 1/2 contexts, Blink bindings, GPU drawing, CPU image
+  interop, context loss/restoration, and Worker OffscreenCanvas publication.
+  The macOS backend uses ANGLE/Metal; Windows has ANGLE/D3D11 build integration.
+  See [WebGL support and limits](#webgl-1-and-2). Published runtime artifacts
+  have not been replaced by this source change.
+
 ## npm distribution
 
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
@@ -283,7 +291,8 @@ This does not replace the Electron JavaScript `ipcMain`/`ipcRenderer` APIs.
 
 ## Shared Electron example
 
-Python 3.10 or newer is required. From the repository root, on either supported OS:
+Python 3.10 or newer is required on macOS; Windows requires Python 3.12 or newer.
+From the repository root, on either supported OS:
 
 ```sh
 python build.py --electron --interactive
@@ -306,6 +315,58 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+## WebGL 1 and 2
+
+Desktop source builds register real `webgl`, `experimental-webgl`, and `webgl2`
+contexts for HTMLCanvasElement and OffscreenCanvas. The restored Blink API and
+bindings execute GLSL shaders, buffers, textures, framebuffers and WebGL2
+instancing through a direct ANGLE EGL/GLES provider, not a mock or a command
+buffer stub. Contexts use exact ES2/ES3 versions, WebGL compatibility, robust
+access and resource initialization. Unsupported hardware/backend initialization
+returns no context rather than pretending to render.
+
+- macOS: native ANGLE Metal backend, initialized before renderer sandbox
+  lockdown; it shares the existing named Metal compiler-service permission.
+- Windows: native ANGLE D3D11 static library, built with GN/Ninja before the
+  normal MSBuild targets. These Windows changes have not been compiled or run
+  on Windows as part of this verification.
+- Presentation: real GPU drawing is read back into owned software bitmap
+  resources for the existing cc/Viz resource protocol. macOS's output compositor
+  may then upload those resources to Metal. This is **not zero-copy** and does
+  not restore Chromium's GPU service or GPU tile rasterization.
+- Canvas/Image/ImageBitmap interop uses CPU pixels. OffscreenCanvas can transfer
+  independent ImageBitmaps or publish subsequent worker frames to its visible
+  HTML canvas placeholder. Context loss/restoration creates fresh GL resources.
+- Native video-frame conversion operates on CPU-mappable pixels; it does not
+  add hardware decoding, GPU video-frame imports or a WebCodecs API.
+- Extensions depend on the native backend. This is not a Khronos WebGL
+  conformance certification or a claim of accelerated Canvas2D, WebGPU or XR
+  support. Page WebGL settings remain authoritative; the Chromium GPU
+  service's per-origin GPU-crash blocklist is not present in this runtime.
+
+The build fetches ANGLE revision
+`ce13a00a2b049a1ef5e0e70a3d333ce70838ef7b` into ignored `third_party/angle`.
+Its cached archive in `.build-tools` is SHA-256 verified; subsequent builds
+reuse it. Unknown populated ANGLE directories are rejected, not overwritten.
+Distribution notices include the shipped ANGLE/Khronos/xxHash licenses.
+
+Build and exercise real rendering:
+
+```sh
+python build.py --electron --interactive --electron-main test/webgl-smoke.js
+# Reuse the built macOS binary:
+out/mac-arm64/mini-electron --app=test/webgl-smoke.js
+# Exercise WebGL with the CPU output compositor (WebGL itself still uses ANGLE):
+MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=test/webgl-smoke.js
+```
+
+The smoke checks shader drawing, default depth/stencil framebuffers, texture
+uploads, WebGL2 FBO/blit/instancing, read-buffer state preservation, alpha,
+resize, serialization, ImageBitmap ownership, context restoration and Worker
+placeholder updates. On macOS it independently samples PNGs with Core Graphics
+and captures the owned WindowServer window before and after updates. It needs
+Xcode tools, an unlocked graphical session and OS capture authorization.
+
 ## Windows (x64)
 
 Requirements:
@@ -315,6 +376,8 @@ Requirements:
 - Windows SDK `10.0.26100.0`
 - LLVM 22 with `clang-cl`, `lld-link`, and `llvm-lib`; install in the standard
   LLVM location or set `LLVM_INSTALL_DIR`
+- Python 3.12 or newer, plus GN and Ninja on `PATH` (or
+  `MINI_ELECTRON_GN` / `MINI_ELECTRON_NINJA` executable paths) for ANGLE/D3D11
 
 The backend selects the newest installed v143 toolchain with matching ATL and
 passes that exact `VCToolsVersion` to MSBuild. A stale Visual Studio default must
@@ -673,6 +736,8 @@ snapshot with `mksnapshot`, and execute work from native run loops.
 Requirements:
 
 - Apple Silicon Mac with Xcode
+  and a working `xcrun --find metal`; if Xcode ships Metal separately, install
+  it with `xcodebuild -downloadComponent MetalToolchain`
 - Ninja (`brew install ninja`)
 - GN, or `cipd` from
   [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools/)
@@ -1085,10 +1150,13 @@ MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=your-app.js
 
 `capturePage()` explicitly reads GPU pixels back and preserves premultiplied
 transparency. Its existing crop coordinates are physical framebuffer pixels.
-This is not GPU tile rasterization, accelerated Canvas2D, WebGL/WebGPU, hardware
-video decoding, or restoration of Chromium's full GPU service. Metal capability
-is opened in the renderer before sandbox lockdown, not in an isolated GPU
-process; see [rendering architecture and verification](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
+The Metal compositor alone does not enable GPU tile rasterization, accelerated
+Canvas2D, WebGPU, hardware video decoding, or Chromium's full GPU service.
+[WebGL has its own ANGLE implementation](#webgl-1-and-2), with CPU readback into
+the resource protocol; `MINI_ELECTRON_DISABLE_GPU=1` changes output composition,
+not WebGL availability. Metal capability is opened in the renderer before
+sandbox lockdown, not in an isolated GPU process; see
+[rendering architecture and verification](docs/RENDERING_PERFORMANCE.md#macos-metal-gpu-compositing).
 
 Native pixel regressions capture only owned WindowServer windows. They require
 an unlocked graphical session and functioning OS capture authorization; granting

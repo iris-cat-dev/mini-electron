@@ -130,8 +130,10 @@ private:
     bool suspend_animation_ = false;
     bool needs_begin_frame_ = false;
     unsigned pending_compositor_frames_ = 0;
+    bool local_begin_frame_pending_ = false;
 
     void SetNeedsBeginFrameInternal();
+    void BeginFrameWithoutSurface();
 
     bool VerifyImageSize(const gfx::Size&);
     void PostImageToPlaceholderIfNotBlocked(scoped_refptr<CanvasResource>&&, viz::ResourceId resource_id);

@@ -17,6 +17,7 @@ import tempfile
 import time
 import urllib.request
 from typing import Optional
+from .angle import ensure_angle
 from .distribution import (
     copy_release_notices,
     copy_runtime_javascript,
@@ -895,6 +896,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
     )
     if target in (ELECTRON_TARGET, GUI_TARGET):
         ensure_nghttp2(root, clang_base)
+        ensure_angle(root)
     if target == ELECTRON_TARGET:
         from .node_sources import generate_node_bootstraps
 

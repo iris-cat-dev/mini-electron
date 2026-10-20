@@ -22,7 +22,6 @@
 #include "base/trace_event/memory_allocator_dump_guid.h"
 #include "base/trace_event/process_memory_dump.h"
 #include "ui/gfx/buffer_format_util.h"
-#include "ui/gl/gl_bindings.h"
 
 namespace gpu {
 

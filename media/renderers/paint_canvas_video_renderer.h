@@ -142,6 +142,9 @@ public:
     // |frame format| is Y16, optimizes conversion of normalized 16-bit content
     // and calls texImage2D to |texture|. |level|, |internal_format|, |format| and
     // |type| are WebGL texImage2D parameters.
+    // Conversion is CPU-only and consumes the visible rectangle with its plane
+    // stride. It does not require a RasterContextProvider or shared images.
+    // The caller must set unpack state for tightly packed converted pixels.
     // Returns false if there is no implementation for given parameters.
     static bool TexImage2D(unsigned target, unsigned texture, gpu::gles2::GLES2Interface* gl, const gpu::Capabilities& gpu_capabilities,
         VideoFrame* video_frame, int level, int internalformat, unsigned format, unsigned type, bool flip_y, bool premultiply_alpha);
@@ -153,6 +156,7 @@ public:
     // e.g. if |frame format| is Y16, converts unsigned 16-bit value to target
     // |format| and calls WebGL texSubImage2D. |level|, |format|, |type|,
     // |xoffset| and |yoffset| are texSubImage2D parameters.
+    // Like TexImage2D, this uses CPU conversion and caller-managed unpack state.
     // Returns false if there is no implementation for given parameters.
     static bool TexSubImage2D(unsigned target, gpu::gles2::GLES2Interface* gl, VideoFrame* video_frame, int level, unsigned format, unsigned type, int xoffset,
         int yoffset, bool flip_y, bool premultiply_alpha);

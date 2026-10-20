@@ -8,6 +8,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/webgl_any.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_framebuffer.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+#include "third_party/angle/include/GLES2/gl2ext_angle.h"
 
 namespace blink {
 

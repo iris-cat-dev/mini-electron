@@ -50,12 +50,12 @@
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
-#include "third_party/blink/public/mojom/gpu/gpu.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/resources/grit/blink_image_resources.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap_options.h"
+#include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_encode_options.h"
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
@@ -635,12 +635,9 @@ bool HTMLCanvasElement::IsWebGL2Enabled() const
 
 bool HTMLCanvasElement::IsWebGLBlocked() const
 {
-    Document& document = GetDocument();
-    bool blocked = false;
-    mojo::Remote<mojom::blink::GpuDataManager> gpu_data_manager;
-    Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(gpu_data_manager.BindNewPipeAndPassReceiver());
-    gpu_data_manager->Are3DAPIsBlockedForUrl(document.Url(), &blocked);
-    return blocked;
+    // This runtime has no Chromium per-origin GPU-crash blocklist service.
+    // The page's WebGL settings are its authoritative API policy.
+    return !IsWebGL1Enabled() && !IsWebGL2Enabled();
 }
 
 void HTMLCanvasElement::SetContextCreationWasBlocked()
@@ -841,7 +838,7 @@ void HTMLCanvasElement::Reset()
 bool HTMLCanvasElement::PaintsIntoCanvasBuffer() const
 {
     if (OffscreenCanvasFrame())
-        return false;
+        return !surface_layer_bridge_;
     DCHECK(context_);
     if (!context_->IsComposited())
         return true;
@@ -981,7 +978,7 @@ void HTMLCanvasElement::Paint(GraphicsContext& context, const PhysicalRect& r, b
     }
 
     if (OffscreenCanvasFrame()) {
-        DCHECK(GetDocument().Printing());
+        DCHECK(GetDocument().Printing() || !surface_layer_bridge_);
         scoped_refptr<StaticBitmapImage> image_for_printing = OffscreenCanvasFrame()->Bitmap()->MakeUnaccelerated();
         if (!image_for_printing)
             return;
@@ -1649,6 +1646,11 @@ void HTMLCanvasElement::SetOffscreenCanvasResource(scoped_refptr<CanvasResource>
     OffscreenCanvasPlaceholder::SetOffscreenCanvasResource(std::move(image), resource_id);
     SetSize(OffscreenCanvasFrame()->Size());
     NotifyListenersCanvasChanged();
+    if (!surface_layer_bridge_) {
+        DidDraw();
+        if (auto* view = GetDocument().View())
+            view->ScheduleAnimation();
+    }
 }
 
 bool HTMLCanvasElement::IsOpaque() const

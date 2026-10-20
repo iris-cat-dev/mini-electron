@@ -1,0 +1,8 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+angle_root = "//third_party/angle"
+angle_has_build = false
+# Names are used by targets that remain disabled in this D3D11-only build.
+angle_spirv_headers_dir = "//third_party/spirv-headers/src"
+angle_spirv_tools_dir = "//third_party/spirv-tools/src"

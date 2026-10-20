@@ -8,8 +8,8 @@
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>false</TreatWarningAsError>
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">ANGLE_STATIC=1;GL_APICALL=;EGLAPI=;GL_API=;MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MiniElectronSourceRoot)third_party\angle\include;$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -18,9 +18,12 @@
       <PreprocessorDefinitions>CURL_STATICLIB;WINVER=0x0A00;_WIN32_WINNT=0x0A00;HAVE_CRC32C=0;HAVE_SNAPPY=0;LEVELDB_COMPILE_LIBRARY;LEVELDB_HAS_PORT_CONFIG_H=0;LEVELDB_PLATFORM_WINDOWS=1;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Comctl32.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(MiniElectronANGLELibrary);Dxguid.lib;Dxgi.lib;D3d11.lib;Setupapi.lib;Comctl32.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <Target Name="MiniElectronRequireANGLE" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(MSBuildProjectName)' == 'application'">
+    <Error Condition="'$(MiniElectronANGLELibrary)' == '' or !Exists('$(MiniElectronANGLELibrary)')" Text="ANGLE D3D11 is required. Use Python 3.12+ and python build.py with GN/Ninja on PATH to bootstrap and build ANGLE, or pass MiniElectronANGLELibrary pointing to that build's mini_electron_angle.lib." />
+  </Target>
   <UsingTask TaskName="MiniElectronObjectPaths" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />

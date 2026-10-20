@@ -48,9 +48,8 @@ Event* EventModulesFactory::Create(ScriptState* script_state, ExecutionContext* 
         return StorageEvent::Create();
     }
     if (EqualIgnoringASCIICase(type, "WebGLContextEvent")) {
-//         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventWebGLContextEvent);
-//         return WebGLContextEvent::Create();
-        *(int*)1 = 1;
+        UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventWebGLContextEvent);
+        return WebGLContextEvent::Create();
     }
     return nullptr;
 }

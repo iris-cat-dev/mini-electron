@@ -105,6 +105,8 @@ CanvasRenderingContext* WebGL2RenderingContext::Factory::Create(CanvasRenderingC
         CreateWebGraphicsContext3DProvider(host, attribs, Platform::kWebGL2ContextType, &graphics_info));
     if (!ShouldCreateContext(context_provider.get(), host))
         return nullptr;
+    if (!graphics_info.using_gpu_compositing)
+        attribs.desynchronized = false;
     WebGL2RenderingContext* rendering_context = MakeGarbageCollected<WebGL2RenderingContext>(host, std::move(context_provider), graphics_info, attribs);
 
     if (!rendering_context->GetDrawingBuffer()) {

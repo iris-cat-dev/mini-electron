@@ -1,0 +1,7 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+# Implemented by the native Windows support.vcxproj, not a second GN copy.
+group("compression_utils_portable") {
+  public_deps = [ "..:zlib" ]
+}

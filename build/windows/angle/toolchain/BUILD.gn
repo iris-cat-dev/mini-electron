@@ -1,0 +1,68 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+assert(mini_electron_llvm_bin != "", "windows_angle.py must supply LLVM 22.")
+_clang = "${mini_electron_llvm_bin}/clang-cl.exe"
+_lib = "${mini_electron_llvm_bin}/llvm-lib.exe"
+_link = "${mini_electron_llvm_bin}/lld-link.exe"
+
+toolchain("windows") {
+  foreach(type, [ "cc", "cxx" ]) {
+    if (type == "cc") {
+      _language_flags = "{{cflags_c}}"
+    } else {
+      _language_flags = "{{cflags_cc}}"
+    }
+    tool(type) {
+      command = "\"$_clang\" /showIncludes {{defines}} {{include_dirs}} {{cflags}} $_language_flags /c {{source}} /Fo{{output}}"
+      description = "CXX {{source}}"
+      depsformat = "msvc"
+      outputs = [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.obj" ]
+    }
+  }
+  tool("rc") {
+    command = "rc.exe /nologo {{defines}} {{include_dirs}} /fo{{output}} {{source}}"
+    description = "RC {{source}}"
+    outputs = [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.res" ]
+  }
+  tool("alink") {
+    command = "\"$_lib\" /nologo /OUT:{{output}} @{{output}}.rsp"
+    description = "LIB {{output}}"
+    rspfile = "{{output}}.rsp"
+    rspfile_content = "{{inputs}}"
+    outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+    default_output_extension = ".lib"
+    default_output_dir = "{{target_out_dir}}"
+    output_prefix = ""
+  }
+  tool("link") {
+    command = "\"$_link\" /nologo /OUT:{{output}} @{{output}}.rsp"
+    description = "LINK {{output}}"
+    rspfile = "{{output}}.rsp"
+    rspfile_content = "{{inputs}} {{ldflags}} {{libs}}"
+    outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+    default_output_extension = ".exe"
+    default_output_dir = "{{root_out_dir}}"
+    lib_switch = ""
+    lib_dir_switch = "/LIBPATH:"
+  }
+  tool("solink") {
+    command = "\"$_link\" /nologo /DLL /OUT:{{output}} @{{output}}.rsp"
+    description = "DLL {{output}}"
+    rspfile = "{{output}}.rsp"
+    rspfile_content = "{{inputs}} {{ldflags}} {{libs}}"
+    outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+    default_output_extension = ".dll"
+    default_output_dir = "{{root_out_dir}}"
+    lib_switch = ""
+    lib_dir_switch = "/LIBPATH:"
+  }
+  tool("stamp") {
+    command = "cmd /c type nul > {{output}}"
+    description = "STAMP {{output}}"
+  }
+  tool("copy") {
+    command = "cmd /c copy /y {{source}} {{output}} > nul"
+    description = "COPY {{source}}"
+  }
+}

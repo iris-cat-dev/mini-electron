@@ -1,0 +1,22 @@
+# ANGLE-only GN source root, staged by mini_electron/windows_angle.py.
+buildconfig = "//config/BUILDCONFIG.gn"
+script_executable = "python"
+
+# Keep these defaults aligned with the shared .gn WebGL configuration.
+default_args = {
+  # Embedded static ANGLE, without standalone sample/JSON targets.
+  angle_standalone = false
+  angle_enable_vulkan = false
+  angle_enable_gl = false
+  angle_enable_null = false
+  angle_enable_d3d9 = false
+  angle_enable_d3d11 = true
+  angle_enable_abseil = false
+  angle_has_rapidjson = false
+  angle_has_histograms = false
+  angle_delegate_workers = false
+  angle_build_tests = false
+  angle_build_vulkan_system_info = false
+  angle_enable_commit_id = false
+  angle_enable_d3d11_compositor_native_window = false
+}

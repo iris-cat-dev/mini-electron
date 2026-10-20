@@ -310,7 +310,7 @@ public:
     }
     void set_low_latency_enabled(bool low_latency_enabled)
     {
-        low_latency_enabled_ = low_latency_enabled;
+        low_latency_enabled_ = low_latency_enabled && ContextProvider()->SharedImageInterface();
     }
 
     scoped_refptr<CanvasResource> ExportCanvasResource();
@@ -417,12 +417,18 @@ private:
         ColorBuffer(base::WeakPtr<DrawingBuffer> drawing_buffer, const gfx::Size&, const gfx::ColorSpace& color_space, viz::SharedImageFormat,
             SkAlphaType alpha_type, bool is_overlay_candidate, scoped_refptr<gpu::ClientSharedImage> shared_image,
             std::unique_ptr<gpu::SharedImageTexture> shared_image_texture);
+        ColorBuffer(base::WeakPtr<DrawingBuffer> drawing_buffer, const gfx::Size&, const gfx::ColorSpace&, viz::SharedImageFormat,
+            SkAlphaType, GLuint local_texture);
         ColorBuffer(const ColorBuffer&) = delete;
         ColorBuffer& operator=(const ColorBuffer&) = delete;
 
         GLuint texture_id()
         {
-            return scoped_shared_image_access_->texture_id();
+            return local_texture_ ? local_texture_ : scoped_shared_image_access_->texture_id();
+        }
+        GLenum texture_target() const
+        {
+            return shared_image ? shared_image->GetTextureTarget() : GL_TEXTURE_2D;
         }
         void BeginAccess(const gpu::SyncToken& sync_token, bool readonly);
         gpu::SyncToken EndAccess();
@@ -458,6 +464,8 @@ private:
 
         std::unique_ptr<gpu::SharedImageTexture> shared_image_texture_;
         std::unique_ptr<gpu::SharedImageTexture::ScopedAccess> scoped_shared_image_access_;
+        // Owned by the DrawingBuffer's GL context, never exported as a mailbox.
+        GLuint local_texture_ = 0;
     };
 
     using CopyFunctionRef = base::FunctionRef<std::optional<gpu::SyncToken>(

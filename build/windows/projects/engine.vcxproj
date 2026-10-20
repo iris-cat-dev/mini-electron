@@ -1610,6 +1610,9 @@
     <ClCompile Remove="..\..\..\third_party\inspector_protocol\crdtp\*.cc" />
     <ClCompile Remove="..\..\..\third_party\inspector_protocol\crdtp\chromium\*.cc" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\runtime\engine\renderer\webgl_context_provider.cc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

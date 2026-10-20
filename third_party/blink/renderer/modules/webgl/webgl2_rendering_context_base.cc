@@ -36,6 +36,7 @@
 #include "third_party/blink/renderer/modules/webgl/webgl_vertex_array_object.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#include "third_party/angle/include/GLES2/gl2ext_angle.h"
 
 // Populates all parameters for texImage2D, including width, height, depth (set
 // to 1), and border. Many callers will need to zero-out border in order to

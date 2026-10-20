@@ -3397,6 +3397,26 @@
     <None Include="..\..\..\ui\gfx\DIR_METADATA" />
     <None Include="..\..\..\ui\gfx\geometry\OWNERS" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\gles2_interface.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\gl_helper.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\gl_helper_scaling.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\client_shared_image.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\shared_image_interface.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\gpu_memory_buffer_support.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\shared_image_usage.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\shared_image_capabilities.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\shared_image_trace_utils.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\gles2_cmd_copy_texture_chromium_utils.cc" />
+    <ClCompile Include="..\..\..\gpu\config\gpu_finch_features.cc" />
+    <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_support.cc" />
+    <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl.cc" />
+    <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl_shared_memory.cc" />
+    <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl_dxgi.cc" />
+    <ClCompile Include="..\..\..\components\viz\common\resources\shared_image_format_utils.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\common\gles2_cmd_utils.cc" />
+    <ClCompile Include="..\..\..\media\renderers\paint_canvas_video_renderer_cpu.cc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

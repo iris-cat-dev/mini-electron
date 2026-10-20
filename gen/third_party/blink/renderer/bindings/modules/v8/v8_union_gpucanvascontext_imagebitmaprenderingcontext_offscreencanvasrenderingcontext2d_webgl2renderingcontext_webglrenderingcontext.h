@@ -68,18 +68,16 @@ public:
     explicit V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext(
         WebGL2RenderingContext* value)
         : content_type_(ContentType::kWebGL2RenderingContext)
-        //, member_webgl2_rendering_context_(value)
+        , member_webgl2_rendering_context_(value)
     {
         DCHECK(value);
-        *(int*)1 = 1;
     }
     explicit V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext(
         WebGLRenderingContext* value)
         : content_type_(ContentType::kWebGLRenderingContext)
-        //, member_webgl_rendering_context_(value)
+        , member_webgl_rendering_context_(value)
     {
         DCHECK(value);
-        *(int*)1 = 1;
     }
 
     // Returns the type of the content value.
@@ -148,18 +146,15 @@ public:
     }
     WebGL2RenderingContext* GetAsWebGL2RenderingContext() const
     {
-//         DCHECK_EQ(content_type_, ContentType::kWebGL2RenderingContext);
-//         return member_webgl2_rendering_context_.Get();
-        *(int*)1 = 1;
-        return nullptr;
+        DCHECK_EQ(content_type_, ContentType::kWebGL2RenderingContext);
+        return member_webgl2_rendering_context_.Get();
     }
     void Set(WebGL2RenderingContext* value)
     {
-//         DCHECK(value);
-//         Clear();
-//         member_webgl2_rendering_context_ = value;
-//         content_type_ = ContentType::kWebGL2RenderingContext;
-        *(int*)1 = 1;
+        DCHECK(value);
+        Clear();
+        member_webgl2_rendering_context_ = value;
+        content_type_ = ContentType::kWebGL2RenderingContext;
     }
 
     bool IsWebGLRenderingContext() const
@@ -168,16 +163,15 @@ public:
     }
     WebGLRenderingContext* GetAsWebGLRenderingContext() const
     {
-//         DCHECK_EQ(content_type_, ContentType::kWebGLRenderingContext);
-//         return member_webgl_rendering_context_.Get();
+        DCHECK_EQ(content_type_, ContentType::kWebGLRenderingContext);
+        return member_webgl_rendering_context_.Get();
     }
     void Set(WebGLRenderingContext* value)
     {
-//         DCHECK(value);
-//         Clear();
-//         member_webgl_rendering_context_ = value;
-//         content_type_ = ContentType::kWebGLRenderingContext;
-        *(int*)1 = 1;
+        DCHECK(value);
+        Clear();
+        member_webgl_rendering_context_ = value;
+        content_type_ = ContentType::kWebGLRenderingContext;
     }
 
     bool IsV8UnionWebGL2RenderingContextOrWebGLRenderingContext() const
@@ -212,8 +206,8 @@ private:
 //    Member<GPUCanvasContext> member_gpu_canvas_context_;
     Member<ImageBitmapRenderingContext> member_image_bitmap_rendering_context_;
     Member<OffscreenCanvasRenderingContext2D> member_offscreen_canvas_rendering_context_2d_;
-//     Member<WebGL2RenderingContext> member_webgl2_rendering_context_;
-//     Member<WebGLRenderingContext> member_webgl_rendering_context_;
+    Member<WebGL2RenderingContext> member_webgl2_rendering_context_;
+    Member<WebGLRenderingContext> member_webgl_rendering_context_;
 };
 
 } // namespace blink

@@ -1,0 +1,25 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+config("compiler") {
+  cflags = [ "/nologo", "/O2", "/MT", "/Gy", "/Gw", "/utf-8", "/bigobj" ]
+  cflags_cc = [ "/std:c++20", "/EHsc", "/Zc:__cplusplus" ]
+  defines = [ "NDEBUG", "WIN32", "_WINDOWS", "NOMINMAX", "WIN32_LEAN_AND_MEAN", "_CRT_SECURE_NO_WARNINGS", "ANGLE_OUTSIDE_WEBKIT" ]
+  include_dirs = [ "//" ]
+}
+
+# MSBuild consumes one archive, including ANGLE's transitive source sets and
+# static libraries. System libraries and the existing support.lib (zlib) are
+# linked by application.vcxproj through Directory.Build.targets.
+static_library("mini_electron_angle") {
+  complete_static_lib = true
+  output_dir = root_out_dir
+  deps = [
+    "//third_party/angle:libEGL_static",
+    "//third_party/angle:libGLESv2_static",
+  ]
+}
+
+group("default") {
+  deps = [ ":mini_electron_angle" ]
+}

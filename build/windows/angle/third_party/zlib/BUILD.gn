@@ -1,0 +1,14 @@
+# Copyright 2026 The mini-electron Authors
+# Use of this source code is governed by the Apache-2.0 license.
+
+# Native Windows support.vcxproj already compiles zlib and its portable
+# compression utilities. Import that real MSBuild-owned dependency rather than
+# compile duplicate copies into ANGLE. The application links support.lib after
+# mini_electron_angle.lib; this GN graph only produces the ANGLE static archive.
+config("zlib_config") {
+  include_dirs = [ "src", "src/google" ]
+}
+
+group("zlib") {
+  public_configs = [ ":zlib_config" ]
+}

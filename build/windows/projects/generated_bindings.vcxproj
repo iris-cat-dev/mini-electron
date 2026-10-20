@@ -3566,7 +3566,6 @@
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\properties_per_feature_installer.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_all_accepted_credentials_options.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_alpha_option.cc" />
-    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_angle_instanced_arrays.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_animate_callback.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_animation_worklet_global_scope.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_animator_constructor.cc" />
@@ -3971,6 +3970,21 @@
     <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_dev_tools_host.cc" />
     <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_inspector_overlay_host.cc" />
     <ClCompile Remove="..\..\..\gen\third_party\blink\renderer\core\inspector\protocol\*.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_angle_instanced_arrays.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_ext_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_khr_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_nv_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_oes_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_ovr_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_webgl*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_audio_data_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_video_color_*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_video_frame*.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_video_matrix_coefficients.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_video_pixel_format.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_video_transfer_characteristics.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -8,6 +8,7 @@
 
 #include "base/debug/stack_trace.h"
 #include "base/not_fatal_until.h"
+#include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "components/viz/common/features.h"
@@ -307,11 +308,25 @@ void CanvasResourceDispatcher::SetSuspendAnimation(bool suspend_animation)
 
 void CanvasResourceDispatcher::SetNeedsBeginFrameInternal()
 {
-    if (!sink_)
+    if (!sink_) {
+        if (!frame_sink_id_.is_valid() && needs_begin_frame_ && !suspend_animation_
+            && !local_begin_frame_pending_ && Client()) {
+            local_begin_frame_pending_ = true;
+            task_runner_->PostTask(FROM_HERE,
+                base::BindOnce(&CanvasResourceDispatcher::BeginFrameWithoutSurface, GetWeakPtr()));
+        }
         return;
+    }
 
     bool needs_begin_frame = needs_begin_frame_ && !suspend_animation_;
     sink_->SetNeedsBeginFrame(needs_begin_frame);
+}
+
+void CanvasResourceDispatcher::BeginFrameWithoutSurface()
+{
+    local_begin_frame_pending_ = false;
+    if (needs_begin_frame_ && !suspend_animation_ && Client())
+        Client()->BeginFrame();
 }
 
 bool CanvasResourceDispatcher::HasTooManyPendingFrames() const

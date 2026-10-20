@@ -4485,7 +4485,6 @@
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_extendable_event_init.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_extendable_message_event.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_extendable_message_event_init.cc" />
-    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_ext_blend_min_max.cc" />
     <ClCompile Include="..\..\..\third_party\blink\common\associated_interfaces\associated_interface_provider.cc" />
     <ClCompile Include="..\..\..\third_party\blink\common\associated_interfaces\associated_interface_registry.cc" />
     <ClCompile Include="..\..\..\third_party\blink\common\blob\blob_utils.cc" />
@@ -8098,6 +8097,23 @@
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\invalidation_set_to_selector_map.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\request_debug_header_scope.cc" />
     <ClCompile Include="..\..\..\runtime\engine\common\devtools_disabled.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webgl\*.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgl_image_conversion.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\web_graphics_context_3d_provider_wrapper.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\array_buffer_util.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\background_readback.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_color_space.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame_init_util.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame_layout.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame_monitor.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\video_frame_rect_util.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webcodecs\webcodecs_logger.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\web_graphics_context_3d_provider_util.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\image_extractor.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

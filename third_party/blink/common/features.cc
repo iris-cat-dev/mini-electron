@@ -264,7 +264,9 @@ BASE_FEATURE(kCanvas2DHibernation, "Canvas2DHibernation", base::FeatureState::FE
 // the snapshot) is freed.
 BASE_FEATURE(kCanvas2DHibernationReleaseTransferMemory, "Canvas2DHibernationReleaseTransferMemory", base::FeatureState::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kCanvasSharedBitmapToSharedImage, "CanvasSharedBitmapToSharedImage", base::FEATURE_ENABLED_BY_DEFAULT);
+// This runtime transports CPU canvas resources through legacy shared bitmaps;
+// it does not provide the Chromium SharedImage service.
+BASE_FEATURE(kCanvasSharedBitmapToSharedImage, "CanvasSharedBitmapToSharedImage", base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Whether to capture the source location of JavaScript execution, which is one
 // of the renderer eviction reasons for Back/Forward Cache.

@@ -77,6 +77,9 @@ public:
     blink::WebString UserAgent() override;
     blink::UserAgentMetadata UserAgentMetadata() override;
 
+    std::unique_ptr<blink::WebGraphicsContext3DProvider> CreateOffscreenGraphicsContext3DProvider(
+        const ContextAttributes&, const blink::WebURL&, GraphicsInfo*) override;
+
     bool IsTakingV8ContextSnapshot() override;
 
     void setUserAgent(const std::string& ua);

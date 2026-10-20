@@ -21,6 +21,7 @@ import urllib.request
 import zipfile
 
 from .node_sources import generate_node_bootstraps
+from .windows_angle import build_angle
 from .distribution import (
     copy_release_notices,
     copy_runtime_javascript,
@@ -642,6 +643,7 @@ def _build_projects(
     vsnasm_dir: Path,
     generated_root: Path,
     nghttp2_root: Path,
+    angle_library: Path,
     jobs: int,
 ) -> Path:
     settings = manifest["msbuild"]
@@ -696,6 +698,7 @@ def _build_projects(
             f"-p:MiniElectronGeneratedRoot={_windows_path(generated_root)}",
             f"-p:MiniElectronNGHTTP2Root={_windows_path(nghttp2_root)}",
             f"-p:MiniElectronVSNASMDir={_windows_path(vsnasm_dir)}",
+            f"-p:MiniElectronANGLELibrary={_windows_path(angle_library)}",
         ]
         print(f"[windows] Building {name} ({configuration}|{platform})...")
         try:
@@ -1034,6 +1037,15 @@ def build(root: Path, args: argparse.Namespace) -> int:
         nasm_dir = _ensure_nasm(root)
         nghttp2_root = _ensure_nghttp2(root)
         vsnasm_dir = _ensure_vsnasm(root)
+        angle_library = build_angle(
+            root,
+            output,
+            _visual_studio_root(msbuild),
+            msvc_version,
+            sdk_version,
+            llvm_bin,
+            jobs,
+        )
         built = _build_projects(
             root,
             output,
@@ -1045,6 +1057,7 @@ def build(root: Path, args: argparse.Namespace) -> int:
             vsnasm_dir,
             generated_root,
             nghttp2_root,
+            angle_library,
             jobs,
         )
         if bool(getattr(args, "package_dist", False)):

@@ -52,6 +52,38 @@ _CHROMIUM_LICENSE = """// Copyright 2015 The Chromium Authors
 // POSSIBILITY OF SUCH DAMAGE.
 """
 
+# ANGLE's Metal/D3D11 build embeds only these metadata-bearing dependencies.
+# The archive also contains metadata for unfetched test and other backend deps.
+_ANGLE_SHIPPED_METADATA = frozenset(
+    (
+        "README.chromium",
+        "src/common/base/README.chromium",
+        "src/common/third_party/xxhash/README.chromium",
+    )
+)
+_ANGLE_KHRONOS_MIT_LICENSE = """Copyright (c) 2008-2018 The Khronos Group Inc.
+Copyright 2013-2020 The Khronos Group Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and/or associated documentation files (the
+"Materials"), to deal in the Materials without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Materials, and to
+permit persons to whom the Materials are furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Materials.
+
+THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+"""
+
 
 
 def _safe_relative_name(relative: str) -> tuple[str, ...]:
@@ -256,6 +288,14 @@ def _metadata_fields(block: str) -> dict[str, str]:
 
 
 def _generate_chromium_notices(root: Path, destination: Path) -> None:
+    angle_root = root / "third_party" / "angle"
+    for relative in sorted(_ANGLE_SHIPPED_METADATA):
+        metadata_path = angle_root / relative
+        if not metadata_path.is_file():
+            raise DistributionError(
+                f"Required ANGLE license metadata is missing: {metadata_path}. "
+                "Install the pinned ANGLE source archive before packaging."
+            )
     entries: list[tuple[str, str, str, str]] = [
         (
             "The Chromium Project",
@@ -269,6 +309,11 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
         relative_metadata = metadata_path.relative_to(root)
         if relative_metadata.parts[0] in ignored_roots:
             continue
+        angle_metadata = None
+        if relative_metadata.parts[:2] == ("third_party", "angle"):
+            angle_metadata = metadata_path.relative_to(angle_root).as_posix()
+            if angle_metadata not in _ANGLE_SHIPPED_METADATA:
+                continue
         text = metadata_path.read_text(encoding="utf-8")
         for block in re.split(r"\n\s*\n", text):
             fields = _metadata_fields(block)
@@ -279,6 +324,20 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
                 or license_value == "NOT_SHIPPED"
                 or fields.get("Shipped", "yes").strip().lower() == "no"
             ):
+                continue
+            if (
+                angle_metadata == "src/common/base/README.chromium"
+                and license_value == "LICENSE in Chromium/src"
+            ):
+                # Upstream refers to Chromium's license rather than embedding it.
+                entries.append(
+                    (
+                        fields["Name"],
+                        fields.get("URL", ""),
+                        fields.get("License", ""),
+                        _CHROMIUM_LICENSE,
+                    )
+                )
                 continue
             license_texts: list[str] = []
             for value in (item.strip() for item in license_value.split(",")):
@@ -308,6 +367,33 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
         raise DistributionError(
             "Chromium third-party license metadata produced no shipped notices"
         )
+
+    # ANGLE vendors the Khronos API headers under include/, independently of
+    # the unused EGL/OpenGL registry checkouts and their README.chromium files.
+    apache_license_path = root / "LICENSE"
+    if not apache_license_path.is_file():
+        raise DistributionError(
+            f"Required third-party license is missing: {apache_license_path}"
+        )
+    entries.extend(
+        (
+            (
+                "Khronos headers embedded in ANGLE",
+                "https://www.khronos.org/registry/",
+                "MIT",
+                _ANGLE_KHRONOS_MIT_LICENSE,
+            ),
+            (
+                "Khronos EGL and OpenGL ES platform headers embedded in ANGLE",
+                "https://www.khronos.org/registry/",
+                "Apache-2.0",
+                "Copyright 2007-2020 The Khronos Group Inc.\n"
+                "Copyright 2013-2020 The Khronos Group Inc.\n"
+                "Copyright 2017-2020 The Khronos Group Inc.\n\n"
+                + apache_license_path.read_text(encoding="utf-8"),
+            ),
+        )
+    )
 
     supplemental = (
         (

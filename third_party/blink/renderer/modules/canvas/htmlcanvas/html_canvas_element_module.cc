@@ -10,6 +10,7 @@
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 
 namespace blink {
 
@@ -47,7 +48,10 @@ OffscreenCanvas* HTMLCanvasElementModule::transferControlToOffscreen(ScriptState
     if (canvas.IsOffscreenCanvasRegistered()) {
         exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "Cannot transfer control from a canvas for more than one time.");
     } else {
-        canvas.CreateLayer();
+        // CPU resource compositing paints the owned placeholder image directly;
+        // it does not create a Viz surface/EmbeddedFrameSink connection.
+        if (SharedGpuContext::IsGpuCompositingEnabled())
+            canvas.CreateLayer();
         offscreen_canvas = TransferControlToOffscreenInternal(script_state, canvas, exception_state);
     }
 

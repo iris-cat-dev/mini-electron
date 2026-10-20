@@ -8,6 +8,7 @@ import("sources/engine.gni")
 import("sources/generated.gni")
 import("sources/third_party.gni")
 import("sources/node.gni")
+import("sources/webgl.gni")
 
 declare_args() {
   mini_electron_nghttp2_root = "//.build-tools/nghttp2-1.61.0-darwin-arm64"
@@ -295,6 +296,7 @@ static_library("mini_electron_generated_core") {
 
 static_library("mini_electron_generated_bindings") {
   sources = mini_electron_generated_bindings_sources
+  sources += mini_electron_webgl_binding_sources
   configs += [ ":mini_electron_engine_config" ]
 }
 
@@ -331,6 +333,41 @@ source_set("mini_electron_metal_compositor") {
     "Metal.framework",
     "QuartzCore.framework",
   ]
+}
+
+source_set("mini_electron_webgl") {
+  sources = [
+    "//runtime/engine/renderer/webgl_context_provider.cc",
+    "//gpu/command_buffer/client/gles2_interface.cc",
+    "//gpu/command_buffer/client/gl_helper.cc",
+    "//gpu/command_buffer/client/gl_helper_scaling.cc",
+    "//gpu/command_buffer/client/client_shared_image.cc",
+    "//gpu/command_buffer/client/shared_image_interface.cc",
+    "//gpu/command_buffer/common/gpu_memory_buffer_support.cc",
+    "//gpu/command_buffer/common/shared_image_usage.cc",
+    "//gpu/command_buffer/common/shared_image_capabilities.cc",
+    "//gpu/command_buffer/common/shared_image_trace_utils.cc",
+    "//gpu/command_buffer/common/gles2_cmd_copy_texture_chromium_utils.cc",
+    "//gpu/command_buffer/common/gles2_cmd_utils.cc",
+    "//gpu/config/gpu_finch_features.cc",
+    "//media/renderers/paint_canvas_video_renderer_cpu.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  include_dirs = [ "//third_party/angle/include" ]
+  deps = [
+    ":mini_electron_webgl_memory",
+    "//third_party/angle:libEGL_static",
+  ]
+}
+
+source_set("mini_electron_webgl_memory") {
+  sources = [
+    "//gpu/ipc/common/gpu_memory_buffer_support.cc",
+    "//gpu/ipc/common/gpu_memory_buffer_impl.cc",
+    "//gpu/ipc/common/gpu_memory_buffer_impl_shared_memory.cc",
+    "//gpu/ipc/common/gpu_memory_buffer_impl_io_surface.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
 }
 
 static_library("mini_electron_harfbuzz") {
@@ -393,6 +430,7 @@ static_library("mini_electron_libxslt") {
 static_library("mini_electron_blink") {
   sources = mini_electron_blink_sources
   sources += [ "//runtime/engine/common/devtools_disabled.cc" ]
+  sources += mini_electron_webgl_blink_sources
   configs += [ ":mini_electron_engine_config" ]
 }
 
@@ -415,7 +453,10 @@ static_library("mini_electron_content") {
     "//platform/macos/sandbox_support_mac.mm",
   ]
   configs += [ ":mini_electron_engine_config" ]
-  deps = [ ":mini_electron_net_data_url" ]
+  deps = [
+    ":mini_electron_net_data_url",
+    ":mini_electron_webgl",
+  ]
 }
 
 source_set("mini_electron_blink_mac") {

@@ -5,6 +5,7 @@
 #include "runtime/engine/renderer/plugin_registry_impl.h"
 #include "runtime/engine/renderer/web_dedicated_worker_host_factory_client_impl.h"
 #include "runtime/engine/renderer/v8_value_converter_impl.h"
+#include "runtime/engine/renderer/webgl_context_provider.h"
 #include "runtime/engine/browser/time_zone_monitor_impl.h"
 #include "runtime/engine/browser/dom_storage_provider_impl.h"
 #include "runtime/engine/resources/res.h"
@@ -32,6 +33,12 @@
 
 
 namespace content {
+
+std::unique_ptr<blink::WebGraphicsContext3DProvider> RendererBlinkPlatformImpl::CreateOffscreenGraphicsContext3DProvider(
+    const ContextAttributes& attributes, const blink::WebURL&, GraphicsInfo* info)
+{
+    return CreateWebGLContextProvider(attributes, info);
+}
 
 class MimeRegistryImpl : public ::blink::mojom::blink::MimeRegistry {
 public:

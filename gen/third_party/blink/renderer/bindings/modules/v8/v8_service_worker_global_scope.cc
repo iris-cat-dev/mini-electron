@@ -2991,149 +2991,149 @@ void URLSearchParamsExposedConstructCallback(v8::Local<v8::Name> v8_property_nam
 //     bindings::V8SetReturnValue(info, V8WGSLLanguageFeatures::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void WebGL2RenderingContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGL2RenderingContext_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGL2RenderingContext");
+void WebGL2RenderingContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGL2RenderingContext_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGL2RenderingContext");
+
+    bindings::V8SetReturnValue(info, V8WebGL2RenderingContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGL2RenderingContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLActiveInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLActiveInfo_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLActiveInfo");
+
+    bindings::V8SetReturnValue(info, V8WebGLActiveInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLActiveInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLActiveInfo_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLActiveInfo");
+void WebGLBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLBuffer_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLBuffer");
+
+    bindings::V8SetReturnValue(info, V8WebGLBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLActiveInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLContextEventExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLContextEvent_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLContextEvent");
+
+    bindings::V8SetReturnValue(info, V8WebGLContextEvent::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLBuffer_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLBuffer");
+void WebGLFramebufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLFramebuffer_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLFramebuffer");
+
+    bindings::V8SetReturnValue(info, V8WebGLFramebuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLObjectExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLObject_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLObject");
+
+    bindings::V8SetReturnValue(info, V8WebGLObject::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLContextEventExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLContextEvent_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLContextEvent");
+void WebGLProgramExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLProgram_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLProgram");
+
+    bindings::V8SetReturnValue(info, V8WebGLProgram::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLContextEvent::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLQueryExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLQuery_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLQuery");
+
+    bindings::V8SetReturnValue(info, V8WebGLQuery::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLFramebufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLFramebuffer_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLFramebuffer");
+void WebGLRenderbufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLRenderbuffer_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLRenderbuffer");
+
+    bindings::V8SetReturnValue(info, V8WebGLRenderbuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLFramebuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLRenderingContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLRenderingContext_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLRenderingContext");
+
+    bindings::V8SetReturnValue(info, V8WebGLRenderingContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLObjectExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLObject_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLObject");
+void WebGLSamplerExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLSampler_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLSampler");
+
+    bindings::V8SetReturnValue(info, V8WebGLSampler::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLObject::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLShaderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLShader_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLShader");
+
+    bindings::V8SetReturnValue(info, V8WebGLShader::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLProgramExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLProgram_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLProgram");
+void WebGLShaderPrecisionFormatExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLShaderPrecisionFormat_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLShaderPrecisionFormat");
+
+    bindings::V8SetReturnValue(info, V8WebGLShaderPrecisionFormat::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLProgram::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLSyncExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLSync_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLSync");
+
+    bindings::V8SetReturnValue(info, V8WebGLSync::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLQueryExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLQuery_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLQuery");
+void WebGLTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLTexture_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLTexture");
+
+    bindings::V8SetReturnValue(info, V8WebGLTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLQuery::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLTransformFeedbackExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLTransformFeedback_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLTransformFeedback");
+
+    bindings::V8SetReturnValue(info, V8WebGLTransformFeedback::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-// void WebGLRenderbufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLRenderbuffer_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLRenderbuffer");
+void WebGLUniformLocationExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLUniformLocation_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLUniformLocation");
+
+    bindings::V8SetReturnValue(info, V8WebGLUniformLocation::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
-//     bindings::V8SetReturnValue(info, V8WebGLRenderbuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLRenderingContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLRenderingContext_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLRenderingContext");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLRenderingContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLSamplerExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLSampler_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLSampler");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLSampler::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLShaderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLShader_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLShader");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLShader::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLShaderPrecisionFormatExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLShaderPrecisionFormat_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLShaderPrecisionFormat");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLShaderPrecisionFormat::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLSyncExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLSync_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLSync");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLSync::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLTexture_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLTexture");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLTransformFeedbackExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLTransformFeedback_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLTransformFeedback");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLTransformFeedback::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLUniformLocationExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLUniformLocation_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLUniformLocation");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLUniformLocation::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void WebGLVertexArrayObjectExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLVertexArrayObject_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLVertexArrayObject");
-// 
-//     bindings::V8SetReturnValue(info, V8WebGLVertexArrayObject::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WebGLVertexArrayObjectExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WebGLVertexArrayObject_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WebGLVertexArrayObject");
+
+    bindings::V8SetReturnValue(info, V8WebGLVertexArrayObject::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 
 void WebSocketExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
@@ -3475,24 +3475,24 @@ void V8ServiceWorkerGlobalScope::InstallUnconditionalProperties(v8::Isolate* iso
             { "URLPattern", URLPatternExposedConstructCallback },
             { "URLSearchParams", URLSearchParamsExposedConstructCallback },
 //             { "UserActivation", UserActivationExposedConstructCallback },
-//             { "WebGL2RenderingContext", WebGL2RenderingContextExposedConstructCallback },
-//             { "WebGLActiveInfo", WebGLActiveInfoExposedConstructCallback },
-//             { "WebGLBuffer", WebGLBufferExposedConstructCallback },
-//             { "WebGLContextEvent", WebGLContextEventExposedConstructCallback },
-//             { "WebGLFramebuffer", WebGLFramebufferExposedConstructCallback },
-//             { "WebGLObject", WebGLObjectExposedConstructCallback },
-//             { "WebGLProgram", WebGLProgramExposedConstructCallback },
-//             { "WebGLQuery", WebGLQueryExposedConstructCallback },
-//             { "WebGLRenderbuffer", WebGLRenderbufferExposedConstructCallback },
-//             { "WebGLRenderingContext", WebGLRenderingContextExposedConstructCallback },
-//             { "WebGLSampler", WebGLSamplerExposedConstructCallback },
-//             { "WebGLShader", WebGLShaderExposedConstructCallback },
-//             { "WebGLShaderPrecisionFormat", WebGLShaderPrecisionFormatExposedConstructCallback },
-//             { "WebGLSync", WebGLSyncExposedConstructCallback },
-//             { "WebGLTexture", WebGLTextureExposedConstructCallback },
-//             { "WebGLTransformFeedback", WebGLTransformFeedbackExposedConstructCallback },
-//             { "WebGLUniformLocation", WebGLUniformLocationExposedConstructCallback },
-//             { "WebGLVertexArrayObject", WebGLVertexArrayObjectExposedConstructCallback },
+            { "WebGL2RenderingContext", WebGL2RenderingContextExposedConstructCallback },
+            { "WebGLActiveInfo", WebGLActiveInfoExposedConstructCallback },
+            { "WebGLBuffer", WebGLBufferExposedConstructCallback },
+            { "WebGLContextEvent", WebGLContextEventExposedConstructCallback },
+            { "WebGLFramebuffer", WebGLFramebufferExposedConstructCallback },
+            { "WebGLObject", WebGLObjectExposedConstructCallback },
+            { "WebGLProgram", WebGLProgramExposedConstructCallback },
+            { "WebGLQuery", WebGLQueryExposedConstructCallback },
+            { "WebGLRenderbuffer", WebGLRenderbufferExposedConstructCallback },
+            { "WebGLRenderingContext", WebGLRenderingContextExposedConstructCallback },
+            { "WebGLSampler", WebGLSamplerExposedConstructCallback },
+            { "WebGLShader", WebGLShaderExposedConstructCallback },
+            { "WebGLShaderPrecisionFormat", WebGLShaderPrecisionFormatExposedConstructCallback },
+            { "WebGLSync", WebGLSyncExposedConstructCallback },
+            { "WebGLTexture", WebGLTextureExposedConstructCallback },
+            { "WebGLTransformFeedback", WebGLTransformFeedbackExposedConstructCallback },
+            { "WebGLUniformLocation", WebGLUniformLocationExposedConstructCallback },
+            { "WebGLVertexArrayObject", WebGLVertexArrayObjectExposedConstructCallback },
             { "WebSocket", WebSocketExposedConstructCallback },
             { "WindowClient", WindowClientExposedConstructCallback },
             { "WorkerGlobalScope", WorkerGlobalScopeExposedConstructCallback },
