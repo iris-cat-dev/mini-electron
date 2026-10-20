@@ -3413,6 +3413,12 @@
     <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl.cc" />
     <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl_shared_memory.cc" />
     <ClCompile Include="..\..\..\gpu\ipc\common\gpu_memory_buffer_impl_dxgi.cc" />
+    <ClCompile Include="..\..\..\ui\gfx\win\d3d_shared_fence.cc" />
+    <ClCompile Include="..\..\..\gpu\command_buffer\client\gpu_memory_buffer_manager.cc" />
+    <ClCompile Include="..\..\..\media\base\video_frame_pool.cc" />
+    <ClCompile Include="..\..\..\ui\gl\gl_enums.cc" />
+    <ClCompile Include="..\..\..\ui\gl\gl_features.cc" />
+    <ClCompile Include="..\..\..\ui\gl\gl_switches.cc" />
     <ClCompile Include="..\..\..\components\viz\common\resources\shared_image_format_utils.cc" />
     <ClCompile Include="..\..\..\gpu\command_buffer\common\gles2_cmd_utils.cc" />
     <ClCompile Include="..\..\..\media\renderers\paint_canvas_video_renderer_cpu.cc" />

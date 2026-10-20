@@ -43,54 +43,7 @@
 #include "ui/gfx/mac/io_surface.h"
 #endif
 
-scoped_refptr<media::VideoFrame> media::VideoFramePool::CreateFrame(media::VideoPixelFormat, gfx::Size const&, gfx::Rect const&, gfx::Size const&, base::TimeDelta)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
 
-std::unique_ptr<gpu::ClientSharedImage::ScopedMapping> gpu::ClientSharedImage::Map(void)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-void gpu::ClientSharedImage::MapAsync(base::OnceCallback<void(std::unique_ptr<gpu::ClientSharedImage::ScopedMapping>)> result_cb)
-{
-    *(int*)1 = 1;
-}
-
-base::span<uint8_t> gpu::ClientSharedImage::ScopedMapping::GetMemoryForPlane(const uint32_t plane_index)
-{
-    *(int*)1 = 1;
-    return base::span<uint8_t>();
-}
-
-size_t gpu::ClientSharedImage::ScopedMapping::Stride(const uint32_t)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-gfx::Size gpu::ClientSharedImage::ScopedMapping::Size(void)
-{
-    *(int*)1 = 1;
-    return gfx::Size();
-}
-
-gpu::ClientSharedImage::~ClientSharedImage(void)
-{
-}
-
-gpu::ClientSharedImage::ScopedMapping::~ScopedMapping(void)
-{
-    *(int*)1 = 1;
-}
-
-gpu::SharedImageInterfaceHolder::~SharedImageInterfaceHolder(void)
-{
-    *(int*)1 = 1;
-}
 
 namespace media {
 

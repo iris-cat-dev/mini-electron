@@ -53,16 +53,6 @@
 //#include "ui/gfx/buffer_format_util.h"
 #include "ui/gfx/color_space.h"
 
-base::trace_event::MemoryAllocatorDumpGuid gpu::GetSharedImageGUIDForTracing(const gpu::Mailbox&)
-{
-    *(int*)1 = 1;
-    return base::trace_event::MemoryAllocatorDumpGuid();
-}
-
-gpu::SharedImageInterface::SwapChainSharedImages::~SwapChainSharedImages(void)
-{
-    *(int*)1 = 1;
-}
 
 namespace blink {
 

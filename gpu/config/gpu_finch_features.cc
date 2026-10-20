@@ -131,8 +131,6 @@ BASE_FEATURE(kCanvasOopRasterization, "CanvasOopRasterization",
 // Enables the use of MSAA in skia on Ice Lake and later intel architectures.
 BASE_FEATURE(kEnableMSAAOnNewIntelGPUs, "EnableMSAAOnNewIntelGPUs", base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the use of ANGLE validation for non-WebGL contexts.
-BASE_FEATURE(kDefaultEnableANGLEValidation, "DefaultEnableANGLEValidation", base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables canvas to free its resources by default when it's running in
 // the background.
@@ -415,16 +413,6 @@ bool NeedThreadSafeAndroidMedia()
     return IsDrDcEnabled() || IsUsingThreadSafeMediaForWebView();
 }
 
-bool IsANGLEValidationEnabled()
-{
-#if BUILDFLAG(IS_ANDROID)
-    // Skia depends GL validation sometime. Without it, crashes happen in ANGLE,
-    // so we have to enable it. See crbug.com/1268568
-    return UsePassthroughCommandDecoder();
-#else
-    return base::FeatureList::IsEnabled(kDefaultEnableANGLEValidation) && UsePassthroughCommandDecoder();
-#endif
-}
 
 #if BUILDFLAG(IS_ANDROID)
 bool IsAImageReaderEnabled()

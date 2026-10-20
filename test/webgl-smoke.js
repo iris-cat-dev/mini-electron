@@ -429,7 +429,8 @@ app.whenReady().then(async () => {
   window.webContents.once('unresponsive', () => finish(new Error('WebGL renderer became unresponsive')));
   await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(
     '<!doctype html><title>WebGL smoke</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#204060}canvas{image-rendering:pixelated}</style>'));
-  if (typeof window.webContents.prepareToShow === 'function') await window.webContents.prepareToShow();
+  window.setContentSize(560, 260);
+  if (native) await window.webContents.prepareToShow();
   const renderer = await window.webContents.executeJavaScript(`(${exerciseWebGL.toString()})()`);
   assert.ok(renderer.viewport.width >= 520 && renderer.viewport.height >= 240, 'Visible page must fit smoke canvases');
   const dataURL = renderer.dataURL;

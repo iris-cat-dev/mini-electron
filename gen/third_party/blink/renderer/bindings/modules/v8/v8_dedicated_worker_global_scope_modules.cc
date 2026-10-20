@@ -2644,13 +2644,13 @@ void URLSearchParamsExposedConstructCallback(v8::Local<v8::Name> v8_property_nam
 //     bindings::V8SetReturnValue(info, V8UserActivation::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void VideoColorSpaceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DedicatedWorkerGlobalScope_VideoColorSpace_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("DedicatedWorkerGlobalScope.VideoColorSpace");
-// 
-//     bindings::V8SetReturnValue(info, V8VideoColorSpace::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void VideoColorSpaceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DedicatedWorkerGlobalScope_VideoColorSpace_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("DedicatedWorkerGlobalScope.VideoColorSpace");
+
+    bindings::V8SetReturnValue(info, V8VideoColorSpace::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 // void VideoDecoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 // {
@@ -2676,13 +2676,13 @@ void URLSearchParamsExposedConstructCallback(v8::Local<v8::Name> v8_property_nam
 //     bindings::V8SetReturnValue(info, V8VideoEncoderBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void VideoFrameExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DedicatedWorkerGlobalScope_VideoFrame_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("DedicatedWorkerGlobalScope.VideoFrame");
-// 
-//     bindings::V8SetReturnValue(info, V8VideoFrame::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void VideoFrameExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DedicatedWorkerGlobalScope_VideoFrame_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("DedicatedWorkerGlobalScope.VideoFrame");
+
+    bindings::V8SetReturnValue(info, V8VideoFrame::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 void WGSLLanguageFeaturesExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
@@ -3475,8 +3475,8 @@ void V8DedicatedWorkerGlobalScope::Impl::InstallUnconditionalProperties(v8::Isol
             { "URLPattern", URLPatternExposedConstructCallback },
             { "URLSearchParams", URLSearchParamsExposedConstructCallback },
 //             { "UserActivation", UserActivationExposedConstructCallback },
-//             { "VideoColorSpace", VideoColorSpaceExposedConstructCallback },
-//             { "VideoFrame", VideoFrameExposedConstructCallback },
+            { "VideoColorSpace", VideoColorSpaceExposedConstructCallback },
+            { "VideoFrame", VideoFrameExposedConstructCallback },
             { "WebGL2RenderingContext", WebGL2RenderingContextExposedConstructCallback },
             { "WebGLActiveInfo", WebGLActiveInfoExposedConstructCallback },
             { "WebGLBuffer", WebGLBufferExposedConstructCallback },

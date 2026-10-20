@@ -952,11 +952,11 @@
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_usb_isochronous_out_transfer_packet.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_usb_isochronous_out_transfer_result.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_usb_out_transfer_result.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_video_color_space.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_video_color_space.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_video_decoder.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_video_encoder.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_video_encoder_buffer.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_video_frame.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_video_frame.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_video_playback_quality.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_video_track_generator.h"
 // #include "third_party/blink/renderer/bindings/modules/v8/v8_virtual_keyboard.h"
@@ -14425,13 +14425,13 @@ void UserActivationExposedConstructCallback(v8::Local<v8::Name> v8_property_name
 //     bindings::V8SetReturnValue(info, V8ValidityState::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void VideoColorSpaceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DOMWindow_VideoColorSpace_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("Window.VideoColorSpace");
-// 
-//     bindings::V8SetReturnValue(info, V8VideoColorSpace::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void VideoColorSpaceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DOMWindow_VideoColorSpace_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("Window.VideoColorSpace");
+
+    bindings::V8SetReturnValue(info, V8VideoColorSpace::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 // void VideoDecoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 // {
@@ -14457,13 +14457,13 @@ void UserActivationExposedConstructCallback(v8::Local<v8::Name> v8_property_name
 //     bindings::V8SetReturnValue(info, V8VideoEncoderBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void VideoFrameExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DOMWindow_VideoFrame_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("Window.VideoFrame");
-// 
-//     bindings::V8SetReturnValue(info, V8VideoFrame::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void VideoFrameExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DOMWindow_VideoFrame_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("Window.VideoFrame");
+
+    bindings::V8SetReturnValue(info, V8VideoFrame::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 // void VideoPlaybackQualityExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 // {
@@ -20127,8 +20127,8 @@ void V8Window::Impl::InstallUnconditionalProperties(v8::Isolate* isolate, const 
             { "UserActivation", UserActivationExposedConstructCallback },
 //             { "VTTCue", VTTCueExposedConstructCallback },
 //             { "ValidityState", ValidityStateExposedConstructCallback },
-//             { "VideoColorSpace", VideoColorSpaceExposedConstructCallback },
-//             { "VideoFrame", VideoFrameExposedConstructCallback },
+            { "VideoColorSpace", VideoColorSpaceExposedConstructCallback },
+            { "VideoFrame", VideoFrameExposedConstructCallback },
 //             { "VideoPlaybackQuality", VideoPlaybackQualityExposedConstructCallback },
             { "ViewTransition", ViewTransitionExposedConstructCallback },
             //{ "VirtualKeyboardGeometryChangeEvent", VirtualKeyboardGeometryChangeEventExposedConstructCallback },
@@ -23110,8 +23110,8 @@ base::span<const intptr_t> GetRefTableOfV8Window()
         reinterpret_cast<intptr_t>(UserActivationExposedConstructCallback),
 //         reinterpret_cast<intptr_t>(VTTCueExposedConstructCallback),
 //         reinterpret_cast<intptr_t>(ValidityStateExposedConstructCallback),
-//         reinterpret_cast<intptr_t>(VideoColorSpaceExposedConstructCallback),
-//         reinterpret_cast<intptr_t>(VideoFrameExposedConstructCallback),
+        reinterpret_cast<intptr_t>(VideoColorSpaceExposedConstructCallback),
+        reinterpret_cast<intptr_t>(VideoFrameExposedConstructCallback),
 //         reinterpret_cast<intptr_t>(VideoPlaybackQualityExposedConstructCallback),
         reinterpret_cast<intptr_t>(ViewTransitionExposedConstructCallback),
         //reinterpret_cast<intptr_t>(VirtualKeyboardGeometryChangeEventExposedConstructCallback),

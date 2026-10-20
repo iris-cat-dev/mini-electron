@@ -207,15 +207,6 @@ void cc::OneCopyRasterBufferProvider::Flush(void)
     *(int*)1 = 1;
 }
 
-void __thiscall gpu::SharedImageInterface::Release() const
-{
-    *(int*)1 = 1;
-}
-
-gpu::SharedImageInterface::SharedImageMapping::~SharedImageMapping()
-{
-    *(int*)1 = 1;
-}
 
 namespace cc {
 
@@ -241,57 +232,6 @@ OneCopyRasterBufferProvider::OneCopyRasterBufferProvider(scoped_refptr<base::Seq
 }
 }
 
-namespace viz {
-SkColorType ToClosestSkColorType(bool gpu_compositing, SharedImageFormat format)
-{
-    CHECK(format.is_single_plane());
-
-    if (!gpu_compositing) {
-        // TODO(crbug.com/41472025): Remove this assumption and have clients tag
-        // resources with the correct format.
-        // In software compositing we lazily use RGBA_8888 throughout the system,
-        // but actual pixel encodings are the native skia bit ordering, which can be
-        // RGBA or BGRA.
-        return kN32_SkColorType;
-    }
-
-    if (format == SinglePlaneFormat::kRGBA_4444) {
-        return kARGB_4444_SkColorType;
-    } else if (format == SinglePlaneFormat::kRGBA_8888) {
-        return kRGBA_8888_SkColorType;
-    } else if (format == SinglePlaneFormat::kBGRA_8888) {
-        return kBGRA_8888_SkColorType;
-    } else if (format == SinglePlaneFormat::kALPHA_8) {
-        return kAlpha_8_SkColorType;
-    } else if (format == SinglePlaneFormat::kBGR_565 || format == SinglePlaneFormat::kRGB_565) {
-        return kRGB_565_SkColorType;
-    } else if (format == SinglePlaneFormat::kLUMINANCE_8) {
-        return kGray_8_SkColorType;
-    } else if (format == SinglePlaneFormat::kRGBX_8888 || format == SinglePlaneFormat::kBGRX_8888 || format == SinglePlaneFormat::kETC1) {
-        return kRGB_888x_SkColorType;
-    } else if (format == SinglePlaneFormat::kRGBA_1010102 ||
-        // This intentionally returns kRGBA_1010102_SkColorType for
-        // BGRA_1010102 even though kBGRA_1010102_SkColorType exists. It
-        // should only be used on macOS (outside of tests).
-        format == SinglePlaneFormat::kBGRA_1010102) {
-        return kRGBA_1010102_SkColorType;
-
-    } else if (format == SinglePlaneFormat::kR_8) {
-        return kAlpha_8_SkColorType;
-    } else if (format == SinglePlaneFormat::kR_16) {
-        return kA16_unorm_SkColorType;
-    } else if (format == SinglePlaneFormat::kRG_1616) {
-        return kR16G16_unorm_SkColorType;
-    } else if (format == SinglePlaneFormat::kLUMINANCE_F16 || format == SinglePlaneFormat::kR_F16) {
-        return kA16_float_SkColorType;
-    } else if (format == SinglePlaneFormat::kRG_88) {
-        return kR8G8_unorm_SkColorType;
-    } else if (format == SinglePlaneFormat::kRGBA_F16) {
-        return kRGBA_F16_SkColorType;
-    }
-    NOTREACHED();
-}
-} //viz
 
 namespace cc {
 namespace {

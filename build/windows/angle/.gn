@@ -11,6 +11,11 @@ default_args = {
   angle_enable_null = false
   angle_enable_d3d9 = false
   angle_enable_d3d11 = true
+  # D3D11 shares one immediate context/state cache across independent contexts.
+  # Serialize GL entrypoints and invalidate state when Blink/Worker threads
+  # alternate, not only when a thread calls eglMakeCurrent.
+  angle_enable_share_context_lock = true
+  angle_force_context_check_every_call = true
   angle_enable_abseil = false
   angle_has_rapidjson = false
   angle_has_histograms = false

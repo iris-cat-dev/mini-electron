@@ -445,13 +445,17 @@ source-build support and limits.
 
 ### WebGL resources
 
-WebGL1/2 draw with native ANGLE Metal contexts, independently of the cc
-`gpu_compositing=false` policy. DrawingBuffer owns local GL textures, resolves
-multisampling and reads actual pixels into premultiplied software resources.
-Viz consumes those resources through the existing legacy shared-bitmap path.
-The Metal output compositor can upload them again; this is not a shared-texture
-or zero-copy path. Selecting CPU composition with
-`MINI_ELECTRON_DISABLE_GPU=1` does not disable ANGLE WebGL.
+WebGL1/2 draw with native ANGLE Metal (macOS) or D3D11 (Windows) contexts,
+independently of the cc `gpu_compositing=false` policy. DrawingBuffer owns
+local GL textures, resolves multisampling and reads actual pixels into
+premultiplied software resources. Implicit multisample resolve enables its
+native extension before allocating storage. Windows ANGLE serializes GL calls
+and invalidates native state when Blink and Worker contexts alternate, because
+D3D11 shares one immediate context/state cache per display.
+Viz consumes these resources through the existing legacy shared-bitmap path.
+The Metal/D3D12 output compositor can upload them again; this is not a
+shared-texture or zero-copy path. Selecting CPU composition does not disable
+ANGLE WebGL.
 
 Image uploads and snapshots use owned CPU pixels rather than unavailable
 SharedImage/mailbox access. Worker OffscreenCanvas publishes images to its
@@ -461,15 +465,18 @@ CPU video conversion does not enable hardware decoding or GPU-frame imports.
 `test/webgl-smoke.js` exercises real shaders and readback, default depth/stencil
 and multisampled framebuffer paths, texture uploads, WebGL2 instancing/FBO
 operations, read-buffer state preservation, alpha, resize, ImageBitmap
-ownership, context restoration and worker placeholder updates. On macOS it
-checks independent Core Graphics PNG decoding and the actual owned
-WindowServer window in two states. It is a correctness check, not a WebGL
-performance benchmark or a Khronos conformance claim.
+ownership, context restoration and worker placeholder updates. Both Windows
+output-compositor modes passed on Windows 10 x64 build 19045 with an RTX 3090,
+including initial/subsequent `capturePage()` pixel checks. On macOS it checks
+independent Core Graphics PNG decoding and the actual owned WindowServer
+window in two states. It is a correctness check, not physical Windows scanout,
+a WebGL performance benchmark or a Khronos conformance claim.
 
 ### WebGPU resources
 
 Renderer-local Dawn wire/native channels execute WGSL render/compute work on
-Metal. This does not change cc's `gpu_compositing=false` resource contract.
+Metal (macOS) or D3D12 (Windows). This does not change cc's
+`gpu_compositing=false` resource contract.
 Canvas textures remain native GPU textures; a validated copy to mapped staging
 buffers supplies owned Skia images and shared software bitmaps for snapshots
 and presentation. The output compositor may upload those pixels again.
@@ -480,14 +487,20 @@ no permanent idle GPU polling loop. Opaque snapshots modify only the owned
 CPU image's alpha; snapshot-only operations do not expire the live texture.
 CPU output composition still permits native WebGPU execution.
 
-`test/webgpu-smoke.js` passed with both Metal and CPU output composition on
-Apple M4 Pro. Checks cover actual composed pixels, WGSL/compute, mapping,
-error scopes, OffscreenCanvas ownership, snapshot noninterference, Worker
-callbacks and device loss. The packaged OMP Desktop 0.5.2 application also
-rendered its unchanged WebGPU/WASM homepage: two real canvas samples had
-243,348/243,232 colored pixels and different sampled hashes
-(71,954,239/812,100,898), with reduced-motion off and no captured renderer
-errors. A 2400×1600 `capturePage()` PNG showed the particle effect.
+The original rendering/snapshot cases in `test/webgpu-smoke.js` passed with
+both Metal and CPU output composition on Apple M4 Pro. The expanded smoke
+passed with default and CPU output composition on Windows 10 x64 build 19045
+with an NVIDIA RTX 3090, using native D3D12 WebGPU in both modes. Checks cover
+actual composed pixels, WGSL/compute, mapping, error scopes, OffscreenCanvas
+ownership, snapshot noninterference, Worker callbacks and device loss.
+Windows checks additionally cover CPU VideoFrame RGB/YUV conversion,
+cropped/strided copies, alpha preservation and Worker VideoFrame lifecycle;
+the compatibility changes have not been rerun on macOS.
+The packaged macOS OMP Desktop 0.5.2 application also rendered its unchanged
+WebGPU/WASM homepage: two real canvas samples had 243,348/243,232 colored
+pixels and different sampled hashes (71,954,239/812,100,898), with
+reduced-motion off and no captured renderer errors. A 2400×1600 `capturePage()`
+PNG showed the particle effect.
 This is rendering/animation proof, not physical WindowServer capture,
 scanout/FPS, throughput, conformance or energy measurement.
 

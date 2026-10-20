@@ -139,6 +139,26 @@ async function exercise() {
   ensure(detachedError instanceof DOMException && detachedError.name === 'InvalidStateError',
     'Detached ImageData produces InvalidStateError instead of terminating renderer');
 
+  const rgbaFrame = new VideoFrame(Uint8Array.from([
+    255, 0, 0, 255, 128, 64, 32, 128,
+    0, 0, 255, 255, 0, 255, 0, 255,
+  ]), { format: 'RGBA', codedWidth: 2, codedHeight: 2, timestamp: 0 });
+  const rgbCopy = new Uint8Array(20).fill(90);
+  await rgbaFrame.copyTo(rgbCopy, { format: 'BGRA', rect: { x: 1, y: 0, width: 1, height: 2 },
+    layout: [{ offset: 4, stride: 8 }], colorSpace: 'srgb' });
+  equal([...rgbCopy], [90, 90, 90, 90, 32, 64, 128, 128, 90, 90, 90, 90, 0, 255, 0, 255, 90, 90, 90, 90],
+    'CPU VideoFrame RGB copy preserves crop, channel order, unpremultiplied alpha and destination padding');
+  rgbaFrame.close();
+  const yuvFrame = new VideoFrame(Uint8Array.from([16, 16, 235, 235, 128, 128]),
+    { format: 'I420', codedWidth: 2, codedHeight: 2, timestamp: 0,
+      colorSpace: { primaries: 'bt709', transfer: 'bt709', matrix: 'bt709', fullRange: false } });
+  const yuvCopy = new Uint8Array(16);
+  await yuvFrame.copyTo(yuvCopy, { format: 'RGBA' });
+  near([...yuvCopy], [0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255],
+    'CPU VideoFrame YUV-to-RGB conversion');
+  yuvFrame.close();
+  checks.push('CPU VideoFrame RGB/YUV conversion, cropped strided copies and alpha preservation');
+
   const offscreen = new OffscreenCanvas(8, 8), off = ensure(offscreen.getContext('webgpu'), 'Offscreen WebGPU');
   off.configure({ device, format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT });
   draw(off, null, [0, 1, 0, 1]);
@@ -174,6 +194,9 @@ async function exercise() {
   checks.push('Detached input rejection, snapshot-only texture lifetime and opaque snapshot noninterference');
 
   const workerURL = URL.createObjectURL(new Blob([`onmessage=async()=>{try{
+    const f=new VideoFrame(new Uint8Array([128,64,32,128]),{format:'RGBA',codedWidth:1,codedHeight:1,timestamp:0});
+    const rgb=new Uint8Array(4);await f.copyTo(rgb,{format:'BGRA'});f.close();
+    if(rgb.join(',')!=='32,64,128,128')throw Error('Worker CPU VideoFrame RGB copy');
     const a=await navigator.gpu.requestAdapter();if(!a)throw Error('No worker adapter');const d=await a.requestDevice();
     const b=d.createBuffer({size:4,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
     const s=d.createBuffer({size:4,mappedAtCreation:true,usage:GPUBufferUsage.COPY_SRC});new Uint32Array(s.getMappedRange())[0]=0x1234abcd;s.unmap();
@@ -191,7 +214,7 @@ async function exercise() {
   const disposableAdapter = ensure(await navigator.gpu.requestAdapter(), 'Adapter for separate device lifetime');
   const disposable = await disposableAdapter.requestDevice(); const lost = disposable.lost; disposable.destroy();
   equal((await lost).reason, 'destroyed', 'Real device destruction/loss callback');
-  checks.push('Dedicated Worker device/map lifecycle and device.lost delivery');
+  checks.push('Dedicated Worker GPU device/map and VideoFrame lifecycle, and device.lost delivery');
   window.updateWebGPU = async () => {
     opaque.canvas.width = 40; opaque.canvas.height = 24;
     draw(opaque.context, null, [0, 1, 0, 1]);
@@ -200,7 +223,9 @@ async function exercise() {
     equal(failures, [], 'No uncaptured errors');
   };
   equal(failures, [], 'No uncaptured errors');
-  return { checks, viewport: { width: innerWidth, height: innerHeight }, format };
+  return { checks, viewport: { width: innerWidth, height: innerHeight }, format,
+    adapter: { vendor: adapter.info.vendor, architecture: adapter.info.architecture,
+      device: adapter.info.device, description: adapter.info.description } };
 }
 app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
@@ -226,6 +251,7 @@ app.whenReady().then(async () => {
   window.webContents.on('render-process-gone', (_, details) => finish(new Error(JSON.stringify(details))));
   await window.loadURL(`http://127.0.0.1:${server.address().port}/`);
   report.renderer = await window.webContents.executeJavaScript(`(${exercise.toString()})()`);
+  report.compositor = await window.webContents._getCompositorInfo();
   await capture([[64, 128, 191, 255], [144, 32, 48, 255]], 'native WGSL rendering and premultiplied composition');
   await window.webContents.executeJavaScript('updateWebGPU()');
   await capture([[0, 255, 0, 255], [16, 32, 176, 255]], 'resize and subsequent GPU frame');

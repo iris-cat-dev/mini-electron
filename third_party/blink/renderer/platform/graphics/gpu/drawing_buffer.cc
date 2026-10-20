@@ -947,6 +947,11 @@ bool DrawingBuffer::Initialize(const gfx::Size& size, bool use_multisampling)
         }
         anti_aliasing_mode_ = webgl_preferences.anti_aliasing_mode;
     }
+    if (anti_aliasing_mode_ == kAntialiasingModeMSAAImplicitResolve
+        && !extensions_util_->EnsureExtensionEnabled("GL_EXT_multisampled_render_to_texture")) {
+        return false;
+    }
+
 
     sample_count_ = std::min(static_cast<int>(webgl_preferences.msaa_sample_count), max_sample_count);
     eqaa_storage_sample_count_ = webgl_preferences.eqaa_storage_sample_count;

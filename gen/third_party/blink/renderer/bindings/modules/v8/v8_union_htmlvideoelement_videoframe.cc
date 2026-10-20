@@ -21,25 +21,6 @@
 
 namespace blink {
 
-void VideoFrame::Trace(cppgc::Visitor*) const
-{
-    *(int*)1 = 1;
-}
-
-const WrapperTypeInfo V8VideoFrame::wrapper_type_info_{
-    gin::kEmbedderBlink,
-    /*V8VideoFrame::InstallInterfaceTemplate*/nullptr,
-    nullptr,
-    "VideoFrame",
-    nullptr,
-    V8VideoFrame::kThisTag,
-    V8VideoFrame::kMaxSubclassTag,
-    WrapperTypeInfo::kWrapperTypeObjectPrototype,
-    WrapperTypeInfo::kObjectClassId,
-    WrapperTypeInfo::kIdlInterface,
-    false,
-};
-const WrapperTypeInfo& VideoFrame::wrapper_type_info_ = V8VideoFrame::wrapper_type_info_;
 
 V8UnionHTMLVideoElementOrVideoFrame* V8UnionHTMLVideoElementOrVideoFrame::Create(
     v8::Isolate* isolate, v8::Local<v8::Value> v8_value, ExceptionState& exception_state)

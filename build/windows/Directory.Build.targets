@@ -9,7 +9,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">ANGLE_STATIC=1;GL_APICALL=;EGLAPI=;GL_API=;MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MiniElectronSourceRoot)third_party\dawn\include;$(MiniElectronSourceRoot)third_party\dawn\src;$(MiniElectronDawnRoot)\gen\include;$(MiniElectronDawnRoot)\gen\src;$(MiniElectronSourceRoot)third_party\angle\include;$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MiniElectronSourceRoot)third_party\dawn\include;$(MiniElectronSourceRoot)third_party\dawn\src;$(MiniElectronDawnRoot)\gen\include;$(MiniElectronDawnRoot)\gen\src;$(MiniElectronSourceRoot)third_party\angle\include;$(MiniElectronSourceRoot)third_party\libyuv\include;$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
