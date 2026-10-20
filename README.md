@@ -32,6 +32,27 @@ runtime `0.1.16`; the npm installer remains `0.1.12`.
 - Keeps macOS source builds compatible with the shared Windows horizontal-wheel
   routing by completing the POSIX Win32 message definitions.
 
+### Unreleased Windows idle and memory fixes
+
+- Root frames are submitted only for actual geometry/surface changes. BeginFrames
+  carrying only presentation feedback or acknowledgements no longer trigger
+  another full-window redraw.
+- Minimized/hidden windows and detached BrowserViews stop Blink/Viz rendering;
+  showing, restoring, and reattaching resumes it. Initial `show: false` windows
+  retain their existing first-paint/`ready-to-show` behavior.
+- Windows x64 renderer jobs use one quarter of physical RAM, bounded to 1–4 GiB,
+  instead of a fixed 1 GiB cap. Each renderer Blink/Worker isolate configures V8
+  to use at most half the enforced job budget, reserving native-memory headroom.
+  Concurrent workers still share the aggregate process limit. Host Node and
+  explicit single-process mode retain their previous heap policy.
+- `render-process-gone` preserves the real exit code and distinguishes OOM,
+  crashes, normal/abnormal exits, and IPC failures. Windows OOM status
+  `0xe0000008` is no longer reduced to an unexplained `process-exit`.
+
+The rebuilt Windows binary passed static/animated visibility transitions in GPU
+and software modes, native composition/restore/resize, and disposable renderer
+OOM verification. See [idle and memory verification](docs/RENDERING_PERFORMANCE.md#windows-idle-rendering-and-memory-budget-correction).
+
 ## npm distribution
 
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
@@ -1207,6 +1228,10 @@ the reply thread's final use.
 `WebContents.isDestroyed()` tracks actual object destruction, not renderer
 liveness. Renderer loss still emits `render-process-gone`; the owning native
 window remains registered until it is closed.
+The unreleased Windows source also supplies the actual unsigned native
+`exitCode` with renderer exits. Reasons include `oom`, `crashed`, `clean-exit`,
+and `abnormal-exit`; a transport failure while the child remains alive reports
+`ipc-failure` with its `error` detail instead of claiming the process exited.
 
 macOS builds pin [libcurl 8.23.0](https://curl.se/download.html) with WebSocket
 support and link it statically against the runtime's existing TLS library.

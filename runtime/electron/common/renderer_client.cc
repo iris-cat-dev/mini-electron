@@ -31,6 +31,8 @@ namespace {
 
 using renderer_protocol::MessageKind;
 using renderer_protocol::WireMessage;
+constexpr uint32_t kChromiumOutOfMemoryExitCode = 0xe0000008u;
+
 
 struct ClientState {
     std::mutex lock;
@@ -296,11 +298,16 @@ public:
         return Write({ MessageKind::kResponse, request_id, std::move(payload) });
     }
 
-    int GetProcessId() const override { return process_.process_id; }
+    int GetProcessId() const override
+    {
+        std::lock_guard<std::mutex> lock(process_lock_);
+        return process_.process_id;
+    }
 
     bool IsAlive() const override
     {
-        std::lock_guard<std::mutex> lock(state_->lock);
+        std::lock_guard<std::mutex> state_lock(state_->lock);
+        std::lock_guard<std::mutex> process_lock(process_lock_);
         return state_->alive && (in_process_ || IsRendererProcessAlive(process_));
     }
 
@@ -444,8 +451,11 @@ public:
         }
 
         Write({ MessageKind::kShutdown, 0, {} }, true);
-        if (!WaitForRendererProcess(&process_, 2000))
-            TerminateRendererProcess(&process_);
+        {
+            std::lock_guard<std::mutex> lock(process_lock_);
+            if (!WaitForRendererProcess(&process_, 2000))
+                TerminateRendererProcess(&process_);
+        }
         renderer_protocol::ClosePipe(process_.read_pipe);
         process_.read_pipe = renderer_protocol::kInvalidPipe;
         renderer_protocol::ClosePipe(process_.write_pipe);
@@ -454,7 +464,10 @@ public:
             reader_.join();
         // Outstanding replies were failed before shutdown so a queued response
         // cannot win the close race and deliver a stale success.
-        CloseRendererPlatformProcess(&process_);
+        {
+            std::lock_guard<std::mutex> lock(process_lock_);
+            CloseRendererPlatformProcess(&process_);
+        }
     }
 
 private:
@@ -528,16 +541,45 @@ private:
             report_crash = state->alive;
             state->alive = false;
         }
-        FailOutstanding(state, error.empty() ? "renderer crashed" : std::move(error));
-        if (report_crash) {
-            base::Value::Dict crash;
-            crash.Set("type", "crashed");
-            crash.Set("contentsId", state->contents_id);
-            base::Value::Dict payload;
-            payload.Set("reason", "process-exit");
-            crash.Set("payload", std::move(payload));
-            PostEvent(state, std::move(crash));
+        const std::string failure_detail =
+            error.empty() ? "renderer IPC closed" : error;
+        FailOutstanding(state, failure_detail);
+        if (!report_crash)
+            return;
+
+        // Pipe EOF commonly wins the race with process teardown. Briefly
+        // observe the owned process before deciding this was only an IPC
+        // transport failure; a renderer which remains alive is not reported as
+        // a synthetic process exit.
+        RendererProcessStatus status;
+        {
+            std::lock_guard<std::mutex> lock(process_lock_);
+            status = ObserveRendererProcess(&process_, 250);
         }
+        base::Value::Dict crash;
+        crash.Set("type", "crashed");
+        crash.Set("contentsId", state->contents_id);
+        base::Value::Dict payload;
+        if (status.state == RendererProcessState::kRunning) {
+            payload.Set("reason", "ipc-failure");
+            payload.Set("error", failure_detail);
+        } else {
+            payload.Set("exitCode", static_cast<double>(status.exit_code));
+            if (status.exit_code == kChromiumOutOfMemoryExitCode
+                || status.sandbox_memory_limit_exceeded) {
+                payload.Set("reason", "oom");
+                payload.Set("sandboxMemoryLimitExceeded",
+                    status.sandbox_memory_limit_exceeded);
+            } else if (status.exit_code == 0) {
+                payload.Set("reason", "clean-exit");
+            } else if (status.crashed) {
+                payload.Set("reason", "crashed");
+            } else {
+                payload.Set("reason", "abnormal-exit");
+            }
+        }
+        crash.Set("payload", std::move(payload));
+        PostEvent(state, std::move(crash));
     }
 
     static void DeliverMessage(const std::shared_ptr<ClientState>& state,
@@ -628,6 +670,7 @@ private:
     std::atomic<uint64_t> next_request_id_ { 1 };
     std::atomic<bool> closed_ { false };
     std::mutex write_lock_;
+    mutable std::mutex process_lock_;
 #if BUILDFLAG(IS_WIN)
     std::mutex control_write_lock_;
 #endif

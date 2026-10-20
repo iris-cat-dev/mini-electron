@@ -1684,6 +1684,19 @@ private:
             });
             Reply(request_id);
 #endif
+#if BUILDFLAG(IS_WIN)
+        } else if (method == "setVisibility") {
+            const std::optional<bool> visible = params.FindBool("visible");
+            if (!visible) {
+                Reply(request_id, {}, "invalid visibility");
+                return;
+            }
+            PostBlink([this, visible = *visible] {
+                if (content::WebViewHost* host = View())
+                    host->setVisibility(visible);
+            });
+            Reply(request_id);
+#endif
         } else if (method == "setFocus") {
             const bool focused = params.FindBool("focused").value_or(false);
             content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,

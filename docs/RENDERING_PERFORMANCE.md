@@ -403,6 +403,67 @@ Chrome comparison. No automated Windows Chrome comparison, mixed-refresh
 monitor movement, precision-touchpad hardware, idle wakeup/power, or
 physical-presentation measurement is claimed here.
 
+### Windows idle rendering and memory budget correction
+
+The installed Windows runtime was observed producing 4,306 GPU frames in
+29.98 seconds while OMP Desktop was minimized. An independent static `data:`
+page with no timers, rAF, or animations also produced about 143.9 frames/s.
+This was not unavoidable idle overhead or a chat/daemon workload.
+
+The custom root `VizClient` treated feedback-only BeginFrames as new drawing
+requests. Each full-damage root submission generated presentation feedback,
+which requested another BeginFrame even after `SetNeedsBeginFrame(false)`.
+Root submissions now atomically claim a pending geometry/surface revision;
+feedback/ACK/resource-only callbacks acknowledge no damage. Mojo calls remain
+outside the root lock so cached BeginFrame delivery cannot reenter it.
+
+Native hide/minimize and BrowserView attach/detach state now reach the Blink
+page/widget and Viz display. Hidden animation stops rather than merely losing
+its final HWND presentation. Initial hidden-window painting remains available
+for `ready-to-show`; restore keeps the retained pixels while new content resumes.
+
+`test/windows-idle-visibility-smoke.js` passed with D3D12 and with `--disable-gpu`.
+Static, paused-visible, minimized, hidden, and detached-view phases had zero
+new frames/imports and no active high-rate VSync observer. Visible/restored
+animations continued producing frames. The existing native compositor,
+normal/maximized restore, and repeated edge-resize smokes passed as well.
+
+The locally packaged Desktop 0.5.2 was also exercised with disposable user-data
+and daemon-home directories, with daemon management and the desktop pet disabled
+to avoid touching existing sessions. Its real welcome page produced zero new
+frames/imports during 12 seconds visible and six seconds minimized; minimization
+set `document.hidden`. A separate eight-second visible-idle renderer CPU sample
+had no additional user/kernel ticks. This is a renderer observation for that
+page, not a claim that the complete application always uses zero CPU.
+`desktop-fixed-native.png`, `desktop-probe.json`, and `desktop-observed.json`
+retain the native surface and measurements. A local NSIS installer and ZIP were
+generated under `out/windows-x64/OMP Desktop Idle Memory Fix/`; the existing
+installed application was not overwritten.
+
+A retained handle to the actual Desktop renderer captured an OOM exit
+`0xe0000008` at 1020.86 MiB peak private commit under its old 1024 MiB job limit.
+The revised Windows x64 job budget is `clamp(physical RAM / 4, 1 GiB, 4 GiB)`.
+Gin queries that actual limit before creating each sandboxed renderer isolate
+and reserves half for V8, leaving half for Blink/Oilpan, Skia/D3D, mappings,
+and other native allocations. This is per-isolate headroom, not an aggregate
+heap admission controller for many concurrent workers.
+
+On this workstation the native job limit measured 4096 MiB. A disposable
+renderer retained allocations beyond the former boundary, reached 1562.41 MiB
+peak private commit, remained responsive, and stayed static afterward. The
+configured 2 GiB V8 limit appears as 2,190,000,000 bytes through the privacy-
+bucketized `performance.memory` API; that value is not a precise heap-limit
+measurement. Deliberate unbounded heap pressure still terminated only the
+owned renderer, and `test/windows-renderer-memory-smoke.js` verified
+`reason: "oom"` with the real `exitCode: 0xe0000008`.
+
+Evidence is retained under `out/verification/idle-cpu-oom-fix/`; the preceding
+failure samples remain under `out/verification/idle-cpu-crash-analysis/`.
+The earliest renderer exit lacked a retained status and is not retrospectively
+classified. These checks establish idle scheduling and a coordinated bounded
+memory policy, not proof that every application-native allocation is leak-free.
+macOS runtime execution was not available for this Windows verification.
+
 ## macOS Metal GPU compositing
 
 ### Execution and transport

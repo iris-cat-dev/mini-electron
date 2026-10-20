@@ -204,6 +204,7 @@ public:
 
     void setFocus();
     void killFocus();
+    void setVisibility(bool visible);
 
     void debugShowDomNode();
 
@@ -333,6 +334,7 @@ private:
     bool m_isPopupWidgetMode = false;
     bool m_isEnableNode = false;
     bool m_isAutoDrawToHwnd = true;
+    bool m_pageVisible = true;
     //int m_cursorInfoType = 0;
     bool m_isCursorInfoTypeAsynGetting = false;
     bool m_isCursorInfoTypeAsynChanged = false;

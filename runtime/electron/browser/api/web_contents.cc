@@ -673,6 +673,9 @@ void WebContents::createGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
 #if BUILDFLAG(IS_WIN)
     guest->setVSyncDisplayId(host->m_vsync_display_id);
 #endif
+#if BUILDFLAG(IS_WIN)
+    guest->setVisible(false);
+#endif
     info.GetReturnValue().Set(guest->getWrapper());
 }
 
@@ -936,6 +939,26 @@ void WebContents::setVSyncDisplayId(int64_t display_id)
 }
 #endif
 
+void WebContents::setVisible(bool visible)
+{
+    if (!isAlive() || m_visible == visible)
+        return;
+    base::Value::Dict params;
+    params.Set("visible", visible);
+    if (!m_renderer->Send("setVisibility", std::move(params)))
+        return;
+    m_visible = visible;
+#if BUILDFLAG(IS_WIN)
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        const auto bounds = m_windowsGuestBounds.find(id);
+        if (guest && guest->m_host == this)
+            guest->setVisible(visible && bounds != m_windowsGuestBounds.end()
+                && !bounds->second.IsEmpty());
+    }
+#endif
+}
+
 void WebContents::setFocus(bool focused)
 {
     m_focused = focused;
@@ -1190,6 +1213,11 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
                     std::clamp(params.FindInt("width").value_or(0), 0, 1 << 20),
                     std::clamp(params.FindInt("height").value_or(0), 0, 1 << 20));
             }
+            WebContents* guest = fromId(id);
+            const auto bounds = m_windowsGuestBounds.find(id);
+            if (guest && guest->m_host == this)
+                guest->setVisible(m_visible && bounds != m_windowsGuestBounds.end()
+                    && !bounds->second.IsEmpty());
             for (WebContentsObserver* observer : m_observers)
                 observer->onWebContentsPaint(this, {});
         }

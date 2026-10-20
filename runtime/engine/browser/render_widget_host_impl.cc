@@ -298,7 +298,6 @@ void RenderWidgetHostImpl::CreateFrameSink(
         base::PlatformThread::Sleep(base::Milliseconds(10));
     }
     m_sinkClient = m_sinkHost->getRootClient();
-    m_sinkClient->setWebviewId(m_engineWebView->getId());
 
     getHostFrameSinkManager()->RegisterFrameSinkId(m_frameSinkId, this, viz::ReportFirstSurfaceActivation::kYes);
     getHostFrameSinkManager()->RegisterFrameSinkHierarchy(m_sinkClient->frameSinkId(), m_frameSinkId);

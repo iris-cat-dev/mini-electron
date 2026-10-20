@@ -419,7 +419,8 @@ bool IsBrowserToRendererMethod(const std::string& method)
 {
 #if BUILDFLAG(IS_WIN)
     if (method == "gpu-frame-consumed" || method == "getCompositorInfo"
-        || method == "setVSyncDisplayId" || method == "guest.invalidate")
+        || method == "setVSyncDisplayId" || method == "guest.invalidate"
+        || method == "setVisibility")
         return true;
 #endif
 #if BUILDFLAG(IS_MAC)

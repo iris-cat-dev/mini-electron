@@ -454,6 +454,16 @@ public:
         }
     }
 
+    void setRendererVisible(bool visible)
+    {
+        if (m_webContents)
+            m_webContents->setVisible(visible);
+        for (BrowserView* view : m_browserViews) {
+            if (view && view->getWebContents())
+                view->getWebContents()->setVisible(visible);
+        }
+    }
+
     void onWebContentsPaint(WebContents* contents, const gfx::Rect& damage) override
     {
         if (contents != m_webContents || !::IsWindow(m_hWnd))
@@ -1835,6 +1845,10 @@ public:
             break;
 
         case WM_SHOWWINDOW:
+            // Keep the initial show:false painting contract for ready-to-show.
+            // Subsequent native hide/show transitions control renderer work.
+            if (m_state == WindowInited || wParam)
+                setRendererVisible(wParam && !m_isMinimized);
             if (TRUE == wParam)
                 mate::EventEmitter<BrowserWindow>::emit("show");
             else
@@ -1895,6 +1909,7 @@ public:
             const bool wasMinimized = m_isMinimized;
             if (SIZE_MINIMIZED == wParam) {
                 m_isMinimized = true;
+                setRendererVisible(false);
                 if (WindowInited == m_state) {
                     mate::EventEmitter<BrowserWindow>::emit("resize");
                     if (!wasMinimized)
@@ -1924,6 +1939,8 @@ public:
             m_contentsSize.cy = y;
             ::LeaveCriticalSection(&m_memoryCanvasLock);
 
+            if (m_state == WindowInited || wasMinimized)
+                setRendererVisible(!!::IsWindowVisible(hWnd));
             invalidateCaptionButtons();
             if (wasMinimized && ::IsWindow(hWnd)) {
                 // A minimized window has no drawable viewport. Present the

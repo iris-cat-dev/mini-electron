@@ -183,12 +183,15 @@ void BrowserView::attachBrowserWindow(HWND hWnd)
         return;
     m_hWnd = hWnd;
     onParentScaleFactorChanged();
+    m_webContents->setVisible(!!::IsWindowVisible(hWnd) && !::IsIconic(hWnd));
     m_webContents->setFocus(true);
     m_state = WindowInited;
 }
 
 void BrowserView::detachBrowserWindow()
 {
+    if (m_webContents)
+        m_webContents->setVisible(false);
     if (::IsWindow(m_hWnd)) {
         RECT bounds = getClientRect();
         ::InvalidateRect(m_hWnd, &bounds, FALSE);

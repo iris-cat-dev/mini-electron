@@ -13,10 +13,14 @@
 #include <utility>
 
 #include "base/check_op.h"
+#include "base/command_line.h"
 #include "base/system/sys_info.h"
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+#endif
 #include "gin/debug_impl.h"
 #include "gin/function_template.h"
 #include "gin/per_isolate_data.h"
@@ -38,6 +42,33 @@ v8::OOMErrorCallback g_oom_error_callback = nullptr;
 v8::Platform* g_external_v8_platform = nullptr;
 IsolateHolder::RegisterIsolateCallback g_register_isolate = nullptr;
 IsolateHolder::UnregisterIsolateCallback g_unregister_isolate = nullptr;
+
+std::optional<size_t> RendererHeapLimit()
+{
+#if BUILDFLAG(IS_WIN) && defined(_M_X64)
+    const base::CommandLine* command_line =
+        base::CommandLine::ForCurrentProcess();
+    if (command_line->GetSwitchValueASCII("type") != "renderer"
+        || !command_line->HasSwitch("renderer-read-handle")) {
+        return std::nullopt;
+    }
+    // The sandbox job is assigned while the process is suspended, so every
+    // Blink isolate (the main isolate and workers) can derive its V8 budget
+    // from the enforced limit before V8 initializes it.
+    BOOL in_job = FALSE;
+    CHECK(::IsProcessInJob(::GetCurrentProcess(), nullptr, &in_job));
+    CHECK(in_job);
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits {};
+    CHECK(::QueryInformationJobObject(nullptr,
+        JobObjectExtendedLimitInformation, &limits, sizeof(limits), nullptr));
+    CHECK(limits.BasicLimitInformation.LimitFlags
+        & JOB_OBJECT_LIMIT_PROCESS_MEMORY);
+    CHECK(limits.ProcessMemoryLimit);
+    return static_cast<size_t>(limits.ProcessMemoryLimit / 2);
+#else
+    return std::nullopt;
+#endif
+}
 
 std::unique_ptr<v8::Isolate::CreateParams> getModifiedIsolateParams(std::unique_ptr<v8::Isolate::CreateParams> params,
     IsolateHolder::AllowAtomicsWaitMode atomics_wait_mode, v8::CreateHistogramCallback create_histogram_callback,
@@ -186,8 +217,11 @@ std::unique_ptr<v8::Isolate::CreateParams> IsolateHolder::getDefaultIsolateParam
     // TODO(https://crbug.com/v8/13092): Remove usage of unique_ptr once V8
     // supports the move constructor on CreateParams.
     std::unique_ptr<v8::Isolate::CreateParams> params = std::make_unique<v8::Isolate::CreateParams>();
-    params->code_event_handler = DebugImpl::GetJitCodeEventHandler();
-    params->constraints.ConfigureDefaults(base::SysInfo::AmountOfPhysicalMemory(), base::SysInfo::AmountOfVirtualMemory());
+    if (const std::optional<size_t> heap_limit = RendererHeapLimit()) {
+        params->constraints.ConfigureDefaultsFromHeapSize(0, *heap_limit);
+    } else {
+        params->constraints.ConfigureDefaults(base::SysInfo::AmountOfPhysicalMemory(), base::SysInfo::AmountOfVirtualMemory());
+    }
     params->array_buffer_allocator = g_array_buffer_allocator;
     params->allow_atomics_wait = true;
     params->external_references = g_reference_table;

@@ -13,12 +13,28 @@
 
 namespace atom {
 
+enum class RendererProcessState {
+    kRunning,
+    kExited,
+};
+
+struct RendererProcessStatus {
+    RendererProcessState state = RendererProcessState::kRunning;
+    uint32_t exit_code = 0;
+    bool crashed = false;
+    bool sandbox_memory_limit_exceeded = false;
+};
+
 struct RendererPlatformProcess {
     renderer_protocol::PipeHandle read_pipe = renderer_protocol::kInvalidPipe;
     renderer_protocol::PipeHandle write_pipe = renderer_protocol::kInvalidPipe;
     void* frame_memory = nullptr;
     size_t frame_mapping_size = 0;
     int process_id = 0;
+    bool termination_observed = false;
+    uint32_t exit_code = 0;
+    bool crashed = false;
+    bool sandbox_memory_limit_exceeded = false;
 #if BUILDFLAG(IS_WIN)
     HANDLE process = nullptr;
     HANDLE job = nullptr;
@@ -40,6 +56,8 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
 bool CreateInProcessRendererResources(RendererPlatformProcess* process,
     std::string* error);
 bool IsRendererProcessAlive(const RendererPlatformProcess& process);
+RendererProcessStatus ObserveRendererProcess(RendererPlatformProcess* process,
+    int timeout_milliseconds);
 bool WaitForRendererProcess(RendererPlatformProcess* process,
     int timeout_milliseconds);
 void TerminateRendererProcess(RendererPlatformProcess* process);

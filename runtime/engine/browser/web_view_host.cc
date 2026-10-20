@@ -523,6 +523,8 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
 
     if (m_isTransparent)
         setIsTransparent(m_isTransparent);
+    if (!m_pageVisible)
+        setVisibility(false);
     return webWiew;
 }
 
@@ -976,6 +978,22 @@ void WebViewHost::killFocus()
 {
     if (m_renderWidgetHostImpl && m_renderWidgetHostImpl->m_webFrameWidget)
         m_renderWidgetHostImpl->m_webFrameWidget->SetFocus(false);
+}
+
+void WebViewHost::setVisibility(bool visible)
+{
+    DCHECK(ThreadCall::isBlinkThread());
+    m_pageVisible = visible;
+    if (!m_renderWidgetHostImpl || !m_renderWidgetHostImpl->m_webWiew)
+        return;
+    const auto state = visible ? blink::mojom::PageVisibilityState::kVisible
+                               : blink::mojom::PageVisibilityState::kHidden;
+    m_renderWidgetHostImpl->m_webWiew->SetVisibilityState(state, false);
+    m_renderWidgetHostImpl->setVisible(visible);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    if (m_host)
+        m_host->setVisibleOnBlinkThread(visible);
+#endif
 }
 
 void WebViewHost::debugShowDomNode()

@@ -301,30 +301,63 @@ bool IsRendererProcessAlive(const RendererPlatformProcess& process)
         && (::kill(static_cast<pid_t>(process.process_id), 0) == 0 || errno == EPERM);
 }
 
-bool WaitForRendererProcess(RendererPlatformProcess* process, int timeout_milliseconds)
+RendererProcessStatus ObserveRendererProcess(RendererPlatformProcess* process,
+    int timeout_milliseconds)
 {
+    RendererProcessStatus status;
+    if (!process)
+        return status;
+    if (process->termination_observed) {
+        status.state = RendererProcessState::kExited;
+        status.exit_code = process->exit_code;
+        status.crashed = process->crashed;
+        return status;
+    }
     if (process->process_id <= 0)
-        return true;
+        return status;
+
     const auto deadline = std::chrono::steady_clock::now()
         + std::chrono::milliseconds(std::max(0, timeout_milliseconds));
-    do {
-        pid_t result = ::waitpid(static_cast<pid_t>(process->process_id), nullptr, WNOHANG);
-        if (result == process->process_id || (result < 0 && errno == ECHILD)) {
+    for (;;) {
+        int wait_status = 0;
+        const pid_t result = ::waitpid(
+            static_cast<pid_t>(process->process_id), &wait_status, WNOHANG);
+        if (result == process->process_id) {
+            process->termination_observed = true;
+            if (WIFEXITED(wait_status)) {
+                process->exit_code =
+                    static_cast<uint32_t>(WEXITSTATUS(wait_status));
+            } else if (WIFSIGNALED(wait_status)) {
+                process->exit_code =
+                    static_cast<uint32_t>(128 + WTERMSIG(wait_status));
+                process->crashed = true;
+            }
             process->process_id = 0;
-            return true;
+            status.state = RendererProcessState::kExited;
+            status.exit_code = process->exit_code;
+            status.crashed = process->crashed;
+            return status;
         }
+        if (result < 0 && errno != EINTR)
+            return status;
+        if (std::chrono::steady_clock::now() >= deadline)
+            return status;
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    } while (std::chrono::steady_clock::now() < deadline);
-    return false;
+    }
+}
+
+bool WaitForRendererProcess(RendererPlatformProcess* process, int timeout_milliseconds)
+{
+    return ObserveRendererProcess(process, timeout_milliseconds).state
+        == RendererProcessState::kExited;
 }
 
 void TerminateRendererProcess(RendererPlatformProcess* process)
 {
-    if (process->process_id > 0) {
-        ::kill(static_cast<pid_t>(process->process_id), SIGKILL);
-        ::waitpid(static_cast<pid_t>(process->process_id), nullptr, 0);
-        process->process_id = 0;
-    }
+    if (process->process_id <= 0)
+        return;
+    ::kill(static_cast<pid_t>(process->process_id), SIGKILL);
+    ObserveRendererProcess(process, 2000);
 }
 
 void CloseRendererPlatformProcess(RendererPlatformProcess* process)
