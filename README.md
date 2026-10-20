@@ -14,6 +14,8 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
   The macOS backend uses ANGLE/Metal; Windows has ANGLE/D3D11 build integration.
   See [WebGL support and limits](#webgl-1-and-2). Published runtime artifacts
   have not been replaced by this source change.
+- Keeps macOS source builds compatible with the shared Windows horizontal-wheel
+  routing by completing the POSIX Win32 message definitions.
 
 ## npm distribution
 
