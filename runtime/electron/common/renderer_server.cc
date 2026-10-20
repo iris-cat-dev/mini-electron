@@ -56,6 +56,7 @@
 #include "runtime/engine/common/thread_call.h"
 #include "runtime/engine/renderer/platform_event_handler.h"
 #include "runtime/engine/renderer/webgl_context_provider.h"
+#include "runtime/engine/renderer/webgpu_context_provider.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
 #include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
@@ -4706,6 +4707,7 @@ int RunRenderer(int argc, Char* argv[])
     if (!ParseArguments(argc, argv, &arguments))
         return 120;
     content::InitializeWebGL();
+    content::InitializeWebGPU();
 #if BUILDFLAG(IS_MAC)
     mini_electron::mac::PrepareMetalDevice();
 #endif

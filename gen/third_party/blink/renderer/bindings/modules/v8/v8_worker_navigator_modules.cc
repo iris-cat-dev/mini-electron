@@ -48,7 +48,7 @@
 #include "third_party/blink/renderer/modules/quota/storage_manager.h"
 // #include "third_party/blink/renderer/modules/serial/serial.h"
 // #include "third_party/blink/renderer/modules/wake_lock/wake_lock.h"
-// #include "third_party/blink/renderer/modules/webgpu/gpu.h"
+#include "third_party/blink/renderer/modules/webgpu/gpu.h"
 // #include "third_party/blink/renderer/modules/webusb/usb.h"
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
 #include "third_party/blink/renderer/platform/bindings/idl_member_installer.h"
@@ -208,20 +208,20 @@ void StorageAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info
 //     bindings::V8SetReturnValue(info, return_value, blink_receiver);
 // }
 //
-// void GpuAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
-// {
-// 
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_WorkerNavigator_gpu_Getter");
-//     BLINK_BINDINGS_TRACE_EVENT("WorkerNavigator.gpu.get");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     WorkerNavigator* blink_receiver = V8WorkerNavigator::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = GPU::gpu(*blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<GPU, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, blink_receiver);
-// }
+void GpuAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_WorkerNavigator_gpu_Getter");
+    BLINK_BINDINGS_TRACE_EVENT("WorkerNavigator.gpu.get");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    WorkerNavigator* blink_receiver = V8WorkerNavigator::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = GPU::gpu(*blink_receiver);
+    static_assert(bindings::IsReturnTypeCompatible<GPU, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    bindings::V8SetReturnValue(info, return_value, blink_receiver);
+}
 // 
 // void UsbAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 // {
@@ -712,21 +712,17 @@ void V8WorkerNavigator::Impl::InstallContextDependentProperties(v8::Local<v8::Co
 //         v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
 //         IDLMemberInstaller::InstallAttributes(isolate, world, instance_object, prototype_object, interface_object, signature, kAttributeTable);
 //     }
-//     if (is_in_secure_context && execution_context->IsWorkerGlobalScope() && feature_selector.IsAll()) {
-//         static const IDLMemberInstaller::AttributeConfig kAttributeTable[] = {
-//             { "locks", "WorkerNavigator", LocksAttributeGetCallback, nullptr, unsigned(v8::None), unsigned(IDLMemberInstaller::FlagLocation::kPrototype),
-//                 unsigned(IDLMemberInstaller::FlagWorld::kAllWorlds), unsigned(IDLMemberInstaller::FlagReceiverCheck::kCheck),
-//                 unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck), unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck),
-//                 unsigned(v8::SideEffectType::kHasNoSideEffect), unsigned(V8PrivateProperty::CachedAccessor::kNone) },
-//             { "gpu", "WorkerNavigator", GpuAttributeGetCallback, nullptr, unsigned(v8::None), unsigned(IDLMemberInstaller::FlagLocation::kPrototype),
-//                 unsigned(IDLMemberInstaller::FlagWorld::kAllWorlds), unsigned(IDLMemberInstaller::FlagReceiverCheck::kCheck),
-//                 unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck), unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck),
-//                 unsigned(v8::SideEffectType::kHasNoSideEffect), unsigned(V8PrivateProperty::CachedAccessor::kNone) },
-//         };
-//         v8::Local<v8::FunctionTemplate> interface_function_template = interface_template.As<v8::FunctionTemplate>();
-//         v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
-//         IDLMemberInstaller::InstallAttributes(isolate, world, instance_object, prototype_object, interface_object, signature, kAttributeTable);
-//     }
+    if (is_in_secure_context && execution_context->IsWorkerGlobalScope() && feature_selector.IsAll()) {
+        static const IDLMemberInstaller::AttributeConfig kAttributeTable[] = {
+            { "gpu", "WorkerNavigator", GpuAttributeGetCallback, nullptr, unsigned(v8::None), unsigned(IDLMemberInstaller::FlagLocation::kPrototype),
+                unsigned(IDLMemberInstaller::FlagWorld::kAllWorlds), unsigned(IDLMemberInstaller::FlagReceiverCheck::kCheck),
+                unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck), unsigned(IDLMemberInstaller::FlagCrossOriginCheck::kCheck),
+                unsigned(v8::SideEffectType::kHasNoSideEffect), unsigned(V8PrivateProperty::CachedAccessor::kNone) },
+        };
+        v8::Local<v8::FunctionTemplate> interface_function_template = interface_template.As<v8::FunctionTemplate>();
+        v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
+        IDLMemberInstaller::InstallAttributes(isolate, world, instance_object, prototype_object, interface_object, signature, kAttributeTable);
+    }
 //     if (execution_context->IsWorkerGlobalScope() && feature_selector.IsAll()) {
 //         static const IDLMemberInstaller::AttributeConfig kAttributeTable[] = {
 //             { "mediaCapabilities", "WorkerNavigator", MediaCapabilitiesAttributeGetCallback, nullptr, unsigned(v8::None),

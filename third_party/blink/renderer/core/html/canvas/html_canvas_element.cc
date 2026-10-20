@@ -1573,11 +1573,8 @@ scoped_refptr<StaticBitmapImage> HTMLCanvasElement::GetSourceImageForCanvasInter
         // first Frame in order to have a first OffscreenCanvasFrame.
         image = OffscreenCanvasFrame()->Bitmap();
     } else {
-        if (IsWebGL() || IsWebGPU()) {
-            // TODO(https://crbug.com/672299): Canvas should produce sRGB images.
-            // Because WebGL/WebGPU sources always require copying the back buffer,
-            // we use PaintRenderingResultsToCanvas instead of GetImage in order to
-            // keep a cached copy of the backing in the canvas's resource provider.
+        if (IsWebGL()) {
+            // Keep the WebGL back-buffer copy in the host's resource provider.
             RenderingContext()->PaintRenderingResultsToCanvas(kBackBuffer);
             // TODO(sunnyps): Check what PaintRenderingResultsToCanvas returns. It
             // seems the above returns false unexpectedly in some tests.
@@ -1585,7 +1582,7 @@ scoped_refptr<StaticBitmapImage> HTMLCanvasElement::GetSourceImageForCanvasInter
                 image = ResourceProvider()->Snapshot(reason);
             }
         } else if (RenderingContext()) {
-            // This is either CanvasRenderingContext2D or ImageBitmapRenderingContext.
+            // WebGPU already returns an owned CPU snapshot; do not copy it again.
             image = RenderingContext()->GetImage(reason);
         }
         if (!image) {

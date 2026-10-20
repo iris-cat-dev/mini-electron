@@ -134,7 +134,6 @@
 #include "third_party/blink/renderer/platform/graphics/filters/paint_filter_builder.h"
 // #include "third_party/blink/renderer/platform/graphics/gpu/dawn_control_client_holder.h"
 // #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_cpp.h"
-// #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_mailbox_texture.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
@@ -3562,14 +3561,6 @@ GPUTexture* BaseRenderingContext2D::transferToGPUTexture(const Canvas2dGPUTransf
 //         .format = dawn_format,
 //     };
 // 
-//     // Create a WebGPU texture backed by the resource's SharedImage.
-//     scoped_refptr<WebGPUMailboxTexture> texture
-//         = WebGPUMailboxTexture::FromExistingMailbox(blink_device->GetDawnControlClient(), blink_device->GetHandle(), desc, client_si->mailbox(),
-//             // Ensure that WebGPU waits for the 2D canvas service-side operations
-//             // on this resource to complete.
-//             canvas_access_sync_token);
-// 
-//     webgpu_access_texture_ = MakeGarbageCollected<GPUTexture>(blink_device, dawn_format, tex_usage, std::move(texture), access_options->getLabelOr(String()));
 // 
 //     // We take away the canvas' resource provider here, which will cause the
 //     // canvas to be treated as a brand new surface if additional draws occur.

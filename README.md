@@ -14,6 +14,11 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
   The macOS backend uses ANGLE/Metal; Windows has ANGLE/D3D11 build integration.
   See [WebGL support and limits](#webgl-1-and-2). Published runtime artifacts
   have not been replaced by this source change.
+- Restores native WebGPU through renderer-local Dawn wire/native channels,
+  WGSL pipelines, buffer mapping, GPUCanvasContext, OffscreenCanvas and Workers.
+  macOS Metal rendering and the original OMP Desktop WebGPU/WASM homepage
+  animation are verified. Windows has D3D12 build integration, not Windows
+  runtime verification. See [WebGPU support and limits](#webgpu).
 - Keeps macOS source builds compatible with the shared Windows horizontal-wheel
   routing by completing the POSIX Win32 message definitions.
 
@@ -342,9 +347,10 @@ returns no context rather than pretending to render.
 - Native video-frame conversion operates on CPU-mappable pixels; it does not
   add hardware decoding, GPU video-frame imports or a WebCodecs API.
 - Extensions depend on the native backend. This is not a Khronos WebGL
-  conformance certification or a claim of accelerated Canvas2D, WebGPU or XR
-  support. Page WebGL settings remain authoritative; the Chromium GPU
-  service's per-origin GPU-crash blocklist is not present in this runtime.
+  conformance certification or a claim of accelerated Canvas2D or XR support.
+  WebGPU uses the separate Dawn implementation below. Page WebGL settings
+  remain authoritative; the Chromium GPU service's per-origin GPU-crash
+  blocklist is not present in this runtime.
 
 The build fetches ANGLE revision
 `ce13a00a2b049a1ef5e0e70a3d333ce70838ef7b` into ignored `third_party/angle`.
@@ -369,6 +375,59 @@ placeholder updates. On macOS it independently samples PNGs with Core Graphics
 and captures the owned WindowServer window before and after updates. It needs
 Xcode tools, an unlocked graphical session and OS capture authorization.
 
+## WebGPU
+
+Desktop source builds expose real `navigator.gpu` in secure contexts and
+register `webgpu` contexts for HTMLCanvasElement and OffscreenCanvas. Blink's
+WebGPU bindings execute through a renderer-local Dawn wire client/server and
+native backend, not a simulated adapter or a WebGL translation.
+
+- macOS uses Dawn/Metal, warmed before renderer sandbox lockdown. Windows
+  integrates Dawn/D3D12 in the build; that backend has not been compiled or run
+  on Windows during this verification.
+- WGSL compilation, render/compute pipelines, buffers, textures, copies,
+  mapping, validation/error scopes and device loss use Dawn's implementations.
+  Callback delivery stays on the owning Blink/Worker sequence.
+- Canvas textures are genuine GPU textures. Presentation and snapshots copy
+  GPU pixels to owned CPU images/shared bitmaps for the existing cc/Viz
+  resource protocol. The output compositor may upload them again. This is
+  **not zero-copy**, Chromium's GPU service or GPU tile rasterization.
+- Opaque snapshots change alpha only in their owned CPU copy. Snapshot-only
+  operations preserve the live application texture; frame presentation and
+  `transferToImageBitmap()` expire it. Offscreen images own independent pixels.
+- External image uploads and CPU-mappable video imports use CPU pixels.
+  Hardware decoding, texture-only decoder imports, accelerated Canvas2D and
+  GPU-service-backed XR projection layers are not added.
+- Adapter features/limits depend on the backend. Unsupported adapters return
+  `null`; native validation failures remain errors. This is not a WebGPU
+  conformance certification or a claim of support for newer Chromium APIs.
+
+Building requires Python 3.12+, CMake 3.24+ and the platform's existing native
+toolchain. The bootstrap fetches SHA-256-verified Dawn revision
+`73dbf565079c89a531e6e01c4e8fc048a8a9660b`, its pinned Abseil and SPIRV-Headers,
+and the build-time Jinja2/MarkupSafe dependencies into ignored directories.
+Only the selected native backend and WGSL/Tint components are built.
+Dawn's Abseil symbols use a private namespace to avoid ABI collisions with
+Chromium's independently pinned Abseil; verified source archives are unchanged.
+Distribution notices include the shipped Dawn/Tint, Abseil and SPIRV licenses.
+
+```sh
+python build.py --electron --interactive --electron-main test/webgpu-smoke.js
+# Reuse the built macOS binary:
+out/mac-arm64/mini-electron --app=test/webgpu-smoke.js
+# CPU output composition, still executing WebGPU on native Metal:
+MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=test/webgpu-smoke.js
+```
+
+The smoke uses a localhost secure origin and real shaders/compute, validates
+mapped results, error scopes, detached inputs, snapshot lifetime/alpha,
+OffscreenCanvas images, Worker ownership and device loss. It independently
+decodes actual `capturePage()` PNGs and checks initial and subsequent composed
+pixels. Both output-compositor modes passed on Apple M4 Pro. The original OMP
+Desktop 0.5.2 homepage WASM also rendered and animated in a local packaged app,
+without changing the application or replacing its effect assets. These are
+correctness checks, not throughput, physical-scanout or energy measurements.
+
 ## Windows (x64)
 
 Requirements:
@@ -380,6 +439,7 @@ Requirements:
   LLVM location or set `LLVM_INSTALL_DIR`
 - Python 3.12 or newer, plus GN and Ninja on `PATH` (or
   `MINI_ELECTRON_GN` / `MINI_ELECTRON_NINJA` executable paths) for ANGLE/D3D11
+- CMake 3.24 or newer for Dawn/D3D12
 
 The backend selects the newest installed v143 toolchain with matching ATL and
 passes that exact `VCToolsVersion` to MSBuild. A stale Visual Studio default must

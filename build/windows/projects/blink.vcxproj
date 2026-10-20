@@ -3799,8 +3799,6 @@
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\shared_gpu_context.h" />
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgl_image_conversion.h" />
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgpu_callback.h" />
-    <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgpu_mailbox_texture.h" />
-    <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgpu_resource_provider_cache.h" />
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgpu_swap_buffer_provider.h" />
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\webgpu_texture_alpha_clearer.h" />
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\graphics\gpu\xr_frame_transport.h" />

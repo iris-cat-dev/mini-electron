@@ -505,9 +505,6 @@ void GPUDevice::destroy(v8::Isolate* isolate)
 {
     destroyed_ = true;
     external_texture_cache_->Destroy();
-    // Dissociate mailboxes before destroying the device. This ensures that
-    // mailbox operations which run during dissociation can succeed.
-    DissociateMailboxes();
     UnmapAllMappableBuffers(isolate);
     GetHandle().Destroy();
     FlushNow();
@@ -709,7 +706,6 @@ void GPUDevice::Trace(Visitor* visitor) const
     visitor->Trace(queue_);
     visitor->Trace(lost_property_);
     visitor->Trace(external_texture_cache_);
-    visitor->Trace(textures_with_mailbox_);
     visitor->Trace(mappable_buffers_);
     ExecutionContextClient::Trace(visitor);
     EventTarget::Trace(visitor);
@@ -722,14 +718,6 @@ void GPUDevice::Dispose()
     if (external_texture_cache_ != nullptr) {
         external_texture_cache_->Destroy();
     }
-}
-
-void GPUDevice::DissociateMailboxes()
-{
-    for (auto& texture : textures_with_mailbox_) {
-        texture->DissociateMailbox();
-    }
-    textures_with_mailbox_.clear();
 }
 
 void GPUDevice::UnmapAllMappableBuffers(v8::Isolate* isolate)
@@ -747,18 +735,6 @@ void GPUDevice::TrackMappableBuffer(GPUBuffer* buffer)
 void GPUDevice::UntrackMappableBuffer(GPUBuffer* buffer)
 {
     mappable_buffers_.erase(buffer);
-}
-
-void GPUDevice::TrackTextureWithMailbox(GPUTexture* texture)
-{
-    DCHECK(texture);
-    textures_with_mailbox_.insert(texture);
-}
-
-void GPUDevice::UntrackTextureWithMailbox(GPUTexture* texture)
-{
-    DCHECK(texture);
-    textures_with_mailbox_.erase(texture);
 }
 
 WGPURepeatingCallback<void(const wgpu::Device&, wgpu::ErrorType, wgpu::StringView)>* GPUDevice::error_callback()

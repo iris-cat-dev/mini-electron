@@ -47,10 +47,9 @@ public:
     explicit V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext(
         GPUCanvasContext* value)
         : content_type_(ContentType::kGPUCanvasContext)
-        //, member_gpu_canvas_context_(value)
+        , member_gpu_canvas_context_(value)
     {
         DCHECK(value);
-        *(int*)1 = 1;
     }
     explicit V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext(
         ImageBitmapRenderingContext* value)
@@ -104,16 +103,13 @@ public:
     GPUCanvasContext* GetAsGPUCanvasContext() const
     {
         DCHECK_EQ(content_type_, ContentType::kGPUCanvasContext);
-        //return member_gpu_canvas_context_.Get();
-        *(int*)1 = 1;
-        return nullptr;
+        return member_gpu_canvas_context_.Get();
     }
     void Set(GPUCanvasContext* value)
     {
         DCHECK(value);
         Clear();
-        //member_gpu_canvas_context_ = value;
-        *(int*)1 = 1;
+        member_gpu_canvas_context_ = value;
         content_type_ = ContentType::kGPUCanvasContext;
     }
 
@@ -199,7 +195,7 @@ private:
 
     Member<CanvasRenderingContext2D> member_canvas_rendering_context_2d_;
     Member<ImageBitmapRenderingContext> member_image_bitmap_rendering_context_;
-//     Member<GPUCanvasContext> member_gpu_canvas_context_;
+    Member<GPUCanvasContext> member_gpu_canvas_context_;
     Member<WebGL2RenderingContext> member_webgl2_rendering_context_;
     Member<WebGLRenderingContext> member_webgl_rendering_context_;
 };

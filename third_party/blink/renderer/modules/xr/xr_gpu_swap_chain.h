@@ -79,26 +79,6 @@ private:
     wgpu::TextureDescriptor descriptor_;
 };
 
-// A swap chain backed by Mailboxes
-class XRGPUMailboxSwapChain final : public XRGPUSwapChain {
-public:
-    XRGPUMailboxSwapChain(GPUDevice* device, const wgpu::TextureDescriptor& desc);
-    ~XRGPUMailboxSwapChain() override = default;
-
-    GPUTexture* ProduceTexture() override;
-
-    void OnFrameEnd() override;
-
-    const wgpu::TextureDescriptor& descriptor() const override
-    {
-        return descriptor_;
-    }
-
-private:
-    wgpu::TextureDescriptor descriptor_;
-    wgpu::DawnTextureInternalUsageDescriptor texture_internal_usage_;
-};
-
 } // namespace blink
 
 #endif // THIRD_PARTY_BLINK_RENDERER_MODULES_XR_XR_GPU_SWAP_CHAIN_H_

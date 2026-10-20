@@ -1,6 +1,7 @@
 /out/
 /.build-tools/
 /third_party/angle/
+/third_party/dawn/
 .DS_Store
 __pycache__/
 *.pyc

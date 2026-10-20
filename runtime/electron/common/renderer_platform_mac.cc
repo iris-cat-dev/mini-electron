@@ -32,6 +32,7 @@
 #include "runtime/electron/common/renderer_protocol.h"
 #include "platform/macos/metal_compositor.h"
 #include "runtime/engine/renderer/webgl_context_provider.h"
+#include "runtime/engine/renderer/webgpu_context_provider.h"
 #include "third_party/libcurl/include/curl/curl.h"
 
 extern char** environ;
@@ -365,7 +366,7 @@ bool EnterRendererSandbox(std::string* error)
         "(global-name \"com.apple.fonts\") "
         "(global-name \"com.apple.coreservices.launchservicesd\") "
         "(global-name \"com.apple.windowserver.active\"))\n"
-        + ((mini_electron::mac::PrepareMetalDevice() || content::InitializeWebGL())
+        + ((mini_electron::mac::PrepareMetalDevice() || content::InitializeWebGL() || content::InitializeWebGPU())
                 ? "(allow mach-lookup (xpc-service-name \"com.apple.MTLCompilerService\"))\n"
                 : "");
     // The system libcurl initializes LibreSSL, which reads

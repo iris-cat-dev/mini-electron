@@ -18,6 +18,7 @@ import time
 import urllib.request
 from typing import Optional
 from .angle import ensure_angle
+from .dawn import build_dawn
 from .distribution import (
     copy_release_notices,
     copy_runtime_javascript,
@@ -894,6 +895,8 @@ def build(root: Path, args: argparse.Namespace) -> int:
         if target == GUI_TARGET
         else HEADLESS_BINARY
     )
+    # GN loads Dawn's generated static-library manifest for every engine graph.
+    build_dawn(root, args.jobs, clang_base=clang_base)
     if target in (ELECTRON_TARGET, GUI_TARGET):
         ensure_nghttp2(root, clang_base)
         ensure_angle(root)

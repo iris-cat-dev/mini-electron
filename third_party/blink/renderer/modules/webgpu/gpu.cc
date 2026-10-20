@@ -11,12 +11,9 @@
 #include "base/synchronization/waitable_event.h"
 #include "gpu/command_buffer/client/webgpu_interface.h"
 #include "gpu/config/gpu_finch_features.h"
-#include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token_builder.h"
-#include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
-#include "third_party/blink/public/mojom/gpu/gpu.mojom-blink.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
@@ -79,6 +76,9 @@ wgpu::RequestAdapterOptions AsDawnType(const GPURequestAdapterOptions* webgpu_op
         .forceFallbackAdapter = webgpu_options->forceFallbackAdapter(),
         .compatibilityMode = webgpu_options->compatibilityMode(),
     };
+    if (webgpu_options->hasFeatureLevel()) {
+        dawn_options.compatibilityMode = webgpu_options->featureLevel() == "compatibility";
+    }
     if (webgpu_options->hasPowerPreference()) {
         dawn_options.powerPreference = AsDawnType(webgpu_options->powerPreference());
     }
@@ -232,21 +232,8 @@ void GPU::RecordAdapterForIdentifiability(ScriptState* script_state, const GPURe
     IdentifiabilityMetricBuilder(context->UkmSourceID()).Add(surface, output_builder.GetToken()).Record(context->UkmRecorder());
 }
 
-std::unique_ptr<WebGraphicsContext3DProvider> CheckContextProvider(const KURL& url, std::unique_ptr<WebGraphicsContext3DProvider> context_provider)
+std::unique_ptr<WebGraphicsContext3DProvider> CheckContextProvider(std::unique_ptr<WebGraphicsContext3DProvider> context_provider)
 {
-    // Note that we check for API blocking *after* creating the context. This is
-    // because context creation synchronizes against GpuProcessHost lifetime in
-    // the browser process, and GpuProcessHost destruction is what updates API
-    // blocking state on a GPU process crash. See https://crbug.com/1215907#c10
-    // for more details.
-    bool blocked = true;
-    mojo::Remote<mojom::blink::GpuDataManager> gpu_data_manager;
-    Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(gpu_data_manager.BindNewPipeAndPassReceiver());
-    gpu_data_manager->Are3DAPIsBlockedForUrl(url, &blocked);
-    if (blocked) {
-        return nullptr;
-    }
-
     // TODO(kainino): we will need a better way of accessing the GPU interface
     // from multiple threads than BindToCurrentSequence et al.
     if (context_provider && !context_provider->BindToCurrentSequence()) {
@@ -261,9 +248,8 @@ void GPU::RequestAdapterImpl(ScriptState* script_state, const GPURequestAdapterO
 {
     ExecutionContext* execution_context = ExecutionContext::From(script_state);
 
-    // Validate that the featureLevel is undefined. If not return a null adapter.
-    // This logic will evolve as feature levels are added in the future.
-    if (options->hasFeatureLevel()) {
+    // Unknown feature levels resolve to null rather than rejecting the promise.
+    if (options->hasFeatureLevel() && options->featureLevel() != "core" && options->featureLevel() != "compatibility") {
         OnRequestAdapterCallback(script_state, options, resolver, wgpu::RequestAdapterStatus::Error, nullptr, "Unknown feature level");
         return;
     }
@@ -313,10 +299,12 @@ void GPU::RequestAdapterImpl(ScriptState* script_state, const GPURequestAdapterO
                     }
                     auto* gpu = unwrap_gpu.GetOnCreationThread();
                     auto* execution_context = unwrap_execution_context.GetOnCreationThread();
-                    const KURL& url = execution_context->Url();
-                    context_provider = CheckContextProvider(url, std::move(context_provider));
+                    context_provider = CheckContextProvider(std::move(context_provider));
                     if (context_provider) {
-                        context_provider->WebGPUInterface()->SetWebGPUExecutionContextToken(GetExecutionContextToken(execution_context));
+                        // Only GPU-process providers need browser-side cache attribution.
+                        if (!context_provider->WebGPUTextureInterface()) {
+                            context_provider->WebGPUInterface()->SetWebGPUExecutionContextToken(GetExecutionContextToken(execution_context));
+                        }
 
                         // Make a new DawnControlClientHolder with the context provider
                         // we just made and set the lost context callback

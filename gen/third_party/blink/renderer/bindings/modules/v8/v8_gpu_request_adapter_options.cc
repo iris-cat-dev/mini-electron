@@ -112,12 +112,10 @@ void GPURequestAdapterOptions::FillMembersFromV8Object(v8::Isolate* isolate, v8:
             return;
         }
     }
-    if (RuntimeEnabledFeatures::WebGPUExperimentalFeaturesEnabled()) {
-        dictionary_from_v8_context.SetCurrentPropertyName("featureLevel");
-        if (!bindings::GetDictionaryMemberFromV8Object<IDLString, is_optional>(isolate, current_context, v8_dictionary, v8_own_member_names[1].Get(isolate),
-                has_feature_level_, member_feature_level_, class_like_name, exception_state)) {
-            return;
-        }
+    dictionary_from_v8_context.SetCurrentPropertyName("featureLevel");
+    if (!bindings::GetDictionaryMemberFromV8Object<IDLString, is_optional>(isolate, current_context, v8_dictionary, v8_own_member_names[1].Get(isolate),
+            has_feature_level_, member_feature_level_, class_like_name, exception_state)) {
+        return;
     }
     dictionary_from_v8_context.SetCurrentPropertyName("forceFallbackAdapter");
     if (!bindings::GetDictionaryMemberFromV8Object<IDLBoolean, is_optional>(isolate, current_context, v8_dictionary, v8_own_member_names[2].Get(isolate),

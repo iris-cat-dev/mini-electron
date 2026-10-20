@@ -1629,341 +1629,341 @@ void FormDataExposedConstructCallback(v8::Local<v8::Name> v8_property_name, cons
     bindings::V8SetReturnValue(info, V8FormData::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 }
 
-// void GPUExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPU_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPU");
-// 
-//     bindings::V8SetReturnValue(info, V8GPU::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUAdapterExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUAdapter_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUAdapter");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUAdapter::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUAdapterInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUAdapterInfo_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUAdapterInfo");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUAdapterInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUBindGroupExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBindGroup_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBindGroup");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUBindGroup::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUBindGroupLayoutExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBindGroupLayout_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBindGroupLayout");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUBindGroupLayout::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBuffer_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBuffer");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUBufferUsageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBufferUsage_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBufferUsage");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUBufferUsage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUCanvasContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCanvasContext_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCanvasContext");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUCanvasContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUColorWriteExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUColorWrite_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUColorWrite");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUColorWrite::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUCommandBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCommandBuffer_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCommandBuffer");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUCommandBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUCommandEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCommandEncoder_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCommandEncoder");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUCommandEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUCompilationInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCompilationInfo_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCompilationInfo");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUCompilationInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUCompilationMessageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCompilationMessage_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCompilationMessage");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUCompilationMessage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUComputePassEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUComputePassEncoder_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUComputePassEncoder");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUComputePassEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUComputePipelineExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUComputePipeline_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUComputePipeline");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUComputePipeline::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUDeviceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUDevice_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUDevice");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUDevice::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUDeviceLostInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUDeviceLostInfo_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUDeviceLostInfo");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUDeviceLostInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUError_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUError");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUExternalTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUExternalTexture_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUExternalTexture");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUExternalTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUHeapPropertyExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUHeapProperty_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUHeapProperty");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUHeapProperty::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUInternalErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUInternalError_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUInternalError");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUInternalError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUMapModeExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUMapMode_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUMapMode");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUMapMode::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUMemoryHeapInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUMemoryHeapInfo_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUMemoryHeapInfo");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUMemoryHeapInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUOutOfMemoryErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUOutOfMemoryError_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUOutOfMemoryError");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUOutOfMemoryError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUPipelineErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUPipelineError_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUPipelineError");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUPipelineError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUPipelineLayoutExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUPipelineLayout_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUPipelineLayout");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUPipelineLayout::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUQuerySetExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUQuerySet_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUQuerySet");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUQuerySet::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUQueueExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUQueue_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUQueue");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUQueue::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPURenderBundleExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderBundle_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderBundle");
-// 
-//     bindings::V8SetReturnValue(info, V8GPURenderBundle::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPURenderBundleEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderBundleEncoder_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderBundleEncoder");
-// 
-//     bindings::V8SetReturnValue(info, V8GPURenderBundleEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPURenderPassEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderPassEncoder_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderPassEncoder");
-// 
-//     bindings::V8SetReturnValue(info, V8GPURenderPassEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPURenderPipelineExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderPipeline_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderPipeline");
-// 
-//     bindings::V8SetReturnValue(info, V8GPURenderPipeline::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUSamplerExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSampler_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSampler");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUSampler::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUShaderModuleExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUShaderModule_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUShaderModule");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUShaderModule::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUShaderStageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUShaderStage_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUShaderStage");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUShaderStage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUSupportedFeaturesExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSupportedFeatures_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSupportedFeatures");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUSupportedFeatures::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUSupportedLimitsExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSupportedLimits_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSupportedLimits");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUSupportedLimits::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTexture_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTexture");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUTextureUsageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTextureUsage_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTextureUsage");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUTextureUsage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
-// }
-// 
-// void GPUTextureViewExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTextureView_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTextureView");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUTextureView::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUUncapturedErrorEventExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUUncapturedErrorEvent_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUUncapturedErrorEvent");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUUncapturedErrorEvent::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
-// 
-// void GPUValidationErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUValidationError_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUValidationError");
-// 
-//     bindings::V8SetReturnValue(info, V8GPUValidationError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void GPUExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPU_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPU");
+
+    bindings::V8SetReturnValue(info, V8GPU::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUAdapterExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUAdapter_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUAdapter");
+
+    bindings::V8SetReturnValue(info, V8GPUAdapter::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUAdapterInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUAdapterInfo_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUAdapterInfo");
+
+    bindings::V8SetReturnValue(info, V8GPUAdapterInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUBindGroupExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBindGroup_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBindGroup");
+
+    bindings::V8SetReturnValue(info, V8GPUBindGroup::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUBindGroupLayoutExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBindGroupLayout_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBindGroupLayout");
+
+    bindings::V8SetReturnValue(info, V8GPUBindGroupLayout::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBuffer_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBuffer");
+
+    bindings::V8SetReturnValue(info, V8GPUBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUBufferUsageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUBufferUsage_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUBufferUsage");
+
+    bindings::V8SetReturnValue(info, V8GPUBufferUsage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUCanvasContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCanvasContext_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCanvasContext");
+
+    bindings::V8SetReturnValue(info, V8GPUCanvasContext::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUColorWriteExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUColorWrite_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUColorWrite");
+
+    bindings::V8SetReturnValue(info, V8GPUColorWrite::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUCommandBufferExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCommandBuffer_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCommandBuffer");
+
+    bindings::V8SetReturnValue(info, V8GPUCommandBuffer::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUCommandEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCommandEncoder_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCommandEncoder");
+
+    bindings::V8SetReturnValue(info, V8GPUCommandEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUCompilationInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCompilationInfo_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCompilationInfo");
+
+    bindings::V8SetReturnValue(info, V8GPUCompilationInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUCompilationMessageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUCompilationMessage_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUCompilationMessage");
+
+    bindings::V8SetReturnValue(info, V8GPUCompilationMessage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUComputePassEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUComputePassEncoder_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUComputePassEncoder");
+
+    bindings::V8SetReturnValue(info, V8GPUComputePassEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUComputePipelineExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUComputePipeline_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUComputePipeline");
+
+    bindings::V8SetReturnValue(info, V8GPUComputePipeline::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUDeviceExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUDevice_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUDevice");
+
+    bindings::V8SetReturnValue(info, V8GPUDevice::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUDeviceLostInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUDeviceLostInfo_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUDeviceLostInfo");
+
+    bindings::V8SetReturnValue(info, V8GPUDeviceLostInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUError_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUError");
+
+    bindings::V8SetReturnValue(info, V8GPUError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUExternalTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUExternalTexture_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUExternalTexture");
+
+    bindings::V8SetReturnValue(info, V8GPUExternalTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUHeapPropertyExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUHeapProperty_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUHeapProperty");
+
+    bindings::V8SetReturnValue(info, V8GPUHeapProperty::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUInternalErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUInternalError_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUInternalError");
+
+    bindings::V8SetReturnValue(info, V8GPUInternalError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUMapModeExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUMapMode_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUMapMode");
+
+    bindings::V8SetReturnValue(info, V8GPUMapMode::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUMemoryHeapInfoExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUMemoryHeapInfo_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUMemoryHeapInfo");
+
+    bindings::V8SetReturnValue(info, V8GPUMemoryHeapInfo::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUOutOfMemoryErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUOutOfMemoryError_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUOutOfMemoryError");
+
+    bindings::V8SetReturnValue(info, V8GPUOutOfMemoryError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUPipelineErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUPipelineError_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUPipelineError");
+
+    bindings::V8SetReturnValue(info, V8GPUPipelineError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUPipelineLayoutExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUPipelineLayout_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUPipelineLayout");
+
+    bindings::V8SetReturnValue(info, V8GPUPipelineLayout::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUQuerySetExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUQuerySet_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUQuerySet");
+
+    bindings::V8SetReturnValue(info, V8GPUQuerySet::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUQueueExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUQueue_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUQueue");
+
+    bindings::V8SetReturnValue(info, V8GPUQueue::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPURenderBundleExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderBundle_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderBundle");
+
+    bindings::V8SetReturnValue(info, V8GPURenderBundle::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPURenderBundleEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderBundleEncoder_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderBundleEncoder");
+
+    bindings::V8SetReturnValue(info, V8GPURenderBundleEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPURenderPassEncoderExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderPassEncoder_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderPassEncoder");
+
+    bindings::V8SetReturnValue(info, V8GPURenderPassEncoder::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPURenderPipelineExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPURenderPipeline_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPURenderPipeline");
+
+    bindings::V8SetReturnValue(info, V8GPURenderPipeline::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUSamplerExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSampler_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSampler");
+
+    bindings::V8SetReturnValue(info, V8GPUSampler::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUShaderModuleExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUShaderModule_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUShaderModule");
+
+    bindings::V8SetReturnValue(info, V8GPUShaderModule::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUShaderStageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUShaderStage_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUShaderStage");
+
+    bindings::V8SetReturnValue(info, V8GPUShaderStage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUSupportedFeaturesExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSupportedFeatures_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSupportedFeatures");
+
+    bindings::V8SetReturnValue(info, V8GPUSupportedFeatures::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUSupportedLimitsExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUSupportedLimits_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUSupportedLimits");
+
+    bindings::V8SetReturnValue(info, V8GPUSupportedLimits::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUTextureExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTexture_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTexture");
+
+    bindings::V8SetReturnValue(info, V8GPUTexture::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUTextureUsageExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTextureUsage_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTextureUsage");
+
+    bindings::V8SetReturnValue(info, V8GPUTextureUsage::GetWrapperTypeInfo(), bindings::V8ReturnValue::kNamespaceObject);
+}
+// 
+void GPUTextureViewExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUTextureView_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUTextureView");
+
+    bindings::V8SetReturnValue(info, V8GPUTextureView::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUUncapturedErrorEventExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUUncapturedErrorEvent_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUUncapturedErrorEvent");
+
+    bindings::V8SetReturnValue(info, V8GPUUncapturedErrorEvent::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
+// 
+void GPUValidationErrorExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_GPUValidationError_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.GPUValidationError");
+
+    bindings::V8SetReturnValue(info, V8GPUValidationError::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 // void HIDExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 // {
@@ -2983,13 +2983,13 @@ void URLSearchParamsExposedConstructCallback(v8::Local<v8::Name> v8_property_nam
 //     bindings::V8SetReturnValue(info, V8UserActivation::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
 // }
 // 
-// void WGSLLanguageFeaturesExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
-// {
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WGSLLanguageFeatures_ConstructorGetterCallback");
-//     BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WGSLLanguageFeatures");
-// 
-//     bindings::V8SetReturnValue(info, V8WGSLLanguageFeatures::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
-// }
+void WGSLLanguageFeaturesExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_ServiceWorkerGlobalScope_WGSLLanguageFeatures_ConstructorGetterCallback");
+    BLINK_BINDINGS_TRACE_EVENT("ServiceWorkerGlobalScope.WGSLLanguageFeatures");
+
+    bindings::V8SetReturnValue(info, V8WGSLLanguageFeatures::GetWrapperTypeInfo(), bindings::V8ReturnValue::kInterfaceObject);
+}
 // 
 void WebGL2RenderingContextExposedConstructCallback(v8::Local<v8::Name> v8_property_name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
@@ -3930,52 +3930,52 @@ void V8ServiceWorkerGlobalScope::InstallContextDependentProperties(v8::Local<v8:
             { "CookieStore", CookieStoreExposedConstructCallback },
             { "CookieStoreManager", CookieStoreManagerExposedConstructCallback },
             { "CryptoKey", CryptoKeyExposedConstructCallback },
-//             { "GPU", GPUExposedConstructCallback },
-//             { "GPUAdapter", GPUAdapterExposedConstructCallback },
-//             { "GPUAdapterInfo", GPUAdapterInfoExposedConstructCallback },
-//             { "GPUBindGroup", GPUBindGroupExposedConstructCallback },
-//             { "GPUBindGroupLayout", GPUBindGroupLayoutExposedConstructCallback },
-//             { "GPUBuffer", GPUBufferExposedConstructCallback },
-//             { "GPUBufferUsage", GPUBufferUsageExposedConstructCallback },
-//             { "GPUCanvasContext", GPUCanvasContextExposedConstructCallback },
-//             { "GPUColorWrite", GPUColorWriteExposedConstructCallback },
-//             { "GPUCommandBuffer", GPUCommandBufferExposedConstructCallback },
-//             { "GPUCommandEncoder", GPUCommandEncoderExposedConstructCallback },
-//             { "GPUCompilationInfo", GPUCompilationInfoExposedConstructCallback },
-//             { "GPUCompilationMessage", GPUCompilationMessageExposedConstructCallback },
-//             { "GPUComputePassEncoder", GPUComputePassEncoderExposedConstructCallback },
-//             { "GPUComputePipeline", GPUComputePipelineExposedConstructCallback },
-//             { "GPUDevice", GPUDeviceExposedConstructCallback },
-//             { "GPUDeviceLostInfo", GPUDeviceLostInfoExposedConstructCallback },
-//             { "GPUError", GPUErrorExposedConstructCallback },
-//             { "GPUExternalTexture", GPUExternalTextureExposedConstructCallback },
-//             { "GPUInternalError", GPUInternalErrorExposedConstructCallback },
-//             { "GPUMapMode", GPUMapModeExposedConstructCallback },
-//             { "GPUOutOfMemoryError", GPUOutOfMemoryErrorExposedConstructCallback },
-//             { "GPUPipelineError", GPUPipelineErrorExposedConstructCallback },
-//             { "GPUPipelineLayout", GPUPipelineLayoutExposedConstructCallback },
-//             { "GPUQuerySet", GPUQuerySetExposedConstructCallback },
-//             { "GPUQueue", GPUQueueExposedConstructCallback },
-//             { "GPURenderBundle", GPURenderBundleExposedConstructCallback },
-//             { "GPURenderBundleEncoder", GPURenderBundleEncoderExposedConstructCallback },
-//             { "GPURenderPassEncoder", GPURenderPassEncoderExposedConstructCallback },
-//             { "GPURenderPipeline", GPURenderPipelineExposedConstructCallback },
-//             { "GPUSampler", GPUSamplerExposedConstructCallback },
-//             { "GPUShaderModule", GPUShaderModuleExposedConstructCallback },
-//             { "GPUShaderStage", GPUShaderStageExposedConstructCallback },
-//             { "GPUSupportedFeatures", GPUSupportedFeaturesExposedConstructCallback },
-//             { "GPUSupportedLimits", GPUSupportedLimitsExposedConstructCallback },
-//             { "GPUTexture", GPUTextureExposedConstructCallback },
-//             { "GPUTextureUsage", GPUTextureUsageExposedConstructCallback },
-//             { "GPUTextureView", GPUTextureViewExposedConstructCallback },
-//             { "GPUUncapturedErrorEvent", GPUUncapturedErrorEventExposedConstructCallback },
-//             { "GPUValidationError", GPUValidationErrorExposedConstructCallback },
+            { "GPU", GPUExposedConstructCallback },
+            { "GPUAdapter", GPUAdapterExposedConstructCallback },
+            { "GPUAdapterInfo", GPUAdapterInfoExposedConstructCallback },
+            { "GPUBindGroup", GPUBindGroupExposedConstructCallback },
+            { "GPUBindGroupLayout", GPUBindGroupLayoutExposedConstructCallback },
+            { "GPUBuffer", GPUBufferExposedConstructCallback },
+            { "GPUBufferUsage", GPUBufferUsageExposedConstructCallback },
+            { "GPUCanvasContext", GPUCanvasContextExposedConstructCallback },
+            { "GPUColorWrite", GPUColorWriteExposedConstructCallback },
+            { "GPUCommandBuffer", GPUCommandBufferExposedConstructCallback },
+            { "GPUCommandEncoder", GPUCommandEncoderExposedConstructCallback },
+            { "GPUCompilationInfo", GPUCompilationInfoExposedConstructCallback },
+            { "GPUCompilationMessage", GPUCompilationMessageExposedConstructCallback },
+            { "GPUComputePassEncoder", GPUComputePassEncoderExposedConstructCallback },
+            { "GPUComputePipeline", GPUComputePipelineExposedConstructCallback },
+            { "GPUDevice", GPUDeviceExposedConstructCallback },
+            { "GPUDeviceLostInfo", GPUDeviceLostInfoExposedConstructCallback },
+            { "GPUError", GPUErrorExposedConstructCallback },
+            { "GPUExternalTexture", GPUExternalTextureExposedConstructCallback },
+            { "GPUInternalError", GPUInternalErrorExposedConstructCallback },
+            { "GPUMapMode", GPUMapModeExposedConstructCallback },
+            { "GPUOutOfMemoryError", GPUOutOfMemoryErrorExposedConstructCallback },
+            { "GPUPipelineError", GPUPipelineErrorExposedConstructCallback },
+            { "GPUPipelineLayout", GPUPipelineLayoutExposedConstructCallback },
+            { "GPUQuerySet", GPUQuerySetExposedConstructCallback },
+            { "GPUQueue", GPUQueueExposedConstructCallback },
+            { "GPURenderBundle", GPURenderBundleExposedConstructCallback },
+            { "GPURenderBundleEncoder", GPURenderBundleEncoderExposedConstructCallback },
+            { "GPURenderPassEncoder", GPURenderPassEncoderExposedConstructCallback },
+            { "GPURenderPipeline", GPURenderPipelineExposedConstructCallback },
+            { "GPUSampler", GPUSamplerExposedConstructCallback },
+            { "GPUShaderModule", GPUShaderModuleExposedConstructCallback },
+            { "GPUShaderStage", GPUShaderStageExposedConstructCallback },
+            { "GPUSupportedFeatures", GPUSupportedFeaturesExposedConstructCallback },
+            { "GPUSupportedLimits", GPUSupportedLimitsExposedConstructCallback },
+            { "GPUTexture", GPUTextureExposedConstructCallback },
+            { "GPUTextureUsage", GPUTextureUsageExposedConstructCallback },
+            { "GPUTextureView", GPUTextureViewExposedConstructCallback },
+            { "GPUUncapturedErrorEvent", GPUUncapturedErrorEventExposedConstructCallback },
+            { "GPUValidationError", GPUValidationErrorExposedConstructCallback },
 //             { "StorageManager", StorageManagerExposedConstructCallback },
             { "NavigationPreloadManager", NavigationPreloadManagerExposedConstructCallback },
             { "ServiceWorker", ServiceWorkerExposedConstructCallback },
             { "ServiceWorkerRegistration", ServiceWorkerRegistrationExposedConstructCallback },
             { "SubtleCrypto", SubtleCryptoExposedConstructCallback },
-//             { "WGSLLanguageFeatures", WGSLLanguageFeaturesExposedConstructCallback },
+            { "WGSLLanguageFeatures", WGSLLanguageFeaturesExposedConstructCallback },
 //             { "WebTransport", WebTransportExposedConstructCallback },
 //             { "WebTransportBidirectionalStream", WebTransportBidirectionalStreamExposedConstructCallback },
 //             { "WebTransportDatagramDuplexStream", WebTransportDatagramDuplexStreamExposedConstructCallback },
@@ -4004,15 +4004,15 @@ void V8ServiceWorkerGlobalScope::InstallContextDependentProperties(v8::Local<v8:
 //         v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
 //         IDLMemberInstaller::InstallExposedConstructs(isolate, world, instance_object, prototype_object, interface_object, signature, kExposedConstructTable);
 //     }
-//     if (is_in_secure_context && (feature_selector.IsAll() && RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled())) {
-//         static const IDLMemberInstaller::ExposedConstructConfig kExposedConstructTable[] = {
-//             { "GPUHeapProperty", GPUHeapPropertyExposedConstructCallback },
-//             { "GPUMemoryHeapInfo", GPUMemoryHeapInfoExposedConstructCallback },
-//         };
-//         v8::Local<v8::FunctionTemplate> interface_function_template = interface_template.As<v8::FunctionTemplate>();
-//         v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
-//         IDLMemberInstaller::InstallExposedConstructs(isolate, world, instance_object, prototype_object, interface_object, signature, kExposedConstructTable);
-//     }
+    if (is_in_secure_context && (feature_selector.IsAll() && RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled())) {
+        static const IDLMemberInstaller::ExposedConstructConfig kExposedConstructTable[] = {
+            { "GPUHeapProperty", GPUHeapPropertyExposedConstructCallback },
+            { "GPUMemoryHeapInfo", GPUMemoryHeapInfoExposedConstructCallback },
+        };
+        v8::Local<v8::FunctionTemplate> interface_function_template = interface_template.As<v8::FunctionTemplate>();
+        v8::Local<v8::Signature> signature = v8::Signature::New(isolate, interface_function_template);
+        IDLMemberInstaller::InstallExposedConstructs(isolate, world, instance_object, prototype_object, interface_object, signature, kExposedConstructTable);
+    }
 //     if (is_in_secure_context && (feature_selector.IsAll() && RuntimeEnabledFeatures::WebHIDOnServiceWorkersEnabled())) {
 //         static const IDLMemberInstaller::ExposedConstructConfig kExposedConstructTable[] = {
 //             { "HID", HIDExposedConstructCallback },

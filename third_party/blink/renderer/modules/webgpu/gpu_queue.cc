@@ -9,11 +9,8 @@
 
 #include "third_party/blink/renderer/modules/webgpu/gpu_queue.h"
 
-#include "build/build_config.h"
-#include "gpu/command_buffer/client/shared_image_interface.h"
+#include <algorithm>
 #include "gpu/command_buffer/client/webgpu_interface.h"
-#include "gpu/command_buffer/common/shared_image_usage.h"
-#include "gpu/config/gpu_finch_features.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_command_buffer_descriptor.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_image_copy_external_image.h"
@@ -34,14 +31,12 @@
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_conversions.h"
 #include "third_party/blink/renderer/modules/webgpu/external_texture_helper.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_buffer.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_command_buffer.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_device.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_texture.h"
 #include "third_party/blink/renderer/modules/webgpu/texture_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/image_extractor.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/webgpu_mailbox_texture.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
@@ -80,6 +75,8 @@ wgpu::TextureFormat SkColorTypeToDawnColorFormat(SkColorType sk_color_type)
         return wgpu::TextureFormat::RGBA8Unorm;
     case SkColorType::kBGRA_8888_SkColorType:
         return wgpu::TextureFormat::BGRA8Unorm;
+    case SkColorType::kRGBA_F16_SkColorType:
+        return wgpu::TextureFormat::RGBA16Float;
     default:
         NOTREACHED();
     }
@@ -175,7 +172,12 @@ ExternalSource GetExternalSourceFromExternalImage(
         canvas_image_source = external_image->GetAsImageBitmap();
         break;
     case V8GPUImageCopyExternalImageSource::ContentType::kImageData: {
-        auto image = GetImageFromImageData(external_image->GetAsImageData());
+        ImageData* image_data = external_image->GetAsImageData();
+        if (image_data->IsBufferBaseDetached()) {
+            exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "ImageData's data buffer is detached.");
+            return external_source;
+        }
+        auto image = GetImageFromImageData(image_data);
         if (!image) {
             exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "Cannot get image.");
             return external_source;
@@ -269,8 +271,9 @@ ExternalSource GetExternalSourceFromExternalImage(
 
         external_source.image = UnacceleratedStaticBitmapImage::Create(std::move(sk_image), image_for_canvas->CurrentFrameOrientation());
     }
-    external_source.width = static_cast<uint32_t>(external_source.image->width());
-    external_source.height = static_cast<uint32_t>(external_source.image->height());
+    const gfx::Size oriented_size = external_source.image->Size(kRespectImageOrientation);
+    external_source.width = static_cast<uint32_t>(oriented_size.width());
+    external_source.height = static_cast<uint32_t>(oriented_size.height());
     external_source.valid = true;
 
     return external_source;
@@ -307,30 +310,12 @@ wgpu::CopyTextureForBrowserOptions CreateCopyTextureForBrowserOptions(const Stat
         options.dstTransferFunctionParameters = color_space_conversion_constants->dst_transfer_constants.data();
         options.conversionMatrix = color_space_conversion_constants->gamut_conversion_matrix.data();
     }
-    // The source texture, which is either a WebGPUMailboxTexture for
-    // accelerated images or an intermediate texture created for unaccelerated
-    // images, is always origin top left, so no additional flip is needed apart
-    // from the client specified flip in GPUImageCopyExternalImage i.e. |flipY|.
+    // CPU upload normalizes orientation and produces a top-left texture.
     options.flipY = flipY;
 
     return options;
 }
 
-// Helper function to get clipped rect from source image. Using in
-// CopyExternalImageToTexture().
-gfx::Rect GetSourceImageSubrect(StaticBitmapImage* image, gfx::Rect source_image_rect, const wgpu::Origin2D& origin, const wgpu::Extent3D& copy_size)
-{
-    int width = static_cast<int>(copy_size.width);
-    int height = static_cast<int>(copy_size.height);
-    int x = static_cast<int>(origin.x) + source_image_rect.x();
-    int y = static_cast<int>(origin.y) + source_image_rect.y();
-
-    // Ensure generated source image subrect is into source image rect.
-    CHECK(width <= source_image_rect.width() - source_image_rect.x() && height <= source_image_rect.height() - source_image_rect.y()
-        && x <= source_image_rect.width() - source_image_rect.x() - width && y <= source_image_rect.height() - source_image_rect.y() - height);
-
-    return gfx::Rect(x, y, width, height);
-}
 
 } // namespace
 
@@ -604,13 +589,16 @@ void GPUQueue::CopyFromVideoElement(const ExternalTextureSource source, const wg
     // Create External Texture with dst color space. No color space conversion
     // happens during copy step.
     ExternalTexture external_texture = CreateExternalTexture(device_, dst_color_space, source.media_video_frame, source.video_renderer);
+    if (!external_texture.wgpu_external_texture || !external_texture.texture) {
+        device_->GetHandle().InjectError(wgpu::ErrorType::Validation,
+            "Video frame is not CPU-readable, has an unsupported pixel format, or could not be uploaded.");
+        return;
+    }
 
     wgpu::CopyTextureForBrowserOptions options = {
-        // Extracting contents from HTMLVideoElement (e.g.
-        // CreateStaticBitmapImage(),
-        // GetSourceImageForCanvas) always assume alpha mode as premultiplied.
-        // Keep this assumption here.
-        .srcAlphaMode = wgpu::AlphaMode::Premultiplied,
+        // Imported external textures contain straight RGBA, including alpha-
+        // bearing VideoFrames. Apply the requested premultiplication only here.
+        .srcAlphaMode = wgpu::AlphaMode::Unpremultiplied,
         .dstAlphaMode = dst_premultiplied_alpha ? wgpu::AlphaMode::Premultiplied : wgpu::AlphaMode::Unpremultiplied,
     };
 
@@ -627,122 +615,38 @@ void GPUQueue::CopyFromVideoElement(const ExternalTextureSource source, const wg
 bool GPUQueue::CopyFromCanvasSourceImage(StaticBitmapImage* image, const wgpu::Origin2D& origin, const wgpu::Extent3D& copy_size,
     const wgpu::ImageCopyTexture& destination, bool dst_premultiplied_alpha, PredefinedColorSpace dst_color_space, bool flipY)
 {
-    // If GPU backed image failed to uploading through GPU, call
-    // MakeUnaccelerated() to generate CPU backed image and fallback to CPU
-    // uploading path.
-    scoped_refptr<StaticBitmapImage> unaccelerated_image = nullptr;
-    bool use_webgpu_mailbox_texture = true;
-
-// TODO(crbug.com/1309194): using webgpu mailbox texture uploading path on linux
-// platform requires interop supported. According to the bug, this change will
-// be a long time task. So disable using webgpu mailbox texture uploading path
-// on linux platform.
-// TODO(crbug.com/1424119): using a webgpu mailbox texture on the OpenGLES
-// backend is failing for unknown reasons.
-#if BUILDFLAG(IS_LINUX)
-    bool forceReadback = true;
-#elif BUILDFLAG(IS_ANDROID)
-    // TODO(crbug.com/dawn/1969): Some Android devices don't fail to copy from
-    // ImageBitmaps that were created from a non-texture-backed source, like
-    // ImageData. Forcing those textures down the readback path is an easy way to
-    // ensure the copies succeed. May be able to remove this check with some
-    // better synchronization in the future.
-    bool forceReadback = !image->IsTextureBacked();
-#elif BUILDFLAG(IS_WIN)
-    bool forceReadback = device()->adapter()->backendType() == wgpu::BackendType::OpenGLES;
-#else
-    bool forceReadback = false;
-#endif
-    if (forceReadback) {
-        use_webgpu_mailbox_texture = false;
+    // A local Dawn device has no Chromium SharedImage service. Read the source
+    // through its real image provider and upload pixels rather than importing a
+    // mailbox (including on macOS).
+    scoped_refptr<StaticBitmapImage> unaccelerated_image;
+    if (image->IsTextureBacked()) {
         unaccelerated_image = image->MakeUnaccelerated();
+        if (!unaccelerated_image)
+            return false;
         image = unaccelerated_image.get();
     }
-
-    // TODO(crbug.com/1426666): If disable OOP-R, using webgpu mailbox to upload
-    // cpu-backed resource which has unpremultiply alpha type causes issues
-    // due to alpha type has been dropped. Disable that
-    // upload path if the image is not texture backed, OOP-R is disabled and image
-    // alpha type is unpremultiplied.
-    if (!features::IsCanvasOopRasterizationEnabled() && !image->IsTextureBacked() && !image->IsPremultiplied()) {
-        use_webgpu_mailbox_texture = false;
-    }
-
-    bool noop = copy_size.width == 0 || copy_size.height == 0 || copy_size.depthOrArrayLayers == 0;
-
-    // The copy rect might be a small part from a large source image. Instead of
-    // copying the whole large source image, clipped to the small rect and upload
-    // it is more performant. The clip rect should be chosen carefully when a
-    // flipY op is required during uploading.
-    gfx::Rect image_source_copy_rect = GetSourceImageSubrect(image, image->Rect(), origin, copy_size);
-
-    // Get source image info.
     PaintImage paint_image = image->PaintImageForCurrentFrame();
+    if (!paint_image || paint_image.IsTextureBacked())
+        return false;
+    if (!image->HasDefaultOrientation()) {
+        paint_image = Image::ResizeAndOrientImage(paint_image, image->CurrentFrameOrientation());
+        if (!paint_image)
+            return false;
+    }
     SkImageInfo source_image_info = paint_image.GetSkImageInfo();
-
-    // TODO(crbug.com/1457649): If CPU backed source input discard the color
-    // space info(e.g. ImageBitmap created with flag colorSpaceConversion: none).
-    // disable using use_webgpu_mailbox_texture to fix alpha premultiplied isseu.
-    if (!image->IsTextureBacked() && !image->IsPremultiplied() && source_image_info.refColorSpace() == nullptr) {
-        use_webgpu_mailbox_texture = false;
+    // readPixels converts other decoded formats without changing alpha or color
+    // space. Preserve F16 sources rather than truncating wide-gamut image data.
+    if (source_image_info.colorType() != kRGBA_8888_SkColorType
+        && source_image_info.colorType() != kBGRA_8888_SkColorType
+        && source_image_info.colorType() != kRGBA_F16_SkColorType) {
+        source_image_info = source_image_info.makeColorType(kRGBA_8888_SkColorType);
     }
-
-    // Source and dst might have different constants
+    const gfx::Rect image_source_copy_rect(origin.x, origin.y, copy_size.width, copy_size.height);
+    const bool noop = copy_size.width == 0 || copy_size.height == 0 || copy_size.depthOrArrayLayers == 0;
+    const uint32_t src_width = std::max(1u, copy_size.width);
+    const uint32_t src_height = std::max(1u, copy_size.height);
+    const SkColorType source_color_type = source_image_info.colorType();
     ColorSpaceConversionConstants color_space_conversion_constants = {};
-
-    // This uploading path try to extract WebGPU mailbox texture from source
-    // image based on the copy size.
-    // The uploading path works like this:
-    // - Try to get WebGPUMailboxTexture with image source copy rect.
-    // - If success, Issue Dawn::queueCopyTextureForBrowser to upload contents
-    //   to WebGPU texture.
-    if (use_webgpu_mailbox_texture) {
-        // The copy rect might be a small part from a large source image. Instead of
-        // copying large source image, clipped to the small copy rect is more
-        // performant. The clip rect should be chosen carefully when a flipY op is
-        // required during uploading.
-        scoped_refptr<WebGPUMailboxTexture> mailbox_texture = WebGPUMailboxTexture::FromStaticBitmapImage(GetDawnControlClient(), device_->GetHandle(),
-            static_cast<wgpu::TextureUsage>(wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding), image,
-            source_image_info, image_source_copy_rect, noop);
-
-        if (mailbox_texture != nullptr) {
-            wgpu::ImageCopyTexture src = { .texture = mailbox_texture->GetTexture() };
-
-            wgpu::CopyTextureForBrowserOptions options
-                = CreateCopyTextureForBrowserOptions(image, &paint_image, dst_color_space, dst_premultiplied_alpha, flipY, &color_space_conversion_constants);
-
-            GetHandle().CopyTextureForBrowser(&src, &destination, &copy_size, &options);
-            return true;
-        }
-        // Fallback path accepts CPU backed resource only.
-        unaccelerated_image = image->MakeUnaccelerated();
-        image = unaccelerated_image.get();
-        paint_image = image->PaintImageForCurrentFrame();
-        image_source_copy_rect = GetSourceImageSubrect(image, image->Rect(), origin, copy_size);
-        source_image_info = paint_image.GetSkImageInfo();
-    }
-
-    // This fallback path will handle all cases that cannot extract source image
-    // to webgpu mailbox texture based on copy rect. It accepts CPU backed
-    // resource only. The fallback path works like this:
-    // - Always create a mappable wgpu::Buffer and copy CPU backed image resource
-    // to the buffer.
-    // - Always create a wgpu::Texture and issue a B2T copy to upload the content
-    // from buffer to texture.
-    // - Issue Dawn::queueCopyTextureForBrowser to upload contents from temp
-    // texture to dst texture.
-    // - Destroy all temp resources.
-    CHECK(!image->IsTextureBacked());
-    CHECK(!paint_image.IsTextureBacked());
-
-    // Handling CPU resource.
-
-    // Create intermediate texture as input for CopyTextureForBrowser().
-    // For noop copy, creating intermediate texture with minimum size.
-    const uint32_t src_width = noop && image_source_copy_rect.width() == 0 ? 1 : static_cast<uint32_t>(image_source_copy_rect.width());
-    const uint32_t src_height = noop && image_source_copy_rect.height() == 0 ? 1 : static_cast<uint32_t>(image_source_copy_rect.height());
-
-    SkColorType source_color_type = source_image_info.colorType();
     wgpu::TextureDescriptor texture_desc = {
         .usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding,
         .size = { src_width, src_height, 1 },
@@ -754,9 +658,7 @@ bool GPUQueue::CopyFromCanvasSourceImage(StaticBitmapImage* image, const wgpu::O
     // For noop copy, read source image content to mappable webgpu buffer and
     // using B2T copy to copy source content to intermediate texture.
     if (!noop) {
-        // Source type is SkColorType::kRGBA_8888_SkColorType or
-        // SkColorType::kBGRA_8888_SkColorType.
-        uint64_t bytes_per_pixel = 4;
+        const uint64_t bytes_per_pixel = source_image_info.bytesPerPixel();
 
         base::CheckedNumeric<uint32_t> bytes_per_row = AlignBytesPerRow(image_source_copy_rect.width() * bytes_per_pixel);
 
@@ -788,6 +690,8 @@ bool GPUQueue::CopyFromCanvasSourceImage(StaticBitmapImage* image, const wgpu::O
 
         size_t size = static_cast<size_t>(buffer_desc.size);
         void* data = intermediate_buffer.GetMappedRange(0, size);
+        if (!data)
+            return false;
 
         auto dest_pixels = base::span<uint8_t>(static_cast<uint8_t*>(data), size);
 

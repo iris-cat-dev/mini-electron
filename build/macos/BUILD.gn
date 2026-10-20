@@ -9,11 +9,15 @@ import("sources/generated.gni")
 import("sources/third_party.gni")
 import("sources/node.gni")
 import("sources/webgl.gni")
+import("sources/webgpu.gni")
 
 declare_args() {
   mini_electron_nghttp2_root = "//.build-tools/nghttp2-1.61.0-darwin-arm64"
   mini_electron_curl_root = "//.build-tools/curl-8.23.0-darwin-arm64"
+  mini_electron_dawn_root = "//.build-tools/dawn-73dbf565079c89a531e6e01c4e8fc048a8a9660b-darwin-arm64"
 }
+
+import("$mini_electron_dawn_root/libraries.gni")
 
 source_set("engine_probe") {
   sources = [
@@ -81,6 +85,10 @@ config("mini_electron_engine_config") {
     "//",
     "//gen",
     "//gen/v8/include",
+    "//third_party/dawn/include",
+    "//third_party/dawn/src",
+    "$mini_electron_dawn_root/gen/include",
+    "$mini_electron_dawn_root/gen/src",
     "//platform/posix/win32",
     "//gpu",
     "//base/allocator/partition_allocator/src",
@@ -370,6 +378,24 @@ source_set("mini_electron_webgl_memory") {
   configs += [ ":mini_electron_engine_config" ]
 }
 
+source_set("mini_electron_webgpu") {
+  sources = mini_electron_webgpu_sources
+  configs += [ ":mini_electron_engine_config" ]
+  inputs = mini_electron_dawn_libraries
+  libs = []
+  foreach(library, mini_electron_dawn_libraries) {
+    libs += [ rebase_path(library, root_build_dir) ]
+  }
+  frameworks = [
+    "CoreFoundation.framework",
+    "Foundation.framework",
+    "IOKit.framework",
+    "IOSurface.framework",
+    "Metal.framework",
+    "QuartzCore.framework",
+  ]
+}
+
 static_library("mini_electron_harfbuzz") {
   sources = mini_electron_harfbuzz_sources
   configs += [ ":mini_electron_engine_config" ]
@@ -456,6 +482,7 @@ static_library("mini_electron_content") {
   deps = [
     ":mini_electron_net_data_url",
     ":mini_electron_webgl",
+    ":mini_electron_webgpu",
   ]
 }
 

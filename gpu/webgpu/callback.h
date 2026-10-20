@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include "base/callback.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 
 namespace gpu::webgpu {
 
@@ -113,10 +114,22 @@ private:
     }
 };
 
+template <typename Signature>
+auto MakeWGPUOnceCallback(base::OnceCallback<Signature> callback)
+{
+    return new WGPUOnceCallback<Signature>(std::move(callback));
+}
+
+template <typename Signature>
+auto MakeWGPURepeatingCallback(base::RepeatingCallback<Signature> callback)
+{
+    return std::make_unique<WGPURepeatingCallback<Signature>>(std::move(callback));
+}
+
 template <typename FunctionType, typename... BoundParameters> auto BindWGPUOnceCallback(FunctionType&& function, BoundParameters&&... bound_parameters)
 {
-    static constexpr bool is_method = base::internal::MakeFunctorTraits<FunctionType>::is_method;
-    static constexpr bool is_weak_method = base::internal::IsWeakMethod<is_method, BoundParameters...>();
+    static constexpr bool is_method = base::internal::FunctorTraits<FunctionType, BoundParameters...>::is_method;
+    static constexpr bool is_weak_method = base::internal::kIsWeakMethod<is_method, BoundParameters...>;
     static_assert(!is_weak_method, "BindWGPUOnceCallback cannot be used with weak methods");
 
     auto cb = base::BindOnce(std::forward<FunctionType>(function), std::forward<BoundParameters>(bound_parameters)...);

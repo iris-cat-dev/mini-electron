@@ -296,6 +296,9 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
                 f"Required ANGLE license metadata is missing: {metadata_path}. "
                 "Install the pinned ANGLE source archive before packaging."
             )
+    dawn_root = root / "third_party" / "dawn"
+    if not (dawn_root / "README.chromium").is_file():
+        raise DistributionError("Install the pinned Dawn source archive before packaging.")
     entries: list[tuple[str, str, str, str]] = [
         (
             "The Chromium Project",
@@ -313,6 +316,11 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
         if relative_metadata.parts[:2] == ("third_party", "angle"):
             angle_metadata = metadata_path.relative_to(angle_root).as_posix()
             if angle_metadata not in _ANGLE_SHIPPED_METADATA:
+                continue
+        if relative_metadata.parts[:2] == ("third_party", "dawn"):
+            # Only the native Metal/D3D12 build's dependencies ship. The source
+            # tree also describes unfetched Vulkan, GL, test and tooling inputs.
+            if metadata_path != dawn_root / "README.chromium":
                 continue
         text = metadata_path.read_text(encoding="utf-8")
         for block in re.split(r"\n\s*\n", text):
@@ -396,6 +404,18 @@ def _generate_chromium_notices(root: Path, destination: Path) -> None:
     )
 
     supplemental = (
+        (
+            "Dawn and Tint Abseil",
+            "https://github.com/abseil/abseil-cpp/",
+            "Apache-2.0",
+            dawn_root / "third_party" / "abseil-cpp" / "LICENSE",
+        ),
+        (
+            "Dawn SPIR-V headers",
+            "https://github.com/KhronosGroup/SPIRV-Headers/",
+            "MIT",
+            dawn_root / "third_party" / "spirv-headers" / "src" / "LICENSE",
+        ),
         (
             "Chrome DevTools frontend",
             "https://chromium.googlesource.com/devtools/devtools-frontend/",

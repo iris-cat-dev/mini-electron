@@ -11,21 +11,15 @@
 
 #include "media/base/video_frame.h"
 #include "media/base/video_transformation.h"
+#include "media/base/video_util.h"
 #include "media/renderers/paint_canvas_video_renderer.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_conversions.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
+#include "base/numerics/checked_math.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_device.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_supported_features.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_texture.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_texture_view.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/webgpu_mailbox_texture.h"
-#include "third_party/blink/renderer/platform/graphics/video_frame_image_util.h"
-#include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/dawn_control_client_holder.h"
 #include "third_party/skia/include/effects/SkColorMatrix.h"
 #include "third_party/skia/modules/skcms/skcms.h"
 
@@ -46,18 +40,43 @@ wgpu::ExternalTextureRotation FromVideoRotation(media::VideoRotation rotation)
     NOTREACHED();
 }
 
-// TODO(crbug.com/40227105): Support HDR color space and color range in
-// generated wgsl shader to enable all color space for zero-copy path.
-bool DstColorSpaceSupportedByZeroCopy(PredefinedColorSpace dst_predefined_color_space)
+// Keep this in sync with the CPU converter's supported formats. Reject decoder
+// surfaces and unsupported formats before the converter's NOTREACHED paths.
+bool CanUploadVideoFrame(const media::VideoFrame& frame)
 {
-    switch (dst_predefined_color_space) {
-    case PredefinedColorSpace::kSRGB:
-    case PredefinedColorSpace::kP3:
+    if (!frame.IsMappable() && !frame.HasMappableGpuBuffer())
+        return false;
+    switch (frame.format()) {
+    case media::PIXEL_FORMAT_ARGB:
+    case media::PIXEL_FORMAT_XRGB:
+    case media::PIXEL_FORMAT_ABGR:
+    case media::PIXEL_FORMAT_XBGR:
+    case media::PIXEL_FORMAT_YV12:
+    case media::PIXEL_FORMAT_I420:
+    case media::PIXEL_FORMAT_I422:
+    case media::PIXEL_FORMAT_I444:
+    case media::PIXEL_FORMAT_I420A:
+    case media::PIXEL_FORMAT_I422A:
+    case media::PIXEL_FORMAT_I444A:
+    case media::PIXEL_FORMAT_YUV420P9:
+    case media::PIXEL_FORMAT_YUV422P9:
+    case media::PIXEL_FORMAT_YUV444P9:
+    case media::PIXEL_FORMAT_YUV420P10:
+    case media::PIXEL_FORMAT_YUV422P10:
+    case media::PIXEL_FORMAT_YUV444P10:
+    case media::PIXEL_FORMAT_YUV420P12:
+    case media::PIXEL_FORMAT_YUV422P12:
+    case media::PIXEL_FORMAT_YUV444P12:
+    case media::PIXEL_FORMAT_YUV420AP10:
+    case media::PIXEL_FORMAT_YUV422AP10:
+    case media::PIXEL_FORMAT_YUV444AP10:
+    case media::PIXEL_FORMAT_NV12:
+    case media::PIXEL_FORMAT_P010LE:
+    case media::PIXEL_FORMAT_Y16:
         return true;
     default:
-        break;
+        return false;
     }
-    return false;
 }
 } // namespace
 
@@ -148,6 +167,11 @@ ExternalTextureSource GetExternalTextureSourceFromVideoElement(HTMLVideoElement*
             "resource.");
         return source;
     }
+    if (!CanUploadVideoFrame(*source.media_video_frame)) {
+        exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
+            "Video frame is not CPU-readable or has an unsupported pixel format.");
+        return source;
+    }
 
     source.media_video_frame_unique_id = source.media_video_frame->unique_id();
     source.valid = true;
@@ -178,6 +202,11 @@ ExternalTextureSource GetExternalTextureSourceFromVideoFrame(VideoFrame* frame, 
         exception_state.ThrowDOMException(DOMExceptionCode::kOperationError, "Cannot import from zero sized video frame");
         return source;
     }
+    if (!CanUploadVideoFrame(*source.media_video_frame)) {
+        exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
+            "Video frame is not CPU-readable or has an unsupported pixel format.");
+        return source;
+    }
 
     source.valid = true;
 
@@ -188,208 +217,104 @@ ExternalTexture CreateExternalTexture(GPUDevice* device, PredefinedColorSpace ds
     media::PaintCanvasVideoRenderer* video_renderer)
 {
     DCHECK(media_video_frame);
-    gfx::ColorSpace src_color_space = media_video_frame->ColorSpace();
-    gfx::ColorSpace dst_color_space = PredefinedColorSpaceToGfxColorSpace(dst_predefined_color_space);
-
-    // It should be very rare that a frame didn't get a valid colorspace through
-    // the guessing process:
-    // https://source.chromium.org/chromium/chromium/src/+/main:media/base/video_color_space.cc;l=69;drc=6c9cfff09be8397270b376a4e4407328694e97fa
-    // The historical rule for this was to use BT.601 for SD content and BT.709
-    // for HD content:
-    // https://source.chromium.org/chromium/chromium/src/+/main:media/ffmpeg/ffmpeg_common.cc;l=683;drc=1946212ac0100668f14eb9e2843bdd846e510a1e)
-    // We prefer always using BT.709 since SD content in practice is down-scaled
-    // HD content, not NTSC broadcast content.
-    if (!src_color_space.IsValid()) {
-        src_color_space = gfx::ColorSpace::CreateREC709();
-    }
-
-    ExternalTexture external_texture = {};
-
-    // TODO(crbug.com/1306753): Use SharedImageProducer and CompositeSharedImage
-    // rather than check 'is_webgpu_compatible'.
-    bool device_support_zero_copy = device->adapter()->SupportsMultiPlanarFormats();
-
-    wgpu::ExternalTextureDescriptor external_texture_desc = {};
-
-    // Set the ExternalTexture cropSize/Origin and apparentSize. The 0-copy path
-    // uses this metadata.
-    gfx::Rect visible_rect = media_video_frame->visible_rect();
-    gfx::Size natural_size = media_video_frame->natural_size();
-    DCHECK(visible_rect.x() >= 0 && visible_rect.y() >= 0 && visible_rect.width() >= 0 && visible_rect.height() >= 0);
-    DCHECK(natural_size.width() >= 0 && natural_size.height() >= 0);
-
-    // TODO(377574981): Remove once Dawn starts using cropSize/Origin and
-    // apparentSize;
-    external_texture_desc.visibleOrigin = { static_cast<uint32_t>(visible_rect.x()), static_cast<uint32_t>(visible_rect.y()) };
-    external_texture_desc.visibleSize = { static_cast<uint32_t>(visible_rect.width()), static_cast<uint32_t>(visible_rect.height()) };
-
-    // The visible_rect denotes the part of the coded image that's visible when
-    // displaying the frame. For Dawn it is considered as a crop rectangle applied
-    // in plane0 (and adapted for plane1 if present).
-    external_texture_desc.cropOrigin = { static_cast<uint32_t>(visible_rect.x()), static_cast<uint32_t>(visible_rect.y()) };
-    external_texture_desc.cropSize = { static_cast<uint32_t>(visible_rect.width()), static_cast<uint32_t>(visible_rect.height()) };
-
-    // The natural_size is shown as VideoFrame.displayWidth/Height in JS and
-    // WebGPU requires that the imported GPUExternalTexture appears to be that
-    // size when used in WGSL. It is the apparent size of the texture from the
-    // perspective of the WGSL author.
-    external_texture_desc.apparentSize = { static_cast<uint32_t>(natural_size.width()), static_cast<uint32_t>(natural_size.height()) };
-
-    // Set ExternalTexture rotation and mirrored state.
-    const media::VideoFrameMetadata& metadata = media_video_frame->metadata();
-    if (metadata.transformation) {
-        external_texture_desc.rotation = FromVideoRotation(metadata.transformation->rotation);
-        external_texture_desc.mirrored = metadata.transformation->mirrored;
-    }
-
-    const bool zero_copy = (media_video_frame->HasSharedImage() && (media_video_frame->format() == media::PIXEL_FORMAT_NV12) && device_support_zero_copy
-        && media_video_frame->metadata().is_webgpu_compatible && DstColorSpaceSupportedByZeroCopy(dst_predefined_color_space));
-
-    TRACE_EVENT_INSTANT2(TRACE_DISABLED_BY_DEFAULT("webgpu"), "CreateExternalTexture", TRACE_EVENT_SCOPE_THREAD, "zero_copy", !!zero_copy, "video_frame",
-        media_video_frame->AsHumanReadableString());
-    if (zero_copy) {
-        scoped_refptr<WebGPUMailboxTexture> mailbox_texture
-            = WebGPUMailboxTexture::FromVideoFrame(device->GetDawnControlClient(), device->GetHandle(), wgpu::TextureUsage::TextureBinding, media_video_frame);
-        if (!mailbox_texture) {
+    if (!media_video_frame->IsMappable() && media_video_frame->HasMappableGpuBuffer()) {
+        media_video_frame = media::ConvertToMemoryMappedFrame(std::move(media_video_frame));
+        if (!media_video_frame)
             return {};
-        }
-
-        wgpu::TextureViewDescriptor view_desc = { .format = wgpu::TextureFormat::R8Unorm, .aspect = wgpu::TextureAspect::Plane0Only };
-        wgpu::TextureView plane0 = mailbox_texture->GetTexture().CreateView(&view_desc);
-        view_desc.format = wgpu::TextureFormat::RG8Unorm;
-        view_desc.aspect = wgpu::TextureAspect::Plane1Only;
-        wgpu::TextureView plane1 = mailbox_texture->GetTexture().CreateView(&view_desc);
-
-        // Set Planes for ExternalTexture
-        external_texture_desc.plane0 = plane0;
-        external_texture_desc.plane1 = plane1;
-
-        // Set color space transformation metas for ExternalTexture
-        std::array<float, 12> yuvToRgbMatrix = GetYUVToRGBMatrix(src_color_space, media_video_frame->BitDepth());
-        external_texture_desc.yuvToRgbConversionMatrix = yuvToRgbMatrix.data();
-
-        // Decide whether color space conversion could be skipped.
-        external_texture_desc.doYuvToRgbConversionOnly = IsSameGamutAndGamma(src_color_space, dst_color_space);
-
-        ColorSpaceConversionConstants color_space_conversion_constants = GetColorSpaceConversionConstants(src_color_space, dst_color_space);
-
-        external_texture_desc.gamutConversionMatrix = color_space_conversion_constants.gamut_conversion_matrix.data();
-        external_texture_desc.srcTransferFunctionParameters = color_space_conversion_constants.src_transfer_constants.data();
-        external_texture_desc.dstTransferFunctionParameters = color_space_conversion_constants.dst_transfer_constants.data();
-
-        external_texture.wgpu_external_texture = device->GetHandle().CreateExternalTexture(&external_texture_desc);
-
-        external_texture.mailbox_texture = std::move(mailbox_texture);
-        external_texture.is_zero_copy = true;
-        return external_texture;
     }
-    // If the context is lost, the resource provider would be invalid.
-    auto context_provider_wrapper = SharedGpuContext::ContextProviderWrapper();
-    if (!context_provider_wrapper || context_provider_wrapper->ContextProvider()->IsContextLost())
-        return external_texture;
-
-    // In 0-copy path, uploading shares the whole frame into dawn and apply
-    // visible rect and sample from it. For 1-copy path, we should obey the
-    // same behaviour by:
-    // - Get recycle cache with video frame visible size.
-    // - Draw video frame visible rect into recycle cache, uses visible size.
-    // - Reset origin of visible rect in ExternalTextureDesc and use internal
-    // shader to
-    //   handle visible rect.
-    external_texture_desc.visibleOrigin = {};
-
-    std::unique_ptr<media::PaintCanvasVideoRenderer> local_video_renderer;
-    if (!video_renderer) {
-        local_video_renderer = std::make_unique<media::PaintCanvasVideoRenderer>();
-        video_renderer = local_video_renderer.get();
-    }
-
-    // Using CopyVideoFrameToSharedImage() is an optional one copy upload path.
-    // However, the formats this path supports are quite limited. Check whether
-    // the current video frame could be uploaded through this one copy upload
-    // path. If not, fallback to DrawVideoFrameIntoResourceProvider().
-    // CopyVideoFrameToSharedImage also doesn't support rescaling the image so we
-    // cannot use it if the visible_rect isn't the same size as natural_size.
-    // TODO(crbug.com/327270287): Expand CopyVideoFrameToSharedImage() to
-    // support all valid video frame formats and remove the draw path.
-    bool use_copy_to_shared_image = video_renderer->CanUseCopyVideoFrameToSharedImage(*media_video_frame) && visible_rect.size() == natural_size;
-
-    // Get a recyclable resource for producing WebGPU-compatible shared images.
-    // The recyclable resource's color space is the same as source color space
-    // with the YUV to RGB transform stripped out since that's handled by the
-    // PaintCanvasVideoRenderer.
-    gfx::ColorSpace resource_color_space = src_color_space.GetAsRGB();
-
-    // Using DrawVideoFrameIntoResourceProvider() for uploading. Need to
-    // workaround issue crbug.com/1407112. It requires no color space
-    // conversion when drawing video frame to resource provider.
-    // Leverage Dawn to do the color space conversion.
-    // TODO(crbug.com/1407112): Don't use compatRgbColorSpace but the
-    // exact color space after fixing this issue.
-    if (!use_copy_to_shared_image) {
-        resource_color_space = media_video_frame->CompatRGBColorSpace();
-    }
-
-    std::unique_ptr<RecyclableCanvasResource> recyclable_canvas_resource = device->GetDawnControlClient()->GetOrCreateCanvasResource(
-        SkImageInfo::MakeN32Premul(natural_size.width(), natural_size.height(), resource_color_space.ToSkColorSpace()));
-    if (!recyclable_canvas_resource) {
-        return external_texture;
-    }
-
-    CanvasResourceProvider* resource_provider = recyclable_canvas_resource->resource_provider();
-    DCHECK(resource_provider);
-
-    viz::RasterContextProvider* raster_context_provider = nullptr;
-    if (auto* context_provider = context_provider_wrapper->ContextProvider())
-        raster_context_provider = context_provider->RasterContextProvider();
-
-    if (use_copy_to_shared_image) {
-        // We don't need to specify a sync token since both CanvasResourceProvider
-        // and PaintCanvasVideoRenderer use the SharedGpuContext.
-        auto client_si = resource_provider->GetBackingClientSharedImageForOverwrite();
-        gpu::MailboxHolder dst_mailbox(
-            client_si ? client_si->mailbox() : gpu::Mailbox(), gpu::SyncToken(), client_si ? client_si->GetTextureTarget() : GL_TEXTURE_2D);
-
-        // The returned sync token is from the SharedGpuContext - it's ok to drop it
-        // here since WebGPUMailboxTexture::FromCanvasResource will generate a new
-        // sync token from the SharedContextState and wait on it anyway.
-        std::ignore = video_renderer->CopyVideoFrameToSharedImage(raster_context_provider, std::move(media_video_frame), dst_mailbox,
-            /*use_visible_rect=*/true);
-    } else {
-        const gfx::Rect dest_rect = gfx::Rect(media_video_frame->natural_size());
-        // Delegate video transformation to Dawn.
-        if (!DrawVideoFrameIntoResourceProvider(std::move(media_video_frame), resource_provider, raster_context_provider, dest_rect, video_renderer,
-                /* ignore_video_transformation */ true)) {
-            return {};
-        }
-    }
-
-    scoped_refptr<WebGPUMailboxTexture> mailbox_texture = WebGPUMailboxTexture::FromCanvasResource(
-        device->GetDawnControlClient(), device->GetHandle(), wgpu::TextureUsage::TextureBinding, std::move(recyclable_canvas_resource));
-    if (!mailbox_texture) {
+    // CPU upload owns its Dawn texture, not the decoder frame. In particular we
+    // must not try a SharedImage import on a renderer-local native device.
+    if (!CanUploadVideoFrame(*media_video_frame) || device->GetDawnControlClient()->IsContextLost())
         return {};
+
+    const gfx::Rect visible_rect = media_video_frame->visible_rect();
+    const gfx::Size natural_size = media_video_frame->natural_size();
+    if (visible_rect.IsEmpty() || natural_size.IsEmpty())
+        return {};
+    // Normalize the converter's fallback and the shader constants together.
+    if (!media_video_frame->ColorSpace().IsValid()) {
+        media_video_frame = media::VideoFrame::WrapVideoFrame(
+            media_video_frame, media_video_frame->format(), visible_rect, natural_size);
+        if (!media_video_frame)
+            return {};
+        media_video_frame->set_color_space(gfx::ColorSpace::CreateREC709());
     }
 
-    wgpu::TextureViewDescriptor view_desc = {};
-    wgpu::TextureView plane0 = mailbox_texture->GetTexture().CreateView(&view_desc);
+    // The converter reads visible_data(), so the uploaded texture is already
+    // cropped. Dawn applies the display scaling, rotation and mirroring.
+    const uint32_t width = visible_rect.width();
+    const uint32_t height = visible_rect.height();
+    base::CheckedNumeric<uint32_t> row_bytes = width;
+    row_bytes *= 4;
+    row_bytes += 255;
+    if (!row_bytes.IsValid())
+        return {};
+    const uint32_t padded_row_bytes = row_bytes.ValueOrDie();
+    const uint32_t stride = padded_row_bytes & ~255u;
+    base::CheckedNumeric<size_t> byte_size = stride;
+    byte_size *= height;
+    if (!byte_size.IsValid())
+        return {};
 
-    // Set plane for ExternalTexture
-    external_texture_desc.plane0 = plane0;
+    wgpu::BufferDescriptor buffer_desc = {
+        .usage = wgpu::BufferUsage::CopySrc,
+        .size = byte_size.ValueOrDie(),
+        .mappedAtCreation = true,
+    };
+    wgpu::Buffer buffer = device->GetHandle().CreateBuffer(&buffer_desc);
+    if (!buffer)
+        return {};
+    void* pixels = buffer.GetMappedRange(0, byte_size.ValueOrDie());
+    if (!pixels)
+        return {};
+    media::PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
+        media_video_frame.get(), pixels, stride, false, media::PaintCanvasVideoRenderer::kFilterBilinear);
+    buffer.Unmap();
 
-    // Decide whether color space conversion could be skipped.
-    external_texture_desc.doYuvToRgbConversionOnly = IsSameGamutAndGamma(resource_color_space, dst_color_space);
+    const bool rgba = media_video_frame->format() == media::PIXEL_FORMAT_Y16
+        || media::PaintCanvasVideoRenderer::GetRGBPixelsOutputFormat() == viz::SinglePlaneFormat::kRGBA_8888;
+    wgpu::TextureDescriptor texture_desc = {
+        .usage = wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding,
+        .size = { width, height, 1 },
+        .format = rgba ? wgpu::TextureFormat::RGBA8Unorm : wgpu::TextureFormat::BGRA8Unorm,
+    };
+    wgpu::Texture texture = device->GetHandle().CreateTexture(&texture_desc);
+    wgpu::ImageCopyBuffer source = {
+        .layout = { .bytesPerRow = stride, .rowsPerImage = height },
+        .buffer = buffer,
+    };
+    wgpu::ImageCopyTexture destination = { .texture = texture };
+    const wgpu::Extent3D copy_size = { width, height, 1 };
+    wgpu::CommandEncoder encoder = device->GetHandle().CreateCommandEncoder();
+    encoder.CopyBufferToTexture(&source, &destination, &copy_size);
+    wgpu::CommandBuffer commands = encoder.Finish();
+    device->GetHandle().GetQueue().Submit(1, &commands);
 
-    // Set color space transformation metas for ExternalTexture
-    ColorSpaceConversionConstants color_space_conversion_constants = GetColorSpaceConversionConstants(resource_color_space, dst_color_space);
-
-    external_texture_desc.gamutConversionMatrix = color_space_conversion_constants.gamut_conversion_matrix.data();
-    external_texture_desc.srcTransferFunctionParameters = color_space_conversion_constants.src_transfer_constants.data();
-    external_texture_desc.dstTransferFunctionParameters = color_space_conversion_constants.dst_transfer_constants.data();
-
-    external_texture.wgpu_external_texture = device->GetHandle().CreateExternalTexture(&external_texture_desc);
-    external_texture.mailbox_texture = std::move(mailbox_texture);
-
-    return external_texture;
+    gfx::ColorSpace src_color_space = media_video_frame->ColorSpace();
+    // The CPU converter removes the YUV matrix/range, but not the primaries or
+    // transfer function. Let Dawn perform that remaining RGB conversion.
+    src_color_space = src_color_space.GetAsFullRangeRGB();
+    const gfx::ColorSpace dst_color_space = PredefinedColorSpaceToGfxColorSpace(dst_predefined_color_space);
+    ColorSpaceConversionConstants constants = GetColorSpaceConversionConstants(src_color_space, dst_color_space);
+    wgpu::ExternalTextureDescriptor desc = {
+        .plane0 = texture.CreateView(),
+        .doYuvToRgbConversionOnly = IsSameGamutAndGamma(src_color_space, dst_color_space),
+        .srcTransferFunctionParameters = constants.src_transfer_constants.data(),
+        .dstTransferFunctionParameters = constants.dst_transfer_constants.data(),
+        .gamutConversionMatrix = constants.gamut_conversion_matrix.data(),
+    };
+    desc.visibleSize = { width, height };
+    desc.cropSize = { width, height };
+    desc.apparentSize = { static_cast<uint32_t>(natural_size.width()), static_cast<uint32_t>(natural_size.height()) };
+    if (const auto& transform = media_video_frame->metadata().transformation) {
+        desc.rotation = FromVideoRotation(transform->rotation);
+        desc.mirrored = transform->mirrored;
+    }
+    ExternalTexture result;
+    result.texture = std::move(texture);
+    result.wgpu_external_texture = device->GetHandle().CreateExternalTexture(&desc);
+    device->GetDawnControlClient()->Flush();
+    return result;
 }
 
 } // namespace blink

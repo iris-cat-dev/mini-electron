@@ -9,7 +9,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">ANGLE_STATIC=1;GL_APICALL=;EGLAPI=;GL_API=;MINI_ELECTRON_DISABLE_DEVTOOLS=1;MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1;HAVE_INSPECTOR=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MiniElectronSourceRoot)third_party\angle\include;$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MiniElectronSourceRoot)third_party\dawn\include;$(MiniElectronSourceRoot)third_party\dawn\src;$(MiniElectronDawnRoot)\gen\include;$(MiniElectronDawnRoot)\gen\src;$(MiniElectronSourceRoot)third_party\angle\include;$(MiniElectronGeneratedRoot);$(MSBuildThisFileDirectory)..\..;$(MSBuildThisFileDirectory)..\..\third_party\leveldb;$(MSBuildThisFileDirectory)..\..\third_party\leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -23,6 +23,11 @@
   </ItemDefinitionGroup>
   <Target Name="MiniElectronRequireANGLE" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(MSBuildProjectName)' == 'application'">
     <Error Condition="'$(MiniElectronANGLELibrary)' == '' or !Exists('$(MiniElectronANGLELibrary)')" Text="ANGLE D3D11 is required. Use Python 3.12+ and python build.py with GN/Ninja on PATH to bootstrap and build ANGLE, or pass MiniElectronANGLELibrary pointing to that build's mini_electron_angle.lib." />
+  </Target>
+  <Import Project="$(MiniElectronDawnRoot)\dawn-libraries.props" Condition="Exists('$(MiniElectronDawnRoot)\dawn-libraries.props') and '$(MSBuildProjectName)' == 'application'" />
+  <Import Project="$(MSBuildThisFileDirectory)webgpu_sources.props" />
+  <Target Name="MiniElectronRequireDawn" BeforeTargets="PrepareForBuild" Condition="'$(MSBuildProjectName)' == 'application'">
+    <Error Condition="'$(MiniElectronDawnRoot)' == '' or !Exists('$(MiniElectronDawnRoot)\dawn-libraries.props')" Text="Native Dawn D3D12 and generated headers are required. Use python build.py with CMake 3.24+ and Visual Studio 2022 to bootstrap Dawn, or pass MiniElectronDawnRoot from that build." />
   </Target>
   <UsingTask TaskName="MiniElectronObjectPaths" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>

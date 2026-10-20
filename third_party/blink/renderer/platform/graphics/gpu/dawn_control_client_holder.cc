@@ -12,7 +12,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "gpu/config/gpu_switches.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/webgpu_resource_provider_cache.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -42,7 +41,6 @@ DawnControlClientHolder::DawnControlClientHolder(
     : context_provider_(std::make_unique<WebGraphicsContext3DProviderWrapper>(std::move(context_provider)))
     , task_runner_(task_runner)
     , api_channel_(context_provider_->ContextProvider()->WebGPUInterface()->GetAPIChannel())
-    , recyclable_resource_cache_(GetContextProviderWeakPtr(), task_runner)
 {
 }
 
@@ -87,18 +85,13 @@ void DawnControlClientHolder::MarkContextLost()
     if (context_lost_) {
         return;
     }
-    api_channel_->Disconnect();
     context_lost_ = true;
+    api_channel_->Disconnect();
 }
 
 bool DawnControlClientHolder::IsContextLost() const
 {
     return context_lost_;
-}
-
-std::unique_ptr<RecyclableCanvasResource> DawnControlClientHolder::GetOrCreateCanvasResource(const SkImageInfo& info)
-{
-    return recyclable_resource_cache_.GetOrCreateCanvasResource(info);
 }
 
 void DawnControlClientHolder::Flush()

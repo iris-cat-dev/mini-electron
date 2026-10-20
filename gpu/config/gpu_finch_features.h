@@ -8,7 +8,9 @@
 #ifndef GPU_CONFIG_GPU_FINCH_FEATURES_H_
 #define GPU_CONFIG_GPU_FINCH_FEATURES_H_
 
+#include <string>
 #include "base/feature_list.h"
+#include "base/metrics/field_trial_params.h"
 #include "build/build_config.h"
 #include "gpu/gpu_export.h"
 
@@ -81,6 +83,7 @@ GPU_EXPORT BASE_DECLARE_FEATURE(kEnableDrDcVulkan);
 #endif // BUILDFLAG(IS_ANDROID)
 
 GPU_EXPORT BASE_DECLARE_FEATURE(kWebGPUService);
+GPU_EXPORT extern const base::FeatureParam<std::string> kWGSLUnsafeFeatures;
 
 GPU_EXPORT BASE_DECLARE_FEATURE(kIncreasedCmdBufferParseSlice);
 

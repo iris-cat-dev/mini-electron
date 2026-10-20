@@ -6,6 +6,9 @@
 #include "runtime/engine/renderer/web_dedicated_worker_host_factory_client_impl.h"
 #include "runtime/engine/renderer/v8_value_converter_impl.h"
 #include "runtime/engine/renderer/webgl_context_provider.h"
+#include "runtime/engine/renderer/webgpu_context_provider.h"
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
 #include "runtime/engine/browser/time_zone_monitor_impl.h"
 #include "runtime/engine/browser/dom_storage_provider_impl.h"
 #include "runtime/engine/resources/res.h"
@@ -38,6 +41,18 @@ std::unique_ptr<blink::WebGraphicsContext3DProvider> RendererBlinkPlatformImpl::
     const ContextAttributes& attributes, const blink::WebURL&, GraphicsInfo* info)
 {
     return CreateWebGLContextProvider(attributes, info);
+}
+
+std::unique_ptr<blink::WebGraphicsContext3DProvider> RendererBlinkPlatformImpl::CreateWebGPUGraphicsContext3DProvider(const blink::WebURL&)
+{
+    return CreateWebGPUContextProvider();
+}
+
+void RendererBlinkPlatformImpl::CreateWebGPUGraphicsContext3DProviderAsync(const blink::WebURL&,
+    base::OnceCallback<void(std::unique_ptr<blink::WebGraphicsContext3DProvider>)> callback)
+{
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+        base::BindOnce(std::move(callback), CreateWebGPUContextProvider()));
 }
 
 class MimeRegistryImpl : public ::blink::mojom::blink::MimeRegistry {

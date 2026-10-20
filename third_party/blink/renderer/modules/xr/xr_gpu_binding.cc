@@ -88,6 +88,11 @@ XRProjectionLayer* XRGPUBinding::createProjectionLayer(const XRGPUProjectionLaye
     if (!CanCreateLayer(exception_state)) {
         return nullptr;
     }
+    if (session()->xr()->frameProvider()->DrawingIntoSharedBuffer()) {
+        exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
+            "WebGPU XR projection layers cannot import compositor SharedImages on this runtime.");
+        return nullptr;
+    }
 
     // The max size will be either the native resolution or the default
     // if that happens to be larger than the native res. (That can happen on
@@ -120,13 +125,7 @@ XRProjectionLayer* XRGPUBinding::createProjectionLayer(const XRGPUProjectionLaye
     color_desc.size = { static_cast<uint32_t>(texture_size.width()), static_cast<uint32_t>(texture_size.height()), static_cast<uint32_t>(1) };
     color_desc.dimension = wgpu::TextureDimension::e2D;
 
-    XRGPUSwapChain* color_swap_chain;
-    if (session()->xr()->frameProvider()->DrawingIntoSharedBuffer()) {
-        color_swap_chain = MakeGarbageCollected<XRGPUMailboxSwapChain>(device_, color_desc);
-    } else {
-        // TODO(crbug.com/359418629): Replace with a shared image swap chain.
-        color_swap_chain = MakeGarbageCollected<XRGPUStaticSwapChain>(device_, color_desc);
-    }
+    XRGPUSwapChain* color_swap_chain = MakeGarbageCollected<XRGPUStaticSwapChain>(device_, color_desc);
 
     // Create the texture array wrapper for the side-by-side swap chain.
     // TODO(crbug.com/359418629): Remove once array Mailboxes are available.

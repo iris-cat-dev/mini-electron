@@ -66,6 +66,7 @@ class RasterInterface;
 
 namespace webgpu {
 class WebGPUInterface;
+class NativeTextureInterface;
 }
 } // namespace gpu
 
@@ -98,6 +99,7 @@ public:
     virtual gpu::gles2::GLES2Interface* ContextGL() = 0;
     virtual gpu::raster::RasterInterface* RasterInterface() = 0;
     virtual gpu::webgpu::WebGPUInterface* WebGPUInterface() = 0;
+    virtual gpu::webgpu::NativeTextureInterface* WebGPUTextureInterface() { return nullptr; }
     virtual gpu::ContextSupport* ContextSupport() = 0;
     virtual bool IsContextLost() = 0; // Has the GPU driver lost this context?
     virtual bool BindToCurrentSequence() = 0;

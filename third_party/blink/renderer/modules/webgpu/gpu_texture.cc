@@ -17,8 +17,6 @@
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/webgpu_mailbox_texture.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/webgpu_resource_provider_cache.h"
 
 namespace blink {
 
@@ -181,21 +179,6 @@ GPUTexture::GPUTexture(GPUDevice* device, wgpu::Texture texture, const String& l
 {
 }
 
-GPUTexture::GPUTexture(
-    GPUDevice* device, wgpu::TextureFormat format, wgpu::TextureUsage usage, scoped_refptr<WebGPUMailboxTexture> mailbox_texture, const String& label)
-    : DawnObject<wgpu::Texture>(device, mailbox_texture->GetTexture(), label)
-    , format_(format)
-    , usage_(usage)
-    , mailbox_texture_(std::move(mailbox_texture))
-{
-    if (mailbox_texture_) {
-        device_->TrackTextureWithMailbox(this);
-    }
-
-    // Mailbox textures are all 2d texture.
-    dimension_ = wgpu::TextureDimension::e2D;
-}
-
 GPUTextureView* GPUTexture::createView(const GPUTextureViewDescriptor* webgpu_desc, ExceptionState& exception_state)
 {
     DCHECK(webgpu_desc);
@@ -216,11 +199,6 @@ GPUTextureView* GPUTexture::createView(const GPUTextureViewDescriptor* webgpu_de
     return view;
 }
 
-GPUTexture::~GPUTexture()
-{
-    DissociateMailbox();
-}
-
 void GPUTexture::destroy()
 {
     if (destroyed_) {
@@ -231,10 +209,6 @@ void GPUTexture::destroy()
         std::move(destroy_callback_).Run();
     }
 
-    if (mailbox_texture_) {
-        DissociateMailbox();
-        device_->UntrackTextureWithMailbox(this);
-    }
     GetHandle().Destroy();
     destroyed_ = true;
 }
@@ -277,19 +251,6 @@ V8GPUTextureFormat GPUTexture::format() const
 uint32_t GPUTexture::usage() const
 {
     return static_cast<uint32_t>(GetHandle().GetUsage());
-}
-
-void GPUTexture::DissociateMailbox()
-{
-    if (mailbox_texture_) {
-        mailbox_texture_->Dissociate();
-        mailbox_texture_ = nullptr;
-    }
-}
-
-scoped_refptr<WebGPUMailboxTexture> GPUTexture::GetMailboxTexture()
-{
-    return mailbox_texture_;
 }
 
 void GPUTexture::SetBeforeDestroyCallback(base::OnceClosure callback)

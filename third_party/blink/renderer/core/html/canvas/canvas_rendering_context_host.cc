@@ -131,11 +131,9 @@ CanvasResourceProvider* CanvasRenderingContextHost::GetOrCreateCanvasResourcePro
 void CanvasRenderingContextHost::CreateCanvasResourceProviderWebGPU()
 {
     const SkImageInfo resource_info = SkImageInfo::Make(SkISize::Make(Size().width(), Size().height()), GetRenderingContextSkColorInfo());
-    std::unique_ptr<CanvasResourceProvider> provider;
-    if (SharedGpuContext::IsGpuCompositingEnabled()) {
-        provider = CanvasResourceProvider::CreateWebGPUImageProvider(resource_info, gpu::SharedImageUsageSet(), this);
-    }
-    ReplaceResourceProvider(std::move(provider));
+    // Renderer-local WebGPU exports owned CPU pixels, not SharedImages.
+    ReplaceResourceProvider(CanvasResourceProvider::CreateBitmapProvider(
+        resource_info, FilterQuality(), CanvasResourceProvider::ShouldInitialize::kNo, this));
     if (ResourceProvider() && ResourceProvider()->IsValid()) {
         base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated", ResourceProvider()->IsAccelerated());
         base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType", ResourceProvider()->GetType());

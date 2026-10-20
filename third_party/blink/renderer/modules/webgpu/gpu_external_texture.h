@@ -11,17 +11,21 @@
 #include "media/base/video_frame.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_object.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
+
+namespace media {
+class PaintCanvasVideoRenderer;
+}
 
 namespace blink {
 
 class ExceptionState;
 class GPUExternalTexture;
 class GPUExternalTextureDescriptor;
-class WebGPUMailboxTexture;
 class HTMLVideoElement;
 class VideoFrame;
 
@@ -55,12 +59,10 @@ public:
     void Destroy();
 
     void Add(HTMLVideoElement* video, GPUExternalTexture* external_texture);
-    void Remove(HTMLVideoElement* video);
+    void Remove(HTMLVideoElement* video, GPUExternalTexture* external_texture);
 
     void Add(VideoFrame* frame, GPUExternalTexture* external_texture);
-    void Remove(VideoFrame* frame);
-
-    void ReferenceUntilGPUIsFinished(scoped_refptr<WebGPUMailboxTexture> mailbox_texture);
+    void Remove(VideoFrame* frame, GPUExternalTexture* external_texture);
 
     void Trace(Visitor* visitor) const;
     GPUDevice* device() const;
@@ -69,10 +71,16 @@ private:
     void ExpireAtEndOfTask(GPUExternalTexture* external_texture);
     void ExpireTask();
 
-    // Keep a list of all active GPUExternalTexture. Eagerly destroy them
-    // when the device is destroyed (via .destroy) to free the memory.
-    HeapHashMap<WeakMember<HTMLVideoElement>, WeakMember<GPUExternalTexture>> from_html_video_element_;
-    HeapHashMap<WeakMember<VideoFrame>, WeakMember<GPUExternalTexture>> from_video_frame_;
+    // Conversion constants belong to an import descriptor, not just its source.
+    // Keep independent weak source maps for each validated destination space.
+    class PerColorSpaceCache final : public GarbageCollected<PerColorSpaceCache> {
+    public:
+        void Trace(Visitor* visitor) const;
+        HeapHashMap<WeakMember<HTMLVideoElement>, WeakMember<GPUExternalTexture>> from_html_video_element;
+        HeapHashMap<WeakMember<VideoFrame>, WeakMember<GPUExternalTexture>> from_video_frame;
+    };
+    PerColorSpaceCache& GetOrCreateColorSpaceCache(PredefinedColorSpace color_space);
+    HeapHashMap<PredefinedColorSpace, Member<PerColorSpaceCache>> by_color_space_;
 
     bool expire_task_scheduled_ = false;
     HeapHashSet<Member<GPUExternalTexture>> expire_set_;
@@ -89,14 +97,15 @@ public:
         ExternalTextureCache* cache, HTMLVideoElement* video, const GPUExternalTextureDescriptor* webgpu_desc, ExceptionState& exception_state);
     static GPUExternalTexture* FromVideoFrame(
         ExternalTextureCache* cache, VideoFrame* frame, const GPUExternalTextureDescriptor* webgpu_desc, ExceptionState& exception_state);
-    explicit GPUExternalTexture(ExternalTextureCache* cache, wgpu::ExternalTexture external_texture, scoped_refptr<WebGPUMailboxTexture> mailbox_texture,
-        bool is_zero_copy, bool read_lock_fences_enabled, std::optional<media::VideoFrame::ID> media_video_frame_unique_id, const String& label);
+    explicit GPUExternalTexture(ExternalTextureCache* cache, wgpu::ExternalTexture external_texture, wgpu::Texture texture,
+        std::optional<media::VideoFrame::ID> media_video_frame_unique_id, PredefinedColorSpace color_space, const String& label);
 
     GPUExternalTexture(const GPUExternalTexture&) = delete;
     GPUExternalTexture& operator=(const GPUExternalTexture&) = delete;
-
-    bool isZeroCopy() const;
-    bool isReadLockFenceEnabled() const;
+    PredefinedColorSpace ColorSpace() const { return color_space_; }
+    // Native external textures upload owned CPU pixels rather than importing
+    // decoder SharedImages.
+    bool isZeroCopy() const { return false; }
 
     void Destroy();
     void Expire();
@@ -159,14 +168,9 @@ private:
     bool expired() const;
     bool destroyed() const;
 
-    scoped_refptr<WebGPUMailboxTexture> mailbox_texture_;
-    bool is_zero_copy_ = false;
+    wgpu::Texture texture_;
+    const PredefinedColorSpace color_space_;
     bool remove_from_cache_task_scheduled_ = false;
-
-    // read_lock_fences_enabled_ comes from media::VideoFrame metadata.
-    // VideoFrame set this metadata as a hint to ensure all previous gpu
-    // execution complete before returning video frame to producer.
-    bool read_lock_fences_enabled_ = false;
 
     std::optional<media::VideoFrame::ID> media_video_frame_unique_id_;
     WeakMember<HTMLVideoElement> video_;

@@ -285,13 +285,6 @@ public:
 
     void OnDestroyResource();
 
-    virtual void OnAcquireRecyclableCanvasResource()
-    {
-    }
-    virtual void OnDestroyRecyclableCanvasResource(const gpu::SyncToken& sync_token)
-    {
-    }
-
     void FlushIfRecordingLimitExceeded();
 
     const MemoryManagedPaintRecorder& Recorder() const
@@ -329,8 +322,7 @@ public:
     // `ready_sync_token` before copying; pass SyncToken() if no sync is required.
     // Synthesizes a new sync token in `completion_sync_token` which will satisfy
     // after the image copy completes. In practice, this API can be used to
-    // replace a resource with the contents of an AcceleratedStaticBitmapImage or
-    // with a WebGPUMailboxTexture.
+    // replace a resource with the contents of an AcceleratedStaticBitmapImage.
     bool OverwriteImage(
         const gpu::Mailbox& shared_image_mailbox, const gfx::Rect& copy_rect, const gpu::SyncToken& ready_sync_token, gpu::SyncToken& completion_sync_token);
 

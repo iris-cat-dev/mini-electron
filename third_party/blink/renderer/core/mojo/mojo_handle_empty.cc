@@ -49,22 +49,6 @@ const blink::WrapperTypeInfo blink::V8MojoInterfaceRequestEvent::wrapper_type_in
 const blink::WrapperTypeInfo& blink::MojoInterfaceRequestEvent::wrapper_type_info_ =
 blink::V8MojoInterfaceRequestEvent::wrapper_type_info_;
 
-const blink::WrapperTypeInfo blink::V8MojoHandle::wrapper_type_info_{
-    gin::kEmbedderBlink,
-    nullptr/*blink::V8MojoHandle::InstallInterfaceTemplate*/,
-    nullptr,
-    "MojoHandle",
-    nullptr,
-    blink::V8MojoHandle::kThisTag,
-    blink::V8MojoHandle::kMaxSubclassTag,
-    blink::WrapperTypeInfo::kWrapperTypeObjectPrototype,
-    blink::WrapperTypeInfo::kObjectClassId,
-    blink::WrapperTypeInfo::kIdlInterface,
-    false,
-};
-
-const blink::WrapperTypeInfo& blink::MojoHandle::wrapper_type_info_ = blink::V8MojoHandle::wrapper_type_info_;
-
 blink::MojoInterfaceRequestEvent::MojoInterfaceRequestEvent(WTF::AtomicString const&, blink::MojoInterfaceRequestEventInit const*)
 {
     *(int*)1 = 1;

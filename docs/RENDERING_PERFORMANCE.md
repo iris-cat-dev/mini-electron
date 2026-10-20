@@ -437,10 +437,11 @@ physical-presentation measurement is claimed here.
 The class/resource-protocol names `SoftwareRenderer` and `gpu_compositing=false`
 remain because cc still supplies CPU-rasterized tile resources. The output
 canvas, render-pass surfaces and presentation can nevertheless execute on Metal.
-The full Chromium GPU service, GPU tile rasterization, accelerated Canvas2D,
-WebGPU and hardware video decoding are not enabled by the compositor change.
-WebGL now has a separate direct ANGLE implementation: see the
-[source-build support and limits](../README.md#webgl-1-and-2).
+The full Chromium GPU service, GPU tile rasterization, accelerated Canvas2D
+and hardware video decoding are not enabled by the compositor change.
+WebGL and WebGPU now have separate native implementations: see the
+[WebGL](../README.md#webgl-1-and-2) and [WebGPU](../README.md#webgpu)
+source-build support and limits.
 
 ### WebGL resources
 
@@ -465,10 +466,35 @@ checks independent Core Graphics PNG decoding and the actual owned
 WindowServer window in two states. It is a correctness check, not a WebGL
 performance benchmark or a Khronos conformance claim.
 
+### WebGPU resources
+
+Renderer-local Dawn wire/native channels execute WGSL render/compute work on
+Metal. This does not change cc's `gpu_compositing=false` resource contract.
+Canvas textures remain native GPU textures; a validated copy to mapped staging
+buffers supplies owned Skia images and shared software bitmaps for snapshots
+and presentation. The output compositor may upload those pixels again.
+Neither this path nor CPU external-image uploads are zero-copy.
+
+Native callbacks are marshaled to the owning Blink/Worker sequence. There is
+no permanent idle GPU polling loop. Opaque snapshots modify only the owned
+CPU image's alpha; snapshot-only operations do not expire the live texture.
+CPU output composition still permits native WebGPU execution.
+
+`test/webgpu-smoke.js` passed with both Metal and CPU output composition on
+Apple M4 Pro. Checks cover actual composed pixels, WGSL/compute, mapping,
+error scopes, OffscreenCanvas ownership, snapshot noninterference, Worker
+callbacks and device loss. The packaged OMP Desktop 0.5.2 application also
+rendered its unchanged WebGPU/WASM homepage: two real canvas samples had
+243,348/243,232 colored pixels and different sampled hashes
+(71,954,239/812,100,898), with reduced-motion off and no captured renderer
+errors. A 2400×1600 `capturePage()` PNG showed the particle effect.
+This is rendering/animation proof, not physical WindowServer capture,
+scanout/FPS, throughput, conformance or energy measurement.
+
 ### Sandbox boundary
 
-The renderer opens its compositor Metal device/queue and ANGLE Metal display
-before Seatbelt lockdown.
+The renderer opens its compositor Metal device/queue, ANGLE Metal display and
+Dawn native adapter/device before Seatbelt lockdown.
 The profile adds only the named compiler XPC lookup:
 
 ```scheme
@@ -665,9 +691,9 @@ Metal substantially reduces the measured transport/presentation CPU cost, but
 does not close the synchronous text/style/layout gap. The next optimization
 target remains a trace of text/style/layout on the 2,000-row and grid workloads,
 followed by changes to demonstrated hotspots. Do not infer GPU tile raster,
-accelerated Canvas2D, WebGPU or hardware video support from this result.
-The separate WebGL implementation was not part of these benchmark trials;
-these numbers provide no WebGL throughput or latency evidence.
+accelerated Canvas2D or hardware video support from this result.
+The separate WebGL and WebGPU implementations were not part of these benchmark
+trials; these numbers provide no WebGL/WebGPU throughput or latency evidence.
 
 ```sh
 node benchmarks/rendering/run.js --trials 3 \

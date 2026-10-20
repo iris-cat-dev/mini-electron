@@ -23,7 +23,6 @@ namespace blink {
 class ExceptionState;
 class HTMLVideoElement;
 class VideoFrame;
-class WebGPUMailboxTexture;
 
 struct ColorSpaceConversionConstants {
     std::array<float, 9> gamut_conversion_matrix;
@@ -40,8 +39,9 @@ struct ExternalTextureSource {
 
 struct ExternalTexture {
     wgpu::ExternalTexture wgpu_external_texture = nullptr;
-    scoped_refptr<WebGPUMailboxTexture> mailbox_texture = nullptr;
-    bool is_zero_copy = false;
+    // An ordinary Dawn texture owns uploaded pixels independently of the source
+    // VideoFrame, and is retained for refresh until that source is invalidated.
+    wgpu::Texture texture = nullptr;
 };
 
 std::array<float, 12> GetYUVToRGBMatrix(gfx::ColorSpace color_space, size_t bit_depth);

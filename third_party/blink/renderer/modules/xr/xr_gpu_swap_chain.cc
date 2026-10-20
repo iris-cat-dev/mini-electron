@@ -185,39 +185,5 @@ void XRGPUStaticSwapChain::OnFrameEnd()
     // produced texture for the next frame.
 }
 
-XRGPUMailboxSwapChain::XRGPUMailboxSwapChain(GPUDevice* device, const wgpu::TextureDescriptor& desc)
-    : XRGPUSwapChain(device)
-{
-    descriptor_ = desc;
-
-    // TODO(crbug.com/359418629): Internal Usage will not be necessary once we can
-    // use texture array mailboxes directly.
-    wgpu::TextureUsage internal_usage = wgpu::TextureUsage::CopyDst;
-    texture_internal_usage_ = { {
-        .internalUsage = internal_usage,
-    } };
-    descriptor_.nextInChain = &texture_internal_usage_;
-}
-
-GPUTexture* XRGPUMailboxSwapChain::ProduceTexture()
-{
-    const XRLayerSharedImages& shared_images = layer()->GetSharedImages();
-
-    // TODO(crbug.com/359418629): Allow for other mailboxes as well?
-    CHECK(shared_images.content_image_data.shared_image);
-
-    scoped_refptr<WebGPUMailboxTexture> mailbox_texture = WebGPUMailboxTexture::FromExistingMailbox(device()->GetDawnControlClient(), device()->GetHandle(),
-        descriptor_, shared_images.content_image_data.shared_image->mailbox(), shared_images.content_image_data.sync_token);
-
-    return MakeGarbageCollected<GPUTexture>(device(), descriptor_.format, descriptor_.usage, std::move(mailbox_texture), "WebXR Mailbox Swap Chain");
-}
-
-void XRGPUMailboxSwapChain::OnFrameEnd()
-{
-    GPUTexture* texture = ResetCurrentTexture();
-    if (texture) {
-        texture->DissociateMailbox();
-    }
-}
 
 } // namespace blink

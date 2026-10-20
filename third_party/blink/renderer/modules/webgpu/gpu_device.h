@@ -144,9 +144,6 @@ public:
     void AddConsoleWarning(wgpu::StringView message);
     void AddSingletonWarning(GPUSingletonWarning type);
 
-    void TrackTextureWithMailbox(GPUTexture* texture);
-    void UntrackTextureWithMailbox(GPUTexture* texture);
-
     bool ValidateTextureFormatUsage(V8GPUTextureFormat format, ExceptionState& exception_state);
     bool ValidateBlendFactor(V8GPUBlendFactor blend_factor, ExceptionState& exception_state);
 
@@ -169,7 +166,6 @@ private:
 
     // Used by USING_PRE_FINALIZER.
     void Dispose();
-    void DissociateMailboxes();
     void UnmapAllMappableBuffers(v8::Isolate* isolate);
 
     void OnUncapturedError(const wgpu::Device& device, wgpu::ErrorType errorType, wgpu::StringView message);
@@ -207,9 +203,6 @@ private:
 
     static constexpr int kMaxAllowedConsoleWarnings = 500;
     int allowed_console_warnings_remaining_ = kMaxAllowedConsoleWarnings;
-
-    // Textures with mailboxes that should be dissociated before device.destroy().
-    HeapHashSet<WeakMember<GPUTexture>> textures_with_mailbox_;
 
     HeapHashSet<WeakMember<GPUBuffer>> mappable_buffers_;
 

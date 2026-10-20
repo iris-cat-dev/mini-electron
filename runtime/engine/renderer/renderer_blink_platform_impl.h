@@ -79,6 +79,9 @@ public:
 
     std::unique_ptr<blink::WebGraphicsContext3DProvider> CreateOffscreenGraphicsContext3DProvider(
         const ContextAttributes&, const blink::WebURL&, GraphicsInfo*) override;
+    std::unique_ptr<blink::WebGraphicsContext3DProvider> CreateWebGPUGraphicsContext3DProvider(const blink::WebURL&) override;
+    void CreateWebGPUGraphicsContext3DProviderAsync(const blink::WebURL&,
+        base::OnceCallback<void(std::unique_ptr<blink::WebGraphicsContext3DProvider>)>) override;
 
     bool IsTakingV8ContextSnapshot() override;
 

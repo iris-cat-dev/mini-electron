@@ -46,10 +46,9 @@ public:
     explicit V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext(
         GPUCanvasContext* value)
         : content_type_(ContentType::kGPUCanvasContext)
-        //, member_gpu_canvas_context_(value)
+        , member_gpu_canvas_context_(value)
     {
         DCHECK(value);
-        *(int*)1 = 1;
     }
     explicit V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext(
         ImageBitmapRenderingContext* value)
@@ -92,18 +91,15 @@ public:
     }
     GPUCanvasContext* GetAsGPUCanvasContext() const
     {
-//         DCHECK_EQ(content_type_, ContentType::kGPUCanvasContext);
-//         return member_gpu_canvas_context_.Get();
-        *(int*)1 = 1;
-        return nullptr;
+        DCHECK_EQ(content_type_, ContentType::kGPUCanvasContext);
+        return member_gpu_canvas_context_.Get();
     }
     void Set(GPUCanvasContext* value)
     {
-//         DCHECK(value);
-//         Clear();
-//         member_gpu_canvas_context_ = value;
-//         content_type_ = ContentType::kGPUCanvasContext;
-        *(int*)1 = 1;
+        DCHECK(value);
+        Clear();
+        member_gpu_canvas_context_ = value;
+        content_type_ = ContentType::kGPUCanvasContext;
     }
 
     bool IsImageBitmapRenderingContext() const
@@ -203,7 +199,7 @@ private:
 
     ContentType content_type_;
 
-//    Member<GPUCanvasContext> member_gpu_canvas_context_;
+    Member<GPUCanvasContext> member_gpu_canvas_context_;
     Member<ImageBitmapRenderingContext> member_image_bitmap_rendering_context_;
     Member<OffscreenCanvasRenderingContext2D> member_offscreen_canvas_rendering_context_2d_;
     Member<WebGL2RenderingContext> member_webgl2_rendering_context_;

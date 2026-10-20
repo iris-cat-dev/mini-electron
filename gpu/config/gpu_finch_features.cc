@@ -204,6 +204,7 @@ BASE_FEATURE(kWebGPUService, "WebGPUService",
     base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
+const base::FeatureParam<std::string> kWGSLUnsafeFeatures { &kWebGPUService, "UnsafeWGSLFeatures", "" };
 
 #if BUILDFLAG(IS_ANDROID)
 

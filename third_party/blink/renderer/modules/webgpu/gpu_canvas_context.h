@@ -27,8 +27,8 @@ class GPUTexture;
 class WebGPUTextureAlphaClearer;
 class V8UnionHTMLCanvasElementOrOffscreenCanvas;
 
-// A GPUCanvasContext does little by itself and basically just binds a canvas
-// and a GPUSwapChain together and forwards calls from one to the other.
+// Implements WebGPU canvas configuration and frame lifetime. Native Dawn
+// textures are presented and snapshotted by WebGPUSwapBufferProvider.
 class GPUCanvasContext : public CanvasRenderingContext, public WebGPUSwapBufferProvider::Client {
     DEFINE_WRAPPERTYPEINFO();
 
@@ -59,10 +59,7 @@ public:
     V8RenderingContext* AsV8RenderingContext() final;
     V8OffscreenRenderingContext* AsV8OffscreenRenderingContext() final;
     SkColorInfo CanvasRenderingContextSkColorInfo() const override;
-    // Produces a snapshot of the current contents of the swap chain if possible.
-    // If that texture has already been sent to the compositor, will produce a
-    // snapshot of the just released texture associated to this gpu context.
-    // todo(crbug/1267243) Make snapshot always return the current frame.
+    // Snapshots the current texture, or the last completed frame.
     scoped_refptr<StaticBitmapImage> GetImage(FlushReason) final;
     bool PaintRenderingResultsToCanvas(SourceDrawingBuffer) final;
     bool CopyRenderingResultsToVideoFrame(WebGraphicsContext3DVideoFramePool* frame_pool, SourceDrawingBuffer src_buffer,
@@ -97,10 +94,6 @@ public:
 
     // OffscreenCanvas-specific methods
     bool PushFrame() final;
-    // Returns a StaticBitmapImage backed by a texture containing the current
-    // contents of the front buffer. This is done without any pixel copies. The
-    // texture in the ImageBitmap is from the active ContextProvider on the
-    // WebGPUSwapBufferProvider.
     ImageBitmap* TransferToImageBitmap(ScriptState*, ExceptionState&) final;
 
     bool IsOffscreenCanvas() const
@@ -123,41 +116,22 @@ public:
     void SetNeedsCompositingUpdate() override;
 
 private:
-    void DetachSwapBuffers();
     void ReplaceDrawingBuffer(bool destroy_swap_buffers);
-    void InitializeAlphaModePipeline(wgpu::TextureFormat format);
 
     void FinalizeFrame(FlushReason) override;
-
-    scoped_refptr<StaticBitmapImage> SnapshotInternal(const wgpu::Texture& texture, const gfx::Size& size) const;
-
-    bool CopyTextureToResourceProvider(const wgpu::Texture& texture, const gfx::Size& size, CanvasResourceProvider* resource_provider) const;
-
-    void CopyToSwapTexture();
-
-    base::WeakPtr<WebGraphicsContext3DProviderWrapper> GetContextProviderWeakPtr() const;
 
     cc::PaintFlags::FilterQuality filter_quality_ = cc::PaintFlags::FilterQuality::kLow;
     Member<GPUDevice> device_;
 
-    // If the system doesn't support the requested format but it's one that WebGPU
-    // is required to offer, a texture_ will be allocated separately with the
-    // desired format and the will be copied to swap_texture_, allocated by the
-    // swap buffer provider with the system-supported format, when we're ready to
-    // present. Otherwise texture_ and swap_texture_ will point to the same
-    // texture, allocated by the swap buffer provider.
     Member<GPUTexture> texture_;
-    Member<GPUTexture> swap_texture_;
 
     PredefinedColorSpace color_space_ = PredefinedColorSpace::kSRGB;
-    V8GPUCanvasAlphaMode::Enum alpha_mode_;
-    V8GPUCanvasToneMappingMode::Enum tone_mapping_mode_;
+    V8GPUCanvasAlphaMode::Enum alpha_mode_ = V8GPUCanvasAlphaMode::Enum::kOpaque;
+    V8GPUCanvasToneMappingMode::Enum tone_mapping_mode_ = V8GPUCanvasToneMappingMode::Enum::kStandard;
     scoped_refptr<WebGPUTextureAlphaClearer> alpha_clearer_;
     scoped_refptr<WebGPUSwapBufferProvider> swap_buffers_;
 
     bool new_texture_required_ = true;
-    bool copy_to_swap_texture_required_ = false;
-    bool suppress_preferred_format_warning_ = false;
     bool stopped_ = false;
 
     // Matches [[configuration]] != null in the WebGPU specification.
@@ -165,9 +139,6 @@ private:
     // Matches [[texture_descriptor]] in the WebGPU specification except that it
     // never becomes null.
     wgpu::TextureDescriptor texture_descriptor_;
-    // The texture descriptor for the swap_texture is tracked separately, since
-    // it may have different usage in the case that a copy is required.
-    wgpu::TextureDescriptor swap_texture_descriptor_;
     wgpu::DawnTextureInternalUsageDescriptor texture_internal_usage_;
     base::HeapArray<wgpu::TextureFormat> view_formats_;
 };

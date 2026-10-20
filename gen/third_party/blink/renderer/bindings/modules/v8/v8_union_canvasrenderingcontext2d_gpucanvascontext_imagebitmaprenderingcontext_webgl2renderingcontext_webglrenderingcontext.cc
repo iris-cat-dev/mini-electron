@@ -14,7 +14,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/native_value_traits_impl.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_rendering_context_2d.h"
-// #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_canvas_context.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_canvas_context.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_image_bitmap_rendering_context.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_webgl2renderingcontext_webglrenderingcontext.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_webgl2_rendering_context.h"
@@ -23,7 +23,7 @@
 #include "third_party/blink/renderer/modules/canvas/imagebitmap/image_bitmap_rendering_context.h"
 #include "third_party/blink/renderer/modules/webgl/webgl2_rendering_context.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context.h"
-// #include "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.h"
+#include "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 
 namespace blink {
@@ -47,11 +47,11 @@ V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOr
         return MakeGarbageCollected<
             V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
     }
-//     if (V8GPUCanvasContext::HasInstance(isolate, v8_value)) {
-//         auto&& blink_value = V8GPUCanvasContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
-//         return MakeGarbageCollected<
-//             V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
-//     }
+    if (V8GPUCanvasContext::HasInstance(isolate, v8_value)) {
+        auto&& blink_value = V8GPUCanvasContext::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
+        return MakeGarbageCollected<
+            V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext>(blink_value);
+    }
     if (V8CanvasRenderingContext2D::HasInstance(isolate, v8_value)) {
         auto&& blink_value = V8CanvasRenderingContext2D::ToWrappableUnsafe(isolate, v8_value.As<v8::Object>());
         return MakeGarbageCollected<
@@ -95,9 +95,9 @@ v8::Local<v8::Value> V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBit
     case ContentType::kCanvasRenderingContext2D: {
         return ToV8Traits<CanvasRenderingContext2D>::ToV8(script_state, member_canvas_rendering_context_2d_.Get());
     }
-//     case ContentType::kGPUCanvasContext: {
-//         return ToV8Traits<GPUCanvasContext>::ToV8(script_state, member_gpu_canvas_context_.Get());
-//     }
+    case ContentType::kGPUCanvasContext: {
+        return ToV8Traits<GPUCanvasContext>::ToV8(script_state, member_gpu_canvas_context_.Get());
+    }
     case ContentType::kImageBitmapRenderingContext: {
         return ToV8Traits<ImageBitmapRenderingContext>::ToV8(script_state, member_image_bitmap_rendering_context_.Get());
     }
@@ -114,7 +114,7 @@ void V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingCont
     Visitor* visitor) const
 {
     TraceIfNeeded<Member<CanvasRenderingContext2D>>::Trace(visitor, member_canvas_rendering_context_2d_);
-    //TraceIfNeeded<Member<GPUCanvasContext>>::Trace(visitor, member_gpu_canvas_context_);
+    TraceIfNeeded<Member<GPUCanvasContext>>::Trace(visitor, member_gpu_canvas_context_);
     TraceIfNeeded<Member<WebGL2RenderingContext>>::Trace(visitor, member_webgl2_rendering_context_);
     TraceIfNeeded<Member<WebGLRenderingContext>>::Trace(visitor, member_webgl_rendering_context_);
     TraceIfNeeded<Member<ImageBitmapRenderingContext>>::Trace(visitor, member_image_bitmap_rendering_context_);
@@ -126,7 +126,7 @@ void V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingCont
 {
     member_canvas_rendering_context_2d_.Clear();
     member_image_bitmap_rendering_context_.Clear();
-//     member_gpu_canvas_context_.Clear();
+    member_gpu_canvas_context_.Clear();
     member_webgl2_rendering_context_.Clear();
     member_webgl_rendering_context_.Clear();
 }
