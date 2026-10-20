@@ -80,6 +80,7 @@ internal static class NativeInputHelper
     [DllImport("kernel32.dll")] private static extern bool GlobalUnlock(IntPtr value);
     [DllImport("kernel32.dll")] private static extern UIntPtr GlobalSize(IntPtr value);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalFree(IntPtr value);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool GetProcessHandleCount(IntPtr process, out uint count);
 
     private sealed class ClipboardItem { public uint Format; public byte[] Bytes; }
     private static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
@@ -827,6 +828,15 @@ internal static class NativeInputHelper
             if (!SetWindowPos(Window(command), IntPtr.Zero, Number(command, "x"), Number(command, "y"), 0, 0, 0x15))
                 throw new Win32Exception();
             return true;
+        }
+        if (action == "processHandleCount") {
+            int processId = Number(command, "processId");
+            if (processId <= 0) throw new InvalidOperationException("Invalid process ID");
+            using (var process = System.Diagnostics.Process.GetProcessById(processId)) {
+                uint count;
+                if (!GetProcessHandleCount(process.Handle, out count)) throw new Win32Exception();
+                return count;
+            }
         }
         if (action == "resizeCycles") return ResizeCycles(command);
         if (action == "samplePointerMotion") return SamplePointerMotion(command);

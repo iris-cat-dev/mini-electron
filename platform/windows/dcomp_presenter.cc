@@ -286,6 +286,13 @@ class ScopedHandle {
   HANDLE handle_ = nullptr;
 };
 
+struct CompositionSwapChain {
+  explicit operator bool() const { return chain && ready.get(); }
+
+  ComPtr<IDXGISwapChain1> chain;
+  ScopedHandle ready;
+};
+
 bool DuplicateRendererHandle(HANDLE renderer_process,
                              HANDLE renderer_handle,
                              ScopedHandle* duplicate) {
@@ -446,13 +453,13 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
   base::WeakPtrFactory<SwapChainWake> weak_factory_{this};
 };
 
-PresentResult PresentSwapChain(IDXGISwapChain1* swap_chain,
-                               HANDLE ready,
+PresentResult PresentSwapChain(const CompositionSwapChain& swap_chain,
                                SwapChainWake* wake,
                                UINT interval) {
-  const HRESULT result = swap_chain->Present(interval, DXGI_PRESENT_DO_NOT_WAIT);
+  const HRESULT result =
+      swap_chain.chain->Present(interval, DXGI_PRESENT_DO_NOT_WAIT);
   if (result == DXGI_ERROR_WAS_STILL_DRAWING) {
-    if (!wake->Arm(ready)) {
+    if (!wake->Arm(swap_chain.ready.get())) {
       ReportFailure("swap-chain wake registration", E_FAIL);
       return PresentResult::kFailed;
     }
@@ -473,9 +480,13 @@ PresentResult PresentSwapChain(IDXGISwapChain1* swap_chain,
 
 bool CreateCompositionSwapChain(int width,
                                 int height,
-                                ComPtr<IDXGISwapChain1>* swap_chain) {
+                                CompositionSwapChain* swap_chain) {
   if (!ValidTextureSize(width, height))
     return false;
+  if (swap_chain->chain || swap_chain->ready.get()) {
+    ReportFailure("composition swap-chain replacement", E_UNEXPECTED);
+    return false;
+  }
   auto& shared = SharedDevice();
   DXGI_SWAP_CHAIN_DESC1 description{};
   description.Width = static_cast<UINT>(width);
@@ -490,47 +501,44 @@ bool CreateCompositionSwapChain(int width,
   description.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
   description.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
+  CompositionSwapChain candidate;
   HRESULT result = shared.factory->CreateSwapChainForComposition(
-      shared.device.Get(), &description, nullptr, swap_chain->ReleaseAndGetAddressOf());
+      shared.device.Get(), &description, nullptr,
+      candidate.chain.ReleaseAndGetAddressOf());
   if (FAILED(result)) {
     ReportFailure("composition swap-chain creation", result);
     return false;
   }
   ComPtr<IDXGISwapChain2> swap_chain2;
-  result = swap_chain->As(&swap_chain2);
+  result = candidate.chain.As(&swap_chain2);
   if (FAILED(result) || FAILED(result = swap_chain2->SetMaximumFrameLatency(1))) {
     ReportFailure("swap-chain latency limit", result);
-    swap_chain->Reset();
     return false;
   }
+  candidate.ready.reset(swap_chain2->GetFrameLatencyWaitableObject());
+  if (!candidate.ready.get()) {
+    ReportFailure("swap-chain latency handle", E_HANDLE);
+    return false;
+  }
+  *swap_chain = std::move(candidate);
   return true;
 }
 
 PresentResult CopyAndPresent(ID3D11Texture2D* texture,
-                             IDXGISwapChain1* swap_chain,
+                             const CompositionSwapChain& swap_chain,
                              SwapChainWake* wake,
                              bool first_present) {
-  if (first_present && wake->IsPriming(swap_chain))
+  if (first_present && wake->IsPriming(swap_chain.chain.Get()))
     return wake->PrimingResult();
   if (first_present)
     wake->Cancel();
   else if (wake->IsWatching())
     return PresentResult::kTransient;
 
-  ComPtr<IDXGISwapChain2> swap_chain2;
-  HRESULT result = swap_chain->QueryInterface(IID_PPV_ARGS(&swap_chain2));
-  if (FAILED(result)) {
-    ReportFailure("swap-chain latency query", result);
-    return PresentResult::kFailed;
-  }
-  const HANDLE ready = swap_chain2->GetFrameLatencyWaitableObject();
-  if (!ready) {
-    ReportFailure("swap-chain latency handle", E_HANDLE);
-    return PresentResult::kFailed;
-  }
+  HRESULT result = S_OK;
 
   ComPtr<ID3D11Texture2D> back_buffer;
-  result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
+  result = swap_chain.chain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
   if (FAILED(result)) {
     ReportFailure("swap-chain back-buffer access", result);
     return PresentResult::kFailed;
@@ -554,26 +562,27 @@ PresentResult CopyAndPresent(ID3D11Texture2D* texture,
     return PresentResult::kFailed;
   }
   if (!first_present)
-    return PresentSwapChain(swap_chain, ready, wake, 1);
+    return PresentSwapChain(swap_chain, wake, 1);
 
   // DirectComposition can briefly show the other physical flip buffer on a
   // newly attached chain. Rotate once, initialize that buffer too, and wait
   // asynchronously for the GPU before replacing the retained visual.
-  const PresentResult first = PresentSwapChain(swap_chain, ready, wake, 0);
+  const PresentResult first = PresentSwapChain(swap_chain, wake, 0);
   if (first != PresentResult::kPresented)
     return first;
   ComPtr<ID3D11Texture2D> next_buffer;
   ComPtr<ID3D11Texture2D> presented_buffer;
-  result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&next_buffer));
+  result = swap_chain.chain->GetBuffer(0, IID_PPV_ARGS(&next_buffer));
   if (SUCCEEDED(result))
-    result = swap_chain->GetBuffer(1, IID_PPV_ARGS(&presented_buffer));
+    result = swap_chain.chain->GetBuffer(1, IID_PPV_ARGS(&presented_buffer));
   if (FAILED(result)) {
     ReportFailure("first-frame flip buffers", result);
     return PresentResult::kFailed;
   }
   SharedDevice().context->CopyResource(next_buffer.Get(), presented_buffer.Get());
-  return wake->BeginPriming(swap_chain) ? PresentResult::kTransient
-                                       : PresentResult::kFailed;
+  return wake->BeginPriming(swap_chain.chain.Get())
+             ? PresentResult::kTransient
+             : PresentResult::kFailed;
 }
 
 
@@ -804,8 +813,8 @@ struct DCompPresenter::Impl {
     ComPtr<IDCompositionVisual> visual;
     ComPtr<IDCompositionRectangleClip> clip;
     ComPtr<IDCompositionScaleTransform> scale;
-    ComPtr<IDXGISwapChain1> swap_chain;
-    ComPtr<IDXGISwapChain1> pending_swap_chain;
+    CompositionSwapChain swap_chain;
+    CompositionSwapChain pending_swap_chain;
     SwapChainWake wake;
     std::shared_ptr<D3DFrameConsumer> retained_frame;
     ComPtr<ID3D11Texture2D> cpu_texture;
@@ -827,8 +836,8 @@ struct DCompPresenter::Impl {
 
   struct OverlayState {
     ComPtr<IDCompositionVisual> visual;
-    ComPtr<IDXGISwapChain1> swap_chain;
-    ComPtr<IDXGISwapChain1> pending_swap_chain;
+    CompositionSwapChain swap_chain;
+    CompositionSwapChain pending_swap_chain;
     SwapChainWake wake;
     ComPtr<ID3D11Texture2D> texture;
     int width = 0;
@@ -847,12 +856,12 @@ struct DCompPresenter::Impl {
   void CancelPendingPresents() {
     for (auto& entry : layers) {
       entry.second.wake.Cancel();
-      entry.second.pending_swap_chain.Reset();
+      entry.second.pending_swap_chain = {};
       entry.second.pending_width = 0;
       entry.second.pending_height = 0;
     }
     overlay.wake.Cancel();
-    overlay.pending_swap_chain.Reset();
+    overlay.pending_swap_chain = {};
     overlay.pending_width = 0;
     overlay.pending_height = 0;
   }
@@ -995,7 +1004,7 @@ struct DCompPresenter::Impl {
                 : state->presented_cpu_generation == generation);
     if (already_presented) {
       state->wake.Cancel();
-      state->pending_swap_chain.Reset();
+      state->pending_swap_chain = {};
       state->pending_width = 0;
       state->pending_height = 0;
       if (is_gpu)
@@ -1006,13 +1015,13 @@ struct DCompPresenter::Impl {
     const bool replacement = !state->swap_chain ||
                              state->backing_width != width ||
                              state->backing_height != height;
-    ComPtr<IDXGISwapChain1> candidate;
+    CompositionSwapChain* candidate = nullptr;
     if (replacement) {
       if (state->pending_swap_chain &&
           (state->pending_width != width ||
            state->pending_height != height)) {
         state->wake.Cancel();
-        state->pending_swap_chain.Reset();
+        state->pending_swap_chain = {};
         state->pending_width = 0;
         state->pending_height = 0;
       }
@@ -1024,34 +1033,33 @@ struct DCompPresenter::Impl {
         state->pending_width = width;
         state->pending_height = height;
       }
-      candidate = state->pending_swap_chain;
+      candidate = &state->pending_swap_chain;
     } else {
       if (state->pending_swap_chain) {
         state->wake.Cancel();
-        state->pending_swap_chain.Reset();
+        state->pending_swap_chain = {};
         state->pending_width = 0;
         state->pending_height = 0;
       }
-      candidate = state->swap_chain;
+      candidate = &state->swap_chain;
     }
 
     // A transient result below arms a one-shot watch before returning.
     const PresentResult present =
-        CopyAndPresent(texture, candidate.Get(), &state->wake, replacement);
+        CopyAndPresent(texture, *candidate, &state->wake, replacement);
     if (present == PresentResult::kTransient || present == PresentResult::kFailed)
       return present;
 
     state->wake.Cancel();
     if (replacement) {
-      const HRESULT result = state->visual->SetContent(candidate.Get());
+      const HRESULT result = state->visual->SetContent(candidate->chain.Get());
       if (FAILED(result)) {
         ReportFailure("layer swap-chain attachment", result);
         return PresentResult::kFailed;
       }
-      state->swap_chain = std::move(candidate);
+      state->swap_chain = std::move(state->pending_swap_chain);
       state->backing_width = width;
       state->backing_height = height;
-      state->pending_swap_chain.Reset();
       state->pending_width = 0;
       state->pending_height = 0;
     }
@@ -1248,13 +1256,13 @@ struct DCompPresenter::Impl {
         !overlay.presented ||
         overlay.presented_generation != input.generation || replacement;
     if (needs_present) {
-      ComPtr<IDXGISwapChain1> candidate;
+      CompositionSwapChain* candidate = nullptr;
       if (replacement) {
         if (overlay.pending_swap_chain &&
             (overlay.pending_width != input.width ||
              overlay.pending_height != input.height)) {
           overlay.wake.Cancel();
-          overlay.pending_swap_chain.Reset();
+          overlay.pending_swap_chain = {};
           overlay.pending_width = 0;
           overlay.pending_height = 0;
         }
@@ -1266,33 +1274,33 @@ struct DCompPresenter::Impl {
           overlay.pending_width = input.width;
           overlay.pending_height = input.height;
         }
-        candidate = overlay.pending_swap_chain;
+        candidate = &overlay.pending_swap_chain;
       } else {
         if (overlay.pending_swap_chain) {
           overlay.wake.Cancel();
-          overlay.pending_swap_chain.Reset();
+          overlay.pending_swap_chain = {};
           overlay.pending_width = 0;
           overlay.pending_height = 0;
         }
-        candidate = overlay.swap_chain;
+        candidate = &overlay.swap_chain;
       }
 
       const PresentResult present = CopyAndPresent(
-          overlay.texture.Get(), candidate.Get(), &overlay.wake, replacement);
+          overlay.texture.Get(), *candidate, &overlay.wake, replacement);
       if (present == PresentResult::kTransient || present == PresentResult::kFailed)
         return present;
 
       overlay.wake.Cancel();
       if (replacement) {
-        const HRESULT result = overlay.visual->SetContent(candidate.Get());
+        const HRESULT result =
+            overlay.visual->SetContent(candidate->chain.Get());
         if (FAILED(result)) {
           ReportFailure("caption swap-chain attachment", result);
           return PresentResult::kFailed;
         }
-        overlay.swap_chain = std::move(candidate);
+        overlay.swap_chain = std::move(overlay.pending_swap_chain);
         overlay.backing_width = input.width;
         overlay.backing_height = input.height;
-        overlay.pending_swap_chain.Reset();
         overlay.pending_width = 0;
         overlay.pending_height = 0;
       }
@@ -1302,7 +1310,7 @@ struct DCompPresenter::Impl {
         InvalidateRect(window, nullptr, FALSE);
     } else {
       overlay.wake.Cancel();
-      overlay.pending_swap_chain.Reset();
+      overlay.pending_swap_chain = {};
       overlay.pending_width = 0;
       overlay.pending_height = 0;
     }
@@ -1370,7 +1378,7 @@ struct DCompPresenter::Impl {
         fatal_error = true;
     } else {
       overlay.wake.Cancel();
-      overlay.pending_swap_chain.Reset();
+      overlay.pending_swap_chain = {};
       overlay.pending_width = 0;
       overlay.pending_height = 0;
     }
@@ -1410,7 +1418,7 @@ struct DCompPresenter::Impl {
           [id = it->first](const DCompLayer& layer) { return layer.id == id; });
       if (!requested) {
         it->second.wake.Cancel();
-        it->second.pending_swap_chain.Reset();
+        it->second.pending_swap_chain = {};
         it = layers.erase(it);
       } else {
         ++it;

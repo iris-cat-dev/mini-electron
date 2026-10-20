@@ -12,7 +12,7 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned installs select Windows runtime `0.1.14` or macOS runtime
+independent. Unpinned installs select Windows runtime `0.1.15` or macOS runtime
 `0.1.13` through separate channels.
 
 ```sh
@@ -56,6 +56,9 @@ white flashes during repeated native edge resizing. DirectComposition retains
 the previous surface until the replacement is ready, initializes both flip
 buffers, and avoids blocking the UI thread on GPU completion. The GDI fallback
 stretches the retained frame to cover the resized viewport.
+Windows runtime `0.1.15` fixes frame-latency waitable handle growth during
+continuous DirectComposition presentation. Active and pending resize swap chains
+own their handles until retirement, without blocking first-frame GPU completion.
 Earlier Windows `0.1.8` fixes remain included: filesystem identity, temporary
 directories, navigation, transparent companion windows, pointer-hover repaints,
 and the ASAR-enabled `child_process` promisification contract.
@@ -78,7 +81,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.14` and macOS `0.1.13`.
+  For example, npm `0.1.12` installs Windows `0.1.15` and macOS `0.1.13`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -94,15 +97,15 @@ Update only the local binary explicitly:
 ```sh
 npx mini-electron --update-runtime
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.14
+npx mini-electron --update-runtime 0.1.15
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.14` for Windows; `0.1.13` for the existing macOS release):
+(`0.1.15` for Windows; `0.1.13` for the existing macOS release):
 
 ```sh
-MINI_ELECTRON_RUNTIME_VERSION=0.1.14 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.15 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
@@ -380,6 +383,12 @@ Initial renderer GPU failure can use CPU layers through DirectComposition.
 legacy CPU/GDI presentation path. `MINI_ELECTRON_DISABLE_GPU=1` selects CPU
 renderer composition while leaving eligible native presentation enabled.
 
+Each DirectComposition swap chain owns one frame-latency waitable handle for
+its lifetime. Presents borrow that handle instead of acquiring another one
+per frame. Active and pending chains retain separate ownership; cancellation,
+replacement, and destruction stop any native wait before releasing the handle.
+First-frame GPU completion remains asynchronous during resizing.
+
 Windows frame scheduling follows the selected monitor's DXGI VBlank clock,
 with validated DWM timing for the primary monitor or a refresh-calibrated
 timer when hardware timing is unavailable. Non-blocking successful DXGI
@@ -497,6 +506,7 @@ Run the real Windows input regressions sequentially on an unlocked interactive d
 ```sh
 python build.py --jobs 16
 ./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-swapchain-handle-smoke.js
 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 ./out/windows-x64/mini-electron.exe --disable-gpu --app=test/windows-gpu-compositor-smoke.js
 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_DISABLE_WITH_API=1 ./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
 MINI_ELECTRON_DISABLE_GPU=1 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_EXPECT_NATIVE_CPU=1 ./out/windows-x64/mini-electron.exe --app=test/windows-gpu-compositor-smoke.js
