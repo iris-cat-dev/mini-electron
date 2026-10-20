@@ -7,6 +7,33 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### Windows runtime 0.1.18
+
+This release publishes Windows x64 assets only. The macOS channel remains on
+runtime `0.1.16`; the npm installer remains `0.1.12`.
+
+- Adds opt-in `--single-process` mode for trusted UI, with multiwindow IPC,
+  storage, capture, teardown, and reopen support. Default mode keeps renderers
+  in separate sandboxed processes.
+- Root frames are submitted only for actual geometry/surface changes. BeginFrames
+  carrying only presentation feedback or acknowledgements no longer trigger
+  another full-window redraw.
+- Minimized/hidden windows and detached BrowserViews stop Blink/Viz rendering;
+  showing, restoring, and reattaching resumes it. Initial `show: false` windows
+  retain their existing first-paint/`ready-to-show` behavior.
+- Windows x64 renderer jobs use one quarter of physical RAM, bounded to 1–4 GiB,
+  instead of a fixed 1 GiB cap. Each renderer Blink/Worker isolate configures V8
+  to use at most half the enforced job budget, reserving native-memory headroom.
+  Concurrent workers still share the aggregate process limit. Host Node and
+  explicit single-process mode retain their previous heap policy.
+- `render-process-gone` preserves the real exit code and distinguishes OOM,
+  crashes, normal/abnormal exits, and IPC failures. Windows OOM status
+  `0xe0000008` is no longer reduced to an unexplained `process-exit`.
+
+The rebuilt Windows binary passed static/animated visibility transitions in GPU
+and software modes, native composition/restore/resize, and disposable renderer
+OOM verification. See [idle and memory verification](docs/RENDERING_PERFORMANCE.md#windows-idle-rendering-and-memory-budget-correction).
+
 ### Windows runtime 0.1.17
 
 This release publishes Windows x64 assets only. The macOS channel remains on
@@ -32,33 +59,12 @@ runtime `0.1.16`; the npm installer remains `0.1.12`.
 - Keeps macOS source builds compatible with the shared Windows horizontal-wheel
   routing by completing the POSIX Win32 message definitions.
 
-### Unreleased Windows idle and memory fixes
-
-- Root frames are submitted only for actual geometry/surface changes. BeginFrames
-  carrying only presentation feedback or acknowledgements no longer trigger
-  another full-window redraw.
-- Minimized/hidden windows and detached BrowserViews stop Blink/Viz rendering;
-  showing, restoring, and reattaching resumes it. Initial `show: false` windows
-  retain their existing first-paint/`ready-to-show` behavior.
-- Windows x64 renderer jobs use one quarter of physical RAM, bounded to 1–4 GiB,
-  instead of a fixed 1 GiB cap. Each renderer Blink/Worker isolate configures V8
-  to use at most half the enforced job budget, reserving native-memory headroom.
-  Concurrent workers still share the aggregate process limit. Host Node and
-  explicit single-process mode retain their previous heap policy.
-- `render-process-gone` preserves the real exit code and distinguishes OOM,
-  crashes, normal/abnormal exits, and IPC failures. Windows OOM status
-  `0xe0000008` is no longer reduced to an unexplained `process-exit`.
-
-The rebuilt Windows binary passed static/animated visibility transitions in GPU
-and software modes, native composition/restore/resize, and disposable renderer
-OOM verification. See [idle and memory verification](docs/RENDERING_PERFORMANCE.md#windows-idle-rendering-and-memory-budget-correction).
-
 ## npm distribution
 
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned installs select Windows runtime `0.1.17` or macOS runtime
+independent. Unpinned installs select Windows runtime `0.1.18` or macOS runtime
 `0.1.16` through separate channels.
 
 ```sh
@@ -127,7 +133,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.17` and macOS `0.1.16`.
+  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.16`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -145,18 +151,18 @@ npx mini-electron --update-runtime
 # Pin the WebGPU-enabled macOS runtime:
 npx mini-electron --update-runtime 0.1.16
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.17
+npx mini-electron --update-runtime 0.1.18
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.17` for Windows; `0.1.16` for macOS):
+(`0.1.18` for Windows; `0.1.16` for macOS):
 
 ```sh
 # macOS arm64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.16 npm ci
 # Windows x64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.17 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.18 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
@@ -1228,7 +1234,7 @@ the reply thread's final use.
 `WebContents.isDestroyed()` tracks actual object destruction, not renderer
 liveness. Renderer loss still emits `render-process-gone`; the owning native
 window remains registered until it is closed.
-The unreleased Windows source also supplies the actual unsigned native
+Windows runtime `0.1.18` also supplies the actual unsigned native
 `exitCode` with renderer exits. Reasons include `oom`, `crashed`, `clean-exit`,
 and `abnormal-exit`; a transport failure while the child remains alive reports
 `ipc-failure` with its `error` detail instead of claiming the process exited.
