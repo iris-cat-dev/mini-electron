@@ -7,13 +7,13 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
-### Unreleased source changes
+### macOS runtime 0.1.16
 
 - Restores real WebGL 1/2 contexts, Blink bindings, GPU drawing, CPU image
   interop, context loss/restoration, and Worker OffscreenCanvas publication.
   The macOS backend uses ANGLE/Metal; Windows has ANGLE/D3D11 build integration.
-  See [WebGL support and limits](#webgl-1-and-2). Published runtime artifacts
-  have not been replaced by this source change.
+  See [WebGL support and limits](#webgl-1-and-2). This release contains macOS
+  arm64 assets only; Windows WebGL/WebGPU integration remains source-only.
 - Restores native WebGPU through renderer-local Dawn wire/native channels,
   WGSL pipelines, buffer mapping, GPUCanvasContext, OffscreenCanvas and Workers.
   macOS Metal rendering and the original OMP Desktop WebGPU/WASM homepage
@@ -28,7 +28,7 @@ The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
 independent. Unpinned installs select Windows runtime `0.1.15` or macOS runtime
-`0.1.13` through separate channels.
+`0.1.16` through separate channels.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.12
@@ -96,7 +96,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.15` and macOS `0.1.13`.
+  For example, npm `0.1.12` installs Windows `0.1.15` and macOS `0.1.16`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -111,15 +111,20 @@ Update only the local binary explicitly:
 
 ```sh
 npx mini-electron --update-runtime
+# Pin the WebGPU-enabled macOS runtime:
+npx mini-electron --update-runtime 0.1.16
 # Select an exact runtime that includes your platform (Windows example):
 npx mini-electron --update-runtime 0.1.15
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.15` for Windows; `0.1.13` for the existing macOS release):
+(`0.1.15` for Windows; `0.1.16` for macOS):
 
 ```sh
+# macOS arm64:
+MINI_ELECTRON_RUNTIME_VERSION=0.1.16 npm ci
+# Windows x64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.15 npm ci
 ```
 
@@ -200,10 +205,10 @@ that directory with public access when installer/CLI/types/package inputs change
 The staged npm package excludes `artifacts.json`, so a runtime-only manifest bump
 does not change its installer inputs.
 
-Installer `0.1.12` requires publishing Windows runtime `0.1.14` and its new
-`runtime-v1-win32-x64` channel before npm publication. Keep macOS runtime
-`0.1.13` and the existing `runtime-v1` channel unchanged; no macOS rebuild is
-needed for this installer update.
+The Windows-only installer `0.1.12` update required Windows runtime `0.1.14`
+and its new `runtime-v1-win32-x64` channel before npm publication. That update
+left macOS runtime `0.1.13` and `runtime-v1` unchanged. Later macOS runtime-only
+updates, including `0.1.16`, retain the same npm installer and protocol.
 
 The initial `0.1.11` cutover requires publishing both a protocol-1 runtime and its
 channel before publishing the new npm installer. Older `0.1.10` installers remain
