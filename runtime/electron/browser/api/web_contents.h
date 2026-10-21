@@ -136,6 +136,8 @@ public:
     void setVSyncDisplayId(int64_t display_id);
 #endif
     void setFocus(bool focused);
+    // Native/embedding visibility; renderer work may remain enabled by an
+    // explicit backgroundThrottling:false preference or a first-frame lease.
     void setVisible(bool visible);
     bool sendInput(base::Value::Dict event);
     void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
@@ -233,6 +235,7 @@ private:
     bool isFocusedApi() const { return m_focused; }
     void invalidateApi();
     void setIgnoreMenuShortcutsApi(bool ignore);
+    void updateVisibility();
 
     void onRendererEvent(base::Value::Dict event);
     void emitRendererEvent(const std::string& type, const base::Value::Dict& payload, uint64_t request_id);
@@ -290,7 +293,6 @@ private:
     mutable std::vector<uint8_t> m_windowsPaintPixels;
     mutable uint64_t m_windowsPaintPixelsGeneration = 0;
     mutable bool m_windowsPaintNeedsFullRepaint = false;
-    std::unordered_map<int, gfx::Rect> m_windowsGuestBounds;
 #endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;
@@ -303,6 +305,7 @@ private:
     std::vector<PreparedFrame> m_prepared_frames;
     uint64_t m_presentation_epoch = 0;
     std::set<int> m_guest_ids;
+    std::unordered_map<int, gfx::Rect> m_guest_bounds;
     std::unordered_map<uint64_t, RendererFrameState> m_renderer_frames;
     std::unordered_map<uint64_t, RendererFrameEpoch> m_file_chooser_frames;
     uint64_t m_main_frame_id = 0;
@@ -324,6 +327,9 @@ private:
     bool m_ready_to_show_emitted = false;
     bool m_focused = false;
     bool m_visible = true;
+    bool m_renderer_visible = true;
+    bool m_background_throttling = true;
+    unsigned m_visibility_preparations = 0;
     int m_viewport_width = 0;
     int m_viewport_height = 0;
     double m_viewport_scale = 0.0;

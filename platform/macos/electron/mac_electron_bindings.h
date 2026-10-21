@@ -5,10 +5,15 @@
 #define PLATFORM_MACOS_ELECTRON_MAC_ELECTRON_BINDINGS_H_
 
 #include <functional>
+#include <memory>
 #include <string>
 #include "v8.h"
 
 struct uv_loop_s;
+
+namespace base {
+class MessagePump;
+}
 
 namespace node {
 class Environment;
@@ -26,15 +31,19 @@ void InstallMacElectronBindings(node::Environment* environment,
                                 const MacBindingOptions& options);
 int GetMacMainProcessExitCode();
 
-// app.quit()/app.exit() and process.exit() request the main loop to stop;
-// RunMainProcess polls this between libuv turns.
-bool MacMainLoopExitRequested();
+// AppKit's continuous UI pump, entering Node's callback scope for Chromium work.
+std::unique_ptr<base::MessagePump> CreateMacMainMessagePump();
+
+// Runs AppKit, Chromium and Node until app.quit()/app.exit()/process.exit().
+// Call after InstallMacRunLoopIntegration() and browser bootstrap.
+void RunMacMainLoop();
 // process.exit() handler: destroys windows without app events, matching the
 // Windows host, and stops the main loop.
 void ExitMacMainProcess(int exit_code);
 
-// Installs AppKit event pumping on Node's libuv loop. The returned handles are
-// owned by the loop and are closed by ShutdownMacRunLoopIntegration().
+// Bridges libuv backend readiness and its next deadline into AppKit's run loop.
+// All libuv callbacks run on the main thread. Shutdown joins the readiness
+// waiter and removes native sources before the JavaScript Environment is gone.
 bool InstallMacRunLoopIntegration(uv_loop_s* loop);
 void ShutdownMacRunLoopIntegration();
 

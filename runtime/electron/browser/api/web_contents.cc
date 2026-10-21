@@ -298,12 +298,14 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     options.GetBydefaultVal("webSecurity", true, &web_security);
     options.GetBydefaultVal("allowRunningInsecureContent", false, &allow_insecure);
     options.GetBydefaultVal("transparent", false, &transparent);
+    options.GetBydefaultVal("backgroundThrottling", true, &m_background_throttling);
     m_web_preferences.Set("contextIsolation", context_isolation);
     options.GetBydefaultVal("nodeIntegrationInSubFrames", false, &preload_all_frames);
     m_web_preferences.Set("webviewTag", webview_tag);
     m_web_preferences.Set("webSecurity", web_security);
     m_web_preferences.Set("allowRunningInsecureContent", allow_insecure);
     m_web_preferences.Set("nodeIntegrationInSubFrames", preload_all_frames);
+    m_web_preferences.Set("backgroundThrottling", m_background_throttling);
     m_web_preferences.Set("sandbox", !IsSingleProcessMode());
     m_web_preferences.Set("nodeIntegration", false);
     if (!ApplicationRoot().empty())
@@ -670,10 +672,8 @@ void WebContents::createGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
     }
     guest->m_host = host;
     host->m_guest_ids.insert(guest->m_id);
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     guest->setVSyncDisplayId(host->m_vsync_display_id);
-#endif
-#if BUILDFLAG(IS_WIN)
     guest->setVisible(false);
 #endif
     info.GetReturnValue().Set(guest->getWrapper());
@@ -941,21 +941,33 @@ void WebContents::setVSyncDisplayId(int64_t display_id)
 
 void WebContents::setVisible(bool visible)
 {
-    if (!isAlive() || m_visible == visible)
+    m_visible = visible;
+    updateVisibility();
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        const auto bounds = m_guest_bounds.find(id);
+        if (guest && guest->m_host == this)
+            guest->setVisible(visible && bounds != m_guest_bounds.end()
+                && !bounds->second.IsEmpty());
+    }
+#endif
+}
+
+void WebContents::updateVisibility()
+{
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    // Hidden startup still owes the host its initial paint/ready-to-show.
+    // Explicit preparation leases a live compositor only until native drawing
+    // completes; it must not permanently opt hidden content out of throttling.
+    const bool visible = m_visible || !m_background_throttling
+        || !m_ready_to_show_emitted || m_visibility_preparations;
+    if (!isAlive() || m_renderer_visible == visible)
         return;
     base::Value::Dict params;
     params.Set("visible", visible);
-    if (!m_renderer->Send("setVisibility", std::move(params)))
-        return;
-    m_visible = visible;
-#if BUILDFLAG(IS_WIN)
-    for (int id : m_guest_ids) {
-        WebContents* guest = fromId(id);
-        const auto bounds = m_windowsGuestBounds.find(id);
-        if (guest && guest->m_host == this)
-            guest->setVisible(visible && bounds != m_windowsGuestBounds.end()
-                && !bounds->second.IsEmpty());
-    }
+    if (m_renderer->Send("setVisibility", std::move(params)))
+        m_renderer_visible = visible;
 #endif
 }
 
@@ -1200,23 +1212,32 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
         return false;
     if (info.Length() > 1 && !gin_helper::ConvertFromV8(info.GetIsolate(), info[1], &params))
         return false;
-    #if BUILDFLAG(IS_WIN)
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    if (method == "setBackgroundThrottling") {
+        const std::optional<bool> allowed = params.FindBool("allowed");
+        if (!allowed || !isAlive())
+            return false;
+        m_background_throttling = *allowed;
+        m_web_preferences.Set("backgroundThrottling", *allowed);
+        updateVisibility();
+        return true;
+    }
     if (method == "guest.attach" || method == "guest.bounds" || method == "guest.detach") {
         const int id = params.FindInt("guestContentsId").value_or(0);
         if (method == "guest.detach" || m_guest_ids.contains(id)) {
             if (method == "guest.detach")
-                m_windowsGuestBounds.erase(id);
+                m_guest_bounds.erase(id);
             else {
-                m_windowsGuestBounds[id] = gfx::Rect(
+                m_guest_bounds[id] = gfx::Rect(
                     std::clamp(params.FindInt("x").value_or(0), -(1 << 20), 1 << 20),
                     std::clamp(params.FindInt("y").value_or(0), -(1 << 20), 1 << 20),
                     std::clamp(params.FindInt("width").value_or(0), 0, 1 << 20),
                     std::clamp(params.FindInt("height").value_or(0), 0, 1 << 20));
             }
             WebContents* guest = fromId(id);
-            const auto bounds = m_windowsGuestBounds.find(id);
+            const auto bounds = m_guest_bounds.find(id);
             if (guest && guest->m_host == this)
-                guest->setVisible(m_visible && bounds != m_windowsGuestBounds.end()
+                guest->setVisible(m_visible && bounds != m_guest_bounds.end()
                     && !bounds->second.IsEmpty());
             for (WebContentsObserver* observer : m_observers)
                 observer->onWebContentsPaint(this, {});
@@ -1258,10 +1279,11 @@ bool WebContents::attachGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
     if (!guest->m_renderer->ShareFrameBufferWith(*m_renderer, guest_id))
         return false;
     params.Set("guestContentsId", guest_id);
-    #if BUILDFLAG(IS_WIN)
-    m_windowsGuestBounds[guest_id] = gfx::Rect(
+    #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    m_guest_bounds[guest_id] = gfx::Rect(
         params.FindInt("x").value_or(0), params.FindInt("y").value_or(0),
         params.FindInt("width").value_or(1), params.FindInt("height").value_or(1));
+    guest->setVisible(m_visible && !m_guest_bounds[guest_id].IsEmpty());
     #endif
     return m_renderer->Send("guest.attach", std::move(params));
 }
@@ -1450,21 +1472,42 @@ void WebContents::requestApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 
 void WebContents::prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    auto promise = std::make_shared<gin_helper::Promise<void>>(info.GetIsolate());
-    info.GetReturnValue().Set(promise->GetHandle());
+    struct Preparation {
+        explicit Preparation(v8::Isolate* isolate) : promise(isolate) { }
+        gin_helper::Promise<void> promise;
+        bool completed = false;
+    };
+    auto preparation = std::make_shared<Preparation>(info.GetIsolate());
+    info.GetReturnValue().Set(preparation->promise.GetHandle());
     if (!isAlive()) {
-        promise->RejectWithErrorMessage("WebContents is destroyed");
+        preparation->promise.RejectWithErrorMessage("WebContents is destroyed");
         return;
     }
     const int contents_id = m_id;
     const uint64_t presentation_epoch = m_presentation_epoch;
     if (std::none_of(m_observers.begin(), m_observers.end(),
             [](WebContentsObserver* observer) { return observer->supportsFramePreparation(); })) {
-        promise->RejectWithErrorMessage("Native frame preparation is unavailable for this WebContents");
+        preparation->promise.RejectWithErrorMessage("Native frame preparation is unavailable for this WebContents");
         return;
     }
+    ++m_visibility_preparations;
+    updateVisibility();
+    auto complete = [contents_id, preparation](const std::string& error) {
+        // A failed queue can also deliver a deferred transport-failure reply.
+        if (preparation->completed)
+            return;
+        preparation->completed = true;
+        if (WebContents* contents = WebContents::fromId(contents_id)) {
+            --contents->m_visibility_preparations;
+            contents->updateVisibility();
+        }
+        if (error.empty())
+            preparation->promise.Resolve();
+        else
+            preparation->promise.RejectWithErrorMessage(error);
+    };
     if (!m_renderer->Request("prepare-to-show", {},
-        [contents_id, presentation_epoch, promise](base::Value::Dict result, std::string error) {
+        [contents_id, presentation_epoch, complete](base::Value::Dict result, std::string error) {
             WebContents* contents = WebContents::fromId(contents_id);
             uint64_t generation = 0;
             const std::string* token = result.FindString("generation");
@@ -1475,21 +1518,13 @@ void WebContents::prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>& in
             if (error.empty() && (!token || !base::StringToUint64(*token, &generation) || !generation))
                 error = "Renderer did not publish a prepared frame";
             if (!error.empty()) {
-                promise->RejectWithErrorMessage(error);
+                complete(error);
                 return;
             }
-            contents->m_prepared_frames.push_back({generation,
-                [promise](const std::string& failure) {
-                    if (failure.empty())
-                        promise->Resolve();
-                    else
-                        promise->RejectWithErrorMessage(failure);
-                }});
+            contents->m_prepared_frames.push_back({generation, complete});
             contents->completePreparedFrames();
         })) {
-        // Request may also deliver a deferred write-failure callback. Shared
-        // ownership keeps both paths safe; a settled V8 promise is immutable.
-        promise->RejectWithErrorMessage("Renderer preparation could not be queued");
+        complete("Renderer preparation could not be queued");
     }
 }
 
@@ -1601,8 +1636,8 @@ void WebContents::appendDCompLayers(std::vector<mini_electron::win::DCompLayer>&
     };
     for (int id : m_guest_ids) {
         WebContents* guest = fromId(id);
-        auto found = m_windowsGuestBounds.find(id);
-        if (!guest || guest->m_host != this || found == m_windowsGuestBounds.end())
+        auto found = m_guest_bounds.find(id);
+        if (!guest || guest->m_host != this || found == m_guest_bounds.end())
             continue;
         const gfx::Rect& logical = found->second;
         RECT guest_bounds = {
@@ -1818,9 +1853,9 @@ void WebContents::requestCapture(
     std::vector<int> guests;
     for (int id : m_guest_ids) {
         WebContents* guest = fromId(id);
-        auto found = m_windowsGuestBounds.find(id);
+        auto found = m_guest_bounds.find(id);
         if (guest && guest->m_host == this && guest->isAlive()
-            && found != m_windowsGuestBounds.end()) {
+            && found != m_guest_bounds.end()) {
             guests.push_back(id);
             state->bounds.emplace(id, found->second);
         }
@@ -2813,6 +2848,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         completePreparedFrames();
         if (!m_ready_to_show_emitted) {
             m_ready_to_show_emitted = true;
+            updateVisibility();
             for (WebContentsObserver* observer : m_observers)
                 observer->onWebContentsReadyToShow(this);
         }

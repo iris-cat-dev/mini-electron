@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/message_loop/message_pump_apple.h"
+#include "base/message_loop/message_pump.h"
 #include "base/task/single_thread_task_executor.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "runtime/electron/common/gin_helper/per_isolate_data.h"
@@ -21,7 +21,6 @@
 #include "platform/macos/electron/mac_auto_updater.h"
 #include "platform/macos/electron/mac_electron_bindings.h"
 #include "third_party/libnode/src/node.h"
-#include "third_party/libuv/include/uv.h"
 
 extern "C" void _register_electron_common_asar();
 extern "C" void _register_electron_browser_commandline();
@@ -80,21 +79,6 @@ void PrintErrors(const char* phase, const std::vector<std::string>& errors) {
     std::fprintf(stderr, "mini-electron: %s: %s\n", phase, error.c_str());
 }
 
-// Runs libuv until app.quit()/app.exit()/process.exit() requests shutdown.
-// The AppKit pump handles keep the loop alive like the Windows UI message loop.
-void RunMainLoop(node::MultiIsolatePlatform* platform,
-                 v8::Isolate* isolate,
-                 uv_loop_t* loop) {
-  while (!MacMainLoopExitRequested()) {
-    uv_run(loop, UV_RUN_DEFAULT);
-    if (MacMainLoopExitRequested())
-      break;
-    platform->DrainTasks(isolate);
-    if (!uv_loop_alive(loop))
-      break;
-  }
-}
-
 }  // namespace
 
 int RunAsNode(int argc, char** argv) {
@@ -133,12 +117,9 @@ int RunMainProcess(const MainProcessOptions& options) {
     return initialization->exit_code();
   content::RenderThreadImpl::setV8Platform(initialization->platform());
 
-  // libuv's AppKit integration owns event dispatch. Re-entering NSApp.run for
-  // every RunUntilIdle turn cancels a native control's in-flight mouse gesture
-  // before a later mouse-up can reach it. Drain Chromium tasks through CFRunLoop
-  // instead, without starting/stopping a second application event loop.
-  base::SingleThreadTaskExecutor task_executor(
-      std::make_unique<base::MessagePumpCFRunLoop>());
+  // Run AppKit continuously, so native event tracking is never cancelled by
+  // starting/stopping NSApp for individual Chromium or libuv turns.
+  base::SingleThreadTaskExecutor task_executor(CreateMacMainMessagePump());
   // Session network/file brokers run blocking work on the Chromium thread
   // pool, matching the Windows host's main-process lifecycle.
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("mini-electron-main");
@@ -174,6 +155,7 @@ int RunMainProcess(const MainProcessOptions& options) {
     InstallMacAutoUpdaterBinding(setup->env());
     if (!InstallMacRunLoopIntegration(setup->event_loop())) {
       ShutdownMacAutoUpdaterBinding();
+      ShutdownMacRunLoopIntegration();
       std::fputs("mini-electron: failed to integrate AppKit and Node event loops\n", stderr);
       return 1;
     }
@@ -188,7 +170,7 @@ int RunMainProcess(const MainProcessOptions& options) {
     const bool loaded =
         !node::LoadEnvironment(setup->env(), BrowserBootstrap(options)).IsEmpty();
     if (loaded && !process_exit)
-      RunMainLoop(initialization->platform(), isolate, setup->event_loop());
+      RunMacMainLoop();
     else if (!process_exit)
       std::fputs("mini-electron: browser bootstrap failed\n", stderr);
     const int result =

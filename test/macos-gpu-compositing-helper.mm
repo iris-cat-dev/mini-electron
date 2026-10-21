@@ -130,6 +130,19 @@ NSWindow* Window(napi_env env, napi_value arg) {
   if (!found) Fail(env, "Owned window not found");
   return found;
 }
+napi_value WindowState(napi_env env, napi_callback_info info) {
+  size_t count = 1; napi_value args[1];
+  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
+  if (count != 1) return Fail(env, "windowState(title) requires one argument");
+  NSWindow* window = Window(env, args[0]);
+  if (!window) return nullptr;
+  napi_value result; napi_create_object(env, &result);
+  Number(env, result, "nativeVisible", window.visible);
+  Number(env, result, "minimized", window.miniaturized);
+  Number(env, result, "occlusionState", window.occlusionState);
+  Number(env, result, "exposed", (window.occlusionState & NSWindowOcclusionStateVisible) != 0);
+  return result;
+}
 bool ReadPoints(napi_env env, napi_value input, double width, double height,
                 std::vector<CGPoint>* points) {
   bool array = false; uint32_t length = 0;
@@ -262,6 +275,7 @@ NAPI_MODULE_INIT() {
   napi_add_env_cleanup_hook(env, [](void*) { ResumeOwned(); }, nullptr);
   struct { const char* name; napi_callback callback; } methods[] = {
       {"frames", Frames}, {"snapshot", Snapshot}, {"imageSamples", ImageSamples},
+      {"windowState", WindowState},
       {"pauseRenderer", Pause}, {"resumeRenderer", Resume}};
   for (const auto& method : methods) {
     napi_value function; napi_create_function(env, method.name, NAPI_AUTO_LENGTH, method.callback, nullptr, &function);

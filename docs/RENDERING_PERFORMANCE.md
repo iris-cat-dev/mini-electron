@@ -5,8 +5,9 @@
 This records the local macOS rendering comparison and runtime optimizations.
 The P0 sections document the completed native display-ID → DisplayLink/VSync
 cutover. The later Metal section records subsequent native GPU composition.
-DOM/layout algorithms, compiler optimization and the 10 ms AppKit/libuv wakeup
-policy remain unchanged.
+For that P0 comparison, DOM/layout algorithms, compiler optimization and the
+10 ms AppKit/libuv wakeup policy were unchanged. The later macOS idle section
+records the subsequent removal of that fixed polling policy.
 
 The 2026-10-19 baseline used an Apple M4 Pro, a 120 Hz built-in display,
 1000×700 CSS-pixel viewports, DPR 2, headed windows, and the same local page.
@@ -780,4 +781,157 @@ injected libraries and diagnostic executables were removed after verification;
 JSON/PNG/log evidence and permanent regression fixtures remain. Verification
 uses the current `out/mac-arm64` executables; no new release was published and
 the OMP installation copy was not replaced by this verification task.
+
+## macOS idle scheduling and visibility
+
+macOS runtime 0.1.20 contains this idle optimization, following the published
+0.1.19 renderer-responsiveness fix. The immutable 0.1.19 assets are unchanged.
+The controlled CPU comparison below was collected before release, without
+replacing the installed OMP application.
+
+### Changes and invariants
+
+- Run AppKit/Chromium continuously on the main thread. A blocking libuv-backend
+  watcher wakes that thread on I/O readiness; an exact native timer owns the
+  next libuv deadline. libuv callbacks remain on the main thread. The former
+  recurring 10 ms GUI wakeup is removed; Node-only startup stays GUI-free.
+- Propagate native hide, minimize, attachment, hidden ancestors and initialized
+  occlusion state to Blink page/widget visibility and Viz. Propagate host
+  visibility to BrowserViews and webview guests. Retain the last completed frame.
+- Keep physical visibility separate from effective rendering visibility.
+  Initial first-paint and explicit `prepareToShow()` leases temporarily permit
+  hidden rendering. Releasing a lease restores background throttling;
+  constructor and setter `backgroundThrottling: false` remain explicit opt-outs.
+- Enable Blink threaded animation when its compositor thread exists. Do not
+  change already-enabled accelerated compositing, disable GPU features, or cap
+  foreground animation to manufacture lower CPU.
+- Treat an AppKit exposure bit as authoritative only after observing a native
+  exposure. Reset that observation on detach/hide. This prevents an unset bit
+  from turning an onscreen first show into a permanently blank hidden page.
+
+### Controlled CPU comparison
+
+The same Apple M4 Pro/macOS 27.0.1 session ran the published 0.1.19 bundle and
+the optimized local bundle sequentially. Each used one 1280×800 window with
+a static page or one 24-pixel CSS rotation. Each phase settled for 1.2 seconds
+and used three two-second samples. CPU is user plus system time from native
+`proc_pid_rusage`, converted from Mach absolute ticks with
+`mach_timebase_info` (125/3 ns per tick), divided by monotonic elapsed time.
+A one-thread busy calibration measured 99.7%; 100% below means one CPU core.
+
+| Phase | 0.1.19 main | Local main | 0.1.19 renderer | Local renderer |
+| --- | ---: | ---: | ---: | ---: |
+| Settled static page | 1.052% | 0.018% | 0.014% | 0.020% |
+| Visible CSS rotation | 2.420% | 2.028% | 13.437% | 11.206% |
+| Native window hidden, rotation retained | 2.457% | 0.010% | 13.572% | 0.004% |
+| Window restored, rotation running | 2.354% | 1.952% | 13.437% | 9.901% |
+| Rotation removed, window visible | 0.906% | 0.020% | 0.011% | 0.011% |
+
+The old hidden page still reported `document.hidden === false`; the local
+hidden page reported true. These are short controlled workload observations,
+not battery-power measurements, a full-app CPU budget or a promise that active
+animation is free. An actual packaged OMP startup with its WebGPU homepage
+enabled separately measured about 53.3% renderer CPU over six seconds. That
+homepage is continuous rendering work, not the static-page row above.
+
+### OMP frontend lifecycle verification
+
+The companion OMP changes pause status-ring animations and loaders when their
+application or retained panel is inactive. Loaders share one timer at six
+visible step boundaries per 950 ms cycle rather than a permanent rAF worklet.
+The WebGPU poster pauses without destroying a retained component's stencil.
+The home route supplies navigation focus to the existing retained-panel
+context; window focus alone does not detect a homepage covered by Settings.
+
+Actual production UI against an isolated real daemon established:
+
+- Before the route fix, the covered homepage made 61 real stencil render calls
+  in 500 ms while Settings was displayed.
+- After the fix, its render counter stayed 21,787 throughout a 600 ms Settings
+  observation, with the document visible and focused and no stencil freed.
+- Returning displayed an animated homepage again. The existing Settings Back
+  path creates another retained home route; no navigation behavior was changed.
+  All inactive home routes now stop work.
+- Disabling the existing effects switch freed all three observed retained
+  stencils; the render counter stayed 21,816 for the following 400 ms.
+- Reduced-motion mode stopped rendering for a separate 500 ms observation and
+  removing it resumed rendering. Browser screenshots showed the real WebGPU
+  poster; no fake backend, placeholder renderer or provider model call was used.
+
+### Regression coverage and limits
+
+Passed on the local bundled runtime:
+
+- `macos-idle-pump-smoke.js`: exact/shortened timers, passive external socket
+  wakeup without periodic ticks, file I/O, Node-only child, renderer IPC/promises,
+  native zoom/close callbacks and orderly quit.
+- `macos-idle-visibility-smoke.js`: hidden readiness/preparation, stable hidden
+  page/frame counters, show/hide, minimize/restore, interaction, BrowserViews,
+  webview guests and background-throttling opt-out.
+- `macos-threaded-animation-smoke.js`: native frame generation advances while
+  a page-owned task blocks Blink JavaScript, then settles after animation stops.
+- Existing renderer responsiveness, renderer-loss lifetime and preload-scope
+  regressions. The responsiveness check observes WindowServer hang state for
+  20 seconds rather than inferring health from JavaScript messages.
+- Frame presentation/writer contention with CPU output composition, and native
+  WebGPU rendering, compute, readback/resize and premultiplied pixel assertions
+  with both Metal and CPU output composition.
+- Final native build, app typecheck, five loader/visibility unit tests,
+  production frontend/desktop builds and strict deep ad-hoc signature check.
+  The real packaged app launched directly and through LaunchServices, created
+  its owned onscreen window and started an isolated real built-in daemon.
+
+Native checks not established in the original working-tree session:
+
+- AppKit never exposed its public visible bit for the owned test windows, on
+  both 0.1.19 and the local build. The native occlusion phase explicitly reports
+  unavailable rather than counting the safe first-exposure fallback as a pass.
+- Actual WindowServer Metal composition/retention captures failed on both
+  bundles with ScreenCaptureKit error -3811 despite global recording consent.
+  The alternative system `screencapture -l` also could not create an owned-window
+  image. Metal composed-window pixel tests remain incomplete, distinct from
+  the passing WebGPU explicit GPU-readback pixel assertions.
+- Full-package system interactions could not complete: AX minimized-state
+  changes and LaunchServices Hide were rejected; its native active state
+  remained false. These attempts are not counted as passing hide/restore/quit
+  coverage. Runtime-level visibility and native close/quit fixtures passed.
+- Ego kept document focus while another page was brought forward; that browser
+  attempt does not establish visible-window blur behavior. The focused-document
+  retained-route and reduced-motion scenarios above did complete.
+- Windows and multiple physical displays were not exercised for these changes.
+
+The local CPU/check index is `out/idle-optimization/verification.json`.
+Temporary source probes, compiled diagnostic modules and isolated app/daemon
+state were removed after shutdown. Raw JSON/PNG/log evidence and permanent
+regression fixtures remain; no diagnostic process or browser task space was
+left running.
+
+### Runtime 0.1.20 release verification
+
+The release candidate was rebuilt with `python3.14 build.py --jobs 12
+--package-dist --dist-output out/mac-arm64/runtime-dist-0.1.20`.
+Strict deep ad-hoc signature verification passed.
+
+The packaged executable passed the event-driven pump, native visibility/guests/
+BrowserViews, threaded animation, 20-second renderer responsiveness, renderer-loss
+lifetime, preload scopes, fail-closed macOS safeStorage, CPU frame presentation,
+WebGPU with Metal and CPU output, single-process and default-process multiwindow
+lifecycles, and Node SQLite regressions. The shared Electron demo also loaded in
+an actual visible native window and produced a rendered PNG capture.
+
+Two fixture assumptions were corrected before the final passing runs:
+
+- The occlusion phase now requires an actual AppKit exposed-to-occluded transition
+  before asserting that Blink suspends. This session reported the owned target
+  as exposed even behind its larger opaque cover (`occlusionState = 8194`);
+  native occlusion remains explicitly unavailable, not passed.
+- The process-mode smoke waits for hidden-frame preparation and checks pixels
+  through real PNG decoding in Blink, rather than assuming Windows BGRA memory
+  order on macOS. The original pixel assertion also failed on published 0.1.19.
+
+Logs, initial failures, final checks, native visibility evidence and the demo PNG
+are retained under `out/runtime-release-0.1.20-verification/`. This release is
+macOS-only. Windows remains on 0.1.18 pending native build/verification; its DPAPI
+and preload fixes are not delivered by the macOS release. The original
+WindowServer Metal capture and multiple-display verification limits remain.
 

@@ -63,6 +63,7 @@ public:
 //         blink::CrossVariantMojoRemote<network::mojom::URLLoaderFactoryInterfaceBase> url_loader_factory) override;
     blink::ThreadSafeBrowserInterfaceBrokerProxy* GetBrowserInterfaceBroker() override;
     blink::WebString DefaultLocale() override;
+    bool IsThreadedAnimationEnabled() override;
 #if BUILDFLAG(IS_MAC)
     blink::WebSandboxSupport* GetSandboxSupport() override;
 #endif

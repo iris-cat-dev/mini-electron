@@ -108,14 +108,26 @@ app.whenReady().then(async () => {
   const evaluate = (window, source) => window.webContents.executeJavaScript(source);
   assert.deepEqual(await Promise.all([evaluate(first, 'ui.identity()'), evaluate(second, 'ui.identity()')]), ['first', 'second']);
   assert.deepEqual(await Promise.all([evaluate(first, "localStorage.getItem('owner')"), evaluate(second, "localStorage.getItem('owner')")]), ['first', 'second']);
+  await first.webContents.prepareToShow();
   first.show();
   phase = 'presentation and capture';
   const image = await first.webContents.capturePage();
   const size = image.getSize();
   assert.ok(size.width >= 200 && size.height >= 100, 'capture must contain the real window content');
-  const pixels = image.toBitmap();
-  const offset = ((size.height - 8) * size.width + size.width - 8) * 4;
-  assert.deepEqual([...pixels.subarray(offset, offset + 4)], [176, 112, 32, 255], 'capture must contain rendered page pixels');
+  const pixels = await first.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      resolve([...context.getImageData(image.width - 8, image.height - 8, 1, 1).data]);
+    };
+    image.onerror = () => reject(new Error('Captured PNG must decode'));
+    image.src = ${JSON.stringify(image.toDataURL())};
+  })`);
+  assert.deepEqual(pixels, [32, 112, 176, 255], 'capture must contain rendered page pixels');
   evidence.capture = size;
 
   phase = 'pending work and first-window teardown';

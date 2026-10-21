@@ -9,6 +9,9 @@
 #include "platform/macos/electron/mac_platform_apis.h"
 
 #include <algorithm>
+#include <atomic>
+#include <cerrno>
+#include <cstdio>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -20,13 +23,17 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/file.h>
 #include <unistd.h>
 
+#include "base/apple/scoped_cftyperef.h"
 #include "base/files/file_path.h"
+#include "base/message_loop/message_pump_apple.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/container/inlined_vector.h"
 #include "runtime/electron/browser/api/session.h"
 #include "runtime/electron/browser/api/web_contents.h"
 #include "runtime/electron/browser/api/window_list.h"
@@ -324,8 +331,8 @@ void AppSetPackaged(const v8::FunctionCallbackInfo<v8::Value>& info) {
 
 void AppSetReady(const v8::FunctionCallbackInfo<v8::Value>& info) {
   State().ready = true;
-  // NSApp.run used to finish launch implicitly. The libuv-owned event loop
-  // must finish AppKit startup once so Dock, activation and accessibility work.
+  // Finish launching before Electron's ready event, including when bootstrap
+  // reaches readiness before the continuous AppKit event loop begins.
   [NSApp finishLaunching];
 }
 
@@ -676,12 +683,14 @@ class RendererSurfaceHost {
  public:
   virtual void Draw(NSRect dirty_rect) = 0;
   virtual void Resize() = 0;
+  virtual void RefreshVisibility() = 0;
   virtual void Focus(bool focused) = 0;
   virtual bool SendInput(base::Value::Dict event) = 0;
   virtual bool SendNativeFileDrag(base::Value::Dict event,
                                   const std::vector<std::string>& paths) = 0;
   virtual bool CanPerformNativeFileDrop() const = 0;
   virtual bool HandleCaptionMouseDown(NSEvent*, NSPoint) { return false; }
+  void ResetOcclusionObservation() { has_native_exposure_ = false; }
 
  protected:
   virtual ~RendererSurfaceHost() {
@@ -696,6 +705,18 @@ class RendererSurfaceHost {
   void DetachNativeLayer();
   void InvalidateFrame() { frame_dirty_ = true; }
   uint64_t DrawnGeneration() const { return drawn_generation_; }
+  bool IsRendererWindowVisible(NSWindow* window) {
+    if (!window || !window.visible || window.miniaturized || NSApp.hidden) {
+      has_native_exposure_ = false;
+      return false;
+    }
+    // AppKit can leave the visible bit unset until the first native exposure.
+    // Do not suspend an onscreen first frame based on that uninitialized state.
+    const bool exposed =
+        (window.occlusionState & NSWindowOcclusionStateVisible) != 0;
+    has_native_exposure_ |= exposed;
+    return exposed || !has_native_exposure_;
+  }
 
  private:
   atom::RendererFrameSnapshot presented_frame_;
@@ -705,6 +726,7 @@ class RendererSurfaceHost {
   CALayer* native_clip_layer_ = nil;
   CALayerHost* native_host_layer_ = nil;
   bool frame_dirty_ = true;
+  bool has_native_exposure_ = false;
   uint64_t drawn_generation_ = 0;
 };
 
@@ -744,6 +766,7 @@ class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
 
   void Draw(NSRect dirty_rect) override;
   void Resize() override;
+  void RefreshVisibility() override;
   void Focus(bool focused) override;
   bool SendInput(base::Value::Dict event) override;
   bool SendNativeFileDrag(base::Value::Dict event,
@@ -803,6 +826,7 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
       atom::WebContents*, const base::Value::List& regions) override;
   void Draw(NSRect dirty_rect) override;
   void Resize() override;
+  void RefreshVisibility() override;
   void Focus(bool focused) override;
   bool SendInput(base::Value::Dict event) override;
   bool SendNativeFileDrag(base::Value::Dict event,
@@ -1163,6 +1187,7 @@ static bool IsPointerEvent(NSEventType type) {
   [super viewDidMoveToWindow];
   NSNotificationCenter* notifications = NSNotificationCenter.defaultCenter;
   [notifications removeObserver:self];
+  _owner->ResetOcclusionObservation();
   if (self.window) {
     for (NSNotificationName name in @[
         NSWindowDidMoveNotification, NSWindowDidChangeBackingPropertiesNotification,
@@ -1174,6 +1199,18 @@ static bool IsPointerEvent(NSEventType type) {
     [notifications addObserver:self selector:@selector(textInputWindowChanged:)
                          name:NSApplicationDidChangeScreenParametersNotification
                        object:nil];
+    for (NSNotificationName name in @[
+        NSWindowDidChangeOcclusionStateNotification,
+        NSWindowDidMiniaturizeNotification,
+        NSWindowDidDeminiaturizeNotification ]) {
+      [notifications addObserver:self selector:@selector(rendererVisibilityChanged:)
+                           name:name object:self.window];
+    }
+    for (NSNotificationName name in @[
+        NSApplicationDidHideNotification, NSApplicationDidUnhideNotification ]) {
+      [notifications addObserver:self selector:@selector(rendererVisibilityChanged:)
+                           name:name object:NSApp];
+    }
     _owner->Resize();
   } else {
     [self updateTextInputState:base::Value::Dict()];
@@ -1185,6 +1222,23 @@ static bool IsPointerEvent(NSEventType type) {
   if (window.canBecomeKeyWindow &&
       (!window.firstResponder || window.firstResponder == window))
     [window makeFirstResponder:self];
+  _owner->RefreshVisibility();
+}
+- (void)rendererVisibilityChanged:(NSNotification*)notification {
+  HostState& state = State();
+  if (!_owner || !CanEnterJavaScript(state) || state.exiting)
+    return;
+  NativeCallbackScope scope(state);
+  _owner->RefreshVisibility();
+  (void)notification;
+}
+- (void)viewDidHide {
+  [super viewDidHide];
+  [self rendererVisibilityChanged:nil];
+}
+- (void)viewDidUnhide {
+  [super viewDidUnhide];
+  [self rendererVisibilityChanged:nil];
 }
 - (void)textInputWindowChanged:(NSNotification*)notification {
   if ([notification.name isEqual:NSWindowDidChangeBackingPropertiesNotification] ||
@@ -1901,6 +1955,7 @@ MacBrowserWindow::MacBrowserWindow(v8::Isolate* isolate,
       [window_ orderFrontRegardless];
     }
   }
+  RefreshVisibility();
   LayoutWindowButtons();
 
   v8::Local<v8::Value> argument = wrapper;
@@ -2217,6 +2272,17 @@ uint64_t MacBrowserView::prepareWebContentsFrame(atom::WebContents* contents,
 void MacBrowserWindow::Resize() {
   ResizeWebContents(web_contents_, renderer_view_);
   UpdateFrame(web_contents_, renderer_view_);
+  RefreshVisibility();
+}
+
+void MacBrowserWindow::RefreshVisibility() {
+  if (closed_ || destroying_ || !web_contents_)
+    return;
+  const bool visible = IsRendererWindowVisible(window_) && renderer_view_ &&
+      !renderer_view_.hiddenOrHasHiddenAncestor;
+  web_contents_->setVisible(visible);
+  for (MacBrowserView* view : browser_views_)
+    view->RefreshVisibility();
 }
 
 v8::Persistent<v8::Function> MacBrowserView::constructor;
@@ -2297,6 +2363,16 @@ void MacBrowserView::Draw(NSRect dirty_rect) {
 void MacBrowserView::Resize() {
   ResizeWebContents(web_contents_, view_);
   UpdateFrame(web_contents_, view_);
+  RefreshVisibility();
+}
+
+void MacBrowserView::RefreshVisibility() {
+  if (!web_contents_)
+    return;
+  const bool visible = view_ && view_.superview &&
+      IsRendererWindowVisible(view_.window) &&
+      !view_.hiddenOrHasHiddenAncestor && !NSIsEmptyRect(view_.visibleRect);
+  web_contents_->setVisible(visible);
 }
 
 void MacBrowserView::Focus(bool focused) {
@@ -2331,6 +2407,7 @@ void MacBrowserView::Detach() {
   [(MiniElectronRendererView*)view_ cancelNativeDrag];
   if (view_.superview)
     [view_ removeFromSuperview];
+  RefreshVisibility();
 }
 
 void MacBrowserView::New(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -2505,6 +2582,7 @@ void MacBrowserWindow::Show(const v8::FunctionCallbackInfo<v8::Value>& info) {
     [self->window_ orderFrontRegardless];
   }
   self->LayoutWindowButtons();
+  self->RefreshVisibility();
 }
 void MacBrowserWindow::ShowInactive(const v8::FunctionCallbackInfo<v8::Value>& info) {
   if (auto* self = From(info); self && self->window_) {
@@ -2512,6 +2590,7 @@ void MacBrowserWindow::ShowInactive(const v8::FunctionCallbackInfo<v8::Value>& i
     [self->renderer_view_ display];
     [self->window_ orderFrontRegardless];
     self->LayoutWindowButtons();
+    self->RefreshVisibility();
   }
 }
 void MacBrowserWindow::GetNativeWindowHandle(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -2557,7 +2636,12 @@ void MacBrowserWindow::SetVisibleOnAllWorkspaces(const v8::FunctionCallbackInfo<
   }
   self->window_.collectionBehavior = behavior;
 }
-void MacBrowserWindow::Hide(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_) [self->window_ orderOut:nil]; }
+void MacBrowserWindow::Hide(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (auto* self = From(info); self && self->window_) {
+    [self->window_ orderOut:nil];
+    self->RefreshVisibility();
+  }
+}
 void MacBrowserWindow::FocusWindow(const v8::FunctionCallbackInfo<v8::Value>& info) {
   MacBrowserWindow* self = From(info);
   if (!self || !self->window_ ||
@@ -2567,6 +2651,7 @@ void MacBrowserWindow::FocusWindow(const v8::FunctionCallbackInfo<v8::Value>& in
   [self->renderer_view_ display];
   [NSApp activateIgnoringOtherApps:YES];
   [self->window_ makeKeyAndOrderFront:nil];
+  self->RefreshVisibility();
 }
 void MacBrowserWindow::BlurWindow(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_) [self->window_ resignKeyWindow]; }
 void MacBrowserWindow::IsFocused(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info)) info.GetReturnValue().Set(self->window_.keyWindow); }
@@ -2575,8 +2660,18 @@ void MacBrowserWindow::IsDestroyed(const v8::FunctionCallbackInfo<v8::Value>& in
 void MacBrowserWindow::Maximize(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_ && !self->window_.zoomed) [self->window_ zoom:nil]; }
 void MacBrowserWindow::Unmaximize(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_ && self->window_.zoomed) [self->window_ zoom:nil]; }
 void MacBrowserWindow::IsMaximized(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info)) info.GetReturnValue().Set(self->window_.zoomed); }
-void MacBrowserWindow::Minimize(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_) [self->window_ miniaturize:nil]; }
-void MacBrowserWindow::Restore(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_) [self->window_ deminiaturize:nil]; }
+void MacBrowserWindow::Minimize(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (auto* self = From(info); self && self->window_) {
+    [self->window_ miniaturize:nil];
+    self->RefreshVisibility();
+  }
+}
+void MacBrowserWindow::Restore(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (auto* self = From(info); self && self->window_) {
+    [self->window_ deminiaturize:nil];
+    self->RefreshVisibility();
+  }
+}
 void MacBrowserWindow::IsMinimized(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info)) info.GetReturnValue().Set(self->window_.miniaturized); }
 void MacBrowserWindow::SetFullScreen(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info); self && self->window_ && info.Length() && (self->window_.styleMask & NSWindowStyleMaskFullScreen) != (info[0]->BooleanValue(info.GetIsolate()) ? NSWindowStyleMaskFullScreen : 0)) [self->window_ toggleFullScreen:nil]; }
 void MacBrowserWindow::IsFullScreen(const v8::FunctionCallbackInfo<v8::Value>& info) { if (auto* self = From(info)) info.GetReturnValue().Set((self->window_.styleMask & NSWindowStyleMaskFullScreen) != 0); }
@@ -2843,50 +2938,260 @@ void InitializeMacHost(v8::Local<v8::Object> target,
            atom::WebContents::s_constructor.Get(context->GetIsolate()));
 }
 
-uv_prepare_t* g_prepare = nullptr;
-uv_check_t* g_check = nullptr;
-uv_timer_t* g_wakeup = nullptr;
-uv_loop_t* g_loop = nullptr;
+// The continuous AppKit pump owns native input and Chromium work. Scope each
+// delegate turn separately so Node microtasks do not wait for Run() to return.
+class MacMainMessagePump final : public base::MessagePumpNSApplication {
+ public:
+  void Run(Delegate* delegate) override {
+    ScopedJavaScriptDelegate scoped_delegate(delegate);
+    base::MessagePumpNSApplication::Run(&scoped_delegate);
+  }
 
-// AppKit events and Chromium tasks do not wake libuv's kqueue. Like the
-// Windows host's pumpNode cadence, bound each poll so the prepare/check pump
-// runs at least this often.
-constexpr uint64_t kPumpIntervalMs = 10;
+ private:
+  class ScopedJavaScriptDelegate final : public Delegate {
+   public:
+    explicit ScopedJavaScriptDelegate(Delegate* delegate) : delegate_(delegate) {}
+
+    NextWorkInfo DoWork() override {
+      HostState& state = State();
+      if (!CanEnterJavaScript(state))
+        return delegate_->DoWork();
+      NativeCallbackScope scope(state);
+      return delegate_->DoWork();
+    }
+
+    void DoIdleWork() override {
+      HostState& state = State();
+      if (!CanEnterJavaScript(state)) {
+        delegate_->DoIdleWork();
+        return;
+      }
+      NativeCallbackScope scope(state);
+      delegate_->DoIdleWork();
+    }
+
+    void BeforeWait() override { delegate_->BeforeWait(); }
+    void BeginNativeWorkBeforeDoWork() override {
+      delegate_->BeginNativeWorkBeforeDoWork();
+    }
+    int RunDepth() override { return delegate_->RunDepth(); }
+
+   private:
+    void OnBeginWorkItem() override {
+      native_work_items_.push_back(delegate_->BeginWorkItem());
+    }
+    void OnEndWorkItem(int) override {
+      auto work_item = std::move(native_work_items_.back());
+      native_work_items_.pop_back();
+    }
+
+    Delegate* delegate_;
+    absl::InlinedVector<ScopedDoWorkItem, 8> native_work_items_;
+  };
+};
+
+// Only main touches libuv. The waiter observes its backend fd without consuming
+// events, then waits for acknowledgement; a native timer owns exact deadlines.
+class MacNodeRunLoop final {
+ public:
+  explicit MacNodeRunLoop(uv_loop_t* loop) : loop_(loop) {}
+
+  ~MacNodeRunLoop() {
+    if (thread_started_) {
+      stopping_.store(true, std::memory_order_release);
+      const char byte = 0;
+      ssize_t result;
+      do {
+        result = write(stop_pipe_[1], &byte, sizeof(byte));
+      } while (result < 0 && errno == EINTR);
+      uv_sem_post(&acknowledged_);
+      uv_thread_join(&thread_);
+    }
+    if (before_wait_)
+      CFRunLoopObserverInvalidate(before_wait_.get());
+    if (deadline_)
+      CFRunLoopTimerInvalidate(deadline_.get());
+    if (work_source_)
+      CFRunLoopSourceInvalidate(work_source_.get());
+    if (keep_alive_) {
+      uv_close(reinterpret_cast<uv_handle_t*>(keep_alive_), [](uv_handle_t* handle) {
+        delete reinterpret_cast<uv_async_t*>(handle);
+      });
+    }
+    if (stop_pipe_[0] >= 0)
+      close(stop_pipe_[0]);
+    if (stop_pipe_[1] >= 0)
+      close(stop_pipe_[1]);
+    if (semaphore_initialized_)
+      uv_sem_destroy(&acknowledged_);
+  }
+
+  bool Initialize() {
+    backend_fd_ = uv_backend_fd(loop_);
+    if (backend_fd_ < 0 || pipe(stop_pipe_) != 0)
+      return false;
+    if (fcntl(stop_pipe_[0], F_SETFD, FD_CLOEXEC) < 0 ||
+        fcntl(stop_pipe_[1], F_SETFD, FD_CLOEXEC) < 0)
+      return false;
+    if (uv_sem_init(&acknowledged_, 0) != 0)
+      return false;
+    semaphore_initialized_ = true;
+
+    // Browser windows, not user ref'ed Node handles, own application lifetime.
+    // This referenced handle never sends periodic wakeups.
+    keep_alive_ = new uv_async_t();
+    if (uv_async_init(loop_, keep_alive_, [](uv_async_t*) {}) != 0) {
+      delete keep_alive_;
+      keep_alive_ = nullptr;
+      return false;
+    }
+
+    run_loop_.reset(CFRunLoopGetCurrent(), base::scoped_policy::RETAIN);
+    CFRunLoopSourceContext source_context = {};
+    source_context.info = this;
+    source_context.perform = [](void* info) {
+      static_cast<MacNodeRunLoop*>(info)->PumpUv();
+    };
+    work_source_.reset(CFRunLoopSourceCreate(nullptr, 0, &source_context));
+
+    CFRunLoopTimerContext timer_context = {};
+    timer_context.info = this;
+    deadline_.reset(CFRunLoopTimerCreate(
+        nullptr, kNoDeadline, kNoDeadline, 0, 0,
+        [](CFRunLoopTimerRef, void* info) {
+          static_cast<MacNodeRunLoop*>(info)->PumpUv();
+        },
+        &timer_context));
+
+    CFRunLoopObserverContext observer_context = {};
+    observer_context.info = this;
+    before_wait_.reset(CFRunLoopObserverCreate(
+        nullptr, kCFRunLoopBeforeWaiting, true,
+        std::numeric_limits<CFIndex>::max(),
+        [](CFRunLoopObserverRef, CFRunLoopActivity, void* info) {
+          static_cast<MacNodeRunLoop*>(info)->PumpUv();
+        },
+        &observer_context));
+    if (!work_source_ || !deadline_ || !before_wait_)
+      return false;
+
+    if (uv_thread_create(&thread_, [](void* info) {
+          static_cast<MacNodeRunLoop*>(info)->WaitForBackend();
+        }, this) != 0)
+      return false;
+    thread_started_ = true;
+    CFRunLoopAddSource(run_loop_.get(), work_source_.get(), kCFRunLoopCommonModes);
+    CFRunLoopAddTimer(run_loop_.get(), deadline_.get(), kCFRunLoopCommonModes);
+    CFRunLoopAddObserver(run_loop_.get(), before_wait_.get(), kCFRunLoopCommonModes);
+    return true;
+  }
+
+  void Run() {
+    if (State().exit_requested)
+      return;
+    base::RunLoop run_loop;
+    main_run_loop_ = &run_loop;
+    SignalWork();
+    run_loop.Run();
+    main_run_loop_ = nullptr;
+  }
+
+  void Quit() {
+    uv_stop(loop_);
+    if (main_run_loop_)
+      main_run_loop_->Quit();
+  }
+
+ private:
+  static constexpr CFTimeInterval kNoDeadline =
+      std::numeric_limits<CFTimeInterval>::max();
+
+  void SignalWork() {
+    CFRunLoopSourceSignal(work_source_.get());
+    CFRunLoopWakeUp(run_loop_.get());
+  }
+
+  void WaitForBackend() {
+    pollfd descriptors[2] = {{backend_fd_, POLLIN, 0}, {stop_pipe_[0], POLLIN, 0}};
+    while (!stopping_.load(std::memory_order_acquire)) {
+      int result;
+      do {
+        result = poll(descriptors, 2, -1);
+      } while (result < 0 && errno == EINTR &&
+               !stopping_.load(std::memory_order_acquire));
+      if (stopping_.load(std::memory_order_acquire))
+        return;
+      if (result < 0 || (descriptors[0].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
+          descriptors[1].revents) {
+        backend_error_.store(result < 0 ? errno : EIO, std::memory_order_release);
+        SignalWork();
+        return;
+      }
+      if (!(descriptors[0].revents & POLLIN))
+        continue;
+      backend_wakeup_pending_.store(true, std::memory_order_release);
+      SignalWork();
+      uv_sem_wait(&acknowledged_);
+    }
+  }
+
+  void PumpUv() {
+    // Native tracking may nest inside a Node callback; libuv is not reentrant.
+    if (uv_running_ || State().exit_requested)
+      return;
+    const int error = backend_error_.load(std::memory_order_acquire);
+    if (error) {
+      std::fprintf(stderr, "mini-electron: libuv backend wait failed: %s\n",
+                   std::strerror(error));
+      ExitMacMainProcess(1);
+      return;
+    }
+    uv_running_ = true;
+    @autoreleasepool {
+      // Node scopes its own callbacks. Chromium work uses the delegate above.
+      uv_run(loop_, UV_RUN_NOWAIT);
+    }
+    uv_running_ = false;
+    if (State().exit_requested)
+      return;
+
+    // Flush watcher changes and rearm after native/GCD/Chromium callbacks,
+    // including timers or sockets created without a libuv async wake.
+    uv_update_time(loop_);
+    const int timeout = uv_backend_timeout(loop_);
+    CFRunLoopTimerSetNextFireDate(
+        deadline_.get(), timeout < 0 ? kNoDeadline
+                                   : CFAbsoluteTimeGetCurrent() + timeout / 1000.0);
+    if (backend_wakeup_pending_.exchange(false, std::memory_order_acq_rel))
+      uv_sem_post(&acknowledged_);
+  }
+
+  uv_loop_t* loop_;
+  uv_async_t* keep_alive_ = nullptr;
+  int backend_fd_ = -1;
+  int stop_pipe_[2] = {-1, -1};
+  uv_sem_t acknowledged_;
+  uv_thread_t thread_;
+  bool semaphore_initialized_ = false;
+  bool thread_started_ = false;
+  bool uv_running_ = false;
+  std::atomic<bool> stopping_{false};
+  std::atomic<bool> backend_wakeup_pending_{false};
+  std::atomic<int> backend_error_{0};
+  base::RunLoop* main_run_loop_ = nullptr;
+  base::apple::ScopedCFTypeRef<CFRunLoopRef> run_loop_;
+  base::apple::ScopedCFTypeRef<CFRunLoopSourceRef> work_source_;
+  base::apple::ScopedCFTypeRef<CFRunLoopTimerRef> deadline_;
+  base::apple::ScopedCFTypeRef<CFRunLoopObserverRef> before_wait_;
+};
+
+std::unique_ptr<MacNodeRunLoop> g_node_run_loop;
 
 void RequestMainLoopExit() {
   State().exit_requested = true;
-  if (g_loop)
-    uv_stop(g_loop);
+  if (g_node_run_loop)
+    g_node_run_loop->Quit();
 }
-
-void PumpAppKit() {
-  @autoreleasepool {
-    constexpr int kMaximumEventsPerTurn = 64;
-    for (int count = 0; count < kMaximumEventsPerTurn; ++count) {
-      NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                          untilDate:NSDate.distantPast
-                                             inMode:NSDefaultRunLoopMode
-                                            dequeue:YES];
-      if (!event)
-        break;
-      [NSApp sendEvent:event];
-    }
-    [NSApp updateWindows];
-    // Chromium tasks (renderer events, replies, timers) emit into JavaScript,
-    // and libuv prepare/check callbacks run without any V8 scope.
-    HostState& state = State();
-    if (CanEnterJavaScript(state)) {
-      NativeCallbackScope scope(state);
-      base::RunLoop().RunUntilIdle();
-    } else {
-      base::RunLoop().RunUntilIdle();
-    }
-  }
-}
-
-void PumpPrepare(uv_prepare_t*) { PumpAppKit(); }
-void PumpCheck(uv_check_t*) { PumpAppKit(); }
-void PumpWakeup(uv_timer_t*) {}
 
 }  // namespace
 
@@ -2942,8 +3247,13 @@ int GetMacMainProcessExitCode() {
   return State().exit_code;
 }
 
-bool MacMainLoopExitRequested() {
-  return State().exit_requested;
+std::unique_ptr<base::MessagePump> CreateMacMainMessagePump() {
+  return std::make_unique<MacMainMessagePump>();
+}
+
+void RunMacMainLoop() {
+  if (g_node_run_loop)
+    g_node_run_loop->Run();
 }
 
 void ExitMacMainProcess(int exit_code) {
@@ -2965,43 +3275,20 @@ bool RunInMainJavaScriptScope(const std::function<void()>& callback) {
 }
 
 bool InstallMacRunLoopIntegration(uv_loop_s* loop) {
-  if (!loop || g_loop)
+  if (!loop || g_node_run_loop)
     return false;
-  g_prepare = new uv_prepare_t();
-  g_check = new uv_check_t();
-  g_wakeup = new uv_timer_t();
-  if (uv_prepare_init(loop, g_prepare) != 0 ||
-      uv_check_init(loop, g_check) != 0 ||
-      uv_timer_init(loop, g_wakeup) != 0) {
-    delete g_prepare;
-    delete g_check;
-    delete g_wakeup;
-    g_prepare = nullptr;
-    g_check = nullptr;
-    g_wakeup = nullptr;
+  auto integration = std::make_unique<MacNodeRunLoop>(loop);
+  if (!integration->Initialize())
     return false;
-  }
-  if (uv_prepare_start(g_prepare, PumpPrepare) != 0 ||
-      uv_check_start(g_check, PumpCheck) != 0 ||
-      uv_timer_start(g_wakeup, PumpWakeup, kPumpIntervalMs, kPumpIntervalMs) != 0) {
-    uv_close(reinterpret_cast<uv_handle_t*>(g_prepare), nullptr);
-    uv_close(reinterpret_cast<uv_handle_t*>(g_check), nullptr);
-    uv_close(reinterpret_cast<uv_handle_t*>(g_wakeup), nullptr);
-    uv_run(loop, UV_RUN_NOWAIT);
-    delete g_prepare;
-    delete g_check;
-    delete g_wakeup;
-    g_prepare = nullptr;
-    g_check = nullptr;
-    g_wakeup = nullptr;
-    return false;
-  }
-  g_loop = loop;
+  g_node_run_loop = std::move(integration);
   return true;
 }
 
 void ShutdownMacRunLoopIntegration() {
   DestroyAllWindows();
+  // Join and invalidate native callbacks before releasing the Environment.
+  // Node teardown drains the async handle's delete-only close callback.
+  g_node_run_loop.reset();
   HostState& state = State();
   ReleaseSingleInstanceLock();
   NSApp.delegate = nil;
@@ -3014,23 +3301,6 @@ void ShutdownMacRunLoopIntegration() {
   state.context.Reset();
   state.environment = nullptr;
   state.isolate = nullptr;
-
-  if (!g_loop)
-    return;
-  uv_prepare_stop(g_prepare);
-  uv_check_stop(g_check);
-  uv_timer_stop(g_wakeup);
-  uv_close(reinterpret_cast<uv_handle_t*>(g_prepare),
-           [](uv_handle_t* handle) { delete reinterpret_cast<uv_prepare_t*>(handle); });
-  uv_close(reinterpret_cast<uv_handle_t*>(g_check),
-           [](uv_handle_t* handle) { delete reinterpret_cast<uv_check_t*>(handle); });
-  uv_close(reinterpret_cast<uv_handle_t*>(g_wakeup),
-           [](uv_handle_t* handle) { delete reinterpret_cast<uv_timer_t*>(handle); });
-  uv_run(g_loop, UV_RUN_NOWAIT);
-  g_prepare = nullptr;
-  g_check = nullptr;
-  g_wakeup = nullptr;
-  g_loop = nullptr;
 }
 
 }  // namespace mini_electron::electron

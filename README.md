@@ -7,6 +7,26 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### macOS runtime 0.1.20
+
+This release publishes Apple Silicon macOS assets only. Windows remains on
+runtime `0.1.18`; the npm installer remains `0.1.12`.
+
+- Replaces the recurring 10 ms AppKit/libuv poll with native I/O readiness and
+  exact timer deadlines while preserving main-thread callbacks and orderly quit.
+- Suspends hidden/minimized windows, detached BrowserViews and their webview
+  guests; restores rendering and interaction when they become visible again.
+- Preserves hidden first-paint/`ready-to-show`, explicit `prepareToShow()` and
+  `backgroundThrottling: false` behavior. Native occlusion uses AppKit's reported
+  state, not a geometry-based guess.
+- Enables Blink threaded CSS animation without capping visible animation or
+  disabling GPU rendering.
+
+The Windows DPAPI and preload source fixes are not delivered by this macOS-only
+release; Windows native verification and publication remain pending.
+See [macOS idle scheduling verification](docs/RENDERING_PERFORMANCE.md#macos-idle-scheduling-and-visibility)
+for measured workload results, native regressions and verification limits.
+
 ### Windows runtime 0.1.18
 
 This release publishes Windows x64 assets only. The macOS channel remains on
@@ -65,7 +85,7 @@ The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
 independent. Unpinned installs select Windows runtime `0.1.18` or macOS runtime
-`0.1.16` through separate channels.
+`0.1.20` through separate channels.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.12
@@ -133,7 +153,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.16`.
+  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.20`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -148,19 +168,19 @@ Update only the local binary explicitly:
 
 ```sh
 npx mini-electron --update-runtime
-# Pin the WebGPU-enabled macOS runtime:
-npx mini-electron --update-runtime 0.1.16
+# Pin the macOS runtime:
+npx mini-electron --update-runtime 0.1.20
 # Select an exact runtime that includes your platform (Windows example):
 npx mini-electron --update-runtime 0.1.18
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.18` for Windows; `0.1.16` for macOS):
+(`0.1.18` for Windows; `0.1.20` for macOS):
 
 ```sh
 # macOS arm64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.16 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.20 npm ci
 # Windows x64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.18 npm ci
 ```
@@ -1356,6 +1376,29 @@ out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
   --app=test/macos-renderer-responsiveness-smoke.js
 ```
 
+The macOS idle regressions cover event-driven AppKit/libuv scheduling, native
+visibility propagation to Blink/Viz and embedded contents, and CSS compositor
+animation continuing while the page's JavaScript thread is busy:
+
+```sh
+ELECTRON_RUN_AS_NODE=1 out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+  test/macos-idle-pump-smoke.js
+out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+  --app=test/macos-idle-visibility-smoke.js
+out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+  --app=test/macos-threaded-animation-smoke.js
+```
+
+Hidden contents stop rAF and unnecessary Viz work by default. Signal initial
+readiness with load/DOM events before requesting `prepareToShow()`; waiting for
+a hidden-page animation frame before requesting preparation can deadlock.
+Initial first-paint and explicit preparation leases preserve hidden startup.
+Constructor and setter `backgroundThrottling: false` opt out deliberately.
+Native occlusion is trusted only after AppKit has reported an exposure; an
+uninitialized exposure bit must not suspend an onscreen first frame.
+See [macOS idle scheduling and visibility](docs/RENDERING_PERFORMANCE.md#macos-idle-scheduling-and-visibility)
+for measured CPU, verification coverage and unavailable native OS checks.
+
 Native mouse events preserve the originating Shift, Control, Command and Option
 flags through the host, renderer IPC and Blink dispatch, including pointer moves,
 press/release, clicks and context menus. The queued event's modifier snapshot is
@@ -1547,12 +1590,13 @@ use `ELECTRON_RUN_AS_NODE=1`. Sharing the executable does not merge processes.
 The bundle defaults to `LSUIElement=true`, so background roles never register
 as ordinary Dock applications. Creating a GUI BrowserWindow promotes only
 that process to `NSApplicationActivationPolicyRegular`.
-In the browser main process, the libuv integration owns AppKit event dispatch.
-Chromium tasks drain through a CFRunLoop pump, not repeated `NSApplication.run`/`stop` cycles,
-which cancel native button gestures between a physical mouse-down and mouse-up.
+The browser main process runs one continuous AppKit/Chromium event loop. A
+blocking libuv-backend watcher and an exact native deadline timer wake that loop;
+libuv callbacks stay on the main thread. There is no recurring 10 ms GUI poll or
+repeated `NSApplication.run`/`stop` cycle that cancels native button gestures.
 The window-button smoke queues its events with a 100 ms hold to cover this path.
 AppKit launch is completed explicitly before Electron readiness, retaining Dock,
-activation and accessibility registration without entering `NSApplication.run`.
+activation and accessibility registration.
 Sandboxed renderer processes instead own a native AppKit UI message pump on
 their main thread; Blink's rendering thread retains its NSRunLoop. Initialize
 libobjc's block-method trampolines before seatbelt lockdown so AppKit's lazy

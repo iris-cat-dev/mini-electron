@@ -251,7 +251,7 @@ app.whenReady().then(async () => {
   window.webContents.on('render-process-gone', (_, details) => finish(new Error(JSON.stringify(details))));
   await window.loadURL(`http://127.0.0.1:${server.address().port}/`);
   report.renderer = await window.webContents.executeJavaScript(`(${exercise.toString()})()`);
-  report.compositor = await window.webContents._getCompositorInfo();
+  report.compositor = native ? native.frames() : await window.webContents._getCompositorInfo();
   await capture([[64, 128, 191, 255], [144, 32, 48, 255]], 'native WGSL rendering and premultiplied composition');
   await window.webContents.executeJavaScript('updateWebGPU()');
   await capture([[0, 255, 0, 255], [16, 32, 176, 255]], 'resize and subsequent GPU frame');

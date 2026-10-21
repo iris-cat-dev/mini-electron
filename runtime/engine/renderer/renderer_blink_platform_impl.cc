@@ -28,6 +28,7 @@
 #include "third_party/blink/public/resources/grit/blink_image_resources.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
 #include "third_party/blink/renderer/modules/media_controls/resources/grit/media_controls_resources.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "mojo/public/cpp/bindings/generic_pending_receiver.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "gen/ui/strings/grit/ax_strings.h"
@@ -36,6 +37,11 @@
 
 
 namespace content {
+
+bool RendererBlinkPlatformImpl::IsThreadedAnimationEnabled()
+{
+    return blink::Thread::CompositorThread() != nullptr;
+}
 
 std::unique_ptr<blink::WebGraphicsContext3DProvider> RendererBlinkPlatformImpl::CreateOffscreenGraphicsContext3DProvider(
     const ContextAttributes& attributes, const blink::WebURL&, GraphicsInfo* info)

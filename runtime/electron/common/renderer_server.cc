@@ -1684,15 +1684,17 @@ private:
             });
             Reply(request_id);
 #endif
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         } else if (method == "setVisibility") {
             const std::optional<bool> visible = params.FindBool("visible");
             if (!visible) {
                 Reply(request_id, {}, "invalid visibility");
                 return;
             }
-            PostBlink([this, visible = *visible] {
-                if (content::WebViewHost* host = View())
+            PostBlink([view_id = view_, visible = *visible] {
+                auto* host = static_cast<content::WebViewHost*>(
+                    common::LiveIdDetect::getWebViewIds()->getPtr(view_id));
+                if (host)
                     host->setVisibility(visible);
             });
             Reply(request_id);

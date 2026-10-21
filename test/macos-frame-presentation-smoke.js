@@ -105,6 +105,6 @@ app.whenReady().then(async () => {
   await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><title>${title}</title><style>body{margin:0;background:#2576a2}</style><script>
     const report = phase => requestAnimationFrame(() => requestAnimationFrame(() => presentationSmoke.report(phase)));
     window.nextPresentationFrame = () => { document.body.style.background = '#c44b19'; report('updated'); };
-    addEventListener('DOMContentLoaded', () => report('initial'));
+    addEventListener('DOMContentLoaded', () => presentationSmoke.report('initial'));
   </script>`));
 }).catch(finish);

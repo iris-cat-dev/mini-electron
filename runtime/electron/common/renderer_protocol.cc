@@ -424,7 +424,8 @@ bool IsBrowserToRendererMethod(const std::string& method)
         return true;
 #endif
 #if BUILDFLAG(IS_MAC)
-    if (method == "setVSyncDisplayId" || method == "guest.invalidate")
+    if (method == "setVSyncDisplayId" || method == "guest.invalidate"
+        || method == "setVisibility")
         return true;
 #endif
     static constexpr std::string_view kMethods[] = {
