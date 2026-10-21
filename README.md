@@ -1345,6 +1345,17 @@ out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
   --app=test/macos-renderer-loss-lifetime-smoke.js
 ```
 
+The macOS renderer responsiveness regression targets only its own renderer with
+native application events and observes WindowServer's hang flag for 20 seconds.
+It also checks page interaction, sandbox isolation and renderer exit on window
+close. A live JavaScript/IPC loop alone does not establish native responsiveness.
+This smoke requires a graphical macOS login session and Xcode:
+
+```sh
+out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+  --app=test/macos-renderer-responsiveness-smoke.js
+```
+
 Native mouse events preserve the originating Shift, Control, Command and Option
 flags through the host, renderer IPC and Blink dispatch, including pointer moves,
 press/release, clicks and context menus. The queued event's modifier snapshot is
@@ -1536,12 +1547,18 @@ use `ELECTRON_RUN_AS_NODE=1`. Sharing the executable does not merge processes.
 The bundle defaults to `LSUIElement=true`, so background roles never register
 as ordinary Dock applications. Creating a GUI BrowserWindow promotes only
 that process to `NSApplicationActivationPolicyRegular`.
-The libuv integration owns AppKit event dispatch. Chromium main-thread tasks
-drain through a CFRunLoop pump, not repeated `NSApplication.run`/`stop` cycles,
+In the browser main process, the libuv integration owns AppKit event dispatch.
+Chromium tasks drain through a CFRunLoop pump, not repeated `NSApplication.run`/`stop` cycles,
 which cancel native button gestures between a physical mouse-down and mouse-up.
 The window-button smoke queues its events with a 100 ms hold to cover this path.
 AppKit launch is completed explicitly before Electron readiness, retaining Dock,
 activation and accessibility registration without entering `NSApplication.run`.
+Sandboxed renderer processes instead own a native AppKit UI message pump on
+their main thread; Blink's rendering thread retains its NSRunLoop. Initialize
+libobjc's block-method trampolines before seatbelt lockdown so AppKit's lazy
+native-event handling does not abort inside the sandbox. Renderer startup never
+initializes Node or trusted browser bindings, and shutdown joins Blink before
+releasing its main-thread task executor.
 Shared frames use premultiplied RGBA. The renderer converts from Skia's native
 pixel format only when needed: macOS RGBA is copied directly, while Windows
 BGRA swaps red and blue. Screenshot conversion follows the same native format.
