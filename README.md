@@ -364,6 +364,35 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+### safeStorage
+
+Source builds replace the fixed-key XOR backend reported in
+[issue #6](https://github.com/iris-cat-dev/mini-electron/issues/6).
+
+- **Windows:** uses `CryptProtectData` / `CryptUnprotectData` with current-user
+  DPAPI protection and no UI prompts. `isEncryptionAvailable()` returns false
+  before app readiness, and only returns true after a successful OS-backed
+  encrypt/decrypt probe. Each operation still throws if DPAPI subsequently fails.
+  This protects against other users, not other applications running as that user.
+- **Other platforms:** no secure backend is implemented; availability is false
+  and both encryption and decryption throw. There is no plaintext or fixed-key
+  fallback. `setUsePlainTextEncryption()` does not enable one.
+- Ciphertext is a native authenticated DPAPI blob, without a `v10`/`v11` wrapper
+  or application-managed key file. It is not Electron's profile-key ciphertext
+  format. Legacy fixed-key XOR output is rejected rather than silently migrated;
+  applications must obtain and securely store replacement values.
+- Strings use UTF-8 with explicit lengths, including Unicode and embedded NULs.
+  Encrypting an empty string produces a DPAPI blob. Decrypting an empty Buffer
+  returns `''` when encryption is available; non-Buffer arguments and malformed
+  or authentication-failing ciphertext throw.
+
+After rebuilding on Windows, run the application-mode regression (requires
+Windows PowerShell for independent .NET DPAPI interoperability checks):
+
+```sh
+out/windows-x64/mini-electron.exe --app=test/safe-storage-smoke.js
+```
+
 ### Preload module scope
 
 The shared Windows/macOS preload runner gives each session and window preload

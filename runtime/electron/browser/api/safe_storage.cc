@@ -1,143 +1,154 @@
+#include <cstring>
+#include <limits>
+#include <string>
 
+#include "build/build_config.h"
 #include "runtime/electron/common/node_register_help.h"
-#include "runtime/electron/common/id_live_detect.h"
-#include "runtime/electron/common/node_binding.h"
-#include "runtime/electron/common/node_thread.h"
-#include "runtime/electron/common/atom_version.h"
-#include "runtime/electron/common/v8_util.h"
-#include "runtime/electron/common/api/event_emitter.h"
-#include "runtime/electron/common/api/event_emitter_caller.h"
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/error_thrower.h"
-#include "runtime/electron/common/gin_helper/object_template_builder.h"
-#include "runtime/electron/common/gin_helper/public/gin_embedders.h"
-#include "runtime/electron/common/gin_helper/public/wrapper_info.h"
 #include "third_party/libnode/src/node_binding.h"
 #include "third_party/libnode/src/node_buffer.h"
 
-// electron\shell\browser\api\electron_api_safe_storage.cc
-// components/os_crypt/sync/os_crypt_win.cc
-
-namespace OSCrypt {
-
-const char* kEncryptionKey = "AtomEncryptionKey";
-
-static std::string stringXOR(const std::string& content, const std::string& key)
-{
-    std::string str = content;
-    for (unsigned int i = 0; i < str.length(); i++) {
-        str[i] ^= key[i % key.length()];
-    }
-
-    return str;
-}
-
-bool EncryptString(const std::string& plaintext, std::string* ciphertext)
-{
-    *ciphertext = stringXOR(plaintext, kEncryptionKey);
-    return true;
-}
-
-bool DecryptString(const std::string& ciphertext, std::string* plaintext)
-{
-    *plaintext = stringXOR(ciphertext, kEncryptionKey);
-    return true;
-}
-
-} // OSCrypt
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+#include <wincrypt.h>
+#include "runtime/electron/browser/api/app.h"
+#endif
 
 namespace atom {
+namespace {
 
-const char* kEncryptionVersionPrefixV10 = "v10";
-const char* kEncryptionVersionPrefixV11 = "v11";
-bool use_password_v10 = false;
-
-static void setUsePasswordV10(bool use)
+#if BUILDFLAG(IS_WIN)
+bool protectData(const char* data, size_t size, DATA_BLOB* output)
 {
-    use_password_v10 = use;
+    if (size > std::numeric_limits<DWORD>::max())
+        return false;
+    DATA_BLOB input { static_cast<DWORD>(size),
+        reinterpret_cast<BYTE*>(const_cast<char*>(data)) };
+    // Omit CRYPTPROTECT_LOCAL_MACHINE: protection belongs to the current user.
+    return ::CryptProtectData(&input, nullptr, nullptr, nullptr, nullptr,
+        CRYPTPROTECT_UI_FORBIDDEN, output) != FALSE;
 }
 
-static bool isEncryptionAvailable()
+bool unprotectData(const char* data, size_t size, DATA_BLOB* output)
 {
-    // #if BUILDFLAG(IS_LINUX)
-    //     // Calling IsEncryptionAvailable() before the app is ready results in a crash
-    //     // on Linux.
-    //     // Refs: https://github.com/electron/electron/issues/32206.
-    //     if (!electron::Browser::Get()->is_ready())
-    //         return false;
-    //     return OSCrypt::IsEncryptionAvailable() ||
-    //         (use_password_v10 &&
-    //             static_cast<BrowserProcessImpl*>(g_browser_process)
-    //             ->linux_storage_backend() == "basic_text");
-    // #else
-    //     return OSCrypt::IsEncryptionAvailable();
-    // #endif
-    return true;
+    if (size > std::numeric_limits<DWORD>::max())
+        return false;
+    DATA_BLOB input { static_cast<DWORD>(size),
+        reinterpret_cast<BYTE*>(const_cast<char*>(data)) };
+    return ::CryptUnprotectData(&input, nullptr, nullptr, nullptr, nullptr,
+        CRYPTPROTECT_UI_FORBIDDEN, output) != FALSE;
 }
 
-static v8::Local<v8::Value> encryptString(v8::Isolate* isolate, const std::string& plaintext)
+bool probeEncryption()
+{
+    constexpr char probe[] = "mini-electron safeStorage probe";
+    DATA_BLOB encrypted {};
+    if (!protectData(probe, sizeof(probe), &encrypted))
+        return false;
+    DATA_BLOB decrypted {};
+    bool available = unprotectData(reinterpret_cast<const char*>(encrypted.pbData),
+        encrypted.cbData, &decrypted);
+    available = available && decrypted.cbData == sizeof(probe)
+        && std::memcmp(decrypted.pbData, probe, sizeof(probe)) == 0;
+    if (decrypted.pbData) {
+        ::SecureZeroMemory(decrypted.pbData, decrypted.cbData);
+        ::LocalFree(decrypted.pbData);
+    }
+    ::LocalFree(encrypted.pbData);
+    return available;
+}
+#endif
+
+void setUsePlainTextEncryption(bool)
+{
+    // No plaintext or fixed-key fallback, including on unsupported platforms.
+}
+
+bool isEncryptionAvailable()
+{
+#if BUILDFLAG(IS_WIN)
+    const App* app = App::getInstance();
+    if (!app || !app->isReadyApi())
+        return false;
+    static const bool available = probeEncryption();
+    return available;
+#else
+    return false;
+#endif
+}
+
+v8::Local<v8::Value> encryptString(v8::Isolate* isolate, const std::string& plaintext)
 {
     if (!isEncryptionAvailable()) {
-        //         if (!electron::Browser::Get()->is_ready()) {
-        //             gin_helper::ErrorThrower(isolate).ThrowError(
-        //                 "safeStorage cannot be used before app is ready");
-        //             return v8::Local<v8::Value>();
-        //         }
         gin_helper::ErrorThrower(isolate).ThrowError("Error while encrypting the text provided to safeStorage.encryptString. Encryption is not available.");
-        return v8::Local<v8::Value>();
+        return {};
     }
 
-    std::string ciphertext;
-    bool encrypted = OSCrypt::EncryptString(plaintext, &ciphertext);
-
-    if (!encrypted) {
+#if BUILDFLAG(IS_WIN)
+    DATA_BLOB encrypted {};
+    if (!protectData(plaintext.data(), plaintext.size(), &encrypted)) {
         gin_helper::ErrorThrower(isolate).ThrowError("Error while encrypting the text provided to safeStorage.encryptString.");
-        return v8::Local<v8::Value>();
+        return {};
     }
 
-    return node::Buffer::Copy(isolate, ciphertext.c_str(), ciphertext.size()).ToLocalChecked();
+    // The format is the native, authenticated DPAPI blob, not a v10/v11 payload.
+    // Transfer the OS allocation to the Buffer without copying ciphertext.
+    return node::Buffer::New(isolate, reinterpret_cast<char*>(encrypted.pbData),
+        encrypted.cbData, [](char* data, void*) { ::LocalFree(data); },
+        nullptr).ToLocalChecked();
+#else
+    return {};
+#endif
 }
 
-static std::string decryptString(v8::Isolate* isolate, v8::Local<v8::Value> buffer)
+v8::Local<v8::Value> decryptString(v8::Isolate* isolate, v8::Local<v8::Value> buffer)
 {
     if (!isEncryptionAvailable()) {
-        //         if (!electron::Browser::Get()->is_ready()) {
-        //             gin_helper::ErrorThrower(isolate).ThrowError(
-        //                 "safeStorage cannot be used before app is ready");
-        //             return "";
-        //         }
         gin_helper::ErrorThrower(isolate).ThrowError("Error while decrypting the ciphertext provided to "
                                                      "safeStorage.decryptString. Decryption is not available.");
-        return "";
+        return {};
     }
 
     if (!node::Buffer::HasInstance(buffer)) {
         gin_helper::ErrorThrower(isolate).ThrowError("Expected the first argument of decryptString() to be a buffer");
-        return "";
+        return {};
     }
 
-    // ensures an error is thrown in Mac or Linux on
-    // decryption failure, rather than failing silently
-    const char* data = node::Buffer::Data(buffer);
-    auto size = node::Buffer::Length(buffer);
-    std::string ciphertext(data, size);
-    if (ciphertext.empty())
-        return "";
+    const size_t size = node::Buffer::Length(buffer);
+    if (size == 0)
+        return v8::String::Empty(isolate);
 
-    if (ciphertext.find(kEncryptionVersionPrefixV10) != 0 && ciphertext.find(kEncryptionVersionPrefixV11) != 0) {
-        gin_helper::ErrorThrower(isolate).ThrowError("Error while decrypting the ciphertext provided to "
-                                                     "safeStorage.decryptString. Ciphertext does not appear to be encrypted.");
-        return "";
-    }
-
-    std::string plaintext;
-    bool decrypted = OSCrypt::DecryptString(ciphertext, &plaintext);
-    if (!decrypted) {
+#if BUILDFLAG(IS_WIN)
+    DATA_BLOB decrypted {};
+    if (!unprotectData(node::Buffer::Data(buffer), size, &decrypted)) {
         gin_helper::ErrorThrower(isolate).ThrowError("Error while decrypting the ciphertext provided to safeStorage.decryptString.");
-        return "";
+        return {};
     }
+
+    v8::Local<v8::String> plaintext;
+    bool converted = decrypted.cbData == 0;
+    if (converted) {
+        plaintext = v8::String::Empty(isolate);
+    } else if (decrypted.cbData <= v8::String::kMaxLength) {
+        // Explicit byte length preserves embedded NULs and UTF-8 strings.
+        converted = v8::String::NewFromUtf8(isolate,
+            reinterpret_cast<const char*>(decrypted.pbData),
+            v8::NewStringType::kNormal, static_cast<int>(decrypted.cbData)).ToLocal(&plaintext);
+    } else {
+        gin_helper::ErrorThrower(isolate).ThrowError("Error while decrypting the ciphertext provided to safeStorage.decryptString. Text is too long.");
+    }
+    ::SecureZeroMemory(decrypted.pbData, decrypted.cbData);
+    ::LocalFree(decrypted.pbData);
+    if (!converted)
+        return {};
     return plaintext;
+#else
+    return {};
+#endif
 }
+
+} // namespace
 
 static void initializeApiSafeStorage(v8::Local<v8::Object> exports, v8::Local<v8::Value> unused, v8::Local<v8::Context> context, void* priv)
 {
@@ -145,11 +156,8 @@ static void initializeApiSafeStorage(v8::Local<v8::Object> exports, v8::Local<v8
     gin_helper::Dictionary dict(isolate, exports);
     dict.SetMethodT("decryptString", &decryptString);
     dict.SetMethodT("encryptString", &encryptString);
-    // #if BUILDFLAG(IS_LINUX)
-    //     dict.SetMethod("getSelectedStorageBackend", &GetSelectedLinuxBackend);
-    // #endif
     dict.SetMethodT("isEncryptionAvailable", &isEncryptionAvailable);
-    dict.SetMethodT("setUsePlainTextEncryption", &setUsePasswordV10);
+    dict.SetMethodT("setUsePlainTextEncryption", &setUsePlainTextEncryption);
 }
 
 static const char SafeStorageSricpt[] = "exports = {};";

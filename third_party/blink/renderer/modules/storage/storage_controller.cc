@@ -13,6 +13,9 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#include "third_party/blink/renderer/modules/storage/inspector_dom_storage_agent.h"
+#endif
 #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
