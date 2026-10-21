@@ -1147,6 +1147,18 @@ out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
   --app=test/macos-renderer-loss-lifetime-smoke.js
 ```
 
+Native mouse events preserve the originating Shift, Control, Command and Option
+flags through the host, renderer IPC and Blink dispatch, including pointer moves,
+press/release, clicks and context menus. The queued event's modifier snapshot is
+used instead of reading global keyboard state later on the compositor thread.
+This allows file-tree range and additive selection without application workarounds.
+The regression sends AppKit events with each modifier and their combinations:
+
+```sh
+out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+  --app=test/macos-mouse-modifiers-smoke.js
+```
+
 The presentation regression requires Xcode and compiles a temporary native
 helper against the production frame header. It pauses only its own renderer,
 holds an in-progress publication, and exercises the actual NSView drawing path;

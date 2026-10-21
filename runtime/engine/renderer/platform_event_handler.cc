@@ -32,9 +32,6 @@
 
 namespace content {
 
-static const unsigned short HIGH_BIT_MASK_SHORT = 0x8000;
-
-
 ULONG verticalScrollLines()
 {
     ULONG scrollLines = 3;
@@ -449,24 +446,6 @@ void PlatformEventHandler::fireInputEventToCompositingThread(const blink::WebInp
     }
 }
 
-// src\ui\events\blink\blink_event_util.cc
-// src\ui\events\win\events_win.cc
-// src\ui\events\keycodes\dom\keycode_converter.cc
-static void buildModifiers(blink::WebInputEvent* evt)
-{
-    // weolar
-    //     if (GetKeyState(VK_SHIFT) & HIGH_BIT_MASK_SHORT)
-    //         evt->setModifiers(evt->modifiers() | ((int)WebInputEvent::ShiftKey));
-    if (GetKeyState(VK_CONTROL) & HIGH_BIT_MASK_SHORT)
-        evt->SetModifiers(evt->GetModifiers() | ((int)blink::WebInputEvent::kControlKey));
-    //     if (GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT)
-    //         evt->setModifiers(evt->modifiers() | ((int)WebInputEvent::AltKey));
-    //     if (isCapsLockOn())
-    //         evt->setModifiers(evt->modifiers() | ((int)WebInputEvent::CapsLockOn));
-    //     if (isNumLockOn())
-    //         evt->setModifiers(evt->modifiers() | ((int)WebInputEvent::NumLockOn));
-}
-
 static void postDragMessage(HWND hWnd)
 {
     HWND hRootWnd = hWnd;
@@ -574,7 +553,8 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     base::TimeTicks time = base::TimeTicks::Now();
 
     blink::WebMouseEvent webMouseEvent;
-    webMouseEvent.SetModifiers(0);
+    // Use the originating event's snapshot, not global key state on this thread.
+    webMouseEvent.SetModifiers(info.modifiers);
     webMouseEvent.SetPositionInWidget(gfx::PointF(pos.x(), pos.y()));
     webMouseEvent.SetPositionInScreen(gfx::PointF(globalPos.x(), globalPos.y()));
     webMouseEvent.SetTimeStamp(time);
@@ -584,7 +564,6 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     m_lastPosMouseMove = pos;
 
     webMouseEvent.click_count = 0;
-    buildModifiers(&webMouseEvent);
 
     if (WM_LBUTTONDOWN == message || WM_MBUTTONDOWN == message
         || WM_RBUTTONDOWN == message || WM_LBUTTONDBLCLK == message

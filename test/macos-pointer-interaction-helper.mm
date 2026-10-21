@@ -36,13 +36,15 @@ static NSView* View(napi_env env, napi_value title) {
   return found;
 }
 static napi_value Mouse(napi_env env, napi_callback_info info) {
-  size_t count = 4;
-  napi_value args[4];
+  size_t count = 5;
+  napi_value args[5];
   double x = 0, y = 0;
+  uint32_t modifiers = 0;
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
-  if (count != 4 || napi_get_value_double(env, args[2], &x) != napi_ok ||
-      napi_get_value_double(env, args[3], &y) != napi_ok || !std::isfinite(x) || !std::isfinite(y)) {
-    napi_throw_type_error(env, nullptr, "mouse(title, type, pageX, pageY)");
+  if ((count != 4 && count != 5) || napi_get_value_double(env, args[2], &x) != napi_ok ||
+      napi_get_value_double(env, args[3], &y) != napi_ok || !std::isfinite(x) || !std::isfinite(y) ||
+      (count == 5 && napi_get_value_uint32(env, args[4], &modifiers) != napi_ok)) {
+    napi_throw_type_error(env, nullptr, "mouse(title, type, pageX, pageY, modifiers = 0)");
     return nullptr;
   }
   NSString* type = Text(env, args[1]);
@@ -62,7 +64,7 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
   const NSPoint local = NSMakePoint(NSMinX(view.bounds) + x,
       view.isFlipped ? NSMinY(view.bounds) + y : NSMaxY(view.bounds) - y);
   NSEvent* event = [NSEvent mouseEventWithType:eventType
-      location:[view convertPoint:local toView:nil] modifierFlags:0
+      location:[view convertPoint:local toView:nil] modifierFlags:modifiers
       timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:view.window.windowNumber
       context:nil eventNumber:0 clickCount:eventType == NSEventTypeMouseMoved ? 0 : 1
       pressure:eventType == NSEventTypeLeftMouseDown || eventType == NSEventTypeLeftMouseDragged

@@ -1430,6 +1430,11 @@ void WebViewHost::delayDoMouseMsgInCompositorThread()
             wParam |= MK_RBUTTON;
 
         content::PlatformEventHandler::MouseEvtInfo info = { true, false /*pagePreDestroy <= m_state*/, m_draggableRegion, m_renderWidgetHostImpl.get() };
+        info.modifiers =
+            (mouseMsg->flags & MINI_ELECTRON_SHIFT ? blink::WebInputEvent::kShiftKey : 0) |
+            (mouseMsg->flags & MINI_ELECTRON_CONTROL ? blink::WebInputEvent::kControlKey : 0) |
+            (mouseMsg->flags & MINI_ELECTRON_META ? blink::WebInputEvent::kMetaKey : 0) |
+            (mouseMsg->flags & MINI_ELECTRON_ALT ? blink::WebInputEvent::kAltKey : 0);
         if (m_platformEventHandler.get())
             m_platformEventHandler->fireMouseEvent(m_hWnd, mouseMsg->message, wParam, lParam, info, &handled);
 

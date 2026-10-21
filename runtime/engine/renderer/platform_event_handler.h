@@ -114,6 +114,7 @@ public:
         bool isWillDestroy;
         blink::WebVector<blink::WebDraggableRegion> draggableRegion;
         RenderWidgetHostImpl* renderWidgetHost = nullptr;
+        int modifiers = 0;
     };
     LRESULT fireMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, const MouseEvtInfo& info, BOOL* bHandle);
     LRESULT fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
