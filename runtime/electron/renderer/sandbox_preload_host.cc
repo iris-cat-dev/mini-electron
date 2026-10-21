@@ -160,7 +160,6 @@ void SandboxPreloadHost::Install(v8::Local<v8::Context> context)
 
     base::Value::Dict metadata = process_metadata_.Clone();
     metadata.Set("contextIsolated", context_isolation_);
-    metadata.Set("sandboxed", true);
     metadata.Set("type", "renderer");
     v8::Local<v8::Value> process = gin_helper::Converter<base::Value::Dict>::ToV8(isolate, metadata);
     if (process->IsObject()) {

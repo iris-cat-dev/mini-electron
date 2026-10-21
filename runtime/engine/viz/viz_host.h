@@ -60,6 +60,7 @@ public:
     void resizeOnBlinkThread(const gfx::Size& size, float device_scale_factor);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayIdOnBlinkThread(int64_t display_id);
+    void setVisibleOnBlinkThread(bool visible);
 #endif
 
     viz::HostFrameSinkManager* host_frame_sink_manager()
@@ -79,6 +80,7 @@ private:
     void resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayIdOnHostThread(int64_t display_id);
+    void setVisibleOnHostThread(bool visible);
 #endif
 
     void embedClients(VizClient* embedder_client, const gfx::Rect& child_bounds);
@@ -113,6 +115,7 @@ private:
     base::WaitableEvent m_initialized;
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
+    bool m_visible = true;
     // Created on the host sequence and published by constructor completion.
     base::WeakPtr<VizHost> m_hostWeakPtr;
 #endif

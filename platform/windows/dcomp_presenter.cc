@@ -228,13 +228,13 @@ DeviceState& SharedDevice() {
   return state;
 }
 
-bool RealProcessHandle(HANDLE process, DWORD* process_id) {
+bool RealProcessHandle(HANDLE process, DWORD* process_id, bool in_process) {
   if (!process || process == INVALID_HANDLE_VALUE ||
       process == GetCurrentProcess() || process == GetCurrentThread()) {
     return false;
   }
   const DWORD id = GetProcessId(process);
-  if (!id || id == GetCurrentProcessId())
+  if (!id || (id == GetCurrentProcessId()) != in_process)
     return false;
   *process_id = id;
   return true;
@@ -616,7 +616,8 @@ D3DFrameConsumer::D3DFrameConsumer() : impl_(std::make_unique<Impl>()) {}
 
 D3DFrameConsumer::~D3DFrameConsumer() = default;
 
-bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame) {
+bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
+                            bool in_process) {
   if (frame.error) {
     ReportInvalidFrame("renderer reported a GPU error");
     return false;
@@ -633,7 +634,7 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame) {
   }
 
   DWORD renderer_pid = 0;
-  if (!RealProcessHandle(renderer_process, &renderer_pid)) {
+  if (!RealProcessHandle(renderer_process, &renderer_pid, in_process)) {
     ReportInvalidFrame("invalid renderer process handle");
     return false;
   }

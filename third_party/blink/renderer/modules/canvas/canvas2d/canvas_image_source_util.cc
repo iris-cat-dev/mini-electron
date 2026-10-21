@@ -23,11 +23,6 @@
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "ui/gfx/geometry/size.h"
 
-scoped_refptr<media::VideoFrame> blink::VideoFrameHandle::frame(void)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
 
 namespace blink {
 

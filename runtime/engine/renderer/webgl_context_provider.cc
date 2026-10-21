@@ -24,6 +24,9 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
+#if BUILDFLAG(IS_WIN)
+#include "ui/gl/gl_angle_util_win.h"
+#endif
 #include "gpu/GLES2/gl2extchromium.h"
 #include "gpu/command_buffer/client/context_support.h"
 #include "gpu/command_buffer/client/gl_helper.h"
@@ -675,3 +678,34 @@ std::unique_ptr<blink::WebGraphicsContext3DProvider> CreateWebGLContextProvider(
 }
 
 }  // namespace content
+
+#if BUILDFLAG(IS_WIN)
+namespace gl {
+namespace {
+void* QueryNativeANGLEDevice(EGLint type)
+{
+    if (!content::InitializeWebGL())
+        return nullptr;
+    auto query_display = reinterpret_cast<PFNEGLQUERYDISPLAYATTRIBEXTPROC>(eglGetProcAddress("eglQueryDisplayAttribEXT"));
+    auto query_device = reinterpret_cast<PFNEGLQUERYDEVICEATTRIBEXTPROC>(eglGetProcAddress("eglQueryDeviceAttribEXT"));
+    EGLAttrib device = 0;
+    EGLAttrib object = 0;
+    if (!query_display || !query_device ||
+        !query_display(content::Display().display, EGL_DEVICE_EXT, &device) || !device ||
+        !query_device(reinterpret_cast<EGLDeviceEXT>(device), type, &object))
+        return nullptr;
+    return reinterpret_cast<void*>(object);
+}
+} // namespace
+
+Microsoft::WRL::ComPtr<ID3D11Device> QueryD3D11DeviceObjectFromANGLE()
+{
+    return Microsoft::WRL::ComPtr<ID3D11Device>(static_cast<ID3D11Device*>(QueryNativeANGLEDevice(EGL_D3D11_DEVICE_ANGLE)));
+}
+
+Microsoft::WRL::ComPtr<IDirect3DDevice9> QueryD3D9DeviceObjectFromANGLE()
+{
+    return Microsoft::WRL::ComPtr<IDirect3DDevice9>(static_cast<IDirect3DDevice9*>(QueryNativeANGLEDevice(EGL_D3D9_DEVICE_ANGLE)));
+}
+} // namespace gl
+#endif

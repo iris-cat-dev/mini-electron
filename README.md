@@ -7,18 +7,55 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
-### macOS runtime 0.1.16
+### Windows runtime 0.1.18
+
+This release publishes Windows x64 assets only. The macOS channel remains on
+runtime `0.1.16`; the npm installer remains `0.1.12`.
+
+- Adds opt-in `--single-process` mode for trusted UI, with multiwindow IPC,
+  storage, capture, teardown, and reopen support. Default mode keeps renderers
+  in separate sandboxed processes.
+- Root frames are submitted only for actual geometry/surface changes. BeginFrames
+  carrying only presentation feedback or acknowledgements no longer trigger
+  another full-window redraw.
+- Minimized/hidden windows and detached BrowserViews stop Blink/Viz rendering;
+  showing, restoring, and reattaching resumes it. Initial `show: false` windows
+  retain their existing first-paint/`ready-to-show` behavior.
+- Windows x64 renderer jobs use one quarter of physical RAM, bounded to 1–4 GiB,
+  instead of a fixed 1 GiB cap. Each renderer Blink/Worker isolate configures V8
+  to use at most half the enforced job budget, reserving native-memory headroom.
+  Concurrent workers still share the aggregate process limit. Host Node and
+  explicit single-process mode retain their previous heap policy.
+- `render-process-gone` preserves the real exit code and distinguishes OOM,
+  crashes, normal/abnormal exits, and IPC failures. Windows OOM status
+  `0xe0000008` is no longer reduced to an unexplained `process-exit`.
+
+The rebuilt Windows binary passed static/animated visibility transitions in GPU
+and software modes, native composition/restore/resize, and disposable renderer
+OOM verification. See [idle and memory verification](docs/RENDERING_PERFORMANCE.md#windows-idle-rendering-and-memory-budget-correction).
+
+### Windows runtime 0.1.17
+
+This release publishes Windows x64 assets only. The macOS channel remains on
+runtime `0.1.16`; the npm installer remains `0.1.12`.
 
 - Restores real WebGL 1/2 contexts, Blink bindings, GPU drawing, CPU image
   interop, context loss/restoration, and Worker OffscreenCanvas publication.
-  The macOS backend uses ANGLE/Metal; Windows has ANGLE/D3D11 build integration.
-  See [WebGL support and limits](#webgl-1-and-2). This release contains macOS
-  arm64 assets only; Windows WebGL/WebGPU integration remains source-only.
+  The macOS backend uses ANGLE/Metal; Windows ANGLE/D3D11 now also passes
+  the rendering smoke in both output-compositor modes.
+  See [WebGL support and limits](#webgl-1-and-2).
 - Restores native WebGPU through renderer-local Dawn wire/native channels,
   WGSL pipelines, buffer mapping, GPUCanvasContext, OffscreenCanvas and Workers.
   macOS Metal rendering and the original OMP Desktop WebGPU/WASM homepage
-  animation are verified. Windows has D3D12 build integration, not Windows
-  runtime verification. See [WebGPU support and limits](#webgpu).
+  animation are verified. Windows Dawn/D3D12 now compiles and passes the
+  rendering/compute smoke. See [WebGPU support and limits](#webgpu).
+- Fixes Windows WebGPU bootstrap failures, missing native GPU dependencies,
+  obsolete placeholder/linker collisions and the GPU texture-format binding
+  crash. CPU VideoFrame construction and RGB/YUV copies are available in
+  Window and DedicatedWorker contexts; hardware video decoding is not added.
+- Fixes Windows WebGL implicit MSAA extension activation and serializes ANGLE
+  D3D11 calls/state changes across Blink and Worker threads to prevent
+  readback crashes and hangs from the shared immediate context.
 - Keeps macOS source builds compatible with the shared Windows horizontal-wheel
   routing by completing the POSIX Win32 message definitions.
 
@@ -27,7 +64,7 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned installs select Windows runtime `0.1.15` or macOS runtime
+independent. Unpinned installs select Windows runtime `0.1.18` or macOS runtime
 `0.1.16` through separate channels.
 
 ```sh
@@ -96,7 +133,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.15` and macOS `0.1.16`.
+  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.16`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -114,18 +151,18 @@ npx mini-electron --update-runtime
 # Pin the WebGPU-enabled macOS runtime:
 npx mini-electron --update-runtime 0.1.16
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.15
+npx mini-electron --update-runtime 0.1.18
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.15` for Windows; `0.1.16` for macOS):
+(`0.1.18` for Windows; `0.1.16` for macOS):
 
 ```sh
 # macOS arm64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.16 npm ci
 # Windows x64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.15 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.18 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
@@ -327,6 +364,75 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+## Trusted single-process UI mode
+
+Source builds support an opt-in mode for packaged or otherwise trusted UI.
+The application host and all WebContents run in one OS process, with one shared
+Blink rendering thread and separate page JavaScript contexts. The default remains
+one sandboxed renderer process per WebContents.
+
+```sh
+out/windows-x64/mini-electron.exe --single-process --app=/path/to/main.js
+```
+
+An application can select the same mode before creating its first BrowserWindow,
+BrowserView, webview, or other WebContents:
+
+```js
+const { app, BrowserWindow } = require('electron');
+app.commandLine.appendSwitch('single-process');
+
+app.whenReady().then(() => {
+  const window = new BrowserWindow({ width: 480, height: 320 });
+  window.loadFile('index.html');
+});
+```
+
+The choice is process-wide and fixed when the first WebContents is constructed.
+It is not a per-window `webPreferences` setting; `sandbox: false` alone does not
+select it, and `sandbox: true` cannot isolate a window in single-process mode.
+`webContents.getProcessId()` returns the host PID and preload `process.sandboxed`
+is `false`. Context isolation and the existing preload `electron` API remain
+available; this mode does not enable unrestricted Node `require()` inside pages
+or preload scripts.
+
+Commands, events and renderer replies retain the normal asynchronous client
+interface but move through in-process task delivery rather than serialized
+renderer command pipes. Windows GPU/capture and guest mappings take owned local
+references synchronously. Closing one view does not shut down the shared engine;
+the engine, compositor and Blink isolates stop before Node's V8 platform is
+disposed at application exit.
+
+There is no renderer OS sandbox or crash isolation in this mode. A native page
+crash terminates the application, and a long-running script can block every page
+on the shared Blink thread. Explicit `child_process`, utility-process and Node
+Worker operations keep their normal semantics. This reduces renderer-process
+startup and fixed per-process overhead; it does not remove Blink/V8 from the
+binary, and no memory-saving percentage is promised.
+
+Windows runtime regressions:
+
+```sh
+out/windows-x64/stage/mini-electron.exe --single-process --app=test/single-process-smoke.js
+MINI_SINGLE_PROCESS_API=1 out/windows-x64/stage/mini-electron.exe --app=test/single-process-smoke.js
+MINI_SINGLE_PROCESS_EXPECT_DEFAULT=1 out/windows-x64/stage/mini-electron.exe --app=test/single-process-smoke.js
+```
+
+The smoke checks real process IDs, preload isolation, JavaScript dialogs,
+bidirectional IPC, same-origin storage in distinct session partitions, rendered
+pixels, cancellation of pending work, surviving-window behavior, and reopening
+after all windows close. It passed with CLI/API selection, GPU and software
+rendering, and the unchanged default process model on Windows.
+
+Additional single-process checks passed `execute-javascript-smoke.js`,
+`ipc-frame-smoke.js`, `windows-companion-smoke.js` (real desktop pixels, alpha,
+focus and taskbar transitions), and `webgl-smoke.js` (including Dedicated Worker
+OffscreenCanvas). The full GPU compositor/VSync smoke did not pass: this session
+selects a timer clock in both process modes, rather than hardware DXGI/DWM VSync.
+`websocket-smoke.js` also fails its received text/binary assertion identically
+in single-process mode, default mode and the unchanged released runtime.
+The macOS source path is integrated but has not been built or run for this change.
+
 ## WebGL 1 and 2
 
 Desktop source builds register real `webgl`, `experimental-webgl`, and `webgl2`
@@ -340,17 +446,19 @@ returns no context rather than pretending to render.
 - macOS: native ANGLE Metal backend, initialized before renderer sandbox
   lockdown; it shares the existing named Metal compiler-service permission.
 - Windows: native ANGLE D3D11 static library, built with GN/Ninja before the
-  normal MSBuild targets. These Windows changes have not been compiled or run
-  on Windows as part of this verification.
+  normal MSBuild targets and smoke-tested on Windows 10 x64 with an RTX 3090.
+  Calls serialize access to D3D11's shared immediate context and invalidate
+  native state when Blink and Worker contexts alternate across threads.
 - Presentation: real GPU drawing is read back into owned software bitmap
-  resources for the existing cc/Viz resource protocol. macOS's output compositor
-  may then upload those resources to Metal. This is **not zero-copy** and does
-  not restore Chromium's GPU service or GPU tile rasterization.
+  resources for the existing cc/Viz resource protocol. The output compositor
+  may then upload those resources to Metal or D3D12. This is **not zero-copy**
+  and does not restore Chromium's GPU service or GPU tile rasterization.
 - Canvas/Image/ImageBitmap interop uses CPU pixels. OffscreenCanvas can transfer
   independent ImageBitmaps or publish subsequent worker frames to its visible
   HTML canvas placeholder. Context loss/restoration creates fresh GL resources.
 - Native video-frame conversion operates on CPU-mappable pixels; it does not
-  add hardware decoding, GPU video-frame imports or a WebCodecs API.
+  add hardware decoding or GPU-only decoder-frame imports. The CPU VideoFrame
+  API is described in the WebGPU section below.
 - Extensions depend on the native backend. This is not a Khronos WebGL
   conformance certification or a claim of accelerated Canvas2D or XR support.
   WebGPU uses the separate Dawn implementation below. Page WebGL settings
@@ -371,14 +479,20 @@ python build.py --electron --interactive --electron-main test/webgl-smoke.js
 out/mac-arm64/mini-electron --app=test/webgl-smoke.js
 # Exercise WebGL with the CPU output compositor (WebGL itself still uses ANGLE):
 MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=test/webgl-smoke.js
+# Reuse the built Windows binary in both output-compositor modes:
+out/windows-x64/mini-electron.exe --app=test/webgl-smoke.js
+out/windows-x64/mini-electron.exe --disable-gpu --app=test/webgl-smoke.js
 ```
 
 The smoke checks shader drawing, default depth/stencil framebuffers, texture
 uploads, WebGL2 FBO/blit/instancing, read-buffer state preservation, alpha,
 resize, serialization, ImageBitmap ownership, context restoration and Worker
-placeholder updates. On macOS it independently samples PNGs with Core Graphics
-and captures the owned WindowServer window before and after updates. It needs
-Xcode tools, an unlocked graphical session and OS capture authorization.
+placeholder updates. Windows default and CPU output-compositor modes both
+passed, including initial/subsequent `capturePage()` pixel assertions; this
+does not verify physical desktop scanout. On macOS the smoke independently
+samples PNGs with Core Graphics and captures the owned WindowServer window
+before and after updates. Those native captures need Xcode tools, an unlocked
+graphical session and OS capture authorization.
 
 ## WebGPU
 
@@ -387,9 +501,9 @@ register `webgpu` contexts for HTMLCanvasElement and OffscreenCanvas. Blink's
 WebGPU bindings execute through a renderer-local Dawn wire client/server and
 native backend, not a simulated adapter or a WebGL translation.
 
-- macOS uses Dawn/Metal, warmed before renderer sandbox lockdown. Windows
-  integrates Dawn/D3D12 in the build; that backend has not been compiled or run
-  on Windows during this verification.
+- macOS uses Dawn/Metal, warmed before renderer sandbox lockdown. Windows uses
+  Dawn/D3D12, compiled and smoke-tested on Windows 10 x64 (build 19045) with an
+  NVIDIA RTX 3090. No D3D11/Vulkan WebGPU fallback is built.
 - WGSL compilation, render/compute pipelines, buffers, textures, copies,
   mapping, validation/error scopes and device loss use Dawn's implementations.
   Callback delivery stays on the owning Blink/Worker sequence.
@@ -401,20 +515,26 @@ native backend, not a simulated adapter or a WebGL translation.
   operations preserve the live application texture; frame presentation and
   `transferToImageBitmap()` expire it. Offscreen images own independent pixels.
 - External image uploads and CPU-mappable video imports use CPU pixels.
-  Hardware decoding, texture-only decoder imports, accelerated Canvas2D and
-  GPU-service-backed XR projection layers are not added.
-- Adapter features/limits depend on the backend. Unsupported adapters return
-  `null`; native validation failures remain errors. This is not a WebGPU
+  CPU VideoFrame/VideoColorSpace constructors and cropped, strided RGB/YUV
+  `VideoFrame.copyTo()` conversions are exposed in Window and DedicatedWorker
+  contexts. Hardware decoding, texture-only decoder imports, accelerated
+  Canvas2D and GPU-service-backed XR projection layers are not added.
+- Adapter features/limits depend on the backend and shader compiler; the Windows
+  build does not bundle DXC. Unsupported adapters return `null`; native
+  validation failures remain errors. This is not Metal feature parity, WebGPU
   conformance certification or a claim of support for newer Chromium APIs.
 
 Building requires Python 3.12+, CMake 3.24+ and the platform's existing native
-toolchain. The bootstrap fetches SHA-256-verified Dawn revision
-`73dbf565079c89a531e6e01c4e8fc048a8a9660b`, its pinned Abseil and SPIRV-Headers,
-and the build-time Jinja2/MarkupSafe dependencies into ignored directories.
-Only the selected native backend and WGSL/Tint components are built.
-Dawn's Abseil symbols use a private namespace to avoid ABI collisions with
-Chromium's independently pinned Abseil; verified source archives are unchanged.
-Distribution notices include the shipped Dawn/Tint, Abseil and SPIRV licenses.
+toolchain. The bootstrap fetches the SHA-256-verified source tree for Dawn
+revision `73dbf565079c89a531e6e01c4e8fc048a8a9660b`, its pinned Abseil and
+SPIRV-Headers, and the build-time Jinja2/MarkupSafe dependencies into ignored
+directories. Source hashes cover paths, entry types, permissions, symlink
+targets and file bytes; they exclude archive timestamps and ownership because
+Gitiles regenerates that metadata. Only the selected native backend and
+WGSL/Tint components are built. Dawn's Abseil symbols use a private namespace
+to avoid ABI collisions with Chromium's independently pinned Abseil; verified
+source files are unchanged. Distribution notices include the shipped
+Dawn/Tint, Abseil and SPIRV licenses.
 
 ```sh
 python build.py --electron --interactive --electron-main test/webgpu-smoke.js
@@ -422,16 +542,24 @@ python build.py --electron --interactive --electron-main test/webgpu-smoke.js
 out/mac-arm64/mini-electron --app=test/webgpu-smoke.js
 # CPU output composition, still executing WebGPU on native Metal:
 MINI_ELECTRON_DISABLE_GPU=1 out/mac-arm64/mini-electron --app=test/webgpu-smoke.js
+# Reuse the built Windows binary (native D3D12 WebGPU in both modes):
+out/windows-x64/mini-electron.exe --app=test/webgpu-smoke.js
+out/windows-x64/mini-electron.exe --disable-gpu --app=test/webgpu-smoke.js
 ```
 
 The smoke uses a localhost secure origin and real shaders/compute, validates
 mapped results, error scopes, detached inputs, snapshot lifetime/alpha,
-OffscreenCanvas images, Worker ownership and device loss. It independently
-decodes actual `capturePage()` PNGs and checks initial and subsequent composed
-pixels. Both output-compositor modes passed on Apple M4 Pro. The original OMP
-Desktop 0.5.2 homepage WASM also rendered and animated in a local packaged app,
-without changing the application or replacing its effect assets. These are
-correctness checks, not throughput, physical-scanout or energy measurements.
+OffscreenCanvas images, Worker ownership and device loss. It decodes actual
+`capturePage()` PNGs and checks initial and subsequent composed pixels.
+Windows default and CPU output-compositor modes both passed on the RTX 3090
+machine above, including CPU VideoFrame RGB/YUV conversion, cropped/strided
+copies, alpha preservation and Worker VideoFrame lifecycle. The original
+rendering/snapshot cases passed in both output-compositor modes on Apple M4
+Pro; these Windows compatibility changes have not been rerun on macOS.
+The original OMP Desktop 0.5.2 homepage WASM also rendered and animated in a
+local macOS packaged app, without changing the application or replacing its
+effect assets. These are correctness checks, not throughput, physical-scanout
+or energy measurements.
 
 ## Windows (x64)
 
@@ -1106,6 +1234,10 @@ the reply thread's final use.
 `WebContents.isDestroyed()` tracks actual object destruction, not renderer
 liveness. Renderer loss still emits `render-process-gone`; the owning native
 window remains registered until it is closed.
+Windows runtime `0.1.18` also supplies the actual unsigned native
+`exitCode` with renderer exits. Reasons include `oom`, `crashed`, `clean-exit`,
+and `abnormal-exit`; a transport failure while the child remains alive reports
+`ipc-failure` with its `error` detail instead of claiming the process exited.
 
 macOS builds pin [libcurl 8.23.0](https://curl.se/download.html) with WebSocket
 support and link it statically against the runtime's existing TLS library.
@@ -1407,8 +1539,10 @@ native Node modules, strips local symbols, and applies an ad-hoc signature.
 Detailed size measurements and optimization priorities are documented in
 [`docs/OMP_DESKTOP_SIZE_ANALYSIS.md`](docs/OMP_DESKTOP_SIZE_ANALYSIS.md).
 
-Current security boundary: the Electron host runs Blink in separate renderer
+Default security boundary: the Electron host runs Blink in separate renderer
 processes; macOS applies a Seatbelt profile before the renderer protocol starts.
+The opt-in [single-process UI mode](#trusted-single-process-ui-mode) removes this
+OS process/sandbox boundary entirely.
 The shared executable still builds V8 with its sandbox disabled because
 embedded Node's external `ArrayBuffer` APIs are incompatible with that sandbox.
 This is not equivalent to Chromium/Electron's complete sandbox architecture;

@@ -7,7 +7,7 @@
 #include "base/check_op.h"
 #include "base/feature_list.h"
 #include "gin/gin_features.h"
-#include "gin/public/v8_platform.h"
+#include "gin/public/isolate_holder.h"
 #include "v8/include/cppgc/platform.h"
 
 namespace gin {
@@ -24,9 +24,10 @@ void InitializeCppgcFromV8Platform()
     static constexpr size_t kLargerCageSize = static_cast<size_t>(16) * 1024 * 1024 * 1024;
 
     DCHECK_GE(g_init_count, 0);
-    if (g_init_count++ > 0) {
+    if (g_init_count++ > 0)
         return;
-    }
+    if (IsolateHolder::UsesExternalV8Platform())
+        return;
 
     size_t desired_cage_size = kRegularCageSize;
     auto overridden_state = base::FeatureList::GetStateIfOverridden(features::kV8CppGCEnableLargerCage);
@@ -37,7 +38,8 @@ void InitializeCppgcFromV8Platform()
         }
     }
 
-    cppgc::InitializeProcess(gin::V8Platform::Get()->GetPageAllocator(), desired_cage_size);
+    cppgc::InitializeProcess(
+        IsolateHolder::GetPlatform()->GetPageAllocator(), desired_cage_size);
 }
 
 void MaybeShutdownCppgc()
@@ -45,8 +47,11 @@ void MaybeShutdownCppgc()
     DCHECK_GT(g_init_count, 0);
     if (--g_init_count > 0)
         return;
+    if (IsolateHolder::UsesExternalV8Platform())
+        return;
 
     cppgc::ShutdownProcess();
+
 }
 
 } // namespace gin

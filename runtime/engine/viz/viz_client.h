@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_VIZ_DEMO_CLIENT_DEMO_CLIENT_H_
 #define COMPONENTS_VIZ_DEMO_CLIENT_DEMO_CLIENT_H_
 
+#include <atomic>
 #include <map>
 #include <vector>
 
@@ -72,9 +73,8 @@ public:
     }
 
     // Initializes the mojo connection to the service.
-    //void initialize(
-    //    mojo::PendingReceiver<viz::mojom::CompositorFrameSinkClient> receiver, mojo::PendingAssociatedRemote<viz::mojom::CompositorFrameSink> sink_remote);
-    void initialize(mojo::PendingReceiver<viz::mojom::CompositorFrameSinkClient> receiver, mojo::PendingRemote<viz::mojom::CompositorFrameSink> sink_remote);
+    void initialize(mojo::PendingReceiver<viz::mojom::CompositorFrameSinkClient> receiver,
+        mojo::PendingAssociatedRemote<viz::mojom::CompositorFrameSink> sink_remote);
 
     // This prepares for this client to embed another client (i.e. this client
     // acts as the embedder). Since this client is the embedder, it allocates the
@@ -103,21 +103,16 @@ public:
 
     bool isAllowResize() const
     {
-        return m_allowResize;
+        return m_allowResize.load(std::memory_order_acquire);
     }
     void allowResize()
     {
-        m_allowResize = true;
+        m_allowResize.store(true, std::memory_order_release);
     }
     void disallowResize()
     {
-        m_allowResize = false;
+        m_allowResize.store(false, std::memory_order_release);
     }
-
-    void setWebviewId(int64_t id)
-    {
-        m_webviewId = id;
-    } // ��һЩ�ص���webview
 
 private:
     friend class RenderFrameMetadataObserverClientImpl;
@@ -129,9 +124,9 @@ private:
     };
 
     viz::CompositorFrame createFrame(const viz::BeginFrameArgs& args) EXCLUSIVE_LOCKS_REQUIRED(m_lock);
-    viz::CompositorFrame createEmptyFrame(const viz::BeginFrameArgs& args);
+    void requestBeginFrame();
+    void didNotProduceFrame(viz::BeginFrameAck ack);
 
-    viz::mojom::CompositorFrameSink* getPtr();
     viz::mojom::CompositorFrameSink* getPtrImpl();
 
     void initializeOnThread(mojo::PendingReceiver<viz::mojom::CompositorFrameSinkClient> receiver,
@@ -150,14 +145,8 @@ private:
     bool SetServer(void* self) override;
     void OnServerDestroy() override;
 
-
-
     int64_t m_id;
 
-    // This thread is created solely to demonstrate that the client can live in
-    // its own thread (or even in its own process). A viz client does not need to
-    // have its own thread.
-    //base::Thread m_thread;
 
     const viz::FrameSinkId m_frameSinkId;
     viz::LocalSurfaceId m_hostLocalSurfaceId /*GUARDED_BY(m_lock)*/;
@@ -175,15 +164,18 @@ private:
     // embeds other clients.
     viz::ParentLocalSurfaceIdAllocator m_allocator;
     std::map<viz::FrameSinkId, EmbedInfo> m_embeds /*GUARDED_BY(m_lock)*/;
-    uint64_t m_frameRevision = 0;
+    // m_frameRevision identifies the desired root state. The queued revision is
+    // advanced before posting a submission so overlapping BeginFrames cannot
+    // enqueue duplicate full-damage frames. Revision zero is reserved so the
+    // initial desired state is always pending.
+    uint64_t m_frameRevision GUARDED_BY(m_lock) = 1;
+    uint64_t m_queuedFrameRevision GUARDED_BY(m_lock) = 0;
 
     bool m_isRootClient = false;
     content::RenderWidgetHostImpl* m_widgetHost = nullptr;
 
-    int64_t m_webviewId = 0;
-
-    bool m_canCommitFrame = true;
-    bool m_allowResize = true;
+    bool m_canCommitFrame GUARDED_BY(m_lock) = true;
+    std::atomic<bool> m_allowResize { true };
 
     void* m_vizServer = nullptr;
 

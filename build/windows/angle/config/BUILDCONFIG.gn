@@ -20,6 +20,10 @@ is_clang = true
 is_debug = false
 is_official_build = true
 is_component_build = false
+# This standalone root has no Chromium sanitizer configuration.
+is_cfi = false
+use_cfi_icall = false
+use_cfi_cast = false
 
 # ANGLE's standalone GN mode avoids Chromium base, workers and toolchains.
 declare_args() {

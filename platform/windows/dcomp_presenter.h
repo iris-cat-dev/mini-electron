@@ -32,8 +32,9 @@ class D3DFrameConsumer {
   D3DFrameConsumer& operator=(const D3DFrameConsumer&) = delete;
 
   // |renderer_process| must be a real process handle with DUP_HANDLE access.
+  // Self-import is permitted only for the explicitly selected in-process mode.
   // On success the copy and the odd release-fence signal have both been queued.
-  bool Import(HANDLE renderer_process, const D3DFrame& frame);
+  bool Import(HANDLE renderer_process, const D3DFrame& frame, bool in_process);
 
   uint64_t source_id() const;
   uint64_t frame_id() const;

@@ -403,6 +403,67 @@ Chrome comparison. No automated Windows Chrome comparison, mixed-refresh
 monitor movement, precision-touchpad hardware, idle wakeup/power, or
 physical-presentation measurement is claimed here.
 
+### Windows idle rendering and memory budget correction
+
+The installed Windows runtime was observed producing 4,306 GPU frames in
+29.98 seconds while OMP Desktop was minimized. An independent static `data:`
+page with no timers, rAF, or animations also produced about 143.9 frames/s.
+This was not unavoidable idle overhead or a chat/daemon workload.
+
+The custom root `VizClient` treated feedback-only BeginFrames as new drawing
+requests. Each full-damage root submission generated presentation feedback,
+which requested another BeginFrame even after `SetNeedsBeginFrame(false)`.
+Root submissions now atomically claim a pending geometry/surface revision;
+feedback/ACK/resource-only callbacks acknowledge no damage. Mojo calls remain
+outside the root lock so cached BeginFrame delivery cannot reenter it.
+
+Native hide/minimize and BrowserView attach/detach state now reach the Blink
+page/widget and Viz display. Hidden animation stops rather than merely losing
+its final HWND presentation. Initial hidden-window painting remains available
+for `ready-to-show`; restore keeps the retained pixels while new content resumes.
+
+`test/windows-idle-visibility-smoke.js` passed with D3D12 and with `--disable-gpu`.
+Static, paused-visible, minimized, hidden, and detached-view phases had zero
+new frames/imports and no active high-rate VSync observer. Visible/restored
+animations continued producing frames. The existing native compositor,
+normal/maximized restore, and repeated edge-resize smokes passed as well.
+
+The locally packaged Desktop 0.5.2 was also exercised with disposable user-data
+and daemon-home directories, with daemon management and the desktop pet disabled
+to avoid touching existing sessions. Its real welcome page produced zero new
+frames/imports during 12 seconds visible and six seconds minimized; minimization
+set `document.hidden`. A separate eight-second visible-idle renderer CPU sample
+had no additional user/kernel ticks. This is a renderer observation for that
+page, not a claim that the complete application always uses zero CPU.
+`desktop-fixed-native.png`, `desktop-probe.json`, and `desktop-observed.json`
+retain the native surface and measurements. A local NSIS installer and ZIP were
+generated under `out/windows-x64/OMP Desktop Idle Memory Fix/`; the existing
+installed application was not overwritten.
+
+A retained handle to the actual Desktop renderer captured an OOM exit
+`0xe0000008` at 1020.86 MiB peak private commit under its old 1024 MiB job limit.
+The revised Windows x64 job budget is `clamp(physical RAM / 4, 1 GiB, 4 GiB)`.
+Gin queries that actual limit before creating each sandboxed renderer isolate
+and reserves half for V8, leaving half for Blink/Oilpan, Skia/D3D, mappings,
+and other native allocations. This is per-isolate headroom, not an aggregate
+heap admission controller for many concurrent workers.
+
+On this workstation the native job limit measured 4096 MiB. A disposable
+renderer retained allocations beyond the former boundary, reached 1562.41 MiB
+peak private commit, remained responsive, and stayed static afterward. The
+configured 2 GiB V8 limit appears as 2,190,000,000 bytes through the privacy-
+bucketized `performance.memory` API; that value is not a precise heap-limit
+measurement. Deliberate unbounded heap pressure still terminated only the
+owned renderer, and `test/windows-renderer-memory-smoke.js` verified
+`reason: "oom"` with the real `exitCode: 0xe0000008`.
+
+Evidence is retained under `out/verification/idle-cpu-oom-fix/`; the preceding
+failure samples remain under `out/verification/idle-cpu-crash-analysis/`.
+The earliest renderer exit lacked a retained status and is not retrospectively
+classified. These checks establish idle scheduling and a coordinated bounded
+memory policy, not proof that every application-native allocation is leak-free.
+macOS runtime execution was not available for this Windows verification.
+
 ## macOS Metal GPU compositing
 
 ### Execution and transport
@@ -445,13 +506,17 @@ source-build support and limits.
 
 ### WebGL resources
 
-WebGL1/2 draw with native ANGLE Metal contexts, independently of the cc
-`gpu_compositing=false` policy. DrawingBuffer owns local GL textures, resolves
-multisampling and reads actual pixels into premultiplied software resources.
-Viz consumes those resources through the existing legacy shared-bitmap path.
-The Metal output compositor can upload them again; this is not a shared-texture
-or zero-copy path. Selecting CPU composition with
-`MINI_ELECTRON_DISABLE_GPU=1` does not disable ANGLE WebGL.
+WebGL1/2 draw with native ANGLE Metal (macOS) or D3D11 (Windows) contexts,
+independently of the cc `gpu_compositing=false` policy. DrawingBuffer owns
+local GL textures, resolves multisampling and reads actual pixels into
+premultiplied software resources. Implicit multisample resolve enables its
+native extension before allocating storage. Windows ANGLE serializes GL calls
+and invalidates native state when Blink and Worker contexts alternate, because
+D3D11 shares one immediate context/state cache per display.
+Viz consumes these resources through the existing legacy shared-bitmap path.
+The Metal/D3D12 output compositor can upload them again; this is not a
+shared-texture or zero-copy path. Selecting CPU composition does not disable
+ANGLE WebGL.
 
 Image uploads and snapshots use owned CPU pixels rather than unavailable
 SharedImage/mailbox access. Worker OffscreenCanvas publishes images to its
@@ -461,15 +526,18 @@ CPU video conversion does not enable hardware decoding or GPU-frame imports.
 `test/webgl-smoke.js` exercises real shaders and readback, default depth/stencil
 and multisampled framebuffer paths, texture uploads, WebGL2 instancing/FBO
 operations, read-buffer state preservation, alpha, resize, ImageBitmap
-ownership, context restoration and worker placeholder updates. On macOS it
-checks independent Core Graphics PNG decoding and the actual owned
-WindowServer window in two states. It is a correctness check, not a WebGL
-performance benchmark or a Khronos conformance claim.
+ownership, context restoration and worker placeholder updates. Both Windows
+output-compositor modes passed on Windows 10 x64 build 19045 with an RTX 3090,
+including initial/subsequent `capturePage()` pixel checks. On macOS it checks
+independent Core Graphics PNG decoding and the actual owned WindowServer
+window in two states. It is a correctness check, not physical Windows scanout,
+a WebGL performance benchmark or a Khronos conformance claim.
 
 ### WebGPU resources
 
 Renderer-local Dawn wire/native channels execute WGSL render/compute work on
-Metal. This does not change cc's `gpu_compositing=false` resource contract.
+Metal (macOS) or D3D12 (Windows). This does not change cc's
+`gpu_compositing=false` resource contract.
 Canvas textures remain native GPU textures; a validated copy to mapped staging
 buffers supplies owned Skia images and shared software bitmaps for snapshots
 and presentation. The output compositor may upload those pixels again.
@@ -480,14 +548,20 @@ no permanent idle GPU polling loop. Opaque snapshots modify only the owned
 CPU image's alpha; snapshot-only operations do not expire the live texture.
 CPU output composition still permits native WebGPU execution.
 
-`test/webgpu-smoke.js` passed with both Metal and CPU output composition on
-Apple M4 Pro. Checks cover actual composed pixels, WGSL/compute, mapping,
-error scopes, OffscreenCanvas ownership, snapshot noninterference, Worker
-callbacks and device loss. The packaged OMP Desktop 0.5.2 application also
-rendered its unchanged WebGPU/WASM homepage: two real canvas samples had
-243,348/243,232 colored pixels and different sampled hashes
-(71,954,239/812,100,898), with reduced-motion off and no captured renderer
-errors. A 2400×1600 `capturePage()` PNG showed the particle effect.
+The original rendering/snapshot cases in `test/webgpu-smoke.js` passed with
+both Metal and CPU output composition on Apple M4 Pro. The expanded smoke
+passed with default and CPU output composition on Windows 10 x64 build 19045
+with an NVIDIA RTX 3090, using native D3D12 WebGPU in both modes. Checks cover
+actual composed pixels, WGSL/compute, mapping, error scopes, OffscreenCanvas
+ownership, snapshot noninterference, Worker callbacks and device loss.
+Windows checks additionally cover CPU VideoFrame RGB/YUV conversion,
+cropped/strided copies, alpha preservation and Worker VideoFrame lifecycle;
+the compatibility changes have not been rerun on macOS.
+The packaged macOS OMP Desktop 0.5.2 application also rendered its unchanged
+WebGPU/WASM homepage: two real canvas samples had 243,348/243,232 colored
+pixels and different sampled hashes (71,954,239/812,100,898), with
+reduced-motion off and no captured renderer errors. A 2400×1600 `capturePage()`
+PNG showed the particle effect.
 This is rendering/animation proof, not physical WindowServer capture,
 scanout/FPS, throughput, conformance or energy measurement.
 

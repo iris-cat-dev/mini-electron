@@ -9,6 +9,14 @@
 #include "ui/gfx/native_widget_types.h"
 #include "base/task/single_thread_task_executor.h"
 
+namespace node {
+class MultiIsolatePlatform;
+}
+
+namespace v8 {
+class Isolate;
+}
+
 namespace blink {
 class WebNavigationControl;
 class AssociatedInterfaceProvider;
@@ -30,6 +38,7 @@ public:
     class ThreadDelegate : public base::Thread::Delegate {
     public:
         ThreadDelegate(RenderThreadImpl* parent);
+        ~ThreadDelegate() override;
         scoped_refptr<base::SingleThreadTaskRunner> GetDefaultTaskRunner() override;
         void BindToCurrentThread() override;
 
@@ -37,8 +46,16 @@ public:
     };
 
     RenderThreadImpl();
+    ~RenderThreadImpl();
 
     static RenderThreadImpl* get();
+    // Selects an already initialized Node V8 platform for Blink isolates.
+    // Must be called before get().
+    static void setV8Platform(node::MultiIsolatePlatform* platform);
+    // Tears down Blink's isolate before the process-wide V8 platform is
+    // disposed. This is a one-way process shutdown operation and must run on
+    // the engine owner sequence after every WebView has been destroyed.
+    static void shutdown();
 
     void initializeWebKit(/*mojo::BinderMap* binders*/)
     {
@@ -72,8 +89,9 @@ public:
 
     scoped_refptr<base::SingleThreadTaskRunner> getTaskRunner() const
     {
-        return m_thread.task_runner();
+        return m_blinkTaskRunner;
     }
+    bool usesHostUiSequence() const { return m_usesHostUiSequence; }
 
     scoped_refptr<base::SingleThreadTaskRunner> getCompositorTaskRunner() const
     {
@@ -99,6 +117,11 @@ public:
     blink::scheduler::WebAgentGroupScheduler* m_agentGroupScheduler = nullptr;
 
     std::atomic<bool> m_inited{false};
+    bool m_usesHostUiSequence = false;
+    bool m_shutdown = false;
+    base::PlatformThreadId m_blinkThreadId = 0;
+    scoped_refptr<base::SingleThreadTaskRunner> m_blinkTaskRunner;
+    v8::Isolate* m_blinkIsolate = nullptr;
     base::Thread m_thread;
     base::Thread m_hostThread;
 

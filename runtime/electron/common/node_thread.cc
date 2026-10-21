@@ -7,6 +7,7 @@
 #include "runtime/electron/common/node_binding.h"
 #include "runtime/electron/node_bindings.h"
 #include "runtime/engine/common/thread_call.h"
+#include "runtime/engine/renderer/render_thread_impl.h"
 #include "base/functional/bind.h"
 #include "base/json/json_writer.h"
 #include "base/strings/utf_string_conversions.h"
@@ -52,6 +53,7 @@ int runNodeMain()
         std::fprintf(stderr, "mini-electron: %s\n", error.c_str());
     if (initialization->early_return())
         return initialization->exit_code();
+    content::RenderThreadImpl::setV8Platform(initialization->platform());
 
     NodeArgc state;
     g_nodeArgc = &state;
@@ -111,6 +113,7 @@ int runNodeMain()
         }
         state.initType = false;
         WindowList::destroyAllWindows();
+        content::RenderThreadImpl::shutdown();
         exitCode = processExit.value_or(loaded ? App::getExitCode() : 1);
         if (!processExit)
             node::EmitProcessExit(setup->env());

@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "base/base64.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -46,7 +47,6 @@
 #include "platform/macos/metal_compositor.h"
 #endif
 #if BUILDFLAG(IS_WIN)
-#include "base/command_line.h"
 #include "platform/windows/d3d_compositor.h"
 #include "components/viz/service/frame_sinks/external_begin_frame_source_win.h"
 #endif
@@ -124,6 +124,7 @@
 #if BUILDFLAG(IS_WIN)
 #include <windows.h>
 #else
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -549,7 +550,7 @@ private:
     blink::SelfKeepAlive<ExecuteJavaScriptRequest> keep_alive_;
 };
 
-class RendererServerImpl {
+class RendererServerImpl final : public InProcessRenderer {
 public:
     using ParentReply = std::function<void(base::Value::Dict, std::string)>;
     struct ParentReplyEntry {
@@ -558,30 +559,149 @@ public:
     };
 
     RendererServerImpl(ParsedArguments arguments, ServerOptions options,
-        void* frame_memory)
+        void* frame_memory, bool in_process = false)
         : arguments_(arguments)
         , options_(std::move(options))
         , frame_(static_cast<renderer_protocol::FrameBufferHeader*>(frame_memory))
+        , in_process_(in_process)
     {
     }
 
     ~RendererServerImpl()
     {
-#if BUILDFLAG(IS_MAC)
-        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_), {});
-#endif
-#if BUILDFLAG(IS_WIN)
-        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_), {});
-#endif
-        content::SetRendererStorageBroker({});
+        if (in_process_)
+            Close();
+        if (!in_process_) {
+            content::SetRendererStorageBroker({});
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-        mini_electron::SetRendererClipboardBroker({});
+            mini_electron::SetRendererClipboardBroker({});
 #endif
-        content::SetRendererPermissionBroker({});
+            content::SetRendererPermissionBroker({});
+        }
         StopControlThread();
         if (reader_.joinable())
             reader_.join();
         CleanupGuestFrames();
+    }
+
+    bool Start(base::Value::Dict options, MessageCallback callback) override
+    {
+        if (!ParseOptions(std::move(options), &options_))
+            return false;
+        message_callback_ = std::move(callback);
+        std::string error;
+        return Start(&error);
+    }
+
+    bool Send(WireMessage message) override
+    {
+        return !closing_ && AcceptBrowserMessage(std::move(message));
+    }
+
+    bool RegisterFrameBuffer(int guest_contents_id,
+        const RendererPlatformProcess& source) override
+    {
+        if (closing_ || guest_contents_id <= 0
+            || source.frame_mapping_size
+                < sizeof(renderer_protocol::FrameBufferHeader)
+            || source.frame_mapping_size
+                > sizeof(renderer_protocol::FrameBufferHeader)
+                    + renderer_protocol::kMaxFrameBytes)
+            return false;
+        GuestFrame replacement;
+        replacement.mapping_size = source.frame_mapping_size;
+#if BUILDFLAG(IS_WIN)
+        if (!::DuplicateHandle(::GetCurrentProcess(), source.frame_mapping,
+                ::GetCurrentProcess(), &replacement.handle,
+                FILE_MAP_READ, FALSE, 0))
+            return false;
+        replacement.memory = ::MapViewOfFile(replacement.handle,
+            FILE_MAP_READ, 0, 0, replacement.mapping_size);
+        if (!replacement.memory) {
+            ::CloseHandle(replacement.handle);
+            return false;
+        }
+#else
+        replacement.fd = ::fcntl(source.frame_read_fd, F_DUPFD_CLOEXEC, 0);
+        if (replacement.fd < 0)
+            return false;
+        replacement.memory = ::mmap(nullptr, replacement.mapping_size,
+            PROT_READ, MAP_SHARED, replacement.fd, 0);
+        if (replacement.memory == MAP_FAILED) {
+            ::close(replacement.fd);
+            return false;
+        }
+#endif
+        {
+            std::lock_guard<std::mutex> lock(guest_lock_);
+            auto found = guests_.find(guest_contents_id);
+            if (found == guests_.end()) {
+                if (guests_.size() >= kMaxGuestFrames) {
+                    ReleaseGuestFrame(&replacement);
+                    return false;
+                }
+                found = guests_.try_emplace(guest_contents_id).first;
+            }
+            ReleaseGuestFrame(&found->second);
+            found->second = replacement;
+        }
+#if BUILDFLAG(IS_MAC)
+        owner_runner_->PostTask(FROM_HERE, base::BindOnce(
+            [](base::WeakPtr<RendererServerImpl> self) {
+                if (!self || self->closing_)
+                    return;
+                if (self->frame_->output_format == 1)
+                    self->UpdateMetalGuests();
+                else
+                    self->RequestRedraw();
+            }, owner_weak_));
+#endif
+        return true;
+    }
+
+#if BUILDFLAG(IS_WIN)
+    bool RegisterCapture(uint64_t request_id, HANDLE mapping,
+        size_t mapping_size) override
+    {
+        if (closing_ || !request_id
+            || mapping_size != sizeof(renderer_protocol::FrameBufferHeader)
+                + renderer_protocol::kMaxFrameBytes)
+            return false;
+        CaptureTarget target;
+        target.mapping_size = mapping_size;
+        if (!::DuplicateHandle(::GetCurrentProcess(), mapping,
+                ::GetCurrentProcess(), &target.handle, FILE_MAP_WRITE, FALSE, 0))
+            return false;
+        target.memory = ::MapViewOfFile(target.handle,
+            FILE_MAP_WRITE, 0, 0, mapping_size);
+        if (!target.memory)
+            return false;
+        std::lock_guard<std::mutex> lock(capture_target_lock_);
+        if (registered_capture_targets_.size()
+            >= renderer_protocol::kMaxContainerEntries)
+            return false;
+        return registered_capture_targets_.emplace(
+            request_id, std::move(target)).second;
+    }
+
+    void CancelCapture(uint64_t request_id) override
+    {
+        std::lock_guard<std::mutex> lock(capture_target_lock_);
+        registered_capture_targets_.erase(request_id);
+    }
+#endif
+
+    void Close() override
+    {
+        if (cleaned_up_)
+            return;
+        cleaned_up_ = true;
+        Shutdown();
+        AbandonParentReplies();
+        weak_factory_.InvalidateWeakPtrs();
+        StopControlThread();
+        if (engine_started_)
+            CleanupView();
     }
 
     bool Start(std::string* error)
@@ -590,21 +710,28 @@ public:
         settings.version = kMiniElectronVersion;
         settings.mask = MINI_ELECTRON_ENABLE_DISABLE_CC;
         mini_electron_init(&settings);
+        engine_started_ = true;
 #if BUILDFLAG(IS_WIN)
         if (options_.disable_gpu)
             base::CommandLine::ForCurrentProcess()->AppendSwitch("disable-gpu");
 #endif
         owner_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
         content::SetRendererPermissionBroker(
-            [this](const std::string& permission, bool user_gesture,
-                bool is_request, content::RendererPermissionReply reply) {
+            [](uint64_t frame_id, const std::string& permission,
+                bool user_gesture, bool is_request,
+                content::RendererPermissionReply reply) {
+                auto* self = ForFrame(frame_id);
+                if (!self || self->closing_) {
+                    reply(false);
+                    return;
+                }
                 base::Value::Dict payload;
                 payload.Set("permission", permission);
                 payload.Set("userGesture", user_gesture);
                 payload.Set("isRequest", is_request);
                 content::RendererPermissionReply failure_reply = reply;
-                if (!RequestParent("permission-request", std::move(payload),
-                        [this, reply = std::move(reply)](
+                if (!self->RequestParent("permission-request", std::move(payload),
+                        [reply = std::move(reply)](
                             base::Value::Dict result,
                             std::string error) mutable {
                             bool granted = error.empty()
@@ -613,20 +740,25 @@ public:
                                           granted]() mutable {
                                 reply(granted);
                             });
-                        })) {
+                        }, FrameHandle(frame_id))) {
                     PostBlink([reply = std::move(failure_reply)]() mutable {
                         reply(false);
                     });
                 }
             });
         content::SetRendererStorageBroker(
-            [this](uint64_t frame_id, base::Value::Dict payload,
+            [](uint64_t frame_id, base::Value::Dict payload,
                 content::RendererStorageReply reply) {
                 payload.Set("kind", "storage");
+                auto* self = ForFrame(frame_id);
+                if (!self || self->closing_) {
+                    reply({}, "storage frame is unavailable");
+                    return;
+                }
                 content::RendererStorageReply failure_reply = reply;
                 auto frame = reinterpret_cast<mini_electron_web_frame_handle>(
                     static_cast<uintptr_t>(frame_id));
-                if (!RequestParent("broker-request", std::move(payload),
+                if (!self->RequestParent("broker-request", std::move(payload),
                         [reply = std::move(reply)](
                             base::Value::Dict result,
                             std::string error) mutable {
@@ -637,13 +769,15 @@ public:
                 }
             });
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-        mini_electron::SetRendererClipboardBroker(
-            [this](base::Value::Dict payload, base::Value::Dict* result) {
-                payload.Set("kind", "clipboard");
-                std::string error;
-                return RequestParentSync("broker-request", std::move(payload),
-                    main_frame_, result, &error);
-            });
+        if (!in_process_) {
+            mini_electron::SetRendererClipboardBroker(
+                [this](base::Value::Dict payload, base::Value::Dict* result) {
+                    payload.Set("kind", "clipboard");
+                    std::string error;
+                    return RequestParentSync("broker-request", std::move(payload),
+                        main_frame_, result, &error);
+                });
+        }
 #endif
         RegisterSchemes();
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
@@ -656,6 +790,16 @@ public:
             *error = "engine refused to create renderer view";
             return false;
         }
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_),
+            base::BindRepeating(&RendererServerImpl::MetalFrameUpdated,
+                weak_factory_.GetWeakPtr()));
+#endif
+#if BUILDFLAG(IS_WIN)
+        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_),
+            base::BindRepeating(&RendererServerImpl::D3DFrameUpdated,
+                weak_factory_.GetWeakPtr()));
+#endif
         if (options_.transparent)
             mini_electron_set_transparent(view_, TRUE);
         content::WebViewHost* host = View();
@@ -683,10 +827,17 @@ public:
                     frame->ToWebLocalFrame()->GetLocalFrameToken());
                 self->main_frame_ = reinterpret_cast<
                     mini_electron_web_frame_handle>(frame_id);
+                FrameOwners()[static_cast<uint64_t>(
+                    reinterpret_cast<uintptr_t>(self->main_frame_))] = self;
             }
             content::SetRendererFileChooserBroker(
-                [self](uint64_t frame_id, base::Value::Dict request,
+                [](uint64_t frame_id, base::Value::Dict request,
                     content::RendererFileChooserReply reply) {
+                    auto* self = ForFrame(frame_id);
+                    if (!self || self->closing_) {
+                        reply({}, "file chooser frame is unavailable");
+                        return;
+                    }
                     auto frame = reinterpret_cast<
                         mini_electron_web_frame_handle>(
                         static_cast<uintptr_t>(frame_id));
@@ -713,7 +864,10 @@ public:
                     }
                 });
             content::SetRendererWebSocketCommand(
-                [self](uint64_t frame_id, base::Value::Dict command) {
+                [](uint64_t frame_id, base::Value::Dict command) {
+                    auto* self = ForFrame(frame_id);
+                    if (!self || self->closing_)
+                        return;
                     double socket_id =
                         command.FindDouble("socketId").value_or(0);
                     auto frame = reinterpret_cast<
@@ -751,8 +905,12 @@ public:
                 });
         }, this, nullptr);
         auto& callbacks = host->getClosure();
+        callbacks.m_javascriptDialogsOnBlinkThread = in_process_;
         callbacks.setDidCreateScriptContextCallback(&DidCreateContext, this);
-        callbacks.setNavigationCallback(&Navigation, this);
+        if (in_process_)
+            callbacks.setNavigationSyncCallback(&Navigation, this);
+        else
+            callbacks.setNavigationCallback(&Navigation, this);
         callbacks.setCreateViewCallback(&CreateView, this);
         callbacks.setDocumentReadyInBlinkCallback(&DocumentReady, this);
         callbacks.setTitleChangedCallback(&TitleChanged, this);
@@ -766,16 +924,6 @@ public:
         };
         callbacks.setLoadingFinishCallback(&LoadingFinished, this);
         callbacks.setPaintBitUpdatedCallback(&PaintUpdated, this);
-#if BUILDFLAG(IS_MAC)
-        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_),
-            base::BindRepeating(&RendererServerImpl::MetalFrameUpdated,
-                weak_factory_.GetWeakPtr()));
-#endif
-#if BUILDFLAG(IS_WIN)
-        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_),
-            base::BindRepeating(&RendererServerImpl::D3DFrameUpdated,
-                weak_factory_.GetWeakPtr()));
-#endif
         callbacks.setDraggableRegionsChangedCallback(&DraggableRegionsChanged, this);
         callbacks.setConsoleCallback(&Console, this);
         callbacks.setCloseCallback(&CloseRequested, this);
@@ -786,16 +934,19 @@ public:
         mini_electron_set_auto_draw_to_hwnd(view_, FALSE);
 
         owner_weak_ = weak_factory_.GetWeakPtr();
-        StartControlThread();
-        Write({ MessageKind::kHello, 0,
-            base::Value::Dict().Set("ready", true).Set("processId",
+        if (!in_process_)
+            StartControlThread();
+        if (!in_process_) {
+            Write({ MessageKind::kHello, 0,
+                base::Value::Dict().Set("ready", true).Set("processId",
 #if BUILDFLAG(IS_WIN)
-                static_cast<int>(::GetCurrentProcessId())
+                    static_cast<int>(::GetCurrentProcessId())
 #else
-                static_cast<int>(::getpid())
+                    static_cast<int>(::getpid())
 #endif
-            ) });
-        reader_ = std::thread([this] { ReadLoop(); });
+                ) });
+            reader_ = std::thread([this] { ReadLoop(); });
+        }
         return true;
     }
 
@@ -804,13 +955,28 @@ public:
         run_loop_ = std::make_unique<base::RunLoop>();
         run_loop_->Run();
         run_loop_.reset();
-        content::SetRendererStorageBroker({});
-        content::SetRendererPermissionBroker({});
+        CleanupView();
+    }
+
+    void CleanupView()
+    {
+#if BUILDFLAG(IS_MAC)
+        mini_electron::mac::SetMetalFrameCallback(static_cast<int64_t>(view_), {});
+#endif
+#if BUILDFLAG(IS_WIN)
+        mini_electron::win::SetD3DFrameCallback(static_cast<int64_t>(view_), {});
+#endif
+        if (!in_process_) {
+            content::SetRendererStorageBroker({});
+            content::SetRendererPermissionBroker({});
+        }
         mini_electron_call_blink_thread_sync([](void* server, void*) {
             auto* self = static_cast<RendererServerImpl*>(server);
-            content::SetRendererWebSocketCommand({});
-            content::SetRendererFileChooserBroker({});
-            content::ClearBrokeredFiles();
+            if (!self->in_process_) {
+                content::SetRendererWebSocketCommand({});
+                content::SetRendererFileChooserBroker({});
+                content::ClearBrokeredFiles();
+            }
             if (content::WebViewHost* host = self->View())
                 host->setTextInputStateCallback({});
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -826,16 +992,45 @@ public:
         mini_electron_call_blink_thread_sync([](void* server, void*) {
             static_cast<RendererServerImpl*>(server)->preload_hosts_.clear();
             static_cast<RendererServerImpl*>(server)->generated_downloads_.clear();
+            auto& owners = FrameOwners();
+            for (auto it = owners.begin(); it != owners.end();) {
+                if (it->second == server)
+                    it = owners.erase(it);
+                else
+                    ++it;
+            }
         }, this, nullptr);
         // ClipboardHost runs on Blink's sequence. Keep its browser transport
         // installed until view/context teardown and queued Blink work drain.
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-        mini_electron::SetRendererClipboardBroker({});
+        if (!in_process_)
+            mini_electron::SetRendererClipboardBroker({});
 #endif
-        mini_electron_uninit();
+        if (!in_process_)
+            mini_electron_uninit();
     }
 
 private:
+    static mini_electron_web_frame_handle FrameHandle(uint64_t frame_id)
+    {
+        return reinterpret_cast<mini_electron_web_frame_handle>(
+            static_cast<uintptr_t>(frame_id));
+    }
+
+    // Registered and queried only on Blink's sequence.
+    static std::map<uint64_t, RendererServerImpl*>& FrameOwners()
+    {
+        static std::map<uint64_t, RendererServerImpl*> owners;
+        return owners;
+    }
+
+    static RendererServerImpl* ForFrame(uint64_t frame_id)
+    {
+        const auto& owners = FrameOwners();
+        auto found = owners.find(frame_id);
+        return found == owners.end() ? nullptr : found->second;
+    }
+
     struct TextInputSnapshot {
         bool editable = false;
         uint64_t ime_serial = 0;
@@ -1046,6 +1241,12 @@ private:
 
     bool Write(WireMessage message)
     {
+        if (in_process_) {
+            if (closing_ || !message_callback_)
+                return false;
+            message_callback_(std::move(message));
+            return true;
+        }
         std::lock_guard<std::mutex> lock(write_lock_);
         std::string error;
         return renderer_protocol::WriteMessage(arguments_.write_pipe,
@@ -1199,68 +1400,66 @@ private:
     }
 #endif
 
-    void ReadLoop()
+    bool AcceptBrowserMessage(WireMessage message)
     {
-        std::string error;
-        WireMessage message;
-        while (renderer_protocol::ReadMessage(arguments_.read_pipe,
-            arguments_.auth_high, arguments_.auth_low, &message, &error)) {
-            if (message.kind == MessageKind::kResponse) {
-                ParentReplyEntry entry;
-                {
-                    std::lock_guard<std::mutex> lock(parent_reply_lock_);
-                    auto found = parent_replies_.find(message.request_id);
-                    if (found == parent_replies_.end())
-                        continue;
-                    entry = std::move(found->second);
-                    parent_replies_.erase(found);
-                }
-                base::Value::Dict result;
-                if (base::Value::Dict* value = message.payload.FindDict("result"))
-                    result = value->Clone();
-                std::string response_error;
-                if (std::string* value = message.payload.FindString("error"))
-                    response_error = *value;
-                if (entry.run_on_reader_thread) {
-                    entry.reply(std::move(result), std::move(response_error));
-                } else {
-                    owner_runner_->PostTask(FROM_HERE,
-                        base::BindOnce([](ParentReply reply,
-                                           base::Value::Dict result,
-                                           std::string error) {
-                            reply(std::move(result), std::move(error));
-                        }, std::move(entry.reply),
-                            std::move(result), std::move(response_error)));
-                }
-            } else if (message.kind == MessageKind::kRequest
-                || message.kind == MessageKind::kSend) {
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
-                if (!DispatchDialogResponseOnReader(message.kind,
-                        message.request_id, message.payload)) {
-#endif
-                    owner_runner_->PostTask(FROM_HERE,
-                        base::BindOnce(&RendererServerImpl::HandleBrowserMessage,
-                            owner_weak_, message.kind, message.request_id,
-                            std::move(message.payload)));
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
-                }
-#endif
-            } else if (message.kind == MessageKind::kShutdown) {
-                break;
-            } else if (message.kind == MessageKind::kCancel) {
-                std::lock_guard<std::mutex> lock(cancel_lock_);
-                cancelled_.insert(message.request_id);
+        if (message.kind == MessageKind::kResponse) {
+            ParentReplyEntry entry;
+            {
+                std::lock_guard<std::mutex> lock(parent_reply_lock_);
+                auto found = parent_replies_.find(message.request_id);
+                if (found == parent_replies_.end())
+                    return true;
+                entry = std::move(found->second);
+                parent_replies_.erase(found);
             }
-            message = WireMessage();
+            base::Value::Dict result;
+            if (auto* value = message.payload.FindDict("result"))
+                result = std::move(*value);
+            std::string response_error;
+            if (auto* value = message.payload.FindString("error"))
+                response_error = std::move(*value);
+            if (entry.run_on_reader_thread || in_process_) {
+                entry.reply(std::move(result), std::move(response_error));
+            } else {
+                owner_runner_->PostTask(FROM_HERE,
+                    base::BindOnce([](ParentReply reply,
+                                       base::Value::Dict result,
+                                       std::string error) {
+                        reply(std::move(result), std::move(error));
+                    }, std::move(entry.reply),
+                        std::move(result), std::move(response_error)));
+            }
+        } else if (message.kind == MessageKind::kRequest
+            || message.kind == MessageKind::kSend) {
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+            if (!DispatchDialogResponseOnReader(message.kind,
+                    message.request_id, message.payload)) {
+#endif
+                owner_runner_->PostTask(FROM_HERE,
+                    base::BindOnce(&RendererServerImpl::HandleBrowserMessage,
+                        owner_weak_, message.kind, message.request_id,
+                        std::move(message.payload)));
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+            }
+#endif
+        } else if (message.kind == MessageKind::kShutdown) {
+            return false;
+        } else if (message.kind == MessageKind::kCancel) {
+            std::lock_guard<std::mutex> lock(cancel_lock_);
+            cancelled_.insert(message.request_id);
         }
+        return true;
+    }
+
+    void AbandonParentReplies()
+    {
         std::map<uint64_t, ParentReplyEntry> abandoned;
         {
             std::lock_guard<std::mutex> lock(parent_reply_lock_);
             abandoned.swap(parent_replies_);
         }
-        for (auto& item : abandoned) {
-            ParentReplyEntry& entry = item.second;
-            if (entry.run_on_reader_thread) {
+        for (auto& [id, entry] : abandoned) {
+            if (entry.run_on_reader_thread || in_process_) {
                 entry.reply({}, "browser channel is closed");
             } else {
                 owner_runner_->PostTask(FROM_HERE,
@@ -1269,6 +1468,19 @@ private:
                     }, std::move(entry.reply)));
             }
         }
+    }
+
+    void ReadLoop()
+    {
+        std::string error;
+        WireMessage message;
+        while (renderer_protocol::ReadMessage(arguments_.read_pipe,
+            arguments_.auth_high, arguments_.auth_low, &message, &error)) {
+            if (!AcceptBrowserMessage(std::move(message)))
+                break;
+            message = WireMessage();
+        }
+        AbandonParentReplies();
         owner_runner_->PostTask(FROM_HERE,
             base::BindOnce(&RendererServerImpl::Shutdown, owner_weak_));
     }
@@ -1469,6 +1681,19 @@ private:
             PostBlink([this, display_id] {
                 if (content::WebViewHost* view = View())
                     view->setVSyncDisplayId(display_id);
+            });
+            Reply(request_id);
+#endif
+#if BUILDFLAG(IS_WIN)
+        } else if (method == "setVisibility") {
+            const std::optional<bool> visible = params.FindBool("visible");
+            if (!visible) {
+                Reply(request_id, {}, "invalid visibility");
+                return;
+            }
+            PostBlink([this, visible = *visible] {
+                if (content::WebViewHost* host = View())
+                    host->setVisibility(visible);
             });
             Reply(request_id);
 #endif
@@ -3227,6 +3452,8 @@ private:
     void StopControlThread()
     {
 #if BUILDFLAG(IS_WIN)
+        if (control_thread_.joinable())
+            ::CancelSynchronousIo(control_thread_.native_handle());
         if (arguments_.control) {
             ::CloseHandle(arguments_.control);
             arguments_.control = nullptr;
@@ -3392,7 +3619,7 @@ private:
     bool TakeCaptureTarget(uint64_t request_id, CaptureTarget* target)
     {
         std::unique_lock<std::mutex> lock(capture_target_lock_);
-        if (!capture_target_cv_.wait_for(lock, std::chrono::seconds(5),
+        if (!in_process_ && !capture_target_cv_.wait_for(lock, std::chrono::seconds(5),
                 [this, request_id] {
                     return closing_.load()
                         || registered_capture_targets_.contains(request_id);
@@ -3655,6 +3882,7 @@ private:
         if (is_main_frame)
             self->main_frame_ = frame;
         uint64_t frame_id = static_cast<uint64_t>(key);
+        FrameOwners()[frame_id] = self;
         uint64_t parent_frame_id =
             mini_electron_get_parent_frame_id(view, frame);
         {
@@ -3894,6 +4122,7 @@ private:
             self->preload_hosts_.erase(static_cast<uintptr_t>(frame_id));
         self->registered_frames_.erase(frame_id);
         self->frame_document_epochs_.erase(frame_id);
+        FrameOwners().erase(frame_id);
         content::ClearBrokeredFilesForFrame(frame_id);
         if (frame == self->main_frame_)
             self->ResetNativeDragOnBlink();
@@ -4621,6 +4850,10 @@ private:
     ParsedArguments arguments_;
     ServerOptions options_;
     renderer_protocol::FrameBufferHeader* frame_;
+    const bool in_process_;
+    bool engine_started_ = false;
+    bool cleaned_up_ = false;
+    MessageCallback message_callback_;
 #if BUILDFLAG(IS_WIN)
     std::vector<PendingFrameCapture> pending_frame_captures_;
     bool d3d_capture_in_flight_ = false;
@@ -4753,6 +4986,29 @@ int RunRenderer(int argc, Char* argv[])
 }
 
 } // namespace
+
+bool IsSingleProcessMode()
+{
+    static const bool enabled =
+        base::CommandLine::ForCurrentProcess()->HasSwitch("single-process");
+    return enabled;
+}
+
+std::unique_ptr<InProcessRenderer> CreateInProcessRenderer(
+    RendererPlatformProcess* process, std::string* error)
+{
+    ParsedArguments arguments;
+    if (!CreateInProcessRendererResources(process, error))
+        return nullptr;
+    arguments.frame_size = process->frame_mapping_size;
+    content::InitializeWebGL();
+    content::InitializeWebGPU();
+#if BUILDFLAG(IS_MAC)
+    mini_electron::mac::PrepareMetalDevice();
+#endif
+    return std::make_unique<RendererServerImpl>(
+        arguments, ServerOptions {}, process->frame_memory, true);
+}
 
 bool IsRendererProcess(int argc, const char* const* argv)
 {

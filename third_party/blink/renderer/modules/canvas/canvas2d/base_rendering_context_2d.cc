@@ -3433,7 +3433,6 @@ bool BaseRenderingContext2D::IsAccelerated() const
     return false;
 }
 
-constexpr const char* const V8GPUTextureFormat::string_table_[] = { "r8unorm" };
 
 V8GPUTextureFormat BaseRenderingContext2D::getTextureFormat() const
 {

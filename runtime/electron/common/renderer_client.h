@@ -74,9 +74,9 @@ public:
 
     virtual ~RendererClient() = default;
 
-    // Launches a renderer sandbox and returns only after its authenticated IPC
-    // channel is ready. Events and replies are always delivered on the creating
-    // sequence. A failure to create the sandbox or channel returns nullptr.
+    // Creates the process-wide selected backend: an authenticated renderer
+    // sandbox by default, or the host's shared engine in single-process mode.
+    // Events and replies run on the creating sequence; startup failure is null.
     static std::unique_ptr<RendererClient> Create(RendererLaunchOptions options,
         EventCallback event_callback);
 
@@ -103,9 +103,9 @@ public:
     // Native presentation normally reads metadata only, never capture pixels.
     virtual bool CopyFrame(RendererFrameSnapshot* snapshot,
         bool include_native_pixels = false) const = 0;
-    // Makes this renderer's read-only frame mapping available to |target| for
-    // webview compositing. The OS handle is transferred out-of-band and is
-    // registered under guest_contents_id; raw handle values never enter JS.
+    // Registers an owned read-only frame reference with |target| under
+    // guest_contents_id. Cross-process handles travel out-of-band; local
+    // mappings register synchronously. Raw handle values never enter JS.
     virtual bool ShareFrameBufferWith(RendererClient& target,
         int guest_contents_id) const = 0;
     virtual void Close() = 0;

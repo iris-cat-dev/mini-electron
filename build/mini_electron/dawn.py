@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,16 +15,34 @@ import urllib.request
 from xml.sax.saxutils import escape
 
 DAWN_REVISION = "73dbf565079c89a531e6e01c4e8fc048a8a9660b"
-DAWN_SHA256 = "18a461ebadea4a2b06eb87c5237acbe85a659bdec1eb0bcdcfc14f3c6648c234"
+DAWN_SHA256 = "1f95324fbc03e662c6b42f891d1a14e9c1a7b55b6d82ee6f0e251c80b1311f79"
 # These are Dawn DEPS revisions. In particular, do not substitute the engine's
 # older Abseil: its containers and configuration are not Dawn's ABI.
 _DEPENDENCIES = (
-    ("abseil-cpp", "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp", "f81f6c011baf9b0132a5594c034fe0060820711d", "2bf1dc89e586105c3f38639c9077391f4a4023e69d5565e7ea0ccb0c496af710"),
-    ("jinja2", "https://chromium.googlesource.com/chromium/src/third_party/jinja2", "e2d024354e11cc6b041b0cff032d73f0c7e43a07", "b5d3bb26aba286b750bb7deecc12511622881bcbec2b7daf07595cb3f508f1f6"),
-    ("markupsafe", "https://chromium.googlesource.com/chromium/src/third_party/markupsafe", "0bad08bb207bbfc1d6f3bbc82b9242b0c50e5794", "db58248cccf951df0c0a368e6ba15052e0fc678aebc4ae4de77c2dd2e7940fb2"),
+    ("abseil-cpp", "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp", "f81f6c011baf9b0132a5594c034fe0060820711d", "ec53450b0dcc2bfb6d2da571e1506609fb8d0e2992800fd65457e1e8db075196"),
+    ("jinja2", "https://chromium.googlesource.com/chromium/src/third_party/jinja2", "e2d024354e11cc6b041b0cff032d73f0c7e43a07", "8d1dee7bd9aa0dae25a419d575a2959c82af231ef13b2a906ae026829b1deeb5"),
+    ("markupsafe", "https://chromium.googlesource.com/chromium/src/third_party/markupsafe", "0bad08bb207bbfc1d6f3bbc82b9242b0c50e5794", "51191b5904c3667ab5f9032cc30a3b028fd93c02c7a83575ba2956020d22f9d6"),
     # Dawn's CMake always adds this header-only target, even without SPIR-V.
-    ("spirv-headers/src", "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers", "996c728cf7dcfb29845cfa15222822318f047810", "885130af46be5c9543bb92f47b51d2100677bf1feb9bc98e8bfba588e5f6a3a8"),
+    ("spirv-headers/src", "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers", "996c728cf7dcfb29845cfa15222822318f047810", "c0996163e3e9401298a3459061257a156909592719656c7f612978a8e71c883a"),
 )
+
+
+def _source_checksum(archive: Path) -> str:
+    # Gitiles regenerates tar timestamps even for a fixed commit. Pin every
+    # path, type, permission, symlink target and file byte, not that metadata.
+    digest = hashlib.sha256()
+    with tarfile.open(archive, "r:gz") as package:
+        for member in sorted(package.getmembers(), key=lambda item: item.name):
+            if member.isfile():
+                with package.extractfile(member) as stream:
+                    content = hashlib.file_digest(stream, "sha256").hexdigest()
+            elif member.isdir() or member.issym():
+                content = ""
+            else:
+                raise RuntimeError(f"Unsupported Dawn archive entry: {member.name}")
+            record = [member.name, member.type.decode("ascii"), member.mode & 0o777, member.linkname, content]
+            digest.update((json.dumps(record, ensure_ascii=True, separators=(",", ":")) + "\n").encode("ascii"))
+    return digest.hexdigest()
 
 
 def _archive(root: Path, name: str, url: str, checksum: str) -> Path:
@@ -42,11 +61,7 @@ def _archive(root: Path, name: str, url: str, checksum: str) -> Path:
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
-    digest = hashlib.sha256()
-    with archive.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    actual = digest.hexdigest()
+    actual = _source_checksum(archive)
     if actual != checksum:
         raise RuntimeError(f"Dawn checksum mismatch for {archive}: expected {checksum}, got {actual}")
     return archive
@@ -94,7 +109,9 @@ def _source(archive: Path, source: Path, revision: str) -> None:
                 package.extractall(unpacked, **options)
                 if source.exists():
                     source.rmdir()
-                unpacked.replace(source)
+                # Windows can deny renaming a freshly extracted tree.
+                # move() copies the complete tree if renaming is denied.
+                shutil.move(str(unpacked), str(source))
     marker.write_text(revision + "\n", encoding="utf-8")
 
 

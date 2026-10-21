@@ -4,18 +4,20 @@
 #ifndef RUNTIME_ENGINE_RENDERER_RENDERER_PERMISSION_BROKER_H_
 #define RUNTIME_ENGINE_RENDERER_RENDERER_PERMISSION_BROKER_H_
 
+#include <cstdint>
 #include <functional>
 #include <string>
 
 namespace content {
 
 using RendererPermissionReply = std::function<void(bool)>;
-using RendererPermissionBroker = std::function<void(
+using RendererPermissionBroker = std::function<void(uint64_t,
     const std::string&, bool, bool, RendererPermissionReply)>;
 
 void SetRendererPermissionBroker(RendererPermissionBroker broker);
-void RequestRendererPermission(const std::string& permission,
-    bool user_gesture, bool is_request, RendererPermissionReply reply);
+void RequestRendererPermission(uint64_t frame_id,
+    const std::string& permission, bool user_gesture, bool is_request,
+    RendererPermissionReply reply);
 std::string RendererPermissionName(int permission_name);
 
 } // namespace content

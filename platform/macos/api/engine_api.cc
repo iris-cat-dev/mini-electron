@@ -15,6 +15,7 @@
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
+#include "base/task/single_thread_task_runner.h"
 #include "runtime/engine/bindings/js_value.h"
 #include "runtime/engine/browser/web_view_host.h"
 #include "runtime/engine/common/live_id_detect.h"
@@ -142,7 +143,8 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_init(const mini_electron_settings* se
   if (g_initialized)
     return;
   g_initialized = true;
-  g_at_exit_manager = std::make_unique<base::AtExitManager>();
+  if (!base::SingleThreadTaskRunner::HasCurrentDefault())
+    g_at_exit_manager = std::make_unique<base::AtExitManager>();
   if (!base::CommandLine::InitializedForCurrentProcess())
     base::CommandLine::Init(0, nullptr);
   std::fprintf(stderr, "[mini-electron] mini_electron_init -> RenderThreadImpl renderer thread/task loop\n");
@@ -151,7 +153,7 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_init(const mini_electron_settings* se
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_uninit() {
-  g_initialized = false;
+  // Blink is process-wide. RenderThreadImpl::shutdown() owns final teardown.
 }
 
 mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view() {

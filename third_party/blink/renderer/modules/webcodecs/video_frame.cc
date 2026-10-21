@@ -71,6 +71,8 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/libyuv/include/libyuv/planar_functions.h"
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/core/SkPixmap.h"
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "v8/include/v8.h"
@@ -1139,35 +1141,43 @@ uint32_t VideoFrame::allocationSize(VideoFrameCopyToOptions* options, ExceptionS
     return dest_layout.Size();
 }
 
-void VideoFrame::ConvertAndCopyToRGB(scoped_refptr<media::VideoFrame> frame, const gfx::Rect& src_rect, const VideoFrameLayout& dest_layout,
+bool VideoFrame::ConvertAndCopyToRGB(scoped_refptr<media::VideoFrame> frame, const gfx::Rect& src_rect, const VideoFrameLayout& dest_layout,
     base::span<uint8_t> buffer, PredefinedColorSpace target_color_space)
 {
     DCHECK(media::IsRGB(dest_layout.Format()));
-    SkColorType skia_pixel_format = media::SkColorTypeForPlane(dest_layout.Format(), media::VideoFrame::Plane::kARGB);
-
-    if (frame->visible_rect() != src_rect) {
-        frame = media::VideoFrame::WrapVideoFrame(frame, frame->format(), src_rect, src_rect.size());
+    if (!frame->IsMappable()) {
+        if (!frame->HasMappableGpuBuffer())
+            return false;
+        frame = media::ConvertToMemoryMappedFrame(frame);
+        if (!frame)
+            return false;
     }
+    if (frame->visible_rect() != src_rect)
+        frame = media::VideoFrame::WrapVideoFrame(frame, frame->format(), src_rect, src_rect.size());
+    if (!frame)
+        return false;
 
-    auto sk_color_space = PredefinedColorSpaceToSkColorSpace(target_color_space);
-    SkImageInfo dst_image_info = SkImageInfo::Make(src_rect.width(), src_rect.height(), skia_pixel_format, kUnpremul_SkAlphaType, sk_color_space);
-
-    const wtf_size_t plane = 0;
+    auto source_color_space = frame->CompatRGBColorSpace().ToSkColorSpace();
+    if (!source_color_space)
+        source_color_space = SkColorSpace::MakeSRGB();
+    SkImageInfo source_info = SkImageInfo::MakeN32(src_rect.width(), src_rect.height(),
+        media::IsOpaque(frame->format()) ? kOpaque_SkAlphaType : kUnpremul_SkAlphaType, std::move(source_color_space));
+    SkBitmap converted;
+    SkPixmap source_pixels;
+    if (media::IsRGB(frame->format())) {
+        source_info = source_info.makeColorType(media::SkColorTypeForPlane(frame->format(), media::VideoFrame::Plane::kARGB));
+        source_pixels = SkPixmap(source_info, frame->visible_data(media::VideoFrame::Plane::kARGB), frame->stride(media::VideoFrame::Plane::kARGB));
+    } else {
+        if (!converted.tryAllocPixels(source_info))
+            return false;
+        media::PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(frame.get(), converted.getPixels(), converted.rowBytes(), false);
+        source_pixels = converted.pixmap();
+    }
     DCHECK_EQ(dest_layout.NumPlanes(), 1u);
-    uint8_t* dst = buffer.data() + dest_layout.Offset(plane);
-    auto sk_canvas = SkCanvas::MakeRasterDirect(dst_image_info, dst, dest_layout.Stride(plane));
-
-    cc::PaintFlags flags;
-    flags.setBlendMode(SkBlendMode::kSrc);
-    flags.setFilterQuality(cc::PaintFlags::FilterQuality::kNone);
-
-    cc::SkiaPaintCanvas canvas(sk_canvas.get());
-    // TODO(crbug.com/1442991): Cache this instance of PaintCanvasVideoRenderer
-    media::PaintCanvasVideoRenderer renderer;
-    media::PaintCanvasVideoRenderer::PaintParams paint_params;
-    paint_params.dest_rect = gfx::RectF(src_rect.size());
-    auto context_provider = GetRasterContextProvider();
-    renderer.Paint(std::move(frame), &canvas, flags, paint_params, context_provider.get());
+    const SkImageInfo destination_info = SkImageInfo::Make(src_rect.width(), src_rect.height(),
+        media::SkColorTypeForPlane(dest_layout.Format(), media::VideoFrame::Plane::kARGB), kUnpremul_SkAlphaType,
+        PredefinedColorSpaceToSkColorSpace(target_color_space));
+    return source_pixels.readPixels(destination_info, buffer.data() + dest_layout.Offset(0), dest_layout.Stride(0));
 }
 
 bool VideoFrame::CopyToAsync(ScriptPromiseResolver<IDLSequence<PlaneLayout>>* resolver, scoped_refptr<media::VideoFrame> frame, gfx::Rect src_rect,
@@ -1236,7 +1246,10 @@ ScriptPromise<IDLSequence<PlaneLayout>> VideoFrame::copyTo(
                 return ScriptPromise<IDLSequence<PlaneLayout>>();
             }
         }
-        ConvertAndCopyToRGB(local_frame, src_rect, dest_layout, buffer, target_color_space);
+        if (!ConvertAndCopyToRGB(local_frame, src_rect, dest_layout, buffer, target_color_space)) {
+            exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Unable to copy this VideoFrame to RGB.");
+            return promise;
+        }
     } else if (local_frame->IsMappable()) {
         CopyMappablePlanes(*local_frame, src_rect, dest_layout, buffer);
     } else if (local_frame->HasMappableGpuBuffer()) {

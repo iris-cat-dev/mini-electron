@@ -10,6 +10,7 @@
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
 #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
@@ -62,6 +63,10 @@ bool StorageController::CanAccessStorageArea(LocalFrame* frame, StorageArea::Sto
 
 StorageController::StorageController(DomStorageConnection connection, size_t total_cache_limit)
     : namespaces_(MakeGarbageCollected<HeapHashMap<String, WeakMember<StorageNamespace>>>())
+    , local_storage_namespaces_(MakeGarbageCollected<HeapHashSet<WeakMember<StorageNamespace>>>())
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+    , local_storage_inspector_agents_(MakeGarbageCollected<HeapHashSet<WeakMember<InspectorDOMStorageAgent>>>())
+#endif
     , total_cache_limit_(total_cache_limit)
     , dom_storage_remote_(std::move(connection.dom_storage_remote))
 {
@@ -88,10 +93,14 @@ size_t StorageController::TotalCacheSize() const
 {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     size_t total = 0;
-    if (local_storage_namespace_)
-        total = local_storage_namespace_->TotalCacheSize();
-    for (const auto& pair : *namespaces_)
-        total += pair.value->TotalCacheSize();
+    for (const auto& ns : *local_storage_namespaces_) {
+        if (ns)
+            total += ns->TotalCacheSize();
+    }
+    for (const auto& pair : *namespaces_) {
+        if (pair.value)
+            total += pair.value->TotalCacheSize();
+    }
     return total;
 }
 
@@ -100,42 +109,66 @@ void StorageController::ClearAreasIfNeeded()
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (TotalCacheSize() < total_cache_limit_)
         return;
-    if (local_storage_namespace_)
-        local_storage_namespace_->CleanUpUnusedAreas();
-    for (auto& pair : *namespaces_)
-        pair.value->CleanUpUnusedAreas();
+    for (auto& ns : *local_storage_namespaces_) {
+        if (ns)
+            ns->CleanUpUnusedAreas();
+    }
+    for (auto& pair : *namespaces_) {
+        if (pair.value)
+            pair.value->CleanUpUnusedAreas();
+    }
+}
+
+StorageNamespace* StorageController::GetOrCreateLocalStorageNamespace(
+    LocalDOMWindow* local_dom_window)
+{
+    Page* page = local_dom_window->GetFrame()->GetPage();
+    StorageNamespace* local_namespace
+        = StorageNamespace::GetOrCreateLocalStorageNamespace(*page, this);
+    local_storage_namespaces_->insert(local_namespace);
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+    for (InspectorDOMStorageAgent* agent : *local_storage_inspector_agents_) {
+        if (agent)
+            local_namespace->AddInspectorStorageAgent(agent);
+    }
+#endif
+    return local_namespace;
 }
 
 scoped_refptr<CachedStorageArea> StorageController::GetLocalStorageArea(
-    LocalDOMWindow* local_dom_window, mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area, StorageNamespace::StorageContext context)
+    LocalDOMWindow* local_dom_window,
+    mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area,
+    StorageNamespace::StorageContext context)
 {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    EnsureLocalStorageNamespaceCreated();
-    return local_storage_namespace_->GetCachedArea(local_dom_window, std::move(local_storage_area), context);
+    return GetOrCreateLocalStorageNamespace(local_dom_window)->GetCachedArea(
+        local_dom_window, std::move(local_storage_area), context);
 }
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
-void StorageController::AddLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent)
+void StorageController::AddLocalStorageInspectorStorageAgent(
+    InspectorDOMStorageAgent* agent)
 {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    EnsureLocalStorageNamespaceCreated();
-    local_storage_namespace_->AddInspectorStorageAgent(agent);
+    local_storage_inspector_agents_->insert(agent);
+    for (auto& ns : *local_storage_namespaces_) {
+        if (ns)
+            ns->AddInspectorStorageAgent(agent);
+    }
 }
 
-void StorageController::RemoveLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent)
+void StorageController::RemoveLocalStorageInspectorStorageAgent(
+    InspectorDOMStorageAgent* agent)
 {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    EnsureLocalStorageNamespaceCreated();
-    local_storage_namespace_->RemoveInspectorStorageAgent(agent);
+    local_storage_inspector_agents_->erase(agent);
+    for (auto& ns : *local_storage_namespaces_) {
+        if (ns)
+            ns->RemoveInspectorStorageAgent(agent);
+    }
 }
 #endif
 
-void StorageController::EnsureLocalStorageNamespaceCreated()
-{
-    if (local_storage_namespace_)
-        return;
-    local_storage_namespace_ = MakeGarbageCollected<StorageNamespace>(this);
-}
 
 void StorageController::ResetStorageAreaAndNamespaceConnections()
 {
@@ -143,8 +176,10 @@ void StorageController::ResetStorageAreaAndNamespaceConnections()
         if (ns.value)
             ns.value->ResetStorageAreaAndNamespaceConnections();
     }
-    if (local_storage_namespace_)
-        local_storage_namespace_->ResetStorageAreaAndNamespaceConnections();
+    for (auto& ns : *local_storage_namespaces_) {
+        if (ns)
+            ns->ResetStorageAreaAndNamespaceConnections();
+    }
 }
 
 } // namespace blink

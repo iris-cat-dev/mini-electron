@@ -136,6 +136,7 @@ public:
     void setVSyncDisplayId(int64_t display_id);
 #endif
     void setFocus(bool focused);
+    void setVisible(bool visible);
     bool sendInput(base::Value::Dict event);
     void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
     // Browser-native drag input. Native paths are canonicalized and replaced
@@ -322,6 +323,7 @@ private:
     bool m_destroy_event_emitted = false;
     bool m_ready_to_show_emitted = false;
     bool m_focused = false;
+    bool m_visible = true;
     int m_viewport_width = 0;
     int m_viewport_height = 0;
     double m_viewport_scale = 0.0;

@@ -106,6 +106,12 @@ void Thread::CreateAndSetCompositorThread()
 
     GetCompositorThread() = std::move(compositor_thread);
 }
+// static
+void Thread::ShutdownCompositorThread()
+{
+    GetCompositorThread().reset();
+}
+
 
 Thread* Thread::Current()
 {

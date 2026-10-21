@@ -12,6 +12,8 @@
 #include "runtime/engine/browser/back_forward_cache_controller_host_impl.h"
 #include "runtime/engine/browser/render_widget_host_impl.h"
 #include "runtime/engine/common/thread_call.h"
+#include "gin/public/isolate_holder.h"
+#include "third_party/libnode/src/node.h"
 #include "runtime/engine/common/create_and_bind_templ.h"
 #include "runtime/engine/common/live_id_detect.h"
 #include "runtime/engine/viz/viz_service.h"
@@ -42,12 +44,16 @@
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
 #include "third_party/blink/public/platform/scheduler/web_thread_scheduler.h"
+#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/public/platform/weak_wrapper_resource_load_info_notifier.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "runtime/network/loader/web_url_loader_impl_curl.h"
 #include "ui/gfx/native_widget_types.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "base/check.h"
+#include "base/synchronization/lock.h"
 #include "base/memory/discardable_memory_allocator.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "third_party/icu/source/common/unicode/uclean.h"
@@ -69,6 +75,7 @@
 #include <Shlwapi.h>
 #endif
 #include "url/url_util.h"
+#include <map>
 
 #if !BUILDFLAG(IS_MAC)
 extern unsigned char icudtlData[1884304];
@@ -97,6 +104,71 @@ uint32_t RSHash(const char* str, uint32_t len);
 namespace content {
 
 RenderThreadImpl* RenderThreadImpl::s_inst = nullptr;
+namespace {
+
+node::MultiIsolatePlatform* g_externalV8Platform = nullptr;
+
+class NodeIsolatePlatformDelegate final
+    : public node::IsolatePlatformDelegate {
+public:
+    explicit NodeIsolatePlatformDelegate(
+        std::shared_ptr<v8::TaskRunner> taskRunner)
+        : taskRunner_(std::move(taskRunner))
+    {
+    }
+
+    std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner() override
+    {
+        return taskRunner_;
+    }
+
+    bool IdleTasksEnabled() override
+    {
+        return taskRunner_->IdleTasksEnabled();
+    }
+
+private:
+    std::shared_ptr<v8::TaskRunner> taskRunner_;
+};
+
+base::Lock& IsolateDelegatesLock()
+{
+    static auto* lock = new base::Lock();
+    return *lock;
+}
+
+std::map<v8::Isolate*, std::unique_ptr<NodeIsolatePlatformDelegate>>&
+IsolateDelegates()
+{
+    static auto* delegates =
+        new std::map<v8::Isolate*,
+            std::unique_ptr<NodeIsolatePlatformDelegate>>();
+    return *delegates;
+}
+
+void RegisterExternalIsolate(
+    v8::Isolate* isolate, std::shared_ptr<v8::TaskRunner> taskRunner)
+{
+    auto delegate =
+        std::make_unique<NodeIsolatePlatformDelegate>(std::move(taskRunner));
+    NodeIsolatePlatformDelegate* delegatePtr = delegate.get();
+    {
+        base::AutoLock lock(IsolateDelegatesLock());
+        CHECK(IsolateDelegates().emplace(isolate, std::move(delegate)).second);
+    }
+    g_externalV8Platform->RegisterIsolate(isolate, delegatePtr);
+}
+
+void UnregisterExternalIsolate(v8::Isolate* isolate)
+{
+    g_externalV8Platform->UnregisterIsolate(isolate);
+    base::AutoLock lock(IsolateDelegatesLock());
+    CHECK_EQ(IsolateDelegates().erase(isolate), 1u);
+}
+
+} // namespace
+
+
 
 RenderThreadImpl* RenderThreadImpl::get()
 {
@@ -105,10 +177,58 @@ RenderThreadImpl* RenderThreadImpl::get()
     s_inst = new RenderThreadImpl();
     return s_inst;
 }
+void RenderThreadImpl::setV8Platform(
+    node::MultiIsolatePlatform* platform)
+{
+    CHECK(!s_inst);
+    CHECK(platform);
+    CHECK(!g_externalV8Platform);
+    g_externalV8Platform = platform;
+    gin::IsolateHolder::UseExternalV8Platform(
+        platform, RegisterExternalIsolate, UnregisterExternalIsolate);
+}
+
+void RenderThreadImpl::shutdown()
+{
+    if (!s_inst || s_inst->m_shutdown)
+        return;
+
+    RenderThreadImpl* self = s_inst;
+    CHECK(!self->isCurrentThread());
+    self->m_shutdown = true;
+
+    // Every WebView must already be gone. Stop the auxiliary host first, then
+    // stop and join the compositor on Blink's thread.
+    self->m_hostThread.Stop();
+    ThreadCall::callBlinkThreadSync(FROM_HERE, [self] {
+        self->m_compositorTaskRunner = nullptr;
+        blink::Thread::ShutdownCompositorThread();
+    });
+
+
+    self->m_thread.Stop();
+    self->m_blinkTaskRunner = nullptr;
+}
+
 
 RenderThreadImpl::ThreadDelegate::ThreadDelegate(RenderThreadImpl* parent)
 {
     m_parent = parent;
+}
+
+RenderThreadImpl::ThreadDelegate::~ThreadDelegate()
+{
+    // ThreadMain has unwound its RunLoop before releasing the delegate. The
+    // scheduler owns that loop's SequenceManager and cannot be destroyed from
+    // one of its own tasks.
+    CHECK_EQ(v8::Isolate::GetCurrent(), m_parent->m_blinkIsolate);
+    delete m_parent->m_agentGroupScheduler;
+    m_parent->m_agentGroupScheduler = nullptr;
+    blink::ThreadScheduler::Current()->SetV8Isolate(nullptr);
+    blink::V8PerIsolateData::WillBeDestroyed(m_parent->m_blinkIsolate);
+    blink::V8PerIsolateData::Destroy(m_parent->m_blinkIsolate);
+    m_parent->m_blinkIsolate = nullptr;
+    m_parent->m_mainThreadScheduler->Shutdown();
 }
 
 scoped_refptr<base::SingleThreadTaskRunner> RenderThreadImpl::ThreadDelegate::GetDefaultTaskRunner()
@@ -127,28 +247,37 @@ RenderThreadImpl::RenderThreadImpl()
     : m_thread("RenderThreadImpl")
     , m_hostThread("HostThread")
 {
+    m_usesHostUiSequence =
+        base::SingleThreadTaskRunner::HasCurrentDefault();
+    if (!m_usesHostUiSequence) {
 #if BUILDFLAG(IS_MAC)
-    // The engine renders offscreen. A CFRunLoop pump keeps AppKit (and the
-    // NSApplication it would create) out of sandboxed renderer processes;
-    // native hosts that run [NSApp run] still service its common-mode sources.
-    m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::NS_RUNLOOP);
+        // Standalone hosts need their own CFRunLoop-backed UI executor.
+        m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(
+            base::MessagePumpType::NS_RUNLOOP);
 #else
-    m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::UI);
+        m_uiThreadTask = std::make_unique<base::SingleThreadTaskExecutor>(
+            base::MessagePumpType::UI);
 #endif
-    base::PlatformThread::SetName("Mb132UiThread");
+        base::PlatformThread::SetName("Mb132UiThread");
+    }
 
+    // The Electron host has already registered its UI runner. Standalone
+    // renderer processes reach this idempotent initialization for the first
+    // time.
     ThreadCall::init(nullptr);
 
     base::Thread::Options opt;
     opt.stack_size = 3000000;
-    opt.delegate = std::make_unique<RenderThreadImpl::ThreadDelegate>(this);
+    opt.delegate =
+        std::make_unique<RenderThreadImpl::ThreadDelegate>(this);
     m_thread.StartWithOptions(std::move(opt));
-    while (!m_inited) {
+    while (!m_inited)
         ::Sleep(1);
-    }
 
     m_hostThread.Start();
 }
+
+RenderThreadImpl::~RenderThreadImpl() = default;
 
 static void initializeICUData()
 {
@@ -653,6 +782,7 @@ void initV8Data()
 
 void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 {
+    m_blinkThreadId = base::PlatformThread::CurrentId();
     ThreadCall::initializeWebKit();
     initializeSkia();
 
@@ -664,17 +794,25 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 #endif
 
     initV8Data();
-    base::ThreadPoolInstance::CreateAndStartWithDefaultParams("WebKitThread");
+    if (!base::ThreadPoolInstance::Get())
+        base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
+            "WebKitThread");
     blink::Platform::InitializeBlink();
 
-    TestDiscardableMemoryAllocator* discardable_memory_allocator = new TestDiscardableMemoryAllocator(); // TODO: �ڴ�й¶
-    base::DiscardableMemoryAllocator::SetInstance(discardable_memory_allocator);
+    if (!base::DiscardableMemoryAllocator::GetInstance()) {
+        base::DiscardableMemoryAllocator::SetInstance(
+            new TestDiscardableMemoryAllocator());
+    }
 
-    m_mainThreadScheduler = blink::scheduler::WebThreadScheduler::CreateMainThreadScheduler(createMainThreadMessagePump());
+    m_mainThreadScheduler =
+        blink::scheduler::WebThreadScheduler::CreateMainThreadScheduler(
+            createMainThreadMessagePump());
 
     mojo::BinderMap binders;
-    RendererBlinkPlatformImpl* blinkPlatformImpl = new RendererBlinkPlatformImpl();
-    blink::Initialize(blinkPlatformImpl, &binders, m_mainThreadScheduler.get());
+    RendererBlinkPlatformImpl* blinkPlatformImpl =
+        new RendererBlinkPlatformImpl();
+    blink::Initialize(
+        blinkPlatformImpl, &binders, m_mainThreadScheduler.get());
 
 #if defined(OS_WIN)
     SkTypeface_SetEnsureLOGFONTAccessibleProc(SkiaPreCacheFont);
@@ -682,11 +820,15 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
     std::string fonts;
     fonts = "/usr/share/fonts";
 
-    sk_sp<SkFontMgr> fontMgr(SkFontMgr_New_Custom_Directory(fonts.c_str())); // FontCacheSkia.cpp, FontCache::getLastResortFallbackFont
+    sk_sp<SkFontMgr> fontMgr(SkFontMgr_New_Custom_Directory(fonts.c_str()));
 #endif
-    std::unique_ptr<blink::scheduler::WebAgentGroupScheduler> agentGroupScheduler
-        = blink::scheduler::WebThreadScheduler::MainThreadScheduler().CreateWebAgentGroupScheduler();
+    std::unique_ptr<blink::scheduler::WebAgentGroupScheduler>
+        agentGroupScheduler =
+            blink::scheduler::WebThreadScheduler::MainThreadScheduler()
+                .CreateWebAgentGroupScheduler();
     m_agentGroupScheduler = agentGroupScheduler.release();
+    m_blinkTaskRunner = m_agentGroupScheduler->DefaultTaskRunner();
+    m_blinkIsolate = m_agentGroupScheduler->Isolate();
 
     m_blinkPlatformImpl = blinkPlatformImpl;
 
@@ -700,9 +842,11 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
     blink::WebRuntimeFeaturesBase::EnableAdTagging(true);
 
     blink::GetNetworkStateNotifier().SetOnLine(true);
-    blink::GetNetworkStateNotifier().SetWebConnection(blink::kWebConnectionTypeWifi, 0.0 /*max_bandwidth_mbps*/);
+    blink::GetNetworkStateNotifier().SetWebConnection(
+        blink::kWebConnectionTypeWifi, 0.0 /*max_bandwidth_mbps*/);
 
     url::EnableNonStandardSchemesForAndroidWebView();
+
 }
 
 void RenderThreadImpl::initializeCompositorThread()
@@ -738,12 +882,12 @@ void RenderThreadImpl::initializeDemo()
 
 bool RenderThreadImpl::isCurrentThread() const
 {
-    return m_thread.GetThreadId() == base::PlatformThread::CurrentId();
+    return m_blinkThreadId == base::PlatformThread::CurrentId();
 }
 
 base::PlatformThreadId RenderThreadImpl::GetBlinkThreadId() const
 {
-    return m_thread.GetThreadId();
+    return m_blinkThreadId;
 }
 
 // static void loadUrl(const char* urlStr, blink::WebNavigationControl* navigationControl)

@@ -357,6 +357,12 @@ source_set("mini_electron_webgl") {
     "//gpu/command_buffer/common/shared_image_trace_utils.cc",
     "//gpu/command_buffer/common/gles2_cmd_copy_texture_chromium_utils.cc",
     "//gpu/command_buffer/common/gles2_cmd_utils.cc",
+    "//components/viz/common/resources/shared_image_format_utils.cc",
+    "//gpu/command_buffer/client/gpu_memory_buffer_manager.cc",
+    "//media/base/video_frame_pool.cc",
+    "//ui/gl/gl_enums.cc",
+    "//ui/gl/gl_features.cc",
+    "//ui/gl/gl_switches.cc",
     "//gpu/config/gpu_finch_features.cc",
     "//media/renderers/paint_canvas_video_renderer_cpu.cc",
   ]

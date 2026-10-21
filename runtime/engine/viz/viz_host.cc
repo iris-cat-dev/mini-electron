@@ -99,6 +99,36 @@ void VizHost::setVSyncDisplayIdOnBlinkThread(int64_t display_id)
         base::BindOnce(&VizHost::setVSyncDisplayIdOnHostThread, m_hostWeakPtr, display_id));
 }
 
+void VizHost::setVisibleOnBlinkThread(bool visible)
+{
+    DCHECK(ThreadCall::isBlinkThread());
+    m_workRunner->PostTask(FROM_HERE,
+        base::BindOnce(&VizHost::setVisibleOnHostThread, m_hostWeakPtr, visible));
+}
+
+void VizHost::setVisibleOnHostThread(bool visible)
+{
+    DCHECK(m_workRunner->RunsTasksInCurrentSequence());
+    if (m_visible == visible)
+        return;
+    m_visible = visible;
+    if (m_serviceRunner->RunsTasksInCurrentSequence()) {
+        if (auto* display = m_displayPrivate.TryGet())
+            display->SetDisplayVisible(visible);
+        return;
+    }
+    base::WaitableEvent updated;
+    if (m_serviceRunner->PostTask(FROM_HERE,
+            base::BindOnce(
+                [](VizHost* self, bool visible, base::WaitableEvent* updated) {
+                    if (auto* display = self->m_displayPrivate.TryGet())
+                        display->SetDisplayVisible(visible);
+                    updated->Signal();
+                }, base::Unretained(this), visible, &updated))) {
+        updated.Wait();
+    }
+}
+
 void VizHost::setVSyncDisplayIdOnHostThread(int64_t display_id)
 {
     DCHECK(m_workRunner->RunsTasksInCurrentSequence());

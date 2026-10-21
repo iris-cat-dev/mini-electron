@@ -35,6 +35,10 @@ class V8IsolateMemoryDumpProvider;
 // want to tie more state to the lifetime of the isolate.
 class GIN_EXPORT IsolateHolder {
 public:
+    using RegisterIsolateCallback = void (*)(
+        v8::Isolate*, std::shared_ptr<v8::TaskRunner>);
+    using UnregisterIsolateCallback = void (*)(v8::Isolate*);
+
     // Controls whether or not V8 should only accept strict mode scripts.
     enum ScriptMode { kNonStrictMode, kStrictMode };
 
@@ -89,6 +93,15 @@ public:
     // Initialization is a one-way operation (i.e., this method cannot return
     // false after returning true).
     static bool Initialized();
+    // Configures Gin to create isolates under a V8 platform already initialized
+    // and owned by the embedding process. Must be called before Initialize().
+    static void UseExternalV8Platform(
+        v8::Platform* platform,
+        RegisterIsolateCallback register_isolate,
+        UnregisterIsolateCallback unregister_isolate);
+    static bool UsesExternalV8Platform();
+    static v8::Platform* GetPlatform();
+
 
     // Should only be called after v8::IsolateHolder::Initialize() is invoked.
     static std::unique_ptr<v8::Isolate::CreateParams> getDefaultIsolateParams();

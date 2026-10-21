@@ -22,8 +22,9 @@ void SetRendererPermissionBroker(RendererPermissionBroker broker)
     g_broker = std::move(broker);
 }
 
-void RequestRendererPermission(const std::string& permission,
-    bool user_gesture, bool is_request, RendererPermissionReply reply)
+void RequestRendererPermission(uint64_t frame_id,
+    const std::string& permission, bool user_gesture, bool is_request,
+    RendererPermissionReply reply)
 {
     RendererPermissionBroker broker;
     {
@@ -34,7 +35,7 @@ void RequestRendererPermission(const std::string& permission,
         reply(false);
         return;
     }
-    broker(permission, user_gesture, is_request, std::move(reply));
+    broker(frame_id, permission, user_gesture, is_request, std::move(reply));
 }
 
 std::string RendererPermissionName(int permission_name)

@@ -210,12 +210,22 @@ struct NativeObjectCompletion {
     std::shared_ptr<NativeCompletionQueue> queue;
     Info original;
     void (*release)(Object);
+    // Bind the native completion as a value. Its opaque C handle is owned by
+    // this result until delivered, not an Unretained() C++ object pointer.
+    struct Result {
+        Info original;
+        Status status;
+        Object object;
+        void (*release)(Object);
+        std::string message;
+    };
 
     static void Complete(Status status, Object object, WGPUStringView message, void* userdata, void*)
     {
         std::unique_ptr<NativeObjectCompletion> data(static_cast<NativeObjectCompletion*>(userdata));
         data->queue->Add(base::BindOnce(
-            [](Info original, Status status, Object object, void (*release)(Object), std::string message, bool server_alive) {
+            [](Result result, bool server_alive) {
+                auto& [original, status, object, release, message] = result;
                 if (!server_alive && object) {
                     release(object);
                     object = nullptr;
@@ -224,7 +234,7 @@ struct NativeObjectCompletion {
                 // trampoline solely to dispose of its callback userdata.
                 original.callback(status, object, { message.data(), message.size() }, original.userdata1, original.userdata2);
             },
-            data->original, status, object, data->release, CopyNativeMessage(message)));
+            Result { data->original, status, object, data->release, CopyNativeMessage(message) }));
     }
 };
 
@@ -244,15 +254,22 @@ Info DeferOwnedCallback(Info original, void (*release)(Object))
 struct NativeDeviceLossCompletion {
     std::shared_ptr<NativeCompletionQueue> queue;
     WGPUDeviceLostCallbackInfo2 original;
+    struct Result {
+        WGPUDeviceLostCallbackInfo2 original;
+        WGPUDevice device;
+        WGPUDeviceLostReason reason;
+        std::string message;
+    };
 
     static void Complete(WGPUDevice const* device, WGPUDeviceLostReason reason, WGPUStringView message, void* userdata, void*)
     {
         std::unique_ptr<NativeDeviceLossCompletion> data(static_cast<NativeDeviceLossCompletion*>(userdata));
         data->queue->Add(base::BindOnce(
-            [](WGPUDeviceLostCallbackInfo2 original, WGPUDevice device, WGPUDeviceLostReason reason, std::string message, bool server_alive) {
+            [](Result result, bool server_alive) {
+                auto& [original, device, reason, message] = result;
                 original.callback(server_alive ? &device : nullptr, reason, { message.data(), message.size() }, original.userdata1, original.userdata2);
             },
-            data->original, device ? *device : nullptr, reason, CopyNativeMessage(message)));
+            Result { data->original, device ? *device : nullptr, reason, CopyNativeMessage(message) }));
     }
 };
 

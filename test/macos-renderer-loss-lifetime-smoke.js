@@ -50,7 +50,8 @@ app.whenReady().then(async () => {
   assert.equal(parentPid, process.pid, 'Only a renderer child belonging to this smoke may be killed');
   const gone = once(contents, 'render-process-gone');
   process.kill(rendererPid, 'SIGKILL');
-  await gone;
+  const [, details] = await gone;
+  assert.deepEqual(details, { exitCode: 137, reason: 'crashed' });
   assert.equal(goneEvents, 1, 'Child loss must emit render-process-gone exactly once');
   assert.equal(contents.isCrashed(), true);
   assert.equal(contents.isDestroyed(), false, 'Renderer loss is not WebContents destruction');

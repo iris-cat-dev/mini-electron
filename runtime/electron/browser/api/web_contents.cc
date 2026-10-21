@@ -30,6 +30,7 @@
 #include "runtime/electron/common/gin_helper/wrappable.h"
 #include "runtime/electron/common/id_live_detect.h"
 #include "runtime/electron/common/node_register_help.h"
+#include "runtime/electron/common/renderer_server.h"
 #include "runtime/electron/node_bindings.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
@@ -303,7 +304,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     m_web_preferences.Set("webSecurity", web_security);
     m_web_preferences.Set("allowRunningInsecureContent", allow_insecure);
     m_web_preferences.Set("nodeIntegrationInSubFrames", preload_all_frames);
-    m_web_preferences.Set("sandbox", true);
+    m_web_preferences.Set("sandbox", !IsSingleProcessMode());
     m_web_preferences.Set("nodeIntegration", false);
     if (!ApplicationRoot().empty())
         addApplicationResourceRoot(
@@ -318,7 +319,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     launch.preload_all_frames = preload_all_frames;
     launch.transparent = transparent;
     options.GetBydefaultVal("backgroundColor", "", &launch.background_color);
-    launch.preload_process_metadata.Set("sandboxed", true);
+    launch.preload_process_metadata.Set("sandboxed", !IsSingleProcessMode());
     launch.preload_process_metadata.Set("type", "renderer");
     launch.preload_process_metadata.Set("isGuest", m_type == "webview");
     launch.preload_process_metadata.Set("preloadAllFrames", preload_all_frames);
@@ -672,6 +673,9 @@ void WebContents::createGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
 #if BUILDFLAG(IS_WIN)
     guest->setVSyncDisplayId(host->m_vsync_display_id);
 #endif
+#if BUILDFLAG(IS_WIN)
+    guest->setVisible(false);
+#endif
     info.GetReturnValue().Set(guest->getWrapper());
 }
 
@@ -935,6 +939,26 @@ void WebContents::setVSyncDisplayId(int64_t display_id)
 }
 #endif
 
+void WebContents::setVisible(bool visible)
+{
+    if (!isAlive() || m_visible == visible)
+        return;
+    base::Value::Dict params;
+    params.Set("visible", visible);
+    if (!m_renderer->Send("setVisibility", std::move(params)))
+        return;
+    m_visible = visible;
+#if BUILDFLAG(IS_WIN)
+    for (int id : m_guest_ids) {
+        WebContents* guest = fromId(id);
+        const auto bounds = m_windowsGuestBounds.find(id);
+        if (guest && guest->m_host == this)
+            guest->setVisible(visible && bounds != m_windowsGuestBounds.end()
+                && !bounds->second.IsEmpty());
+    }
+#endif
+}
+
 void WebContents::setFocus(bool focused)
 {
     m_focused = focused;
@@ -1189,6 +1213,11 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
                     std::clamp(params.FindInt("width").value_or(0), 0, 1 << 20),
                     std::clamp(params.FindInt("height").value_or(0), 0, 1 << 20));
             }
+            WebContents* guest = fromId(id);
+            const auto bounds = m_windowsGuestBounds.find(id);
+            if (guest && guest->m_host == this)
+                guest->setVisible(m_visible && bounds != m_windowsGuestBounds.end()
+                    && !bounds->second.IsEmpty());
             for (WebContentsObserver* observer : m_observers)
                 observer->onWebContentsPaint(this, {});
         }

@@ -105,7 +105,19 @@ public:
             wasShown();
             return;
         }
-        m_blinkWidget->WasShown(false /*was_evicted*/, ::blink::mojom::blink::RecordContentToVisibleTimeRequestPtr());
+        if (m_visible)
+            m_blinkWidget->WasShown(false /*was_evicted*/, ::blink::mojom::blink::RecordContentToVisibleTimeRequestPtr());
+        else
+            m_blinkWidget->WasHidden();
+    }
+
+    void setVisible(bool visible)
+    {
+        if (m_visible == visible)
+            return;
+        m_visible = visible;
+        if (m_blinkWidget.get())
+            wasShownImpl();
     }
 
     void setHostFrameSinkManager(viz::HostFrameSinkManager* hostFrameSinkManager)
@@ -258,6 +270,7 @@ public:
 
     int64_t m_parentWebviewId = 0;
     bool m_allowResize = true;
+    bool m_visible = true;
 
     enum PopupState { kNoPopup = 0, kHasPopup, kRequestClosePopup };
     PopupState m_popupState = kNoPopup;

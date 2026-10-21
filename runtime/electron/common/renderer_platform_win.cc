@@ -13,8 +13,10 @@
 #include <string_view>
 #include <vector>
 
+#include "base/process/kill.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/system/sys_info.h"
 #include "base/win/scoped_handle.h"
 #include "runtime/electron/common/renderer_protocol.h"
 
@@ -24,6 +26,24 @@ namespace {
 constexpr wchar_t kAppContainerName[] = L"mini-electron.renderer";
 constexpr size_t kFrameMappingSize = sizeof(renderer_protocol::FrameBufferHeader)
     + renderer_protocol::kMaxFrameBytes;
+
+constexpr uint64_t kMinimumRendererMemoryLimit =
+    1024ull * 1024ull * 1024ull;
+constexpr uint64_t kMaximumRendererMemoryLimit =
+    4ull * 1024ull * 1024ull * 1024ull;
+// Keep the renderer bounded without treating a modern x64 machine like a
+// 1-GiB system. V8 independently reserves half of this enforced budget.
+
+size_t RendererMemoryLimit()
+{
+#if defined(_M_X64)
+    return static_cast<size_t>(std::clamp<uint64_t>(
+        base::SysInfo::AmountOfPhysicalMemory() / 4,
+        kMinimumRendererMemoryLimit, kMaximumRendererMemoryLimit));
+#else
+    return static_cast<size_t>(kMinimumRendererMemoryLimit);
+#endif
+}
 
 struct LocalFreeDeleter {
     void operator()(void* value) const { ::LocalFree(value); }
@@ -188,12 +208,13 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
         *error = "failed to create renderer job";
         return false;
     }
+    const size_t memory_limit = RendererMemoryLimit();
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits {};
     limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_ACTIVE_PROCESS
         | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION
         | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY;
     limits.BasicLimitInformation.ActiveProcessLimit = 1;
-    limits.ProcessMemoryLimit = 1024ull * 1024ull * 1024ull;
+    limits.ProcessMemoryLimit = memory_limit;
     if (!::SetInformationJobObject(job.get(), JobObjectExtendedLimitInformation,
             &limits, sizeof(limits))) {
         *error = "failed to configure renderer job";
@@ -272,15 +293,99 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     return true;
 }
 
+bool CreateInProcessRendererResources(RendererPlatformProcess* output,
+    std::string* error)
+{
+    base::win::ScopedHandle mapping(::CreateFileMappingW(INVALID_HANDLE_VALUE,
+        nullptr, PAGE_READWRITE, 0, static_cast<DWORD>(kFrameMappingSize), nullptr));
+    if (!mapping.is_valid()) {
+        *error = "failed to create local renderer frame mapping";
+        return false;
+    }
+    HANDLE current_process = nullptr;
+    if (!::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentProcess(),
+            ::GetCurrentProcess(), &current_process, 0, FALSE,
+            DUPLICATE_SAME_ACCESS)) {
+        *error = "failed to open local renderer process handle";
+        return false;
+    }
+    base::win::ScopedHandle process(current_process);
+    void* memory = ::MapViewOfFile(mapping.get(),
+        FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, kFrameMappingSize);
+    if (!memory) {
+        *error = "failed to map local renderer frame";
+        return false;
+    }
+    auto* header = new (memory) renderer_protocol::FrameBufferHeader();
+    header->capacity = static_cast<uint32_t>(renderer_protocol::kMaxFrameBytes);
+    output->frame_memory = memory;
+    output->frame_mapping_size = kFrameMappingSize;
+    output->frame_mapping = mapping.Take();
+    output->process = process.Take();
+    output->process_id = static_cast<int>(::GetCurrentProcessId());
+    return true;
+}
+
 bool IsRendererProcessAlive(const RendererPlatformProcess& process)
 {
     return process.process && ::WaitForSingleObject(process.process, 0) == WAIT_TIMEOUT;
 }
 
+RendererProcessStatus ObserveRendererProcess(RendererPlatformProcess* process,
+    int timeout_milliseconds)
+{
+    RendererProcessStatus status;
+    if (!process)
+        return status;
+    if (process->termination_observed) {
+        status.state = RendererProcessState::kExited;
+        status.exit_code = process->exit_code;
+        status.crashed = process->crashed;
+        status.sandbox_memory_limit_exceeded =
+            process->sandbox_memory_limit_exceeded;
+        return status;
+    }
+    if (!process->process
+        || ::WaitForSingleObject(process->process,
+               static_cast<DWORD>(std::max(0, timeout_milliseconds)))
+            != WAIT_OBJECT_0) {
+        return status;
+    }
+
+    DWORD exit_code = STILL_ACTIVE;
+    if (!::GetExitCodeProcess(process->process, &exit_code)
+        || exit_code == STILL_ACTIVE) {
+        return status;
+    }
+    process->sandbox_memory_limit_exceeded =
+        exit_code == base::win::kSandboxFatalMemoryExceeded;
+    JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2 violations {};
+    if (process->job
+        && ::QueryInformationJobObject(process->job,
+            JobObjectLimitViolationInformation2, &violations,
+            sizeof(violations), nullptr)) {
+        process->sandbox_memory_limit_exceeded =
+            process->sandbox_memory_limit_exceeded
+            || (violations.ViolationLimitFlags
+                & JOB_OBJECT_LIMIT_PROCESS_MEMORY) != 0;
+    }
+    process->termination_observed = true;
+    process->exit_code = exit_code;
+    process->crashed = (exit_code & 0x80000000u) != 0;
+    process->process_id = 0;
+
+    status.state = RendererProcessState::kExited;
+    status.exit_code = process->exit_code;
+    status.crashed = process->crashed;
+    status.sandbox_memory_limit_exceeded =
+        process->sandbox_memory_limit_exceeded;
+    return status;
+}
+
 bool WaitForRendererProcess(RendererPlatformProcess* process, int timeout_milliseconds)
 {
-    return process->process && ::WaitForSingleObject(process->process,
-        static_cast<DWORD>(std::max(0, timeout_milliseconds))) == WAIT_OBJECT_0;
+    return ObserveRendererProcess(process, timeout_milliseconds).state
+        == RendererProcessState::kExited;
 }
 
 void TerminateRendererProcess(RendererPlatformProcess* process)

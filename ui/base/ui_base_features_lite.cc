@@ -172,6 +172,5 @@ bool IsTextBasedAudioDescriptionEnabled(void) { return true; }
 
 bool IsUsingRawDraw(void) { return true; }
 
-bool IsUsingVulkan(void) { return false; }
 
 }

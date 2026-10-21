@@ -35,6 +35,7 @@
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #endif
@@ -57,9 +58,9 @@ class InspectorDOMStorageAgent;
 class StorageController;
 
 // Contains DOMStorage storage areas for BlinkStorageKeys. A namespace is either
-// a SessionStorage namespace with a namespace_id, or a LocalStorage namespace
-// with no (or an empty) namespace_id. The LocalStorage version of the
-// StorageNamespace lives in the StorageController.
+// a SessionStorage namespace with a namespace_id, or a page-owned LocalStorage
+// namespace with no namespace_id. Each Page uses one LocalStorage namespace for
+// its main frame and subframes.
 class MODULES_EXPORT StorageNamespace final : public GarbageCollected<StorageNamespace>, public Supplement<Page> {
 public:
     // `kStandard` is access for a given context's storage, while
@@ -70,6 +71,10 @@ public:
     static const char kSupplementName[];
 
     static void ProvideSessionStorageNamespaceTo(Page&, const SessionStorageNamespaceId&);
+    // Returns the LocalStorage namespace owned by `page`. The page's existing
+    // session-storage supplement owns this namespace when present, so its cache
+    // cannot be shared with another Page.
+    static StorageNamespace* GetOrCreateLocalStorageNamespace(Page&, StorageController*);
     static StorageNamespace* From(Page* page)
     {
         return Supplement<Page>::From<StorageNamespace>(page);
@@ -127,6 +132,7 @@ public:
     void ResetStorageAreaAndNamespaceConnections();
 
 private:
+    StorageNamespace* GetOrCreateOwnedLocalStorageNamespace(Page&, StorageController*);
     void EnsureConnected();
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
@@ -140,6 +146,11 @@ private:
     // `StorageNamespace` is a per-Page object and doesn't have any
     // `ExecutionContext`.
     HeapMojoRemote<mojom::blink::SessionStorageNamespace> namespace_ { nullptr };
+    // A session namespace can briefly supplement more than one Page when a
+    // closed tab is restored before its old namespace is collected. Key the
+    // LocalStorage ownership by Page so that this reuse cannot revive a stale
+    // per-view cache or broker connection.
+    HeapHashMap<WeakMember<Page>, Member<StorageNamespace>> local_storage_namespaces_;
     // TODO(https://crbug.com/1212808) Migrate hash map and function.
     HashMap<std::unique_ptr<const BlinkStorageKey>, scoped_refptr<CachedStorageArea>, BlinkStorageKeyHashTraits> cached_areas_;
 };

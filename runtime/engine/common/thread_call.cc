@@ -57,15 +57,20 @@ ThreadCall::ThreadCall()
 
 void ThreadCall::init(const mini_electron_settings* settings)
 {
+    if (m_inst)
+        return;
     m_inst = new ThreadCall();
     g_mainThreadRunLoop = new base::RunLoop();
     m_inst->m_uiThreadId = ::GetCurrentThreadId();
-    m_inst->m_uiThreadTask = base::SingleThreadTaskRunner::GetCurrentDefault();
+    m_inst->m_uiThreadTask =
+        base::SingleThreadTaskRunner::GetCurrentDefault();
 }
 
 void ThreadCall::initializeWebKit()
 {
 #ifdef _WIN32
+    if (m_blinkUvLoop)
+        return;
     m_blinkUvLoop = new uv_loop_t();
     uv_loop_init(m_blinkUvLoop);
 #endif
