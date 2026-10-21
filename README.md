@@ -364,6 +364,43 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+### Preload module scope
+
+The shared Windows/macOS preload runner gives each session and window preload
+its own function scope. Electron APIs are obtained with `require('electron')`;
+the wrapper does not inject an `electron` parameter. This fixes
+[issue #5](https://github.com/iris-cat-dev/mini-electron/issues/5), where
+`electron-log@5.4.4`'s top-level `let electron` collided with that parameter.
+Syntax and runtime failures still emit `webContents`' `preload-error` with the
+source filename and do not prevent later preloads from running.
+
+After rebuilding, run the native regression on either platform:
+
+```sh
+out/mac-arm64/mini-electron test/preload-scope-smoke.js
+./out/windows-x64/runtime-dist/electron.exe test/preload-scope-smoke.js
+```
+
+The regression covers `let`/`const`/`var` Electron imports, independent session,
+window, and page bindings, IPC, navigation/reload, and intentional preload
+failures with context isolation enabled and disabled. A targeted macOS native
+build also ran unmodified `electron-log@5.4.4` with
+`log.initialize({ spyRendererConsole: true })`: two windows and three document
+loads each delivered all six renderer logs to the main logger without a
+`preload-error`. This was a targeted compile/link against retained native build
+artifacts, not a successful full-tree rebuild. The full-build attempt stopped in
+Blink's `storage_controller.cc` on an incomplete `InspectorDOMStorageAgent` type.
+The existing IPC frame smoke passed; an additional single-process smoke on the
+targeted executable failed because renderer and host PIDs differed. These checks
+do not establish single-process compatibility or Windows packaged-app acceptance.
+
+Windows verification is pending. Rebuild the Windows runtime and run
+`test/preload-scope-smoke.js`, then launch the real packaged OMP Desktop with its
+normal `log.initialize({ spyRendererConsole: true })` and unmodified logging
+preload. Check multiple windows and document navigations for absence of unexpected
+`preload-error` events, and confirm renderer logs reach the main logger. Keep the
+preload and error reporting enabled; the source fix is not a published runtime.
+
 ## Trusted single-process UI mode
 
 Source builds support an opt-in mode for packaged or otherwise trusted UI.

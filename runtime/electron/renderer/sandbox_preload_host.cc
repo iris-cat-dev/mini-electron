@@ -174,8 +174,10 @@ void SandboxPreloadHost::RunPreloads(v8::Local<v8::Context> context)
     v8::Context::Scope scope(context);
     for (const RendererPreload& preload : preloads_) {
         v8::TryCatch try_catch(isolate);
+        // Electron is a module, not a preload parameter: a top-level
+        // `let electron = require('electron')` must remain valid.
         std::string wrapped =
-            "(function(require, process, electron, exports) { 'use strict';\n"
+            "(function(require, process, exports) { 'use strict';\n"
             + preload.source + "\n})";
         v8::Local<v8::Script> script;
         v8::Local<v8::Value> value;
@@ -201,7 +203,6 @@ void SandboxPreloadHost::RunPreloads(v8::Local<v8::Context> context)
         v8::Local<v8::Value> arguments[] = {
             require,
             process,
-            ElectronObject(context),
             v8::Object::New(isolate),
         };
         v8::Local<v8::Value> ignored;
