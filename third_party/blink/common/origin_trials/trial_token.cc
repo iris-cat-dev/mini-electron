@@ -17,7 +17,7 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "third_party/blink/public/common/origin_trials/origin_trials.h"
-//#include "third_party/boringssl/src/include/openssl/curve25519.h"
+#include "third_party/openssl/openssl/include/openssl/evp.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -290,10 +290,17 @@ bool TrialToken::ValidateSignature(std::string_view signature, const std::string
         return false;
     }
 
-//     int result = ED25519_verify(reinterpret_cast<const uint8_t*>(data.data()), data.length(), reinterpret_cast<const uint8_t*>(signature.data()), public_key.data());
-//     return (result != 0);
-    *(int*)1 = 1;
-    return false;
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> key(
+        EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, nullptr, public_key.data(), public_key.size()), &EVP_PKEY_free);
+    if (!key)
+        return false;
+
+    std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> context(EVP_MD_CTX_new(), &EVP_MD_CTX_free);
+    if (!context || EVP_DigestVerifyInit(context.get(), nullptr, nullptr, nullptr, key.get()) != 1)
+        return false;
+
+    return EVP_DigestVerify(context.get(), reinterpret_cast<const unsigned char*>(signature.data()), signature.size(),
+               reinterpret_cast<const unsigned char*>(data.data()), data.size()) == 1;
 }
 
 TrialToken::TrialToken(const url::Origin& origin, bool match_subdomains, const std::string& feature_name, base::Time expiry_time, bool is_third_party,

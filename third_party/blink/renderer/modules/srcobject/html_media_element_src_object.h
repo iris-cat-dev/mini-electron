@@ -11,6 +11,7 @@
 
 namespace blink {
 
+class ExceptionState;
 class HTMLMediaElement;
 
 class MODULES_EXPORT HTMLMediaElementSrcObject {
@@ -18,7 +19,7 @@ class MODULES_EXPORT HTMLMediaElementSrcObject {
 
 public:
     static V8MediaProvider* srcObject(HTMLMediaElement&);
-    static void setSrcObject(HTMLMediaElement&, V8MediaProvider*);
+    static void setSrcObject(HTMLMediaElement&, V8MediaProvider*, ExceptionState&);
 };
 
 } // namespace blink

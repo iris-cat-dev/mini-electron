@@ -51,61 +51,44 @@ void SpeculationRulesHeader::ProcessHeadersForDocumentResponse(const ResourceRes
 
 void SpeculationRulesHeader::ParseSpeculationRulesHeader(const String& header_value, const KURL& base_url)
 {
-    *(int*)1 = 1;
-    //   auto parsed_header = net::structured_headers::ParseList(header_value.Utf8());
-    //   if (!parsed_header.has_value()) {
-    //     String message = "Cannot parse Speculation-Rules header value.";
-    //     if (KURL(base_url, header_value.StripWhiteSpace()).IsValid()) {
-    //       message = message + " However, " +
-    //                 header_value.StripWhiteSpace().EncodeForDebugging() +
-    //                 " appears to be a valid URL. "
-    //                 "You may need to enclose it in quotation marks.";
-    //     }
-    //     errors_.push_back(std::pair(
-    //         SpeculationRulesLoadOutcome::kUnparseableSpeculationRulesHeader,
-    //         message));
-    //     return;
-    //   }
-    //
-    //   if (parsed_header->empty()) {
-    //     // This is valid, but unlikely to be intentional. Let's make a note of it.
-    //     CountSpeculationRulesLoadOutcome(
-    //         SpeculationRulesLoadOutcome::kEmptySpeculationRulesHeader);
-    //     return;
-    //   }
-    //
-    //   for (auto const& parsed_item : parsed_header.value()) {
-    //     // Only strings are valid list members.
-    //     if (parsed_item.member.size() != 1u ||
-    //         !parsed_item.member[0].item.is_string()) {
-    //       String message =
-    //           "Only strings are valid in Speculation-Rules header value "
-    //           "and inner lists are ignored.";
-    //       if (parsed_item.member.size() == 1u &&
-    //           parsed_item.member[0].item.is_token()) {
-    //         String token = String::FromUTF8(parsed_item.member[0].item.GetString());
-    //         if (KURL(base_url, token).IsValid()) {
-    //           message = message + " However, " + token.EncodeForDebugging() +
-    //                     " appears to be a valid URL. "
-    //                     "You may need to enclose it in quotation marks.";
-    //         }
-    //       }
-    //       errors_.push_back(std::pair(
-    //           SpeculationRulesLoadOutcome::kInvalidSpeculationRulesHeaderItem,
-    //           message));
-    //       continue;
-    //     }
-    //     const auto& url_str = String(parsed_item.member[0].item.GetString());
-    //     KURL speculation_rule_url(base_url, url_str);
-    //     if (url_str.empty() || !speculation_rule_url.IsValid()) {
-    //       errors_.push_back(std::pair(
-    //           SpeculationRulesLoadOutcome::kInvalidSpeculationRulesHeaderItem,
-    //           String("URL \"" + url_str +
-    //                  "\" found in Speculation-Rules header is invalid.")));
-    //       continue;
-    //     }
-    //     urls_.push_back(std::move(speculation_rule_url));
-    //   }
+    auto parsed_header = net::structured_headers::ParseList(header_value.Utf8());
+    if (!parsed_header.has_value()) {
+        String message = "Cannot parse Speculation-Rules header value.";
+        if (KURL(base_url, header_value.StripWhiteSpace()).IsValid()) {
+            message = message + " However, " + header_value.StripWhiteSpace().EncodeForDebugging()
+                + " appears to be a valid URL. You may need to enclose it in quotation marks.";
+        }
+        errors_.push_back(std::pair(SpeculationRulesLoadOutcome::kUnparseableSpeculationRulesHeader, message));
+        return;
+    }
+    if (parsed_header->empty()) {
+        CountSpeculationRulesLoadOutcome(SpeculationRulesLoadOutcome::kEmptySpeculationRulesHeader);
+        return;
+    }
+
+    for (const auto& parsed_item : parsed_header.value()) {
+        // Inner lists are not URLs, even when they contain a single string.
+        if (parsed_item.member_is_inner_list || parsed_item.member.size() != 1u || !parsed_item.member[0].item.is_string()) {
+            String message = "Only strings are valid in Speculation-Rules header value and inner lists are ignored.";
+            if (!parsed_item.member_is_inner_list && parsed_item.member.size() == 1u && parsed_item.member[0].item.is_token()) {
+                String token = String::FromUTF8(parsed_item.member[0].item.GetString());
+                if (KURL(base_url, token).IsValid()) {
+                    message = message + " However, " + token.EncodeForDebugging()
+                        + " appears to be a valid URL. You may need to enclose it in quotation marks.";
+                }
+            }
+            errors_.push_back(std::pair(SpeculationRulesLoadOutcome::kInvalidSpeculationRulesHeaderItem, message));
+            continue;
+        }
+        const String url_str(parsed_item.member[0].item.GetString());
+        KURL speculation_rule_url(base_url, url_str);
+        if (url_str.empty() || !speculation_rule_url.IsValid()) {
+            errors_.push_back(std::pair(SpeculationRulesLoadOutcome::kInvalidSpeculationRulesHeaderItem,
+                String("URL \"" + url_str + "\" found in Speculation-Rules header is invalid.")));
+            continue;
+        }
+        urls_.push_back(std::move(speculation_rule_url));
+    }
 }
 
 void SpeculationRulesHeader::ReportErrors(LocalDOMWindow& window)

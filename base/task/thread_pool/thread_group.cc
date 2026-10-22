@@ -414,8 +414,7 @@ std::unique_ptr<win::ScopedWindowsThreadEnvironment> ThreadGroup::GetScopedWindo
 {
     std::unique_ptr<win::ScopedWindowsThreadEnvironment> scoped_environment;
     if (environment == WorkerEnvironment::COM_MTA) {
-        //scoped_environment = std::make_unique<win::ScopedWinrtInitializer>();
-        *(int*)1 = 1;
+        scoped_environment = std::make_unique<win::ScopedWinrtInitializer>();
     }
     // Continuing execution with an uninitialized apartment may lead to broken
     // program invariants later on.

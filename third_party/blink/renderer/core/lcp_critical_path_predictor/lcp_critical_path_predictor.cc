@@ -14,20 +14,6 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 
-class ElementLocator {
-public:
-    bool ParseFromString(const std::string& str)
-    {
-        *(int*)1 = 1;
-        return false;
-    }
-
-    std::string SerializeAsString()
-    {
-        *(int*)1 = 1;
-        return std::string();
-    }
-};
 
 namespace blink {
 

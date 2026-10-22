@@ -93,38 +93,37 @@ void GetAsFileOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
 void GetAsFileSystemHandleOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DataTransferItem_getAsFileSystemHandle");
-//     BLINK_BINDINGS_TRACE_EVENT("DataTransferItem.getAsFileSystemHandle");
-//     // Promise returning function: Convert a TypeError to a reject promise.
-//     ExceptionToRejectPromiseScope reject_promise_scope(info);
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     if (!V8DataTransferItem::HasInstance(isolate, v8_receiver)) {
-//         V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
-//         return;
-//     }
-// 
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kFileSystemAccessDragAndDrop);
-// 
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     DataTransferItem* blink_receiver = V8DataTransferItem::ToWrappableUnsafe(isolate, v8_receiver);
-//     const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
-//     const char* const class_like_name = "DataTransferItem";
-//     const char* const property_name = "getAsFileSystemHandle";
-//     ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
-//     ScriptPromise<IDLNullable<FileSystemHandle>> return_value
-//         = DataTransferItemFileSystemAccess::getAsFileSystemHandle(script_state, *blink_receiver, exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     bindings::V8SetReturnValue(info, return_value);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_DataTransferItem_getAsFileSystemHandle");
+    BLINK_BINDINGS_TRACE_EVENT("DataTransferItem.getAsFileSystemHandle");
+    // Promise returning function: Convert a TypeError to a reject promise.
+    ExceptionToRejectPromiseScope reject_promise_scope(info);
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    if (!V8DataTransferItem::HasInstance(isolate, v8_receiver)) {
+        V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
+        return;
+    }
+
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kFileSystemAccessDragAndDrop);
+
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    DataTransferItem* blink_receiver = V8DataTransferItem::ToWrappableUnsafe(isolate, v8_receiver);
+    const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
+    const char* const class_like_name = "DataTransferItem";
+    const char* const property_name = "getAsFileSystemHandle";
+    ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
+    ScriptPromise<IDLNullable<FileSystemHandle>> return_value
+        = DataTransferItemFileSystemAccess::getAsFileSystemHandle(script_state, *blink_receiver, exception_state);
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    bindings::V8SetReturnValue(info, return_value);
 }
 
 void GetAsStringOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)

@@ -129,7 +129,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530;4334</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -165,7 +165,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530;4334</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -195,7 +195,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -213,7 +213,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -233,7 +233,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <StringPooling>true</StringPooling>
@@ -265,7 +265,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <StringPooling>true</StringPooling>
@@ -4451,6 +4451,164 @@
     <ClInclude Include="..\..\..\third_party\blink\renderer\platform\wtf\wtf_test_helper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\blink\common\messaging\accelerated_static_bitmap_image_mojom_traits.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\accelerated_static_bitmap_image.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\audio\audio_bus.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\media\media_player_util.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encryptedmedia\encrypted_media_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encryptedmedia\media_encrypted_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encryptedmedia\html_media_element_encrypted_media.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encryptedmedia\media_keys.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\audio_output_devices\html_media_element_audio_output_device.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\mediacapturefromelement\html_media_element_capture.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\mediacapturefromelement\html_canvas_element_capture.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\common\web_package\web_package_request_matcher.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\mojo\mojo_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\mojo\mojo_watcher.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\mojo\test\mojo_interface_interceptor.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\core\mojo\test\mojo_interface_request_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\background_sync\periodic_sync_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\background_sync\periodic_sync_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\background_sync\service_worker_registration_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\background_sync\sync_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\background_sync\sync_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache_storage.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache_storage_blob_client_list.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache_storage_error.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache_storage_trace_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\cache_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\global_cache_storage.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\cache_storage\inspector_cache_storage_agent.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\content_index\content_description_type_converter.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\content_index\content_index.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\content_index\content_index_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\content_index\content_index_icon_loader.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\content_index\service_worker_registration_content_index.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\device_orientation\device_orientation_data.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\bucket_file_system_agent.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\bucket_file_system_builder.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\data_transfer_item_file_system_access.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_access_capacity_tracker.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_access_error.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_access_incognito_file_delegate.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_access_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_access_regular_file_delegate.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_change_record.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_directory_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_file_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_observation.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_observation_collection.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_observer.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_sync_access_handle.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_underlying_sink.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\file_system_writable_file_stream.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\global_file_system_access.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\file_system_access\storage_manager_file_system_access.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\dev_tools_host_file_system.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\directory_entry_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\directory_reader_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\dom_file_system_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\dom_window_file_system.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\entry_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\file_entry_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\file_writer_sync.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\html_input_element_file_system.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\local_file_system.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\filesystem\worker_global_scope_file_system.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\global_indexed_db.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_any.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_cursor.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_cursor_with_value.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_database.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_event_dispatcher.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_factory.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_factory_client.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_index.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_key.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_key_path.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_key_range.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_metadata.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_object_store.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_open_db_request.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_record.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_record_array.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_request.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_request_loader.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_request_queue_item.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_transaction.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_value.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_value_wrapping.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\idb_version_change_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\indexed_db_blink_mojom_traits.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\indexeddb\inspector_indexed_db_agent.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\locks\lock.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\locks\lock_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification_data.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification_metrics.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\notification_resources_loader.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\notifications\service_worker_registration_notifications.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\abort_payment_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\abort_payment_respond_with_observer.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\address_init_type_converter.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\can_make_payment_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\can_make_payment_respond_with_observer.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_address.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_app_service_worker_registration.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_event_data_conversion.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_handler_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_instruments.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_method_change_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_request.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_request_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_request_respond_with_observer.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_request_update_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payment_response.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\payments_validators.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\secure_payment_confirmation_helper.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\secure_payment_confirmation_type_converter.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\payments\update_payment_details_function.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\permissions\permission_status.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\permissions\permission_status_listener.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\permissions\permission_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\permissions\permissions.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_availability.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_availability_state.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_connection.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_connection_available_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_connection_callbacks.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_connection_close_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_connection_list.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_controller.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_error.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_receiver.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\presentation\presentation_request.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_error.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_manager.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_message_data.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_messaging_bridge.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_messaging_client.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_messaging_utils.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_provider.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_subscription.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_subscription_callbacks.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_subscription_change_event.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_subscription_options.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\push_type_converter.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\push_messaging\service_worker_registration_push.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\remoteplayback\html_media_element_remote_playback.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\remoteplayback\remote_playback.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\static_bitmap_image_to_video_frame_copier.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\graphics\web_graphics_context_3d_video_frame_pool.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\media\web_audio_source_provider_impl.cc" />
+    <ClCompile Include="..\..\..\third_party\blink\renderer\platform\mediastream\media_stream_descriptor.cc" />
     <ClCompile Include="..\..\..\components\webcrypto\algorithms\aes.cc" />
     <ClCompile Include="..\..\..\components\webcrypto\algorithms\aes_cbc.cc" />
     <ClCompile Include="..\..\..\components\webcrypto\algorithms\aes_ctr.cc" />
@@ -6349,8 +6507,6 @@
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\layout\text_utils.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\layout\traced_layout_object.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\layout\web_font_rendering_win.cc" />
-    <ClCompile Include="..\..\..\third_party\blink\renderer\core\lcp_critical_path_predictor\element_locator.cc" />
-    <ClCompile Include="..\..\..\third_party\blink\renderer\core\lcp_critical_path_predictor\lcp_critical_path_predictor.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\lcp_critical_path_predictor\lcp_script_observer.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\loader\alternate_signed_exchange_resource_info.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\loader\anchor_element_interaction_tracker.cc" />
@@ -6451,7 +6607,6 @@
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\messaging\message_port.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\mobile_metrics\mobile_friendliness_checker.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\mobile_metrics\tap_friendliness_checker.cc" />
-    <ClCompile Include="..\..\..\third_party\blink\renderer\core\mojo\mojo_handle_empty.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\navigation_api\navigate_event.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\navigation_api\navigate_event_dispatch_params.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\navigation_api\navigation_api.cc" />
@@ -7191,7 +7346,6 @@
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\csspaint\paint_worklet_proxy_client.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\delegated_ink\delegated_ink_trail_presenter.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\delegated_ink\ink.cc" />
-    <ClCompile Include="..\..\..\third_party\blink\renderer\modules\device_orientation\device_orientation_empty.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\donottrack\navigator_do_not_track.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encoding\encoding.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\encoding\text_decoder.cc" />

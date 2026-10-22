@@ -29,7 +29,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_NETWORK_RESOURCES_DATA_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_NETWORK_RESOURCES_DATA_H_
 
-//#include "net/cert/x509_certificate.h"
+#include "net/cert/x509_certificate.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
 #include "third_party/blink/renderer/core/inspector/inspector_page_agent.h"
@@ -219,14 +219,14 @@ public:
             raw_header_size_ = size;
         }
 
-//         net::X509Certificate* Certificate()
-//         {
-//             return certificate_.get();
-//         }
-//         void SetCertificate(scoped_refptr<net::X509Certificate> certificate)
-//         {
-//             certificate_ = std::move(certificate);
-//         }
+        net::X509Certificate* Certificate()
+        {
+            return certificate_.get();
+        }
+        void SetCertificate(scoped_refptr<net::X509Certificate> certificate)
+        {
+            certificate_ = std::move(certificate);
+        }
         int64_t PendingEncodedDataLength() const
         {
             return pending_encoded_data_length_;
@@ -291,7 +291,7 @@ public:
         UntracedMember<const Resource> cached_resource_;
 
         scoped_refptr<BlobDataHandle> downloaded_file_blob_;
-        //scoped_refptr<net::X509Certificate> certificate_;
+        scoped_refptr<net::X509Certificate> certificate_;
         scoped_refptr<EncodedFormData> post_data_;
     };
 
@@ -313,7 +313,7 @@ public:
     void SetResourcesDataSizeLimits(size_t maximum_resources_content_size, size_t maximum_single_resource_content_size);
     void SetXHRReplayData(const String& request_id, XHRReplayData*);
     XHRReplayData* XhrReplayData(const String& request_id);
-    //void SetCertificate(const String& request_id, scoped_refptr<net::X509Certificate>);
+    void SetCertificate(const String& request_id, scoped_refptr<net::X509Certificate>);
     HeapVector<Member<ResourceData>> Resources();
 
     int64_t GetAndClearPendingEncodedDataLength(const String& request_id);

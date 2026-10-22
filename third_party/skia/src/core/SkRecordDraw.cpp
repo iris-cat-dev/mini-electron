@@ -160,7 +160,7 @@ DRAW(DrawTextBlob, drawTextBlob(r.blob.get(), r.x, r.y, r.paint))
 DRAW(DrawSlug, drawSlug(r.slug.get(), r.paint))
 DRAW(DrawAtlas, drawAtlas(r.atlas.get(), r.xforms, r.texs, r.colors, r.count, r.mode, r.sampling, r.cull, r.paint))
 DRAW(DrawVertices, drawVertices(r.vertices, r.bmode, r.paint))
-//DRAW(DrawMesh, drawMesh(r.mesh, r.blender, r.paint))
+DRAW(DrawMesh, drawMesh(r.mesh, r.blender, r.paint))
 DRAW(DrawShadowRec, private_draw_shadow_rec(r.path, r.rec))
 DRAW(DrawAnnotation, drawAnnotation(r.rect, r.key.c_str(), r.value.get()))
 
@@ -562,10 +562,10 @@ private:
     {
         return this->adjustAndMap(op.vertices->bounds(), &op.paint);
     }
-//     Bounds bounds(const DrawMesh& op) const
-//     {
-//         return this->adjustAndMap(op.mesh.bounds(), &op.paint);
-//     }
+    Bounds bounds(const DrawMesh& op) const
+    {
+        return this->adjustAndMap(op.mesh.bounds(), &op.paint);
+    }
     Bounds bounds(const DrawAtlas& op) const
     {
         if (op.cull) {

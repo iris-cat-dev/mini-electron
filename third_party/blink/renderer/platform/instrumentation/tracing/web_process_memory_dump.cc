@@ -128,10 +128,8 @@ void WebProcessMemoryDump::AddSuballocation(blink::WebMemoryAllocatorDumpGuid so
 
 SkTraceMemoryDump* WebProcessMemoryDump::CreateDumpAdapterForSkia(const String& dump_name_prefix)
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     sk_trace_dump_list_.push_back(std::make_unique<skia::SkiaTraceMemoryDumpImpl>(dump_name_prefix.Utf8(), level_of_detail_, process_memory_dump_));
-//     return sk_trace_dump_list_.back().get();
+    sk_trace_dump_list_.push_back(std::make_unique<skia::SkiaTraceMemoryDumpImpl>(dump_name_prefix.Utf8(), level_of_detail_, process_memory_dump_));
+    return sk_trace_dump_list_.back().get();
 }
 
 blink::WebMemoryAllocatorDump* WebProcessMemoryDump::CreateDiscardableMemoryAllocatorDump(const std::string& name, base::DiscardableMemory* discardable)

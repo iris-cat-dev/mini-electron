@@ -140,8 +140,10 @@ class {{export_attribute}} {{struct.name}} {
   {{type}} {{name}};
 {%- endfor %}
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
   // Serialise this struct into a trace.
   void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
  private:
   static bool Validate(const void* data,

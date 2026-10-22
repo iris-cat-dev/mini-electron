@@ -35,7 +35,10 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/metrics/public/mojom/ukm_interface.mojom-params-data.h"
 #include "services/metrics/public/mojom/ukm_interface.mojom-shared-message-ids.h"
@@ -60,6 +63,7 @@ UkmEntry::UkmEntry(int64_t source_id_in, uint64_t event_hash_in, const base::fla
 
 UkmEntry::~UkmEntry() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void UkmEntry::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -85,6 +89,7 @@ void UkmEntry::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool UkmEntry::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -104,6 +109,7 @@ UkmRecorderParameters::UkmRecorderParameters(bool is_enabled_in, std::vector<uin
 
 UkmRecorderParameters::~UkmRecorderParameters() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void UkmRecorderParameters::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -122,6 +128,7 @@ void UkmRecorderParameters::WriteIntoTrace(perfetto::TracedValue traced_context)
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool UkmRecorderParameters::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

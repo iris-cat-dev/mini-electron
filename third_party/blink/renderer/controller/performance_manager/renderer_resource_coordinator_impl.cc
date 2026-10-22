@@ -9,6 +9,7 @@
 
 #include "base/check.h"
 #include "base/memory/structured_shared_memory.h"
+#include "base/tracing_buildflags.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/performance/performance_scenarios.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
@@ -31,7 +32,9 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-//#include "third_party/perfetto/include/perfetto/tracing/track.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "third_party/perfetto/include/perfetto/tracing/track.h"
+#endif
 
 using performance_manager::mojom::blink::IframeAttributionData;
 using performance_manager::mojom::blink::IframeAttributionDataPtr;
@@ -242,11 +245,16 @@ RendererResourceCoordinatorImpl::RendererResourceCoordinatorImpl(mojo::PendingRe
     service_task_runner_ = Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted());
     service_.Bind(std::move(remote));
     CHECK(service_task_runner_->RunsTasksInCurrentSequence());
+    // Shared scenario memory is needed independently of tracing. With no tracing
+    // backend there is no process track to associate with the request.
+    uint64_t process_track_id = 0;
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    process_track_id = perfetto::ProcessTrack::Current().uuid;
+#endif
     // Unretained is safe because the renderer resource coordinator is a singleton
     // that leaks at process shutdown.
-    *(int*)1 = 1;
-//     service_->RequestSharedPerformanceScenarioRegions(
-//         perfetto::ProcessTrack::Current().uuid, WTF::BindOnce(&RendererResourceCoordinatorImpl::OnSharedPerformanceScenarioRegions, WTF::Unretained(this)));
+    service_->RequestSharedPerformanceScenarioRegions(
+        process_track_id, WTF::BindOnce(&RendererResourceCoordinatorImpl::OnSharedPerformanceScenarioRegions, WTF::Unretained(this)));
 }
 
 void RendererResourceCoordinatorImpl::DispatchOnV8ContextCreated(V8ContextDescriptionPtr v8_desc, IframeAttributionDataPtr iframe_attribution_data)

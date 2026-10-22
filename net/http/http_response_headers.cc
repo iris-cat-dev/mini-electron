@@ -1102,27 +1102,24 @@ bool HttpResponseHeaders::IsRedirect(std::string* location) const
 
 bool HttpResponseHeaders::HasStorageAccessRetryHeader(const std::string* expected_origin) const
 {
-    *(int*)1 = 1;
-    return false;
-
-//     std::optional<std::string> header_value = GetNormalizedHeader(kActivateStorageAccessHeader);
-//     if (!header_value) {
-//         return false;
-//     }
-//     const std::optional<structured_headers::ParameterizedItem> item = structured_headers::ParseItem(*header_value);
-//     if (!item || !item->item.is_token() || item->item.GetString() != "retry") {
-//         return false;
-//     }
-//     return base::ranges::any_of(item->params, [&](const auto& key_and_value) -> bool {
-//         const auto [key, value] = key_and_value;
-//         if (key != "allowed-origin") {
-//             return false;
-//         }
-//         if (value.is_token() && value.GetString() == "*") {
-//             return true;
-//         }
-//         return expected_origin && value.is_string() && value.GetString() == *expected_origin;
-//     });
+    std::optional<std::string> header_value = GetNormalizedHeader(kActivateStorageAccessHeader);
+    if (!header_value) {
+        return false;
+    }
+    const std::optional<structured_headers::ParameterizedItem> item = structured_headers::ParseItem(*header_value);
+    if (!item || !item->item.is_token() || item->item.GetString() != "retry") {
+        return false;
+    }
+    return base::ranges::any_of(item->params, [&](const auto& key_and_value) -> bool {
+        const auto& [key, value] = key_and_value;
+        if (key != "allowed-origin") {
+            return false;
+        }
+        if (value.is_token() && value.GetString() == "*") {
+            return true;
+        }
+        return expected_origin && value.is_string() && value.GetString() == *expected_origin;
+    });
 }
 
 // static
@@ -1512,18 +1509,17 @@ bool HttpResponseHeaders::GetContentRangeFor206(int64_t* first_byte_position, in
 
 base::Value::Dict HttpResponseHeaders::NetLogParams(NetLogCaptureMode capture_mode) const
 {
-    *(int*)1 = 1;
     base::Value::Dict dict;
-//     base::Value::List headers;
-//     headers.Append(NetLogStringValue(GetStatusLine()));
-//     size_t iterator = 0;
-//     std::string name;
-//     std::string value;
-//     while (EnumerateHeaderLines(&iterator, &name, &value)) {
-//         std::string log_value = ElideHeaderValueForNetLog(capture_mode, name, value);
-//         headers.Append(NetLogStringValue(base::StrCat({ name, ": ", log_value })));
-//     }
-//     dict.Set("headers", std::move(headers));
+    base::Value::List headers;
+    headers.Append(NetLogStringValue(GetStatusLine()));
+    size_t iterator = 0;
+    std::string name;
+    std::string value;
+    while (EnumerateHeaderLines(&iterator, &name, &value)) {
+        std::string log_value = ElideHeaderValueForNetLog(capture_mode, name, value);
+        headers.Append(NetLogStringValue(base::StrCat({ name, ": ", log_value })));
+    }
+    dict.Set("headers", std::move(headers));
     return dict;
 }
 

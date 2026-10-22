@@ -43,6 +43,10 @@ FileSystemObserver* FileSystemObserver::Create(ScriptState* script_state, V8File
         }
     }
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "File System Access observers are not supported by this embedder.");
+    return nullptr;
+#else
     mojo::PendingRemote<mojom::blink::FileSystemAccessObserverHost> host_remote;
     mojo::PendingReceiver<mojom::blink::FileSystemAccessObserverHost> host_receiver = host_remote.InitWithNewPipeAndPassReceiver();
 
@@ -50,6 +54,7 @@ FileSystemObserver* FileSystemObserver::Create(ScriptState* script_state, V8File
 
     FileSystemAccessManager::From(context)->BindObserverHost(std::move(host_receiver));
     return observer_host;
+#endif
 }
 
 FileSystemObserver::FileSystemObserver(

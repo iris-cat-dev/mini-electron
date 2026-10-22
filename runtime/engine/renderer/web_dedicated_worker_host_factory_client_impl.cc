@@ -2,6 +2,7 @@
 #include "runtime/engine/renderer/web_dedicated_worker_host_factory_client_impl.h"
 
 #include "runtime/engine/renderer/blob_url_store_impl.h"
+#include "runtime/engine/renderer/web_worker_fetch_context_impl.h"
 #include "runtime/engine/common/create_and_bind_templ.h"
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
 #include "third_party/blink/public/platform/web_dedicated_worker.h"
@@ -15,41 +16,47 @@ namespace content {
 
 class CodeCacheHostImpl : public ::blink::mojom::blink::CodeCacheHost {
 public:
-    CodeCacheHostImpl()
+    explicit CodeCacheHostImpl(mojo::ScopedMessagePipeHandle pipe)
+        : m_receiver(this, mojo::PendingReceiver<blink::mojom::blink::CodeCacheHost>(std::move(pipe)))
     {
-    }
-
-    ~CodeCacheHostImpl()
-    {
+        m_receiver.set_disconnect_handler(base::BindOnce(
+            [](CodeCacheHostImpl* self) { delete self; }, base::Unretained(this)));
     }
 
     void DidGenerateCacheableMetadata(
         ::blink::mojom::blink::CodeCacheType cache_type, const ::blink::KURL& url, ::base::Time expected_response_time, ::mojo_base::BigBuffer data) override
     {
-        OutputDebugStringA("CodeCacheHostImpl::DidGenerateCacheableMetadata fail\n");
+        // Code caching is optional and this embedder does not store metadata.
+        // Keep the host available so every fetch completes with a genuine miss.
     }
 
-    //using FetchCachedCodeCallback = base::OnceCallback<void(::base::Time, ::mojo_base::BigBuffer)>;
     void FetchCachedCode(::blink::mojom::blink::CodeCacheType cache_type, const ::blink::KURL& url,
         ::blink::mojom::blink::CodeCacheHost::FetchCachedCodeCallback callback) override
     {
-        OutputDebugStringA("CodeCacheHostImpl::FetchCachedCode fail\n");
-        DebugBreak();
+        std::move(callback).Run(base::Time(), mojo_base::BigBuffer());
     }
 
     void ClearCodeCacheEntry(::blink::mojom::blink::CodeCacheType cache_type, const ::blink::KURL& url) override
     {
-        OutputDebugStringA("CodeCacheHostImpl::ClearCodeCacheEntry fail\n");
-        DebugBreak();
+        // There is no stored metadata to clear.
     }
 
     void DidGenerateCacheableMetadataInCacheStorage(
         const ::blink::KURL& url, ::base::Time expected_response_time, ::mojo_base::BigBuffer data, const WTF::String& cache_storage_cache_name) override
     {
-        OutputDebugStringA("CodeCacheHostImpl::DidGenerateCacheableMetadataInCacheStorage fail\n");
-        DebugBreak();
+        // This embedder has no CacheStorage service. Reject this connection
+        // rather than claiming to update a CacheStorage response's side data.
+        m_receiver.ResetWithReason(1, "CacheStorage is not available");
+        delete this;
     }
+private:
+    mojo::Receiver<blink::mojom::blink::CodeCacheHost> m_receiver;
 };
+
+void bindCodeCacheHost(mojo::ScopedMessagePipeHandle pipe)
+{
+    new CodeCacheHostImpl(std::move(pipe));
+}
 
 class ReportingServiceProxyImpl : public ::blink::mojom::blink::ReportingServiceProxy {
 public:
@@ -96,7 +103,7 @@ public:
     }
 
 private:
-    void GetInterface(::mojo::GenericPendingReceiver receiver) override // ≤ŒøºWebLocalFrameClientImpl::GetInterface
+    void GetInterface(::mojo::GenericPendingReceiver receiver) override // ÂèÇËÄÉWebLocalFrameClientImpl::GetInterface
     {
         std::string output("DedicatedWorkerHostBrowserInterfaceBroker::GetInterface: ");
         std::string name = receiver.interface_name().has_value() ? receiver.interface_name().value() : "no-name";
@@ -105,16 +112,13 @@ private:
         OutputDebugStringA(output.c_str());
 
         if ("blink.mojom.CodeCacheHost" == name) {
-            createAndBindBrokerProxy<::blink::mojom::blink::CodeCacheHost, CodeCacheHostImpl>(receiver.PassPipe());
+            bindCodeCacheHost(receiver.PassPipe());
         } else if ("blink.mojom.ReportingServiceProxy" == name) {
             createAndBindBrokerProxy<::blink::mojom::blink::ReportingServiceProxy, ReportingServiceProxyImpl>(receiver.PassPipe());
         } else if ("blink.mojom.BlobURLStore" == name) {
             createAndBindInterface<::blink::mojom::blink::BlobURLStore, BlobURLStoreImpl>(receiver.PassPipe(), (m_origin));
-        } else if ("blink.mojom.SharedWorkerConnector" == name) {
-            //createAndBindInterface<::blink::mojom::blink::SharedWorkerConnector, SharedWorkerConnectorImpl>(std::move(receiver.PassPipe()), m_origin);
-            DebugBreak();
-        } else
-            DebugBreak();
+        }
+        // Unimplemented interfaces close their pending pipe on return.
     }
 
     std::string m_origin;
@@ -217,19 +221,7 @@ scoped_refptr<blink::WebWorkerFetchContext> WebDedicatedWorkerHostFactoryClientI
     blink::WebWorkerFetchContext* webWorkerFetchContext, 
     scoped_refptr<base::SingleThreadTaskRunner> taskRunner)
 {
-//     scoped_refptr<blink::WebDedicatedOrSharedWorkerFetchContext> cloned_web_dedicated_or_shared_worker_fetch_context;
-// 
-//     cloned_web_dedicated_or_shared_worker_fetch_context =
-//         static_cast<blink::WebDedicatedOrSharedWorkerFetchContext*>(webWorkerFetchContext)
-//         ->CloneForNestedWorker(
-//             service_worker_provider_context_.get(),
-//             subresource_loader_factory_bundle_->Clone(),
-//             subresource_loader_factory_bundle_->Clone(),
-//             std::move(pending_subresource_loader_updater_),
-//             std::move(taskRunner));
-//     return cloned_web_dedicated_or_shared_worker_fetch_context;
-    DebugBreak();
-    return nullptr;
+    return static_cast<WebWorkerFetchContextImpl*>(webWorkerFetchContext)->Clone();
 }
 
 }

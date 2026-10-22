@@ -87,38 +87,36 @@ void DirectoryPickerOptions::setId(String&& value)
 
 void DirectoryPickerOptions::Trace(Visitor* visitor) const
 {
-    *(int*)1 = 1;
-//     TraceIfNeeded<String>::Trace(visitor, member_id_);
-//     TraceIfNeeded<V8FileSystemPermissionMode>::Trace(visitor, member_mode_);
-//     TraceIfNeeded<Member<V8UnionFileSystemHandleOrWellKnownDirectory>>::Trace(visitor, member_start_in_);
-//     bindings::InputDictionaryBase::Trace(visitor);
+    TraceIfNeeded<String>::Trace(visitor, member_id_);
+    TraceIfNeeded<V8FileSystemPermissionMode>::Trace(visitor, member_mode_);
+    TraceIfNeeded<Member<V8UnionFileSystemHandleOrWellKnownDirectory>>::Trace(visitor, member_start_in_);
+    bindings::InputDictionaryBase::Trace(visitor);
 }
 
 void DirectoryPickerOptions::FillMembersFromV8Object(v8::Isolate* isolate, v8::Local<v8::Object> v8_dictionary, ExceptionState& exception_state)
 {
-    *(int*)1 = 1;
-//     TryRethrowScope rethrow_scope(isolate, exception_state);
-//     const char* const class_like_name = "DirectoryPickerOptions";
-//     DictionaryConversionContext dictionary_from_v8_context(isolate, class_like_name);
-//     dictionary_from_v8_context.SetCurrentPropertyName("id");
-//     constexpr bool is_optional = false;
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     const auto& v8_own_member_names = GetV8OwnMemberNames(isolate);
-//     if (!bindings::GetDictionaryMemberFromV8Object<IDLString, is_optional>(
-//             isolate, current_context, v8_dictionary, v8_own_member_names[0].Get(isolate), has_id_, member_id_, class_like_name, exception_state)) {
-//         return;
-//     }
-//     dictionary_from_v8_context.SetCurrentPropertyName("mode");
-//     bool fallback_presence_var;
-//     if (!bindings::GetDictionaryMemberFromV8Object<V8FileSystemPermissionMode, is_optional>(isolate, current_context, v8_dictionary,
-//             v8_own_member_names[1].Get(isolate), fallback_presence_var, member_mode_, class_like_name, exception_state)) {
-//         return;
-//     }
-//     dictionary_from_v8_context.SetCurrentPropertyName("startIn");
-//     if (!bindings::GetDictionaryMemberFromV8Object<V8UnionFileSystemHandleOrWellKnownDirectory, is_optional>(
-//             isolate, current_context, v8_dictionary, v8_own_member_names[2].Get(isolate), has_start_in_, member_start_in_, class_like_name, exception_state)) {
-//         return;
-//     }
+    TryRethrowScope rethrow_scope(isolate, exception_state);
+    const char* const class_like_name = "DirectoryPickerOptions";
+    DictionaryConversionContext dictionary_from_v8_context(isolate, class_like_name);
+    dictionary_from_v8_context.SetCurrentPropertyName("id");
+    constexpr bool is_optional = false;
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    const auto& v8_own_member_names = GetV8OwnMemberNames(isolate);
+    if (!bindings::GetDictionaryMemberFromV8Object<IDLString, is_optional>(
+            isolate, current_context, v8_dictionary, v8_own_member_names[0].Get(isolate), has_id_, member_id_, class_like_name, exception_state)) {
+        return;
+    }
+    dictionary_from_v8_context.SetCurrentPropertyName("mode");
+    bool fallback_presence_var;
+    if (!bindings::GetDictionaryMemberFromV8Object<V8FileSystemPermissionMode, is_optional>(isolate, current_context, v8_dictionary,
+            v8_own_member_names[1].Get(isolate), fallback_presence_var, member_mode_, class_like_name, exception_state)) {
+        return;
+    }
+    dictionary_from_v8_context.SetCurrentPropertyName("startIn");
+    if (!bindings::GetDictionaryMemberFromV8Object<V8UnionFileSystemHandleOrWellKnownDirectory, is_optional>(
+            isolate, current_context, v8_dictionary, v8_own_member_names[2].Get(isolate), has_start_in_, member_start_in_, class_like_name, exception_state)) {
+        return;
+    }
 }
 
 const base::span<const v8::Eternal<v8::Name>> DirectoryPickerOptions::GetV8OwnMemberNames(v8::Isolate* isolate)

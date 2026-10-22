@@ -21,12 +21,11 @@
 #include "base/strings/strcat.h"
 #include "base/time/time.h"
 #include "base/types/optional_ref.h"
-//#include "crypto/sha2.h"
+#include "third_party/openssl/openssl/include/openssl/sha.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/interest_group/ad_display_size_utils.h"
 #include "third_party/blink/public/mojom/interest_group/interest_group_types.mojom.h"
-//#include "third_party/boringssl/src/include/openssl/curve25519.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 #include "url/url_constants.h"
@@ -34,6 +33,16 @@
 namespace blink {
 
 namespace {
+
+std::string SHA256HashString(std::string_view input)
+{
+    std::string digest(SHA256_DIGEST_LENGTH, '\0');
+    SHA256_CTX context;
+    SHA256_Init(&context);
+    SHA256_Update(&context, input.data(), input.size());
+    SHA256_Final(reinterpret_cast<unsigned char*>(digest.data()), &context);
+    return digest;
+}
 
 constexpr char kKAnonKeyForAdNameReportingSelectedBuyerAndSellerIdPrefix[] = "SelectedBuyerAndSellerReportId\n";
 constexpr char kKAnonKeyForAdNameReportingBuyerAndSellerIdPrefix[] = "BuyerAndSellerReportId\n";
@@ -359,18 +368,10 @@ bool InterestGroup::IsValid() const
         }
     }
 
-    *(int*)1 = 1;
-//     if (additional_bid_key) {
-//         if (additional_bid_key->size() != ED25519_PUBLIC_KEY_LEN) {
-//             return false;
-//         }
-//     }
-// 
-//     // InterestGroups used for negative targeting may not also have ads.
-//     // They are also not updatable.
-//     if (additional_bid_key && (ads || update_url)) {
-//         return false;
-//     }
+    // Negative-targeting groups cannot contain ads or be updated.
+    if (additional_bid_key && (ads || update_url)) {
+        return false;
+    }
 
     if (aggregation_coordinator_origin && aggregation_coordinator_origin->scheme() != url::kHttpsScheme) {
         return false;
@@ -454,10 +455,9 @@ size_t InterestGroup::EstimateSize() const
         }
     }
     size += sizeof(decltype(auction_server_request_flags)::EnumType);
-//     if (additional_bid_key) {
-//         size += ED25519_PUBLIC_KEY_LEN;
-//     }
-    *(int*)1 = 1;
+    if (additional_bid_key) {
+        size += additional_bid_key->size();
+    }
 
     if (aggregation_coordinator_origin) {
         size += aggregation_coordinator_origin->Serialize().size();
@@ -493,16 +493,12 @@ std::string DEPRECATED_KAnonKeyForAdBid(const InterestGroup& group, const std::s
 
 std::string HashedKAnonKeyForAdBid(const url::Origin& owner, const GURL& bidding_url, const std::string& ad_url_from_gurl_spec)
 {
-    *(int*)1 = 1;
-    return std::string();
-    //return crypto::SHA256HashString(DEPRECATED_KAnonKeyForAdBid(owner, bidding_url, ad_url_from_gurl_spec));
+    return SHA256HashString(DEPRECATED_KAnonKeyForAdBid(owner, bidding_url, ad_url_from_gurl_spec));
 }
 
 std::string HashedKAnonKeyForAdBid(const InterestGroup& group, const std::string& ad_url_from_gurl_spec)
 {
-    *(int*)1 = 1;
-    return std::string();
-    //return crypto::SHA256HashString(DEPRECATED_KAnonKeyForAdBid(group, ad_url_from_gurl_spec));
+    return SHA256HashString(DEPRECATED_KAnonKeyForAdBid(group, ad_url_from_gurl_spec));
 }
 
 std::string HashedKAnonKeyForAdBid(const InterestGroup& group, const blink::AdDescriptor& ad_descriptor)
@@ -517,16 +513,12 @@ std::string DEPRECATED_KAnonKeyForAdComponentBid(const std::string& ad_url_from_
 
 std::string HashedKAnonKeyForAdComponentBid(const std::string& ad_url_from_gurl_spec)
 {
-    *(int*)1 = 1;
-    return std::string();
-    //return crypto::SHA256HashString(DEPRECATED_KAnonKeyForAdComponentBid(ad_url_from_gurl_spec));
+    return SHA256HashString(DEPRECATED_KAnonKeyForAdComponentBid(ad_url_from_gurl_spec));
 }
 
 std::string HashedKAnonKeyForAdComponentBid(const GURL& ad_url)
 {
-    *(int*)1 = 1;
-    return std::string();
-    //return crypto::SHA256HashString(DEPRECATED_KAnonKeyForAdComponentBid(ad_url.spec()));
+    return SHA256HashString(DEPRECATED_KAnonKeyForAdComponentBid(ad_url.spec()));
 }
 
 std::string HashedKAnonKeyForAdComponentBid(const blink::AdDescriptor& ad_descriptor)
@@ -547,18 +539,14 @@ std::string DEPRECATED_KAnonKeyForAdNameReporting(
 std::string HashedKAnonKeyForAdNameReporting(
     const blink::InterestGroup& group, const blink::InterestGroup::Ad& ad, base::optional_ref<const std::string> selected_buyer_and_seller_reporting_id)
 {
-    *(int*)1 = 1;
-    return std::string();
-    //return crypto::SHA256HashString(DEPRECATED_KAnonKeyForAdNameReporting(group, ad, selected_buyer_and_seller_reporting_id));
+    return SHA256HashString(DEPRECATED_KAnonKeyForAdNameReporting(group, ad, selected_buyer_and_seller_reporting_id));
 }
 
 std::string HashedKAnonKeyForAdNameReportingWithoutInterestGroup(const url::Origin& interest_group_owner, const std::string& interest_group_name,
     const GURL& interest_group_bidding_url, const std::string& ad_render_url, base::optional_ref<const std::string> buyer_reporting_id,
     base::optional_ref<const std::string> buyer_and_seller_reporting_id, base::optional_ref<const std::string> selected_buyer_and_seller_reporting_id)
 {
-    *(int*)1 = 1;
-    return std::string();
-//     return crypto::SHA256HashString(InternalPlainTextKAnonKeyForAdNameReporting(interest_group_owner, interest_group_name, interest_group_bidding_url,
-//         ad_render_url, buyer_reporting_id, buyer_and_seller_reporting_id, selected_buyer_and_seller_reporting_id));
+    return SHA256HashString(InternalPlainTextKAnonKeyForAdNameReporting(interest_group_owner, interest_group_name, interest_group_bidding_url,
+        ad_render_url, buyer_reporting_id, buyer_and_seller_reporting_id, selected_buyer_and_seller_reporting_id));
 }
 } // namespace blink

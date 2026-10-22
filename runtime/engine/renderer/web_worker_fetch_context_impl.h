@@ -17,6 +17,7 @@ public:
         int64_t mbwebviewId, uint64_t frameId, uint64_t parentFrameId,
         bool isMainFrame);
     ~WebWorkerFetchContextImpl() override;
+    scoped_refptr<WebWorkerFetchContextImpl> Clone() const;
 
     void SetTerminateSyncLoadEvent(base::WaitableEvent*) override;
 
@@ -49,6 +50,7 @@ private:
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    bool m_isOfflineMode = false;
     std::unique_ptr<mini_electron::LoaderFactoryImpl> m_loaderFactoryImpl;
 };
 

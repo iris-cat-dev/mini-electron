@@ -298,7 +298,7 @@ template <typename ReturnType, typename... ArgTypes> struct Dispatcher<ReturnTyp
 };
 
 template <typename ClassType, typename Type> struct DispatcherAccessor {
-    static void DispatchToCallbackGetter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info)
+    static void DispatchToCallbackGetter(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& info)
     {
         v8::Isolate* isolate = info.GetIsolate();
 
@@ -321,7 +321,7 @@ template <typename ClassType, typename Type> struct DispatcherAccessor {
         info.GetReturnValue().Set(v8_result_value);
     }
 
-    static void DispatchToCallbackSetter(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info)
+    static void DispatchToCallbackSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info)
     {
         v8::Isolate* isolate = info.GetIsolate();
 
@@ -334,11 +334,11 @@ template <typename ClassType, typename Type> struct DispatcherAccessor {
         HolderGetSetT* holder = static_cast<HolderGetSetT*>(holder_base);
 
         ClassType obj;
-        if (ConvertFromV8(isolate, info.Holder(), &obj))
+        if (!ConvertFromV8(isolate, info.Holder(), &obj))
             return;
 
         Type arg;
-        if (ConvertFromV8(isolate, value, &arg))
+        if (!ConvertFromV8(isolate, value, &arg))
             return;
 
         holder->set_callback_.Run(obj, arg);
@@ -373,9 +373,8 @@ void SetMemberGetSetAccessor(v8::Isolate* isolate, v8::Local<v8::ObjectTemplate>
     typedef internal::CallbackHolderGetSet<ClassType, Type> HolderGetSetT;
     HolderGetSetT* holder = new HolderGetSetT(isolate, get_callback, set_callback);
 
-    *(int*)1 = 1;
-//     obj_template->SetAccessor(name, &internal::DispatcherAccessor<ClassType, Type>::DispatchToCallbackGetter,
-//         &internal::DispatcherAccessor<ClassType, Type>::DispatchToCallbackSetter, ConvertToV8<v8::Local<v8::External>>(isolate, holder->GetHandle(isolate)));
+    obj_template->SetNativeDataProperty(name, &internal::DispatcherAccessor<ClassType, Type>::DispatchToCallbackGetter,
+        &internal::DispatcherAccessor<ClassType, Type>::DispatchToCallbackSetter, holder->GetHandle(isolate));
 }
 
 // CreateFunctionHandler installs a CallAsFunction handler on the given

@@ -3,7 +3,10 @@
 #define MINI_ELECTRON_ENGINE_BINDINGS_CALLBACK_REGISTRY_H_
 
 #include <functional>
+#include <string>
+#include <vector>
 #include "runtime/engine/public/engine_api.h"
+#include "base/values.h"
 
 namespace blink {
 struct UntrustworthyContextMenuParams;
@@ -191,6 +194,13 @@ public:
     // Blink invokes this only after the DOM contextmenu default action survives.
     std::function<void(mini_electron_web_frame_handle,
         const blink::UntrustworthyContextMenuParams&)> m_contextMenuCallback;
+
+    // Requests are sent from Blink; replies return on the Blink sequence.
+    std::function<void(mini_electron_web_frame_handle, base::Value::Dict,
+        std::function<void(bool)>)> m_nativeWindowCommand;
+    std::function<void(mini_electron_web_frame_handle, bool)> m_loadingStateChanged;
+    std::function<bool(bool)> m_beforeUnloadConfirm;
+    std::function<void(std::vector<std::string>)> m_faviconURLsChanged;
 
 
     mini_electron_loading_finish_callback m_LoadingFinishCallback { nullptr };

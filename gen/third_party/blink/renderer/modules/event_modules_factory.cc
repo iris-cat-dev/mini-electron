@@ -11,8 +11,6 @@
 
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
-#include "third_party/blink/renderer/modules/device_orientation/device_motion_event.h"
-#include "third_party/blink/renderer/modules/device_orientation/device_orientation_event.h"
 #include "third_party/blink/renderer/modules/indexeddb/idb_version_change_event.h"
 #include "third_party/blink/renderer/modules/storage/storage_event.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_context_event.h"
@@ -28,20 +26,9 @@ Event* EventModulesFactory::Create(ScriptState* script_state, ExecutionContext* 
         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventCloseEvent);
         return CloseEvent::Create();
     }
-    if (EqualIgnoringASCIICase(type, "DeviceMotionEvent")) {
-//         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventDeviceMotionEvent);
-//         return DeviceMotionEvent::Create();
-        *(int*)1 = 1;
-    }
-    if (EqualIgnoringASCIICase(type, "DeviceOrientationEvent")) {
-//         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventDeviceOrientationEvent);
-//         return DeviceOrientationEvent::Create();
-        *(int*)1 = 1;
-    }
     if (EqualIgnoringASCIICase(type, "IDBVersionChangeEvent")) {
-//         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventIDBVersionChangeEvent);
-//         return IDBVersionChangeEvent::Create();
-        *(int*)1 = 1;
+        UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventIDBVersionChangeEvent);
+        return IDBVersionChangeEvent::Create();
     }
     if (EqualIgnoringASCIICase(type, "StorageEvent")) {
         UseCounter::Count(executionContext, WebFeature::kDocumentCreateEventStorageEvent);

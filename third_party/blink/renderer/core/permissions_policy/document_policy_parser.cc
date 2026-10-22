@@ -64,72 +64,49 @@ struct ParsedFeature {
     std::optional<std::string> endpoint_group;
 };
 
-// std::optional<ParsedFeature> ParseFeature(
-//     const net::structured_headers::DictionaryMember& directive,
-//     const DocumentPolicyNameFeatureMap& name_feature_map,
-//     const DocumentPolicyFeatureInfoMap& feature_info_map,
-//     PolicyParserMessageBuffer& logger) {
-//   ParsedFeature parsed_feature;
-//
-//   const std::string& feature_name = directive.first;
-//   if (directive.second.member_is_inner_list) {
-//     logger.Warn(
-//         String::Format("Parameter for feature %s should be single item, but "
-//                        "get list of items(length=%d).",
-//                        feature_name.c_str(),
-//                        static_cast<uint32_t>(directive.second.member.size())));
-//     return std::nullopt;
-//   }
-//
-//   // Parse feature_name string to DocumentPolicyFeature.
-//   auto feature_iter = name_feature_map.find(feature_name);
-//   if (feature_iter != name_feature_map.end()) {
-//     parsed_feature.feature = feature_iter->second;
-//   } else {
-//     logger.Warn(String::Format("Unrecognized document policy feature name %s.",
-//                                feature_name.c_str()));
-//     return std::nullopt;
-//   }
-//
-//   auto expected_policy_value_type =
-//       feature_info_map.at(parsed_feature.feature).default_value.Type();
-//   const net::structured_headers::Item& item =
-//       directive.second.member.front().item;
-//   std::optional<PolicyValue> policy_value =
-//       ItemToPolicyValue(item, expected_policy_value_type);
-//   if (!policy_value) {
-//     logger.Warn(String::Format(
-//         "Parameter for feature %s should be %s, not %s.", feature_name.c_str(),
-//         PolicyValueTypeToString(expected_policy_value_type),
-//         net::structured_headers::ItemTypeToString(item.Type()).data()));
-//     return std::nullopt;
-//   }
-//   parsed_feature.policy_value = *policy_value;
-//
-//   for (const auto& param : directive.second.params) {
-//     const std::string& param_name = param.first;
-//     // Handle "report-to" param. "report-to" is an optional param for
-//     // Document-Policy header that specifies the endpoint group that the policy
-//     // should send report to. If left unspecified, no report will be send upon
-//     // policy violation.
-//     if (param_name == kReportTo) {
-//       parsed_feature.endpoint_group = ItemToString(param.second);
-//       if (!parsed_feature.endpoint_group) {
-//         logger.Warn(String::Format(
-//             "\"report-to\" parameter should be a token in feature %s.",
-//             feature_name.c_str()));
-//         return std::nullopt;
-//       }
-//     } else {
-//       // Unrecognized param.
-//       logger.Warn(
-//           String::Format("Unrecognized parameter name %s for feature %s.",
-//                          param_name.c_str(), feature_name.c_str()));
-//     }
-//   }
-//
-//   return parsed_feature;
-// }
+std::optional<ParsedFeature> ParseFeature(const net::structured_headers::DictionaryMember& directive,
+    const DocumentPolicyNameFeatureMap& name_feature_map, const DocumentPolicyFeatureInfoMap& feature_info_map, PolicyParserMessageBuffer& logger)
+{
+    ParsedFeature parsed_feature;
+    const std::string& feature_name = directive.first;
+    if (directive.second.member_is_inner_list) {
+        logger.Warn(String::Format("Parameter for feature %s should be single item, but get list of items(length=%d).",
+            feature_name.c_str(), static_cast<uint32_t>(directive.second.member.size())));
+        return std::nullopt;
+    }
+
+    auto feature_iter = name_feature_map.find(feature_name);
+    if (feature_iter != name_feature_map.end()) {
+        parsed_feature.feature = feature_iter->second;
+    } else {
+        logger.Warn(String::Format("Unrecognized document policy feature name %s.", feature_name.c_str()));
+        return std::nullopt;
+    }
+
+    auto expected_policy_value_type = feature_info_map.at(parsed_feature.feature).default_value.Type();
+    const net::structured_headers::Item& item = directive.second.member.front().item;
+    std::optional<PolicyValue> policy_value = ItemToPolicyValue(item, expected_policy_value_type);
+    if (!policy_value) {
+        logger.Warn(String::Format("Parameter for feature %s should be %s, not %s.", feature_name.c_str(),
+            PolicyValueTypeToString(expected_policy_value_type), net::structured_headers::ItemTypeToString(item.Type()).data()));
+        return std::nullopt;
+    }
+    parsed_feature.policy_value = *policy_value;
+
+    for (const auto& param : directive.second.params) {
+        const std::string& param_name = param.first;
+        if (param_name == kReportTo) {
+            parsed_feature.endpoint_group = ItemToString(param.second);
+            if (!parsed_feature.endpoint_group) {
+                logger.Warn(String::Format("\"report-to\" parameter should be a token in feature %s.", feature_name.c_str()));
+                return std::nullopt;
+            }
+        } else {
+            logger.Warn(String::Format("Unrecognized parameter name %s for feature %s.", param_name.c_str(), feature_name.c_str()));
+        }
+    }
+    return parsed_feature;
+}
 
 // Apply |default_endpoint| to given |parsed_policy|.
 void ApplyDefaultEndpoint(DocumentPolicy::ParsedDocumentPolicy& parsed_policy, const std::string& default_endpoint)
@@ -176,52 +153,32 @@ std::optional<DocumentPolicy::ParsedDocumentPolicy> DocumentPolicyParser::ParseI
     const DocumentPolicyNameFeatureMap& name_feature_map, const DocumentPolicyFeatureInfoMap& feature_info_map,
     const DocumentPolicyFeatureSet& available_features, PolicyParserMessageBuffer& logger)
 {
-    *(int*)1 = 1;
-    return std::nullopt;
+    auto root = net::structured_headers::ParseDictionary(policy_string.Ascii());
+    if (!root) {
+        logger.Error("Parse of document policy failed because of errors reported by structured header parser.");
+        return std::nullopt;
+    }
 
-    //   auto root = net::structured_headers::ParseDictionary(policy_string.Ascii());
-    //   if (!root) {
-    //     logger.Error(
-    //         "Parse of document policy failed because of errors reported by "
-    //         "structured header parser.");
-    //     return std::nullopt;
-    //   }
-    //
-    //   DocumentPolicy::ParsedDocumentPolicy parse_result;
-    //   std::string default_endpoint = "";
-    //   for (const net::structured_headers::DictionaryMember& directive :
-    //        root.value()) {
-    //     std::optional<ParsedFeature> parsed_feature_option =
-    //         ParseFeature(directive, name_feature_map, feature_info_map, logger);
-    //     // If a feature fails parsing, ignore the entry.
-    //     if (!parsed_feature_option)
-    //       continue;
-    //
-    //     ParsedFeature parsed_feature = *parsed_feature_option;
-    //
-    //     if (parsed_feature.feature ==
-    //         mojom::blink::DocumentPolicyFeature::kDefault) {
-    //       if (parsed_feature.endpoint_group)
-    //         default_endpoint = *parsed_feature.endpoint_group;
-    //       continue;
-    //     }
-    //
-    //     // If feature is not available, i.e. not enabled, ignore the entry.
-    //     if (available_features.find(parsed_feature.feature) ==
-    //         available_features.end())
-    //       continue;
-    //
-    //     parse_result.feature_state.emplace(parsed_feature.feature,
-    //                                        std::move(parsed_feature.policy_value));
-    //     if (parsed_feature.endpoint_group) {
-    //       parse_result.endpoint_map.emplace(parsed_feature.feature,
-    //                                         *parsed_feature.endpoint_group);
-    //     }
-    //   }
-    //
-    //   ApplyDefaultEndpoint(parse_result, default_endpoint);
-    //
-    //   return parse_result;
+    DocumentPolicy::ParsedDocumentPolicy parse_result;
+    std::string default_endpoint;
+    for (const net::structured_headers::DictionaryMember& directive : root.value()) {
+        std::optional<ParsedFeature> parsed_feature_option = ParseFeature(directive, name_feature_map, feature_info_map, logger);
+        if (!parsed_feature_option)
+            continue;
+        ParsedFeature& parsed_feature = *parsed_feature_option;
+        if (parsed_feature.feature == mojom::blink::DocumentPolicyFeature::kDefault) {
+            if (parsed_feature.endpoint_group)
+                default_endpoint = *parsed_feature.endpoint_group;
+            continue;
+        }
+        if (available_features.find(parsed_feature.feature) == available_features.end())
+            continue;
+        parse_result.feature_state.emplace(parsed_feature.feature, std::move(parsed_feature.policy_value));
+        if (parsed_feature.endpoint_group)
+            parse_result.endpoint_map.emplace(parsed_feature.feature, *parsed_feature.endpoint_group);
+    }
+    ApplyDefaultEndpoint(parse_result, default_endpoint);
+    return parse_result;
 }
 
 } // namespace blink

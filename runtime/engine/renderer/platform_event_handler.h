@@ -96,7 +96,10 @@ public:
     void RequestMouseLock(
         bool from_user_gesture, bool unadjusted_movement, blink::mojom::blink::WidgetInputHandlerHost::RequestMouseLockCallback callback) override
     {
-        printFuncName(__FUNCTION__, false, true);
+        // No native pointer-lock controller is installed. Complete the
+        // permission request instead of trapping or leaving Blink waiting.
+        std::move(callback).Run(blink::mojom::blink::PointerLockResult::kPermissionDenied,
+            mojo::NullRemote());
     }
 
     void SetAutoscrollSelectionActiveInMainFrame(bool autoscroll_selection) override {}

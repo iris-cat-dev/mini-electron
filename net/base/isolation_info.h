@@ -94,10 +94,12 @@ public:
     // IsolationInfo already represents a unique partition.
     static IsolationInfo CreateTransientWithNonce(const base::UnguessableToken& nonce);
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Creates an IsolationInfo from the serialized contents. Returns a nullopt
     // if deserialization fails or if data is inconsistent.
     static std::optional<IsolationInfo> Deserialize(const std::string& serialized);
 
+#endif
     // Creates an IsolationInfo with the provided parameters. If the parameters
     // are inconsistent, DCHECKs. In particular:
     // * If |request_type| is kMainFrame, |top_frame_origin| must equal
@@ -189,10 +191,12 @@ public:
 
     bool IsEqualForTesting(const IsolationInfo& other) const;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Serialize the `IsolationInfo` into a string. Fails if transient, returning
     // an empty string.
     std::string Serialize() const;
 
+#endif
     std::string DebugString() const;
 
 private:

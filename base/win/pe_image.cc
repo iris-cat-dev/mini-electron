@@ -432,56 +432,35 @@ bool PEImage::EnumAllImports(EnumImportsFunction callback, PVOID cookie, LPCSTR 
 
 bool PEImage::EnumDelayImportChunks(EnumDelayImportChunksFunction callback, PVOID cookie, LPCSTR target_module_name) const
 {
-    *(int*)1 = 1;
-//     PVOID directory = GetImageDirectoryEntryAddr(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
-//     DWORD size = GetImageDirectoryEntrySize(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
-// 
-//     if (!directory || !size)
-//         return true;
-// 
-//     PImgDelayDescr delay_descriptor = reinterpret_cast<PImgDelayDescr>(directory);
-//     for (; delay_descriptor->rvaHmod; delay_descriptor++) {
-//         PIMAGE_THUNK_DATA name_table;
-//         PIMAGE_THUNK_DATA iat;
-//         LPCSTR module_name;
-// 
-//         // check if VC7-style imports, using RVAs instead of
-//         // VC6-style addresses.
-//         bool rvas = (delay_descriptor->grAttrs & dlattrRva) != 0;
-// 
-//         if (rvas) {
-//             module_name = reinterpret_cast<LPCSTR>(RVAToAddr(delay_descriptor->rvaDLLName));
-//             name_table = reinterpret_cast<PIMAGE_THUNK_DATA>(RVAToAddr(delay_descriptor->rvaINT));
-//             iat = reinterpret_cast<PIMAGE_THUNK_DATA>(RVAToAddr(delay_descriptor->rvaIAT));
-//         } else {
-//             // Values in IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT are 32-bit, even on 64-bit
-//             // platforms. See section 4.8 of PECOFF image spec rev 8.3.
-//             module_name = reinterpret_cast<LPCSTR>(static_cast<uintptr_t>(delay_descriptor->rvaDLLName));
-//             name_table = reinterpret_cast<PIMAGE_THUNK_DATA>(static_cast<uintptr_t>(delay_descriptor->rvaINT));
-//             iat = reinterpret_cast<PIMAGE_THUNK_DATA>(static_cast<uintptr_t>(delay_descriptor->rvaIAT));
-//         }
-// 
-//         if (target_module_name == nullptr || (lstrcmpiA(module_name, target_module_name) == 0)) {
-//             if (target_module_name) {
-//                 // Ensure all imports are properly loaded for the target module so that
-//                 // the callback is operating on a fully-realized set of imports.
-//                 // This call only loads the imports for the module where this code is
-//                 // executing, so it is only helpful or meaningful to do this if the
-//                 // current module is the module whose IAT we are enumerating.
-//                 // Use the module_name as retrieved from the IAT because this method
-//                 // is case sensitive.
-//                 if (module_ == CURRENT_MODULE() && !LDR_IS_RESOURCE(module_)) {
-//                     static base::NoDestructor<std::set<std::string>> loaded_dlls;
-//                     // pair.second is true if this is a new element
-//                     if (loaded_dlls.get()->emplace(module_name).second)
-//                         ::__HrLoadAllImportsForDll(module_name);
-//                 }
-//             }
-// 
-//             if (!callback(*this, delay_descriptor, module_name, name_table, iat, cookie))
-//                 return false;
-//         }
-//     }
+    PVOID directory = GetImageDirectoryEntryAddr(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
+    DWORD size = GetImageDirectoryEntrySize(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
+    if (!directory || !size)
+        return true;
+    PImgDelayDescr delay_descriptor = reinterpret_cast<PImgDelayDescr>(directory);
+    for (; delay_descriptor->rvaHmod; delay_descriptor++) {
+        PIMAGE_THUNK_DATA name_table;
+        PIMAGE_THUNK_DATA iat;
+        LPCSTR module_name;
+        const bool rvas = (delay_descriptor->grAttrs & dlattrRva) != 0;
+        if (rvas) {
+            module_name = reinterpret_cast<LPCSTR>(RVAToAddr(delay_descriptor->rvaDLLName));
+            name_table = reinterpret_cast<PIMAGE_THUNK_DATA>(RVAToAddr(delay_descriptor->rvaINT));
+            iat = reinterpret_cast<PIMAGE_THUNK_DATA>(RVAToAddr(delay_descriptor->rvaIAT));
+        } else {
+            module_name = reinterpret_cast<LPCSTR>(static_cast<uintptr_t>(delay_descriptor->rvaDLLName));
+            name_table = reinterpret_cast<PIMAGE_THUNK_DATA>(static_cast<uintptr_t>(delay_descriptor->rvaINT));
+            iat = reinterpret_cast<PIMAGE_THUNK_DATA>(static_cast<uintptr_t>(delay_descriptor->rvaIAT));
+        }
+        if (target_module_name == nullptr || lstrcmpiA(module_name, target_module_name) == 0) {
+            if (target_module_name && module_ == CURRENT_MODULE() && !LDR_IS_RESOURCE(module_)) {
+                static base::NoDestructor<std::set<std::string>> loaded_dlls;
+                if (loaded_dlls.get()->emplace(module_name).second)
+                    ::__HrLoadAllImportsForDll(module_name);
+            }
+            if (!callback(*this, delay_descriptor, module_name, name_table, iat, cookie))
+                return false;
+        }
+    }
 
     return true;
 }

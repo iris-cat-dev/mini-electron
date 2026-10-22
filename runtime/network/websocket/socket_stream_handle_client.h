@@ -37,7 +37,6 @@
 
 namespace blink {
 class KURL;
-class AuthenticationChallenge;
 }
 
 namespace mini_electron {
@@ -68,14 +67,6 @@ public:
     }
 
     virtual void didFailSocketStream(SocketStreamHandle*, const SocketStreamError&)
-    {
-    }
-
-    // No authentication for streams per se, but proxy may ask for credentials.
-    virtual void didReceiveAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&)
-    {
-    }
-    virtual void didCancelAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&)
     {
     }
 

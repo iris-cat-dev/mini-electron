@@ -8,7 +8,7 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
-//#include "third_party/re2/src/re2/re2.h"
+#include "third_party/blink/renderer/platform/bindings/script_regexp.h"
 
 namespace blink {
 
@@ -58,7 +58,7 @@ public:
     Technology Detect(const WTF::String url);
 
 private:
-    //RE2 precompiled_detection_regex__;
+    Member<ScriptRegexp> precompiled_detection_regex_;
     HashMap<WTF::String, Technology> url_to_technology_cache_;
 };
 

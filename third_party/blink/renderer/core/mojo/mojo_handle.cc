@@ -69,23 +69,31 @@ MojoWatcher* MojoHandle::watch(ScriptState* script_state, const MojoHandleSignal
 
 MojoResult MojoHandle::writeMessage(const V8BufferSource* buffer, const HeapVector<Member<MojoHandle>>& handles)
 {
-    Vector<mojo::ScopedHandle, kHandleVectorInlineCapacity> scoped_handles;
-    scoped_handles.reserve(handles.size());
-    bool has_invalid_handles = false;
-    for (auto& handle : handles) {
-        if (!handle->handle_.is_valid())
-            has_invalid_handles = true;
-        else
-            scoped_handles.emplace_back(std::move(handle->handle_));
-    }
-    if (has_invalid_handles)
-        return MOJO_RESULT_INVALID_ARGUMENT;
-
     base::span<const uint8_t> bytes = ByteSpanForBufferSource(*buffer);
-
-    auto message = mojo::Message(bytes, base::make_span(scoped_handles));
-    DCHECK(!message.IsNull());
-    return mojo::WriteMessageNew(mojo::MessagePipeHandle(handle_.get().value()), message.TakeMojoMessage(), MOJO_WRITE_MESSAGE_FLAG_NONE);
+    if (bytes.size() > UINT32_MAX || handles.size() > UINT32_MAX)
+        return MOJO_RESULT_RESOURCE_EXHAUSTED;
+    Vector<::MojoHandle, kHandleVectorInlineCapacity> raw_handles;
+    raw_handles.reserve(handles.size());
+    for (const auto& handle : handles) {
+        if (!handle->handle_.is_valid())
+            return MOJO_RESULT_INVALID_ARGUMENT;
+        raw_handles.push_back(handle->handle_.get().value());
+    }
+    mojo::ScopedMessageHandle message;
+    MojoResult result = mojo::CreateMessage(&message, MOJO_CREATE_MESSAGE_FLAG_NONE);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    const MojoAppendMessageDataOptions options = { sizeof(options), MOJO_APPEND_MESSAGE_DATA_FLAG_COMMIT_SIZE };
+    void* storage = nullptr;
+    result = MojoAppendMessageData(message->value(), static_cast<uint32_t>(bytes.size()),
+        raw_handles.data(), static_cast<uint32_t>(raw_handles.size()), &options, &storage, nullptr);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    for (auto& handle : handles)
+        std::ignore = handle->handle_.release();
+    if (!bytes.empty())
+        memcpy(storage, bytes.data(), bytes.size());
+    return mojo::WriteMessageNew(mojo::MessagePipeHandle(handle_.get().value()), std::move(message), MOJO_WRITE_MESSAGE_FLAG_NONE);
 }
 
 MojoReadMessageResult* MojoHandle::readMessage(const MojoReadMessageFlags* flags_dict)
@@ -216,32 +224,11 @@ MojoMapBufferResult* MojoHandle::mapBuffer(unsigned offset, unsigned num_bytes)
 {
     MojoMapBufferResult* result_dict = MojoMapBufferResult::Create();
 
-    // We need to extract the underlying shared memory region to map it as array
-    // buffer contents. However, as we don't know what kind of shared memory
-    // region is currently backing the buffer, we unwrap it to the underlying
-    // platform shared memory region. We also don't want to duplicate the region,
-    // and so need to perform a small dance here to first unwrap, and later
-    // re-wrap the MojoSharedBuffer to/from a //base shared memory region.
-    mojo::SharedBufferHandle buffer_handle(handle_.release().value());
-    auto region = mojo::UnwrapPlatformSharedMemoryRegion(mojo::ScopedSharedBufferHandle(buffer_handle));
-
-    if (region.IsValid()) {
-        ArrayBufferContents contents(region, offset, num_bytes);
-        if (contents.IsValid()) {
-            result_dict->setResult(MOJO_RESULT_OK);
-            result_dict->setBuffer(DOMArrayBuffer::Create(contents));
-        } else {
-            // Contents would be invalid if `MapAt()` failed.
-            result_dict->setResult(MOJO_RESULT_INVALID_ARGUMENT);
-        }
-    } else {
-        result_dict->setResult(MOJO_RESULT_UNKNOWN);
-    }
-
-    // 2nd part of the dance: we now need to wrap the shared memory region into a
-    // mojo handle again.
-    mojo::ScopedSharedBufferHandle mojo_buffer = mojo::WrapPlatformSharedMemoryRegion(std::move(region));
-    handle_.reset(mojo::Handle(mojo_buffer.release().value()));
+    // The lite transport has no platform shared-memory dispatcher. Do not
+    // unwrap (and consume) an unrelated pipe handle when this capability is
+    // unavailable.
+    void* mapping = nullptr;
+    result_dict->setResult(MojoMapBuffer(handle_.get().value(), offset, num_bytes, nullptr, &mapping));
 
     return result_dict;
 }

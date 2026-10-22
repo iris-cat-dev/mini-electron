@@ -15,7 +15,6 @@
 #include <string>
 #include <vector>
 
-#include "base/atomic_sequence_num.h"
 #include "base/containers/contains.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -25,10 +24,6 @@
 #include "base/memory/unsafe_shared_memory_region.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/ranges/algorithm.h"
-#include "base/strings/stringprintf.h"
-#include "base/task/single_thread_task_runner.h"
-#include "base/trace_event/memory_dump_manager.h"
-#include "base/trace_event/process_memory_dump.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "cc/base/math_util.h"
@@ -46,7 +41,6 @@
 #include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/shared_image_capabilities.h"
-#include "gpu/command_buffer/common/shared_image_trace_utils.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/ipc/client/client_shared_image_interface.h"
 #include "media/base/media_switches.h"
@@ -63,6 +57,15 @@
 #include "ui/gl/gl_enums.h"
 #include "ui/gl/trace_util.h"
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "base/atomic_sequence_num.h"
+#include "base/strings/stringprintf.h"
+#include "base/task/single_thread_task_runner.h"
+#include "base/trace_event/memory_dump_manager.h"
+#include "base/trace_event/process_memory_dump.h"
+#include "gpu/command_buffer/common/shared_image_trace_utils.h"
+#endif
+
 namespace media {
 namespace {
 
@@ -71,8 +74,10 @@ bool MediaSharedBitmapConversionEnabled()
     return base::FeatureList::IsEnabled(kMediaSharedBitmapToSharedImage);
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 // Generates process-unique IDs to use for tracing video resources.
 base::AtomicSequenceNumber g_next_video_resource_updater_id;
+#endif
 
 gfx::ProtectedVideoType ProtectedVideoTypeFromMetadata(const VideoFrameMetadata& metadata)
 {
@@ -658,17 +663,23 @@ VideoResourceUpdater::VideoResourceUpdater(viz::RasterContextProvider* context_p
     , use_stream_video_draw_quad_(use_stream_video_draw_quad)
     , use_gpu_memory_buffer_resources_(use_gpu_memory_buffer_resources)
     , max_resource_size_(max_resource_size)
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     , tracing_id_(g_next_video_resource_updater_id.GetNext())
+#endif
 {
     DCHECK(context_provider_ || shared_bitmap_reporter_ || shared_image_interface_);
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
         this, "media::VideoResourceUpdater", base::SingleThreadTaskRunner::GetCurrentDefault());
+#endif
 }
 
 VideoResourceUpdater::~VideoResourceUpdater()
 {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     base::trace_event::MemoryDumpManager::GetInstance()->UnregisterDumpProvider(this);
+#endif
 }
 
 void VideoResourceUpdater::ObtainFrameResource(scoped_refptr<VideoFrame> video_frame)
@@ -1389,6 +1400,7 @@ void VideoResourceUpdater::RecycleResource(uint32_t plane_resource_id, const gpu
     }
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 bool VideoResourceUpdater::OnMemoryDump(const base::trace_event::MemoryDumpArgs& args, base::trace_event::ProcessMemoryDump* pmd)
 {
     for (auto& resource : all_resources_) {
@@ -1417,6 +1429,7 @@ bool VideoResourceUpdater::OnMemoryDump(const base::trace_event::MemoryDumpArgs&
 
     return true;
 }
+#endif
 
 scoped_refptr<gpu::ClientSharedImageInterface> VideoResourceUpdater::shared_image_interface() const
 {

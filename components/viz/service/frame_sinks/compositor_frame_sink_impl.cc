@@ -275,7 +275,6 @@ void CompositorFrameSinkImpl::InitializeCompositorFrameSinkType(mojom::Composito
 
 void CompositorFrameSinkImpl::BindLayerContext(mojom::PendingLayerContextPtr context)
 {
-    *(int*)1 = 1;
     support_->BindLayerContext(*context);
 }
 

@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 #include "third_party/blink/public/mojom/notifications/notification_service.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/notifications/notification_service.mojom-shared.h" // IWYU pragma: export
@@ -192,145 +195,145 @@ public:
         = 0;
 };
 
-//class PLATFORM_EXPORT NonPersistentNotificationListenerProxy : public NonPersistentNotificationListener {
-//public:
-//    using InterfaceType = NonPersistentNotificationListener;
-//
-//    explicit NonPersistentNotificationListenerProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void OnShow() final;
-//
-//    void OnClick(OnClickCallback callback) final;
-//
-//    void OnClose(OnCloseCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class PLATFORM_EXPORT NonPersistentNotificationListenerProxy : public NonPersistentNotificationListener {
+public:
+    using InterfaceType = NonPersistentNotificationListener;
 
-//class PLATFORM_EXPORT NotificationServiceProxy : public NotificationService {
-//public:
-//    using InterfaceType = NotificationService;
-//
-//    explicit NotificationServiceProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    bool GetPermissionStatus(::blink::mojom::blink::PermissionStatus* out_status) final;
-//
-//    void GetPermissionStatus(GetPermissionStatusCallback callback) final;
-//
-//    void DisplayNonPersistentNotification(const WTF::String& token, ::blink::mojom::blink::NotificationDataPtr notification_data,
-//        ::blink::mojom::blink::NotificationResourcesPtr notification_resources, ::mojo::PendingRemote<NonPersistentNotificationListener> event_listener) final;
-//
-//    void CloseNonPersistentNotification(const WTF::String& token) final;
-//
-//    void DisplayPersistentNotification(int64_t service_worker_registration_id, ::blink::mojom::blink::NotificationDataPtr notification_data,
-//        ::blink::mojom::blink::NotificationResourcesPtr notification_resources, DisplayPersistentNotificationCallback callback) final;
-//
-//    void ClosePersistentNotification(const WTF::String& notification_id) final;
-//
-//    void GetNotifications(
-//        int64_t service_worker_registration_id, const WTF::String& filter_tag, bool include_triggered, GetNotificationsCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class PLATFORM_EXPORT NonPersistentNotificationListenerStubDispatch {
-//public:
-//    static bool Accept(NonPersistentNotificationListener* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(
-//        NonPersistentNotificationListener* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    explicit NonPersistentNotificationListenerProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NonPersistentNotificationListener>>
-//class NonPersistentNotificationListenerStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    NonPersistentNotificationListenerStub() = default;
-//    ~NonPersistentNotificationListenerStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NonPersistentNotificationListenerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NonPersistentNotificationListenerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT NotificationServiceStubDispatch {
-//public:
-//    static bool Accept(NotificationService* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(NotificationService* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void OnShow() final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NotificationService>>
-//class NotificationServiceStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    NotificationServiceStub() = default;
-//    ~NotificationServiceStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NotificationServiceStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NotificationServiceStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT NonPersistentNotificationListenerRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT NotificationServiceRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT NonPersistentNotificationListenerResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT NotificationServiceResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    void OnClick(OnClickCallback callback) final;
+
+    void OnClose(OnCloseCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class PLATFORM_EXPORT NotificationServiceProxy : public NotificationService {
+public:
+    using InterfaceType = NotificationService;
+
+    explicit NotificationServiceProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    bool GetPermissionStatus(::blink::mojom::blink::PermissionStatus* out_status) final;
+
+    void GetPermissionStatus(GetPermissionStatusCallback callback) final;
+
+    void DisplayNonPersistentNotification(const WTF::String& token, ::blink::mojom::blink::NotificationDataPtr notification_data,
+        ::blink::mojom::blink::NotificationResourcesPtr notification_resources, ::mojo::PendingRemote<NonPersistentNotificationListener> event_listener) final;
+
+    void CloseNonPersistentNotification(const WTF::String& token) final;
+
+    void DisplayPersistentNotification(int64_t service_worker_registration_id, ::blink::mojom::blink::NotificationDataPtr notification_data,
+        ::blink::mojom::blink::NotificationResourcesPtr notification_resources, DisplayPersistentNotificationCallback callback) final;
+
+    void ClosePersistentNotification(const WTF::String& notification_id) final;
+
+    void GetNotifications(
+        int64_t service_worker_registration_id, const WTF::String& filter_tag, bool include_triggered, GetNotificationsCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class PLATFORM_EXPORT NonPersistentNotificationListenerStubDispatch {
+public:
+    static bool Accept(NonPersistentNotificationListener* impl, mojo::Message* message);
+    static bool AcceptWithResponder(
+        NonPersistentNotificationListener* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NonPersistentNotificationListener>>
+class NonPersistentNotificationListenerStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    NonPersistentNotificationListenerStub() = default;
+    ~NonPersistentNotificationListenerStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NonPersistentNotificationListenerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NonPersistentNotificationListenerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT NotificationServiceStubDispatch {
+public:
+    static bool Accept(NotificationService* impl, mojo::Message* message);
+    static bool AcceptWithResponder(NotificationService* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NotificationService>>
+class NotificationServiceStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    NotificationServiceStub() = default;
+    ~NotificationServiceStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NotificationServiceStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NotificationServiceStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT NonPersistentNotificationListenerRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT NotificationServiceRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT NonPersistentNotificationListenerResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT NotificationServiceResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 } // blink::mojom::blink
 

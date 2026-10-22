@@ -1141,18 +1141,12 @@ SubresourceWebBundleList* ResourceFetcher::GetOrCreateSubresourceWebBundleList()
 
 ukm::MojoUkmRecorder* ResourceFetcher::UkmRecorder()
 {
-    //   if (ukm_recorder_) {
-    //     return ukm_recorder_.get();
-    //   }
-    //
-    //   mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
-    //   Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(
-    //       factory.BindNewPipeAndPassReceiver());
-    //   ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
-    //
-    //   return ukm_recorder_.get();
-    *(int*)1 = 1;
-    return nullptr;
+    if (ukm_recorder_)
+        return ukm_recorder_.get();
+    mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
+    Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(factory.BindNewPipeAndPassReceiver());
+    ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
+    return ukm_recorder_.get();
 }
 
 Resource* ResourceFetcher::RequestResource(FetchParameters& params, const ResourceFactory& factory, ResourceClient* client)

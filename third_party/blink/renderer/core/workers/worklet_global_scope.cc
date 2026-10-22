@@ -300,17 +300,14 @@ bool WorkletGlobalScope::IsIsolatedContext() const
 
 ukm::UkmRecorder* WorkletGlobalScope::UkmRecorder()
 {
-    *(int*)1 = 1;
-    return nullptr;
-    //   if (ukm_recorder_)
-    //     return ukm_recorder_.get();
-    //
-    //   mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
-    //   GetBrowserInterfaceBroker().GetInterface(
-    //       factory.BindNewPipeAndPassReceiver());
-    //   ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
-    //
-    //   return ukm_recorder_.get();
+    if (ukm_recorder_)
+        return ukm_recorder_.get();
+
+    mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
+    GetBrowserInterfaceBroker().GetInterface(factory.BindNewPipeAndPassReceiver());
+    ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
+
+    return ukm_recorder_.get();
 }
 
 ukm::SourceId WorkletGlobalScope::UkmSourceID() const

@@ -5,6 +5,8 @@
 #include "ui/gfx/font_util_win.h"
 
 #include <windows.h>
+#include <algorithm>
+#include <limits>
 
 #include <wrl/client.h>
 
@@ -24,30 +26,23 @@ struct TextParameters {
 
 TextParameters GetTextParameters()
 {
-    *(int*)1 = 1;
-    static TextParameters text_parameters;
-//     static std::once_flag flag;
-//     std::call_once(flag, [&] {
-//         text_parameters.contrast = FontUtilWin::TextGammaContrast();
-//         text_parameters.gamma = SK_GAMMA_EXPONENT;
-//         // Only apply values from `IDWriteRenderingParams` if the user has
-//         // the appropriate registry keys set. Otherwise, `IDWriteRenderingParams`
-//         // values will use DirectWrite's default values, which do no match Skia's
-//         // defaults.
-//         base::win::RegKey key = FontUtilWin::GetTextSettingsRegistryKey();
-//         if (key.Valid()) {
-//             Microsoft::WRL::ComPtr<IDWriteFactory> factory;
-//             gfx::win::CreateDWriteFactory(&factory);
-//             if (factory) {
-//                 // We only support the primary device currently.
-//                 Microsoft::WRL::ComPtr<IDWriteRenderingParams> text_params;
-//                 if (SUCCEEDED(factory->CreateRenderingParams(&text_params))) {
-//                     text_parameters.contrast = FontUtilWin::ClampContrast(text_params->GetEnhancedContrast());
-//                     text_parameters.gamma = FontUtilWin::ClampGamma(text_params->GetGamma());
-//                 }
-//             }
-//         }
-//     });
+    static const TextParameters text_parameters = [] {
+        TextParameters parameters { FontUtilWin::TextGammaContrast(), SK_GAMMA_EXPONENT };
+        // Only override Skia's defaults when the user has configured ClearType.
+        base::win::RegKey key = FontUtilWin::GetTextSettingsRegistryKey();
+        if (key.Valid()) {
+            Microsoft::WRL::ComPtr<IDWriteFactory> factory;
+            gfx::win::CreateDWriteFactory(&factory);
+            if (factory) {
+                Microsoft::WRL::ComPtr<IDWriteRenderingParams> text_params;
+                if (SUCCEEDED(factory->CreateRenderingParams(&text_params))) {
+                    parameters.contrast = FontUtilWin::ClampContrast(text_params->GetEnhancedContrast());
+                    parameters.gamma = FontUtilWin::ClampGamma(text_params->GetGamma());
+                }
+            }
+        }
+        return parameters;
+    }();
     return text_parameters;
 }
 } // namespace

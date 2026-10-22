@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 #include "third_party/blink/public/mojom/notifications/notification_service.mojom-params-data.h"
 namespace blink {
@@ -450,6 +453,7 @@ NotificationService_GetNotifications_ResponseParams_Data::NotificationService_Ge
 } // namespace mojom
 } // namespace blink
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -460,3 +464,4 @@ void TraceFormatTraits<::blink::mojom::PersistentNotificationError>::WriteIntoTr
 }
 
 } // namespace perfetto
+#endif

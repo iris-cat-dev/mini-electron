@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-params-data.h"
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-shared-message-ids.h"
@@ -66,6 +71,7 @@ RemoteMainFrameInterfaces::RemoteMainFrameInterfaces(
 
 RemoteMainFrameInterfaces::~RemoteMainFrameInterfaces() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void RemoteMainFrameInterfaces::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -84,6 +90,7 @@ void RemoteMainFrameInterfaces::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif
 
 bool RemoteMainFrameInterfaces::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -104,6 +111,7 @@ RemoteFrameInterfacesFromRenderer::RemoteFrameInterfacesFromRenderer(
 
 RemoteFrameInterfacesFromRenderer::~RemoteFrameInterfacesFromRenderer() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void RemoteFrameInterfacesFromRenderer::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -122,6 +130,7 @@ void RemoteFrameInterfacesFromRenderer::WriteIntoTrace(perfetto::TracedValue tra
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif
 
 bool RemoteFrameInterfacesFromRenderer::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -142,6 +151,7 @@ RemoteFrameInterfacesFromBrowser::RemoteFrameInterfacesFromBrowser(
 
 RemoteFrameInterfacesFromBrowser::~RemoteFrameInterfacesFromBrowser() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void RemoteFrameInterfacesFromBrowser::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -160,6 +170,7 @@ void RemoteFrameInterfacesFromBrowser::WriteIntoTrace(perfetto::TracedValue trac
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif
 
 bool RemoteFrameInterfacesFromBrowser::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -196,6 +207,7 @@ CreateRemoteChildParams::CreateRemoteChildParams(const ::blink::RemoteFrameToken
 
 CreateRemoteChildParams::~CreateRemoteChildParams() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void CreateRemoteChildParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -263,6 +275,7 @@ void CreateRemoteChildParams::WriteIntoTrace(perfetto::TracedValue traced_contex
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif
 
 bool CreateRemoteChildParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -335,6 +348,7 @@ OpenURLParams::OpenURLParams(const ::blink::KURL& url_in, const ::scoped_refptr<
 
 OpenURLParams::~OpenURLParams() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void OpenURLParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -500,6 +514,7 @@ void OpenURLParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif
 
 bool OpenURLParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

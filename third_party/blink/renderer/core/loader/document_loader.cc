@@ -823,6 +823,7 @@ void DocumentLoader::DispatchLinkHeaderPreloads(const ViewportDescription* viewp
 void DocumentLoader::DispatchLcppFontPreloads(const ViewportDescription* viewport, PreloadHelper::LoadLinksFromHeaderMode mode)
 {
     DCHECK_GE(state_, kCommitted);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     StringBuilder fonts_link;
     LCPCriticalPathPredictor* lcpp = frame_->GetLCPP();
     if (!lcpp) {
@@ -840,6 +841,7 @@ void DocumentLoader::DispatchLcppFontPreloads(const ViewportDescription* viewpor
     PreloadHelper::LoadLinksFromHeader(fonts_link.ToString(), GetResponse().CurrentRequestUrl(), *frame_, frame_->GetDocument(), mode, viewport,
         nullptr /* alternate_resource_info */, nullptr /* recursive_prefetch_token */);
     base::UmaHistogramCounts1000("Blink.LCPP.PreloadedFontCount", lcpp->fetched_fonts().size());
+#endif
 }
 
 void DocumentLoader::DidChangePerformanceTiming()

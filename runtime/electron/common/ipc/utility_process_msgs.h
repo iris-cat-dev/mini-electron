@@ -23,7 +23,6 @@
 #define IPC_MESSAGE_START UtilityProcessMsgStart
 
 IPC_MESSAGE_CONTROL1(UtilityProcessMsg_PostToChildMessage, std::vector<char>)
-IPC_MESSAGE_CONTROL1(UtilityProcessMsg_PostToParentMessage, std::vector<char>)
 IPC_MESSAGE_CONTROL1(UtilityProcessMsg_PostMessagePortToChildProcess, uintptr_t /*MojoHandle*/)
 
 IPC_MESSAGE_CONTROL1(UtilityProcessMsg_Test, std::vector<char>)

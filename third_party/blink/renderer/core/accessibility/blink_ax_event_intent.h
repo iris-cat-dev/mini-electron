@@ -64,14 +64,14 @@ public:
     CORE_EXPORT friend bool operator==(const BlinkAXEventIntent& a, const BlinkAXEventIntent& b);
     CORE_EXPORT friend bool operator!=(const BlinkAXEventIntent& a, const BlinkAXEventIntent& b);
 
-//     const ui::AXEventIntent& intent() const
-//     {
-//         return intent_;
-//     }
-//     ui::AXEventIntent& intent()
-//     {
-//         return intent_;
-//     }
+    const ui::AXEventIntent& intent() const
+    {
+        return intent_;
+    }
+    ui::AXEventIntent& intent()
+    {
+        return intent_;
+    }
 
     // Returns "true" if this represents an initialized BlinkAXEventIntent
     // instance.
@@ -87,7 +87,7 @@ public:
     std::string ToString() const;
 
 private:
-    //ui::AXEventIntent intent_;
+    ui::AXEventIntent intent_;
 
     // Set to "true" if this represents an initialized BlinkAXEventIntent
     // instance. An empty (uninitialized) instance is created either by calling

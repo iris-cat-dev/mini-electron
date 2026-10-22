@@ -140,19 +140,11 @@ ALWAYS_INLINE void OperationRecord::StoreStackTrace()
 {
     stack_trace_.fill(nullptr);
 
-// #if BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
-//     // Currently we limit ourselves to use TraceStackFramePointers. We know that
-//     // TraceStackFramePointers has an acceptable performance impact on Android.
-//     base::debug::TraceStackFramePointers(stack_trace_, 0);
-// #elif BUILDFLAG(IS_LINUX)
-//     // Use base::debug::CollectStackTrace as an alternative for tests on Linux. We
-//     // still have a check in /base/debug/debug.gni to prevent that
-//     // AllocationStackTraceRecorder is enabled accidentally on Linux.
-//     base::debug::CollectStackTrace(stack_trace_);
-// #else
-// #error "No supported stack tracer found."
-// #endif
-    * (int*)1 = 1;
+#if BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
+    base::debug::TraceStackFramePointers(stack_trace_, 0);
+#else
+    base::debug::CollectStackTrace(stack_trace_);
+#endif
 }
 
 struct BASE_EXPORT AllocationTraceRecorderStatistics {

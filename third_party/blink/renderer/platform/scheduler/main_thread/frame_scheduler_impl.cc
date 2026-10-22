@@ -36,7 +36,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/task_type_names.h"
 #include "third_party/blink/renderer/platform/scheduler/public/web_scheduling_queue_type.h"
 #include "third_party/blink/renderer/platform/scheduler/worker/worker_scheduler_proxy.h"
-#include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "third_party/perfetto/include/perfetto/tracing/traced_proto.h"
+#endif
 
 namespace blink {
 
@@ -44,7 +46,9 @@ namespace scheduler {
 
 using base::sequence_manager::TaskQueue;
 using QueueTraits = MainThreadTaskQueue::QueueTraits;
-//using perfetto::protos::pbzero::RendererMainThreadTaskExecution;
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+using perfetto::protos::pbzero::RendererMainThreadTaskExecution;
+#endif
 
 namespace {
 
@@ -761,36 +765,18 @@ void FrameSchedulerImpl::OnTaskCompleted(TaskQueue::TaskTiming* timing)
     }
 }
 
-// void FrameSchedulerImpl::WriteIntoTrace(perfetto::TracedValue context) const {
-//   auto dict = std::move(context).WriteDictionary();
-//   dict.Add("frame_visible", frame_visible_);
-//   dict.Add("page_visible", parent_page_scheduler_->IsPageVisible());
-//   dict.Add("cross_origin_to_main_frame", IsCrossOriginToNearestMainFrame());
-//   dict.Add("frame_type", frame_type_ == FrameScheduler::FrameType::kMainFrame
-//                              ? "MainFrame"
-//                              : "Subframe");
-//   dict.Add("is_visible_area_large", is_visible_area_large_);
-//   dict.Add("had_user_activation", had_user_activation_);
-//   dict.Add("disable_background_timer_throttling",
-//            !RuntimeEnabledFeatures::TimerThrottlingForBackgroundTabsEnabled());
-//
-//   dict.Add("frame_task_queue_controller", frame_task_queue_controller_);
-// }
-//
-// void FrameSchedulerImpl::WriteIntoTrace(
-//     perfetto::TracedProto<
-//         perfetto::protos::pbzero::RendererMainThreadTaskExecution> proto)
-//     const {
-//   proto->set_frame_visible(frame_visible_);
-//   proto->set_page_visible(parent_page_scheduler_->IsPageVisible());
-//   proto->set_frame_type(
-//       frame_type_ == FrameScheduler::FrameType::kMainFrame
-//           ? RendererMainThreadTaskExecution::FRAME_TYPE_MAIN_FRAME
-//       : IsCrossOriginToNearestMainFrame()
-//           ? RendererMainThreadTaskExecution::FRAME_TYPE_CROSS_ORIGIN_SUBFRAME
-//           : RendererMainThreadTaskExecution::FRAME_TYPE_SAME_ORIGIN_SUBFRAME);
-//   proto->set_is_ad_frame(is_ad_frame_);
-// }
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+void FrameSchedulerImpl::WriteIntoTrace(perfetto::TracedProto<RendererMainThreadTaskExecution> proto) const
+{
+    proto->set_frame_visible(frame_visible_);
+    proto->set_page_visible(parent_page_scheduler_->IsPageVisible());
+    proto->set_frame_type(frame_type_ == FrameScheduler::FrameType::kMainFrame
+            ? RendererMainThreadTaskExecution::FRAME_TYPE_MAIN_FRAME
+            : IsCrossOriginToNearestMainFrame() ? RendererMainThreadTaskExecution::FRAME_TYPE_CROSS_ORIGIN_SUBFRAME
+                                               : RendererMainThreadTaskExecution::FRAME_TYPE_SAME_ORIGIN_SUBFRAME);
+    proto->set_is_ad_frame(is_ad_frame_);
+}
+#endif
 
 bool FrameSchedulerImpl::IsPageVisible() const
 {

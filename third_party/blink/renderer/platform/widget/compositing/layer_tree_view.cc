@@ -66,13 +66,10 @@ public:
     // This method gets called on the compositor thread.
     std::unique_ptr<ukm::UkmRecorder> CreateRecorder() override
     {
-//         mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
-// 
-//         // Calling these methods on the compositor thread are thread safe.
-//         Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(factory.BindNewPipeAndPassReceiver());
-//         return ukm::MojoUkmRecorder::Create(*factory);
-        *(int*)1 = 1;
-        return nullptr;
+        mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
+        // The broker can be used from the compositor thread.
+        Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(factory.BindNewPipeAndPassReceiver());
+        return ukm::MojoUkmRecorder::Create(*factory);
     }
 };
 

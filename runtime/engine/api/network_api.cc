@@ -1,6 +1,8 @@
 
 #include <stdlib.h>
 #include <crtdbg.h>
+#include <limits>
+#include <array>
 #include "runtime/engine/public/engine_api.h"
 #include "runtime/engine/download/simple_download.h"
 #include "runtime/engine/bindings/js_value.h"
@@ -13,8 +15,8 @@
 #include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
 #include "runtime/network/loader/initialize_handle_info.h"
-#include "runtime/network/loader/flatten_http_body_element.h"
 #include "runtime/network/loader/web_url_loader_manager_setup_info.h"
+#include "runtime/network/loader/flatten_http_body_element.h"
 #include "runtime/storage/default_local_storage_dir.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
@@ -22,6 +24,7 @@
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/blink/public/platform/web_http_header_visitor.h"
 #include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/resource_request_body.h"
 #include "base/command_line.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
@@ -44,7 +47,161 @@ void changeRequestUrl(mini_electron_net_job jobPtr, const char* url);
 mini_electron_resource_type webURLRequestToResourceType(
     const network::ResourceRequest& request,
     blink::mojom::RequestContextFrameType frameType);
+
+namespace {
+
+// Self-owned on the job's curl IO sequence until EOF, failure or job teardown.
+// Only the broker receives these bytes; the moved upload is never sent by curl.
+class BrokerBodyReader {
+public:
+    using Reply = base::OnceCallback<void(std::vector<uint8_t>, std::string)>;
+
+    BrokerBodyReader(size_t limit, scoped_refptr<base::SingleThreadTaskRunner> reply_runner, Reply reply)
+        : limit_(limit), reply_runner_(std::move(reply_runner)), reply_(std::move(reply))
+    {
+    }
+
+    base::WeakPtr<BrokerBodyReader> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
+
+    void Start(std::vector<std::unique_ptr<FlattenHTTPBodyElement>> elements, bool failed)
+    {
+        auto runner = base::SingleThreadTaskRunner::GetCurrentDefault();
+        stream_ = std::make_unique<FlattenHTTPBodyElementStream>(std::move(elements), failed,
+            base::BindRepeating([](scoped_refptr<base::SingleThreadTaskRunner> runner,
+                                    base::WeakPtr<BrokerBodyReader> reader) {
+                // Getter callbacks may run inline from read(); never re-enter it.
+                runner->PostTask(FROM_HERE, base::BindOnce(&BrokerBodyReader::Read, reader));
+            }, std::move(runner), GetWeakPtr()));
+        Read();
+    }
+
+    void Cancel() { Finish("Upload canceled"); }
+
+private:
+    void Read()
+    {
+        std::array<uint8_t, 64 * 1024> buffer;
+        for (;;) {
+            const size_t count = stream_->read(buffer.data(), 1, buffer.size());
+            if (count == CURL_READFUNC_PAUSE)
+                return;
+            if (count == CURL_READFUNC_ABORT) {
+                Finish("Unable to read upload body");
+                return;
+            }
+            if (!count) {
+                Finish({});
+                return;
+            }
+            if (count > limit_ - bytes_.size()) {
+                Finish("Upload body exceeds broker message limit");
+                return;
+            }
+            bytes_.insert(bytes_.end(), buffer.begin(), buffer.begin() + count);
+        }
+    }
+
+    void Finish(std::string error)
+    {
+        if (!error.empty())
+            bytes_.clear();
+        reply_runner_->PostTask(FROM_HERE,
+            base::BindOnce(std::move(reply_), std::move(bytes_), std::move(error)));
+        delete this;
+    }
+
+    const size_t limit_;
+    scoped_refptr<base::SingleThreadTaskRunner> reply_runner_;
+    Reply reply_;
+    std::vector<uint8_t> bytes_;
+    std::unique_ptr<FlattenHTTPBodyElementStream> stream_;
+    base::WeakPtrFactory<BrokerBodyReader> weak_factory_ { this };
+};
+
+} // namespace
+
+void ReadHeldRequestBodyForBroker(WebURLLoaderInternal* job, size_t max_bytes,
+    BrokerBodyReader::Reply reply)
+{
+    auto reply_runner = base::SingleThreadTaskRunner::GetCurrentDefault();
+    if (!job || !job->m_isHoldJobToAsynCommit || !job->m_ioThread
+        || job->m_brokerBodyReadCleanup) {
+        reply_runner->PostTask(FROM_HERE,
+            base::BindOnce(std::move(reply), std::vector<uint8_t> {}, "Upload job is not available"));
+        return;
+    }
+
+    SetupDataInfo* prepared = nullptr;
+    if (auto* info = job->m_initializeHandleInfo) {
+        if (info->methodInfo) {
+            if (info->methodInfo->post)
+                prepared = info->methodInfo->post->data;
+            else if (info->methodInfo->put)
+                prepared = info->methodInfo->put->data;
+        }
+    }
+    std::vector<std::unique_ptr<FlattenHTTPBodyElement>> elements;
+    bool failed = false;
+    if (prepared) {
+        elements = std::move(prepared->flattenElements);
+        failed = prepared->failed;
+        // Ownership was transferred to the broker. A mistaken curl continuation
+        // must fail instead of uploading an empty body or replaying a spent pipe.
+        prepared->failed = true;
+    } else if (const auto& body = job->firstRequest()->request_body) {
+        // Methods outside POST/PUT have no prepared curl body. Preserve their
+        // real request body too, without cloning a read-once getter.
+        for (auto& element : *body->elements_mutable()) {
+            auto flattened = std::make_unique<FlattenHTTPBodyElement>();
+            if (element.type() == network::DataElement::Tag::kBytes) {
+                const auto& bytes = element.As<network::DataElementBytes>().bytes();
+                flattened->data.assign(bytes.begin(), bytes.end());
+            } else if (element.type() == network::DataElement::Tag::kFile) {
+                const auto& file = element.As<network::DataElementFile>();
+                flattened->type = FlattenHTTPBodyElement::TypeFile;
+                flattened->file.Initialize(file.path(), base::File::FLAG_OPEN | base::File::FLAG_READ);
+                base::File::Info info;
+                if (!flattened->file.GetInfo(&info) || info.is_directory || info.size < 0
+                    || file.offset() > static_cast<uint64_t>(info.size)) {
+                    failed = true;
+                    break;
+                }
+                flattened->fileStart = file.offset();
+                flattened->fileLength = std::min(file.length(), static_cast<uint64_t>(info.size) - file.offset());
+                flattened->expectedModificationTime = file.expected_modification_time();
+            } else if (element.type() == network::DataElement::Tag::kDataPipe) {
+                flattened->type = FlattenHTTPBodyElement::TypeDataPipe;
+                flattened->pendingGetter = element.As<network::DataElementDataPipe>().ReleaseDataPipeGetter();
+            } else if (element.type() == network::DataElement::Tag::kChunkedDataPipe) {
+                auto& pipe = element.As<network::DataElementChunkedDataPipe>();
+                flattened->type = FlattenHTTPBodyElement::TypeChunkedDataPipe;
+                flattened->readOnlyOnce = pipe.read_only_once().value();
+                flattened->pendingChunkedGetter = pipe.ReleaseChunkedDataPipeGetter();
+            } else {
+                failed = true;
+                break;
+            }
+            elements.push_back(std::move(flattened));
+        }
+    }
+
+    if (elements.empty() && !failed) {
+        reply_runner->PostTask(FROM_HERE,
+            base::BindOnce(std::move(reply), std::vector<uint8_t> {}, std::string {}));
+        return;
+    }
+
+    auto io_runner = job->m_ioThread->task_runner();
+    auto* reader = new BrokerBodyReader(max_bytes, std::move(reply_runner), std::move(reply));
+    job->m_brokerBodyReadCleanup.ReplaceClosure(base::BindOnce(
+        [](scoped_refptr<base::SingleThreadTaskRunner> runner, base::WeakPtr<BrokerBodyReader> reader) {
+            runner->PostTask(FROM_HERE, base::BindOnce(&BrokerBodyReader::Cancel, reader));
+        }, io_runner, reader->GetWeakPtr()));
+    io_runner->PostTask(FROM_HERE,
+        base::BindOnce(&BrokerBodyReader::Start, base::Unretained(reader), std::move(elements), failed));
 }
+
+} // namespace mini_electron
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_http_header_field_utf8(mini_electron_net_job jobPtr, const utf8* key, const utf8* value, BOOL response)
 {
@@ -313,6 +470,8 @@ size_t MINI_ELECTRON_CALL_TYPE mini_electron_get_string_len(mini_electron_string
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_free_post_body_element(mini_electron_post_body_element* element)
 {
+    if (!element)
+        return;
     mini_electron_free_mem_buf(element->data);
     mini_electron_delete_string(element->filePath);
     delete element;
@@ -326,36 +485,57 @@ mini_electron_post_body_element* MINI_ELECTRON_CALL_TYPE mini_electron_net_creat
     return bodyElement;
 }
 
-static mini_electron_post_body_elements* flattenHTTPBodyElementToEmbedder(const std::vector<mini_electron::FlattenHTTPBodyElement*>& body)
+// Snapshot request metadata, not the upload stream. Flattened elements own file
+// handles/getters and move to the curl IO sequence; introspection must never read,
+// clone or release a pipe (in particular, a read-once chunked getter).
+static mini_electron_post_body_elements* requestBodyToEmbedder(const network::ResourceRequestBody* body)
 {
-    if (0 == body.size())
-        return nullptr;
+    if (body) {
+        for (const auto& element : *body->elements()) {
+            if (element.type() == network::DataElement::Tag::kFile) {
+                const auto& file = element.As<network::DataElementFile>();
+                if (file.path().empty()
+                    || file.offset() > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
+                    || (file.length() != std::numeric_limits<uint64_t>::max()
+                        && file.length() > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())))
+                    return nullptr;
+            } else if (element.type() != network::DataElement::Tag::kBytes) {
+                // The public bytes/path representation cannot describe a pipe.
+                // Refuse the entire snapshot, rather than silently dropping it.
+                return nullptr;
+            }
+        }
+    }
 
-    mini_electron_post_body_elements* result = mini_electron_net_create_post_body_elements(NULL_WEBVIEW, body.size());
+    const size_t count = body ? body->elements()->size() : 0;
+    auto* result = count
+        ? mini_electron_net_create_post_body_elements(NULL_WEBVIEW, count)
+        : new mini_electron_post_body_elements {};
+    result->size = sizeof(mini_electron_post_body_elements);
     result->isDirty = false;
-    for (size_t i = 0; i < result->elementSize; ++i) {
-        mini_electron_post_body_element* bodyElement = mini_electron_net_create_post_body_element(NULL_WEBVIEW);
+    for (size_t i = 0; i < count; ++i) {
+        auto* bodyElement = mini_electron_net_create_post_body_element(NULL_WEBVIEW);
         result->element[i] = bodyElement;
-        const mini_electron::FlattenHTTPBodyElement* element = body[i];
-
-        if (mini_electron::FlattenHTTPBodyElement::TypeFile == element->type
-            /*|| mbnet::FlattenHTTPBodyElement::TypeFileSystemURL == element->type*/) {
-
+        const auto& element = (*body->elements())[i];
+        if (element.type() == network::DataElement::Tag::kFile) {
+            const auto& file = element.As<network::DataElementFile>();
+            const std::string path = file.path().AsUTF8Unsafe();
             bodyElement->type = mini_electron_http_body_element_type_file;
-
-            std::string filePathUtf8;
-            base::UTF16ToUTF8(element->filePath.c_str(), element->filePath.size(), &filePathUtf8);
-
-            bodyElement->filePath = mini_electron_create_string(filePathUtf8.c_str(), filePathUtf8.size());
-            bodyElement->fileLength = element->fileLength;
-            bodyElement->fileStart = element->fileStart;
-            bodyElement->data = nullptr;
+            bodyElement->filePath = mini_electron_create_string_with_copy(path.data(), path.size());
+            bodyElement->fileStart = static_cast<int64_t>(file.offset());
+            bodyElement->fileLength = file.length() == std::numeric_limits<uint64_t>::max()
+                ? -1 : static_cast<int64_t>(file.length());
         } else {
+            const auto& bytes = element.As<network::DataElementBytes>().bytes();
             bodyElement->type = mini_electron_http_body_element_type_data;
-            bodyElement->filePath = nullptr;
-            bodyElement->fileLength = 0;
-            bodyElement->fileStart = 0;
-            bodyElement->data = mini_electron_create_mem_buf(NULL_WEBVIEW, (void*)element->data.data(), element->data.size());
+            if (!bytes.empty()) {
+                bodyElement->data = mini_electron_create_mem_buf(NULL_WEBVIEW,
+                    const_cast<uint8_t*>(bytes.data()), bytes.size());
+                if (!bodyElement->data) {
+                    mini_electron_net_free_post_body_elements(result);
+                    return nullptr;
+                }
+            }
         }
     }
     return result;
@@ -364,31 +544,16 @@ static mini_electron_post_body_elements* flattenHTTPBodyElementToEmbedder(const 
 mini_electron_post_body_elements* MINI_ELECTRON_CALL_TYPE mini_electron_net_get_post_body(void* jobPtr)
 {
     checkThreadCallIsValid(__FUNCTION__);
-    mini_electron::WebURLLoaderInternal* job = (mini_electron::WebURLLoaderInternal*)jobPtr;
-    mini_electron::InitializeHandleInfo* info = job->m_initializeHandleInfo;
-    if (!info)
-        return nullptr;
-
-    std::vector<mini_electron::FlattenHTTPBodyElement*>* flattenElements = nullptr;
-    if ("POST" == info->method) {
-        if (!info->methodInfo || !info->methodInfo->post || !info->methodInfo->post->data)
-            return nullptr;
-        flattenElements = &(info->methodInfo->post->data->flattenElements);
-    } else if ("PUT" == info->method) {
-        if (!info->methodInfo || !info->methodInfo->put || !info->methodInfo->put->data)
-            return nullptr;
-        flattenElements = &info->methodInfo->put->data->flattenElements;
-    }
-    if (!flattenElements)
-        return nullptr;
-
-    mini_electron_post_body_elements* postBody = flattenHTTPBodyElementToEmbedder(*flattenElements);
-    return postBody;
+    auto* job = static_cast<mini_electron::WebURLLoaderInternal*>(jobPtr);
+    const network::ResourceRequest* request = job ? job->firstRequest() : nullptr;
+    return request ? requestBodyToEmbedder(request->request_body.get()) : nullptr;
 }
 
 static void netFreePostBodyElements(mini_electron_post_body_elements* elements)
 {
     checkThreadCallIsValid(__FUNCTION__);
+    if (!elements)
+        return;
     for (size_t i = 0; i < elements->elementSize; ++i) {
         mini_electron_net_free_post_body_element(elements->element[i]);
     }

@@ -219,10 +219,10 @@ template <> struct BLINK_COMMON_EXPORT StructTraits<blink::mojom::InterestGroupD
         return interest_group.auction_server_request_flags;
     }
 
-//     static const std::optional<blink::InterestGroup::AdditionalBidKey>& additional_bid_key(const blink::InterestGroup& interest_group)
-//     {
-//         return interest_group.additional_bid_key;
-//     }
+    static const std::optional<blink::InterestGroup::AdditionalBidKey>& additional_bid_key(const blink::InterestGroup& interest_group)
+    {
+        return interest_group.additional_bid_key;
+    }
 
     static const std::optional<url::Origin>& aggregation_coordinator_origin(const blink::InterestGroup& interest_group)
     {

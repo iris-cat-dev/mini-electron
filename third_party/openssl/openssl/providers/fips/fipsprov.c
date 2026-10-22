@@ -186,18 +186,6 @@ static void set_self_test_cb(FIPS_GLOBAL* fgbl)
     }
 }
 
-int SELF_TEST_post(SELF_TEST_POST_PARAMS* st, int on_demand_test)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-void SELF_TEST_disable_conditional_error_state(void)
-{
-    *(int*)1 = 1;
-}
-
-
 static int fips_self_test(void* provctx)
 {
     FIPS_GLOBAL* fgbl = ossl_lib_ctx_get_data(ossl_prov_ctx_get0_libctx(provctx), OSSL_LIB_CTX_FIPS_PROV_INDEX, &fips_prov_ossl_ctx_method);

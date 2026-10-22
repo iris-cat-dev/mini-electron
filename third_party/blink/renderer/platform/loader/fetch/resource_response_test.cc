@@ -92,4 +92,29 @@ TEST(ResourceResponseTest, TreatExpiresZeroAsExpired)
     EXPECT_EQ(base::TimeDelta::Min(), calculated_expires);
 }
 
+TEST(ResourceResponseTest, CrossOriginEmbedderPolicyStructuredField)
+{
+    using Policy = network::mojom::CrossOriginEmbedderPolicyValue;
+    ResourceResponse response;
+    EXPECT_EQ(Policy::kNone, response.GetCrossOriginEmbedderPolicy());
+    const struct {
+        const char* header;
+        Policy expected;
+    } cases[] = {
+        {"require-corp", Policy::kRequireCorp},
+        {"credentialless", Policy::kCredentialless},
+        {"require-corp; report-to=\"endpoint\"", Policy::kRequireCorp},
+        {"\"require-corp\"", Policy::kNone},
+        {"Require-Corp", Policy::kNone},
+        {"require-corp, credentialless", Policy::kNone},
+        {"?1", Policy::kNone},
+        {"unknown", Policy::kNone},
+    };
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.header);
+        response.SetHttpHeaderField(http_names::kLowerCrossOriginEmbedderPolicy, AtomicString(test.header));
+        EXPECT_EQ(test.expected, response.GetCrossOriginEmbedderPolicy());
+    }
+}
+
 } // namespace blink

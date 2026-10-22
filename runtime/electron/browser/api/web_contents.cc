@@ -2481,6 +2481,22 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             });
         return;
     }
+    if (type == "native-window-command") {
+        uint64_t frame_id = 0;
+        const bool current = ReadFrameIdentity(event, "frameId", &frame_id)
+            && isRendererFrameCurrent(frame_id);
+        const std::string command = ReadString(payload, "command");
+        const int contents_id = m_id;
+        const bool granted = current && m_owner && !m_owner->isClosed()
+            && m_owner->handleNativeWindowCommand(command, payload);
+        WebContents* contents = WebContents::fromId(contents_id);
+        if (request_id && contents && contents->m_renderer) {
+            base::Value::Dict result;
+            result.Set("granted", granted);
+            contents->m_renderer->Respond(request_id, std::move(result), {});
+        }
+        return;
+    }
     if (type == "file-chooser") {
         uint64_t frame_id = 0;
         if (!request_id || !ReadFrameIdentity(event, "frameId", &frame_id)
@@ -2727,6 +2743,18 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     } else if (type == "title-changed") {
         m_title = ReadString(payload, "title");
         mate::EventEmitter<WebContents>::emit("page-title-updated", m_title);
+    } else if (type == "target-url") {
+        mate::EventEmitter<WebContents>::emit("update-target-url", ReadString(payload, "url"));
+    } else if (type == "favicon-urls") {
+        std::vector<std::string> urls;
+        if (const auto* list = payload.FindList("urls")) {
+            urls.reserve(list->size());
+            for (const auto& value : *list) {
+                if (value.is_string())
+                    urls.push_back(value.GetString());
+            }
+        }
+        mate::EventEmitter<WebContents>::emit("page-favicon-updated", urls);
     } else if (type == "dom-ready") {
         uint64_t frame_id = 0;
         if (!ReadFrameIdentity(event, "frameId", &frame_id)

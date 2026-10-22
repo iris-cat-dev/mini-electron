@@ -99,6 +99,9 @@ public:
     //using GetMimeTypeFromExtensionCallback = base::OnceCallback<void(const WTF::String&)>;
     void GetMimeTypeFromExtension(const WTF::String& extension, GetMimeTypeFromExtensionCallback callback) override
     {
+        WTF::String mimeType;
+        GetMimeTypeFromExtension(extension, &mimeType);
+        std::move(callback).Run(mimeType);
     }
 
     mojo::Receiver<blink::mojom::blink::MimeRegistry> m_receiver { this };
@@ -111,7 +114,8 @@ public:
     // ThreadSafeBrowserInterfaceBrokerProxy implementation:
     void GetInterfaceImpl(mojo::GenericPendingReceiver receiver) override
     {
-        CHECK(receiver.interface_name().has_value());
+        if (!receiver.interface_name().has_value())
+            return;
         
         std::string output("BrowserInterfaceBrokerProxy:");
         output += receiver.interface_name().has_value() ? receiver.interface_name().value() : "no name";
@@ -119,14 +123,10 @@ public:
         OutputDebugStringA(output.c_str());
 
         if ("device.blink.mojom.TimeZoneMonitor" == receiver.interface_name().value()) {
-            if (!m_timeZoneMonitorImpl)
-                m_timeZoneMonitorImpl = new TimeZoneMonitorImpl();
-            m_timeZoneMonitorImpl->m_receiver.Bind(receiver.As<device::mojom::blink::TimeZoneMonitor>());
+            createAndBindBrokerProxy<device::mojom::blink::TimeZoneMonitor, TimeZoneMonitorImpl>(receiver.PassPipe());
             return;
         } else if ("blink.mojom.MimeRegistry" == receiver.interface_name().value()) {
-            if (!m_imeRegistryImpl)
-                m_imeRegistryImpl = new MimeRegistryImpl();
-            m_imeRegistryImpl->m_receiver.Bind(receiver.As<blink::mojom::blink::MimeRegistry>());
+            createAndBindBrokerProxy<blink::mojom::blink::MimeRegistry, MimeRegistryImpl>(receiver.PassPipe());
             return;
         } else if ("blink.mojom.BlobRegistry" == receiver.interface_name().value()) {
             //             if (!m_blobRegistry)
@@ -141,17 +141,12 @@ public:
             createAndBindBrokerProxy<::blink::mojom::blink::PluginRegistry, PluginRegistryImpl>(receiver.PassPipe());
             return;
         }
-        DebugBreak();
+        // An unsupported service is rejected by closing its pending receiver.
     }
 
 private:
     ~BrowserInterfaceBrokerProxy() override = default;
 
-    std::map<std::string, void*> m_interfaces;
-
-    TimeZoneMonitorImpl* m_timeZoneMonitorImpl = nullptr;
-    MimeRegistryImpl* m_imeRegistryImpl = nullptr;
-    //BlobRegistryImpl* m_blobRegistry = nullptr;
 };
 
 // class WebURLLoaderFactoryImpl : public blink::WebURLLoaderFactory {
@@ -179,14 +174,6 @@ blink::WebString RendererBlinkPlatformImpl::DefaultLocale()
     return blink::WebString::FromUTF8("zh-CN");
 }
 
-std::unique_ptr<blink::URLLoaderThrottleProvider> RendererBlinkPlatformImpl::CreateURLLoaderThrottleProviderForWorker(
-    blink::URLLoaderThrottleProviderType provider_type)
-{
-    //     return GetContentClient()->renderer()->CreateURLLoaderThrottleProvider(
-    //         blink::URLLoaderThrottleProviderType::kWorker);
-    DebugBreak();
-    return nullptr;
-}
 
 blink::WebData RendererBlinkPlatformImpl::GetDataResource(int resource_id, ui::ResourceScaleFactor scale_factor)
 {
@@ -277,8 +264,8 @@ std::string RendererBlinkPlatformImpl::GetDataResourceString(int resourceId)
         return MAKE_STD_STRING(kJsonDocumentCss);
     }
 
-    DebugBreak();
-    return "";
+    // Match Platform's resource contract: an unknown resource has no data.
+    return {};
 }
 
 blink::WebString RendererBlinkPlatformImpl::QueryLocalizedString(int resourceId)
@@ -679,7 +666,16 @@ void RendererBlinkPlatformImpl::CreateServiceWorkerSubresourceLoaderFactory(
     std::unique_ptr<network::PendingSharedURLLoaderFactory> fallback_factory, mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
     scoped_refptr<base::SequencedTaskRunner> task_runner)
 {
-    DebugBreak();
+    // There is no service-worker controller in this embedder. Preserve the
+    // supplied network fallback rather than leaving a live, unbound factory.
+    if (!fallback_factory)
+        return;
+    task_runner->PostTask(FROM_HERE, base::BindOnce(
+        [](std::unique_ptr<network::PendingSharedURLLoaderFactory> pending,
+            mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver) {
+            auto factory = network::SharedURLLoaderFactory::Create(std::move(pending));
+            factory->Clone(std::move(receiver));
+        }, std::move(fallback_factory), std::move(receiver)));
 }
 
 std::unique_ptr<blink::WebV8ValueConverter> RendererBlinkPlatformImpl::CreateWebV8ValueConverter()

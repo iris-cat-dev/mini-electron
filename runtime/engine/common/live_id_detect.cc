@@ -14,16 +14,15 @@ LiveIdDetect::LiveIdDetect()
 
 int64_t LiveIdDetect::constructed(void* ptr)
 {
-    if (isActivating(ptr))
-        DebugBreak();
-
     ::EnterCriticalSection(&m_lock);
+    auto existing = m_ptrToIdMaps.find(ptr);
+    if (existing != m_ptrToIdMaps.end()) {
+        int64_t id = existing->second;
+        ::LeaveCriticalSection(&m_lock);
+        return id;
+    }
     int64_t id = ++m_idGen;
     m_liveSelf.insert(std::pair<int64_t, void*>(id, ptr));
-
-    std::map<void*, int64_t>::const_iterator it = m_ptrToIdMaps.find(ptr);
-    if (it != m_ptrToIdMaps.end())
-        DebugBreak();
     m_ptrToIdMaps.insert(std::pair<void*, int64_t>(ptr, id));
     ::LeaveCriticalSection(&m_lock);
     return id;
@@ -40,10 +39,7 @@ void LiveIdDetect::deconstructed(int64_t id)
     void* ptr = it->second;
     m_liveSelf.erase(it);
 
-    std::map<void*, int64_t>::const_iterator it2 = m_ptrToIdMaps.find(ptr);
-    if (it2 == m_ptrToIdMaps.end())
-        DebugBreak();
-    m_ptrToIdMaps.erase(it2);
+    m_ptrToIdMaps.erase(ptr);
     ::LeaveCriticalSection(&m_lock);
 }
 
@@ -100,9 +96,9 @@ LiveIdDetect* LiveIdDetect::get()
     return m_inst;
 }
 
-// µ¥¶ÀÎªMbWebviews¿ª¸ö£¬·ñÔò
-// ºÏ³ÉÏß³ÌµÄWebViewHost::delayDoMouseMsgInCompositorThreadºÍblinkÏß³ÌµÄResourceLoader-¡·ReceiverImplBase::ReceiverImplBase
-// »áËÀËø
+// å•ç‹¬ä¸ºMbWebviewså¼€ä¸ªï¼Œå¦åˆ™
+// åˆæˆçº¿ç¨‹çš„WebViewHost::delayDoMouseMsgInCompositorThreadå’Œblinkçº¿ç¨‹çš„ResourceLoader-ã€‹ReceiverImplBase::ReceiverImplBase
+// ä¼šæ­»é”
 LiveIdDetect* LiveIdDetect::getWebViewIds()
 {
     if (!m_engineViewIds)

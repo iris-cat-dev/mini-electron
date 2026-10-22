@@ -11,13 +11,6 @@
 #include "services/network/public/mojom/cors.mojom-shared.h"
 #include "services/network/public/mojom/ip_address_space.mojom-shared.h"
 
-std::ostream& network::mojom::operator<<(std::ostream& a, ::network::mojom::CorsError b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
-
-
 namespace network {
 
 CorsErrorStatus::CorsErrorStatus(mojo::DefaultConstruct::Tag)

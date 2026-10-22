@@ -116,8 +116,6 @@ public:
     virtual void didReceiveSocketStreamData(SocketStreamHandle*, const char*, int) override;
     virtual void didUpdateBufferedAmount(SocketStreamHandle*, size_t bufferedAmount) override;
     virtual void didFailSocketStream(SocketStreamHandle*, const SocketStreamError&) override;
-    virtual void didReceiveAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&) override;
-    virtual void didCancelAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&) override;
     virtual int64_t getId() const override
     {
         return m_id;
@@ -160,28 +158,20 @@ private:
 
     bool processFrame();
 
-    // It is allowed to send a Blob as a binary frame if hybi-10 protocol is in use. Sending a Blob
-    // can be delayed because it must be read asynchronously. Other types of data (String or
-    // ArrayBuffer) may also be blocked by preceding sending request of a Blob.
-    //
-    // To address this situation, messages to be sent need to be stored in a queue. Whenever a new
-    // data frame is going to be sent, it first must go to the queue. Items in the queue are processed
-    // in the order they were put into the queue. Sending request of a Blob blocks further processing
-    // until the Blob is completely read and sent to the socket stream.
-    enum QueuedFrameType { QueuedFrameTypeString, QueuedFrameTypeVector, QueuedFrameTypeBlob };
+    // The stream frame queue only contains materialized text or binary data.
+    // Blob sends are read by Send(BlobDataHandle) and dispatched via the broker.
+    enum QueuedFrameType { QueuedFrameTypeString, QueuedFrameTypeVector };
     struct QueuedFrame {
         WebSocketOneFrame::OpCode opCode;
         QueuedFrameType frameType;
         // Only one of the following items is used, according to the value of frameType.
         std::string stringData;
         Vector<char> vectorData;
-        //scoped_refptr<blink::BlobDataHandle> blobData;
         base::OnceClosure completionCallback;
         bool isFromHook;
     };
     void enqueueTextFrame(const std::string&, bool isFromHook, base::OnceClosure completionCallback);
     void enqueueRawFrame(WebSocketOneFrame::OpCode, const char* data, size_t dataLength, bool isFromHook);
-    //void enqueueBlobFrame(WebSocketOneFrame::OpCode, PassRefPtr<blink::BlobDataHandle>);
 
     void processOutgoingFrameQueue();
     void abortOutgoingFrameQueue();
@@ -202,14 +192,6 @@ private:
     // instead of call sendFrame() directly.
     bool sendFrame(WebSocketOneFrame::OpCode, const char* data, size_t dataLength, bool isFromHook);
 
-    enum BlobLoaderStatus { BlobLoaderNotStarted, BlobLoaderStarted, BlobLoaderFinished, BlobLoaderFailed };
-
-    blink::Document* document();
-
-    // Methods for BlobLoader.
-    class BlobLoader;
-    //     void didFinishLoadingBlob(blink::DOMArrayBuffer*);
-    //     void didFailLoadingBlob(blink::FileError::ErrorCode);
     int m_ref;
 
     blink::Member<blink::WebSocketChannelClient> m_client;
@@ -242,10 +224,6 @@ private:
     OutgoingFrameQueueStatus m_outgoingFrameQueueStatus;
 
     const blink::Member<blink::ExecutionContext> m_executionContext;
-
-    // FIXME: Load two or more Blobs simultaneously for better performance.
-    //     blink::Member<BlobLoader> m_blobLoader;
-    //     BlobLoaderStatus m_blobLoaderStatus;
 
     WebSocketDeflateFramer m_deflateFramer;
 

@@ -353,6 +353,7 @@ TEST_F(IsolationInfoTest, CreateIfConsistentFails)
     EXPECT_FALSE(IsolationInfo::CreateIfConsistent(IsolationInfo::RequestType::kOther, std::nullopt, std::nullopt, SiteForCookies(), kNonce1));
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 TEST_F(IsolationInfoTest, Serialization)
 {
     EXPECT_FALSE(IsolationInfo::Deserialize(""));
@@ -392,6 +393,7 @@ TEST_F(IsolationInfoTest, Serialization)
     }
 }
 
+#endif
 } // namespace
 
 } // namespace net

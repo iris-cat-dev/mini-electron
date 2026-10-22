@@ -150,6 +150,30 @@ void PageNavController::navigateToIndex(int index)
     navigateBackForwardSoon(offset);
 }
 
+bool PageNavController::navigateToNavigationApiKey(blink::WebLocalFrame* frame, const blink::WebString& key)
+{
+    const blink::FrameToken token = frame->GetFrameToken();
+    int target = -1;
+    int distance = static_cast<int>(m_frameHistoryStates.size());
+    for (size_t i = 0; i < m_frameHistoryStates.size(); ++i) {
+        for (const auto& item : m_frameHistoryStates[i]->m_frameHistoryItems) {
+            if (item->uniqueName == token && item->historyItem.GetNavigationApiKey() == key) {
+                const int index = static_cast<int>(i);
+                const int candidateDistance = index > m_currentOffset
+                    ? index - m_currentOffset : m_currentOffset - index;
+                if (candidateDistance < distance) {
+                    target = index;
+                    distance = candidateDistance;
+                }
+            }
+        }
+    }
+    if (target < 0)
+        return false;
+    navigate(target - m_currentOffset);
+    return true;
+}
+
 bool PageNavController::findEntryImpl(blink::WebLocalFrame* frame, const blink::WebHistoryItem& item, const AllFrameHistoryItemSet& itemSet) const
 {
     // 可能会出现找不到的情况。比如sub frame后退了，然后blink会通知main frame也后退，但

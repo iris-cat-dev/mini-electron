@@ -39,12 +39,15 @@
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "base/atomicops.h"
+#include "base/functional/callback_helpers.h"
 #include "third_party/libcurl/include/curl/curl.h"
 #include "base/threading/thread.h"
 #include <windows.h>
 #include <memory>
 #include <cstdint>
 #include <string>
+#include <atomic>
+#include <vector>
 
 
 // The allocations and releases in WebURLLoaderInternal are
@@ -68,6 +71,7 @@ class WebURLLoaderImplCurl;
 class WebURLLoaderManagerMainTask;
 class WebURLLoaderManager;
 class FlattenHTTPBodyElementStream;
+class ResponseBodyWriter;
 struct InitializeHandleInfo;
 struct RequestFrameMetadata {
     blink::mojom::RequestContextFrameType frameType
@@ -207,6 +211,11 @@ public:
     size_t m_dataLength;
 
     bool m_defersLoading;
+    bool m_autoFollowRedirects = true;
+    // These controls are updated and consumed on the job's IO thread.
+    bool m_bodyPaused = false;
+    bool m_frozen = false;
+    long m_streamWeight = 16;
     bool m_shouldContentSniff;
 
     CURL* m_handle;
@@ -228,6 +237,11 @@ public:
     WebURLLoaderManager* m_manager;
 
     MojoHandle m_dataPipeProducerHandle = 0; // 给DidStartLoadingResponseBody用的。现在的blink靠这个MojoHandle来接收数据
+    std::unique_ptr<ResponseBodyWriter> m_responseWriter;
+    std::atomic<size_t> m_responseBufferedBytes { 0 };
+    // Accessed on the response/client sequence.
+    bool m_responseFlushPending = false;
+    bool m_responseReleasePending = false;
 
     blink::mojom::RequestContextFrameType m_frameType = blink::mojom::RequestContextFrameType::kNone;
     uint64_t m_frameId = 0;
@@ -265,6 +279,8 @@ public:
 
     InitializeHandleInfo* m_initializeHandleInfo;
     bool m_isHoldJobToAsynCommit;
+    // Cancels a broker-owned body reader on its IO sequence when this job dies.
+    base::ScopedClosureRunner m_brokerBodyReadCleanup;
 
     enum CacheForDownloadOpt {
         kCacheForDownloadUnknow,
@@ -295,6 +311,11 @@ public:
 
     base::Thread* m_ioThread = nullptr;
 };
+
+// Transfers a held job's upload to the broker, not to curl. Replies on the
+// calling Blink sequence; bytes are bounded by the existing broker wire limit.
+void ReadHeldRequestBodyForBroker(WebURLLoaderInternal* job, size_t max_bytes,
+    base::OnceCallback<void(std::vector<uint8_t>, std::string)> reply);
 
 } // namespace mini_electron
 

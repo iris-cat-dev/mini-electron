@@ -289,8 +289,7 @@ void SkRecorder::onDrawVerticesObject(const SkVertices* vertices, SkBlendMode bm
 
 void SkRecorder::onDrawMesh(const SkMesh& mesh, sk_sp<SkBlender> blender, const SkPaint& paint)
 {
-    *(int*)1 = 1;
-    //this->append<SkRecords::DrawMesh>(paint, mesh, std::move(blender));
+    this->append<SkRecords::DrawMesh>(paint, mesh, std::move(blender));
 }
 
 void SkRecorder::onDrawPatch(const SkPoint cubics[12], const SkColor colors[4], const SkPoint texCoords[4], SkBlendMode bmode, const SkPaint& paint)

@@ -356,12 +356,11 @@ void InspectorTraceEvents::FrameStartedLoading(LocalFrame* frame)
 
 namespace {
 
-void SetNodeInfo(perfetto::TracedDictionary& dict, Node* node, perfetto::StaticString id_field_name, perfetto::StaticString name_field_name = nullptr)
+void SetNodeInfo(perfetto::TracedDictionary& dict, Node* node, const char* id_field_name, const char* name_field_name = nullptr)
 {
-    *(int*)1 = 1;
-//     dict.Add(id_field_name, IdentifiersFactory::IntIdForNode(node));
-//     if (name_field_name.value)
-//         dict.Add(name_field_name, node->DebugName());
+    dict.Add(perfetto::StaticString(id_field_name), IdentifiersFactory::IntIdForNode(node));
+    if (name_field_name)
+        dict.Add(perfetto::StaticString(name_field_name), node->DebugName());
 }
 
 const char* PseudoTypeToString(CSSSelector::PseudoType pseudo_type)
@@ -800,7 +799,7 @@ static void CreateQuad(perfetto::TracedValue context, const gfx::QuadF& quad)
 }
 
 static void SetGeneratingNodeInfo(
-    perfetto::TracedDictionary& dict, const LayoutObject* layout_object, perfetto::StaticString id_field_name, perfetto::StaticString name_field_name = nullptr)
+    perfetto::TracedDictionary& dict, const LayoutObject* layout_object, const char* id_field_name, const char* name_field_name = nullptr)
 {
     Node* node = nullptr;
     for (; layout_object && !node; layout_object = layout_object->Parent())

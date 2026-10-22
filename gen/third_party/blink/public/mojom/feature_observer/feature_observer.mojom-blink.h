@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/feature_observer/feature_observer.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/feature_observer/feature_observer.mojom-shared.h" // IWYU pragma: export
@@ -117,113 +120,113 @@ public:
     virtual void Register(::mojo::PendingReceiver<ObservedFeature> feature, ObservedFeatureType type) = 0;
 };
 
-//class PLATFORM_EXPORT ObservedFeatureProxy : public ObservedFeature {
-//public:
-//    using InterfaceType = ObservedFeature;
-//
-//    explicit ObservedFeatureProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class PLATFORM_EXPORT ObservedFeatureProxy : public ObservedFeature {
+public:
+    using InterfaceType = ObservedFeature;
 
-//class PLATFORM_EXPORT FeatureObserverProxy : public FeatureObserver {
-//public:
-//    using InterfaceType = FeatureObserver;
-//
-//    explicit FeatureObserverProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void Register(::mojo::PendingReceiver<ObservedFeature> feature, ObservedFeatureType type) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class PLATFORM_EXPORT ObservedFeatureStubDispatch {
-//public:
-//    static bool Accept(ObservedFeature* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(ObservedFeature* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    explicit ObservedFeatureProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<ObservedFeature>> class ObservedFeatureStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    ObservedFeatureStub() = default;
-//    ~ObservedFeatureStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return ObservedFeatureStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return ObservedFeatureStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT FeatureObserverStubDispatch {
-//public:
-//    static bool Accept(FeatureObserver* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(FeatureObserver* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FeatureObserver>> class FeatureObserverStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    FeatureObserverStub() = default;
-//    ~FeatureObserverStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FeatureObserverStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FeatureObserverStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT ObservedFeatureRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT FeatureObserverRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+class PLATFORM_EXPORT FeatureObserverProxy : public FeatureObserver {
+public:
+    using InterfaceType = FeatureObserver;
+
+    explicit FeatureObserverProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void Register(::mojo::PendingReceiver<ObservedFeature> feature, ObservedFeatureType type) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class PLATFORM_EXPORT ObservedFeatureStubDispatch {
+public:
+    static bool Accept(ObservedFeature* impl, mojo::Message* message);
+    static bool AcceptWithResponder(ObservedFeature* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<ObservedFeature>> class ObservedFeatureStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    ObservedFeatureStub() = default;
+    ~ObservedFeatureStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return ObservedFeatureStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return ObservedFeatureStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT FeatureObserverStubDispatch {
+public:
+    static bool Accept(FeatureObserver* impl, mojo::Message* message);
+    static bool AcceptWithResponder(FeatureObserver* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FeatureObserver>> class FeatureObserverStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    FeatureObserverStub() = default;
+    ~FeatureObserverStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FeatureObserverStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FeatureObserverStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT ObservedFeatureRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT FeatureObserverRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 } // blink::mojom::blink
 

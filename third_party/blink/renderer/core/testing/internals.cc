@@ -611,12 +611,14 @@ UnderlyingSinkBase* TestWritableStreamSink::Optimizer::PerformInProcessOptimizat
     return sink;
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void OnLCPPredicted(ScriptPromiseResolver<IDLString>* resolver, const Element* lcp_element)
 {
     const ElementLocator locator = lcp_element ? element_locator::OfElement(*lcp_element) : ElementLocator();
     resolver->Resolve(element_locator::ToStringForTesting(locator));
 }
 
+#endif
 } // namespace
 
 static std::optional<DocumentMarker::MarkerType> MarkerTypeFrom(const String& marker_type)
@@ -3581,9 +3583,13 @@ ScriptPromise<IDLString> Internals::LCPPrediction(ScriptState* script_state, Doc
     auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<IDLString>>(script_state);
     auto promise = resolver->Promise();
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    resolver->RejectWithDOMException(DOMExceptionCode::kNotSupportedError, "LCP prediction is disabled in this port.");
+#else
     LCPCriticalPathPredictor* lcpp = document->GetFrame()->GetLCPP();
     CHECK(lcpp);
     lcpp->AddLCPPredictedCallback(WTF::BindOnce(&OnLCPPredicted, WrapPersistent(resolver)));
+#endif
     return promise;
 }
 

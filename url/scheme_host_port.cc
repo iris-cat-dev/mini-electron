@@ -250,9 +250,7 @@ GURL SchemeHostPort::GetURL() const
 
 size_t SchemeHostPort::EstimateMemoryUsage() const
 {
-    //return base::trace_event::EstimateMemoryUsage(scheme_) + base::trace_event::EstimateMemoryUsage(host_);
-    *(int*)1 = 1;
-    return 0;
+    return base::trace_event::EstimateMemoryUsage(scheme_) + base::trace_event::EstimateMemoryUsage(host_);
 }
 
 bool SchemeHostPort::operator<(const SchemeHostPort& other) const

@@ -32,7 +32,7 @@ public:
     FileSystemAccessManager(const FileSystemAccessManager&) = delete;
     FileSystemAccessManager& operator=(const FileSystemAccessManager&) = delete;
 
-    HeapMojoRemote<mojom::blink::FileSystemAccessManager>::Proxy* operator->()
+    mojom::blink::FileSystemAccessManager* operator->()
     {
         return remote_.get();
     }

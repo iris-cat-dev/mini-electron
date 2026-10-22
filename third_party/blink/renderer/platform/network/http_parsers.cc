@@ -82,10 +82,6 @@
 // types below.
 namespace network {
 
-DocumentIsolationPolicy::DocumentIsolationPolicy(DocumentIsolationPolicy const&)
-{
-    *(int*)1 = 1;
-}
 
 namespace mojom {
 
@@ -931,24 +927,16 @@ network::mojom::blink::TimingAllowOriginPtr ParseTimingAllowOrigin(const String&
 
 network::mojom::blink::NoVarySearchWithParseErrorPtr ParseNoVarySearch(const String& header_value)
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     // Parse the No-Vary-Search hint value by making a header in order to
-//     // reuse existing code.
-//     auto headers = base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK\n");
-//     headers->AddHeader("No-Vary-Search", header_value.Utf8());
-// 
-//     auto parsed_nvs_with_error = ConvertToBlink(network::ParseNoVarySearch(*headers));
-//     // `parsed_nvs_with_error` cannot be null here. Because we know the header is
-//     // available, we will get a parse error or a No-Vary-Search.
-//     CHECK(parsed_nvs_with_error);
-//     return parsed_nvs_with_error;
+    // Reuse the response-header parser for the hint's structured field value.
+    auto headers = base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK\n");
+    headers->AddHeader("No-Vary-Search", header_value.Utf8());
+    auto parsed = network::mojom::ConvertToBlink(network::ParseNoVarySearch(*headers));
+    CHECK(parsed);
+    return parsed;
 }
 
 String GetNoVarySearchHintConsoleMessage(const network::mojom::NoVarySearchParseError& error)
 {
-    //return network::mojom::ConvertToBlink(network::GetNoVarySearchHintConsoleMessage(error));
-    *(int*)1 = 1;
-    return "";
+    return network::mojom::ConvertToBlink(network::GetNoVarySearchHintConsoleMessage(error));
 }
 } // namespace blink

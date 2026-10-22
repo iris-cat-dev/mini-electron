@@ -7,9 +7,11 @@
 #include "runtime/electron/common/v8_util.h"
 #include "third_party/blink/public/common/messaging/cloneable_message.h"
 #include "v8.h"
+#include <cmath>
 
 #include <windows.h>
 #include "base/memory/ptr_util.h"
+#include "base/notreached.h"
 
 using v8::ArrayBuffer;
 using v8::Boolean;
@@ -443,218 +445,37 @@ int v8ValueToType(v8::Local<v8::Value> v)
 
 v8::Local<v8::Value> Converter<base::Value::Dict>::ToV8(v8::Isolate* isolate, const base::Value::Dict& val)
 {
-    size_t size = val.size();
-    v8::Local<v8::Object> v8Ojb = v8::Object::New(isolate);
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-    std::optional<bool> boolVal;
-    std::optional<int> intVal;
-    std::optional<double> doubleVal = 0;
-    const std::string* strVal;
-    const base::Value::List* listValue = nullptr;
-    const base::Value::Dict* dictionaryValue = nullptr;
-    //base::Value::Dict::Iterator it(val);
-    //for (size_t i = 0; !it.IsAtEnd(); ++i, it.Advance()) {
-    for (base::Value::Dict::const_iterator it = val.begin(); it != val.end(); ++it) {
-        //const base::Value* outValue = &it.value();
-        const base::Value& outValue = it->second;
-        std::string key = it->first;
-        if (key.empty())
-            key = "noElementToV8";
-
-        Local<Value> v8Key = Converter<std::string>::ToV8(isolate, key);
-        base::Value::Type type = outValue.type();
-        switch (type) {
-        case base::Value::Type::BOOLEAN:
-            boolVal = outValue.GetIfBool();
-            v8Ojb->Set(context, v8Key, v8::Boolean::New(isolate, boolVal.value()));
-            break;
-        case base::Value::Type::INTEGER:
-            intVal = outValue.GetIfInt();
-            v8Ojb->Set(context, v8Key, v8::Integer::New(isolate, intVal.value()));
-            break;
-        case base::Value::Type::DOUBLE:
-            doubleVal = outValue.GetIfDouble();
-            v8Ojb->Set(context, v8Key, v8::Number::New(isolate, doubleVal.value()));
-            break;
-        case base::Value::Type::STRING:
-            strVal = outValue.GetIfString();
-            v8Ojb->Set(context, v8Key, v8::String::NewFromUtf8(isolate, strVal->c_str(), v8::NewStringType::kNormal, strVal->size()).ToLocalChecked());
-            break;
-        case base::Value::Type::LIST:
-            listValue = outValue.GetIfList();
-            v8Ojb->Set(context, v8Key, Converter<base::Value::List>::ToV8(isolate, *listValue));
-            break;
-        case base::Value::Type::DICT:
-            dictionaryValue = outValue.GetIfDict();
-            v8Ojb->Set(context, v8Key, Converter<base::Value::Dict>::ToV8(isolate, *dictionaryValue));
-            break;
-        case base::Value::Type::BINARY:
-            v8Ojb->Set(context, v8Key, ConvertToV8(isolate, outValue));
-            break;
-        case base::Value::Type::NONE:
-            v8Ojb->Set(context, v8Key, v8::Null(isolate));
-            break;
-        default:
-            DebugBreak();
-            v8Ojb->Set(context, v8Key, v8::Null(isolate));
-            break;
-        }
+    for (const auto item : val) {
+        v8::Local<v8::Value> value = ConvertToV8(isolate, item.second);
+        if (value.IsEmpty() || result->CreateDataProperty(
+                context, Converter<std::string>::ToV8(isolate, item.first).As<v8::String>(), value).IsNothing())
+            return v8::Local<v8::Value>();
     }
-
-    return v8Ojb.As<Value>();
+    return result;
 }
 
 bool Converter<base::Value::Dict>::FromV8(Isolate* isolate, v8::Local<v8::Value> val, base::Value::Dict* out)
 {
-    if (!val->IsObject())
+    base::Value converted;
+    if (!Converter<base::Value>::FromV8(isolate, val, &converted) || !converted.is_dict())
         return false;
-
-    v8::Object* v8Obj = v8::Object::Cast(*val);
-
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Array> v8ObjProps = v8Obj->GetOwnPropertyNames(context).ToLocalChecked();
-    size_t size = v8ObjProps->Length();
-
-    for (size_t i = 0; i < size; ++i) {
-        v8::Local<v8::Value> keyNameValue = v8ObjProps->Get(context, i).ToLocalChecked();
-        v8::Local<v8::Value> outValue = v8Obj->Get(context, keyNameValue).ToLocalChecked();
-
-        std::string keyNameStr;
-        if (!Converter<std::string>::FromV8(isolate, keyNameValue, &keyNameStr))
-            return false;
-        if (keyNameStr.empty())
-            keyNameStr = "noElementFromV8";
-
-        if (outValue->IsBoolean()) {
-            v8::Local<v8::Boolean> boolVal = outValue->ToBoolean(isolate);
-            out->Set(keyNameStr, boolVal->Value());
-        } else if (outValue->IsInt32()) {
-            v8::Local<v8::Int32> intVal = outValue->ToInt32(context).ToLocalChecked();
-            out->Set(keyNameStr, intVal->Value());
-        } else if (outValue->IsUint32()) {
-            Local<v8::Uint32> intVal = outValue->ToUint32(context).ToLocalChecked();
-            out->Set(keyNameStr, (int)intVal->Value());
-        } else if (outValue->IsNumber()) {
-            Local<v8::Number> doubleVal = outValue->ToNumber(context).ToLocalChecked();
-            out->Set(keyNameStr, doubleVal->Value());
-        } else if (outValue->IsString()) {
-            v8::Local<v8::String> strVal = outValue->ToString(context).ToLocalChecked();
-            v8::String::Utf8Value utf8(isolate, strVal);
-            out->Set(keyNameStr, std::string(*utf8));
-        } else if (outValue->IsArray()) {
-            base::Value::List arrayOut;
-            if (!Converter<base::Value::List>::FromV8(isolate, outValue, &arrayOut)) {
-                return false;
-            }
-            out->Set(keyNameStr, std::move(arrayOut));
-        } else if (outValue->IsArrayBuffer() || outValue->IsArrayBufferView()) {
-            base::Value binary;
-            if (!Converter<base::Value>::FromV8(isolate, outValue, &binary))
-                return false;
-            out->Set(keyNameStr, std::move(binary));
-        } else if (outValue->IsObject()) {
-            base::Value::Dict dictionaryOut;
-            if (!Converter<base::Value::Dict>::FromV8(isolate, outValue, &dictionaryOut)) {
-                return false;
-            }
-            out->Set(keyNameStr, std::move(dictionaryOut));
-        } else if (outValue->IsUndefined()) {
-            out->Set(keyNameStr, base::Value());
-        } else if (outValue->IsNull()) {
-            out->Set(keyNameStr, base::Value());
-        } else {
-            DebugBreak();
-            int type = v8ValueToType(outValue);
-            out->Set(keyNameStr, base::Value());
-            return false;
-        }
-    }
+    *out = std::move(converted).TakeDict();
     return true;
 }
 
-void testValIsTypeArray(v8::Local<v8::Value> value)
-{
-    bool b1 = value->IsArrayBuffer();
-    bool b2 = value->IsArrayBufferView();
-    bool b3 = value->IsUint8Array();
-    bool b4 = value->IsUint8ClampedArray();
-    bool b5 = value->IsInt8Array();
-    bool b6 = value->IsUint16Array();
-    bool b7 = value->IsInt16Array();
-    bool b8 = value->IsUint32Array();
-    bool b9 = value->IsInt32Array();
-    bool b10 = value->IsFloat16Array();
-    bool b11 = value->IsFloat32Array();
-    bool b12 = value->IsFloat64Array();
-    bool b13 = value->IsBigInt64Array();
-    bool b14 = value->IsBigUint64Array();
-
-    bool b200 = value->IsNull();
-    bool b201 = value->IsUndefined();
-    OutputDebugStringA("");
-}
 
 v8::Local<v8::Value> Converter<base::Value::List>::ToV8(v8::Isolate* isolate, const base::Value::List& val)
 {
-    size_t size = val.size();
-    v8::Local<v8::Array> v8Arr = v8::Array::New(isolate, size);
+    v8::Local<v8::Array> result = v8::Array::New(isolate, val.size());
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    std::optional<bool> boolVal = false;
-    std::optional<int> intVal = 0;
-    std::optional<double> doubleVal = 0;
-    const std::string* strVal = nullptr;
-    const base::Value::List* listValue = nullptr;
-    const base::Value::Dict* dictionaryValue = nullptr;
-
-    for (size_t i = 0; i < size; ++i) {
-        const base::Value& outValue = val[i];
-        base::Value::Type type = outValue.type();
-        switch (type) {
-        case base::Value::Type::BOOLEAN:
-            boolVal = outValue.GetIfBool();
-            v8Arr->Set(context, i, v8::Boolean::New(isolate, boolVal.value()));
-            break;
-        case base::Value::Type::INTEGER:
-            intVal = outValue.GetIfInt();
-            v8Arr->Set(context, i, v8::Integer::New(isolate, intVal.value()));
-            break;
-        case base::Value::Type::DOUBLE:
-            doubleVal = outValue.GetIfDouble();
-            v8Arr->Set(context, i, v8::Number::New(isolate, doubleVal.value()));
-            break;
-        case base::Value::Type::STRING:
-            strVal = outValue.GetIfString();
-            v8Arr->Set(context, i, v8::String::NewFromUtf8(isolate, strVal->c_str(), v8::NewStringType::kNormal, strVal->size()).ToLocalChecked());
-            break;
-        case base::Value::Type::LIST:
-            listValue = outValue.GetIfList();
-            v8Arr->Set(context, i, Converter<base::Value::List>::ToV8(isolate, *listValue));
-            break;
-        case base::Value::Type::DICT:
-            dictionaryValue = outValue.GetIfDict();
-            v8Arr->Set(context, i, Converter<base::Value::Dict>::ToV8(isolate, *dictionaryValue));
-            break;
-        case base::Value::Type::BINARY: {
-            const base::Value::BlobStorage& blob = outValue.GetBlob();
-            blink::CloneableMessage ret;
-            ret.encoded_message = blob;
-            v8::Local<v8::Value> clonedValue = ConvertToV8(isolate, std::move(ret));
-            testValIsTypeArray(clonedValue);
-            v8Arr->Set(context, i, clonedValue);
-        }
-            break;
-        case base::Value::Type::NONE:
-            v8Arr->Set(context, i, v8::Null(isolate));
-            break;
-        default:
-            DebugBreak();
-            v8Arr->Set(context, i, v8::Null(isolate));
-            break;
-        }
+    for (size_t index = 0; index < val.size(); ++index) {
+        v8::Local<v8::Value> value = ConvertToV8(isolate, val[index]);
+        if (value.IsEmpty() || result->CreateDataProperty(context, index, value).IsNothing())
+            return v8::Local<v8::Value>();
     }
-
-    return v8Arr.As<Value>();
+    return result;
 }
 
 v8::Local<v8::Value> Converter<base::Value>::ToV8(
@@ -683,9 +504,9 @@ v8::Local<v8::Value> Converter<base::Value>::ToV8(
         v8::Local<v8::Array> result =
             v8::Array::New(isolate, static_cast<int>(list.size()));
         for (size_t index = 0; index < list.size(); ++index) {
-            result->Set(
-                context, static_cast<uint32_t>(index),
-                Converter<base::Value>::ToV8(isolate, std::move(list[index])));
+            auto value = Converter<base::Value>::ToV8(isolate, std::move(list[index]));
+            if (value.IsEmpty() || result->CreateDataProperty(context, static_cast<uint32_t>(index), value).IsNothing())
+                return v8::Local<v8::Value>();
         }
         return result;
     }
@@ -694,69 +515,98 @@ v8::Local<v8::Value> Converter<base::Value>::ToV8(
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
         v8::Local<v8::Object> result = v8::Object::New(isolate);
         for (auto it = dict.begin(); it != dict.end(); ++it) {
-            result->Set(
-                context, Converter<std::string>::ToV8(isolate, it->first),
-                Converter<base::Value>::ToV8(isolate, std::move(it->second)));
+            auto value = Converter<base::Value>::ToV8(isolate, std::move(it->second));
+            if (value.IsEmpty() || result->CreateDataProperty(
+                    context, Converter<std::string>::ToV8(isolate, it->first).As<v8::String>(), value).IsNothing())
+                return v8::Local<v8::Value>();
         }
         return result;
     }
     }
-    return v8::Null(isolate);
+    NOTREACHED();
 }
 
-bool Converter<base::Value>::FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::Value* out)
+namespace {
+
+bool ValueFromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::Value* out, unsigned depth)
 {
-    if (val->IsBoolean()) {
+    // base::Value is a tree: cyclic or excessively deep JavaScript graphs
+    // cannot be represented; bound recursion before exhausting the native stack.
+    if (val.IsEmpty() || depth > 100)
+        return false;
+    if (val->IsBoolean())
         *out = base::Value(val.As<v8::Boolean>()->Value());
-    } else if (val->IsInt32()) {
+    else if (val->IsInt32())
         *out = base::Value(val.As<v8::Int32>()->Value());
-    } else if (val->IsNumber()) {
-        *out = base::Value(val.As<v8::Number>()->Value());
-    } else if (val->IsString()) {
+    else if (val->IsNumber()) {
+        double number = val.As<v8::Number>()->Value();
+        if (!std::isfinite(number))
+            return false;
+        *out = base::Value(number);
+    }
+    else if (val->IsString()) {
         v8::String::Utf8Value utf8(isolate, val);
         if (!*utf8)
             return false;
         *out = base::Value(std::string(*utf8, utf8.length()));
-    } else if (val->IsArray()) {
-        base::Value::List values;
-        if (!Converter<base::Value::List>::FromV8(isolate, val, &values))
-            return false;
-        *out = base::Value(std::move(values));
-    } else if (val->IsNull() || val->IsUndefined()) {
+    } else if (val->IsNullOrUndefined())
         *out = base::Value();
-    } else if (val->IsArrayBuffer() || val->IsArrayBufferView()) {
+    else if (val->IsArrayBuffer() || val->IsArrayBufferView()) {
         blink::CloneableMessage message;
         if (!ConvertFromV8(isolate, val, &message))
             return false;
         *out = base::Value(message.encoded_message);
-    } else if (val->IsObject()) {
-        base::Value::Dict values;
-        if (!Converter<base::Value::Dict>::FromV8(isolate, val, &values))
-            return false;
+    } else if (val->IsArray()) {
+        auto array = val.As<v8::Array>();
+        base::Value::List values;
+        values.reserve(array->Length());
+        for (uint32_t index = 0; index < array->Length(); ++index) {
+            v8::Local<v8::Value> item;
+            base::Value converted;
+            if (!array->Get(isolate->GetCurrentContext(), index).ToLocal(&item)
+                || !ValueFromV8(isolate, item, &converted, depth + 1))
+                return false;
+            values.Append(std::move(converted));
+        }
         *out = base::Value(std::move(values));
-    } else {
+    } else if (val->IsObject() && !val->IsFunction()) {
+        auto object = val.As<v8::Object>();
+        auto context = isolate->GetCurrentContext();
+        v8::Local<v8::Array> names;
+        if (!object->GetOwnPropertyNames(context, v8::SKIP_SYMBOLS, v8::KeyConversionMode::kConvertToString).ToLocal(&names))
+            return false;
+        base::Value::Dict values;
+        for (uint32_t index = 0; index < names->Length(); ++index) {
+            v8::Local<v8::Value> key;
+            v8::Local<v8::Value> item;
+            std::string name;
+            base::Value converted;
+            if (!names->Get(context, index).ToLocal(&key)
+                || !Converter<std::string>::FromV8(isolate, key, &name)
+                || !object->Get(context, key).ToLocal(&item)
+                || !ValueFromV8(isolate, item, &converted, depth + 1))
+                return false;
+            values.Set(name, std::move(converted));
+        }
+        *out = base::Value(std::move(values));
+    } else
         return false;
-    }
     return true;
+}
+
+} // namespace
+
+bool Converter<base::Value>::FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::Value* out)
+{
+    return ValueFromV8(isolate, val, out, 0);
 }
 
 bool Converter<base::Value::List>::FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::Value::List* out)
 {
-    if (!val->IsArray())
+    base::Value converted;
+    if (!ValueFromV8(isolate, val, &converted, 0) || !converted.is_list())
         return false;
-
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Array> array = val.As<v8::Array>();
-    const uint32_t length = array->Length();
-    out->reserve(out->size() + length);
-    for (uint32_t index = 0; index < length; ++index) {
-        v8::Local<v8::Value> item;
-        base::Value converted;
-        if (!array->Get(context, index).ToLocal(&item)
-            || !Converter<base::Value>::FromV8(isolate, item, &converted))
-            return false;
-        out->Append(std::move(converted));
-    }
+    *out = std::move(converted).TakeList();
     return true;
 }
 
@@ -798,54 +648,28 @@ v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const base::Value::Dict& 
 
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const base::Value& input)
 {
-    std::optional<bool> boolVal = false;
-    std::optional<int> intVal = 0;
-    std::optional<double> doubleVal = 0;
-    const std::string* strVal = nullptr;
-    const base::Value::List* listValue = nullptr;
-    const base::Value::Dict* dictionaryValue = nullptr;
-
-    base::Value::Type type = input.type();
-    switch (type) {
-    case base::Value::Type::BOOLEAN:
-        boolVal = input.GetIfBool();
-        return v8::Boolean::New(isolate, boolVal.value());
-        break;
-    case base::Value::Type::INTEGER:
-        intVal = input.GetIfInt();
-        return v8::Integer::New(isolate, intVal.value());
-        break;
-    case base::Value::Type::DOUBLE:
-        doubleVal = input.GetIfDouble();
-        return v8::Number::New(isolate, doubleVal.value());
-        break;
-    case base::Value::Type::STRING:
-        strVal = input.GetIfString();
-        return v8::String::NewFromUtf8(isolate, strVal->c_str(), v8::NewStringType::kNormal, strVal->size()).ToLocalChecked();
-        break;
-    case base::Value::Type::LIST:
-        listValue = input.GetIfList();
-        return Converter<base::Value::List>::ToV8(isolate, *listValue);
-    case base::Value::Type::DICT:
-        dictionaryValue = input.GetIfDict();
-        return Converter<base::Value::Dict>::ToV8(isolate, *dictionaryValue);
-        break;
+    switch (input.type()) {
     case base::Value::Type::NONE:
-        break;
-    case base::Value::Type::BINARY: {
-        const base::Value::BlobStorage& blob = input.GetBlob();
-        blink::CloneableMessage ret;
-        ret.encoded_message = blob;
-        v8::Local<v8::Value> clonedValue = ConvertToV8(isolate, std::move(ret));
-        testValIsTypeArray(clonedValue);
-        return clonedValue;
-    }
-        break;
-    default:
-        DebugBreak();
         return v8::Null(isolate);
-        break;
+    case base::Value::Type::BOOLEAN:
+        return Converter<bool>::ToV8(isolate, input.GetBool());
+    case base::Value::Type::INTEGER:
+        return Converter<int32_t>::ToV8(isolate, input.GetInt());
+    case base::Value::Type::DOUBLE:
+        return Converter<double>::ToV8(isolate, input.GetDouble());
+    case base::Value::Type::STRING:
+        return Converter<std::string>::ToV8(isolate, input.GetString());
+    case base::Value::Type::LIST:
+        return Converter<base::Value::List>::ToV8(isolate, input.GetList());
+    case base::Value::Type::DICT:
+        return Converter<base::Value::Dict>::ToV8(isolate, input.GetDict());
+    case base::Value::Type::BINARY: {
+        blink::CloneableMessage message;
+        message.encoded_message = input.GetBlob();
+        return Converter<blink::CloneableMessage>::ToV8(isolate, message);
     }
+    }
+    NOTREACHED();
 }
 
 v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const blink::CloneableMessage& in)
@@ -861,8 +685,11 @@ v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, const std::vector<blink::
 v8::Local<v8::Value> Converter<std::vector<blink::CloneableMessage>>::ToV8(v8::Isolate* isolate, const std::vector<blink::CloneableMessage>& val)
 {
     std::vector<v8::Local<v8::Value>> retTemp;
+    retTemp.reserve(val.size());
     for (size_t i = 0; i < val.size(); ++i) {
         v8::Local<v8::Value> it = Converter<blink::CloneableMessage>::ToV8(isolate, val[i]);
+        if (it.IsEmpty())
+            return v8::Local<v8::Value>();
         retTemp.push_back(it);
     }
 
@@ -871,8 +698,21 @@ v8::Local<v8::Value> Converter<std::vector<blink::CloneableMessage>>::ToV8(v8::I
 
 bool Converter<std::vector<blink::CloneableMessage>>::FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, std::vector<blink::CloneableMessage>* out)
 {
-    DebugBreak();
-    return false;
+    if (!val->IsArray())
+        return false;
+    auto array = val.As<v8::Array>();
+    std::vector<blink::CloneableMessage> values;
+    values.reserve(array->Length());
+    for (uint32_t index = 0; index < array->Length(); ++index) {
+        v8::Local<v8::Value> item;
+        blink::CloneableMessage message;
+        if (!array->Get(isolate->GetCurrentContext(), index).ToLocal(&item)
+            || !Converter<blink::CloneableMessage>::FromV8(isolate, item, &message))
+            return false;
+        values.push_back(std::move(message));
+    }
+    *out = std::move(values);
+    return true;
 }
 
 
@@ -880,8 +720,9 @@ v8::Local<v8::Value> Converter<std::unique_ptr<std::vector<blink::CloneableMessa
     v8::Isolate* isolate, 
     const std::unique_ptr<std::vector<blink::CloneableMessage>>& val)
 {
-    DebugBreak();
-    return v8::Local<v8::Value>();
+    if (!val)
+        return v8::Null(isolate);
+    return Converter<std::vector<blink::CloneableMessage>>::ToV8(isolate, *val);
 }
 
 bool Converter<std::unique_ptr<std::vector<blink::CloneableMessage>>>::FromV8(
@@ -889,7 +730,11 @@ bool Converter<std::unique_ptr<std::vector<blink::CloneableMessage>>>::FromV8(
     v8::Local<v8::Value> val, 
     std::unique_ptr<std::vector<blink::CloneableMessage>>* out)
 {
-    return false;
+    auto values = std::make_unique<std::vector<blink::CloneableMessage>>();
+    if (!Converter<std::vector<blink::CloneableMessage>>::FromV8(isolate, val, values.get()))
+        return false;
+    *out = std::move(values);
+    return true;
 }
 
 struct TranslaterHolder {
@@ -928,7 +773,7 @@ v8::Local<v8::Value> ConvertToV8(v8::Isolate* isolate, std::function<void(const 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(isolate);
-    v8::Local<v8::Value> data = v8::External::New(isolate, holder);
+    v8::Local<v8::Value> data = holder->handle.Get(isolate);
     tmpl->SetCallHandler(CallTranslater, data);
     v8::Local<v8::Function> func = tmpl->GetFunction(context).FromMaybe(v8::Local<v8::Function>());
     return func;

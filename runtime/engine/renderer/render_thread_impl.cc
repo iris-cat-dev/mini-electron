@@ -56,6 +56,8 @@
 #include "base/synchronization/lock.h"
 #include "base/memory/discardable_memory_allocator.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/power_monitor/power_monitor.h"
+#include "base/power_monitor/power_monitor_device_source.h"
 #include "third_party/icu/source/common/unicode/uclean.h"
 #include "third_party/icu/source/common/unicode/udata.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
@@ -240,7 +242,6 @@ void RenderThreadImpl::ThreadDelegate::BindToCurrentThread()
 {
     m_parent->initializeWebKitOnThread();
     m_parent->m_inited = true;
-    //m_parent->createTestView();
 }
 
 RenderThreadImpl::RenderThreadImpl()
@@ -260,6 +261,14 @@ RenderThreadImpl::RenderThreadImpl()
 #endif
         base::PlatformThread::SetName("Mb132UiThread");
     }
+
+    if (!base::ThreadPoolInstance::Get())
+        base::ThreadPoolInstance::CreateAndStartWithDefaultParams("MiniElectron");
+    // Construct the OS power source on the owning UI loop before starting
+    // Blink. PowerMonitor owns it for the lifetime of the process.
+    if (!base::PowerMonitor::GetInstance()->IsInitialized())
+        base::PowerMonitor::GetInstance()->Initialize(
+            std::make_unique<base::PowerMonitorDeviceSource>());
 
     // The Electron host has already registered its UI runner. Standalone
     // renderer processes reach this idempotent initialization for the first
@@ -386,7 +395,7 @@ public:
             return;
         m_allocator->onDiscardableMemoryRelease(m_size * kDebugSizeExt);
 #ifdef _DEBUG
-        for (size_t i = m_size; i < 2 * kDebugSizeExt; ++i) {
+        for (size_t i = m_size; i < m_size * kDebugSizeExt; ++i) {
             if (m_data[i] != 0xf4)
                 DebugBreak();
         }
@@ -505,8 +514,8 @@ private:
             //mojo::PendingReceiver<::blink::mojom::blink::ContentSecurityNotifier> pendingReceiver(receiver.PassPipe());
             //m_contentSecurityNotifierImplReceiver.Bind(std::move(pendingReceiver));
             createAndBindBrokerProxy<::blink::mojom::blink::ContentSecurityNotifier, ContentSecurityNotifierImpl>(receiver.PassPipe(), NULL_WEBVIEW);
-        } else
-            DebugBreak();
+        }
+        // An unsupported interface is rejected by closing its receiver.
     }
 
     //mojo::Receiver<::blink::mojom::blink::ContentSecurityNotifier> m_contentSecurityNotifierImplReceiver;
@@ -794,9 +803,6 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 #endif
 
     initV8Data();
-    if (!base::ThreadPoolInstance::Get())
-        base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
-            "WebKitThread");
     blink::Platform::InitializeBlink();
 
     if (!base::DiscardableMemoryAllocator::GetInstance()) {
@@ -856,29 +862,6 @@ void RenderThreadImpl::initializeCompositorThread()
     //m_compositorTaskRunner->PostTask(FROM_HERE, base::BindOnce(&base::DisallowBlocking));
 }
 
-void RenderThreadImpl::initializeDemo()
-{
-    // We finally have a valid gfx::AcceleratedWidget. We can now start the
-    // actual process of setting up the viz host and the service.
-    // First, set up the mojo message-pipes that the host and the service will
-    // use to communicate with each other.
-    mojo::PendingRemote<viz::mojom::FrameSinkManager> frameSinkManager;
-    mojo::PendingReceiver<viz::mojom::FrameSinkManager> frameSinkManagerReceiver = frameSinkManager.InitWithNewPipeAndPassReceiver();
-    mojo::PendingRemote<viz::mojom::FrameSinkManagerClient> frameSinkManagerClient;
-    mojo::PendingReceiver<viz::mojom::FrameSinkManagerClient> frameSinkManagerClientReceiver = frameSinkManagerClient.InitWithNewPipeAndPassReceiver();
-
-    // Next, create the host and the service, and pass them the right ends of
-    // the message-pipes.
-    m_service = std::make_unique<VizService>(std::move(frameSinkManagerReceiver), std::move(frameSinkManagerClient));
-
-    //     m_host = std::make_unique<demo::DemoHost>(
-    //         m_widget,
-    //         gfx::Size(g_wndSize.cx, g_wndSize.cy),
-    //         std::move(frameSinkManagerClientReceiver),
-    //         std::move(frameSinkManager),
-    //         m_service->GetCompositorThreadRunner());
-    DebugBreak();
-}
 
 bool RenderThreadImpl::isCurrentThread() const
 {
@@ -904,85 +887,6 @@ base::PlatformThreadId RenderThreadImpl::GetBlinkThreadId() const
 //     navigationControl->Load(urlRequest, blink::WebFrameLoadType::kStandard, blink::WebHistoryItem());
 // }
 
-void RenderThreadImpl::createTestView()
-{
-    DebugBreak();
-    //     blink::WebView* webWiew = blink::WebView::Create(new WebViewClientImpl(), false, false, false, absl::nullopt,
-    //         /*compositing_enabled=*/true, false, nullptr, blink::CrossVariantMojoAssociatedReceiver<blink::mojom::PageBroadcastInterfaceBase>(),
-    //         *(m_agentGroupScheduler), "session_storage_namespace_id", absl::optional<SkColor>(0xffffffff));
-    //
-    //     mojo::PendingAssociatedRemote<blink::mojom::blink::PolicyContainerHost> policyContainerRemote;
-    //     mojo::PendingAssociatedReceiver<blink::mojom::blink::PolicyContainerHost> policyContainerReceiver
-    //         = policyContainerRemote.InitWithNewEndpointAndPassReceiver();
-    //
-    //     mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>* blinkPolicyContainerHostReceiver
-    //         = new mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>(new PolicyContainerHostImpl());
-    //     blinkPolicyContainerHostReceiver->Bind(std::move(policyContainerReceiver)); // TODO: �ڴ�й¶
-    //
-    //     std::unique_ptr<blink::WebPolicyContainer> policyContainer
-    //         = std::make_unique<blink::WebPolicyContainer>(blink::WebPolicyContainerPolicies(), blink::ToCrossVariantMojoType(std::move(policyContainerRemote)));
-    //
-    //     WebLocalFrameClientImpl* frameClient = new WebLocalFrameClientImpl();
-    //     blink::WebLocalFrame* webFrame = blink::WebLocalFrame::CreateMainFrame(webWiew, frameClient, new BlinkInterfaceRegistryImpl(), blink::LocalFrameToken(),
-    //         blink::DocumentToken(), std::move(policyContainer), nullptr, blink::WebString::FromUTF8("hahaha"), network::mojom::WebSandboxFlags::kNone);
-    //
-    //     m_renderWidgetHostImpl = new RenderWidgetHostImpl(base::ThreadTaskRunnerHandle::Get());
-    // //     if (m_testHost.get())
-    // //         m_renderWidgetHostImpl->setHostFrameSinkManager(m_testHost->host_frame_sink_manager());
-    // //     else
-    //     m_renderWidgetHostImpl->setHostFrameSinkManager(m_host->host_frame_sink_manager());
-    //
-    //     demo::g_demo_client->set_widget_host(m_renderWidgetHostImpl);
-    //
-    //     CreateFrameWidgetParams* createFrameWidgetParams = m_renderWidgetHostImpl->bindAndGenerateCreateFrameWidgetParams();
-    //     m_renderWidgetHostImpl->m_mainFrame = webFrame;
-    //     m_renderWidgetHostImpl->m_webWiew = webWiew;
-    //
-    //     blink::WebSettings* websettings = webWiew->GetSettings();
-    //     websettings->SetDefaultFontSize(13);
-    //     websettings->SetDefaultFixedFontSize(13);
-    //     websettings->SetJavaScriptEnabled(true);
-    //
-    //     blink::DocumentLoader::DisableCodeCacheForTesting();
-    //
-    //     //constexpr viz::FrameSinkId root_frame_sink_id(0xdead, 0xbeef);
-    //     //m_renderWidgetHostImpl->setFrameSinkId(root_frame_sink_id);
-    //
-    //     blink::WebFrameWidget* webFrameWidget
-    //         = webFrame->InitializeFrameWidget(
-    //             blink::ToCrossVariantMojoType(std::move(createFrameWidgetParams->frameWidgetHost)),
-    //             blink::ToCrossVariantMojoType(std::move(createFrameWidgetParams->frameWidget)),
-    //             blink::ToCrossVariantMojoType(std::move(createFrameWidgetParams->widgetHost)),
-    //             blink::ToCrossVariantMojoType(std::move(createFrameWidgetParams->widget)),
-    //             viz::FrameSinkId(/*RenderThread::Get()->GetClientId()*/ 1, /*params->widget_params->routing_id*/ 2),
-    //             /*is_for_nested_main_frame*/ false, /*is_for_scalable_page*/ true,
-    //             /*hidden=*/true);
-    //     webFrameWidget->InitializeCompositing(
-    //         *m_renderWidgetHostImpl->m_agentGroupScheduler, createFrameWidgetParams->visualProperties.screen_infos, /*settings=*/nullptr);
-    //
-    //     webWiew->DidAttachLocalMainFrame();
-    //
-    //     const char* urlStr =
-    //         //"file:///G:/test/web_test/monaco-editor/m3u8-downloader-master/index.html";
-    //         //"file:///G:/mycode/mb108/content/demo/res/jiqimao2.htm";
-    //         //"file:///G:/mycode/mb108/content/demo/test.htm";
-    //         //"http://windbg.org/";
-    //         //"https://mycaht.top/";
-    //         //"http://192.168.0.102:8091/index.html";
-    //         "https://foundation.mozilla.org/en/";
-    //         //"https://vuejs.org/";
-    //         //"https://bxm0927.github.io/canvas-special/zhihu/index.html";
-    //         //"file:///M:/doc/fingerprint/offcanvase.html";
-    //         //"file:///W:/test/web_test/message_test/1.htm";
-    //
-    //     loadUrl(urlStr, frameClient->m_navigationControl);
-}
-
-void RenderThreadImpl::loadTestUrl(const char* urlStr, blink::WebNavigationControl* navigationControl)
-{
-    DebugBreak();
-
-}
 
 void RenderThreadImpl::garbageCollectionDelay(size_t millisecond)
 {

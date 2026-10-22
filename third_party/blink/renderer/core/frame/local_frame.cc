@@ -179,7 +179,10 @@
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/text_autosizer.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#endif
+#include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_script_observer.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/idleness_detector.h"
@@ -513,7 +516,9 @@ void LocalFrame::Trace(Visitor* visitor) const
     visitor->Trace(background_color_paint_image_generator_);
     visitor->Trace(box_shadow_paint_image_generator_);
     visitor->Trace(clip_path_paint_image_generator_);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     visitor->Trace(lcpp_);
+#endif
     visitor->Trace(v8_local_compile_hints_producer_);
     visitor->Trace(browser_interface_broker_proxy_);
 #if !BUILDFLAG(IS_ANDROID)
@@ -852,6 +857,10 @@ void LocalFrame::SetClipPathPaintImageGeneratorForTesting(ClipPathPaintImageGene
 
 LCPCriticalPathPredictor* LocalFrame::GetLCPP()
 {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // The port disables LCPP and does not link its predictor/protobuf providers.
+    return nullptr;
+#else
     if (!LcppEnabled()) {
         return nullptr;
     }
@@ -865,6 +874,7 @@ LCPCriticalPathPredictor* LocalFrame::GetLCPP()
         lcpp_ = MakeGarbageCollected<LCPCriticalPathPredictor>(*this);
     }
     return lcpp_.Get();
+#endif
 }
 
 const SecurityContext* LocalFrame::GetSecurityContext() const

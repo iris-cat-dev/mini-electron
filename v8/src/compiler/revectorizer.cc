@@ -863,13 +863,12 @@ void SLPTree::DeleteTree()
 
 void SLPTree::Print(const char* info)
 {
-    *(int*)1 = 1;
-//     TRACE("%s, Packed node:\n", info);
-//     if (!v8_flags.trace_wasm_revectorize) {
-//         return;
-//     }
-// 
-//     ForEach([](PackNode const* pnode) { pnode->Print(); });
+    TRACE("%s, Packed node:\n", info);
+    if (!v8_flags.trace_wasm_revectorize) {
+        return;
+    }
+
+    ForEach([](PackNode const* pnode) { pnode->Print(); });
 }
 
 template <typename FunctionType> void SLPTree::ForEach(FunctionType callback)
@@ -1421,22 +1420,21 @@ bool Revectorizer::ReduceStoreChain(const ZoneVector<Node*>& Stores)
 
 void Revectorizer::PrintStores(ZoneMap<Node*, StoreNodeSet>* store_chains)
 {
-    *(int*)1 = 1;
-//     if (!v8_flags.trace_wasm_revectorize) {
-//         return;
-//     }
-//     TRACE("Enter %s\n", __func__);
-//     for (auto it = store_chains->cbegin(); it != store_chains->cend(); ++it) {
-//         if (it->second.size() > 0) {
-//             TRACE("address = #%d:%s \n", it->first->id(), it->first->op()->mnemonic());
-// 
-//             for (auto node : it->second) {
-//                 TRACE("#%d:%s, ", node->id(), node->op()->mnemonic());
-//             }
-// 
-//             TRACE("\n");
-//         }
-//     }
+    if (!v8_flags.trace_wasm_revectorize) {
+        return;
+    }
+    TRACE("Enter %s\n", __func__);
+    for (auto it = store_chains->cbegin(); it != store_chains->cend(); ++it) {
+        if (it->second.size() > 0) {
+            TRACE("address = #%d:%s \n", it->first->id(), it->first->op()->mnemonic());
+
+            for (auto node : it->second) {
+                TRACE("#%d:%s, ", node->id(), node->op()->mnemonic());
+            }
+
+            TRACE("\n");
+        }
+    }
 }
 
 } // namespace compiler

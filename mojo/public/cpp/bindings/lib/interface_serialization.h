@@ -30,8 +30,11 @@ template <typename Base, typename T> struct Serializer<AssociatedInterfacePtrInf
 
     static void Serialize(PendingAssociatedRemote<T>& input, AssociatedInterface_Data* output, Message* message)
     {
+#if ASSOCIATED_AS_ALIAS != 1
         DCHECK(!input.handle().is_valid() || input.handle().pending_association());
-        SerializeAssociatedInterfaceInfo(input.PassHandle(), input.version(), *message, *output);
+#endif
+        const uint32_t version = input.version();
+        SerializeAssociatedInterfaceInfo(input.PassHandle(), version, *message, *output);
     }
 
     static bool Deserialize(AssociatedInterface_Data* input, PendingAssociatedRemote<T>* output, Message* message)
@@ -40,8 +43,7 @@ template <typename Base, typename T> struct Serializer<AssociatedInterfacePtrInf
         if (!handle.is_valid()) {
             *output = PendingAssociatedRemote<T>();
         } else {
-            output->set_handle(std::move(handle));
-            output->set_version(input->version);
+            *output = PendingAssociatedRemote<T>(std::move(handle), input->version);
         }
         return true;
     }
@@ -52,7 +54,9 @@ template <typename Base, typename T> struct Serializer<AssociatedInterfaceReques
 
     static void Serialize(PendingAssociatedReceiver<T>& input, AssociatedEndpointHandle_Data* output, Message* message)
     {
+#if ASSOCIATED_AS_ALIAS != 1
         DCHECK(!input.handle().is_valid() || input.handle().pending_association());
+#endif
         SerializeAssociatedEndpoint(input.PassHandle(), *message, *output);
     }
 

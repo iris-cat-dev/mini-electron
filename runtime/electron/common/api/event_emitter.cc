@@ -10,6 +10,7 @@
 #include "runtime/electron/common/gin_helper/dictionary.h"
 #include "runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "runtime/electron/common/gin_helper/public/wrapper_info.h"
+#include "ui/events/event_constants.h"
 
 namespace mate {
 
@@ -25,19 +26,13 @@ void preventDefault(gin_helper::Arguments* args)
     self.Set("defaultPrevented", true);
 }
 
-void sendReply(const std::string& json)
-{
-    //     gin_helper::Dictionary self(args->isolate(), args->GetThis());
-    //     self.Set("defaultPrevented", true);
-    DebugBreak();
-}
 
 // Create a pure JavaScript Event object.
 v8::Local<v8::Object> createEventObject(v8::Isolate* isolate)
 {
     if (eventTemplate.IsEmpty()) {
         eventTemplate.Reset(
-            isolate, gin_helper::ObjectTemplateBuilder(isolate).SetMethod("preventDefault", &preventDefault).SetMethod("sendReply", &sendReply).Build());
+            isolate, gin_helper::ObjectTemplateBuilder(isolate).SetMethod("preventDefault", &preventDefault).Build());
     }
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -80,14 +75,12 @@ v8::Local<v8::Object> createCustomEvent(v8::Isolate* isolate, v8::Local<v8::Obje
 
 v8::Local<v8::Object> createEventFromFlags(v8::Isolate* isolate, int flags)
 {
-    //     gin_helper::Dictionary obj = gin_helper::Dictionary::CreateEmpty(isolate);
-    //     obj.Set("shiftKey", static_cast<bool>(flags & ui::EF_SHIFT_DOWN));
-    //     obj.Set("ctrlKey", static_cast<bool>(flags & ui::EF_CONTROL_DOWN));
-    //     obj.Set("altKey", static_cast<bool>(flags & ui::EF_ALT_DOWN));
-    //     obj.Set("metaKey", static_cast<bool>(flags & ui::EF_COMMAND_DOWN));
-    //     return obj.GetHandle();
-    DebugBreak();
-    return v8::Local<v8::Object>();
+    gin_helper::Dictionary obj = gin_helper::Dictionary::CreateEmpty(isolate);
+    obj.Set("shiftKey", static_cast<bool>(flags & ui::EF_SHIFT_DOWN));
+    obj.Set("ctrlKey", static_cast<bool>(flags & ui::EF_CONTROL_DOWN));
+    obj.Set("altKey", static_cast<bool>(flags & ui::EF_ALT_DOWN));
+    obj.Set("metaKey", static_cast<bool>(flags & ui::EF_COMMAND_DOWN));
+    return obj.GetHandle();
 }
 
 } // namespace internal

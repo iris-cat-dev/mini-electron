@@ -39,166 +39,6 @@ constexpr bool kLenientSkSLDeserialization = true;
 constexpr bool kLenientSkSLDeserialization = false;
 #endif
 
-#if !defined(SK_GANESH)
-SkRuntimeEffect::Result SkRuntimeEffect::MakeForShader(SkString sksl, const Options& options)
-{
-    *(int*)1 = 1;
-    return SkRuntimeEffect::Result();
-}
-
-sk_sp<SkBlender> SkRuntimeEffect::makeBlender(sk_sp<const SkData> uniforms, SkSpan<const SkRuntimeEffect::ChildPtr> children) const
-{
-    return nullptr;
-}
-
-SkRuntimeEffect::Result SkRuntimeEffect::MakeForBlender(SkString sksl, const Options& options)
-{
-    *(int*)1 = 1;
-    return SkRuntimeEffect::Result();
-}
-
-sk_sp<SkShader> SkRuntimeEffectBuilder::makeShader(const SkMatrix* localMatrix) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-SkRuntimeEffect::Result SkRuntimeEffect::MakeForColorFilter(SkString, const SkRuntimeEffect::Options&)
-{
-    *(int*)1 = 1;
-    return SkRuntimeEffect::Result();
-}
-
-sk_sp<SkShader> SkRuntimeEffect::makeShader(sk_sp<const SkData> uniforms, sk_sp<SkShader> children[], size_t childCount, const SkMatrix* localMatrix) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-sk_sp<SkShader> SkRuntimeEffect::makeShader(sk_sp<const SkData> uniforms, SkSpan<const SkRuntimeEffect::ChildPtr> children, const SkMatrix* localMatrix) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-const std::string& SkRuntimeEffect::source(void) const
-{
-    *(int*)1 = 1;
-    return "";
-}
-
-void SkRuntimeEffect::RegisterFlattenables(void)
-{
-    *(int*)1 = 1;
-}
-
-const SkRuntimeEffect::Uniform* SkRuntimeEffect::findUniform(std::string_view name) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-const SkRuntimeEffect::Child* SkRuntimeEffect::findChild(std::string_view name) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-size_t SkRuntimeEffect::uniformSize() const
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-size_t SkRuntimeEffect::Uniform::sizeInBytes(void) const
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-sk_sp<SkRuntimeEffect> SkMakeCachedRuntimeEffect(SkRuntimeEffect::Result(*make)(SkString sksl, const SkRuntimeEffect::Options&), SkString sksl)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-sk_sp<SkColorFilter> SkRuntimeEffectBuilder::makeColorFilter(void) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-bool SkRuntimeEffectPriv::CanDraw(const SkCapabilities*, const SkRuntimeEffect*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-SkSpan<float const> SkRuntimeEffectPriv::UniformsAsSpan(SkSpan<const SkRuntimeEffect::Uniform> uniforms, sk_sp<const SkData> originalData, bool alwaysCopyIntoAlloc,
-    const SkColorSpace* destColorSpace, SkArenaAlloc* alloc)
-{
-    *(int*)1 = 1;
-    return SkSpan<float const>();
-}
-
-void SkRuntimeEffectPriv::WriteChildEffects(class SkWriteBuffer&, class SkSpan<class SkRuntimeEffect::ChildPtr const>)
-{
-    *(int*)1 = 1;
-}
-
-bool SkRuntimeEffectPriv::ReadChildEffects(class SkReadBuffer&, class SkRuntimeEffect const*, class skia_private::TArray<class SkRuntimeEffect::ChildPtr, 1>*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-sk_sp<SkColorFilter> SkRuntimeEffect::makeColorFilter(sk_sp<const SkData> uniforms) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-sk_sp<SkColorFilter> SkRuntimeEffect::makeColorFilter(sk_sp<const SkData> uniforms, sk_sp<SkColorFilter> children[], size_t childCount) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-sk_sp<SkColorFilter> SkRuntimeEffect::makeColorFilter(sk_sp<const SkData> uniforms, SkSpan<const ChildPtr> children) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-bool RuntimeEffectRPCallbacks::appendShader(int)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-bool RuntimeEffectRPCallbacks::appendColorFilter(int)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-bool RuntimeEffectRPCallbacks::appendBlender(int)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-void RuntimeEffectRPCallbacks::toLinearSrgb(void const*)
-{
-    *(int*)1 = 1;
-}
-
-void RuntimeEffectRPCallbacks::fromLinearSrgb(void const*)
-{
-    *(int*)1 = 1;
-}
-#endif
-
 SkRuntimeColorFilter::SkRuntimeColorFilter(sk_sp<SkRuntimeEffect> effect, sk_sp<const SkData> uniforms, SkSpan<const SkRuntimeEffect::ChildPtr> children)
     : fEffect(std::move(effect))
     , fUniforms(std::move(uniforms))
@@ -213,7 +53,6 @@ bool SkRuntimeColorFilter::appendStages(const SkStageRec& rec, bool) const
         // usage in runtime effects to just #version 100.
         return false;
     }
-#if defined(SK_GANESH)
     if (const SkSL::RP::Program* program = fEffect->getRPProgram(/*debugTrace=*/nullptr)) {
         SkSpan<const float> uniforms = SkRuntimeEffectPriv::UniformsAsSpan(fEffect->uniforms(), fUniforms,
             /*alwaysCopyIntoAlloc=*/false, rec.fDstCS, rec.fAlloc);
@@ -222,9 +61,6 @@ bool SkRuntimeColorFilter::appendStages(const SkStageRec& rec, bool) const
         RuntimeEffectRPCallbacks callbacks(rec, matrix, fChildren, fEffect->fSampleUsages);
         return program->appendStages(rec.fPipeline, rec.fAlloc, &callbacks, uniforms);
     }
-#else
-    *(int*)1 = 1;
-#endif
     return false;
 }
 

@@ -43,7 +43,9 @@
 #include "third_party/blink/renderer/core/html/parser/css_preload_scanner.h"
 #include "third_party/blink/renderer/core/html/parser/html_token.h"
 #include "third_party/blink/renderer/core/html/parser/preload_request.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/element_locator.h"
+#endif
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/text/segmented_string.h"
@@ -111,7 +113,11 @@ public:
     enum class ScannerType { kMainDocument, kInsertion };
 
     TokenPreloadScanner(const KURL& document_url, std::unique_ptr<CachedDocumentParameters>, std::unique_ptr<MediaValuesCached::MediaValuesCachedData>,
-        const ScannerType, Vector<ElementLocator>);
+        const ScannerType
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+        , Vector<ElementLocator>
+#endif
+    );
     TokenPreloadScanner(const TokenPreloadScanner&) = delete;
     TokenPreloadScanner& operator=(const TokenPreloadScanner&) = delete;
     ~TokenPreloadScanner();
@@ -177,7 +183,9 @@ private:
     std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data_;
     Persistent<MediaValuesCached> media_values_;
     ScannerType scanner_type_;
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     element_locator::TokenStreamMatcher lcp_element_matcher_;
+#endif
 };
 
 class CORE_EXPORT HTMLPreloadScanner final {
@@ -205,7 +213,10 @@ public:
     HTMLPreloadScanner(std::unique_ptr<HTMLTokenizer>, const KURL& document_url, std::unique_ptr<CachedDocumentParameters>,
         std::unique_ptr<MediaValuesCached::MediaValuesCachedData>, const TokenPreloadScanner::ScannerType,
         std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner, TakePreloadFn take_preload = TakePreloadFn(),
-        Vector<ElementLocator> locators = {}, bool disable_preload_scanning = false);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+        Vector<ElementLocator> locators = {},
+#endif
+        bool disable_preload_scanning = false);
     HTMLPreloadScanner(const HTMLPreloadScanner&) = delete;
     HTMLPreloadScanner& operator=(const HTMLPreloadScanner&) = delete;
     ~HTMLPreloadScanner();

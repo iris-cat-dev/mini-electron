@@ -198,6 +198,7 @@ DocumentSpeculationRules::DocumentSpeculationRules(Document& document)
     : Supplement(document)
     , host_(document.GetExecutionContext())
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (!base::FeatureList::IsEnabled(features::kLCPTimingPredictorPrerender2)) {
         return;
     }
@@ -212,6 +213,7 @@ DocumentSpeculationRules::DocumentSpeculationRules(Document& document)
         return;
     }
     lcpp->AddLCPPredictedCallback(WTF::BindOnce(&DocumentSpeculationRules::OnLCPPredicted, WrapPersistent(this)));
+#endif
 }
 
 void DocumentSpeculationRules::OnLCPPredicted(const Element*)

@@ -45,6 +45,7 @@
 #include "third_party/blink/renderer/platform/fonts/font_platform_data.h"
 #include "third_party/blink/renderer/platform/fonts/web_font_decoder.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
+#include "third_party/blink/renderer/platform/instrumentation/tracing/web_process_memory_dump.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_client_walker.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
@@ -401,20 +402,19 @@ bool FontResource::IsLowPriorityLoadingAllowedForRemoteFont() const
 
 void FontResource::OnMemoryDump(WebMemoryDumpLevelOfDetail level, WebProcessMemoryDump* memory_dump) const
 {
-    *(int*)1 = 1;
-    //   Resource::OnMemoryDump(level, memory_dump);
-    //   if (!font_data_)
-    //     return;
-    //   const String name = GetMemoryDumpName() + "/decoded_webfont";
-    //   WebMemoryAllocatorDump* dump = memory_dump->CreateMemoryAllocatorDump(name);
-    //   dump->AddScalar("size", "bytes", font_data_->DataSize());
-    //
-    //   const char* system_allocator_name =
-    //       base::trace_event::MemoryDumpManager::GetInstance()
-    //           ->system_allocator_pool_name();
-    //   if (system_allocator_name) {
-    //     memory_dump->AddSuballocation(dump->Guid(), system_allocator_name);
-    //   }
+    Resource::OnMemoryDump(level, memory_dump);
+    if (!font_data_)
+        return;
+    const String name = GetMemoryDumpName() + "/decoded_webfont";
+    WebMemoryAllocatorDump* dump = memory_dump->CreateMemoryAllocatorDump(name);
+    dump->AddScalar("size", "bytes", font_data_->DataSize());
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    const char* system_allocator_name = base::trace_event::MemoryDumpManager::GetInstance()->system_allocator_pool_name();
+    if (system_allocator_name) {
+        memory_dump->AddSuballocation(dump->Guid(), system_allocator_name);
+    }
+#endif
 }
 
 void FontResource::AddClearDataObserver(FontResourceClearDataObserver* observer) const

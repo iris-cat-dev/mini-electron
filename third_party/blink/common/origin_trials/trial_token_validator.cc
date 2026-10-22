@@ -21,12 +21,6 @@
 #include "third_party/blink/public/common/origin_trials/trial_token_result.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
 
-net::HttpResponseHeaders* net::URLRequest::response_headers(void) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
 namespace blink {
 namespace {
 

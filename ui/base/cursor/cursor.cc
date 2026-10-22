@@ -15,8 +15,7 @@
 
 std::ostream& ui::mojom::operator<<(std::ostream& a, ::ui::mojom::CursorType b)
 {
-    *(int*)1 = 1;
-    return a << (int)(b);
+    return a << static_cast<int>(b);
 }
 
 namespace ui {

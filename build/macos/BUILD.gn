@@ -51,10 +51,12 @@ config("mini_electron_engine_config") {
     "CPPGC_YOUNG_GENERATION",
     "CURL_STATICLIB",
     "MINI_ELECTRON_IMPLEMENTATION=1",
+    "MINI_ELECTRON_USE_OPENSSL=1",
     "INSIDE_BLINK=1",
     "LIBXML_STATIC",
     "MINI_ELECTRON_DISABLE_DEVTOOLS=1",
     "MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT=1",
+    "MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE=1",
     "LIBXSLT_STATIC",
     "PNG_SET_OPTION_SUPPORTED",
     "SK_SUPPORT_LEGACY_DRAWLOOPER",
@@ -108,6 +110,12 @@ config("mini_electron_engine_config") {
     "//third_party/libxslt/src",
     "//third_party/openssl",
     "//third_party/openssl/openssl/include",
+    "//net/third_party/quiche/src",
+    "//net/third_party/quiche/overrides",
+    "//third_party/protobuf/src",
+    "//third_party/re2/src",
+    "//third_party/snappy/mac",
+    "//third_party/snappy/src",
     "//third_party/skia",
     "//third_party/zlib",
     "//v8",
@@ -421,6 +429,7 @@ source_set("mini_electron_skia_mac") {
     "//third_party/skia/src/ports/SkScalerContext_mac_ct.cpp",
     "//third_party/skia/src/utils/mac/SkCTFont.cpp",
     "//third_party/skia/src/utils/mac/SkCTFontCreateExactCopy.cpp",
+    "//third_party/skia/src/utils/mac/SkCreateCGImageRef.cpp",
   ]
   configs += [ ":mini_electron_engine_config" ]
   frameworks = [
@@ -469,6 +478,7 @@ static_library("mini_electron_blink") {
 static_library("mini_electron_chromium") {
   sources = mini_electron_chromium_sources
   configs += [ ":mini_electron_engine_config" ]
+  deps = [ ":mini_electron_material_color_utilities" ]
 }
 
 # GN derives object names from source basenames. Chromium's net data-URL
@@ -529,9 +539,15 @@ source_set("mini_electron_platform_mac") {
     "//components/performance_manager/public/mojom/web_memory_mojom_stub.cc",
     "//net/base/platform_mime_util_apple.mm",
     "//skia/ext/convolver_neon.cc",
+    "//skia/ext/skia_utils_mac.mm",
+    "//ipc/file_descriptor_set_posix.cc",
     "//third_party/blink/renderer/core/editing/commands/smart_replace_cf.cc",
     "//ui/base/cocoa/defaults_utils.mm",
     "//ui/base/idle/idle_mac.mm",
+    "//ui/color/mac/css_system_color_mixer_mac.mm",
+    "//ui/color/mac/native_color_mixers_mac.mm",
+    "//ui/color/mac/native_color_transform.mm",
+    "//ui/color/mac/system_color_utils.mm",
     "//ui/display/mac/ca_display_link_mac.mm",
     "//ui/display/mac/cv_display_link_mac.mm",
     "//ui/display/mac/display_link_mac.mm",
@@ -574,6 +590,8 @@ source_set("mini_electron_posix_win_compat") {
 static_library("mini_electron_partition_alloc") {
   sources = mini_electron_partition_alloc_sources
   configs += [ ":mini_electron_engine_config" ]
+  # Allocator interception is deliberately compiled without Objective-C ARC.
+  configs -= [ "//build/config/compiler:enable_arc" ]
 }
 
 source_set("mini_electron_partition_alloc_mac") {
@@ -613,6 +631,9 @@ group("mini_electron_engine") {
     ":mini_electron_skia_mac",
     ":mini_electron_util",
     ":mini_electron_gin",
+    ":mini_electron_additional_source_namespace",
+    ":mini_electron_snappy",
+    ":mini_electron_abseil",
     "//v8:v8",
     "//v8:v8_libbase",
     "//v8:v8_libplatform",
@@ -657,6 +678,38 @@ executable("mini_electron_browser") {
     "Foundation.framework",
     "MediaAccessibility.framework",
     "IOSurface.framework",
+    "QuartzCore.framework",
+    "Security.framework",
+    "SystemConfiguration.framework",
+    "UniformTypeIdentifiers.framework",
+  ]
+}
+
+executable("mini_electron_native_theme_smoke") {
+  output_name = "mini-electron-native-theme-smoke"
+  sources = [ "//test/macos-native-theme-smoke.mm" ]
+  configs += [ ":mini_electron_engine_config" ]
+  cflags_objcc = [ "-fobjc-arc" ]
+  deps = [
+    ":mini_electron_engine",
+    ":mini_electron_engine_api",
+  ]
+  libs = [
+    rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+    rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+    "z",
+    "iconv",
+  ]
+  frameworks = [
+    "AppKit.framework",
+    "Carbon.framework",
+    "CoreFoundation.framework",
+    "CoreGraphics.framework",
+    "CoreServices.framework",
+    "CoreText.framework",
+    "Foundation.framework",
+    "IOSurface.framework",
+    "MediaAccessibility.framework",
     "QuartzCore.framework",
     "Security.framework",
     "SystemConfiguration.framework",
@@ -728,4 +781,257 @@ executable("mini_electron") {
     "SystemConfiguration.framework",
     "UniformTypeIdentifiers.framework",
   ]
+}
+
+static_library("mini_electron_snappy") {
+  sources = [
+    "//third_party/snappy/src/snappy.cc",
+    "//third_party/snappy/src/snappy-sinksource.cc",
+    "//third_party/snappy/src/snappy-stubs-internal.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  defines = [ "HAVE_CONFIG_H" ]
+}
+
+
+static_library("mini_electron_re2") {
+  sources = [
+    "//third_party/re2/src/re2/bitmap256.cc",
+    "//third_party/re2/src/re2/bitstate.cc",
+    "//third_party/re2/src/re2/compile.cc",
+    "//third_party/re2/src/re2/dfa.cc",
+    "//third_party/re2/src/re2/filtered_re2.cc",
+    "//third_party/re2/src/re2/mimics_pcre.cc",
+    "//third_party/re2/src/re2/nfa.cc",
+    "//third_party/re2/src/re2/onepass.cc",
+    "//third_party/re2/src/re2/parse.cc",
+    "//third_party/re2/src/re2/perl_groups.cc",
+    "//third_party/re2/src/re2/prefilter.cc",
+    "//third_party/re2/src/re2/prefilter_tree.cc",
+    "//third_party/re2/src/re2/prog.cc",
+    "//third_party/re2/src/re2/re2.cc",
+    "//third_party/re2/src/re2/regexp.cc",
+    "//third_party/re2/src/re2/set.cc",
+    "//third_party/re2/src/re2/simplify.cc",
+    "//third_party/re2/src/re2/tostring.cc",
+    "//third_party/re2/src/re2/unicode_casefold.cc",
+    "//third_party/re2/src/re2/unicode_groups.cc",
+    "//third_party/re2/src/util/rune.cc",
+    "//third_party/re2/src/util/strutil.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+executable("mini_electron_third_party_dependencies_smoke") {
+  sources = [ "//test/third-party-dependencies-smoke.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_snappy",
+    ":mini_electron_re2",
+    ":mini_electron_abseil",
+  ]
+}
+
+# Keep equal source basenames in separate GN object namespaces.
+source_set("mini_electron_additional_source_namespace") {
+  sources = [
+    "//third_party/liburlpattern/utils.cc",
+    "//third_party/blink/renderer/modules/permissions/permission_utils.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+static_library("mini_electron_abseil") {
+  sources = [
+    "//third_party/abseil-cpp/absl/base/internal/cycleclock.cc",
+    "//third_party/abseil-cpp/absl/base/internal/low_level_alloc.cc",
+    "//third_party/abseil-cpp/absl/base/internal/raw_logging.cc",
+    "//third_party/abseil-cpp/absl/base/internal/spinlock.cc",
+    "//third_party/abseil-cpp/absl/base/internal/spinlock_wait.cc",
+    "//third_party/abseil-cpp/absl/base/internal/strerror.cc",
+    "//third_party/abseil-cpp/absl/base/internal/sysinfo.cc",
+    "//third_party/abseil-cpp/absl/base/internal/thread_identity.cc",
+    "//third_party/abseil-cpp/absl/base/internal/throw_delegate.cc",
+    "//third_party/abseil-cpp/absl/base/internal/tracing.cc",
+    "//third_party/abseil-cpp/absl/base/internal/unscaledcycleclock.cc",
+    "//third_party/abseil-cpp/absl/base/log_severity.cc",
+    "//third_party/abseil-cpp/absl/container/internal/hashtablez_sampler.cc",
+    "//third_party/abseil-cpp/absl/container/internal/hashtablez_sampler_force_weak_definition.cc",
+    "//third_party/abseil-cpp/absl/container/internal/raw_hash_set.cc",
+    "//third_party/abseil-cpp/absl/crc/crc32c.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/cpu_detect.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc_cord_state.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc_memcpy_fallback.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc_memcpy_x86_arm_combined.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc_non_temporal_memcpy.cc",
+    "//third_party/abseil-cpp/absl/crc/internal/crc_x86_arm_combined.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/address_is_readable.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/decode_rust_punycode.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/demangle.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/demangle_rust.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/elf_mem_image.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/examine_stack.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/utf8_for_code_point.cc",
+    "//third_party/abseil-cpp/absl/debugging/internal/vdso_support.cc",
+    "//third_party/abseil-cpp/absl/debugging/stacktrace.cc",
+    "//third_party/abseil-cpp/absl/debugging/symbolize.cc",
+    "//third_party/abseil-cpp/absl/hash/internal/city.cc",
+    "//third_party/abseil-cpp/absl/hash/internal/hash.cc",
+    "//third_party/abseil-cpp/absl/hash/internal/low_level_hash.cc",
+    "//third_party/abseil-cpp/absl/log/globals.cc",
+    "//third_party/abseil-cpp/absl/log/internal/check_op.cc",
+    "//third_party/abseil-cpp/absl/log/internal/conditions.cc",
+    "//third_party/abseil-cpp/absl/log/internal/fnmatch.cc",
+    "//third_party/abseil-cpp/absl/log/internal/log_format.cc",
+    "//third_party/abseil-cpp/absl/log/internal/log_message.cc",
+    "//third_party/abseil-cpp/absl/log/internal/log_sink_set.cc",
+    "//third_party/abseil-cpp/absl/log/internal/nullguard.cc",
+    "//third_party/abseil-cpp/absl/log/internal/proto.cc",
+    "//third_party/abseil-cpp/absl/log/internal/vlog_config.cc",
+    "//third_party/abseil-cpp/absl/log/log_entry.cc",
+    "//third_party/abseil-cpp/absl/log/log_sink.cc",
+    "//third_party/abseil-cpp/absl/numeric/int128.cc",
+    "//third_party/abseil-cpp/absl/profiling/internal/exponential_biased.cc",
+    "//third_party/abseil-cpp/absl/status/internal/status_internal.cc",
+    "//third_party/abseil-cpp/absl/status/status.cc",
+    "//third_party/abseil-cpp/absl/status/status_payload_printer.cc",
+    "//third_party/abseil-cpp/absl/status/statusor.cc",
+    "//third_party/abseil-cpp/absl/strings/ascii.cc",
+    "//third_party/abseil-cpp/absl/strings/charconv.cc",
+    "//third_party/abseil-cpp/absl/strings/cord.cc",
+    "//third_party/abseil-cpp/absl/strings/cord_analysis.cc",
+    "//third_party/abseil-cpp/absl/strings/cord_buffer.cc",
+    "//third_party/abseil-cpp/absl/strings/escaping.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/charconv_bigint.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/charconv_parse.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_internal.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_rep_btree.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_rep_btree_navigator.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_rep_btree_reader.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_rep_consume.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cord_rep_crc.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cordz_functions.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cordz_handle.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/cordz_info.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/damerau_levenshtein_distance.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/memutil.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/ostringstream.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/arg.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/bind.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/extension.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/float_conversion.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/output.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/str_format/parser.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/stringify_sink.cc",
+    "//third_party/abseil-cpp/absl/strings/internal/utf8.cc",
+    "//third_party/abseil-cpp/absl/strings/match.cc",
+    "//third_party/abseil-cpp/absl/strings/numbers.cc",
+    "//third_party/abseil-cpp/absl/strings/str_cat.cc",
+    "//third_party/abseil-cpp/absl/strings/str_replace.cc",
+    "//third_party/abseil-cpp/absl/strings/str_split.cc",
+    "//third_party/abseil-cpp/absl/strings/string_view.cc",
+    "//third_party/abseil-cpp/absl/strings/substitute.cc",
+    "//third_party/abseil-cpp/absl/synchronization/barrier.cc",
+    "//third_party/abseil-cpp/absl/synchronization/blocking_counter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/create_thread_identity.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/futex_waiter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/graphcycles.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/kernel_timeout.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/per_thread_sem.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/pthread_waiter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/sem_waiter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/stdcpp_waiter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/waiter_base.cc",
+    "//third_party/abseil-cpp/absl/synchronization/internal/win32_waiter.cc",
+    "//third_party/abseil-cpp/absl/synchronization/mutex.cc",
+    "//third_party/abseil-cpp/absl/synchronization/notification.cc",
+    "//third_party/abseil-cpp/absl/time/civil_time.cc",
+    "//third_party/abseil-cpp/absl/time/clock.cc",
+    "//third_party/abseil-cpp/absl/time/duration.cc",
+    "//third_party/abseil-cpp/absl/time/format.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/civil_time_detail.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_fixed.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_format.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_if.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_impl.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_info.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_libc.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_lookup.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/time_zone_posix.cc",
+    "//third_party/abseil-cpp/absl/time/internal/cctz/src/zone_info_source.cc",
+    "//third_party/abseil-cpp/absl/time/time.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [ ":mini_electron_abseil_source_namespace" ]
+}
+
+source_set("mini_electron_abseil_source_namespace") {
+  sources = [
+    "//third_party/abseil-cpp/absl/log/internal/globals.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+executable("mini_electron_skia_mesh_smoke") {
+  sources = [ "//test/skia-mesh-crash-smoke.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_skia",
+    ":mini_electron_skia_mac",
+    ":mini_electron_util",
+  ]
+  libs = [ "z" ]
+  frameworks = [
+    "CoreGraphics.framework",
+    "CoreText.framework",
+  ]
+}
+
+executable("mini_electron_mojo_lite_smoke") {
+  sources = [ "//test/mojo-lite-crash-smoke.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_engine",
+    ":mini_electron_engine_api",
+    ":mini_electron_node_deps",
+  ]
+  libs = [
+    rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+    rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+    "z",
+    "iconv",
+  ]
+  frameworks = [
+    "AppKit.framework",
+    "Carbon.framework",
+    "CoreGraphics.framework",
+    "CoreServices.framework",
+    "CoreText.framework",
+    "IOSurface.framework",
+    "MediaAccessibility.framework",
+    "QuartzCore.framework",
+    "Security.framework",
+    "SystemConfiguration.framework",
+    "UniformTypeIdentifiers.framework",
+  ]
+}
+
+config("mini_electron_material_color_config") {
+  include_dirs = [ "//third_party/material_color_utilities/src" ]
+}
+
+static_library("mini_electron_material_color_utilities") {
+  sources = [
+    "//third_party/material_color_utilities/src/cpp/cam/cam.cc",
+    "//third_party/material_color_utilities/src/cpp/cam/hct.cc",
+    "//third_party/material_color_utilities/src/cpp/cam/hct_solver.cc",
+    "//third_party/material_color_utilities/src/cpp/cam/viewing_conditions.cc",
+    "//third_party/material_color_utilities/src/cpp/palettes/core.cc",
+    "//third_party/material_color_utilities/src/cpp/palettes/tones.cc",
+    "//third_party/material_color_utilities/src/cpp/utils/utils.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+  public_configs = [ ":mini_electron_material_color_config" ]
+  deps = [ ":mini_electron_abseil" ]
 }

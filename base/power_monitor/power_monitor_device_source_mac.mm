@@ -58,13 +58,14 @@ void PowerMonitorDeviceSource::PlatformInit() {
       this,
       mac::ScopedIONotificationPortRef::Receiver(notification_port_).get(),
       &SystemPowerEventCallback, &notifier_);
-  DCHECK_NE(power_manager_port_, IO_OBJECT_NULL);
-
-  // Add the sleep/wake notification event source to the runloop.
-  CFRunLoopAddSource(
-      CFRunLoopGetCurrent(),
-      IONotificationPortGetRunLoopSource(notification_port_.get()),
-      kCFRunLoopCommonModes);
+  // Sandboxed processes may not register with IOPMrootDomain. Battery and
+  // thermal queries remain independent of sleep/wake notification support.
+  if (power_manager_port_ != IO_OBJECT_NULL && notification_port_.is_valid()) {
+    if (CFRunLoopSourceRef source =
+            IONotificationPortGetRunLoopSource(notification_port_.get())) {
+      CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
+    }
+  }
 
   battery_level_provider_ = BatteryLevelProvider::Create();
   // Get the initial battery power status and register for all
@@ -81,18 +82,20 @@ void PowerMonitorDeviceSource::PlatformInit() {
 }
 
 void PowerMonitorDeviceSource::PlatformDestroy() {
-  CFRunLoopRemoveSource(
-      CFRunLoopGetCurrent(),
-      IONotificationPortGetRunLoopSource(notification_port_.get()),
-      kCFRunLoopCommonModes);
+  if (notification_port_.is_valid()) {
+    if (CFRunLoopSourceRef source =
+            IONotificationPortGetRunLoopSource(notification_port_.get())) {
+      CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
+    }
+  }
 
-  // Deregister for system power notifications.
-  IODeregisterForSystemPower(&notifier_);
+  if (notifier_ != IO_OBJECT_NULL)
+    IODeregisterForSystemPower(&notifier_);
 
-  // Close the connection to the IOPMrootDomain that was opened in
-  // PlatformInit().
-  IOServiceClose(power_manager_port_);
-  power_manager_port_ = IO_OBJECT_NULL;
+  if (power_manager_port_ != IO_OBJECT_NULL) {
+    IOServiceClose(power_manager_port_);
+    power_manager_port_ = IO_OBJECT_NULL;
+  }
 }
 
 PowerStateObserver::BatteryPowerStatus

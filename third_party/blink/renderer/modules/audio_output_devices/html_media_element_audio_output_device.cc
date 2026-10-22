@@ -10,7 +10,9 @@
 #include "base/functional/callback_helpers.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/platform/web_set_sink_id_callbacks.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/public/web/modules/media/audio/audio_device_factory.h"
+#endif
 #include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -124,7 +126,15 @@ void SetSinkIdResolver::DoSetSinkId()
         std::optional<media::OutputDeviceStatus> status = web_frame->Client()->CheckIfAudioSinkExistsAndIsAuthorized(sink_id_);
 
         if (!status.has_value()) {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+            // The selected platform has no audio output device factory. Keep
+            // frame authorization above, but do not authorize a nonexistent
+            // player/device backend on its behalf.
+            std::move(set_sink_id_completion_callback).Run(WebSetSinkIdError::kNotSupported);
+            return;
+#else
             status = AudioDeviceFactory::GetInstance()->GetOutputDeviceInfo(web_frame->GetLocalFrameToken(), sink_id_.Utf8()).device_status();
+#endif
         }
         std::move(ConvertToOutputDeviceStatusCB(std::move(set_sink_id_completion_callback))).Run(status.value());
     } else {

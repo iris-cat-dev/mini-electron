@@ -1,4 +1,6 @@
 mini_electron_base_sources = [
+  "//base/i18n/rtl.cc",
+  "//base/i18n/string_compare.cc",
   "//base/allocator/allocator_check.cc",
   "//base/allocator/dispatcher/dispatcher.cc",
   "//base/allocator/dispatcher/internal/dispatch_data.cc",

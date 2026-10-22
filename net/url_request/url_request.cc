@@ -401,11 +401,6 @@ IPEndPoint URLRequest::GetResponseRemoteEndpoint() const
     return job_->GetResponseRemoteEndpoint();
 }
 
-HttpResponseHeaders* URLRequest::response_headers() const
-{
-    return response_info_.headers.get();
-}
-
 const std::optional<AuthChallengeInfo>& URLRequest::auth_challenge_info() const
 {
     return response_info_.auth_challenge;

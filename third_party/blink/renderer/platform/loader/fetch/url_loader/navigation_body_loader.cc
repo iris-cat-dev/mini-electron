@@ -446,13 +446,8 @@ void NavigationBodyLoader::StartLoadingBodyInBackground(std::unique_ptr<BodyText
     if (!response_body_)
         return;
 
-    // Initializing the map used when detecting encodings is not thread safe.
-    // Initialize on the main thread here to avoid races.
-    // TODO(crbug.com/1384221): Consider making the map thread safe in
-    // third_party/ced/src/util/encodings/encodings.cc.
-
-    *(int*)1 = 1;
-    //EncodingNameAliasToEncoding("");
+    // DetectTextEncoding uses a per-call ICU CharsetDetector, not CED's shared
+    // encoding-name map, so no CED initialization is required on this thread.
 
     off_thread_body_reader_.reset(new OffThreadBodyReader(std::move(response_body_), std::move(decoder), weak_factory_.GetWeakPtr(), task_runner_,
         worker_pool::CreateSequencedTaskRunner({}), should_keep_encoded_data));

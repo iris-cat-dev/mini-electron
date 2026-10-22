@@ -167,7 +167,13 @@ void IndexedDBAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& in
     if (exception_state.HadException()) [[unlikely]] {
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // The native getter preserves validation and always throws: this embedder
+    // cannot produce an IDBFactory through StorageAccessHandle.
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "IndexedDB storage access is not supported by this embedder.");
+#else
     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void LocksAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -193,7 +199,11 @@ void LocksAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
     if (exception_state.HadException()) [[unlikely]] {
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Web Locks storage access is not supported by this embedder.");
+#else
     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void CachesAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -219,7 +229,11 @@ void CachesAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
     if (exception_state.HadException()) [[unlikely]] {
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Cache Storage access is not supported by this embedder.");
+#else
     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void BroadcastChannelOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)

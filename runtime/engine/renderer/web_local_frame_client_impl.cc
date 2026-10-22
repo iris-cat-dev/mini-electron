@@ -10,6 +10,7 @@
 #include "runtime/engine/renderer/blink_interface_registry_impl.h"
 #include "runtime/engine/renderer/policy_container_host_impl.h"
 #include "runtime/engine/renderer/web_worker_fetch_context_impl.h"
+#include "runtime/engine/renderer/web_dedicated_worker_host_factory_client_impl.h"
 #include "runtime/engine/renderer/clipboard_host_impl.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/renderer/no_state_prefetch_processor_impl.h"
@@ -54,7 +55,6 @@
 #include "runtime/network/loader/web_url_request_extra_data_wrap.h"
 #include "base/strings/utf_string_conversions.h"
 
-network::DocumentIsolationPolicy::~DocumentIsolationPolicy() = default;
 
 std::string ui::AXTreeData::ToString() const
 {
@@ -66,7 +66,6 @@ ui::AXTreeUpdate::~AXTreeUpdate() = default;
 ui::AXEvent::~AXEvent() = default;
 ui::AXLocationAndScrollUpdates::~AXLocationAndScrollUpdates() = default;
 ui::AXTreeData::~AXTreeData() = default;
-ui::AXEventIntent::~AXEventIntent() = default;
 ui::AXScrollChange::~AXScrollChange() = default;
 ui::AXLocationChange::~AXLocationChange() = default;
 
@@ -714,6 +713,29 @@ void WebLocalFrameClientImpl::DidStartLoading()
         return;
 
     webview->resetState();
+    if (m_asyncNavigationApiLoading && m_frame && webview->getClosure().m_loadingStateChanged)
+        webview->getClosure().m_loadingStateChanged(
+            reinterpret_cast<mini_electron_web_frame_handle>(getFrameId()), true);
+}
+
+void WebLocalFrameClientImpl::StartLoadingForAsyncNavigationApiCommit()
+{
+    m_asyncNavigationApiLoading = true;
+    DidStartLoading();
+}
+
+void WebLocalFrameClientImpl::DidStopLoading()
+{
+    // Network loads retain their existing finish/failure event ordering. Only
+    // intercepted Navigation API commits need this non-network completion.
+    if (!m_asyncNavigationApiLoading)
+        return;
+    m_asyncNavigationApiLoading = false;
+    auto* webview = static_cast<WebViewHost*>(
+        common::LiveIdDetect::getWebViewIds()->getPtr(m_engineViewId));
+    if (webview && m_frame && webview->getClosure().m_loadingStateChanged)
+        webview->getClosure().m_loadingStateChanged(
+            reinterpret_cast<mini_electron_web_frame_handle>(getFrameId()), false);
 }
 
 void WebLocalFrameClientImpl::DidFinishSameDocumentNavigation(
@@ -1288,14 +1310,12 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
     OutputDebugStringA(output.c_str());
 
     if ("blink.mojom.BackForwardCacheControllerHost" == name) {
-        //             mojo::PendingAssociatedReceiver<::blink::mojom::blink::BackForwardCacheControllerHost> pendingReceiver(receiver.PassHandle());
-        //             m_backForwardCacheControllerHostReceiver.Bind(std::move(pendingReceiver));
-        DebugBreak();
+        createAndBindInterface<::blink::mojom::blink::BackForwardCacheControllerHost, BackForwardCacheControllerHostImpl>(receiver.PassPipe());
     } else if ("blink.mojom.LocalFrameHost" == name) {
-        //             mojo::PendingAssociatedReceiver<::blink::mojom::blink::LocalFrameHost> pendingReceiver(receiver.PassHandle());
-        //             m_localFrameHostReceiver.Bind(std::move(pendingReceiver));
-        DebugBreak();
+        createAndBindInterface<::blink::mojom::blink::LocalFrameHost, LocalFrameHostImpl>(receiver.PassPipe(), this);
     } else if ("blink.mojom.CodeCacheHost" == name) {
+        if (m_frame)
+            bindCodeCacheHost(receiver.PassPipe());
 
     } else if ("blink.mojom.ContentSecurityNotifier" == name) {
         //mojo::PendingReceiver<::blink::mojom::blink::ContentSecurityNotifier> pendingReceiver(receiver.PassPipe());
@@ -1329,8 +1349,8 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
     } else if ("blink.mojom.NoStatePrefetchProcessor" == name) {
         createAndBindInterface<::blink::mojom::blink::NoStatePrefetchProcessor, NoStatePrefetchProcessorImpl>(receiver.PassPipe());
     } else if ("blink.mojom.WebSocketConnector" == name) {
-        //createAndBindInterface<::blink::mojom::blink::WebSocketConnector, NoStatePrefetchProcessorImpl>(receiver.PassPipe());
-        DebugBreak();
+        // WebSocket traffic uses the curl connector, not this Mojo service.
+        // Leave the receiver unbound so its peer receives a disconnect.
     } else if ("blink.mojom.blink.NonAssociatedLocalFrameHost" == name) {
         createAndBindInterface<::blink::mojom::blink::NonAssociatedLocalFrameHost, NonAssociatedLocalFrameHostImpl>(receiver.PassPipe());
     } else if ("blink.mojom.AnchorElementInteractionHost" == name) {
@@ -1351,8 +1371,8 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
             PermissionServiceImpl>(receiver.PassPipe(), frame_id);
     } else if ("blink.mojom.SharedWorkerConnector" == name) {
         createAndBindInterface<::blink::mojom::blink::SharedWorkerConnector, SharedWorkerConnectorImpl>(receiver.PassPipe());
-    } else
-        DebugBreak();
+    }
+    // Unsupported interfaces are rejected by closing their pending receiver.
 }
 
 }

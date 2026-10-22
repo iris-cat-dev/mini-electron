@@ -7,6 +7,45 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### macOS runtime 0.1.21
+
+This macOS arm64 release focuses on crash safety, not broader API coverage.
+Windows stays on runtime `0.1.18`; the npm installer stays on `0.1.12`:
+
+- Native theme changes invalidate color caches and notify observers on their
+  owning sequence instead of executing the inherited low-address write.
+- macOS power-monitor initialization and teardown tolerate unavailable IOKit
+  notification resources without relaxing the renderer sandbox.
+- Fresh stack EVP cipher contexts are initialized before use; cleanup/reset must
+  not inspect uninitialized pointers. Empty HKDF input remains a zero-byte key.
+- Upload getters retain receiver/reply sequence ownership. Code-cache requests
+  complete as real misses instead of accumulating an unbounded process cache.
+- Changed entrypoints for absent storage/media backends fail explicitly. Windows
+  parent/modal/kiosk/aspect-ratio operations and WebContents adoption are not
+  implemented by this change; unsupported requests must not allocate windows or
+  pretend to succeed. Windows native-SDK snapshot/print/PDF and recycle-bin
+  backends remain unavailable rather than being implemented here.
+- Disabled LCP prediction and its protobuf providers remain excluded. Legitimate
+  diagnostic assertions are not blanket-disabled.
+
+Targeted macOS checks cover AppKit appearance notifications, typed Mojo lifetime
+and upload sequencing, malformed IPC rejection, actual WebCrypto vectors and
+invalid inputs, native event cancellation, and HTTP/blob/streamed upload paths.
+The unmodified OMP Desktop 0.5.2 main/frontend and real daemon also ran for
+183 seconds with isolated state: nine resizes, four hide/show cycles, two reloads,
+and two real new-window/close cycles. No renderer loss or renderer-console errors
+were observed; initial/final native screenshots were inspected and the owned
+daemon shut down cleanly. This finite workload is not a leak-freedom proof.
+These checks do not prove indefinite uptime. Windows native verification remains
+deferred to a real Windows environment.
+Full HTTP Permissions-Policy propagation is not established by this acceptance:
+the current native path reports the tested features allowed despite a denying
+response header. This change does not claim to complete that browser capability
+or the unexposed optional media/storage APIs.
+The existing HTTP/WebSocket curl configuration also disables TLS peer/host
+verification. That independent security risk remains unchanged, not hidden by
+this crash-hardening change.
+
 ### macOS runtime 0.1.20
 
 This release publishes Apple Silicon macOS assets only. Windows remains on
@@ -86,7 +125,7 @@ The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
 independent. Unpinned installs select Windows runtime `0.1.18` or macOS runtime
-`0.1.20` through separate channels.
+`0.1.21` through separate channels.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.12
@@ -154,7 +193,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.20`.
+  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.21`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -170,18 +209,18 @@ Update only the local binary explicitly:
 ```sh
 npx mini-electron --update-runtime
 # Pin the macOS runtime:
-npx mini-electron --update-runtime 0.1.20
+npx mini-electron --update-runtime 0.1.21
 # Select an exact runtime that includes your platform (Windows example):
 npx mini-electron --update-runtime 0.1.18
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.18` for Windows; `0.1.20` for macOS):
+(`0.1.18` for Windows; `0.1.21` for macOS):
 
 ```sh
 # macOS arm64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.20 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.21 npm ci
 # Windows x64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.18 npm ci
 ```
@@ -1085,6 +1124,24 @@ If GN is outside `PATH`, set `GN=/absolute/path/to/gn`. The output binary is
 `out/mac-arm64/mini-electron-smoke`. The smoke executable reports platform,
 Unicode, locale, and V8 evaluation checks as JSON.
 
+### Native dependency regression checks
+
+After generating the macOS build graph, exercise native Snappy and the standalone
+RE2 regression dependency independently of the desktop application:
+
+```sh
+ninja -C out/mac-arm64 mini_electron_third_party_dependencies_smoke mini_electron_skia_mesh_smoke
+out/mac-arm64/mini_electron_third_party_dependencies_smoke
+out/mac-arm64/mini_electron_skia_mesh_smoke
+```
+
+These checks cover compressed-data round trips and truncated-input rejection,
+regular expression matching, and mesh recording resource lifetime, replay and
+bounds culling. They do not establish renderer stability or Windows runtime
+behavior. The disabled LCP/protobuf backend is not linked into this check or the
+macOS production runtime.
+
+
 ### Native GUI demo
 
 Build and open the test frontend in a native macOS window:
@@ -1378,7 +1435,8 @@ and `abnormal-exit`; a transport failure while the child remains alive reports
 
 macOS builds pin [libcurl 8.23.0](https://curl.se/download.html) with WebSocket
 support and link it statically against the runtime's existing TLS library.
-Certificate verification uses Apple's SecTrust store. The system libcurl is
+The current HTTP/WebSocket curl configuration disables TLS peer/host verification;
+SecTrust support alone is not a certificate-validation guarantee. The system libcurl is
 not used: it exports WebSocket symbols but rejects `ws`/`wss` as unsupported
 protocols on the tested macOS installation. No additional framework bundle is
 distributed for networking.

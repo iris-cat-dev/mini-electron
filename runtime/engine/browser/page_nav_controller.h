@@ -30,6 +30,7 @@ public:
     int historyForwardListCount();
     void navigateBackForwardSoon(int offset);
     void navigateToIndex(int index);
+    bool navigateToNavigationApiKey(blink::WebLocalFrame* frame, const blink::WebString& key);
 
     void insertOrReplaceEntry(blink::WebLocalFrame* frame, const blink::WebHistoryItem& item, blink::WebHistoryCommitType type, bool isSameDocument);
     blink::WebHistoryItem historyItemForNewChildFrame(blink::WebFrame* frame);
@@ -62,7 +63,7 @@ private:
         }
         static void loadFromHistoryItem(WebViewHost* page, PageNavController::FrameHistoryItem* curItem, PageNavController::FrameHistoryItem* newItem);
 
-        void copyHistoryItem(const blink::WebHistoryItem& item); // 如果直接用WebHistoryItem，会导致GC无法回收
+        void copyHistoryItem(const blink::WebHistoryItem& item); // 濡傛灉鐩存帴鐢╓ebHistoryItem锛屼細瀵艰嚧GC鏃犳硶鍥炴敹
 
         void Trace(cppgc::Visitor*) const;
 
@@ -98,7 +99,7 @@ private:
     blink::HeapVector<blink::Member<AllFrameHistoryItemSet>> m_frameHistoryStates;
 
     int m_currentOffset;
-    bool m_protectReentryBackForwardCommit; // 有sub frame的时候，有一种情况会走N次BackForwardCommit
+    bool m_protectReentryBackForwardCommit; // 鏈塻ub frame鐨勬椂鍊欙紝鏈変竴绉嶆儏鍐典細璧癗娆ackForwardCommit
 };
 
 }

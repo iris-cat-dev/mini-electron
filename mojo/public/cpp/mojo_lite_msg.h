@@ -5,6 +5,14 @@
 
 #include "ipc/ipc_message_macros.h"
 #include "ipc/ipc_message_utils.h"
+#include <utility>
+#include <vector>
+
+#ifndef MOJO_PUBLIC_CPP_MOJO_LITE_MSG_TYPES_H_
+#define MOJO_PUBLIC_CPP_MOJO_LITE_MSG_TYPES_H_
+// Existing IPC pair traits serialize both the capability tag and handle IDs.
+using MojoLiteMessagePipeHandles = std::pair<uint32_t, std::vector<uintptr_t>>;
+#endif
 
 // Defines the IPC messages used by the automation interface.
 
@@ -24,5 +32,6 @@
 #define IPC_MESSAGE_START MojoLiteMsgStart
 
 IPC_MESSAGE_CONTROL5(
-    CrossProcessConnector_PostMessage, uintptr_t /*pid*/, uintptr_t /*handle*/, int /*state*/, std::vector<char> /*data*/, std::vector<uintptr_t> /*handles*/)
+    CrossProcessConnector_PostMessage, uintptr_t /*pid*/, uintptr_t /*handle*/, int /*state*/, std::vector<char> /*data*/,
+    MojoLiteMessagePipeHandles /*kind: 1 = message pipe, handles*/)
 IPC_MESSAGE_CONTROL1(CrossProcessConnector_PostMessageTest, uintptr_t)

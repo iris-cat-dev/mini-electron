@@ -2654,8 +2654,7 @@ void WebLocalFrameImpl::Load(const WebURLRequest& request, WebFrameLoadType fram
     const ResourceRequest& resource_request = request.ToResourceRequest();
 
     if (resource_request.Url().ProtocolIs("javascript") && frame_load_type == WebFrameLoadType::kStandard) {
-        //loadJavaScriptURL(resourceRequest.url());
-        *(int*)1 = 1;
+        GetFrame()->LoadJavaScriptURL(resource_request.Url());
         return;
     }
 
@@ -3089,6 +3088,7 @@ mojom::blink::BackForwardCacheNotRestoredReasonsPtr WebLocalFrameImpl::ConvertNo
 
 void WebLocalFrameImpl::SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigationTimeHintPtr& hint)
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     LocalFrame* frame = GetFrame();
     if (!frame) {
         return;
@@ -3133,6 +3133,7 @@ void WebLocalFrameImpl::SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigat
         unused_preloads.emplace_back(url);
     }
     lcpp->set_unused_preloads(std::move(unused_preloads));
+#endif
 }
 
 bool WebLocalFrameImpl::IsFeatureEnabled(const mojom::blink::PermissionsPolicyFeature& feature) const

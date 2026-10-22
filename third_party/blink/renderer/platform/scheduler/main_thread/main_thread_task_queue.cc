@@ -18,7 +18,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/frame_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
-#include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "third_party/perfetto/include/perfetto/tracing/event_context.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -27,8 +29,10 @@ namespace internal {
 using base::sequence_manager::internal::TaskQueueImpl;
 }
 
-// using perfetto::protos::pbzero::ChromeTrackEvent;
-// using perfetto::protos::pbzero::RendererMainThreadTaskExecution;
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+using perfetto::protos::pbzero::ChromeTrackEvent;
+using perfetto::protos::pbzero::RendererMainThreadTaskExecution;
+#endif
 using QueueName = ::perfetto::protos::pbzero::SequenceManagerTask::QueueName;
 // static
 QueueName MainThreadTaskQueue::NameForQueueType(MainThreadTaskQueue::QueueType queue_type)
@@ -106,7 +110,9 @@ MainThreadTaskQueue::MainThreadTaskQueue(base::sequence_manager::SequenceManager
         // MainThreadScheduler's constructor.
         task_queue_->SetOnTaskStartedHandler(base::BindRepeating(&MainThreadTaskQueue::OnTaskStarted, base::Unretained(this)));
         task_queue_->SetOnTaskCompletedHandler(base::BindRepeating(&MainThreadTaskQueue::OnTaskCompleted, base::Unretained(this)));
+#if BUILDFLAG(ENABLE_BASE_TRACING)
         task_queue_->SetTaskExecutionTraceLogger(base::BindRepeating(&MainThreadTaskQueue::LogTaskExecution, base::Unretained(this)));
+#endif
     }
 }
 
@@ -129,18 +135,18 @@ void MainThreadTaskQueue::OnTaskCompleted(const base::sequence_manager::Task& ta
     }
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void MainThreadTaskQueue::LogTaskExecution(perfetto::EventContext& ctx, const base::sequence_manager::Task& task)
 {
-    *(int*)1 = 1;
-//     static const uint8_t* enabled = TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED("scheduler");
-//     if (!*enabled)
-//         return;
-//     RendererMainThreadTaskExecution* execution = ctx.event<ChromeTrackEvent>()->set_renderer_main_thread_task_execution();
-//     execution->set_task_type(TaskTypeToProto(static_cast<blink::TaskType>(task.task_type)));
-//     if (frame_scheduler_) {
-//         frame_scheduler_->WriteIntoTrace(ctx.Wrap(execution));
-//     }
+    static const uint8_t* enabled = TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED("scheduler");
+    if (!*enabled)
+        return;
+    RendererMainThreadTaskExecution* execution = ctx.event<ChromeTrackEvent>()->set_renderer_main_thread_task_execution();
+    execution->set_task_type(TaskTypeToProto(static_cast<blink::TaskType>(task.task_type)));
+    if (frame_scheduler_)
+        frame_scheduler_->WriteIntoTrace(ctx.Wrap(execution));
 }
+#endif
 
 void MainThreadTaskQueue::OnTaskRunTimeReported(TaskQueue::TaskTiming* task_timing)
 {

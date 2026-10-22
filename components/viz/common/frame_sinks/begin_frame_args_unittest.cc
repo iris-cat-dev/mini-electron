@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include "base/json/string_escape.h"
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 #include "components/viz/test/begin_frame_args_test.h"
 #include "testing/gtest/include/gtest/gtest-spi.h"
@@ -97,6 +98,30 @@ TEST(BeginFrameArgsTest, Create)
     EXPECT_EQ(k3Usec, args2.interval) << args2;
     EXPECT_EQ(BeginFrameArgs::NORMAL, args2.type) << args2;
     EXPECT_EQ(0u, args2.frames_throttled_since_last) << args2;
+}
+
+TEST(BeginFrameArgsTest, DiagnosticStringsPreserveState)
+{
+    constexpr uint64_t kSource = 4294967297ULL;
+    constexpr uint64_t kSequence = 9007199254740993ULL;
+    EXPECT_EQ("{\"source_id\":4294967297,\"sequence_number\":9007199254740993}", BeginFrameId(kSource, kSequence).ToString());
+
+    auto args = BeginFrameArgs::Create(BEGINFRAME_FROM_HERE, kSource, kSequence,
+        base::TimeTicks() + k1Usec, base::TimeTicks() + k2Usec, k3Usec, BeginFrameArgs::MISSED);
+    args.frames_throttled_since_last = 4;
+    args.on_critical_path = false;
+    args.animate_only = true;
+    std::string expected =
+        "{\"type\":\"BeginFrameArgs\",\"subtype\":\"MISSED\",\"source_id\":4294967297,"
+        "\"sequence_number\":9007199254740993,\"frames_throttled_since_last\":4,"
+        "\"frame_time_us\":1,\"deadline_us\":2,\"interval_us\":3,"
+        "\"on_critical_path\":false,\"animate_only\":true,\"has_possible_deadlines\":false";
+#ifndef NDEBUG
+    expected += ",\"created_from\":";
+    base::EscapeJSONString(args.created_from.ToString(), true, &expected);
+#endif
+    expected += '}';
+    EXPECT_EQ(expected, args.ToString());
 }
 
 #ifndef NDEBUG

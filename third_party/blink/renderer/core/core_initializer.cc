@@ -165,7 +165,9 @@ void CoreInitializer::Initialize()
 
     CSSDefaultStyleSheets::Init();
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     element_locator::TokenStreamMatcher::InitSets();
+#endif
 }
 
 } // namespace blink

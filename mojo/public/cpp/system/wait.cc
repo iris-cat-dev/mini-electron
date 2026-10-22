@@ -10,6 +10,9 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
 #include "base/synchronization/waitable_event.h"
+#include "base/run_loop.h"
+#include "base/task/bind_post_task.h"
+#include "base/task/sequenced_task_runner.h"
 #include "mojo/public/c/system/trap.h"
 #include "mojo/public/cpp/system/trap.h"
 
@@ -43,6 +46,11 @@ public:
         return reinterpret_cast<uintptr_t>(this);
     }
 
+    void SetQuitClosure(base::RepeatingClosure quit)
+    {
+        quit_ = std::move(quit);
+    }
+
     static void OnNotification(const MojoTrapEvent* event)
     {
         auto* context = reinterpret_cast<TriggerContext*>(event->trigger_context);
@@ -62,14 +70,17 @@ private:
 
     void Notify(MojoResult result, MojoHandleSignalsState state)
     {
-        if (wait_result_ == MOJO_RESULT_UNKNOWN) {
-            wait_result_ = result;
-            wait_state_ = state;
-        }
+        if (wait_result_ != MOJO_RESULT_UNKNOWN)
+            return;
+        wait_result_ = result;
+        wait_state_ = state;
         event_.Signal();
+        if (quit_)
+            quit_.Run();
     }
 
     base::WaitableEvent event_;
+    base::RepeatingClosure quit_;
 
     // NOTE: Although these are modified in Notify() which may be called from any
     // sequence, Notify() is guaranteed to never run concurrently with itself.
@@ -84,11 +95,16 @@ private:
 
 MojoResult Wait(Handle handle, MojoHandleSignals signals, MojoTriggerCondition condition, MojoHandleSignalsState* signals_state)
 {
+    std::unique_ptr<base::RunLoop> loop;
+    if (base::SequencedTaskRunner::HasCurrentDefault())
+        loop = std::make_unique<base::RunLoop>(base::RunLoop::Type::kNestableTasksAllowed);
     ScopedTrapHandle trap;
     MojoResult rv = CreateTrap(&TriggerContext::OnNotification, &trap);
     DCHECK_EQ(MOJO_RESULT_OK, rv);
 
     scoped_refptr<TriggerContext> context = new TriggerContext;
+    if (loop)
+        context->SetQuitClosure(base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(), loop->QuitClosure()));
 
     // Balanced in TriggerContext::OnNotification if MojoAddTrigger() is
     // successful. Otherwise balanced immediately below.
@@ -112,8 +128,12 @@ MojoResult Wait(Handle handle, MojoHandleSignals signals, MojoTriggerCondition c
         return blocking_event.result;
     }
 
-    // Wait for the first notification only.
-    context->event().Wait();
+    // Lite data producers may refill on this very sequence. Pump their actual
+    // tasks during a synchronous wait instead of deadlocking the producer.
+    if (loop)
+        loop->Run();
+    else
+        context->event().Wait();
 
     MojoResult ready_result = context->wait_result();
     DCHECK_NE(MOJO_RESULT_UNKNOWN, ready_result);
@@ -128,6 +148,11 @@ MojoResult WaitMany(const Handle* handles, const MojoHandleSignals* signals, siz
 {
     if (!handles || !signals)
         return MOJO_RESULT_INVALID_ARGUMENT;
+    if (!num_handles)
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    std::unique_ptr<base::RunLoop> loop;
+    if (base::SequencedTaskRunner::HasCurrentDefault())
+        loop = std::make_unique<base::RunLoop>(base::RunLoop::Type::kNestableTasksAllowed);
 
     ScopedTrapHandle trap;
     MojoResult rv = CreateTrap(&TriggerContext::OnNotification, &trap);
@@ -137,6 +162,8 @@ MojoResult WaitMany(const Handle* handles, const MojoHandleSignals* signals, siz
     std::vector<base::WaitableEvent*> events(num_handles);
     for (size_t i = 0; i < num_handles; ++i) {
         contexts[i] = new TriggerContext();
+        if (loop)
+            contexts[i]->SetQuitClosure(base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(), loop->QuitClosure()));
 
         // Balanced in TriggerContext::OnNotification if MojoAddTrigger() is
         // successful. Otherwise balanced immediately below.
@@ -180,8 +207,18 @@ MojoResult WaitMany(const Handle* handles, const MojoHandleSignals* signals, siz
     } else {
         DCHECK_EQ(MOJO_RESULT_OK, rv);
 
-        // Wait for one of the contexts to signal. First one wins.
-        index = base::WaitableEvent::WaitMany(events.data(), events.size());
+        // On a task sequence, allow same-sequence producers to make progress.
+        if (loop) {
+            loop->Run();
+            for (size_t i = 0; i < events.size(); ++i) {
+                if (events[i]->IsSignaled()) {
+                    index = i;
+                    break;
+                }
+            }
+        } else {
+            index = base::WaitableEvent::WaitMany(events.data(), events.size());
+        }
         ready_result = contexts[index]->wait_result();
         ready_state = contexts[index]->wait_state();
     }

@@ -76,16 +76,14 @@ ScriptWrappable* V8ScriptValueDeserializerForModules::ReadDOMObject(Serializatio
     case kCryptoKeyTag:
         return ReadCryptoKey();
     case kDOMFileSystemTag: {
-        *(int*)1 = 1;
-        return nullptr;
-//         uint32_t raw_type;
-//         String name;
-//         String root_url;
-//         if (!ReadUint32(&raw_type) || raw_type > static_cast<int32_t>(mojom::blink::FileSystemType::kMaxValue) || !ReadUTF8String(&name)
-//             || !ReadUTF8String(&root_url))
-//             return nullptr;
-//         return MakeGarbageCollected<DOMFileSystem>(
-//             ExecutionContext::From(GetScriptState()), name, static_cast<mojom::blink::FileSystemType>(raw_type), KURL(root_url));
+        uint32_t raw_type;
+        String name;
+        String root_url;
+        if (!ReadUint32(&raw_type) || raw_type > static_cast<int32_t>(mojom::blink::FileSystemType::kMaxValue) || !ReadUTF8String(&name)
+            || !ReadUTF8String(&root_url))
+            return nullptr;
+        return MakeGarbageCollected<DOMFileSystem>(
+            ExecutionContext::From(GetScriptState()), name, static_cast<mojom::blink::FileSystemType>(raw_type), KURL(root_url));
     }
     case kFileSystemFileHandleTag:
     case kFileSystemDirectoryHandleTag:
@@ -364,61 +362,66 @@ CryptoKey* V8ScriptValueDeserializerForModules::ReadCryptoKey()
 
 FileSystemHandle* V8ScriptValueDeserializerForModules::ReadFileSystemHandle(SerializationTag tag)
 {
-    *(int*)1 = 1;
+    if (!RuntimeEnabledFeatures::FileSystemAccessEnabled(ExecutionContext::From(GetScriptState()))) {
+        return nullptr;
+    }
+
+    String name;
+    uint32_t token_index;
+    if (!ReadUTF8String(&name) || !ReadUint32(&token_index)) {
+        return nullptr;
+    }
+
+    // Find the FileSystemHandle's token.
+    SerializedScriptValue::FileSystemAccessTokensArray& tokens_array = GetSerializedScriptValue()->FileSystemAccessTokens();
+    if (token_index >= tokens_array.size()) {
+        return nullptr;
+    }
+
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // A transfer token cannot be redeemed without the browser-side manager.
+    // Returning failure here makes deserialization report DataCloneError,
+    // rather than constructing an unusable handle or calling an absent service.
     return nullptr;
-//     if (!RuntimeEnabledFeatures::FileSystemAccessEnabled(ExecutionContext::From(GetScriptState()))) {
-//         return nullptr;
-//     }
-// 
-//     String name;
-//     uint32_t token_index;
-//     if (!ReadUTF8String(&name) || !ReadUint32(&token_index)) {
-//         return nullptr;
-//     }
-// 
-//     // Find the FileSystemHandle's token.
-//     SerializedScriptValue::FileSystemAccessTokensArray& tokens_array = GetSerializedScriptValue()->FileSystemAccessTokens();
-//     if (token_index >= tokens_array.size()) {
-//         return nullptr;
-//     }
-// 
-//     // IndexedDB code assumes that deserializing a SSV is non-destructive. So
-//     // rather than consuming the token here instead we clone it.
-//     mojo::Remote<mojom::blink::FileSystemAccessTransferToken> token(std::move(tokens_array[token_index]));
-//     if (!token) {
-//         return nullptr;
-//     }
-// 
-//     mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken> token_clone;
-//     token->Clone(token_clone.InitWithNewPipeAndPassReceiver());
-//     tokens_array[token_index] = std::move(token_clone);
-// 
-//     // Use the FileSystemAccessManager to redeem the token to clone the
-//     // FileSystemHandle.
-//     ExecutionContext* execution_context = ExecutionContext::From(GetScriptState());
-//     mojo::Remote<mojom::blink::FileSystemAccessManager> file_system_access_manager;
-//     execution_context->GetBrowserInterfaceBroker().GetInterface(file_system_access_manager.BindNewPipeAndPassReceiver());
-// 
-//     // Clone the FileSystemHandle object.
-//     switch (tag) {
-//     case kFileSystemFileHandleTag: {
-//         mojo::PendingRemote<mojom::blink::FileSystemAccessFileHandle> file_handle;
-// 
-//         file_system_access_manager->GetFileHandleFromToken(token.Unbind(), file_handle.InitWithNewPipeAndPassReceiver());
-// 
-//         return MakeGarbageCollected<FileSystemFileHandle>(execution_context, name, std::move(file_handle));
-//     }
-//     case kFileSystemDirectoryHandleTag: {
-//         mojo::PendingRemote<mojom::blink::FileSystemAccessDirectoryHandle> directory_handle;
-// 
-//         file_system_access_manager->GetDirectoryHandleFromToken(token.Unbind(), directory_handle.InitWithNewPipeAndPassReceiver());
-// 
-//         return MakeGarbageCollected<FileSystemDirectoryHandle>(execution_context, name, std::move(directory_handle));
-//     }
-//     default: {
-//         NOTREACHED();
-//     }
-//     }
+#else
+    // IndexedDB code assumes that deserializing a SSV is non-destructive. So
+    // rather than consuming the token here instead we clone it.
+    mojo::Remote<mojom::blink::FileSystemAccessTransferToken> token(std::move(tokens_array[token_index]));
+    if (!token) {
+        return nullptr;
+    }
+
+    mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken> token_clone;
+    token->Clone(token_clone.InitWithNewPipeAndPassReceiver());
+    tokens_array[token_index] = std::move(token_clone);
+
+    // Use the FileSystemAccessManager to redeem the token to clone the
+    // FileSystemHandle.
+    ExecutionContext* execution_context = ExecutionContext::From(GetScriptState());
+    mojo::Remote<mojom::blink::FileSystemAccessManager> file_system_access_manager;
+    execution_context->GetBrowserInterfaceBroker().GetInterface(file_system_access_manager.BindNewPipeAndPassReceiver());
+
+    // Clone the FileSystemHandle object.
+    switch (tag) {
+    case kFileSystemFileHandleTag: {
+        mojo::PendingRemote<mojom::blink::FileSystemAccessFileHandle> file_handle;
+
+        file_system_access_manager->GetFileHandleFromToken(token.Unbind(), file_handle.InitWithNewPipeAndPassReceiver());
+
+        return MakeGarbageCollected<FileSystemFileHandle>(execution_context, name, std::move(file_handle));
+    }
+    case kFileSystemDirectoryHandleTag: {
+        mojo::PendingRemote<mojom::blink::FileSystemAccessDirectoryHandle> directory_handle;
+
+        file_system_access_manager->GetDirectoryHandleFromToken(token.Unbind(), directory_handle.InitWithNewPipeAndPassReceiver());
+
+        return MakeGarbageCollected<FileSystemDirectoryHandle>(execution_context, name, std::move(directory_handle));
+    }
+    default: {
+        NOTREACHED();
+    }
+    }
+#endif
 }
 
 // RTCDataChannel* V8ScriptValueDeserializerForModules::ReadRTCDataChannel()

@@ -72,14 +72,6 @@ public:
         return version_;
     }
 
-    void* PassAddr()
-    {
-        //         void** addr = interface_addr_;
-        //         interface_addr_ = nullptr;
-        //         return addr;
-        *(int*)1 = 1;
-        return nullptr;
-    }
 
 private:
     ScopedInterfaceEndpointHandle handle_;

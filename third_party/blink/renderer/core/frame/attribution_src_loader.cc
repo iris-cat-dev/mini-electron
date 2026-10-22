@@ -262,38 +262,34 @@ struct AttributionSrcLoader::AttributionHeaders {
 
     void LogOsSourceIgnored(ExecutionContext* execution_context) const
     {
-        *(int*)1 = 1;
-//         DCHECK(!os_source.IsNull());
-//         LogAuditIssue(execution_context, AttributionReportingIssueType::kOsSourceIgnored,
-//             /*element=*/nullptr, request_id,
-//             /*invalid_parameter=*/os_source);
+        DCHECK(!os_source.IsNull());
+        LogAuditIssue(execution_context, AttributionReportingIssueType::kOsSourceIgnored,
+            /*element=*/nullptr, request_id,
+            /*invalid_parameter=*/os_source);
     }
 
     void LogOsTriggerIgnored(ExecutionContext* execution_context) const
     {
-        *(int*)1 = 1;
-//         DCHECK(!os_trigger.IsNull());
-//         LogAuditIssue(execution_context, AttributionReportingIssueType::kOsTriggerIgnored,
-//             /*element=*/nullptr, request_id,
-//             /*invalid_parameter=*/os_trigger);
+        DCHECK(!os_trigger.IsNull());
+        LogAuditIssue(execution_context, AttributionReportingIssueType::kOsTriggerIgnored,
+            /*element=*/nullptr, request_id,
+            /*invalid_parameter=*/os_trigger);
     }
 
     void LogSourceIgnored(ExecutionContext* execution_context) const
     {
-        *(int*)1 = 1;
-//         DCHECK(!web_source.IsNull());
-//         LogAuditIssue(execution_context, AttributionReportingIssueType::kSourceIgnored,
-//             /*element=*/nullptr, request_id,
-//             /*invalid_parameter=*/web_source);
+        DCHECK(!web_source.IsNull());
+        LogAuditIssue(execution_context, AttributionReportingIssueType::kSourceIgnored,
+            /*element=*/nullptr, request_id,
+            /*invalid_parameter=*/web_source);
     }
 
     void LogTriggerIgnored(ExecutionContext* execution_context) const
     {
-        *(int*)1 = 1;
-//         DCHECK(!web_trigger.IsNull());
-//         LogAuditIssue(execution_context, AttributionReportingIssueType::kTriggerIgnored,
-//             /*element=*/nullptr, request_id,
-//             /*invalid_parameter=*/web_trigger);
+        DCHECK(!web_trigger.IsNull());
+        LogAuditIssue(execution_context, AttributionReportingIssueType::kTriggerIgnored,
+            /*element=*/nullptr, request_id,
+            /*invalid_parameter=*/web_trigger);
     }
 
     void MaybeLogAllSourceHeadersIgnored(ExecutionContext* execution_context) const

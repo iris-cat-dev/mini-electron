@@ -73,8 +73,18 @@ private:
     // The following type can be used for lookups without needing to copy strings.
     using FieldTrialRefKey = std::pair<const std::string&, const std::string&>;
 
+    struct FieldTrialKeyLess {
+        using is_transparent = void;
+
+        template <typename Left, typename Right>
+        bool operator()(const Left& left, const Right& right) const
+        {
+            return left.first < right.first || (!(right.first < left.first) && left.second < right.second);
+        }
+    };
+
     Lock lock_;
-    std::map<FieldTrialKey, FieldTrialParams, std::less<>> field_trial_params_;
+    std::map<FieldTrialKey, FieldTrialParams, FieldTrialKeyLess> field_trial_params_;
 };
 
 } // namespace base

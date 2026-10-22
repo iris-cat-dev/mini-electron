@@ -8,18 +8,15 @@
 
 namespace download {
 
-static unsigned char fromHex(unsigned char x)
+static int fromHex(unsigned char x)
 {
-    unsigned char y;
-    if (x >= 'A' && x <= 'Z')
-        y = x - 'A' + 10;
-    else if (x >= 'a' && x <= 'z')
-        y = x - 'a' + 10;
-    else if (x >= '0' && x <= '9')
-        y = x - '0';
-    else
-        DebugBreak();
-    return y;
+    if (x >= 'A' && x <= 'F')
+        return x - 'A' + 10;
+    if (x >= 'a' && x <= 'f')
+        return x - 'a' + 10;
+    if (x >= '0' && x <= '9')
+        return x - '0';
+    return -1;
 }
 
 static std::string urlDecode(const std::string& str)
@@ -30,11 +27,14 @@ static std::string urlDecode(const std::string& str)
         if (str[i] == '+')
             strTemp += ' ';
         else if (str[i] == '%') {
-            if (i + 2 >= length)
-                break;
-            unsigned char high = fromHex((unsigned char)str[++i]);
-            unsigned char low = fromHex((unsigned char)str[++i]);
-            strTemp += high * 16 + low;
+            int high = i + 2 < length ? fromHex(str[i + 1]) : -1;
+            int low = i + 2 < length ? fromHex(str[i + 2]) : -1;
+            if (high < 0 || low < 0) {
+                strTemp += str[i];
+                continue;
+            }
+            strTemp += static_cast<char>(high * 16 + low);
+            i += 2;
         } else
             strTemp += str[i];
     }
@@ -75,7 +75,7 @@ static std::u16string getSaveNameFromContentDisposition(const std::string& str)
 
     //     if ('"' == path[path.size() - 1])
     //         path.erase(path.size() - 1, 1);
-    size_t doubleQuotationPos = path.find('"'); // 文件名不允许有双引号
+    size_t doubleQuotationPos = path.find('"'); // 鏂囦欢鍚嶄笉鍏佽鏈夊弻寮曞彿
     if (std::string::npos != doubleQuotationPos) {
         path.erase(doubleQuotationPos);
     }

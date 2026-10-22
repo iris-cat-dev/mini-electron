@@ -18,8 +18,7 @@ template <typename Sig> struct Converter<base::RepeatingCallback<Sig>> {
         // We don't use CreateFunctionTemplate here because it creates a new
         // FunctionTemplate everytime, which is cached by V8 and causes leaks.
         auto translater = base::BindRepeating(&gin_helper::NativeFunctionInvoker<Sig>::Go, val);
-        // To avoid memory leak, we ensure that the callback can only be called for once.
-        return gin_helper::CreateFunctionFromTranslater(isolate, translater, true);
+        return gin_helper::CreateFunctionFromTranslater(isolate, translater, false);
     }
     static bool FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::RepeatingCallback<Sig>* out)
     {
@@ -31,12 +30,17 @@ template <typename Sig> struct Converter<base::RepeatingCallback<Sig>> {
     }
 };
 
-template <typename Sig> struct Converter<base::OnceCallback<Sig>> {
+template <typename ReturnType, typename... ArgTypes> struct Converter<base::OnceCallback<ReturnType(ArgTypes...)>> {
+    using Sig = ReturnType(ArgTypes...);
     static v8::Local<v8::Value> ToV8(v8::Isolate* isolate, base::OnceCallback<Sig> in)
     {
-        *(int*)1 = 1;
-        return v8::Local<v8::Value>();
-        //return gin::ConvertToV8(isolate, base::AdaptCallbackForRepeating(std::move(in)));
+        auto callback = base::BindRepeating(
+            [](base::OnceCallback<Sig>& once, ArgTypes... args) -> ReturnType {
+                return std::move(once).Run(std::forward<ArgTypes>(args)...);
+            },
+            base::OwnedRef(std::move(in)));
+        auto translater = base::BindRepeating(&gin_helper::NativeFunctionInvoker<Sig>::Go, callback);
+        return gin_helper::CreateFunctionFromTranslater(isolate, translater, true);
     }
     static bool FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val, base::OnceCallback<Sig>* out)
     {

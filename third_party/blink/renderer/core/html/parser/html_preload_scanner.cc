@@ -764,7 +764,11 @@ private:
 };
 
 TokenPreloadScanner::TokenPreloadScanner(const KURL& document_url, std::unique_ptr<CachedDocumentParameters> document_parameters,
-    std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data, const ScannerType scanner_type, Vector<ElementLocator> locators)
+    std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data, const ScannerType scanner_type
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+    , Vector<ElementLocator> locators
+#endif
+)
     : document_url_(document_url)
     , in_style_(false)
     , in_picture_(false)
@@ -776,7 +780,9 @@ TokenPreloadScanner::TokenPreloadScanner(const KURL& document_url, std::unique_p
     , document_parameters_(std::move(document_parameters))
     , media_values_cached_data_(std::move(media_values_cached_data))
     , scanner_type_(scanner_type)
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     , lcp_element_matcher_(std::move(locators))
+#endif
 {
     CHECK(document_parameters_.get());
     CHECK(media_values_cached_data_.get());
@@ -850,7 +856,9 @@ void TokenPreloadScanner::Scan(const HTMLToken& token, const SegmentedString& so
     }
     case HTMLToken::kEndTag: {
         const StringImpl* tag_impl = TagImplFor(token.Data());
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
         lcp_element_matcher_.ObserveEndTag(tag_impl);
+#endif
         if (Match(tag_impl, html_names::kTemplateTag)) {
             if (template_count_)
                 --template_count_;
@@ -878,10 +886,14 @@ void TokenPreloadScanner::Scan(const HTMLToken& token, const SegmentedString& so
     }
     case HTMLToken::kStartTag: {
         const StringImpl* tag_impl = TagImplFor(token.Data());
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
         const bool potentially_lcp_element = lcp_element_matcher_.ObserveStartTagAndReportMatch(tag_impl, token);
         if (potentially_lcp_element) {
             seen_potential_lcp_element_ = true;
         }
+#else
+        const bool potentially_lcp_element = false;
+#endif
 
         if (Match(tag_impl, html_names::kTemplateTag)) {
             bool is_declarative_shadow_root = false;
@@ -1015,12 +1027,14 @@ void TokenPreloadScanner::UpdatePredictedBaseURL(const HTMLToken& token)
 // static
 std::unique_ptr<HTMLPreloadScanner> HTMLPreloadScanner::Create(Document& document, HTMLParserOptions options, TokenPreloadScanner::ScannerType scanner_type)
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     Vector<ElementLocator> locators;
     if (LocalFrame* frame = document.GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             locators = lcpp->lcp_element_locators();
         }
     }
+#endif
 
     bool skip_preload_scan = IsSkipPreloadScanEnabled(&document);
     if (skip_preload_scan) {
@@ -1029,7 +1043,10 @@ std::unique_ptr<HTMLPreloadScanner> HTMLPreloadScanner::Create(Document& documen
 
     return std::make_unique<HTMLPreloadScanner>(std::make_unique<HTMLTokenizer>(options), document.Url(), std::make_unique<CachedDocumentParameters>(&document),
         std::make_unique<MediaValuesCached::MediaValuesCachedData>(document), scanner_type, /* script_token_scanner=*/nullptr, TakePreloadFn(),
-        std::move(locators), skip_preload_scan);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+        std::move(locators),
+#endif
+        skip_preload_scan);
 }
 
 // static
@@ -1049,12 +1066,14 @@ HTMLPreloadScanner::BackgroundPtr HTMLPreloadScanner::CreateBackground(
 {
     auto* document = parser->GetDocument();
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     Vector<ElementLocator> locators;
     if (LocalFrame* frame = document->GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             locators = lcpp->lcp_element_locators();
         }
     }
+#endif
 
     bool skip_preload_scan = IsSkipPreloadScanEnabled(document);
     if (skip_preload_scan) {
@@ -1063,15 +1082,27 @@ HTMLPreloadScanner::BackgroundPtr HTMLPreloadScanner::CreateBackground(
 
     return BackgroundPtr(new HTMLPreloadScanner(std::make_unique<HTMLTokenizer>(options), document->Url(), std::make_unique<CachedDocumentParameters>(document),
                              std::make_unique<MediaValuesCached::MediaValuesCachedData>(*document), TokenPreloadScanner::ScannerType::kMainDocument,
-                             BackgroundHTMLScanner::ScriptTokenScanner::Create(parser), std::move(take_preload), std::move(locators), skip_preload_scan),
+                             BackgroundHTMLScanner::ScriptTokenScanner::Create(parser), std::move(take_preload),
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+                             std::move(locators),
+#endif
+                             skip_preload_scan),
         Deleter { task_runner });
 }
 
 HTMLPreloadScanner::HTMLPreloadScanner(std::unique_ptr<HTMLTokenizer> tokenizer, const KURL& document_url,
     std::unique_ptr<CachedDocumentParameters> document_parameters, std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data,
     const TokenPreloadScanner::ScannerType scanner_type, std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner,
-    TakePreloadFn take_preload, Vector<ElementLocator> locators, bool skip_preload_scanning)
-    : scanner_(document_url, std::move(document_parameters), std::move(media_values_cached_data), scanner_type, std::move(locators))
+    TakePreloadFn take_preload,
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+    Vector<ElementLocator> locators,
+#endif
+    bool skip_preload_scanning)
+    : scanner_(document_url, std::move(document_parameters), std::move(media_values_cached_data), scanner_type
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+          , std::move(locators)
+#endif
+      )
     , tokenizer_(std::move(tokenizer))
     , script_token_scanner_(std::move(script_token_scanner))
     , take_preload_(std::move(take_preload))

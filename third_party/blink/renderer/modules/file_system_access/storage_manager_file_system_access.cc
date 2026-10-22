@@ -11,6 +11,7 @@
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
+#include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
@@ -54,8 +55,15 @@ ScriptPromise<FileSystemDirectoryHandle> StorageManagerFileSystemAccess::getDire
     ScriptState* script_state, const StorageManager& storage, ExceptionState& exception_state)
 {
     return CheckStorageAccessIsAllowed(script_state, exception_state, WTF::BindOnce([](ScriptPromiseResolver<FileSystemDirectoryHandle>* resolver) {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+        // Preserve origin/content-settings checks before reporting that the
+        // browser-side FileSystemAccessManager service is unavailable.
+        resolver->Reject(MakeGarbageCollected<DOMException>(
+            DOMExceptionCode::kNotSupportedError, "File System Access is not supported by this embedder."));
+#else
         FileSystemAccessManager::From(resolver->GetExecutionContext())
             ->GetSandboxedFileSystem(WTF::BindOnce(&StorageManagerFileSystemAccess::DidGetSandboxedFileSystem, WrapPersistent(resolver)));
+#endif
     }));
 }
 

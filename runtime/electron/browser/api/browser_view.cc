@@ -64,17 +64,16 @@ void BrowserView::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     if (!args.IsConstructCall())
         return;
 
-    gin_helper::Dictionary* options = nullptr;
-    if (0 != args.Length())
-        options = new gin_helper::Dictionary(isolate, args[0]->ToObject(context).ToLocalChecked());
-    else
-        options = new gin_helper::Dictionary(gin_helper::Dictionary::CreateEmpty(isolate));
-
-    BrowserView* self = newBrowserView(options, args.This());
-    delete options;
-    if (!self)
-        return;
-    args.GetReturnValue().Set(args.This());
+    v8::Local<v8::Object> optionsObject;
+    if (args.Length() && !args[0]->IsUndefined()) {
+        if (!args[0]->ToObject(context).ToLocal(&optionsObject))
+            return;
+    } else {
+        optionsObject = v8::Object::New(isolate);
+    }
+    gin_helper::Dictionary options(isolate, optionsObject);
+    if (newBrowserView(&options, args.This()))
+        args.GetReturnValue().Set(args.This());
 }
 
 void BrowserView::destroyed()
@@ -120,6 +119,23 @@ void BrowserView::_setBoundsApi(int x, int y, int w, int h)
 
 BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, v8::Local<v8::Object> wrapper)
 {
+    WebContents* webContents = nullptr;
+    v8::Local<v8::Value> existing;
+    if (options->Get("webContents", &existing) && !existing->IsUndefined()) {
+        if (existing->IsObject())
+            webContents = static_cast<WebContents*>(GetNativePtr(
+                existing.As<v8::Object>(), &WebContents::kWrapperInfo));
+        if (!webContents || webContents->isDestroyedApi() || webContents->getOwner()) {
+            options->isolate()->ThrowException(v8::Exception::TypeError(
+                v8::String::NewFromUtf8Literal(options->isolate(),
+                    "webContents must be a live, unattached WebContents")));
+            return nullptr;
+        }
+        options->isolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8Literal(options->isolate(),
+                "Adopting an existing WebContents is not supported")));
+        return nullptr;
+    }
     BrowserView* self = new BrowserView(options->isolate(), wrapper);
     WebContents::BrowserWindowConstructorOptions* createWindowParam = new WebContents::BrowserWindowConstructorOptions();
     createWindowParam->minWidth = 1;
@@ -128,38 +144,28 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
     createWindowParam->styleEx = 0;
     createWindowParam->transparent = false;
 
-    WebContents* webContents = nullptr;
-    v8::Handle<v8::Object> webContentsV8;
-    // If no WebContents was passed to the constructor, create it from options.
-    if (!options->Get("webContents", &webContentsV8)) {
-        // Use options.webPreferences to create WebContents.
-        gin_helper::Dictionary webPreferences = gin_helper::Dictionary::CreateEmpty(options->isolate());
-        bool b = options->Get(options::kWebPreferences, &webPreferences);
+    gin_helper::Dictionary webPreferences = gin_helper::Dictionary::CreateEmpty(options->isolate());
+    options->Get(options::kWebPreferences, &webPreferences);
 
-        v8::Local<v8::Value> preloadScriptValue;
-        if (options->Get(options::kPreloadScript, &preloadScriptValue))
-            webPreferences.Set(options::kPreloadScript, preloadScriptValue);
+    v8::Local<v8::Value> preloadScriptValue;
+    if (options->Get(options::kPreloadScript, &preloadScriptValue))
+        webPreferences.Set(options::kPreloadScript, preloadScriptValue);
 
-        // Copy the backgroundColor to webContents.
-        v8::Local<v8::Value> backgroundColorValue;
-        if (options->Get(options::kBackgroundColor, &backgroundColorValue))
-            webPreferences.Set(options::kBackgroundColor, backgroundColorValue);
+    v8::Local<v8::Value> backgroundColorValue;
+    if (options->Get(options::kBackgroundColor, &backgroundColorValue))
+        webPreferences.Set(options::kBackgroundColor, backgroundColorValue);
 
-        webContents = WebContents::create(options->isolate(), webPreferences, self);
-        if (!webContents || webContents->isDestroyedApi()) {
-            delete createWindowParam;
-            self->m_state = WindowDestroyed;
-            if (!options->isolate()->HasPendingException()) {
-                options->isolate()->ThrowException(v8::Exception::Error(
-                    v8::String::NewFromUtf8Literal(
-                        options->isolate(), "WebContents was destroyed during BrowserView creation")));
-            }
-            return nullptr;
+    webContents = WebContents::create(options->isolate(), webPreferences, self);
+    if (!webContents || webContents->isDestroyedApi()) {
+        delete createWindowParam;
+        self->m_state = WindowDestroyed;
+        if (!options->isolate()->HasPendingException()) {
+            options->isolate()->ThrowException(v8::Exception::Error(
+                v8::String::NewFromUtf8Literal(
+                    options->isolate(), "WebContents was destroyed during BrowserView creation")));
         }
-
-        //webPreferences.GetBydefaultVal("nodeIntegration", true, &webContents->m_isNodeIntegration);
-    } else
-        DebugBreak();
+        return nullptr;
+    }
     self->m_webContents = webContents;
 
     options->GetBydefaultVal("x", kNotSetXYFlag, &createWindowParam->x);

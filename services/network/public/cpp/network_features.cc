@@ -7,6 +7,9 @@
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/numerics/safe_conversions.h"
+#include "base/no_destructor.h"
+#include "url/origin.h"
+#include "url/gurl.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -274,5 +277,20 @@ BASE_FEATURE(kPreconnectInNetworkService, "PreconnectInNetworkService", base::FE
 
 // Preconnect to a new origin right when a redirect starts.
 BASE_FEATURE(kPreconnectOnRedirect, "PreconnectOnRedirect", base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kBlockAcceptClientHints, "BlockAcceptClientHints", base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kBlockAcceptClientHintsBlockedSite { &kBlockAcceptClientHints, "BlockedSite", "" };
+
+bool ShouldBlockAcceptClientHintsFor(const url::Origin& origin)
+{
+    static const bool block_accept_ch = base::FeatureList::IsEnabled(kBlockAcceptClientHints);
+    static const base::NoDestructor<url::Origin> blocked_site(url::Origin::Create(GURL(kBlockAcceptClientHintsBlockedSite.Get())));
+    return block_accept_ch && blocked_site->IsSameOriginWith(origin);
+}
+
+BASE_FEATURE(kCookieIndicesHeader, "CookieIndicesHeader", base::FEATURE_DISABLED_BY_DEFAULT);
+// These optional COOP modes were not enabled by this embedder.
+BASE_FEATURE(kCoopNoopenerAllowPopups, "CoopNoopenerAllowPopups", base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCoopRestrictPropertiesOriginTrial, "CoopRestrictPropertiesOriginTrial", base::FEATURE_DISABLED_BY_DEFAULT);
 
 } // namespace network::features

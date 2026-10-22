@@ -157,6 +157,7 @@ Resource* PreloadRequest::Start(Document* document)
         // the async request to the blocked script here.
         MaybeDisallowFetchForDocWrittenScript(params, *document);
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
         if (base::FeatureList::IsEnabled(features::kLCPScriptObserver)) {
             if (LCPCriticalPathPredictor* lcpp = document->GetFrame()->GetLCPP()) {
                 if (lcpp->lcp_influencer_scripts().Contains(url)) {
@@ -164,16 +165,19 @@ Resource* PreloadRequest::Start(Document* document)
                 }
             }
         }
+#endif
     }
     params.SetRenderBlockingBehavior(render_blocking_behavior_);
 
     params.SetIsPotentiallyLCPElement(is_potentially_lcp_element_);
     params.SetIsPotentiallyLCPInfluencer(is_potentially_lcp_influencer_);
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (LCPCriticalPathPredictor* lcpp = document->GetFrame()->GetLCPP()) {
         lcpp->OnStartPreload(url, resource_type_);
     }
 
+#endif
     return PreloadHelper::StartPreload(resource_type_, params, *document);
 }
 

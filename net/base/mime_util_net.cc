@@ -42,7 +42,7 @@ public:
 
     bool ParseMimeTypeWithoutParameter(base::StringPiece type_string, std::string* top_level_type, std::string* subtype) const;
 
-    bool IsValidTopLevelMimeType(const std::string& type_string) const;
+    bool IsValidTopLevelMimeType(std::string_view type_string) const;
 
 private:
     friend struct base::LazyInstanceTraitsBase<MimeUtil>;
@@ -578,11 +578,10 @@ static const char* const kLegalTopLevelTypes[] = {
     "video",
 };
 
-bool MimeUtil::IsValidTopLevelMimeType(const std::string& type_string) const
+bool MimeUtil::IsValidTopLevelMimeType(std::string_view type_string) const
 {
-    std::string lower_type = base::ToLowerASCII(type_string);
     for (const char* const legal_type : kLegalTopLevelTypes) {
-        if (lower_type.compare(legal_type) == 0)
+        if (base::EqualsCaseInsensitiveASCII(type_string, legal_type))
             return true;
     }
 
@@ -623,7 +622,7 @@ bool ParseMimeTypeWithoutParameter(base::StringPiece type_string, std::string* t
     return g_mime_util.Get().ParseMimeTypeWithoutParameter(type_string, top_level_type, subtype);
 }
 
-bool IsValidTopLevelMimeType(const std::string& type_string)
+bool IsValidTopLevelMimeType(std::string_view type_string)
 {
     return g_mime_util.Get().IsValidTopLevelMimeType(type_string);
 }

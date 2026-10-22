@@ -54,6 +54,12 @@ template <> struct MojomTypeTraits<::mojo_base::mojom::RelativeFilePathDataView>
 
 namespace mojo_base::mojom {
 
+#if BUILDFLAG(IS_WIN)
+using FilePathValueDataView = mojo::ArrayDataView<uint16_t>;
+#else
+using FilePathValueDataView = mojo::StringDataView;
+#endif
+
 class FilePathDataView {
 public:
     FilePathDataView() = default;
@@ -68,13 +74,13 @@ public:
     {
         return !data_;
     }
-    inline void GetPathDataView(mojo::ArrayDataView<uint16_t>* output);
+    inline void GetPathDataView(FilePathValueDataView* output);
 
     template <typename UserType> [[nodiscard]] bool ReadPath(UserType* output)
     {
 
         auto* pointer = data_->path.Get();
-        return mojo::internal::Deserialize<mojo::ArrayDataView<uint16_t>>(pointer, output, message_);
+        return mojo::internal::Deserialize<FilePathValueDataView>(pointer, output, message_);
     }
 
 private:
@@ -96,13 +102,13 @@ public:
     {
         return !data_;
     }
-    inline void GetPathDataView(mojo::ArrayDataView<uint16_t>* output);
+    inline void GetPathDataView(FilePathValueDataView* output);
 
     template <typename UserType> [[nodiscard]] bool ReadPath(UserType* output)
     {
 
         auto* pointer = data_->path.Get();
-        return mojo::internal::Deserialize<mojo::ArrayDataView<uint16_t>>(pointer, output, message_);
+        return mojo::internal::Deserialize<FilePathValueDataView>(pointer, output, message_);
     }
 
 private:
@@ -131,8 +137,12 @@ template <typename MaybeConstUserType> struct Serializer<::mojo_base::mojom::Fil
         fragment.Allocate();
         decltype(Traits::path(input)) in_path = Traits::path(input);
         mojo::internal::MessageFragment<typename decltype(fragment->path)::BaseType> path_fragment(fragment.message());
+#if BUILDFLAG(IS_WIN)
         constexpr const mojo::internal::ContainerValidateParams& path_validate_params = mojo::internal::GetArrayValidator<0, false, nullptr>();
         mojo::internal::Serialize<mojo::ArrayDataView<uint16_t>>(in_path, path_fragment, &path_validate_params);
+#else
+        mojo::internal::Serialize<mojo::StringDataView>(in_path, path_fragment);
+#endif
         fragment->path.Set(path_fragment.is_null() ? nullptr : path_fragment.data());
         MOJO_INTERNAL_DLOG_SERIALIZATION_WARNING(
             fragment->path.is_null(), mojo::internal::VALIDATION_ERROR_UNEXPECTED_NULL_POINTER, "null path in FilePath struct");
@@ -163,8 +173,12 @@ template <typename MaybeConstUserType> struct Serializer<::mojo_base::mojom::Rel
         fragment.Allocate();
         decltype(Traits::path(input)) in_path = Traits::path(input);
         mojo::internal::MessageFragment<typename decltype(fragment->path)::BaseType> path_fragment(fragment.message());
+#if BUILDFLAG(IS_WIN)
         constexpr const mojo::internal::ContainerValidateParams& path_validate_params = mojo::internal::GetArrayValidator<0, false, nullptr>();
         mojo::internal::Serialize<mojo::ArrayDataView<uint16_t>>(in_path, path_fragment, &path_validate_params);
+#else
+        mojo::internal::Serialize<mojo::StringDataView>(in_path, path_fragment);
+#endif
         fragment->path.Set(path_fragment.is_null() ? nullptr : path_fragment.data());
         MOJO_INTERNAL_DLOG_SERIALIZATION_WARNING(
             fragment->path.is_null(), mojo::internal::VALIDATION_ERROR_UNEXPECTED_NULL_POINTER, "null path in RelativeFilePath struct");
@@ -186,16 +200,16 @@ template <typename MaybeConstUserType> struct Serializer<::mojo_base::mojom::Rel
 
 namespace mojo_base::mojom {
 
-inline void FilePathDataView::GetPathDataView(mojo::ArrayDataView<uint16_t>* output)
+inline void FilePathDataView::GetPathDataView(FilePathValueDataView* output)
 {
     auto pointer = data_->path.Get();
-    *output = mojo::ArrayDataView<uint16_t>(pointer, message_);
+    *output = FilePathValueDataView(pointer, message_);
 }
 
-inline void RelativeFilePathDataView::GetPathDataView(mojo::ArrayDataView<uint16_t>* output)
+inline void RelativeFilePathDataView::GetPathDataView(FilePathValueDataView* output)
 {
     auto pointer = data_->path.Get();
-    *output = mojo::ArrayDataView<uint16_t>(pointer, message_);
+    *output = FilePathValueDataView(pointer, message_);
 }
 
 } // mojo_base::mojom

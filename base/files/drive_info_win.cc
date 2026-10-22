@@ -14,14 +14,11 @@
 
 namespace base {
 
-DriveInfo::DriveInfo() = default;
-DriveInfo::~DriveInfo() = default;
-DriveInfo::DriveInfo(DriveInfo&&) = default;
-DriveInfo& DriveInfo::operator=(DriveInfo&&) = default;
-
 std::optional<DriveInfo> GetFileDriveInfo(const FilePath& path)
 {
     std::vector<base::FilePath::StringType> components = path.GetComponents();
+    if (components.empty() || components[0].size() != 2 || components[0][1] != L':')
+        return std::nullopt;
 
     base::File volume(base::FilePath(L"\\\\.\\" + components[0]), base::File::FLAG_OPEN);
     if (!volume.IsValid()) {

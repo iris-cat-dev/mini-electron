@@ -32,6 +32,9 @@ NET_EXPORT void SSLCipherSuiteToStrings(
 // If the version is unknown, |name| is set to "???".
 NET_EXPORT void SSLVersionToString(const char** name, int ssl_version);
 
+// Returns the registered name for an IANA TLS group, or nullptr if unknown.
+NET_EXPORT const char* SSLGroupToName(uint16_t group);
+
 // Parses a string literal that represents a SSL/TLS cipher suite.
 //
 // Supported literal forms:

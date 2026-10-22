@@ -31,27 +31,13 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_worker_global_scope.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_xml_http_request.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_ai.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_audio_context.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_rendering_context_2d.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_capture_controller.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_supported_limits.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_identity_credential.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_identity_provider.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_install_event.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_media_devices.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_media_stream_track.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_notification.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_offscreen_canvas_rendering_context_2d.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_paint_rendering_context_2d.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_paint_worklet_global_scope.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_encoded_audio_frame.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_encoded_video_frame.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_service_worker_global_scope.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_source_buffer.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_translation.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_xr_frame.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_xr_session.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 
@@ -102,15 +88,13 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
 
     switch (feature) {
     case mojom::blink::OriginTrialFeature::kAISummarizationAPI: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8AI::GetWrapperTypeInfo(),
-//             V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8ServiceWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8SharedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
+        static const WrapperTypeInfo* const wti_list[] = {
+            V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
+            V8ServiceWorkerGlobalScope::GetWrapperTypeInfo(),
+            V8SharedWorkerGlobalScope::GetWrapperTypeInfo(),
+            V8Window::GetWrapperTypeInfo(),
+        };
+        selected_wti_list = wti_list;
         break;
     }
     case mojom::blink::OriginTrialFeature::kAdInterestGroupAPI: {
@@ -128,15 +112,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
             V8XMLHttpRequest::GetWrapperTypeInfo(),
         };
         selected_wti_list = wti_list;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kAudioContextPlayoutStats: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8AudioContext::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
         break;
     }
     case mojom::blink::OriginTrialFeature::kBackForwardCacheNotRestoredReasons: {
@@ -172,14 +147,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         selected_wti_list = wti_list;
         break;
     }
-    case mojom::blink::OriginTrialFeature::kCapturedSurfaceControl: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8CaptureController::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
     case mojom::blink::OriginTrialFeature::kDatabase: {
         static const WrapperTypeInfo* const wti_list[] = {
             V8Window::GetWrapperTypeInfo(),
@@ -199,22 +166,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
             V8HTMLIFrameElement::GetWrapperTypeInfo(),
         };
         selected_wti_list = wti_list;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kFedCmAuthz: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8IdentityProvider::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kFedCmMultipleIdentityProviders: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8IdentityCredential::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
         break;
     }
     case mojom::blink::OriginTrialFeature::kFetchLaterAPI: {
@@ -249,49 +200,11 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         selected_wti_list = wti_list;
         break;
     }
-    case mojom::blink::OriginTrialFeature::kGetAllScreensMedia: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8MediaDevices::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
     case mojom::blink::OriginTrialFeature::kHrefTranslate: {
         static const WrapperTypeInfo* const wti_list[] = {
             V8HTMLAnchorElement::GetWrapperTypeInfo(),
         };
         selected_wti_list = wti_list;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kLanguageDetectionAPI: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8AI::GetWrapperTypeInfo(),
-//             V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8ServiceWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8SharedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8Translation::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kMediaCaptureConfigurationChange: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8MediaStreamTrack::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kMediaSourceExtensionsForWebCodecs: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8SourceBuffer::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
         break;
     }
     case mojom::blink::OriginTrialFeature::kMutationEvents: {
@@ -307,18 +220,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
             V8Window::GetWrapperTypeInfo(),
         };
         selected_wti_list = wti_list;
-        break;
-    }
-    case mojom::blink::OriginTrialFeature::kNotificationTriggers: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8Notification::GetWrapperTypeInfo(),
-//             V8ServiceWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8SharedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
         break;
     }
     case mojom::blink::OriginTrialFeature::kOriginTrialsSampleAPI: {
@@ -365,15 +266,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         selected_wti_list = wti_list;
         break;
     }
-    case mojom::blink::OriginTrialFeature::kRTCEncodedFrameSetMetadata: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8RTCEncodedAudioFrame::GetWrapperTypeInfo(),
-//             V8RTCEncodedVideoFrame::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
     case mojom::blink::OriginTrialFeature::kServiceWorkerStaticRouter: {
         static const WrapperTypeInfo* const wti_list[] = {
             V8InstallEvent::GetWrapperTypeInfo(),
@@ -415,18 +307,6 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         selected_wti_list = wti_list;
         break;
     }
-    case mojom::blink::OriginTrialFeature::kTranslationAPI: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8ServiceWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8SharedWorkerGlobalScope::GetWrapperTypeInfo(),
-//             V8Translation::GetWrapperTypeInfo(),
-//             V8Window::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
-        break;
-    }
     case mojom::blink::OriginTrialFeature::kTranslationAPIEntryPoint: {
         static const WrapperTypeInfo* const wti_list[] = {
             V8DedicatedWorkerGlobalScope::GetWrapperTypeInfo(),
@@ -453,11 +333,10 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         break;
     }
     case mojom::blink::OriginTrialFeature::kWebGPUSubgroupsFeatures: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8GPUSupportedLimits::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
+        static const WrapperTypeInfo* const wti_list[] = {
+            V8GPUSupportedLimits::GetWrapperTypeInfo(),
+        };
+        selected_wti_list = wti_list;
         break;
     }
     case mojom::blink::OriginTrialFeature::kWebIdentityDigitalCredentials: {
@@ -469,22 +348,17 @@ void InstallPropertiesPerFeature(ScriptState* script_state, mojom::blink::Origin
         break;
     }
     case mojom::blink::OriginTrialFeature::kWebXRImageTracking: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8Window::GetWrapperTypeInfo(),
-//             V8XRFrame::GetWrapperTypeInfo(),
-//             V8XRSession::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
+        static const WrapperTypeInfo* const wti_list[] = {
+            V8Window::GetWrapperTypeInfo(),
+        };
+        selected_wti_list = wti_list;
         break;
     }
     case mojom::blink::OriginTrialFeature::kWebXRPlaneDetection: {
-//         static const WrapperTypeInfo* const wti_list[] = {
-//             V8Window::GetWrapperTypeInfo(),
-//             V8XRFrame::GetWrapperTypeInfo(),
-//         };
-//         selected_wti_list = wti_list;
-        *(int*)1 = 1;
+        static const WrapperTypeInfo* const wti_list[] = {
+            V8Window::GetWrapperTypeInfo(),
+        };
+        selected_wti_list = wti_list;
         break;
     }
     default: {

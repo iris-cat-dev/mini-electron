@@ -23,6 +23,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/default_tick_clock.h"
 #include "base/trace_event/memory_dump_manager.h"
+#include "base/tracing_buildflags.h"
 #include "build/build_config.h"
 #include "cc/base/container_util.h"
 #include "components/viz/client/client_resource_provider.h"
@@ -32,6 +33,7 @@
 #include "gpu/command_buffer/client/context_support.h"
 #include "gpu/command_buffer/common/capabilities.h"
 #include "gpu/command_buffer/common/mailbox.h"
+#include "gpu/command_buffer/common/shared_image_trace_utils.h"
 
 using base::trace_event::MemoryAllocatorDump;
 using base::trace_event::MemoryDumpLevelOfDetail;
@@ -588,32 +590,28 @@ ResourcePool::PoolResource::~PoolResource() = default;
 void ResourcePool::PoolResource::OnMemoryDump(
     base::trace_event::ProcessMemoryDump* pmd, int tracing_id, const viz::ClientResourceProvider* resource_provider, bool is_free, bool is_busy) const
 {
-    *(int*)1 = 1;
     // Resource IDs are not process-unique, so log with the ResourcePool's unique
     // tracing id.
-//     const std::string dump_name = base::StringPrintf(
-//         "cc/tile_memory/provider_%d/%s%sresource_%zd", tracing_id, debug_name_.empty() ? "" : debug_name_.c_str(), debug_name_.empty() ? "" : "/", unique_id_);
-//     MemoryAllocatorDump* dump = pmd->CreateAllocatorDump(dump_name);
-// 
-//     // The importance value used here needs to be greater than the importance
-//     // used in other places that use this GUID to inform the system that this is
-//     // the root ownership.
-//     const int kImportance = static_cast<int>(gpu::TracingImportance::kClientOwner);
-//     auto* dump_manager = base::trace_event::MemoryDumpManager::GetInstance();
-//     uint64_t tracing_process_id = dump_manager->GetTracingProcessId();
-//     if (software_backing_) {
-//         software_backing_->OnMemoryDump(pmd, dump->guid(), tracing_process_id, kImportance);
-//     } else if (gpu_backing_) {
-//         gpu_backing_->OnMemoryDump(pmd, dump->guid(), tracing_process_id, kImportance);
-//     }
-// 
-//     uint64_t total_bytes = memory_usage();
-//     dump->AddScalar(MemoryAllocatorDump::kNameSize, MemoryAllocatorDump::kUnitsBytes, total_bytes);
-// 
-//     uint64_t free_size = is_free ? total_bytes : 0u;
-//     dump->AddScalar("free_size", MemoryAllocatorDump::kUnitsBytes, free_size);
-//     uint64_t busy_size = is_busy ? total_bytes : 0u;
-//     dump->AddScalar("busy_size", MemoryAllocatorDump::kUnitsBytes, busy_size);
+    const std::string dump_name = base::StringPrintf(
+        "cc/tile_memory/provider_%d/%s%sresource_%zd", tracing_id, debug_name_.empty() ? "" : debug_name_.c_str(), debug_name_.empty() ? "" : "/", unique_id_);
+    MemoryAllocatorDump* dump = pmd->CreateAllocatorDump(dump_name);
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    // Attribute ownership to the resource pool rather than its backing.
+    const int kImportance = static_cast<int>(gpu::TracingImportance::kClientOwner);
+    auto* dump_manager = base::trace_event::MemoryDumpManager::GetInstance();
+    uint64_t tracing_process_id = dump_manager->GetTracingProcessId();
+    if (software_backing_) {
+        software_backing_->OnMemoryDump(pmd, dump->guid(), tracing_process_id, kImportance);
+    } else if (gpu_backing_) {
+        gpu_backing_->OnMemoryDump(pmd, dump->guid(), tracing_process_id, kImportance);
+    }
+#endif
+
+    uint64_t total_bytes = memory_usage();
+    dump->AddScalar(MemoryAllocatorDump::kNameSize, MemoryAllocatorDump::kUnitsBytes, total_bytes);
+    dump->AddScalar("free_size", MemoryAllocatorDump::kUnitsBytes, is_free ? total_bytes : 0u);
+    dump->AddScalar("busy_size", MemoryAllocatorDump::kUnitsBytes, is_busy ? total_bytes : 0u);
 }
 
 } // namespace cc

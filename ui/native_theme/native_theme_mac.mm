@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/functional/bind.h"
 #include "base/mac/mac_util.h"
 #include "base/no_destructor.h"
 #include "cc/paint/paint_shader.h"
@@ -518,16 +519,19 @@ void NativeThemeMac::PaintMenuItemBackground(
 
 // static
 static void CaptionSettingsChangedNotificationCallback(CFNotificationCenterRef,
-                                                       void*,
+                                                       void* observer,
                                                        CFStringRef,
                                                        const void*,
                                                        CFDictionaryRef) {
-  NativeTheme::GetInstanceForWeb()->NotifyOnCaptionStyleUpdated();
+  static_cast<base::RepeatingClosure*>(observer)->Run();
 }
 
 NativeThemeMac::NativeThemeMac(bool configure_web_instance,
                                bool should_only_use_dark_colors)
-    : NativeThemeBase(should_only_use_dark_colors) {
+    : NativeThemeBase(should_only_use_dark_colors),
+      task_runner_(base::SequencedTaskRunner::HasCurrentDefault()
+                       ? base::SequencedTaskRunner::GetCurrentDefault()
+                       : nullptr) {
   if (!should_only_use_dark_colors)
     InitializeDarkModeStateAndObserver();
 
@@ -536,7 +540,9 @@ NativeThemeMac::NativeThemeMac(bool configure_web_instance,
   if (!IsForcedHighContrast()) {
     SetPreferredContrast(CalculatePreferredContrast());
   }
-  __block auto theme = this;
+  const auto accessibility_changed = base::BindRepeating(
+      &NativeThemeMac::OnAccessibilityChanged, weak_factory_.GetWeakPtr());
+  const auto task_runner = task_runner_;
   display_accessibility_notification_token_ =
       [NSWorkspace.sharedWorkspace.notificationCenter
           addObserverForName:
@@ -544,13 +550,17 @@ NativeThemeMac::NativeThemeMac(bool configure_web_instance,
                       object:nil
                        queue:nil
                   usingBlock:^(NSNotification* notification) {
-                    if (!IsForcedHighContrast()) {
-                      theme->SetPreferredContrast(CalculatePreferredContrast());
+                    const bool high_contrast = IsHighContrast();
+                    const bool reduced_transparency = PrefersReducedTransparency();
+                    const bool inverted = InvertedColors();
+                    if (task_runner && !task_runner->RunsTasksInCurrentSequence()) {
+                      task_runner->PostTask(
+                          FROM_HERE, base::BindOnce(accessibility_changed,
+                              high_contrast, reduced_transparency, inverted));
+                    } else {
+                      accessibility_changed.Run(
+                          high_contrast, reduced_transparency, inverted);
                     }
-                    theme->set_prefers_reduced_transparency(
-                        PrefersReducedTransparency());
-                    theme->set_inverted_colors(InvertedColors());
-                    theme->NotifyOnNativeThemeUpdated();
                   }];
 
   if (configure_web_instance)
@@ -558,7 +568,12 @@ NativeThemeMac::NativeThemeMac(bool configure_web_instance,
 }
 
 NativeThemeMac::~NativeThemeMac() {
-  [NSNotificationCenter.defaultCenter
+  weak_factory_.InvalidateWeakPtrs();
+  appearance_observer_ = nil;
+  CFNotificationCenterRemoveObserver(
+      CFNotificationCenterGetLocalCenter(), &caption_style_changed_,
+      kMACaptionAppearanceSettingsChangedNotification, nullptr);
+  [NSWorkspace.sharedWorkspace.notificationCenter
       removeObserver:display_accessibility_notification_token_];
 }
 
@@ -584,15 +599,42 @@ void NativeThemeMac::PaintSelectedMenuItem(
 }
 
 void NativeThemeMac::InitializeDarkModeStateAndObserver() {
-  __block auto theme = this;
+  const auto dark_mode_changed = base::BindRepeating(
+      &NativeThemeMac::OnDarkModeChanged, weak_factory_.GetWeakPtr());
+  const auto task_runner = task_runner_;
   set_use_dark_colors(IsDarkMode());
   set_preferred_color_scheme(CalculatePreferredColorScheme());
   appearance_observer_ =
       [[NativeThemeEffectiveAppearanceObserver alloc] initWithHandler:^{
-        theme->set_use_dark_colors(IsDarkMode());
-        theme->set_preferred_color_scheme(CalculatePreferredColorScheme());
-        theme->NotifyOnNativeThemeUpdated();
+        const bool dark = IsDarkMode();
+        if (task_runner && !task_runner->RunsTasksInCurrentSequence()) {
+          task_runner->PostTask(
+              FROM_HERE, base::BindOnce(dark_mode_changed, dark));
+        } else {
+          dark_mode_changed.Run(dark);
+        }
       }];
+}
+
+void NativeThemeMac::OnDarkModeChanged(bool dark) {
+  set_use_dark_colors(dark);
+  set_preferred_color_scheme(CalculatePreferredColorScheme());
+  NotifyOnNativeThemeUpdated();
+}
+
+void NativeThemeMac::OnAccessibilityChanged(
+    bool high_contrast, bool reduced_transparency, bool inverted) {
+  if (!IsForcedHighContrast()) {
+    SetPreferredContrast(high_contrast ? PreferredContrast::kMore
+                                     : PreferredContrast::kNoPreference);
+  }
+  set_prefers_reduced_transparency(reduced_transparency);
+  set_inverted_colors(inverted);
+  NotifyOnNativeThemeUpdated();
+}
+
+void NativeThemeMac::OnCaptionStyleChanged() {
+  NativeTheme::GetInstanceForWeb()->NotifyOnCaptionStyleUpdated();
 }
 
 void NativeThemeMac::ConfigureWebInstance() {
@@ -612,8 +654,20 @@ void NativeThemeMac::ConfigureWebInstance() {
   AddObserver(color_scheme_observer_.get());
 
   // Observe caption style changes.
+  const auto caption_changed = base::BindRepeating(
+      &NativeThemeMac::OnCaptionStyleChanged, weak_factory_.GetWeakPtr());
+  caption_style_changed_ = base::BindRepeating(
+      [](scoped_refptr<base::SequencedTaskRunner> task_runner,
+         const base::RepeatingClosure& callback) {
+        if (task_runner && !task_runner->RunsTasksInCurrentSequence()) {
+          task_runner->PostTask(FROM_HERE, callback);
+        } else {
+          callback.Run();
+        }
+      },
+      task_runner_, caption_changed);
   CFNotificationCenterAddObserver(
-      CFNotificationCenterGetLocalCenter(), this,
+      CFNotificationCenterGetLocalCenter(), &caption_style_changed_,
       CaptionSettingsChangedNotificationCallback,
       kMACaptionAppearanceSettingsChangedNotification, nullptr,
       CFNotificationSuspensionBehaviorDeliverImmediately);

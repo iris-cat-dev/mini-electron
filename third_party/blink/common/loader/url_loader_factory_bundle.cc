@@ -75,30 +75,23 @@ URLLoaderFactoryBundle::~URLLoaderFactoryBundle() = default;
 
 network::mojom::URLLoaderFactory* URLLoaderFactoryBundle::GetFactory(const network::ResourceRequest& request)
 {
-    *(int*)1 = 1;
-//     auto it = scheme_specific_factories_.find(request.url.scheme());
-//     if (it != scheme_specific_factories_.end())
-//         return it->second.get();
-// 
-//     if (request.isolated_world_origin.has_value()) {
-//         auto it2 = isolated_world_factories_.find(request.isolated_world_origin.value());
-//         if (it2 != isolated_world_factories_.end())
-//             return it2->second.get();
-//     }
-// 
-//     if (!default_factory_.is_bound()) {
-//         // Hitting the NOTREACHED below means that a subresource load has
-//         // unexpectedly happened in a speculative frame (or in a test frame created
-//         // via RenderViewTest).  This most likely indicates a bug somewhere else.
-//         DUMP_WILL_BE_NOTREACHED();
-// 
-//         // TODO(https://crbug.com/1300973): Once known issues are fixed, remove the
-//         // NotImplementedURLLoaderFactory (i.e. trust the NOTREACHED above, replace
-//         // it with an equivalent DCHECK, and accept crashing if a nullptr is
-//         // returned from this method).
-//         static const base::NoDestructor<mojo::Remote<network::mojom::URLLoaderFactory>> s_fallback_factory(network::NotImplementedURLLoaderFactory::Create());
-//         return s_fallback_factory->get();
-//     }
+    auto it = scheme_specific_factories_.find(request.url.scheme());
+    if (it != scheme_specific_factories_.end())
+        return it->second.get();
+
+    if (request.isolated_world_origin.has_value()) {
+        auto it2 = isolated_world_factories_.find(request.isolated_world_origin.value());
+        if (it2 != isolated_world_factories_.end())
+            return it2->second.get();
+    }
+
+    if (!default_factory_.is_bound()) {
+        // Subresource loading in a speculative frame is unexpected. Report the
+        // invariant violation and fail the request through the network factory.
+        DUMP_WILL_BE_NOTREACHED();
+        static const base::NoDestructor<mojo::Remote<network::mojom::URLLoaderFactory>> s_fallback_factory(network::NotImplementedURLLoaderFactory::Create());
+        return s_fallback_factory->get();
+    }
 
     return default_factory_.get();
 }

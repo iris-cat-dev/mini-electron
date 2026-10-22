@@ -23,7 +23,6 @@
 
 std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::BackgroundFetchError b)
 {
-    *(int*)1 = 1;
     return a << (int)(b);
 }
 

@@ -3,21 +3,16 @@
 #define net_WebURLLoaderManagerSetupInfo_h
 
 #include "third_party/libcurl/include/curl/curl.h"
+#include "runtime/network/loader/flatten_http_body_element.h"
 
 namespace mini_electron {
 
-struct FlattenHTTPBodyElement;
-
 struct SetupDataInfo {
-    CURLoption sizeOption;
-    curl_off_t size;
-    bool islongLong;
-    bool chunkedTransfer;
-    std::vector<FlattenHTTPBodyElement*> flattenElements;
-
-    ~SetupDataInfo()
-    {
-    }
+    CURLoption sizeOption = CURLOPT_POSTFIELDSIZE_LARGE;
+    curl_off_t size = 0;
+    bool chunkedTransfer = false;
+    bool failed = false;
+    std::vector<std::unique_ptr<FlattenHTTPBodyElement>> flattenElements;
 };
 
 struct SetupInfoBase {

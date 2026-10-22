@@ -7,19 +7,21 @@
 
 #include <cstddef>
 #include <memory>
+#include "base/trace_event/base_tracing_forward.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-#include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
 #include "v8/include/v8-forward.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
 #include "v8/include/v8-inspector.h"
 #endif
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto::protos::pbzero {
 class BlinkSourceLocation;
 } // namespace perfetto::protos::pbzero
+#endif
 
 namespace blink {
 
@@ -97,8 +99,10 @@ public:
     std::unique_ptr<SourceLocation> Clone() const;
 
     // Write a representation of this object into a trace.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     using Proto = perfetto::protos::pbzero::BlinkSourceLocation;
     void WriteIntoTrace(perfetto::TracedProto<Proto> proto) const;
+#endif
     // TODO(altimin): Remove TracedValue version.
     void WriteIntoTrace(perfetto::TracedValue context) const;
 

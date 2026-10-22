@@ -83,11 +83,6 @@ void* GetStackTop()
 using IterateStackCallback = void (*)(const Stack*, StackVisitor*, uintptr_t*);
 extern "C" void PAPushAllRegistersAndIterateStack(const Stack*, StackVisitor*, IterateStackCallback);
 
-void PAPushAllRegistersAndIterateStack(const Stack*, StackVisitor*, IterateStackCallback)
-{
-    *(int*)1 = 1;
-}
-
 Stack::Stack(void* stack_top)
     : stack_top_(stack_top)
 {

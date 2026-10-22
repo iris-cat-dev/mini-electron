@@ -166,8 +166,7 @@ void MessageBuilder::Report() const
 
 [[noreturn]] void MessageBuilder::Throw() const
 {
-    //throw TorqueAbortCompilation {};
-    *(int*)1 = 1;
+    throw TorqueAbortCompilation {};
 }
 
 namespace {

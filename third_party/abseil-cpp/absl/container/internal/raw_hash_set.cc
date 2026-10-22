@@ -31,17 +31,6 @@
 
 namespace absl {
 
-//---
-namespace hash_internal {
-
-uint64_t CityHash64(const char* s, size_t len)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-}
-//---
-
 ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 

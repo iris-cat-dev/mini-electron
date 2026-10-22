@@ -5,10 +5,10 @@
 #include "gpu/config/gpu_feature_info.h"
 
 #include "base/containers/contains.h"
-#include "gpu/config/gpu_blocklist.h"
-#include "gpu/config/gpu_driver_bug_list.h"
-#include "gpu/config/gpu_driver_bug_workaround_type.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+#include "base/check.h"
 #include "ui/gl/gl_context.h"
+#endif
 
 namespace gpu {
 
@@ -28,20 +28,14 @@ GpuFeatureInfo& GpuFeatureInfo::operator=(const GpuFeatureInfo&) = default;
 
 GpuFeatureInfo& GpuFeatureInfo::operator=(GpuFeatureInfo&&) = default;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void GpuFeatureInfo::ApplyToGLContext(gl::GLContext* gl_context) const
 {
-    //     DCHECK(gl_context);
-    //     gl::GLWorkarounds gl_workarounds;
-    //     if (IsWorkaroundEnabled(gpu::CLEAR_TO_ZERO_OR_ONE_BROKEN)) {
-    //         gl_workarounds.clear_to_zero_or_one_broken = true;
-    //     }
-    //     if (IsWorkaroundEnabled(RESET_TEXIMAGE2D_BASE_LEVEL)) {
-    //         gl_workarounds.reset_teximage2d_base_level = true;
-    //     }
-    //     gl_context->SetGLWorkarounds(gl_workarounds);
-    //     gl_context->SetDisabledGLExtensions(this->disabled_extensions);
-    *(int*)1 = 1;
+    DCHECK(gl_context);
+    // Driver workarounds are applied by ANGLE's backend, not GLContext.
+    gl_context->SetDisabledGLExtensions(this->disabled_extensions);
 }
+#endif
 
 bool GpuFeatureInfo::IsWorkaroundEnabled(int32_t workaround) const
 {

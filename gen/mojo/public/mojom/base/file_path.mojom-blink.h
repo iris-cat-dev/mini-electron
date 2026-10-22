@@ -41,6 +41,12 @@
 
 namespace mojo_base::mojom::blink {
 
+#if BUILDFLAG(IS_WIN)
+using FilePathValue = WTF::Vector<uint16_t>;
+#else
+using FilePathValue = WTF::String;
+#endif
+
 class COMPONENT_EXPORT(MOJO_BASE_MOJOM_BLINK) FilePath {
 public:
     template <typename T> using EnableIfSame = std::enable_if_t<std::is_same<FilePath, T>::value>;
@@ -64,7 +70,7 @@ public:
 
     FilePath();
 
-    explicit FilePath(WTF::Vector<uint16_t> path);
+    explicit FilePath(FilePathValue path);
 
     ~FilePath();
 
@@ -129,7 +135,7 @@ public:
         return mojo::internal::DeserializeImpl<FilePath::DataView>(input, input.payload(), input.payload_num_bytes(), output, Validate);
     }
 
-    WTF::Vector<uint16_t> path;
+    FilePathValue path;
 
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
@@ -181,7 +187,7 @@ public:
 
     RelativeFilePath();
 
-    explicit RelativeFilePath(WTF::Vector<uint16_t> path);
+    explicit RelativeFilePath(FilePathValue path);
 
     ~RelativeFilePath();
 
@@ -247,7 +253,7 @@ public:
         return mojo::internal::DeserializeImpl<RelativeFilePath::DataView>(input, input.payload(), input.payload_num_bytes(), output, Validate);
     }
 
-    WTF::Vector<uint16_t> path;
+    FilePathValue path;
 
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;

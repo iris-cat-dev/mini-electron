@@ -11,7 +11,9 @@
 #include "base/unguessable_token.h"
 #include "net/base/features.h"
 #include "net/base/isolation_info.h"
-//#include "net/base/isolation_info.pb.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+#include "net/base/isolation_info.pb.h"
+#endif
 #include "net/base/network_anonymization_key.h"
 #include "net/base/proxy_server.h"
 
@@ -117,27 +119,31 @@ IsolationInfo IsolationInfo::CreateTransientWithNonce(const base::UnguessableTok
     return IsolationInfo(RequestType::kOther, opaque_origin, opaque_origin, SiteForCookies(), nonce);
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 std::optional<IsolationInfo> IsolationInfo::Deserialize(const std::string& serialized)
 {
-    *(int*)1 = 1;
-    return std::nullopt;
-//     proto::IsolationInfo proto;
-//     if (!proto.ParseFromString(serialized))
-//         return std::nullopt;
-// 
-//     std::optional<url::Origin> top_frame_origin;
-//     if (proto.has_top_frame_origin())
-//         top_frame_origin = url::Origin::Create(GURL(proto.top_frame_origin()));
-// 
-//     std::optional<url::Origin> frame_origin;
-//     if (proto.has_frame_origin())
-//         frame_origin = url::Origin::Create(GURL(proto.frame_origin()));
-// 
-//     return IsolationInfo::CreateIfConsistent(static_cast<RequestType>(proto.request_type()), std::move(top_frame_origin), std::move(frame_origin),
-//         SiteForCookies::FromUrl(GURL(proto.site_for_cookies())),
-//         /*nonce=*/std::nullopt);
+    proto::IsolationInfo proto;
+    if (!proto.ParseFromString(serialized))
+        return std::nullopt;
+
+    if (proto.request_type() < static_cast<int32_t>(RequestType::kMainFrame)
+        || proto.request_type() > static_cast<int32_t>(RequestType::kOther)) {
+        return std::nullopt;
+    }
+    std::optional<url::Origin> top_frame_origin;
+    if (proto.has_top_frame_origin())
+        top_frame_origin = url::Origin::Create(GURL(proto.top_frame_origin()));
+
+    std::optional<url::Origin> frame_origin;
+    if (proto.has_frame_origin())
+        frame_origin = url::Origin::Create(GURL(proto.frame_origin()));
+
+    return IsolationInfo::CreateIfConsistent(static_cast<RequestType>(proto.request_type()), std::move(top_frame_origin), std::move(frame_origin),
+        SiteForCookies::FromUrl(GURL(proto.site_for_cookies())),
+        /*nonce=*/std::nullopt);
 }
 
+#endif
 IsolationInfo IsolationInfo::Create(RequestType request_type, const url::Origin& top_frame_origin, const url::Origin& frame_origin,
     const SiteForCookies& site_for_cookies, const std::optional<base::UnguessableToken>& nonce)
 {
@@ -205,28 +211,23 @@ bool IsolationInfo::IsEqualForTesting(const IsolationInfo& other) const
         && site_for_cookies_.IsEquivalent(other.site_for_cookies_));
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 std::string IsolationInfo::Serialize() const
 {
-    *(int*)1 = 1;
-    return "";
-//     if (network_isolation_key().IsTransient())
-//         return "";
-// 
-//     proto::IsolationInfo info;
-// 
-//     info.set_request_type(static_cast<int32_t>(request_type_));
-// 
-//     if (top_frame_origin_)
-//         info.set_top_frame_origin(top_frame_origin_->Serialize());
-// 
-//     if (frame_origin_)
-//         info.set_frame_origin(frame_origin_->Serialize());
-// 
-//     info.set_site_for_cookies(site_for_cookies_.RepresentativeUrl().spec());
-// 
-//     return info.SerializeAsString();
+    if (network_isolation_key().IsTransient())
+        return "";
+
+    proto::IsolationInfo info;
+    info.set_request_type(static_cast<int32_t>(request_type_));
+    if (top_frame_origin_)
+        info.set_top_frame_origin(top_frame_origin_->Serialize());
+    if (frame_origin_)
+        info.set_frame_origin(frame_origin_->Serialize());
+    info.set_site_for_cookies(site_for_cookies_.RepresentativeUrl().spec());
+    return info.SerializeAsString();
 }
 
+#endif
 std::string IsolationInfo::DebugString() const
 {
     std::string s;

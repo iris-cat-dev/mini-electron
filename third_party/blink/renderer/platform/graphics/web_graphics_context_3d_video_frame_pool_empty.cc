@@ -39,8 +39,9 @@ WebGraphicsContext3DVideoFramePool::~WebGraphicsContext3DVideoFramePool() = defa
 
 gpu::raster::RasterInterface* WebGraphicsContext3DVideoFramePool::GetRasterInterface() const
 {
-    *(int*)1 = 1;
-    return nullptr;
+    if (!weak_context_provider_)
+        return nullptr;
+    return weak_context_provider_->ContextProvider()->RasterInterface();
 }
 
 bool WebGraphicsContext3DVideoFramePool::CopyRGBATextureToVideoFrame(
@@ -64,7 +65,8 @@ bool WebGraphicsContext3DVideoFramePool::ConvertVideoFrame(
 // static
 bool WebGraphicsContext3DVideoFramePool::IsGpuMemoryBufferReadbackFromTextureEnabled()
 {
-    *(int*)1 = 1;
+    // The runtime has no GPU channel, SharedImage service, or GMB manager.
+    // Callers must use CPU readback instead of constructing this GPU-only pool.
     return false;
 }
 

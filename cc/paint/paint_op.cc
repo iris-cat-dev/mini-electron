@@ -1148,9 +1148,8 @@ void DrawImageOp::RasterWithFlags(const DrawImageOp* op, const PaintFlags* flags
 
         // If this uses a gainmap shader, then replace DrawImage with a shader.
         if (ToneMapUtil::UseGainmapShader(op->image)) {
-            *(int*)1 = 1;
-//             skia::DrawGainmapImage(canvas, op->image.cached_sk_image_, op->image.gainmap_sk_image_, op->image.gainmap_info_.value(),
-//                 op->image.target_hdr_headroom_, op->left, op->top, op->sampling, paint);
+            skia::DrawGainmapImage(canvas, op->image.cached_sk_image_, op->image.gainmap_sk_image_, op->image.gainmap_info_.value(),
+                op->image.target_hdr_headroom_, op->left, op->top, op->sampling, paint);
             return;
         }
 
@@ -1269,9 +1268,8 @@ void DrawImageRectOp::RasterWithFlags(const DrawImageRectOp* op, const PaintFlag
             // If the PaintImage uses a gainmap shader, then replace DrawImage with a
             // shader.
             if (ToneMapUtil::UseGainmapShader(op->image)) {
-                *(int*)1 = 1;
-//                 skia::DrawGainmapImageRect(c, op->image.cached_sk_image_, op->image.gainmap_sk_image_, op->image.gainmap_info_.value(),
-//                     op->image.target_hdr_headroom_, adjusted_src, op->dst, sampling, p);
+                skia::DrawGainmapImageRect(c, op->image.cached_sk_image_, op->image.gainmap_sk_image_, op->image.gainmap_info_.value(),
+                    op->image.target_hdr_headroom_, adjusted_src, op->dst, sampling, p);
                 return;
             }
 

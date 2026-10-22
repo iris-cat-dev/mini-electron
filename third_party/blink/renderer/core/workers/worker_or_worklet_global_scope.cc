@@ -54,11 +54,6 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
-std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::WebDXFeature b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
 
 namespace blink {
 

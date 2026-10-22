@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "components/paint_preview/common/mojom/paint_preview_types.mojom-params-data.h"
 namespace paint_preview {
@@ -102,6 +105,7 @@ bool SerializedRecording_Data::Validate(const void* data, mojo::internal::Valida
 } // namespace mojom
 } // namespace paint_preview
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -112,3 +116,4 @@ void TraceFormatTraits<::paint_preview::mojom::RecordingPersistence>::WriteIntoT
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

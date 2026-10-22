@@ -15,7 +15,7 @@ namespace mojo {
 DataPipeDrainer::DataPipeDrainer(Client* client, mojo::ScopedDataPipeConsumerHandle source)
     : client_(client)
     , source_(std::move(source))
-    , handle_watcher_(FROM_HERE, SimpleWatcher::ArmingPolicy::AUTOMATIC, base::SequencedTaskRunnerHandle::Get())
+    , handle_watcher_(FROM_HERE, SimpleWatcher::ArmingPolicy::AUTOMATIC, base::SequencedTaskRunner::GetCurrentDefault())
 {
     DCHECK(client_);
     handle_watcher_.Watch(source_.get(), MOJO_HANDLE_SIGNAL_READABLE, base::BindRepeating(&DataPipeDrainer::WaitComplete, weak_factory_.GetWeakPtr()));
@@ -27,12 +27,13 @@ DataPipeDrainer::~DataPipeDrainer()
 
 void DataPipeDrainer::ReadData()
 {
-    const void* buffer = nullptr;
-    uint32_t num_bytes = 0;
-    MojoResult rv = source_->BeginReadData(&buffer, &num_bytes, MOJO_READ_DATA_FLAG_NONE);
+    base::span<const uint8_t> data;
+    MojoResult rv = source_->BeginReadData(MOJO_READ_DATA_FLAG_NONE, data);
     if (rv == MOJO_RESULT_OK) {
-        client_->OnDataAvailable(buffer, num_bytes);
-        source_->EndReadData(num_bytes);
+        auto alive = weak_factory_.GetWeakPtr();
+        client_->OnDataAvailable(data);
+        if (alive)
+            source_->EndReadData(static_cast<uint32_t>(data.size()));
     } else if (rv == MOJO_RESULT_FAILED_PRECONDITION) {
         client_->OnDataComplete();
     } else if (rv != MOJO_RESULT_SHOULD_WAIT) {

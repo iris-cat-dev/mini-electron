@@ -4,6 +4,12 @@
 
 #include "third_party/blink/renderer/modules/mediacapturefromelement/html_media_element_capture.h"
 
+#include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#include "third_party/blink/renderer/modules/encryptedmedia/html_media_element_encrypted_media.h"
+#include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#include "third_party/blink/renderer/platform/bindings/script_state.h"
+
+#if !defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
 #include "base/memory/ptr_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
@@ -14,10 +20,8 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/track/audio_track_list.h"
 #include "third_party/blink/renderer/core/html/track/video_track_list.h"
-#include "third_party/blink/renderer/modules/encryptedmedia/html_media_element_encrypted_media.h"
 #include "third_party/blink/renderer/modules/encryptedmedia/media_keys.h"
 #include "third_party/blink/renderer/modules/mediacapturefromelement/html_audio_element_capturer_source.h"
 #include "third_party/blink/renderer/modules/mediacapturefromelement/html_video_element_capturer_source.h"
@@ -32,9 +36,11 @@
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_source.h"
 #include "third_party/blink/renderer/platform/wtf/uuid.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
 namespace {
 
 // This method creates a MediaStreamSource with the provided video
@@ -249,6 +255,7 @@ void MediaElementEventListener::Trace(Visitor* visitor) const
 }
 
 } // anonymous namespace
+#endif
 
 // static
 MediaStream* HTMLMediaElementCapture::captureStream(ScriptState* script_state, HTMLMediaElement& element, ExceptionState& exception_state)
@@ -266,11 +273,17 @@ MediaStream* HTMLMediaElementCapture::captureStream(ScriptState* script_state, H
         return nullptr;
     }
 
-    ExecutionContext* context = ExecutionContext::From(script_state);
     if (!element.currentSrc().IsEmpty() && !element.IsMediaDataCorsSameOrigin()) {
         exception_state.ThrowSecurityError("Cannot capture from element with cross-origin data");
         return nullptr;
     }
+
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    // The lite embedder has no media player or element-capture backend.
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Media element capture is not supported by this build");
+    return nullptr;
+#else
+    ExecutionContext* context = ExecutionContext::From(script_state);
 
     auto* descriptor
         = MakeGarbageCollected<MediaStreamDescriptor>(WTF::CreateCanonicalUUIDString(), MediaStreamComponentVector(), MediaStreamComponentVector());
@@ -307,6 +320,7 @@ MediaStream* HTMLMediaElementCapture::captureStream(ScriptState* script_state, H
     // If element.currentSrc().isNull() then |stream| will have no tracks, those
     // will be added eventually afterwards via MediaElementEventListener.
     return stream;
+#endif
 }
 
 } // namespace blink

@@ -14,6 +14,7 @@
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/protected_memory.h"
+#include "device/vr/buildflags/buildflags.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
@@ -8378,7 +8379,7 @@ public:
 
     static bool WebXREnabled()
     {
-        return is_web_xr_enabled_;
+        return BUILDFLAG(ENABLE_VR) && is_web_xr_enabled_;
     }
 
     static bool WebXREnabled(const FeatureContext*)

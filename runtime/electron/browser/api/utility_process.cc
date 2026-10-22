@@ -84,7 +84,6 @@ public:
     void close();
 
     void postMessageApi(const v8::FunctionCallbackInfo<v8::Value>& info);
-    void onChildMsg(const std::vector<char>& msg);
     bool killApi();
     void getOSProcessIdApi(const v8::FunctionCallbackInfo<v8::Value>& info);
 
@@ -343,16 +342,6 @@ void ApiUtilityProcess::postMessageApi(const v8::FunctionCallbackInfo<v8::Value>
     postMessageHelper(m_connector.get(), info);
 }
 
-// 本函数被废弃了，用Accept
-void ApiUtilityProcess::onChildMsg(const std::vector<char>& msg)
-{
-    DebugBreak();
-    v8::Isolate* isolate = v8::Isolate::GetCurrent();
-    base::span<const uint8_t> data((const uint8_t*)msg.data(), msg.size());
-    v8::Local<v8::Value> msgV8 = deserializeV8Value(v8::Isolate::GetCurrent(), data);
-
-    mate::EventEmitter<ApiUtilityProcess>::emit("message", msgV8);
-}
 
 bool ApiUtilityProcess::Accept(mojo::Message* mojoMessage)
 {
@@ -363,14 +352,9 @@ bool ApiUtilityProcess::Accept(mojo::Message* mojoMessage)
 // 在io线程运行
 bool ApiUtilityProcess::onMessageReceived(const IPC::Message& message)
 {
-    bool handled = true;
-    bool deserializeSuccess = true;
-    IPC_BEGIN_MESSAGE_MAP_EX(ApiUtilityProcess, message, deserializeSuccess)
-        IPC_MESSAGE_HANDLER(UtilityProcessMsg_PostToParentMessage, onChildMsg)
-        IPC_MESSAGE_UNHANDLED(handled = false)
-    IPC_END_MESSAGE_MAP_EX()
-
-    return handled;
+    // Utility payloads are delivered by the Mojo connector to Accept() on the
+    // main sequence. There are no legacy channel payload messages to consume.
+    return false;
 }
 
 void ApiUtilityProcess::onChannelConnected(int32 peerPid)

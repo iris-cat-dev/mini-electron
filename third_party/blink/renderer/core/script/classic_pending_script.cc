@@ -247,6 +247,7 @@ bool ClassicPendingScript::IsEligibleForLowPriorityAsyncScriptExecution() const
         return false;
     }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Check if LCP influencing scripts are to be excluded.
     const bool exclude_lcp_influencers = features::kLowPriorityAsyncScriptExecutionExcludeLcpInfluencersParam.Get();
     if (exclude_lcp_influencers && LcppScriptObserverEnabled()) {
@@ -257,6 +258,7 @@ bool ClassicPendingScript::IsEligibleForLowPriorityAsyncScriptExecution() const
         }
     }
 
+#endif
     const bool disable_when_lcp_not_in_html = features::kLowPriorityAsyncScriptExecutionDisableWhenLcpNotInHtmlParam.Get();
     if (disable_when_lcp_not_in_html && !top_document.IsLcpElementFoundInHtml()) {
         // If LCP element isn't found in main document HTML during preload scanning,

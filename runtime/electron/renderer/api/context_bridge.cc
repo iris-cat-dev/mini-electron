@@ -332,8 +332,6 @@ v8::MaybeLocal<v8::Value> PassValueToOtherContext(v8::Local<v8::Context> source_
         object_cache->CacheProxiedObject(value, cloned_value);
         return v8::MaybeLocal<v8::Value>(cloned_value);
     }
-    DebugBreak();
-    return v8::MaybeLocal<v8::Value>();
 }
 
 void ProxyFunctionWrapper(const v8::FunctionCallbackInfo<v8::Value>& info)

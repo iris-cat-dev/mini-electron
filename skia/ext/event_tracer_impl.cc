@@ -4,9 +4,14 @@
 
 #include <stdint.h>
 
+#include "skia/ext/event_tracer_impl.h"
+
+#include "base/tracing_buildflags.h"
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+
 #include "base/feature_list.h"
 #include "base/trace_event/trace_event.h"
-#include "skia/ext/event_tracer_impl.h"
 #include "third_party/skia/include/utils/SkEventTracer.h"
 
 namespace {
@@ -27,9 +32,7 @@ class SkChromiumEventTracer : public SkEventTracer {
 
 const uint8_t* SkChromiumEventTracer::getCategoryGroupEnabled(const char* name)
 {
-    //return TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(name);
-    *(int*)1 = 1;
-    return (const uint8_t*)"";
+    return base::trace_event::TraceLog::GetCategoryGroupEnabled(name);
 }
 
 const char* SkChromiumEventTracer::getCategoryGroupName(const uint8_t* categoryEnabledFlag)
@@ -56,10 +59,16 @@ void SkChromiumEventTracer::updateTraceEventDuration(const uint8_t* categoryEnab
 }
 
 } // namespace skia
+#endif // BUILDFLAG(ENABLE_BASE_TRACING)
 
 void InitSkiaEventTracer()
 {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Initialize the binding to Skia's tracing events. Skia will
     // take ownership of and clean up the memory allocated here.
     SkEventTracer::SetInstance(new skia::SkChromiumEventTracer(), base::FeatureList::IsEnabled(kLeakSkiaEventTracerAtExit));
+#else
+    // Keep Skia's default tracer: its process-lifetime category state is zero,
+    // and it never submits events to a base tracing backend.
+#endif
 }

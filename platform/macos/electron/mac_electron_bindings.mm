@@ -814,6 +814,8 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   NativeWindowHandle getNativeWindowHandle() const override {
     return (__bridge void*)window_;
   }
+  bool handleNativeWindowCommand(
+      const std::string&, const base::Value::Dict&) override;
 
   void onWebContentsDeleted(atom::WebContents* contents) override;
   void onWebContentsPaint(atom::WebContents*, const gfx::Rect&) override;
@@ -1740,6 +1742,16 @@ static bool IsPointerEvent(NSEventType type) {
 - (void)windowDidUpdate:(NSNotification*)notification {
   _owner->LayoutWindowButtons();
 }
+- (void)windowDidEnterFullScreen:(NSNotification*)notification {
+  if (auto* contents = _owner->getWebContents())
+    atom::WebContents::sendRendererMessage(contents->getIdApi(),
+        "fullscreen-state", base::Value::Dict().Set("enabled", true));
+}
+- (void)windowDidExitFullScreen:(NSNotification*)notification {
+  if (auto* contents = _owner->getWebContents())
+    atom::WebContents::sendRendererMessage(contents->getIdApi(),
+        "fullscreen-state", base::Value::Dict().Set("enabled", false));
+}
 @end
 
 namespace mini_electron::electron {
@@ -2011,6 +2023,75 @@ void MacBrowserWindow::DestroyNative() {
 void MacBrowserWindow::close() {
   if (!closed_ && !EmitCancelable(getWrapper(), "close"))
     DestroyNative();
+}
+
+bool MacBrowserWindow::handleNativeWindowCommand(
+    const std::string& command, const base::Value::Dict& args) {
+  if (!window_ || closed_)
+    return false;
+  if (command == "fullscreen") {
+    const auto enabled = args.FindBool("enabled");
+    if (!enabled)
+      return false;
+    if ((window_.styleMask & NSWindowStyleMaskFullScreen) !=
+        (*enabled ? NSWindowStyleMaskFullScreen : 0)) {
+      [window_ toggleFullScreen:nil];
+    } else if (web_contents_) {
+      atom::WebContents::sendRendererMessage(web_contents_->getIdApi(),
+          "fullscreen-state", base::Value::Dict().Set("enabled", *enabled));
+    }
+  } else if (command == "focus" || command == "show") {
+    if (command == "focus" &&
+        !((MiniElectronWindow*)window_).electronFocusable)
+      return false;
+    [window_ orderFront:nil];
+    if (((MiniElectronWindow*)window_).electronFocusable) {
+      [NSApp activateIgnoringOtherApps:YES];
+      [window_ makeKeyWindow];
+      [window_ makeFirstResponder:renderer_view_];
+    }
+    RefreshVisibility();
+  } else if (command == "take-focus") {
+    const bool reverse = args.FindBool("reverse").value_or(false);
+    NSView* next = reverse ? renderer_view_.previousValidKeyView
+                           : renderer_view_.nextValidKeyView;
+    if (!next || next == renderer_view_)
+      return false;
+    return [window_ makeFirstResponder:next];
+  } else if (command == "bounds") {
+    const auto x = args.FindInt("x");
+    const auto y = args.FindInt("y");
+    const auto width = args.FindInt("width");
+    const auto height = args.FindInt("height");
+    if (!x || !y || !width || !height || *width <= 0 || *height <= 0)
+      return false;
+    [window_ setFrame:CocoaRectFromElectron(NSMakeRect(
+        *x, *y, *width, *height)) display:YES];
+  } else if (command == "maximize") {
+    if (!window_.zoomed)
+      [window_ zoom:nil];
+  } else if (command == "minimize") {
+    [window_ miniaturize:nil];
+    RefreshVisibility();
+  } else if (command == "restore") {
+    if (window_.miniaturized)
+      [window_ deminiaturize:nil];
+    if (window_.zoomed)
+      [window_ zoom:nil];
+    RefreshVisibility();
+  } else if (command == "resizable") {
+    const auto enabled = args.FindBool("enabled");
+    if (!enabled)
+      return false;
+    window_.styleMask = *enabled
+        ? window_.styleMask | NSWindowStyleMaskResizable
+        : window_.styleMask & ~NSWindowStyleMaskResizable;
+  } else if (command == "close") {
+    return RequestClose();
+  } else {
+    return false;
+  }
+  return true;
 }
 
 bool MacBrowserWindow::RequestClose() {

@@ -31,11 +31,9 @@ void NotifyLocaleChangeOnWorkerThread(WorkerThread* worker_thread)
 
 void UpdateLocale(const String& locale)
 {
-    *(int*)1 = 1;
-//     WebString web_locale(locale);
-//     base::i18n::SetICUDefaultLocale(web_locale.Ascii());
-//     Thread::MainThread()->Scheduler()->ToMainThreadScheduler()->ForEachMainThreadIsolate(WTF::BindRepeating(&UpdateDefaultLocaleInIsolate));
-//     WorkerThread::CallOnAllWorkerThreads(&NotifyLocaleChangeOnWorkerThread, TaskType::kInternalDefault);
+    base::i18n::SetICUDefaultLocale(locale.Ascii().data());
+    Thread::MainThread()->Scheduler()->ToMainThreadScheduler()->ForEachMainThreadIsolate(WTF::BindRepeating(&UpdateDefaultLocaleInIsolate));
+    WorkerThread::CallOnAllWorkerThreads(&NotifyLocaleChangeOnWorkerThread, TaskType::kInternalDefault);
 }
 } // namespace
 

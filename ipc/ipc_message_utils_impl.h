@@ -9,8 +9,6 @@
 #ifndef LITE_IPC_IPC_MESSAGE_UTILS_IMPL_H_
 #define LITE_IPC_IPC_MESSAGE_UTILS_IMPL_H_
 
-#include "base/notreached.h"
-
 namespace IPC {
 
 template <class ParamType> void MessageSchema<ParamType>::Write(Message* msg, const RefParam& p)
@@ -21,10 +19,7 @@ template <class ParamType> void MessageSchema<ParamType>::Write(Message* msg, co
 template <class ParamType> bool MessageSchema<ParamType>::Read(const Message* msg, Param* p)
 {
     base::PickleIterator iter(*msg);
-    if (ReadParam(msg, &iter, p))
-        return true;
-    NOTREACHED() << "Error deserializing message " << msg->type();
-    return false;
+    return ReadParam(msg, &iter, p);
 }
 
 template <class SendParamType, class ReplyParamType> void SyncMessageSchema<SendParamType, ReplyParamType>::Write(Message* msg, const RefSendParam& send)

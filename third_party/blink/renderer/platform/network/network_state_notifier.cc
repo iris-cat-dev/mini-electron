@@ -57,18 +57,6 @@ const base::TimeDelta kHttpRttEffectiveConnectionTypeThresholds[EFFECTIVE_CONNEC
     base::Milliseconds(0), base::Milliseconds(0), base::Milliseconds(2010), base::Milliseconds(1420), base::Milliseconds(272), base::Milliseconds(0) };
 } // net
 
-namespace network {
-
-const char kPrefersReducedTransparencyNoPreference[] = "no-preference";
-const char kPrefersReducedTransparencyReduce[] = "reduce";
-
-const char* const kWebEffectiveConnectionTypeMapping[] = {
-    "4g" /* Unknown */, "4g" /* Offline */, "slow-2g" /* Slow 2G */, "2g" /* 2G */, "3g" /* 3G */, "4g" /* 4G */
-};
-
-const size_t kWebEffectiveConnectionTypeMappingCount = std::size(kWebEffectiveConnectionTypeMapping);
-} //network
-
 namespace blink {
 
 using mojom::blink::EffectiveConnectionType;

@@ -39,6 +39,10 @@
 #include "base/task/single_thread_task_executor.h"
 #include "base/at_exit.h"
 #include "base/base64.h"
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/core/SkPixmap.h"
+#include "third_party/skia/include/core/SkStream.h"
+#include "third_party/skia/include/encode/SkPngEncoder.h"
 
 namespace blink {
 LocalFrame* FromFrameTokenHash(const size_t& frame_token_hash);
@@ -150,9 +154,15 @@ mini_electron_mem_buf* MINI_ELECTRON_CALL_TYPE mini_electron_create_mem_buf(mini
     if (!buf || 0 == length)
         return nullptr;
     mini_electron_mem_buf* result = (mini_electron_mem_buf*)malloc(sizeof(mini_electron_mem_buf));
+    if (!result)
+        return nullptr;
     result->unuse = sizeof(mini_electron_mem_buf);
     result->length = length;
     result->data = malloc(length);
+    if (!result->data) {
+        free(result);
+        return nullptr;
+    }
     memcpy(result->data, buf, length);
     return result;
 }
@@ -195,6 +205,7 @@ mini_electron_mem_buf* createMemBufFromStdString(std::string* data)
     result->buf.unuse = kMemBufTypeStdString;
     result->buf.length = data->size();
     result->buf.data = (void*)data->data();
+    result->stdstring = data;
     return &(result->buf);
 }
 
@@ -207,11 +218,13 @@ void freeMemBuf(mini_electron_mem_buf* buf)
         if (buf->data)
             free(buf->data);
         free(buf);
+        return;
     }
 
     if (kMemBufTypeSkdata == buf->unuse) {
         MemBufSkdata* bufSkdata = (MemBufSkdata*)buf;
         delete bufSkdata;
+        return;
     }
     if (kMemBufTypeStdString == buf->unuse) {
         MemBufStdString* bufStdString = (MemBufStdString*)buf;
@@ -222,8 +235,42 @@ void freeMemBuf(mini_electron_mem_buf* buf)
 
 void* getWindowScreenshotSync(void* webviewPtr)
 {
-    DebugBreak();
-    return nullptr;
+    auto* view = static_cast<content::WebViewHost*>(webviewPtr);
+    if (!view)
+        return nullptr;
+    // The caller holds getViewDC()'s compositor lock throughout encoding.
+    SkPixmap pixels;
+    SkBitmap flipped;
+#if defined(OS_WIN)
+    DIBSECTION dib = {};
+    if (!view->m_surface
+        || GetObject(GetCurrentObject(static_cast<HDC>(view->m_surface), OBJ_BITMAP), sizeof(dib), &dib) != sizeof(dib)
+        || !dib.dsBm.bmBits || dib.dsBm.bmBitsPixel != 32
+        || dib.dsBm.bmWidth <= 0 || dib.dsBm.bmHeight <= 0)
+        return nullptr;
+    SkImageInfo info = SkImageInfo::Make(dib.dsBm.bmWidth, dib.dsBm.bmHeight, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+    if (dib.dsBmih.biHeight > 0) {
+        // A bottom-up DIB must be inverted before passing its rows to Skia.
+        if (!flipped.tryAllocPixels(info))
+            return nullptr;
+        for (int y = 0; y < info.height(); ++y)
+            memcpy(flipped.getAddr(0, y), static_cast<const char*>(dib.dsBm.bmBits)
+                + static_cast<size_t>(info.height() - y - 1) * dib.dsBm.bmWidthBytes, info.minRowBytes());
+        if (!flipped.peekPixels(&pixels))
+            return nullptr;
+    } else {
+        pixels.reset(info, dib.dsBm.bmBits, dib.dsBm.bmWidthBytes);
+    }
+#else
+    if (!view->m_bitmapByte || view->m_bitmapByteSize.IsEmpty())
+        return nullptr;
+    SkImageInfo info = SkImageInfo::MakeN32Premul(view->m_bitmapByteSize.width(), view->m_bitmapByteSize.height());
+    pixels.reset(info, view->m_bitmapByte, info.minRowBytes());
+#endif
+    SkDynamicMemoryWStream stream;
+    if (!SkPngEncoder::Encode(&stream, pixels, {}))
+        return nullptr;
+    return createMemBufFromSkdata(stream.detachAsData());
 }
 
 }

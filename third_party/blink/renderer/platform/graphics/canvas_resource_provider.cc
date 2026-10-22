@@ -20,6 +20,7 @@
 #include "base/trace_event/memory_allocator_dump.h"
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/process_memory_dump.h"
+#include "base/tracing_buildflags.h"
 #include "build/build_config.h"
 #include "cc/paint/decode_stashing_image_provider.h"
 #include "cc/paint/display_item_list.h"
@@ -1330,14 +1331,15 @@ CanvasResourceProvider::CanvasResourceProvider(const ResourceProviderType& type,
     max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpKB.Get()) * 1024;
     max_pinned_image_bytes_ = static_cast<size_t>(kMaxPinnedImageKB.Get()) * 1024;
     if (context_provider_wrapper_) {
-//         context_provider_wrapper_->AddObserver(this);
-//         const auto& caps = context_provider_wrapper_->ContextProvider()->GetCapabilities();
-//         oopr_uses_dmsaa_ = !caps.msaa_is_slow && !caps.avoid_stencil_buffers;
-        // Graphite can handle a large buffer size.
-        //     if (context_provider_wrapper_->ContextProvider()->GetGpuFeatureInfo().status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] == gpu::kGpuFeatureStatusEnabled) {
-        //       max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpGraphiteKB.Get()) * 1024;
-        //       recorder_->DisableLineDrawingAsPaths();
-        //     }
+        context_provider_wrapper_->AddObserver(this);
+        const auto& caps = context_provider_wrapper_->ContextProvider()->GetCapabilities();
+        oopr_uses_dmsaa_ = !caps.msaa_is_slow && !caps.avoid_stencil_buffers;
+#if defined(SK_GRAPHITE)
+        if (context_provider_wrapper_->ContextProvider()->GetGpuFeatureInfo().status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] == gpu::kGpuFeatureStatusEnabled) {
+            max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpGraphiteKB.Get()) * 1024;
+            recorder_->DisableLineDrawingAsPaths();
+        }
+#endif
     }
 
     CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
@@ -1347,8 +1349,7 @@ CanvasResourceProvider::~CanvasResourceProvider()
 {
     UMA_HISTOGRAM_EXACT_LINEAR("Blink.Canvas.MaximumInflightResources", max_inflight_resources_, 20);
     if (context_provider_wrapper_) {
-        *(int*)1 = 1;
-        //context_provider_wrapper_->RemoveObserver(this);
+        context_provider_wrapper_->RemoveObserver(this);
     }
     CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
 
@@ -1537,28 +1538,23 @@ cc::PaintImage CanvasResourceProvider::MakeImageSnapshot(FlushReason reason)
 
 gpu::gles2::GLES2Interface* CanvasResourceProvider::ContextGL() const
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     if (!context_provider_wrapper_)
-//         return nullptr;
-//     return context_provider_wrapper_->ContextProvider()->ContextGL();
+    if (!context_provider_wrapper_)
+        return nullptr;
+    return context_provider_wrapper_->ContextProvider()->ContextGL();
 }
 
 gpu::raster::RasterInterface* CanvasResourceProvider::RasterInterface() const
 {
-    return nullptr;
-//     if (!context_provider_wrapper_)
-//         return nullptr;
-//     return context_provider_wrapper_->ContextProvider()->RasterInterface();
+    if (!context_provider_wrapper_)
+        return nullptr;
+    return context_provider_wrapper_->ContextProvider()->RasterInterface();
 }
 
 GrDirectContext* CanvasResourceProvider::GetGrContext() const
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     if (!context_provider_wrapper_)
-//         return nullptr;
-//     return context_provider_wrapper_->ContextProvider()->GetGrContext();
+    if (!context_provider_wrapper_)
+        return nullptr;
+    return context_provider_wrapper_->ContextProvider()->GetGrContext();
 }
 
 gfx::Size CanvasResourceProvider::Size() const
@@ -1712,9 +1708,7 @@ scoped_refptr<CanvasResource> CanvasResourceProvider::CreateResource()
 cc::ImageDecodeCache* CanvasResourceProvider::ImageDecodeCacheRGBA8()
 {
     if (UseHardwareDecodeCache()) {
-        //return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kN32_SkColorType);
-        *(int*)1 = 1;
-        return nullptr;
+        return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kN32_SkColorType);
     }
 
     return &Image::SharedCCDecodeCache(kN32_SkColorType);
@@ -1723,9 +1717,7 @@ cc::ImageDecodeCache* CanvasResourceProvider::ImageDecodeCacheRGBA8()
 cc::ImageDecodeCache* CanvasResourceProvider::ImageDecodeCacheF16()
 {
     if (UseHardwareDecodeCache()) {
-        //return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kRGBA_F16_SkColorType);
-        *(int*)1 = 1;
-        return nullptr;
+        return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kRGBA_F16_SkColorType);
     }
     return &Image::SharedCCDecodeCache(kRGBA_F16_SkColorType);
 }
@@ -1883,28 +1875,24 @@ size_t CanvasResourceProvider::ComputeSurfaceSize() const
 
 void CanvasResourceProvider::OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd)
 {
-    *(int*)1 = 1;
-//     if (!surface_)
-//         return;
-// 
-//     for (const auto& resource : canvas_resources_) {
-//         // Don't report, to avoid double-counting.
-//         if (resource.resource->HasDetailedMemoryDumpProvider()) {
-//             return;
-//         }
-//     }
-// 
-//     std::string dump_name = base::StringPrintf("canvas/ResourceProvider/SkSurface/0x%" PRIXPTR, reinterpret_cast<uintptr_t>(surface_.get()));
-//     auto* dump = pmd->CreateAllocatorDump(dump_name);
-// 
-//     dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize, base::trace_event::MemoryAllocatorDump::kUnitsBytes, ComputeSurfaceSize());
-//     dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameObjectCount, base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
-// 
-//     // SkiaMemoryDumpProvider reports only sk_glyph_cache and sk_resource_cache.
-//     // So the SkSurface is suballocation of malloc, not SkiaDumpProvider.
-//     if (const char* system_allocator_name = base::trace_event::MemoryDumpManager::GetInstance()->system_allocator_pool_name()) {
-//         pmd->AddSuballocation(dump->guid(), system_allocator_name);
-//     }
+    if (!surface_)
+        return;
+
+    for (const auto& resource : canvas_resources_) {
+        // Don't report resources already covered by a detailed dump provider.
+        if (resource.resource->HasDetailedMemoryDumpProvider())
+            return;
+    }
+
+    std::string dump_name = base::StringPrintf("canvas/ResourceProvider/SkSurface/0x%" PRIXPTR, reinterpret_cast<uintptr_t>(surface_.get()));
+    auto* dump = pmd->CreateAllocatorDump(dump_name);
+    dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize, base::trace_event::MemoryAllocatorDump::kUnitsBytes, ComputeSurfaceSize());
+    dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameObjectCount, base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    if (const char* system_allocator_name = base::trace_event::MemoryDumpManager::GetInstance()->system_allocator_pool_name())
+        pmd->AddSuballocation(dump->guid(), system_allocator_name);
+#endif
 }
 
 size_t CanvasResourceProvider::GetSize() const
@@ -1914,14 +1902,12 @@ size_t CanvasResourceProvider::GetSize() const
 
 void CanvasResourceProvider::DisableLineDrawingAsPathsIfNecessary()
 {
-    *(int*)1 = 1;
-    //   if (context_provider_wrapper_ &&
-    //       context_provider_wrapper_->ContextProvider()
-    //               ->GetGpuFeatureInfo()
-    //               .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
-    //           gpu::kGpuFeatureStatusEnabled) {
-    //     recorder_->DisableLineDrawingAsPaths();
-    //   }
+#if defined(SK_GRAPHITE)
+    if (context_provider_wrapper_
+        && context_provider_wrapper_->ContextProvider()->GetGpuFeatureInfo().status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] == gpu::kGpuFeatureStatusEnabled) {
+        recorder_->DisableLineDrawingAsPaths();
+    }
+#endif
 }
 
 } // namespace blink

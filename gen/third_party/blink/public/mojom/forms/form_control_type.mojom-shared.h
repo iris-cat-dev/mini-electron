@@ -14,7 +14,10 @@
 #include <type_traits>
 #include <utility>
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/forms/form_control_type.mojom-shared-internal.h"
 
@@ -143,6 +146,7 @@ namespace blink::mojom {
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceFormatTraits<::blink::mojom::FormControlType> {
@@ -150,5 +154,6 @@ template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceForma
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // THIRD_PARTY_BLINK_PUBLIC_MOJOM_FORMS_FORM_CONTROL_TYPE_MOJOM_SHARED_H_

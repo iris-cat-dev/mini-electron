@@ -2,6 +2,7 @@
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+#include <utility>
 #include "runtime/engine/public/engine_api.h"
 
 #include "runtime/engine/download/simple_download.h"
@@ -19,6 +20,9 @@
 #include "runtime/network/cookies/web_cookie_jar_curl_impl.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/editing/serializers/serialization.h"
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
@@ -1311,10 +1315,35 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_set_device_parameter(mini_electron_we
     OutputDebugStringA("mini_electron_set_device_parameter not impl\n");
 }
 
+// Frame handles are token hashes; -2 (and the default null handle) selects
+// the main frame. Never allow a handle from another view to escape its owner.
+static blink::WebLocalFrameImpl* resolveApiFrame(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId)
+{
+    auto* view = static_cast<content::WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle));
+    if (!view || !view->getWebView())
+        return nullptr;
+    if (!frameId || frameId == reinterpret_cast<mini_electron_web_frame_handle>(-2)) {
+        auto* frame = view->getMainFrame();
+        return frame && frame->IsWebLocalFrame() ? static_cast<blink::WebLocalFrameImpl*>(frame->ToWebLocalFrame()) : nullptr;
+    }
+    auto* coreFrame = blink::FromFrameTokenHash(reinterpret_cast<size_t>(frameId));
+    auto* frame = coreFrame ? blink::WebLocalFrameImpl::FromFrame(coreFrame) : nullptr;
+    return frame && frame->View() == view->getWebView() ? frame : nullptr;
+}
+
 void MINI_ELECTRON_CALL_TYPE mini_electron_get_content_as_markup(mini_electron_web_view webviewHandle, mini_electron_get_content_as_markup_callback calback, void* param, mini_electron_web_frame_handle frameId)
 {
-    OutputDebugStringA("mini_electron_get_content_as_markup not impl\n");
-    *(int*)1 = 1;
+    if (!calback)
+        return;
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webviewHandle, calback, param, frameId] {
+        auto* frame = resolveApiFrame(webviewHandle, frameId);
+        std::string markup;
+        if (frame && frame->GetFrame()->GetDocument())
+            markup = blink::CreateMarkup(frame->GetFrame()->GetDocument()).Utf8();
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [webviewHandle, calback, param, markup = std::move(markup)] {
+            calback(webviewHandle, param, markup.empty() ? nullptr : markup.c_str(), markup.size());
+        });
+    });
 }
 
 
@@ -1326,41 +1355,53 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_util_print(mini_electron_web_view web
 
 const utf8* MINI_ELECTRON_CALL_TYPE mini_electron_util_decode_url_escape(const utf8* str)
 {
-    OutputDebugStringA("mini_electron_util_decode_url_escape not impl\n");
-    *(int*)1 = 1;
-    return nullptr;
+    if (!str)
+        return nullptr;
+    std::string result = blink::DecodeURLEscapeSequences(WTF::String::FromUTF8(str), url::DecodeURLMode::kUTF8OrIsomorphic).Utf8();
+    return createTempCharString(result.data(), result.size());
 }
 
 const utf8* MINI_ELECTRON_CALL_TYPE mini_electron_util_encode_url_escape(const utf8* str)
 {
-    OutputDebugStringA("mini_electron_util_encode_url_escape not impl\n");
-    *(int*)1 = 1;
-    return nullptr;
+    if (!str)
+        return nullptr;
+    std::string result = blink::EncodeWithURLEscapeSequences(WTF::String::FromUTF8(str)).Utf8();
+    return createTempCharString(result.data(), result.size());
 }
 
 const mini_electron_mem_buf* MINI_ELECTRON_CALL_TYPE mini_electron_util_create_v8_snapshot(const utf8* str)
 {
-    OutputDebugStringA("mini_electron_util_create_v8_snapshot not impl\n");
-    *(int*)1 = 1;
+    // This port does not provide a snapshot-generation backend.
     return nullptr;
 }
 
+
 void MINI_ELECTRON_CALL_TYPE mini_electron_util_print_to_pdf(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, const mini_electron_print_settings* settings, mini_electron_print_pdf_data_callback callback, void* param)
 {
-    OutputDebugStringA("mini_electron_util_print_to_pdf not impl\n");
-    *(int*)1 = 1;
+    if (!callback)
+        return;
+    // Preserve asynchronous Blink-sequence completion without touching the view.
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webviewHandle, callback, param] {
+        callback(webviewHandle, param, nullptr);
+    });
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_util_print_to_bitmap(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, const mini_electron_screenshot_settings* settings, mini_electron_print_bitmap_callback callback, void* param)
 {
-    OutputDebugStringA("mini_electron_util_print_to_bitmap not impl\n");
-    *(int*)1 = 1;
+    if (!callback)
+        return;
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webviewHandle, callback, param] {
+        callback(webviewHandle, param, nullptr, 0);
+    });
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_util_screenshot(mini_electron_web_view webviewHandle, const mini_electron_screenshot_settings* settings, mini_electron_on_screenshot callback, void* param)
 {
-    OutputDebugStringA("mini_electron_util_screenshot not impl\n");
-    *(int*)1 = 1;
+    if (!callback)
+        return;
+    content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webviewHandle, callback, param] {
+        callback(webviewHandle, param, nullptr, 0);
+    });
 }
 
 BOOL MINI_ELECTRON_CALL_TYPE mini_electron_utils_silent_print(mini_electron_web_view webView, const char* settings)
@@ -1368,30 +1409,6 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_utils_silent_print(mini_electron_web_
     return FALSE;
 }
 
-
-void MINI_ELECTRON_CALL_TYPE mini_electron_get_pdf_page_data(mini_electron_web_view webviewHandle, mini_electron_on_get_pdf_page_data_callback callback, void* param)
-{
-    OutputDebugStringA("mini_electron_get_pdf_page_data not impl\n");
-    *(int*)1 = 1;
-}
-
-void MINI_ELECTRON_CALL_TYPE mini_electron_plugin_list_builder_add_plugin(void* builder, const utf8* name, const utf8* description, const utf8* fileName)
-{
-    OutputDebugStringA("mini_electron_plugin_list_builder_add_plugin not impl\n");
-    *(int*)1 = 1;
-}
-
-void MINI_ELECTRON_CALL_TYPE mini_electron_plugin_list_builder_add_media_type_to_last_plugin(void* builder, const utf8* name, const utf8* description)
-{
-    OutputDebugStringA("mini_electron_plugin_list_builder_add_media_type_to_last_plugin not impl\n");
-    *(int*)1 = 1;
-}
-
-void MINI_ELECTRON_CALL_TYPE mini_electron_plugin_list_builder_add_file_extension_to_last_media_type(void* builder, const utf8* fileExtension)
-{
-    OutputDebugStringA("mini_electron_plugin_list_builder_add_file_extension_to_last_media_type not impl\n");
-    *(int*)1 = 1;
-}
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_on_load_url_finish(mini_electron_web_view webView, mini_electron_load_url_finish_callback callback, void* callbackParam)
 {
@@ -1438,15 +1455,26 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_call_ui_thread_async(mini_electron_th
 
 v8Isolate MINI_ELECTRON_CALL_TYPE mini_electron_get_blink_main_thread_isolate()
 {
-    OutputDebugStringA("mini_electron_get_blink_main_thread_isolate not impl\n");
-    *(int*)1 = 1;
-    return nullptr;
+    v8::Isolate* isolate = nullptr;
+    content::ThreadCall::callBlinkThreadSync(FROM_HERE, [&isolate] {
+        isolate = v8::Isolate::GetCurrent();
+    });
+    return isolate;
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_web_frame_get_main_world_script_context(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, v8ContextPtr contextOut)
 {
-    OutputDebugStringA("mini_electron_web_frame_get_main_world_script_context not impl\n");
-    *(int*)1 = 1;
+    if (!contextOut)
+        return;
+    // Local handles must be created in the caller's Blink-thread handle scope,
+    // not in a synchronous cross-thread task whose scope dies on return.
+    auto* output = static_cast<v8::Local<v8::Context>*>(contextOut);
+    *output = v8::Local<v8::Context>();
+    if (!content::ThreadCall::isBlinkThread())
+        return;
+    auto* frame = resolveApiFrame(webviewHandle, frameId);
+    if (frame)
+        *output = frame->MainWorldScriptContext();
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_insert_css_by_frame(mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, const utf8* cssText)
@@ -1456,19 +1484,20 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_insert_css_by_frame(mini_electron_web
 
 BOOL MINI_ELECTRON_CALL_TYPE mini_electron_is_loading(mini_electron_web_view webView)
 {
-    OutputDebugStringA("mini_electron_is_loading not impl\n");
-    //     WKE_CHECK_WEBVIEW_AND_THREAD_IS_VALID(webView, false);
-    //     return webView->isLoading();
-    DebugBreak();
-    return FALSE;
+    bool loading = false;
+    content::ThreadCall::callBlinkThreadSync(FROM_HERE, [webView, &loading] {
+        auto* frame = resolveApiFrame(webView, nullptr);
+        loading = frame && frame->IsLoading();
+    });
+    return loading;
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_stop_loading(mini_electron_web_view webView)
 {
-    OutputDebugStringA("mini_electron_stop_loading not impl\n");
-    //     WKE_CHECK_WEBVIEW_AND_THREAD_IS_VALID(webView, (void)0);
-    //     webView->stopLoading();
-    //DebugBreak();
+    content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, webView, [](content::WebViewHost* view) {
+        if (auto* frame = view->getMainFrame())
+            frame->ToWebLocalFrame()->DeprecatedStopLoading();
+    });
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_http_header_field(mini_electron_net_job jobPtr, const WCHAR* key, const WCHAR* value, BOOL response)
@@ -1480,17 +1509,7 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_net_set_http_header_field(mini_electr
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_editor_select_all(mini_electron_web_view webviewHandle)
 {
-    OutputDebugStringA("mini_electron_editor_select_all not impl\n");
-    DebugBreak();
-}
-
-void* MINI_ELECTRON_CALL_TYPE mini_electron_js_to_v8_value(mini_electron_js_exec_state es, mini_electron_js_value v)
-{
-    mini_electron::engine::JsValueBridge* mini_electron_val = (mini_electron::engine::JsValueBridge*)v;
-    if (mini_electron_val->getType() != kMiniElectronJsTypeV8Value)
-        return nullptr;
-    DebugBreak();
-    return nullptr;
+    mini_electron_execute_edit_command(webviewHandle, "SelectAll");
 }
 
 const char* MINI_ELECTRON_CALL_TYPE mini_electron_net_get_referrer(mini_electron_net_job jobPtr)

@@ -22,6 +22,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_save_file_picker_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_filesystemhandle_wellknowndirectory.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_well_known_directory.h"
+#include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
@@ -235,6 +236,10 @@ void ShowFilePickerImpl(ScriptPromiseResolverBase* resolver, LocalDOMWindow& win
         return;
     }
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotSupportedError, "File System Access pickers are not supported by this embedder."));
+#else
     FileSystemAccessManager::From(resolver->GetExecutionContext())
         ->ChooseEntries(std::move(options),
             WTF::BindOnce(
@@ -277,6 +282,7 @@ void ShowFilePickerImpl(ScriptPromiseResolverBase* resolver, LocalDOMWindow& win
                     }
                 },
                 WrapPersistent(resolver), type, WrapPersistent(window.GetFrame())));
+#endif
 }
 
 } // namespace

@@ -37,14 +37,20 @@ void Event::preventDefault(v8::Isolate* isolate)
 
 bool Event::sendReply(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    CHECK(info.Length() == 1);
+    if (info.Length() != 1) {
+        info.GetIsolate()->ThrowException(v8::Exception::TypeError(
+            gin_helper::StringToV8(info.GetIsolate(), "sendReply requires one argument")));
+        return false;
+    }
+    if (!m_callback || !*m_callback)
+        return false;
 
     blink::CloneableMessage cloneableMsg;
     if (!atom::serializeV8Value(info.GetIsolate(), info[0], &cloneableMsg))
         return false;
 
-    if (m_callback)
-        (*m_callback)(cloneableMsg.encoded_message);
+    auto callback = std::move(*m_callback);
+    callback(cloneableMsg.encoded_message);
     return true;
 }
 

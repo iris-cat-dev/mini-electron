@@ -84,42 +84,34 @@ int NumPixmapsForYUVConfig(SkYUVAInfo::PlaneConfig plane_config)
 sk_sp<SkImage> MakeYUVImageFromUploadedPlanes(GrDirectContext* gr_context, skgpu::graphite::Recorder* graphite_recorder,
     const std::vector<sk_sp<SkImage>>& plane_images, const SkYUVAInfo& yuva_info, sk_sp<SkColorSpace> image_color_space)
 {
-    *(int*)1 = 1;
-    return nullptr;
+    DCHECK_NE(SkYUVAInfo::PlaneConfig::kUnknown, yuva_info.planeConfig());
+    DCHECK_NE(SkYUVAInfo::Subsampling::kUnknown, yuva_info.subsampling());
+    DCHECK_EQ(static_cast<size_t>(SkYUVAInfo::NumPlanes(yuva_info.planeConfig())), plane_images.size());
+    DCHECK_LE(plane_images.size(), base::checked_cast<size_t>(SkYUVAInfo::kMaxPlanes));
 
-    // 1) Extract the textures.
-//     DCHECK_NE(SkYUVAInfo::PlaneConfig::kUnknown, yuva_info.planeConfig());
-//     DCHECK_NE(SkYUVAInfo::Subsampling::kUnknown, yuva_info.subsampling());
-//     DCHECK_EQ(static_cast<size_t>(SkYUVAInfo::NumPlanes(yuva_info.planeConfig())), plane_images.size());
-//     DCHECK_LE(plane_images.size(), base::checked_cast<size_t>(SkYUVAInfo::kMaxPlanes));
-// 
-//     if (graphite_recorder) {
-//         sk_sp<SkImage> image = SkImages::TextureFromYUVAImages(graphite_recorder, yuva_info, plane_images, image_color_space);
-//         if (!image) {
-//             DLOG(ERROR) << "Could not create YUV image";
-//             return nullptr;
-//         }
-//         return image;
-//     }
-// 
-//     std::array<GrBackendTexture, SkYUVAInfo::kMaxPlanes> plane_backend_textures;
-//     for (size_t plane = 0u; plane < plane_images.size(); plane++) {
-//         if (!SkImages::GetBackendTextureFromImage(plane_images[plane], &plane_backend_textures[plane], true /* flushPendingGrContextIO */)) {
-//             DLOG(ERROR) << "Invalid backend texture found";
-//             return nullptr;
-//         }
-//     }
-// 
-//     // 2) Create the YUV image.
-//     GrYUVABackendTextures yuva_backend_textures(yuva_info, plane_backend_textures.data(), kTopLeft_GrSurfaceOrigin);
-//     Context* ctx = new Context { plane_images };
-//     sk_sp<SkImage> image = SkImages::TextureFromYUVATextures(gr_context, yuva_backend_textures, std::move(image_color_space), ReleaseContext, ctx);
-//     if (!image) {
-//         DLOG(ERROR) << "Could not create YUV image";
-//         return nullptr;
-//     }
-// 
-//     return image;
+#if defined(SK_GRAPHITE)
+    if (graphite_recorder) {
+        sk_sp<SkImage> image = SkImages::TextureFromYUVAImages(graphite_recorder, yuva_info, plane_images, image_color_space);
+        if (!image)
+            DLOG(ERROR) << "Could not create YUV image";
+        return image;
+    }
+#endif
+    CHECK(!graphite_recorder);
+
+    std::array<GrBackendTexture, SkYUVAInfo::kMaxPlanes> plane_backend_textures;
+    for (size_t plane = 0u; plane < plane_images.size(); plane++) {
+        if (!SkImages::GetBackendTextureFromImage(plane_images[plane], &plane_backend_textures[plane], true /* flushPendingGrContextIO */)) {
+            DLOG(ERROR) << "Invalid backend texture found";
+            return nullptr;
+        }
+    }
+    GrYUVABackendTextures yuva_backend_textures(yuva_info, plane_backend_textures.data(), kTopLeft_GrSurfaceOrigin);
+    Context* ctx = new Context { plane_images };
+    sk_sp<SkImage> image = SkImages::TextureFromYUVATextures(gr_context, yuva_backend_textures, std::move(image_color_space), ReleaseContext, ctx);
+    if (!image)
+        DLOG(ERROR) << "Could not create YUV image";
+    return image;
 }
 
 base::CheckedNumeric<uint32_t> SafeSizeForPixmap(const SkPixmap& pixmap)

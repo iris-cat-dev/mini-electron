@@ -59,13 +59,15 @@
 
 #include <openssl/base.h>
 #include <openssl/evp.h>
+#include <string.h>
 #include "openssl/crypto/evp/evp_md_ctx_st.h"
 
 #if defined(__cplusplus)
 
 inline void EVP_CIPHER_CTX_init2(EVP_CIPHER_CTX* c)
 {
-    EVP_CIPHER_CTX_reset(c);
+    // reset() first frees prior state; a fresh stack context has none.
+    memset(c, 0, sizeof(*c));
 }
 
 inline int EVP_CIPHER_CTX_cleanup2(EVP_CIPHER_CTX* c)

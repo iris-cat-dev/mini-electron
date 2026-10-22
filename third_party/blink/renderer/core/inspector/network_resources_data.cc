@@ -359,13 +359,13 @@ XHRReplayData* NetworkResourcesData::XhrReplayData(const String& request_id)
     return resource_data->XhrReplayData();
 }
 
-// void NetworkResourcesData::SetCertificate(const String& request_id, scoped_refptr<net::X509Certificate> certificate)
-// {
-//     ResourceData* resource_data = ResourceDataForRequestId(request_id);
-//     if (!resource_data)
-//         return;
-//     resource_data->SetCertificate(std::move(certificate));
-// }
+void NetworkResourcesData::SetCertificate(const String& request_id, scoped_refptr<net::X509Certificate> certificate)
+{
+    ResourceData* resource_data = ResourceDataForRequestId(request_id);
+    if (!resource_data)
+        return;
+    resource_data->SetCertificate(std::move(certificate));
+}
 
 void NetworkResourcesData::SetXHRReplayData(const String& request_id, XHRReplayData* xhr_replay_data)
 {

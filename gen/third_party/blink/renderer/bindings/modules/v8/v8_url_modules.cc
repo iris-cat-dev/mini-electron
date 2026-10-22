@@ -18,14 +18,11 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_blob.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_set_return_value_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_url_search_params.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_media_source.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/core/fileapi/url_file_api.h"
 #include "third_party/blink/renderer/core/url/dom_url.h"
 #include "third_party/blink/renderer/core/url/url_search_params.h"
-#include "third_party/blink/renderer/modules/mediasource/media_source.h"
-#include "third_party/blink/renderer/modules/mediasource/url_media_source.h"
 #include "third_party/blink/renderer/platform/bindings/cooperative_scheduling_helpers.h"
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
 #include "third_party/blink/renderer/platform/bindings/idl_member_installer.h"
@@ -528,28 +525,6 @@ void CreateObjectURLStaticOperationOverload1(const v8::FunctionCallbackInfo<v8::
     bindings::V8SetReturnValue(info, return_value, isolate, bindings::V8ReturnValue::kNonNullable);
 }
 
-void CreateObjectURLStaticOperationOverload2(const v8::FunctionCallbackInfo<v8::Value>& info)
-{
-    *(int*)1 = 1;
-//     v8::Isolate* isolate = info.GetIsolate();
-//     if (info.Length() < 1) [[unlikely]] {
-//         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
-//         return;
-//     }
-// 
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ScriptState* script_state = current_script_state;
-//     ExceptionState exception_state(isolate);
-//     auto&& arg1_source = NativeValueTraits<MediaSource>::ArgumentValue(isolate, 0, info[0], exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     auto&& return_value = URLMediaSource::createObjectURL(script_state, arg1_source);
-//     static_assert(bindings::IsReturnTypeCompatible<IDLString, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, isolate, bindings::V8ReturnValue::kNonNullable);
-}
 
 void CreateObjectURLStaticOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
@@ -568,11 +543,6 @@ void CreateObjectURLStaticOperationCallback(const v8::FunctionCallbackInfo<v8::V
         if (execution_context->IsWindow() || execution_context->IsDedicatedWorkerGlobalScope() || execution_context->IsSharedWorkerGlobalScope()) {
             if (arg_count == 1) {
                 if (info[0]->IsObject()) {
-                    if (execution_context->IsWindow() || execution_context->IsDedicatedWorkerGlobalScope() || execution_context->IsSharedWorkerGlobalScope()) {
-                        if (V8MediaSource::HasInstance(isolate, info[0])) {
-                            return CreateObjectURLStaticOperationOverload2(info);
-                        }
-                    }
                     if (execution_context->IsWindow() || execution_context->IsDedicatedWorkerGlobalScope() || execution_context->IsSharedWorkerGlobalScope()) {
                         if (V8Blob::HasInstance(isolate, info[0])) {
                             return CreateObjectURLStaticOperationOverload1(info);

@@ -3125,22 +3125,22 @@ void ImplementationVisitor::VisitAllDeclarables()
     // This has to be an index-based loop because all_declarables can be extended
     // during the loop.
     for (size_t i = 0; i < all_declarables.size(); ++i) {
-        //try {
+        try {
             Visit(all_declarables[i].get());
-//         } catch (TorqueAbortCompilation&) {
-//             // Recover from compile errors here. The error is recorded already.
-//         }
+        } catch (TorqueAbortCompilation&) {
+            // Recover from compile errors here. The error is recorded already.
+        }
     }
 
     // Do the same for macros which generate C++ code.
     output_type_ = OutputType::kCC;
     const std::vector<std::pair<TorqueMacro*, SourceId>>& cc_macros = GlobalContext::AllMacrosForCCOutput();
     for (size_t i = 0; i < cc_macros.size(); ++i) {
-        //try {
+        try {
             Visit(static_cast<Declarable*>(cc_macros[i].first), cc_macros[i].second);
-//         } catch (TorqueAbortCompilation&) {
-//             // Recover from compile errors here. The error is recorded already.
-//         }
+        } catch (TorqueAbortCompilation&) {
+            // Recover from compile errors here. The error is recorded already.
+        }
     }
 
     // Do the same for macros which generate C++ debug code.
@@ -3148,11 +3148,11 @@ void ImplementationVisitor::VisitAllDeclarables()
     output_type_ = OutputType::kCCDebug;
     const std::vector<std::pair<TorqueMacro*, SourceId>>& cc_debug_macros = GlobalContext::AllMacrosForCCDebugOutput();
     for (size_t i = 0; i < cc_debug_macros.size(); ++i) {
-        //try {
+        try {
             Visit(static_cast<Declarable*>(cc_debug_macros[i].first), cc_debug_macros[i].second);
-//         } catch (TorqueAbortCompilation&) {
-//             // Recover from compile errors here. The error is recorded already.
-//         }
+        } catch (TorqueAbortCompilation&) {
+            // Recover from compile errors here. The error is recorded already.
+        }
     }
 
     output_type_ = OutputType::kCSA;

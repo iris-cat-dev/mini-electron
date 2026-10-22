@@ -21,7 +21,10 @@
 #include "mojo/public/cpp/bindings/map_data_view.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/trust_tokens.mojom-shared-internal.h"
 #include "url/mojom/origin.mojom-shared.h"
@@ -1469,6 +1472,7 @@ inline void ToplevelRedemptionRecordDataView::GetLastRedemptionDataView(::mojo_b
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenProtocolVersion> {
@@ -1476,7 +1480,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenProtocolVersion
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenOperationStatus> {
@@ -1484,7 +1490,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenOperationStatus
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenOperationType> {
@@ -1492,7 +1500,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenOperationType> 
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenRefreshPolicy> {
@@ -1500,7 +1510,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenRefreshPolicy> 
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenSignRequestData> {
@@ -1508,7 +1520,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenSignRequestData
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::DeleteStoredTrustTokensStatus> {
@@ -1516,7 +1530,9 @@ template <> struct TraceFormatTraits<::network::mojom::DeleteStoredTrustTokensSt
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentResult_Os> {
@@ -1524,7 +1540,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentRe
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentResult_UnavailableLocalOperationFallback> {
@@ -1532,7 +1550,9 @@ template <> struct TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentRe
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::FulfillTrustTokenIssuanceAnswer_Status> {
@@ -1540,5 +1560,6 @@ template <> struct TraceFormatTraits<::network::mojom::FulfillTrustTokenIssuance
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // SERVICES_NETWORK_PUBLIC_MOJOM_TRUST_TOKENS_MOJOM_SHARED_H_

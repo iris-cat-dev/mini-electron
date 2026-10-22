@@ -376,6 +376,7 @@ void RemoteFontFaceSource::BeginLoadIfNeeded()
         }
         if (execution_context->Fetcher()->StartLoad(font)) {
             histograms_.LoadStarted();
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
             if (LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(execution_context)) {
                 if (LocalFrame* frame = window->GetFrame()) {
                     if (frame->IsOutermostMainFrame()) {
@@ -385,6 +386,7 @@ void RemoteFontFaceSource::BeginLoadIfNeeded()
                     }
                 }
             }
+#endif
         }
     }
 

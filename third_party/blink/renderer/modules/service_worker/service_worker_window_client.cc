@@ -21,7 +21,6 @@
 
 std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::ServiceWorkerClientType b)
 {
-    *(int*)1 = 1;
     return a << (int)(b);
 }
 

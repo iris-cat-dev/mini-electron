@@ -92,7 +92,7 @@ namespace SkRecords {
     M(DrawSlug)                                                                                                                                                \
     M(DrawAtlas)                                                                                                                                               \
     M(DrawVertices)                                                                                                                                            \
-    /*M(DrawMesh)*/                                                                                                                                                \
+    M(DrawMesh)                                                                                                                                                \
     M(DrawShadowRec)                                                                                                                                           \
     M(DrawAnnotation)                                                                                                                                          \
     M(DrawEdgeAAQuad)                                                                                                                                          \
@@ -281,7 +281,7 @@ RECORD(DrawPatch, kDraw_Tag | kHasPaint_Tag, SkPaint paint; PODArray<SkPoint> cu
 RECORD(DrawAtlas, kDraw_Tag | kHasImage_Tag | kHasPaint_Tag | kMultiDraw_Tag, Optional<SkPaint> paint; sk_sp<const SkImage> atlas; PODArray<SkRSXform> xforms;
        PODArray<SkRect> texs; PODArray<SkColor> colors; int count; SkBlendMode mode; SkSamplingOptions sampling; Optional<SkRect> cull)
 RECORD(DrawVertices, kDraw_Tag | kHasPaint_Tag | kMultiDraw_Tag, SkPaint paint; sk_sp<SkVertices> vertices; SkBlendMode bmode)
-//RECORD(DrawMesh, kDraw_Tag | kHasPaint_Tag | kMultiDraw_Tag, SkPaint paint; SkMesh mesh; sk_sp<SkBlender> blender)
+RECORD(DrawMesh, kDraw_Tag | kHasPaint_Tag | kMultiDraw_Tag, SkPaint paint; SkMesh mesh; sk_sp<SkBlender> blender)
 RECORD(DrawShadowRec, kDraw_Tag, PreCachedPath path; SkDrawShadowRec rec)
 RECORD(DrawAnnotation, 0, // TODO: kDraw_Tag, skia:5548
        SkRect rect;

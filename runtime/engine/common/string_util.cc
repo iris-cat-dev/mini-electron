@@ -12,6 +12,10 @@
 #endif
 
 #include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/base_paths.h"
+#include "base/path_service.h"
+#include "base/files/file_path.h"
 #include "base/base64.h"
 #include "third_party/blink/renderer/platform/wtf/text/ascii_fast_path.h"
 
@@ -71,10 +75,7 @@ void WCharToMByte(const WCHAR* lpWideCharStr, size_t cchWideChar, std::vector<ch
     }
     iconv_close(cd);
 
-    size_t len = *ppOut - out->data();
-    if (len != oldSize - outlen)
-        *(int*)1 = 1;
-    out->resize(len);
+    out->resize(oldSize - outlen);
 #else
     DWORD dwMinSize;
     dwMinSize = WideCharToMultiByte(codePage, 0, (const WCHAR*)lpWideCharStr, cchWideChar, NULL, 0, NULL, FALSE);
@@ -95,23 +96,17 @@ std::string utf16ToMulByte(const WCHAR* lpszSrc, size_t len, unsigned int codepa
     WCharToMByte(lpszSrc, /*u16len(lpszSrc)*/len, &out, codepage);
     if (0 == out.size())
         return std::string();
-    std::string ret;
-    ret.assign(out.size(), '\0');
-    memcpy((void*)ret.c_str(), out.data(), out.size());
-    return ret;
+    return std::string(out.data(), out.size());
 #else
-    std::string sResult;
-    if (lpszSrc != NULL) {
-        int nUTF8Len = WideCharToMultiByte(codepage, 0, lpszSrc, len, NULL, 0, NULL, NULL);
-        char* pUTF8 = new char[nUTF8Len + 1];
-        if (pUTF8 != NULL) {
-            ZeroMemory(pUTF8, nUTF8Len + 1);
-            WideCharToMultiByte(codepage, 0, lpszSrc, len, pUTF8, nUTF8Len, NULL, NULL);
-            sResult = pUTF8;
-            delete[] pUTF8;
-        }
-    }
-    return sResult;
+    if (!lpszSrc || len == 0)
+        return {};
+    int size = WideCharToMultiByte(codepage, 0, lpszSrc, len, nullptr, 0, nullptr, nullptr);
+    if (size <= 0)
+        return {};
+    std::string result(size, '\0');
+    if (WideCharToMultiByte(codepage, 0, lpszSrc, len, result.data(), size, nullptr, nullptr) != size)
+        return {};
+    return result;
 #endif // __clang__
 }
 
@@ -149,18 +144,8 @@ void MByteToWChar(const char* lpcszStr, size_t cbMultiByte, std::vector<WCHAR>* 
     }
     iconv_close(cd);
 
-    size_t len = (((const WCHAR*)*ppOut) - out->data()) * sizeof(WCHAR);
-    if (len != oldSize - outlen) {
-        printf("MByteToWChar fail, len:%zu, oldSize:%zu, %p, %p, outlen: %zu\n", len, oldSize, *ppOut, out->data(), outlen);
-        *(int*)1 = 1;
-    }
-
-    size_t pre = len % sizeof(WCHAR);
-    len += pre;
-    if (len > oldSize)
-        len = oldSize;
-
-    out->resize(len / sizeof(WCHAR));
+    const size_t bytesWritten = oldSize - outlen;
+    out->resize(bytesWritten / sizeof(WCHAR));
 #else
     DWORD dwMinSize;
     dwMinSize = MultiByteToWideChar(codePage, 0, lpcszStr, cbMultiByte, NULL, 0);
@@ -359,8 +344,18 @@ std::u16string createPathFromDllPath(const std::u16string& fileName)
 
     return result;
 #else
-    DebugBreak();
-    return std::u16string();
+    base::FilePath moduleDirectory;
+    if (!base::PathService::Get(base::DIR_MODULE, &moduleDirectory))
+        return {};
+    std::string relativePath = base::UTF16ToUTF8(fileName);
+    for (char& ch : relativePath) {
+        if (ch == '\\')
+            ch = '/';
+    }
+    std::u16string result = base::UTF8ToUTF16(moduleDirectory.Append(relativePath).value());
+    if (result.empty() || result.back() != u'/')
+        result += u'/';
+    return result;
 #endif
 }
 
@@ -369,7 +364,6 @@ bool isLocalDebugMachine()
 #if defined(WIN32)
     return !!::PathFileExistsW(L"E:\\mycode\\mtmb\\mtmb\\printing\\Printing.cpp");
 #else
-    DebugBreak();
     return false;
 #endif
 }

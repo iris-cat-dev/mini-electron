@@ -547,6 +547,7 @@ Node::InsertionNotificationRequest HTMLImageElement::InsertedInto(ContainerNode&
         }
     }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     static const bool is_image_lcpp_enabled = base::FeatureList::IsEnabled(features::kLCPCriticalPathPredictor)
         && features::kLCPCriticalPathPredictorImageLoadPriorityEnabledForHTMLImageElement.Get();
     if (is_image_lcpp_enabled) {
@@ -559,6 +560,7 @@ Node::InsertionNotificationRequest HTMLImageElement::InsertedInto(ContainerNode&
         }
     }
 
+#endif
     return HTMLElement::InsertedInto(insertion_point);
 }
 

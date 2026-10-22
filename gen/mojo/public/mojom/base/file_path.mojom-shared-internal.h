@@ -6,6 +6,7 @@
 
 #ifndef MOJO_PUBLIC_MOJOM_BASE_FILE_PATH_MOJOM_SHARED_INTERNAL_H_
 #define MOJO_PUBLIC_MOJOM_BASE_FILE_PATH_MOJOM_SHARED_INTERNAL_H_
+#include "build/build_config.h"
 #include "mojo/public/cpp/bindings/lib/array_internal.h"
 #include "mojo/public/cpp/bindings/lib/bindings_internal.h"
 #include "mojo/public/cpp/bindings/lib/map_data_internal.h"
@@ -25,13 +26,20 @@ namespace internal {
 class FilePath_Data;
 class RelativeFilePath_Data;
 
+// Match file_path_is_string[16] in file_path.mojom on each platform.
+#if BUILDFLAG(IS_WIN)
+using FilePathValue_Data = mojo::internal::Array_Data<uint16_t>;
+#else
+using FilePathValue_Data = mojo::internal::String_Data;
+#endif
+
 #pragma pack(push, 1)
 class COMPONENT_EXPORT(MOJO_BASE_MOJOM_SHARED) FilePath_Data {
 public:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
 
     mojo::internal::StructHeader header_;
-    mojo::internal::Pointer<mojo::internal::Array_Data<uint16_t>> path;
+    mojo::internal::Pointer<FilePathValue_Data> path;
 
 private:
     friend class mojo::internal::MessageFragment<FilePath_Data>;
@@ -75,7 +83,7 @@ public:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
 
     mojo::internal::StructHeader header_;
-    mojo::internal::Pointer<mojo::internal::Array_Data<uint16_t>> path;
+    mojo::internal::Pointer<FilePathValue_Data> path;
 
 private:
     friend class mojo::internal::MessageFragment<RelativeFilePath_Data>;

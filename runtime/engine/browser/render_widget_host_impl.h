@@ -266,7 +266,8 @@ public:
     blink::WebFrameWidget* m_webFrameWidget = nullptr;
 
     friend class RenderFrameMetadataObserverClientImpl;
-    RenderFrameMetadataObserverClientImpl* m_renderFrameMetadataObserverClient = nullptr;
+    std::unique_ptr<RenderFrameMetadataObserverClientImpl> m_renderFrameMetadataObserverClient;
+    mojo::Remote<::cc::mojom::blink::RenderFrameMetadataObserver> m_renderFrameMetadataObserver;
 
     int64_t m_parentWebviewId = 0;
     bool m_allowResize = true;

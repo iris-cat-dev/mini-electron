@@ -18,6 +18,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
+#include "base/tracing_buildflags.h"
 #include "net/base/request_priority.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/blink/public/platform/task_type.h"
@@ -201,10 +202,9 @@ public:
 
     const base::UnguessableToken& GetAgentClusterId() const;
 
-    //   void WriteIntoTrace(perfetto::TracedValue context) const;
-    //   void WriteIntoTrace(perfetto::TracedProto<
-    //                       perfetto::protos::pbzero::RendererMainThreadTaskExecution>
-    //                           proto) const;
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    void WriteIntoTrace(perfetto::TracedProto<perfetto::protos::pbzero::RendererMainThreadTaskExecution> proto) const;
+#endif
 
 protected:
     FrameSchedulerImpl(MainThreadSchedulerImpl* main_thread_scheduler, PageSchedulerImpl* parent_page_scheduler, FrameScheduler::Delegate* delegate,

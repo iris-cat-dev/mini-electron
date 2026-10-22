@@ -62,13 +62,10 @@ public:
         //         m_thread.task_runner()->PostTask(
         //             FROM_HERE, base::BindOnce(&RenderThreadImpl::initializeWebKitOnThread, base::Unretained(this)));
 
-        //         m_thread.task_runner()->PostTask(
-        //             FROM_HERE, base::BindOnce(&RenderThreadImpl::createTestView, base::Unretained(this)));
     }
 
     void initializeWebKitOnThread(/*mojo::BinderMap* binders*/);
     void initializeCompositorThread();
-    void initializeDemo();
     void OverrideEmptyAssociatedInterfaceProvider();
 
     void onRendererBackgrounded();
@@ -100,8 +97,6 @@ public:
 
     void OverrideAssociatedInterfaceProvider(blink::AssociatedInterfaceProvider* associatedInterfaceProvider);
 
-    void createTestView();
-    void loadTestUrl(const char* urlStr, blink::WebNavigationControl* navigationControl);
 
     RendererBlinkPlatformImpl* m_blinkPlatformImpl;
     std::unique_ptr<blink::scheduler::WebThreadScheduler> m_mainThreadScheduler;

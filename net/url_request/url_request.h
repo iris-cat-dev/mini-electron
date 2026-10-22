@@ -574,7 +574,10 @@ public:
 
     // Get all response headers, as a HttpResponseHeaders object.  See comments
     // in HttpResponseHeaders class as to the format of the data.
-    HttpResponseHeaders* response_headers() const;
+    HttpResponseHeaders* response_headers() const
+    {
+        return response_info_.headers.get();
+    }
 
     // Get the SSL connection info.
     const SSLInfo& ssl_info() const

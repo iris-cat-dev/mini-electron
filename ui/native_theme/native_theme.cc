@@ -20,6 +20,7 @@
 #include "ui/color/color_metrics.h"
 #include "ui/color/color_provider.h"
 #include "ui/color/color_provider_key.h"
+#include "ui/color/color_provider_manager.h"
 #include "ui/color/color_provider_utils.h"
 #include "ui/native_theme/common_theme.h"
 #include "ui/native_theme/native_theme_features.h"
@@ -121,22 +122,18 @@ void NativeTheme::RemoveObserver(NativeThemeObserver* observer)
 
 void NativeTheme::NotifyOnNativeThemeUpdated()
 {
-    *(int*)1 = 1;
-//     base::ElapsedTimer timer;
-//     auto& color_provider_manager = ui::ColorProviderManager::Get();
-//     const size_t initial_providers_initialized = color_provider_manager.num_providers_initialized();
-// 
-//     // This specific method is prone to being mistakenly called on the wrong
-//     // sequence, because it is often invoked from a platform-specific event
-//     // listener, and those events may be delivered on unexpected sequences.
-//     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-//     // Reset the ColorProviderManager's cache so that ColorProviders requested
-//     // from this point onwards incorporate the changes to the system theme.
-//     color_provider_manager.ResetColorProviderCache();
-//     native_theme_observers_.Notify(&NativeThemeObserver::OnNativeThemeUpdated, this);
-// 
-//     RecordNumColorProvidersInitializedDuringOnNativeThemeUpdated(color_provider_manager.num_providers_initialized() - initial_providers_initialized);
-//     RecordTimeSpentProcessingOnNativeThemeUpdatedEvent(timer.Elapsed());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    base::ElapsedTimer timer;
+    auto& color_provider_manager = ui::ColorProviderManager::Get();
+    const size_t initial_providers_initialized = color_provider_manager.num_providers_initialized();
+
+    // Observers must see providers rebuilt from the new system theme.
+    color_provider_manager.ResetColorProviderCache();
+    native_theme_observers_.Notify(&NativeThemeObserver::OnNativeThemeUpdated, this);
+
+    RecordNumColorProvidersInitializedDuringOnNativeThemeUpdated(
+        color_provider_manager.num_providers_initialized() - initial_providers_initialized);
+    RecordTimeSpentProcessingOnNativeThemeUpdatedEvent(timer.Elapsed());
 }
 
 void NativeTheme::NotifyOnCaptionStyleUpdated()

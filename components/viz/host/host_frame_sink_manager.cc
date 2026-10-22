@@ -126,8 +126,21 @@ void HostFrameSinkManager::InvalidateFrameSinkId(const FrameSinkId& frame_sink_i
         // the platform window (eg. XWindow or HWND) get destroyed before the
         // platform window is destroyed.
         mojo::SyncCallRestrictions::ScopedAllowSyncCall allow_sync_call;
-        //frame_sink_manager_->DestroyCompositorFrameSink(frame_sink_id);
-        *(int*)1 = 1;
+        if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+            frame_sink_manager_->DestroyCompositorFrameSink(frame_sink_id, base::DoNothing());
+        } else {
+            base::WaitableEvent completion;
+            base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+            service_runner_->PostTask(FROM_HERE,
+                base::BindOnce([](HostFrameSinkManager* self, FrameSinkId id, base::WaitableEvent* completion) {
+                    if (!self->is_closing_ && self->frame_sink_manager_) {
+                        self->frame_sink_manager_->DestroyCompositorFrameSink(id, base::DoNothing());
+                    }
+                    base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+                    completion->Signal();
+                }, base::Unretained(this), frame_sink_id, &completion));
+            completion.Wait();
+        }
 
         // Other synchronous IPCs continue to get processed while
         // DestroyCompositorFrameSink() is happening, so it's possible
@@ -178,8 +191,17 @@ void HostFrameSinkManager::CreateRootCompositorFrameSink(mojom::RootCompositorFr
     // If GL context is lost a new CompositorFrameSink will be created. Destroy
     // the old CompositorFrameSink first.
     if (data.has_created_compositor_frame_sink) {
-        //frame_sink_manager_->DestroyCompositorFrameSink(frame_sink_id, base::DoNothing());
-        *(int*)1 = 1;
+        if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+            frame_sink_manager_->DestroyCompositorFrameSink(frame_sink_id, base::DoNothing());
+        } else {
+            base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+            service_runner_->PostTask(FROM_HERE, base::BindOnce([](HostFrameSinkManager* self, FrameSinkId id) {
+                if (!self->is_closing_ && self->frame_sink_manager_) {
+                    self->frame_sink_manager_->DestroyCompositorFrameSink(id, base::DoNothing());
+                }
+                base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+            }, base::Unretained(this), frame_sink_id));
+        }
     }
 
     data.is_root = true;
@@ -332,8 +354,18 @@ void HostFrameSinkManager::UnregisterFrameSinkHierarchy(const FrameSinkId& paren
 
 void HostFrameSinkManager::AddVideoDetectorObserver(mojo::PendingRemote<mojom::VideoDetectorObserver> observer)
 {
-    *(int*)1 = 1;
-    // frame_sink_manager_->AddVideoDetectorObserver(std::move(observer));
+    if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+        frame_sink_manager_->AddVideoDetectorObserver(std::move(observer));
+    } else {
+        base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+        service_runner_->PostTask(FROM_HERE,
+            base::BindOnce([](HostFrameSinkManager* self, mojo::PendingRemote<mojom::VideoDetectorObserver> observer) {
+                if (!self->is_closing_ && self->frame_sink_manager_) {
+                    self->frame_sink_manager_->AddVideoDetectorObserver(std::move(observer));
+                }
+                base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+            }, base::Unretained(this), std::move(observer)));
+    }
 }
 
 void HostFrameSinkManager::CreateVideoCapturer(mojo::PendingReceiver<mojom::FrameSinkVideoCapturer> receiver)
@@ -357,8 +389,18 @@ void HostFrameSinkManager::EvictSurfaces(const std::vector<SurfaceId>& surface_i
 
 void HostFrameSinkManager::RequestCopyOfOutput(const SurfaceId& surface_id, std::unique_ptr<CopyOutputRequest> request, bool capture_exact_surface_id)
 {
-    //frame_sink_manager_->RequestCopyOfOutput(surface_id, std::move(request), capture_exact_surface_id);
-    *(int*)1 = 1;
+    if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+        frame_sink_manager_->RequestCopyOfOutput(surface_id, std::move(request), capture_exact_surface_id);
+    } else {
+        base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+        service_runner_->PostTask(FROM_HERE,
+            base::BindOnce([](HostFrameSinkManager* self, SurfaceId id, std::unique_ptr<CopyOutputRequest> request, bool exact) {
+                if (!self->is_closing_ && self->frame_sink_manager_) {
+                    self->frame_sink_manager_->RequestCopyOfOutput(id, std::move(request), exact);
+                }
+                base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+            }, base::Unretained(this), surface_id, std::move(request), capture_exact_surface_id));
+    }
 }
 
 void HostFrameSinkManager::SetupRenderInputRouterDelegateConnection(
@@ -466,27 +508,20 @@ void HostFrameSinkManager::OnConnectionLost()
 
 void HostFrameSinkManager::RegisterAfterConnectionLoss()
 {
-    *(int*)1 = 1;
-    // Register FrameSinkIds first.
-//     for (auto& map_entry : frame_sink_data_map_) {
-//         const FrameSinkId& frame_sink_id = map_entry.first;
-//         FrameSinkData& data = map_entry.second;
-//         if (data.client) {
-//             frame_sink_manager_->RegisterFrameSinkId(frame_sink_id, data.report_activation == ReportFirstSurfaceActivation::kYes);
-//         }
-//         if (!data.debug_label.empty()) {
-//             frame_sink_manager_->SetFrameSinkDebugLabel(frame_sink_id, data.debug_label);
-//         }
-//     }
-// 
-//     // Register FrameSink hierarchy second.
-//     for (auto& map_entry : frame_sink_data_map_) {
-//         const FrameSinkId& frame_sink_id = map_entry.first;
-//         FrameSinkData& data = map_entry.second;
-//         for (auto& child_frame_sink_id : data.children) {
-//             frame_sink_manager_->RegisterFrameSinkHierarchy(frame_sink_id, child_frame_sink_id);
-//         }
-//     }
+    // Register FrameSinkIds before their hierarchy.
+    for (auto& [frame_sink_id, data] : frame_sink_data_map_) {
+        if (data.client) {
+            frame_sink_manager_->RegisterFrameSinkId(frame_sink_id, data.report_activation == ReportFirstSurfaceActivation::kYes);
+        }
+        if (!data.debug_label.empty()) {
+            frame_sink_manager_->SetFrameSinkDebugLabel(frame_sink_id, data.debug_label);
+        }
+    }
+    for (auto& [frame_sink_id, data] : frame_sink_data_map_) {
+        for (const auto& child_frame_sink_id : data.children) {
+            frame_sink_manager_->RegisterFrameSinkHierarchy(frame_sink_id, child_frame_sink_id);
+        }
+    }
 }
 
 void HostFrameSinkManager::OnFirstSurfaceActivation(const SurfaceInfo& surface_info)
@@ -580,13 +615,21 @@ void HostFrameSinkManager::EraseHitTestQueryForSynchronousCompositor(const Frame
 void HostFrameSinkManager::UpdateDebugRendererSettings(const DebugRendererSettings& debug_settings)
 {
     debug_renderer_settings_ = debug_settings;
-    //frame_sink_manager_->UpdateDebugRendererSettings(debug_settings);
-    *(int*)1 = 1;
+    if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+        frame_sink_manager_->UpdateDebugRendererSettings(debug_settings);
+    } else {
+        base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+        service_runner_->PostTask(FROM_HERE, base::BindOnce([](HostFrameSinkManager* self, DebugRendererSettings settings) {
+            if (!self->is_closing_ && self->frame_sink_manager_) {
+                self->frame_sink_manager_->UpdateDebugRendererSettings(settings);
+            }
+            base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+        }, base::Unretained(this), debug_settings));
+    }
 }
 
 mojom::FrameSinksMetricsRecorder& HostFrameSinkManager::GetFrameSinksMetricsRecorderForTest()
 {
-    *(int*)1 = 1;
     if (metrics_recorder_remote_) {
         return *metrics_recorder_remote_.get();
     }
@@ -602,7 +645,6 @@ mojom::FrameSinksMetricsRecorder& HostFrameSinkManager::GetFrameSinksMetricsReco
 
 mojom::FrameSinkManagerTestApi& HostFrameSinkManager::GetFrameSinkManagerTestApi()
 {
-    *(int*)1 = 1;
     if (test_api_remote_) {
         return *test_api_remote_.get();
     }
@@ -618,8 +660,17 @@ mojom::FrameSinkManagerTestApi& HostFrameSinkManager::GetFrameSinkManagerTestApi
 
 void HostFrameSinkManager::ClearUnclaimedViewTransitionResources(const blink::ViewTransitionToken& transition_token)
 {
-    *(int*)1 = 1;
-    frame_sink_manager_->ClearUnclaimedViewTransitionResources(transition_token);
+    if (!service_runner_ || service_runner_->BelongsToCurrentThread()) {
+        frame_sink_manager_->ClearUnclaimedViewTransitionResources(transition_token);
+    } else {
+        base::subtle::Barrier_AtomicIncrement(&async_task_count_, 1);
+        service_runner_->PostTask(FROM_HERE, base::BindOnce([](HostFrameSinkManager* self, blink::ViewTransitionToken token) {
+            if (!self->is_closing_ && self->frame_sink_manager_) {
+                self->frame_sink_manager_->ClearUnclaimedViewTransitionResources(token);
+            }
+            base::subtle::Barrier_AtomicIncrement(&self->async_task_count_, -1);
+        }, base::Unretained(this), transition_token));
+    }
 }
 
 HostFrameSinkManager::FrameSinkData::FrameSinkData() = default;

@@ -53,11 +53,6 @@ bool HasElapsedCadenceInterval(base::TimeDelta render_interval, base::TimeDelta 
     return time_at_next_interval > (frame_duration + tolerance);
 }
 
-bool media::VideoCadenceEstimator::HasSimpleCadence(base::TimeDelta, base::TimeDelta, base::TimeDelta)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 namespace viz {
 namespace {

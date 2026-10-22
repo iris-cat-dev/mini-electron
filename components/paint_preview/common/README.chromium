@@ -1,0 +1,29 @@
+Name: Chromium Paint Preview native recording serialization
+URL: https://chromium.googlesource.com/chromium/src/
+Version: 132.0.6834.83
+License: BSD-3-Clause
+License File: LICENSE
+
+Source:
+https://chromium.googlesource.com/chromium/src/+/refs/tags/132.0.6834.83/components/paint_preview/common/
+
+The following files are imported unchanged from the above Chromium tag:
+  file_stream.h
+  file_stream.cc
+  serialized_recording.h
+  serialized_recording.cc
+  mojom/paint_preview_types_mojom_traits.h
+  mojom/paint_preview_types_mojom_traits.cc
+
+LICENSE is imported unchanged from Chromium's root LICENSE at the same tag.
+The repository root LICENSE describes mini-electron's Apache-2.0 code and does
+not replace the Chromium license for these imported files.
+
+These native Mojo traits preserve Chromium's RecordingPersistence enum mapping
+and move-only SerializedRecording file/BigBuffer union, including delegated
+Mojo file and BigBuffer decoding and rejection of unknown enum/union values.
+serialized_recording.cc retains the actual SkPicture serialization,
+deserialization, capture-size limits, and asynchronous file destruction;
+file_stream.cc provides its base::File-backed Skia streams.
+
+Local Modifications: None.

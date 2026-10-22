@@ -42,7 +42,6 @@
 #include "net/base/ip_address.h"
 #include "net/base/ip_endpoint.h"
 #include "net/cert/ct_sct_to_string.h"
-//#include "net/cert/x509_util.h"
 #include "net/http/http_status_code.h"
 #include "net/ssl/ssl_cipher_suite_names.h"
 #include "net/ssl/ssl_connection_status_flags.h"
@@ -105,43 +104,10 @@
 #include "third_party/blink/renderer/platform/wtf/text/base64.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
-//#include "third_party/boringssl/src/include/openssl/ssl.h"
-#include "third_party/openssl/openssl/include/openssl/ssl.h"
 #include "third_party/inspector_protocol/crdtp/json.h"
 
 using crdtp::SpanFrom;
 using crdtp::json::ConvertCBORToJSON;
-
-namespace net {
-void SSLVersionToString(const char** name, int ssl_version)
-{
-    switch (ssl_version) {
-        case SSL_CONNECTION_VERSION_SSL2:
-            *name = "SSL 2.0";
-            break;
-        case SSL_CONNECTION_VERSION_SSL3:
-            *name = "SSL 3.0";
-            break;
-        case SSL_CONNECTION_VERSION_TLS1:
-            *name = "TLS 1.0";
-            break;
-        case SSL_CONNECTION_VERSION_TLS1_1:
-            *name = "TLS 1.1";
-            break;
-        case SSL_CONNECTION_VERSION_TLS1_2:
-            *name = "TLS 1.2";
-            break;
-        case SSL_CONNECTION_VERSION_TLS1_3:
-            *name = "TLS 1.3";
-            break;
-        case SSL_CONNECTION_VERSION_QUIC:
-            *name = "QUIC";
-            break;
-        default:
-            NOTREACHED() << ssl_version;
-    }
-}
-} // net
 
 namespace blink {
 
@@ -842,64 +808,56 @@ static std::unique_ptr<protocol::Network::SecurityDetails> BuildSecurityDetails(
     }
     std::vector<std::string> san_dns;
     std::vector<std::string> san_ip;
-    //ssl_info.cert->GetSubjectAltName(&san_dns, &san_ip);
-    *(int*)1 = 1;
-//     auto san_list = std::make_unique<protocol::Array<String>>();
-//     for (const std::string& san : san_dns) {
-//         // DNS names in a SAN list are always ASCII.
-//         san_list->push_back(StringFromASCII(san));
-//     }
-//     for (const std::string& san : san_ip) {
-//         net::IPAddress ip(base::as_byte_span(san));
-//         san_list->push_back(StringFromASCII(ip.ToString()));
-//     }
-// 
-//     const char* protocol = "";
-//     const char* key_exchange = "";
-//     const char* cipher = "";
-//     const char* mac = nullptr;
-//     if (ssl_info.connection_status) {
-//         net::SSLVersion ssl_version = net::SSLConnectionStatusToVersion(ssl_info.connection_status);
-//         net::SSLVersionToString(&protocol, ssl_version);
-//         bool is_aead;
-//         bool is_tls13;
-//         uint16_t cipher_suite = net::SSLConnectionStatusToCipherSuite(ssl_info.connection_status);
-//         net::SSLCipherSuiteToStrings(&key_exchange, &cipher, &mac, &is_aead, &is_tls13, cipher_suite);
-//         if (key_exchange == nullptr) {
-//             DCHECK(is_tls13);
-//             key_exchange = "";
-//         }
-//     }
-//
-//     std::unique_ptr<protocol::Network::SecurityDetails> security_details
-//         = protocol::Network::SecurityDetails::create()
-//               .setProtocol(protocol)
-//               .setKeyExchange(key_exchange)
-//               .setCipher(cipher)
-//               .setSubjectName(String::FromUTF8(ssl_info.cert->subject().common_name))
-//               .setSanList(std::move(san_list))
-//               .setIssuer(String::FromUTF8(ssl_info.cert->issuer().common_name))
-//               .setValidFrom(ssl_info.cert->valid_start().InSecondsFSinceUnixEpoch())
-//               .setValidTo(ssl_info.cert->valid_expiry().InSecondsFSinceUnixEpoch())
-//               .setCertificateId(0) // Keep this in protocol for compatibility.
-//               .setSignedCertificateTimestampList(std::move(signed_certificate_timestamp_list))
-//               .setCertificateTransparencyCompliance(SerializeCTPolicyCompliance(ssl_info.ct_policy_compliance))
-//               .setEncryptedClientHello(ssl_info.encrypted_client_hello)
-//               .build();
-// 
-//     if (ssl_info.key_exchange_group != 0) {
-//         const char* key_exchange_group = SSL_get_curve_name(ssl_info.key_exchange_group);
-//         if (key_exchange_group)
-//             security_details->setKeyExchangeGroup(key_exchange_group);
-//     }
-//     if (mac)
-//         security_details->setMac(mac);
-//     if (ssl_info.peer_signature_algorithm != 0) {
-//         security_details->setServerSignatureAlgorithm(ssl_info.peer_signature_algorithm);
-//     }
-// 
-//     return security_details;
-    return nullptr;
+    ssl_info.cert->GetSubjectAltName(&san_dns, &san_ip);
+    auto san_list = std::make_unique<protocol::Array<String>>();
+    for (const std::string& san : san_dns)
+        san_list->push_back(StringFromASCII(san));
+    for (const std::string& san : san_ip) {
+        net::IPAddress ip(base::as_byte_span(san));
+        san_list->push_back(StringFromASCII(ip.ToString()));
+    }
+
+    const char* protocol = "";
+    const char* key_exchange = "";
+    const char* cipher = "";
+    const char* mac = nullptr;
+    if (ssl_info.connection_status) {
+        net::SSLVersion ssl_version = net::SSLConnectionStatusToVersion(ssl_info.connection_status);
+        net::SSLVersionToString(&protocol, ssl_version);
+        bool is_aead;
+        bool is_tls13;
+        uint16_t cipher_suite = net::SSLConnectionStatusToCipherSuite(ssl_info.connection_status);
+        net::SSLCipherSuiteToStrings(&key_exchange, &cipher, &mac, &is_aead, &is_tls13, cipher_suite);
+        if (key_exchange == nullptr) {
+            DCHECK(is_tls13);
+            key_exchange = "";
+        }
+    }
+
+    auto security_details = protocol::Network::SecurityDetails::create()
+                                .setProtocol(protocol)
+                                .setKeyExchange(key_exchange)
+                                .setCipher(cipher)
+                                .setSubjectName(String::FromUTF8(ssl_info.cert->subject().common_name))
+                                .setSanList(std::move(san_list))
+                                .setIssuer(String::FromUTF8(ssl_info.cert->issuer().common_name))
+                                .setValidFrom(ssl_info.cert->valid_start().InSecondsFSinceUnixEpoch())
+                                .setValidTo(ssl_info.cert->valid_expiry().InSecondsFSinceUnixEpoch())
+                                .setCertificateId(0) // Keep this in protocol for compatibility.
+                                .setSignedCertificateTimestampList(std::move(signed_certificate_timestamp_list))
+                                .setCertificateTransparencyCompliance(SerializeCTPolicyCompliance(ssl_info.ct_policy_compliance))
+                                .setEncryptedClientHello(ssl_info.encrypted_client_hello)
+                                .build();
+    if (ssl_info.key_exchange_group != 0) {
+        const char* key_exchange_group = net::SSLGroupToName(ssl_info.key_exchange_group);
+        if (key_exchange_group)
+            security_details->setKeyExchangeGroup(key_exchange_group);
+    }
+    if (mac)
+        security_details->setMac(mac);
+    if (ssl_info.peer_signature_algorithm != 0)
+        security_details->setServerSignatureAlgorithm(ssl_info.peer_signature_algorithm);
+    return security_details;
 }
 
 static std::unique_ptr<protocol::Network::Request> BuildObjectForResourceRequest(
@@ -1390,8 +1348,7 @@ void InspectorNetworkAgent::DidReceiveResourceResponse(
 
     const std::optional<net::SSLInfo>& ssl_info = response.GetSSLInfo();
     if (ssl_info.has_value() && ssl_info->cert) {
-        //resources_data_->SetCertificate(request_id, ssl_info->cert);
-        *(int*)1 = 1;
+        resources_data_->SetCertificate(request_id, ssl_info->cert);
     }
 
     if (IsNavigation(loader, identifier))
@@ -2010,20 +1967,18 @@ protocol::Response InspectorNetworkAgent::setBypassServiceWorker(bool bypass)
 
 protocol::Response InspectorNetworkAgent::getCertificate(const String& origin, std::unique_ptr<protocol::Array<String>>* certificate)
 {
-    *(int*)1 = 1;
-//     *certificate = std::make_unique<protocol::Array<String>>();
-//     scoped_refptr<const SecurityOrigin> security_origin = SecurityOrigin::CreateFromString(origin);
-//     for (auto& resource : resources_data_->Resources()) {
-//         scoped_refptr<const SecurityOrigin> resource_origin = SecurityOrigin::Create(resource->RequestedURL());
-//         net::X509Certificate* cert = resource->Certificate();
-//         if (resource_origin->IsSameOriginWith(security_origin.get()) && cert) {
-//             (*certificate)->push_back(Base64Encode(net::x509_util::CryptoBufferAsSpan(cert->cert_buffer())));
-//             for (const auto& buf : cert->intermediate_buffers()) {
-//                 (*certificate)->push_back(Base64Encode(net::x509_util::CryptoBufferAsSpan(buf.get())));
-//             }
-//             return protocol::Response::Success();
-//         }
-//     }
+    *certificate = std::make_unique<protocol::Array<String>>();
+    scoped_refptr<const SecurityOrigin> security_origin = SecurityOrigin::CreateFromString(origin);
+    for (auto& resource : resources_data_->Resources()) {
+        scoped_refptr<const SecurityOrigin> resource_origin = SecurityOrigin::Create(resource->RequestedURL());
+        net::X509Certificate* cert = resource->Certificate();
+        if (resource_origin->IsSameOriginWith(security_origin.get()) && cert) {
+            (*certificate)->push_back(Base64Encode(cert->cert_span()));
+            for (size_t i = 0; i < cert->intermediate_count(); ++i)
+                (*certificate)->push_back(Base64Encode(cert->intermediate_span(i)));
+            return protocol::Response::Success();
+        }
+    }
     return protocol::Response::Success();
 }
 

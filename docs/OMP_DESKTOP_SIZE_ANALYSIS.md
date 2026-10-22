@@ -147,11 +147,12 @@ was visually checked after the fix. The current runtime disables DevTools, so
 the CDP screenshot branch was not exercised.
 
 The system libcurl exported WebSocket symbols but rejected `ws`/`wss`.
-The runtime now statically links pinned libcurl 8.23.0 with WebSocket support,
-reusing the existing TLS library and Apple's SecTrust certificate store.
-The native renderer regression passed subprotocol negotiation, fragmented text,
-binary data, ping/pong, and clean close. HTTPS accepted a valid certificate and
-rejected a self-signed certificate; no extra framework bundle was introduced.
+The runtime statically links pinned libcurl 8.23.0 with WebSocket support,
+reusing the existing TLS library. The current HTTP/WebSocket curl configuration
+disables TLS peer/host verification; earlier certificate-rejection claims are
+not current verification. The recorded native renderer regression covers
+subprotocol negotiation, fragmented text, binary data, ping/pong, and clean close.
+No extra networking framework bundle is introduced.
 
 Native AppKit handling now consumes Blink's draggable-region updates, subtracts
 `no-drag` controls, and handles caption mouse-down and double-click. macOS keeps

@@ -8,7 +8,7 @@
 
 #include "base/feature_list.h"
 #include "base/metrics/histogram_macros.h"
-//#include "components/paint_preview/common/paint_preview_tracker.h"
+#include "components/paint_preview/common/paint_preview_tracker.h"
 #include "printing/buildflags/buildflags.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
@@ -447,25 +447,18 @@ uint32_t RemoteFrameView::Print(const gfx::Rect& rect, cc::PaintCanvas* canvas) 
 
 uint32_t RemoteFrameView::CapturePaintPreview(const gfx::Rect& rect, cc::PaintCanvas* canvas) const
 {
-    *(int*)1 = 1;
-    return 0;
-//     auto* tracker = canvas->GetPaintPreviewTracker();
-//     DCHECK(tracker); // |tracker| must exist or there is a bug upstream.
-// 
-//     // RACE: there is a possibility that the embedding token will be null and
-//     // still be in a valid state. This can occur is the frame has recently
-//     // navigated and the embedding token hasn't propagated from the FrameTreeNode
-//     // to this HTMLFrameOwnerElement yet (over IPC). If the token is null the
-//     // failure can be handled gracefully by simply ignoring the subframe in the
-//     // result.
-//     std::optional<base::UnguessableToken> maybe_embedding_token = remote_frame_->GetEmbeddingToken();
-//     if (!maybe_embedding_token.has_value())
-//         return 0;
-//     uint32_t content_id = tracker->CreateContentForRemoteFrame(rect, maybe_embedding_token.value());
-// 
-//     // Send a request to the browser to trigger a capture of the remote frame.
-//     remote_frame_->GetRemoteFrameHostRemote().CapturePaintPreviewOfCrossProcessSubframe(rect, tracker->Guid());
-//     return content_id;
+    auto* tracker = canvas->GetPaintPreviewTracker();
+    DCHECK(tracker);
+
+    // The embedding token may not yet have propagated after navigation.
+    // In that case, omit this subframe from the capture.
+    std::optional<base::UnguessableToken> maybe_embedding_token = remote_frame_->GetEmbeddingToken();
+    if (!maybe_embedding_token.has_value())
+        return 0;
+    uint32_t content_id = tracker->CreateContentForRemoteFrame(rect, maybe_embedding_token.value());
+
+    remote_frame_->GetRemoteFrameHostRemote().CapturePaintPreviewOfCrossProcessSubframe(rect, tracker->Guid());
+    return content_id;
 }
 
 void RemoteFrameView::Trace(Visitor* visitor) const

@@ -1798,7 +1798,7 @@ void WebViewHost::loadUrl(const char* urlStr)
     blink::WebNavigationInfo info;
     info.url_request.SetUrl(url);
     if (!navigationControl->WillStartNavigation(info))
-        DebugBreak();
+        return;
 
     blink::WebURLRequest urlRequest;
     urlRequest.SetUrl(url);

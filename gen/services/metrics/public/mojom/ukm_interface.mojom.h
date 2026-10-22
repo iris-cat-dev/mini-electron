@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/metrics/public/mojom/ukm_interface.mojom-features.h" // IWYU pragma: export
 #include "services/metrics/public/mojom/ukm_interface.mojom-shared.h" // IWYU pragma: export
@@ -411,22 +414,22 @@ public:
 //private:
 //    ImplPointerType sink_;
 //};
-//class SingularUkmInterfaceRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class UkmRecorderClientInterfaceRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class UkmRecorderInterfaceRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class UkmRecorderFactoryRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+class SingularUkmInterfaceRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class UkmRecorderClientInterfaceRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class UkmRecorderInterfaceRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class UkmRecorderFactoryRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class UkmEntry {
 public:
@@ -523,7 +526,9 @@ public:
     base::flat_map<uint64_t, int64_t> metrics;
 
     // Serialise this struct into a trace.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -643,7 +648,9 @@ public:
     std::vector<uint64_t> event_hash_bypass_list;
 
     // Serialise this struct into a trace.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

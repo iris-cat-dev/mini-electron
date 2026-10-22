@@ -44,6 +44,38 @@ TEST_F(DocumentPolicyTest, MergeFeatureState)
         FeatureState<int32_t>({ { 1, 1 }, { 2, 2 }, { 3, 1 }, { 4, 1 }, { 5, 1 } }, enum_cb));
 }
 
+TEST_F(DocumentPolicyTest, SerializeEmpty)
+{
+    EXPECT_EQ(std::optional<std::string>(""), DocumentPolicy::Serialize({}));
+}
+
+TEST_F(DocumentPolicyTest, SerializeSortedFeatureNames)
+{
+    const auto first = static_cast<mojom::DocumentPolicyFeature>(0);
+    const auto second = static_cast<mojom::DocumentPolicyFeature>(1);
+    const DocumentPolicyFeatureInfoMap feature_info {
+        { first, { "zeta", PolicyValue::CreateBool(true) } },
+        { second, { "alpha", PolicyValue::CreateBool(true) } },
+    };
+    const DocumentPolicyFeatureState policy {
+        { first, PolicyValue::CreateBool(false) },
+        { second, PolicyValue::CreateBool(true) },
+    };
+    EXPECT_EQ(std::optional<std::string>("alpha, zeta=?0"), DocumentPolicy::SerializeInternal(policy, feature_info));
+}
+
+TEST_F(DocumentPolicyTest, SerializeRejectsOutOfRangeDecimal)
+{
+    const auto feature = static_cast<mojom::DocumentPolicyFeature>(0);
+    const DocumentPolicyFeatureInfoMap feature_info {
+        { feature, { "threshold", PolicyValue::CreateDecDouble(1.0) } },
+    };
+    const DocumentPolicyFeatureState policy {
+        { feature, PolicyValue::CreateDecDouble(1e20) },
+    };
+    EXPECT_EQ(std::nullopt, DocumentPolicy::SerializeInternal(policy, feature_info));
+}
+
 // IsPolicyCompatible should use default value for incoming policy when required
 // policy specifies a value for a feature and incoming policy is missing value
 // for that feature.

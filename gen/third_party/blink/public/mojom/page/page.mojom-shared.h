@@ -21,7 +21,10 @@
 #include "mojo/public/cpp/bindings/map_data_view.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/page/page.mojom-shared-internal.h"
 #include "mojo/public/mojom/base/time.mojom-shared.h"
@@ -543,6 +546,7 @@ inline void PrerenderPageActivationParamsDataView::GetViewTransitionStateDataVie
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceFormatTraits<::blink::mojom::PagehideDispatch> {
@@ -550,5 +554,6 @@ template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceForma
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // THIRD_PARTY_BLINK_PUBLIC_MOJOM_PAGE_PAGE_MOJOM_SHARED_H_

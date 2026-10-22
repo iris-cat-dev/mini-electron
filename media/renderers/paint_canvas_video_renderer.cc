@@ -114,6 +114,7 @@ private:
     GLuint texture;
 };
 
+#if defined(SK_GL)
 // Wraps a GL RGBA texture into a SkImage.
 sk_sp<SkImage> WrapGLTexture(GLuint texture_id, const gfx::Size& size, viz::RasterContextProvider* raster_context_provider)
 {
@@ -128,6 +129,7 @@ sk_sp<SkImage> WrapGLTexture(GLuint texture_id, const gfx::Size& size, viz::Rast
     return SkImages::AdoptTextureFrom(
         raster_context_provider->GrContext(), backend_texture, kTopLeft_GrSurfaceOrigin, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
 }
+#endif
 
 void BindAndTexImage2D(gpu::gles2::GLES2Interface* gl, unsigned int target, unsigned int texture, unsigned int internal_format, unsigned int format,
     unsigned int type, int level, const gfx::Size& size)
@@ -483,17 +485,6 @@ public:
     {
         gpu::raster::RasterInterface* ri = raster_context_provider_->RasterInterface();
         if (sk_image_) {
-            GrGLTextureInfo texture_info;
-            GrBackendTexture texture;
-            if (!SkImages::GetBackendTextureFromImage(sk_image_, &texture,
-                    /*flushPendingGrContextIO=*/true)) {
-                DLOG(ERROR) << "Failed to get backend texture for VideoTextureBacking.";
-                return false;
-            }
-            if (!GrBackendTextures::GetGLTextureInfo(texture, &texture_info)) {
-                DLOG(ERROR) << "Failed to getGLTextureInfo for VideoTextureBacking.";
-                return false;
-            }
             return sk_image_->readPixels(dst_info, dst_pixels, dst_row_bytes, src_x, src_y);
         }
         return ri->ReadbackImagePixels(shared_image_->mailbox(), dst_info, dst_info.minRowBytes(), src_x, src_y,
@@ -891,6 +882,12 @@ bool PaintCanvasVideoRenderer::UpdateLastImage(scoped_refptr<VideoFrame> video_f
     if (video_frame->HasSharedImage()) {
         DCHECK(raster_context_provider);
         bool gpu_rasterization = raster_context_provider->ContextCapabilities().gpu_rasterization;
+#if !defined(SK_GL)
+        if (!gpu_rasterization) {
+            DLOG(ERROR) << "Can't wrap a video texture without Skia's GL backend";
+            return false;
+        }
+#endif
         DCHECK(gpu_rasterization || raster_context_provider->GrContext());
         auto* ri = raster_context_provider->RasterInterface();
         DCHECK(ri);
@@ -951,6 +948,7 @@ bool PaintCanvasVideoRenderer::UpdateLastImage(scoped_refptr<VideoFrame> video_f
         // In OOPR mode, we can keep the entire TextureBacking. In non-OOPR,
         // we can recycle the mailbox/texture, but have to replace the SkImage.
         if (!gpu_rasterization) {
+#if defined(SK_GL)
             cache_->source_texture = ri->CreateAndConsumeForGpuRaster(client_shared_image->mailbox());
 
             auto access = std::make_unique<ScopedSharedImageAccess>(ri, cache_->source_texture);
@@ -966,6 +964,7 @@ bool PaintCanvasVideoRenderer::UpdateLastImage(scoped_refptr<VideoFrame> video_f
             } else {
                 cache_->texture_backing->ReplaceAcceleratedSkImage(std::move(source_image), std::move(access));
             }
+#endif
         } else if (!cache_->texture_backing) {
             SkImageInfo sk_image_info = SkImageInfo::Make(
                 gfx::SizeToSkISize(cache_->coded_size), kRGBA_8888_SkColorType, kPremul_SkAlphaType, video_frame->CompatRGBColorSpace().ToSkColorSpace());

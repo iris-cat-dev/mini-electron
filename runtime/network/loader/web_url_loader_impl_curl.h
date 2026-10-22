@@ -39,6 +39,7 @@ public:
         int64_t mbwebviewId, uint64_t frameId = 0,
         uint64_t parentFrameId = 0, bool isMainFrame = false);
     ~WebURLLoaderImplCurl() /*override*/;
+    void SetIsOfflineMode(bool isOfflineMode) { m_isOfflineMode = isOfflineMode; }
 
     // --URLLoader methods:
     void LoadSynchronously(std::unique_ptr<network::ResourceRequest> request,
@@ -65,6 +66,9 @@ public:
     void Freeze(blink::LoaderFreezeMode mode) override;
     void DidChangePriority(blink::WebURLRequest::Priority, int intra_priority_value) override;
     scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunnerForBodyLoader() override;
+    void SetAutoFollowRedirects(bool follow) { m_autoFollowRedirects = follow; }
+    void SetPriority(net::RequestPriority priority, int intraPriority);
+    void PauseReadingBody(bool paused);
     //--
 
     void setNotAutoDestroy()
@@ -83,6 +87,7 @@ public:
 
 private:
     void init();
+    void updatePauseState();
 
     //mojo::ScopedDataPipeConsumerHandle m_responseBodyConsumerDataPipe;
 
@@ -96,6 +101,8 @@ private:
     //blink::KURL m_url;
     blink::WebURLLoaderClient* m_client = nullptr;
     blink::LoaderFreezeMode m_mode = blink::LoaderFreezeMode::kNone;
+    bool m_autoFollowRedirects = true;
+    bool m_bodyPaused = false;
 
     scoped_refptr<base::SingleThreadTaskRunner> m_freezableTaskRunner;
     scoped_refptr<base::SingleThreadTaskRunner> m_unfreezableTaskRunner;
@@ -105,6 +112,7 @@ private:
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    bool m_isOfflineMode = false;
 
     base::WeakPtrFactory<WebURLLoaderImplCurl> m_weakPtr { this };
 };

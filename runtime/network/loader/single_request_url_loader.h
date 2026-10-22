@@ -9,6 +9,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
+#include "net/url_request/redirect_info.h"
 
 namespace base {
 class WaitableEvent;
@@ -36,8 +37,6 @@ public:
     /*virtual*/ void DidReceiveResponse(
         const blink::WebURLResponse&, absl::variant<mojo::ScopedDataPipeConsumerHandle, SegmentedBuffer>, std::optional<mojo_base::BigBuffer> cachedMetadata) override;
 
-    /*virtual*/ void DidReceiveDataForTesting(base::span<const char> data) override;
-
     /*virtual*/ void DidReceiveTransferSizeUpdate(int transfer_size_diff) override;
 
     /*virtual*/ void DidFinishLoading(
@@ -45,8 +44,6 @@ public:
 
     /*virtual*/ void DidFail(const blink::WebURLError&, base::TimeTicks finish_time, int64_t total_encoded_data_length, uint64_t total_encoded_body_length,
         int64_t total_decoded_body_length) override;
-
-    /*virtual*/ void CountFeature(blink::mojom::WebFeature) override;
 
     // network::mojom::URLLoader:
     /*virtual*/ ~SingleRequestURLLoader() override;
@@ -66,12 +63,22 @@ public:
         mojo::PendingRemote<network::mojom::URLLoaderClient> client);
 
 private:
+    void startRequest();
+    void complete(const network::URLLoaderCompletionStatus& status);
+    void disconnect();
+
     mojo::Remote<network::mojom::URLLoaderClient> m_urlLoadClient;
     mojo::Receiver<network::mojom::URLLoader> m_receiver{this};
 
     std::unique_ptr<WebURLLoaderImplCurl> m_loader;
     scoped_refptr<WebURLRequestExtraDataWrap> m_extraData;
 
+    std::unique_ptr<network::ResourceRequest> m_request;
+    std::optional<net::RedirectInfo> m_pendingRedirect;
+    int m_redirectCount = 0;
+    int32_t m_intraPriority = 0;
+    bool m_bodyPaused = false;
+    bool m_completed = false;
     int m_didReceiveResponseCount = 0;
 };
 

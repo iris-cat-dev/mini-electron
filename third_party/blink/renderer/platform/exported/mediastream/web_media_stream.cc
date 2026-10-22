@@ -60,15 +60,13 @@ int WebMediaStream::UniqueId() const
 void WebMediaStream::AddObserver(WebMediaStreamObserver* observer)
 {
     DCHECK(!IsNull());
-    //private_->AddObserver(observer);
-    *(int*)1 = 1;
+    private_->AddObserver(observer);
 }
 
 void WebMediaStream::RemoveObserver(WebMediaStreamObserver* observer)
 {
     DCHECK(!IsNull());
-    //private_->RemoveObserver(observer);
-    *(int*)1 = 1;
+    private_->RemoveObserver(observer);
 }
 
 WebMediaStream& WebMediaStream::operator=(MediaStreamDescriptor* media_stream_descriptor)

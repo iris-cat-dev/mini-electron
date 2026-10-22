@@ -50,7 +50,7 @@ FilePath::FilePath()
 {
 }
 
-FilePath::FilePath(WTF::Vector<uint16_t> path_in)
+FilePath::FilePath(FilePathValue path_in)
     : path(std::move(path_in))
 {
 }
@@ -62,7 +62,7 @@ void FilePath::WriteIntoTrace(perfetto::TracedValue traced_context) const
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
     perfetto::WriteIntoTracedValueWithFallback(dict.AddItem("path"), this->path,
 #if BUILDFLAG(MOJO_TRACE_ENABLED)
-        "<value of type const WTF::Vector<uint16_t>&>"
+        "<value of type FilePathValue>"
 #else
         "<value>"
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
@@ -78,7 +78,7 @@ RelativeFilePath::RelativeFilePath()
 {
 }
 
-RelativeFilePath::RelativeFilePath(WTF::Vector<uint16_t> path_in)
+RelativeFilePath::RelativeFilePath(FilePathValue path_in)
     : path(std::move(path_in))
 {
 }
@@ -90,7 +90,7 @@ void RelativeFilePath::WriteIntoTrace(perfetto::TracedValue traced_context) cons
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
     perfetto::WriteIntoTracedValueWithFallback(dict.AddItem("path"), this->path,
 #if BUILDFLAG(MOJO_TRACE_ENABLED)
-        "<value of type const WTF::Vector<uint16_t>&>"
+        "<value of type FilePathValue>"
 #else
         "<value>"
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)

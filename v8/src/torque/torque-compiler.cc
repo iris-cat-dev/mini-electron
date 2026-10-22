@@ -124,13 +124,12 @@ TorqueCompilerResult CompileTorque(const std::string& source, TorqueCompilerOpti
     LanguageServerData::Scope server_data_scope;
 
     TorqueCompilerResult result;
-    //try {
+    try {
         ParseTorque(source);
         CompileCurrentAst(options);
-//     } catch (TorqueAbortCompilation&) {
-//         // Do nothing. The relevant TorqueMessage is part of the
-//         // TorqueMessages contextual.
-//     }
+    } catch (TorqueAbortCompilation&) {
+        // The diagnostic is already recorded in the TorqueMessages contextual.
+    }
 
     result.source_file_map = SourceFileMap::Get();
     result.language_server_data = std::move(LanguageServerData::Get());
@@ -149,15 +148,14 @@ TorqueCompilerResult CompileTorque(const std::vector<std::string>& files, Torque
     LanguageServerData::Scope server_data_scope;
 
     TorqueCompilerResult result;
-    //try {
+    try {
         for (const auto& path : files) {
             ReadAndParseTorqueFile(path);
         }
         CompileCurrentAst(options);
-//     } catch (TorqueAbortCompilation&) {
-//         // Do nothing. The relevant TorqueMessage is part of the
-//         // TorqueMessages contextual.
-//     }
+    } catch (TorqueAbortCompilation&) {
+        // The diagnostic is already recorded in the TorqueMessages contextual.
+    }
 
     result.source_file_map = SourceFileMap::Get();
     result.language_server_data = std::move(LanguageServerData::Get());
@@ -179,17 +177,16 @@ TorqueCompilerResult CompileTorqueForKythe(std::vector<TorqueCompilationUnit> un
     KytheData::Get().SetConsumer(consumer);
 
     TorqueCompilerResult result;
-    //try {
+    try {
         for (const auto& unit : units) {
             SourceId source_id = SourceFileMap::AddSource(unit.source_file_path);
             CurrentSourceFile::Scope source_id_scope(source_id);
             ParseTorque(unit.file_content);
         }
         CompileCurrentAst(options);
-//     } catch (TorqueAbortCompilation&) {
-//         // Do nothing. The relevant TorqueMessage is part of the
-//         // TorqueMessages contextual.
-//     }
+    } catch (TorqueAbortCompilation&) {
+        // The diagnostic is already recorded in the TorqueMessages contextual.
+    }
 
     result.source_file_map = SourceFileMap::Get();
     result.language_server_data = std::move(LanguageServerData::Get());

@@ -5,6 +5,8 @@
 #ifndef SERVICES_METRICS_PUBLIC_CPP_UKM_RECORDER_H_
 #define SERVICES_METRICS_PUBLIC_CPP_UKM_RECORDER_H_
 
+#include <set>
+
 #include "base/callback.h"
 #include "base/feature_list.h"
 #include "base/threading/thread_checker.h"
@@ -12,7 +14,7 @@
 #include "services/metrics/public/cpp/metrics_export.h"
 #include "services/metrics/public/cpp/ukm_source.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-// #include "services/metrics/public/mojom/ukm_interface.mojom-forward.h"
+#include "services/metrics/public/mojom/ukm_interface.mojom-forward.h"
 #include "url/gurl.h"
 
 class DIPSNavigationHandle;
@@ -63,6 +65,9 @@ class SourceUrlRecorderWebContentsObserver;
 // This feature controls whether UkmService should be created.
 METRICS_EXPORT BASE_DECLARE_FEATURE(kUkmFeature);
 
+// Controls whether MojoUkmRecorder may suppress disabled entries before IPC.
+METRICS_EXPORT BASE_DECLARE_FEATURE(kUkmReduceAddEntryIPC);
+
 // Interface for recording UKM
 class METRICS_EXPORT UkmRecorder {
 public:
@@ -111,7 +116,12 @@ public:
     static SourceId GetSourceIdForRedirectUrl(base::PassKey<DIPSNavigationHandle>, const GURL& redirect_url);
 
     // Add an entry to the UkmEntry list.
-    //virtual void AddEntry(mojom::UkmEntryPtr entry) = 0;
+    virtual void AddEntry(mojom::UkmEntryPtr entry) = 0;
+
+    // Associates additive web feature usage with the source.
+    virtual void RecordWebDXFeatures(SourceId source_id,
+        const std::set<int32_t>& features,
+        const size_t max_feature_value) = 0;
 
     // Controls sampling for testing purposes. Sampling is 1-in-N (N==rate).
     virtual void SetSamplingForTesting(int rate)

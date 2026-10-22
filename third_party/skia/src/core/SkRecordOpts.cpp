@@ -19,27 +19,11 @@
 #include "src/core/SkRecord.h"
 #include "src/core/SkRecordPattern.h"
 #include "src/core/SkRecords.h"
-//#include "src/sksl/ir/SkSLProgram.h"
 
 #include <cstdint>
 #include <optional>
 
 using namespace SkRecords;
-
-// SkMeshSpecification::~SkMeshSpecification(void)
-// {
-//     *(int*)1 = 1;
-// }
-// 
-// SkMesh::~SkMesh(void) 
-// {
-//     *(int*)1 = 1;
-// }
-// 
-// SkMesh::SkMesh(const SkMesh &)
-// {
-//     *(int*)1 = 1;
-// }
 
 // Most of the optimizations in this file are pattern-based.  These are all defined as structs with:
 //   - a Match typedef

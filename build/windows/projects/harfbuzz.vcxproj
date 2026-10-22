@@ -125,7 +125,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
@@ -152,7 +152,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -178,7 +178,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
@@ -197,7 +197,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
@@ -218,7 +218,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>-mno-avx </AdditionalOptions>
@@ -249,7 +249,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/harfbuzz-ng/src/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>
@@ -483,6 +483,13 @@
     <ClInclude Include="..\..\..\third_party\harfbuzz-ng\src\util\view-options.hh" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-cff-common.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-cff1.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-cff2.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-input.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-plan.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset-repacker.cc" />
+    <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\hb-subset.cc" />
     <ClCompile Include="..\..\..\third_party\harfbuzz-ng\src\src\harfbuzz-subset.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

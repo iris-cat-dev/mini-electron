@@ -41,20 +41,6 @@
 
 namespace media {
 
-WaitAndReplaceSyncTokenClient::WaitAndReplaceSyncTokenClient(gpu::InterfaceBase*)
-{
-    *(int*)1 = 1;
-}
-
-void WaitAndReplaceSyncTokenClient::GenerateSyncToken(gpu::SyncToken*)
-{
-    *(int*)1 = 1;
-}
-
-void WaitAndReplaceSyncTokenClient::WaitSyncToken(const gpu::SyncToken&)
-{
-    *(int*)1 = 1;
-}
 
 namespace {
 

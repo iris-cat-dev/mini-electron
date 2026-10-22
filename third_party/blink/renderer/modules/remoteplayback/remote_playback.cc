@@ -23,12 +23,15 @@
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/html/media/remote_playback_observer.h"
+#include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/modules/event_target_modules.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/renderer/modules/presentation/presentation_availability_state.h"
 #include "third_party/blink/renderer/modules/presentation/presentation_controller.h"
+#endif
 #include "third_party/blink/renderer/modules/remoteplayback/availability_callback_wrapper.h"
 #include "third_party/blink/renderer/modules/remoteplayback/remote_playback_metrics.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -38,7 +41,6 @@
 
 std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::ScreenAvailability b)
 {
-    *(int*)1 = 1;
     return a << (int)(b);
 }
 
@@ -66,6 +68,7 @@ void RunRemotePlaybackTask(ExecutionContext* context, base::OnceClosure task, st
     std::move(task).Run();
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 KURL GetAvailabilityUrl(
     const KURL& source, bool is_source_supported, std::optional<media::VideoCodec> video_codec, std::optional<media::AudioCodec> audio_codec)
 {
@@ -86,6 +89,7 @@ KURL GetAvailabilityUrl(
     std::string audio_codec_str = audio_codec.has_value() ? ("&audio_codec=" + media::GetCodecName(audio_codec.value())) : "";
     return KURL(StringView(kRemotePlaybackPresentationUrlPath) + "?source=" + encoded_source + video_codec_str.c_str() + audio_codec_str.c_str());
 }
+#endif
 
 bool IsBackgroundAvailabilityMonitoringDisabled()
 {
@@ -122,8 +126,10 @@ RemotePlayback::RemotePlayback(HTMLMediaElement& element)
     , availability_(mojom::ScreenAvailability::UNKNOWN)
     , media_element_(&element)
     , is_listening_(false)
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     , presentation_connection_receiver_(this, element.GetExecutionContext())
     , target_presentation_connection_(element.GetExecutionContext())
+#endif
 {
 }
 
@@ -227,12 +233,19 @@ ScriptPromise<IDLUndefined> RemotePlayback::prompt(ScriptState* script_state, Ex
         return EmptyPromise();
     }
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // The selected frame broker rejects PresentationService; a feature flag
+    // cannot supply the missing presentation backend.
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Remote playback is not supported by this build.");
+    return EmptyPromise();
+#else
     auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state, exception_state.GetContext());
     auto promise = resolver->Promise();
     prompt_promise_resolver_ = resolver;
     PromptInternal();
     RemotePlaybackMetrics::RecordRemotePlaybackLocation(RemotePlaybackInitiationLocation::kRemovePlaybackAPI);
     return promise;
+#endif
 }
 
 V8RemotePlaybackState RemotePlayback::state() const
@@ -250,6 +263,10 @@ void RemotePlayback::PromptInternal()
     if (!GetExecutionContext())
         return;
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    GetExecutionContext()->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(mojom::ConsoleMessageSource::kJavaScript,
+        mojom::ConsoleMessageLevel::kError, "Remote playback is not supported by this build."));
+#else
     PresentationController* controller = PresentationController::FromContext(GetExecutionContext());
     if (controller && !availability_urls_.empty()) {
         controller->GetPresentationService()->StartPresentation(
@@ -267,6 +284,7 @@ void RemotePlayback::PromptInternal()
             ->GetTaskRunner(TaskType::kMediaElementEvent)
             ->PostTask(FROM_HERE, WTF::BindOnce(RunRemotePlaybackTask, WrapPersistent(GetExecutionContext()), std::move(task), std::move(task_context)));
     }
+#endif
 }
 
 int RemotePlayback::WatchAvailabilityInternal(AvailabilityCallbackWrapper* callback)
@@ -278,6 +296,11 @@ int RemotePlayback::WatchAvailabilityInternal(AvailabilityCallbackWrapper* callb
     if (!GetExecutionContext())
         return kWatchAvailabilityNotSupported;
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // Do not register callbacks or report fabricated availability without a
+    // PresentationService implementation in the frame broker.
+    return kWatchAvailabilityNotSupported;
+#else
     int id;
     do {
         id = GetExecutionContext()->CircularSequentialID();
@@ -296,6 +319,7 @@ int RemotePlayback::WatchAvailabilityInternal(AvailabilityCallbackWrapper* callb
 
     MaybeStartListeningForAvailability();
     return id;
+#endif
 }
 
 bool RemotePlayback::CancelWatchAvailabilityInternal(int id)
@@ -355,7 +379,9 @@ void RemotePlayback::StateChanged(mojom::blink::PresentationConnectionState stat
         if (auto* video_element = DynamicTo<HTMLVideoElement>(media_element_.Get())) {
             video_element->MediaRemotingStopped(MediaPlayerClient::kMediaRemotingStopNoText);
         }
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
         CleanupConnections();
+#endif
         presentation_id_ = "";
         presentation_url_ = KURL();
         media_element_->FlingingStopped();
@@ -385,9 +411,12 @@ void RemotePlayback::SourceChanged(const KURL& source, bool is_source_supported)
     source_ = source;
     is_source_supported_ = is_source_supported;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     UpdateAvailabilityUrlsAndStartListening();
+#endif
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void RemotePlayback::UpdateAvailabilityUrlsAndStartListening()
 {
     if (is_background_availability_monitoring_disabled_for_testing_ || IsBackgroundAvailabilityMonitoringDisabled()
@@ -425,6 +454,7 @@ void RemotePlayback::UpdateAvailabilityUrlsAndStartListening()
 
     MaybeStartListeningForAvailability();
 }
+#endif
 
 String RemotePlayback::GetPresentationId()
 {
@@ -436,7 +466,9 @@ void RemotePlayback::MediaMetadataChanged(std::optional<media::VideoCodec> video
     video_codec_ = video_codec;
     audio_codec_ = audio_codec;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     UpdateAvailabilityUrlsAndStartListening();
+#endif
 }
 
 void RemotePlayback::AddObserver(RemotePlaybackObserver* observer)
@@ -466,9 +498,11 @@ void RemotePlayback::StateChangedForTesting(bool is_connected)
 
 bool RemotePlayback::RemotePlaybackAvailable() const
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (IsBackgroundAvailabilityMonitoringDisabled() && RuntimeEnabledFeatures::RemotePlaybackBackendEnabled() && !media_element_->currentSrc().IsEmpty()) {
         return true;
     }
+#endif
 
     return availability_ == mojom::ScreenAvailability::AVAILABLE;
 }
@@ -488,17 +522,25 @@ void RemotePlayback::RemotePlaybackDisabled()
         return;
     }
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // Only test-driven local state can be connected without a service. Restore
+    // that state when remote playback is disabled rather than issuing IPC.
+    StateChanged(mojom::blink::PresentationConnectionState::CLOSED);
+#else
     auto* controller = PresentationController::FromContext(GetExecutionContext());
     if (controller) {
         controller->GetPresentationService()->CloseConnection(presentation_url_, presentation_id_);
     }
+#endif
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void RemotePlayback::CleanupConnections()
 {
     target_presentation_connection_.reset();
     presentation_connection_receiver_.reset();
 }
+#endif
 
 void RemotePlayback::AvailabilityChanged(mojom::blink::ScreenAvailability availability)
 {
@@ -531,6 +573,7 @@ const Vector<KURL>& RemotePlayback::Urls() const
     return availability_urls_;
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void RemotePlayback::OnConnectionSuccess(mojom::blink::PresentationConnectionResultPtr result)
 {
     presentation_id_ = std::move(result->presentation_info->id);
@@ -596,6 +639,7 @@ void RemotePlayback::DidClose(mojom::blink::PresentationConnectionCloseReason re
 {
     StateChanged(mojom::blink::PresentationConnectionState::CLOSED);
 }
+#endif
 
 void RemotePlayback::StopListeningForAvailability()
 {
@@ -603,14 +647,17 @@ void RemotePlayback::StopListeningForAvailability()
         return;
 
     availability_ = mojom::ScreenAvailability::UNKNOWN;
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     PresentationController* controller = PresentationController::FromContext(GetExecutionContext());
     if (!controller)
         return;
 
     controller->RemoveAvailabilityObserver(this);
+#endif
     is_listening_ = false;
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 void RemotePlayback::MaybeStartListeningForAvailability()
 {
     if (IsBackgroundAvailabilityMonitoringDisabled() || is_background_availability_monitoring_disabled_for_testing_) {
@@ -630,14 +677,17 @@ void RemotePlayback::MaybeStartListeningForAvailability()
     controller->AddAvailabilityObserver(this);
     is_listening_ = true;
 }
+#endif
 
 void RemotePlayback::Trace(Visitor* visitor) const
 {
     visitor->Trace(availability_callbacks_);
     visitor->Trace(prompt_promise_resolver_);
     visitor->Trace(media_element_);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     visitor->Trace(presentation_connection_receiver_);
     visitor->Trace(target_presentation_connection_);
+#endif
     visitor->Trace(observers_);
     EventTarget::Trace(visitor);
     ExecutionContextLifecycleObserver::Trace(visitor);

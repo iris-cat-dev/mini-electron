@@ -35,7 +35,10 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/messaging/static_bitmap_image.mojom-params-data.h"
 #include "third_party/blink/public/mojom/messaging/static_bitmap_image.mojom-shared-message-ids.h"
@@ -62,6 +65,7 @@ size_t SharedImageUsageSet::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void SharedImageUsageSet::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -73,6 +77,7 @@ void SharedImageUsageSet::WriteIntoTrace(perfetto::TracedValue traced_context) c
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool SharedImageUsageSet::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -104,6 +109,7 @@ AcceleratedStaticBitmapImage::AcceleratedStaticBitmapImage(const ::gpu::MailboxH
 
 AcceleratedStaticBitmapImage::~AcceleratedStaticBitmapImage() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void AcceleratedStaticBitmapImage::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -157,6 +163,7 @@ void AcceleratedStaticBitmapImage::WriteIntoTrace(perfetto::TracedValue traced_c
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool AcceleratedStaticBitmapImage::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -11,6 +11,16 @@
 #include "third_party/blink/public/mojom/blob/data_element.mojom.h"
 #include "services/network/public/mojom/data_pipe_getter.mojom-blink.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
+#include "mojo/public/cpp/system/data_pipe_producer.h"
+#include "net/base/net_errors.h"
+#include "net/http/http_byte_range.h"
+#include "net/http/http_util.h"
+#include "net/http/http_response_headers.h"
+#include "services/network/public/mojom/url_loader.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
+#include "services/network/public/cpp/url_loader_completion_status.h"
+#include "base/run_loop.h"
 #include "url/url_util.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
@@ -27,14 +37,14 @@ void pushBackToBuffer(std::vector<char>* buf, const char* data, size_t len);
 bool ::blink::mojom::BlobRegistry::Register(::mojo::PendingReceiver<::blink::mojom::Blob> blob, const std::string& uuid, const std::string& content_type,
     const std::string& content_disposition, std::vector<::blink::mojom::DataElementPtr> elements)
 {
-    content::printFuncName(__FUNCTION__, true, true);
+    // No implementation is bound to the generated base interface.
     return false;
 }
 
 bool ::blink::mojom::blink::BlobRegistry::Register(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, const WTF::String& uuid,
     const WTF::String& content_type, const WTF::String& content_disposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements)
 {
-    content::printFuncName(__FUNCTION__, true, true);
+    // No implementation is bound to the generated base interface.
     return false;
 }
 
@@ -52,7 +62,7 @@ bool ::blink::mojom::blink::BlobRegistry::Register(::mojo::PendingReceiver<::bli
 
 bool blink::mojom::blink::Blob::CaptureSnapshot(uint64_t* out_length, absl::optional<::base::Time>* out_modification_time)
 {
-    content::printFuncName(__FUNCTION__, true, true);
+    // No implementation is bound to the generated base interface.
     return false;
 }
 
@@ -74,12 +84,18 @@ static ::base::FilePath standardizationFilePath(const ::base::FilePath& path)
 
 std::map<std::string, BlobEntry*>* s_blobEntrys = nullptr;
 
+static void writeBlobToDataPipe(const std::string& uuid, mojo::ScopedDataPipeProducerHandle pipe,
+    network::mojom::blink::DataPipeGetter::ReadCallback callback);
+
 class BlobReceiver : public ::blink::mojom::blink::Blob {
 public:
-    BlobReceiver(/*BlobEntry* blobEntry*/ const std::string& uuid)
+    BlobReceiver(mojo::ScopedMessagePipeHandle pipe, const std::string& uuid)
     {
         //m_blobEntry = blobEntry;
         m_uuid = uuid;
+        m_receiver.Bind(mojo::PendingReceiver<blink::mojom::blink::Blob>(std::move(pipe)));
+        m_receiver.set_disconnect_handler(base::BindOnce(
+            [](BlobReceiver* self) { delete self; }, base::Unretained(this)));
 
         //char output[100] = { 0 };
         //sprintf(output, "BlobReceiver: %p, %d\n", this, s_blobEntrys->size());
@@ -110,7 +126,7 @@ public:
         CHECK(blobEntry);
         ++blobEntry->m_blobReceiverRefCount;
 
-        createAndBindInterface<::blink::mojom::blink::Blob, BlobReceiver>(blob.PassPipe(), m_uuid);
+        new BlobReceiver(blob.PassPipe(), m_uuid);
     }
 
     class DataPipeGetterImpl : public ::network::mojom::blink::DataPipeGetter {
@@ -118,23 +134,16 @@ public:
         DataPipeGetterImpl(std::string uuid)
         {
             m_uuid = uuid;
+            BlobEntry* entry = BlobEntry::findByUuid(m_uuid);
+            if (entry) {
+                ++entry->m_blobReceiverRefCount;
+                new BlobReceiver(m_blob.BindNewPipeAndPassReceiver().PassPipe(), m_uuid);
+            }
         }
 
         void Read(::mojo::ScopedDataPipeProducerHandle pipe, ReadCallback callback) override
         {
-            BlobEntry* blobEntry = BlobEntry::findByUuid(m_uuid);
-            if (!blobEntry) {
-                pipe->WriteData(nullptr, 0, MOJO_WRITE_DATA_FLAG_NONE);
-                std::move(callback).Run(0, 0);
-            } else {
-                std::vector<char> buffer;
-                int64_t allSize = 0;
-                blobEntry->read(&buffer, 0, -1, &allSize);
-
-                uint32_t numBytes = buffer.size();
-                pipe->WriteData(buffer.data(), &numBytes, MOJO_WRITE_DATA_FLAG_NONE);
-                std::move(callback).Run(numBytes, numBytes);
-            }
+            writeBlobToDataPipe(m_uuid, std::move(pipe), std::move(callback));
         }
 
         void Clone(::mojo::PendingReceiver<DataPipeGetter> receiver) override
@@ -144,6 +153,7 @@ public:
 
     private:
         std::string m_uuid;
+        mojo::Remote<blink::mojom::blink::Blob> m_blob;
     };
 
     void AsDataPipeGetter(::mojo::PendingReceiver<::network::mojom::blink::DataPipeGetter> dataPipeGetter) override
@@ -156,30 +166,37 @@ public:
     void ReadAll(::mojo::ScopedDataPipeProducerHandle pipe, ::mojo::PendingRemote<::blink::mojom::blink::BlobReaderClient> client/*, bool isSync*/) override;
 
     void ReadRange(uint64_t offset, uint64_t length, ::mojo::ScopedDataPipeProducerHandle pipe,
-        ::mojo::PendingRemote<::blink::mojom::blink::BlobReaderClient> client) override
-    {
-        content::printFuncName(__FUNCTION__, true, true);
-    }
+        ::mojo::PendingRemote<::blink::mojom::blink::BlobReaderClient> client) override;
 
     void Load(::mojo::PendingReceiver<::network::mojom::blink::URLLoader> loader, const WTF::String& request_method, const ::net::HttpRequestHeaders& headers,
-        ::mojo::PendingRemote<::network::mojom::blink::URLLoaderClient> client) override
-    {
-        content::printFuncName(__FUNCTION__, true, true);
-    }
+        ::mojo::PendingRemote<::network::mojom::blink::URLLoaderClient> client) override;
 
     //using ReadSideDataCallback = base::OnceCallback<void(absl::optional<::mojo_base::BigBuffer>)>;
     void ReadSideData(ReadSideDataCallback callback) override;
 
     bool CaptureSnapshot(uint64_t* out_length, absl::optional<::base::Time>* out_modification_time) override
     {
-        content::printFuncName(__FUNCTION__, true, true);
-        return false;
+        BlobEntry* entry = BlobEntry::findByUuid(m_uuid);
+        std::vector<char> unused;
+        int64_t size = 0;
+        if (!entry || entry->read(&unused, 0, 0, &size) < 0)
+            return false;
+        *out_length = size;
+        *out_modification_time = absl::nullopt;
+        return true;
     }
 
     //using CaptureSnapshotCallback = base::OnceCallback<void(uint64_t, absl::optional<::base::Time>)>;
     void CaptureSnapshot(CaptureSnapshotCallback callback) override
     {
-        content::printFuncName(__FUNCTION__, true, true);
+        uint64_t length = 0;
+        absl::optional<base::Time> modificationTime;
+        if (!CaptureSnapshot(&length, &modificationTime)) {
+            m_receiver.ResetWithReason(1, "Blob snapshot is unavailable");
+            delete this;
+            return;
+        }
+        std::move(callback).Run(length, modificationTime);
     }
 
     //using GetInternalUUIDCallback = base::OnceCallback<void(const WTF::String&)>;
@@ -189,14 +206,11 @@ public:
         std::move(callback).Run(WTF::String::FromUTF8(m_uuid));
     }
 
-    void onReadAllFinish(uint64_t totalSize);
 
     //BlobEntry* m_blobEntry = nullptr;
     std::string m_uuid;
     //BlobReceiver* m_cloneBlob = nullptr;
 
-    ::mojo::ScopedDataPipeProducerHandle m_pipe;
-    ::mojo::Remote<::blink::mojom::blink::BlobReaderClient> m_client;
 
     mojo::Receiver<::blink::mojom::blink::Blob> m_receiver { this };
     base::WeakPtrFactory<BlobReceiver> m_weakFactory { this };
@@ -249,137 +263,205 @@ public:
     } u;
 };
 
-void BlobReceiver::onReadAllFinish(uint64_t totalSize)
+namespace {
+
+class BlobBufferSource final : public mojo::DataPipeProducer::DataSource {
+public:
+    explicit BlobBufferSource(std::vector<char> data) : m_data(std::move(data)) {}
+    uint64_t GetLength() const override { return m_data.size(); }
+    ReadResult Read(uint64_t offset, base::span<char> destination) override
+    {
+        ReadResult result;
+        if (offset > m_data.size()) {
+            result.result = MOJO_RESULT_OUT_OF_RANGE;
+            return result;
+        }
+        result.bytes_read = (std::min)(destination.size(), m_data.size() - static_cast<size_t>(offset));
+        if (result.bytes_read)
+            memcpy(destination.data(), m_data.data() + offset, result.bytes_read);
+        return result;
+    }
+private:
+    const std::vector<char> m_data;
+};
+
+class BlobResponseLoader final : public network::mojom::URLLoader {
+public:
+    BlobResponseLoader(mojo::PendingReceiver<network::mojom::URLLoader> receiver,
+        mojo::PendingRemote<network::mojom::URLLoaderClient> client)
+        : m_receiver(this, std::move(receiver)), m_client(std::move(client))
+    {
+        m_receiver.set_disconnect_handler(base::BindOnce(
+            [](BlobResponseLoader* self) { delete self; }, base::Unretained(this)));
+    }
+
+    void Start(BlobEntry* entry, const WTF::String& method, const net::HttpRequestHeaders& headers)
+    {
+        if (method != "GET" && method != "HEAD") {
+            Complete(net::ERR_METHOD_NOT_SUPPORTED);
+            return;
+        }
+        std::vector<char> buffer;
+        int64_t totalSize = 0;
+        if (!entry || entry->read(&buffer, 0, 0, &totalSize) < 0) {
+            Complete(net::ERR_FILE_NOT_FOUND);
+            return;
+        }
+        int64_t offset = 0;
+        int64_t length = totalSize;
+        auto rangeHeader = headers.GetHeader("Range");
+        if (rangeHeader) {
+            std::vector<net::HttpByteRange> ranges;
+            if (!net::HttpUtil::ParseRangeHeader(*rangeHeader, &ranges)
+                || ranges.size() != 1 || !ranges[0].ComputeBounds(totalSize)) {
+                Complete(net::ERR_REQUEST_RANGE_NOT_SATISFIABLE);
+                return;
+            }
+            offset = ranges[0].first_byte_position();
+            length = ranges[0].last_byte_position() - offset + 1;
+        }
+        if (method == "GET" && entry->read(&buffer, offset, length, &totalSize) != length) {
+            Complete(net::ERR_FAILED);
+            return;
+        }
+        auto head = network::mojom::URLResponseHead::New();
+        const std::string contentLength = std::to_string(length);
+        const std::string contentRange = rangeHeader
+            ? "bytes " + std::to_string(offset) + "-"
+                + std::to_string(offset + length - 1) + "/" + std::to_string(totalSize)
+            : std::string();
+        net::HttpResponseHeaders::Builder builder(net::HttpVersion(1, 1),
+            rangeHeader ? "206 Partial Content" : "200 OK");
+        builder.AddHeader("Content-Type", entry->m_contentType);
+        builder.AddHeader("Content-Length", contentLength);
+        builder.AddHeader("Accept-Ranges", "bytes");
+        if (rangeHeader) {
+            builder.AddHeader("Content-Range", contentRange);
+        }
+        head->headers = builder.Build();
+        head->mime_type = entry->m_contentType;
+        head->content_length = length;
+        mojo::ScopedDataPipeProducerHandle producer;
+        mojo::ScopedDataPipeConsumerHandle consumer;
+        if (mojo::CreateDataPipe(nullptr, producer, consumer) != MOJO_RESULT_OK) {
+            Complete(net::ERR_INSUFFICIENT_RESOURCES);
+            return;
+        }
+        m_client->OnReceiveResponse(std::move(head), std::move(consumer), absl::nullopt);
+        m_bytes = buffer.size();
+        m_producer = std::make_unique<mojo::DataPipeProducer>(std::move(producer));
+        m_producer->Write(std::make_unique<BlobBufferSource>(std::move(buffer)),
+            base::BindOnce([](BlobResponseLoader* self, MojoResult result) {
+                self->Complete(result == MOJO_RESULT_OK ? net::OK : net::ERR_FAILED);
+            }, base::Unretained(this)));
+    }
+
+    void FollowRedirect(const std::vector<std::string>&, const net::HttpRequestHeaders&,
+        const net::HttpRequestHeaders&, const std::optional<GURL>&) override {}
+    void SetPriority(net::RequestPriority, int32_t) override {}
+    // The response comes from local blob storage, never a network connection.
+    void PauseReadingBodyFromNet() override {}
+    void ResumeReadingBodyFromNet() override {}
+
+private:
+    void Complete(int error)
+    {
+        m_producer.reset();
+        network::URLLoaderCompletionStatus status(error);
+        if (error == net::OK) {
+            status.encoded_data_length = m_bytes;
+            status.encoded_body_length = m_bytes;
+            status.decoded_body_length = m_bytes;
+        }
+        m_client->OnComplete(status);
+        delete this;
+    }
+    mojo::Receiver<network::mojom::URLLoader> m_receiver;
+    mojo::Remote<network::mojom::URLLoaderClient> m_client;
+    std::unique_ptr<mojo::DataPipeProducer> m_producer;
+    uint64_t m_bytes = 0;
+};
+
+} // namespace
+
+static void writeBlobToDataPipe(const std::string& uuid, mojo::ScopedDataPipeProducerHandle pipe,
+    network::mojom::blink::DataPipeGetter::ReadCallback callback)
 {
-    if (m_client.is_bound() && m_client.TryGet())
-        m_client->OnCalculatedSize(totalSize, totalSize);
-
-    if (m_client.is_bound() && m_client.TryGet())
-        m_client->OnComplete(0, totalSize);
-
-    if (m_client.is_bound())
-        m_client.Unbind();
+    BlobEntry* entry = BlobEntry::findByUuid(uuid);
+    std::vector<char> buffer;
+    int64_t totalSize = 0;
+    if (!entry || !pipe.is_valid() || entry->read(&buffer, 0, -1, &totalSize) < 0) {
+        std::move(callback).Run(net::ERR_FAILED, 0);
+        return;
+    }
+    std::move(callback).Run(net::OK, buffer.size());
+    auto producer = std::make_unique<mojo::DataPipeProducer>(std::move(pipe));
+    auto* producerPtr = producer.get();
+    producerPtr->Write(std::make_unique<BlobBufferSource>(std::move(buffer)),
+        base::BindOnce([](std::unique_ptr<mojo::DataPipeProducer> producer, MojoResult) { producer.reset(); },
+            std::move(producer)));
 }
 
-void BlobReceiver::ReadAll(::mojo::ScopedDataPipeProducerHandle pipe, ::mojo::PendingRemote<::blink::mojom::blink::BlobReaderClient> client/*, bool isSync*/)
+void BlobReceiver::ReadRange(uint64_t offset, uint64_t length,
+    mojo::ScopedDataPipeProducerHandle pipe,
+    mojo::PendingRemote<blink::mojom::blink::BlobReaderClient> pendingClient)
 {
-    bool isSync = false;
-    m_pipe = std::move(pipe);
-
-    bool needBind = false;
-    if (m_client.is_bound()) {
-        if (client.is_valid() && (client.Pipe().get().value() != m_client.internal_state()->handle().value())) {
-            m_client.Unbind();
-            needBind = true;
-        }
-    } else if (client.is_valid()) {
-        needBind = true;
+    mojo::Remote<blink::mojom::blink::BlobReaderClient> client(std::move(pendingClient));
+    BlobEntry* entry = BlobEntry::findByUuid(m_uuid);
+    std::vector<char> buffer;
+    int64_t totalSize = 0;
+    const bool validRange = offset <= std::numeric_limits<int64_t>::max()
+        && (length == std::numeric_limits<uint64_t>::max() || length <= std::numeric_limits<int64_t>::max());
+    const int64_t bytesRead = entry && validRange
+        ? entry->read(&buffer, offset,
+            length == std::numeric_limits<uint64_t>::max() ? -1 : static_cast<int64_t>(length), &totalSize)
+        : -1;
+    if (bytesRead < 0 || !pipe.is_valid()) {
+        if (client.is_bound())
+            client->OnComplete(net::ERR_FAILED, 0);
+        return;
     }
+    if (client.is_bound())
+        client->OnCalculatedSize(totalSize, bytesRead);
+    auto producer = std::make_unique<mojo::DataPipeProducer>(std::move(pipe));
+    auto* producerPtr = producer.get();
+    producerPtr->Write(std::make_unique<BlobBufferSource>(std::move(buffer)),
+        base::BindOnce([](std::unique_ptr<mojo::DataPipeProducer> producer,
+            mojo::Remote<blink::mojom::blink::BlobReaderClient> client, uint64_t bytesRead, MojoResult result) {
+            producer.reset();
+            if (client.is_bound())
+                client->OnComplete(result == MOJO_RESULT_OK ? net::OK : net::ERR_FAILED,
+                    result == MOJO_RESULT_OK ? bytesRead : 0);
+        }, std::move(producer), std::move(client), static_cast<uint64_t>(bytesRead)));
+}
 
-    if (needBind)
-        m_client.Bind(std::move(client));
+void BlobReceiver::ReadAll(mojo::ScopedDataPipeProducerHandle pipe,
+    mojo::PendingRemote<blink::mojom::blink::BlobReaderClient> client)
+{
+    ReadRange(0, std::numeric_limits<uint64_t>::max(), std::move(pipe), std::move(client));
+}
 
-    uint64_t totalSize = 0;
-
-    BlobEntry* blobEntry = BlobEntry::findByUuid(m_uuid);
-
-    for (size_t i = 0; blobEntry && i < blobEntry->m_elements.size(); ++i) {
-        DataElementImpl* ele = blobEntry->m_elements[i];
-        if (ele->tag == DataElementType::kBytes) {
-            totalSize += ele->u.bytes->length;
-
-            uint32_t numBytes = ele->u.bytes->embeddedData.size();
-            m_pipe->WriteData(ele->u.bytes->embeddedData.data(), &numBytes, 0);
-        } else if (ele->tag == DataElementType::kFile) {
-            std::string contents;
-            if (!base::ReadFileToString(standardizationFilePath(ele->u.file->path), &contents))
-                continue;
-
-            uint32_t numBytes = ele->u.file->length;
-            if (ele->u.file->offset >= contents.size())
-                continue;
-            if (ele->u.file->offset + numBytes >= contents.size())
-                numBytes = contents.size() - ele->u.file->offset;
-            totalSize += numBytes;
-
-            m_pipe->WriteData(contents.c_str(), &numBytes, 0);
-        } else if (ele->tag == DataElementType::kBlob) {
-            DataElementBlobImpl* blob = ele->u.blob;
-            BlobEntry* childBlobEntry = BlobEntry::findByUuid(blob->uuid);
-            if (!childBlobEntry)
-                continue;
-            std::vector<char> buffer;
-            int64_t allSize = 0;
-            childBlobEntry->read(&buffer, blob->offset, blob->length, &allSize);
-
-            uint32_t numBytes = buffer.size();
-            m_pipe->WriteData(buffer.data(), &numBytes, 0);
-            totalSize += numBytes;
-        } else
-            DebugBreak();
-    }
-
-    if (isSync)
-        onReadAllFinish(totalSize);
-    else
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(&BlobReceiver::onReadAllFinish, m_weakFactory.GetWeakPtr(), totalSize));
+void BlobReceiver::Load(mojo::PendingReceiver<network::mojom::blink::URLLoader> loader,
+    const WTF::String& method, const net::HttpRequestHeaders& headers,
+    mojo::PendingRemote<network::mojom::blink::URLLoaderClient> client)
+{
+    auto* response = new BlobResponseLoader(
+        mojo::PendingReceiver<network::mojom::URLLoader>(loader.PassPipe()),
+        mojo::PendingRemote<network::mojom::URLLoaderClient>(client.PassPipe(), 0));
+    response->Start(BlobEntry::findByUuid(m_uuid), method, headers);
 }
 
 void BlobReceiver::ReadSideData(ReadSideDataCallback callback)
 {
-    // 目前只在LocalFrameHostImpl::DownloadURL里用到，所以本函数简化了实现
-    uint64_t totalSize = 0;
-
-    BlobEntry* blobEntry = BlobEntry::findByUuid(m_uuid);
-    CHECK(blobEntry->m_elements.size() == 1);
-
-    for (size_t i = 0; blobEntry && i < blobEntry->m_elements.size(); ++i) {
-        DataElementImpl* ele = blobEntry->m_elements[i];
-        if (ele->tag == DataElementType::kBytes) {
-            totalSize += ele->u.bytes->length;
-
-            uint32_t numBytes = ele->u.bytes->embeddedData.size();
-            ::mojo_base::BigBuffer buf(base::span<const uint8_t>(ele->u.bytes->embeddedData.data(), numBytes));
-            std::optional<::mojo_base::BigBuffer> bufOpt(std::move(buf));
-            std::move(callback).Run(std::move(bufOpt));
-        } else {
-            CHECK(false);
-        }
-    }
+    // Blob contents are not code-cache side data. This registry does not
+    // attach side data; callers retrieve the body with ReadAll/ReadRange.
+    std::move(callback).Run(absl::nullopt);
 }
 
-struct WaitForDataInfo {
-    ::mojo::Remote<blink::mojom::blink::BytesProvider> bytesProvider;
-    DataElementImpl* dataEle = nullptr;
-    bool waitCount = 0;
-
-    void waitForData()
-    {
-        scoped_refptr<base::SequencedTaskRunner> runner = bytesProvider.GetReceiverTaskRunner();
-        runner->PostTask(FROM_HERE, base::BindOnce([](WaitForDataInfo* self) { self->waitForDataImpl(); }, this));
-
-        while (waitCount == 0) {
-            ::Sleep(1);
-        }
-    }
-
-private:
-    void waitForDataImpl()
-    {
-        bytesProvider->RequestAsReply(base::BindOnce(
-            [](WaitForDataInfo* self, const WTF::Vector<uint8_t>& bytes) {
-                self->dataEle->u.bytes->embeddedData.resize(bytes.size());
-                memcpy(self->dataEle->u.bytes->embeddedData.data(), bytes.data(), bytes.size());
-                self->waitCount = 1;
-            },
-            this));
-    }
-};
 
 BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, const std::string& uuid, const std::string& contentType,
     const std::string& contentDisposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements)
 {
-    createAndBindInterface<::blink::mojom::blink::Blob, BlobReceiver>(blob.PassPipe(), uuid);
     m_blobReceiverRefCount++;
     m_uuid = uuid;
     m_contentType = contentType;
@@ -398,10 +480,15 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
                 dataEle->u.bytes->embeddedData.resize(ele->get_bytes()->embedded_data->size());
                 memcpy(dataEle->u.bytes->embeddedData.data(), ele->get_bytes()->embedded_data.value().data(), ele->get_bytes()->embedded_data->size());
             } else if (ele->get_bytes()->data.is_valid()) {
-                WaitForDataInfo* info = new WaitForDataInfo();
-                info->dataEle = dataEle;
-                info->bytesProvider.Bind(std::move(ele->get_bytes()->data));
-                info->waitForData();
+                mojo::Remote<blink::mojom::blink::BytesProvider> provider(std::move(ele->get_bytes()->data));
+                base::RunLoop runLoop(base::RunLoop::Type::kNestableTasksAllowed);
+                provider.set_disconnect_handler(runLoop.QuitClosure());
+                provider->RequestAsReply(base::BindOnce(
+                    [](DataElementImpl* element, base::OnceClosure quit, const WTF::Vector<uint8_t>& bytes) {
+                        element->u.bytes->embeddedData.assign(bytes.begin(), bytes.end());
+                        std::move(quit).Run();
+                    }, dataEle, runLoop.QuitClosure()));
+                runLoop.Run();
             }
             //CHECK(!(ele->get_bytes()->data.is_valid())); // 这个ele->get_bytes()->data暂时没搞明白有啥用
 
@@ -431,6 +518,7 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
             m_elements.push_back(dataEle);
         }
     }
+    new BlobReceiver(blob.PassPipe(), uuid);
 }
 
 BlobEntry::~BlobEntry()
@@ -602,45 +690,62 @@ void BlobRegistryImpl::Register(::mojo::PendingReceiver<::blink::mojom::blink::B
     const WTF::String& content_disposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements,
     ::blink::mojom::blink::BlobRegistry::RegisterCallback callback)
 {
-    content::printFuncName(__FUNCTION__, true, true);
+    if (Register(std::move(blob), uuid, content_type, content_disposition, std::move(elements)))
+        std::move(callback).Run();
 }
 
 struct RegisterFromStreamAsyncCall {
-    ::blink::mojom::blink::BlobRegistry::RegisterFromStreamCallback callback;
-    ::mojo::ScopedDataPipeConsumerHandle data;
+    blink::mojom::blink::BlobRegistry::RegisterFromStreamCallback callback;
+    mojo::ScopedDataPipeConsumerHandle data;
+    mojo::AssociatedRemote<blink::mojom::blink::ProgressClient> progress;
     WTF::String contentType;
-    mojo::SimpleWatcher dataPipeCloseWatcher;
-
-    RegisterFromStreamAsyncCall()
-        : dataPipeCloseWatcher(FROM_HERE, mojo::SimpleWatcher::ArmingPolicy::AUTOMATIC)
-    {
-    }
+    scoped_refptr<blink::RawData> bytes = blink::RawData::Create();
+    mojo::SimpleWatcher watcher { FROM_HERE, mojo::SimpleWatcher::ArmingPolicy::AUTOMATIC };
 
     void start()
     {
-        dataPipeCloseWatcher.Watch(data.get(), MOJO_HANDLE_SIGNAL_PEER_CLOSED, MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED,
-            base::BindRepeating(&RegisterFromStreamAsyncCall::OnPeerClosed, base::Unretained(this)));
+        if (!data.is_valid()) {
+            finish(false);
+            return;
+        }
+        watcher.Watch(data.get(), MOJO_HANDLE_SIGNAL_READABLE | MOJO_HANDLE_SIGNAL_PEER_CLOSED,
+            MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED,
+            base::BindRepeating(&RegisterFromStreamAsyncCall::onReady, base::Unretained(this)));
     }
 
-    void OnPeerClosed(MojoResult result, const mojo::HandleSignalsState& state)
+    void onReady(MojoResult, const mojo::HandleSignalsState&)
     {
-        const char* buffer = nullptr;
-        uint32_t bufferNumBytes = 0;
-        data->BeginReadData((const void**)(&buffer), &bufferNumBytes, MOJO_READ_DATA_FLAG_NONE); // 不需要end，因为这里把数据都读完了
+        for (;;) {
+            const void* buffer = nullptr;
+            uint32_t size = 0;
+            MojoResult result = data->BeginReadData(&buffer, &size, MOJO_BEGIN_READ_DATA_FLAG_NONE);
+            if (result == MOJO_RESULT_SHOULD_WAIT)
+                return;
+            if (result != MOJO_RESULT_OK) {
+                finish(result == MOJO_RESULT_FAILED_PRECONDITION);
+                return;
+            }
+            bytes->MutableData()->Append(static_cast<const char*>(buffer), size);
+            data->EndReadData(size);
+            if (progress.is_bound())
+                progress->OnProgress(size);
+        }
+    }
 
-        std::unique_ptr<blink::BlobData> blobData = base::WrapUnique(new blink::BlobData(blink::BlobData::FileCompositionStatus::kNoUnknownSizeFiles));
-        blobData->SetContentType(contentType);
-        scoped_refptr<blink::RawData> rawData = blink::RawData::Create();
-        rawData->MutableData()->Append(buffer, bufferNumBytes);
-        blobData->AppendData(rawData);
-        scoped_refptr<blink::BlobDataHandle> blobDataHandle = blink::BlobDataHandle::Create(std::move(blobData), bufferNumBytes);
-
-        RegisterFromStreamAsyncCall* self = this;
-        std::move(self->callback).Run(blobDataHandle);
-
-        ThreadCall::callBlinkThreadAsync(FROM_HERE, [self] { // 感觉异步删除比较好一点
-            delete self;
-        });
+    void finish(bool success)
+    {
+        watcher.Cancel();
+        data.reset();
+        scoped_refptr<blink::BlobDataHandle> handle;
+        if (success) {
+            auto blobData = std::make_unique<blink::BlobData>(blink::BlobData::FileCompositionStatus::kNoUnknownSizeFiles);
+            blobData->SetContentType(contentType);
+            const uint64_t size = bytes->MutableData()->size();
+            blobData->AppendData(bytes);
+            handle = blink::BlobDataHandle::Create(std::move(blobData), size);
+        }
+        std::move(callback).Run(handle);
+        base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, this);
     }
 };
 
@@ -653,6 +758,8 @@ void BlobRegistryImpl::RegisterFromStream(const WTF::String& contentType, const 
     asyncCall->callback = std::move(callback);
     asyncCall->data = std::move(data);
     asyncCall->contentType = contentType;
+    if (progressClient.is_valid())
+        asyncCall->progress.Bind(std::move(progressClient));
     asyncCall->start();
 }
 

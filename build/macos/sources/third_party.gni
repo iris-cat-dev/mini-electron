@@ -1238,8 +1238,6 @@ mini_electron_openssl_sources = [
   "//third_party/openssl/openssl/providers/common/securitycheck_default.c",
   "//third_party/openssl/openssl/providers/common/securitycheck_fips.c",
   "//third_party/openssl/openssl/providers/defltprov.c",
-  "//third_party/openssl/openssl/providers/fips/fipsprov.c",
-  "//third_party/openssl/openssl/providers/fips/fips_entry.c",
   "//third_party/openssl/openssl/providers/implementations/asymciphers/rsa_enc.c",
   "//third_party/openssl/openssl/providers/implementations/asymciphers/sm2_enc.c",
   "//third_party/openssl/openssl/providers/implementations/ciphers/ciphercommon.c",
@@ -1975,6 +1973,13 @@ mini_electron_skia_metal_sources =
     skia_shared_mtl_sources
 
 mini_electron_harfbuzz_sources = [
+  "//third_party/harfbuzz-ng/src/src/hb-subset-cff-common.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset-cff1.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset-cff2.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset-input.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset-plan.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset-repacker.cc",
+  "//third_party/harfbuzz-ng/src/src/hb-subset.cc",
   "//third_party/harfbuzz-ng/src/src/harfbuzz.cc",
 ]
 
@@ -2015,6 +2020,16 @@ mini_electron_gin_sources = [
 ]
 
 mini_electron_util_sources = [
+  "//third_party/liburlpattern/constructor_string_parser.cc",
+  "//third_party/liburlpattern/parse.cc",
+  "//third_party/liburlpattern/pattern.cc",
+  "//third_party/liburlpattern/tokenize.cc",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv.c",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv_csp.c",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv_dsp.c",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv_gamma.c",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv_neon.c",
+  "//third_party/libwebp/src/sharpyuv/sharpyuv_sse2.c",
   "//third_party/brotli/common/constants.c",
   "//third_party/brotli/common/context.c",
   "//third_party/brotli/common/dictionary.c",
@@ -2130,10 +2145,6 @@ mini_electron_util_sources = [
   "//third_party/libpng/pngwrite.c",
   "//third_party/libpng/pngwtran.c",
   "//third_party/libpng/pngwutil.c",
-  "//third_party/liburlpattern/url_parse.cc",
-  "//third_party/liburlpattern/url_pattern.cc",
-  "//third_party/liburlpattern/url_tokenize.cc",
-  "//third_party/liburlpattern/url_utils.cc",
   "//third_party/libwebp/src/src/dec/alpha_dec.c",
   "//third_party/libwebp/src/src/dec/buffer_dec.c",
   "//third_party/libwebp/src/src/dec/frame_dec.c",

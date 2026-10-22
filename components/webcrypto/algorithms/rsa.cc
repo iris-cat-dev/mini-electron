@@ -23,7 +23,7 @@
 #include "third_party/openssl/openssl/include/openssl/bn.h"
 #include "third_party/openssl/openssl/include/openssl/evp.h"
 #include "third_party/openssl/openssl/include/openssl/rsa.h"
-#include <windows.h>
+#include <climits>
 
 extern "C" BIGNUM* GetRSA_N(const RSA* rsa);
 extern "C" BIGNUM* GetRSA_E(const RSA* rsa);
@@ -161,64 +161,60 @@ Status CreateWebCryptoRsaPublicKey(bssl::UniquePtr<EVP_PKEY> public_key, const b
 Status ImportRsaPrivateKey(
     const blink::WebCryptoAlgorithm& algorithm, bool extractable, blink::WebCryptoKeyUsageMask usages, const JwkRsaInfo& params, blink::WebCryptoKey* key)
 {
-    OutputDebugStringA("ImportRsaPrivateKey not impl\n");
-    MessageBoxA(0, "ImportRsaPrivateKey not impl", 0, 0);
-    DebugBreak();
-    return Status::OperationError();
-
-    //   bssl::UniquePtr<RSA> rsa(RSA_new());
-    //
-    //   rsa->n = BN_bin2bn(params.n.data(), params.n.size(), nullptr);
-    //   rsa->e = BN_bin2bn(params.e.data(), params.e.size(), nullptr);
-    //   rsa->d = BN_bin2bn(params.d.data(), params.d.size(), nullptr);
-    //   rsa->p = BN_bin2bn(params.p.data(), params.p.size(), nullptr);
-    //   rsa->q = BN_bin2bn(params.q.data(), params.q.size(), nullptr);
-    //   rsa->dmp1 = BN_bin2bn(params.dp.data(), params.dp.size(), nullptr);
-    //   rsa->dmq1 = BN_bin2bn(params.dq.data(), params.dq.size(), nullptr);
-    //   rsa->iqmp = BN_bin2bn(params.qi.data(), params.qi.size(), nullptr);
-    //
-    //   if (!rsa->n || !rsa->e || !rsa->d || !rsa->p || !rsa->q || !rsa->dmp1 ||
-    //       !rsa->dmq1 || !rsa->iqmp) {
-    //     return Status::OperationError();
-    //   }
-    //
-    //   // TODO(eroman): This should be a DataError.
-    //   if (!RSA_check_key(rsa.get()))
-    //     return Status::OperationError();
-    //
-    //   // Create a corresponding EVP_PKEY.
-    //   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-    //   if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get()))
-    //     return Status::OperationError();
-    //
-    //   return CreateWebCryptoRsaPrivateKey(
-    //       std::move(pkey), algorithm.Id(),
-    //       algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    const auto read_number = [](const std::vector<uint8_t>& bytes) {
+        return bssl::UniquePtr<BIGNUM>(bytes.size() > INT_MAX ? nullptr : BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+    };
+    auto n = read_number(params.n);
+    auto e = read_number(params.e);
+    auto d = read_number(params.d);
+    auto p = read_number(params.p);
+    auto q = read_number(params.q);
+    auto dp = read_number(params.dp);
+    auto dq = read_number(params.dq);
+    auto qi = read_number(params.qi);
+    if (!rsa || !n || !e || !d || !p || !q || !dp || !dq || !qi)
+        return Status::OperationError();
+    if (!RSA_set0_key(rsa.get(), n.get(), e.get(), d.get()))
+        return Status::OperationError();
+    n.release();
+    e.release();
+    d.release();
+    if (!RSA_set0_factors(rsa.get(), p.get(), q.get()))
+        return Status::OperationError();
+    p.release();
+    q.release();
+    if (!RSA_set0_crt_params(rsa.get(), dp.get(), dq.get(), qi.get()))
+        return Status::OperationError();
+    dp.release();
+    dq.release();
+    qi.release();
+    if (RSA_check_key(rsa.get()) != 1)
+        return Status::DataError();
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get()))
+        return Status::OperationError();
+    return CreateWebCryptoRsaPrivateKey(
+        std::move(pkey), algorithm.Id(), algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
 }
 
 Status ImportRsaPublicKey(const blink::WebCryptoAlgorithm& algorithm, bool extractable, blink::WebCryptoKeyUsageMask usages, base::span<const uint8_t> n,
     base::span<const uint8_t> e, blink::WebCryptoKey* key)
 {
-    OutputDebugStringA("ImportRsaPublicKey not impl\n");
-    MessageBoxA(0, "ImportRsaPublicKey not impl", 0, 0);
-    DebugBreak();
-    return Status::OperationError();
-    //   bssl::UniquePtr<RSA> rsa(RSA_new());
-    //
-    //   rsa->n = BN_bin2bn(n.data(), n.size(), nullptr);
-    //   rsa->e = BN_bin2bn(e.data(), e.size(), nullptr);
-    //
-    //   if (!rsa->n || !rsa->e)
-    //     return Status::OperationError();
-    //
-    //   // Create a corresponding EVP_PKEY.
-    //   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-    //   if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get()))
-    //     return Status::OperationError();
-    //
-    //   return CreateWebCryptoRsaPublicKey(
-    //       std::move(pkey), algorithm.Id(),
-    //       algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
+    if (n.size() > INT_MAX || e.size() > INT_MAX)
+        return Status::DataError();
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> modulus(BN_bin2bn(n.data(), n.size(), nullptr));
+    bssl::UniquePtr<BIGNUM> exponent(BN_bin2bn(e.data(), e.size(), nullptr));
+    if (!rsa || !modulus || !exponent || !RSA_set0_key(rsa.get(), modulus.get(), exponent.get(), nullptr))
+        return Status::OperationError();
+    modulus.release();
+    exponent.release();
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get()))
+        return Status::OperationError();
+    return CreateWebCryptoRsaPublicKey(
+        std::move(pkey), algorithm.Id(), algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
 }
 
 // Converts a BIGNUM to a big endian byte array.
@@ -346,32 +342,18 @@ Status RsaHashedAlgorithm::ExportKey(blink::WebCryptoKeyFormat format, const bli
 Status RsaHashedAlgorithm::ImportKeyPkcs8(base::span<const uint8_t> key_data, const blink::WebCryptoAlgorithm& algorithm, bool extractable,
     blink::WebCryptoKeyUsageMask usages, blink::WebCryptoKey* key) const
 {
-    OutputDebugStringA("ImportKeyPkcs8 not impl\n");
-    MessageBoxA(0, "ImportKeyPkcs8 not impl", 0, 0);
-    DebugBreak();
-    return Status::OperationError();
-    //   Status status = CheckKeyCreationUsages(all_private_key_usages_, usages);
-    //   if (status.IsError())
-    //     return status;
-    //
-    //   bssl::UniquePtr<EVP_PKEY> private_key;
-    //   status = ImportUnverifiedPkeyFromPkcs8(key_data, EVP_PKEY_RSA, &private_key);
-    //   if (status.IsError())
-    //     return status;
-    //
-    //   // Verify the parameters of the key.
-    //   RSA* rsa = EVP_PKEY_get0_RSA(private_key.get());
-    //   if (!rsa)
-    //     return Status::ErrorUnexpected();
-    //   if (!RSA_check_key(rsa))
-    //     return Status::DataError();
-    //
-    //   // TODO(eroman): Validate the algorithm OID against the webcrypto provided
-    //   // hash. http://crbug.com/389400
-    //
-    //   return CreateWebCryptoRsaPrivateKey(
-    //       std::move(private_key), algorithm.Id(),
-    //       algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
+    Status status = CheckKeyCreationUsages(all_private_key_usages_, usages);
+    if (status.IsError())
+        return status;
+    bssl::UniquePtr<EVP_PKEY> private_key;
+    status = ImportUnverifiedPkeyFromPkcs8(key_data, EVP_PKEY_RSA, &private_key);
+    if (status.IsError())
+        return status;
+    const RSA* rsa = EVP_PKEY_get0_RSA(private_key.get());
+    if (!rsa || RSA_check_key(rsa) != 1)
+        return Status::DataError();
+    return CreateWebCryptoRsaPrivateKey(
+        std::move(private_key), algorithm.Id(), algorithm.RsaHashedImportParams()->GetHash(), extractable, usages, key);
 }
 
 Status RsaHashedAlgorithm::ImportKeySpki(base::span<const uint8_t> key_data, const blink::WebCryptoAlgorithm& algorithm, bool extractable,
@@ -439,50 +421,26 @@ Status RsaHashedAlgorithm::ExportKeySpki(const blink::WebCryptoKey& key, std::ve
 
 Status RsaHashedAlgorithm::ExportKeyJwk(const blink::WebCryptoKey& key, std::vector<uint8_t>* buffer) const
 {
-    OutputDebugStringA("RsaHashedAlgorithm::ExportKeyJwk not impl\n");
-    MessageBoxA(0, "RsaHashedAlgorithm::ExportKeyJwk not impl", 0, 0);
-    DebugBreak();
+    crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
+    const RSA* rsa = EVP_PKEY_get0_RSA(GetEVP_PKEY(key));
+    const char* jwk_algorithm = GetJwkAlgorithm(key.Algorithm().RsaHashedParams()->GetHash().Id());
+    if (!rsa || !jwk_algorithm)
+        return Status::ErrorUnexpected();
+    if (key.GetType() != blink::kWebCryptoKeyTypePublic && key.GetType() != blink::kWebCryptoKeyTypePrivate)
+        return Status::ErrorUnexpectedKeyType();
+    JwkWriter writer(jwk_algorithm, key.Extractable(), key.Usages(), "RSA");
+    writer.SetBytes("n", BIGNUMToVector(RSA_get0_n(rsa)));
+    writer.SetBytes("e", BIGNUMToVector(RSA_get0_e(rsa)));
+    if (key.GetType() == blink::kWebCryptoKeyTypePrivate) {
+        writer.SetBytes("d", BIGNUMToVector(RSA_get0_d(rsa)));
+        writer.SetBytes("p", BIGNUMToVector(RSA_get0_p(rsa)));
+        writer.SetBytes("q", BIGNUMToVector(RSA_get0_q(rsa)));
+        writer.SetBytes("dp", BIGNUMToVector(RSA_get0_dmp1(rsa)));
+        writer.SetBytes("dq", BIGNUMToVector(RSA_get0_dmq1(rsa)));
+        writer.SetBytes("qi", BIGNUMToVector(RSA_get0_iqmp(rsa)));
+    }
+    writer.ToJson(buffer);
     return Status::Success();
-
-    //   crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-    //
-    //   EVP_PKEY* pkey = GetEVP_PKEY(key);
-    //   RSA* rsa = EVP_PKEY_get0_RSA(pkey);
-    //   if (!rsa)
-    //     return Status::ErrorUnexpected();
-    //
-    //   const char* jwk_algorithm =
-    //       GetJwkAlgorithm(key.Algorithm().RsaHashedParams()->GetHash().Id());
-    //   if (!jwk_algorithm)
-    //     return Status::ErrorUnexpected();
-    //
-    //   switch (key.GetType()) {
-    //     case blink::kWebCryptoKeyTypePublic: {
-    //       JwkWriter writer(jwk_algorithm, key.Extractable(), key.Usages(), "RSA");
-    //       writer.SetBytes("n", BIGNUMToVector(RSA_get0_n(rsa)));
-    //       writer.SetBytes("e", BIGNUMToVector(RSA_get0_e(rsa)));
-    //       writer.ToJson(buffer);
-    //       return Status::Success();
-    //     }
-    //     case blink::kWebCryptoKeyTypePrivate: {
-    //       JwkWriter writer(jwk_algorithm, key.Extractable(), key.Usages(), "RSA");
-    //       writer.SetBytes("n", BIGNUMToVector(RSA_get0_n(rsa)));
-    //       writer.SetBytes("e", BIGNUMToVector(RSA_get0_e(rsa)));
-    //       writer.SetBytes("d", BIGNUMToVector(RSA_get0_d(rsa)));
-    //       // Although these are "optional" in the JWA, WebCrypto spec requires them
-    //       // to be emitted.
-    //       writer.SetBytes("p", BIGNUMToVector(RSA_get0_p(rsa)));
-    //       writer.SetBytes("q", BIGNUMToVector(RSA_get0_q(rsa)));
-    //       writer.SetBytes("dp", BIGNUMToVector(RSA_get0_dmp1(rsa)));
-    //       writer.SetBytes("dq", BIGNUMToVector(RSA_get0_dmq1(rsa)));
-    //       writer.SetBytes("qi", BIGNUMToVector(RSA_get0_iqmp(rsa)));
-    //       writer.ToJson(buffer);
-    //       return Status::Success();
-    //     }
-    //
-    //     default:
-    //       return Status::ErrorUnexpected();
-    //   }
 }
 
 // TODO(eroman): Defer import to the crypto thread. http://crbug.com/430763

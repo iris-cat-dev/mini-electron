@@ -7,6 +7,7 @@
 #include "gen/third_party/blink/public/mojom/worker/dedicated_worker_host.mojom-blink.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "base/memory/weak_ptr.h"
+#include <string>
 
 namespace blink {
 class WebDedicatedWorker;
@@ -16,6 +17,8 @@ namespace content {
 
 class DedicatedWorkerHostImpl;
 class DedicatedWorkerHostBrowserInterfaceBroker;
+
+void bindCodeCacheHost(mojo::ScopedMessagePipeHandle pipe);
 
 class WebDedicatedWorkerHostFactoryClientImpl : public blink::WebDedicatedWorkerHostFactoryClient {
 public:

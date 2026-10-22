@@ -106,15 +106,6 @@ void WebSocketChannelCurl::dispose()
     }
 }
 
-// Document* WebSocketChannelCurl::document()
-// {
-//     DCHECK(m_id);
-//     ExecutionContext* context = getExecutionContext();
-//     if (!context)
-//         return nullptr;
-//     DCHECK(context->isDocument());
-//     return toDocument(context);
-// }
 
 void WebSocketChannelCurl::send(const std::string& message, bool,
     base::OnceClosure completionCallback)
@@ -126,19 +117,6 @@ void WebSocketChannelCurl::send(const std::string& message, bool,
         std::move(completionCallback).Run();
 }
 
-// void WebSocketChannelCurl::send(const DOMArrayBuffer& binaryData, unsigned byteOffset, unsigned byteLength)
-// {
-//     //WTF_LOG(Network, "WebSocketChannelCurl %p send() Sending ArrayBuffer %p byteOffset=%u byteLength=%u", this, &binaryData, byteOffset, byteLength);
-//     enqueueRawFrame(WebSocketOneFrame::OpCodeBinary, static_cast<const char*>(binaryData.data()) + byteOffset, byteLength, false);
-//     processOutgoingFrameQueue();
-// }
-//
-// void WebSocketChannelCurl::send(PassRefPtr<BlobDataHandle> blobDataHandle)
-// {
-//     //WTF_LOG(Network, "DocumentWebSocketChannel %p sendBlob(%s, %s, %llu)", this, blobDataHandle->uuid().utf8().data(), blobDataHandle->type().utf8().data(), blobDataHandle->size());
-//     enqueueBlobFrame(WebSocketOneFrame::OpCodeBinary, adoptRef(blobDataHandle.leakRef()));
-//     processOutgoingFrameQueue();
-// }
 
 bool WebSocketChannelCurl::send(const char* data, int length, bool)
 {
@@ -329,44 +307,6 @@ void WebSocketChannelCurl::didFailSocketStream(SocketStreamHandle* handle, const
     handle->disconnect();
 }
 
-// void WebSocketChannelCurl::didReceiveAuthenticationChallenge(SocketStreamHandle*, const AuthenticationChallenge&)
-// {
-// }
-//
-// void WebSocketChannelCurl::didCancelAuthenticationChallenge(SocketStreamHandle*, const AuthenticationChallenge&)
-// {
-// }
-//
-// void WebSocketChannelCurl::didFinishLoadingBlob(DOMArrayBuffer* buffer)
-// {
-//     DCHECK(m_handle);
-//     // The loaded blob is always placed on m_messages[0].
-//     DCHECK(m_outgoingFrameQueue.size() > 0 && m_outgoingFrameQueue.first()->frameType == QueuedFrameTypeBlob);
-//     // We replace it with the loaded blob.
-//     QueuedFrame* frame = m_outgoingFrameQueue.first();
-//     frame->opCode = WebSocketOneFrame::OpCodeBinary;
-//     frame->isFromHook = false;
-//     frame->frameType = QueuedFrameTypeVector;
-//     frame->vectorData.resize(buffer->byteLength());
-//     if (buffer->byteLength())
-//         memcpy(frame->vectorData.data(), buffer->data(), buffer->byteLength());
-//
-//     processOutgoingFrameQueue();
-//     m_blobLoader = nullptr;
-// }
-//
-// void WebSocketChannelCurl::didFailLoadingBlob(FileError::ErrorCode errorCode)
-// {
-//     if (errorCode == FileError::kAbortErr) {
-//         m_blobLoader = nullptr;
-//         // The error is caused by cancel().
-//         return;
-//     }
-//     // FIXME: Generate human-friendly reason message.
-//     failAsError("Failed to load Blob: error code = " + String::number(errorCode));
-//     // |this| can be deleted here.
-//     m_blobLoader = nullptr;
-// }
 
 bool WebSocketChannelCurl::appendToBuffer(const char* data, size_t len)
 {
@@ -727,16 +667,6 @@ void WebSocketChannelCurl::enqueueRawFrame(WebSocketOneFrame::OpCode opCode, con
     m_outgoingFrameQueue.push_back(frame);
 }
 
-// void WebSocketChannelCurl::enqueueBlobFrame(WebSocketOneFrame::OpCode opCode, PassRefPtr<BlobDataHandle> blob)
-// {
-//     DCHECK(m_outgoingFrameQueueStatus == OutgoingFrameQueueOpen);
-//     QueuedFrame* frame = (new QueuedFrame());
-//     frame->opCode = opCode;
-//     frame->isFromHook = false;
-//     frame->frameType = QueuedFrameTypeBlob;
-//     frame->blobData = blob;
-//     m_outgoingFrameQueue.append(frame);
-// }
 
 void WebSocketChannelCurl::processOutgoingFrameQueue()
 {
@@ -763,35 +693,6 @@ void WebSocketChannelCurl::processOutgoingFrameQueue()
             if (!frame->completionCallback.is_null())
                 std::move(frame->completionCallback).Run();
             break;
-
-        case QueuedFrameTypeBlob: {
-            //             switch (m_blobLoaderStatus) {
-            //             case BlobLoaderNotStarted:
-            // //                 ref(); // Will be derefed after didFinishLoading() or didFail().
-            // //                 DCHECK(!m_blobLoader);
-            // //                 m_blobLoader = new BlobLoader(frame->blobData, this);
-            // //                 m_blobLoaderStatus = BlobLoaderStarted;
-            // //                 m_outgoingFrameQueue.prepend(frame.release());
-            //                 DebugBreak();
-            //                 return;
-            //
-            //             case BlobLoaderStarted:
-            //             case BlobLoaderFailed:
-            //                 m_outgoingFrameQueue.prepend(frame.release());
-            //                 return;
-            //
-            //             case BlobLoaderFinished: {
-            //                 DOMArrayBuffer* result = m_blobLoader->arrayBufferResult();
-            //                 m_blobLoaderStatus = BlobLoaderNotStarted;
-            //                 if (!sendFrame(frame->opCode, static_cast<const char*>(result->data()), result->byteLength(), frame->isFromHook))
-            //                     fail("Failed to send WebSocket frame.", ErrorMessageLevel, m_sourceURLAtConstruction, m_lineNumberAtConstruction);
-            //                 m_blobLoader = nullptr;
-            //                 break;
-            //             }
-            //             }
-            DebugBreak();
-            break;
-        }
 
         default:
             CHECK(false);
@@ -857,11 +758,6 @@ bool WebSocketChannelCurl::sendFrame(WebSocketOneFrame::OpCode opCode, const cha
     return false;
 }
 
-blink::Document* WebSocketChannelCurl::document()
-{
-    DebugBreak();
-    return nullptr;
-}
 
 //-----
 bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protocol)
@@ -923,14 +819,20 @@ bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protoco
                 const std::string* reason = event.FindString("reason");
                 bool clean = event.FindBool("clean").value_or(false);
                 channel->m_brokerSocketId = 0;
-                channel->m_client->DidStartClosingHandshake();
-                channel->m_client->DidClose(clean
-                        ? blink::WebSocketChannelClient::kClosingHandshakeComplete
-                        : blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
-                    code, reason ? WTF::String::FromUTF8(*reason) : WTF::String());
+                if (clean)
+                    channel->m_client->DidStartClosingHandshake();
+                if (channel->m_client)
+                    channel->m_client->DidClose(clean
+                            ? blink::WebSocketChannelClient::kClosingHandshakeComplete
+                            : blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
+                        code, reason ? WTF::String::FromUTF8(*reason) : WTF::String());
             } else if (*type == "error") {
                 channel->m_brokerSocketId = 0;
                 channel->m_client->DidError();
+                if (channel->m_client)
+                    channel->m_client->DidClose(
+                        blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
+                        CloseEventCodeAbnormalClosure, WTF::String());
             }
         });
     return m_brokerSocketId != 0;
@@ -973,16 +875,16 @@ void WebSocketChannelCurl::Send(
     scoped_refptr<blink::BlobDataHandle> blob_data)
 {
     if (!m_brokerSocketId || !blob_data) {
-        if (m_client)
-            m_client->DidError();
+        Fail("Cannot send WebSocket Blob without an active connection.",
+            blink::mojom::ConsoleMessageLevel::kError, nullptr);
         return;
     }
     auto loaded = blink::SyncedFileReaderAccumulator::Load(
         std::move(blob_data),
         base::SingleThreadTaskRunner::GetCurrentDefault());
     if (loaded.first != blink::FileErrorCode::kOK) {
-        if (m_client)
-            m_client->DidError();
+        Fail("Failed to read WebSocket Blob.",
+            blink::mojom::ConsoleMessageLevel::kError, nullptr);
         return;
     }
     blink::ArrayBufferContents contents =
@@ -1004,18 +906,28 @@ void WebSocketChannelCurl::Close(int code, const String& reason)
 }
 
 void WebSocketChannelCurl::Fail(const String& reason,
-    blink::mojom::ConsoleMessageLevel,
-    std::unique_ptr<blink::SourceLocation>)
+    blink::mojom::ConsoleMessageLevel level,
+    std::unique_ptr<blink::SourceLocation> location)
 {
+    if (m_executionContext) {
+        m_executionContext->AddConsoleMessage(
+            blink::MakeGarbageCollected<blink::ConsoleMessage>(
+                blink::mojom::blink::ConsoleMessageSource::kNetwork,
+                level, reason,
+                location ? std::move(location) : blink::CaptureSourceLocation()));
+    }
     if (m_brokerSocketId) {
-        std::string reason_string = reason.Utf8();
         content::CloseRendererWebSocket(m_brokerSocketId,
-            CloseEventCodeAbnormalClosure, reason_string);
+            CloseEventCodeGoingAway, "WebSocket connection failed");
         content::ForgetRendererWebSocket(m_brokerSocketId);
         m_brokerSocketId = 0;
     }
     if (m_client)
         m_client->DidError();
+    if (m_client)
+        m_client->DidClose(
+            blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
+            CloseEventCodeAbnormalClosure, WTF::String());
 }
 
 void WebSocketChannelCurl::Disconnect()
@@ -1049,15 +961,6 @@ void WebSocketChannelCurl::RemoveBackpressure()
 {
 }
 
-void WebSocketChannelCurl::didReceiveAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
-
-void WebSocketChannelCurl::didCancelAuthenticationChallenge(SocketStreamHandle*, const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
 
 void WebSocketChannelCurl::ref()
 {
@@ -1080,6 +983,7 @@ void WebSocketChannelCurl::deref()
 void WebSocketChannelCurl::Trace(blink::Visitor* visitor) const
 {
     visitor->Trace(m_client);
+    visitor->Trace(m_executionContext);
     blink::WebSocketChannel::Trace(visitor);
 }
 

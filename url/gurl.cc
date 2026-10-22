@@ -515,10 +515,8 @@ void GURL::Swap(GURL* other)
 
 size_t GURL::EstimateMemoryUsage() const
 {
-    *(int*)1 = 1;
-    return 0;
-//     return base::trace_event::EstimateMemoryUsage(spec_) + base::trace_event::EstimateMemoryUsage(inner_url_)
-//         + (parsed_.inner_parsed() ? sizeof(url::Parsed) : 0);
+    return base::trace_event::EstimateMemoryUsage(spec_) + base::trace_event::EstimateMemoryUsage(inner_url_)
+        + (parsed_.inner_parsed() ? sizeof(url::Parsed) : 0);
 }
 
 bool GURL::IsAboutUrl(std::string_view allowed_path) const

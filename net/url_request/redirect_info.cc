@@ -59,41 +59,29 @@ RedirectInfo RedirectInfo::ComputeRedirectInfo(const std::string& original_metho
     int http_status_code, const GURL& new_location, const std::optional<std::string>& referrer_policy_header, bool insecure_scheme_was_upgraded,
     bool copy_fragment, bool is_signed_exchange_fallback_redirect)
 {
-    *(int*)1 = 1;
     RedirectInfo redirect_info;
 
-//     redirect_info.status_code = http_status_code;
-// 
-//     // The request method may change, depending on the status code.
-//     redirect_info.new_method = ComputeMethodForRedirect(original_method, http_status_code);
-// 
-//     // Move the reference fragment of the old location to the new one if the
-//     // new one has none. This duplicates mozilla's behavior.
-//     if (original_url.is_valid() && original_url.has_ref() && !new_location.has_ref() && copy_fragment) {
-//         GURL::Replacements replacements;
-//         // Reference the |ref| directly out of the original URL to avoid a
-//         // malloc.
-//         replacements.SetRefStr(original_url.ref_piece());
-//         redirect_info.new_url = new_location.ReplaceComponents(replacements);
-//     } else {
-//         redirect_info.new_url = new_location;
-//     }
-// 
-//     redirect_info.insecure_scheme_was_upgraded = insecure_scheme_was_upgraded;
-//     redirect_info.is_signed_exchange_fallback_redirect = is_signed_exchange_fallback_redirect;
-// 
-//     // Update the first-party URL if appropriate.
-//     if (original_first_party_url_policy == FirstPartyURLPolicy::UPDATE_URL_ON_REDIRECT) {
-//         redirect_info.new_site_for_cookies = SiteForCookies::FromUrl(redirect_info.new_url);
-//     } else {
-//         redirect_info.new_site_for_cookies = original_site_for_cookies;
-//     }
-// 
-//     redirect_info.new_referrer_policy = ProcessReferrerPolicyHeaderOnRedirect(original_referrer_policy, referrer_policy_header);
-// 
-//     // Alter the referrer if redirecting cross-origin (especially HTTP->HTTPS).
-//     redirect_info.new_referrer
-//         = URLRequestJob::ComputeReferrerForPolicy(redirect_info.new_referrer_policy, GURL(original_referrer), redirect_info.new_url).spec();
+    redirect_info.status_code = http_status_code;
+    redirect_info.new_method = ComputeMethodForRedirect(original_method, http_status_code);
+
+    // Inherit the original fragment only if the target has no fragment.
+    if (original_url.is_valid() && original_url.has_ref() && !new_location.has_ref() && copy_fragment) {
+        GURL::Replacements replacements;
+        replacements.SetRefStr(original_url.ref_piece());
+        redirect_info.new_url = new_location.ReplaceComponents(replacements);
+    } else {
+        redirect_info.new_url = new_location;
+    }
+    redirect_info.insecure_scheme_was_upgraded = insecure_scheme_was_upgraded;
+    redirect_info.is_signed_exchange_fallback_redirect = is_signed_exchange_fallback_redirect;
+    if (original_first_party_url_policy == FirstPartyURLPolicy::UPDATE_URL_ON_REDIRECT) {
+        redirect_info.new_site_for_cookies = SiteForCookies::FromUrl(redirect_info.new_url);
+    } else {
+        redirect_info.new_site_for_cookies = original_site_for_cookies;
+    }
+    redirect_info.new_referrer_policy = ProcessReferrerPolicyHeaderOnRedirect(original_referrer_policy, referrer_policy_header);
+    redirect_info.new_referrer
+        = URLRequestJob::ComputeReferrerForPolicy(redirect_info.new_referrer_policy, GURL(original_referrer), redirect_info.new_url).spec();
 
     return redirect_info;
 }

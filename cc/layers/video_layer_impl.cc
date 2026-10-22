@@ -72,105 +72,84 @@ void VideoLayerImpl::DidBecomeActive()
 
 bool VideoLayerImpl::WillDraw(DrawMode draw_mode, viz::ClientResourceProvider* resource_provider) NO_THREAD_SAFETY_ANALYSIS
 {
-    *(int*)1 = 1;
-//     if (draw_mode == DRAW_MODE_RESOURCELESS_SOFTWARE)
-//         return false;
-// 
-//     if (!LayerImpl::WillDraw(draw_mode, resource_provider))
-//         return false;
-// 
-//     // Explicitly acquire and release the provider mutex so it can be held from
-//     // WillDraw to DidDraw. Since the compositor thread is in the middle of
-//     // drawing, the layer will not be destroyed before DidDraw is called.
-//     // Therefore, the only thing that will prevent this lock from being released
-//     // is the GPU process locking it. As the GPU process can't cause the
-//     // destruction of the provider (calling StopUsingProvider), holding this
-//     // lock should not cause a deadlock.
-//     frame_ = provider_client_impl_->AcquireLockAndCurrentFrame();
-// 
-//     if (!frame_.get()) {
-//         // Drop any resources used by the updater if there is no frame to display.
-//         updater_ = nullptr;
-// 
-//         // NO_THREAD_SAFETY_ANALYSIS: Releasing the lock in some return paths only.
-//         provider_client_impl_->ReleaseLock();
-//         return false;
-//     }
-// 
-//     if (!updater_) {
-//         const LayerTreeSettings& settings = layer_tree_impl()->settings();
-//         updater_ = std::make_unique<media::VideoResourceUpdater>(layer_tree_impl()->context_provider(), layer_tree_impl()->layer_tree_frame_sink(),
-//             layer_tree_impl()->resource_provider(), layer_tree_impl()->layer_tree_frame_sink()->shared_image_interface(), settings.use_stream_video_draw_quad,
-//             settings.use_gpu_memory_buffer_resources, layer_tree_impl()->max_texture_size());
-//     }
-//     updater_->ObtainFrameResource(frame_);
+    if (draw_mode == DRAW_MODE_RESOURCELESS_SOFTWARE)
+        return false;
+
+    if (!LayerImpl::WillDraw(draw_mode, resource_provider))
+        return false;
+
+    // Keep the provider locked until DidDraw returns its current frame.
+    frame_ = provider_client_impl_->AcquireLockAndCurrentFrame();
+    if (!frame_) {
+        updater_ = nullptr;
+        provider_client_impl_->ReleaseLock();
+        return false;
+    }
+
+    if (!updater_) {
+        const LayerTreeSettings& settings = layer_tree_impl()->settings();
+        updater_ = std::make_unique<media::VideoResourceUpdater>(layer_tree_impl()->context_provider(), layer_tree_impl()->layer_tree_frame_sink(),
+            layer_tree_impl()->resource_provider(), layer_tree_impl()->layer_tree_frame_sink()->shared_image_interface(), settings.use_stream_video_draw_quad,
+            settings.use_gpu_memory_buffer_resources, layer_tree_impl()->max_texture_size());
+    }
+    updater_->ObtainFrameResource(frame_);
     return true;
 }
 
 void VideoLayerImpl::AppendQuads(viz::CompositorRenderPass* render_pass, AppendQuadsData* append_quads_data)
 {
-    *(int*)1 = 1;
-//     DCHECK(frame_);
-// 
-//     gfx::Transform transform = DrawTransform();
-// 
-//     // bounds() is in post-rotation space so quad rect in content space must be
-//     // in pre-rotation space
-//     gfx::Size rotated_size = bounds();
-// 
-//     // Prefer the frame level transform if set.
-//     auto media_transform = frame_->metadata().transformation.value_or(video_transform_);
-//     switch (media_transform.rotation) {
-//     case media::VIDEO_ROTATION_90:
-//         rotated_size = gfx::Size(rotated_size.height(), rotated_size.width());
-//         transform *= gfx::Transform::Make90degRotation();
-//         transform.Translate(0.0, -rotated_size.height());
-//         break;
-//     case media::VIDEO_ROTATION_180:
-//         transform *= gfx::Transform::Make180degRotation();
-//         transform.Translate(-rotated_size.width(), -rotated_size.height());
-//         break;
-//     case media::VIDEO_ROTATION_270:
-//         rotated_size = gfx::Size(rotated_size.height(), rotated_size.width());
-//         transform *= gfx::Transform::Make270degRotation();
-//         transform.Translate(-rotated_size.width(), 0);
-//         break;
-//     case media::VIDEO_ROTATION_0:
-//         break;
-//     }
-// 
-//     if (media_transform.mirrored) {
-//         transform.RotateAboutYAxis(180.0);
-//         transform.Translate(-rotated_size.width(), 0);
-//     }
-// 
-//     gfx::Rect quad_rect(rotated_size);
-//     Occlusion occlusion_in_video_space = draw_properties().occlusion_in_content_space.GetOcclusionWithGivenDrawTransform(transform);
-//     gfx::Rect visible_quad_rect = occlusion_in_video_space.GetUnoccludedContentRect(quad_rect);
-//     if (visible_quad_rect.IsEmpty())
-//         return;
-// 
-//     std::optional<gfx::Rect> clip_rect_opt;
-//     if (is_clipped()) {
-//         clip_rect_opt = clip_rect();
-//     }
-//     updater_->AppendQuad(render_pass, frame_, transform, quad_rect, visible_quad_rect, draw_properties().mask_filter_info, clip_rect_opt, contents_opaque(),
-//         draw_opacity(), GetSortingContextId());
+    DCHECK(frame_);
+
+    gfx::Transform transform = DrawTransform();
+    // Layer bounds are post-rotation; the quad is in pre-rotation space.
+    gfx::Size rotated_size = bounds();
+    auto media_transform = frame_->metadata().transformation.value_or(video_transform_);
+    switch (media_transform.rotation) {
+    case media::VIDEO_ROTATION_90:
+        rotated_size = gfx::Size(rotated_size.height(), rotated_size.width());
+        transform *= gfx::Transform::Make90degRotation();
+        transform.Translate(0.0, -rotated_size.height());
+        break;
+    case media::VIDEO_ROTATION_180:
+        transform *= gfx::Transform::Make180degRotation();
+        transform.Translate(-rotated_size.width(), -rotated_size.height());
+        break;
+    case media::VIDEO_ROTATION_270:
+        rotated_size = gfx::Size(rotated_size.height(), rotated_size.width());
+        transform *= gfx::Transform::Make270degRotation();
+        transform.Translate(-rotated_size.width(), 0);
+        break;
+    case media::VIDEO_ROTATION_0:
+        break;
+    }
+
+    if (media_transform.mirrored) {
+        transform.RotateAboutYAxis(180.0);
+        transform.Translate(-rotated_size.width(), 0);
+    }
+
+    gfx::Rect quad_rect(rotated_size);
+    Occlusion occlusion_in_video_space = draw_properties().occlusion_in_content_space.GetOcclusionWithGivenDrawTransform(transform);
+    gfx::Rect visible_quad_rect = occlusion_in_video_space.GetUnoccludedContentRect(quad_rect);
+    if (visible_quad_rect.IsEmpty())
+        return;
+
+    std::optional<gfx::Rect> clip_rect_opt;
+    if (is_clipped())
+        clip_rect_opt = clip_rect();
+    updater_->AppendQuad(render_pass, frame_, transform, quad_rect, visible_quad_rect, draw_properties().mask_filter_info, clip_rect_opt, contents_opaque(),
+        draw_opacity(), GetSortingContextId());
 }
 
 void VideoLayerImpl::DidDraw(viz::ClientResourceProvider* resource_provider)
 {
-    *(int*)1 = 1;
-//     provider_client_impl_->AssertLocked();
-//     LayerImpl::DidDraw(resource_provider);
-// 
-//     DCHECK(frame_.get());
-// 
-//     updater_->ReleaseFrameResource();
-//     provider_client_impl_->PutCurrentFrame();
-//     frame_ = nullptr;
-// 
-//     provider_client_impl_->ReleaseLock();
+    provider_client_impl_->AssertLocked();
+    LayerImpl::DidDraw(resource_provider);
+    DCHECK(frame_);
+    updater_->ReleaseFrameResource();
+    provider_client_impl_->PutCurrentFrame();
+    frame_ = nullptr;
+    provider_client_impl_->ReleaseLock();
 }
 
 SimpleEnclosedRegion VideoLayerImpl::VisibleOpaqueRegion() const

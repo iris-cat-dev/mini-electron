@@ -367,14 +367,12 @@ void Isolate::SetEmbeddedBlob(const uint8_t* code, uint32_t code_size, const uin
 //     OutputDebugStringA(output);
 
     if (d.EmbeddedBlobDataHash() != d.CreateEmbeddedBlobDataHash()) {
-       *(int*)1 = 1;
         FATAL("Embedded blob data section checksum verification failed. This "
               "indicates that the embedded blob has been modified since compilation "
               "time.");
     }
     if (v8_flags.text_is_readable) {
         if (d.EmbeddedBlobCodeHash() != d.CreateEmbeddedBlobCodeHash()) {
-            *(int*)1 = 1;
             FATAL("Embedded blob code section checksum verification failed. This "
                   "indicates that the embedded blob has been modified since "
                   "compilation time. A common cause is a debugging breakpoint set "

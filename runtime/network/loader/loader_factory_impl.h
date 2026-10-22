@@ -123,12 +123,15 @@ public:
         m_terminateSyncLoadEvent = evt;
     }
 
+    void SetIsOfflineMode(bool isOfflineMode) { m_isOfflineMode = isOfflineMode; }
+
 private:
     base::WaitableEvent* m_terminateSyncLoadEvent = nullptr;
     int64_t m_engineViewId = 0;
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    bool m_isOfflineMode = false;
 };
 
 class BodyLoaderClient : public blink::URLLoaderClient {

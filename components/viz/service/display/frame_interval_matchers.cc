@@ -13,13 +13,6 @@
 #include "components/viz/common/quads/frame_interval_inputs.h"
 #include "media/filters/video_cadence_estimator.h"
 
-namespace media {
-bool HasSimpleCadence(base::TimeDelta render_interval, base::TimeDelta frame_duration, base::TimeDelta minimum_time_until_max_drift)
-{
-    *(int*)1 = 1;
-    return false;
-}
-}
 
 namespace viz {
 

@@ -21,14 +21,13 @@ AvailabilityCallbackWrapper::AvailabilityCallbackWrapper(base::RepeatingClosure 
 
 void AvailabilityCallbackWrapper::Run(RemotePlayback* remote_playback, bool new_availability)
 {
-    *(int*)1 = 1;
-//     if (internal_cb_) {
-//         DCHECK(!bindings_cb_);
-//         internal_cb_.Run();
-//         return;
-//     }
-// 
-//     bindings_cb_->InvokeAndReportException(remote_playback, new_availability);
+    if (internal_cb_) {
+        DCHECK(!bindings_cb_);
+        internal_cb_.Run();
+        return;
+    }
+
+    bindings_cb_->InvokeAndReportException(remote_playback, new_availability);
 }
 
 void AvailabilityCallbackWrapper::Trace(Visitor* visitor) const

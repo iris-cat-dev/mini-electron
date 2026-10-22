@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/trust_tokens.mojom-params-data.h"
 namespace network {
@@ -765,6 +768,7 @@ TrustTokenQueryAnswerer_HasRedemptionRecord_ResponseParams_Data::TrustTokenQuery
 } // namespace mojom
 } // namespace network
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -775,7 +779,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenProtocolVersion>::WriteIntoTr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -786,7 +792,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenOperationStatus>::WriteIntoTr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -797,7 +805,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenOperationType>::WriteIntoTrac
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -808,7 +818,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenRefreshPolicy>::WriteIntoTrac
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -819,7 +831,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenSignRequestData>::WriteIntoTr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -830,7 +844,9 @@ void TraceFormatTraits<::network::mojom::DeleteStoredTrustTokensStatus>::WriteIn
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -841,7 +857,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentResult_Os>::Writ
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -852,7 +870,9 @@ void TraceFormatTraits<::network::mojom::TrustTokenKeyCommitmentResult_Unavailab
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -863,3 +883,4 @@ void TraceFormatTraits<::network::mojom::FulfillTrustTokenIssuanceAnswer_Status>
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

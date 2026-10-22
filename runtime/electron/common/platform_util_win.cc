@@ -31,170 +31,11 @@
 #include <gdiplus.h>
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/image/image.h"  // 用于 gfx::Image::CreateFrom1xPNGBytes
+#include "ui/gfx/icon_util.h"
 
 namespace {
 
 
-// Required COM implementation of IFileOperationProgressSink so we can
-// precheck files before deletion to make sure they can be move to the
-// Recycle Bin.
-class DeleteFileProgressSink : public IFileOperationProgressSink {
-public:
-    DeleteFileProgressSink();
-
-private:
-    ULONG STDMETHODCALLTYPE AddRef(void);
-    ULONG STDMETHODCALLTYPE Release(void);
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID* ppvObj);
-    HRESULT STDMETHODCALLTYPE StartOperations(void);
-    HRESULT STDMETHODCALLTYPE FinishOperations(HRESULT);
-    HRESULT STDMETHODCALLTYPE PreRenameItem(DWORD, IShellItem*, LPCWSTR);
-    HRESULT STDMETHODCALLTYPE PostRenameItem(DWORD, IShellItem*, LPCWSTR, HRESULT, IShellItem*);
-    HRESULT STDMETHODCALLTYPE PreMoveItem(DWORD, IShellItem*, IShellItem*, LPCWSTR);
-    HRESULT STDMETHODCALLTYPE PostMoveItem(DWORD, IShellItem*, IShellItem*, LPCWSTR, HRESULT, IShellItem*);
-    HRESULT STDMETHODCALLTYPE PreCopyItem(DWORD, IShellItem*, IShellItem*, LPCWSTR);
-    HRESULT STDMETHODCALLTYPE PostCopyItem(DWORD, IShellItem*, IShellItem*, LPCWSTR, HRESULT, IShellItem*);
-    HRESULT STDMETHODCALLTYPE PreDeleteItem(DWORD, IShellItem*);
-    HRESULT STDMETHODCALLTYPE PostDeleteItem(DWORD, IShellItem*, HRESULT, IShellItem*);
-    HRESULT STDMETHODCALLTYPE PreNewItem(DWORD, IShellItem*, LPCWSTR);
-    HRESULT STDMETHODCALLTYPE PostNewItem(DWORD, IShellItem*, LPCWSTR, LPCWSTR, DWORD, HRESULT, IShellItem*);
-    HRESULT STDMETHODCALLTYPE UpdateProgress(UINT, UINT);
-    HRESULT STDMETHODCALLTYPE ResetTimer(void);
-    HRESULT STDMETHODCALLTYPE PauseTimer(void);
-    HRESULT STDMETHODCALLTYPE ResumeTimer(void);
-
-    ULONG m_cRef;
-};
-
-DeleteFileProgressSink::DeleteFileProgressSink()
-{
-    m_cRef = 0;
-}
-
-HRESULT DeleteFileProgressSink::PreDeleteItem(DWORD dwFlags, IShellItem*)
-{
-    if (!(dwFlags & TSF_DELETE_RECYCLE_IF_POSSIBLE)) {
-        // TSF_DELETE_RECYCLE_IF_POSSIBLE will not be set for items that cannot be
-        // recycled.  In this case, we abort the delete operation.  This bubbles
-        // up and stops the Delete in IFileOperation.
-        return E_ABORT;
-    }
-    // Returns S_OK if successful, or an error value otherwise. In the case of an
-    // error value, the delete operation and all subsequent operations pending
-    // from the call to IFileOperation are canceled.
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::QueryInterface(REFIID riid, LPVOID* ppvObj)
-{
-    // Always set out parameter to NULL, validating it first.
-    if (!ppvObj)
-        return E_INVALIDARG;
-    *ppvObj = nullptr;
-    DebugBreak();
-
-    //     if (riid == IID_IUnknown || riid == IID_IFileOperationProgressSink) {
-    //         // Increment the reference count and return the pointer.
-    //         *ppvObj = reinterpret_cast<IUnknown*>(this);
-    //         AddRef();
-    //         return NOERROR;
-    //     }
-    return E_NOINTERFACE;
-}
-
-ULONG DeleteFileProgressSink::AddRef()
-{
-    //InterlockedIncrement(&m_cRef);
-    DebugBreak();
-    return m_cRef;
-}
-
-ULONG DeleteFileProgressSink::Release()
-{
-    // Decrement the object's internal counter.
-    //     ULONG ulRefCount = InterlockedDecrement(&m_cRef);
-    //     if (0 == m_cRef) {
-    //         delete this;
-    //     }
-    //    return ulRefCount;
-    DebugBreak();
-    return 0;
-}
-
-HRESULT DeleteFileProgressSink::StartOperations()
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::FinishOperations(HRESULT)
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::PreRenameItem(DWORD, IShellItem*, LPCWSTR)
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::PostRenameItem(DWORD, IShellItem*, LPCWSTR, HRESULT, IShellItem*)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PreMoveItem(DWORD, IShellItem*, IShellItem*, LPCWSTR)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PostMoveItem(DWORD, IShellItem*, IShellItem*, LPCWSTR, HRESULT, IShellItem*)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PreCopyItem(DWORD, IShellItem*, IShellItem*, LPCWSTR)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PostCopyItem(DWORD, IShellItem*, IShellItem*, LPCWSTR, HRESULT, IShellItem*)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PostDeleteItem(DWORD, IShellItem*, HRESULT, IShellItem*)
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::PreNewItem(DWORD dwFlags, IShellItem*, LPCWSTR)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::PostNewItem(DWORD, IShellItem*, LPCWSTR, LPCWSTR, DWORD, HRESULT, IShellItem*)
-{
-    return E_NOTIMPL;
-}
-
-HRESULT DeleteFileProgressSink::UpdateProgress(UINT, UINT)
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::ResetTimer()
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::PauseTimer()
-{
-    return S_OK;
-}
-
-HRESULT DeleteFileProgressSink::ResumeTimer()
-{
-    return S_OK;
-}
 
 std::string FormatWindowsShellError(const std::string& action, DWORD error_code)
 {
@@ -393,64 +234,11 @@ void moveToCenter(HWND hWnd)
     ::MoveWindow(hWnd, x, y, width, height, TRUE);
 }
 
-#define FOFX_ADDUNDORECORD 0x20000000
-#define FOFX_RECYCLEONDELETE 0x00080000
 
 bool moveItemToTrash(const base::FilePath& path)
 {
-    DebugBreak();
+    // Recycling is not supported by this port; the shell caller reports failure.
     return false;
-    //     base::win::ScopedCOMInitializer com_initializer;
-    //     if (!com_initializer.succeeded())
-    //         return false;
-    //
-    //     SkTScopedComPtr<IFileOperation> pfo;
-    //     //     if (FAILED(pfo.CreateInstance(CLSID_FileOperation)))
-    //     //         return false;
-    //
-    //     // Elevation prompt enabled for UAC protected files.  This overrides the
-    //     // SILENT, NO_UI and NOERRORUI flags.
-    //
-    //     if (base::win::GetVersion() >= base::win::VERSION_WIN8) {
-    //         // Windows 8 introduces the flag RECYCLEONDELETE and deprecates the
-    //         // ALLOWUNDO in favor of ADDUNDORECORD.
-    //         if (FAILED(pfo->SetOperationFlags(FOF_NO_UI | FOFX_ADDUNDORECORD | FOF_NOERRORUI | FOF_SILENT | FOFX_SHOWELEVATIONPROMPT | FOFX_RECYCLEONDELETE)))
-    //             return false;
-    //     } else {
-    //         // For Windows 7 and Vista, RecycleOnDelete is the default behavior.
-    //         if (FAILED(pfo->SetOperationFlags(FOF_NO_UI | FOF_ALLOWUNDO | FOF_NOERRORUI | FOF_SILENT | FOFX_SHOWELEVATIONPROMPT)))
-    //             return false;
-    //     }
-    //
-    //     // Create an IShellItem from the supplied source path.
-    //     SkTScopedComPtr<IShellItem> delete_item;
-    //     //     if (FAILED(SHCreateItemFromParsingName(path.value().c_str(), NULL, IID_PPV_ARGS(delete_item.Receive()))))
-    //     //         return false;
-    //
-    //     // https://stackoverflow.com/questions/20885556/replacement-for-shcreateitemfromparsingname-on-windows-xp
-    //     // http://blog.csdn.net/infoworld/article/details/54574953
-    //     IFileDialog* pfd = nullptr;
-    //     LPITEMIDLIST pidl = nullptr;
-    //     HRESULT hresult = ::SHParseDisplayName(path.value().c_str(), 0, &pidl, SFGAO_FOLDER, 0);
-    //     if (SUCCEEDED(hresult)) {
-    //         IShellFolder* psf = nullptr;
-    //         hresult = ::SHGetDesktopFolder(&psf);
-    //         if (SUCCEEDED(hresult)) {
-    //             hresult = psf->BindToObject(pidl, 0, IID_IShellFolder, (void**)delete_item.Receive());
-    //             if (SUCCEEDED(hresult)) {
-    //                 pfd->SetFolder(delete_item.get());
-    //             }
-    //         }
-    //     }
-    //
-    //     SkTScopedComPtr<IFileOperationProgressSink> delete_sink(new DeleteFileProgressSink);
-    //     if (!delete_sink)
-    //         return false;
-    //
-    //     // Processes the queued command DeleteItem. This will trigger
-    //     // the DeleteFileProgressSink to check for Recycle Bin.
-    //     bool b = SUCCEEDED(pfo->DeleteItem(delete_item.get(), delete_sink.get())) && SUCCEEDED(pfo->PerformOperations());
-    //     return b;
 }
 
 void beep()
@@ -537,67 +325,35 @@ bool parseBMPToSkBitmap(const uint8_t* bmpData, size_t bmpSize, SkBitmap* outBit
 // 函数：从二进制 ICO 数据加载为 SkBitmap
 bool loadIconFromICOToSkBitmap(const uint8_t* data, size_t dataSize, SkBitmap* outBitmap)
 {
-    if (!data || dataSize < sizeof(IconDir) || !outBitmap) {
+    if (!data || !outBitmap || dataSize < sizeof(IconDir))
         return false;
-    }
-
-    // Step 1: 解析 ICO 头
-    const IconDir* iconDir = reinterpret_cast<const IconDir*>(data);
-    if (iconDir->idReserved != 0 || iconDir->idType != 1) {
-        return false; // 不是有效的 ICO 文件
-    }
-
-    if (iconDir->idCount == 0) {
-        return false; // 没有图标
-    }
-
-    // Step 2: 遍历图标目录项，找到第一个支持的图像（比如 32x32 的 32 位）
-    const IconDirEntry* entries = reinterpret_cast<const IconDirEntry*>(data + sizeof(IconDir));
-    for (uint16_t i = 0; i < iconDir->idCount; ++i) {
-        const IconDirEntry& entry = entries[i];
-
-        // 跳过无效条目（如宽度/高度为 0）
-        if (entry.bWidth == 0 || entry.bHeight == 0)
+    const auto* directory = reinterpret_cast<const IconDir*>(data);
+    if (directory->idReserved != 0 || directory->idType != 1
+        || directory->idCount > (dataSize - sizeof(IconDir)) / sizeof(IconDirEntry))
+        return false;
+    const auto* entries = reinterpret_cast<const IconDirEntry*>(data + sizeof(IconDir));
+    for (uint16_t index = 0; index < directory->idCount; ++index) {
+        const auto& entry = entries[index];
+        if (entry.dwImageOffset > dataSize
+            || entry.dwBytesInRes > dataSize - entry.dwImageOffset
+            || entry.dwBytesInRes == 0)
             continue;
-
-        // 检查是否支持该格式（这里我们只支持 32 位色深的图标）
-        //if (entry.wBitCount != 32)
-        //    continue;
-
-        // 检查偏移量是否在数据范围内
-        if (entry.dwImageOffset + entry.dwBytesInRes > dataSize)
+        // Windows decodes both PNG-compressed and DIB icon resources, including
+        // their AND masks. A zero directory dimension denotes 256, not invalid.
+        HICON icon = ::CreateIconFromResourceEx(
+            const_cast<PBYTE>(data + entry.dwImageOffset), entry.dwBytesInRes,
+            TRUE, 0x00030000, entry.bWidth ? entry.bWidth : 256,
+            entry.bHeight ? entry.bHeight : 256, LR_DEFAULTCOLOR);
+        if (!icon)
             continue;
-
-        // 获取图像数据
-        const uint8_t* imageData = data + entry.dwImageOffset;
-        size_t imageSize = entry.dwBytesInRes;
-
-        ICONIMAGE* iconHead = (ICONIMAGE*)imageData;
-
-        char output[120] = { 0 };
-        sprintf(output, "biSize: (%d, %d)%d(%d, %d)\n", 
-            entry.bWidth, entry.bHeight,
-            entry.wBitCount,
-            iconHead->icHeader.biWidth, iconHead->icHeader.biHeight);
-        OutputDebugStringA(output);
-
-        bool isPng = iconHead->icHeader.biCompression;
-
-        DebugBreak();
-//         if (isPng) {
-//             // Step 4: 如果是 PNG，直接使用 gfx::Image::CreateFrom1xPNGBytes 加载
-//             *outBitmap = gfx::Image::CreateFrom1xPNGBytes(base::span<const uint8_t>(imageData, imageSize)).AsBitmap();
-//             return !outBitmap->isNull();
-//         } else {
-//             // Step 4: 如果是 BMP，手动解析 BMP 数据并填充 SkBitmap
-//             if (!parseBMPToSkBitmap(imageData, imageSize, outBitmap)) {
-//                 continue;  // 解析失败，尝试下一个图标
-//             }
-//             return !outBitmap->isNull();
-//         }
+        SkBitmap bitmap = IconUtil::CreateSkBitmapFromHICON(icon);
+        ::DestroyIcon(icon);
+        if (!bitmap.isNull()) {
+            *outBitmap = std::move(bitmap);
+            return true;
+        }
     }
-
-    return false;  // 没有找到支持的图标
+    return false;
 }
 
 // 手动解析 BMP 数据并填充 SkBitmap

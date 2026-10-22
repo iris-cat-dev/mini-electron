@@ -15,28 +15,9 @@
 #include "third_party/blink/renderer/modules/storage_access/global_storage_access_handle.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 
-#include "third_party/blink/renderer/bindings/modules/v8/v8_storage_access_handle.h"
 
 namespace blink {
 
-//
-const WrapperTypeInfo V8StorageAccessHandle::wrapper_type_info_{
-    gin::kEmbedderBlink,
-    nullptr/*V8StorageAccessHandle::InstallInterfaceTemplate*/,
-    nullptr,
-    "StorageAccessHandle",
-    nullptr,
-    V8StorageAccessHandle::kThisTag,
-    V8StorageAccessHandle::kMaxSubclassTag,
-    WrapperTypeInfo::kWrapperTypeObjectPrototype,
-    WrapperTypeInfo::kObjectClassId,
-    WrapperTypeInfo::kNotInheritFromActiveScriptWrappable,
-    WrapperTypeInfo::kIdlInterface,
-    false,
-};
-
-const WrapperTypeInfo& StorageAccessHandle::wrapper_type_info_ = V8StorageAccessHandle::wrapper_type_info_;
-//
 
 using PassKey = base::PassKey<StorageAccessHandle>;
 
@@ -84,26 +65,29 @@ const char StorageAccessHandle::kSharedWorkerNotRequested[] = "Shared Worker was
 
 namespace {
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+constexpr char kUnsupportedStorageAccess[] = "This storage access backend is not supported by this embedder.";
+#else
 void EstimateImplAfterRemoteEstimate(ScriptPromiseResolver<StorageEstimate>* resolver, int64_t current_usage, int64_t current_quota, bool success)
 {
-    *(int*)1 = 1;
-//     ScriptState* script_state = resolver->GetScriptState();
-//     if (!script_state->ContextIsValid()) {
-//         return;
-//     }
-//     ScriptState::Scope scope(script_state);
-// 
-//     if (!success) {
-//         resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kUnknownError, "Unknown error occurred while getting estimate."));
-//         return;
-//     }
-// 
-//     StorageEstimate* estimate = StorageEstimate::Create();
-//     estimate->setUsage(current_usage);
-//     estimate->setQuota(current_quota);
-//     estimate->setUsageDetails(StorageUsageDetails::Create());
-//     resolver->Resolve(estimate);
+    ScriptState* script_state = resolver->GetScriptState();
+    if (!script_state->ContextIsValid()) {
+        return;
+    }
+    ScriptState::Scope scope(script_state);
+
+    if (!success) {
+        resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kUnknownError, "Unknown error occurred while getting estimate."));
+        return;
+    }
+
+    StorageEstimate* estimate = StorageEstimate::Create();
+    estimate->setUsage(current_usage);
+    estimate->setQuota(current_quota);
+    estimate->setUsageDetails(StorageUsageDetails::Create());
+    resolver->Resolve(estimate);
 }
+#endif
 
 } // namespace
 
@@ -161,6 +145,7 @@ StorageAccessHandle::StorageAccessHandle(LocalDOMWindow& window, const StorageAc
     if (storage_access_types_->all() || storage_access_types_->localStorage()) {
         GlobalStorageAccessHandle::From(window).GetLocalStorageArea();
     }
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (storage_access_types_->all() || storage_access_types_->indexedDB()) {
         GlobalStorageAccessHandle::From(window).GetIDBFactory();
     }
@@ -186,6 +171,7 @@ StorageAccessHandle::StorageAccessHandle(LocalDOMWindow& window, const StorageAc
     if (storage_access_types_->all() || storage_access_types_->sharedWorker()) {
         GlobalStorageAccessHandle::From(window).GetSharedWorkerConnector();
     }
+#endif
 }
 
 void StorageAccessHandle::Trace(Visitor* visitor) const
@@ -205,6 +191,7 @@ StorageArea* StorageAccessHandle::sessionStorage(ExceptionState& exception_state
     window->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_sessionStorage_Use);
     StorageArea* session_storage_area = GlobalStorageAccessHandle::From(*window).GetSessionStorageArea();
     if (!session_storage_area) {
+        exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);
         return nullptr;
     }
     if (window->GetSecurityOrigin()->IsLocal()) {
@@ -227,6 +214,7 @@ StorageArea* StorageAccessHandle::localStorage(ExceptionState& exception_state) 
     window->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_localStorage_Use);
     StorageArea* local_storage_area = GlobalStorageAccessHandle::From(*window).GetLocalStorageArea();
     if (!local_storage_area) {
+        exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);
         return nullptr;
     }
     if (window->GetSecurityOrigin()->IsLocal()) {
@@ -246,7 +234,16 @@ IDBFactory* StorageAccessHandle::indexedDB(ExceptionState& exception_state) cons
         return nullptr;
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_indexedDB_Use);
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (!GetSupplementable()->GetSecurityOrigin()->CanAccessDatabase()) {
+        exception_state.ThrowSecurityError("Access to IndexedDB is denied in this context.");
+        return nullptr;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return nullptr;
+#else
     return GlobalStorageAccessHandle::From(*GetSupplementable()).GetIDBFactory();
+#endif
 }
 
 LockManager* StorageAccessHandle::locks(ExceptionState& exception_state) const
@@ -256,7 +253,16 @@ LockManager* StorageAccessHandle::locks(ExceptionState& exception_state) const
         return nullptr;
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_locks_Use);
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (!GetSupplementable()->GetSecurityOrigin()->CanAccessLocks()) {
+        exception_state.ThrowSecurityError("Access to the Locks API is denied in this context.");
+        return nullptr;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return nullptr;
+#else
     return GlobalStorageAccessHandle::From(*GetSupplementable()).GetLockManager();
+#endif
 }
 
 CacheStorage* StorageAccessHandle::caches(ExceptionState& exception_state) const
@@ -266,32 +272,43 @@ CacheStorage* StorageAccessHandle::caches(ExceptionState& exception_state) const
         return nullptr;
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_caches_Use);
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (!GetSupplementable()->GetSecurityOrigin()->CanAccessCacheStorage()) {
+        exception_state.ThrowSecurityError("Access to Cache Storage is denied in this context.");
+        return nullptr;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return nullptr;
+#else
     return GlobalStorageAccessHandle::From(*GetSupplementable()).GetCacheStorage();
+#endif
 }
 
 ScriptPromise<FileSystemDirectoryHandle> StorageAccessHandle::getDirectory(ScriptState* script_state, ExceptionState& exception_state) const
 {
-    return ScriptPromise<FileSystemDirectoryHandle>();
-//     if (!storage_access_types_->all() && !storage_access_types_->getDirectory()) {
-//         auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<FileSystemDirectoryHandle>>(script_state, exception_state.GetContext());
-//         auto promise = resolver->Promise();
-//         resolver->RejectWithSecurityError(kGetDirectoryNotRequested, kGetDirectoryNotRequested);
-//         return promise;
-//     }
-//     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_getDirectory_Use);
-//     return StorageManagerFileSystemAccess::CheckStorageAccessIsAllowed(
-//         script_state, exception_state, WTF::BindOnce(&StorageAccessHandle::GetDirectoryImpl, WrapWeakPersistent(this)));
+    if (!storage_access_types_->all() && !storage_access_types_->getDirectory()) {
+        auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<FileSystemDirectoryHandle>>(script_state, exception_state.GetContext());
+        auto promise = resolver->Promise();
+        resolver->RejectWithSecurityError(kGetDirectoryNotRequested, kGetDirectoryNotRequested);
+        return promise;
+    }
+    GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_getDirectory_Use);
+    return StorageManagerFileSystemAccess::CheckStorageAccessIsAllowed(
+        script_state, exception_state, WTF::BindOnce(&StorageAccessHandle::GetDirectoryImpl, WrapWeakPersistent(this)));
 }
 
 void StorageAccessHandle::GetDirectoryImpl(ScriptPromiseResolver<FileSystemDirectoryHandle>* resolver) const
 {
-    *(int*)1 = 1;
-//     HeapMojoRemote<mojom::blink::StorageAccessHandle>& remote = GlobalStorageAccessHandle::From(*GetSupplementable()).GetRemote();
-//     if (!remote) {
-//         resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError));
-//         return;
-//     }
-//     remote->GetDirectory(WTF::BindOnce(&StorageManagerFileSystemAccess::DidGetSandboxedFileSystem, WrapPersistent(resolver)));
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess));
+#else
+    HeapMojoRemote<mojom::blink::StorageAccessHandle>& remote = GlobalStorageAccessHandle::From(*GetSupplementable()).GetRemote();
+    if (!remote) {
+        resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError));
+        return;
+    }
+    remote->GetDirectory(WTF::BindOnce(&StorageManagerFileSystemAccess::DidGetSandboxedFileSystem, WrapPersistent(resolver)));
+#endif
 }
 
 ScriptPromise<StorageEstimate> StorageAccessHandle::estimate(ScriptState* script_state, ExceptionState& exception_state) const
@@ -303,12 +320,16 @@ ScriptPromise<StorageEstimate> StorageAccessHandle::estimate(ScriptState* script
         return promise;
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_estimate_Use);
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess));
+#else
     HeapMojoRemote<mojom::blink::StorageAccessHandle>& remote = GlobalStorageAccessHandle::From(*GetSupplementable()).GetRemote();
     if (!remote) {
         resolver->Reject(MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError));
         return promise;
     }
     remote->Estimate(WTF::BindOnce(&EstimateImplAfterRemoteEstimate, WrapPersistent(resolver)));
+#endif
     return promise;
 }
 
@@ -318,6 +339,14 @@ String StorageAccessHandle::createObjectURL(Blob* blob, ExceptionState& exceptio
         exception_state.ThrowSecurityError(kCreateObjectURLNotRequested);
         return "";
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (GetSupplementable()->GetSecurityOrigin()->IsOpaque()) {
+        exception_state.ThrowSecurityError("Object URL access is denied in this context.");
+        return "";
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return "";
+#else
     PublicURLManager* public_url_manager = GlobalStorageAccessHandle::From(*GetSupplementable()).GetPublicURLManager();
     if (!public_url_manager) {
         return "";
@@ -326,6 +355,7 @@ String StorageAccessHandle::createObjectURL(Blob* blob, ExceptionState& exceptio
     GetSupplementable()->CountUse(WebFeature::kCreateObjectURLBlob);
     CHECK(blob);
     return public_url_manager->RegisterURL(blob);
+#endif
 }
 
 void StorageAccessHandle::revokeObjectURL(const String& url, ExceptionState& exception_state) const
@@ -334,6 +364,13 @@ void StorageAccessHandle::revokeObjectURL(const String& url, ExceptionState& exc
         exception_state.ThrowSecurityError(kRevokeObjectURLNotRequested);
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (GetSupplementable()->GetSecurityOrigin()->IsOpaque()) {
+        exception_state.ThrowSecurityError("Object URL access is denied in this context.");
+        return;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+#else
     PublicURLManager* public_url_manager = GlobalStorageAccessHandle::From(*GetSupplementable()).GetPublicURLManager();
     if (!public_url_manager) {
         return;
@@ -342,6 +379,7 @@ void StorageAccessHandle::revokeObjectURL(const String& url, ExceptionState& exc
     KURL resolved_url(NullURL(), url);
     GetSupplementable()->GetExecutionContext()->RemoveURLFromMemoryCache(resolved_url);
     public_url_manager->Revoke(resolved_url);
+#endif
 }
 
 BroadcastChannel* StorageAccessHandle::BroadcastChannel(ExecutionContext* execution_context, const String& name, ExceptionState& exception_state) const
@@ -350,6 +388,14 @@ BroadcastChannel* StorageAccessHandle::BroadcastChannel(ExecutionContext* execut
         exception_state.ThrowSecurityError(kBroadcastChannelNotRequested);
         return nullptr;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (GetSupplementable()->GetSecurityOrigin()->IsOpaque()) {
+        exception_state.ThrowSecurityError("Broadcast channel access is denied in this context.");
+        return nullptr;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return nullptr;
+#else
     HeapMojoAssociatedRemote<mojom::blink::BroadcastChannelProvider>& broadcast_channel_provider
         = GlobalStorageAccessHandle::From(*GetSupplementable()).GetBroadcastChannelProvider();
     if (!broadcast_channel_provider) {
@@ -357,6 +403,7 @@ BroadcastChannel* StorageAccessHandle::BroadcastChannel(ExecutionContext* execut
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_BroadcastChannel_Use);
     return MakeGarbageCollected<blink::BroadcastChannel>(PassKey(), execution_context, name, broadcast_channel_provider.get());
+#endif
 }
 
 blink::SharedWorker* StorageAccessHandle::SharedWorker(
@@ -366,6 +413,19 @@ blink::SharedWorker* StorageAccessHandle::SharedWorker(
         exception_state.ThrowSecurityError(kSharedWorkerNotRequested);
         return nullptr;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    if (context->IsContextDestroyed()) {
+        exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError, "The context provided is invalid.");
+        return nullptr;
+    }
+    if (!GetSupplementable()->GetSecurityOrigin()->CanAccessSharedWorkers()
+        || !context->GetSecurityOrigin()->CanAccessSharedWorkers()) {
+        exception_state.ThrowSecurityError("Access to shared workers is denied to origin '" + context->GetSecurityOrigin()->ToString() + "'.");
+        return nullptr;
+    }
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, kUnsupportedStorageAccess);
+    return nullptr;
+#else
     HeapMojoRemote<mojom::blink::SharedWorkerConnector>& shared_worker_connector
         = GlobalStorageAccessHandle::From(*GetSupplementable()).GetSharedWorkerConnector();
     if (!shared_worker_connector) {
@@ -377,6 +437,7 @@ blink::SharedWorker* StorageAccessHandle::SharedWorker(
     }
     GetSupplementable()->CountUse(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_SharedWorker_Use);
     return SharedWorker::Create(PassKey(), context, url, name_or_options, exception_state, public_url_manager, &shared_worker_connector);
+#endif
 }
 
 namespace bindings {

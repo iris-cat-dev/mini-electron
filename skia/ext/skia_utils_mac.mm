@@ -75,23 +75,27 @@ SkBitmap NSImageOrNSImageRepToSkBitmap(NSImage* image,
 
   void* data = bitmap.getPixels();
 
-  // Allocate a bitmap context with 4 components per pixel (BGRA). Apple
-  // recommends these flags for improved CG performance.
+  // Match the selected Skia N32 byte order without copying the pixel buffer.
 #define HAS_ARGB_SHIFTS(a, r, g, b) \
             (SK_A32_SHIFT == (a) && SK_R32_SHIFT == (r) \
              && SK_G32_SHIFT == (g) && SK_B32_SHIFT == (b))
 #if defined(SK_CPU_LENDIAN) && HAS_ARGB_SHIFTS(24, 16, 8, 0)
-  base::apple::ScopedCFTypeRef<CGContextRef> context(CGBitmapContextCreate(
-      data, size.width, size.height, 8, size.width * 4, cg_color_space.get(),
-      uint32_t{kCGImageAlphaPremultipliedFirst} | kCGBitmapByteOrder32Host));
+  constexpr uint32_t bitmap_info =
+      uint32_t{kCGImageAlphaPremultipliedFirst} | kCGBitmapByteOrder32Little;
+#elif defined(SK_CPU_LENDIAN) && HAS_ARGB_SHIFTS(24, 0, 8, 16)
+  constexpr uint32_t bitmap_info =
+      uint32_t{kCGImageAlphaPremultipliedLast} | kCGBitmapByteOrder32Big;
 #else
-#error We require that Skia's and CoreGraphics's recommended \
-       image memory layout match.
+#error Unsupported Skia N32 byte order for CoreGraphics
 #endif
 #undef HAS_ARGB_SHIFTS
+  base::apple::ScopedCFTypeRef<CGContextRef> context(CGBitmapContextCreate(
+      data, info.width(), info.height(), 8, bitmap.rowBytes(),
+      cg_color_space.get(), bitmap_info));
 
   // Something went really wrong. Best guess is that the bitmap data is invalid.
-  DCHECK(context);
+  if (!context)
+    return SkBitmap();
 
   [NSGraphicsContext saveGraphicsState];
 
@@ -140,17 +144,16 @@ CGAffineTransform SkMatrixToCGAffineTransform(const SkMatrix& matrix) {
 
 SkRect CGRectToSkRect(const CGRect& rect) {
   SkRect sk_rect = {
-    rect.origin.x, rect.origin.y, CGRectGetMaxX(rect), CGRectGetMaxY(rect)
+    static_cast<float>(rect.origin.x), static_cast<float>(rect.origin.y),
+    static_cast<float>(CGRectGetMaxX(rect)), static_cast<float>(CGRectGetMaxY(rect))
   };
   return sk_rect;
 }
 
 CGRect SkIRectToCGRect(const SkIRect& rect) {
-  CGRect cg_rect = {
-    { rect.fLeft, rect.fTop },
-    { rect.fRight - rect.fLeft, rect.fBottom - rect.fTop }
-  };
-  return cg_rect;
+  return CGRectMake(rect.fLeft, rect.fTop,
+      static_cast<CGFloat>(rect.fRight) - rect.fLeft,
+      static_cast<CGFloat>(rect.fBottom) - rect.fTop);
 }
 
 CGRect SkRectToCGRect(const SkRect& rect) {
@@ -186,8 +189,8 @@ SkColor NSSystemColorToSkColor(NSColor* color) {
   // is easy (RGB to grayscale is less easy).
   const CGFloat* components = CGColorGetComponents(cg_color);
   CGFloat alpha = component_count == 2 ? components[1] : 1.0f;
-  return SkColor4f{components[0], components[0], components[0], alpha}
-      .toSkColor();
+  return SkColor4f{static_cast<float>(components[0]), static_cast<float>(components[0]),
+                  static_cast<float>(components[0]), static_cast<float>(alpha)}.toSkColor();
 }
 
 SkColor CGColorRefToSkColor(CGColorRef color) {
@@ -197,8 +200,8 @@ SkColor CGColorRefToSkColor(CGColorRef color) {
                                               nullptr));
   DCHECK(CGColorGetNumberOfComponents(color) == 4);
   const CGFloat* components = CGColorGetComponents(cg_color.get());
-  return SkColor4f{components[0], components[1], components[2], components[3]}
-      .toSkColor();
+  return SkColor4f{static_cast<float>(components[0]), static_cast<float>(components[1]),
+                  static_cast<float>(components[2]), static_cast<float>(components[3])}.toSkColor();
 }
 
 base::apple::ScopedCFTypeRef<CGColorRef> CGColorCreateFromSkColor(
@@ -217,7 +220,8 @@ SkColor NSDeviceColorToSkColor(NSColor* color) {
   CGFloat red, green, blue, alpha;
   color = [color colorUsingColorSpace:NSColorSpace.deviceRGBColorSpace];
   [color getRed:&red green:&green blue:&blue alpha:&alpha];
-  return SkColor4f{red, green, blue, alpha}.toSkColor();
+  return SkColor4f{static_cast<float>(red), static_cast<float>(green),
+                  static_cast<float>(blue), static_cast<float>(alpha)}.toSkColor();
 }
 
 // Converts ARGB to NSColor.

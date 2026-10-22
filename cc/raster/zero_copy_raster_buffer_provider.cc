@@ -47,15 +47,12 @@ public:
     void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd, const base::trace_event::MemoryAllocatorDumpGuid& buffer_dump_guid,
         uint64_t tracing_process_id, int importance) const override
     {
-        *(int*)1 = 1;
-//         if (!shared_image) {
-//             return;
-//         }
-//         auto mapping = shared_image->Map();
-//         if (!mapping) {
-//             return;
-//         }
-//         mapping->OnMemoryDump(pmd, buffer_dump_guid, tracing_process_id, importance);
+        if (!shared_image)
+            return;
+        auto mapping = shared_image->Map();
+        if (!mapping)
+            return;
+        mapping->OnMemoryDump(pmd, buffer_dump_guid, tracing_process_id, importance);
     }
 
     // The SharedImageInterface used to clean up the shared image.

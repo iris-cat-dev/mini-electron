@@ -662,6 +662,7 @@ source_set("unit_tests") {
     "video_color_space_unittest.cc",
     "video_decoder_config_unittest.cc",
     "video_frame_converter_unittest.cc",
+    "video_frame_crash_regression_unittest.cc",
     "video_frame_layout_unittest.cc",
     "video_frame_pool_unittest.cc",
     "video_frame_unittest.cc",

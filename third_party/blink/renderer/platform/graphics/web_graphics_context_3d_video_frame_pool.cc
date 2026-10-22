@@ -7,7 +7,7 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
-#include "base/trace_event/trace_event_impl.h"
+#include "base/trace_event/base_tracing.h"
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "gpu/GLES2/gl2extchromium.h"
@@ -23,13 +23,14 @@
 #include "media/renderers/video_frame_rgba_to_yuva_converter.h"
 #include "media/video/gpu_video_accelerator_factories.h"
 #include "media/video/renderable_gpu_memory_buffer_video_frame_pool.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "perfetto/tracing/track_event_args.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
-#include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 namespace blink {
 

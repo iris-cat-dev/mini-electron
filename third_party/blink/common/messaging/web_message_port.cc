@@ -13,19 +13,6 @@
 #include "third_party/blink/public/mojom/blob/blob.mojom.h"
 #include "third_party/blink/public/mojom/messaging/transferable_message.mojom.h"
 
-bool blink::mojom::TransferableMessage::Validate(void const*, class mojo::internal::ValidationContext*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-
-bool mojo::UnionTraits<class blink::mojom::SerializedStaticBitmapImageDataView, class mojo::StructPtr<class blink::mojom::SerializedStaticBitmapImage>>::Read(class blink::mojom::SerializedStaticBitmapImageDataView, class mojo::StructPtr<class blink::mojom::SerializedStaticBitmapImage>*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
 namespace blink {
 
 WebMessagePort::Message::Message() = default;

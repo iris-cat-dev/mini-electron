@@ -589,6 +589,17 @@
     <ClInclude Include="..\..\..\third_party\zlib\zutil.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\liburlpattern\constructor_string_parser.cc" />
+    <ClCompile Include="..\..\..\third_party\liburlpattern\parse.cc" />
+    <ClCompile Include="..\..\..\third_party\liburlpattern\pattern.cc" />
+    <ClCompile Include="..\..\..\third_party\liburlpattern\tokenize.cc" />
+    <ClCompile Include="..\..\..\third_party\liburlpattern\utils.cc" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv.c" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv_csp.c" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv_dsp.c" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv_gamma.c" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv_neon.c" />
+    <ClCompile Include="..\..\..\third_party\libwebp\src\sharpyuv\sharpyuv_sse2.c" />
     <ClCompile Include="..\..\..\third_party\brotli\common\constants.c" />
     <ClCompile Include="..\..\..\third_party\brotli\common\context.c" />
     <ClCompile Include="..\..\..\third_party\brotli\common\dictionary.c" />
@@ -1040,10 +1051,6 @@
     <ClCompile Include="..\..\..\third_party\libpng\pngwrite.c" />
     <ClCompile Include="..\..\..\third_party\libpng\pngwtran.c" />
     <ClCompile Include="..\..\..\third_party\libpng\pngwutil.c" />
-    <ClCompile Include="..\..\..\third_party\liburlpattern\url_parse.cc" />
-    <ClCompile Include="..\..\..\third_party\liburlpattern\url_pattern.cc" />
-    <ClCompile Include="..\..\..\third_party\liburlpattern\url_tokenize.cc" />
-    <ClCompile Include="..\..\..\third_party\liburlpattern\url_utils.cc" />
     <ClCompile Include="..\..\..\third_party\libwebp\src\src\dec\alpha_dec.c" />
     <ClCompile Include="..\..\..\third_party\libwebp\src\src\dec\buffer_dec.c" />
     <ClCompile Include="..\..\..\third_party\libwebp\src\src\dec\frame_dec.c" />
@@ -1641,7 +1648,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
@@ -1673,7 +1680,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -1705,7 +1712,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -1727,7 +1734,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -1751,7 +1758,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
@@ -1788,7 +1795,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sanitizer/inculude;$(SolutionDir)../third_party/brotli/include;$(SolutionDir)../third_party/libyuv/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libavif/src/include;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/libwebp/src;$(SolutionDir)../third_party/libxml;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libcurl/src;$(SolutionDir)../third_party/libcurl/include;$(SolutionDir)../third_party/openssl/;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/dav1d/libdav1d;$(SolutionDir)../third_party/dav1d/libdav1d/include;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../gen;$(SolutionDir)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>

@@ -436,7 +436,6 @@ void AsyncLayerTreeFrameSink::OnNeedsBeginFrames(bool needs_begin_frames)
 
 void AsyncLayerTreeFrameSink::OnMojoConnectionError(uint32_t custom_reason, const std::string& description)
 {
-    *(int*)1 = 1;
     is_closing_ = true;
     // TODO(rivr): Use DLOG(FATAL) once crbug.com/1043899 is resolved.
     if (custom_reason)

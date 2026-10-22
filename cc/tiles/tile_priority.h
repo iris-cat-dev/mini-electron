@@ -93,7 +93,7 @@ enum TreePriority {
 };
 // TODO(nuskos): remove TreePriorityToString once we have a utility function to
 // take protozero to strings.
-// std::string TreePriorityToString(TreePriority prio);
+std::string TreePriorityToString(TreePriority prio);
 // perfetto::protos::pbzero::ChromeCompositorStateMachineV2::MinorStateV2::
 //     TreePriority
 //     TreePriorityToProtozeroEnum(TreePriority priority);

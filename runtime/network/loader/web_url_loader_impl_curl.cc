@@ -5,6 +5,7 @@
 #include "runtime/network/loader/web_url_request_extra_data_wrap.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
 #include "runtime/network/loader/blob_resource_loader.h"
+#include "runtime/network/loader/flatten_http_body_element.h"
 #include "runtime/engine/renderer/blob_url_store_impl.h"
 
 #include "third_party/blink/public/platform/web_url_request_extra_data.h"
@@ -12,12 +13,16 @@
 #include "third_party/blink/public/platform/web_data.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/cors/cors.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "url/origin.h"
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
+#include "net/base/net_errors.h"
+#include "third_party/blink/public/platform/web_url_error.h"
+#include <algorithm>
 #include <windows.h>
 
 #ifndef NDEBUG
@@ -112,6 +117,7 @@ WebURLLoaderImplCurl::WebURLLoaderImplCurl(
 
 WebURLLoaderImplCurl::~WebURLLoaderImplCurl()
 {
+    delete m_blobLoader;
 #ifndef NDEBUG
     //webURLLoaderImplCurlCount.decrement();
 #endif
@@ -119,8 +125,18 @@ WebURLLoaderImplCurl::~WebURLLoaderImplCurl()
     mini_electron::WebURLLoaderManager* mgr = mini_electron::WebURLLoaderManager::sharedInstance();
     if (!mgr)
         return;
-    if (m_isAutoDestroy)
-        mgr->cancel(m_jobId);
+    if (m_isAutoDestroy) {
+        if (m_autoFollowRedirects) {
+            mgr->cancel(m_jobId);
+        } else {
+            AutoLockJob lock(mgr, m_jobId);
+            if (auto* job = lock.lock()) {
+                job->resetClient();
+                job->setLoader(nullptr);
+                mgr->doCancel(job, kNormalCancelled);
+            }
+        }
+    }
 }
 
 void WebURLLoaderImplCurl::init()
@@ -156,6 +172,14 @@ void WebURLLoaderImplCurl::LoadAsynchronously(
     blink::URLLoaderClient* client
     )
 {
+    if (m_isOfflineMode && request->url.SchemeIsHTTPOrHTTPS()) {
+        m_freezableTaskRunner->PostTask(FROM_HERE, base::BindOnce(
+            [](base::WeakPtr<WebURLLoaderImplCurl> self, blink::URLLoaderClient* client, GURL url) {
+                if (self)
+                    client->DidFail(blink::WebURLError(net::ERR_INTERNET_DISCONNECTED, blink::KURL(url)), base::TimeTicks::Now(), 0, 0, 0);
+            }, m_weakPtr.GetWeakPtr(), client, request->url));
+        return;
+    }
     mini_electron::WebURLLoaderManager* netManager = mini_electron::WebURLLoaderManager::sharedInstance();
     //WebURLRequestExtraDataWrap* extraDataWrap = (WebURLRequestExtraDataWrap*)extraData.get();
     if (!netManager) {
@@ -170,16 +194,15 @@ void WebURLLoaderImplCurl::LoadAsynchronously(
 
     int64_t mbwebviewId = m_engineViewId;//extraDataWrap->mbwebviewId;
     if (url.SchemeIs("blob") /*&& !extraDataWrap->isDownload()*/) {
-        ::mojo::Remote<::blink::mojom::blink::Blob>* blob = content::BlobURLStoreSet::get()->getBlobByUrl(url.possibly_invalid_spec());
-        if (!blob)
-            return;
-
         m_blobLoader = mini_electron::BlobResourceLoader::createAsync(mbwebviewId, url, client);
         m_blobLoader->start();
         return;
     }
 
     WebURLLoaderInternal* job = new WebURLLoaderInternal(netManager->getIoThread(type), this, std::move(request), client, false, shouldContentSniffURL(url));
+    job->m_autoFollowRedirects = m_autoFollowRedirects;
+    job->m_bodyPaused = m_bodyPaused;
+    job->m_frozen = m_mode != blink::LoaderFreezeMode::kNone;
     job->m_engineViewId = mbwebviewId;
     job->setRequestFrameMetadata(blink::mojom::RequestContextFrameType::kNone,
         m_frameId, m_parentFrameId, m_isMainFrame);
@@ -212,6 +235,13 @@ void WebURLLoaderImplCurl::LoadSynchronously(
     scoped_refptr<blink::BlobDataHandle>& downloadedBlob, 
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrapper)
 {
+    if (m_isOfflineMode && request->url.SchemeIsHTTPOrHTTPS()) {
+        error = blink::WebURLError(net::ERR_INTERNET_DISCONNECTED, blink::KURL(request->url));
+        data = nullptr;
+        encodedDataLength = 0;
+        encodedBodyLength = 0;
+        return;
+    }
     if (!mini_electron::WebURLLoaderManager::sharedInstance())
         return;
 
@@ -219,7 +249,13 @@ void WebURLLoaderImplCurl::LoadSynchronously(
 
     GURL url = request->url;
     if (url.SchemeIs("blob")) {
-        DebugBreak();
+        std::vector<char> buffer;
+        mini_electron::BlinkSynchronousLoader syncLoader(error, response, &buffer);
+        mini_electron::BlobResourceLoader::loadSynchronously(m_engineViewId, url, &syncLoader);
+        encodedDataLength = buffer.size();
+        encodedBodyLength = buffer.size();
+        data = WTF::SharedBuffer::Create(base::span<const unsigned char>(
+            reinterpret_cast<const unsigned char*>(buffer.data()), buffer.size()));
         return;
     }
 
@@ -299,6 +335,14 @@ void WebURLLoaderImplCurl::LoadAsynchronouslyEx(
     scoped_refptr<mini_electron::WebURLRequestExtraDataWrap> extraData,
     blink::URLLoaderClient* client)
 {
+    if (m_isOfflineMode && request->url.SchemeIsHTTPOrHTTPS()) {
+        m_freezableTaskRunner->PostTask(FROM_HERE, base::BindOnce(
+            [](base::WeakPtr<WebURLLoaderImplCurl> self, blink::URLLoaderClient* client, GURL url) {
+                if (self)
+                    client->DidFail(blink::WebURLError(net::ERR_INTERNET_DISCONNECTED, blink::KURL(url)), base::TimeTicks::Now(), 0, 0, 0);
+            }, m_weakPtr.GetWeakPtr(), client, request->url));
+        return;
+    }
     mini_electron::WebURLLoaderManager* netManager = mini_electron::WebURLLoaderManager::sharedInstance();
     WebURLRequestExtraDataWrap* extraDataWrap = (WebURLRequestExtraDataWrap*)extraData.get();
     if (!netManager) {
@@ -316,20 +360,23 @@ void WebURLLoaderImplCurl::LoadAsynchronouslyEx(
 
     int64_t mbwebviewId = extraDataWrap->mbwebviewId;
     if (url.SchemeIs("blob") && !extraDataWrap->isDownload()) {
-        ::mojo::Remote<::blink::mojom::blink::Blob>* blob = content::BlobURLStoreSet::get()->getBlobByUrl(url.possibly_invalid_spec());
-        if (!blob)
-            return;
-
         m_blobLoader = mini_electron::BlobResourceLoader::createAsync(mbwebviewId, url, client);
         m_blobLoader->start();
         return;
     }
 
     WebURLLoaderInternal* job = new WebURLLoaderInternal(netManager->getIoThread(type), this, std::move(request), client, false, shouldContentSniffURL(url));
+    job->m_autoFollowRedirects = m_autoFollowRedirects;
+    job->m_bodyPaused = m_bodyPaused;
+    job->m_frozen = m_mode != blink::LoaderFreezeMode::kNone;
     job->m_engineViewId = mbwebviewId;
     job->m_dataPipeProducerHandle = extraDataWrap->dataPipeProducerHandle;
-    job->m_frameType = extraDataWrap->frameType;
-    job->m_downloadName = extraDataWrap->releaseDownloadName();
+    job->setRequestFrameMetadata(extraDataWrap->frameType, extraDataWrap->frameId,
+        extraDataWrap->parentFrameId, extraDataWrap->isMainFrame);
+    if (m_autoFollowRedirects)
+        job->m_downloadName = extraDataWrap->releaseDownloadName();
+    else if (extraDataWrap->downloadName)
+        job->m_downloadName = std::make_unique<String>(*extraDataWrap->downloadName);
 
     int jobIds = 0;
     jobIds = netManager->addAsynchronousJob(job);
@@ -341,8 +388,32 @@ void WebURLLoaderImplCurl::LoadAsynchronouslyEx(
     // 执行完add后，this可能被销毁，当dataurl的时候
 }
 
-void WebURLLoaderImplCurl::DidChangePriority(blink::WebURLRequest::Priority, int intra_priority_value)
+void WebURLLoaderImplCurl::DidChangePriority(blink::WebURLRequest::Priority priority, int intra_priority_value)
 {
+    SetPriority(blink::WebURLRequest::ConvertToNetPriority(priority), intra_priority_value);
+}
+
+void WebURLLoaderImplCurl::SetPriority(net::RequestPriority priority, int intraPriority)
+{
+    auto* manager = WebURLLoaderManager::sharedInstance();
+    if (!manager)
+        return;
+    AutoLockJob lock(manager, m_jobId);
+    auto* job = lock.lock();
+    if (!job || job->isCancelled())
+        return;
+    job->firstRequest()->priority = priority;
+    // HTTP/2 stream weights are in [1, 256]. Reserve a band per net priority.
+    long weight = std::clamp(24 + static_cast<int>(priority) * 48 + std::clamp(intraPriority, -23, 24), 1, 256);
+    job->m_ioThread->task_runner()->PostTask(FROM_HERE, base::BindOnce([](int jobId, long weight) {
+        AutoLockJob lock(WebURLLoaderManager::sharedInstance(), jobId);
+        auto* job = lock.lock();
+        if (!job || job->isCancelled())
+            return;
+        job->m_streamWeight = weight;
+        if (job->m_handle)
+            curl_easy_setopt(job->m_handle, CURLOPT_STREAM_WEIGHT, weight);
+    }, m_jobId, weight));
 }
 
 scoped_refptr<base::SingleThreadTaskRunner> WebURLLoaderImplCurl::GetTaskRunnerForBodyLoader()
@@ -353,9 +424,39 @@ scoped_refptr<base::SingleThreadTaskRunner> WebURLLoaderImplCurl::GetTaskRunnerF
 void WebURLLoaderImplCurl::Freeze(blink::LoaderFreezeMode mode)
 {
     m_mode = mode;
-    //     if (m_mode != blink::LoaderFreezeMode::kNone || !m_client)
-    //         return;
-    //     m_freezableTaskRunner->GetTaskRunner()->PostTask(FROM_HERE, WTF::BindOnce(&WebURLLoaderImplCurl::fail, m_weakPtr.GetWeakPtr()));
+    updatePauseState();
+}
+
+void WebURLLoaderImplCurl::PauseReadingBody(bool paused)
+{
+    m_bodyPaused = paused;
+    updatePauseState();
+}
+
+void WebURLLoaderImplCurl::updatePauseState()
+{
+    auto* manager = WebURLLoaderManager::sharedInstance();
+    if (!manager)
+        return;
+    AutoLockJob lock(manager, m_jobId);
+    auto* job = lock.lock();
+    if (!job || job->isCancelled())
+        return;
+    job->m_ioThread->task_runner()->PostTask(FROM_HERE, base::BindOnce([](int jobId, bool bodyPaused, bool frozen) {
+        AutoLockJob lock(WebURLLoaderManager::sharedInstance(), jobId);
+        auto* job = lock.lock();
+        if (!job || job->isCancelled())
+            return;
+        job->m_bodyPaused = bodyPaused;
+        job->m_frozen = frozen;
+        int pause = frozen ? CURLPAUSE_ALL : bodyPaused ? CURLPAUSE_RECV : CURLPAUSE_CONT;
+        if (job->m_responseBufferedBytes.load(std::memory_order_relaxed) >= 64 * 1024)
+            pause |= CURLPAUSE_RECV;
+        if (job->m_formDataStream && job->m_formDataStream->isWaitingForData())
+            pause |= CURLPAUSE_SEND;
+        if (job->m_handle)
+            curl_easy_pause(job->m_handle, pause);
+    }, m_jobId, m_bodyPaused, m_mode != blink::LoaderFreezeMode::kNone));
 }
 
 } // content

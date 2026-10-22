@@ -29,10 +29,10 @@ public:
     // Note: If adding more members to this class, make sure you update
     // CopyWithSanitizedUrls.
     struct METRICS_EXPORT NavigationData {
-        NavigationData();
-        ~NavigationData();
+        NavigationData() = default;
+        ~NavigationData() = default;
 
-        NavigationData(const NavigationData& other);
+        NavigationData(const NavigationData& other) = default;
 
         // Creates a copy of this struct, replacing the URL members with sanitized
         // versions. Currently, |sanitized_urls| expects a one or two element

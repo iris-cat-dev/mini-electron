@@ -18,12 +18,6 @@
 
 namespace network {
 
-bool DocumentIsolationPolicy::operator==(struct network::DocumentIsolationPolicy const&) const
-{
-    *(int*)1 = 1;
-    return false;
-}
-
 namespace {
 
 mojo::PendingRemote<mojom::CookieAccessObserver> Clone(mojo::PendingRemote<mojom::CookieAccessObserver>* observer)

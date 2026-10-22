@@ -60,11 +60,6 @@
 #include "ui/gfx/color_utils.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 
-std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::PermissionName b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
 
 namespace blink {
 

@@ -3,8 +3,9 @@
 
 bool blink::mojom::blink::PluginRegistry::GetPlugins(bool refresh, WTF::Vector<::blink::mojom::blink::PluginInfoPtr>*)
 {
-    *(int*)1 = 1;
-    return true;
+    // The base interface has no plugin provider. Concrete implementations
+    // must override this synchronous transport entry point.
+    return false;
 }
 
 namespace content {
@@ -13,6 +14,7 @@ class PluginRegistryImpl : public ::blink::mojom::blink::PluginRegistry {
 public:
     bool GetPlugins(bool refresh, WTF::Vector<::blink::mojom::blink::PluginInfoPtr>* out_plugins) override
     {
+        out_plugins->clear();
         return true;
     }
 

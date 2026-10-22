@@ -21,7 +21,10 @@
 #include "mojo/public/cpp/bindings/map_data_view.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "components/paint_preview/common/mojom/paint_preview_types.mojom-shared-internal.h"
 #include "mojo/public/mojom/base/big_buffer.mojom-shared.h"
@@ -220,6 +223,7 @@ inline void SerializedRecordingDataView::GetBufferDataView(::mojo_base::mojom::B
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::paint_preview::mojom::RecordingPersistence> {
@@ -227,5 +231,6 @@ template <> struct TraceFormatTraits<::paint_preview::mojom::RecordingPersistenc
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // COMPONENTS_PAINT_PREVIEW_COMMON_MOJOM_PAINT_PREVIEW_TYPES_MOJOM_SHARED_H_

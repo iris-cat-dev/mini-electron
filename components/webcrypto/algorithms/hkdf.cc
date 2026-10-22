@@ -14,11 +14,9 @@
 #include "crypto/openssl_util.h"
 #include "third_party/blink/public/platform/web_crypto_algorithm_params.h"
 #include "third_party/blink/public/platform/web_crypto_key_algorithm.h"
-// #include "third_party/boringssl/src/include/openssl/err.h"
-// #include "third_party/boringssl/src/include/openssl/hkdf.h"
-#include "third_party/openssl/openssl/include/openssl/err.h"
-#include "third_party/openssl/openssl/include/openssl/hkdf.h"
-#include "windows.h"
+#include <climits>
+#include "third_party/openssl/openssl/include/openssl/evp.h"
+#include "third_party/openssl/openssl/include/openssl/kdf.h"
 
 namespace webcrypto {
 
@@ -60,37 +58,35 @@ public:
     Status DeriveBits(const blink::WebCryptoAlgorithm& algorithm, const blink::WebCryptoKey& base_key, bool has_optional_length_bits,
         unsigned int optional_length_bits, std::vector<uint8_t>* derived_bytes) const override
     {
-        OutputDebugStringA("DeriveBits not impl\n");
-        DebugBreak();
-//         crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-//         if (!has_optional_length_bits)
-//             return Status::ErrorHkdfDeriveBitsLengthNotSpecified();
-// 
-//         if (optional_length_bits % 8)
-//             return Status::ErrorHkdfLengthNotWholeByte();
-// 
-//         const blink::WebCryptoHkdfParams* params = algorithm.HkdfParams();
-// 
-//         const EVP_MD* digest_algorithm = GetDigest(params->GetHash());
-//         if (!digest_algorithm)
-//             return Status::ErrorUnsupported();
-// 
-//         // Size output to fit length
-//         unsigned int derived_bytes_len = optional_length_bits / 8;
-//         derived_bytes->resize(derived_bytes_len);
-// 
-//         // Algorithm dispatch checks that the algorithm in |base_key| matches
-//         // |algorithm|.
-//         const std::vector<uint8_t>& raw_key = GetSymmetricKeyData(base_key);
-//         if (!HKDF(derived_bytes->data(), derived_bytes_len, digest_algorithm, raw_key.data(), raw_key.size(), params->Salt().data(), params->Salt().size(),
-//                 params->Info().data(), params->Info().size())) {
-//             uint32_t error = ERR_get_error();
-//             if (ERR_GET_LIB(error) == ERR_LIB_HKDF && ERR_GET_REASON(error) == HKDF_R_OUTPUT_TOO_LARGE) {
-//                 return Status::ErrorHkdfLengthTooLong();
-//             }
-//             return Status::OperationError();
-//         }
-
+        crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
+        if (!has_optional_length_bits)
+            return Status::ErrorHkdfDeriveBitsLengthNotSpecified();
+        if (optional_length_bits % 8)
+            return Status::ErrorHkdfLengthNotWholeByte();
+        const auto* params = algorithm.HkdfParams();
+        const EVP_MD* digest = GetDigest(params->GetHash());
+        if (!digest)
+            return Status::ErrorUnsupported();
+        size_t length = optional_length_bits / 8;
+        if (length > 255u * EVP_MD_size(digest))
+            return Status::ErrorHkdfLengthTooLong();
+        const auto& raw_key = GetSymmetricKeyData(base_key);
+        if (raw_key.size() > INT_MAX || params->Salt().size() > INT_MAX || params->Info().size() > INT_MAX)
+            return Status::OperationError();
+        derived_bytes->resize(length);
+        if (!length)
+            return Status::Success();
+        // OpenSSL distinguishes a missing key from a valid empty input key.
+        const uint8_t empty_key = 0;
+        const uint8_t* key = raw_key.empty() ? &empty_key : raw_key.data();
+        bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+        if (!ctx || EVP_PKEY_derive_init(ctx.get()) <= 0
+            || EVP_PKEY_CTX_set_hkdf_md(ctx.get(), digest) <= 0
+            || EVP_PKEY_CTX_set1_hkdf_salt(ctx.get(), params->Salt().data(), params->Salt().size()) <= 0
+            || EVP_PKEY_CTX_set1_hkdf_key(ctx.get(), key, raw_key.size()) <= 0
+            || EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), params->Info().data(), params->Info().size()) <= 0
+            || EVP_PKEY_derive(ctx.get(), derived_bytes->data(), &length) <= 0)
+            return Status::OperationError();
         return Status::Success();
     }
 

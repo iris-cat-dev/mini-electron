@@ -17,9 +17,8 @@
 namespace mojo {
 namespace internal {
 
-// Buffer provides an interface to allocate memory blocks which are 8-byte
-// aligned. It doesn't own the underlying memory. Users must ensure that the
-// memory stays valid while using the allocated blocks from Buffer.
+// Buffer owns its lite-transport storage and allocates 8-byte aligned blocks.
+// Moving a Buffer transfers its storage without copying.
 //
 // A Buffer may be moved around. A moved-from Buffer is reset and may no longer
 // be used to Allocate memory unless re-Initialized.
@@ -28,23 +27,14 @@ public:
     // Constructs an invalid Buffer. May not call Allocate().
     Buffer();
 
-    // Constructs a Buffer which can Allocate() blocks from a buffer of fixed size
-    // |size| at |data|. Allocations start at |cursor|, so if |cursor| == |size|
-    // then no allocations are allowed.
+    // Takes allocator-owned storage of |size| bytes and resumes allocation at
+    // |cursor|. Storage may grow as further blocks are allocated.
     //
-    // |data| is not owned.
+    // |data| must be storage allocated by the lite transport allocator.
     Buffer(void* data, size_t size, size_t cursor);
 
-    // Like above, but gives the Buffer an underlying message object which can
-    // have its payload extended to acquire more storage capacity on Allocate().
-    //
-    // |data| and |size| must correspond to |message|'s data buffer at the time of
-    // construction.
-    //
-    // |payload_size| is the length of the payload as known by |message|, and it
-    // must be less than or equal to |size|.
-    //
-    // |message| is NOT owned and must outlive this Buffer.
+    // Takes storage from a lite message while remembering its non-owning
+    // message ID. The storage must not remain owned by the raw message table.
     Buffer(MessageHandle message, size_t message_payload_size, void* data, size_t size);
 
     Buffer(Buffer&& other);
@@ -77,7 +67,7 @@ public:
     // Allocates |num_bytes| from the buffer and returns an index to the start of
     // the allocated block. The resulting index is 8-byte aligned and can be
     // resolved to an address using Get<T>() below.
-    size_t Allocate(size_t num_bytes);
+    size_t Allocate(size_t num_bytes, bool align = true);
 
     // Returns a typed address within the Buffer corresponding to |index|. Note
     // that this address is NOT stable across calls to |Allocate()| and thus must
@@ -124,8 +114,7 @@ private:
     // performance.
     size_t message_payload_size_ = 0;
 
-    // The storage location and capacity currently backing |message_|. Owned by
-    // the message object internally, not by this Buffer.
+    // The storage and capacity owned by this Buffer.
     void* data_ = nullptr;
     size_t size_ = 0;
 

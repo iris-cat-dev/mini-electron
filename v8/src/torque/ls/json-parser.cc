@@ -180,12 +180,12 @@ JsonParserResult ParseJson(const std::string& input)
     CurrentSourceFile::Scope unkown_file(SourceFileMap::AddSource("<json>"));
 
     JsonParserResult result;
-    //try {
+    try {
         result.value = (*JsonGrammar().Parse(input)).Cast<JsonValue>();
-//     } catch (TorqueAbortCompilation&) {
-//         CHECK(!TorqueMessages::Get().empty());
-//         result.error = TorqueMessages::Get().front();
-//     }
+    } catch (TorqueAbortCompilation&) {
+        CHECK(!TorqueMessages::Get().empty());
+        result.error = TorqueMessages::Get().front();
+    }
     return result;
 }
 

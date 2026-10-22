@@ -264,9 +264,10 @@ CookieOptions::SameSiteCookieContext ComputeSameSiteContextForSet(const std::vec
 
 bool CookieWithAccessResultSorter(const CookieWithAccessResult& a, const CookieWithAccessResult& b)
 {
-    *(int*)1 = 1;
-    return false;
-    //return CookieMonster::CookieSorter(&a.cookie, &b.cookie);
+    // Match CookieMonster::CookieSorter: longer paths, then older cookies.
+    if (a.cookie.Path().length() == b.cookie.Path().length())
+        return a.cookie.CreationDate() < b.cookie.CreationDate();
+    return a.cookie.Path().length() > b.cookie.Path().length();
 }
 
 bool IsSameSiteIgnoringWebSocketProtocol(const url::Origin& initiator, const GURL& request_url)

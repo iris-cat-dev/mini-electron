@@ -18,43 +18,34 @@
 
 namespace blink {
 
-RouterSource* RouterSource::Create(v8::Isolate*, v8::Local<class v8::Value>, ExceptionState&)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
 V8UnionRouterSourceOrRouterSourceEnum* V8UnionRouterSourceOrRouterSourceEnum::Create(
     v8::Isolate* isolate, v8::Local<v8::Value> v8_value, ExceptionState& exception_state)
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     if (v8_value->IsNullOrUndefined()) {
-//         auto&& blink_value = RouterSource::Create(isolate);
-//         return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
-//     }
-//     if (v8_value->IsObject()) {
-//         auto&& blink_value = NativeValueTraits<RouterSource>::NativeValue(isolate, v8_value, exception_state);
-//         if (exception_state.HadException()) [[unlikely]] {
-//             return nullptr;
-//         }
-//         return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
-//     }
-//     {
-//         auto&& blink_value = NativeValueTraits<V8RouterSourceEnum>::NativeValue(isolate, v8_value, exception_state);
-//         if (exception_state.HadException()) [[unlikely]] {
-//             return nullptr;
-//         }
-//         return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
-//     }
+    if (v8_value->IsNullOrUndefined()) {
+        auto&& blink_value = RouterSource::Create(isolate);
+        return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
+    }
+    if (v8_value->IsObject()) {
+        auto&& blink_value = NativeValueTraits<RouterSource>::NativeValue(isolate, v8_value, exception_state);
+        if (exception_state.HadException()) [[unlikely]] {
+            return nullptr;
+        }
+        return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
+    }
+    {
+        auto&& blink_value = NativeValueTraits<V8RouterSourceEnum>::NativeValue(isolate, v8_value, exception_state);
+        if (exception_state.HadException()) [[unlikely]] {
+            return nullptr;
+        }
+        return MakeGarbageCollected<V8UnionRouterSourceOrRouterSourceEnum>(blink_value);
+    }
 }
 
 void V8UnionRouterSourceOrRouterSourceEnum::Trace(Visitor* visitor) const
 {
-    *(int*)1 = 1;
-//     TraceIfNeeded<Member<RouterSource>>::Trace(visitor, member_router_source_);
-//     TraceIfNeeded<V8RouterSourceEnum>::Trace(visitor, member_router_source_enum_);
-//     bindings::UnionBase::Trace(visitor);
+    TraceIfNeeded<Member<RouterSource>>::Trace(visitor, member_router_source_);
+    TraceIfNeeded<V8RouterSourceEnum>::Trace(visitor, member_router_source_enum_);
+    bindings::UnionBase::Trace(visitor);
 }
 
 void V8UnionRouterSourceOrRouterSourceEnum::Clear()

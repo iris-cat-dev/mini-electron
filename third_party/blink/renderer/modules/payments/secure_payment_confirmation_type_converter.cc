@@ -23,7 +23,9 @@ TypeConverter<payments::mojom::blink::SecurePaymentConfirmationRequestPtr, blink
     const blink::SecurePaymentConfirmationRequest* input)
 {
     auto output = payments::mojom::blink::SecurePaymentConfirmationRequest::New();
-    output->credential_ids = mojo::ConvertTo<Vector<Vector<uint8_t>>>(input->credentialIds());
+    output->credential_ids.ReserveInitialCapacity(input->credentialIds().size());
+    for (const auto& credential_id : input->credentialIds())
+        output->credential_ids.push_back(mojo::ConvertTo<Vector<uint8_t>>(credential_id.Get()));
     output->challenge = mojo::ConvertTo<Vector<uint8_t>>(input->challenge());
 
     // If a timeout was not specified in JavaScript, then pass a null `timeout`

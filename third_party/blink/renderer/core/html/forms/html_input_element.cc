@@ -100,11 +100,6 @@
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
 #include "ui/base/ui_base_features.h"
 
-std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::FormControlType b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
 
 namespace blink {
 

@@ -3,22 +3,12 @@
 // found in the LICENSE file.
 
 #include "ui/native_theme/caption_style.h"
-#include "ui/color/color_provider_key.h"
 #include "base/json/json_reader.h"
 #include "base/values.h"
 #include "build/build_config.h"
 
 namespace ui {
 
-ColorProviderKey::ColorProviderKey(void)
-{
-    *(int*)1 = 1;
-}
-
-ColorProviderKey::~ColorProviderKey(void)
-{
-    *(int*)1 = 1;
-}
 
 CaptionStyle::CaptionStyle() = default;
 CaptionStyle::CaptionStyle(const CaptionStyle& other) = default;

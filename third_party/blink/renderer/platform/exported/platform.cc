@@ -36,6 +36,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread_checker.h"
 #include "base/trace_event/memory_dump_manager.h"
+#include "base/tracing_buildflags.h"
 #include "build/build_config.h"
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "gpu/ipc/client/gpu_channel_host.h"
@@ -205,9 +206,11 @@ void Platform::InitializeMainThreadCommon(std::unique_ptr<MainThread> main_threa
     //   base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
     //       &ParkableImageManager::Instance(), "ParkableImages",
     //       base::SingleThreadTaskRunner::GetCurrentDefault());
-    //   base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
-    //       CanvasMemoryDumpProvider::Instance(), "Canvas",
-    //       base::SingleThreadTaskRunner::GetCurrentDefault());
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
+        CanvasMemoryDumpProvider::Instance(), "Canvas",
+        base::SingleThreadTaskRunner::GetCurrentDefault());
+#endif
 
     // Use a delayed idle task as this is low priority work that should stop when
     // the main thread is not doing any work.

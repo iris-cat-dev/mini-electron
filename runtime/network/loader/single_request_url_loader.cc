@@ -8,10 +8,15 @@
 #include "third_party/blink/public/platform/web_http_header_visitor.h"
 #include "third_party/blink/public/platform/web_url_error.h"
 
+#include "base/functional/callback_helpers.h"
+#include "net/base/net_errors.h"
+#include "net/url_request/redirect_util.h"
 #include "base/strings/string_number_conversions.h"
 #include <windows.h>
 
 namespace mini_electron {
+
+network::mojom::URLResponseHeadPtr convertWebURLResponseToHttpResponseHeaders(const blink::WebURLResponse& response);
 
 SingleRequestURLLoader::SingleRequestURLLoader(
     scoped_refptr<base::SingleThreadTaskRunner> freezableTaskRunnerHandle,
@@ -33,53 +38,50 @@ void SingleRequestURLLoader::startLoader(bool isSync, const network::ResourceReq
 {
     m_urlLoadClient.Bind(std::move(client));
     m_receiver.Bind(std::move(receiver));
+    m_receiver.set_disconnect_handler(base::BindOnce(&SingleRequestURLLoader::disconnect, base::Unretained(this)));
+    m_urlLoadClient.set_disconnect_handler(base::BindOnce(&SingleRequestURLLoader::disconnect, base::Unretained(this)));
+    m_request = std::make_unique<network::ResourceRequest>(request);
+    m_loader->SetAutoFollowRedirects(false);
+    // Synchronous callers pump Mojo endpoints; the transport remains asynchronous
+    // so that FollowRedirect and cancellation can still be served.
+    startRequest();
+}
 
-    std::unique_ptr<network::ResourceRequest> requestCopy = std::make_unique<network::ResourceRequest>(request);
-    if (1/*!isSync*/) {
-        m_loader->LoadAsynchronouslyEx(std::move(requestCopy), scoped_refptr<const blink::SecurityOrigin>(),
-            true, nullptr, nullptr, m_extraData, this);
-    } else {
-//         std::unique_ptr<network::ResourceRequest> request, 
-//         scoped_refptr<const blink::SecurityOrigin> top_frame_origin,
-//         bool download_to_blob,
-//         bool no_mime_sniffing, 
-//         base::TimeDelta timeout_interval, 
-//         blink::URLLoaderClient* client, 
-//         blink::WebURLResponse& response,
-//         std::optional<blink::WebURLError>& error, 
-//         scoped_refptr<WTF::SharedBuffer>& data, 
-//         int64_t& encoded_data_length, 
-//         uint64_t& encoded_body_length,
-//         scoped_refptr<blink::BlobDataHandle>& downloaded_blob, 
-//         std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper
-// 
-//         m_loader->LoadSynchronously(
-//             std::move(requestCopy),
-//             scoped_refptr<const blink::SecurityOrigin>(),
-//             false, /*download_to_blob,*/
-//             false /*no_mime_sniffing*/,
-//             base::TimeDelta() /*timeoutInterval*/,
-//             blink::WebURLLoaderClient * client,
-//             blink::WebURLResponse & response,
-//             absl::optional<blink::WebURLError>&error,
-//             blink::WebData & data,
-//             int64_t & encodedDataLength,
-//             int64_t & encodedBodyLength,
-//             blink::WebBlobInfo & downloadedBlob,
-//             std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrapper
-//         );
-    }
+void SingleRequestURLLoader::startRequest()
+{
+    m_loader->LoadAsynchronouslyEx(std::make_unique<network::ResourceRequest>(*m_request),
+        scoped_refptr<const blink::SecurityOrigin>(), true, nullptr, nullptr, m_extraData, this);
+    m_loader->SetPriority(m_request->priority, m_intraPriority);
+    m_loader->PauseReadingBody(m_bodyPaused);
 }
 
 bool SingleRequestURLLoader::WillFollowRedirect(const blink::WebURL& new_url, const net::SiteForCookies& new_site_for_cookies, const blink::WebString& new_referrer,
     network::mojom::ReferrerPolicy new_referrer_policy, const blink::WebString& new_method, const blink::WebURLResponse& passed_redirect_response,
     bool& report_raw_headers, std::vector<std::string>* removed_headers, net::HttpRequestHeaders& modified_headers, bool insecure_scheme_was_upgraded)
 {
-    return true;
+    if (m_completed)
+        return false;
+    if (++m_redirectCount > 20) {
+        complete(network::URLLoaderCompletionStatus(net::ERR_TOO_MANY_REDIRECTS));
+        return false;
+    }
+    auto response = convertWebURLResponseToHttpResponseHeaders(passed_redirect_response);
+    m_pendingRedirect = net::RedirectInfo::ComputeRedirectInfo(m_request->method, m_request->url,
+        m_request->site_for_cookies,
+        m_request->update_first_party_url_on_redirect ? net::RedirectInfo::FirstPartyURLPolicy::UPDATE_URL_ON_REDIRECT
+                                                    : net::RedirectInfo::FirstPartyURLPolicy::NEVER_CHANGE_URL,
+        m_request->referrer_policy, m_request->referrer.spec(), passed_redirect_response.HttpStatusCode(),
+        GURL(new_url.GetString().Utf8(), new_url.GetParsed(), new_url.IsValid()),
+        net::RedirectUtil::GetReferrerPolicyHeader(response->headers.get()), insecure_scheme_was_upgraded);
+    m_urlLoadClient->OnReceiveRedirect(*m_pendingRedirect, std::move(response));
+    // The backend cancels this leg without connecting to the destination.
+    return false;
 }
 
 void SingleRequestURLLoader::DidSendData(uint64_t bytes_sent, uint64_t total_bytes_to_be_sent)
 {
+    if (!m_completed && m_urlLoadClient)
+        m_urlLoadClient->OnUploadProgress(bytes_sent, total_bytes_to_be_sent, base::DoNothing());
 }
 
 class HeadersVisitor : public blink::WebHTTPHeaderVisitor {
@@ -123,7 +125,7 @@ network::mojom::URLResponseHeadPtr convertWebURLResponseToHttpResponseHeaders(co
     blink::WebURLResponse::HTTPVersion version = response.HttpVersion();
     if (blink::WebURLResponse::HTTPVersion::kHTTPVersion_1_1 == version) {
         major = 1; 
-        minor = 0;
+        minor = 1;
     } else if (blink::WebURLResponse::HTTPVersion::kHTTPVersion_0_9 == version) {
         major = 0;
         minor = 9;
@@ -169,42 +171,53 @@ void SingleRequestURLLoader::DidReceiveResponse(
     network::mojom::URLResponseHeadPtr responseHead = convertWebURLResponseToHttpResponseHeaders(response);
 
     if (m_urlLoadClient.get())
-        m_urlLoadClient->OnReceiveResponse(std::move(responseHead), std::move(*responseBodyConsumer), absl::nullopt);
-}
-
-void SingleRequestURLLoader::DidReceiveDataForTesting(base::span<const char> data)
-{
-    *(int*)1 = 1;
+        m_urlLoadClient->OnReceiveResponse(std::move(responseHead), std::move(*responseBodyConsumer), std::move(cachedMetadata));
 }
 
 void SingleRequestURLLoader::DidReceiveTransferSizeUpdate(int transfer_size_diff)
 {
-    *(int*)1 = 1;
+    if (!m_completed && m_urlLoadClient)
+        m_urlLoadClient->OnTransferSizeUpdated(transfer_size_diff);
 }
 
 void SingleRequestURLLoader::DidFinishLoading(
     base::TimeTicks finish_time, int64_t total_encoded_data_length, uint64_t total_encoded_body_length, int64_t total_decoded_body_length)
 {
-    ::network::URLLoaderCompletionStatus status(0);
-    if (m_urlLoadClient.get())
-        m_urlLoadClient->OnComplete(status); 
-
-    content::ThreadCall::delayDestroySelf(this, base::SingleThreadTaskRunner::GetCurrentDefault(), 0);
+    network::URLLoaderCompletionStatus status(net::OK);
+    status.completion_time = finish_time;
+    status.encoded_data_length = total_encoded_data_length;
+    status.encoded_body_length = total_encoded_body_length;
+    status.decoded_body_length = total_decoded_body_length;
+    complete(status);
 }
 
 void SingleRequestURLLoader::DidFail(const blink::WebURLError& err, base::TimeTicks finish_time, int64_t total_encoded_data_length, uint64_t total_encoded_body_length,
     int64_t total_decoded_body_length)
 {
-    ::network::URLLoaderCompletionStatus status(err.reason());
-    if (m_urlLoadClient.get())
-        m_urlLoadClient->OnComplete(status);
+    network::URLLoaderCompletionStatus status(err.reason());
+    status.completion_time = finish_time;
+    status.encoded_data_length = total_encoded_data_length;
+    status.encoded_body_length = total_encoded_body_length;
+    status.decoded_body_length = total_decoded_body_length;
+    complete(status);
+}
 
+void SingleRequestURLLoader::complete(const network::URLLoaderCompletionStatus& status)
+{
+    if (m_completed)
+        return;
+    m_completed = true;
+    if (m_urlLoadClient)
+        m_urlLoadClient->OnComplete(status);
+    m_receiver.reset();
+    m_urlLoadClient.reset();
     content::ThreadCall::delayDestroySelf(this, base::SingleThreadTaskRunner::GetCurrentDefault(), 0);
 }
 
-void SingleRequestURLLoader::CountFeature(blink::mojom::WebFeature)
+void SingleRequestURLLoader::disconnect()
 {
-    *(int*)1 = 1;
+    m_loader.reset();
+    complete(network::URLLoaderCompletionStatus(net::ERR_ABORTED));
 }
 
 //---
@@ -212,21 +225,49 @@ void SingleRequestURLLoader::CountFeature(blink::mojom::WebFeature)
 void SingleRequestURLLoader::FollowRedirect(const std::vector<std::string>& removed_headers, const ::net::HttpRequestHeaders& modified_headers,
     const ::net::HttpRequestHeaders& modified_cors_exempt_headers, const std::optional<::GURL>& new_url)
 {
-    *(int*)1 = 1;
+    if (m_completed || !m_pendingRedirect)
+        return;
+    net::RedirectInfo redirect = std::move(*m_pendingRedirect);
+    m_pendingRedirect.reset();
+    if (new_url)
+        redirect.new_url = *new_url;
+    bool clearUpload = false;
+    net::RedirectUtil::UpdateHttpRequest(m_request->url, m_request->method, redirect,
+        removed_headers, modified_headers, &m_request->headers, &clearUpload);
+    bool clearCorsExemptUpload = false;
+    net::RedirectUtil::UpdateHttpRequest(m_request->url, m_request->method, redirect,
+        removed_headers, modified_cors_exempt_headers, &m_request->cors_exempt_headers, &clearCorsExemptUpload);
+    if (clearUpload)
+        m_request->request_body.reset();
+    m_request->url = redirect.new_url;
+    m_request->method = redirect.new_method;
+    m_request->site_for_cookies = redirect.new_site_for_cookies;
+    m_request->referrer = GURL(redirect.new_referrer);
+    m_request->referrer_policy = redirect.new_referrer_policy;
+    startRequest();
 }
 
 void SingleRequestURLLoader::SetPriority(::net::RequestPriority priority, int32_t intra_priority_value)
 {
+    if (m_completed)
+        return;
+    m_request->priority = priority;
+    m_intraPriority = intra_priority_value;
+    m_loader->SetPriority(priority, intra_priority_value);
 }
 
 void SingleRequestURLLoader::PauseReadingBodyFromNet()
 {
-    *(int*)1 = 1;
+    m_bodyPaused = true;
+    if (!m_completed)
+        m_loader->PauseReadingBody(true);
 }
 
 void SingleRequestURLLoader::ResumeReadingBodyFromNet()
 {
-    *(int*)1 = 1;
+    m_bodyPaused = false;
+    if (!m_completed)
+        m_loader->PauseReadingBody(false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -245,7 +286,7 @@ public:
     void HandleRequest(
         const network::ResourceRequest& resourceRequest, mojo::PendingReceiver<network::mojom::URLLoader> loader, mojo::PendingRemote<network::mojom::URLLoaderClient> client)
     {
-        // Èç¹û²»ÔÚÍ¬Ò»Ïß³Ì£¬ÓÐ¿ÉÄÜÊÇÍ¬²½ÇëÇó
+        // å¦‚æžœä¸åœ¨åŒä¸€çº¿ç¨‹ï¼Œæœ‰å¯èƒ½æ˜¯åŒæ­¥è¯·æ±‚
 //         if (!m_handlerTaskRunner->RunsTasksInCurrentSequence()) {
 //             m_handlerTaskRunner->PostTask(
 //                 FROM_HERE, base::BindOnce(&HandlerState::HandleRequest, this, resourceRequest, std::move(loader), std::move(client)));

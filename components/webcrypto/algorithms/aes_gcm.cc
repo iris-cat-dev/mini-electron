@@ -14,27 +14,22 @@
 #include "components/webcrypto/status.h"
 #include "crypto/openssl_util.h"
 #include "third_party/blink/public/platform/web_crypto_algorithm_params.h"
-//#include "third_party/boringssl/src/include/openssl/aead.h"
-#include "third_party/openssl/openssl/include/openssl/aead.h"
-#include <windows.h>
+#include "third_party/openssl/openssl/include/openssl/evp.h"
 
 namespace webcrypto {
 
 namespace {
 
-const EVP_AEAD* GetAesGcmAlgorithmFromKeySize(size_t key_size_bytes)
+const EVP_CIPHER* GetAesGcmAlgorithmFromKeySize(size_t key_size_bytes)
 {
-//     switch (key_size_bytes) {
-//     case 16:
-//         return EVP_aead_aes_128_gcm();
-//     case 32:
-//         return EVP_aead_aes_256_gcm();
-//     default:
-//         return nullptr;
-//     }
-    OutputDebugStringA("GetAesGcmAlgorithmFromKeySize not impl\n");
-    DebugBreak();
-    return nullptr;
+    switch (key_size_bytes) {
+    case 16:
+        return EVP_aes_128_gcm();
+    case 32:
+        return EVP_aes_256_gcm();
+    default:
+        return nullptr;
+    }
 }
 
 Status AesGcmEncryptDecrypt(EncryptOrDecrypt mode, const blink::WebCryptoAlgorithm& algorithm, const blink::WebCryptoKey& key, base::span<const uint8_t> data,

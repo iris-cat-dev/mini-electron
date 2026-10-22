@@ -697,15 +697,15 @@ std::optional<ParseResult> YieldInt32(ParseResultIterator* child_results)
     std::string value = child_results->matched_input().ToString();
     size_t num_chars_converted = 0;
     int result = 0;
-    //try {
+    try {
         result = std::stoi(value, &num_chars_converted, 0);
-//     } catch (const std::invalid_argument&) {
-//         Error("Expected an integer");
-//         return ParseResult { result };
-//     } catch (const std::out_of_range&) {
-//         Error("Integer out of 32-bit range");
-//         return ParseResult { result };
-//     }
+    } catch (const std::invalid_argument&) {
+        Error("Expected an integer");
+        return ParseResult { result };
+    } catch (const std::out_of_range&) {
+        Error("Integer out of 32-bit range");
+        return ParseResult { result };
+    }
     // Tokenizer shouldn't have included extra trailing characters.
     DCHECK_EQ(num_chars_converted, value.size());
     return ParseResult { result };
@@ -716,12 +716,12 @@ std::optional<ParseResult> YieldDouble(ParseResultIterator* child_results)
     std::string value = child_results->matched_input().ToString();
     size_t num_chars_converted = 0;
     double result = 0;
-    //try {
+    try {
         result = std::stod(value, &num_chars_converted);
-//     } catch (const std::out_of_range&) {
-//         Error("double literal out-of-range");
-//         return ParseResult { result };
-//     }
+    } catch (const std::out_of_range&) {
+        Error("double literal out-of-range");
+        return ParseResult { result };
+    }
     // Tokenizer shouldn't have included extra trailing characters.
     DCHECK_EQ(num_chars_converted, value.size());
     return ParseResult { result };
@@ -737,15 +737,15 @@ std::optional<ParseResult> YieldIntegerLiteral(ParseResultIterator* child_result
         value = value.substr(1);
     }
     uint64_t absolute_value;
-    //try {
+    try {
         size_t parsed = 0;
         absolute_value = std::stoull(value, &parsed, 0);
         DCHECK_EQ(parsed, value.size());
-//     } catch (const std::invalid_argument&) {
-//         Error("integer literal could not be parsed").Throw();
-//     } catch (const std::out_of_range&) {
-//         Error("integer literal value out of range").Throw();
-//     }
+    } catch (const std::invalid_argument&) {
+        Error("integer literal could not be parsed").Throw();
+    } catch (const std::out_of_range&) {
+        Error("integer literal value out of range").Throw();
+    }
     return ParseResult(IntegerLiteral(negative, absolute_value));
 }
 

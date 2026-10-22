@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <type_traits>
 
 //#include "base/bind.h"
 #include "base/callback.h"
@@ -29,6 +30,22 @@
 #include "mojo/public/cpp/bindings/pending_flush.h"
 #include "mojo/public/cpp/bindings/thread_safe_proxy.h"
 #include "mojo/public/cpp/system/message_pipe.h"
+
+namespace network::mojom {
+class URLLoaderClient;
+class DataPipeGetter;
+class ChunkedDataPipeGetter;
+namespace blink {
+class DataPipeGetter;
+class ChunkedDataPipeGetter;
+}
+}
+namespace blink::mojom {
+class BlobReaderClient;
+namespace blink {
+class BlobReaderClient;
+}
+}
 
 namespace base {
 class Location;
@@ -88,6 +105,12 @@ public:
     }
 
     void* TryGetInstance() const;
+
+    // Queued interfaces enqueue owned typed arguments, not raw implementation
+    // pointers. Endpoint lifetime and receiver controls are handled centrally.
+    void EnqueueCall(base::OnceCallback<void(void*)> call);
+    void FlushForTesting();
+    void FlushAsyncForTesting(base::OnceClosure callback);
 
 protected:
     void OnDisconnectError(MojoHandle handle, base::OnceClosure reset_handler);
@@ -149,6 +172,30 @@ protected:
     //scoped_refptr<RawPtrMessagePipe> raw_ptr_message_pipe_;
 };
 
+template <typename Interface> inline constexpr bool kUsesLiteQueuedDispatch =
+    std::is_same_v<Interface, network::mojom::URLLoaderClient> ||
+    std::is_same_v<Interface, network::mojom::DataPipeGetter> ||
+    std::is_same_v<Interface, network::mojom::blink::DataPipeGetter> ||
+    std::is_same_v<Interface, network::mojom::ChunkedDataPipeGetter> ||
+    std::is_same_v<Interface, network::mojom::blink::ChunkedDataPipeGetter> ||
+    std::is_same_v<Interface, blink::mojom::BlobReaderClient> ||
+    std::is_same_v<Interface, blink::mojom::blink::BlobReaderClient>;
+
+// Keep destruction out of line: Remote fields may use forward-declared IDL
+// interfaces. Unadapted interfaces have no proxy allocation or storage.
+template <typename Interface> using LiteQueuedProxy = std::unique_ptr<Interface, void (*)(Interface*)>;
+struct NoLiteQueuedProxy {
+    NoLiteQueuedProxy(std::nullptr_t, std::nullptr_t) {}
+};
+template <typename Interface> LiteQueuedProxy<Interface> CreateLiteQueuedProxy(RemoteImplBase* remote);
+template <> LiteQueuedProxy<network::mojom::URLLoaderClient> CreateLiteQueuedProxy<network::mojom::URLLoaderClient>(RemoteImplBase*);
+template <> LiteQueuedProxy<network::mojom::DataPipeGetter> CreateLiteQueuedProxy<network::mojom::DataPipeGetter>(RemoteImplBase*);
+template <> LiteQueuedProxy<network::mojom::blink::DataPipeGetter> CreateLiteQueuedProxy<network::mojom::blink::DataPipeGetter>(RemoteImplBase*);
+template <> LiteQueuedProxy<network::mojom::ChunkedDataPipeGetter> CreateLiteQueuedProxy<network::mojom::ChunkedDataPipeGetter>(RemoteImplBase*);
+template <> LiteQueuedProxy<network::mojom::blink::ChunkedDataPipeGetter> CreateLiteQueuedProxy<network::mojom::blink::ChunkedDataPipeGetter>(RemoteImplBase*);
+template <> LiteQueuedProxy<blink::mojom::BlobReaderClient> CreateLiteQueuedProxy<blink::mojom::BlobReaderClient>(RemoteImplBase*);
+template <> LiteQueuedProxy<blink::mojom::blink::BlobReaderClient> CreateLiteQueuedProxy<blink::mojom::blink::BlobReaderClient>(RemoteImplBase*);
+
 template <typename Interface> class RemoteImpl : public RemoteImplBase {
 public:
     // using Proxy = typename Interface::Proxy_;
@@ -173,7 +220,17 @@ public:
 
     Interface* instance()
     {
-        return (Interface*)GetInstance();
+        if constexpr (kUsesLiteQueuedDispatch<Interface>) {
+            if (!queued_proxy_)
+                queued_proxy_ = CreateLiteQueuedProxy<Interface>(this);
+            return queued_proxy_.get();
+        }
+        return static_cast<Interface*>(GetInstance());
+    }
+
+    Interface* TryInstance()
+    {
+        return TryGetInstance() ? instance() : nullptr;
     }
     //Interface** instance_addr() { return (Interface**)GetInstanceAddrImpl(); }
 #endif
@@ -214,14 +271,12 @@ public:
 
     void FlushForTesting()
     {
-        // ConfigureProxyIfNecessary();
-        //endpoint_client()->FlushForTesting();
+        RemoteImplBase::FlushForTesting();
     }
 
     void FlushAsyncForTesting(base::OnceClosure callback)
     {
-        //     ConfigureProxyIfNecessary();
-        //endpoint_client()->FlushAsyncForTesting(std::move(callback));
+        RemoteImplBase::FlushAsyncForTesting(std::move(callback));
     }
 
     void CloseWithReason(uint32_t custom_reason, const std::string& description)
@@ -302,6 +357,7 @@ public:
     //InterfaceEndpointClient* endpoint_client_for_test() { return endpoint_client(); }
 
 private:
+    [[no_unique_address]] std::conditional_t<kUsesLiteQueuedDispatch<Interface>, LiteQueuedProxy<Interface>, NoLiteQueuedProxy> queued_proxy_ { nullptr, nullptr };
     //   void ConfigureProxyIfNecessary() {
     //     // The proxy has been configured.
     //     if (proxy_) {

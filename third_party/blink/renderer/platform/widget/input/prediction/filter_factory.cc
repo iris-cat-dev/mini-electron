@@ -8,8 +8,8 @@
 #include "base/strings/string_number_conversions.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/platform/widget/input/prediction/predictor_factory.h"
-// #include "ui/base/prediction/empty_filter.h"
-// #include "ui/base/prediction/one_euro_filter.h"
+#include "ui/base/prediction/empty_filter.h"
+#include "ui/base/prediction/one_euro_filter.h"
 #include "ui/base/ui_base_features.h"
 
 namespace blink {
@@ -34,17 +34,15 @@ void FilterFactory::LoadFilterParams(
     const base::Feature& feature, const input_prediction::PredictorType predictor_type, const input_prediction::FilterType filter_type)
 {
     if (filter_type == FilterType::kOneEuro) {
-//         base::FieldTrialParams one_euro_filter_param = { { ui::OneEuroFilter::kParamBeta, "" }, { ui::OneEuroFilter::kParamMincutoff, "" } };
-//         double beta, mincutoff;
-//         // Only save the params if they are given in the fieldtrials params
-//         if (base::GetFieldTrialParamsByFeature(feature, &one_euro_filter_param)
-//             && base::StringToDouble(one_euro_filter_param[ui::OneEuroFilter::kParamBeta], &beta)
-//             && base::StringToDouble(one_euro_filter_param[ui::OneEuroFilter::kParamMincutoff], &mincutoff)) {
-//             FilterParamMapKey param_key = { FilterType::kOneEuro, predictor_type };
-//             FilterParams param_value = { { ui::OneEuroFilter::kParamMincutoff, mincutoff }, { ui::OneEuroFilter::kParamBeta, beta } };
-//             filter_params_map_.emplace(param_key, param_value);
-//         }
-        * (int*)1 = 1;
+        base::FieldTrialParams one_euro_filter_param = { { ui::OneEuroFilter::kParamBeta, "" }, { ui::OneEuroFilter::kParamMincutoff, "" } };
+        double beta, mincutoff;
+        if (base::GetFieldTrialParamsByFeature(feature, &one_euro_filter_param)
+            && base::StringToDouble(one_euro_filter_param[ui::OneEuroFilter::kParamBeta], &beta)
+            && base::StringToDouble(one_euro_filter_param[ui::OneEuroFilter::kParamMincutoff], &mincutoff)) {
+            FilterParamMapKey param_key = { FilterType::kOneEuro, predictor_type };
+            FilterParams param_value = { { ui::OneEuroFilter::kParamMincutoff, mincutoff }, { ui::OneEuroFilter::kParamBeta, beta } };
+            filter_params_map_.emplace(param_key, param_value);
+        }
     }
 }
 
@@ -58,20 +56,16 @@ FilterType FilterFactory::GetFilterTypeFromName(const std::string& filter_name)
 
 std::unique_ptr<ui::InputFilter> FilterFactory::CreateFilter()
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     FilterParams filter_params;
-//     GetFilterParams(filter_type_, predictor_type_, &filter_params);
-//     if (filter_type_ == FilterType::kOneEuro) {
-//         if (filter_params.empty()) {
-//             return std::make_unique<ui::OneEuroFilter>();
-//         } else {
-//             return std::make_unique<ui::OneEuroFilter>(
-//                 filter_params.find(ui::OneEuroFilter::kParamMincutoff)->second, filter_params.find(ui::OneEuroFilter::kParamBeta)->second);
-//         }
-//     } else {
-//         return std::make_unique<ui::EmptyFilter>();
-//     }
+    FilterParams filter_params;
+    GetFilterParams(filter_type_, predictor_type_, &filter_params);
+    if (filter_type_ == FilterType::kOneEuro) {
+        if (filter_params.empty())
+            return std::make_unique<ui::OneEuroFilter>();
+        return std::make_unique<ui::OneEuroFilter>(
+            filter_params.find(ui::OneEuroFilter::kParamMincutoff)->second,
+            filter_params.find(ui::OneEuroFilter::kParamBeta)->second);
+    }
+    return std::make_unique<ui::EmptyFilter>();
 }
 
 void FilterFactory::GetFilterParams(const FilterType filter_type, const PredictorType predictor_type, FilterParams* filter_params)

@@ -495,32 +495,6 @@ PermissionService* ClipboardPromise::GetPermissionService()
     return permission_service_.get();
 }
 
-//////////////////////////////////////////////////////////////////////////
-// third_party\blink\renderer\modules\permissions\permission_utils.cc
-using MojoPermissionDescriptor = mojom::blink::PermissionDescriptor;
-
-void ConnectToPermissionService(ExecutionContext* execution_context, mojo::PendingReceiver<mojom::blink::PermissionService> receiver)
-{
-    execution_context->GetBrowserInterfaceBroker().GetInterface(std::move(receiver));
-}
-
-mojom::blink::PermissionDescriptorPtr CreatePermissionDescriptor(mojom::blink::PermissionName name)
-{
-    auto descriptor = MojoPermissionDescriptor::New();
-    descriptor->name = name;
-    return descriptor;
-}
-
-
-mojom::blink::PermissionDescriptorPtr CreateClipboardPermissionDescriptor(mojom::blink::PermissionName name, bool has_user_gesture, bool will_be_sanitized)
-{
-    auto descriptor = CreatePermissionDescriptor(name);
-    auto clipboard_extension = mojom::blink::ClipboardPermissionDescriptor::New(has_user_gesture, will_be_sanitized);
-    descriptor->extension = mojom::blink::PermissionDescriptorExtension::NewClipboard(std::move(clipboard_extension));
-    return descriptor;
-}
-//////////////////////////////////////////////////////////////////////////
-
 void ClipboardPromise::ValidatePreconditions(
     mojom::blink::PermissionName permission, bool will_be_sanitized, base::OnceCallback<void(mojom::blink::PermissionStatus)> callback)
 {

@@ -51,7 +51,9 @@ class MODULES_EXPORT RemotePlayback final : public EventTarget,
                                             public ActiveScriptWrappable<RemotePlayback>,
                                             public RemotePlaybackClient,
                                             public PresentationAvailabilityObserver,
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
                                             public mojom::blink::PresentationConnection,
+#endif
                                             public RemotePlaybackController {
     DEFINE_WRAPPERTYPEINFO();
 
@@ -97,8 +99,8 @@ public:
     void PromptInternal();
 
     // The implementation of watchAvailability() and cancelWatchAvailability().
-    // Can return kWatchAvailabilityNotSupported to indicate the availability
-    // monitoring is disabled. RemotePlaybackAvailable() will return true then.
+    // Returns kWatchAvailabilityNotSupported when no presentation service is
+    // available; no callback is registered and no availability is fabricated.
     int WatchAvailabilityInternal(AvailabilityCallbackWrapper*);
     bool CancelWatchAvailabilityInternal(int id);
 
@@ -111,6 +113,7 @@ public:
     void AvailabilityChanged(mojom::blink::ScreenAvailability) override;
     const Vector<KURL>& Urls() const override;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Handles the response from PresentationService::StartPresentation.
     void HandlePresentationResponse(mojom::blink::PresentationConnectionResultPtr, mojom::blink::PresentationErrorPtr);
     void OnConnectionSuccess(mojom::blink::PresentationConnectionResultPtr);
@@ -120,6 +123,7 @@ public:
     void OnMessage(mojom::blink::PresentationConnectionMessagePtr) override;
     void DidChangeState(mojom::blink::PresentationConnectionState) override;
     void DidClose(mojom::blink::PresentationConnectionCloseReason) override;
+#endif
 
     // RemotePlaybackClient implementation.
     bool RemotePlaybackAvailable() const override;
@@ -161,19 +165,25 @@ private:
     // Need a void() method to post it as a task.
     void NotifyInitialAvailability(int callback_id);
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Starts listening for remote playback device availability if there're both
     // registered availability callbacks and a valid source set. May be called
     // more than once in a row.
     void MaybeStartListeningForAvailability();
+#endif
 
     // Stops listening for remote playback device availability (unconditionally).
     // May be called more than once in a row.
     void StopListeningForAvailability();
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     void UpdateAvailabilityUrlsAndStartListening();
+#endif
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     // Clears bindings after remote playback stops.
     void CleanupConnections();
+#endif
 
     mojom::blink::PresentationConnectionState state_;
     mojom::blink::ScreenAvailability availability_;
@@ -191,8 +201,10 @@ private:
     std::optional<media::VideoCodec> video_codec_ = std::nullopt;
     std::optional<media::AudioCodec> audio_codec_ = std::nullopt;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     HeapMojoReceiver<mojom::blink::PresentationConnection, RemotePlayback> presentation_connection_receiver_;
     HeapMojoRemote<mojom::blink::PresentationConnection> target_presentation_connection_;
+#endif
 
     HeapHashSet<Member<RemotePlaybackObserver>> observers_;
 };

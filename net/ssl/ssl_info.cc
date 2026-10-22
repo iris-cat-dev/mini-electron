@@ -4,8 +4,6 @@
 
 #include "net/ssl/ssl_info.h"
 
-//#include "net/cert/x509_certificate.h"
-
 namespace net {
 
 SSLInfo::SSLInfo() = default;

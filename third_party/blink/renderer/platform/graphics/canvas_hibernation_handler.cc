@@ -9,6 +9,7 @@
 #include "base/timer/elapsed_timer.h"
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/memory_dump_request_args.h"
+#include "base/tracing_buildflags.h"
 #include "third_party/blink/renderer/platform/bindings/buildflags.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
@@ -97,10 +98,11 @@ bool HibernatedCanvasMemoryDumpProvider::OnMemoryDump(const base::trace_event::M
 
 HibernatedCanvasMemoryDumpProvider::HibernatedCanvasMemoryDumpProvider()
 {
-    *(int*)1 = 1;
-//     DCHECK(IsMainThread());
-//     base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
-//         this, "hibernated_canvas", blink::Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted()));
+    DCHECK(IsMainThread());
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
+        this, "hibernated_canvas", blink::Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted()));
+#endif
 }
 
 CanvasHibernationHandler::~CanvasHibernationHandler()

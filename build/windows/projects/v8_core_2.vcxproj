@@ -1016,35 +1016,122 @@
     <ClCompile Include="..\..\..\v8\src\tasks\task-utils.cc" />
     <ClCompile Include="..\..\..\v8\src\temporal\temporal-parser.cc" />
     <ClCompile Include="..\..\..\v8\src\third_party\siphash\halfsiphash.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\cc-generator.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\cfg.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\class-debug-reader-generator.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\cpp-builder.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\csa-generator.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\declarable.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\declaration-visitor.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\declarations.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\earley-parser.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\global-context.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\implementation-visitor.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\instance-type-generator.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\instructions.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\kythe-data.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\ls\json-parser.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\ls\json.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\ls\message-handler.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\ls\torque-language-server.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\server-data.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\source-positions.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\torque-code-generator.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\torque-compiler.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\torque-parser.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\torque.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\type-inference.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\type-oracle.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\type-visitor.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\types.cc" />
-    <ClCompile Include="..\..\..\v8\src\torque\utils-torque.cc" />
+    <ClCompile Include="..\..\..\v8\src\torque\cc-generator.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\cfg.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\class-debug-reader-generator.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\cpp-builder.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\csa-generator.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\declarable.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\declaration-visitor.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\declarations.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\earley-parser.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\global-context.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\implementation-visitor.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\instance-type-generator.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\instructions.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\kythe-data.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\ls\json-parser.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\ls\json.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\ls\message-handler.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\ls\torque-language-server.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\server-data.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\source-positions.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\torque-code-generator.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\torque-compiler.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\torque-parser.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\torque.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\type-inference.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\type-oracle.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\type-visitor.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\types.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\v8\src\torque\utils-torque.cc">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>$([System.String]::Copy('%(PreprocessorDefinitions)').Replace('_HAS_EXCEPTIONS=0', '_HAS_EXCEPTIONS=1'))</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="..\..\..\v8\src\tracing\trace-categories.cc" />
     <ClCompile Include="..\..\..\v8\src\tracing\trace-event.cc" />
     <ClCompile Include="..\..\..\v8\src\tracing\traced-value.cc" />

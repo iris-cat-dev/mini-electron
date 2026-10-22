@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/messaging/static_bitmap_image.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/messaging/static_bitmap_image.mojom-shared.h" // IWYU pragma: export
@@ -84,61 +87,61 @@ public:
     virtual void Release(const ::gpu::SyncToken& token) = 0;
 };
 
-//class BLINK_COMMON_EXPORT ImageReleaseCallbackProxy : public ImageReleaseCallback {
-//public:
-//    using InterfaceType = ImageReleaseCallback;
-//
-//    explicit ImageReleaseCallbackProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void Release(const ::gpu::SyncToken& token) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class BLINK_COMMON_EXPORT ImageReleaseCallbackStubDispatch {
-//public:
-//    static bool Accept(ImageReleaseCallback* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(ImageReleaseCallback* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+class BLINK_COMMON_EXPORT ImageReleaseCallbackProxy : public ImageReleaseCallback {
+public:
+    using InterfaceType = ImageReleaseCallback;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<ImageReleaseCallback>>
-//class ImageReleaseCallbackStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    ImageReleaseCallbackStub() = default;
-//    ~ImageReleaseCallbackStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return ImageReleaseCallbackStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return ImageReleaseCallbackStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class BLINK_COMMON_EXPORT ImageReleaseCallbackRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    explicit ImageReleaseCallbackProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void Release(const ::gpu::SyncToken& token) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class BLINK_COMMON_EXPORT ImageReleaseCallbackStubDispatch {
+public:
+    static bool Accept(ImageReleaseCallback* impl, mojo::Message* message);
+    static bool AcceptWithResponder(ImageReleaseCallback* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<ImageReleaseCallback>>
+class ImageReleaseCallbackStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    ImageReleaseCallbackStub() = default;
+    ~ImageReleaseCallbackStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return ImageReleaseCallbackStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return ImageReleaseCallbackStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class BLINK_COMMON_EXPORT ImageReleaseCallbackRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class BLINK_COMMON_EXPORT SharedImageUsageSet {
 public:
@@ -161,16 +164,11 @@ public:
         return mojo::TypeConverter<U, SharedImageUsageSet>::Convert(*this);
     }
 
-    SharedImageUsageSet()
-    : usage()
-{
-}
+    SharedImageUsageSet();
 
-    explicit SharedImageUsageSet(uint32_t usage_in)
-    : usage(std::move(usage_in)){
-}
+    explicit SharedImageUsageSet(uint32_t usage_in);
 
-    ~SharedImageUsageSet() = default;
+    ~SharedImageUsageSet();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -238,7 +236,9 @@ public:
     uint32_t usage;
 
     // Serialise this struct into a trace.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -304,15 +304,8 @@ public:
         return mojo::TypeConverter<U, SerializedStaticBitmapImage>::Convert(*this);
     }
 
-    SerializedStaticBitmapImage()
-        : tag_(Tag::kBitmap)
-    {
-        data_.bitmap = new ::SkBitmap;
-    }
-    ~SerializedStaticBitmapImage()
-    {
-        DestroyActive();
-    }
+    SerializedStaticBitmapImage();
+    ~SerializedStaticBitmapImage();
     // Delete the copy constructor and copy assignment operators because `data_`
     // contains raw pointers that must not be copied.
     SerializedStaticBitmapImage(const SerializedStaticBitmapImage& other) = delete;
@@ -384,17 +377,7 @@ private:
 
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
 
-    void DestroyActive()
-    {
-        switch (tag_) {
-            case Tag::kBitmap:
-                delete data_.bitmap;
-                break;
-            case Tag::kAcceleratedImage:
-                delete data_.accelerated_image;
-                break;
-        }
-    }
+    void DestroyActive();
     Tag tag_;
     Union_ data_;
 };
@@ -420,33 +403,16 @@ public:
         return mojo::TypeConverter<U, AcceleratedStaticBitmapImage>::Convert(*this);
     }
 
-    AcceleratedStaticBitmapImage()
-    : mailbox_holder()
-    , usage()
-    , image_info()
-    , is_origin_top_left()
-    , supports_display_compositing()
-    , is_overlay_candidate()
-    , release_callback()
-{
-}
+    AcceleratedStaticBitmapImage();
 
     AcceleratedStaticBitmapImage(const ::gpu::MailboxHolder& mailbox_holder_in, SharedImageUsageSetPtr usage_in,
-    const ::SkImageInfo& image_info_in, bool is_origin_top_left_in, bool supports_display_compositing_in, bool is_overlay_candidate_in,
-    ::mojo::PendingRemote<ImageReleaseCallback> release_callback_in)
-    : mailbox_holder(std::move(mailbox_holder_in))
-    , usage(std::move(usage_in))
-    , image_info(std::move(image_info_in))
-    , is_origin_top_left(std::move(is_origin_top_left_in))
-    , supports_display_compositing(std::move(supports_display_compositing_in))
-    , is_overlay_candidate(std::move(is_overlay_candidate_in))
-    , release_callback(std::move(release_callback_in)){
-}
+        const ::SkImageInfo& image_info_in, bool is_origin_top_left_in, bool supports_display_compositing_in, bool is_overlay_candidate_in,
+        ::mojo::PendingRemote<ImageReleaseCallback> release_callback_in);
 
     AcceleratedStaticBitmapImage(const AcceleratedStaticBitmapImage&) = delete;
     AcceleratedStaticBitmapImage& operator=(const AcceleratedStaticBitmapImage&) = delete;
 
-    ~AcceleratedStaticBitmapImage() = default;
+    ~AcceleratedStaticBitmapImage();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -523,7 +489,9 @@ public:
     ::mojo::PendingRemote<ImageReleaseCallback> release_callback;
 
     // Serialise this struct into a trace.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

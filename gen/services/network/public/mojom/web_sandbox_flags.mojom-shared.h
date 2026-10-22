@@ -14,7 +14,10 @@
 #include <type_traits>
 #include <utility>
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/web_sandbox_flags.mojom-shared-internal.h"
 
@@ -121,6 +124,7 @@ namespace network::mojom {
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::WebSandboxFlags> {
@@ -128,5 +132,6 @@ template <> struct TraceFormatTraits<::network::mojom::WebSandboxFlags> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // SERVICES_NETWORK_PUBLIC_MOJOM_WEB_SANDBOX_FLAGS_MOJOM_SHARED_H_

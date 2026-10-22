@@ -557,34 +557,5 @@ char* SocketStreamHandle::createCopy(const char* data, int length)
     return copy;
 }
 
-void SocketStreamHandle::didReceiveAuthenticationChallenge(const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
-
-void SocketStreamHandle::receivedCredential(const blink::AuthenticationChallenge&, const blink::Credential&)
-{
-    DebugBreak();
-}
-
-void SocketStreamHandle::receivedRequestToContinueWithoutCredential(const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
-
-void SocketStreamHandle::receivedCancellation(const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
-
-void SocketStreamHandle::receivedRequestToPerformDefaultHandling(const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
-
-void SocketStreamHandle::receivedChallengeRejection(const blink::AuthenticationChallenge&)
-{
-    DebugBreak();
-}
 
 } // namespace net

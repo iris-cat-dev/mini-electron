@@ -32,7 +32,6 @@
 #include "third_party/openssl/openssl/include/openssl/evp.h"
 #include "third_party/openssl/openssl/include/openssl/mem.h"
 
-#include <windows.h>
 
 namespace webcrypto {
 
@@ -168,11 +167,10 @@ Status CreateEC_KEY(blink::WebCryptoNamedCurve named_curve, bssl::UniquePtr<EC_K
 // |padded_length|.
 Status WritePaddedBIGNUM(const std::string& member_name, const BIGNUM* value, size_t padded_length, JwkWriter* jwk)
 {
-//     std::vector<uint8_t> padded_bytes(padded_length);
-//     if (!BN_bn2bin_padded(padded_bytes.data(), padded_bytes.size(), value))
-//         return Status::OperationError();
-//     jwk->SetBytes(member_name, padded_bytes);
-    *(int*)1 = 1;
+    std::vector<uint8_t> padded_bytes(padded_length);
+    if (BN_bn2binpad(value, padded_bytes.data(), static_cast<int>(padded_length)) != static_cast<int>(padded_length))
+        return Status::OperationError();
+    jwk->SetBytes(member_name, padded_bytes);
     return Status::Success();
 }
 
@@ -508,36 +506,21 @@ Status EcAlgorithm::ImportKeyJwk(base::span<const uint8_t> key_data, const blink
 
 Status EcAlgorithm::ExportKeyRaw(const blink::WebCryptoKey& key, std::vector<uint8_t>* buffer) const
 {
-    OutputDebugStringA("EcAlgorithm::ExportKeyRaw not impl\n");
-    DebugBreak();
-    return Status::ErrorUnexpectedKeyType();
-
-    //   crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-    //
-    //   if (key.GetType() != blink::kWebCryptoKeyTypePublic)
-    //     return Status::ErrorUnexpectedKeyType();
-    //
-    //   EVP_PKEY* pkey = GetEVP_PKEY(key);
-    //
-    //   EC_KEY* ec = EVP_PKEY_get0_EC_KEY(pkey);
-    //   if (!ec)
-    //     return Status::ErrorUnexpected();
-    //
-    //   // Serialize the public key as an uncompressed point in X9.62 form.
-    //   uint8_t* raw;
-    //   size_t raw_len;
-    //   bssl::ScopedCBB cbb;
-    //   if (!CBB_init(cbb.get(), 0) ||
-    //       !EC_POINT_point2cbb(cbb.get(), EC_KEY_get0_group(ec),
-    //                           EC_KEY_get0_public_key(ec),
-    //                           POINT_CONVERSION_UNCOMPRESSED, nullptr) ||
-    //       !CBB_finish(cbb.get(), &raw, &raw_len)) {
-    //     return Status::OperationError();
-    //   }
-    //   buffer->assign(raw, raw + raw_len);
-    //   OPENSSL_free(raw);
-    //
-    //   return Status::Success();
+    crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
+    if (key.GetType() != blink::kWebCryptoKeyTypePublic)
+        return Status::ErrorUnexpectedKeyType();
+    const EC_KEY* ec = EVP_PKEY_get0_EC_KEY(GetEVP_PKEY(key));
+    if (!ec)
+        return Status::ErrorUnexpected();
+    const EC_GROUP* group = EC_KEY_get0_group(ec);
+    const EC_POINT* point = EC_KEY_get0_public_key(ec);
+    const size_t length = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, nullptr);
+    if (!length)
+        return Status::OperationError();
+    buffer->resize(length);
+    if (EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, buffer->data(), length, nullptr) != length)
+        return Status::OperationError();
+    return Status::Success();
 }
 
 Status EcAlgorithm::ExportKeyPkcs8(const blink::WebCryptoKey& key, std::vector<uint8_t>* buffer) const

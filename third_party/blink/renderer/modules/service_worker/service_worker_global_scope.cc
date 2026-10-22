@@ -1657,16 +1657,15 @@ void ServiceWorkerGlobalScope::StartNotificationClickEvent(
     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchNotificationClickEvent",
         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
 
-    *(int*)1 = 1;
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kNotificationClick, event_id);
-//     NotificationEventInit* event_init = NotificationEventInit::Create();
-//     if (notification_data->actions.has_value() && 0 <= action_index && action_index < static_cast<int>(notification_data->actions->size())) {
-//         event_init->setAction((*notification_data->actions)[action_index]->action);
-//     }
-//     event_init->setNotification(Notification::Create(this, notification_id, std::move(notification_data), true /* showing */));
-//     event_init->setReply(reply);
-//     Event* event = NotificationEvent::Create(event_type_names::kNotificationclick, event_init, observer);
-//     DispatchExtendableEvent(event, observer);
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kNotificationClick, event_id);
+    NotificationEventInit* event_init = NotificationEventInit::Create();
+    if (notification_data->actions.has_value() && 0 <= action_index && action_index < static_cast<int>(notification_data->actions->size())) {
+        event_init->setAction((*notification_data->actions)[action_index]->action);
+    }
+    event_init->setNotification(Notification::Create(this, notification_id, std::move(notification_data), true /* showing */));
+    event_init->setReply(reply);
+    Event* event = NotificationEvent::Create(event_type_names::kNotificationclick, event_init, observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchNotificationCloseEvent(
@@ -1683,243 +1682,229 @@ void ServiceWorkerGlobalScope::DispatchNotificationCloseEvent(
 
 void ServiceWorkerGlobalScope::StartNotificationCloseEvent(String notification_id, mojom::blink::NotificationDataPtr notification_data, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchNotificationCloseEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kNotificationClose, event_id);
-//     NotificationEventInit* event_init = NotificationEventInit::Create();
-//     event_init->setAction(WTF::String()); // initialize as null.
-//     event_init->setNotification(Notification::Create(this, notification_id, std::move(notification_data), false /* showing */));
-//     Event* event = NotificationEvent::Create(event_type_names::kNotificationclose, event_init, observer);
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchNotificationCloseEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kNotificationClose, event_id);
+    NotificationEventInit* event_init = NotificationEventInit::Create();
+    event_init->setAction(WTF::String()); // initialize as null.
+    event_init->setNotification(Notification::Create(this, notification_id, std::move(notification_data), false /* showing */));
+    Event* event = NotificationEvent::Create(event_type_names::kNotificationclose, event_init, observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchPushEvent(const String& payload, DispatchPushEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     push_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartPushEvent, WrapWeakPersistent(this), std::move(payload)),
-//         CreateAbortCallback(&push_event_callbacks_), base::Seconds(mojom::blink::kPushEventTimeoutSeconds));
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    push_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartPushEvent, WrapWeakPersistent(this), std::move(payload)),
+        CreateAbortCallback(&push_event_callbacks_), base::Seconds(mojom::blink::kPushEventTimeoutSeconds));
 }
 
 void ServiceWorkerGlobalScope::StartPushEvent(String payload, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPushEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPush, event_id);
-//     Event* event = PushEvent::Create(event_type_names::kPush, PushMessageData::Create(payload), observer);
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPushEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPush, event_id);
+    Event* event = PushEvent::Create(event_type_names::kPush, PushMessageData::Create(payload), observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchPushSubscriptionChangeEvent(mojom::blink::PushSubscriptionPtr old_subscription,
     mojom::blink::PushSubscriptionPtr new_subscription, DispatchPushSubscriptionChangeEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     push_subscription_change_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id,
-//         WTF::BindOnce(
-//             &ServiceWorkerGlobalScope::StartPushSubscriptionChangeEvent, WrapWeakPersistent(this), std::move(old_subscription), std::move(new_subscription)),
-//         CreateAbortCallback(&push_subscription_change_event_callbacks_), base::Seconds(mojom::blink::kPushEventTimeoutSeconds));
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    push_subscription_change_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id,
+        WTF::BindOnce(
+            &ServiceWorkerGlobalScope::StartPushSubscriptionChangeEvent, WrapWeakPersistent(this), std::move(old_subscription), std::move(new_subscription)),
+        CreateAbortCallback(&push_subscription_change_event_callbacks_), base::Seconds(mojom::blink::kPushEventTimeoutSeconds));
 }
 
 void ServiceWorkerGlobalScope::StartPushSubscriptionChangeEvent(
     mojom::blink::PushSubscriptionPtr old_subscription, mojom::blink::PushSubscriptionPtr new_subscription, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPushSubscriptionChangeEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPushSubscriptionChange, event_id);
-//     Event* event = PushSubscriptionChangeEvent::Create(event_type_names::kPushsubscriptionchange,
-//         (new_subscription) ? PushSubscription::Create(std::move(new_subscription), registration_) : nullptr /* new_subscription*/,
-//         (old_subscription) ? PushSubscription::Create(std::move(old_subscription), registration_) : nullptr /* old_subscription*/, observer);
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPushSubscriptionChangeEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPushSubscriptionChange, event_id);
+    Event* event = PushSubscriptionChangeEvent::Create(event_type_names::kPushsubscriptionchange,
+        (new_subscription) ? PushSubscription::Create(std::move(new_subscription), registration_) : nullptr /* new_subscription*/,
+        (old_subscription) ? PushSubscription::Create(std::move(old_subscription), registration_) : nullptr /* old_subscription*/, observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchSyncEvent(const String& tag, bool last_chance, base::TimeDelta timeout, DispatchSyncEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     sync_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartSyncEvent, WrapWeakPersistent(this), std::move(tag), last_chance),
-//         CreateAbortCallback(&sync_event_callbacks_), timeout);
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    sync_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartSyncEvent, WrapWeakPersistent(this), std::move(tag), last_chance),
+        CreateAbortCallback(&sync_event_callbacks_), timeout);
 }
 
 void ServiceWorkerGlobalScope::StartSyncEvent(String tag, bool last_chance, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchSyncEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kSync, event_id);
-//     Event* event = SyncEvent::Create(event_type_names::kSync, tag, last_chance, observer);
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchSyncEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kSync, event_id);
+    Event* event = SyncEvent::Create(event_type_names::kSync, tag, last_chance, observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchPeriodicSyncEvent(const String& tag, base::TimeDelta timeout, DispatchPeriodicSyncEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     periodic_sync_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartPeriodicSyncEvent, WrapWeakPersistent(this), std::move(tag)),
-//         CreateAbortCallback(&periodic_sync_event_callbacks_), timeout);
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    periodic_sync_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id, WTF::BindOnce(&ServiceWorkerGlobalScope::StartPeriodicSyncEvent, WrapWeakPersistent(this), std::move(tag)),
+        CreateAbortCallback(&periodic_sync_event_callbacks_), timeout);
 }
 
 void ServiceWorkerGlobalScope::StartPeriodicSyncEvent(String tag, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPeriodicSyncEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPeriodicSync, event_id);
-//     Event* event = PeriodicSyncEvent::Create(event_type_names::kPeriodicsync, tag, observer);
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPeriodicSyncEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPeriodicSync, event_id);
+    Event* event = PeriodicSyncEvent::Create(event_type_names::kPeriodicsync, tag, observer);
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchAbortPaymentEvent(
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, DispatchAbortPaymentEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     abort_payment_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id,
-//         WTF::BindOnce(&ServiceWorkerGlobalScope::StartAbortPaymentEvent, WrapWeakPersistent(this), std::move(response_callback)),
-//         CreateAbortCallback(&abort_payment_event_callbacks_), std::nullopt);
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    abort_payment_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id,
+        WTF::BindOnce(&ServiceWorkerGlobalScope::StartAbortPaymentEvent, WrapWeakPersistent(this), std::move(response_callback)),
+        CreateAbortCallback(&abort_payment_event_callbacks_), std::nullopt);
 }
 
 void ServiceWorkerGlobalScope::StartAbortPaymentEvent(
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
-//     // Payment task need to be processed on the user interaction task
-//     // runner (TaskType::kUserInteraction).
-//     // See:
-//     // https://www.w3.org/TR/payment-request/#user-aborts-the-payment-request-algorithm
-//     remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
-//     abort_payment_result_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchAbortPaymentEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kAbortPayment, event_id);
-//     AbortPaymentRespondWithObserver* respond_with_observer = MakeGarbageCollected<AbortPaymentRespondWithObserver>(this, event_id, wait_until_observer);
-// 
-//     Event* event = AbortPaymentEvent::Create(event_type_names::kAbortpayment, ExtendableEventInit::Create(), respond_with_observer, wait_until_observer);
-// 
-//     DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
+    DCHECK(IsContextThread());
+    HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
+    // Payment task need to be processed on the user interaction task
+    // runner (TaskType::kUserInteraction).
+    // See:
+    // https://www.w3.org/TR/payment-request/#user-aborts-the-payment-request-algorithm
+    remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
+    abort_payment_result_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchAbortPaymentEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kAbortPayment, event_id);
+    AbortPaymentRespondWithObserver* respond_with_observer = MakeGarbageCollected<AbortPaymentRespondWithObserver>(this, event_id, wait_until_observer);
+
+    Event* event = AbortPaymentEvent::Create(event_type_names::kAbortpayment, ExtendableEventInit::Create(), respond_with_observer, wait_until_observer);
+
+    DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchCanMakePaymentEvent(payments::mojom::blink::CanMakePaymentEventDataPtr event_data,
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, DispatchCanMakePaymentEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     can_make_payment_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id,
-//         WTF::BindOnce(&ServiceWorkerGlobalScope::StartCanMakePaymentEvent, WrapWeakPersistent(this), std::move(event_data), std::move(response_callback)),
-//         CreateAbortCallback(&can_make_payment_event_callbacks_), std::nullopt);
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    can_make_payment_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id,
+        WTF::BindOnce(&ServiceWorkerGlobalScope::StartCanMakePaymentEvent, WrapWeakPersistent(this), std::move(event_data), std::move(response_callback)),
+        CreateAbortCallback(&can_make_payment_event_callbacks_), std::nullopt);
 }
 
 void ServiceWorkerGlobalScope::StartCanMakePaymentEvent(payments::mojom::blink::CanMakePaymentEventDataPtr event_data,
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
-//     // Payment task need to be processed on the user interaction task
-//     // runner (TaskType::kUserInteraction).
-//     // See:
-//     // https://www.w3.org/TR/payment-request/#canmakepayment-method
-//     remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
-//     can_make_payment_result_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchCanMakePaymentEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kCanMakePayment, event_id);
-//     CanMakePaymentRespondWithObserver* respond_with_observer = MakeGarbageCollected<CanMakePaymentRespondWithObserver>(this, event_id, wait_until_observer);
-// 
-//     Event* event = CanMakePaymentEvent::Create(event_type_names::kCanmakepayment,
-//         PaymentEventDataConversion::ToCanMakePaymentEventInit(ScriptController()->GetScriptState(), std::move(event_data)), respond_with_observer,
-//         wait_until_observer);
-// 
-//     DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
+    DCHECK(IsContextThread());
+    HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
+    // Payment task need to be processed on the user interaction task
+    // runner (TaskType::kUserInteraction).
+    // See:
+    // https://www.w3.org/TR/payment-request/#canmakepayment-method
+    remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
+    can_make_payment_result_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchCanMakePaymentEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kCanMakePayment, event_id);
+    CanMakePaymentRespondWithObserver* respond_with_observer = MakeGarbageCollected<CanMakePaymentRespondWithObserver>(this, event_id, wait_until_observer);
+
+    Event* event = CanMakePaymentEvent::Create(event_type_names::kCanmakepayment,
+        PaymentEventDataConversion::ToCanMakePaymentEventInit(ScriptController()->GetScriptState(), std::move(event_data)), respond_with_observer,
+        wait_until_observer);
+
+    DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchPaymentRequestEvent(payments::mojom::blink::PaymentRequestEventDataPtr event_data,
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, DispatchPaymentRequestEventCallback callback)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     const int event_id = event_queue_->NextEventId();
-//     payment_request_event_callbacks_.Set(event_id, std::move(callback));
-// 
-//     event_queue_->EnqueueNormal(event_id,
-//         WTF::BindOnce(&ServiceWorkerGlobalScope::StartPaymentRequestEvent, WrapWeakPersistent(this), std::move(event_data), std::move(response_callback)),
-//         CreateAbortCallback(&payment_request_event_callbacks_), std::nullopt);
+    DCHECK(IsContextThread());
+    const int event_id = event_queue_->NextEventId();
+    payment_request_event_callbacks_.Set(event_id, std::move(callback));
+
+    event_queue_->EnqueueNormal(event_id,
+        WTF::BindOnce(&ServiceWorkerGlobalScope::StartPaymentRequestEvent, WrapWeakPersistent(this), std::move(event_data), std::move(response_callback)),
+        CreateAbortCallback(&payment_request_event_callbacks_), std::nullopt);
 }
 
 void ServiceWorkerGlobalScope::StartPaymentRequestEvent(payments::mojom::blink::PaymentRequestEventDataPtr event_data,
     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerResponseCallback> response_callback, int event_id)
 {
-//     DCHECK(IsContextThread());
-//     HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
-//     // Payment task need to be processed on the user interaction task
-//     // runner (TaskType::kUserInteraction).
-//     // See:
-//     // https://www.w3.org/TR/payment-request/#user-accepts-the-payment-request-algorithm
-//     remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
-//     payment_response_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPaymentRequestEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPaymentRequest, event_id);
-//     PaymentRequestRespondWithObserver* respond_with_observer = PaymentRequestRespondWithObserver::Create(this, event_id, wait_until_observer);
-// 
-//     // Update respond_with_observer to check for required information specified in
-//     // the event_data during response validation.
-//     if (event_data->payment_options) {
-//         respond_with_observer->set_should_have_payer_name(event_data->payment_options->request_payer_name);
-//         respond_with_observer->set_should_have_payer_email(event_data->payment_options->request_payer_email);
-//         respond_with_observer->set_should_have_payer_phone(event_data->payment_options->request_payer_phone);
-//         respond_with_observer->set_should_have_shipping_info(event_data->payment_options->request_shipping);
-//     }
-// 
-//     // Count standardized payment method identifiers, such as "basic-card" or
-//     // "tokenized-card". Omit counting the URL-based payment method identifiers,
-//     // such as "https://bobpay.xyz".
-//     if (base::ranges::any_of(event_data->method_data,
-//             [](const payments::mojom::blink::PaymentMethodDataPtr& datum) { return datum && !datum->supported_method.StartsWith("http"); })) {
-//         UseCounter::Count(this, WebFeature::kPaymentHandlerStandardizedPaymentMethodIdentifier);
-//     }
-// 
-//     mojo::PendingRemote<payments::mojom::blink::PaymentHandlerHost> payment_handler_host = std::move(event_data->payment_handler_host);
-//     Event* event = PaymentRequestEvent::Create(event_type_names::kPaymentrequest,
-//         PaymentEventDataConversion::ToPaymentRequestEventInit(ScriptController()->GetScriptState(), std::move(event_data)), std::move(payment_handler_host),
-//         respond_with_observer, wait_until_observer, this);
-// 
-//     DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
+    DCHECK(IsContextThread());
+    HeapMojoRemote<payments::mojom::blink::PaymentHandlerResponseCallback> remote(this);
+    // Payment task need to be processed on the user interaction task
+    // runner (TaskType::kUserInteraction).
+    // See:
+    // https://www.w3.org/TR/payment-request/#user-accepts-the-payment-request-algorithm
+    remote.Bind(std::move(response_callback), GetThread()->GetTaskRunner(TaskType::kUserInteraction));
+    payment_response_callbacks_.Set(event_id, WrapDisallowNew(std::move(remote)));
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchPaymentRequestEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* wait_until_observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kPaymentRequest, event_id);
+    PaymentRequestRespondWithObserver* respond_with_observer = PaymentRequestRespondWithObserver::Create(this, event_id, wait_until_observer);
+
+    // Update respond_with_observer to check for required information specified in
+    // the event_data during response validation.
+    if (event_data->payment_options) {
+        respond_with_observer->set_should_have_payer_name(event_data->payment_options->request_payer_name);
+        respond_with_observer->set_should_have_payer_email(event_data->payment_options->request_payer_email);
+        respond_with_observer->set_should_have_payer_phone(event_data->payment_options->request_payer_phone);
+        respond_with_observer->set_should_have_shipping_info(event_data->payment_options->request_shipping);
+    }
+
+    // Count standardized payment method identifiers, such as "basic-card" or
+    // "tokenized-card". Omit counting the URL-based payment method identifiers,
+    // such as "https://bobpay.xyz".
+    if (base::ranges::any_of(event_data->method_data,
+            [](const payments::mojom::blink::PaymentMethodDataPtr& datum) { return datum && !datum->supported_method.StartsWith("http"); })) {
+        UseCounter::Count(this, WebFeature::kPaymentHandlerStandardizedPaymentMethodIdentifier);
+    }
+
+    mojo::PendingRemote<payments::mojom::blink::PaymentHandlerHost> payment_handler_host = std::move(event_data->payment_handler_host);
+    Event* event = PaymentRequestEvent::Create(event_type_names::kPaymentrequest,
+        PaymentEventDataConversion::ToPaymentRequestEventInit(ScriptController()->GetScriptState(), std::move(event_data)), std::move(payment_handler_host),
+        respond_with_observer, wait_until_observer, this);
+
+    DispatchExtendableEventWithRespondWith(event, wait_until_observer, respond_with_observer);
 }
 
 void ServiceWorkerGlobalScope::DispatchCookieChangeEvent(network::mojom::blink::CookieChangeInfoPtr change, DispatchCookieChangeEventCallback callback)
@@ -1962,19 +1947,18 @@ void ServiceWorkerGlobalScope::DispatchContentDeleteEvent(const String& id, Disp
 
 void ServiceWorkerGlobalScope::StartContentDeleteEvent(String id, int event_id)
 {
-    *(int*)1 = 1;
-//     DCHECK(IsContextThread());
-//     TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchContentDeleteEvent",
-//         TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
-// 
-//     auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kContentDelete, event_id);
-// 
-//     auto* init = ContentIndexEventInit::Create();
-//     init->setId(id);
-// 
-//     auto* event = MakeGarbageCollected<ContentIndexEvent>(event_type_names::kContentdelete, init, observer);
-// 
-//     DispatchExtendableEvent(event, observer);
+    DCHECK(IsContextThread());
+    TRACE_EVENT_WITH_FLOW0("ServiceWorker", "ServiceWorkerGlobalScope::DispatchContentDeleteEvent",
+        TRACE_ID_WITH_SCOPE(kServiceWorkerGlobalScopeTraceScope, TRACE_ID_LOCAL(event_id)), TRACE_EVENT_FLAG_FLOW_OUT);
+
+    auto* observer = MakeGarbageCollected<WaitUntilObserver>(this, WaitUntilObserver::kContentDelete, event_id);
+
+    auto* init = ContentIndexEventInit::Create();
+    init->setId(id);
+
+    auto* event = MakeGarbageCollected<ContentIndexEvent>(event_type_names::kContentdelete, init, observer);
+
+    DispatchExtendableEvent(event, observer);
 }
 
 void ServiceWorkerGlobalScope::Ping(PingCallback callback)

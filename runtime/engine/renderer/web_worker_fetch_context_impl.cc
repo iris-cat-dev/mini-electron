@@ -31,6 +31,14 @@ WebWorkerFetchContextImpl::~WebWorkerFetchContextImpl()
     m_loaderFactoryImpl.reset();
 }
 
+scoped_refptr<WebWorkerFetchContextImpl> WebWorkerFetchContextImpl::Clone() const
+{
+    auto context = base::AdoptRef(new WebWorkerFetchContextImpl(
+        m_orig, m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame));
+    context->SetIsOfflineMode(m_isOfflineMode);
+    return context;
+}
+
 void WebWorkerFetchContextImpl::SetTerminateSyncLoadEvent(base::WaitableEvent* evt)
 {
     m_loaderFactoryImpl->SetTerminateSyncLoadEvent(evt);
@@ -49,10 +57,10 @@ blink::URLLoaderFactory* WebWorkerFetchContextImpl::GetURLLoaderFactory()
 std::unique_ptr<blink::URLLoaderFactory> WebWorkerFetchContextImpl::WrapURLLoaderFactory(
     blink::CrossVariantMojoRemote<network::mojom::URLLoaderFactoryInterfaceBase> url_loader_factory)
 {
-    std::unique_ptr<blink::URLLoaderFactory> loaderFactoryImpl;
-    loaderFactoryImpl.reset(new mini_electron::LoaderFactoryImpl(
-        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame));
-    return std::move(loaderFactoryImpl);
+    auto loaderFactory = std::make_unique<mini_electron::LoaderFactoryImpl>(
+        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame);
+    loaderFactory->SetIsOfflineMode(m_isOfflineMode);
+    return loaderFactory;
 }
 
 void setRequestHead(blink::WebLocalFrame* webFrame, blink::WebURLRequest& request);
@@ -96,10 +104,10 @@ blink::WebString WebWorkerFetchContextImpl::GetAcceptLanguages(void) const
     return blink::WebString::FromASCII("zh-CN");
 }
 
-void WebWorkerFetchContextImpl::SetIsOfflineMode(bool)
+void WebWorkerFetchContextImpl::SetIsOfflineMode(bool isOfflineMode)
 {
-    DebugBreak();
-    return;
+    m_isOfflineMode = isOfflineMode;
+    m_loaderFactoryImpl->SetIsOfflineMode(isOfflineMode);
 }
 
 blink::mojom::ControllerServiceWorkerMode WebWorkerFetchContextImpl::GetControllerServiceWorkerMode(void) const

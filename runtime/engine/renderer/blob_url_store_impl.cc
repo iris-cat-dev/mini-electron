@@ -15,6 +15,8 @@
 #include "gen/services/network/public/mojom/url_loader.mojom.h"
 #include "gen/services/network/public/mojom/url_loader.mojom-blink.h"
 #include "base/functional/bind.h"
+#include "net/base/net_errors.h"
+#include "services/network/public/cpp/url_loader_completion_status.h"
 
 bool blink::mojom::blink::BlobURLStore::Register(::mojo::PendingRemote<::blink::mojom::blink::Blob> blob, const ::blink::KURL& url,
     const ::base::UnguessableToken& unsafe_agent_cluster_id, const absl::optional<::blink::BlinkSchemefulSite>& unsafe_top_level_site)
@@ -137,8 +139,8 @@ void BlobURLStoreImpl::Register(::mojo::PendingRemote<::blink::mojom::blink::Blo
     const ::base::UnguessableToken& unsafe_agent_cluster_id, const ::absl::optional<::blink::BlinkSchemefulSite>& unsafe_top_level_site,
     ::blink::mojom::blink::BlobURLStore::RegisterCallback callback)
 {
-    DebugBreak();
     BlobURLStoreSet::get()->addUrlBlob(url.GetString().Utf8(), m_origin, std::move(blob));
+    std::move(callback).Run();
 }
 
 void BlobURLStoreImpl::Revoke(const ::blink::KURL& url)
@@ -146,110 +148,6 @@ void BlobURLStoreImpl::Revoke(const ::blink::KURL& url)
     BlobURLStoreSet::get()->removeUrlBlob(url.GetString().Utf8());
 }
 
-class BlobURLStoreLoader : public network::mojom::URLLoader {
-public:
-    BlobURLStoreLoader(::mojo::PendingReceiver<::network::mojom::URLLoader> loader, int32_t requestId, uint32_t options,
-        const ::network::ResourceRequest& request, ::mojo::PendingRemote<::network::mojom::URLLoaderClient> client,
-        const ::net::MutableNetworkTrafficAnnotationTag& trafficAnnotation)
-    {
-        m_urlLoadClient.Bind(std::move(client));
-        m_receiver.Bind(std::move(loader));
-        m_request = request;
-        BlobURLStoreLoader* self = this;
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](BlobURLStoreLoader* self) {
-            self->start();
-        }, self));
-    }
-
-    ~BlobURLStoreLoader() = default;
-
-    void start()
-    {
-        ::mojo::Remote<::blink::mojom::blink::Blob>* blob = content::BlobURLStoreSet::get()->getBlobByUrl(m_request.url.possibly_invalid_spec());
-        if (!blob) {
-            ::network::URLLoaderCompletionStatus status(-1);
-            m_urlLoadClient->OnComplete(status);
-            return;
-        }
-
-        BlobURLStoreLoader* self = this;
-        std::string* uuid = nullptr;
-        (*blob)->GetInternalUUID(base::BindOnce([](std::string** uuid, const WTF::String& uid) {
-            *uuid = new std::string(uid.Ascii());
-        }, &uuid));
-        BlobEntry* blobEntry = BlobEntry::findByUuid(*uuid);
-        delete uuid;
-
-        if (!blobEntry) {
-            ::network::URLLoaderCompletionStatus status(-1);
-            m_urlLoadClient->OnComplete(status);
-            return;
-        }
-
-        uint16_t major = 1; uint16_t minor = 1;
-        net::HttpVersion ver(major, minor);
-        std::string statusTxt = "200";//response.HttpStatusText();
-
-        net::HttpResponseHeaders::Builder builder(ver, std::string_view(statusTxt));
-
-        //HeadersVisitor headersVisitor(&builder);
-        //response.VisitHttpHeaderFields(&headersVisitor);
-        builder.AddHeader(std::string_view("Content-Type"), std::string_view(blobEntry->m_contentType));
-
-        ::network::mojom::URLResponseHeadPtr responseHead = ::network::mojom::URLResponseHead::New();
-        responseHead->headers = builder.Build();
-        responseHead->mime_type = blobEntry->m_contentType;
-        //responseHead->content_length = response.ExpectedContentLength();
-
-        std::vector<char> buffer;
-        int64_t allSize = 0;
-        blobEntry->read(&buffer, 0, -1, &allSize);
-        uint32_t numBytes = (uint32_t)buffer.size();
-
-        MojoHandle dataPipeProducerHandle = 0;
-        MojoHandle dataPipeConsumerHandle = 0;
-        MojoCreateDataPipeOptions createDataOptions;
-        createDataOptions.element_num_bytes = 1;
-        createDataOptions.capacity_num_bytes = -1;
-        MojoCreateDataPipe(&createDataOptions, &dataPipeProducerHandle, &dataPipeConsumerHandle);
-
-        mojo::DataPipeConsumerHandle dataPipeConsumer(dataPipeConsumerHandle);
-        mojo::ScopedDataPipeConsumerHandle responseBodyHandld(std::move(dataPipeConsumer));
-
-        if (0 != numBytes)
-            MojoWriteData(dataPipeProducerHandle, buffer.data(), &numBytes, nullptr);
-        MojoClose(dataPipeProducerHandle);
-
-        //network::mojom::blink::URLResponseHeadPtr responseHead = convertWebURLResponseToHttpResponseHeaders(response);
-        m_urlLoadClient->OnReceiveResponse(std::move(responseHead), std::move(responseBodyHandld), absl::nullopt);
-
-        ::network::URLLoaderCompletionStatus status(0);
-        m_urlLoadClient->OnComplete(status);
-    }
-
-    // network::mojom::blink::URLLoader:
-    /*virtual*/ void FollowRedirect(const std::vector<std::string>& removed_headers, const ::net::HttpRequestHeaders& modified_headers,
-        const ::net::HttpRequestHeaders& modified_cors_exempt_headers, const std::optional<::GURL>& new_url) override
-    {
-    }
-
-    /*virtual*/ void SetPriority(::net::RequestPriority priority, int32_t intra_priority_value) override
-    {
-    }
-
-    /*virtual*/ void PauseReadingBodyFromNet() override
-    {
-    }
-
-    /*virtual*/ void ResumeReadingBodyFromNet() override
-    {
-    }
-    //----
-private:
-    ::network::ResourceRequest m_request;
-    mojo::Remote<network::mojom::URLLoaderClient> m_urlLoadClient;
-    mojo::Receiver<network::mojom::URLLoader> m_receiver{ this };
-};
 
 class BlobURLStoreLoaderFactoryImpl : public ::network::mojom::URLLoaderFactory {
 public:
@@ -262,7 +160,16 @@ public:
         const ::network::ResourceRequest& request, ::mojo::PendingRemote<::network::mojom::URLLoaderClient> client,
         const ::net::MutableNetworkTrafficAnnotationTag& trafficAnnotation) override
     {
-        new BlobURLStoreLoader(std::move(loader), requestId, options, request, std::move(client), trafficAnnotation);
+        auto* blob = BlobURLStoreSet::get()->getBlobByUrl(request.url.possibly_invalid_spec());
+        if (!blob) {
+            mojo::Remote<network::mojom::URLLoaderClient> remote(std::move(client));
+            remote->OnComplete(network::URLLoaderCompletionStatus(net::ERR_FILE_NOT_FOUND));
+            return;
+        }
+        (*blob)->Load(
+            mojo::PendingReceiver<network::mojom::blink::URLLoader>(loader.PassPipe()),
+            WTF::String::FromUTF8(request.method), request.headers,
+            mojo::PendingRemote<network::mojom::blink::URLLoaderClient>(client.PassPipe(), 0));
     }
 
     // LoaderFactoryForWorker::CreateURLLoader会走到这个函数
@@ -292,7 +199,8 @@ static int s_BlobURLTokenImpl = 0;
 
 class BlobURLTokenImpl : public ::blink::mojom::blink::BlobURLToken {
 public:
-    BlobURLTokenImpl()
+    explicit BlobURLTokenImpl(base::UnguessableToken token = base::UnguessableToken::Create())
+        : m_token(token)
     {
 #ifdef _DEBUG
         s_BlobURLTokenImpl++;
@@ -313,14 +221,17 @@ public:
 
     /*virtual*/ void Clone(::mojo::PendingReceiver<::blink::mojom::blink::BlobURLToken> token) override
     {
-        createAndBindInterface<::blink::mojom::blink::BlobURLToken, BlobURLTokenImpl>(token.PassPipe());
+        createAndBindInterface<::blink::mojom::blink::BlobURLToken, BlobURLTokenImpl>(token.PassPipe(), m_token);
     }
 
     //using GetTokenCallback = base::OnceCallback<void(const ::base::UnguessableToken&)>;
     /*virtual*/ void GetToken(GetTokenCallback callback) override
     {
-        DebugBreak();
+        std::move(callback).Run(m_token);
     }
+private:
+    const base::UnguessableToken m_token;
+
 };
 
 //using ResolveForNavigationCallback = base::OnceCallback<void(const absl::optional<::base::UnguessableToken>&)>;

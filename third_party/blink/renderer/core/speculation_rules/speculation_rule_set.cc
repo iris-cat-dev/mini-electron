@@ -29,12 +29,6 @@
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_view.h"
 
-std::ostream& network::mojom::operator<<(std::ostream& a, ::network::mojom::NoVarySearchParseError b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
-
 namespace blink {
 
 namespace {

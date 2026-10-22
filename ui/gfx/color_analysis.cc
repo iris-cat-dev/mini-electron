@@ -636,7 +636,6 @@ SkColor CalculateKMeanColorOfBitmap(const SkBitmap& bitmap, int height, const HS
     std::transform(in.begin(), in.end(), image.begin(), SkUnPreMultiply::PMColorToColor);
 
     GridSampler sampler;
-    *(int*)1 = 1;
     base::span<const uint8_t> decoded_data((const uint8_t*)image.data(), image.size() * sizeof(uint32_t));
     return CalculateKMeanColorOfBuffer(decoded_data, bitmap.width(), height, lower_bound, upper_bound, &sampler, find_closest);
 }

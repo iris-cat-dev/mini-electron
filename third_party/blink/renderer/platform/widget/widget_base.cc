@@ -66,10 +66,6 @@
 #include "third_party/blink/renderer/platform/widget/compositing/android_webview/synchronous_layer_tree_frame_sink.h"
 #endif
 
-gpu::ContextCreationAttribs::ContextCreationAttribs(void)
-{
-    *(int*)1 = 1;
-}
 
 namespace blink {
 

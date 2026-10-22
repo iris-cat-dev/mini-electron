@@ -162,7 +162,7 @@
 #include "ui/gfx/geometry/point_conversions.h"
 
 #if BUILDFLAG(IS_WIN)
-//#include "components/stylus_handwriting/win/features.h"
+#include "components/stylus_handwriting/win/features.h"
 #endif // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -4420,47 +4420,37 @@ void WebFrameWidgetImpl::EnqueueMoveEvent()
 #if BUILDFLAG(IS_WIN)
 mojom::blink::ProximateCharacterRangeBoundsPtr WebFrameWidgetImpl::ComputeProximateCharacterBounds(const PositionWithAffinity& pivot_position) const
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     TRACE_EVENT("ime", "WebFrameWidgetImpl::ComputeProximateCharacterBounds");
-//     if (pivot_position.IsNull() || !stylus_handwriting::win::IsStylusHandwritingWinEnabled()) {
-//         return nullptr;
-//     }
-//     // The amount of text to collect in each direction relative to the character
-//     // offset pivot position `x` derived by `point_in_widget`. Collects character
-//     // bounds for offsets [x - half_limit, x + half_limit).
-//     const wtf_size_t half_limit = stylus_handwriting::win::ProximateBoundsCollectionHalfLimit();
-//     if (!half_limit) {
-//         return nullptr;
-//     }
-//     Element* root_editable_element = RootEditableElement(*pivot_position.AnchorNode());
-//     if (!root_editable_element) {
-//         return nullptr;
-//     }
-// 
-//     // `CreateVisiblePosition` and `FirstRectForRange` requires clean layout.
-//     root_editable_element->GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
-// 
-//     // Compute a PlainTextRange for a subset of text around `pivot_position`.
-//     const PlainTextRange text_range = ShellHandwritingProximateTextRange(*root_editable_element, pivot_position.GetPosition(), half_limit);
-//     if (text_range.IsNull()) {
-//         return nullptr;
-//     }
-// 
-//     // Compute the DIP space bounding box for each character in `text_range`
-//     // relative to the root editable Element containing `pivot_position`.
-//     WTF::Vector<gfx::Rect> character_bounds;
-//     character_bounds.reserve(text_range.length());
-//     for (wtf_size_t i = text_range.Start(); i < text_range.End(); ++i) {
-//         gfx::Rect rect = FirstRectForRange(PlainTextRange(i, i + 1U).CreateRange(*root_editable_element));
-//         // Convert rect coordinates to be relative to the root editable frame.
-//         LocalFrame* editable_frame = root_editable_element->GetDocument().GetFrame();
-//         rect = editable_frame->View()->ConvertToRootFrame(rect);
-//         rect = gfx::ScaleToRoundedRect(rect, editable_frame->GetPage()->PageScaleFactor());
-//         character_bounds.emplace_back(widget_base_->BlinkSpaceToEnclosedDIPs(rect));
-//     }
-// 
-//     return mojom::blink::ProximateCharacterRangeBounds::New(gfx::Range(text_range.Start(), text_range.End()), std::move(character_bounds));
+    TRACE_EVENT("ime", "WebFrameWidgetImpl::ComputeProximateCharacterBounds");
+    if (pivot_position.IsNull() || !stylus_handwriting::win::IsStylusHandwritingWinEnabled()) {
+        return nullptr;
+    }
+    // Collect character bounds for offsets [pivot - half_limit, pivot + half_limit).
+    const wtf_size_t half_limit = stylus_handwriting::win::ProximateBoundsCollectionHalfLimit();
+    if (!half_limit) {
+        return nullptr;
+    }
+    Element* root_editable_element = RootEditableElement(*pivot_position.AnchorNode());
+    if (!root_editable_element) {
+        return nullptr;
+    }
+
+    root_editable_element->GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+    const PlainTextRange text_range = ShellHandwritingProximateTextRange(*root_editable_element, pivot_position.GetPosition(), half_limit);
+    if (text_range.IsNull()) {
+        return nullptr;
+    }
+
+    WTF::Vector<gfx::Rect> character_bounds;
+    character_bounds.reserve(text_range.length());
+    LocalFrame* editable_frame = root_editable_element->GetDocument().GetFrame();
+    for (wtf_size_t i = text_range.Start(); i < text_range.End(); ++i) {
+        gfx::Rect rect = FirstRectForRange(PlainTextRange(i, i + 1U).CreateRange(*root_editable_element));
+        rect = editable_frame->View()->ConvertToRootFrame(rect);
+        rect = gfx::ScaleToRoundedRect(rect, editable_frame->GetPage()->PageScaleFactor());
+        character_bounds.emplace_back(widget_base_->BlinkSpaceToEnclosedDIPs(rect));
+    }
+
+    return mojom::blink::ProximateCharacterRangeBounds::New(gfx::Range(text_range.Start(), text_range.End()), std::move(character_bounds));
 }
 #endif // BUILDFLAG(IS_WIN)
 

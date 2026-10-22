@@ -18,4 +18,7 @@ BASE_FEATURE(kRevokeMediaSourceObjectURLOnAttach, "RevokeMediaSourceObjectURLOnA
 // Use R16 texture for 9-16 bit channel instead of half-float conversion by CPU.
 BASE_FEATURE(kUseR16Texture, "use-r16-texture", base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Keep the embedder's shared-bitmap software compositor path by default.
+BASE_FEATURE(kMediaSharedBitmapToSharedImage, "MediaSharedBitmapToSharedImage", base::FEATURE_DISABLED_BY_DEFAULT);
+
 }

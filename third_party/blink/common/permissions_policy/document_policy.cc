@@ -4,6 +4,9 @@
 
 #include "third_party/blink/public/common/permissions_policy/document_policy.h"
 
+#include <algorithm>
+#include <vector>
+
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "net/http/structured_headers.h"
@@ -57,26 +60,24 @@ std::optional<std::string> DocumentPolicy::Serialize(const DocumentPolicyFeature
 // static
 std::optional<std::string> DocumentPolicy::SerializeInternal(const DocumentPolicyFeatureState& policy, const DocumentPolicyFeatureInfoMap& feature_info_map)
 {
-    *(int*)1 = 1;
-    return std::nullopt;
-//     net::structured_headers::Dictionary root;
-// 
-//     std::vector<std::pair<mojom::DocumentPolicyFeature, PolicyValue>> sorted_policy(policy.begin(), policy.end());
-//     std::sort(sorted_policy.begin(), sorted_policy.end(), [&](const auto& a, const auto& b) {
-//         const std::string& feature_a = feature_info_map.at(a.first).feature_name;
-//         const std::string& feature_b = feature_info_map.at(b.first).feature_name;
-//         return feature_a < feature_b;
-//     });
-// 
-//     for (const auto& policy_entry : sorted_policy) {
-//         const mojom::DocumentPolicyFeature feature = policy_entry.first;
-//         const std::string& feature_name = feature_info_map.at(feature).feature_name;
-//         const PolicyValue& value = policy_entry.second;
-// 
-//         root[feature_name] = net::structured_headers::ParameterizedMember(PolicyValueToItem(value), /* parameters */ {});
-//     }
-// 
-//     return net::structured_headers::SerializeDictionary(root);
+    net::structured_headers::Dictionary root;
+
+    std::vector<std::pair<mojom::DocumentPolicyFeature, PolicyValue>> sorted_policy(policy.begin(), policy.end());
+    std::sort(sorted_policy.begin(), sorted_policy.end(), [&](const auto& a, const auto& b) {
+        const std::string& feature_a = feature_info_map.at(a.first).feature_name;
+        const std::string& feature_b = feature_info_map.at(b.first).feature_name;
+        return feature_a < feature_b;
+    });
+
+    for (const auto& policy_entry : sorted_policy) {
+        const mojom::DocumentPolicyFeature feature = policy_entry.first;
+        const std::string& feature_name = feature_info_map.at(feature).feature_name;
+        const PolicyValue& value = policy_entry.second;
+
+        root[feature_name] = net::structured_headers::ParameterizedMember(PolicyValueToItem(value), /* parameters */ {});
+    }
+
+    return net::structured_headers::SerializeDictionary(root);
 }
 
 // static

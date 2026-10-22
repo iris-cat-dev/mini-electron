@@ -170,7 +170,6 @@ public:
 
     virtual void DidChangeSrcDoc(const ::blink::FrameToken& child_frame_token, const WTF::String& srcdoc_value) override;
 
-    virtual void DidChangeBaseURL(const ::blink::KURL& base_url) /*override*/;
 
     virtual void ReceivedDelegatedCapability(::blink::mojom::blink::DelegatedCapability delegated_capability) override;
 
@@ -228,6 +227,7 @@ private:
     WebLocalFrameClientImpl* m_frameClient;
 
     mojo::AssociatedRemote<::blink::mojom::blink::ContextMenuClient>* m_contextMenuClient = nullptr;
+    mojo::Remote<blink::mojom::blink::CloseListener> m_closeListener;
 };
 }
 

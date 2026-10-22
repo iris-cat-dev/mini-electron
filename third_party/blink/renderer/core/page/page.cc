@@ -588,9 +588,8 @@ void Page::ColorSchemeChanged()
 
 void Page::EmulateForcedColors(bool is_dark_theme)
 {
-    *(int*)1 = 1;
-//     emulated_forced_colors_provider_ = WebTestSupport::IsRunningWebTest() ? ui::CreateEmulatedForcedColorsColorProviderForTest()
-//                                                                           : ui::CreateEmulatedForcedColorsColorProvider(is_dark_theme);
+    emulated_forced_colors_provider_ = WebTestSupport::IsRunningWebTest() ? ui::CreateEmulatedForcedColorsColorProviderForTest()
+                                                                       : ui::CreateEmulatedForcedColorsColorProvider(is_dark_theme);
 }
 
 void Page::DisableEmulatedForcedColors()

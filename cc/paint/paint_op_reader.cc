@@ -56,11 +56,6 @@
 #include "ui/gfx/mojom/hdr_metadata.mojom.h"
 #include "ui/gfx/mojom/hdr_metadata_mojom_traits.h"
 
-bool mojo::StructTraits<gfx::mojom::HDRMetadataDataView, gfx::HDRMetadata>::Read(gfx::mojom::HDRMetadataDataView, gfx::HDRMetadata*)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 namespace cc {
 namespace {

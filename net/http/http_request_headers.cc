@@ -229,15 +229,14 @@ std::string HttpRequestHeaders::ToString() const
 
 base::Value::Dict HttpRequestHeaders::NetLogParams(const std::string& request_line, NetLogCaptureMode capture_mode) const
 {
-    *(int*)1 = 1;
     base::Value::Dict dict;
-//     dict.Set("line", NetLogStringValue(request_line));
-//     base::Value::List headers;
-//     for (const auto& header : headers_) {
-//         std::string log_value = ElideHeaderValueForNetLog(capture_mode, header.key, header.value);
-//         headers.Append(NetLogStringValue(base::StrCat({ header.key, ": ", log_value })));
-//     }
-//     dict.Set("headers", std::move(headers));
+    dict.Set("line", NetLogStringValue(request_line));
+    base::Value::List headers;
+    for (const auto& header : headers_) {
+        std::string log_value = ElideHeaderValueForNetLog(capture_mode, header.key, header.value);
+        headers.Append(NetLogStringValue(base::StrCat({ header.key, ": ", log_value })));
+    }
+    dict.Set("headers", std::move(headers));
     return dict;
 }
 

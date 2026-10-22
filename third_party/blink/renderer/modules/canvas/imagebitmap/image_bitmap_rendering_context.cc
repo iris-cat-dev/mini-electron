@@ -15,10 +15,6 @@
 
 namespace blink {
 
-// void V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext::Trace(class cppgc::Visitor*) const
-// {
-//     *(int*)1 = 1;
-// }
 
 ImageBitmapRenderingContext::ImageBitmapRenderingContext(CanvasRenderingContextHost* host, const CanvasContextCreationAttributesCore& attrs)
     : ImageBitmapRenderingContextBase(host, attrs)

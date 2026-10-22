@@ -135,10 +135,16 @@ void WebURLLoaderInternal::release(int jobId)
     //DCHECK(WTF::IsMainThread()); // 可能在web worker线程
     WebURLLoaderManager* manager = WebURLLoaderManager::sharedInstance();
     AutoLockJob autoLockJob(manager, jobId);
-    autoLockJob.setNotDerefForDelete();
     WebURLLoaderInternal* job = autoLockJob.lock();
     if (!job)
         return;
+    // The curl handle may be done while the response pipe is backpressured.
+    // Keep the job/client alive until its writer flushes or cancellation wins.
+    if (job->m_responseFlushPending && !job->isCancelled()) {
+        job->m_responseReleasePending = true;
+        return;
+    }
+    autoLockJob.setNotDerefForDelete();
 
     WTF::RecursiveMutex& liveJobsMutex = manager->m_liveJobsMutex;
 
@@ -783,15 +789,18 @@ static void doRedirect(WebURLLoaderInternal* job, const std::string& location, M
     blink::WebString newMethod = blink::WebString::FromASCII(oldRequest->method);
     blink::WebString newReferrer = blink::WebString::FromASCII(oldRequest->referrer.possibly_invalid_spec());
 
-    if (client && job->loader() && (WebURLLoaderInternal::kCacheForDownloadYes != job->m_cacheForDownloadOpt)) {
+    if (client && job->loader() && (!job->m_autoFollowRedirects || WebURLLoaderInternal::kCacheForDownloadYes != job->m_cacheForDownloadOpt)) {
         //client->willSendRequest(job->loader(), *redirectedRequest, job->m_response);
 
         bool reportRawHeaders = false;
         std::vector<std::string> removedHeaders;
         net::HttpRequestHeaders modified_headers;
-        client->WillFollowRedirect(newURL, net::SiteForCookies(), newReferrer,
-            /*network::mojom::ReferrerPolicy()*/ network::mojom::ReferrerPolicy::kAlways, newMethod, job->m_response /*passed_redirect_response*/,
-            reportRawHeaders, &removedHeaders, modified_headers, /*insecure_scheme_was_upgraded*/ false);
+        if (!client->WillFollowRedirect(newURL, net::SiteForCookies(), newReferrer,
+                network::mojom::ReferrerPolicy::kAlways, newMethod, job->m_response,
+                reportRawHeaders, &removedHeaders, modified_headers, false)) {
+            WebURLLoaderManager::sharedInstance()->doCancel(job, kNormalCancelled);
+            return;
+        }
     }
 
     if (isRedirectByHttpCode)
@@ -873,17 +882,17 @@ static bool setHttpResponseDataToJobWhenDidReceiveResponseOnMainThread(WebURLLoa
         //             location = job->m_effectiveUrl.c_str();
 
         if (!location.empty()) {
-            if (job->m_fragment.empty()) {
-                blink::KURL kurl = (blink::KURL)(job->firstRequest()->url);
-                WTF::StringUTF8Adaptor fragment(kurl.FragmentIdentifier());
-                if (fragment.size() != 0)
-                    job->m_fragment = std::string(fragment.data(), fragment.size());
+            if (job->m_autoFollowRedirects) {
+                if (job->m_fragment.empty()) {
+                    blink::KURL kurl = (blink::KURL)(job->firstRequest()->url);
+                    WTF::StringUTF8Adaptor fragment(kurl.FragmentIdentifier());
+                    if (fragment.size() != 0)
+                        job->m_fragment = std::string(fragment.data(), fragment.size());
+                }
+                if (!job->m_fragment.empty())
+                    location += "#";
+                location += job->m_fragment;
             }
-
-            if (!job->m_fragment.empty())
-                location += ("#");
-
-            location += (job->m_fragment);
 
             //             Vector<char> locationBuffer = WTF::ensureStringToUTF8(location, false);
             //             locationBuffer.append('\n');

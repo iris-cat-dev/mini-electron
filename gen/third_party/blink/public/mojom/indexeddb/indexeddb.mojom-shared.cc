@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/indexeddb/indexeddb.mojom-params-data.h"
 namespace blink {
@@ -2688,6 +2691,7 @@ IDBFactory_DeleteDatabase_Params_Data::IDBFactory_DeleteDatabase_Params_Data()
 } // namespace mojom
 } // namespace blink
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2697,7 +2701,9 @@ void TraceFormatTraits<::blink::mojom::IDBCursorDirection>::WriteIntoTrace(perfe
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2707,7 +2713,9 @@ void TraceFormatTraits<::blink::mojom::IDBDataLoss>::WriteIntoTrace(perfetto::Tr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2717,7 +2725,9 @@ void TraceFormatTraits<::blink::mojom::IDBKeyType>::WriteIntoTrace(perfetto::Tra
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2727,7 +2737,9 @@ void TraceFormatTraits<::blink::mojom::IDBTransactionDurability>::WriteIntoTrace
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2737,7 +2749,9 @@ void TraceFormatTraits<::blink::mojom::IDBGetAllResultType>::WriteIntoTrace(perf
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2747,7 +2761,9 @@ void TraceFormatTraits<::blink::mojom::IDBKeyPathType>::WriteIntoTrace(perfetto:
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2757,7 +2773,9 @@ void TraceFormatTraits<::blink::mojom::IDBOperationType>::WriteIntoTrace(perfett
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2767,7 +2785,9 @@ void TraceFormatTraits<::blink::mojom::IDBPutMode>::WriteIntoTrace(perfetto::Tra
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2777,7 +2797,9 @@ void TraceFormatTraits<::blink::mojom::IDBTaskType>::WriteIntoTrace(perfetto::Tr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2787,7 +2809,9 @@ void TraceFormatTraits<::blink::mojom::IDBTransactionMode>::WriteIntoTrace(perfe
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -2797,3 +2821,4 @@ void TraceFormatTraits<::blink::mojom::IDBException>::WriteIntoTrace(perfetto::T
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

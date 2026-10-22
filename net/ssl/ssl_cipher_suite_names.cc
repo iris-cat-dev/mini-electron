@@ -10,11 +10,41 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "net/ssl/ssl_connection_status_flags.h"
+#if defined(MINI_ELECTRON_USE_OPENSSL)
+#include <openssl/ssl.h>
+#else
 #include "third_party/boringssl/src/include/openssl/ssl.h"
+#endif
 
 namespace net {
 
 namespace {
+
+const SSL_CIPHER* CipherByValue(uint16_t cipher_suite)
+{
+#if defined(MINI_ELECTRON_USE_OPENSSL)
+    // OpenSSL's lookup needs an SSL method, not a live connection.
+    struct CipherLookup {
+        CipherLookup()
+            : context(SSL_CTX_new(TLS_method()))
+            , ssl(context ? SSL_new(context) : nullptr)
+        {
+        }
+        SSL_CTX* context;
+        SSL* ssl;
+    };
+    static const CipherLookup lookup;
+    if (!lookup.ssl)
+        return nullptr;
+    const unsigned char wire_value[] = {
+        static_cast<unsigned char>(cipher_suite >> 8),
+        static_cast<unsigned char>(cipher_suite),
+    };
+    return SSL_CIPHER_find(lookup.ssl, wire_value);
+#else
+    return SSL_get_cipher_by_value(cipher_suite);
+#endif
+}
 
 int ObsoleteSSLStatusForProtocol(int ssl_version)
 {
@@ -28,7 +58,7 @@ int ObsoleteSSLStatusForCipherSuite(uint16_t cipher_suite)
 {
     int obsolete_ssl = OBSOLETE_SSL_NONE;
 
-    const SSL_CIPHER* cipher = SSL_get_cipher_by_value(cipher_suite);
+    const SSL_CIPHER* cipher = CipherByValue(cipher_suite);
     if (!cipher) {
         // Cannot determine/unknown cipher suite. Err on the side of caution.
         obsolete_ssl |= OBSOLETE_SSL_MASK_KEY_EXCHANGE;
@@ -50,9 +80,9 @@ int ObsoleteSSLStatusForCipherSuite(uint16_t cipher_suite)
 int ObsoleteSSLStatusForSignature(uint16_t signature_algorithm)
 {
     switch (signature_algorithm) {
-    case SSL_SIGN_ECDSA_SHA1:
-    case SSL_SIGN_RSA_PKCS1_MD5_SHA1:
-    case SSL_SIGN_RSA_PKCS1_SHA1:
+    case 0x0203: // ecdsa_sha1
+    case 0xff01: // rsa_pkcs1_md5_sha1 (legacy internal value)
+    case 0x0201: // rsa_pkcs1_sha1
         return OBSOLETE_SSL_MASK_SIGNATURE;
     default:
         return OBSOLETE_SSL_NONE;
@@ -67,7 +97,7 @@ void SSLCipherSuiteToStrings(const char** key_exchange_str, const char** cipher_
     *is_aead = false;
     *is_tls13 = false;
 
-    const SSL_CIPHER* cipher = SSL_get_cipher_by_value(cipher_suite);
+    const SSL_CIPHER* cipher = CipherByValue(cipher_suite);
     if (!cipher)
         return;
 
@@ -156,6 +186,64 @@ void SSLVersionToString(const char** name, int ssl_version)
         break;
     default:
         NOTREACHED() << ssl_version;
+    }
+}
+
+const char* SSLGroupToName(uint16_t group)
+{
+    // IANA TLS Supported Groups registry values (not OpenSSL NIDs).
+    switch (group) {
+    case 1: return "sect163k1";
+    case 2: return "sect163r1";
+    case 3: return "sect163r2";
+    case 4: return "sect193r1";
+    case 5: return "sect193r2";
+    case 6: return "sect233k1";
+    case 7: return "sect233r1";
+    case 8: return "sect239k1";
+    case 9: return "sect283k1";
+    case 10: return "sect283r1";
+    case 11: return "sect409k1";
+    case 12: return "sect409r1";
+    case 13: return "sect571k1";
+    case 14: return "sect571r1";
+    case 15: return "secp160k1";
+    case 16: return "secp160r1";
+    case 17: return "secp160r2";
+    case 18: return "secp192k1";
+    case 19: return "secp192r1";
+    case 20: return "secp224k1";
+    case 21: return "secp224r1";
+    case 22: return "secp256k1";
+    case 23: return "P-256";
+    case 24: return "P-384";
+    case 25: return "P-521";
+    case 26: return "brainpoolP256r1";
+    case 27: return "brainpoolP384r1";
+    case 28: return "brainpoolP512r1";
+    case 29: return "X25519";
+    case 30: return "X448";
+    case 31: return "brainpoolP256r1tls13";
+    case 32: return "brainpoolP384r1tls13";
+    case 33: return "brainpoolP512r1tls13";
+    case 34: return "GC256A";
+    case 35: return "GC256B";
+    case 36: return "GC256C";
+    case 37: return "GC256D";
+    case 38: return "GC512A";
+    case 39: return "GC512B";
+    case 40: return "GC512C";
+    case 41: return "curveSM2";
+    case 256: return "ffdhe2048";
+    case 257: return "ffdhe3072";
+    case 258: return "ffdhe4096";
+    case 259: return "ffdhe6144";
+    case 260: return "ffdhe8192";
+    case 4588: return "X25519MLKEM768";
+    case 4587: return "SecP256r1MLKEM768";
+    case 4589: return "SecP384r1MLKEM1024";
+    case 25497: return "X25519Kyber768Draft00";
+    default: return nullptr;
     }
 }
 

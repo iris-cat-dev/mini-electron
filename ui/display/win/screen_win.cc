@@ -988,15 +988,12 @@ void ScreenWin::OnWndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 
 void ScreenWin::OnColorProfilesChanged()
 {
-    *(int*)1 = 1;
-    // The color profile reader will often just confirm that our guess that the
-    // color profile was sRGB was indeed correct. Avoid doing an update in these
-    // cases.
-//     if (base::ranges::any_of(displays_, [this](const auto& display) {
-//             return display.GetColorSpaces().GetRasterColorSpace() != color_profile_reader_->GetDisplayColorSpace(display.id());
-//         })) {
-//         UpdateAllDisplaysAndNotify();
-//     }
+    // The reader can confirm the existing sRGB guess without changing displays.
+    if (base::ranges::any_of(displays_, [this](const auto& display) {
+            return display.GetColorSpaces().GetRasterColorSpace() != color_profile_reader_->GetDisplayColorSpace(display.id());
+        })) {
+        UpdateAllDisplaysAndNotify();
+    }
 }
 
 void ScreenWin::UpdateAllDisplaysAndNotify()

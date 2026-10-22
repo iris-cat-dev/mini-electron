@@ -118,7 +118,7 @@ public:
     }
     template <typename GetT, typename SetT> ObjectTemplateBuilder& SetMemberAccessor(const base::StringPiece& name, const GetT& getter, const SetT& setter)
     {
-        SetMemberGetSetAccessor(isolate_, template_, StringToSymbol(isolate_, name), base::BindOnce(getter), base::BindOnce(setter));
+        SetMemberGetSetAccessor(isolate_, template_, StringToSymbol(isolate_, name), base::BindRepeating(getter), base::BindRepeating(setter));
         return *this;
     }
 

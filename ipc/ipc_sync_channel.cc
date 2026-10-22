@@ -10,6 +10,7 @@
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/time/time.h"
+#include "base/run_loop.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/synchronization/waitable_event_watcher.h"
 //#include "base/threading/thread_task_runner_handle.h"
@@ -184,15 +185,6 @@ public:
         }
     }
 
-    base::WaitableEventWatcher* top_send_done_watcher()
-    {
-        return top_send_done_watcher_;
-    }
-
-    void set_top_send_done_watcher(base::WaitableEventWatcher* watcher)
-    {
-        top_send_done_watcher_ = watcher;
-    }
 
 private:
     friend class base::RefCountedThreadSafe<ReceivedSyncMsgQueue>;
@@ -205,7 +197,6 @@ private:
         , listener_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault())
         , task_pending_(false)
         , listener_count_(0)
-        , top_send_done_watcher_(NULL)
     {
     }
 
@@ -239,10 +230,6 @@ private:
     bool task_pending_;
     int listener_count_;
 
-    // The current send done event watcher for this thread. Used to maintain
-    // a local global stack of send done watchers to ensure that nested sync
-    // message loops complete correctly.
-    base::WaitableEventWatcher* top_send_done_watcher_;
 };
 base::LazyInstance<base::ThreadLocalPointer<SyncChannel::ReceivedSyncMsgQueue>>::DestructorAtExit SyncChannel::ReceivedSyncMsgQueue::lazy_tls_ptr_
     = LAZY_INSTANCE_INITIALIZER;
@@ -270,10 +257,7 @@ void SyncChannel::SyncContext::Push(SyncMessage* sync_msg)
     // by value since all members are pointers that are cheap to copy. These
     // pointers are cleaned up in the Pop() function.
     //
-    // The event is created as manual reset because in between Signal and
-    // OnObjectSignalled, another Send can happen which would stop the watcher
-    // from being called.  The event would get watched later, when the nested
-    // Send completes, so the event will need to remain set.
+    // Keep completion signaled until Pop(), including while nested sends run.
     PendingSyncMsg pending(SyncMessage::GetMessageId(*sync_msg), sync_msg->GetReplyDeserializer(),
         new WaitableEvent(base::WaitableEvent::ResetPolicy::MANUAL, base::WaitableEvent::InitialState::NOT_SIGNALED) /*(true, false)*/);
     base::AutoLock auto_lock(deserializers_lock_);
@@ -418,16 +402,10 @@ void SyncChannel::SyncContext::CancelPendingSends()
 
 void SyncChannel::SyncContext::OnWaitableEventSignaled(WaitableEvent* event)
 {
-    if (event == shutdown_event_) {
-        // Process shut down before we can get a reply to a synchronous message.
-        // Cancel pending Send calls, which will end up setting the send done event.
-        CancelPendingSends();
-    } else {
-        // We got the reply, timed out or the process shutdown.
-        //         DCHECK_EQ(GetSendDoneEvent(), event);
-        //         MessageLoop::current()->QuitNow();
-        *(int*)1 = 1;
-    }
+    DCHECK_EQ(shutdown_event_, event);
+    // Process shut down before we can get a reply to a synchronous message.
+    // Cancel pending Send calls, which will end up setting the send done event.
+    CancelPendingSends();
 }
 
 SyncChannel::SyncChannel(const IPC::ChannelHandle& channel_handle, Channel::Mode mode, Listener* listener, base::SingleThreadTaskRunner* ipc_task_runner,
@@ -531,39 +509,15 @@ void SyncChannel::WaitForReply(SyncContext* context, WaitableEvent* pump_message
 
 void SyncChannel::WaitForReplyWithNestedMessageLoop(SyncContext* context)
 {
-    *(int*)1 = 1;
-    //     base::WaitableEventWatcher send_done_watcher;
-    //
-    //     ReceivedSyncMsgQueue* sync_msg_queue = context->received_sync_msgs();
-    //     DCHECK(sync_msg_queue != NULL);
-    //
-    //     base::WaitableEventWatcher* old_send_done_event_watcher = sync_msg_queue->top_send_done_watcher();
-    //
-    //     base::WaitableEventWatcher::Delegate* old_delegate = NULL;
-    //     base::WaitableEvent* old_event = NULL;
-    //
-    //     // Maintain a local global stack of send done delegates to ensure that
-    //     // nested sync calls complete in the correct sequence, i.e. the
-    //     // outermost call completes first, etc.
-    //     if (old_send_done_event_watcher) {
-    //         old_delegate = old_send_done_event_watcher->delegate();
-    //         old_event = old_send_done_event_watcher->GetWatchedEvent();
-    //         old_send_done_event_watcher->StopWatching();
-    //     }
-    //
-    //     sync_msg_queue->set_top_send_done_watcher(&send_done_watcher);
-    //
-    //     send_done_watcher.StartWatching(context->GetSendDoneEvent(), context);
-    //
-    //     {
-    //         MessageLoop::ScopedNestableTaskAllower allow(MessageLoop::current());
-    //         MessageLoop::current()->Run();
-    //     }
-    //
-    //     sync_msg_queue->set_top_send_done_watcher(old_send_done_event_watcher);
-    //     if (old_send_done_event_watcher && old_event) {
-    //         old_send_done_event_watcher->StartWatching(old_event, old_delegate);
-    //     }
+    base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
+    base::WaitableEventWatcher send_done_watcher;
+    // Each wait owns its RunLoop. Quitting an outer wait while a nested send is
+    // active records the quit without terminating the nested wait.
+    CHECK(send_done_watcher.StartWatching(
+        context->GetSendDoneEvent(),
+        base::BindOnce([](base::RepeatingClosure quit, WaitableEvent*) { quit.Run(); }, run_loop.QuitClosure()),
+        context->received_sync_msgs()->listener_task_runner()));
+    run_loop.Run();
 }
 
 void SyncChannel::OnWaitableEventSignaled(WaitableEvent* event)
@@ -585,9 +539,9 @@ void SyncChannel::StartWatching()
     // stop or keep watching.  So we always watch it, and create the event as
     // manual reset since the object watcher might otherwise reset the event
     // when we're doing a WaitMany.
-    //dispatch_watcher_.StartWatching(sync_context()->GetDispatchEvent(), this);
-    dispatch_watcher_.StartWatching(
-        sync_context()->GetDispatchEvent(), base::BindOnce(&SyncChannel::OnWaitableEventSignaled, base::Unretained(this)), sync_context()->ipc_task_runner());
+    dispatch_watcher_.StartWatching(sync_context()->GetDispatchEvent(),
+        base::BindOnce(&SyncChannel::OnWaitableEventSignaled, base::Unretained(this)),
+        sync_context()->received_sync_msgs()->listener_task_runner());
 }
 
 } // namespace IPC

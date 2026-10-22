@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-shared.h" // IWYU pragma: export
@@ -62,20 +65,9 @@ public:
         return mojo::TypeConverter<U, FileSystemAccessError>::Convert(*this);
     }
 
-    FileSystemAccessError()
-    : status()
-    , file_error()
-    , message()
-{
-}
-
-    FileSystemAccessError(FileSystemAccessStatus status_in, ::base::File::Error file_error_in, const WTF::String& message_in)
-    : status(std::move(status_in))
-    , file_error(std::move(file_error_in))
-    , message(std::move(message_in)){
-}
-
-    ~FileSystemAccessError() = default;
+    FileSystemAccessError();
+    FileSystemAccessError(FileSystemAccessStatus status_in, ::base::File::Error file_error_in, const WTF::String& message_in);
+    ~FileSystemAccessError();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -145,8 +137,10 @@ public:
 
     WTF::String message;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

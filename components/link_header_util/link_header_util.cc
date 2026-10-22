@@ -164,37 +164,33 @@ std::vector<StringIteratorPair> SplitLinkHeader(const std::string& header)
 bool ParseLinkHeaderValue(
     std::string::const_iterator begin, std::string::const_iterator end, std::string* url, std::unordered_map<std::string, absl::optional<std::string>>* params)
 {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // Optional HTTP Link-header processing remains disabled in this port.
     return false;
-//     // Can't parse an empty string.
-//     if (begin == end)
-//         return false;
-// 
-//     // Extract the URL part (everything between '<' and first '>' character).
-//     std::string::const_iterator url_begin;
-//     std::string::const_iterator url_end;
-//     if (!ExtractURL(begin, end, &url_begin, &url_end, &begin))
-//         return false;
-//     *url = std::string(url_begin, url_end);
-// 
-//     // Trim any remaining whitespace, and make sure there is a ';' separating
-//     // parameters from the URL.
-//     net::HttpUtil::TrimLWS(&begin, &end);
-//     if (begin != end && *begin != ';')
-//         return false;
-// 
-//     // Parse all the parameters.
-//     net::HttpUtil::NameValuePairsIterator params_iterator(
-//         begin, end, ';', net::HttpUtil::NameValuePairsIterator::Values::NOT_REQUIRED, net::HttpUtil::NameValuePairsIterator::Quotes::STRICT_QUOTES);
-//     while (params_iterator.GetNext()) {
-//         if (!net::HttpUtil::IsParmName(params_iterator.name_piece()))
-//             return false;
-//         std::string name = base::ToLowerASCII(params_iterator.name_piece());
-//         if (!params_iterator.value_is_quoted() && params_iterator.value_piece().empty())
-//             params->insert(std::make_pair(name, absl::nullopt));
-//         else
-//             params->insert(std::make_pair(name, params_iterator.value()));
-//     }
-//     return params_iterator.valid();
+#else
+    if (begin == end)
+        return false;
+    std::string::const_iterator url_begin;
+    std::string::const_iterator url_end;
+    if (!ExtractURL(begin, end, &url_begin, &url_end, &begin))
+        return false;
+    *url = std::string(url_begin, url_end);
+    net::HttpUtil::TrimLWS(&begin, &end);
+    if (begin != end && *begin != ';')
+        return false;
+    net::HttpUtil::NameValuePairsIterator params_iterator(
+        std::string_view(begin, end), ';', net::HttpUtil::NameValuePairsIterator::Values::NOT_REQUIRED, net::HttpUtil::NameValuePairsIterator::Quotes::STRICT_QUOTES);
+    while (params_iterator.GetNext()) {
+        if (!net::HttpUtil::IsParmName(params_iterator.name()))
+            return false;
+        std::string name = base::ToLowerASCII(params_iterator.name());
+        if (!params_iterator.value_is_quoted() && params_iterator.value().empty())
+            params->insert(std::make_pair(name, absl::nullopt));
+        else
+            params->insert(std::make_pair(name, std::string(params_iterator.value())));
+    }
+    return params_iterator.valid();
+#endif
 }
 
 } // namespace link_header_util

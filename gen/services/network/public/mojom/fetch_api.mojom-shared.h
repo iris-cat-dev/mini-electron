@@ -14,7 +14,10 @@
 #include <type_traits>
 #include <utility>
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/fetch_api.mojom-shared-internal.h"
 
@@ -339,6 +342,7 @@ namespace network::mojom {
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::RequestMode> {
@@ -346,7 +350,9 @@ template <> struct TraceFormatTraits<::network::mojom::RequestMode> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::RequestDestination> {
@@ -354,7 +360,9 @@ template <> struct TraceFormatTraits<::network::mojom::RequestDestination> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::RedirectMode> {
@@ -362,7 +370,9 @@ template <> struct TraceFormatTraits<::network::mojom::RedirectMode> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::CredentialsMode> {
@@ -370,7 +380,9 @@ template <> struct TraceFormatTraits<::network::mojom::CredentialsMode> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::FetchResponseType> {
@@ -378,7 +390,9 @@ template <> struct TraceFormatTraits<::network::mojom::FetchResponseType> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::FetchResponseSource> {
@@ -386,5 +400,6 @@ template <> struct TraceFormatTraits<::network::mojom::FetchResponseSource> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // SERVICES_NETWORK_PUBLIC_MOJOM_FETCH_API_MOJOM_SHARED_H_

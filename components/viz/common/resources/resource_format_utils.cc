@@ -14,6 +14,7 @@
 #include "base/check_op.h"
 #include "base/logging.h"
 #include "base/notreached.h"
+#include "components/viz/common/resources/shared_image_format_utils.h"
 #include "build/chromeos_buildflags.h"
 #include "ui/gfx/buffer_types.h"
 
@@ -620,9 +621,7 @@ bool GLSupportsFormat(ResourceFormat format)
 //  TODO (hitawala): Add support for multiplanar formats.
 SkColorType ResourceFormatToClosestSkColorType(bool gpu_compositing, SharedImageFormat format)
 {
-    //return ResourceFormatToClosestSkColorType(gpu_compositing, format.resource_format());
-    *(int*)1 = 1;
-    return kRGBA_8888_SkColorType;
+    return ToClosestSkColorType(gpu_compositing, format);
 }
 //
 //  int BitsPerPixel(SharedImageFormat format) {

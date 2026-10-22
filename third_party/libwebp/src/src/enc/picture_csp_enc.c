@@ -183,24 +183,6 @@ static const int kMinDimensionIterativeConversion = 4;
 
 extern void SharpYuvInit(VP8CPUInfo cpu_info_func);
 
-void SharpYuvInit(VP8CPUInfo cpu_info_func)
-{
-    *(int*)1 = 1;
-}
-
-const SharpYuvConversionMatrix* SharpYuvGetConversionMatrix(SharpYuvMatrixType matrix_type)
-{
-    *(int*)1 = 1;
-    return (void*)0;
-}
-
-int SharpYuvConvert(const void* r_ptr, const void* g_ptr, const void* b_ptr, int rgb_step, int rgb_stride, int rgb_bit_depth, void* y_ptr, int y_stride,
-    void* u_ptr, int u_stride, void* v_ptr, int v_stride, int yuv_bit_depth, int width, int height, const SharpYuvConversionMatrix* yuv_matrix)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
 static void SafeInitSharpYuv(void)
 {
 #if defined(WEBP_USE_THREAD) && !defined(_WIN32)

@@ -288,6 +288,16 @@ void BindJsQuery::bindFun(v8::Local<v8::Context> context, QueryFn* queryFn, Quer
     if (mini_electron_val)
         mini_electron_val->deref();
 
+    v8::Local<v8::Value> windowValue;
+    if (!globalObj->Get(context, v8::String::NewFromUtf8Literal(isolate, "window")).ToLocal(&windowValue)
+        || !windowValue->IsObject())
+        return;
+    v8::Local<v8::Object> windowObject = windowValue.As<v8::Object>();
+    v8::Local<v8::Value> setter;
+    if (!windowObject->Get(context, v8::String::NewFromUtf8Literal(isolate, "__setMiniElectronQuery__")).ToLocal(&setter)
+        || !setter->IsFunction())
+        return;
+
     // 构建func参数
     BindJsQuery* self = new BindJsQuery();
     self->m_webviewId = webviewId;
@@ -298,28 +308,22 @@ void BindJsQuery::bindFun(v8::Local<v8::Context> context, QueryFn* queryFn, Quer
 
     v8::Local<v8::FunctionTemplate> functionTemplate = v8::FunctionTemplate::New(isolate, jsCallback, dataLocal);
     v8::Local<v8::Function> v8Function;
-    if (!functionTemplate->GetFunction(context).ToLocal(&v8Function))
-        DebugBreak();
+    if (!functionTemplate->GetFunction(context).ToLocal(&v8Function)) {
+        delete self;
+        return;
+    }
 
     v8::Local<v8::FunctionTemplate> functionTemplate2 = v8::FunctionTemplate::New(isolate, jsCallback2, dataLocal);
     v8::Local<v8::Function> v8Function2;
-    if (!functionTemplate2->GetFunction(context).ToLocal(&v8Function2))
-        DebugBreak();
-
-    v8::Local<v8::Object> global = context->Global();
-    v8::Local<v8::Value> windowVal
-        = global->Get(context, v8::String::NewFromUtf8(isolate, "window", v8::NewStringType::kNormal, -1).ToLocalChecked()).ToLocalChecked();
-    v8::Local<v8::Object> windowObj = windowVal->ToObject(context).ToLocalChecked();
-
-    v8::Local<v8::String> setEngineQueryStr = v8::String::NewFromUtf8(isolate, "__setMiniElectronQuery__", v8::NewStringType::kNormal, -1).ToLocalChecked();
-    v8::Local<v8::Value> setEngineQueryStrValue = windowObj->Get(context, setEngineQueryStr).ToLocalChecked();
-    if (!setEngineQueryStrValue->IsFunction()) // https://www.hao123.com/?tn=48021271_79_hao_pg 这网页不知道为啥有时绑定失败
+    if (!functionTemplate2->GetFunction(context).ToLocal(&v8Function2)) {
+        delete self;
         return;
-
-    v8::Function* setEngineQueryFunc = v8::Function::Cast(*setEngineQueryStrValue);
+    }
 
     v8::Local<v8::Value> argv[2] = { v8Function, v8Function2 };
-    setEngineQueryFunc->Call(context, v8::Undefined(isolate), 2, argv);
+    // A page-provided setter can throw. Leave that exception to the caller;
+    // never unwrap an empty MaybeLocal or reuse the callbacks after failure.
+    (void)setter.As<v8::Function>()->Call(context, v8::Undefined(isolate), 2, argv);
 }
 
 }

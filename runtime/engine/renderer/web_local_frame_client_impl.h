@@ -96,6 +96,8 @@ public:
     ) override;
 
     void DidStartLoading() override;
+    void DidStopLoading() override;
+    void StartLoadingForAsyncNavigationApiCommit();
 
     blink::WebView* CreateNewWindow(
         const blink::WebURLRequest& request, 
@@ -170,6 +172,7 @@ public:
 
     blink::WebLocalFrame* m_frame = nullptr;
     bool m_hidden = false;
+    bool m_asyncNavigationApiLoading = false;
 
     WTF::String m_srcdoc;
 

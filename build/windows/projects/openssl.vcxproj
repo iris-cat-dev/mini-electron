@@ -1150,8 +1150,6 @@
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\common\securitycheck_default.c" />
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\common\securitycheck_fips.c" />
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\defltprov.c" />
-    <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\fips\fipsprov.c" />
-    <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\fips\fips_entry.c" />
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\implementations\asymciphers\rsa_enc.c" />
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\implementations\asymciphers\sm2_enc.c" />
     <ClCompile Include="..\..\..\third_party\openssl\openssl\providers\implementations\ciphers\ciphercommon.c" />

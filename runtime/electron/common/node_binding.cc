@@ -24,6 +24,7 @@
 #include <xstring>
 #include <vector>
 #include <memory>
+#include <cstdio>
 #include <shlwapi.h>
 
 namespace content {
@@ -99,8 +100,19 @@ void fatalErrorCallback(const char* location, const char* message)
 
 void log(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    //std::cout << message << std::flush;
-    crash(info);
+    for (int i = 0; i < info.Length(); ++i) {
+        v8::Local<v8::String> value;
+        if (!info[i]->ToString(info.GetIsolate()->GetCurrentContext()).ToLocal(&value))
+            return; // Preserve an exception thrown by JavaScript conversion.
+        v8::String::Utf8Value text(info.GetIsolate(), value);
+        if (!*text)
+            return;
+        if (i)
+            std::fputc(' ', stderr);
+        std::fwrite(*text, 1, text.length(), stderr);
+    }
+    std::fputc('\n', stderr);
+    std::fflush(stderr);
 }
 
 void getSystemVersion(const v8::FunctionCallbackInfo<v8::Value>& args)

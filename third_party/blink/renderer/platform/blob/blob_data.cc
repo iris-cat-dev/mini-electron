@@ -56,10 +56,6 @@
 #include "third_party/blink/renderer/platform/wtf/uuid.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
-void base::internal::check_is_test_impl(base::NotFatalUntil)
-{
-    *(int*)1 = 1;
-}
 
 namespace blink {
 

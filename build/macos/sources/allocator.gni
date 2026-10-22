@@ -4,6 +4,12 @@
 # Checked-in macOS source manifest; independent of Visual Studio projects.
 
 mini_electron_partition_alloc_sources = [
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/allocator_interception_apple.mm",
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_apple.cc",
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_default_dispatch_to_partition_alloc.cc",
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_default_dispatch_to_partition_alloc_with_advanced_checks.cc",
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_dispatch_to_noop_on_free.cc",
+  "//base/allocator/partition_allocator/src/partition_alloc/shim/malloc_zone_functions_apple.cc",
   "//base/allocator/partition_allocator/src/partition_alloc/partition_alloc.cc",
   "//base/allocator/partition_allocator/src/partition_alloc/partition_oom.cc",
   "//base/allocator/partition_allocator/src/partition_alloc/partition_freelist_entry.cc",

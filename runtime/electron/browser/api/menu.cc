@@ -198,7 +198,6 @@ public:
         builder.SetMethod("_popup", &Menu::_popupApi);
         builder.SetMethod("_clear", &Menu::_clearApi);
         builder.SetMethod("getItemCount", &Menu::getItemCountApi);
-        builder.SetMethod("quit", &Menu::nullFunction);
 
         v8::Local<v8::Function> menuConstructor = prototype->GetFunction(context).ToLocalChecked();
         menuConstructor->Set(
@@ -209,10 +208,6 @@ public:
         target->Set(context, v8::String::NewFromUtf8(isolate, "Menu").ToLocalChecked(), menuConstructor).Check();
     }
 
-    void nullFunction()
-    {
-        DebugBreak();
-    }
 
     // Set or clear the global menubar on every existing window.
     static void setApplicationMenuApi(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -243,7 +238,11 @@ public:
 
     void sendActionToFirstResponderApi(const std::string& action)
     {
-        DebugBreak();
+        // Cocoa responder selectors are not a Windows API. Match Electron's
+        // platform contract instead of entering the debugger.
+        isolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8(isolate(),
+                "sendActionToFirstResponder is only available on macOS").ToLocalChecked()));
     }
 
     size_t getItemCountApi() const

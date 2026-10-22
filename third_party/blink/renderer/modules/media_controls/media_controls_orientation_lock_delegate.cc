@@ -37,7 +37,6 @@
 
 std::ostream& device::mojom::operator<<(std::ostream& a, ::device::mojom::ScreenOrientationLockType b)
 {
-    *(int*)1 = 1;
     return a << (int)(b);
 }
 

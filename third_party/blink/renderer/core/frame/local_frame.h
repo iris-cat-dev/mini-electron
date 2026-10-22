@@ -302,6 +302,8 @@ public:
     BoxShadowPaintImageGenerator* GetBoxShadowPaintImageGenerator();
     ClipPathPaintImageGenerator* GetClipPathPaintImageGenerator();
     void SetClipPathPaintImageGeneratorForTesting(ClipPathPaintImageGenerator*);
+    // Nullable. MINI_ELECTRON_IMPLEMENTATION excludes the disabled predictor
+    // and its locator providers; consumers must not require them in that port.
     LCPCriticalPathPredictor* GetLCPP();
 
     // A local root is the root of a connected subtree that contains only
@@ -1161,7 +1163,9 @@ private:
     // ready-to-commit time.
     std::optional<blink::FrameAdEvidence> ad_evidence_;
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     Member<LCPCriticalPathPredictor> lcpp_;
+#endif
 
     // True if this frame is a frame that had a script tagged as an ad on the v8
     // stack at the time of creation. This is updated in `SetAdEvidence()`,

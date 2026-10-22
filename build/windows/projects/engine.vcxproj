@@ -132,7 +132,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530;4334</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -168,7 +168,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530;4334</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -198,7 +198,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -216,7 +216,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -236,7 +236,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <StringPooling>true</StringPooling>
@@ -267,7 +267,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <StringPooling>true</StringPooling>
@@ -404,6 +404,7 @@
     <ClInclude Include="..\..\..\mojo\public\cpp\base\big_buffer.h" />
     <ClInclude Include="..\..\..\mojo\public\cpp\base\big_buffer_mojom_traits.h" />
     <ClInclude Include="..\..\..\mojo\public\cpp\base\shared_memory_version.h" />
+    <ClInclude Include="..\..\..\mojo\public\cpp\base\version_mojom_traits.h" />
     <ClInclude Include="..\..\..\mojo\public\cpp\bindings\array_data_view.h" />
     <ClInclude Include="..\..\..\mojo\public\cpp\bindings\array_traits.h" />
     <ClInclude Include="..\..\..\mojo\public\cpp\bindings\associated_receiver.h" />
@@ -1243,6 +1244,9 @@
     <ClInclude Include="..\..\..\url\url_util_internal.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\net\cert\x509_certificate_openssl.cc" />
+    <ClCompile Include="..\..\..\net\cert\x509_cert_types.cc" />
+    <ClCompile Include="..\..\..\mojo\public\cpp\system\data_pipe_producer.cc" />
     <ClCompile Include="..\..\..\base\third_party\double_conversion\double-conversion\bignum-dtoa.cc" />
     <ClCompile Include="..\..\..\base\third_party\double_conversion\double-conversion\bignum.cc" />
     <ClCompile Include="..\..\..\base\third_party\double_conversion\double-conversion\cached-powers.cc" />
@@ -1341,6 +1345,7 @@
     <ClCompile Include="..\..\..\mojo\public\cpp\base\big_buffer_mojom_traits.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\base\shared_memory_version.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\base\unguessable_token_mojom_traits.cc" />
+    <ClCompile Include="..\..\..\mojo\public\cpp\base\version_mojom_traits.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\bindings\lib\message_internal.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\bindings\lib\pending_remote_state.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\bindings\lib\sync_call_restrictions.cc" />
@@ -1348,6 +1353,7 @@
     <ClCompile Include="..\..\..\mojo\public\cpp\bindings\lib\unserialized_message_context.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\bindings\receiver_set.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\mojo_empty.cc" />
+    <ClCompile Include="..\..\..\mojo\public\cpp\bindings\lib\string_traits_wtf.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\mojo_lite.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\mojo_lite_msg.cc" />
     <ClCompile Include="..\..\..\mojo\public\cpp\system\simple_watcher.cc" />
@@ -1403,7 +1409,6 @@
     <ClCompile Include="..\..\..\net\http\http_request_headers.cc" />
     <ClCompile Include="..\..\..\net\http\http_response_headers.cc" />
     <ClCompile Include="..\..\..\net\http\http_util.cc" />
-    <ClCompile Include="..\..\..\net\http\structured_headers.cc" />
     <ClCompile Include="..\..\..\net\log\net_log_source.cc" />
     <ClCompile Include="..\..\..\net\socket\socket_tag.cc" />
     <ClCompile Include="..\..\..\net\ssl\ssl_info.cc" />
@@ -1413,7 +1418,6 @@
     <ClCompile Include="..\..\..\net\websockets\websocket_frame.cc" />
     <ClCompile Include="..\..\..\platform\windows\compat\atomic.cc" />
     <ClCompile Include="..\..\..\third_party\blink\common\privacy_budget\identifiable_token_builder.cc" />
-    <ClCompile Include="..\..\..\third_party\blink\public\platform\modules\modules_mojo_empty.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\fileapi\blob.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\fileapi\file.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\fileapi\file_backed_blob_factory_dispatcher.cc" />

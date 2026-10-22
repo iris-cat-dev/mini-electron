@@ -57,6 +57,7 @@
 #include "runtime/engine/renderer/platform_event_handler.h"
 #include "runtime/engine/renderer/webgl_context_provider.h"
 #include "runtime/engine/renderer/webgpu_context_provider.h"
+#include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
 #include "runtime/network/loader/web_url_loader_internal.h"
 #include "runtime/network/loader/web_url_loader_manager.h"
@@ -906,6 +907,10 @@ public:
         }, this, nullptr);
         auto& callbacks = host->getClosure();
         callbacks.m_javascriptDialogsOnBlinkThread = in_process_;
+        callbacks.m_beforeUnloadConfirm = [this](bool is_reload) {
+            return RunDialog("beforeunload", is_reload
+                ? "Reload this page?" : "Leave this page?", "", nullptr);
+        };
         callbacks.setDidCreateScriptContextCallback(&DidCreateContext, this);
         if (in_process_)
             callbacks.setNavigationSyncCallback(&Navigation, this);
@@ -914,6 +919,17 @@ public:
         callbacks.setCreateViewCallback(&CreateView, this);
         callbacks.setDocumentReadyInBlinkCallback(&DocumentReady, this);
         callbacks.setTitleChangedCallback(&TitleChanged, this);
+        callbacks.setMouseOverUrlChangedCallback(
+            [](mini_electron_web_view, void* context, const utf8* url) {
+                static_cast<RendererServerImpl*>(context)->SendEvent("target-url",
+                    base::Value::Dict().Set("url", url ? url : ""));
+            }, this);
+        callbacks.m_faviconURLsChanged = [this](std::vector<std::string> urls) {
+            base::Value::List list;
+            for (auto& url : urls)
+                list.Append(std::move(url));
+            SendEvent("favicon-urls", base::Value::Dict().Set("urls", std::move(list)));
+        };
         callbacks.setURLChangedCallback(&UrlChanged, this);
         callbacks.setFrameURLChangedCallback(&FrameUrlChanged, this);
         callbacks.setFrameDetachedCallback(&FrameDetached, this);
@@ -921,6 +937,28 @@ public:
             mini_electron_web_frame_handle frame,
             const blink::UntrustworthyContextMenuParams& params) {
             ContextMenu(frame, params);
+        };
+        callbacks.m_nativeWindowCommand = [this](
+            mini_electron_web_frame_handle frame, base::Value::Dict command,
+            std::function<void(bool)> reply) {
+            auto failure_reply = reply;
+            if (!RequestParent("native-window-command", std::move(command),
+                    [reply = std::move(reply)](base::Value::Dict result,
+                        std::string error) mutable {
+                        const bool granted = error.empty()
+                            && result.FindBool("granted").value_or(false);
+                        PostBlink([reply = std::move(reply), granted]() mutable {
+                            reply(granted);
+                        });
+                    }, frame)) {
+                PostBlink([reply = std::move(failure_reply)]() mutable {
+                    reply(false);
+                });
+            }
+        };
+        callbacks.m_loadingStateChanged = [this](
+            mini_electron_web_frame_handle frame, bool loading) {
+            SendLoadingState(frame, loading);
         };
         callbacks.setLoadingFinishCallback(&LoadingFinished, this);
         callbacks.setPaintBitUpdatedCallback(&PaintUpdated, this);
@@ -1264,6 +1302,23 @@ private:
         Write({ MessageKind::kEvent, 0, std::move(event) });
     }
 
+    void SendLoadingState(mini_electron_web_frame_handle frame, bool loading)
+    {
+        // Keep command and frame notifications on the Blink sequence. The
+        // existing command start still precedes its queued navigation, and
+        // finish/failure events still precede the corresponding stopped state.
+        if (!content::ThreadCall::isBlinkThread()) {
+            PostBlink([this, frame, loading] { SendLoadingState(frame, loading); });
+            return;
+        }
+        auto [it, inserted] = loading_states_.try_emplace(
+            reinterpret_cast<uintptr_t>(frame), loading);
+        if (!inserted && it->second == loading)
+            return;
+        it->second = loading;
+        SendEvent("loading-state", base::Value::Dict().Set("loading", loading), frame);
+    }
+
     uint64_t RequestParent(std::string type, base::Value::Dict payload,
         ParentReply callback, mini_electron_web_frame_handle frame = nullptr,
         bool reply_on_reader_thread = false)
@@ -1572,9 +1627,7 @@ private:
                         reinterpret_cast<uintptr_t>(main_frame_)),
                     0, true, *url, "GET", *token);
             }
-            base::Value::Dict loading;
-            loading.Set("loading", true);
-            SendEvent("loading-state", std::move(loading), main_frame_);
+            SendLoadingState(main_frame_, true);
             mini_electron_load_url(view_, url->c_str());
             Reply(request_id);
         } else if (method == "stop" || method == "reload" || method == "goBack"
@@ -1699,6 +1752,24 @@ private:
             });
             Reply(request_id);
 #endif
+        } else if (method == "fullscreen-state") {
+            const auto enabled = params.FindBool("enabled");
+            if (!enabled) {
+                Reply(request_id, {}, "invalid fullscreen state");
+                return;
+            }
+            PostBlink([view_id = view_, enabled = *enabled] {
+                auto* host = static_cast<content::WebViewHost*>(
+                    common::LiveIdDetect::getWebViewIds()->getPtr(view_id));
+                if (!host || !host->getWebView())
+                    return;
+                auto* view = static_cast<blink::WebViewImpl*>(host->getWebView());
+                if (enabled)
+                    view->DidEnterFullscreen();
+                else
+                    view->DidExitFullscreen();
+            });
+            Reply(request_id);
         } else if (method == "setFocus") {
             const bool focused = params.FindBool("focused").value_or(false);
             content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
@@ -4120,6 +4191,7 @@ private:
             self->pending_navigations_.erase(frame_id);
             self->frame_hierarchy_.erase(frame_id);
         }
+        self->loading_states_.erase(static_cast<uintptr_t>(frame_id));
         if (!self->closing_)
             self->preload_hosts_.erase(static_cast<uintptr_t>(frame_id));
         self->registered_frames_.erase(frame_id);
@@ -4191,9 +4263,7 @@ private:
             payload.Set("error", reason ? reason : "navigation failed");
             self->SendEvent("navigation-failed", std::move(payload), frame);
         }
-        base::Value::Dict state;
-        state.Set("loading", false);
-        self->SendEvent("loading-state", std::move(state), frame);
+        self->SendLoadingState(frame, false);
     }
 
     static void MINI_ELECTRON_CALL_TYPE DraggableRegionsChanged(
@@ -4767,40 +4837,6 @@ private:
                     line.substr(value_start));
             }
             request.Set("headers", std::move(headers));
-            std::vector<uint8_t> body;
-            if (mini_electron_post_body_elements* elements =
-                    mini_electron_net_get_post_body(job)) {
-                bool unsupported = false;
-                for (size_t index = 0; index < elements->elementSize; ++index) {
-                    mini_electron_post_body_element* element =
-                        elements->element[index];
-                    if (!element)
-                        continue;
-                    if (element->type
-                            != mini_electron_http_body_element_type_data
-                        || !element->data
-                        || (element->data->length > 0
-                            && !element->data->data)
-                        || element->data->length
-                            > renderer_protocol::kMaxMessageBytes
-                                - body.size()) {
-                        unsupported = true;
-                        break;
-                    }
-                    if (element->data->length > 0) {
-                        const auto* first =
-                            static_cast<const uint8_t*>(element->data->data);
-                        body.insert(body.end(), first,
-                            first + element->data->length);
-                    }
-                }
-                mini_electron_net_free_post_body_elements(elements);
-                if (unsupported) {
-                    mini_electron_net_cancel_request(job);
-                    return TRUE;
-                }
-            }
-            request.Set("body", base::Value(std::move(body)));
         } else {
             request.Set("kind", "protocol");
             request.Set("url", url.spec());
@@ -4809,7 +4845,45 @@ private:
         }
         const int job_id =
             static_cast<mini_electron::WebURLLoaderInternal*>(job)->m_id;
-        if (!self->RequestParent("broker-request", std::move(request),
+        if (network) {
+            mini_electron::ReadHeldRequestBodyForBroker(
+                static_cast<mini_electron::WebURLLoaderInternal*>(job),
+                renderer_protocol::kMaxMessageBytes,
+                base::BindOnce(
+                    [](base::WeakPtr<RendererServerImpl> self, int job_id,
+                        base::Value::Dict request,
+                        std::vector<uint8_t> body, std::string error) {
+                        mini_electron::AutoLockJob lock(
+                            mini_electron::WebURLLoaderManager::sharedInstance(), job_id);
+                        auto* job = lock.lock();
+                        if (!job || job->isCancelled())
+                            return;
+                        if (!self || !error.empty()) {
+                            mini_electron_net_cancel_request(job);
+                            return;
+                        }
+                        request.Set("body", base::Value(std::move(body)));
+                        const auto request_frame =
+                            reinterpret_cast<mini_electron_web_frame_handle>(
+                                static_cast<uintptr_t>(job->m_frameId));
+                        self->SendBrokerRequest(job_id, std::move(request), request_frame);
+                    }, self->weak_factory_.GetWeakPtr(), job_id,
+                    std::move(request)));
+        } else {
+            self->SendBrokerRequest(job_id, std::move(request), request_frame);
+        }
+        return TRUE;
+    }
+
+    void SendBrokerRequest(int job_id, base::Value::Dict request,
+        mini_electron_web_frame_handle request_frame)
+    {
+        mini_electron::AutoLockJob lock(
+            mini_electron::WebURLLoaderManager::sharedInstance(), job_id);
+        auto* job = lock.lock();
+        if (!job || job->isCancelled())
+            return;
+        if (!RequestParent("broker-request", std::move(request),
                 [job_id](base::Value::Dict result,
                     std::string error) mutable {
                 PostBlink([job_id, result = std::move(result),
@@ -4862,7 +4936,6 @@ private:
             }, request_frame)) {
             mini_electron_net_cancel_request(job);
         }
-        return TRUE;
     }
 
     ParsedArguments arguments_;
@@ -4935,6 +5008,7 @@ private:
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<content::RendererCdpService> cdp_service_;
 #endif
+    std::map<uintptr_t, bool> loading_states_;
     std::mutex guest_lock_;
     std::map<int, GuestFrame> guests_;
     std::mutex screenshot_lock_;

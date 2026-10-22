@@ -38,9 +38,11 @@ std::unique_ptr<blink::URLLoader> LoaderFactoryImpl::CreateURLLoader(
     WTF::Vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles
 )
 {
-    return std::make_unique<WebURLLoaderImplCurl>(std::move(freezableTaskRunnerHandle),
+    auto loader = std::make_unique<WebURLLoaderImplCurl>(std::move(freezableTaskRunnerHandle),
         std::move(unfreezableTaskRunnerHandle), m_terminateSyncLoadEvent,
         m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame);
+    loader->SetIsOfflineMode(m_isOfflineMode);
+    return loader;
 }
 
 BodyLoaderClient::BodyLoaderClient(

@@ -52,7 +52,10 @@ namespace {{namespace}} {
 #include "mojo/public/cpp/bindings/string_data_view.h"
 {%- endif %}
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "{{module.path}}-shared-internal.h"
 {%- for import in imports %}

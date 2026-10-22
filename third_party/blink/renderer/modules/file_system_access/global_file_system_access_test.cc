@@ -15,6 +15,10 @@
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_manager.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_dom_exception.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_open_file_picker_options.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
@@ -22,6 +26,8 @@
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
+#include "third_party/blink/renderer/modules/file_system_access/storage_manager_file_system_access.h"
+#include "third_party/blink/renderer/modules/quota/storage_manager.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -139,6 +145,7 @@ TEST_F(GlobalFileSystemAccessTest, UserActivationRequiredOtherwiseDenied)
     EXPECT_FALSE(frame->HasStickyUserActivation());
 }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 TEST_F(GlobalFileSystemAccessTest, UserActivationChooseEntriesSuccessful)
 {
     LocalFrame* frame = &GetFrame();
@@ -222,5 +229,42 @@ TEST_F(GlobalFileSystemAccessTest, UserActivationChooseEntriesErrors)
         EXPECT_FALSE(frame->HasStickyUserActivation());
     }
 }
+#else
+TEST_F(GlobalFileSystemAccessTest, UnsupportedPickerPreservesActivationValidation)
+{
+    V8TestingScope scope(KURL("https://example.test/"));
+    auto* options = OpenFilePickerOptions::Create();
+    GlobalFileSystemAccess::showOpenFilePicker(scope.GetScriptState(), scope.GetWindow(), options, scope.GetExceptionState());
+    EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), DOMExceptionCode::kSecurityError);
+}
+
+TEST_F(GlobalFileSystemAccessTest, ValidPickerRejectsWithoutBrowserService)
+{
+    V8TestingScope scope(KURL("https://example.test/"));
+    LocalFrame::NotifyUserActivation(&scope.GetFrame(), mojom::UserActivationNotificationType::kTest);
+    auto* options = OpenFilePickerOptions::Create();
+    auto promise = GlobalFileSystemAccess::showOpenFilePicker(scope.GetScriptState(), scope.GetWindow(), options, scope.GetExceptionState());
+    EXPECT_FALSE(scope.GetExceptionState().HadException());
+    ScriptPromiseTester tester(scope.GetScriptState(), promise);
+    tester.WaitUntilSettled();
+    ASSERT_TRUE(tester.IsRejected());
+    auto* error = V8DOMException::ToWrappable(scope.GetIsolate(), tester.Value().V8Value());
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->name(), "NotSupportedError");
+}
+
+TEST_F(GlobalFileSystemAccessTest, StorageDirectoryRejectsWithoutBrowserService)
+{
+    V8TestingScope scope(KURL("https://example.test/"));
+    auto* storage = MakeGarbageCollected<StorageManager>(scope.GetExecutionContext());
+    auto promise = StorageManagerFileSystemAccess::getDirectory(scope.GetScriptState(), *storage, scope.GetExceptionState());
+    ScriptPromiseTester tester(scope.GetScriptState(), promise);
+    tester.WaitUntilSettled();
+    ASSERT_TRUE(tester.IsRejected());
+    auto* error = V8DOMException::ToWrappable(scope.GetIsolate(), tester.Value().V8Value());
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->name(), "NotSupportedError");
+}
+#endif
 
 } // namespace blink

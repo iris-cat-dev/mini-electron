@@ -14,7 +14,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/unguessable_token.h"
-//#include "crypto/sha2.h"
+#include "third_party/openssl/openssl/include/openssl/sha.h"
 
 namespace blink {
 
@@ -165,13 +165,14 @@ std::string CalculateFrameHash(std::string_view name)
 {
     DCHECK_GT(name.size(), kMaxRequestedNameSize);
 
-    std::string hashed_name;
-//     uint8_t result[crypto::kSHA256Length];
-//     crypto::SHA256HashString(name, result, std::size(result));
-//     hashed_name += "<!--frameHash";
-//     hashed_name += base::HexEncode(result);
-//     hashed_name += "-->";
-    *(int*)1 = 1;
+    uint8_t result[SHA256_DIGEST_LENGTH];
+    SHA256_CTX context;
+    SHA256_Init(&context);
+    SHA256_Update(&context, name.data(), name.size());
+    SHA256_Final(result, &context);
+    std::string hashed_name("<!--frameHash");
+    hashed_name += base::HexEncode(result);
+    hashed_name += "-->";
     return hashed_name;
 }
 

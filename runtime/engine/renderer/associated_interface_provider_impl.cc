@@ -49,9 +49,11 @@ void AssociatedInterfaceProviderImpl::GetAssociatedInterface(
         if (m_frameClient && m_frameClient->getFrame()) {
             origin = m_frameClient->getFrame()->GetSecurityOrigin();
         }
+        if (!origin)
+            return;
         createAndBindInterface<::blink::mojom::blink::BlobURLStore, BlobURLStoreImpl>(std::move(receiver.PassPipe()), origin->ToRawString().Utf8());
-    } else
-        DebugBreak();
+    }
+    // Destruction closes an unbound receiver and notifies the remote peer.
 }
 
 }

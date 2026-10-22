@@ -12,17 +12,12 @@
 #include "net/cert/ct_policy_status.h"
 #include "net/cert/sct_status_flags.h"
 #include "net/cert/signed_certificate_timestamp_and_status.h"
+#include "net/cert/x509_certificate.h"
 //#include "third_party/boringssl/src/pki/ocsp_verify_result.h"
 #include "net/cert/ocsp_verify_result.h"
 
 namespace net {
 
-class X509Certificate;
-
-class NET_EXPORT X509Certificate : public base::RefCountedThreadSafe<X509Certificate> {
-public:
-    enum PublicKeyType { kPublicKeyTypeUnknown, kPublicKeyTypeRSA, kPublicKeyTypeDSA, kPublicKeyTypeECDSA, kPublicKeyTypeDH, kPublicKeyTypeECDH };
-};
 
 // SSL connection info.
 // This is really a struct.  All members are public.

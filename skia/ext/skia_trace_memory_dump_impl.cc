@@ -7,6 +7,7 @@
 #include "base/trace_event/memory_allocator_dump.h"
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/process_memory_dump.h"
+#include "base/tracing_buildflags.h"
 #include "skia/ext/SkDiscardableMemory_chrome.h"
 
 namespace skia {
@@ -47,11 +48,13 @@ void SkiaTraceMemoryDumpImpl::dumpStringValue(const char* dump_name, const char*
 void SkiaTraceMemoryDumpImpl::setMemoryBacking(const char* dump_name, const char* backing_type, const char* backing_object_id)
 {
     if (strcmp(backing_type, kMallocBackingType) == 0) {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
         auto* dump = process_memory_dump_->GetOrCreateAllocatorDump(dump_name);
         const char* system_allocator_name = base::trace_event::MemoryDumpManager::GetInstance()->system_allocator_pool_name();
         if (system_allocator_name) {
             process_memory_dump_->AddSuballocation(dump->guid(), system_allocator_name);
         }
+#endif
     } else {
         NOTREACHED();
     }

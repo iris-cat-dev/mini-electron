@@ -62,12 +62,6 @@ enum skia::mojom::ColorType mojo::EnumTraits<enum skia::mojom::ColorType, enum S
     return (skia::mojom::ColorType)t;
 }
 
-mojo::PendingRemote<blink::mojom::ImageReleaseCallback> 
-mojo::StructTraits<class blink::mojom::AcceleratedStaticBitmapImageDataView, blink::AcceleratedImageInfo>::release_callback(blink::AcceleratedImageInfo&)
-{
-    *(int*)1 = 1;
-    return mojo::PendingRemote<blink::mojom::ImageReleaseCallback>();
-}
 
 namespace blink {
 

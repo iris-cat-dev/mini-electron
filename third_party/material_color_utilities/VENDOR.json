@@ -1,0 +1,174 @@
+{
+  "name": "Material color utilities",
+  "chromium_version": "132.0.6834.83",
+  "revision": "13434b50dcb64a482cc91191f8cf6151d90f5465",
+  "repository": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities.git",
+  "pin_source": "https://chromium.googlesource.com/chromium/src/+/132.0.6834.83/DEPS",
+  "readme_version": "bd6537fb1c4aa2164d97f96e78a9c826e360a0ed",
+  "readme_version_note": "Chromium README.chromium version metadata is preserved; its older Version field is stale. DEPS is authoritative for the vendored src revision. License File is locally extended to include src/LICENSE attribution.",
+  "chromium_build_source": "https://chromium.googlesource.com/chromium/src/+/132.0.6834.83/third_party/material_color_utilities/BUILD.gn",
+  "selection": "All 14 portable runtime .cc files and 14 headers listed in the Chromium source_set; no tests or other language implementations.",
+  "modifications_to_runtime": [],
+  "license": "Apache-2.0",
+  "license_files": [
+    "LICENSE",
+    "src/LICENSE"
+  ],
+  "files": [
+    {
+      "path": "src/cpp/blend/blend.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/blend/blend.cc",
+      "sha256": "0c0d63bb19e7c891bc8f0f455a37171064e373f5c980f3d8065c01047f508a8e"
+    },
+    {
+      "path": "src/cpp/blend/blend.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/blend/blend.h",
+      "sha256": "594c20ad263e192f05988f5b26ec189582ac8569ffc88d66f1553b035791a833"
+    },
+    {
+      "path": "src/cpp/cam/cam.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/cam.cc",
+      "sha256": "a120f09dbe64512178905c73c1f3098e457ec6e6467f4b44aee4de38d7ec14df"
+    },
+    {
+      "path": "src/cpp/cam/cam.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/cam.h",
+      "sha256": "d35b503dbf6dd49a5052f6b0df774a801d0cf73a8204af90165e827e1aca294d"
+    },
+    {
+      "path": "src/cpp/cam/hct.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/hct.cc",
+      "sha256": "22efdc3d6310332f670dd2239b8564fc460a3eedcc165e2f5561d571daf3e81a"
+    },
+    {
+      "path": "src/cpp/cam/hct.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/hct.h",
+      "sha256": "3d00d51f52779ad53980384f490b1ca26f7d3b03632d7b61c1528c10d37086da"
+    },
+    {
+      "path": "src/cpp/cam/hct_solver.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/hct_solver.cc",
+      "sha256": "3c9d2464c769ce76faa935611e0e550b9567fa04e6fdbb3cadad7d04e5639e78"
+    },
+    {
+      "path": "src/cpp/cam/hct_solver.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/hct_solver.h",
+      "sha256": "a5c893925ac5c2a3ced3e5cd3280bcf4ee0acf89f7a79c7d62b11040086a6461"
+    },
+    {
+      "path": "src/cpp/cam/viewing_conditions.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/viewing_conditions.cc",
+      "sha256": "1074e89fe9f263c92649956d642c5b5ed04ee4d68680f598c7da0c09792748d9"
+    },
+    {
+      "path": "src/cpp/cam/viewing_conditions.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/cam/viewing_conditions.h",
+      "sha256": "93d91023809794f390b25ebb07f0805e5de4e15ec344144ad0a9c924b4233b89"
+    },
+    {
+      "path": "src/cpp/palettes/core.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/palettes/core.cc",
+      "sha256": "76a495cd6e1454b444d81d5522d3e083a777d956c8167539a7cec2db092a0fdb"
+    },
+    {
+      "path": "src/cpp/palettes/core.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/palettes/core.h",
+      "sha256": "0e77674bcdae8da9c17afc75a8f18340e5998b87d6d618bfd7973695a4a44afc"
+    },
+    {
+      "path": "src/cpp/palettes/tones.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/palettes/tones.cc",
+      "sha256": "d20d21d9acb48d9a97b4896baa22b27d0a16a9e88c5642b1d5e947156c4ebe0a"
+    },
+    {
+      "path": "src/cpp/palettes/tones.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/palettes/tones.h",
+      "sha256": "f76000a37e98c7aeb329d4276a1426743f42770a1f948f0124b246bd1a32d390"
+    },
+    {
+      "path": "src/cpp/quantize/celebi.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/celebi.cc",
+      "sha256": "90cc8c20351710cdefd98f0ec929b8f1fd54cc75a401f57327e6da3bc6e1c0a8"
+    },
+    {
+      "path": "src/cpp/quantize/celebi.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/celebi.h",
+      "sha256": "e1bbf13ce0a92a5793e653e072d794efa8e9995296872a179f203044623b8158"
+    },
+    {
+      "path": "src/cpp/quantize/lab.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/lab.cc",
+      "sha256": "971c1255b3d335e52b8a130ce929a89486da179871e1acf40d596e4384a8ba47"
+    },
+    {
+      "path": "src/cpp/quantize/lab.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/lab.h",
+      "sha256": "cd78859472a34ddf24b9e4c0f8475626cdec7d285d46afbba851d742b2f89b35"
+    },
+    {
+      "path": "src/cpp/quantize/wsmeans.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/wsmeans.cc",
+      "sha256": "6d5b237075b9061fb86e1dd60f69fb9856773d176e888d885c716c6989dec6b6"
+    },
+    {
+      "path": "src/cpp/quantize/wsmeans.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/wsmeans.h",
+      "sha256": "20bc123e92a36482350f84acac52babd14d5d62314d622445a057eb225212f1b"
+    },
+    {
+      "path": "src/cpp/quantize/wu.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/wu.cc",
+      "sha256": "11b83ff7e721f748f472201e1f6403b491d7067d3b7bc717f43646bc21f0b18d"
+    },
+    {
+      "path": "src/cpp/quantize/wu.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/quantize/wu.h",
+      "sha256": "9aabde4d7e14148e58d21e5111ab05179192240f43166623ae9805fd53b16d7b"
+    },
+    {
+      "path": "src/cpp/scheme/scheme.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/scheme/scheme.cc",
+      "sha256": "4521676cce6f6c85f13722ea34345652d53ee6920a7c1270c227bdcb6414870c"
+    },
+    {
+      "path": "src/cpp/scheme/scheme.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/scheme/scheme.h",
+      "sha256": "e870cd9557e15b66eef9146b512d6fbb4b9ba55b24683c9f1dee2991f9942e68"
+    },
+    {
+      "path": "src/cpp/score/score.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/score/score.cc",
+      "sha256": "8be909894fef1f92621f2b0d62f6dbe31892328bce244039da5fa6ce20a432ea"
+    },
+    {
+      "path": "src/cpp/score/score.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/score/score.h",
+      "sha256": "ced95189ee1b53f29763f871f9a45b7083cdbfac6e813ae43c1fcb72532ee1f8"
+    },
+    {
+      "path": "src/cpp/utils/utils.cc",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/utils/utils.cc",
+      "sha256": "f85c6065d68c8b45220da9715167907bf0c298471ed848771d7974ef0e426c9a"
+    },
+    {
+      "path": "src/cpp/utils/utils.h",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/cpp/utils/utils.h",
+      "sha256": "7f16dc796049837d4efd0889a377383e359ce5a39d503be6ae88e9fdb00b0cb8"
+    },
+    {
+      "path": "LICENSE",
+      "url": "https://chromium.googlesource.com/chromium/src/+/132.0.6834.83/third_party/material_color_utilities/LICENSE",
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+    },
+    {
+      "path": "src/LICENSE",
+      "url": "https://chromium.googlesource.com/external/github.com/material-foundation/material-color-utilities/+/13434b50dcb64a482cc91191f8cf6151d90f5465/LICENSE",
+      "sha256": "e662e6c2fc7ba7bc613c7e4ddf852d4ad3fcc05faead7cbe16b1dac67b55f426"
+    },
+    {
+      "path": "README.chromium",
+      "url": "https://chromium.googlesource.com/chromium/src/+/132.0.6834.83/third_party/material_color_utilities/README.chromium",
+      "sha256": "208e1a877095ce15aa019c1c3fd8d3ffb06ca3e5dde8dd5549b2162b39d5f70e"
+    }
+  ]
+}

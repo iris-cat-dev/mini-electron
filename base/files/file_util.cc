@@ -46,14 +46,6 @@
 #include <windows.h>
 #endif
 
-bool absl::str_format_internal::FormatUntyped(
-    absl::str_format_internal::FormatRawSinkImpl,
-    absl::str_format_internal::UntypedFormatSpecImpl, absl::Span<absl::str_format_internal::FormatArgImpl const>)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
 namespace base {
 
 namespace {

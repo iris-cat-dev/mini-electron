@@ -666,12 +666,11 @@ std::unique_ptr<base::trace_event::ConvertableToTraceFormat> TileManager::BasicS
 
 void TileManager::BasicStateAsValueInto(base::trace_event::TracedValue* state) const
 {
-    *(int*)1 = 1;
-//     state->SetInteger("tile_count", base::saturated_cast<int>(tiles_.size()));
-//     state->SetBoolean("did_oom_on_last_assign", did_oom_on_last_assign_);
-//     state->BeginDictionary("global_state");
-//     global_state_.AsValueInto(state);
-//     state->EndDictionary();
+    state->SetInteger("tile_count", base::saturated_cast<int>(tiles_.size()));
+    state->SetBoolean("did_oom_on_last_assign", did_oom_on_last_assign_);
+    state->BeginDictionary("global_state");
+    global_state_.AsValueInto(state);
+    state->EndDictionary();
 }
 
 std::unique_ptr<EvictionTilePriorityQueue> TileManager::FreeTileResourcesUntilUsageIsWithinLimit(
@@ -1771,49 +1770,45 @@ std::unique_ptr<base::trace_event::ConvertableToTraceFormat> TileManager::Activa
 
 void TileManager::ActivationStateAsValueInto(base::trace_event::TracedValue* state) const
 {
-    *(int*)1 = 1;
-//     state->SetString("tree_priority", TreePriorityToString(global_state_.tree_priority));
-//     state->SetInteger("soft_memory_limit", global_state_.soft_memory_limit_in_bytes);
-//     state->SetInteger("hard_memory_limit", global_state_.hard_memory_limit_in_bytes);
-//     state->SetInteger("pending_required_for_activation_callback_id", pending_required_for_activation_callback_id_);
-//     state->SetInteger("current_memory_usage", resource_pool_->memory_usage_bytes());
-//     state->SetInteger("current_resource_usage", resource_pool_->resource_count());
-// 
-//     // Use a custom tile_as_value, instead of Tile::AsValueInto, since we don't
-//     // need all of the state that would be captured by other functions.
-//     auto tile_as_value = [](const PrioritizedTile& prioritized_tile, base::trace_event::TracedValue* value) {
-//         Tile* tile = prioritized_tile.tile();
-//         TilePriority priority = prioritized_tile.priority();
-// 
-//         value->SetInteger("id", tile->id());
-//         value->SetString("content_rect", tile->content_rect().ToString());
-//         value->SetDouble("contents_scale", tile->contents_scale_key());
-//         value->SetBoolean("is_ready_to_draw", tile->draw_info().IsReadyToDraw());
-//         value->SetString("resolution", TileResolutionToString(priority.resolution));
-//         value->SetString("priority_bin", TilePriorityBinToString(priority.priority_bin));
-//         value->SetDouble("distance_to_visible", priority.distance_to_visible);
-//         value->SetBoolean("required_for_activation", tile->required_for_activation());
-//         value->SetBoolean("required_for_draw", tile->required_for_draw());
-//     };
-// 
-//     std::unique_ptr<RasterTilePriorityQueue> raster_priority_queue(client_->BuildRasterQueue(global_state_.tree_priority, RasterTilePriorityQueue::Type::ALL));
-//     state->BeginArray("raster_tiles");
-//     for (; !raster_priority_queue->IsEmpty(); raster_priority_queue->Pop()) {
-//         state->BeginDictionary();
-//         tile_as_value(raster_priority_queue->Top(), state);
-//         state->EndDictionary();
-//     }
-//     state->EndArray();
-// 
-//     std::unique_ptr<RasterTilePriorityQueue> required_priority_queue(
-//         client_->BuildRasterQueue(global_state_.tree_priority, RasterTilePriorityQueue::Type::REQUIRED_FOR_ACTIVATION));
-//     state->BeginArray("activation_tiles");
-//     for (; !required_priority_queue->IsEmpty(); required_priority_queue->Pop()) {
-//         state->BeginDictionary();
-//         tile_as_value(required_priority_queue->Top(), state);
-//         state->EndDictionary();
-//     }
-//     state->EndArray();
+    state->SetString("tree_priority", TreePriorityToString(global_state_.tree_priority));
+    state->SetInteger("soft_memory_limit", global_state_.soft_memory_limit_in_bytes);
+    state->SetInteger("hard_memory_limit", global_state_.hard_memory_limit_in_bytes);
+    state->SetInteger("pending_required_for_activation_callback_id", pending_required_for_activation_callback_id_);
+    state->SetInteger("current_memory_usage", resource_pool_->memory_usage_bytes());
+    state->SetInteger("current_resource_usage", resource_pool_->resource_count());
+
+    auto tile_as_value = [](const PrioritizedTile& prioritized_tile, base::trace_event::TracedValue* value) {
+        Tile* tile = prioritized_tile.tile();
+        TilePriority priority = prioritized_tile.priority();
+        value->SetInteger("id", tile->id());
+        value->SetString("content_rect", tile->content_rect().ToString());
+        value->SetDouble("contents_scale", tile->contents_scale_key());
+        value->SetBoolean("is_ready_to_draw", tile->draw_info().IsReadyToDraw());
+        value->SetString("resolution", TileResolutionToString(priority.resolution));
+        value->SetString("priority_bin", TilePriorityBinToString(priority.priority_bin));
+        value->SetDouble("distance_to_visible", priority.distance_to_visible);
+        value->SetBoolean("required_for_activation", tile->required_for_activation());
+        value->SetBoolean("required_for_draw", tile->required_for_draw());
+    };
+
+    std::unique_ptr<RasterTilePriorityQueue> raster_priority_queue(client_->BuildRasterQueue(global_state_.tree_priority, RasterTilePriorityQueue::Type::ALL));
+    state->BeginArray("raster_tiles");
+    for (; !raster_priority_queue->IsEmpty(); raster_priority_queue->Pop()) {
+        state->BeginDictionary();
+        tile_as_value(raster_priority_queue->Top(), state);
+        state->EndDictionary();
+    }
+    state->EndArray();
+
+    std::unique_ptr<RasterTilePriorityQueue> required_priority_queue(
+        client_->BuildRasterQueue(global_state_.tree_priority, RasterTilePriorityQueue::Type::REQUIRED_FOR_ACTIVATION));
+    state->BeginArray("activation_tiles");
+    for (; !required_priority_queue->IsEmpty(); required_priority_queue->Pop()) {
+        state->BeginDictionary();
+        tile_as_value(required_priority_queue->Top(), state);
+        state->EndDictionary();
+    }
+    state->EndArray();
 }
 
 void TileManager::SetOverridesForTesting(scoped_refptr<base::TaskRunner> task_runner_for_testing, const base::TickClock* clock)

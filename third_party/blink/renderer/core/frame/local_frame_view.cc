@@ -47,7 +47,7 @@
 #include "cc/tiles/frame_viewer_instrumentation.h"
 #include "cc/trees/layer_tree_host.h"
 #include "cc/view_transition/view_transition_request.h"
-//#include "components/paint_preview/common/paint_preview_tracker.h"
+#include "components/paint_preview/common/paint_preview_tracker.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-blink.h"
@@ -3722,29 +3722,23 @@ PaintControllerPersistentData& LocalFrameView::EnsurePaintControllerPersistentDa
 
 bool LocalFrameView::CapturePaintPreview(GraphicsContext& context, const gfx::Vector2d& paint_offset) const
 {
-    *(int*)1 = 1;
-//     std::optional<base::UnguessableToken> maybe_embedding_token = GetFrame().GetEmbeddingToken();
-// 
-//     // Avoid crashing if a local frame doesn't have an embedding token.
-//     // e.g. it was unloaded or hasn't finished loading (crbug/1103157).
-//     if (!maybe_embedding_token.has_value())
-//         return false;
-// 
-//     // Ensure a recording canvas is properly created.
-//     DrawingRecorder recorder(context, *GetFrame().OwnerLayoutObject(), DisplayItem::kDocumentBackground);
-//     context.Save();
-//     context.Translate(paint_offset.x(), paint_offset.y());
-//     DCHECK(context.Canvas());
-// 
-//     auto* tracker = context.Canvas()->GetPaintPreviewTracker();
-//     DCHECK(tracker); // |tracker| must exist or there is a bug upstream.
-// 
-//     // Create a placeholder ID that maps to an embedding token.
-//     context.Canvas()->recordCustomData(tracker->CreateContentForRemoteFrame(FrameRect(), maybe_embedding_token.value()));
-//     context.Restore();
-// 
-//     // Send a request to the browser to trigger a capture of the frame.
-//     GetFrame().GetLocalFrameHostRemote().CapturePaintPreviewOfSubframe(FrameRect(), tracker->Guid());
+    std::optional<base::UnguessableToken> maybe_embedding_token = GetFrame().GetEmbeddingToken();
+
+    // A frame can be unloaded or still loading without an embedding token.
+    if (!maybe_embedding_token.has_value())
+        return false;
+
+    DrawingRecorder recorder(context, *GetFrame().OwnerLayoutObject(), DisplayItem::kDocumentBackground);
+    context.Save();
+    context.Translate(paint_offset.x(), paint_offset.y());
+    DCHECK(context.Canvas());
+
+    auto* tracker = context.Canvas()->GetPaintPreviewTracker();
+    DCHECK(tracker);
+    context.Canvas()->recordCustomData(tracker->CreateContentForRemoteFrame(FrameRect(), maybe_embedding_token.value()));
+    context.Restore();
+
+    GetFrame().GetLocalFrameHostRemote().CapturePaintPreviewOfSubframe(FrameRect(), tracker->Guid());
     return true;
 }
 

@@ -9,6 +9,7 @@
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/clipboard/data_object_item.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer_item.h"
@@ -41,6 +42,10 @@ ScriptPromise<IDLNullable<FileSystemHandle>> DataTransferItemFileSystemAccess::g
         return result;
     }
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotSupportedError, "File System Access handles are not supported by this embedder."));
+#else
     const DataObjectItem& data_object_item = *data_transfer_item.GetDataObjectItem();
 
     // Since tokens are move-only, we need to create a clone in order
@@ -67,6 +72,7 @@ ScriptPromise<IDLNullable<FileSystemHandle>> DataTransferItemFileSystemAccess::g
                     resolver->Resolve(FileSystemHandle::CreateFromMojoEntry(std::move(entry), ExecutionContext::From(script_state)));
                 },
                 WrapPersistent(resolver)));
+#endif
 
     return result;
 }

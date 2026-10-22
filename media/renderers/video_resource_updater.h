@@ -15,7 +15,10 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/memory_dump_provider.h"
+#endif
 #include "base/unguessable_token.h"
 #include "components/viz/common/resources/release_callback.h"
 #include "components/viz/common/resources/resource_id.h"
@@ -73,7 +76,11 @@ public:
 
 // VideoResourceUpdater is used by the video system to produce frame content as
 // resources consumable by the display compositor.
-class MEDIA_EXPORT VideoResourceUpdater : public base::trace_event::MemoryDumpProvider {
+class MEDIA_EXPORT VideoResourceUpdater
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+    : public base::trace_event::MemoryDumpProvider
+#endif
+{
 public:
     // For GPU compositing |context_provider| should be provided and for software
     // compositing |shared_bitmap_reporter| should be provided. If there is a
@@ -85,7 +92,11 @@ public:
     VideoResourceUpdater(const VideoResourceUpdater&) = delete;
     VideoResourceUpdater& operator=(const VideoResourceUpdater&) = delete;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     ~VideoResourceUpdater() override;
+#else
+    ~VideoResourceUpdater();
+#endif
 
     // For each CompositorFrame the following sequence is expected:
     // 1. ObtainFrameResource(): Import resource for the next video frame with
@@ -176,8 +187,10 @@ private:
     void ReturnTexture(
         scoped_refptr<VideoFrame> video_frame, const gpu::SyncToken& original_release_token, const gpu::SyncToken& new_release_token, bool lost_resource);
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // base::trace_event::MemoryDumpProvider implementation.
     bool OnMemoryDump(const base::trace_event::MemoryDumpArgs& args, base::trace_event::ProcessMemoryDump* pmd) override;
+#endif
 
     const raw_ptr<viz::RasterContextProvider> context_provider_;
     const raw_ptr<viz::SharedBitmapReporter> shared_bitmap_reporter_;
@@ -186,7 +199,9 @@ private:
     const bool use_stream_video_draw_quad_;
     const bool use_gpu_memory_buffer_resources_;
     const int max_resource_size_;
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     const int tracing_id_;
+#endif
     std::unique_ptr<PaintCanvasVideoRenderer> video_renderer_;
     uint32_t next_plane_resource_id_ = 1;
 

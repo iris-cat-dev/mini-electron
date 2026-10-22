@@ -299,15 +299,15 @@ public:
         builder.SetMethod("isMinimized", &BrowserWindow::isMinimizedApi);
         builder.SetMethod("setFullScreen", &BrowserWindow::setFullScreenApi);
         builder.SetMethod("isFullScreen", &BrowserWindow::isFullScreenApi);
-        builder.SetMethod("setAspectRatio", &BrowserWindow::nullFunction);
-        builder.SetMethod("previewFile", &BrowserWindow::nullFunction);
-        builder.SetMethod("closeFilePreview", &BrowserWindow::nullFunction);
+        builder.SetMethod("setAspectRatio", &BrowserWindow::setAspectRatioApi);
+        builder.SetMethod("previewFile", &BrowserWindow::previewFileApi);
+        builder.SetMethod("closeFilePreview", &BrowserWindow::closeFilePreviewApi);
         builder.SetMethod("setBrowserView", &BrowserWindow::setBrowserViewApi);
         builder.SetMethod("addBrowserView", &BrowserWindow::setBrowserViewApi);
         builder.SetMethod("removeBrowserView", &BrowserWindow::removeBrowserViewApi);
-        builder.SetMethod("setParentWindow", &BrowserWindow::nullFunction);
-        builder.SetMethod("getParentWindow", &BrowserWindow::nullFunction);
-        builder.SetMethod("getChildWindows", &BrowserWindow::nullFunction);
+        builder.SetMethod("setParentWindow", &BrowserWindow::setParentWindowApi);
+        builder.SetMethod("getParentWindow", &BrowserWindow::getParentWindowApi);
+        builder.SetMethod("getChildWindows", &BrowserWindow::getChildWindowsApi);
         builder.SetMethod("setTitleBarOverlay", &BrowserWindow::setTitleBarOverlayApi);
         builder.SetMethod("isSimpleFullScreen", &BrowserWindow::isSimpleFullScreenApi);
         builder.SetMethod("isModal", &BrowserWindow::isModalApi);
@@ -326,7 +326,7 @@ public:
         builder.SetMethod("getMinimumSize", &BrowserWindow::getMinimumSizeApi);
         builder.SetMethod("setMaximumSize", &BrowserWindow::setMaximumSizeApi);
         builder.SetMethod("getMaximumSize", &BrowserWindow::getMaximumSizeApi);
-        builder.SetMethod("setSheetOffset", &BrowserWindow::nullFunction);
+        builder.SetMethod("setSheetOffset", &BrowserWindow::setSheetOffsetApi);
         builder.SetMethod("setResizable", &BrowserWindow::setResizableApi);
         builder.SetMethod("isResizable", &BrowserWindow::isResizableApi);
         builder.SetMethod("setMovable", &BrowserWindow::setMovableApi);
@@ -350,13 +350,13 @@ public:
         builder.SetMethod("getTitle", &BrowserWindow::getTitleApi);
         builder.SetMethod("flashFrame", &BrowserWindow::flashFrameApi);
         builder.SetMethod("setSkipTaskbar", &BrowserWindow::setSkipTaskbarApi);
-        builder.SetMethod("setKiosk", &BrowserWindow::nullFunction);
-        builder.SetMethod("isKiosk", &BrowserWindow::nullFunction);
+        builder.SetMethod("setKiosk", &BrowserWindow::setKioskApi);
+        builder.SetMethod("isKiosk", &BrowserWindow::isKioskApi);
         builder.SetMethod("setBackgroundColor", &BrowserWindow::setBackgroundColorApi);
-        builder.SetMethod("setHasShadow", &BrowserWindow::nullFunction);
-        builder.SetMethod("hasShadow", &BrowserWindow::nullFunction);
-        builder.SetMethod("setRepresentedFilename", &BrowserWindow::nullFunction);
-        builder.SetMethod("getRepresentedFilename", &BrowserWindow::nullFunction);
+        builder.SetMethod("setHasShadow", &BrowserWindow::setHasShadowApi);
+        builder.SetMethod("hasShadow", &BrowserWindow::hasShadowApi);
+        builder.SetMethod("setRepresentedFilename", &BrowserWindow::setRepresentedFilenameApi);
+        builder.SetMethod("getRepresentedFilename", &BrowserWindow::getRepresentedFilenameApi);
         builder.SetMethod("setDocumentEdited", &BrowserWindow::setDocumentEditedApi);
         builder.SetMethod("isDocumentEdited", &BrowserWindow::isDocumentEditedApi);
         builder.SetMethod("setIgnoreMouseEvents", &BrowserWindow::setIgnoreMouseEventsApi);
@@ -374,7 +374,7 @@ public:
         builder.SetMethod("isMenuBarVisible", &BrowserWindow::isMenuBarVisibleApi);
         builder.SetMethod("setVisibleOnAllWorkspaces", &BrowserWindow::setVisibleOnAllWorkspacesApi);
         builder.SetMethod("isVisibleOnAllWorkspaces", &BrowserWindow::isVisibleOnAllWorkspacesApi);
-        builder.SetMethod("setVibrancy", &BrowserWindow::nullFunction);
+        builder.SetMethod("setVibrancy", &BrowserWindow::setVibrancyApi);
         builder.SetMethod("hookWindowMessage", &BrowserWindow::hookWindowMessageApi);
         builder.SetMethod("isWindowMessageHooked", &BrowserWindow::isWindowMessageHookedApi);
         builder.SetMethod("unhookWindowMessage", &BrowserWindow::unhookWindowMessageApi);
@@ -389,7 +389,6 @@ public:
 
         builder.SetProperty("id", &BrowserWindow::getIdApi);
 
-        //NODE_SET_PROTOTYPE_METHOD(prototype, &BrowserWindow::"id", &BrowserWindow::nullFunction);
 
         gin_helper::Dictionary browserWindowClass(isolate, prototype->GetFunction(context).ToLocalChecked());
         browserWindowClass.SetMethod("getFocusedWindow", &BrowserWindow::getFocusedWindowApi);
@@ -436,6 +435,76 @@ public:
     virtual HWND getHWND() const override
     {
         return m_hWnd;
+    }
+
+    bool handleNativeWindowCommand(const std::string& command,
+        const base::Value::Dict& params) override
+    {
+        if (isClosed() || !::IsWindow(m_hWnd))
+            return false;
+        if (command == "fullscreen") {
+            const auto enabled = params.FindBool("enabled");
+            if (!enabled)
+                return false;
+            if (*enabled == m_isFullScreen) {
+                notifyRendererFullScreenState();
+                return true;
+            }
+            setFullScreenApi(*enabled);
+            return m_isFullScreen == *enabled;
+        }
+        if (command == "focus") {
+            focusApi();
+            return ::GetFocus() == m_hWnd;
+        }
+        if (command == "take-focus") {
+            const bool reverse = params.FindBool("reverse").value_or(false);
+            HWND target = ::GetNextDlgTabItem(::GetParent(m_hWnd), m_hWnd, reverse);
+            if (!target || target == m_hWnd)
+                return false;
+            ::SetFocus(target);
+            return ::GetFocus() == target;
+        }
+        if (command == "bounds") {
+            const auto x = params.FindInt("x");
+            const auto y = params.FindInt("y");
+            const auto width = params.FindInt("width");
+            const auto height = params.FindInt("height");
+            if (!x || !y || !width || !height || *width < 0 || *height < 0)
+                return false;
+            const gfx::Rect pixels = display::win::ScreenWin::DIPToScreenRect(
+                nullptr, gfx::Rect(*x, *y, *width, *height));
+            return !!::SetWindowPos(m_hWnd, nullptr, pixels.x(), pixels.y(),
+                pixels.width(), pixels.height(), SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        if (command == "show") {
+            showApi();
+            return isVisibleApi();
+        }
+        if (command == "maximize") {
+            maximizeApi();
+            return !!::IsZoomed(m_hWnd);
+        }
+        if (command == "minimize") {
+            if (!m_createWindowParam->isMinimizable)
+                return false;
+            minimizeApi();
+            return !!::IsIconic(m_hWnd);
+        }
+        if (command == "restore") {
+            restoreApi();
+            return !::IsIconic(m_hWnd) && !::IsZoomed(m_hWnd);
+        }
+        if (command == "resizable") {
+            const auto enabled = params.FindBool("enabled");
+            if (!enabled)
+                return false;
+            setResizableApi(*enabled);
+            return isResizableApi() == *enabled;
+        }
+        if (command == "close")
+            return !!::PostMessageW(m_hWnd, WM_CLOSE, 0, 0);
+        return false;
     }
 
     void updateVSyncDisplay(bool force = false)
@@ -602,7 +671,8 @@ public:
     {
         if (m_createWindowParam->isFrame || m_createWindowParam->transparent)
             return;
-        const MARGINS margins = { 1, 1, 1, 1 };
+        const int shadowMargin = m_hasShadow ? 1 : 0;
+        const MARGINS margins = { shadowMargin, shadowMargin, shadowMargin, shadowMargin };
         ::DwmExtendFrameIntoClientArea(window, &margins);
     }
 
@@ -2397,6 +2467,16 @@ private:
         return !!IsIconic(m_hWnd);
     }
 
+    void notifyRendererFullScreenState()
+    {
+        if (!m_webContents)
+            return;
+        base::Value::Dict state;
+        state.Set("enabled", m_isFullScreen);
+        WebContents::sendRendererMessage(
+            m_webContents->getIdApi(), "fullscreen-state", std::move(state));
+    }
+
     void setFullScreenApi(bool fullScreen)
     {
         if (fullScreen == m_isFullScreen)
@@ -2435,6 +2515,7 @@ private:
         }
         updateNativeMenu();
         ::InvalidateRect(m_hWnd, nullptr, FALSE);
+        notifyRendererFullScreenState();
     }
 
     BrowserView* getBrowserView(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -2493,30 +2574,50 @@ private:
         return m_isFullScreen;
     }
 
-    void setParentWindowApi()
+    static BrowserWindow* windowFromValue(v8::Local<v8::Value> value)
     {
-        OutputDebugStringA("setParentWindowApi\n");
-        DebugBreak();
+        if (!value->IsObject())
+            return nullptr;
+        return static_cast<BrowserWindow*>(GetNativePtr(value.As<v8::Object>(), &kWrapperInfo));
     }
 
-    void getParentWindowApi()
+    void setParentWindowApi(v8::Local<v8::Value> value)
     {
-        OutputDebugStringA("getParentWindowApi\n");
-        DebugBreak();
+        BrowserWindow* parent = value->IsNull() ? nullptr : windowFromValue(value);
+        if (!value->IsNull() && (!parent || parent->isClosed())) {
+            isolate()->ThrowException(v8::Exception::TypeError(
+                v8::String::NewFromUtf8Literal(isolate(), "Must pass BrowserWindow instance or null")));
+            return;
+        }
+        isolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8Literal(isolate(), "Window parenting is not supported")));
     }
 
-    void getChildWindowsApi()
+    v8::Local<v8::Value> getParentWindowApi()
     {
-        OutputDebugStringA("getChildWindowsApi\n");
-        DebugBreak();
+        HWND owner = ::GetWindow(m_hWnd, GW_OWNER);
+        BrowserWindow* parent = static_cast<BrowserWindow*>(::GetPropW(owner, kPropW));
+        if (!parent || parent->isClosed())
+            return v8::Null(isolate());
+        return parent->getWrapper();
     }
 
-    bool isModalApi()
+    v8::Local<v8::Array> getChildWindowsApi()
     {
-        OutputDebugStringA("isModalApi\n");
-        DebugBreak();
+        v8::Local<v8::Array> children = v8::Array::New(isolate());
+        uint32_t index = 0;
+        for (auto* window : *WindowList::getInstance()) {
+            if (!window->isClosed() && ::GetWindow(window->getHWND(), GW_OWNER) == m_hWnd)
+                children->CreateDataProperty(isolate()->GetCurrentContext(), index++, window->getWrapper()).Check();
+        }
+        return children;
+    }
+
+    bool isModalApi() const
+    {
         return false;
     }
+
 
     void getNativeWindowHandleApi(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
@@ -2635,16 +2736,46 @@ private:
             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
-    void getContentBoundsApi()
+    v8::Local<v8::Object> getContentBoundsApi()
     {
-        ::OutputDebugStringA("getContentBoundsApi\n");
-        ::DebugBreak();
+        RECT client = {};
+        ::GetClientRect(m_hWnd, &client);
+        ::MapWindowPoints(m_hWnd, nullptr, reinterpret_cast<POINT*>(&client), 2);
+        const gfx::Rect bounds = display::win::ScreenWin::ScreenToDIPRect(m_hWnd, gfx::Rect(client));
+        auto result = v8::Object::New(isolate());
+        gin_helper::Dictionary dictionary(isolate(), result);
+        dictionary.Set("x", bounds.x());
+        dictionary.Set("y", bounds.y());
+        dictionary.Set("width", bounds.width());
+        dictionary.Set("height", bounds.height());
+        return result;
     }
 
-    void setContentBoundsApi()
+    void setContentBoundsApi(v8::Local<v8::Object> value)
     {
-        ::OutputDebugStringA("setContentBoundsApi\n");
-        ::DebugBreak();
+        gin_helper::Dictionary current(isolate(), getContentBoundsApi());
+        gin_helper::Dictionary requested(isolate(), value);
+        int x, y, width, height;
+        current.Get("x", &x);
+        current.Get("y", &y);
+        current.Get("width", &width);
+        current.Get("height", &height);
+        requested.Get("x", &x);
+        requested.Get("y", &y);
+        requested.Get("width", &width);
+        requested.Get("height", &height);
+        const gfx::Rect pixels = display::win::ScreenWin::DIPToScreenRect(
+            nullptr, gfx::Rect(x, y, width, height));
+        RECT window = {}, client = {};
+        ::GetWindowRect(m_hWnd, &window);
+        ::GetClientRect(m_hWnd, &client);
+        ::MapWindowPoints(m_hWnd, nullptr, reinterpret_cast<POINT*>(&client), 2);
+        ::SetWindowPos(m_hWnd, nullptr,
+            pixels.x() - (client.left - window.left),
+            pixels.y() - (client.top - window.top),
+            pixels.width() + (window.right - window.left) - (client.right - client.left),
+            pixels.height() + (window.bottom - window.top) - (client.bottom - client.top),
+            SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     std::vector<int> getContentSizeApi()
@@ -3135,12 +3266,66 @@ private:
         return v8::Local<v8::Value>::New(isolate(), m_webContents->getWrapper());
     }
 
-    // 空实现
-    void nullFunction()
+    void setAspectRatioApi(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
-        OutputDebugStringA("nullFunction\n");
-        DebugBreak();
+        double ratio;
+        if (info.Length() < 1 || !info[0]->IsNumber()
+            || !info[0]->NumberValue(isolate()->GetCurrentContext()).To(&ratio)
+            || !std::isfinite(ratio) || ratio < 0) {
+            isolate()->ThrowException(v8::Exception::TypeError(
+                v8::String::NewFromUtf8Literal(isolate(), "Aspect ratio must be a finite non-negative number")));
+            return;
+        }
+        int width = 0, height = 0;
+        if (info.Length() > 1 && !info[1]->IsUndefined()) {
+            if (!info[1]->IsObject()) {
+                isolate()->ThrowException(v8::Exception::TypeError(
+                    v8::String::NewFromUtf8Literal(isolate(), "extraSize must be a size object")));
+                return;
+            }
+            gin_helper::Dictionary extra(isolate(), info[1].As<v8::Object>());
+            if (!extra.Get("width", &width) || !extra.Get("height", &height) || width < 0 || height < 0) {
+                isolate()->ThrowException(v8::Exception::TypeError(
+                    v8::String::NewFromUtf8Literal(isolate(), "extraSize requires non-negative width and height")));
+                return;
+            }
+        }
+        isolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8Literal(isolate(), "Aspect-ratio constraints are not supported")));
     }
+
+    void setKioskApi(bool)
+    {
+        isolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8Literal(isolate(), "Kiosk mode is not supported")));
+    }
+
+    bool isKioskApi() const { return false; }
+
+    void setHasShadowApi(bool shadow)
+    {
+        DWMNCRENDERINGPOLICY policy = shadow ? DWMNCRP_ENABLED : DWMNCRP_DISABLED;
+        HRESULT result = ::DwmSetWindowAttribute(m_hWnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+        if (FAILED(result)) {
+            isolate()->ThrowException(v8::Exception::Error(
+                v8::String::NewFromUtf8Literal(isolate(), "Failed to change window shadow")));
+            return;
+        }
+        m_hasShadow = shadow;
+        updateWindowFrame(m_hWnd);
+    }
+
+    bool hasShadowApi() const { return m_hasShadow; }
+
+    // Electron 34 NativeWindow's non-Cocoa defaults: these macOS-only
+    // facilities have no Windows presentation. Keep separate typed methods,
+    // not a catch-all stub (native_window.h/.cc).
+    void previewFileApi(const std::string& path) {}
+    void closeFilePreviewApi() {}
+    void setRepresentedFilenameApi(const std::string& filename) {}
+    std::string getRepresentedFilenameApi() const { return std::string(); }
+    void setSheetOffsetApi(double offsetY) {}
+    void setVibrancyApi(v8::Local<v8::Value> type) {}
 
     void applyTitleBarOverlay(v8::Local<v8::Value> value)
     {
@@ -3199,6 +3384,27 @@ private:
 
     static BrowserWindow* newWindow(gin_helper::Dictionary* options, v8::Local<v8::Object> wrapper)
     {
+        v8::Local<v8::Value> parentValue;
+        if (options->Get("parent", &parentValue) && !parentValue->IsNullOrUndefined()) {
+            BrowserWindow* parent = windowFromValue(parentValue);
+            if (!parent || parent->isClosed() || !::IsWindow(parent->m_hWnd)) {
+                options->isolate()->ThrowException(v8::Exception::TypeError(
+                    v8::String::NewFromUtf8Literal(options->isolate(),
+                        "parent must be a live BrowserWindow")));
+                return nullptr;
+            }
+            options->isolate()->ThrowException(v8::Exception::Error(
+                v8::String::NewFromUtf8Literal(options->isolate(), "Window parenting is not supported")));
+            return nullptr;
+        }
+        bool modal = false, kiosk = false;
+        options->Get("modal", &modal);
+        options->Get("kiosk", &kiosk);
+        if (modal || kiosk) {
+            options->isolate()->ThrowException(v8::Exception::Error(
+                v8::String::NewFromUtf8Literal(options->isolate(), "Modal and kiosk windows are not supported")));
+            return nullptr;
+        }
         BrowserWindow* self = new BrowserWindow(options->isolate(), wrapper);
 
         WebContents::BrowserWindowConstructorOptions* createWindowParam = new WebContents::BrowserWindowConstructorOptions();
@@ -3337,6 +3543,9 @@ private:
         self->m_focusedWebContents = webContents;
         self->m_webContents->addObserver(self);
         self->newWindowTaskInUiThread(createWindowParam);
+        bool shadow = true;
+        if (options->Get("hasShadow", &shadow))
+            self->setHasShadowApi(shadow);
 
         return self;
     }
@@ -3571,6 +3780,7 @@ private:
     bool m_isMaximized;
     bool m_isMinimized;
     bool m_isFullScreen;
+    bool m_hasShadow = true;
     bool m_isDocumentEdited;
     bool m_isIgnoreMouseEvents;
     bool m_isMouseDown;

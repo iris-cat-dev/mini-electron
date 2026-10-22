@@ -32,6 +32,13 @@
 #define MINI_ELECTRON_NETWORK_LOADER_BLOB_RESOURCE_LOADER_H_
 
 #include "url/gurl.h"
+#include "base/memory/weak_ptr.h"
+#include "base/functional/callback.h"
+#include "mojo/public/cpp/bindings/receiver.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/data_pipe_drainer.h"
+#include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
+#include <string>
 #include <memory>
 
 namespace blink {
@@ -44,37 +51,41 @@ struct WebURLError;
 
 namespace mini_electron {
 
-class BlobResourceLoader {
+class BlobResourceLoader : public blink::mojom::blink::BlobReaderClient,
+                           public mojo::DataPipeDrainer::Client {
 public:
     static BlobResourceLoader* createAsync(int64_t mbwebviewId, const GURL& url, blink::URLLoaderClient* client);
-
-    //static void loadSynchronously(BlobDataWrap*, const blink::WebURLRequest&, blink::WebURLLoader*, blink::WebURLError&, blink::WebURLResponse&, Vector<char>& data);
-
+    static void loadSynchronously(int64_t mbwebviewId, const GURL& url, blink::URLLoaderClient* client);
     void start();
-    int readSync(char*, int);
-
-    ~BlobResourceLoader();
+    ~BlobResourceLoader() override;
 
 private:
     BlobResourceLoader(int64_t mbwebviewId, const GURL& url, blink::URLLoaderClient* client, bool async);
-
-    void doNotifyFinish();
     void doStart();
+    void didGetUUID(const WTF::String& uuid);
     void failed(int errorCode);
+    void finishIfReady();
+    void OnCalculatedSize(uint64_t totalSize, uint64_t expectedSize) override;
+    void OnComplete(int32_t status, uint64_t dataLength) override;
+    void OnDataAvailable(base::span<const uint8_t> data) override;
+    void OnDataComplete() override;
 
-    void notifyResponse();
-    void notifyResponseOnSuccess();
-    void notifyResponseOnError();
-    void notifyReceiveData(const char*, int);
-    void notifyFail(int errorCode);
-    void notifyFinish();
-
-    int m_id;
-    int m_webviewId;
-
+    int64_t m_webviewId;
     blink::URLLoaderClient* m_client;
     GURL m_url;
     bool m_async;
+    bool m_receivedResponse = false;
+    bool m_blobComplete = false;
+    bool m_pipeComplete = false;
+    uint64_t m_expectedSize = 0;
+    uint64_t m_receivedSize = 0;
+    std::string m_contentType;
+    base::OnceClosure m_syncQuit;
+    mojo::Remote<blink::mojom::blink::Blob> m_blob;
+    mojo::Receiver<blink::mojom::blink::BlobReaderClient> m_receiver { this };
+    mojo::ScopedDataPipeConsumerHandle m_consumer;
+    std::unique_ptr<mojo::DataPipeDrainer> m_drainer;
+    base::WeakPtrFactory<BlobResourceLoader> m_weakFactory { this };
 };
 
 } // namespace WebCore

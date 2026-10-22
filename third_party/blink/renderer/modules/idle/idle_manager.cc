@@ -44,36 +44,32 @@ IdleManager::~IdleManager() = default;
 
 ScriptPromise<V8PermissionState> IdleManager::RequestPermission(ScriptState* script_state, ExceptionState& exception_state)
 {
-    *(int*)1 = 1;
-    return EmptyPromise();
-//     ExecutionContext* context = GetSupplementable();
-//     DCHECK_EQ(context, ExecutionContext::From(script_state));
-// 
-//     // This function is annotated with [Exposed=Window].
-//     DCHECK(context->IsWindow());
-//     auto* window = To<LocalDOMWindow>(context);
-// 
-//     if (!LocalFrame::HasTransientUserActivation(window->GetFrame())) {
-//         exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError, "Must be handling a user gesture to show a permission request.");
-//         return EmptyPromise();
-//     }
-// 
-//     // This interface is annotated with [SecureContext].
-//     DCHECK(context->IsSecureContext());
-// 
-//     if (!permission_service_.is_bound()) {
-//         // See https://bit.ly/2S0zRAS for task types.
-//         scoped_refptr<base::SingleThreadTaskRunner> task_runner = context->GetTaskRunner(TaskType::kMiscPlatformAPI);
-//         ConnectToPermissionService(context, permission_service_.BindNewPipeAndPassReceiver(std::move(task_runner)));
-//     }
-// 
-//     auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<V8PermissionState>>(script_state, exception_state.GetContext());
-//     auto promise = resolver->Promise();
-// 
-//     permission_service_->RequestPermission(CreatePermissionDescriptor(mojom::blink::PermissionName::IDLE_DETECTION),
-//         LocalFrame::HasTransientUserActivation(window->GetFrame()),
-//         WTF::BindOnce(&IdleManager::OnPermissionRequestComplete, WrapPersistent(this), WrapPersistent(resolver)));
-//     return promise;
+    ExecutionContext* context = GetSupplementable();
+    DCHECK_EQ(context, ExecutionContext::From(script_state));
+
+    // This function is annotated with [Exposed=Window].
+    DCHECK(context->IsWindow());
+    auto* window = To<LocalDOMWindow>(context);
+
+    if (!LocalFrame::HasTransientUserActivation(window->GetFrame())) {
+        exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError, "Must be handling a user gesture to show a permission request.");
+        return EmptyPromise();
+    }
+
+    // This interface is annotated with [SecureContext].
+    DCHECK(context->IsSecureContext());
+
+    if (!permission_service_.is_bound()) {
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner = context->GetTaskRunner(TaskType::kMiscPlatformAPI);
+        ConnectToPermissionService(context, permission_service_.BindNewPipeAndPassReceiver(std::move(task_runner)));
+    }
+
+    auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<V8PermissionState>>(script_state, exception_state.GetContext());
+    auto promise = resolver->Promise();
+    permission_service_->RequestPermission(CreatePermissionDescriptor(mojom::blink::PermissionName::IDLE_DETECTION),
+        LocalFrame::HasTransientUserActivation(window->GetFrame()),
+        WTF::BindOnce(&IdleManager::OnPermissionRequestComplete, WrapPersistent(this), WrapPersistent(resolver)));
+    return promise;
 }
 
 void IdleManager::AddMonitor(mojo::PendingRemote<mojom::blink::IdleMonitor> monitor, mojom::blink::IdleManager::AddMonitorCallback callback)
@@ -105,8 +101,7 @@ void IdleManager::InitForTesting(mojo::PendingRemote<mojom::blink::IdleManager> 
 
 void IdleManager::OnPermissionRequestComplete(ScriptPromiseResolver<V8PermissionState>* resolver, mojom::blink::PermissionStatus status)
 {
-    *(int*)1 = 1;
-    //resolver->Resolve(PermissionStatusToString(status));
+    resolver->Resolve(ToV8PermissionState(status));
 }
 
 } // namespace blink

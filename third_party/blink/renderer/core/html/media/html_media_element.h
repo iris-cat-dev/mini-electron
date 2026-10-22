@@ -63,7 +63,6 @@
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
-//#include "third_party/webrtc_overrides/low_precision_timer.h"
 
 namespace cc {
 class Layer;
@@ -663,8 +662,8 @@ private:
     }
 
     void LoadTimerFired(TimerBase*);
-    void ProgressEventTimerFired();
-    void PlaybackProgressTimerFired();
+    void ProgressEventTimerFired(TimerBase*);
+    void PlaybackProgressTimerFired(TimerBase*);
     void ScheduleTimeupdateEvent(bool periodic_event);
     void StartPlaybackProgressTimer();
     void StartProgressEventTimer();
@@ -793,11 +792,9 @@ private:
     HeapTaskRunnerTimer<HTMLMediaElement> load_timer_;
     HeapTaskRunnerTimer<HTMLMediaElement> audio_tracks_timer_;
     HeapTaskRunnerTimer<HTMLMediaElement> removed_from_document_timer_;
-    // Use a low precision timer for repeating tasks to avoid excessive Idle Wake
-    // Up frequency, especially when WebRTC is used and the page contains many
-    // HTMLMediaElements.
-    //LowPrecisionTimer progress_event_timer_;
-    //LowPrecisionTimer playback_progress_timer_;
+    // Repeating media timers use the task runner's non-precise scheduling.
+    HeapTaskRunnerTimer<HTMLMediaElement> progress_event_timer_;
+    HeapTaskRunnerTimer<HTMLMediaElement> playback_progress_timer_;
 
     Member<TimeRanges> played_time_ranges_;
     Member<EventQueue> async_event_queue_;

@@ -21,7 +21,10 @@
 #include "mojo/public/cpp/bindings/map_data_view.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/cors.mojom-shared-internal.h"
 #include "mojo/public/mojom/base/unguessable_token.mojom-shared.h"
@@ -354,6 +357,7 @@ inline void CorsErrorStatusDataView::GetIssueIdDataView(::mojo_base::mojom::Ungu
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::CorsPreflightPolicy> {
@@ -361,7 +365,9 @@ template <> struct TraceFormatTraits<::network::mojom::CorsPreflightPolicy> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::CorsError> {
@@ -369,7 +375,9 @@ template <> struct TraceFormatTraits<::network::mojom::CorsError> {
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct TraceFormatTraits<::network::mojom::PrivateNetworkAccessPreflightResult> {
@@ -377,5 +385,6 @@ template <> struct TraceFormatTraits<::network::mojom::PrivateNetworkAccessPrefl
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // SERVICES_NETWORK_PUBLIC_MOJOM_CORS_MOJOM_SHARED_H_

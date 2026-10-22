@@ -204,6 +204,8 @@ PaintImage AcceleratedStaticBitmapImage::PaintImageForCurrentFrame()
         return PaintImage();
 
     CreateImageFromMailboxIfNeeded();
+    if (!texture_backing_)
+        return PaintImage();
 
     return CreatePaintImageBuilder()
         .set_texture_backing(texture_backing_, paint_image_content_id_)
@@ -281,6 +283,7 @@ void AcceleratedStaticBitmapImage::InitializeTextureBacking(GLuint shared_image_
         return;
     }
 
+#if defined(SK_GL)
     GrDirectContext* shared_gr_context = context_provider_wrapper->ContextProvider()->GetGrContext();
     DCHECK(shared_ri && shared_gr_context); // context isValid already checked in callers
 
@@ -317,6 +320,11 @@ void AcceleratedStaticBitmapImage::InitializeTextureBacking(GLuint shared_image_
         skia_context_provider_wrapper_ = context_provider_wrapper;
         texture_backing_ = sk_make_sp<MailboxTextureBacking>(std::move(sk_image), mailbox_ref_, sk_image_info_, std::move(context_provider_wrapper));
     }
+#else
+    // MailboxTextureBacking above supports out-of-process raster. Wrapping a
+    // local GL texture additionally requires Skia's GL backend, not just EGL.
+    DLOG(ERROR) << "Can't wrap a shared image without Skia's GL backend";
+#endif
 }
 
 void AcceleratedStaticBitmapImage::EnsureSyncTokenVerified()

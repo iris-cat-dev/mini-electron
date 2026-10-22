@@ -366,21 +366,21 @@ BlinkAXEventIntent BlinkAXEventIntent::FromNewSelection(const TextGranularity gr
 BlinkAXEventIntent::BlinkAXEventIntent() = default;
 
 BlinkAXEventIntent::BlinkAXEventIntent(ax::mojom::blink::Command command)
-    //: intent_(command)
-    : is_initialized_(true)
+    : intent_(command)
+    , is_initialized_(true)
 {
 }
 
 BlinkAXEventIntent::BlinkAXEventIntent(ax::mojom::blink::Command command, ax::mojom::blink::InputEventType input_event_type)
-    //: intent_(command, input_event_type)
-    : is_initialized_(true)
+    : intent_(command, input_event_type)
+    , is_initialized_(true)
 {
 }
 
 BlinkAXEventIntent::BlinkAXEventIntent(
     ax::mojom::blink::Command command, ax::mojom::blink::TextBoundary text_boundary, ax::mojom::blink::MoveDirection move_direction)
-    //: intent_(command, text_boundary, move_direction)
-    : is_initialized_(true)
+    : intent_(command, text_boundary, move_direction)
+    , is_initialized_(true)
 {
 }
 
@@ -413,13 +413,11 @@ bool BlinkAXEventIntent::IsHashTableDeletedValue() const
 
 std::string BlinkAXEventIntent::ToString() const
 {
-//     if (!is_initialized())
-//         return "AXEventIntent(uninitialized)";
-//     if (IsHashTableDeletedValue())
-//         return "AXEventIntent(is_deleted)";
-//     return intent().ToString();
-    *(int*)1 = 1;
-    return "";
+    if (!is_initialized())
+        return "AXEventIntent(uninitialized)";
+    if (IsHashTableDeletedValue())
+        return "AXEventIntent(is_deleted)";
+    return intent().ToString();
 }
 
 // static
@@ -429,19 +427,17 @@ unsigned int BlinkAXEventIntentHashTraits::GetHash(const BlinkAXEventIntent& key
     // initialized to zero, because any uninitialized field that might be
     // accidentally added in the future will produce a potentially non-zero memory
     // value especially in the hard to control "intent_" member.
-//     if (!key.is_initialized())
-//         return 0u;
-//     if (key.IsHashTableDeletedValue())
-//         return std::numeric_limits<unsigned>::max();
-// 
-//     unsigned hash = 1u;
-//     WTF::AddIntToHash(hash, static_cast<const unsigned>(key.intent().command));
-//     WTF::AddIntToHash(hash, static_cast<const unsigned>(key.intent().input_event_type));
-//     WTF::AddIntToHash(hash, static_cast<const unsigned>(key.intent().text_boundary));
-//     WTF::AddIntToHash(hash, static_cast<const unsigned>(key.intent().move_direction));
-//     return hash;
-    * (int*)1 = 1;
-    return 0;
+    if (!key.is_initialized())
+        return 0u;
+    if (key.IsHashTableDeletedValue())
+        return std::numeric_limits<unsigned>::max();
+
+    unsigned hash = 1u;
+    WTF::AddIntToHash(hash, static_cast<unsigned>(key.intent().command));
+    WTF::AddIntToHash(hash, static_cast<unsigned>(key.intent().input_event_type));
+    WTF::AddIntToHash(hash, static_cast<unsigned>(key.intent().text_boundary));
+    WTF::AddIntToHash(hash, static_cast<unsigned>(key.intent().move_direction));
+    return hash;
 }
 
 } // namespace blink

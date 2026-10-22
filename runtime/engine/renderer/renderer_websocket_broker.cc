@@ -110,10 +110,13 @@ void DispatchRendererWebSocketEvent(base::Value::Dict event)
     auto found = Events().find(id);
     if (found == Events().end())
         return;
-    found->second.callback(event);
+    // Client callbacks may disconnect and remove their own registration.
+    // Keep the callable alive, and never retain an iterator across dispatch.
+    RendererWebSocketEvent callback = found->second.callback;
     const std::string* type = event.FindString("event");
     if (type && (*type == "close" || *type == "error"))
         Events().erase(found);
+    callback(event);
 }
 
 } // namespace content

@@ -11,15 +11,19 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 #include "third_party/blink/renderer/modules/mediacapturefromelement/canvas_capture_handler.h"
 #include "third_party/blink/renderer/modules/mediacapturefromelement/canvas_capture_media_stream_track.h"
 #include "third_party/blink/renderer/modules/mediastream/media_stream.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_component.h"
+#endif
 #include "ui/gfx/geometry/size.h"
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 namespace {
 const double kDefaultFrameRate = 60.0;
 } // anonymous namespace
+#endif
 
 namespace blink {
 
@@ -48,8 +52,10 @@ MediaStream* HTMLCanvasElementCapture::captureStream(
 
     ExecutionContext* context = ExecutionContext::From(script_state);
     DCHECK(context);
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     LocalFrame* frame = ToLocalFrameIfNotDetached(script_state->GetContext());
     MediaStreamComponent* component = nullptr;
+#endif
     const gfx::Size size(element.width(), element.height());
     if (!media::VideoFrame::IsValidSize(size, gfx::Rect(size), size)) {
         exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
@@ -57,6 +63,12 @@ MediaStream* HTMLCanvasElementCapture::captureStream(
             "CanvasCaptureMediaStreamTrack.");
         return nullptr;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // The direct graphics provider has no capture/MediaStream video source or
+    // IO media pipeline. Reject only after the standard input/security checks.
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Canvas capture is not supported by this build");
+    return nullptr;
+#else
     std::unique_ptr<CanvasCaptureHandler> handler;
     if (given_frame_rate) {
         handler = CanvasCaptureHandler::CreateCanvasCaptureHandler(
@@ -83,6 +95,7 @@ MediaStream* HTMLCanvasElementCapture::captureStream(
     MediaStreamTrackVector tracks;
     tracks.push_back(canvas_track);
     return MediaStream::Create(context, tracks);
+#endif
 }
 
 } // namespace blink

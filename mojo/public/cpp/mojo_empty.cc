@@ -12,6 +12,7 @@
 #include "mojo/public/cpp/bindings/lib/binding_state.h"
 #include "mojo/public/cpp/bindings/lib/buffer.h"
 #include "mojo/public/cpp/bindings/lib/interface_ptr_state.h"
+#include "mojo/public/cpp/bindings/lib/may_auto_lock.h"
 #include "mojo/public/cpp/bindings/lib/message_quota_checker.h"
 #include "mojo/public/cpp/bindings/lib/pending_receiver_state.h"
 #include "mojo/public/cpp/bindings/lib/pending_remote_state.h"
@@ -100,7 +101,6 @@
 #include "third_party/blink/public/mojom/broadcastchannel/broadcast_channel.mojom-blink.h"
 #include "third_party/blink/public/mojom/messaging/message_port_descriptor.mojom-shared-internal.h"
 #include "third_party/blink/public/mojom/messaging/task_attribution_id.mojom-shared-internal.h"
-#include "third_party/blink/public/mojom/messaging/transferable_message.mojom-shared-internal.h"
 #include "third_party/blink/public/mojom/messaging/user_activation_snapshot.mojom-shared-internal.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-shared-internal.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom.h"
@@ -238,40 +238,8 @@
 #include "url/mojom/origin.mojom-shared-internal.h"
 #include <windows.h>
 
-class mojo::WaitSet::State : public base::RefCountedThreadSafe<mojo::WaitSet::State> {
-public:
-    State()
 
-    {
-    }
 
-    State(const State&) = delete;
-    State& operator=(const State&) = delete;
-
-    void Wait(
-        base::WaitableEvent** ready_event, size_t* num_ready_handles, Handle* ready_handles, MojoResult* ready_results, MojoHandleSignalsState* signals_states)
-    {
-    }
-
-private:
-    friend class base::RefCountedThreadSafe<State>;
-
-    ~State()
-    {
-    }
-};
-
-bool mojo::EnumTraits<mojo_base::mojom::TextDirection, base::i18n::TextDirection>::FromMojom(mojo_base::mojom::TextDirection, base::i18n::TextDirection*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
-bool mojo::EnumTraits<network::mojom::RequestPriority, net::RequestPriority>::FromMojom(network::mojom::RequestPriority, net::RequestPriority*)
-{
-    *(int*)1 = 1;
-    return false;
-}
 bool mojo::EnumTraits<ui::mojom::TextInputAction, ui::TextInputAction>::FromMojom(ui::mojom::TextInputAction mtype, ui::TextInputAction* type)
 {
     switch (mtype) {
@@ -488,17 +456,11 @@ bool mojo::StructTraits<blink::mojom::PageStateDataView, mojo::StructPtr<blink::
 //     *(int*)1 = 1;
 //     return false;
 // }
-bool mojo::UnionTraits<network::mojom::DataElementDataView, network::DataElement>::Read(network::mojom::DataElementDataView, class network::DataElement*)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 bool viz::mojom::blink::CompositorFrameSink::SubmitCompositorFrameSync(const ::viz::LocalSurfaceId& local_surface_id, ::viz::CompositorFrame frame,
     absl::optional<::viz::HitTestRegionList> hit_test_region_list, uint64_t submit_time, WTF::Vector<::viz::ReturnedResource>* out_resources)
 {
-    *(int*)1 = 1;
-    return false;
+    NOTREACHED();
 }
 
 // network::mojom::blink::AllowCSPFromHeaderValue::AllowCSPFromHeaderValue(void)
@@ -511,21 +473,17 @@ bool viz::mojom::blink::CompositorFrameSink::SubmitCompositorFrameSync(const ::v
 //     *(int*)1 = 1;
 // }
 
-network::mojom::TimingAllowOrigin::TimingAllowOrigin(void)
+network::mojom::TimingAllowOrigin::TimingAllowOrigin()
+    : tag_(Tag::kSerializedOrigins)
 {
-    *(int*)1 = 1;
+    data_.serialized_origins = new std::vector<std::string>;
 }
 
-int64_t mojo::StructTraits<mojo_base::mojom::TimeDataView, base::Time>::internal_value(base::Time const&)
+int64_t mojo::StructTraits<mojo_base::mojom::TimeDataView, base::Time>::internal_value(const base::Time& time)
 {
-    *(int*)1 = 1;
-    return 0;
+    return time.since_origin().InMicroseconds();
 }
 
-void mojo::internal::RecordInvalidStringDeserialization()
-{
-    ;
-}
 
 // WTF::Vector<SkBitmap, 0, WTF::PartitionAllocator>
 // mojo::StructTraits<class blink::mojom::TransferableMessageDataView, struct blink::BlinkTransferableMessage>::image_bitmap_contents_array(struct blink::BlinkCloneableMessage const&)
@@ -533,17 +491,12 @@ void mojo::internal::RecordInvalidStringDeserialization()
 //     return WTF::Vector<SkBitmap, 0, WTF::PartitionAllocator>(); // 暂时不搞图片的序列化了
 // }
 
-bool mojo::StructTraits<skia::mojom::BitmapN32DataView, SkBitmap>::Read(skia::mojom::BitmapN32DataView, SkBitmap*)
-{
-    DebugBreak();
-    return false;
-}
 
 bool mojo::StructTraits<blink::mojom::UserActivationSnapshotDataView, mojo::InlinedStructPtr<blink::mojom::blink::UserActivationSnapshot>>::Read(
-    blink::mojom::UserActivationSnapshotDataView, mojo::InlinedStructPtr<blink::mojom::blink::UserActivationSnapshot>*)
+    blink::mojom::UserActivationSnapshotDataView view, mojo::InlinedStructPtr<blink::mojom::blink::UserActivationSnapshot>* out)
 {
-    DebugBreak();
-    return false;
+    *out = blink::mojom::blink::UserActivationSnapshot::New(view.has_been_active(), view.was_active());
+    return true;
 }
 
 // template<>
@@ -583,12 +536,6 @@ bool mojo::StructTraits<blink::mojom::UserActivationSnapshotDataView, mojo::Inli
 //     return false;
 // }
 
-bool mojo::StructTraits<blink::mojom::SerializedBlobDataView, scoped_refptr<blink::BlobDataHandle>>::Read(
-    blink::mojom::SerializedBlobDataView, scoped_refptr<blink::BlobDataHandle>* handle)
-{
-    DebugBreak();
-    return false;
-}
 
 // bool mojo::StructTraits<mojo_base::mojom::UnguessableTokenDataView, base::UnguessableToken>::Read(
 //     mojo_base::mojom::UnguessableTokenDataView view, base::UnguessableToken* token)
@@ -647,51 +594,39 @@ void mojo::Connector::ResumeIncomingMethodCallProcessing(void)
 bool mojo::StructTraits<blink::mojom::SerializedBlobDataView, mojo::StructPtr<blink::mojom::SerializedBlob>>::Read(
     blink::mojom::SerializedBlobDataView view, mojo::StructPtr<blink::mojom::SerializedBlob>* out)
 {
-    DebugBreak();
-    return false;
+    auto result = blink::mojom::SerializedBlob::New();
+    if (!view.ReadUuid(&result->uuid) || !view.ReadContentType(&result->content_type))
+        return false;
+    result->size = view.size();
+    result->blob = view.TakeBlob<decltype(result->blob)>();
+    *out = std::move(result);
+    return true;
 }
 
 bool mojo::StructTraits<blink::mojom::SerializedArrayBufferContentsDataView, mojo::StructPtr<blink::mojom::SerializedArrayBufferContents>>::Read(
     blink::mojom::SerializedArrayBufferContentsDataView view, mojo::StructPtr<blink::mojom::SerializedArrayBufferContents>* out)
 {
-    DebugBreak();
-    return false;
+    auto result = blink::mojom::SerializedArrayBufferContents::New();
+    if (!view.ReadContents(&result->contents))
+        return false;
+    result->is_resizable_by_user_javascript = view.is_resizable_by_user_javascript();
+    result->max_byte_length = view.max_byte_length();
+    *out = std::move(result);
+    return true;
 }
 
 bool mojo::StructTraits<blink::mojom::UserActivationSnapshotDataView, mojo::InlinedStructPtr<blink::mojom::UserActivationSnapshot>>::Read(
     blink::mojom::UserActivationSnapshotDataView view, mojo::InlinedStructPtr<blink::mojom::UserActivationSnapshot>* out)
 {
-    DebugBreak();
-    return false;
+    *out = blink::mojom::UserActivationSnapshot::New(view.has_been_active(), view.was_active());
+    return true;
 }
 
 void mojo::Connector::PauseIncomingMethodCallProcessing(void)
 {
 }
 
-base::StringPiece mojo::StructTraits<url::mojom::UrlDataView, GURL>::url(GURL const&) {
-    *(int*)1 = 1;
-    return base::StringPiece();
-}
 
-uint32_t
-mojo::StructTraits<skia::mojom::ImageInfoDataView, SkImageInfo>::height(SkImageInfo const&)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-uint32_t mojo::StructTraits<skia::mojom::ImageInfoDataView, SkImageInfo>::width(SkImageInfo const&)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-mojo_base::BigBufferView mojo::StructTraits<skia::mojom::BitmapN32DataView, SkBitmap>::pixel_data(SkBitmap const&)
-{
-    *(int*)1 = 1;
-    return mojo_base::BigBufferView();
-}
 
 // base::span<const uint8_t> mojo::UnionTraits<mojo_base::mojom::BigBufferDataView, mojo_base::BigBuffer>::bytes(const mojo_base::BigBuffer& buffer)
 // {
@@ -706,16 +641,6 @@ mojo_base::BigBufferView mojo::StructTraits<skia::mojom::BitmapN32DataView, SkBi
 //     return base::span<const uint8_t>();
 // }
 
-absl::optional<std::vector<float>> mojo::StructTraits<skia::mojom::ImageInfoDataView, SkImageInfo>::color_to_xyz_matrix(SkImageInfo const&)
-{
-    *(int*)1 = 1;
-    return absl::nullopt;
-}
-absl::optional<std::vector<float>> mojo::StructTraits<skia::mojom::ImageInfoDataView, SkImageInfo>::color_transfer_function(SkImageInfo const&)
-{
-    *(int*)1 = 1;
-    return absl::nullopt;
-}
 
 network::mojom::blink::TimingAllowOrigin::TimingAllowOrigin()
     : tag_(Tag::kSerializedOrigins)
@@ -748,48 +673,13 @@ void network::mojom::blink::TimingAllowOrigin::set_all(uint8_t all)
     data_.all = all;
 }
 
-mojo::WaitSet::~WaitSet(void)
-{
-    *(int*)1 = 1;
-}
 
-mojo::SyncHandleRegistry::~SyncHandleRegistry(void)
-{
-    *(int*)1 = 1;
-}
 
-scoped_refptr<mojo::internal::MultiplexRouter> mojo::internal::MultiplexRouter::CreateAndStartReceiving(
-    mojo::ScopedHandleBase<mojo::MessagePipeHandle>, mojo::internal::MultiplexRouter::Config, bool, scoped_refptr<base::SequencedTaskRunner>, char const*)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
 
-std::unique_ptr<void, mojo::internal::Unmapper> mojo::SharedBufferHandle::Map(uint64_t size) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
+mojo::HandleSignalTracker::~HandleSignalTracker() = default;
 
-mojo::HandleSignalTracker::~HandleSignalTracker(void)
-{
-    *(int*)1 = 1;
-}
+mojo::internal::MessageQuotaChecker::~MessageQuotaChecker() = default;
 
-mojo::internal::MessageQuotaChecker::~MessageQuotaChecker(void)
-{
-    *(int*)1 = 1;
-}
-
-mojo::SyncHandleWatcher::~SyncHandleWatcher(void)
-{
-    *(int*)1 = 1;
-}
-
-void blink::MojoInterfaceRequestEvent::Trace(class cppgc::Visitor*) const
-{
-    *(int*)1 = 1;
-}
 
 // bool mojo::internal::IsHandleOrInterfaceValid(struct mojo::internal::Handle_Data const&)
 // {
@@ -802,22 +692,12 @@ void blink::MojoInterfaceRequestEvent::Trace(class cppgc::Visitor*) const
 //     return false;
 // }
 
-bool mojo::internal::ReportSerializationWarning(enum mojo::internal::ValidationError)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 bool blink::mojom::PageState::Validate(void const*, class mojo::internal::ValidationContext*)
 {
     return true;
 }
 
-skia::mojom::AlphaType mojo::EnumTraits<skia::mojom::AlphaType, SkAlphaType>::ToMojom(enum SkAlphaType)
-{
-    *(int*)1 = 1;
-    return skia::mojom::AlphaType::UNKNOWN;
-}
 
 bool blink::mojom::blink::TransferableMessage::Validate(void const*, mojo::internal::ValidationContext*)
 {
@@ -825,30 +705,13 @@ bool blink::mojom::blink::TransferableMessage::Validate(void const*, mojo::inter
     return true;
 }
 
-std::basic_ostream<char, struct std::char_traits<char>>& network::mojom::operator<<(
-    std::basic_ostream<char, std::char_traits<char>>& other, network::mojom::CSPDirectiveName) {
-    *(int*)1 = 1;
-    return other;
-}
 
-WTF::StringUTF8Adaptor
-mojo::StringTraits<WTF::String>::GetUTF8(const WTF::String& str)
-{
-    return WTF::StringUTF8Adaptor(WTF::StringView(str));
-}
 
 bool ::blink::mojom::blink::DataElementBlob::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
-    //return Data_::Validate(data, validation_context);
-    *(int*)1 = 1;
-    return false;
+    return Data_::Validate(data, validation_context);
 }
 
-bool ::blink::mojom::internal::DataElement_Data::Validate(const void* data, mojo::internal::ValidationContext* validation_context, bool inlined)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 // blink::mojom::blink::DataElement::DataElement()
 //     : tag_(Tag::kBytes)
@@ -939,13 +802,26 @@ bool blink::mojom::blink::DataElement::Validate(const void* data, mojo::internal
 //     *(int*)1 = 1;
 // }
 
-void blink::mojom::Element::set_bytes(std::vector<unsigned char, std::allocator<unsigned char>>)
+void blink::mojom::Element::set_bytes(std::vector<uint8_t> bytes)
 {
-    *(int*)1 = 1;
+    if (tag_ == Tag::kBytes) {
+        *data_.bytes = std::move(bytes);
+    } else {
+        DestroyActive();
+        tag_ = Tag::kBytes;
+        data_.bytes = new std::vector<uint8_t>(std::move(bytes));
+    }
 }
-void blink::mojom::Element::set_file(mojo::StructPtr<::blink::mojom::File>)
+
+void blink::mojom::Element::set_file(FilePtr file)
 {
-    *(int*)1 = 1;
+    if (tag_ == Tag::kFile) {
+        *data_.file = std::move(file);
+    } else {
+        DestroyActive();
+        tag_ = Tag::kFile;
+        data_.file = new FilePtr(std::move(file));
+    }
 }
 
 // void blink::mojom::blink::FileChooserFileInfo::set_file_system(mojo::StructPtr<::blink::mojom::blink::FileSystemFileInfo>) { *(int*)1 = 1; }
@@ -962,9 +838,19 @@ void blink::mojom::Element::set_file(mojo::StructPtr<::blink::mojom::File>)
 //     DestroyActive();
 // }
 
-void blink::mojom::DataElement::DestroyActive(void)
+void blink::mojom::DataElement::DestroyActive()
 {
-    DebugBreak();
+    switch (tag_) {
+    case Tag::kBytes:
+        delete data_.bytes;
+        break;
+    case Tag::kFile:
+        delete data_.file;
+        break;
+    case Tag::kBlob:
+        delete data_.blob;
+        break;
+    }
 }
 
 //bool __thiscall blink::mojom::blink::FileSystemManager::RegisterBlob
@@ -1007,22 +893,18 @@ void blink::mojom::blink::FileChooserFileInfo::DestroyActive()
 //     *(int*)1 = 1;
 // }
 
-void mojo::ReportBadMessage(base::StringPiece)
+void mojo::ReportBadMessage(base::StringPiece error)
 {
-    *(int*)1 = 1;
+    mojo::GetBadMessageCallback().Run(error);
 }
 
 void mojo::internal::SerializeInterfaceInfo(
-    mojo::ScopedHandleBase<mojo::MessagePipeHandle>, unsigned int, mojo::Message&, struct mojo::internal::Interface_Data&)
+    mojo::ScopedMessagePipeHandle handle, uint32_t version, mojo::Message& message, mojo::internal::Interface_Data& data)
 {
-    *(int*)1 = 1;
+    SerializeHandle(mojo::ScopedHandle::From(std::move(handle)), message, data.handle);
+    data.version = version;
 }
 
-mojo::ScopedHandleBase<mojo::SharedBufferHandle> __cdecl mojo::SharedBufferHandle::Create(uint64_t)
-{
-    *(int*)1 = 1;
-    return mojo::ScopedHandleBase<mojo::SharedBufferHandle>();
-}
 // mojo::ScopedHandleBase<mojo::SharedBufferHandle> __cdecl mojo::StructTraits<mojo_base::mojom::BigBufferSharedMemoryRegionDataView,
 //     mojo_base::internal::BigBufferSharedMemoryRegion>::buffer_handle(mojo_base::internal::BigBufferSharedMemoryRegion&)
 // {
@@ -1044,62 +926,25 @@ mojo::ScopedHandleBase<mojo::SharedBufferHandle> __cdecl mojo::SharedBufferHandl
 //     return *reg;
 // }
 
-mojo::internal::ValidationContext::ValidationContext(const void* data, size_t data_num_bytes, size_t num_handles, size_t num_associated_endpoint_handles,
-    mojo::Message* message, const char* description, int stack_depth, mojo::internal::ValidationContext::ValidatorType validator_type)
-    : message_(message)
-    , description_(description)
-    , validator_type_(validator_type)
-    , data_begin_(reinterpret_cast<uintptr_t>(data))
-    , data_end_(data_begin_ + data_num_bytes)
-    , handle_begin_(0)
-    , handle_end_(static_cast<uint32_t>(num_handles))
-    , associated_endpoint_handle_begin_(0)
-    , associated_endpoint_handle_end_(static_cast<uint32_t>(num_associated_endpoint_handles))
-    , stack_depth_(stack_depth)
-{
-}
-
-mojo::internal::ValidationContext::~ValidationContext(void)
-{
-}
 
 bool mojo::internal::ReceiverImplBase::HasAssociatedInterfaces(void) const
 {
-    *(int*)1 = 1;
+    // Lite associated bindings use dedicated ordinary pipes, not router IDs.
     return false;
 }
 
-bool mojo::internal::ReceiverImplBase::WaitForIncomingMethodCall(void)
-{
-    OutputDebugStringA("mojo::internal::ReceiverImplBase::WaitForIncomingMethodCall not impl\n");
-    return true;
-}
 
 bool mojo::internal::MultiplexRouter::HasAssociatedEndpoints(void) const
 {
-    *(int*)1 = 1;
-    return false;
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    mojo::internal::MayAutoLock locker(&lock_);
+    return endpoints_.size() > 1 ||
+        (!endpoints_.empty() && endpoints_.find(kPrimaryInterfaceId) == endpoints_.end());
 }
 
-void blink::MojoHandle::close(void)
-{
-    *(int*)1 = 1;
-}
-void blink::MojoInterfaceInterceptor::start(class blink::ExceptionState&)
-{
-    *(int*)1 = 1;
-}
-void blink::MojoInterfaceInterceptor::stop(void)
-{
-    *(int*)1 = 1;
-}
 
 //
 
-void mojo::Message::SerializeHandles(mojo::AssociatedGroupController*)
-{
-    OutputDebugStringA("mojo::Message::SerializeHandles not impl\n");
-}
 
 // void mojo::internal::AssociatedReceiverBase::FlushForTesting(void) { *(int*)1 = 1; }
 // void mojo::internal::AssociatedReceiverBase::ResetWithReason(unsigned int, base::BasicStringPiece<char, std::char_traits<char>>) { *(int*)1 = 1; }
@@ -1113,25 +958,12 @@ void mojo::internal::ReceiverImplBase::EnableBatchDispatch(void)
 {
 
 }
-void mojo::internal::ReceiverImplBase::FlushForTesting(void)
-{
-    *(int*)1 = 1;
-}
-void mojo::internal::ReceiverImplBase::PauseIncomingMethodCallProcessing(void)
-{
-    *(int*)1 = 1;
-}
-void mojo::internal::ReceiverImplBase::ResumeIncomingMethodCallProcessing(void)
-{
-    *(int*)1 = 1;
-}
 void mojo::internal::ReceiverImplBase::SetFilter(std::unique_ptr<mojo::MessageFilter, std::default_delete<mojo::MessageFilter>>)
 {
 }
 
 bool mojo::MessageReceiver::PrefersSerializedMessages(void)
 {
-    *(int*)1 = 1;
     return false;
 }
 
@@ -1162,15 +994,15 @@ bool mojo::MessageReceiver::PrefersSerializedMessages(void)
 //     return 0;
 // }
 
-char const* mojo::internal::ValidationErrorToString(enum mojo::internal::ValidationError)
-{
-    *(int*)1 = 1;
-    return "";
-}
 
-media_session::mojom::blink::MediaPosition::MediaPosition(double, class base::TimeDelta, class base::TimeDelta, class base::TimeTicks, bool)
+media_session::mojom::blink::MediaPosition::MediaPosition(
+    double playback_rate_in, base::TimeDelta duration_in, base::TimeDelta position_in, base::TimeTicks last_updated_time_in, bool end_of_media_in)
+    : playback_rate(playback_rate_in)
+    , duration(duration_in)
+    , position(position_in)
+    , last_updated_time(last_updated_time_in)
+    , end_of_media(end_of_media_in)
 {
-    *(int*)1 = 1;
 }
 
 // viz::mojom::blink::BundledFrameSubmissionData::BundledFrameSubmissionData(void)
@@ -1178,27 +1010,7 @@ media_session::mojom::blink::MediaPosition::MediaPosition(double, class base::Ti
 //     *(int*)1 = 1;
 // }
 
-unsigned int blink::MojoWatcher::cancel(void)
-{
-    *(int*)1 = 1;
-    return 0;
-}
 
-unsigned int blink::MojoHandle::writeMessage(
-    //     blink::V8UnionArrayBufferOrArrayBufferView const*,
-    //     blink::HeapVector<
-    //         cppgc::internal::BasicMember<blink::MojoHandle, cppgc::internal::StrongMemberTag, cppgc::internal::DijkstraWriteBarrierPolicy, cppgc::internal::DisabledCheckingPolicy>,
-    //         0> const&
-    const blink::V8BufferSource* buffer, const blink::HeapVector<blink::Member<blink::MojoHandle>>& handles)
-{
-    *(int*)1 = 1;
-    return 0;
-}
-
-blink::MojoInterfaceRequestEvent::~MojoInterfaceRequestEvent(void)
-{
-    *(int*)1 = 1;
-}
 
 blink::mojom::internal::CloneableMessage_Data::CloneableMessage_Data()
     : header_({ sizeof(*this), 0 })
@@ -1241,10 +1053,6 @@ blink::mojom::internal::SerializedBlob_Data::SerializedBlob_Data(void)
 {
 }
 blink::mojom::internal::TaskAttributionId_Data::TaskAttributionId_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-blink::mojom::internal::TransferableMessage_Data::TransferableMessage_Data(void)
     : header_({ sizeof(*this), 0 })
 {
 }
@@ -1297,13 +1105,26 @@ url::mojom::internal::Origin_Data::Origin_Data(void)
 // {
 //     *(int*)1 = 1;
 // }
-void viz::mojom::blink::BundledFrameSubmissionData::set_did_not_produce_frame(struct viz::BeginFrameAck const&)
+void viz::mojom::blink::BundledFrameSubmissionData::set_did_not_produce_frame(const viz::BeginFrameAck& ack)
 {
-    *(int*)1 = 1;
+    if (tag_ == Tag::kDidNotProduceFrame) {
+        *data_.did_not_produce_frame = ack;
+    } else {
+        DestroyActive();
+        tag_ = Tag::kDidNotProduceFrame;
+        data_.did_not_produce_frame = new viz::BeginFrameAck(ack);
+    }
 }
-void viz::mojom::blink::BundledFrameSubmissionData::set_frame(class mojo::StructPtr<class viz::mojom::blink::BundledCompositorFrame>)
+
+void viz::mojom::blink::BundledFrameSubmissionData::set_frame(BundledCompositorFramePtr frame)
 {
-    *(int*)1 = 1;
+    if (tag_ == Tag::kFrame) {
+        *data_.frame = std::move(frame);
+    } else {
+        DestroyActive();
+        tag_ = Tag::kFrame;
+        data_.frame = new BundledCompositorFramePtr(std::move(frame));
+    }
 }
 
 // network::mojom::AllowCSPFromHeaderValue::AllowCSPFromHeaderValue()
@@ -1450,8 +1271,7 @@ void network::mojom::TimingAllowOrigin::DestroyActive()
 
 bool viz::mojom::FrameSinkManager::DestroyCompositorFrameSink(const viz::FrameSinkId&)
 {
-    *(int*)1 = 1;
-    return false;
+    NOTREACHED();
 }
 
 // bool viz::mojom::FrameSinkManager::EvictBackBuffer(unsigned int)
@@ -1463,14 +1283,12 @@ bool viz::mojom::FrameSinkManager::DestroyCompositorFrameSink(const viz::FrameSi
 bool viz::mojom::CompositorFrameSink::SubmitCompositorFrameSync(const ::viz::LocalSurfaceId& local_surface_id, ::viz::CompositorFrame frame,
     absl::optional<::viz::HitTestRegionList> hit_test_region_list, uint64_t submit_time, std::vector<::viz::ReturnedResource>* out_resources)
 {
-    *(int*)1 = 1;
-    return false;
+    NOTREACHED();
 }
 
 bool viz::mojom::DisplayPrivate::DisableSwapUntilResize(void)
 {
-    *(int*)1 = 1;
-    return false;
+    NOTREACHED();
 }
 
 mojo::native::NativeStruct::~NativeStruct(void) = default;

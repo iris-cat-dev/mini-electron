@@ -34,39 +34,6 @@
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 
-// scoped_refptr<network::SharedURLLoaderFactory> 
-// network::SharedURLLoaderFactory::Create(std::unique_ptr<network::PendingSharedURLLoaderFactory, std::default_delete<network::PendingSharedURLLoaderFactory>>)
-// {
-//     *(int*)1 = 1;
-//     return nullptr;
-// }
-// 
-// network::SharedURLLoaderFactory::~SharedURLLoaderFactory(void)
-// {
-//     *(int*)1 = 1;
-// }
-
-network::WrapperPendingSharedURLLoaderFactory::WrapperPendingSharedURLLoaderFactory(mojo::PendingRemote<network::mojom::URLLoaderFactory>)
-{
-    *(int*)1 = 1;
-}
-
-network::WrapperPendingSharedURLLoaderFactory::~WrapperPendingSharedURLLoaderFactory(void)
-{
-    *(int*)1 = 1;
-}
-
-scoped_refptr<network::SharedURLLoaderFactory> network::WrapperPendingSharedURLLoaderFactory::CreateFactory(void)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-// bool network::SharedURLLoaderFactory::BypassRedirectChecks(void) const
-// {
-//     *(int*)1 = 1;
-//     return false;
-// }
 
 namespace blink {
 

@@ -70,7 +70,7 @@ enum EncryptOrDecrypt { DECRYPT = 0, ENCRYPT = 1 };
 //   * |aead_alg| the algorithm (for instance AES-GCM)
 //   * |buffer| where the ciphertext or plaintext is written to.
 Status AeadEncryptDecrypt(EncryptOrDecrypt mode, base::span<const uint8_t> raw_key, base::span<const uint8_t> data, unsigned int tag_length_bytes,
-    base::span<const uint8_t> iv, base::span<const uint8_t> additional_data, const EVP_AEAD* aead_alg, std::vector<uint8_t>* buffer);
+    base::span<const uint8_t> iv, base::span<const uint8_t> additional_data, const EVP_CIPHER* aead_alg, std::vector<uint8_t>* buffer);
 
 } // namespace webcrypto
 

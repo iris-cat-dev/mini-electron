@@ -1047,6 +1047,7 @@ void WindowPerformance::OnLargestContentfulPaintUpdated(base::TimeTicks start_ti
         }
     }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (element) {
         if (LocalFrame* local_frame = element->GetDocument().GetFrame()) {
             if (LCPCriticalPathPredictor* lcpp = local_frame->GetLCPP()) {
@@ -1058,6 +1059,7 @@ void WindowPerformance::OnLargestContentfulPaintUpdated(base::TimeTicks start_ti
             }
         }
     }
+#endif
 }
 
 void WindowPerformance::OnPaintFinished()

@@ -72,7 +72,7 @@ public:
         return emitWithEvent(name, event, args...);
     }
 
-    template <typename... Args> bool emitWithSender(const std::string& name, std::function<void(std::string)>&& callback, const Args&... args)
+    template <typename... Args> bool emitWithSender(const std::string& name, std::function<void(base::span<const uint8_t>)>&& callback, const Args&... args)
     {
         //v8::Locker locker(isolate());
         v8::HandleScope handle_scope(isolate());

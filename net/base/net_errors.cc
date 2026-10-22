@@ -10,7 +10,7 @@
 #include "base/files/file.h"
 #include "base/logging.h"
 #include "base/notreached.h"
-//#include "net/third_party/quiche/src/quiche/quic/core/quic_error_codes.h"
+#include "net/third_party/quiche/src/quiche/quic/core/quic_error_codes.h"
 
 namespace net {
 
@@ -27,8 +27,7 @@ std::string ErrorToString(int error)
 std::string ExtendedErrorToString(int error, int extended_error_code)
 {
     if (error == ERR_QUIC_PROTOCOL_ERROR && extended_error_code != 0) {
-        *(int*)1 = 1;
-        //return std::string("net::ERR_QUIC_PROTOCOL_ERROR.") + QuicErrorCodeToString(static_cast<quic::QuicErrorCode>(extended_error_code));
+        return std::string("net::ERR_QUIC_PROTOCOL_ERROR.") + QuicErrorCodeToString(static_cast<quic::QuicErrorCode>(extended_error_code));
     }
     return ErrorToString(error);
 }

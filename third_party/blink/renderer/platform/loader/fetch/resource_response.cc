@@ -519,22 +519,16 @@ void ResourceResponse::SetDecodedBodyLength(int64_t value)
 
 network::mojom::CrossOriginEmbedderPolicyValue ResourceResponse::GetCrossOriginEmbedderPolicy() const
 {
-    *(int*)1 = 1;
+    const std::string value = HttpHeaderField(http_names::kLowerCrossOriginEmbedderPolicy).Utf8();
+    using Item = net::structured_headers::Item;
+    const auto item = net::structured_headers::ParseItem(value);
+    if (!item || item->item.Type() != Item::kTokenType)
+        return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
+    if (item->item.GetString() == "require-corp")
+        return network::mojom::CrossOriginEmbedderPolicyValue::kRequireCorp;
+    if (item->item.GetString() == "credentialless")
+        return network::mojom::CrossOriginEmbedderPolicyValue::kCredentialless;
     return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   const std::string value =
-    //       HttpHeaderField(http_names::kLowerCrossOriginEmbedderPolicy).Utf8();
-    //   using Item = net::structured_headers::Item;
-    //   const auto item = net::structured_headers::ParseItem(value);
-    //   if (!item || item->item.Type() != Item::kTokenType) {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   }
-    //   if (item->item.GetString() == "require-corp") {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kRequireCorp;
-    //   } else if (item->item.GetString() == "credentialless") {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kCredentialless;
-    //   } else {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   }
 }
 
 STATIC_ASSERT_ENUM(WebURLResponse::kHTTPVersionUnknown, ResourceResponse::kHTTPVersionUnknown);

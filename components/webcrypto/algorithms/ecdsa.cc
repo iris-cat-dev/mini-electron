@@ -34,7 +34,6 @@
 #include "third_party/openssl/openssl/include/openssl/evp.h"
 #include "third_party/openssl/openssl/include/openssl/mem.h"
 
-#include <windows.h>
 
 namespace webcrypto {
 
@@ -54,21 +53,13 @@ Status GetPKeyAndDigest(const blink::WebCryptoAlgorithm& algorithm, const blink:
 // Gets the EC key's order size in bytes.
 Status GetEcGroupOrderSize(EVP_PKEY* pkey, size_t* order_size_bytes)
 {
-    OutputDebugStringA("GetEcGroupOrderSize not impl\n");
-    DebugBreak();
-//     crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-// 
-//     EC_KEY* ec = EVP_PKEY_get0_EC_KEY(pkey);
-//     if (!ec)
-//         return Status::ErrorUnexpected();
-// 
-//     const EC_GROUP* group = EC_KEY_get0_group(ec);
-// 
-//     bssl::UniquePtr<BIGNUM> order(BN_new());
-//     if (!EC_GROUP_get_order(group, order.get(), nullptr))
-//         return Status::OperationError();
-// 
-//     *order_size_bytes = BN_num_bytes(order.get());
+    const EC_KEY* ec = EVP_PKEY_get0_EC_KEY(pkey);
+    if (!ec)
+        return Status::ErrorUnexpected();
+    bssl::UniquePtr<BIGNUM> order(BN_new());
+    if (!order || !EC_GROUP_get_order(EC_KEY_get0_group(ec), order.get(), nullptr))
+        return Status::OperationError();
+    *order_size_bytes = BN_num_bytes(order.get());
     return Status::Success();
 }
 
@@ -78,30 +69,22 @@ Status GetEcGroupOrderSize(EVP_PKEY* pkey, size_t* order_size_bytes)
 // TODO(eroman): Where is the specification for WebCrypto's signature format?
 Status ConvertDerSignatureToWebCryptoSignature(EVP_PKEY* key, std::vector<uint8_t>* signature)
 {
-    OutputDebugStringA("ConvertDerSignatureToWebCryptoSignature not impl\n");
-    DebugBreak();
-//     crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-// 
-//     bssl::UniquePtr<ECDSA_SIG> ecdsa_sig(ECDSA_SIG_from_bytes(signature->data(), signature->size()));
-//     if (!ecdsa_sig.get())
-//         return Status::ErrorUnexpected();
-// 
-//     // Determine the maximum length of r and s.
-//     size_t order_size_bytes;
-//     Status status = GetEcGroupOrderSize(key, &order_size_bytes);
-//     if (status.IsError())
-//         return status;
-// 
-//     signature->resize(order_size_bytes * 2);
-// 
-//     if (!BN_bn2bin_padded(signature->data(), order_size_bytes, ecdsa_sig.get()->r)) {
-//         return Status::ErrorUnexpected();
-//     }
-// 
-//     if (!BN_bn2bin_padded(&(*signature)[order_size_bytes], order_size_bytes, ecdsa_sig.get()->s)) {
-//         return Status::ErrorUnexpected();
-//     }
-
+    const uint8_t* input = signature->data();
+    std::unique_ptr<ECDSA_SIG, decltype(&ECDSA_SIG_free)> sig(
+        d2i_ECDSA_SIG(nullptr, &input, signature->size()), ECDSA_SIG_free);
+    if (!sig || input != signature->data() + signature->size())
+        return Status::ErrorUnexpected();
+    size_t width = 0;
+    Status status = GetEcGroupOrderSize(key, &width);
+    if (status.IsError())
+        return status;
+    const BIGNUM* r;
+    const BIGNUM* s;
+    ECDSA_SIG_get0(sig.get(), &r, &s);
+    signature->resize(width * 2);
+    if (BN_bn2binpad(r, signature->data(), width) != static_cast<int>(width)
+        || BN_bn2binpad(s, signature->data() + width, width) != static_cast<int>(width))
+        return Status::OperationError();
     return Status::Success();
 }
 
@@ -117,50 +100,28 @@ Status ConvertDerSignatureToWebCryptoSignature(EVP_PKEY* key, std::vector<uint8_
 // ECDSA-Sig-Value.
 Status ConvertWebCryptoSignatureToDerSignature(EVP_PKEY* key, base::span<const uint8_t> signature, std::vector<uint8_t>* der_signature, bool* incorrect_length)
 {
-    OutputDebugStringA("ConvertWebCryptoSignatureToDerSignature not impl\n");
-    DebugBreak();
+    size_t width = 0;
+    Status status = GetEcGroupOrderSize(key, &width);
+    if (status.IsError())
+        return status;
+    *incorrect_length = signature.size() != 2 * width;
+    if (*incorrect_length)
+        return Status::Success();
+    std::unique_ptr<ECDSA_SIG, decltype(&ECDSA_SIG_free)> sig(ECDSA_SIG_new(), ECDSA_SIG_free);
+    bssl::UniquePtr<BIGNUM> r(BN_bin2bn(signature.data(), width, nullptr));
+    bssl::UniquePtr<BIGNUM> s(BN_bin2bn(signature.data() + width, width, nullptr));
+    if (!sig || !r || !s || !ECDSA_SIG_set0(sig.get(), r.get(), s.get()))
+        return Status::OperationError();
+    r.release();
+    s.release();
+    const int length = i2d_ECDSA_SIG(sig.get(), nullptr);
+    if (length <= 0)
+        return Status::OperationError();
+    der_signature->resize(length);
+    uint8_t* output = der_signature->data();
+    if (i2d_ECDSA_SIG(sig.get(), &output) != length)
+        return Status::OperationError();
     return Status::Success();
-
-    //   crypto::OpenSSLErrStackTracer err_tracer(FROM_HERE);
-    //
-    //   // Determine the length of r and s.
-    //   size_t order_size_bytes;
-    //   Status status = GetEcGroupOrderSize(key, &order_size_bytes);
-    //   if (status.IsError())
-    //     return status;
-    //
-    //   // If the size of the signature is incorrect, verification must fail. Success
-    //   // is returned here rather than an error, so that the caller can fail
-    //   // verification with a boolean, rather than reject the promise with an
-    //   // exception.
-    //   if (signature.size() != 2 * order_size_bytes) {
-    //     *incorrect_length = true;
-    //     return Status::Success();
-    //   }
-    //   base::span<const uint8_t> r_bytes = signature.first(order_size_bytes);
-    //   base::span<const uint8_t> s_bytes = signature.subspan(order_size_bytes);
-    //
-    //   *incorrect_length = false;
-    //
-    //   // Construct an ECDSA_SIG from |signature|.
-    //   bssl::UniquePtr<ECDSA_SIG> ecdsa_sig(ECDSA_SIG_new());
-    //   if (!ecdsa_sig)
-    //     return Status::OperationError();
-    //
-    //   if (!BN_bin2bn(r_bytes.data(), r_bytes.size(), ecdsa_sig->r) ||
-    //       !BN_bin2bn(s_bytes.data(), s_bytes.size(), ecdsa_sig->s)) {
-    //     return Status::ErrorUnexpected();
-    //   }
-    //
-    //   // Encode the signature.
-    //   uint8_t* der;
-    //   size_t der_len;
-    //   if (!ECDSA_SIG_to_bytes(&der, &der_len, ecdsa_sig.get()))
-    //     return Status::OperationError();
-    //   der_signature->assign(der, der + der_len);
-    //   OPENSSL_free(der);
-    //
-    //   return Status::Success();
 }
 
 class EcdsaImplementation : public EcAlgorithm {

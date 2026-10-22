@@ -116,9 +116,7 @@ void WriteValue(Message* m, const base::Value& value, int recursion)
         break;
     }
     case base::Value::Type::BINARY: {
-        //const base::BinaryValue* binary = static_cast<const base::BinaryValue*>(value);
-        //m->WriteData(binary->GetBuffer(), static_cast<int>(binary->GetSize()));
-        *(int*)1 = 1;
+        m->WriteData(value.GetBlob());
         break;
     }
     case base::Value::Type::DICT: {

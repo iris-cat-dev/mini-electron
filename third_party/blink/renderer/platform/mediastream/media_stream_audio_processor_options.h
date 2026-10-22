@@ -8,7 +8,6 @@
 #include "build/build_config.h"
 #include "media/base/audio_processing.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
-#include "third_party/webrtc/modules/audio_processing/include/audio_processing.h"
 
 namespace blink {
 

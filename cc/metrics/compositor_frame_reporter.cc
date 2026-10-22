@@ -1579,119 +1579,86 @@ void CompositorFrameReporter::CalculateCompositorLatencyPrediction(CompositorLat
 void CompositorFrameReporter::CalculateEventLatencyPrediction(
     CompositorFrameReporter::EventLatencyInfo& predicted_event_latency, base::TimeDelta prediction_deviation_threshold)
 {
-    *(int*)1 = 1;
-//     if (events_metrics_.empty())
-//         return;
-// 
-//     // TODO(crbug.com/40228308): Explore calculating predictions for multiple
-//     // events. Currently only kGestureScrollUpdate event predictions
-//     // are being calculated, consider including other stages in future changes.
-//     auto event_it = base::ranges::find_if(
-//         events_metrics_, [](const std::unique_ptr<EventMetrics>& event) { return event && event->type() == EventMetrics::EventType::kGestureScrollUpdate; });
-//     if (event_it == events_metrics_.end())
-//         return;
-//     auto& event_metrics = *event_it;
-// 
-//     base::TimeTicks dispatch_start_time = event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kGenerated);
-// 
-//     // Determine the last valid stage. First check kRendererMainFinished and if it
-//     // doesn't exist, check kRendererCompositorFinished. If neither of them
-//     // exists, there is not enough information for the prediction.
-//     EventMetrics::DispatchStage last_valid_stage = EventMetrics::DispatchStage::kGenerated;
-//     if (event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kRendererMainFinished) > dispatch_start_time) {
-//         last_valid_stage = EventMetrics::DispatchStage::kRendererMainFinished;
-//     } else if (event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kRendererCompositorFinished) > dispatch_start_time) {
-//         last_valid_stage = EventMetrics::DispatchStage::kRendererCompositorFinished;
-//     } else {
-//         return;
-//     }
-// 
-//     base::TimeTicks dispatch_end_time = event_metrics->GetDispatchStageTimestamp(last_valid_stage);
-//     base::TimeDelta total_dispatch_duration = dispatch_end_time - dispatch_start_time;
-//     if (total_dispatch_duration.is_negative())
-//         return;
-// 
-//     CompositorFrameReporter::EventLatencyInfo actual_event_latency(kNumDispatchStages, kNumOfCompositorStages);
-//     actual_event_latency.total_duration = base::Microseconds(0);
-// 
-//     // Determine dispatch stage durations.
-//     base::TimeTicks previous_timetick = dispatch_start_time;
-//     for (auto stage = EventMetrics::DispatchStage::kGenerated; stage <= last_valid_stage;
-//          stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(stage) + 1)) {
-//         if (stage != EventMetrics::DispatchStage::kGenerated) {
-//             base::TimeTicks current_timetick = event_metrics->GetDispatchStageTimestamp(stage);
-//             // Only update stage if the current_timetick is later than the
-//             // previous_timetick.
-//             if (current_timetick > previous_timetick) {
-//                 base::TimeDelta stage_duration = current_timetick - previous_timetick;
-//                 actual_event_latency.dispatch_durations[static_cast<int>(stage) - 1] = stage_duration;
-//                 actual_event_latency.total_duration += stage_duration;
-//                 previous_timetick = current_timetick;
-//             }
-//         }
-//     }
-// 
-//     // Determine dispatch-to-compositor transition stage duration.
-//     auto stage_it = base::ranges::lower_bound(stage_history_, dispatch_end_time, {}, &CompositorFrameReporter::StageData::start_time);
-//     if (stage_it != stage_history_.end()) {
-//         if (dispatch_end_time < stage_it->start_time) {
-//             base::TimeDelta stage_duration = stage_it->start_time - dispatch_end_time;
-//             actual_event_latency.transition_duration = stage_duration;
-//             actual_event_latency.total_duration += stage_duration;
-//             actual_event_latency.transition_name = EventLatencyTracingRecorder::GetDispatchToCompositorBreakdownName(last_valid_stage, stage_it->stage_type);
-//         }
-//     }
-// 
-//     // Determine compositor stage durations, which start from stage_it for
-//     // EventLatency.
-//     for (auto stage = stage_it; stage != stage_history_.end(); stage++) {
-//         base::TimeDelta stage_duration = stage->end_time - stage->start_time;
-//         if (stage_duration.is_positive()) {
-//             actual_event_latency.compositor_durations[static_cast<int>(stage->stage_type)] = stage_duration;
-//             actual_event_latency.total_duration += stage_duration;
-//         }
-//     }
-// 
-//     // High latency attribution.
-//     if (predicted_event_latency.total_duration.is_positive()
-//         && actual_event_latency.total_duration - predicted_event_latency.total_duration >= prediction_deviation_threshold) {
-//         FindEventLatencyAttribution(event_metrics.get(), predicted_event_latency, actual_event_latency);
-//     }
-// 
-//     // Calculate new dispatch stage predictions.
-//     base::TimeDelta predicted_total_duration = base::Microseconds(0);
-//     for (int i = 0; i < kNumDispatchStages; i++) {
-//         if (actual_event_latency.dispatch_durations[i].is_positive()) {
-//             predicted_event_latency.dispatch_durations[i]
-//                 = CalculateWeightedAverage(predicted_event_latency.dispatch_durations[i], actual_event_latency.dispatch_durations[i]);
-//         }
-//         if (predicted_event_latency.dispatch_durations[i].is_positive()) {
-//             predicted_total_duration += predicted_event_latency.dispatch_durations[i];
-//         }
-//     }
-// 
-//     // Calculate new dispatch-to-compositor transition stage predictions.
-//     if (actual_event_latency.transition_duration.is_positive()) {
-//         predicted_event_latency.transition_duration
-//             = CalculateWeightedAverage(predicted_event_latency.transition_duration, actual_event_latency.transition_duration);
-//         if (predicted_event_latency.transition_duration.is_positive())
-//             predicted_total_duration += predicted_event_latency.transition_duration;
-//     }
-// 
-//     // Calculate new compositor stage predictions.
-//     // TODO(crbug.com/40228308): Explore using existing PipelineReporter
-//     // predictions for the compositor stage.
-//     for (int i = 0; i < kNumOfCompositorStages; i++) {
-//         if (actual_event_latency.compositor_durations[i].is_positive()) {
-//             predicted_event_latency.compositor_durations[i]
-//                 = CalculateWeightedAverage(predicted_event_latency.compositor_durations[i], actual_event_latency.compositor_durations[i]);
-//         }
-//         if (predicted_event_latency.compositor_durations[i].is_positive()) {
-//             predicted_total_duration += predicted_event_latency.compositor_durations[i];
-//         }
-//     }
-// 
-//     predicted_event_latency.total_duration = predicted_total_duration;
+    if (events_metrics_.empty())
+        return;
+    auto event_it = base::ranges::find_if(
+        events_metrics_, [](const std::unique_ptr<EventMetrics>& event) { return event && event->type() == EventMetrics::EventType::kGestureScrollUpdate; });
+    if (event_it == events_metrics_.end())
+        return;
+    auto& event_metrics = *event_it;
+    base::TimeTicks dispatch_start_time = event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kGenerated);
+
+    EventMetrics::DispatchStage last_valid_stage = EventMetrics::DispatchStage::kGenerated;
+    if (event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kRendererMainFinished) > dispatch_start_time) {
+        last_valid_stage = EventMetrics::DispatchStage::kRendererMainFinished;
+    } else if (event_metrics->GetDispatchStageTimestamp(EventMetrics::DispatchStage::kRendererCompositorFinished) > dispatch_start_time) {
+        last_valid_stage = EventMetrics::DispatchStage::kRendererCompositorFinished;
+    } else {
+        return;
+    }
+    base::TimeTicks dispatch_end_time = event_metrics->GetDispatchStageTimestamp(last_valid_stage);
+    if ((dispatch_end_time - dispatch_start_time).is_negative())
+        return;
+
+    CompositorFrameReporter::EventLatencyInfo actual_event_latency(kNumDispatchStages, kNumOfCompositorStages);
+    actual_event_latency.total_duration = base::Microseconds(0);
+    base::TimeTicks previous_timetick = dispatch_start_time;
+    for (auto stage = EventMetrics::DispatchStage::kGenerated; stage <= last_valid_stage;
+         stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(stage) + 1)) {
+        if (stage != EventMetrics::DispatchStage::kGenerated) {
+            base::TimeTicks current_timetick = event_metrics->GetDispatchStageTimestamp(stage);
+            if (current_timetick > previous_timetick) {
+                base::TimeDelta stage_duration = current_timetick - previous_timetick;
+                actual_event_latency.dispatch_durations[static_cast<int>(stage) - 1] = stage_duration;
+                actual_event_latency.total_duration += stage_duration;
+                previous_timetick = current_timetick;
+            }
+        }
+    }
+
+    auto stage_it = base::ranges::lower_bound(stage_history_, dispatch_end_time, {}, &CompositorFrameReporter::StageData::start_time);
+    if (stage_it != stage_history_.end() && dispatch_end_time < stage_it->start_time) {
+        base::TimeDelta stage_duration = stage_it->start_time - dispatch_end_time;
+        actual_event_latency.transition_duration = stage_duration;
+        actual_event_latency.total_duration += stage_duration;
+        actual_event_latency.transition_name = EventLatencyTracingRecorder::GetDispatchToCompositorBreakdownName(last_valid_stage, stage_it->stage_type);
+    }
+    for (auto stage = stage_it; stage != stage_history_.end(); stage++) {
+        base::TimeDelta stage_duration = stage->end_time - stage->start_time;
+        if (stage_duration.is_positive()) {
+            actual_event_latency.compositor_durations[static_cast<int>(stage->stage_type)] = stage_duration;
+            actual_event_latency.total_duration += stage_duration;
+        }
+    }
+    if (predicted_event_latency.total_duration.is_positive()
+        && actual_event_latency.total_duration - predicted_event_latency.total_duration >= prediction_deviation_threshold) {
+        FindEventLatencyAttribution(event_metrics.get(), predicted_event_latency, actual_event_latency);
+    }
+
+    base::TimeDelta predicted_total_duration = base::Microseconds(0);
+    for (int i = 0; i < kNumDispatchStages; i++) {
+        if (actual_event_latency.dispatch_durations[i].is_positive()) {
+            predicted_event_latency.dispatch_durations[i]
+                = CalculateWeightedAverage(predicted_event_latency.dispatch_durations[i], actual_event_latency.dispatch_durations[i]);
+        }
+        if (predicted_event_latency.dispatch_durations[i].is_positive())
+            predicted_total_duration += predicted_event_latency.dispatch_durations[i];
+    }
+    if (actual_event_latency.transition_duration.is_positive()) {
+        predicted_event_latency.transition_duration
+            = CalculateWeightedAverage(predicted_event_latency.transition_duration, actual_event_latency.transition_duration);
+        if (predicted_event_latency.transition_duration.is_positive())
+            predicted_total_duration += predicted_event_latency.transition_duration;
+    }
+    for (int i = 0; i < kNumOfCompositorStages; i++) {
+        if (actual_event_latency.compositor_durations[i].is_positive()) {
+            predicted_event_latency.compositor_durations[i]
+                = CalculateWeightedAverage(predicted_event_latency.compositor_durations[i], actual_event_latency.compositor_durations[i]);
+        }
+        if (predicted_event_latency.compositor_durations[i].is_positive())
+            predicted_total_duration += predicted_event_latency.compositor_durations[i];
+    }
+    predicted_event_latency.total_duration = predicted_total_duration;
 }
 
 void CompositorFrameReporter::SetPartialUpdateDecider(CompositorFrameReporter* decider)
@@ -1925,54 +1892,42 @@ void CompositorFrameReporter::FindHighLatencyAttribution(CompositorLatencyInfo& 
 void CompositorFrameReporter::FindEventLatencyAttribution(EventMetrics* event_metrics, CompositorFrameReporter::EventLatencyInfo& predicted_event_latency,
     CompositorFrameReporter::EventLatencyInfo& actual_event_latency)
 {
-    *(int*)1 = 1;
-//     if (!event_metrics)
-//         return;
-// 
-//     std::vector<std::string> high_latency_stages;
-//     double contribution_change = -1;
-//     double highest_contribution_change = -1;
-// 
-//     // Check dispatch stage change
-//     EventMetrics::DispatchStage dispatch_stage = EventMetrics::DispatchStage::kGenerated;
-//     base::TimeTicks dispatch_timestamp = event_metrics->GetDispatchStageTimestamp(dispatch_stage);
-//     while (dispatch_stage != EventMetrics::DispatchStage::kMaxValue) {
-//         DCHECK(!dispatch_timestamp.is_null());
-//         auto end_stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(dispatch_stage) + 1);
-//         base::TimeTicks end_timestamp = event_metrics->GetDispatchStageTimestamp(end_stage);
-//         while (end_timestamp.is_null() && end_stage != EventMetrics::DispatchStage::kMaxValue) {
-//             end_stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(end_stage) + 1);
-//             end_timestamp = event_metrics->GetDispatchStageTimestamp(end_stage);
-//         }
-//         if (end_timestamp.is_null())
-//             break;
-// 
-//         contribution_change = (actual_event_latency.dispatch_durations[static_cast<int>(end_stage) - 1] / actual_event_latency.total_duration)
-//             - (predicted_event_latency.dispatch_durations[static_cast<int>(end_stage) - 1] / predicted_event_latency.total_duration);
-//         std::string dispatch_stage_name = EventLatencyTracingRecorder::GetDispatchBreakdownName(dispatch_stage, end_stage);
-//         highest_contribution_change = DetermineHighestContribution(contribution_change, highest_contribution_change, dispatch_stage_name, high_latency_stages);
-// 
-//         dispatch_stage = end_stage;
-//         dispatch_timestamp = end_timestamp;
-//     }
-// 
-//     // Check dispatch-to-compositor stage change
-//     contribution_change = (actual_event_latency.transition_duration / actual_event_latency.total_duration)
-//         - (predicted_event_latency.transition_duration / predicted_event_latency.total_duration);
-//     highest_contribution_change
-//         = DetermineHighestContribution(contribution_change, highest_contribution_change, actual_event_latency.transition_name, high_latency_stages);
-// 
-//     // Check compositor stage change
-//     for (int i = 0; i < kNumOfCompositorStages; i++) {
-//         contribution_change = (actual_event_latency.compositor_durations[i] / actual_event_latency.total_duration)
-//             - (predicted_event_latency.compositor_durations[i] / predicted_event_latency.total_duration);
-//         highest_contribution_change
-//             = DetermineHighestContribution(contribution_change, highest_contribution_change, GetStageName(static_cast<StageType>(i)), high_latency_stages);
-//     }
-// 
-//     for (auto stage : high_latency_stages) {
-//         event_metrics->SetHighLatencyStage(stage);
-//     }
+    if (!event_metrics)
+        return;
+    std::vector<std::string> high_latency_stages;
+    double contribution_change = -1;
+    double highest_contribution_change = -1;
+    EventMetrics::DispatchStage dispatch_stage = EventMetrics::DispatchStage::kGenerated;
+    base::TimeTicks dispatch_timestamp = event_metrics->GetDispatchStageTimestamp(dispatch_stage);
+    while (dispatch_stage != EventMetrics::DispatchStage::kMaxValue) {
+        DCHECK(!dispatch_timestamp.is_null());
+        auto end_stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(dispatch_stage) + 1);
+        base::TimeTicks end_timestamp = event_metrics->GetDispatchStageTimestamp(end_stage);
+        while (end_timestamp.is_null() && end_stage != EventMetrics::DispatchStage::kMaxValue) {
+            end_stage = static_cast<EventMetrics::DispatchStage>(static_cast<int>(end_stage) + 1);
+            end_timestamp = event_metrics->GetDispatchStageTimestamp(end_stage);
+        }
+        if (end_timestamp.is_null())
+            break;
+        contribution_change = (actual_event_latency.dispatch_durations[static_cast<int>(end_stage) - 1] / actual_event_latency.total_duration)
+            - (predicted_event_latency.dispatch_durations[static_cast<int>(end_stage) - 1] / predicted_event_latency.total_duration);
+        std::string dispatch_stage_name = EventLatencyTracingRecorder::GetDispatchBreakdownName(dispatch_stage, end_stage);
+        highest_contribution_change = DetermineHighestContribution(contribution_change, highest_contribution_change, dispatch_stage_name, high_latency_stages);
+        dispatch_stage = end_stage;
+        dispatch_timestamp = end_timestamp;
+    }
+    contribution_change = (actual_event_latency.transition_duration / actual_event_latency.total_duration)
+        - (predicted_event_latency.transition_duration / predicted_event_latency.total_duration);
+    highest_contribution_change
+        = DetermineHighestContribution(contribution_change, highest_contribution_change, actual_event_latency.transition_name, high_latency_stages);
+    for (int i = 0; i < kNumOfCompositorStages; i++) {
+        contribution_change = (actual_event_latency.compositor_durations[i] / actual_event_latency.total_duration)
+            - (predicted_event_latency.compositor_durations[i] / predicted_event_latency.total_duration);
+        highest_contribution_change
+            = DetermineHighestContribution(contribution_change, highest_contribution_change, GetStageName(static_cast<StageType>(i)), high_latency_stages);
+    }
+    for (auto stage : high_latency_stages)
+        event_metrics->SetHighLatencyStage(stage);
 }
 
 } // namespace cc

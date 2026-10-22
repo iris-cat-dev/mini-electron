@@ -74,49 +74,30 @@ inline MojoResult CreateMessagePipe(const MojoCreateMessagePipeOptions* options,
     message_pipe1->reset(handle1);
     return rv;
 }
-//
-// // A helper for writing a serialized message to a message pipe. Use this for
-// // convenience in lieu of the lower-level MojoWriteMessage API, but beware that
-// // it does incur an extra copy of the message payload.
-// //
-// // See documentation for MojoWriteMessage for return code details.
-// MOJO_CPP_SYSTEM_EXPORT MojoResult WriteMessageRaw(
-//     MessagePipeHandle message_pipe, const void* bytes, size_t num_bytes, const MojoHandle* handles, size_t num_handles, MojoWriteMessageFlags flags);
-//
-// // A helper for reading serialized messages from a pipe. Use this for
-// // convenience in lieu of the lower-level MojoReadMessage API, but beware that
-// // it does incur an extra copy of the message payload.
-// //
-// // See documentation for MojoReadMessage for return code details. In addition to
-// // those return codes, this may return |MOJO_RESULT_ABORTED| if the message was
-// // unable to be serialized into the provided containers.
-// MOJO_CPP_SYSTEM_EXPORT MojoResult ReadMessageRaw(MessagePipeHandle message_pipe, std::vector<uint8_t>* payload, std::vector<ScopedHandle>* handles, MojoReadMessageFlags flags);
-//
-// // Writes to a message pipe. Takes ownership of |message| and any attached
-// // handles.
-// inline MojoResult WriteMessageNew(MessagePipeHandle message_pipe, ScopedMessageHandle message, MojoWriteMessageFlags flags)
-// {
-//     MojoWriteMessageOptions options;
-//     options.struct_size = sizeof(options);
-//     options.flags = flags;
-//     return MojoWriteMessage(message_pipe.value(), message.release().value(), &options);
-// }
-//
-// // Reads from a message pipe. See |MojoReadMessage()| for complete
-// // documentation.
-// inline MojoResult ReadMessageNew(MessagePipeHandle message_pipe, ScopedMessageHandle* message, MojoReadMessageFlags flags)
-// {
-//     MojoReadMessageOptions options;
-//     options.struct_size = sizeof(options);
-//     options.flags = flags;
-//     MojoMessageHandle raw_message;
-//     MojoResult rv = MojoReadMessage(message_pipe.value(), &options, &raw_message);
-//     if (rv != MOJO_RESULT_OK)
-//         return rv;
-//
-//     message->reset(MessageHandle(raw_message));
-//     return MOJO_RESULT_OK;
-// }
+
+// Copying convenience wrappers around the raw message object API.
+MOJO_CPP_SYSTEM_EXPORT MojoResult WriteMessageRaw(
+    MessagePipeHandle message_pipe, const void* bytes, size_t num_bytes, const MojoHandle* handles, size_t num_handles, MojoWriteMessageFlags flags);
+MOJO_CPP_SYSTEM_EXPORT MojoResult ReadMessageRaw(
+    MessagePipeHandle message_pipe, std::vector<uint8_t>* payload, std::vector<ScopedHandle>* handles, MojoReadMessageFlags flags);
+
+inline MojoResult WriteMessageNew(MessagePipeHandle message_pipe, ScopedMessageHandle message, MojoWriteMessageFlags flags)
+{
+    const MojoWriteMessageOptions options = { sizeof(options), flags };
+    return MojoWriteMessage(message_pipe.value(), message.release().value(), &options);
+}
+
+inline MojoResult ReadMessageNew(MessagePipeHandle message_pipe, ScopedMessageHandle* message, MojoReadMessageFlags flags)
+{
+    if (!message)
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    const MojoReadMessageOptions options = { sizeof(options), flags };
+    MojoMessageHandle raw_message;
+    const MojoResult result = MojoReadMessage(message_pipe.value(), &options, &raw_message);
+    if (result == MOJO_RESULT_OK)
+        message->reset(MessageHandle(raw_message));
+    return result;
+}
 //
 // // Fuses two message pipes together at the given handles. See
 // // |MojoFuseMessagePipes()| for complete documentation.

@@ -658,8 +658,7 @@ void RegisterAbslAbortHook()
     // a public API in absl::.
     // Note: If this fails to compile because of an absl roll, this is fair to
     // remove if you file a crbug.com/new and assign it to pbos@.
-    //::absl::raw_log_internal::RegisterAbortHook(&AbslAbortHook);
-    *(int*)1 = 1;
+    ::absl::raw_log_internal::RegisterAbortHook(&AbslAbortHook);
 }
 
 ScopedLogAssertHandler::ScopedLogAssertHandler(LogAssertHandlerFunction handler)

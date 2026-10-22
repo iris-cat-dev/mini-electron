@@ -5142,8 +5142,13 @@ std::optional<BailoutReason> MaglevGraphBuildingPhase::Run(PipelineData* data, Z
 namespace v8::internal::compiler::turboshaft {
 std::optional<BailoutReason> MaglevGraphBuildingPhase::Run(PipelineData* data, Zone* temp_zone)
 {
-    *(int*)1 = 1;
-    return std::nullopt;
+    // This build has no Maglev graph builder. Report an optimization bailout;
+    // an empty optional would claim that a Turboshaft graph was constructed.
+    // Pipeline::Run still prints the graph after a bailout when tracing is on.
+    if (data->info()->trace_turbo_json() || data->info()->trace_turbo_graph()) {
+        data->InitializeGraphComponent(nullptr);
+    }
+    return BailoutReason::kGraphBuildingFailed;
 }
 }
 

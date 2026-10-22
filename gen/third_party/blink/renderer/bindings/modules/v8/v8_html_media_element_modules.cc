@@ -10,6 +10,8 @@
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_html_media_element.h"
 
+#include "base/check.h"
+
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
 #include "third_party/blink/renderer/bindings/core/v8/generated_code_helper.h"
 #include "third_party/blink/renderer/bindings/core/v8/is_return_type_compatible.h"
@@ -58,6 +60,8 @@
 #include "third_party/blink/renderer/platform/bindings/idl_member_installer.h"
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+#include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
+#include "third_party/blink/renderer/platform/bindings/wrapper_type_info.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
 namespace blink {
@@ -73,6 +77,19 @@ void V8HTMLMediaElement::Impl::Init()
 namespace {
 
 namespace v8_html_media_element {
+
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+template <typename V8Interface>
+bool HasMediaInterfaceBrand(v8::Isolate* isolate, v8::Local<v8::Value> value)
+{
+    if (!value->IsObject() || !V8DOMWrapper::IsWrapper(isolate, value.As<v8::Object>()))
+        return false;
+    const WrapperTypeInfo* type = ToWrapperTypeInfo(value.As<v8::Object>());
+    // Generated interface tags cover a contiguous range including subclasses.
+    // Check trusted metadata before any type-specific CppHeap pointer unwrap.
+    return type->this_tag >= V8Interface::kThisTag && type->this_tag <= V8Interface::kMaxSubclassTag;
+}
+#endif
 
 void ErrorAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
@@ -828,61 +845,62 @@ void WebkitVideoDecodedByteCountAttributeGetCallback(const v8::FunctionCallbackI
 
 void SinkIdAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_sinkId_Getter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.sinkId.get");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = HTMLMediaElementAudioOutputDevice::sinkId(*blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<IDLString, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, isolate, bindings::V8ReturnValue::kNonNullable);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_sinkId_Getter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.sinkId.get");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = HTMLMediaElementAudioOutputDevice::sinkId(*blink_receiver);
+    static_assert(bindings::IsReturnTypeCompatible<IDLString, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    bindings::V8SetReturnValue(info, return_value, isolate, bindings::V8ReturnValue::kNonNullable);
 }
 
 void MediaKeysAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_mediaKeys_Getter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.mediaKeys.get");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = HTMLMediaElementEncryptedMedia::mediaKeys(*blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<MediaKeys, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_mediaKeys_Getter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.mediaKeys.get");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = HTMLMediaElementEncryptedMedia::mediaKeys(*blink_receiver);
+    static_assert(bindings::IsReturnTypeCompatible<MediaKeys, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    CHECK(!return_value);
+    bindings::V8SetReturnValue(info, v8::Null(isolate));
+#else
+    bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void OnencryptedAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_onencrypted_Getter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.onencrypted.get");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = HTMLMediaElementEncryptedMedia::onencrypted(*blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<IDLEventHandler, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     bindings::V8SetReturnValue(info, return_value, isolate, blink_receiver);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_onencrypted_Getter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.onencrypted.get");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = HTMLMediaElementEncryptedMedia::onencrypted(*blink_receiver);
+    static_assert(bindings::IsReturnTypeCompatible<IDLEventHandler, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    bindings::V8SetReturnValue(info, return_value, isolate, blink_receiver);
 }
 
 void OnencryptedAttributeSetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_onencrypted_Setter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.onencrypted.set");
-// 
-//     v8::Local<v8::Value> v8_property_value = info[0];
-//     EventListener* event_handler = JSEventHandler::CreateOrNull(v8_property_value, JSEventHandler::HandlerType::kEventHandler);
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     HTMLMediaElementEncryptedMedia::setOnencrypted(*blink_receiver, event_handler);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_onencrypted_Setter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.onencrypted.set");
+
+    v8::Local<v8::Value> v8_property_value = info[0];
+    EventListener* event_handler = JSEventHandler::CreateOrNull(v8_property_value, JSEventHandler::HandlerType::kEventHandler);
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    HTMLMediaElementEncryptedMedia::setOnencrypted(*blink_receiver, event_handler);
 }
 
 void OnwaitingforkeyAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -957,101 +975,120 @@ void DisableRemotePlaybackAttributeSetCallback(const v8::FunctionCallbackInfo<v8
 
 void SrcObjectAttributeGetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_srcObject_Getter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.srcObject.get");
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_SrcObject_AttributeGetter);
-// 
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     auto&& return_value = HTMLMediaElementSrcObject::srcObject(*blink_receiver);
-//     static_assert(bindings::IsReturnTypeCompatible<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     v8::Local<v8::Value> v8_return_value = ToV8Traits<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>>::ToV8(script_state, return_value);
-//     bindings::V8SetReturnValue(info, v8_return_value);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_srcObject_Getter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.srcObject.get");
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_SrcObject_AttributeGetter);
+
+    v8::Local<v8::Object> v8_receiver = info.This();
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    auto&& return_value = HTMLMediaElementSrcObject::srcObject(*blink_receiver);
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    CHECK(!return_value);
+    bindings::V8SetReturnValue(info, v8::Null(isolate));
+#else
+    static_assert(bindings::IsReturnTypeCompatible<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    v8::Local<v8::Value> v8_return_value = ToV8Traits<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>>::ToV8(script_state, return_value);
+    bindings::V8SetReturnValue(info, v8_return_value);
+#endif
 }
 
 void SrcObjectAttributeSetCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_srcObject_Setter");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.srcObject.set");
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_SrcObject_AttributeSetter);
-// 
-//     if (info.Length() < 1) [[unlikely]] {
-//         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
-//         return;
-//     }
-// 
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     v8::Local<v8::Value> v8_property_value = info[0];
-//     ExceptionState exception_state(isolate);
-//     auto&& arg1_value = NativeValueTraits<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>>::NativeValue(isolate, v8_property_value, exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     HTMLMediaElementSrcObject::setSrcObject(*blink_receiver, arg1_value);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_srcObject_Setter");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.srcObject.set");
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_SrcObject_AttributeSetter);
+
+    if (info.Length() < 1) [[unlikely]] {
+        V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
+        return;
+    }
+
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    v8::Local<v8::Value> v8_property_value = info[0];
+    ExceptionState exception_state(isolate);
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    if (!v8_property_value->IsNullOrUndefined()) {
+        if (!HasMediaInterfaceBrand<V8MediaStream>(isolate, v8_property_value)
+            && !HasMediaInterfaceBrand<V8MediaSourceHandle>(isolate, v8_property_value)) {
+            exception_state.ThrowTypeError(ExceptionMessages::ValueNotOfType("(MediaSourceHandle or MediaStream)"));
+            return;
+        }
+        exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
+            "Media element srcObject is not supported by this build");
+        return;
+    }
+    HTMLMediaElementSrcObject::setSrcObject(*blink_receiver, nullptr, exception_state);
+#else
+    auto&& arg1_value = NativeValueTraits<IDLNullable<V8UnionMediaSourceHandleOrMediaStream>>::NativeValue(isolate, v8_property_value, exception_state);
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    HTMLMediaElementSrcObject::setSrcObject(*blink_receiver, arg1_value, exception_state);
+#endif
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
 }
 
 void AddTextTrackOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_addTextTrack");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.addTextTrack");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     if (info.Length() < 1) [[unlikely]] {
-//         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
-//         return;
-//     }
-// 
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     ExceptionState exception_state(isolate);
-//     auto&& arg1_kind = NativeValueTraits<V8TextTrackKind>::ArgumentValue(isolate, 0, info[0], exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     decltype(NativeValueTraits<IDLString>::NativeValue(
-//         std::declval<v8::Isolate*>(), std::declval<v8::Local<v8::Value>>(), std::declval<ExceptionState&>())) arg2_label;
-//     if (info[1]->IsUndefined()) {
-//         arg2_label = "";
-//     } else {
-//         arg2_label = NativeValueTraits<IDLString>::ArgumentValue(isolate, 1, info[1], exception_state);
-//         if (exception_state.HadException()) [[unlikely]] {
-//             return;
-//         }
-//     }
-//     decltype(NativeValueTraits<IDLString>::NativeValue(
-//         std::declval<v8::Isolate*>(), std::declval<v8::Local<v8::Value>>(), std::declval<ExceptionState&>())) arg3_language;
-//     if (info[2]->IsUndefined()) {
-//         arg3_language = "";
-//     } else {
-//         arg3_language = NativeValueTraits<IDLString>::ArgumentValue(isolate, 2, info[2], exception_state);
-//         if (exception_state.HadException()) [[unlikely]] {
-//             return;
-//         }
-//     }
-//     auto&& return_value = blink_receiver->addTextTrack(arg1_kind, arg2_label, arg3_language, exception_state);
-//     static_assert(bindings::IsReturnTypeCompatible<TextTrack, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_addTextTrack");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.addTextTrack");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    if (info.Length() < 1) [[unlikely]] {
+        V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
+        return;
+    }
+
+    v8::Local<v8::Object> v8_receiver = info.This();
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    ExceptionState exception_state(isolate);
+    auto&& arg1_kind = NativeValueTraits<V8TextTrackKind>::ArgumentValue(isolate, 0, info[0], exception_state);
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    decltype(NativeValueTraits<IDLString>::NativeValue(
+        std::declval<v8::Isolate*>(), std::declval<v8::Local<v8::Value>>(), std::declval<ExceptionState&>())) arg2_label;
+    if (info[1]->IsUndefined()) {
+        arg2_label = "";
+    } else {
+        arg2_label = NativeValueTraits<IDLString>::ArgumentValue(isolate, 1, info[1], exception_state);
+        if (exception_state.HadException()) [[unlikely]] {
+            return;
+        }
+    }
+    decltype(NativeValueTraits<IDLString>::NativeValue(
+        std::declval<v8::Isolate*>(), std::declval<v8::Local<v8::Value>>(), std::declval<ExceptionState&>())) arg3_language;
+    if (info[2]->IsUndefined()) {
+        arg3_language = "";
+    } else {
+        arg3_language = NativeValueTraits<IDLString>::ArgumentValue(isolate, 2, info[2], exception_state);
+        if (exception_state.HadException()) [[unlikely]] {
+            return;
+        }
+    }
+    auto&& return_value = blink_receiver->addTextTrack(arg1_kind, arg2_label, arg3_language, exception_state);
+    static_assert(bindings::IsReturnTypeCompatible<TextTrack, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    bindings::V8SetReturnValue(info, return_value, blink_receiver);
 }
 
 void CanPlayTypeOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -1094,29 +1131,34 @@ void CanPlayTypeOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& inf
 
 void CaptureStreamOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_captureStream");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.captureStream");
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_CaptureStream_Method);
-// 
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     ExceptionState exception_state(isolate);
-//     auto&& return_value = HTMLMediaElementCapture::captureStream(script_state, *blink_receiver, exception_state);
-//     static_assert(bindings::IsReturnTypeCompatible<MediaStream, std::remove_cvref_t<decltype(return_value)>>,
-//         "Return type from native call is incompatible to the type specified in IDL");
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_captureStream");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.captureStream");
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kV8HTMLMediaElement_CaptureStream_Method);
+
+    v8::Local<v8::Object> v8_receiver = info.This();
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    ExceptionState exception_state(isolate);
+    auto&& return_value = HTMLMediaElementCapture::captureStream(script_state, *blink_receiver, exception_state);
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    CHECK(!return_value);
+    CHECK(exception_state.HadException());
+    return;
+#else
+    static_assert(bindings::IsReturnTypeCompatible<MediaStream, std::remove_cvref_t<decltype(return_value)>>,
+        "Return type from native call is incompatible to the type specified in IDL");
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void LoadOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -1164,81 +1206,91 @@ void PlayOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
 void SetMediaKeysOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_setMediaKeys");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.setMediaKeys");
-//     // Promise returning function: Convert a TypeError to a reject promise.
-//     ExceptionToRejectPromiseScope reject_promise_scope(info);
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     if (!V8HTMLMediaElement::HasInstance(isolate, v8_receiver)) {
-//         V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
-//         return;
-//     }
-// 
-//     if (info.Length() < 1) [[unlikely]] {
-//         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
-//         return;
-//     }
-// 
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
-//     const char* const class_like_name = "HTMLMediaElement";
-//     const char* const property_name = "setMediaKeys";
-//     ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
-//     auto&& arg1_media_keys = NativeValueTraits<IDLNullable<MediaKeys>>::ArgumentValue(isolate, 0, info[0], exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     ScriptPromise<IDLUndefined> return_value = HTMLMediaElementEncryptedMedia::setMediaKeys(script_state, *blink_receiver, arg1_media_keys, exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     bindings::V8SetReturnValue(info, return_value);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_setMediaKeys");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.setMediaKeys");
+    // Promise returning function: Convert a TypeError to a reject promise.
+    ExceptionToRejectPromiseScope reject_promise_scope(info);
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    if (!V8HTMLMediaElement::HasInstance(isolate, v8_receiver)) {
+        V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
+        return;
+    }
+
+    if (info.Length() < 1) [[unlikely]] {
+        V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
+        return;
+    }
+
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
+    const char* const class_like_name = "HTMLMediaElement";
+    const char* const property_name = "setMediaKeys";
+    ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
+#if defined(MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE)
+    MediaKeys* arg1_media_keys = nullptr;
+    if (!info[0]->IsNullOrUndefined()) {
+        if (HasMediaInterfaceBrand<V8MediaKeys>(isolate, info[0]))
+            arg1_media_keys = V8MediaKeys::ToWrappableUnsafe(isolate, info[0].As<v8::Object>());
+        if (!arg1_media_keys) {
+            exception_state.ThrowTypeError(ExceptionMessages::ArgumentNotOfType(0, "MediaKeys"));
+            return;
+        }
+    }
+#else
+    auto&& arg1_media_keys = NativeValueTraits<IDLNullable<MediaKeys>>::ArgumentValue(isolate, 0, info[0], exception_state);
+#endif
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    ScriptPromise<IDLUndefined> return_value = HTMLMediaElementEncryptedMedia::setMediaKeys(script_state, *blink_receiver, arg1_media_keys, exception_state);
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    bindings::V8SetReturnValue(info, return_value);
 }
 
 void SetSinkIdOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    *(int*)1 = 1;
-//     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_setSinkId");
-//     BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.setSinkId");
-//     // Promise returning function: Convert a TypeError to a reject promise.
-//     ExceptionToRejectPromiseScope reject_promise_scope(info);
-// 
-//     v8::Isolate* isolate = info.GetIsolate();
-//     v8::Local<v8::Object> v8_receiver = info.This();
-//     if (!V8HTMLMediaElement::HasInstance(isolate, v8_receiver)) {
-//         V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
-//         return;
-//     }
-// 
-//     v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-//     ScriptState* current_script_state = ScriptState::From(isolate, current_context);
-//     ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
-//     // [Measure], [MeasureAs]
-//     UseCounter::Count(current_execution_context, WebFeature::kHTMLMediaElementSetSinkId);
-// 
-//     if (info.Length() < 1) [[unlikely]] {
-//         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
-//         return;
-//     }
-// 
-//     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
-//     ScriptState* script_state = receiver_script_state;
-//     HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
-//     const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
-//     const char* const class_like_name = "HTMLMediaElement";
-//     const char* const property_name = "setSinkId";
-//     ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
-//     auto&& arg1_sink_id = NativeValueTraits<IDLString>::ArgumentValue(isolate, 0, info[0], exception_state);
-//     if (exception_state.HadException()) [[unlikely]] {
-//         return;
-//     }
-//     ScriptPromise<IDLUndefined> return_value = HTMLMediaElementAudioOutputDevice::setSinkId(script_state, *blink_receiver, arg1_sink_id);
-//     bindings::V8SetReturnValue(info, return_value);
+    RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_HTMLMediaElement_setSinkId");
+    BLINK_BINDINGS_TRACE_EVENT("HTMLMediaElement.setSinkId");
+    // Promise returning function: Convert a TypeError to a reject promise.
+    ExceptionToRejectPromiseScope reject_promise_scope(info);
+
+    v8::Isolate* isolate = info.GetIsolate();
+    v8::Local<v8::Object> v8_receiver = info.This();
+    if (!V8HTMLMediaElement::HasInstance(isolate, v8_receiver)) {
+        V8ThrowException::ThrowTypeError(isolate, "Illegal invocation");
+        return;
+    }
+
+    v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
+    ScriptState* current_script_state = ScriptState::From(isolate, current_context);
+    ExecutionContext* current_execution_context = ToExecutionContext(current_script_state);
+    // [Measure], [MeasureAs]
+    UseCounter::Count(current_execution_context, WebFeature::kHTMLMediaElementSetSinkId);
+
+    if (info.Length() < 1) [[unlikely]] {
+        V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
+        return;
+    }
+
+    ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
+    ScriptState* script_state = receiver_script_state;
+    HTMLMediaElement* blink_receiver = V8HTMLMediaElement::ToWrappableUnsafe(isolate, v8_receiver);
+    const v8::ExceptionContext exception_context_type = v8::ExceptionContext::kOperation;
+    const char* const class_like_name = "HTMLMediaElement";
+    const char* const property_name = "setSinkId";
+    ExceptionState exception_state(isolate, exception_context_type, class_like_name, property_name);
+    auto&& arg1_sink_id = NativeValueTraits<IDLString>::ArgumentValue(isolate, 0, info[0], exception_state);
+    if (exception_state.HadException()) [[unlikely]] {
+        return;
+    }
+    ScriptPromise<IDLUndefined> return_value = HTMLMediaElementAudioOutputDevice::setSinkId(script_state, *blink_receiver, arg1_sink_id);
+    bindings::V8SetReturnValue(info, return_value);
 }
 
 } // namespace v8_html_media_element

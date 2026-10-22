@@ -31,6 +31,7 @@
 
 namespace blink {
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 // This class allows MediaKeys to be set asynchronously.
 class SetMediaKeysHandler : public GarbageCollected<SetMediaKeysHandler> {
 public:
@@ -304,6 +305,7 @@ void SetMediaKeysHandler::Trace(Visitor* visitor) const
     visitor->Trace(new_media_keys_);
     visitor->Trace(timer_);
 }
+#endif
 
 // static
 const char HTMLMediaElementEncryptedMedia::kSupplementName[] = "HTMLMediaElementEncryptedMedia";
@@ -355,12 +357,20 @@ ScriptPromise<IDLUndefined> HTMLMediaElementEncryptedMedia::setMediaKeys(
     //    return a resolved promise.
     if (this_element.media_keys_ == media_keys)
         return ToResolvedUndefinedPromise(script_state);
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    // This embedder has neither a CDM factory nor a media player. Keep the
+    // attachment-state checks and null/identical no-op above, but never claim
+    // that a new CDM was attached without a backend that can use it.
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError, "Encrypted media playback is not supported by this build");
+    return EmptyPromise();
+#else
 
     // 3. Let this object's attaching media keys value be true.
     this_element.is_attaching_media_keys_ = true;
 
     // 4. Let promise be a new promise. Remaining steps done in handler.
     return SetMediaKeysHandler::Create(script_state, element, media_keys, exception_state.GetContext());
+#endif
 }
 
 // Create a MediaEncryptedEvent for WD EME.

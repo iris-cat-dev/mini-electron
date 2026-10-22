@@ -17,6 +17,7 @@
 #include "base/task/sequence_manager/task_queue_impl.h"
 #include "base/task/sequence_manager/time_domain.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/tracing_buildflags.h"
 #include "net/base/request_priority.h"
 #include "third_party/blink/renderer/platform/scheduler/common/blink_scheduler_single_thread_task_runner.h"
 #include "third_party/blink/renderer/platform/scheduler/common/task_priority.h"
@@ -486,7 +487,9 @@ public:
 
     void OnTaskCompleted(const base::sequence_manager::Task& task, TaskQueue::TaskTiming* task_timing, base::LazyNow* lazy_now);
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     void LogTaskExecution(perfetto::EventContext& ctx, const base::sequence_manager::Task& task);
+#endif
 
     void SetOnIPCTaskPosted(base::RepeatingCallback<void(const base::sequence_manager::Task&)> on_ipc_task_posted_callback);
     void DetachOnIPCTaskPostedWhileInBackForwardCache();

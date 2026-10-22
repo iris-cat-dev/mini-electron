@@ -6,73 +6,51 @@
 
 #include <cstring>
 
-#include "base/numerics/safe_math.h"
+#include <limits>
 
 namespace mojo {
 
 MojoResult WriteMessageRaw(
     MessagePipeHandle message_pipe, const void* bytes, size_t num_bytes, const MojoHandle* handles, size_t num_handles, MojoWriteMessageFlags flags)
 {
-    ScopedMessageHandle message_handle;
-    MojoResult rv = CreateMessage(&message_handle, MOJO_CREATE_MESSAGE_FLAG_NONE);
-    DCHECK_EQ(MOJO_RESULT_OK, rv);
-
-    MojoAppendMessageDataOptions append_options;
-    append_options.struct_size = sizeof(append_options);
-    append_options.flags = MOJO_APPEND_MESSAGE_DATA_FLAG_COMMIT_SIZE;
-    void* buffer;
-    uint32_t buffer_size;
-    rv = MojoAppendMessageData(message_handle->value(), base::checked_cast<uint32_t>(num_bytes), handles, base::checked_cast<uint32_t>(num_handles),
-        &append_options, &buffer, &buffer_size);
-    if (rv != MOJO_RESULT_OK)
-        return MOJO_RESULT_ABORTED;
-
-    DCHECK(buffer);
-    DCHECK_GE(buffer_size, base::checked_cast<uint32_t>(num_bytes));
-    memcpy(buffer, bytes, num_bytes);
-
-    MojoWriteMessageOptions write_options;
-    write_options.struct_size = sizeof(write_options);
-    write_options.flags = flags;
-    return MojoWriteMessage(message_pipe.value(), message_handle.release().value(), &write_options);
+    if ((num_bytes && !bytes) || (num_handles && !handles))
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    if (num_bytes > std::numeric_limits<uint32_t>::max() || num_handles > std::numeric_limits<uint32_t>::max())
+        return MOJO_RESULT_RESOURCE_EXHAUSTED;
+    ScopedMessageHandle message;
+    MojoResult result = CreateMessage(&message, MOJO_CREATE_MESSAGE_FLAG_NONE);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    const MojoAppendMessageDataOptions options = { sizeof(options), MOJO_APPEND_MESSAGE_DATA_FLAG_COMMIT_SIZE };
+    void* buffer = nullptr;
+    result = MojoAppendMessageData(message->value(), static_cast<uint32_t>(num_bytes), handles, static_cast<uint32_t>(num_handles), &options, &buffer, nullptr);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    if (num_bytes)
+        memcpy(buffer, bytes, num_bytes);
+    return WriteMessageNew(message_pipe, std::move(message), flags);
 }
 
 MojoResult ReadMessageRaw(MessagePipeHandle message_pipe, std::vector<uint8_t>* payload, std::vector<ScopedHandle>* handles, MojoReadMessageFlags flags)
 {
-    ScopedMessageHandle message_handle;
-    MojoResult rv = ReadMessageNew(message_pipe, &message_handle, flags);
-    if (rv != MOJO_RESULT_OK)
-        return rv;
-
-    rv = MojoSerializeMessage(message_handle->value(), nullptr);
-    if (rv != MOJO_RESULT_OK && rv != MOJO_RESULT_FAILED_PRECONDITION)
+    ScopedMessageHandle message;
+    MojoResult result = ReadMessageNew(message_pipe, &message, flags);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    result = MojoSerializeMessage(message->value(), nullptr);
+    if (result != MOJO_RESULT_OK && result != MOJO_RESULT_FAILED_PRECONDITION)
         return MOJO_RESULT_ABORTED;
-
     void* buffer = nullptr;
     uint32_t num_bytes = 0;
-    uint32_t num_handles = 0;
-    rv = MojoGetMessageData(message_handle->value(), nullptr, &buffer, &num_bytes, nullptr, &num_handles);
-    if (rv == MOJO_RESULT_RESOURCE_EXHAUSTED) {
-        DCHECK(handles);
-        handles->resize(num_handles);
-        rv = MojoGetMessageData(message_handle->value(), nullptr, &buffer, &num_bytes, reinterpret_cast<MojoHandle*>(handles->data()), &num_handles);
-    }
-
-    if (num_bytes) {
-        DCHECK(buffer);
-        uint8_t* payload_data = reinterpret_cast<uint8_t*>(buffer);
+    std::vector<ScopedHandle> discarded_handles;
+    result = GetMessageData(message.get(), &buffer, &num_bytes, handles ? handles : &discarded_handles, MOJO_GET_MESSAGE_DATA_FLAG_NONE);
+    if (result != MOJO_RESULT_OK)
+        return result;
+    if (payload) {
         payload->resize(num_bytes);
-        std::copy(payload_data, payload_data + num_bytes, payload->begin());
-    } else if (payload) {
-        payload->clear();
+        if (num_bytes)
+            memcpy(payload->data(), buffer, num_bytes);
     }
-
-    if (handles && !num_handles)
-        handles->clear();
-
-    if (rv != MOJO_RESULT_OK)
-        return MOJO_RESULT_ABORTED;
-
     return MOJO_RESULT_OK;
 }
 

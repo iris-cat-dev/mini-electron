@@ -394,10 +394,8 @@ bool IsHostnameNonUnique(const std::string& hostname)
     // is updated. However, because gTLDs are expected to provide significant
     // advance notice to deprecate older versions of this code, this an
     // acceptable tradeoff.
-    *(int*)1 = 1;
-    return false;
-    //     return !registry_controlled_domains::HostHasRegistryControlledDomain(
-    //         canonical_name, registry_controlled_domains::EXCLUDE_UNKNOWN_REGISTRIES, registry_controlled_domains::EXCLUDE_PRIVATE_REGISTRIES);
+    return !registry_controlled_domains::HostHasRegistryControlledDomain(
+        canonical_name, registry_controlled_domains::EXCLUDE_UNKNOWN_REGISTRIES, registry_controlled_domains::EXCLUDE_PRIVATE_REGISTRIES);
 }
 
 bool IsLocalhost(const GURL& url)
@@ -492,6 +490,20 @@ bool IsLocalHostname(base::StringPiece host)
         normalized_host.resize(normalized_host.size() - 1);
 
     return normalized_host == "localhost" || IsNormalizedLocalhostTLD(normalized_host);
+}
+
+std::string UnescapePercentEncodedUrl(std::string_view input)
+{
+    std::string result(input);
+    // application/x-www-form-urlencoded replaces '+' before percent decoding.
+    for (char& c : result) {
+        if (c == '+')
+            c = ' ';
+    }
+    // Decode malformed UTF-8 with replacement, without stripping a BOM.
+    url::RawCanonOutputT<char16_t> canon_output;
+    url::DecodeURLEscapeSequences(result, url::DecodeURLMode::kUTF8, &canon_output);
+    return base::UTF16ToUTF8(canon_output.view());
 }
 
 } // namespace net

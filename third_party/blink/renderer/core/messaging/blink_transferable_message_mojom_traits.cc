@@ -13,12 +13,6 @@
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image_transform.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
-bool mojo::UnionTraits<class blink::mojom::SerializedStaticBitmapImageDataView, mojo::StructPtr<blink::mojom::blink::SerializedStaticBitmapImage>>::Read(
-    blink::mojom::SerializedStaticBitmapImageDataView, mojo::StructPtr<blink::mojom::blink::SerializedStaticBitmapImage>*)
-{
-    *(int*)1 = 1;
-    return false;
-}
 
 namespace mojo {
 

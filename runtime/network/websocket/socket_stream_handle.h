@@ -39,10 +39,6 @@
 #include "third_party/libcurl/include/curl/curl.h"
 //#include "third_party/Tongsuo/curl/include/curl/curl.h"
 
-namespace blink {
-class AuthenticationChallenge;
-class Credential;
-}
 
 namespace mini_electron {
 
@@ -86,14 +82,6 @@ private:
     void didOpenSocket();
 
     static char* createCopy(const char* data, int length);
-
-    // No authentication for streams per se, but proxy may ask for credentials.
-    void didReceiveAuthenticationChallenge(const blink::AuthenticationChallenge&);
-    void receivedCredential(const blink::AuthenticationChallenge&, const blink::Credential&);
-    void receivedRequestToContinueWithoutCredential(const blink::AuthenticationChallenge&);
-    void receivedCancellation(const blink::AuthenticationChallenge&);
-    void receivedRequestToPerformDefaultHandling(const blink::AuthenticationChallenge&);
-    void receivedChallengeRejection(const blink::AuthenticationChallenge&);
 
     struct SocketData {
         SocketData(char* source, int length)

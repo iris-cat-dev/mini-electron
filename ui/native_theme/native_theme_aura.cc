@@ -35,10 +35,6 @@
 
 namespace ui {
 
-NativeThemeFluent* NativeThemeFluent::web_instance()
-{
-    *(int*)1 = 1;
-}
 
 namespace {
 

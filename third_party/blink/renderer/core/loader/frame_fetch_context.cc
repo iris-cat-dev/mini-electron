@@ -305,21 +305,25 @@ scoped_refptr<const SecurityOrigin> FrameFetchContext::GetTopFrameOrigin() const
 
 const Vector<KURL>& FrameFetchContext::GetPotentiallyUnusedPreloads() const
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (LocalFrame* frame = GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             return lcpp->unused_preloads();
         }
     }
+#endif
     return empty_unused_preloads_;
 }
 
 void FrameFetchContext::AddLcpPredictedCallback(base::OnceClosure callback)
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (LocalFrame* frame = FrameFetchContext::GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             lcpp->AddLCPPredictedCallback(std::move(callback));
         }
     }
+#endif
 }
 
 SubresourceFilter* FrameFetchContext::GetSubresourceFilter() const
@@ -746,6 +750,9 @@ bool FrameFetchContext::IsPrerendering() const
 
 bool FrameFetchContext::DoesLCPPHaveAnyHintData()
 {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    return false;
+#else
     if (GetResourceFetcherProperties().IsDetached()) {
         return false;
     }
@@ -755,10 +762,14 @@ bool FrameFetchContext::DoesLCPPHaveAnyHintData()
         return false;
     }
     return lcpp->HasAnyHintData();
+#endif
 }
 
 bool FrameFetchContext::DoesLCPPHaveLcpElementLocatorHintData()
 {
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    return false;
+#else
     if (GetResourceFetcherProperties().IsDetached()) {
         return false;
     }
@@ -768,6 +779,7 @@ bool FrameFetchContext::DoesLCPPHaveLcpElementLocatorHintData()
         return false;
     }
     return !lcpp->lcp_element_locators().empty();
+#endif
 }
 
 void FrameFetchContext::SetFirstPartyCookie(ResourceRequest& request)

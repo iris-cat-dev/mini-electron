@@ -76,13 +76,15 @@
 #include "base/base_paths_mac.h"
 #include "base/files/file_util.h"
 #include "base/path_service.h"
+#include "base/run_loop.h"
+#include <atomic>
 #include "url/gurl.h"
 #include "net/base/net_errors.h"
+#include <deque>
 #include <errno.h>
 #include <stdio.h>
 
 
-extern "C" MojoResult MojoMakeDelayCloseFlag(MojoHandle handle);
 extern "C" MojoResult MojoSetDebugMojoHandleStr(MojoHandle handle, const std::string& str);
 
 namespace mini_electron {
@@ -390,6 +392,155 @@ void WebURLLoaderManager::handleDidSentData(WebURLLoaderInternal* job, unsigned 
     client->DidSendData(bytesSent, totalBytesToBeSent);
 }
 
+namespace {
+constexpr size_t kResponseBufferLimit = 64 * 1024;
+
+void resumeResponseOnIoThread(int jobId)
+{
+    AutoLockJob lock(WebURLLoaderManager::sharedInstance(), jobId);
+    auto* job = lock.lock();
+    if (!job || job->isCancelled() || !job->m_handle)
+        return;
+    int pause = job->m_frozen ? CURLPAUSE_ALL : CURLPAUSE_CONT;
+    if (job->m_bodyPaused || job->m_responseBufferedBytes.load() >= kResponseBufferLimit)
+        pause |= CURLPAUSE_RECV;
+    if (job->m_formDataStream && job->m_formDataStream->isWaitingForData())
+        pause |= CURLPAUSE_SEND;
+    curl_easy_pause(job->m_handle, pause);
+}
+}
+
+// Lives on the response/client sequence. Only bytes which did not fit in the
+// bounded Mojo pipe are copied. Curl stops queuing chunks at the high-water mark.
+class ResponseBodyWriter {
+public:
+    explicit ResponseBodyWriter(WebURLLoaderInternal* job)
+        : m_job(job), m_watcher(FROM_HERE, mojo::SimpleWatcher::ArmingPolicy::MANUAL)
+    {
+        m_watchResult = m_watcher.Watch(mojo::Handle(job->m_dataPipeProducerHandle), MOJO_HANDLE_SIGNAL_WRITABLE,
+            base::BindRepeating(&ResponseBodyWriter::onWritable, base::Unretained(this)));
+    }
+
+    void append(const char* data, size_t size)
+    {
+        if (m_failed || !size)
+            return;
+        if (m_watchResult != MOJO_RESULT_OK) {
+            fail();
+            return;
+        }
+        size_t written = m_pending.empty() ? write(data, size) : 0;
+        if (m_failed)
+            return;
+        if (written != size) {
+            m_pending.emplace_back(data + written, data + size);
+            m_job->m_responseFlushPending = true;
+            m_watcher.ArmOrNotify();
+        }
+    }
+
+    void deferFinish(int64_t finishTime, int64_t totalLength)
+    {
+        m_finishPending = true;
+        m_finishTime = finishTime;
+        m_totalLength = totalLength;
+    }
+
+    void abort()
+    {
+        m_failed = true;
+        m_watcher.Cancel();
+        m_pending.clear();
+        m_job->m_responseFlushPending = false;
+    }
+
+private:
+    void fail()
+    {
+        abort();
+        auto* manager = WebURLLoaderManager::sharedInstance();
+        scheduleRelease();
+        if (m_job->client())
+            manager->handleDidFail(m_job, blink::WebURLError(net::ERR_ABORTED, blink::KURL(m_job->firstRequest()->url)));
+        manager->doCancel(m_job, kNormalCancelled);
+    }
+
+    void scheduleRelease()
+    {
+        if (m_job->m_responseReleasePending) {
+            m_job->m_responseReleasePending = false;
+            m_job->m_taskRunner->PostTask(FROM_HERE,
+                base::BindOnce(&WebURLLoaderInternal::release, m_job->m_id));
+        }
+    }
+
+    size_t write(const char* data, size_t size)
+    {
+        size_t offset = 0;
+        while (offset < size) {
+            uint32_t count = static_cast<uint32_t>(
+                std::min<size_t>(size - offset, std::numeric_limits<uint32_t>::max()));
+            MojoResult result = MojoWriteData(m_job->m_dataPipeProducerHandle, data + offset, &count, nullptr);
+            if (result == MOJO_RESULT_SHOULD_WAIT)
+                break;
+            if (result != MOJO_RESULT_OK || !count) {
+                fail();
+                return offset;
+            }
+            offset += count;
+            // Hook responses have no queued curl chunks. Ordinary responses
+            // release exactly the bytes accepted by Mojo, including partial writes.
+            size_t accounted = std::min<size_t>(count, m_job->m_responseBufferedBytes.load());
+            m_job->m_responseBufferedBytes.fetch_sub(accounted);
+        }
+        if (offset) {
+            m_job->m_ioThread->task_runner()->PostTask(FROM_HERE,
+                base::BindOnce(&resumeResponseOnIoThread, m_job->m_id));
+        }
+        return offset;
+    }
+
+    void onWritable(MojoResult)
+    {
+        AutoLockJob lock(WebURLLoaderManager::sharedInstance(), m_job->m_id);
+        auto* job = lock.lock();
+        if (!job || job->isCancelled()) {
+            abort();
+            scheduleRelease();
+            return;
+        }
+        while (!m_pending.empty()) {
+            auto& data = m_pending.front();
+            size_t written = write(data.data() + m_offset, data.size() - m_offset);
+            if (m_failed)
+                return;
+            m_offset += written;
+            if (m_offset != data.size()) {
+                m_watcher.ArmOrNotify();
+                return;
+            }
+            m_pending.pop_front();
+            m_offset = 0;
+        }
+        job->m_responseFlushPending = false;
+        scheduleRelease();
+        if (m_finishPending) {
+            m_finishPending = false;
+            WebURLLoaderManager::sharedInstance()->handleDidFinishLoading(job, m_finishTime, m_totalLength);
+        }
+    }
+
+    WebURLLoaderInternal* m_job;
+    mojo::SimpleWatcher m_watcher;
+    MojoResult m_watchResult = MOJO_RESULT_UNKNOWN;
+    std::deque<std::vector<char>> m_pending;
+    size_t m_offset = 0;
+    bool m_failed = false;
+    bool m_finishPending = false;
+    int64_t m_finishTime = 0;
+    int64_t m_totalLength = 0;
+};
+
 static void startLoadingResponseBody(WebURLLoaderInternal* job)
 {
     const blink::WebURLResponse& response = job->m_response;
@@ -401,11 +552,18 @@ static void startLoadingResponseBody(WebURLLoaderInternal* job)
     }
 
     if (0 == job->m_dataPipeProducerHandle) {
-        MojoHandle dataPipeConsumerHandle;
-        MojoCreateDataPipeOptions createDataOptions;
+        MojoHandle dataPipeConsumerHandle = MOJO_HANDLE_INVALID;
+        MojoCreateDataPipeOptions createDataOptions = {};
+        createDataOptions.struct_size = sizeof(createDataOptions);
+        createDataOptions.flags = MOJO_CREATE_DATA_PIPE_FLAG_NONE;
         createDataOptions.element_num_bytes = 1;
-        createDataOptions.capacity_num_bytes = -1;
-        MojoCreateDataPipe(&createDataOptions, &job->m_dataPipeProducerHandle, &dataPipeConsumerHandle);
+        createDataOptions.capacity_num_bytes = kResponseBufferLimit;
+        if (MojoCreateDataPipe(&createDataOptions, &job->m_dataPipeProducerHandle, &dataPipeConsumerHandle) != MOJO_RESULT_OK) {
+            auto* manager = WebURLLoaderManager::sharedInstance();
+            manager->handleDidFail(job, blink::WebURLError(net::ERR_INSUFFICIENT_RESOURCES, blink::KURL(job->firstRequest()->url)));
+            manager->doCancel(job, kNormalCancelled);
+            return;
+        }
         MojoSetDebugMojoHandleStr(job->m_dataPipeProducerHandle, "startLoadingResponseBody");
 
         mojo::DataPipeConsumerHandle dataPipeConsumer(dataPipeConsumerHandle);
@@ -422,22 +580,20 @@ static void startLoadingResponseBody(WebURLLoaderInternal* job)
 
 void WebURLLoaderManager::handlReceiveData(WebURLLoaderInternal* job, const char* data, int dataLength, int encodedDataLength)
 {
-    blink::URLLoaderClient* client = job->client();
-    uint32_t numBytes = (uint32_t)dataLength;
-
-    if (0 == job->m_dataPipeProducerHandle) {
-        if (job->m_isSynchronous) {
-            client->DidReceiveDataForTesting(base::span<const char>(data, (size_t)dataLength));
-            //CurlCacheManager::getInstance()->didReceiveData(*job, data, dataLength);
-        } else {
-            //startLoadingResponseBody(job, data, dataLength);
-        }
-    } else {
-        MojoWriteData(job->m_dataPipeProducerHandle, data, &numBytes, /*const MojoWriteDataOptions**/ nullptr);
+    if (!job->client() || job->isCancelled() || dataLength <= 0)
+        return;
+    if (job->m_isSynchronous) {
+        job->client()->DidReceiveDataForTesting(base::span<const char>(data, static_cast<size_t>(dataLength)));
+        return;
     }
-
-    //client->DidReceiveData(data, dataLength);
-    //CurlCacheManager::getInstance()->didReceiveData(*job, data, dataLength);
+    if (!job->m_dataPipeProducerHandle) {
+        handleDidFail(job, blink::WebURLError(net::ERR_FAILED, blink::KURL(job->firstRequest()->url)));
+        doCancel(job, kNormalCancelled);
+        return;
+    }
+    if (!job->m_responseWriter)
+        job->m_responseWriter = std::make_unique<ResponseBodyWriter>(job);
+    job->m_responseWriter->append(data, static_cast<size_t>(dataLength));
 }
 
 void WebURLLoaderManager::didReceiveDataOrDownload(WebURLLoaderInternal* job, const char* data, int dataLength, int encodedDataLength)
@@ -470,62 +626,34 @@ String WebURLLoaderManager::handleHeaderForBlobOnMainThread(WebURLLoaderInternal
 }
 
 
-// 之所以要搞个异步的，是因为hook url的逻辑下，
-// W:\mycode\mb108\third_party\blink\renderer\bindings\core\v8\script_streamer.cc
-// 会触发ResourceScriptStreamer::OnDataPipeReadable的断言。因为这里收到arm的回调，但BeginReadData却因MojoClose断开导致MOJO_RESULT_FAILED_PRECONDITION
-void asynMojoClose(MojoHandle handle)
+static void closeResponseBody(MojoHandle handle)
 {
-    //     WebURLLoaderManager::sharedInstance()->getMainRunner()->PostDelayedTask(FROM_HERE, base::BindOnce([](MojoHandle handle) {
-    //         ::MojoClose(handle);
-    //     }, handle), base::Seconds(3));
-
-    //     WebURLLoaderManager::sharedInstance()->getMainRunner()->PostTask(FROM_HERE, base::BindOnce([](MojoHandle handle) {
-    //         ::MojoClose(handle);
-    //     }, handle));
-
-    ::MojoMakeDelayCloseFlag(handle);
+    // Mojo keeps buffered bytes readable after the producer is closed.
+    if (handle != MOJO_HANDLE_INVALID)
+        MojoClose(handle);
 }
 
 void WebURLLoaderManager::handleDidFinishLoading(WebURLLoaderInternal* job, int64_t finishTime, int64_t totalEncodedDataLength)
 {
-    //     if (job->m_bodyStreamWriter) {
-    //         delete job->m_bodyStreamWriter;
-    //         job->m_bodyStreamWriter = nullptr;
-    //     }
-
-    GURL url = job->firstRequest()->url;
+    if (!job->client() || job->isCancelled())
+        return;
     if (WebURLLoaderInternal::kCacheForDownloadYes != job->m_cacheForDownloadOpt) {
-        // mb108好像不能在这调用。didsenddata是表示上传数据的
-        // handleDidSentData(job, job->m_totalBytesToBeSent, job->m_totalBytesToBeSent);
-
-        if (0 == job->m_dataPipeProducerHandle && !job->m_isSynchronous) {
-            DebugBreak(); // 按理不会出现没读取response就finish的情况
-            CHECK(!job->responseFired());            
-            job->m_response.SetExpectedContentLength(0);
-            job->m_response.SetCurrentRequestUrl(blink::KURL(url));
-            job->m_response.SetHttpStatusCode(200);
-            startLoadingResponseBody(job); // 必须搞个假的，不然FetchManager::Loader::DidFinishLoading会断言错误
+        // Empty responses still carry the parsed status and headers.
+        if (!job->responseFired())
+            handleDidReceiveResponse(job);
+        if (!job->client() || job->isCancelled())
+            return;
+        if (job->m_responseFlushPending) {
+            job->m_responseWriter->deferFinish(finishTime, totalEncodedDataLength);
+            return;
         }
-
-        if (!job->isCancelled()) {
-            job->client()->DidFinishLoading(
-                base::TimeTicks::Now(), totalEncodedDataLength, totalEncodedDataLength, totalEncodedDataLength);
-            job->resetClient();
-        }
-        asynMojoClose(job->m_dataPipeProducerHandle);
-        job->m_dataPipeProducerHandle = 0;
-//         } else {
-//             blink::WebURLError error(-3, blink::KURL(String(job->m_url)));
-//             job->client()->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
-//         }
-    } else {
-        if (!job->isCancelled()) {
-            job->client()->DidFinishLoading(
-                base::TimeTicks::Now(), totalEncodedDataLength, totalEncodedDataLength, totalEncodedDataLength);
-            job->resetClient();
-        }
-        CHECK(0 == job->m_dataPipeProducerHandle);
     }
+    closeResponseBody(job->m_dataPipeProducerHandle);
+    job->m_dataPipeProducerHandle = MOJO_HANDLE_INVALID;
+    auto* client = job->client();
+    job->resetClient();
+    client->DidFinishLoading(base::TimeTicks::Now(), totalEncodedDataLength,
+        totalEncodedDataLength, totalEncodedDataLength);
 }
 
 static void handleExternalProtocol(const GURL& url)
@@ -546,20 +674,21 @@ static void handleExternalProtocol(const GURL& url)
 
 void WebURLLoaderManager::handleDidFail(WebURLLoaderInternal* job, const blink::WebURLError& error)
 {
+    // A failed transfer must not leave writable-watch callbacks or stale
+    // buffered bytes alive until a later completion task.
+    if (job->m_responseWriter)
+        job->m_responseWriter->abort();
+    if (!job->client())
+        return;
     GURL url = job->firstRequest()->url;
 
     handleExternalProtocol(url);
 
-    if (WebURLLoaderInternal::kCacheForDownloadYes != job->m_cacheForDownloadOpt) {
-        job->client()->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
-        job->resetClient();
-        asynMojoClose(job->m_dataPipeProducerHandle);
-        job->m_dataPipeProducerHandle = 0;
-    } else {
-        job->client()->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
-        job->resetClient();
-        CHECK(0 == job->m_dataPipeProducerHandle);
-    }
+    auto* client = job->client();
+    job->resetClient();
+    closeResponseBody(job->m_dataPipeProducerHandle);
+    job->m_dataPipeProducerHandle = MOJO_HANDLE_INVALID;
+    client->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
 
 }
 
@@ -596,6 +725,7 @@ void WebURLLoaderManager::handleDidReceiveResponse(WebURLLoaderInternal* job)
 //             } else
 //                 startLoadingResponseBody(job, data, dataLength);
 //         }
+        job->setResponseFired(true);
         startLoadingResponseBody(job);
     }
 }
@@ -615,11 +745,17 @@ static size_t writeCallbackOnIoThread(void* ptr, size_t size, size_t nmemb, void
     WebURLLoaderInternal* job = autoLockJob.lock();
     if (!job || job->isCancelled())
         return 0;
+    if (job->m_bodyPaused || job->m_frozen)
+        return CURL_WRITEFUNC_PAUSE;
 
     // We should never be called when deferred loading is activated.
     DCHECK(!job->m_defersLoading);
 
     size_t totalSize = size * nmemb;
+    if (!job->m_isSynchronous && !job->m_isHookRequest
+        && job->m_cacheForDownloadOpt != WebURLLoaderInternal::kCacheForDownloadYes
+        && job->m_responseBufferedBytes.load() >= kResponseBufferLimit)
+        return CURL_WRITEFUNC_PAUSE;
     job->m_recvTotalSize += totalSize;
 
 //     std::vector<char> dump;
@@ -677,6 +813,9 @@ static size_t writeCallbackOnIoThread(void* ptr, size_t size, size_t nmemb, void
     if (CURLE_OK == err && httpCode >= 300 && httpCode < 400)
         return totalSize;
 
+    if (!job->m_isSynchronous && !job->m_isHookRequest
+        && job->m_cacheForDownloadOpt != WebURLLoaderInternal::kCacheForDownloadYes)
+        job->m_responseBufferedBytes.fetch_add(totalSize);
     WebURLLoaderManagerMainTask::createAndPushTask(jobId, WebURLLoaderManagerMainTask::TaskType::kWriteCallback, ptr, size, nmemb, totalSize);
     return totalSize;
 }
@@ -710,6 +849,8 @@ static size_t headerCallbackOnIoThread(char* ptr, size_t size, size_t nmemb, voi
     WebURLLoaderInternal* job = autoLockJob.lock();
     if (!job || job->isCancelled())
         return 0;
+    if (job->m_frozen)
+        return CURL_WRITEFUNC_PAUSE;
 
     // We should never be called when deferred loading is activated.
     DCHECK(!job->m_defersLoading);
@@ -735,8 +876,7 @@ static curlioerr ioctlCallbackOnIoThread(CURL* handle, int cmd, void* data)
         return CURLIOE_UNKNOWNCMD;
 
     if (cmd == CURLIOCMD_RESTARTREAD) {
-        job->m_formDataStream->reset();
-        return CURLIOE_OK;
+        return job->m_formDataStream->reset() ? CURLIOE_OK : CURLIOE_FAILRESTART;
     }
     return CURLIOE_UNKNOWNCMD;
 }
@@ -748,6 +888,8 @@ size_t readCallbackOnIoThread(void* ptr, size_t size, size_t nmemb, void* data)
     WebURLLoaderInternal* job = autoLockJob.lock();
     if (!job || job->isCancelled() || !job->m_formDataStream)
         return 0;
+    if (job->m_frozen)
+        return CURL_READFUNC_PAUSE;
 
     // We should never be called when deferred loading is activated.
     DCHECK(!job->m_defersLoading);
@@ -755,19 +897,10 @@ size_t readCallbackOnIoThread(void* ptr, size_t size, size_t nmemb, void* data)
     if (!size || !nmemb)
         return 0;
 
-    if (!job->m_formDataStream->hasMoreElements()) {
-        delete job->m_formDataStream;
-        job->m_formDataStream = nullptr;
-        return 0;
+    size_t sent = job->m_formDataStream->read(ptr, size, nmemb);
+    if (sent != CURL_READFUNC_ABORT && sent != CURL_READFUNC_PAUSE && sent) {
+        WebURLLoaderManagerMainTask::createAndPushTask(jobId, WebURLLoaderManagerMainTask::TaskType::kDidSentData, nullptr, 1, sent, 0);
     }
-
-    size_t sent = job->m_formDataStream->read(ptr, size, nmemb, nullptr);
-
-    // Something went wrong so cancel the job.
-    if (!sent && WebURLLoaderInternal::kCacheForDownloadYes != job->m_cacheForDownloadOpt)
-        WebURLLoaderManager::sharedInstance()->doCancel(job, kNormalCancelled);
-
-    WebURLLoaderManagerMainTask::createAndPushTask(jobId, WebURLLoaderManagerMainTask::TaskType::kDidSentData, nullptr, size, nmemb, 0);
 
     return sent;
 }
@@ -924,11 +1057,13 @@ void WebURLLoaderManager::removeFromCurlOnIoThread(int jobId)
                 curl_easy_cleanup(job->m_handle);
             }
             job->m_handle = nullptr;
+            delete job->m_formDataStream;
+            job->m_formDataStream = nullptr;
             WebURLLoaderManagerMainTask* task
                 = WebURLLoaderManagerMainTask::createTask(jobId, WebURLLoaderManagerMainTask::TaskType::kRemoveFromCurl, nullptr, 0, 0, 0);
             //             if (task) // 退出时候，这里可能为null
             //                 Platform::current()->mainThread()->scheduler()->postLoadingTask(FROM_HERE, task); // postLoadingTask
-            WebURLLoaderManagerMainTask::pushTask(nullptr, getMainRunner(), task);
+            WebURLLoaderManagerMainTask::pushTask(job, job->m_taskRunner, task);
         }
     }
 }
@@ -957,120 +1092,74 @@ static void setupReadAndIoctlCallbackOnIoThread(WebURLLoaderInternal* job)
 
 static void setupFormDataOnIoThread(WebURLLoaderInternal* job, SetupDataInfo* info)
 {
-    if (info && !info->chunkedTransfer) {
-        if (info->islongLong)
-            curl_easy_setopt(job->m_handle, info->sizeOption, (long long)info->size);
-        else
-            curl_easy_setopt(job->m_handle, info->sizeOption, (int)info->size);
-    }
-
+    curl_easy_setopt(job->m_handle, info->sizeOption,
+        info->chunkedTransfer || info->failed ? static_cast<curl_off_t>(-1) : info->size);
     DCHECK(!job->m_formDataStream);
-    job->m_formDataStream = new FlattenHTTPBodyElementStream(info->flattenElements, info->size);
+    job->m_formDataStream = new FlattenHTTPBodyElementStream(std::move(info->flattenElements),
+        info->failed, base::BindRepeating([](int jobId) {
+            // Getter callbacks may be synchronous in the in-process transport.
+            // Never re-enter curl from its read callback.
+            base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+                base::BindOnce(&resumeResponseOnIoThread, jobId));
+        }, job->m_id));
     setupReadAndIoctlCallbackOnIoThread(job);
-}
-
-static void dispatchPostBodyToEmbedder(WebURLLoaderInternal* job, WTF::Vector<FlattenHTTPBodyElement*>* flattenElements)
-{
 }
 
 static SetupDataInfo* setupFormDataOnMainThread(WebURLLoaderInternal* job, CURLoption sizeOption, struct curl_slist** headers)
 {
     scoped_refptr<network::ResourceRequestBody> httpBody = job->firstRequest()->request_body;
-    if (!httpBody.get() || nullptr == httpBody->elements())
+    if (!httpBody)
         return nullptr;
-    size_t elementCount = httpBody->elements()->size();
-
-    // The size of a curl_off_t could be different in WebKit and in cURL depending on
-    // compilation flags of both.
-    static int expectedSizeOfCurlOffT = 0;
-    if (!expectedSizeOfCurlOffT) {
-        curl_version_info_data* infoData = curl_version_info(CURLVERSION_NOW);
-        if (infoData->features & CURL_VERSION_LARGEFILE)
-            expectedSizeOfCurlOffT = sizeof(long long);
-        else
-            expectedSizeOfCurlOffT = sizeof(int);
-
-        expectedSizeOfCurlOffT = sizeof(int); // weolar
-    }
-
-    static const long long maxCurlOffT = (1LL << (expectedSizeOfCurlOffT * 8 - 1)) - 1;
-    // Obtain the total size of the form data
-    curl_off_t size = 0;
-    SetupDataInfo* result = new SetupDataInfo();
-    result->chunkedTransfer = false;
-
-    int64_t fileSizeResult = 0;
-    for (size_t i = 0; i < elementCount; ++i) {
-        const network::DataElement& element = httpBody->elements()->at(i);
-
-        FlattenHTTPBodyElement* flattenElement = nullptr;
-        if (network::DataElement::Tag::kFile == element.type()) {
-            DebugBreak();
-            //             const network::DataElementFile& fileEle = element.As<network::DataElementFile>();
-            //
-            //             if (base::GetFileSize(fileEle, fileSizeResult)) {
-            //                 if (fileSizeResult > maxCurlOffT) {
-            //                     // File size is too big for specifying it to cURL
-            //                     result->chunkedTransfer = true;
-            //                     break;
-            //                 }
-            //             } else {
-            //                 result->chunkedTransfer = true;
-            //                 break;
-            //             }
-            //
-            //             long long offset = element.offset();
-            //             long long length = element.length();
-            //             FlattenHTTPBodyElementStream::clampSliceOffsets(fileSizeResult, &offset, &length);
-            //             size += length;
-            //
-            //             flattenElement = new FlattenHTTPBodyElement();
-            //             flattenElement->type = FlattenHTTPBodyElement::Type::TypeFile;
-            //             Vector<UChar> filePath = WTF::ensureUTF16UChar(element.path(), true);
-            //             flattenElement->filePath = filePath.data();
-            //             flattenElement->fileStart = offset;
-            //             flattenElement->fileLength = length;
-            //             result->flattenElements.append(flattenElement);
-        } else if (network::DataElement::Tag::kBytes == element.type()) {
-            const network::DataElementBytes& bytesEle = element.As<network::DataElementBytes>();
-            size += bytesEle.bytes().size();
-
-            flattenElement = new FlattenHTTPBodyElement();
-            flattenElement->type = FlattenHTTPBodyElement::Type::TypeData;
-            //flattenElement->data.Append(bytesEle.bytes().data(), bytesEle.bytes().size());
-            flattenElement->data.insert(flattenElement->data.end(), bytesEle.bytes().begin(), bytesEle.bytes().end());
-
-            result->flattenElements.push_back(flattenElement);
-        } else if (network::DataElement::Tag::kDataPipe == element.type()) {
-            flattenElement = new FlattenHTTPBodyElement();
-            flattenElement->type = FlattenHTTPBodyElement::Type::TypeData;
-
-            const network::DataElementDataPipe& dataPipe = element.As<network::DataElementDataPipe>();
-            //FlattenHTTPBodyElementStream::flatten(element.blobUUID, &size, &result->flattenElements, 0, -1, true, 1);
-            FlattenHTTPBodyElementStream::readFromDatePipe(flattenElement, dataPipe);
-
-            size += flattenElement->data.size();
-            result->flattenElements.push_back(flattenElement);
-        } else if (network::DataElement::Tag::kChunkedDataPipe == element.type()) {
-            DebugBreak();
+    auto* result = new SetupDataInfo();
+    result->sizeOption = sizeOption;
+    for (auto& element : *httpBody->elements_mutable()) {
+        auto flattened = std::make_unique<FlattenHTTPBodyElement>();
+        uint64_t length = 0;
+        if (element.type() == network::DataElement::Tag::kFile) {
+            const auto& file = element.As<network::DataElementFile>();
+            flattened->type = FlattenHTTPBodyElement::TypeFile;
+            flattened->file.Initialize(file.path(), base::File::FLAG_OPEN | base::File::FLAG_READ);
+            base::File::Info info;
+            if (!flattened->file.IsValid() || !flattened->file.GetInfo(&info)
+                || info.is_directory || info.size < 0 || file.offset() > static_cast<uint64_t>(info.size)
+                || (!file.expected_modification_time().is_null()
+                    && (file.expected_modification_time() - info.last_modified).magnitude().InSeconds() != 0)) {
+                result->failed = true;
+                break;
+            }
+            length = static_cast<uint64_t>(info.size) - file.offset();
+            length = std::min(length, file.length());
+            flattened->fileStart = file.offset();
+            flattened->fileLength = length;
+            flattened->expectedModificationTime = file.expected_modification_time();
+        } else if (element.type() == network::DataElement::Tag::kBytes) {
+            const auto& bytes = element.As<network::DataElementBytes>().bytes();
+            flattened->data.assign(bytes.begin(), bytes.end());
+            length = bytes.size();
+        } else if (element.type() == network::DataElement::Tag::kDataPipe) {
+            flattened->type = FlattenHTTPBodyElement::TypeDataPipe;
+            flattened->pendingGetter = element.As<network::DataElementDataPipe>().CloneDataPipeGetter();
+            result->chunkedTransfer = true;
+        } else if (element.type() == network::DataElement::Tag::kChunkedDataPipe) {
+            auto& pipe = element.As<network::DataElementChunkedDataPipe>();
+            flattened->type = FlattenHTTPBodyElement::TypeChunkedDataPipe;
+            flattened->readOnlyOnce = pipe.read_only_once().value();
+            flattened->pendingChunkedGetter = pipe.ReleaseChunkedDataPipeGetter();
+            result->chunkedTransfer = true;
         } else {
-            DebugBreak();
+            result->failed = true;
+            break;
         }
+        if (length > static_cast<uint64_t>(std::numeric_limits<curl_off_t>::max() - result->size)) {
+            result->failed = true;
+            break;
+        }
+        result->size += static_cast<curl_off_t>(length);
+        result->flattenElements.push_back(std::move(flattened));
     }
-
-     
-
-    // cURL guesses that we want chunked encoding as long as we specify the header
-    if (result->chunkedTransfer)
+    if (result->chunkedTransfer || result->failed)
         *headers = curl_slist_append(*headers, "Transfer-Encoding: chunked");
-    else {
-        result->sizeOption = sizeOption;
-        result->size = size;
-        result->islongLong = (sizeof(long long) == expectedSizeOfCurlOffT);
-    }
-
-    job->m_totalBytesToBeSent = size;
-
+    job->m_totalBytesToBeSent = result->chunkedTransfer ? 0 : result->size;
     return result;
 }
 
@@ -1095,7 +1184,7 @@ static SetupPutInfo* setupPutOnMainThread(WebURLLoaderInternal* job, struct curl
         return nullptr;
 
     SetupPutInfo* result = new SetupPutInfo();
-    result->data = setupFormDataOnMainThread(job, CURLOPT_INFILESIZE, headers);
+    result->data = setupFormDataOnMainThread(job, CURLOPT_INFILESIZE_LARGE, headers);
     return result;
 }
 
@@ -1115,20 +1204,6 @@ static void setupPostOrPutOnIoThread(WebURLLoaderInternal* job, bool isPost, Set
         return;
     }
 
-    if (isPost && data && 1 == data->flattenElements.size()) {
-        FlattenHTTPBodyElement* element = data->flattenElements[0];
-        if (FlattenHTTPBodyElement::TypeData == element->type || FlattenHTTPBodyElement::TypeBlob == element->type) {
-            curl_easy_setopt(job->m_handle, CURLOPT_POSTFIELDSIZE, element->data.size());
-            curl_easy_setopt(job->m_handle, CURLOPT_COPYPOSTFIELDS, element->data.data());
-
-            //InterlockedExchangeAdd(reinterpret_cast<long volatile*>(&job->m_sentDataBytes), static_cast<long>(element->data.size()));
-            base::subtle::NoBarrier_AtomicIncrement((base::subtle::Atomic32 volatile*)(&job->m_sentDataBytes), (base::subtle::Atomic32)(element->data.size()));
-
-            delete element;
-            return;
-        }
-    }
-
     if (data)
         setupFormDataOnIoThread(job, data);
 }
@@ -1142,7 +1217,7 @@ static SetupPostInfo* setupPostOnMainThread(WebURLLoaderInternal* job, struct cu
         return nullptr;
 
     SetupPostInfo* result = new SetupPostInfo();
-    result->data = setupFormDataOnMainThread(job, CURLOPT_POSTFIELDSIZE, headers); // CURLOPT_POSTFIELDSIZE_LARGE
+    result->data = setupFormDataOnMainThread(job, CURLOPT_POSTFIELDSIZE_LARGE, headers);
     return result;
 }
 
@@ -1462,6 +1537,14 @@ bool WebURLLoaderManager::doCancel(JobHead* jobHead, CancelledReason cancelledRe
 
     if (job->m_handle && WebURLLoaderInternal::kDestroying != job->m_state && !cancelled)
         job->m_ioThread->task_runner()->PostTask(FROM_HERE, base::BindOnce(&WebURLLoaderManager::removeFromCurlOnIoThread, base::Unretained(this), job->m_id));
+    job->m_taskRunner->PostTask(FROM_HERE, base::BindOnce([](int jobId) {
+        AutoLockJob lock(WebURLLoaderManager::sharedInstance(), jobId);
+        auto* job = lock.lock();
+        if (job && job->m_responseReleasePending) {
+            job->m_responseReleasePending = false;
+            WebURLLoaderInternal::release(jobId);
+        }
+    }, job->m_id));
 
     return false;
 }
@@ -1527,14 +1610,15 @@ struct SyncJob {
 
     void release()
     {
-        --ref;
-        if (0 == ref)
+        if (ref.fetch_sub(1) == 1)
             delete this;
     }
 
     CURLcode ret = CURLE_OK;
-    int isCallFinish = 0;
-    int ref = 2;
+    std::atomic<bool> isCallFinish { false };
+    std::atomic<int> ref { 2 };
+    std::atomic<bool> cancelled { false };
+    CURLM* multi = nullptr;
     WebURLLoaderInternal* job = nullptr;
     int jobId = 0;
 };
@@ -1567,12 +1651,11 @@ void WebURLLoaderManager::dispatchSynchronousJob(WebURLLoaderInternal* job, base
         FROM_HERE, base::BindOnce(&WebURLLoaderManager::dispatchSynchronousJobOnIoThread, base::Unretained(this), job, info, syncJob));
     while (!syncJob->isCallFinish) {
         if (terminateSyncLoadEvent && terminateSyncLoadEvent->IsSignaled()) {
-            AutoLockJob autoLockJob(this, jobId);
-            autoLockJob.lock();
-            job->m_cancelledReason = kNormalCancelled;
-            syncJob->ret = CURLE_FAILED_INIT;
-            break;
+            syncJob->cancelled = true;
         }
+        // Upload producers and Mojo replies must continue running while the
+        // caller waits for a synchronous request.
+        base::RunLoop(base::RunLoop::Type::kNestableTasksAllowed).RunUntilIdle();
         ::Sleep(10);
     }
 
@@ -1601,10 +1684,40 @@ void WebURLLoaderManager::dispatchSynchronousJob(WebURLLoaderInternal* job, base
 void WebURLLoaderManager::dispatchSynchronousJobOnIoThread(WebURLLoaderInternal* job, InitializeHandleInfo* info, SyncJob* syncJob)
 {
     CURL* handle = job->m_handle;
-    // curl_easy_perform blocks until the transfert is finished.
-    syncJob->ret = curl_easy_perform(handle);
+    if (!syncJob->multi) {
+        syncJob->multi = curl_multi_init();
+        if (!syncJob->multi || curl_multi_add_handle(syncJob->multi, handle) != CURLM_OK)
+            syncJob->ret = CURLE_FAILED_INIT;
+    }
+    if (syncJob->cancelled)
+        syncJob->ret = CURLE_ABORTED_BY_CALLBACK;
+    if (syncJob->ret == CURLE_OK) {
+        int running = 0;
+        CURLMcode result;
+        do {
+            result = curl_multi_perform(syncJob->multi, &running);
+        } while (result == CURLM_CALL_MULTI_PERFORM);
+        if (result != CURLM_OK) {
+            syncJob->ret = CURLE_RECV_ERROR;
+        } else if (running) {
+            job->m_ioThread->task_runner()->PostDelayedTask(FROM_HERE,
+                base::BindOnce(&WebURLLoaderManager::dispatchSynchronousJobOnIoThread,
+                    base::Unretained(this), job, info, syncJob), base::Milliseconds(10));
+            return;
+        } else {
+            int remaining = 0;
+            CURLMsg* message = curl_multi_info_read(syncJob->multi, &remaining);
+            syncJob->ret = message && message->msg == CURLMSG_DONE ? message->data.result : CURLE_RECV_ERROR;
+        }
+    }
+    if (syncJob->multi) {
+        curl_multi_remove_handle(syncJob->multi, handle);
+        curl_multi_cleanup(syncJob->multi);
+    }
     curl_easy_cleanup(handle);
-
+    job->m_handle = nullptr;
+    delete job->m_formDataStream;
+    job->m_formDataStream = nullptr;
     syncJob->isCallFinish = true;
     syncJob->release();
 }
@@ -1905,18 +2018,20 @@ InitializeHandleInfo* WebURLLoaderManager::preInitializeHandleOnMainThread(WebUR
         }
     }
 
-    if (!job->firstRequest()->headers.IsEmpty()) {
-        net::HttpRequestHeaders::Iterator it(job->firstRequest()->headers);
+    const auto& requestHeaders = job->firstRequest()->headers;
+    const auto& exemptHeaders = job->firstRequest()->cors_exempt_headers;
+    for (const auto* source : { &requestHeaders, &exemptHeaders }) {
+        net::HttpRequestHeaders::Iterator it(*source);
         while (it.GetNext()) {
-            std::string key = it.name();
-            std::string value = it.value();
-            std::string headerString(key);
-            if (value.empty()) {
+            if (source == &requestHeaders && exemptHeaders.HasHeader(it.name()))
+                continue;
+            std::string headerString(it.name());
+            if (it.value().empty()) {
                 // Insert the ; to tell curl that this header has an empty value.
                 headerString.append(";");
             } else {
                 headerString.append(": ");
-                headerString.append(value);
+                headerString.append(it.value());
             }
             headers = curl_slist_append(headers, headerString.c_str());
         }
@@ -1962,16 +2077,12 @@ void WebURLLoaderManager::initializeHandleOnIoThread(int jobId, InitializeHandle
 {
     AutoLockJob autoLockJob(this, jobId);
     WebURLLoaderInternal* job = autoLockJob.lock();
-    if (!job)
+    if (!job) {
+        delete info;
         return;
+    }
     job->m_handle = curl_easy_init();
 
-    if (job->m_defersLoading) {
-        CURLcode error = curl_easy_pause(job->m_handle, CURLPAUSE_ALL);
-        // If we did not pause the handle, we would DCHECK in the
-        // header callback. So just assert here.
-        DCHECK(/*error,*/ error == CURLE_OK);
-    }
     // 请求从开始到完结的时间。如果请求不停有数据来，超过这个时间也被认为是超时。时间是60 * 10 = 10分钟
     curl_easy_setopt(job->m_handle, CURLOPT_TIMEOUT, 60 * 1);
     curl_easy_setopt(job->m_handle, CURLOPT_CONNECTTIMEOUT, 30);
@@ -1986,7 +2097,8 @@ void WebURLLoaderManager::initializeHandleOnIoThread(int jobId, InitializeHandle
     curl_easy_setopt(job->m_handle, CURLOPT_FRESH_CONNECT, 1);
     curl_easy_setopt(job->m_handle, CURLOPT_WRITEHEADER, jobId);
     curl_easy_setopt(job->m_handle, CURLOPT_AUTOREFERER, 1);
-    curl_easy_setopt(job->m_handle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(job->m_handle, CURLOPT_FOLLOWLOCATION, job->m_autoFollowRedirects ? 1L : 0L);
+    curl_easy_setopt(job->m_handle, CURLOPT_STREAM_WEIGHT, job->m_streamWeight);
     curl_easy_setopt(job->m_handle, CURLOPT_MAXREDIRS, 30);
     curl_easy_setopt(job->m_handle, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
     curl_easy_setopt(job->m_handle, CURLOPT_BUFFERSIZE, 32768); // 32KB of FFmpeg
@@ -2315,6 +2427,9 @@ WebURLLoaderInternal::WebURLLoaderInternal(base::Thread* ioThread, WebURLLoaderI
 WebURLLoaderInternal::~WebURLLoaderInternal()
 {
     m_state = kDestroyed;
+    m_responseWriter.reset();
+    closeResponseBody(m_dataPipeProducerHandle);
+    m_dataPipeProducerHandle = MOJO_HANDLE_INVALID;
 
     if (m_hookBufForEndHook)
         delete m_hookBufForEndHook;

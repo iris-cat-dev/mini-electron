@@ -126,35 +126,33 @@ AlternateSignedExchangeResourceInfo::Entry* AlternateSignedExchangeResourceInfo:
 AlternateSignedExchangeResourceInfo::Entry* AlternateSignedExchangeResourceInfo::FindMatchingEntry(
     const KURL& url, const char* accept_header, const Vector<String>& languages) const
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     const auto it = alternative_resources_.find(url);
-//     if (it == alternative_resources_.end())
-//         return nullptr;
-//     const Vector<std::unique_ptr<Entry>>& entries = it->value;
-//     DCHECK(!entries.empty());
-//     if (entries[0]->variants().IsNull())
-//         return entries[0].get();
-// 
-//     const std::string variants = entries[0]->variants().Utf8();
-//     std::vector<std::string> variant_keys_list;
-//     for (const auto& entry : entries) {
-//         variant_keys_list.emplace_back(entry->variant_key().Utf8());
-//     }
-//     std::string accept_langs;
-//     for (const auto& language : languages) {
-//         if (!accept_langs.empty())
-//             accept_langs += ",";
-//         accept_langs += language.Utf8();
-//     }
-//     net::HttpRequestHeaders request_headers;
-//     request_headers.SetHeader(net::HttpRequestHeaders::kAccept, accept_header);
-// 
-//     WebPackageRequestMatcher matcher(request_headers, accept_langs);
-//     const auto variant_keys_list_it = matcher.FindBestMatchingVariantKey(variants, variant_keys_list);
-//     if (variant_keys_list_it == variant_keys_list.end())
-//         return nullptr;
-//     return (entries.begin() + (variant_keys_list_it - variant_keys_list.begin()))->get();
+    const auto it = alternative_resources_.find(url);
+    if (it == alternative_resources_.end())
+        return nullptr;
+    const Vector<std::unique_ptr<Entry>>& entries = it->value;
+    DCHECK(!entries.empty());
+    if (entries[0]->variants().IsNull())
+        return entries[0].get();
+
+    const std::string variants = entries[0]->variants().Utf8();
+    std::vector<std::string> variant_keys_list;
+    variant_keys_list.reserve(entries.size());
+    for (const auto& entry : entries)
+        variant_keys_list.emplace_back(entry->variant_key().Utf8());
+    std::string accept_langs;
+    for (const auto& language : languages) {
+        if (!accept_langs.empty())
+            accept_langs += ",";
+        accept_langs += language.Utf8();
+    }
+    net::HttpRequestHeaders request_headers;
+    request_headers.SetHeader(net::HttpRequestHeaders::kAccept, accept_header);
+
+    WebPackageRequestMatcher matcher(request_headers, accept_langs);
+    const auto variant_keys_list_it = matcher.FindBestMatchingVariantKey(variants, variant_keys_list);
+    if (variant_keys_list_it == variant_keys_list.end())
+        return nullptr;
+    return (entries.begin() + (variant_keys_list_it - variant_keys_list.begin()))->get();
 }
 
 } // namespace blink

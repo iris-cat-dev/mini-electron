@@ -40,191 +40,164 @@
 #include "third_party/blink/public/platform/web_url_error.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
 #include "net/base/net_errors.h"
+#include "base/run_loop.h"
+#include "base/task/sequenced_task_runner.h"
+#include <limits>
+#include <utility>
 
 namespace mini_electron {
 
-///////////////////////////////////////////////////////////////////////////////
-// BlobResourceSynchronousLoader
-
-namespace {
-
-// class BlobResourceSynchronousLoader : public blink::WebURLLoaderClient {
-// public:
-//     BlobResourceSynchronousLoader(blink::WebURLError&, blink::WebURLResponse&, Vector<char>&);
-//
-//     virtual void didReceiveResponse(blink::WebURLLoader*, const blink::WebURLResponse&) override;
-//     virtual void didReceiveData(blink::WebURLLoader*, const char* data, int dataLength, int encodedDataLength) override;
-//     virtual void didFinishLoading(blink::WebURLLoader*, double finishTime, int64_t totalEncodedDataLength) override;
-//     virtual void didFail(blink::WebURLLoader*, const blink::WebURLError&) override;
-//
-// private:
-//     blink::WebURLError m_error;
-//     blink::WebURLResponse m_response;
-//     Vector<char>& m_data;
-// };
-//
-// BlobResourceSynchronousLoader::BlobResourceSynchronousLoader(blink::WebURLError& error, blink::WebURLResponse& response, Vector<char>& data)
-//     : m_error(error)
-//     , m_response(response)
-//     , m_data(data)
-// {
-// }
-//
-// void BlobResourceSynchronousLoader::didReceiveResponse(blink::WebURLLoader* handle, const blink::WebURLResponse& response)
-// {
-//     // We cannot handle the size that is more than maximum integer.
-//     if (response.expectedContentLength() > INT_MAX) {
-//         m_error.domain = blink::WebString::fromUTF8(webKitBlobResourceDomain);
-//         m_error.reason = notReadableError;
-//         m_error.unreachableURL = response.url();
-//         m_error.localizedDescription = blink::WebString::fromUTF8("File is too large");
-//         return;
-//     }
-//
-//     m_response = response;
-//
-//     // Read all the data.
-//     m_data.resize(static_cast<size_t>(response.expectedContentLength()));
-//     //static_cast<BlobResourceLoader*>(handle)->readSync(m_data.data(), static_cast<int>(m_data.size()));
-//     // TODO
-// }
-//
-// void BlobResourceSynchronousLoader::didReceiveData(blink::WebURLLoader*, const char* data, int dataLength, int)
-// {
-//     m_data.append(data, dataLength);
-// }
-//
-// void BlobResourceSynchronousLoader::didFinishLoading(blink::WebURLLoader*, double, int64_t)
-// {
-// }
-//
-// void BlobResourceSynchronousLoader::didFail(blink::WebURLLoader*, const blink::WebURLError& error)
-// {
-//     m_error = error;
-// }
-
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// BlobResourceLoader
-
-// xhr.open(URL.createObjectURL(inputFile))的时候会走到这里。
-// fileReader.readAsArrayBuffer(blob);的时候也会走到这里。
-// 下面是个经典的场景，会出现两次BlobResourceLoader：
-// function objectURLToBlob(url, callback) {
-//   var xhr = new XMLHttpRequest();
-//   xhr.open("GET", url, true);
-//   xhr.responseType = "blob";
-//   xhr.onload = function(e) {
-//     if (this.status == 200 || this.status == = 0) {
-//       callback(this.response);
-//     }
-//   };
-//   xhr.send();
-// }
-//
-// var fileReader = new FileReader();
-// fileReader.onload = function(e) {
-//   handleBinaryFile(e.target.result);
-// };
-// var img = new Image();
-// img.src = URL.createObjectURL(file);
-// objectURLToBlob(img.src, function(blob) {
-//   fileReader.readAsArrayBuffer(blob);
-// }
-// https://newimage.chinahuanong.com.cn:8001/SunECM/ecm-view/image/webScan/js/uploadify/AjaxUpload.js
-// https://newimage.chinahuanong.com.cn:8001/SunECM/ecm-view/image/webScan/js/uploadify/exif.js
-// https://newimage.chinahuanong.com.cn:8001/SunECM/ecm-view/image/webScan/js/uploadify/lrz.js
 BlobResourceLoader* BlobResourceLoader::createAsync(int64_t mbwebviewId, const GURL& url, blink::URLLoaderClient* client)
 {
     BlobResourceLoader* ret = new BlobResourceLoader(mbwebviewId, url, client, true);
     return ret;
 }
 
-BlobResourceLoader::BlobResourceLoader(int64_t mbwebviewId, const GURL& url, blink::URLLoaderClient* client, bool async)
+void BlobResourceLoader::loadSynchronously(int64_t webviewId, const GURL& url, blink::URLLoaderClient* client)
 {
-    m_webviewId = mbwebviewId;
-    m_url = url;
-    m_client = client;
-    m_async = async;
+    base::RunLoop loop(base::RunLoop::Type::kNestableTasksAllowed);
+    BlobResourceLoader loader(webviewId, url, client, false);
+    loader.m_syncQuit = loop.QuitClosure();
+    loader.start();
+    loop.Run();
 }
 
-BlobResourceLoader::~BlobResourceLoader()
+BlobResourceLoader::BlobResourceLoader(int64_t webviewId, const GURL& url, blink::URLLoaderClient* client, bool async)
+    : m_webviewId(webviewId), m_client(client), m_url(url), m_async(async)
 {
 }
+
+BlobResourceLoader::~BlobResourceLoader() = default;
 
 void BlobResourceLoader::start()
 {
-    if (!m_async) {
-        doStart();
-    } else {
-        BlobResourceLoader* self = this;
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce([](BlobResourceLoader* self) { self->doStart(); }, base::Unretained(this)));
-    }
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+        base::BindOnce(&BlobResourceLoader::doStart, m_weakFactory.GetWeakPtr()));
 }
 
 void BlobResourceLoader::doStart()
 {
-    blink::WebURLResponse response;
-    blink::KURL kurl(m_url);
-    response.SetCurrentRequestUrl((blink::WebURL)kurl);
-
-    content::WebViewHost* webview = (content::WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_webviewId);
-    if (!webview)
+    if (m_webviewId && !common::LiveIdDetect::getWebViewIds()->getPtr(m_webviewId)) {
+        failed(net::ERR_ABORTED);
         return;
-
-    blink::WebURLError error(net::ERR_ABORTED, kurl);
-    ::mojo::Remote<::blink::mojom::blink::Blob>* blob = content::BlobURLStoreSet::get()->getBlobByUrl(m_url.possibly_invalid_spec());
+    }
+    auto* blob = content::BlobURLStoreSet::get()->getBlobByUrl(m_url.possibly_invalid_spec());
     if (!blob) {
-        m_client->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
+        failed(net::ERR_FILE_NOT_FOUND);
         return;
     }
+    // Hold our own remote: revoking the URL must not invalidate an active load.
+    (*blob)->Clone(m_blob.BindNewPipeAndPassReceiver());
+    m_blob.set_disconnect_handler(base::BindOnce(&BlobResourceLoader::failed,
+        m_weakFactory.GetWeakPtr(), net::ERR_FAILED));
+    m_blob->GetInternalUUID(base::BindOnce(&BlobResourceLoader::didGetUUID, m_weakFactory.GetWeakPtr()));
+}
 
-    BlobResourceLoader* self = this;
-    std::string* uuid = nullptr;
-    (*blob)->GetInternalUUID(base::BindOnce([](std::string** uuid, const WTF::String& uid) { *uuid = new std::string(uid.Ascii()); }, &uuid));
-    content::BlobEntry* blobEntry = content::BlobEntry::findByUuid(*uuid);
-    delete uuid;
-
-    if (!blobEntry) {
-        m_client->DidFail(error, base::TimeTicks::Now(), 0, 0, 0);
+void BlobResourceLoader::didGetUUID(const WTF::String& uuid)
+{
+    content::BlobEntry* entry = content::BlobEntry::findByUuid(uuid.Utf8());
+    if (!entry) {
+        failed(net::ERR_FILE_NOT_FOUND);
         return;
     }
+    m_contentType = entry->m_contentType;
+    mojo::ScopedDataPipeProducerHandle producer;
+    if (mojo::CreateDataPipe(nullptr, producer, m_consumer) != MOJO_RESULT_OK) {
+        failed(net::ERR_INSUFFICIENT_RESOURCES);
+        return;
+    }
+    auto client = m_receiver.BindNewPipeAndPassRemote();
+    m_receiver.set_disconnect_handler(base::BindOnce(&BlobResourceLoader::failed,
+        m_weakFactory.GetWeakPtr(), net::ERR_FAILED));
+    m_blob->ReadAll(std::move(producer), std::move(client));
+}
 
-    response.SetMimeType(blink::WebString::FromUTF8(blobEntry->m_contentType));
+void BlobResourceLoader::OnCalculatedSize(uint64_t totalSize, uint64_t expectedSize)
+{
+    if (!m_client)
+        return;
+    if (m_receivedResponse || expectedSize > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        failed(net::ERR_FAILED);
+        return;
+    }
+    m_receivedResponse = true;
+    m_expectedSize = expectedSize;
+    blink::WebURLResponse response;
+    response.SetCurrentRequestUrl(blink::WebURL(blink::KURL(m_url)));
+    response.SetMimeType(blink::WebString::FromUTF8(m_contentType));
+    response.SetExpectedContentLength(expectedSize);
     response.SetHttpStatusCode(200);
     response.SetHttpStatusText(blink::WebString::FromUTF8("OK"));
-
-    std::vector<char> buffer;
-    int64_t allSize = 0;
-    blobEntry->read(&buffer, 0, -1, &allSize);
-    uint32_t numBytes = (uint32_t)buffer.size();
-
     if (m_async) {
-        MojoHandle dataPipeProducerHandle = 0;
-        MojoHandle dataPipeConsumerHandle = 0;
-        MojoCreateDataPipeOptions createDataOptions;
-        createDataOptions.element_num_bytes = 1;
-        createDataOptions.capacity_num_bytes = -1;
-        MojoCreateDataPipe(&createDataOptions, &dataPipeProducerHandle, &dataPipeConsumerHandle);
-
-        mojo::DataPipeConsumerHandle dataPipeConsumer(dataPipeConsumerHandle);
-        mojo::ScopedDataPipeConsumerHandle responseBodyHandld(std::move(dataPipeConsumer));
-
-        if (0 != numBytes)
-            MojoWriteData(dataPipeProducerHandle, buffer.data(), &numBytes, nullptr);
-        MojoClose(dataPipeProducerHandle);
-
-        // 这个会触发 fetcher_->GetBlobRegistry()->RegisterFromStream -》
-        // BlobBytesProvider::Bind，然后跑在一个worker thread。这块还不知道怎么处理
-        //m_client->DidStartLoadingResponseBody(std::move(responseBodyHandld));
-        m_client->DidReceiveResponse(response, std::move(responseBodyHandld), absl::nullopt);
-    } else {
-        //m_client->DidReceiveData(buffer.data(), numBytes);
-        DebugBreak();
+        m_client->DidReceiveResponse(response, std::move(m_consumer), std::nullopt);
+        return;
     }
+    auto weak = m_weakFactory.GetWeakPtr();
+    m_client->DidReceiveResponse(response, WTF::SegmentedBuffer(), std::nullopt);
+    if (weak)
+        m_drainer = std::make_unique<mojo::DataPipeDrainer>(this, std::move(m_consumer));
+}
 
-    m_client->DidFinishLoading(base::TimeTicks::Now(), numBytes, numBytes, numBytes);
+void BlobResourceLoader::OnDataAvailable(base::span<const uint8_t> data)
+{
+    if (!m_client)
+        return;
+    if (data.size() > m_expectedSize - m_receivedSize) {
+        failed(net::ERR_FAILED);
+        return;
+    }
+    m_receivedSize += data.size();
+    m_client->DidReceiveDataForTesting(base::span<const char>(
+        reinterpret_cast<const char*>(data.data()), data.size()));
+}
+
+void BlobResourceLoader::OnDataComplete()
+{
+    m_pipeComplete = true;
+    finishIfReady();
+}
+
+void BlobResourceLoader::OnComplete(int32_t status, uint64_t dataLength)
+{
+    if (!m_client)
+        return;
+    if (status != net::OK || !m_receivedResponse || dataLength != m_expectedSize) {
+        failed(status != net::OK ? status : net::ERR_FAILED);
+        return;
+    }
+    m_blobComplete = true;
+    // Completion can arrive before the synchronous drainer observes EOF.
+    m_receiver.reset();
+    m_blob.reset();
+    finishIfReady();
+}
+
+void BlobResourceLoader::finishIfReady()
+{
+    if (!m_client || !m_blobComplete || (!m_async && !m_pipeComplete))
+        return;
+    if (!m_async && m_receivedSize != m_expectedSize) {
+        failed(net::ERR_FAILED);
+        return;
+    }
+    auto* client = std::exchange(m_client, nullptr);
+    if (m_syncQuit)
+        std::move(m_syncQuit).Run();
+    client->DidFinishLoading(base::TimeTicks::Now(), m_expectedSize, m_expectedSize, m_expectedSize);
+}
+
+void BlobResourceLoader::failed(int errorCode)
+{
+    if (!m_client)
+        return;
+    m_weakFactory.InvalidateWeakPtrs();
+    m_receiver.reset();
+    m_blob.reset();
+    m_consumer.reset();
+    auto* client = std::exchange(m_client, nullptr);
+    if (m_syncQuit)
+        std::move(m_syncQuit).Run();
+    client->DidFail(blink::WebURLError(errorCode, blink::KURL(m_url)), base::TimeTicks::Now(), 0, 0, 0);
 }
 
 } // namespace net

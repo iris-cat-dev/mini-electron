@@ -665,6 +665,12 @@ base::span<const uint8_t> X509Certificate::cert_span() const
     return x509_util::CryptoBufferAsSpan(cert_buffer_.get());
 }
 
+base::span<const uint8_t> X509Certificate::intermediate_span(size_t index) const
+{
+    CHECK_LT(index, intermediate_ca_certs_.size());
+    return x509_util::CryptoBufferAsSpan(intermediate_ca_certs_[index].get());
+}
+
 X509Certificate::ParsedFields::ParsedFields() = default;
 X509Certificate::ParsedFields::ParsedFields(const ParsedFields&) = default;
 X509Certificate::ParsedFields::ParsedFields(ParsedFields&&) = default;

@@ -121,9 +121,6 @@ void ReportValidationErrorForMessage(mojo::Message* message, ValidationError err
     std::string description = base::StringPrintf("%s.%d %s", interface_name, method_ordinal, is_response ? " response" : "");
     ValidationContext validation_context(nullptr, 0, 0, 0, message, description.c_str());
 
-    std::string output = "ReportValidationErrorForMessage:" + description;
-    output += "\n";
-    OutputDebugStringA(output.c_str());
 
     ReportValidationError(&validation_context, error);
 }

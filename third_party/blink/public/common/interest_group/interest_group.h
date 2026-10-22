@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <optional>
 #include <set>
 #include <string>
@@ -21,7 +22,6 @@
 #include "third_party/blink/public/common/interest_group/auction_server_request_flags.h"
 #include "third_party/blink/public/common/interest_group/seller_capabilities.h"
 #include "third_party/blink/public/mojom/interest_group/interest_group_types.mojom-shared.h"
-//#include "third_party/boringssl/src/include/openssl/curve25519.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -43,7 +43,7 @@ constexpr char kKAnonKeyForAdBidPrefix[] = "AdBid\n";
 struct BLINK_COMMON_EXPORT InterestGroup {
     using ExecutionMode = blink::mojom::InterestGroup_ExecutionMode;
     using TrustedBiddingSignalsSlotSizeMode = blink::mojom::InterestGroup_TrustedBiddingSignalsSlotSizeMode;
-    //using AdditionalBidKey = std::array<uint8_t, ED25519_PUBLIC_KEY_LEN>;
+    using AdditionalBidKey = std::array<uint8_t, 32>;
     // An advertisement to display for an interest group. Typemapped to
     // blink::mojom::InterestGroupAd.
     // https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes
@@ -157,7 +157,7 @@ struct BLINK_COMMON_EXPORT InterestGroup {
 
     AuctionServerRequestFlags auction_server_request_flags;
 
-    //std::optional<AdditionalBidKey> additional_bid_key;
+    std::optional<AdditionalBidKey> additional_bid_key;
     std::optional<url::Origin> aggregation_coordinator_origin;
 
     static_assert(__LINE__ == 163, R"(

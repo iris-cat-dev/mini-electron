@@ -121,10 +121,6 @@
 
 namespace blink {
 
-StaticBitmapImageToVideoFrameCopier::~StaticBitmapImageToVideoFrameCopier(void)
-{
-    *(int*)1 = 1;
-}
 
 namespace {
 
@@ -829,9 +825,9 @@ void HTMLCanvasElement::NotifyListenersCanvasChanged()
         return;
 
     scoped_refptr<StaticBitmapImage> source_image;
-//     if (!copier_) {
-//         copier_ = std::make_unique<StaticBitmapImageToVideoFrameCopier>(WebGraphicsContext3DVideoFramePool::IsGpuMemoryBufferReadbackFromTextureEnabled());
-//     }
+    if (!copier_) {
+        copier_ = std::make_unique<StaticBitmapImageToVideoFrameCopier>(WebGraphicsContext3DVideoFramePool::IsGpuMemoryBufferReadbackFromTextureEnabled());
+    }
 
     const bool context_color_is_opaque = context_ ? context_->CanvasRenderingContextSkColorInfo().isOpaque() : false;
 
@@ -848,12 +844,11 @@ void HTMLCanvasElement::NotifyListenersCanvasChanged()
         // frame. Not all rendering contexts need to support this (for contexts
         // where GetSourceImageForCanvasInternal is zero-copy, this is superfluous).
         if (context_ && (context_color_is_opaque || can_discard_alpha) && base::FeatureList::IsEnabled(kOneCopyCanvasCapture)) {
-            *(int*)1 = 1;
-//             if (context_->CopyRenderingResultsToVideoFrame(copier_->GetAcceleratedVideoFramePool(SharedGpuContext::ContextProviderWrapper()), kBackBuffer,
-//                     gfx::ColorSpace::CreateREC709(), std::move(split_callback.first))) {
-//                 TRACE_EVENT1("blink", "HTMLCanvasElement::NotifyListenersCanvasChanged", "one_copy_canvas_capture", true);
-//                 continue;
-//             }
+            if (context_->CopyRenderingResultsToVideoFrame(copier_->GetAcceleratedVideoFramePool(SharedGpuContext::ContextProviderWrapper()), kBackBuffer,
+                    gfx::ColorSpace::CreateREC709(), std::move(split_callback.first))) {
+                TRACE_EVENT1("blink", "HTMLCanvasElement::NotifyListenersCanvasChanged", "one_copy_canvas_capture", true);
+                continue;
+            }
         }
 
         // If that fails, then create a StaticBitmapImage for the contents of
@@ -867,11 +862,10 @@ void HTMLCanvasElement::NotifyListenersCanvasChanged()
                 continue;
         }
 
-        *(int*)1 = 1;
         // Here we need to use the SharedGpuContext as some of the images may
         // have been originated with other contextProvider, but we internally
         // need a context_provider that has a RasterInterface available.
-        //copier_->Convert(source_image, can_discard_alpha, SharedGpuContext::ContextProviderWrapper(), std::move(split_callback.second));
+        copier_->Convert(source_image, can_discard_alpha, SharedGpuContext::ContextProviderWrapper(), std::move(split_callback.second));
     }
 }
 

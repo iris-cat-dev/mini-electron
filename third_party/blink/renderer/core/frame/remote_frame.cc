@@ -70,13 +70,6 @@
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
 
-bool mojo::EnumTraits<network::mojom::StorageAccessApiStatus, net::StorageAccessApiStatus>::FromMojom(
-    network::mojom::StorageAccessApiStatus, net::StorageAccessApiStatus*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
 namespace blink {
 
 namespace {

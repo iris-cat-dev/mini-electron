@@ -114,9 +114,7 @@ scoped_refptr<StaticBitmapImage> ToStaticBitmapImage(const SkBitmap& sk_bitmap)
 
 scoped_refptr<StaticBitmapImage> WrapAcceleratedBitmapImage(AcceleratedImageInfo image)
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     return AcceleratedStaticBitmapImage::CreateFromExternalMailbox(image.mailbox_holder, image.usage, image.image_info, image.is_origin_top_left,
-//         image.supports_display_compositing, image.is_overlay_candidate, std::move(image.release_callback));
+    return AcceleratedStaticBitmapImage::CreateFromExternalMailbox(image.mailbox_holder, image.usage, image.image_info, image.is_origin_top_left,
+        image.supports_display_compositing, image.is_overlay_candidate, std::move(image.release_callback));
 }
 } // namespace blink

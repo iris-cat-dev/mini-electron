@@ -129,20 +129,6 @@ void SoftwareOutputDeviceWinOrLinux::OnSwapBuffers(SwapBuffersCallback swap_ack_
     layered_window_updater_->Draw(damage, base::BindOnce(&SoftwareOutputDeviceWinOrLinux::DrawAck, weak_ptr_factory_.GetWeakPtr()));
 }
 
-static void CopyCanvasContent(uint8_t* src_bitmap_pixels, SkCanvas* dst_canvase, int width, int height)
-{
-    *(int*)1 = 1;
-//     if (!src_bitmap_pixels || !dst_canvase)
-//         return;
-// 
-//     SkBitmap bitmap;
-//     SkAlphaType alpha = kOpaque_SkAlphaType;
-//     SkImageInfo info = SkImageInfo::MakeN32(width, height, alpha);
-//     bitmap.installPixels(info, src_bitmap_pixels, width * 4, nullptr, nullptr);
-// 
-//     sk_sp<SkImage> img = SkImage::MakeFromBitmap(bitmap);
-//     dst_canvase->drawImage(img, 0, 0);
-}
 
 void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
 {
@@ -162,12 +148,10 @@ void SoftwareOutputDeviceWinOrLinux::ResizeDelegated()
     bitmap_pixels = (uint8_t*)malloc(required_bytes);
     std::unique_ptr<SkCanvas> new_canvase
         = skia::CreatePlatformCanvasWithPixels(viewport_pixel_size_.width(), viewport_pixel_size_.height(), true, bitmap_pixels, skia::CRASH_ON_FAILURE);
-    //CopyCanvasContent(bitmap_pixels_, new_canvase.get(), bitmap_pixels_size_.width(), bitmap_pixels_size_.height());
 
 #else
     std::unique_ptr<SkCanvas> new_canvase = skia::CreatePlatformCanvasReturnPixels(
         viewport_pixel_size_.width(), viewport_pixel_size_.height(), !has_transparent_background_canvas_, &bitmap_pixels);
-    //CopyCanvasContent(bitmap_pixels_, new_canvase.get(), bitmap_pixels_size_.width(), bitmap_pixels_size_.height());
 
     if (has_transparent_background_canvas_) {
         transparent_background_pixels_ = nullptr;

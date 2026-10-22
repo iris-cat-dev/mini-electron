@@ -177,9 +177,7 @@ int ProxyServer::GetDefaultPortForScheme(Scheme scheme)
 
 std::ostream& operator<<(std::ostream& os, const ProxyServer& proxy_server)
 {
-    *(int*)1 = 1;
-    //return os << ProxyServerToPacResultElement(proxy_server);
-    return os;
+    return os << ProxyServerToPacResultElement(proxy_server);
 }
 
 } // namespace net

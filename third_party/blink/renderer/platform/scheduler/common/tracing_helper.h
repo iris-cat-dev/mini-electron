@@ -10,17 +10,17 @@
 #include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
-#include "base/trace_event/trace_event.h"
-#include "base/trace_event/typed_macros.h"
+#include "base/trace_event/base_tracing.h"
+#include "base/trace_event/base_tracing_forward.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "base/tracing/protos/chrome_track_event.pbzero.h"
 #include "third_party/perfetto/include/perfetto/tracing/event_context.h"
-#include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
-//#include "third_party/perfetto/include/perfetto/tracing/track.h"
-//#include "third_party/perfetto/protos/perfetto/trace/track_event/track_event.pbzero.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -52,9 +52,9 @@ PLATFORM_EXPORT double TimeDeltaToMilliseconds(const base::TimeDelta& value);
 
 PLATFORM_EXPORT const char* YesNoStateToString(bool is_yes);
 
-PLATFORM_EXPORT
-// perfetto::protos::pbzero::RendererMainThreadTaskExecution::TaskType
-// TaskTypeToProto(TaskType task_type);
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+PLATFORM_EXPORT perfetto::protos::pbzero::RendererMainThreadTaskExecution::TaskType TaskTypeToProto(TaskType task_type);
+#endif
 
 class TraceableVariable;
 

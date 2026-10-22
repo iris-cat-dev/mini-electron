@@ -5,10 +5,66 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>SK_GANESH;SK_DIRECT3D;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SK_GANESH;SK_DIRECT3D;MINI_ELECTRON_USE_OPENSSL=1;MINI_ELECTRON_DISABLE_MEDIA_ELEMENT_CAPTURE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\third_party\protobuf\src;$(MSBuildThisFileDirectory)..\..\third_party\re2\src;$(MSBuildThisFileDirectory)..\..\third_party\snappy\src;$(MSBuildThisFileDirectory)..\..\third_party\snappy\win32;$(MSBuildThisFileDirectory)..\..\net\third_party\quiche\src;$(MSBuildThisFileDirectory)..\..\net\third_party\quiche\overrides;$(MSBuildThisFileDirectory)..\..\third_party\libwebp\src;$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>d3d12.lib;d3d11.lib;dcomp.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;d3d11.lib;dcomp.lib;dxgi.lib;d3dcompiler.lib;runtimeobject.lib;wbemuuid.lib;ole32.lib;oleaut32.lib;powrprof.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'libnode'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\third_party\libnode\deps\postject;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'support'">
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\snappy\src\snappy.cc">
+      <PreprocessorDefinitions>HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\snappy\src\snappy-sinksource.cc">
+      <PreprocessorDefinitions>HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\snappy\src\snappy-stubs-internal.cc">
+      <PreprocessorDefinitions>HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\bitmap256.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\bitstate.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\compile.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\dfa.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\filtered_re2.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\mimics_pcre.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\nfa.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\onepass.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\parse.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\perl_groups.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\prefilter.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\prefilter_tree.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\prog.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\re2.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\regexp.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\set.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\simplify.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\tostring.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\unicode_casefold.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\re2\unicode_groups.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\util\rune.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\re2\src\util\strutil.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\cam\cam.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\cam\hct.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\cam\hct_solver.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\cam\viewing_conditions.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\palettes\core.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\palettes\tones.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\material_color_utilities\src\cpp\utils\utils.cc" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'chromium'">
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\third_party\one_euro_filter\src\OneEuroFilter.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ui\color\win\accent_color_observer.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ui\color\win\css_system_color_mixer_win.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ui\color\win\native_color_mixers_win.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\base\allocator\partition_allocator\src\partition_alloc\shim\allocator_shim_win_static.cc" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\base\allocator\partition_allocator\src\partition_alloc\stack\asm\x64\push_registers_asm.cc" Condition="'$(Platform)' == 'x64'" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\base\allocator\partition_allocator\src\partition_alloc\stack\asm\x86\push_registers_asm.cc" Condition="'$(Platform)' == 'Win32'" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\base\allocator\partition_allocator\src\partition_alloc\stack\asm\arm64\push_registers_asm.cc" Condition="'$(Platform)' == 'ARM64'" />
+  </ItemGroup>
 </Project>

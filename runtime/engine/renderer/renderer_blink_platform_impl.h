@@ -67,7 +67,6 @@ public:
 #if BUILDFLAG(IS_MAC)
     blink::WebSandboxSupport* GetSandboxSupport() override;
 #endif
-    std::unique_ptr<blink::URLLoaderThrottleProvider> CreateURLLoaderThrottleProviderForWorker(blink::URLLoaderThrottleProviderType provider_type) override;
 
     blink::WebData GetDataResource(int resource_id, ui::ResourceScaleFactor scale_factor = ui::kScaleFactorNone) override;
     std::string GetDataResourceString(int resource_id) override;

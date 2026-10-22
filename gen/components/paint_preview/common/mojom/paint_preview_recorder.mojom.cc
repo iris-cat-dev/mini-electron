@@ -35,7 +35,10 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "components/paint_preview/common/mojom/paint_preview_recorder.mojom-params-data.h"
 #include "components/paint_preview/common/mojom/paint_preview_recorder.mojom-shared-message-ids.h"
@@ -76,6 +79,7 @@ PaintPreviewCaptureParams::PaintPreviewCaptureParams(::paint_preview::RecordingP
 
 PaintPreviewCaptureParams::~PaintPreviewCaptureParams() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void PaintPreviewCaptureParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -150,6 +154,7 @@ void PaintPreviewCaptureParams::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool PaintPreviewCaptureParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -169,6 +174,7 @@ LinkData::LinkData(const ::GURL& url_in, const ::gfx::Rect& rect_in)
 
 LinkData::~LinkData() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void LinkData::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -187,6 +193,7 @@ void LinkData::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool LinkData::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
@@ -221,6 +228,7 @@ PaintPreviewCaptureResponse::PaintPreviewCaptureResponse(const std::optional<::b
 
 PaintPreviewCaptureResponse::~PaintPreviewCaptureResponse() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void PaintPreviewCaptureResponse::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -281,6 +289,7 @@ void PaintPreviewCaptureResponse::WriteIntoTrace(perfetto::TracedValue traced_co
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool PaintPreviewCaptureResponse::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

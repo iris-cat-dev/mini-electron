@@ -91,6 +91,9 @@ protected:
     void BindInternal2(
         PendingReceiverState* receiver_state, scoped_refptr<base::SequencedTaskRunner> runner, const char* interface_name, uint32_t interface_version);
 
+    void SetImplementation(void* implementation);
+    ScopedMessagePipeHandle PassMessagePipeForUnbind();
+
     //     scoped_refptr<internal::MultiplexRouter> router_;
     //     std::unique_ptr<InterfaceEndpointClient> endpoint_client_;
 
@@ -120,9 +123,9 @@ public:
     using ImplPointerType = typename ImplRefTraits::PointerType; // ImplPointerType=device::mojom::blink::TimeZoneMonitorClient = blink::TimeZoneController
 
     explicit ReceiverImpl(ImplPointerType impl)
+        : implementation_(std::move(impl))
     {
-        // stub_.set_sink(std::move(impl));
-        impl_ = (void*)ImplRefTraits::GetRawPointer(&impl);
+        impl_ = ImplRefTraits::GetRawPointer(&implementation_);
     }
 
     ReceiverImpl(const ReceiverImpl&) = delete;
@@ -146,17 +149,7 @@ public:
 
     PendingReceiver<Interface> Unbind()
     {
-        //weak_ptr_factory_.InvalidateWeakPtrs();
-        //endpoint_client_.reset();
-        //PendingReceiver<Interface> request(router_->PassMessagePipe());
-        //PendingReceiver<Interface> request((Interface**)(&impl_));
-
-        //ScopedMessagePipeHandle message_pipe(handle_.release());
-        PendingReceiver<Interface> request(std::move(handle_));
-        handle_.reset();
-
-        //router_ = nullptr;
-        impl_ = nullptr;
+        PendingReceiver<Interface> request(PassMessagePipeForUnbind());
         return request;
     }
 
@@ -168,13 +161,13 @@ public:
 
     ImplPointerType SwapImplForTesting(ImplPointerType new_impl)
     {
-        *(int*)1 = 1;
-        // return std::exchange(stub_.sink(), std::move(new_impl));
-        return nullptr;
+        ImplPointerType old_impl = std::exchange(implementation_, std::move(new_impl));
+        SetImplementation(ImplRefTraits::GetRawPointer(&implementation_));
+        return old_impl;
     }
 
 private:
-    // typename Interface::template Stub_<ImplRefTraits> stub_;
+    ImplPointerType implementation_;
 };
 
 } // namespace internal

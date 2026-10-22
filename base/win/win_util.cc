@@ -250,59 +250,33 @@ bool& IsDeviceFormConvertible()
 // https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-systemenclosure
 bool& IsChassisConvertible()
 {
-    *(int*)1 = 1;
-    static bool chassis_convertible = false;
+    static bool chassis_convertible = [] {
+        ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+        AssertComApartmentType(ComApartmentType::STA);
+        Microsoft::WRL::ComPtr<IEnumWbemClassObject> enumerator;
+        if (RunWmiQuery(kCimV2ServerName, L"select ChassisTypes from Win32_SystemEnclosure", &enumerator).has_value())
+            return false;
+        ULONG obj_count = 0;
+        Microsoft::WRL::ComPtr<IWbemClassObject> info;
+        if (FAILED(enumerator->Next(25, 1, &info, &obj_count)) || obj_count == 0)
+            return false;
+        ScopedVariant chassis_types;
+        if (FAILED(info->Get(L"ChassisTypes", 0, chassis_types.Receive(), nullptr, nullptr)))
+            return false;
+        // WMI returns a 32-bit array even though the property is documented as uint16[].
+        if (chassis_types.type() != (VT_ARRAY | VT_I4))
+            return false;
+        ScopedSafearray safearray(chassis_types.Release().parray);
+        auto lock_scope = safearray.CreateLockScope<VT_I4>();
+        if (!lock_scope)
+            return false;
+        for (const auto chassis_type : *lock_scope) {
+            if (chassis_type == 30 || chassis_type == 31 || chassis_type == 32)
+                return true;
+        }
+        return false;
+    }();
     return chassis_convertible;
-//     static bool chassis_convertible = [] {
-//         ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-//         AssertComApartmentType(ComApartmentType::STA);
-// 
-//         constexpr std::wstring_view kQuery = L"select ChassisTypes from Win32_SystemEnclosure";
-//         Microsoft::WRL::ComPtr<IEnumWbemClassObject> enumerator;
-//         if (RunWmiQuery(kCimV2ServerName, std::wstring(kQuery), &enumerator).has_value()) {
-//             return false;
-//         }
-// 
-//         ULONG obj_count = 0;
-//         Microsoft::WRL::ComPtr<IWbemClassObject> info;
-//         HRESULT hr = E_FAIL;
-//         hr = enumerator->Next(25, 1, &info, &obj_count);
-//         if (FAILED(hr)) {
-//             return false;
-//         }
-// 
-//         // The accepted values for a convertible device are Tablet (30), Convertible
-//         // (31), and Detachable (32).
-//         enum ChassisType : int32_t {
-//             kUnknownChassisType = 2,
-//             kTabletChassisType = 30,
-//             kConvertibleChassisType = 31,
-//             kDetachableChassisType = 32,
-//         };
-//         int32_t chassis_type_id = kUnknownChassisType;
-// 
-//         if (obj_count >= 1) {
-//             ScopedVariant chassisTypeVariant;
-//             hr = info->Get(L"ChassisTypes", 0, chassisTypeVariant.Receive(), nullptr, nullptr);
-//             if (FAILED(hr)) {
-//                 return false;
-//             }
-// 
-//             // Although chassisType is documented as uint16[], the type in reality is
-//             // a 32bit integer array.
-//             if (chassisTypeVariant.type() == (VT_ARRAY | VT_I4)) {
-//                 ScopedSafearray safearray(chassisTypeVariant.Release().parray);
-//                 auto lock_scope = safearray.CreateLockScope<VT_I4>();
-//                 if (!lock_scope) {
-//                     return false;
-//                 }
-//                 chassis_type_id = (*lock_scope)[0];
-//             }
-//         }
-// 
-//         return (chassis_type_id == kTabletChassisType) || (chassis_type_id == kConvertibleChassisType) || (chassis_type_id == kDetachableChassisType);
-//     }();
-//     return chassis_convertible;
 }
 
 // Returns a reference to a cached boolean optional. If a value exists, it means
@@ -357,40 +331,25 @@ QueryKeyFunction& HasCSMStateChanged()
 // indicates tablet mode.
 bool IsWindows10OrGreaterTabletMode(HWND hwnd)
 {
-    *(int*)1 = 1;
-    return false;
-//     if (GetVersion() >= Version::WIN11) {
-//         // Only Win10 supports explicit tablet mode. On Win11,
-//         // get_UserInteractionMode always returns UserInteractionMode_Mouse, so
-//         // instead we check if we're in slate mode or not - 0 value means slate
-//         // mode. See
-//         // https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-gpiobuttons-convertibleslatemode
-// 
-//         constexpr int kKeyboardPresent = 1;
-//         base::win::RegKey registry_key(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Control\\PriorityControl", KEY_QUERY_VALUE);
-//         DWORD slate_mode = 0;
-//         bool value_exists = registry_key.ReadValueDW(L"ConvertibleSlateMode", &slate_mode) == ERROR_SUCCESS;
-//         // Some devices don't set the reg key to 1 for keyboard-only devices, so
-//         // also check if the device is used as a tablet if it is not 1. Some devices
-//         // don't set the registry key at all; fall back to checking if the device
-//         // is used as a tablet for them as well.
-//         return !(value_exists && slate_mode == kKeyboardPresent) && IsDeviceUsedAsATablet(/*reason=*/nullptr);
-//     }
-// 
-//     ScopedHString view_settings_guid = ScopedHString::Create(RuntimeClass_Windows_UI_ViewManagement_UIViewSettings);
-//     Microsoft::WRL::ComPtr<IUIViewSettingsInterop> view_settings_interop;
-//     HRESULT hr = ::RoGetActivationFactory(view_settings_guid.get(), IID_PPV_ARGS(&view_settings_interop));
-//     if (FAILED(hr))
-//         return false;
-// 
-//     Microsoft::WRL::ComPtr<ABI::Windows::UI::ViewManagement::IUIViewSettings> view_settings;
-//     hr = view_settings_interop->GetForWindow(hwnd, IID_PPV_ARGS(&view_settings));
-//     if (FAILED(hr))
-//         return false;
-// 
-//     ABI::Windows::UI::ViewManagement::UserInteractionMode mode = ABI::Windows::UI::ViewManagement::UserInteractionMode_Mouse;
-//     view_settings->get_UserInteractionMode(&mode);
-//     return mode == ABI::Windows::UI::ViewManagement::UserInteractionMode_Touch;
+    if (GetVersion() >= Version::WIN11) {
+        constexpr int kKeyboardPresent = 1;
+        base::win::RegKey registry_key(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Control\\PriorityControl", KEY_QUERY_VALUE);
+        DWORD slate_mode = 0;
+        const bool value_exists = registry_key.ReadValueDW(L"ConvertibleSlateMode", &slate_mode) == ERROR_SUCCESS;
+        return !(value_exists && slate_mode == kKeyboardPresent) && IsDeviceUsedAsATablet(/*reason=*/nullptr);
+    }
+    ScopedHString view_settings_guid = ScopedHString::Create(RuntimeClass_Windows_UI_ViewManagement_UIViewSettings);
+    Microsoft::WRL::ComPtr<IUIViewSettingsInterop> view_settings_interop;
+    HRESULT hr = ::RoGetActivationFactory(view_settings_guid.get(), IID_PPV_ARGS(&view_settings_interop));
+    if (FAILED(hr))
+        return false;
+    Microsoft::WRL::ComPtr<ABI::Windows::UI::ViewManagement::IUIViewSettings> view_settings;
+    hr = view_settings_interop->GetForWindow(hwnd, IID_PPV_ARGS(&view_settings));
+    if (FAILED(hr))
+        return false;
+    ABI::Windows::UI::ViewManagement::UserInteractionMode mode;
+    hr = view_settings->get_UserInteractionMode(&mode);
+    return SUCCEEDED(hr) && mode == ABI::Windows::UI::ViewManagement::UserInteractionMode_Touch;
 }
 
 bool QueryDeviceConvertibility()

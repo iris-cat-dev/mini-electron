@@ -37,7 +37,7 @@ inline bool readFile(const WCHAR* path, std::vector<char>* buffer)
 #endif
 }
 
-// szPathDir½áÎ²Èç¹ûÊÇÄ¿Â¼¶ø²»ÊÇÎÄ¼ş£¬Çë´øÉÏ¡®/¡¯»ò¡®\\¡¯
+// szPathDirç»“å°¾å¦‚æœæ˜¯ç›®å½•è€Œä¸æ˜¯æ–‡ä»¶ï¼Œè¯·å¸¦ä¸Šâ€˜/â€™æˆ–â€˜\\â€™
 inline BOOL createMultiDir(const WCHAR* pathDir)
 {
 #if defined(OS_WIN)
@@ -69,12 +69,12 @@ inline void writeFile(const WCHAR* path, const std::vector<char>& buffer)
 
     HANDLE hFile = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (INVALID_HANDLE_VALUE == hFile) {
-        DebugBreak();
+        OutputDebugStringA("Unable to open output file\n");
         return;
     }
 
     DWORD numberOfBytesWrite = 0;
-    BOOL b = ::WriteFile(hFile, &buffer.at(0), buffer.size(), &numberOfBytesWrite, nullptr);
+    BOOL b = ::WriteFile(hFile, buffer.data(), buffer.size(), &numberOfBytesWrite, nullptr);
     ::CloseHandle(hFile);
 }
 

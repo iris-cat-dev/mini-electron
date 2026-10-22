@@ -129,7 +129,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -162,7 +162,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4003;4819;4291;4530;4530</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -192,7 +192,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -210,7 +210,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -230,7 +230,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -262,7 +262,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -2558,6 +2558,51 @@
     <ClInclude Include="..\..\..\third_party\abseil-cpp\absl\types\variant.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\gen\components\paint_preview\common\mojom\paint_preview_recorder.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\components\paint_preview\common\mojom\paint_preview_recorder.mojom.cc" />
+    <ClCompile Include="..\..\..\gen\components\paint_preview\common\mojom\paint_preview_types.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\components\paint_preview\common\mojom\paint_preview_types.mojom.cc" />
+    <ClCompile Include="..\..\..\gen\services\metrics\public\mojom\ukm_interface.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\services\metrics\public\mojom\ukm_interface.mojom.cc" />
+    <ClCompile Include="..\..\..\gen\services\network\public\mojom\cors.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\services\network\public\mojom\no_vary_search.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\blob\data_element.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\clipboard\clipboard.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\forms\form_control_type.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\messaging\static_bitmap_image.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\messaging\static_bitmap_image.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\messaging\static_bitmap_image.mojom.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\messaging\transferable_message.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\messaging\transferable_message.mojom.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\permissions\permission.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\use_counter\metrics\webdx_feature.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_mojo_interface_request_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_abort_payment_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_can_make_payment_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_can_make_payment_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_content_index_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_content_index_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_payment_request_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_payment_request_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_periodic_sync_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_periodic_sync_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_message_data.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_subscription.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_subscription_change_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_subscription_change_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_push_subscription_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_remote_playback.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_remote_playback_availability_callback.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_remote_playback_state.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_storage_access_handle.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_sync_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_sync_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\core\style\computed_style_base_constants.cc" />
     <ClCompile Include="..\..\..\components\performance_manager\public\mojom\web_memory_mojom_stub.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\common\features_generated.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\common\origin_trials\origin_trials.cc" />
@@ -3564,6 +3609,67 @@
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\core\v8\v8_xslt_processor.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\init_idl_interfaces.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\properties_per_feature_installer.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\file_system_access\file_system_access_error.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\file_system_access\file_system_access_error.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\notifications\notification.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\feature_observer\feature_observer.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\feature_observer\feature_observer.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\file_system_access\file_system_access_directory_handle.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\file_system_access\file_system_access_directory_handle.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\frame\remote_frame.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\frame\remote_frame.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\locks\lock_manager.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\locks\lock_manager.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\notifications\notification.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\notifications\notification_service.mojom-blink.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\public\mojom\notifications\notification_service.mojom-shared.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_cache.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_cache_storage.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_cloud_identifier.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_create_sync_access_handle_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_create_writable_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_directory_handle.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_file_handle.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_get_directory_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_get_file_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_handle_kind.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_handle_permission_descriptor.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_read_write_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_remove_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_sync_access_handle.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_sync_access_handle_mode.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_writable_file_stream.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_file_system_writable_file_stream_mode.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_cursor.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_cursor_direction.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_data_loss_amount.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_database.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_database_info.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_factory.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_index.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_index_parameters.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_object_store.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_object_store_parameters.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_open_db_request.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_request.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_request_ready_state.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_transaction.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_transaction_durability.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_transaction_mode.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_transaction_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_idb_version_change_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_media_encrypted_event.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_media_encrypted_event_init.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_action.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_action_type.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_direction.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_options.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_permission.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_permission_callback.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_notification_scenario.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_router_source_enum.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_union_idbcursor_idbindex_idbobjectstore.cc" />
+    <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_union_idbindex_idbobjectstore.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_all_accepted_credentials_options.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_alpha_option.cc" />
     <ClCompile Include="..\..\..\gen\third_party\blink\renderer\bindings\modules\v8\v8_animate_callback.cc" />

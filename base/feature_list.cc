@@ -662,39 +662,22 @@ void FeatureList::VisitFeaturesAndParams(FeatureVisitor& visitor, std::string_vi
         return;
     }
 
-    *(int*)1 = 1;
-
-//     FieldTrialParamAssociator* params_associator = FieldTrialParamAssociator::GetInstance();
-// 
-//     using FeatureOverride = std::pair<std::string, OverrideEntry>;
-//     base::span<FeatureOverride> filtered_overrides(g_feature_list_instance->overrides_);
-//     if (!filter_prefix.empty()) {
-//         // If there is a filter prefix, then change the begin/end range to be the
-//         // range where the values are prefixed with the given prefix (overrides are
-//         // lexically sorted, so this will be a continuous range). This is
-//         // implemented as a binary search of the upper and lower bounds of the
-//         // override iterator, projecting each iterator value to just the
-//         // key, trimmed to the length of the prefix.
-//         DCHECK(std::ranges::is_sorted(filtered_overrides, std::less<>(), [](const FeatureOverride& entry) { return entry.first; }));
-//         filtered_overrides = std::ranges::equal_range(filtered_overrides, filter_prefix, std::less<>(),
-//             [filter_prefix](const FeatureOverride& entry) { 
-//                 return std::string_view(entry.first).substr(0, filter_prefix.size()); 
-//             });
-//     }
-//     for (const FeatureOverride& feature_override : filtered_overrides) {
-//         FieldTrial* field_trial = feature_override.second.field_trial;
-// 
-//         std::string trial_name;
-//         std::string group_name;
-//         FieldTrialParams params;
-//         if (field_trial) {
-//             trial_name = field_trial->trial_name();
-//             group_name = field_trial->group_name();
-//             params_associator->GetFieldTrialParamsWithoutFallback(trial_name, group_name, &params);
-//         }
-// 
-//         visitor.Visit(feature_override.first, feature_override.second.overridden_state, params, trial_name, group_name);
-//     }
+    FieldTrialParamAssociator* params_associator = FieldTrialParamAssociator::GetInstance();
+    const auto& overrides = g_feature_list_instance->overrides_;
+    for (auto it = overrides.lower_bound(filter_prefix); it != overrides.end(); ++it) {
+        if (std::string_view(it->first).substr(0, filter_prefix.size()) != filter_prefix)
+            break;
+        FieldTrial* field_trial = it->second.field_trial;
+        std::string trial_name;
+        std::string group_name;
+        FieldTrialParams params;
+        if (field_trial) {
+            trial_name = field_trial->trial_name();
+            group_name = field_trial->group_name();
+            params_associator->GetFieldTrialParamsWithoutFallback(trial_name, group_name, &params);
+        }
+        visitor.Visit(it->first, it->second.overridden_state, params, trial_name, group_name);
+    }
 }
 
 void FeatureList::FinalizeInitialization()

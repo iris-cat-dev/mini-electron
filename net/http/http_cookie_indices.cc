@@ -7,9 +7,14 @@
 #include <functional>
 
 #include "base/containers/span.h"
+#include "base/check.h"
 #include "base/pickle.h"
 #include "base/ranges/algorithm.h"
+#if defined(MINI_ELECTRON_USE_OPENSSL)
+#include <openssl/sha.h>
+#else
 #include "crypto/sha2.h"
+#endif
 #include "net/cookies/parsed_cookie.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/structured_headers.h"
@@ -110,7 +115,14 @@ CookieIndicesHash HashCookieIndices(base::span<const std::string> cookie_indices
         }
         pickle.WriteBool(false);
     }
+#if defined(MINI_ELECTRON_USE_OPENSSL)
+    CookieIndicesHash hash;
+    const auto payload = pickle.payload_bytes();
+    CHECK(SHA256(payload.data(), payload.size(), hash.data()));
+    return hash;
+#else
     return crypto::SHA256Hash(pickle.payload_bytes());
+#endif
 }
 
 } // namespace net

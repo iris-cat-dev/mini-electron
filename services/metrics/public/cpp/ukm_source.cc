@@ -93,11 +93,6 @@ void UkmSource::SetAndroidActivityTypeState(int32_t activity_type)
     g_android_activity_type_state = activity_type;
 }
 
-UkmSource::NavigationData::NavigationData() = default;
-UkmSource::NavigationData::~NavigationData() = default;
-
-UkmSource::NavigationData::NavigationData(const NavigationData& other) = default;
-
 UkmSource::NavigationData UkmSource::NavigationData::CopyWithSanitizedUrls(std::vector<GURL> sanitized_urls) const
 {
     DCHECK_LE(sanitized_urls.size(), 2u);

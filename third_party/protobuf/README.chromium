@@ -1,0 +1,12 @@
+Name: Protocol Buffers Lite
+URL: https://github.com/protocolbuffers/protobuf
+Version: 3.21.12
+Revision: f0dc78d7e6e331b8c6bb2d5283e06aa26883ca7c
+License: BSD-3-Clause
+License File: LICENSE
+Security Critical: yes
+Shipped: yes
+
+Source subset: cmake/libprotobuf-lite.cmake runtime sources and their transitive
+headers. Vendored unchanged to match the retained protoc 3.21.12 generated LCP
+element locator message. No full reflection/compiler runtime is included.

@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 #include "third_party/blink/public/mojom/notifications/notification.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/notifications/notification.mojom-shared.h" // IWYU pragma: export
@@ -69,25 +72,12 @@ public:
         return mojo::TypeConverter<U, NotificationAction>::Convert(*this);
     }
 
-    NotificationAction()
-    : type()
-    , action()
-    , title()
-    , icon()
-    , placeholder()
-{
-}
+    NotificationAction();
 
     NotificationAction(NotificationActionType type_in, const WTF::String& action_in, const ::WTF::String& title_in,
-    const ::blink::KURL& icon_in, const ::WTF::String& placeholder_in)
-    : type(std::move(type_in))
-    , action(std::move(action_in))
-    , title(std::move(title_in))
-    , icon(std::move(icon_in))
-    , placeholder(std::move(placeholder_in)){
-}
+    const ::blink::KURL& icon_in, const ::WTF::String& placeholder_in);
 
-    ~NotificationAction() = default;
+    ~NotificationAction();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -161,8 +151,10 @@ public:
 
     ::WTF::String placeholder;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -213,55 +205,18 @@ public:
         return mojo::TypeConverter<U, NotificationData>::Convert(*this);
     }
 
-    NotificationData()
-    : title()
-    , direction(NotificationDirection::LEFT_TO_RIGHT)
-    , lang()
-    , body()
-    , tag()
-    , image()
-    , icon()
-    , badge()
-    , vibration_pattern()
-    , timestamp(0)
-    , renotify(false)
-    , silent(false)
-    , require_interaction(false)
-    , data()
-    , actions()
-    , show_trigger_timestamp()
-    , scenario(NotificationScenario::DEFAULT)
-{
-}
+    NotificationData();
 
     NotificationData(const ::WTF::String& title_in, NotificationDirection direction_in, const WTF::String& lang_in, const ::WTF::String& body_in,
     const WTF::String& tag_in, const ::blink::KURL& image_in, const ::blink::KURL& icon_in, const ::blink::KURL& badge_in,
     std::optional<WTF::Vector<int32_t>> vibration_pattern_in, double timestamp_in, bool renotify_in, bool silent_in, bool require_interaction_in,
     std::optional<WTF::Vector<uint8_t>> data_in, std::optional<WTF::Vector<NotificationActionPtr>> actions_in,
-    std::optional<::base::Time> show_trigger_timestamp_in, NotificationScenario scenario_in)
-    : title(std::move(title_in))
-    , direction(std::move(direction_in))
-    , lang(std::move(lang_in))
-    , body(std::move(body_in))
-    , tag(std::move(tag_in))
-    , image(std::move(image_in))
-    , icon(std::move(icon_in))
-    , badge(std::move(badge_in))
-    , vibration_pattern(std::move(vibration_pattern_in))
-    , timestamp(std::move(timestamp_in))
-    , renotify(std::move(renotify_in))
-    , silent(std::move(silent_in))
-    , require_interaction(std::move(require_interaction_in))
-    , data(std::move(data_in))
-    , actions(std::move(actions_in))
-    , show_trigger_timestamp(std::move(show_trigger_timestamp_in))
-    , scenario(std::move(scenario_in)){
-}
+    std::optional<::base::Time> show_trigger_timestamp_in, NotificationScenario scenario_in);
 
     NotificationData(const NotificationData&) = delete;
     NotificationData& operator=(const NotificationData&) = delete;
 
-    ~NotificationData() = default;
+    ~NotificationData();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -359,8 +314,10 @@ public:
 
     NotificationScenario scenario;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -407,23 +364,12 @@ public:
         return mojo::TypeConverter<U, NotificationResources>::Convert(*this);
     }
 
-    NotificationResources()
-    : image()
-    , icon()
-    , badge()
-    , action_icons()
-{
-}
+    NotificationResources();
 
     NotificationResources(
-    const ::SkBitmap& image_in, const ::SkBitmap& icon_in, const ::SkBitmap& badge_in, std::optional<WTF::Vector<::SkBitmap>> action_icons_in)
-    : image(std::move(image_in))
-    , icon(std::move(icon_in))
-    , badge(std::move(badge_in))
-    , action_icons(std::move(action_icons_in)){
-}
+    const ::SkBitmap& image_in, const ::SkBitmap& icon_in, const ::SkBitmap& badge_in, std::optional<WTF::Vector<::SkBitmap>> action_icons_in);
 
-    ~NotificationResources() = default;
+    ~NotificationResources();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -491,8 +437,10 @@ public:
 
     std::optional<WTF::Vector<::SkBitmap>> action_icons;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

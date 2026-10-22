@@ -5,6 +5,11 @@
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 
 #include <utility>
+#include <inttypes.h>
+
+#include "base/json/string_escape.h"
+#include "base/notreached.h"
+#include "base/strings/stringprintf.h"
 
 // #include "base/trace_event/interned_args_helper.h"
 // #include "base/trace_event/traced_value.h"
@@ -23,8 +28,7 @@ const char* BeginFrameArgs::TypeToString(BeginFrameArgsType type)
     case BeginFrameArgs::MISSED:
         return "MISSED";
     }
-    //NOTREACHED_IN_MIGRATION();
-    *(int*)1 = 1;
+    NOTREACHED_IN_MIGRATION();
     return "???";
 }
 
@@ -75,12 +79,7 @@ bool BeginFrameId::IsSequenceValid() const
 
 std::string BeginFrameId::ToString() const
 {
-//     base::trace_event::TracedValueJSON value;
-//     value.SetInteger("source_id", source_id);
-//     value.SetInteger("sequence_number", sequence_number);
-//     return value.ToJSON();
-    *(int*)1 = 1;
-    return "";
+    return base::StringPrintf("{\"source_id\":%" PRIu64 ",\"sequence_number\":%" PRIu64 "}", source_id, sequence_number);
 }
 
 PossibleDeadline::PossibleDeadline(int64_t vsync_id, base::TimeDelta latch_delta, base::TimeDelta present_delta)
@@ -192,11 +191,20 @@ std::unique_ptr<base::trace_event::ConvertableToTraceFormat> BeginFrameArgs::AsV
 
 std::string BeginFrameArgs::ToString() const
 {
-//     base::trace_event::TracedValueJSON value;
-//     AsValueInto(&value);
-//     return value.ToJSON();
-    *(int*)1 = 1;
-    return "";
+    std::string value = base::StringPrintf(
+        "{\"type\":\"BeginFrameArgs\",\"subtype\":\"%s\",\"source_id\":%" PRIu64
+        ",\"sequence_number\":%" PRIu64 ",\"frames_throttled_since_last\":%" PRIu64
+        ",\"frame_time_us\":%" PRId64 ",\"deadline_us\":%" PRId64 ",\"interval_us\":%" PRId64
+        ",\"on_critical_path\":%s,\"animate_only\":%s,\"has_possible_deadlines\":%s",
+        TypeToString(type), frame_id.source_id, frame_id.sequence_number, frames_throttled_since_last,
+        frame_time.since_origin().InMicroseconds(), deadline.since_origin().InMicroseconds(), interval.InMicroseconds(),
+        on_critical_path ? "true" : "false", animate_only ? "true" : "false", possible_deadlines ? "true" : "false");
+#ifndef NDEBUG
+    value += ",\"created_from\":";
+    base::EscapeJSONString(created_from.ToString(), true, &value);
+#endif
+    value += '}';
+    return value;
 }
 
 BeginFrameAck::BeginFrameAck(const BeginFrameArgs& args, bool has_damage)

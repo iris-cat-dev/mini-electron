@@ -35,7 +35,10 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/messaging/transferable_message.mojom-params-data.h"
 #include "third_party/blink/public/mojom/messaging/transferable_message.mojom-shared-message-ids.h"
@@ -77,6 +80,7 @@ TransferableMessage::TransferableMessage(::blink::CloneableMessage message_in, s
 
 TransferableMessage::~TransferableMessage() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void TransferableMessage::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -137,6 +141,7 @@ void TransferableMessage::WriteIntoTrace(perfetto::TracedValue traced_context) c
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool TransferableMessage::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

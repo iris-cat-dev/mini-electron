@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include "components/viz/common/resources/resource_format_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkColorType.h"
 
@@ -22,6 +23,14 @@ public:
         }
     }
 };
+
+TEST_F(SharedImageFormatUtilsTest, LegacySharedImageFormatConversion)
+{
+    EXPECT_EQ(kN32_SkColorType, ResourceFormatToClosestSkColorType(false, SinglePlaneFormat::kRGBA_8888));
+    EXPECT_EQ(kBGRA_8888_SkColorType, ResourceFormatToClosestSkColorType(true, SinglePlaneFormat::kBGRA_8888));
+    EXPECT_EQ(kRGBA_F16_SkColorType, ResourceFormatToClosestSkColorType(true, SinglePlaneFormat::kRGBA_F16));
+    EXPECT_EQ(kAlpha_8_SkColorType, ResourceFormatToClosestSkColorType(true, SinglePlaneFormat::kR_8));
+}
 
 TEST_F(SharedImageFormatUtilsTest, ToClosestSkColorTypeMultiPlaneNV12)
 {

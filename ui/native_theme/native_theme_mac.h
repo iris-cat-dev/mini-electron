@@ -5,7 +5,10 @@
 #ifndef UI_NATIVE_THEME_NATIVE_THEME_MAC_H_
 #define UI_NATIVE_THEME_NATIVE_THEME_MAC_H_
 
+#include "base/functional/callback.h"
+#include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
+#include "base/task/sequenced_task_runner.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/native_theme/native_theme_aura.h"
 #include "ui/native_theme/native_theme_base.h"
@@ -82,6 +85,9 @@ private:
         cc::PaintCanvas* canvas, const gfx::Rect& rect, const ScrollbarExtraParams& extra_params, bool is_corner, ColorScheme color_scheme) const;
 
     void InitializeDarkModeStateAndObserver();
+    void OnDarkModeChanged(bool dark);
+    void OnAccessibilityChanged(bool high_contrast, bool reduced_transparency, bool inverted);
+    void OnCaptionStyleChanged();
 
     void ConfigureWebInstance() override;
 
@@ -113,6 +119,12 @@ private:
     // Used to notify the web native theme of changes to dark mode and high
     // contrast.
     std::unique_ptr<NativeTheme::ColorSchemeNativeThemeObserver> color_scheme_observer_;
+
+    // AppKit delivers notifications on its main thread, while the renderer owns
+    // its themes and color-provider cache on the Blink sequence.
+    scoped_refptr<base::SequencedTaskRunner> task_runner_;
+    base::RepeatingClosure caption_style_changed_;
+    base::WeakPtrFactory<NativeThemeMac> weak_factory_{this};
 };
 
 // Mac implementation of native theme support for web controls.

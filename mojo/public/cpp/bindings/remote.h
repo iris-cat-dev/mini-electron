@@ -119,7 +119,7 @@ public:
     {
         if (!is_bound())
             return nullptr;
-        return (Interface*)remote_impl_.TryGetInstance();
+        return remote_impl_.TryInstance();
     }
 
     // Shorthand form of |get()|. See above.

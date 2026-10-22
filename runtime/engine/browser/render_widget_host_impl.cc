@@ -2,6 +2,7 @@
 #include "runtime/engine/browser/render_widget_host_impl.h"
 
 #include <algorithm>
+#include "build/build_config.h"
 #include "runtime/engine/renderer/platform_event_handler.h"
 #include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/viz/viz_host.h"
@@ -228,9 +229,15 @@ display::Screen* getScreenOrCreate()
 void RenderWidgetHostImpl::initVisualProperties()
 {
     display::Screen* screen = getScreenOrCreate();
-    std::vector<display::Display> displays = screen->GetAllDisplays();
-    if (displays.size() == 0)
-        DebugBreak();
+    std::vector<display::Display> displays;
+    if (screen)
+        displays = screen->GetAllDisplays();
+    if (displays.empty()) {
+        // A display can be temporarily absent (for example during hot unplug).
+        // Blink still requires a nonempty screen list for an offscreen view.
+        displays.push_back(display::Display::GetDefaultDisplay());
+    }
+    m_visualProperties.screen_infos.screen_infos.clear();
     for (size_t i = 0; i < displays.size(); ++i) {
         const display::Display& dis = displays[i];
         display::ScreenInfo screenInfo;
@@ -365,68 +372,118 @@ void RenderWidgetHostImpl::SelectionBoundsChanged(const gfx::Rect& anchor_rect,
 
 void RenderWidgetHostImpl::onClientConnectionLost()
 {
-    WebViewHost* webview = m_engineWebView;
-    ThreadCall::callUiThreadAsync(FROM_HERE, [webview] {
-        webview->preDestroyOnUiThread();
-
-        ::PostMessageW(webview->getHostWnd(), WM_CLOSE, 0, 0);
-        content::ThreadCall::callBlinkThreadAsync(FROM_HERE, [webview] { webview->preDestroyOnBlinkThread(); });
+    const int64_t id = m_engineWebView->getId();
+    ThreadCall::callUiThreadAsync(FROM_HERE, [id] {
+        auto* webview = static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(id));
+        if (!webview || !webview->preDestroyOnUiThread())
+            return;
+        if (::IsWindow(webview->getHostWnd()))
+            ::DestroyWindow(webview->getHostWnd());
+        // preDestroyOnUiThread removes the live ID. This task owns the one
+        // remaining teardown handoff to the Blink thread.
+        ThreadCall::callBlinkThreadAsync(FROM_HERE, [webview] { webview->preDestroyOnBlinkThread(); });
     });
 }
 
 void RenderWidgetHostImpl::RequestClosePopup()
 {
-    DCHECK(kHasPopup == m_popupState);
     if (kRequestClosePopup == m_popupState)
         return;
     m_popupState = kRequestClosePopup;
-
-    m_popupWidgetHost.Unbind();
-
-    WebViewHost* webview = m_engineWebView;
-    ThreadCall::callUiThreadAsync(FROM_HERE, [webview] { webview->setShow(SW_HIDE /*false, false*/); });
+    // WidgetHost disconnection completes WebPagePopupImpl::ClosePopup.
+    m_popupWidgetHost.reset();
+    m_blinkWidgetHostReceiver.reset();
+    m_blinkWidget.reset();
+    onClientConnectionLost();
 }
 
 void RenderWidgetHostImpl::ShowPopup(const ::gfx::Rect& initialRect, const ::gfx::Rect& anchor_rect, ShowPopupCallback callback)
 {
-    DCHECK(kNoPopup == m_popupState);
-    if (m_popupState != kNoPopup)
+    if (m_popupState != kNoPopup) {
+        RequestClosePopup();
         return;
+    }
     m_popupState = kHasPopup;
 
-    mini_electron_web_view parentWebviewId = m_parentWebviewId;
-    int64_t id = m_engineWebView->getId();
-    ThreadCall::callUiThreadAsync(FROM_HERE, [parentWebviewId, id, initialRect] {
-        WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(id);
-        WebViewHost* parentWebview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(parentWebviewId);
-        if (!webview || !parentWebview)
-            return;
-
-        POINT point = { 0 };
-        ::ClientToScreen(parentWebview->getHostWnd(), &point);
-        webview->createWebWindowImplInUiThread(nullptr, WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, /*WS_EX_NOACTIVATE*/ 0x08000000L,
-            initialRect.x() + point.x, initialRect.y() + point.y, initialRect.width(), initialRect.height());
-        webview->setShow(SW_SHOWNOACTIVATE /*true, false*/);
-    });
-
-    RenderThreadImpl::get()->getTaskRunner()->PostNonNestableTask(
-        FROM_HERE, base::BindOnce([](ShowPopupCallback&& callback) { std::move(callback).Run(); }, std::move(callback)));
+    ThreadCall::callUiThreadAsync(FROM_HERE, base::BindOnce(
+        [](int64_t parentId, int64_t id, gfx::Rect bounds,
+            scoped_refptr<base::SequencedTaskRunner> runner,
+            base::WeakPtr<RenderWidgetHostImpl> self, ShowPopupCallback callback) {
+            bool shown = false;
+#if !BUILDFLAG(IS_MAC)
+            auto* webview = static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(id));
+            auto* parent = static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(parentId));
+            if (webview && parent) {
+                // The protocol supplies screen DIPs, not parent-client coordinates.
+#if defined(OS_WIN)
+                bounds = display::win::ScreenWin::DIPToScreenRect(nullptr, bounds);
+#endif
+                webview->createWebWindowImplInUiThread(parent->getHostWnd(),
+                    WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0x08000000L,
+                    bounds.x(), bounds.y(), bounds.width(), bounds.height());
+                shown = ::IsWindow(webview->getHostWnd());
+                if (shown)
+                    webview->setShow(SW_SHOWNOACTIVATE);
+            }
+#endif
+            // macOS has no native page-popup host. Do not accept the Win32
+            // compatibility sentinel as a successfully created native window.
+            runner->PostTask(FROM_HERE, base::BindOnce(
+                [](base::WeakPtr<RenderWidgetHostImpl> self, bool shown, ShowPopupCallback callback) {
+                    if (!self || self->m_popupState == kRequestClosePopup)
+                        return;
+                    if (!shown) {
+                        self->RequestClosePopup();
+                        return;
+                    }
+                    std::move(callback).Run();
+                }, self, shown, std::move(callback)));
+        }, m_parentWebviewId, m_engineWebView->getId(), initialRect, m_runner,
+        m_weakPtr.GetWeakPtr(), std::move(callback)));
 }
 
 void RenderWidgetHostImpl::SetPopupBounds(const ::gfx::Rect& bounds, SetPopupBoundsCallback callback)
 {
-    RenderThreadImpl::get()->getTaskRunner()->PostNonNestableTask(
-        FROM_HERE, base::BindOnce([](SetPopupBoundsCallback&& callback) { std::move(callback).Run(); }, std::move(callback)));
+    if (m_popupState != kHasPopup) {
+        RequestClosePopup();
+        return;
+    }
+    ThreadCall::callUiThreadAsync(FROM_HERE, base::BindOnce(
+        [](int64_t id, gfx::Rect bounds, scoped_refptr<base::SequencedTaskRunner> runner,
+            base::WeakPtr<RenderWidgetHostImpl> self, SetPopupBoundsCallback callback) {
+            bool resized = false;
+#if !BUILDFLAG(IS_MAC)
+            auto* webview = static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(id));
+            if (webview && ::IsWindow(webview->getHostWnd())) {
+#if defined(OS_WIN)
+                bounds = display::win::ScreenWin::DIPToScreenRect(nullptr, bounds);
+#endif
+                resized = ::SetWindowPos(webview->getHostWnd(), nullptr,
+                    bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+#endif
+            runner->PostTask(FROM_HERE, base::BindOnce(
+                [](base::WeakPtr<RenderWidgetHostImpl> self, bool resized, SetPopupBoundsCallback callback) {
+                    if (!self || self->m_popupState == kRequestClosePopup)
+                        return;
+                    if (!resized) {
+                        self->RequestClosePopup();
+                        return;
+                    }
+                    std::move(callback).Run();
+                }, self, resized, std::move(callback)));
+        }, m_engineWebView->getId(), bounds, m_runner,
+        m_weakPtr.GetWeakPtr(), std::move(callback)));
 }
 
 void RenderWidgetHostImpl::RegisterRenderFrameMetadataObserver(::mojo::PendingReceiver<::cc::mojom::blink::RenderFrameMetadataObserverClient> receiver,
     ::mojo::PendingRemote<::cc::mojom::blink::RenderFrameMetadataObserver> render_frame_metadata_observer)
 {
-    m_renderFrameMetadataObserverClient = new RenderFrameMetadataObserverClientImpl(this);
+    m_renderFrameMetadataObserverClient = std::make_unique<RenderFrameMetadataObserverClientImpl>(this);
     m_renderFrameMetadataObserverClient->m_receiver.Bind(std::move(receiver));
-
-    m_renderFrameMetadataObserverClient->m_receiver.set_disconnect_handler(
-        base::BindOnce([](RenderFrameMetadataObserverClientImpl* ptr) { delete ptr; }, base::Unretained(m_renderFrameMetadataObserverClient)));
+    m_renderFrameMetadataObserver.reset();
+    m_renderFrameMetadataObserver.Bind(std::move(render_frame_metadata_observer));
 }
 
 void RenderWidgetHostImpl::UpdateTooltipUnderCursor(const ::WTF::String& tooltip_text, ::base::i18n::TextDirection text_direction_hint)

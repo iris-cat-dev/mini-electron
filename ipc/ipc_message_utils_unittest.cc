@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits>
+
 #include "ipc/ipc_message.h"
 #include "ipc/ipc_message_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -27,7 +29,7 @@ TEST(IPCMessageUtilsTest, NestedMessages)
     ParamTraits<Message>::Write(&outer_msg, nested_msg);
 
     // Read back the nested message.
-    PickleIterator iter(outer_msg);
+    base::PickleIterator iter(outer_msg);
     IPC::Message result_msg;
     ASSERT_TRUE(ParamTraits<Message>::Read(&outer_msg, &iter, &result_msg));
 
@@ -38,7 +40,7 @@ TEST(IPCMessageUtilsTest, NestedMessages)
     EXPECT_EQ(nested_msg.flags(), result_msg.flags());
 
     // Verify nested message content
-    PickleIterator nested_iter(nested_msg);
+    base::PickleIterator nested_iter(nested_msg);
     int result_content = 0;
     ASSERT_TRUE(ParamTraits<int>::Read(&nested_msg, &nested_iter, &result_content));
     EXPECT_EQ(nested_content, result_content);
@@ -47,6 +49,63 @@ TEST(IPCMessageUtilsTest, NestedMessages)
     IPC::Message dummy;
     ASSERT_FALSE(ParamTraits<Message>::Read(&outer_msg, &iter, &dummy));
     ASSERT_FALSE(ParamTraits<int>::Read(&nested_msg, &nested_iter, &result_content));
+}
+
+TEST(IPCMessageUtilsTest, LongRoundTrip)
+{
+    const long values[] = { std::numeric_limits<long>::min(), -1, 0, 1, std::numeric_limits<long>::max() };
+    for (long value : values) {
+        Message message;
+        WriteParam(&message, value);
+        base::PickleIterator iter(message);
+        long result = 0;
+        ASSERT_TRUE(ReadParam(&message, &iter, &result));
+        EXPECT_EQ(value, result);
+        EXPECT_FALSE(ReadParam(&message, &iter, &result));
+    }
+}
+
+TEST(IPCMessageUtilsTest, UnsignedLongRoundTrip)
+{
+    const unsigned long values[] = { 0, 1, static_cast<unsigned long>(std::numeric_limits<long>::max()),
+        static_cast<unsigned long>(std::numeric_limits<long>::max()) + 1, std::numeric_limits<unsigned long>::max() };
+    for (unsigned long value : values) {
+        Message message;
+        WriteParam(&message, value);
+        base::PickleIterator iter(message);
+        unsigned long result = 0;
+        ASSERT_TRUE(ReadParam(&message, &iter, &result));
+        EXPECT_EQ(value, result);
+        EXPECT_FALSE(ReadParam(&message, &iter, &result));
+    }
+}
+
+TEST(IPCMessageUtilsTest, BinaryValuesRoundTrip)
+{
+    base::Value::List values;
+    values.Append(base::Value(base::Value::BlobStorage()));
+    values.Append(base::Value(base::Value::BlobStorage { 0, 1, 127, 128, 255 }));
+    base::Value::Dict dictionary;
+    dictionary.Set("blobs", std::move(values));
+    Message message;
+    WriteParam(&message, dictionary);
+    base::PickleIterator iter(message);
+    base::Value::Dict result;
+    ASSERT_TRUE(ReadParam(&message, &iter, &result));
+    EXPECT_EQ(dictionary, result);
+}
+
+TEST(IPCMessageUtilsTest, TruncatedBinaryValue)
+{
+    Message message;
+    message.WriteInt(static_cast<int>(base::Value::Type::LIST));
+    message.WriteInt(1);
+    message.WriteInt(static_cast<int>(base::Value::Type::BINARY));
+    message.WriteInt(8);
+    message.WriteInt(0);
+    base::PickleIterator iter(message);
+    base::Value::List result;
+    EXPECT_FALSE(ReadParam(&message, &iter, &result));
 }
 
 } // namespace IPC

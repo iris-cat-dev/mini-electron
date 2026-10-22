@@ -726,9 +726,8 @@ bool StorageKey::ShouldSkipKeyDueToPartitioning(const std::string& reg_key_strin
 
 const std::optional<net::CookiePartitionKey> StorageKey::ToCookiePartitionKey() const
 {
-    *(int*)1 = 1;
-    return std::nullopt;
-    //return net::CookiePartitionKey::FromStorageKeyComponents(top_level_site_, net::CookiePartitionKey::BoolToAncestorChainBit(IsThirdPartyContext()), nonce_);
+    return net::CookiePartitionKey::FromStorageKeyComponents(
+        top_level_site_, net::CookiePartitionKey::BoolToAncestorChainBit(IsThirdPartyContext()), nonce_);
 }
 
 bool StorageKey::MatchesOriginForTrustedStorageDeletion(const url::Origin& origin) const

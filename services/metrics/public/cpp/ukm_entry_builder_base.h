@@ -1,4 +1,4 @@
-﻿// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,46 +8,44 @@
 #include "services/metrics/public/cpp/metrics_export.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-// #include "services/metrics/public/mojom/ukm_interface.mojom.h"
+#include "services/metrics/public/mojom/ukm_interface.mojom.h"
 
-namespace ukm {
-
-namespace internal {
+namespace ukm::internal {
 
 // A base class for generated UkmEntry builder objects.
 // This class should not be used directly.
 class METRICS_EXPORT UkmEntryBuilderBase {
-public:
-    UkmEntryBuilderBase(const UkmEntryBuilderBase&) = delete;
-    UkmEntryBuilderBase& operator=(const UkmEntryBuilderBase&) = delete;
+ public:
+  UkmEntryBuilderBase(const UkmEntryBuilderBase&) = delete;
+  UkmEntryBuilderBase(UkmEntryBuilderBase&&);
+  UkmEntryBuilderBase& operator=(const UkmEntryBuilderBase&) = delete;
+  UkmEntryBuilderBase& operator=(UkmEntryBuilderBase&&);
 
-    UkmEntryBuilderBase(UkmEntryBuilderBase&&) = default;
-    UkmEntryBuilderBase& operator=(UkmEntryBuilderBase&&) = default;
+  virtual ~UkmEntryBuilderBase();
 
-    virtual ~UkmEntryBuilderBase();
+  // Records the complete entry into the recorder. If recorder is null, the
+  // entry is simply discarded. The |entry_| is used up by this call so
+  // further calls to this or TakeEntry() will do nothing.
+  void Record(UkmRecorder* recorder);
 
-    // Records the complete entry into the recorder. If recorder is null, the
-    // entry is simply discarded. The |entry_| is used up by this call so
-    // further calls to this or TakeEntry() will do nothing.
-    void Record(UkmRecorder* recorder);
+  // Return a copy of created UkmEntryPtr for testing.
+  mojom::UkmEntryPtr GetEntryForTesting();
 
-    // Extracts the created UkmEntryPtr. Record() cannot be called after this.
-    // mojom::UkmEntryPtr TakeEntry();
+  // Transfers ownership of |entry_| externally.
+  mojom::UkmEntryPtr TakeEntry() { return std::move(entry_); }
 
-protected:
-    UkmEntryBuilderBase(ukm::SourceIdObj source_id, uint64_t event_hash);
-    // TODO(crbug/873866): Remove this version once callers are migrated.
-    UkmEntryBuilderBase(SourceId source_id, uint64_t event_hash);
+ protected:
+  UkmEntryBuilderBase(ukm::SourceIdObj source_id, uint64_t event_hash);
+  // TODO(crbug.com/40589246): Remove this version once callers are migrated.
+  UkmEntryBuilderBase(SourceId source_id, uint64_t event_hash);
 
-    // Add metric to the entry. A metric contains a metric hash and value.
-    void SetMetricInternal(uint64_t metric_hash, int64_t value);
+  // Add metric to the entry. A metric contains a metric hash and value.
+  void SetMetricInternal(uint64_t metric_hash, int64_t value);
 
-private:
-    // mojom::UkmEntryPtr entry_;
+ private:
+  mojom::UkmEntryPtr entry_;
 };
 
-} // namespace internal
+}  // namespace ukm::internal
 
-} // namespace ukm
-
-#endif // SERVICES_METRICS_PUBLIC_CPP_UKM_ENTRY_BUILDER_BASE_H_
+#endif  // SERVICES_METRICS_PUBLIC_CPP_UKM_ENTRY_BUILDER_BASE_H_

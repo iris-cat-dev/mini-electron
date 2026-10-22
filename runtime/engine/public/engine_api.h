@@ -257,6 +257,9 @@ typedef struct {
     BOOL background;
 } mini_electron_window_features;
 
+// Windows engine printing: set structSize to sizeof(mini_electron_print_settings).
+// Dimensions and margins are printer pixels at dpi. isPrintToMultiPage enables
+// paginated layout; otherwise the document is rendered as a single page.
 typedef struct mini_electron_print_settings_impl {
     int structSize;
     int dpi;
@@ -412,7 +415,6 @@ typedef enum mini_electron_js_type_impl {
     kMiniElectronJsTypeUndefined = 5,
     //kMbJsTypeArray = 6,
     kMiniElectronJsTypeNull = 7,
-    kMiniElectronJsTypeV8Value = 8,
     kMiniElectronJsTypeFrame = 9, // 单独把dom的frame列出来，方便获取mbWebFrameHandle
 } mini_electron_js_type;
 
@@ -424,8 +426,6 @@ typedef enum mini_electron_image_format_impl {
 
 typedef long long mini_electron_js_value;
 typedef void* mini_electron_js_exec_state;
-
-typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_on_get_pdf_page_data_callback)(mini_electron_web_view webView, void* param, void* data, size_t size);
 
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_run_js_callback)(mini_electron_web_view webView, void* param, mini_electron_js_exec_state es, mini_electron_js_value v);
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_js_query_callback)(mini_electron_web_view webView, void* param, mini_electron_js_exec_state es, int64_t queryId, int customMsg, const utf8* request);
@@ -580,6 +580,9 @@ typedef struct mini_electron_download_options_impl {
 typedef mini_electron_download_opt(MINI_ELECTRON_CALL_TYPE* mini_electron_download_in_blink_thread_callback)(mini_electron_web_view webView, void* param, size_t expectedContentLength, const char* url,
     const char* mime, const char* disposition, mini_electron_net_job job, mini_electron_net_job_data_bind* dataBind);
 
+// Print-to-PDF returns one PDF document per rendered page. The descriptor and
+// its buffers are borrowed for the duration of the Blink-thread callback only.
+// A null descriptor signals failure (including invalid view/frame/settings).
 typedef struct mini_electron_pdf_datas_impl {
     int count;
     size_t* sizes;
@@ -588,6 +591,10 @@ typedef struct mini_electron_pdf_datas_impl {
 
 typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_print_pdf_data_callback)(mini_electron_web_view webview, void* param, const mini_electron_pdf_datas* datas);
 
+// Bitmap printing and screenshots return PNG bytes, borrowed until the
+// Blink-thread callback returns. Null data and size 0 signal failure. A zero
+// width/height uses that dimension of the document; positive dimensions crop
+// its bounds. Set structSize to sizeof(mini_electron_screenshot_settings).
 typedef struct mini_electron_screenshot_settings_impl {
     int structSize;
     int width;
@@ -605,6 +612,7 @@ typedef enum mini_electron_htt_body_element_type_impl {
 typedef struct mini_electron_post_body_element_impl {
     int size;
     mini_electron_http_body_element_type type;
+    // For data elements, null data denotes a zero-byte element.
     mini_electron_mem_buf* data;
     mini_electron_string_ptr filePath;
     int64_t fileStart;
@@ -617,6 +625,13 @@ typedef struct mini_electron_post_body_elements_impl {
     size_t elementSize;
     bool isDirty;
 } mini_electron_post_body_elements;
+
+// mini_electron_net_get_post_body returns an owned metadata snapshot, including
+// a non-null zero-element snapshot when the request has no body. Null means the
+// request is invalid or its entire body cannot be expressed as bytes/file paths
+// (for example, a Blob/data pipe or read-once stream). Inspection never consumes
+// a pipe. File metadata is not an opened-file capability or a modification-time
+// guarantee. Free every successful snapshot with net_free_post_body_elements.
 
 //mbwindow-----------------------------------------------------------------------------------
 typedef enum mini_electron_window_type_impl { MINI_ELECTRON_WINDOW_TYPE_POPUP, MINI_ELECTRON_WINDOW_TYPE_TRANSPARENT, MINI_ELECTRON_WINDOW_TYPE_CONTROL } mini_electron_window_type;
@@ -946,14 +961,8 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
         size_t expectedContentLength, const char* url, const char* mime, const char* disposition, mini_electron_net_job job, mini_electron_net_job_data_bind* dataBind,                    \
         mini_electron_download_bind* callbackBind, "")                                                                                                                      \
                                                                                                                                                                \
-    ITERATOR3(void, mini_electron_get_pdf_page_data, mini_electron_web_view webView, mini_electron_on_get_pdf_page_data_callback callback, void* param, "")                                                 \
-                                                                                                                                                               \
     ITERATOR3(mini_electron_mem_buf*, mini_electron_create_mem_buf, mini_electron_web_view webView, void* buf, size_t length, "")                                                                      \
     ITERATOR1(void, mini_electron_free_mem_buf, mini_electron_mem_buf* buf, "")                                                                                                           \
-                                                                                                                                                               \
-    ITERATOR4(void, mini_electron_plugin_list_builder_add_plugin, void* builder, const utf8* name, const utf8* description, const utf8* fileName, "")                          \
-    ITERATOR3(void, mini_electron_plugin_list_builder_add_media_type_to_last_plugin, void* builder, const utf8* name, const utf8* description, "")                                 \
-    ITERATOR2(void, mini_electron_plugin_list_builder_add_file_extension_to_last_media_type, void* builder, const utf8* fileExtension, "")                                          \
                                                                                                                                                                \
     ITERATOR0(void, mini_electron_enable_high_dpi_support, "")                                                                                                                \
     ITERATOR0(void, mini_electron_run_message_loop, "")                                                                                                                      \
@@ -969,7 +978,6 @@ typedef void(MINI_ELECTRON_CALL_TYPE* mini_electron_net_view_load_info_callback)
     ITERATOR5(BOOL, mini_electron_register_embedder_custom_element, mini_electron_web_view webviewHandle, mini_electron_web_frame_handle frameId, const char* name, void* options, void* outResult, "")  \
     ITERATOR3(void, mini_electron_on_node_create_process, mini_electron_web_view webviewHandle, mini_electron_node_on_create_process_callback callback, void* param, "")                                   \
     ITERATOR2(mini_electron_js_exec_state, mini_electron_get_global_exec_by_frame, mini_electron_web_view webView, mini_electron_web_frame_handle frameId, "")                                                          \
-    ITERATOR2(void*, mini_electron_js_to_v8_value, mini_electron_js_exec_state es, mini_electron_js_value v, "")                                                                                         \
     ITERATOR3(void, mini_electron_on_thread_idle, mini_electron_thread_callback callback, void* param1, void* param2, "")                                                                 \
     ITERATOR3(void, mini_electron_on_blink_thread_init, mini_electron_thread_callback callback, void* param1, void* param2, "")                                                            \
     ITERATOR3(void, mini_electron_call_blink_thread_async, mini_electron_thread_callback callback, void* param1, void* param2, "")                                                         \

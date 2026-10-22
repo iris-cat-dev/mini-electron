@@ -91,18 +91,17 @@ const char* MediaControlCastButtonElement::GetNameForHistograms() const
 
 void MediaControlCastButtonElement::DefaultEventHandler(Event& event)
 {
-    *(int*)1 = 1;
-//     if (event.type() == event_type_names::kClick) {
-//         if (is_overlay_button_) {
-//             Platform::Current()->RecordAction(UserMetricsAction("Media.Controls.CastOverlay"));
-//         } else {
-//             Platform::Current()->RecordAction(UserMetricsAction("Media.Controls.Cast"));
-//         }
-// 
-//         RemotePlayback::From(MediaElement()).PromptInternal();
-//         RemotePlaybackMetrics::RecordRemotePlaybackLocation(RemotePlaybackInitiationLocation::kHTMLMediaElement);
-//     }
-//     MediaControlInputElement::DefaultEventHandler(event);
+    if (event.type() == event_type_names::kClick) {
+        if (is_overlay_button_) {
+            Platform::Current()->RecordAction(UserMetricsAction("Media.Controls.CastOverlay"));
+        } else {
+            Platform::Current()->RecordAction(UserMetricsAction("Media.Controls.Cast"));
+        }
+
+        RemotePlayback::From(MediaElement()).PromptInternal();
+        RemotePlaybackMetrics::RecordRemotePlaybackLocation(RemotePlaybackInitiationLocation::kHTMLMediaElement);
+    }
+    MediaControlInputElement::DefaultEventHandler(event);
 }
 
 bool MediaControlCastButtonElement::KeepEventInNode(const Event& event) const
@@ -112,8 +111,7 @@ bool MediaControlCastButtonElement::KeepEventInNode(const Event& event) const
 
 bool MediaControlCastButtonElement::IsPlayingRemotely() const
 {
-    return false;
-    //return RemotePlayback::From(MediaElement()).GetState() != mojom::blink::PresentationConnectionState::CLOSED;
+    return RemotePlayback::From(MediaElement()).GetState() != mojom::blink::PresentationConnectionState::CLOSED;
 }
 
 } // namespace blink

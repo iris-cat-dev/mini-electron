@@ -61,59 +61,43 @@ bool FramePointerUnwinder::CanUnwindFrom(const Frame& current_frame) const
 UnwindResult FramePointerUnwinder::TryUnwind(
     UnwinderStateCapture* capture_state, RegisterContext* thread_context, uintptr_t stack_top, std::vector<Frame>* stack)
 {
-    *(int*)1 = 1;
-    // We expect the frame corresponding to the |thread_context| register state to
-    // exist within |stack|.
-//     DCHECK_GT(stack->size(), 0u);
-// #if defined(ARCH_CPU_ARM64)
-//     constexpr uintptr_t align_mask = 0x1;
-// #elif defined(ARCH_CPU_X86_64)
-//     constexpr uintptr_t align_mask = 0xf;
-// #endif
-// 
-//     uintptr_t next_frame = RegisterContextFramePointer(thread_context);
-//     uintptr_t frame_lower_bound = RegisterContextStackPointer(thread_context);
-//     const auto is_fp_valid = [&](uintptr_t fp) {
-//         // Ensure there's space on the stack to read two values: the caller's
-//         // frame pointer and the return address.
-//         return next_frame >= frame_lower_bound && ClampAdd(next_frame, sizeof(uintptr_t) * 2) <= stack_top && (next_frame & align_mask) == 0;
-//     };
-//     if (!is_fp_valid(next_frame))
-//         return UnwindResult::kAborted;
-// 
-//     for (;;) {
-//         if (!stack->back().module) {
-//             return UnwindResult::kAborted;
-//         }
-//         if (!stack->back().module->IsNative()) {
-//             // This is a non-native module associated with the auxiliary unwinder
-//             // (e.g. corresponding to a frame in V8 generated code). Report as
-//             // UNRECOGNIZED_FRAME to allow that unwinder to unwind the frame.
-//             return UnwindResult::kUnrecognizedFrame;
-//         }
-//         uintptr_t retaddr;
-//         uintptr_t frame = next_frame;
-//         next_frame = DecodeFrame(frame, &retaddr);
-//         frame_lower_bound = frame + 1;
-//         // If `next_frame` is 0, we've hit the root and `retaddr` isn't useful.
-//         // Bail without recording the frame.
-//         if (next_frame == 0)
-//             return UnwindResult::kCompleted;
-//         const ModuleCache::Module* module = module_cache()->GetModuleForAddress(retaddr);
-//         // V8 doesn't conform to the x86_64 ABI re: stack alignment. For V8 frames,
-//         // let the V8 unwinder determine whether the FP is valid or not.
-//         bool is_non_native_module = module && !module->IsNative();
-//         // If the FP doesn't look correct, don't record this frame.
-//         if (!is_non_native_module && !is_fp_valid(next_frame))
-//             return UnwindResult::kAborted;
-// 
-//         RegisterContextFramePointer(thread_context) = next_frame;
-//         RegisterContextInstructionPointer(thread_context) = retaddr;
-//         RegisterContextStackPointer(thread_context) = frame + sizeof(uintptr_t) * 2;
-//         stack->emplace_back(retaddr, module);
-//     }
-// 
-//     NOTREACHED();
+    // The initial frame describes the captured register context.
+    DCHECK_GT(stack->size(), 0u);
+#if defined(ARCH_CPU_ARM64)
+    constexpr uintptr_t align_mask = 0x1;
+#elif defined(ARCH_CPU_X86_64)
+    constexpr uintptr_t align_mask = 0xf;
+#elif defined(ARCH_CPU_X86)
+    constexpr uintptr_t align_mask = alignof(uintptr_t) - 1;
+#endif
+    uintptr_t next_frame = RegisterContextFramePointer(thread_context);
+    uintptr_t frame_lower_bound = RegisterContextStackPointer(thread_context);
+    const auto is_fp_valid = [&](uintptr_t fp) {
+        return fp >= frame_lower_bound && fp <= stack_top &&
+            stack_top - fp >= sizeof(uintptr_t) * 2 && (fp & align_mask) == 0;
+    };
+    if (!is_fp_valid(next_frame))
+        return UnwindResult::kAborted;
+    for (;;) {
+        if (!stack->back().module)
+            return UnwindResult::kAborted;
+        if (!stack->back().module->IsNative())
+            return UnwindResult::kUnrecognizedFrame;
+        uintptr_t retaddr;
+        uintptr_t frame = next_frame;
+        next_frame = DecodeFrame(frame, &retaddr);
+        frame_lower_bound = frame + 1;
+        if (next_frame == 0)
+            return UnwindResult::kCompleted;
+        const ModuleCache::Module* module = module_cache()->GetModuleForAddress(retaddr);
+        const bool is_non_native_module = module && !module->IsNative();
+        if (!is_non_native_module && !is_fp_valid(next_frame))
+            return UnwindResult::kAborted;
+        RegisterContextFramePointer(thread_context) = next_frame;
+        RegisterContextInstructionPointer(thread_context) = retaddr;
+        RegisterContextStackPointer(thread_context) = frame + sizeof(uintptr_t) * 2;
+        stack->emplace_back(retaddr, module);
+    }
 }
 
 } // namespace base

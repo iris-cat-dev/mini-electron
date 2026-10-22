@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-shared.h" // IWYU pragma: export
@@ -593,392 +596,392 @@ public:
     virtual void RouteCloseEvent() = 0;
 };
 
-//class CORE_EXPORT NavigationStateKeepAliveHandleProxy : public NavigationStateKeepAliveHandle {
-//public:
-//    using InterfaceType = NavigationStateKeepAliveHandle;
-//
-//    explicit NavigationStateKeepAliveHandleProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class CORE_EXPORT NavigationStateKeepAliveHandleProxy : public NavigationStateKeepAliveHandle {
+public:
+    using InterfaceType = NavigationStateKeepAliveHandle;
 
-//class CORE_EXPORT RemoteFrameHostProxy : public RemoteFrameHost {
-//public:
-//    using InterfaceType = RemoteFrameHost;
-//
-//    explicit RemoteFrameHostProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void SetInheritedEffectiveTouchAction(::cc::TouchAction touch_action) final;
-//
-//    void UpdateRenderThrottlingStatus(bool is_throttled, bool subtree_throttled, bool display_locked) final;
-//
-//    void VisibilityChanged(::blink::mojom::blink::FrameVisibility visibility) final;
-//
-//    void DidFocusFrame() final;
-//
-//    void CheckCompleted() final;
-//
-//    void CapturePaintPreviewOfCrossProcessSubframe(const ::gfx::Rect& clip_rect, const ::base::UnguessableToken& guid) final;
-//
-//    void SetIsInert(bool inert) final;
-//
-//    void DidChangeOpener(const std::optional<::blink::LocalFrameToken>& opener_frame) final;
-//
-//    void AdvanceFocus(::blink::mojom::blink::FocusType focus_type, const ::blink::LocalFrameToken& source_frame_token) final;
-//
-//    void RouteMessageEvent(const std::optional<::blink::LocalFrameToken>& source_frame_token,
-//        const ::scoped_refptr<const ::blink::SecurityOrigin>& source_origin, const ::WTF::String& target_origin,
-//        ::blink::BlinkTransferableMessage message) final;
-//
-//    void PrintCrossProcessSubframe(const ::gfx::Rect& frame_content_rect, int32_t document_cookie) final;
-//
-//    void Detach() final;
-//
-//    void UpdateViewportIntersection(
-//        ::blink::mojom::blink::ViewportIntersectionStatePtr intersection_state, const std::optional<::blink::FrameVisualProperties>& visual_properties) final;
-//
-//    void SynchronizeVisualProperties(const ::blink::FrameVisualProperties& properties) final;
-//
-//    void OpenURL(OpenURLParamsPtr params) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+    explicit NavigationStateKeepAliveHandleProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//class CORE_EXPORT RemoteFrameProxy : public RemoteFrame {
-//public:
-//    using InterfaceType = RemoteFrame;
-//
-//    explicit RemoteFrameProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void WillEnterFullscreen(::blink::mojom::blink::FullscreenOptionsPtr options) final;
-//
-//    void EnforceInsecureNavigationsSet(const WTF::Vector<uint32_t>& set) final;
-//
-//    void SetFrameOwnerProperties(::blink::mojom::blink::FrameOwnerPropertiesPtr properties) final;
-//
-//    void EnforceInsecureRequestPolicy(::blink::mojom::blink::InsecureRequestPolicy policy) final;
-//
-//    void SetReplicatedOrigin(const ::scoped_refptr<const ::blink::SecurityOrigin>& origin, bool is_potentially_trustworthy_unique_origin) final;
-//
-//    void SetReplicatedIsAdFrame(bool is_ad_frame) final;
-//
-//    void SetReplicatedName(const WTF::String& name, const WTF::String& unique_name) final;
-//
-//    void DispatchLoadEventForFrameOwner() final;
-//
-//    void SetNeedsOcclusionTracking(bool needs_tracking) final;
-//
-//    void Collapse(bool collapsed) final;
-//
-//    void Focus() final;
-//
-//    void SetHadStickyUserActivationBeforeNavigation(bool has_gesture) final;
-//
-//    void BubbleLogicalScroll(::blink::mojom::blink::ScrollDirection direction, ::ui::ScrollGranularity granularity) final;
-//
-//    void UpdateUserActivationState(
-//        ::blink::mojom::blink::UserActivationUpdateType state_update_type, ::blink::mojom::blink::UserActivationNotificationType notification_type) final;
-//
-//    void SetEmbeddingToken(const ::base::UnguessableToken& embedding_token) final;
-//
-//    void SetPageFocus(bool is_focused) final;
-//
-//    void RenderFallbackContent() final;
-//
-//    void AddResourceTimingFromChild(::blink::mojom::blink::ResourceTimingInfoPtr timing) final;
-//
-//    void ScrollRectToVisible(const ::gfx::RectF& rect, ::blink::mojom::blink::ScrollIntoViewParamsPtr params) final;
-//
-//    void DidStartLoading() final;
-//
-//    void DidStopLoading() final;
-//
-//    void IntrinsicSizingInfoOfChildChanged(::blink::mojom::blink::IntrinsicSizingInfoPtr sizing_info) final;
-//
-//    void DidSetFramePolicyHeaders(::network::mojom::blink::WebSandboxFlags sandbox_flags,
-//        const WTF::Vector<::blink::ParsedPermissionsPolicyDeclaration>& parsed_permissions_policy) final;
-//
-//    void DidUpdateFramePolicy(const ::blink::FramePolicy& frame_policy) final;
-//
-//    void UpdateOpener(const std::optional<::blink::FrameToken>& opener_frame_token) final;
-//
-//    void DetachAndDispose() final;
-//
-//    void EnableAutoResize(const ::gfx::Size& min_size, const ::gfx::Size& max_size) final;
-//
-//    void DisableAutoResize() final;
-//
-//    void DidUpdateVisualProperties(const ::cc::RenderFrameMetadata& metadata) final;
-//
-//    void SetFrameSinkId(const ::viz::FrameSinkId& frame_sink_id, bool allow_paint_holding) final;
-//
-//    void ChildProcessGone() final;
-//
-//    void CreateRemoteChild(const ::blink::RemoteFrameToken& token, const std::optional<::blink::FrameToken>& opener_frame_token,
-//        ::blink::mojom::blink::TreeScopeType tree_scope_type, ::blink::mojom::blink::FrameReplicationStatePtr replication_state,
-//        ::blink::mojom::blink::FrameOwnerPropertiesPtr owner_properties, bool is_loading, const ::base::UnguessableToken& devtools_frame_token,
-//        RemoteFrameInterfacesFromBrowserPtr remote_frame_interfaces) final;
-//
-//    void CreateRemoteChildren(WTF::Vector<CreateRemoteChildParamsPtr> params) final;
-//
-//    void ForwardFencedFrameEventToEmbedder(const WTF::String& event_type) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
 
-//class CORE_EXPORT RemoteMainFrameProxy : public RemoteMainFrame {
-//public:
-//    using InterfaceType = RemoteMainFrame;
-//
-//    explicit RemoteMainFrameProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void UpdateTextAutosizerPageInfo(::blink::mojom::blink::TextAutosizerPageInfoPtr page_info) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class CORE_EXPORT RemoteFrameHostProxy : public RemoteFrameHost {
+public:
+    using InterfaceType = RemoteFrameHost;
 
-//class CORE_EXPORT RemoteMainFrameHostProxy : public RemoteMainFrameHost {
-//public:
-//    using InterfaceType = RemoteMainFrameHost;
-//
-//    explicit RemoteMainFrameHostProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void FocusPage() final;
-//
-//    void TakeFocus(bool reverse) final;
-//
-//    void UpdateTargetURL(const ::blink::KURL& url, UpdateTargetURLCallback callback) final;
-//
-//    void RouteCloseEvent() final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class CORE_EXPORT NavigationStateKeepAliveHandleStubDispatch {
-//public:
-//    static bool Accept(NavigationStateKeepAliveHandle* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(NavigationStateKeepAliveHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    explicit RemoteFrameHostProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NavigationStateKeepAliveHandle>>
-//class NavigationStateKeepAliveHandleStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    NavigationStateKeepAliveHandleStub() = default;
-//    ~NavigationStateKeepAliveHandleStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NavigationStateKeepAliveHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return NavigationStateKeepAliveHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class CORE_EXPORT RemoteFrameHostStubDispatch {
-//public:
-//    static bool Accept(RemoteFrameHost* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(RemoteFrameHost* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void SetInheritedEffectiveTouchAction(::cc::TouchAction touch_action) final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteFrameHost>> class RemoteFrameHostStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    RemoteFrameHostStub() = default;
-//    ~RemoteFrameHostStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteFrameHostStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteFrameHostStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class CORE_EXPORT RemoteFrameStubDispatch {
-//public:
-//    static bool Accept(RemoteFrame* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(RemoteFrame* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void UpdateRenderThrottlingStatus(bool is_throttled, bool subtree_throttled, bool display_locked) final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteFrame>> class RemoteFrameStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    RemoteFrameStub() = default;
-//    ~RemoteFrameStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteFrameStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteFrameStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class CORE_EXPORT RemoteMainFrameStubDispatch {
-//public:
-//    static bool Accept(RemoteMainFrame* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(RemoteMainFrame* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void VisibilityChanged(::blink::mojom::blink::FrameVisibility visibility) final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteMainFrame>> class RemoteMainFrameStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    RemoteMainFrameStub() = default;
-//    ~RemoteMainFrameStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteMainFrameStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteMainFrameStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class CORE_EXPORT RemoteMainFrameHostStubDispatch {
-//public:
-//    static bool Accept(RemoteMainFrameHost* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(RemoteMainFrameHost* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void DidFocusFrame() final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteMainFrameHost>>
-//class RemoteMainFrameHostStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    RemoteMainFrameHostStub() = default;
-//    ~RemoteMainFrameHostStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteMainFrameHostStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return RemoteMainFrameHostStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class CORE_EXPORT NavigationStateKeepAliveHandleRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class CORE_EXPORT RemoteFrameHostRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class CORE_EXPORT RemoteFrameRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class CORE_EXPORT RemoteMainFrameRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class CORE_EXPORT RemoteMainFrameHostRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class CORE_EXPORT RemoteMainFrameHostResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    void CheckCompleted() final;
+
+    void CapturePaintPreviewOfCrossProcessSubframe(const ::gfx::Rect& clip_rect, const ::base::UnguessableToken& guid) final;
+
+    void SetIsInert(bool inert) final;
+
+    void DidChangeOpener(const std::optional<::blink::LocalFrameToken>& opener_frame) final;
+
+    void AdvanceFocus(::blink::mojom::blink::FocusType focus_type, const ::blink::LocalFrameToken& source_frame_token) final;
+
+    void RouteMessageEvent(const std::optional<::blink::LocalFrameToken>& source_frame_token,
+        const ::scoped_refptr<const ::blink::SecurityOrigin>& source_origin, const ::WTF::String& target_origin,
+        ::blink::BlinkTransferableMessage message) final;
+
+    void PrintCrossProcessSubframe(const ::gfx::Rect& frame_content_rect, int32_t document_cookie) final;
+
+    void Detach() final;
+
+    void UpdateViewportIntersection(
+        ::blink::mojom::blink::ViewportIntersectionStatePtr intersection_state, const std::optional<::blink::FrameVisualProperties>& visual_properties) final;
+
+    void SynchronizeVisualProperties(const ::blink::FrameVisualProperties& properties) final;
+
+    void OpenURL(OpenURLParamsPtr params) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class CORE_EXPORT RemoteFrameProxy : public RemoteFrame {
+public:
+    using InterfaceType = RemoteFrame;
+
+    explicit RemoteFrameProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void WillEnterFullscreen(::blink::mojom::blink::FullscreenOptionsPtr options) final;
+
+    void EnforceInsecureNavigationsSet(const WTF::Vector<uint32_t>& set) final;
+
+    void SetFrameOwnerProperties(::blink::mojom::blink::FrameOwnerPropertiesPtr properties) final;
+
+    void EnforceInsecureRequestPolicy(::blink::mojom::blink::InsecureRequestPolicy policy) final;
+
+    void SetReplicatedOrigin(const ::scoped_refptr<const ::blink::SecurityOrigin>& origin, bool is_potentially_trustworthy_unique_origin) final;
+
+    void SetReplicatedIsAdFrame(bool is_ad_frame) final;
+
+    void SetReplicatedName(const WTF::String& name, const WTF::String& unique_name) final;
+
+    void DispatchLoadEventForFrameOwner() final;
+
+    void SetNeedsOcclusionTracking(bool needs_tracking) final;
+
+    void Collapse(bool collapsed) final;
+
+    void Focus() final;
+
+    void SetHadStickyUserActivationBeforeNavigation(bool has_gesture) final;
+
+    void BubbleLogicalScroll(::blink::mojom::blink::ScrollDirection direction, ::ui::ScrollGranularity granularity) final;
+
+    void UpdateUserActivationState(
+        ::blink::mojom::blink::UserActivationUpdateType state_update_type, ::blink::mojom::blink::UserActivationNotificationType notification_type) final;
+
+    void SetEmbeddingToken(const ::base::UnguessableToken& embedding_token) final;
+
+    void SetPageFocus(bool is_focused) final;
+
+    void RenderFallbackContent() final;
+
+    void AddResourceTimingFromChild(::blink::mojom::blink::ResourceTimingInfoPtr timing) final;
+
+    void ScrollRectToVisible(const ::gfx::RectF& rect, ::blink::mojom::blink::ScrollIntoViewParamsPtr params) final;
+
+    void DidStartLoading() final;
+
+    void DidStopLoading() final;
+
+    void IntrinsicSizingInfoOfChildChanged(::blink::mojom::blink::IntrinsicSizingInfoPtr sizing_info) final;
+
+    void DidSetFramePolicyHeaders(::network::mojom::blink::WebSandboxFlags sandbox_flags,
+        const WTF::Vector<::blink::ParsedPermissionsPolicyDeclaration>& parsed_permissions_policy) final;
+
+    void DidUpdateFramePolicy(const ::blink::FramePolicy& frame_policy) final;
+
+    void UpdateOpener(const std::optional<::blink::FrameToken>& opener_frame_token) final;
+
+    void DetachAndDispose() final;
+
+    void EnableAutoResize(const ::gfx::Size& min_size, const ::gfx::Size& max_size) final;
+
+    void DisableAutoResize() final;
+
+    void DidUpdateVisualProperties(const ::cc::RenderFrameMetadata& metadata) final;
+
+    void SetFrameSinkId(const ::viz::FrameSinkId& frame_sink_id, bool allow_paint_holding) final;
+
+    void ChildProcessGone() final;
+
+    void CreateRemoteChild(const ::blink::RemoteFrameToken& token, const std::optional<::blink::FrameToken>& opener_frame_token,
+        ::blink::mojom::blink::TreeScopeType tree_scope_type, ::blink::mojom::blink::FrameReplicationStatePtr replication_state,
+        ::blink::mojom::blink::FrameOwnerPropertiesPtr owner_properties, bool is_loading, const ::base::UnguessableToken& devtools_frame_token,
+        RemoteFrameInterfacesFromBrowserPtr remote_frame_interfaces) final;
+
+    void CreateRemoteChildren(WTF::Vector<CreateRemoteChildParamsPtr> params) final;
+
+    void ForwardFencedFrameEventToEmbedder(const WTF::String& event_type) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class CORE_EXPORT RemoteMainFrameProxy : public RemoteMainFrame {
+public:
+    using InterfaceType = RemoteMainFrame;
+
+    explicit RemoteMainFrameProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void UpdateTextAutosizerPageInfo(::blink::mojom::blink::TextAutosizerPageInfoPtr page_info) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class CORE_EXPORT RemoteMainFrameHostProxy : public RemoteMainFrameHost {
+public:
+    using InterfaceType = RemoteMainFrameHost;
+
+    explicit RemoteMainFrameHostProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void FocusPage() final;
+
+    void TakeFocus(bool reverse) final;
+
+    void UpdateTargetURL(const ::blink::KURL& url, UpdateTargetURLCallback callback) final;
+
+    void RouteCloseEvent() final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class CORE_EXPORT NavigationStateKeepAliveHandleStubDispatch {
+public:
+    static bool Accept(NavigationStateKeepAliveHandle* impl, mojo::Message* message);
+    static bool AcceptWithResponder(NavigationStateKeepAliveHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<NavigationStateKeepAliveHandle>>
+class NavigationStateKeepAliveHandleStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    NavigationStateKeepAliveHandleStub() = default;
+    ~NavigationStateKeepAliveHandleStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NavigationStateKeepAliveHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return NavigationStateKeepAliveHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class CORE_EXPORT RemoteFrameHostStubDispatch {
+public:
+    static bool Accept(RemoteFrameHost* impl, mojo::Message* message);
+    static bool AcceptWithResponder(RemoteFrameHost* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteFrameHost>> class RemoteFrameHostStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    RemoteFrameHostStub() = default;
+    ~RemoteFrameHostStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteFrameHostStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteFrameHostStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class CORE_EXPORT RemoteFrameStubDispatch {
+public:
+    static bool Accept(RemoteFrame* impl, mojo::Message* message);
+    static bool AcceptWithResponder(RemoteFrame* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteFrame>> class RemoteFrameStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    RemoteFrameStub() = default;
+    ~RemoteFrameStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteFrameStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteFrameStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class CORE_EXPORT RemoteMainFrameStubDispatch {
+public:
+    static bool Accept(RemoteMainFrame* impl, mojo::Message* message);
+    static bool AcceptWithResponder(RemoteMainFrame* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteMainFrame>> class RemoteMainFrameStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    RemoteMainFrameStub() = default;
+    ~RemoteMainFrameStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteMainFrameStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteMainFrameStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class CORE_EXPORT RemoteMainFrameHostStubDispatch {
+public:
+    static bool Accept(RemoteMainFrameHost* impl, mojo::Message* message);
+    static bool AcceptWithResponder(RemoteMainFrameHost* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<RemoteMainFrameHost>>
+class RemoteMainFrameHostStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    RemoteMainFrameHostStub() = default;
+    ~RemoteMainFrameHostStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteMainFrameHostStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return RemoteMainFrameHostStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class CORE_EXPORT NavigationStateKeepAliveHandleRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class CORE_EXPORT RemoteFrameHostRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class CORE_EXPORT RemoteFrameRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class CORE_EXPORT RemoteMainFrameRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class CORE_EXPORT RemoteMainFrameHostRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class CORE_EXPORT RemoteMainFrameHostResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class CORE_EXPORT RemoteMainFrameInterfaces {
 public:
@@ -1001,22 +1004,15 @@ public:
         return mojo::TypeConverter<U, RemoteMainFrameInterfaces>::Convert(*this);
     }
 
-    RemoteMainFrameInterfaces()
-    : main_frame_host()
-    , main_frame()
-{
-}
+    RemoteMainFrameInterfaces();
 
     RemoteMainFrameInterfaces(
-    ::mojo::PendingAssociatedRemote<RemoteMainFrameHost> main_frame_host_in, ::mojo::PendingAssociatedReceiver<RemoteMainFrame> main_frame_in)
-    : main_frame_host(std::move(main_frame_host_in))
-    , main_frame(std::move(main_frame_in)){
-}
+        ::mojo::PendingAssociatedRemote<RemoteMainFrameHost> main_frame_host_in, ::mojo::PendingAssociatedReceiver<RemoteMainFrame> main_frame_in);
 
     RemoteMainFrameInterfaces(const RemoteMainFrameInterfaces&) = delete;
     RemoteMainFrameInterfaces& operator=(const RemoteMainFrameInterfaces&) = delete;
 
-    ~RemoteMainFrameInterfaces() = default;
+    ~RemoteMainFrameInterfaces();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -1081,8 +1077,10 @@ public:
 
     ::mojo::PendingAssociatedReceiver<RemoteMainFrame> main_frame;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -1129,22 +1127,15 @@ public:
         return mojo::TypeConverter<U, RemoteFrameInterfacesFromRenderer>::Convert(*this);
     }
 
-    RemoteFrameInterfacesFromRenderer()
-    : frame()
-    , frame_host_receiver()
-{
-}
+    RemoteFrameInterfacesFromRenderer();
 
     RemoteFrameInterfacesFromRenderer(
-    ::mojo::PendingAssociatedRemote<RemoteFrame> frame_in, ::mojo::PendingAssociatedReceiver<RemoteFrameHost> frame_host_receiver_in)
-    : frame(std::move(frame_in))
-    , frame_host_receiver(std::move(frame_host_receiver_in)){
-}
+        ::mojo::PendingAssociatedRemote<RemoteFrame> frame_in, ::mojo::PendingAssociatedReceiver<RemoteFrameHost> frame_host_receiver_in);
 
     RemoteFrameInterfacesFromRenderer(const RemoteFrameInterfacesFromRenderer&) = delete;
     RemoteFrameInterfacesFromRenderer& operator=(const RemoteFrameInterfacesFromRenderer&) = delete;
 
-    ~RemoteFrameInterfacesFromRenderer() = default;
+    ~RemoteFrameInterfacesFromRenderer();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -1211,8 +1202,10 @@ public:
 
     ::mojo::PendingAssociatedReceiver<RemoteFrameHost> frame_host_receiver;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -1259,22 +1252,15 @@ public:
         return mojo::TypeConverter<U, RemoteFrameInterfacesFromBrowser>::Convert(*this);
     }
 
-    RemoteFrameInterfacesFromBrowser()
-    : frame_receiver()
-    , frame_host()
-{
-}
+    RemoteFrameInterfacesFromBrowser();
 
     RemoteFrameInterfacesFromBrowser(
-    ::mojo::PendingAssociatedReceiver<RemoteFrame> frame_receiver_in, ::mojo::PendingAssociatedRemote<RemoteFrameHost> frame_host_in)
-    : frame_receiver(std::move(frame_receiver_in))
-    , frame_host(std::move(frame_host_in)){
-}
+        ::mojo::PendingAssociatedReceiver<RemoteFrame> frame_receiver_in, ::mojo::PendingAssociatedRemote<RemoteFrameHost> frame_host_in);
 
     RemoteFrameInterfacesFromBrowser(const RemoteFrameInterfacesFromBrowser&) = delete;
     RemoteFrameInterfacesFromBrowser& operator=(const RemoteFrameInterfacesFromBrowser&) = delete;
 
-    ~RemoteFrameInterfacesFromBrowser() = default;
+    ~RemoteFrameInterfacesFromBrowser();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -1340,8 +1326,10 @@ public:
 
     ::mojo::PendingAssociatedRemote<RemoteFrameHost> frame_host;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -1388,38 +1376,17 @@ public:
         return mojo::TypeConverter<U, CreateRemoteChildParams>::Convert(*this);
     }
 
-    CreateRemoteChildParams()
-    : token()
-    , opener_frame_token()
-    , tree_scope_type()
-    , replication_state()
-    , owner_properties()
-    , is_loading()
-    , devtools_frame_token()
-    , frame_interfaces()
-    , child_params()
-{
-}
+    CreateRemoteChildParams();
 
     CreateRemoteChildParams(const ::blink::RemoteFrameToken& token_in, const std::optional<::blink::FrameToken>& opener_frame_token_in,
-    ::blink::mojom::blink::TreeScopeType tree_scope_type_in, ::blink::mojom::blink::FrameReplicationStatePtr replication_state_in,
-    ::blink::mojom::blink::FrameOwnerPropertiesPtr owner_properties_in, bool is_loading_in, const ::base::UnguessableToken& devtools_frame_token_in,
-    RemoteFrameInterfacesFromBrowserPtr frame_interfaces_in, WTF::Vector<CreateRemoteChildParamsPtr> child_params_in)
-    : token(std::move(token_in))
-    , opener_frame_token(std::move(opener_frame_token_in))
-    , tree_scope_type(std::move(tree_scope_type_in))
-    , replication_state(std::move(replication_state_in))
-    , owner_properties(std::move(owner_properties_in))
-    , is_loading(std::move(is_loading_in))
-    , devtools_frame_token(std::move(devtools_frame_token_in))
-    , frame_interfaces(std::move(frame_interfaces_in))
-    , child_params(std::move(child_params_in)){
-}
+        ::blink::mojom::blink::TreeScopeType tree_scope_type_in, ::blink::mojom::blink::FrameReplicationStatePtr replication_state_in,
+        ::blink::mojom::blink::FrameOwnerPropertiesPtr owner_properties_in, bool is_loading_in, const ::base::UnguessableToken& devtools_frame_token_in,
+        RemoteFrameInterfacesFromBrowserPtr frame_interfaces_in, WTF::Vector<CreateRemoteChildParamsPtr> child_params_in);
 
     CreateRemoteChildParams(const CreateRemoteChildParams&) = delete;
     CreateRemoteChildParams& operator=(const CreateRemoteChildParams&) = delete;
 
-    ~CreateRemoteChildParams() = default;
+    ~CreateRemoteChildParams();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -1498,8 +1465,10 @@ public:
 
     WTF::Vector<CreateRemoteChildParamsPtr> child_params;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);
@@ -1546,74 +1515,24 @@ public:
         return mojo::TypeConverter<U, OpenURLParams>::Convert(*this);
     }
 
-    OpenURLParams()
-    : url()
-    , initiator_origin()
-    , initiator_base_url()
-    , initiator_frame_token()
-    , post_body()
-    , extra_headers()
-    , referrer()
-    , is_form_submission()
-    , disposition()
-    , should_replace_current_entry()
-    , user_gesture()
-    , is_unfenced_top_navigation(false)
-    , triggering_event_info()
-    , blob_url_token()
-    , href_translate()
-    , impression()
-    , download_policy()
-    , source_location()
-    , initiator_navigation_state_keep_alive_handle()
-    , initiator_activation_and_ad_status()
-    , is_container_initiated(false)
-    , has_rel_opener(false)
-    , storage_access_api_status(mojo::internal::ConvertEnumValue<::network::mojom::blink::StorageAccessApiStatus, ::net::StorageAccessApiStatus>(
-          ::network::mojom::blink::StorageAccessApiStatus::kNone))
-{
-}
+    OpenURLParams();
 
     OpenURLParams(const ::blink::KURL& url_in, const ::scoped_refptr<const ::blink::SecurityOrigin>& initiator_origin_in,
-    const std::optional<::blink::KURL>& initiator_base_url_in, const std::optional<::blink::LocalFrameToken>& initiator_frame_token_in,
-    ::scoped_refptr<::network::ResourceRequestBody> post_body_in, const WTF::String& extra_headers_in, ::blink::mojom::blink::ReferrerPtr referrer_in,
-    bool is_form_submission_in, ::ui::mojom::blink::WindowOpenDisposition disposition_in, bool should_replace_current_entry_in, bool user_gesture_in,
-    bool is_unfenced_top_navigation_in, ::blink::mojom::blink::TriggeringEventInfo triggering_event_info_in,
-    ::mojo::PendingRemote<::blink::mojom::blink::BlobURLToken> blob_url_token_in, const WTF::String& href_translate_in,
-    const std::optional<::blink::Impression>& impression_in, const ::blink::NavigationDownloadPolicy& download_policy_in,
-    ::network::mojom::blink::SourceLocationPtr source_location_in,
-    ::mojo::PendingRemote<NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle_in,
-    ::blink::mojom::blink::NavigationInitiatorActivationAndAdStatus initiator_activation_and_ad_status_in, bool is_container_initiated_in,
-    bool has_rel_opener_in, ::net::StorageAccessApiStatus storage_access_api_status_in)
-    : url(std::move(url_in))
-    , initiator_origin(std::move(initiator_origin_in))
-    , initiator_base_url(std::move(initiator_base_url_in))
-    , initiator_frame_token(std::move(initiator_frame_token_in))
-    , post_body(std::move(post_body_in))
-    , extra_headers(std::move(extra_headers_in))
-    , referrer(std::move(referrer_in))
-    , is_form_submission(std::move(is_form_submission_in))
-    , disposition(std::move(disposition_in))
-    , should_replace_current_entry(std::move(should_replace_current_entry_in))
-    , user_gesture(std::move(user_gesture_in))
-    , is_unfenced_top_navigation(std::move(is_unfenced_top_navigation_in))
-    , triggering_event_info(std::move(triggering_event_info_in))
-    , blob_url_token(std::move(blob_url_token_in))
-    , href_translate(std::move(href_translate_in))
-    , impression(std::move(impression_in))
-    , download_policy(std::move(download_policy_in))
-    , source_location(std::move(source_location_in))
-    , initiator_navigation_state_keep_alive_handle(std::move(initiator_navigation_state_keep_alive_handle_in))
-    , initiator_activation_and_ad_status(std::move(initiator_activation_and_ad_status_in))
-    , is_container_initiated(std::move(is_container_initiated_in))
-    , has_rel_opener(std::move(has_rel_opener_in))
-    , storage_access_api_status(std::move(storage_access_api_status_in)){
-}
+        const std::optional<::blink::KURL>& initiator_base_url_in, const std::optional<::blink::LocalFrameToken>& initiator_frame_token_in,
+        ::scoped_refptr<::network::ResourceRequestBody> post_body_in, const WTF::String& extra_headers_in, ::blink::mojom::blink::ReferrerPtr referrer_in,
+        bool is_form_submission_in, ::ui::mojom::blink::WindowOpenDisposition disposition_in, bool should_replace_current_entry_in, bool user_gesture_in,
+        bool is_unfenced_top_navigation_in, ::blink::mojom::blink::TriggeringEventInfo triggering_event_info_in,
+        ::mojo::PendingRemote<::blink::mojom::blink::BlobURLToken> blob_url_token_in, const WTF::String& href_translate_in,
+        const std::optional<::blink::Impression>& impression_in, const ::blink::NavigationDownloadPolicy& download_policy_in,
+        ::network::mojom::blink::SourceLocationPtr source_location_in,
+        ::mojo::PendingRemote<NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle_in,
+        ::blink::mojom::blink::NavigationInitiatorActivationAndAdStatus initiator_activation_and_ad_status_in, bool is_container_initiated_in,
+        bool has_rel_opener_in, ::net::StorageAccessApiStatus storage_access_api_status_in);
 
     OpenURLParams(const OpenURLParams&) = delete;
     OpenURLParams& operator=(const OpenURLParams&) = delete;
 
-    ~OpenURLParams() = default;
+    ~OpenURLParams();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -1718,8 +1637,10 @@ public:
 
     ::net::StorageAccessApiStatus storage_access_api_status;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

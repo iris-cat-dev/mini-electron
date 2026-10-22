@@ -80,13 +80,21 @@ MutexBase::~MutexBase()
 void MutexBase::lock()
 {
     EnterCriticalSection((CRITICAL_SECTION*)(m_mutex.m_internalMutex));
+#if DCHECK_IS_ON()
+    m_owner.store(base::PlatformThread::CurrentId(), std::memory_order_relaxed);
+#endif
     ++m_mutex.m_recursionCount;
 }
 
 void MutexBase::unlock()
 {
+    AssertAcquired();
     DCHECK(m_mutex.m_recursionCount);
     --m_mutex.m_recursionCount;
+#if DCHECK_IS_ON()
+    if (!m_mutex.m_recursionCount)
+        m_owner.store(base::kInvalidThreadId, std::memory_order_relaxed);
+#endif
     LeaveCriticalSection((CRITICAL_SECTION*)(m_mutex.m_internalMutex));
 }
 
@@ -112,6 +120,9 @@ bool Mutex::tryLock()
             return false;
         }
         ++m_mutex.m_recursionCount;
+#if DCHECK_IS_ON()
+        m_owner.store(base::PlatformThread::CurrentId(), std::memory_order_relaxed);
+#endif
         return true;
     }
 
@@ -127,6 +138,9 @@ bool RecursiveMutex::tryLock()
         return false;
     }
     ++m_mutex.m_recursionCount;
+#if DCHECK_IS_ON()
+    m_owner.store(base::PlatformThread::CurrentId(), std::memory_order_relaxed);
+#endif
     return true;
 }
 

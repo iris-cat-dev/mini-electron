@@ -1,436 +1,226 @@
-
 #ifndef MINI_ELECTRON_NETWORK_LOADER_FLATTEN_HTTP_BODY_ELEMENT_H_
 #define MINI_ELECTRON_NETWORK_LOADER_FLATTEN_HTTP_BODY_ELEMENT_H_
 
-#include "runtime/engine/common/common.h"
+#include "base/files/file.h"
+#include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/data_pipe.h"
+#include "mojo/public/cpp/system/simple_watcher.h"
 #include "services/network/public/mojom/data_pipe_getter.mojom.h"
-#include "services/network/public/cpp/data_element.h"
+#include "services/network/public/mojom/chunked_data_pipe_getter.mojom.h"
+#include "third_party/libcurl/include/curl/curl.h"
+#include <algorithm>
+#include <cstring>
+#include <limits>
+#include <memory>
 #include <vector>
 
 namespace mini_electron {
 
 struct FlattenHTTPBodyElement {
-    enum Type { TypeData, TypeFile, TypeBlob } type;
-
+    enum Type { TypeData, TypeFile, TypeDataPipe, TypeChunkedDataPipe } type = TypeData;
     std::vector<char> data;
-    std::u16string filePath;
-    long long fileStart;
-    long long fileLength; // -1 means to the end of the file.
+    base::File file;
+    uint64_t fileStart = 0;
+    uint64_t fileLength = 0;
+    base::Time expectedModificationTime;
+    mojo::PendingRemote<network::mojom::DataPipeGetter> pendingGetter;
+    mojo::PendingRemote<network::mojom::ChunkedDataPipeGetter> pendingChunkedGetter;
+    mojo::Remote<network::mojom::DataPipeGetter> getter;
+    mojo::Remote<network::mojom::ChunkedDataPipeGetter> chunkedGetter;
+    bool readOnlyOnce = false;
+    bool started = false;
 };
 
+// Construct, read, rewind and destroy on the curl IO sequence. A pipe remains
+// owned until all its bytes and its completion status have been consumed.
 class FlattenHTTPBodyElementStream {
 public:
-    FlattenHTTPBodyElementStream(const std::vector<FlattenHTTPBodyElement*>& elements, curl_off_t size)
+    FlattenHTTPBodyElementStream(std::vector<std::unique_ptr<FlattenHTTPBodyElement>> elements,
+        bool failed, base::RepeatingClosure resume)
+        : m_elements(std::move(elements)), m_failed(failed), m_resume(std::move(resume)),
+          m_watcher(FROM_HERE, mojo::SimpleWatcher::ArmingPolicy::MANUAL)
     {
-        m_elements = elements;
-        m_estimateSize = size;
-        m_allReadLength = 0;
-        m_file = nullptr;
-        reset();
+        m_failed = !reset();
     }
 
-    ~FlattenHTTPBodyElementStream()
+    bool isWaitingForData() const { return m_waitingForData; }
+
+    bool reset()
     {
-        for (size_t i = 0; i < m_elements.size(); ++i) {
-            delete m_elements[i];
-        }
-        reset();
-    }
-
-    void reset()
-    {
-        if (m_file)
-            fclose(m_file);
-        m_file = nullptr;
-        m_elementIndex = 0;
-        m_fileSize = 0;
-        m_elementDataOffset = 0;
-        m_elementDataLength = 0;
-        m_totalFileReadLength = 0;
-        m_originalDataOffset = 0;
-    }
-
-    size_t read(void* ptr, size_t blockSize, size_t numberOfBlocks, std::vector<char>* outBuf)
-    {
-        // Check for overflow.
-        if (!numberOfBlocks || blockSize > std::numeric_limits<size_t>::max() / numberOfBlocks)
-            return 0;
-        if (m_elementIndex >= m_elements.size())
-            return 0;
-
-        const FlattenHTTPBodyElement& element = *(m_elements[m_elementIndex]);
-        size_t readedLength = 0;
-
-        if (FlattenHTTPBodyElement::Type::TypeFile == element.type) {
-            readedLength = readFile(ptr, blockSize, numberOfBlocks, element, outBuf);
-        } else {
-            readedLength = readBuf(ptr, blockSize, numberOfBlocks, element, outBuf);
-        }
-
-        //         static int allSize = 0;
-        //         allSize += readedLength;
-        //
-        //         char* output = (char*)malloc(0x100);
-        //         sprintf_s(output, 0x99, "readFile: %d, allSize:%d\n", readedLength, allSize);
-        //         OutputDebugStringA(output);
-        //         free(output);
-
-        return readedLength;
-    }
-
-    static size_t readFromDatePipe(FlattenHTTPBodyElement* flattenElement, const network::DataElementDataPipe& dataPipe)
-    {
-        MojoCreateDataPipeOptions options;
-        options.struct_size = sizeof(MojoCreateDataPipeOptions);
-        options.flags = MOJO_CREATE_DATA_PIPE_FLAG_NONE;
-        options.element_num_bytes = 1;
-        options.capacity_num_bytes = -1; // blink::BlobUtils::GetDataPipeCapacity(blob_data_handle_->size());
-
-        mojo::ScopedDataPipeConsumerHandle consumerHandle;
-        mojo::ScopedDataPipeProducerHandle producerHandle;
-        MojoResult rv = mojo::CreateDataPipe(&options, producerHandle, consumerHandle);
-
-        mojo::Remote<network::mojom::DataPipeGetter> dataPipeGetter;
-        dataPipeGetter.Bind(dataPipe.CloneDataPipeGetter());
-
-        dataPipeGetter->Read(std::move(producerHandle),
-            base::BindOnce(
-                [](FlattenHTTPBodyElement* flattenElement, mojo::ScopedDataPipeConsumerHandle consumerHandle, int32_t, uint64_t) {
-                    const char* buffer = nullptr;
-                    uint32_t pipeAvailableSize = 0;
-                    MojoResult rv = consumerHandle->BeginReadData(reinterpret_cast<const void**>(&buffer), &pipeAvailableSize, MOJO_READ_DATA_FLAG_NONE);
-                    CHECK(MOJO_RESULT_OK == rv || (MOJO_RESULT_SHOULD_WAIT == rv && 0 == pipeAvailableSize));
-
-                    if (0 != pipeAvailableSize) {
-                        size_t oldSize = flattenElement->data.size();
-                        flattenElement->data.resize(oldSize + pipeAvailableSize); // .insert(flattenElement->data.end(), buffer, bytesEle.bytes().end());
-                        memcpy(flattenElement->data.data() + oldSize, buffer, pipeAvailableSize);
-                        consumerHandle->EndReadData(pipeAvailableSize);
-                    }
-                },
-                base::Unretained(flattenElement), std::move(consumerHandle)));
-
-        return 0;
-    }
-
-private:
-    size_t readBuf(void* ptr, size_t blockSize, size_t numberOfBlocks, const FlattenHTTPBodyElement& element, std::vector<char>* outBuf)
-    {
-        if (-1 == numberOfBlocks)
-            numberOfBlocks = element.data.size();
-
-        const size_t maxBufferLength = blockSize * numberOfBlocks;
-        size_t elementSize = element.data.size() - m_elementDataOffset;
-        size_t readedLength = elementSize > maxBufferLength ? maxBufferLength : elementSize;
-
-        if (readedLength > 0) {
-            const char* realData = element.data.data() + m_elementDataOffset;
-            if (!ptr) {
-                outBuf->resize(readedLength);
-                ptr = &outBuf->at(0);
+        for (const auto& element : m_elements) {
+            if (element->readOnlyOnce && element->started)
+                return false;
+            if (element->type == FlattenHTTPBodyElement::TypeFile) {
+                base::File::Info info;
+                if (!element->file.GetInfo(&info) || info.size < 0
+                    || element->fileStart > static_cast<uint64_t>(info.size)
+                    || element->fileLength > static_cast<uint64_t>(info.size) - element->fileStart
+                    || (!element->expectedModificationTime.is_null()
+                        && (info.last_modified - element->expectedModificationTime).magnitude().InSeconds() != 0))
+                    return false;
             }
-            memcpy(ptr, realData, readedLength);
-            m_allReadLength += readedLength;
         }
-
-        if (elementSize > readedLength)
-            m_elementDataOffset += readedLength;
-        else {
-            m_elementDataOffset = 0;
-            m_elementIndex++;
-        }
-        return readedLength;
+        finishPipe();
+        m_index = 0;
+        m_offset = 0;
+        m_waitingForData = false;
+        return !m_failed;
     }
 
-    size_t readBlobDownloadFile(void* ptr, size_t blockSize, size_t numberOfBlocks, const FlattenHTTPBodyElement& element, std::vector<char>* outBuf)
+    size_t read(void* destination, size_t blockSize, size_t blocks)
     {
-        DebugBreak();
-        return 0;
-        //         CHECK(!ptr && -1 == numberOfBlocks);
-        //
-        //         BlobTempFileInfo* info = DownloadFileBlobCache::inst()->getBlobTempFileInfoByTempFilePath(element.filePath.c_str());
-        //         CHECK(info);
-        //
-        //         size_t fileSize = element.fileLength;
-        //         if (-1 == fileSize || fileSize > info->data.size())
-        //             fileSize = info->data.size();
-        //         outBuf->resize(fileSize);
-        //
-        //         if (0 != fileSize)
-        //             memcpy(&outBuf->at(0), info->data.data(), fileSize);
-        //
-        //         m_allReadLength += fileSize;
-        //         readFileFinish(nullptr, nullptr);
-        //         return fileSize;
-    }
-
-    size_t readFile(void* ptr, size_t blockSize, size_t numberOfBlocks, const FlattenHTTPBodyElement& element, std::vector<char>* outBuf)
-    {
-#if defined(OS_WIN)
-        WCHAR blobDownloadPath[] = L"file:///c:/mini_electron_blob_download_";
-        std::u16string subPath = element.filePath.substr(0, sizeof(blobDownloadPath) / sizeof(WCHAR) - 1);
-        if (subPath == (const char16_t*)blobDownloadPath)
-            return readBlobDownloadFile(ptr, blockSize, numberOfBlocks, element, outBuf);
-
-        if (!m_file) {
-            m_file = _wfopen((const WCHAR*)element.filePath.c_str(), L"rb");
-
-            if (!m_file) {
-                readFileFinish(L"FlattenHTTPBodyElementStream._wfopen Fail:", (const WCHAR*)element.filePath.c_str());
-                // FIXME: show a user error?
-                return 0;
-            } else {
-                fseek(m_file, 0L, SEEK_END);
-                m_fileSize = ftell(m_file);
-                fseek(m_file, 0, SEEK_SET);
-
-                m_elementDataOffset = element.fileStart;
-                m_elementDataLength = element.fileLength;
-
-                if (0 == m_fileSize || m_elementDataOffset > m_fileSize) {
-                    readFileFinish(nullptr, nullptr);
-                    return 0;
+        if (m_failed || (blocks && blockSize > std::numeric_limits<size_t>::max() / blocks))
+            return CURL_READFUNC_ABORT;
+        const size_t capacity = blockSize * blocks;
+        if (!capacity)
+            return 0;
+        while (m_index < m_elements.size()) {
+            auto& element = *m_elements[m_index];
+            if (element.type == FlattenHTTPBodyElement::TypeData) {
+                size_t count = std::min<uint64_t>(capacity, element.data.size() - m_offset);
+                if (count) {
+                    memcpy(destination, element.data.data() + m_offset, count);
+                    m_offset += count;
+                    return count;
                 }
-
-                if (-1 == element.fileLength || m_elementDataLength > m_fileSize)
-                    m_elementDataLength = m_fileSize;
-                m_totalFileReadLength = m_elementDataLength;
-
-                if (m_elementDataOffset + m_elementDataLength > m_fileSize)
-                    m_elementDataLength = m_fileSize - m_elementDataOffset;
-                m_originalDataOffset = m_elementDataOffset;
-
-                if (-1 == numberOfBlocks)
-                    numberOfBlocks = m_elementDataLength;
-
-                //                 char* output = (char*)malloc(0x100);
-                //                 sprintf_s(output, 0x99, "m_totalFileReadLength:%d, %d %d\n", m_totalFileReadLength, (size_t)element.fileStart, (size_t)element.fileLength);
-                //                 OutputDebugStringA(output);
-                //                 free(output);
+            } else if (element.type == FlattenHTTPBodyElement::TypeFile) {
+                size_t count = std::min<uint64_t>(capacity, element.fileLength - m_offset);
+                if (count) {
+                    count = std::min<size_t>(count, std::numeric_limits<int>::max());
+                    int actual = element.file.Read(element.fileStart + m_offset,
+                        static_cast<char*>(destination), static_cast<int>(count));
+                    if (actual <= 0) {
+                        m_failed = true;
+                        return CURL_READFUNC_ABORT;
+                    }
+                    m_offset += actual;
+                    return actual;
+                }
+            } else {
+                if (!m_consumer.is_valid() && !startPipe(element))
+                    return CURL_READFUNC_ABORT;
+                if (m_failed)
+                    return CURL_READFUNC_ABORT;
+                if (m_sizeKnown && m_offset > m_pipeSize) {
+                    m_failed = true;
+                    return CURL_READFUNC_ABORT;
+                }
+                if (!(m_sizeKnown && m_offset == m_pipeSize)) {
+                    uint32_t count = static_cast<uint32_t>(std::min<size_t>(capacity, std::numeric_limits<uint32_t>::max()));
+                    if (m_sizeKnown)
+                        count = static_cast<uint32_t>(std::min<uint64_t>(count, m_pipeSize - m_offset));
+                    MojoResult result = m_consumer->ReadData(destination, &count, MOJO_READ_DATA_FLAG_NONE);
+                    if (result == MOJO_RESULT_OK) {
+                        m_offset += count;
+                        return count;
+                    }
+                    if (result == MOJO_RESULT_SHOULD_WAIT) {
+                        m_waitingForData = true;
+                        m_watcher.ArmOrNotify();
+                        return CURL_READFUNC_PAUSE;
+                    }
+                    if (result != MOJO_RESULT_FAILED_PRECONDITION || m_sizeKnown) {
+                        m_failed = true;
+                        return CURL_READFUNC_ABORT;
+                    }
+                    // EOF can precede GetSize's reply for a chunked producer.
+                    // The reply (or disconnect) resumes curl; do not spin on EOF.
+                    m_waitingForData = true;
+                    return CURL_READFUNC_PAUSE;
+                }
+                finishPipe();
             }
+            ++m_index;
+            m_offset = 0;
         }
-
-        const size_t maxBufferLength = blockSize * numberOfBlocks;
-        size_t readedLength = 0;
-
-        CHECK(!(0 == m_fileSize || m_elementDataOffset > m_fileSize || m_elementDataOffset + m_elementDataLength > m_fileSize));
-
-        size_t needReadLength = m_elementDataLength;
-
-        if (needReadLength > maxBufferLength)
-            needReadLength = maxBufferLength;
-
-        fseek(m_file, m_elementDataOffset, SEEK_SET);
-
-        if (outBuf)
-            outBuf->resize(needReadLength);
-        if (!ptr && 0 != needReadLength)
-            ptr = &outBuf->at(0);
-
-        if (ptr && 0 != needReadLength)
-            readedLength = fread(ptr, 1, needReadLength, m_file);
-        m_allReadLength += readedLength;
-        if (!readedLength || ferror(m_file)) {
-            readFileFinish(L"FlattenHTTPBodyElementStream.ferror Fail:", (const WCHAR*)element.filePath.c_str());
-            // FIXME: show a user error?
-            return 0;
-        }
-
-        bool isEnd = feof(m_file);
-        if (isEnd || m_elementDataLength == readedLength) {
-            char* output = (char*)malloc(0x100);
-            sprintf(output, "isEnd: %d, m_elementDataLength: %d, readedLength:%d, element.fileLength:%d\n", isEnd, m_elementDataLength, readedLength,
-                (long)element.fileLength);
-            OutputDebugStringA(output);
-            free(output);
-
-            CHECK(readedLength <= maxBufferLength);
-            CHECK(m_elementDataOffset - m_originalDataOffset + readedLength == m_totalFileReadLength);
-            CHECK(m_elementDataLength - readedLength == 0);
-            readFileFinish(nullptr, nullptr);
-        } else {
-            CHECK(readedLength == maxBufferLength);
-            m_elementDataOffset += readedLength;
-            m_elementDataLength -= readedLength;
-        }
-
-        static int allSize = 0;
-        allSize += readedLength;
-        return readedLength;
-#else
-        content::printFuncName(__FUNCTION__, true, true);
         return 0;
-#endif
-    }
-
-    void readFileFinish(const WCHAR* errorText1, const WCHAR* errorText2)
-    {
-        size_t elementIndex = m_elementIndex;
-        reset();
-        m_elementIndex = elementIndex + 1;
-
-        if (errorText1) {
-            std::u16string errorText = (const char16_t*)errorText1;
-            errorText += (const char16_t*)errorText2;
-            errorText += u"\n";
-            OutputDebugStringW((LPCWSTR)errorText.c_str());
-        }
-    }
-
-public:
-    bool hasMoreElements() const
-    {
-        bool b = m_elementIndex < m_elements.size();
-        if (!b) {
-            CHECK(m_estimateSize == m_allReadLength);
-        }
-        return b;
-    }
-
-    static String getPathBySystemURL(const blink::WebURL& fileSystemURL)
-    {
-        blink::KURL url = fileSystemURL;
-        String urlString = url.GetString();
-        if (urlString.StartsWith("file:///"))
-            urlString.Remove(0, 8);
-        urlString.Replace("/", "\\");
-        return urlString;
-    }
-
-    static void clampSliceOffsets(long long size, long long* start, long long* length)
-    {
-        CHECK(size != -1);
-
-        // Convert the negative value that is used to select from the end.
-        if (*start < 0)
-            *start = *start + size;
-        if (*length < 0)
-            *length = size;
-
-        // Clamp the range if it exceeds the size limit.
-        if (*start < 0)
-            *start = 0;
-
-        if (*start >= size) {
-            *start = 0;
-            *length = 0;
-        }
-
-        if (*start + *length > size)
-            *length = size - *start;
-    }
-
-    static void flatten(const blink::WebString& blobUUID, curl_off_t* size, WTF::Vector<FlattenHTTPBodyElement*>* flattenElements, long long parentOffset,
-        long long parentLength, bool useParentSize, int deep)
-    {
-        //CHECK(deep <= 2);
-        DebugBreak();
-        //         FlattenHTTPBodyElement* flattenElement = nullptr;
-        //         content::WebBlobRegistryImpl* blobReg = (content::WebBlobRegistryImpl*)blink::Platform::current()->blobRegistry();
-        //         net::BlobDataWrap* blobData = blobReg->getBlobDataFromUUID(blobUUID);
-        //         if (!blobData)
-        //             return;
-        //
-        //         long long fileSizeResult = 0;
-        //         const Vector<blink::WebBlobData::Item*>& items = blobData->items();
-        //
-        // //         if (2 == deep && items.size() != 1)
-        // //             CHECK(false);
-        //
-        //         for (size_t i = 0; i < items.size(); ++i) {
-        //             blink::WebBlobData::Item* item = items[i];
-        //             if (blink::WebBlobData::Item::TypeData == item->type) {
-        //
-        //                 long long offset = parentOffset;
-        //                 long long length = parentLength;
-        //                 if (!useParentSize || -1 == length) {
-        //                     offset = item->offset;
-        //                     length = item->length;
-        //                 }
-        //                 clampSliceOffsets(item->data.size(), &offset, &length);
-        //
-        //                 if (length <= 0)
-        //                     continue;
-        //
-        //                 flattenElement = new FlattenHTTPBodyElement();
-        //                 flattenElement->type = FlattenHTTPBodyElement::Type::TypeData;
-        //
-        //                 flattenElement->data.append(item->data.data() + offset, length);
-        //                 flattenElements->append(flattenElement);
-        //
-        //                 *size += length;
-        //             } else if (blink::WebBlobData::Item::TypeFile == item->type || blink::WebBlobData::Item::TypeFileSystemURL == item->type) {
-        //                 String filePath = item->filePath;
-        //                 if (blink::WebBlobData::Item::TypeFileSystemURL == item->type) {
-        //                     blink::KURL fileSystemURL = item->fileSystemURL;
-        //                     filePath = getPathBySystemURL(fileSystemURL);
-        //                 }
-        //
-        //                 long long offset = parentOffset;
-        //                 long long length = parentLength;
-        //                 if (!useParentSize || -1 == length) {
-        //                     offset = item->offset;
-        //                     length = item->length;
-        //                 }
-        //
-        //                 if (-1 != filePath.find("mini_electron_blob_download_")) {
-        //                     BlobTempFileInfo* info = DownloadFileBlobCache::inst()->getBlobTempFileInfoByTempFilePath(filePath);
-        //                     CHECK(info);
-        //
-        //                     fileSizeResult = info->data.size();
-        //                     if (offset > fileSizeResult)
-        //                         offset = fileSizeResult;
-        //
-        //                     char* output = (char*)malloc(0x100);
-        //                     sprintf(output, "flatten blob: fileSizeResult:%lld, offset:%lld, parentOffset:%lld, parentLength:%lld\n",
-        //                             fileSizeResult, offset, parentOffset, parentLength);
-        //                     OutputDebugStringA(output);
-        //                     free(output);
-        //
-        //                     flattenElement = new FlattenHTTPBodyElement();
-        //                     flattenElement->type = FlattenHTTPBodyElement::Type::TypeData;
-        //
-        //                     long long appendSize = fileSizeResult - offset;
-        //
-        //                     flattenElement->data.append(info->data.data() + offset, appendSize);
-        //                     flattenElements->append(flattenElement);
-        //
-        //                     *size += appendSize;
-        //                 } else if (getFileSize(filePath, fileSizeResult)) {
-        //                     clampSliceOffsets(fileSizeResult, &offset, &length);
-        //                     if (length <= 0)
-        //                         continue;
-        //
-        //                     *size += length;
-        //
-        //                     flattenElement = new FlattenHTTPBodyElement();
-        //                     flattenElement->type = FlattenHTTPBodyElement::Type::TypeFile;
-        //                     Vector<UChar> filePathBuf = WTF::ensureUTF16UChar(filePath, true);
-        //                     flattenElement->filePath = filePathBuf.data();
-        //                     flattenElement->fileStart = offset; // item->offset;
-        //                     flattenElement->fileLength = length; // item->length;
-        //                     flattenElements->append(flattenElement);
-        //                 }
-        //             } else if (blink::WebBlobData::Item::TypeBlob == item->type) {
-        //                 //OutputDebugStringA("FlattenHTTPBodyElementStream::flatten, TypeBlob\n");
-        //                 flatten(item->blobUUID, size, flattenElements, item->offset, item->length, true, deep + 1);
-        //             }
-        //         }
     }
 
 private:
-    FILE* m_file;
-    size_t m_fileSize;
-    size_t m_elementIndex;
-    size_t m_elementDataOffset;
-    size_t m_elementDataLength;
-    size_t m_totalFileReadLength;
-    size_t m_allReadLength;
-    size_t m_originalDataOffset;
-    curl_off_t m_estimateSize;
-    std::vector<FlattenHTTPBodyElement*> m_elements;
+    bool startPipe(FlattenHTTPBodyElement& element)
+    {
+        mojo::ScopedDataPipeProducerHandle producer;
+        if (mojo::CreateDataPipe(nullptr, producer, m_consumer) != MOJO_RESULT_OK) {
+            m_failed = true;
+            return false;
+        }
+        auto weak = m_weakFactory.GetWeakPtr();
+        auto disconnected = base::BindOnce([](base::WeakPtr<FlattenHTTPBodyElementStream> self) {
+            if (!self)
+                return;
+            // A getter may disconnect after reporting a successful size. The
+            // data pipe still carries the remaining bytes or a detectable EOF.
+            if (!self->m_sizeKnown)
+                self->m_failed = true;
+            self->m_waitingForData = false;
+            self->m_resume.Run();
+        }, weak);
+        auto complete = base::BindOnce([](base::WeakPtr<FlattenHTTPBodyElementStream> self, int32_t status, uint64_t size) {
+            if (!self)
+                return;
+            self->m_failed = self->m_failed || status != 0 || self->m_offset > size;
+            self->m_sizeKnown = true;
+            self->m_pipeSize = size;
+            self->m_waitingForData = false;
+            self->m_resume.Run();
+        }, weak);
+        m_watcher.Watch(m_consumer.get(), MOJO_HANDLE_SIGNAL_READABLE,
+            base::BindRepeating([](base::WeakPtr<FlattenHTTPBodyElementStream> self, MojoResult) {
+                if (self) {
+                    self->m_waitingForData = false;
+                    self->m_resume.Run();
+                }
+            }, weak));
+        element.started = true;
+        if (element.type == FlattenHTTPBodyElement::TypeDataPipe) {
+            if (!element.getter.is_bound() && element.pendingGetter.is_valid())
+                element.getter.Bind(std::move(element.pendingGetter));
+            if (!element.getter.is_bound()) {
+                m_failed = true;
+                return false;
+            }
+            // The lite getter proxy owns these arguments while dispatching on
+            // the Blink receiver sequence; its reply returns to this IO runner.
+            element.getter.set_disconnect_handler(std::move(disconnected));
+            element.getter->Read(std::move(producer), std::move(complete));
+        } else {
+            if (!element.chunkedGetter.is_bound() && element.pendingChunkedGetter.is_valid())
+                element.chunkedGetter.Bind(std::move(element.pendingChunkedGetter));
+            if (!element.chunkedGetter.is_bound()) {
+                m_failed = true;
+                return false;
+            }
+            element.chunkedGetter.set_disconnect_handler(std::move(disconnected));
+            element.chunkedGetter->GetSize(std::move(complete));
+            element.chunkedGetter->StartReading(std::move(producer));
+        }
+        return true;
+    }
+
+    void finishPipe()
+    {
+        m_weakFactory.InvalidateWeakPtrs();
+        m_watcher.Cancel();
+        m_consumer.reset();
+        m_sizeKnown = false;
+        m_pipeSize = 0;
+    }
+
+    std::vector<std::unique_ptr<FlattenHTTPBodyElement>> m_elements;
+    size_t m_index = 0;
+    uint64_t m_offset = 0;
+    bool m_failed;
+    bool m_waitingForData = false;
+    bool m_sizeKnown = false;
+    uint64_t m_pipeSize = 0;
+    base::RepeatingClosure m_resume;
+    mojo::ScopedDataPipeConsumerHandle m_consumer;
+    mojo::SimpleWatcher m_watcher;
+    base::WeakPtrFactory<FlattenHTTPBodyElementStream> m_weakFactory { this };
 };
 
-}
+} // namespace mini_electron
 
-#endif // net_FlattenHTTPBodyElement_h
+#endif // MINI_ELECTRON_NETWORK_LOADER_FLATTEN_HTTP_BODY_ELEMENT_H_

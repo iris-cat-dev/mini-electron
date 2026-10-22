@@ -184,25 +184,23 @@ bool ShouldShowPictureInPictureButton(HTMLMediaElement& media_element)
 
 bool ShouldShowCastButton(HTMLMediaElement& media_element)
 {
-    *(int*)1 = 1;
-    return false;
-//     if (media_element.FastHasAttribute(html_names::kDisableremoteplaybackAttr))
-//         return false;
-// 
-//     // Explicitly do not show cast button when the mediaControlsEnabled setting is
-//     // false, to make sure the overlay does not appear.
-//     Document& document = media_element.GetDocument();
-//     if (document.GetSettings() && (!document.GetSettings()->GetMediaControlsEnabled())) {
-//         return false;
-//     }
-// 
-//     // The page disabled the button via the attribute.
-//     if (media_element.ControlsListInternal()->ShouldHideRemotePlayback() && !media_element.UserWantsControlsVisible()) {
-//         UseCounter::Count(media_element.GetDocument(), WebFeature::kHTMLMediaElementControlsListNoRemotePlayback);
-//         return false;
-//     }
-// 
-//     return RemotePlayback::From(media_element).RemotePlaybackAvailable();
+    if (media_element.FastHasAttribute(html_names::kDisableremoteplaybackAttr))
+        return false;
+
+    // Explicitly do not show cast button when the mediaControlsEnabled setting is
+    // false, to make sure the overlay does not appear.
+    Document& document = media_element.GetDocument();
+    if (document.GetSettings() && (!document.GetSettings()->GetMediaControlsEnabled())) {
+        return false;
+    }
+
+    // The page disabled the button via the attribute.
+    if (media_element.ControlsListInternal()->ShouldHideRemotePlayback() && !media_element.UserWantsControlsVisible()) {
+        UseCounter::Count(media_element.GetDocument(), WebFeature::kHTMLMediaElementControlsListNoRemotePlayback);
+        return false;
+    }
+
+    return RemotePlayback::From(media_element).RemotePlaybackAvailable();
 }
 
 bool ShouldShowCastOverlayButton(HTMLMediaElement& media_element)
@@ -1008,54 +1006,52 @@ void MediaControlsImpl::MakeTransparent()
 
 bool MediaControlsImpl::ShouldHideMediaControls(unsigned behavior_flags) const
 {
-    *(int*)1 = 1;
-    return false;
     // Never hide for a media element without visual representation.
-//     auto* video_element = DynamicTo<HTMLVideoElement>(MediaElement());
-//     if (!video_element || !MediaElement().HasVideo() || video_element->IsRemotingInterstitialVisible()) {
-//         return false;
-//     }
-// 
-//     if (RemotePlayback::From(MediaElement()).GetState() != mojom::blink::PresentationConnectionState::CLOSED) {
-//         return false;
-//     }
-// 
-//     // Keep the controls visible as long as the timer is running.
-//     const bool ignore_wait_for_timer = behavior_flags & kIgnoreWaitForTimer;
-//     if (!ignore_wait_for_timer && keep_showing_until_timer_fires_)
-//         return false;
-// 
-//     // Don't hide if the mouse is over the controls.
-//     // Touch focus shouldn't affect controls visibility.
-//     const bool ignore_controls_hover = behavior_flags & kIgnoreControlsHover;
-//     if (!ignore_controls_hover && AreVideoControlsHovered() && !is_touch_interaction_)
-//         return false;
-// 
-//     // Don't hide if the mouse is over the video area.
-//     const bool ignore_video_hover = behavior_flags & kIgnoreVideoHover;
-//     if (!ignore_video_hover && is_mouse_over_controls_)
-//         return false;
-// 
-//     // Don't hide if focus is on the HTMLMediaElement or within the
-//     // controls/shadow tree. (Perform the checks separately to avoid going
-//     // through all the potential ancestor hosts for the focused element.)
-//     const bool ignore_focus = behavior_flags & kIgnoreFocus;
-//     if (!ignore_focus && (MediaElement().IsFocused() || contains(GetDocument().FocusedElement()))) {
-//         return false;
-//     }
-// 
-//     // Don't hide the media controls when a panel is showing.
-//     if (text_track_list_->IsWanted() || playback_speed_list_->IsWanted() || overflow_list_->IsWanted())
-//         return false;
-// 
-//     // Don't hide if we have accessiblity focus.
-//     if (panel_->KeepDisplayedForAccessibility())
-//         return false;
-// 
-//     if (MediaElement().seeking())
-//         return false;
-// 
-//     return true;
+    auto* video_element = DynamicTo<HTMLVideoElement>(MediaElement());
+    if (!video_element || !MediaElement().HasVideo() || video_element->IsRemotingInterstitialVisible()) {
+        return false;
+    }
+
+    if (RemotePlayback::From(MediaElement()).GetState() != mojom::blink::PresentationConnectionState::CLOSED) {
+        return false;
+    }
+
+    // Keep the controls visible as long as the timer is running.
+    const bool ignore_wait_for_timer = behavior_flags & kIgnoreWaitForTimer;
+    if (!ignore_wait_for_timer && keep_showing_until_timer_fires_)
+        return false;
+
+    // Don't hide if the mouse is over the controls.
+    // Touch focus shouldn't affect controls visibility.
+    const bool ignore_controls_hover = behavior_flags & kIgnoreControlsHover;
+    if (!ignore_controls_hover && AreVideoControlsHovered() && !is_touch_interaction_)
+        return false;
+
+    // Don't hide if the mouse is over the video area.
+    const bool ignore_video_hover = behavior_flags & kIgnoreVideoHover;
+    if (!ignore_video_hover && is_mouse_over_controls_)
+        return false;
+
+    // Don't hide if focus is on the HTMLMediaElement or within the
+    // controls/shadow tree. (Perform the checks separately to avoid going
+    // through all the potential ancestor hosts for the focused element.)
+    const bool ignore_focus = behavior_flags & kIgnoreFocus;
+    if (!ignore_focus && (MediaElement().IsFocused() || contains(GetDocument().FocusedElement()))) {
+        return false;
+    }
+
+    // Don't hide the media controls when a panel is showing.
+    if (text_track_list_->IsWanted() || playback_speed_list_->IsWanted() || overflow_list_->IsWanted())
+        return false;
+
+    // Don't hide if we have accessiblity focus.
+    if (panel_->KeepDisplayedForAccessibility())
+        return false;
+
+    if (MediaElement().seeking())
+        return false;
+
+    return true;
 }
 
 bool MediaControlsImpl::AreVideoControlsHovered() const

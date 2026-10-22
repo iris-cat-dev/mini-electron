@@ -108,6 +108,12 @@ public:
 
     void lock();
     void unlock();
+    void AssertAcquired() const ASSERT_EXCLUSIVE_LOCK()
+    {
+#if DCHECK_IS_ON()
+        DCHECK_EQ(m_owner.load(std::memory_order_relaxed), base::PlatformThread::CurrentId());
+#endif
+    }
 #if DCHECK_IS_ON()
     bool locked()
     {
@@ -122,6 +128,10 @@ protected:
     MutexBase(bool recursive);
 
     PlatformMutex m_mutex;
+#if DCHECK_IS_ON()
+    // A different thread can assert without holding the lock; avoid a data race.
+    std::atomic<base::PlatformThreadId> m_owner { base::kInvalidThreadId };
+#endif
 };
 
 class WTF_EXPORT Mutex : public MutexBase {

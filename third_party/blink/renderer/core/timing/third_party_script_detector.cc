@@ -110,54 +110,42 @@ ThirdPartyScriptDetector& ThirdPartyScriptDetector::From(LocalDOMWindow& window)
 
 ThirdPartyScriptDetector::ThirdPartyScriptDetector(LocalDOMWindow& window)
     : Supplement<LocalDOMWindow>(window)
-//, precompiled_detection_regex__(kThirdPartyTechnologiesSourceLocationRegexString)
+    , precompiled_detection_regex_(MakeGarbageCollected<ScriptRegexp>(
+          window.GetIsolate(), kThirdPartyTechnologiesSourceLocationRegexString, kTextCaseSensitive))
 {
 }
 
 void ThirdPartyScriptDetector::Trace(Visitor* visitor) const
 {
+    visitor->Trace(precompiled_detection_regex_);
     Supplement<LocalDOMWindow>::Trace(visitor);
 }
 
 ThirdPartyScriptDetector::Technology ThirdPartyScriptDetector::Detect(const WTF::String url)
 {
-    *(int*)1 = 1;
-    return Technology::kNone;
-    //   if (!url) {
-    //     // Early exit if the script is first party.
-    //     return Technology::kNone;
-    //   }
-    //
-    //   if (url_to_technology_cache_.Contains(url)) {
-    //     return url_to_technology_cache_.at(url);
-    //   }
-    //
-    //   // Create result vectors to get the matches for the capturing groups.
-    //   std::vector<std::string> results(kTechnologyCount);
-    //   std::vector<RE2::Arg> match_results(kTechnologyCount);
-    //   std::vector<RE2::Arg*> match_results_ptr(kTechnologyCount);
-    //
-    //   for (size_t i = 0; i < kTechnologyCount; ++i) {
-    //     match_results[i] = &results[i];
-    //     match_results_ptr[i] = &match_results[i];
-    //   }
-    //
-    //   Technology technology = Technology::kNone;
-    //   if (RE2::PartialMatchN(url.Utf8(), precompiled_detection_regex__,
-    //                          match_results_ptr.data(), kTechnologyCount)) {
-    //     for (int i = 0; i < kTechnologyCount; ++i) {
-    //       if (results[i] != "") {
-    //         // results[i] stores capturing subgroup match result. If not empty
-    //         // string, it means the subgroup has been matched, and the technology
-    //         // relates to that capturing group should be returned.
-    //         technology = GetTechnologyFromGroupIndex(i);
-    //         break;
-    //       }
-    //     }
-    //   }
-    //
-    //   url_to_technology_cache_.Set(url, technology);
-    //   return technology;
+    if (url.IsNull()) {
+        return Technology::kNone;
+    }
+
+    auto cached = url_to_technology_cache_.find(url);
+    if (cached != url_to_technology_cache_.end()) {
+        return cached->value;
+    }
+
+    Vector<String> groups;
+    Technology technology = Technology::kNone;
+    if (precompiled_detection_regex_->Match(url, 0, nullptr, &groups) >= 0) {
+        DCHECK_EQ(groups.size(), kTechnologyCount);
+        for (wtf_size_t i = 0; i < groups.size(); ++i) {
+            if (!groups[i].empty()) {
+                technology = GetTechnologyFromGroupIndex(i);
+                break;
+            }
+        }
+    }
+
+    url_to_technology_cache_.Set(url, technology);
+    return technology;
 }
 
 } // namespace blink

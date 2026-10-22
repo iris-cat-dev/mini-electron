@@ -645,8 +645,9 @@ static CURLcode file_do(struct connectdata* conn, bool* done)
 
         nread = (userReadFile ? userReadFile((void*)fd, buf, bytestoread) : read(fd, buf, bytestoread));
         if (nread < 0 || (size_t)nread > bytestoread) {
-            OutputDebugStringA("read nread error\n");
-            DebugBreak();
+            failf(data, "Failed to read file");
+            result = CURLE_READ_ERROR;
+            break;
         }
 
         if (nread > 0)

@@ -769,6 +769,25 @@ TEST(HTTPParsersTest, ParseContentSecurityPoliciesSourceBasic)
     }
 }
 
+TEST(HTTPParsersTest, ParseNoVarySearchHint)
+{
+    auto parsed = ParseNoVarySearch("params=(\"utm_source\"), key-order");
+    ASSERT_TRUE(parsed);
+    ASSERT_TRUE(parsed->is_no_vary_search());
+    const auto& value = parsed->get_no_vary_search();
+    ASSERT_TRUE(value->search_variance->is_no_vary_params());
+    EXPECT_THAT(value->search_variance->get_no_vary_params(), testing::ElementsAre(String("utm_source")));
+    EXPECT_FALSE(value->vary_on_key_order);
+}
+
+TEST(HTTPParsersTest, InvalidNoVarySearchHintReturnsParseError)
+{
+    auto parsed = ParseNoVarySearch("params=(");
+    ASSERT_TRUE(parsed);
+    ASSERT_TRUE(parsed->is_parse_error());
+    EXPECT_FALSE(GetNoVarySearchHintConsoleMessage(parsed->get_parse_error()).empty());
+}
+
 TEST(NoVarySearchPrefetchEnabledTest, ParsingNVSReturnsDefaultURLVariance)
 {
     const std::string_view headers = "HTTP/1.1 200 OK\r\n"

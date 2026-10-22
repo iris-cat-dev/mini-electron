@@ -425,88 +425,60 @@ PermissionsPolicyParser::Node ParsingContext::ParseFeaturePolicyToIR(const Strin
 
 PermissionsPolicyParser::Node ParsingContext::ParsePermissionsPolicyToIR(const String& policy)
 {
-    if (policy.empty())
+    if (policy.length() > MAX_LENGTH_PARSE) {
+        logger_.Error("Permissions policy declaration exceeds size limit(" + String::Number(policy.length()) + ">" + String::Number(MAX_LENGTH_PARSE) + ")");
         return {};
-    *(int*)1 = 1;
-    return PermissionsPolicyParser::Node();
-    //   if (policy.length() > MAX_LENGTH_PARSE) {
-    //     logger_.Error("Permissions policy declaration exceeds size limit(" +
-    //                   String::Number(policy.length()) + ">" +
-    //                   String::Number(MAX_LENGTH_PARSE) + ")");
-    //     return {};
-    //   }
-    //
-    //   auto root = net::structured_headers::ParseDictionary(policy.Utf8());
-    //   if (!root) {
-    //     logger_.Error(
-    //         "Parse of permissions policy failed because of errors reported by "
-    //         "structured header parser.");
-    //     return {};
-    //   }
-    //
-    //   PermissionsPolicyParser::Node ir_root{
-    //       OriginWithPossibleWildcards::NodeType::kHeader};
-    //   for (const auto& feature_entry : root.value()) {
-    //     const auto& key = feature_entry.first;
-    //     const char* feature_name = key.c_str();
-    //     const auto& value = feature_entry.second;
-    //     String endpoint;
-    //
-    //     if (!value.params.empty()) {
-    //       for (const auto& param : value.params) {
-    //         if (param.first == "report-to" && param.second.is_token()) {
-    //           endpoint = String(param.second.GetString());
-    //         }
-    //       }
-    //     }
-    //
-    //     Vector<String> allowlist;
-    //     for (const auto& parameterized_item : value.member) {
-    //       if (!parameterized_item.params.empty()) {
-    //         logger_.Warn(String::Format("Feature %s's parameters are ignored.",
-    //                                     feature_name));
-    //       }
-    //
-    //       String allowlist_item;
-    //       if (parameterized_item.item.is_token()) {
-    //         // All special keyword appears as token, i.e. self, src and *.
-    //         const std::string& token_value = parameterized_item.item.GetString();
-    //         if (token_value != "*" && token_value != "self") {
-    //           logger_.Warn(String::Format(
-    //               "Invalid allowlist item(%s) for feature %s. Allowlist item "
-    //               "must be *, self or quoted url.",
-    //               token_value.c_str(), feature_name));
-    //           continue;
-    //         }
-    //
-    //         if (token_value == "*") {
-    //           allowlist_item = "*";
-    //         } else {
-    //           allowlist_item = String::Format("'%s'", token_value.c_str());
-    //         }
-    //       } else if (parameterized_item.item.is_string()) {
-    //         allowlist_item = parameterized_item.item.GetString().c_str();
-    //       } else {
-    //         logger_.Warn(
-    //             String::Format("Invalid allowlist item for feature %s. Allowlist "
-    //                            "item must be *, self, or quoted url.",
-    //                            feature_name));
-    //         continue;
-    //       }
-    //       if (!allowlist_item.empty()) {
-    //         allowlist.push_back(allowlist_item);
-    //       }
-    //     }
-    //
-    //     if (allowlist.empty()) {
-    //       allowlist.push_back("'none'");
-    //     }
-    //
-    //     ir_root.declarations.push_back(PermissionsPolicyParser::Declaration{
-    //         feature_name, std::move(allowlist), endpoint});
-    //   }
-    //
-    //   return ir_root;
+    }
+
+    auto root = net::structured_headers::ParseDictionary(policy.Utf8());
+    if (!root) {
+        logger_.Error("Parse of permissions policy failed because of errors reported by structured header parser.");
+        return {};
+    }
+
+    PermissionsPolicyParser::Node ir_root { OriginWithPossibleWildcards::NodeType::kHeader };
+    for (const auto& feature_entry : root.value()) {
+        const char* feature_name = feature_entry.first.c_str();
+        const auto& value = feature_entry.second;
+        String endpoint;
+        for (const auto& param : value.params) {
+            if (param.first == "report-to" && param.second.is_token())
+                endpoint = String(param.second.GetString());
+        }
+
+        Vector<String> allowlist;
+        for (const auto& parameterized_item : value.member) {
+            if (!parameterized_item.params.empty())
+                logger_.Warn(String::Format("Feature %s's parameters are ignored.", feature_name));
+
+            String allowlist_item;
+            if (parameterized_item.item.is_token()) {
+                const std::string& token_value = parameterized_item.item.GetString();
+                if (token_value != "*" && token_value != "self") {
+                    logger_.Warn(String::Format("Invalid allowlist item(%s) for feature %s. Allowlist item must be *, self or quoted url.",
+                        token_value.c_str(), feature_name));
+                    continue;
+                }
+                if (token_value == "*")
+                    allowlist_item = "*";
+                else
+                    allowlist_item = String::Format("'%s'", token_value.c_str());
+            } else if (parameterized_item.item.is_string()) {
+                allowlist_item = parameterized_item.item.GetString().c_str();
+            } else {
+                logger_.Warn(String::Format("Invalid allowlist item for feature %s. Allowlist item must be *, self, or quoted url.", feature_name));
+                continue;
+            }
+            if (!allowlist_item.empty())
+                allowlist.push_back(allowlist_item);
+        }
+
+        if (allowlist.empty())
+            allowlist.push_back("'none'");
+
+        ir_root.declarations.push_back(PermissionsPolicyParser::Declaration { feature_name, std::move(allowlist), endpoint });
+    }
+    return ir_root;
 }
 
 } // namespace

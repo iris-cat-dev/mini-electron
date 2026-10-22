@@ -219,8 +219,7 @@ TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload)
                                           WriteUint32(data_latin1.size(), &buffer);
                                           WriteBytes(base::as_byte_span(data_latin1), &buffer);
                                       } else {
-                                          *(int*)1 = 1;
-                                          base::span<const uint8_t> str_as_bytes((const uint8_t*)str.c_str(), str.size() * sizeof(char16_t));
+                                          auto str_as_bytes = base::as_byte_span(str);
                                           if ((buffer.size() + 1 + BytesNeededForUint32(str_as_bytes.size())) & 1) {
                                               WriteUint8(kPaddingTag, &buffer);
                                           }

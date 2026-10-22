@@ -138,25 +138,23 @@ const ProxyServer& ProxyChain::Last() const
 
 std::string ProxyChain::ToDebugString() const
 {
-    *(int*)1 = 1;
-    return "INVALID PROXY CHAIN";
-//     if (!IsValid()) {
-//         return "INVALID PROXY CHAIN";
-//     }
-//     std::string debug_string = proxy_server_list_.value().empty() ? "direct://" : "";
-//     for (const ProxyServer& proxy_server : proxy_server_list_.value()) {
-//         if (!debug_string.empty()) {
-//             debug_string += ", ";
-//         }
-//         debug_string += ProxyServerToProxyUri(proxy_server);
-//     }
-//     debug_string = "[" + debug_string + "]";
-//     if (ip_protection_chain_id_ == 0) {
-//         debug_string += " (IP Protection)";
-//     } else if (ip_protection_chain_id_ >= 0) {
-//         debug_string += base::StringPrintf(" (IP Protection chain %d)", ip_protection_chain_id_);
-//     }
-//     return debug_string;
+    if (!IsValid()) {
+        return "INVALID PROXY CHAIN";
+    }
+    std::string debug_string = proxy_server_list_.value().empty() ? "direct://" : "";
+    for (const ProxyServer& proxy_server : proxy_server_list_.value()) {
+        if (!debug_string.empty()) {
+            debug_string += ", ";
+        }
+        debug_string += ProxyServerToProxyUri(proxy_server);
+    }
+    debug_string = "[" + debug_string + "]";
+    if (ip_protection_chain_id_ == 0) {
+        debug_string += " (IP Protection)";
+    } else if (ip_protection_chain_id_ >= 0) {
+        debug_string += base::StringPrintf(" (IP Protection chain %d)", ip_protection_chain_id_);
+    }
+    return debug_string;
 }
 
 ProxyChain::ProxyChain(std::vector<ProxyServer> proxy_server_list, int ip_protection_chain_id)

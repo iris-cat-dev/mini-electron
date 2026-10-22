@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/locks/lock_manager.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/locks/lock_manager.mojom-shared.h" // IWYU pragma: export
@@ -174,176 +177,176 @@ public:
     virtual void QueryState(QueryStateCallback callback) = 0;
 };
 
-//class PLATFORM_EXPORT LockHandleProxy : public LockHandle {
-//public:
-//    using InterfaceType = LockHandle;
-//
-//    explicit LockHandleProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class PLATFORM_EXPORT LockHandleProxy : public LockHandle {
+public:
+    using InterfaceType = LockHandle;
 
-//class PLATFORM_EXPORT LockRequestProxy : public LockRequest {
-//public:
-//    using InterfaceType = LockRequest;
-//
-//    explicit LockRequestProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void Granted(::mojo::PendingAssociatedRemote<LockHandle> lock_handle) final;
-//
-//    void Failed() final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+    explicit LockHandleProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//class PLATFORM_EXPORT LockManagerProxy : public LockManager {
-//public:
-//    using InterfaceType = LockManager;
-//
-//    explicit LockManagerProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void RequestLock(const WTF::String& name, LockMode mode, LockManager::WaitMode wait, ::mojo::PendingAssociatedRemote<LockRequest> request) final;
-//
-//    void QueryState(QueryStateCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class PLATFORM_EXPORT LockHandleStubDispatch {
-//public:
-//    static bool Accept(LockHandle* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(LockHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockHandle>> class LockHandleStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    LockHandleStub() = default;
-//    ~LockHandleStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT LockRequestStubDispatch {
-//public:
-//    static bool Accept(LockRequest* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(LockRequest* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+class PLATFORM_EXPORT LockRequestProxy : public LockRequest {
+public:
+    using InterfaceType = LockRequest;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockRequest>> class LockRequestStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    LockRequestStub() = default;
-//    ~LockRequestStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockRequestStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockRequestStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT LockManagerStubDispatch {
-//public:
-//    static bool Accept(LockManager* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(LockManager* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    explicit LockRequestProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockManager>> class LockManagerStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    LockManagerStub() = default;
-//    ~LockManagerStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockManagerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return LockManagerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT LockHandleRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT LockRequestRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT LockManagerRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT LockManagerResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    void Granted(::mojo::PendingAssociatedRemote<LockHandle> lock_handle) final;
+
+    void Failed() final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class PLATFORM_EXPORT LockManagerProxy : public LockManager {
+public:
+    using InterfaceType = LockManager;
+
+    explicit LockManagerProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void RequestLock(const WTF::String& name, LockMode mode, LockManager::WaitMode wait, ::mojo::PendingAssociatedRemote<LockRequest> request) final;
+
+    void QueryState(QueryStateCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class PLATFORM_EXPORT LockHandleStubDispatch {
+public:
+    static bool Accept(LockHandle* impl, mojo::Message* message);
+    static bool AcceptWithResponder(LockHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockHandle>> class LockHandleStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    LockHandleStub() = default;
+    ~LockHandleStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT LockRequestStubDispatch {
+public:
+    static bool Accept(LockRequest* impl, mojo::Message* message);
+    static bool AcceptWithResponder(LockRequest* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockRequest>> class LockRequestStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    LockRequestStub() = default;
+    ~LockRequestStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockRequestStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockRequestStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT LockManagerStubDispatch {
+public:
+    static bool Accept(LockManager* impl, mojo::Message* message);
+    static bool AcceptWithResponder(LockManager* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<LockManager>> class LockManagerStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    LockManagerStub() = default;
+    ~LockManagerStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockManagerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return LockManagerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT LockHandleRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT LockRequestRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT LockManagerRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT LockManagerResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class PLATFORM_EXPORT LockInfo {
 public:
@@ -366,20 +369,9 @@ public:
         return mojo::TypeConverter<U, LockInfo>::Convert(*this);
     }
 
-    LockInfo()
-    : name()
-    , mode()
-    , client_id()
-{
-}
-
-    LockInfo(const WTF::String& name_in, LockMode mode_in, const WTF::String& client_id_in)
-    : name(std::move(name_in))
-    , mode(std::move(mode_in))
-    , client_id(std::move(client_id_in)){
-}
-
-    ~LockInfo() = default;
+    LockInfo();
+    LockInfo(const WTF::String& name_in, LockMode mode_in, const WTF::String& client_id_in);
+    ~LockInfo();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -449,8 +441,10 @@ public:
 
     WTF::String client_id;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

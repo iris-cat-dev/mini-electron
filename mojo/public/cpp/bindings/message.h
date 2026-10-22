@@ -43,6 +43,7 @@ public:
     static const uint32_t kFlagIsResponse = 1 << 1;
     static const uint32_t kFlagIsSync = 1 << 2;
     static const uint32_t kFlagNoInterrupt = 1 << 3;
+    static const uint32_t kFlagIsUrgent = 1 << 4;
 
     // Constructs an uninitialized Message object.
     Message();
@@ -55,8 +56,8 @@ public:
     Message(std::unique_ptr<internal::UnserializedMessageContext> context, MojoCreateMessageFlags create_message_flags);
 
     // Constructs a new serialized Message object with optional handles attached.
-    // This message is fully functional and may be exchanged for a
-    // ScopedMessageHandle for transit over a message pipe. See TakeMojoMessage().
+    // Lite retains owned C++ storage and handles for scoped handoff through
+    // TakeMojoMessage(); raw message-pipe Read/Write are unsupported.
     //
     // If |handles| is non-null, any handles in |*handles| are attached to the
     // newly constructed message.
@@ -68,7 +69,7 @@ public:
         std::vector<ScopedHandle>* handles);
 
     // Same as above, but the with default MojoCreateMessageFlags.
-    Message(uint32_t name, uint32_t flags, size_t payload_size, size_t payload_interface_id_count, std::vector<ScopedHandle>* handles);
+    Message(uint32_t name, uint32_t flags, size_t payload_size, size_t payload_interface_id_count = 0, std::vector<ScopedHandle>* handles = nullptr);
 
     // Constructs a new Message object from an existing message handle. Used
     // exclusively for serializing an existing unserialized message.
@@ -82,12 +83,12 @@ public:
     // |TakeMojoMessage()| is called.
     Message(base::span<const uint8_t> payload, base::span<ScopedHandle> handles);
 
-    // Constructs a new serialized Message object from an existing
-    // ScopedMessageHandle; e.g., one read from a message pipe.
+    // Constructs a new serialized Message object from an existing scoped C++
+    // message-storage handle.
     //
     // If the message had any handles attached, they will be extracted and
-    // retrievable via |handles()|. Such messages may NOT be sent back over
-    // another message pipe, but are otherwise safe to inspect and pass around.
+    // retrievable via |handles()|. Lite owns the extracted handles and can
+    // transfer them again with TakeMojoMessage().
     //
     // If handles are attached and their extraction fails for any reason,
     // |*handle| remains unchanged and the returned Message will be null (i.e.
@@ -111,7 +112,7 @@ public:
     // Indicates whether this Message is uninitialized.
     bool IsNull() const
     {
-        return !handle_.is_valid();
+        return !handle_.is_valid() && !transferable_;
     }
 
     // Indicates whether this Message is in valid state. A Message may be in an
@@ -261,14 +262,24 @@ public:
         return receiver_connection_group_;
     }
 
-    // Takes a scoped MessageHandle which may be passed to |WriteMessageNew()| for
-    // transmission. Note that this invalidates this Message object, taking
-    // ownership of its internal storage and any attached handles.
+    // Takes a scoped message-storage handle for C++ ownership handoff. Lite does
+    // not support raw message-pipe transmission through WriteMessageNew().
+    // This invalidates the Message and moves its storage and attached handles.
     ScopedMessageHandle TakeMojoMessage();
 
     // Notifies the system that this message is "bad," in this case meaning it was
     // rejected by bindings validation code.
     void NotifyBadMessage(base::StringPiece error);
+
+    // Retain the lite transport rejection route across raw-message ownership.
+    void SetBadMessageCallbackForTransport(ReportBadMessageCallback callback)
+    {
+        bad_message_callback_ = std::move(callback);
+    }
+    ReportBadMessageCallback TakeBadMessageCallback()
+    {
+        return std::move(bad_message_callback_);
+    }
 
     // Serializes and attaches Mojo handles and associated endpoint handles from
     // |handles_| and |associated_endpoint_handles_| respectively.
@@ -337,6 +348,7 @@ private:
     Message(ScopedMessageHandle message_handle, std::vector<ScopedHandle> attached_handles, internal::Buffer payload_buffer, bool serialized);
 
     ScopedMessageHandle handle_;
+    ReportBadMessageCallback bad_message_callback_;
 
     // A Buffer which may be used to allocate blocks of data within the message
     // payload for reading or writing.

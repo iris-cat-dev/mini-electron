@@ -1046,10 +1046,13 @@ public:
     void Close(int code, std::string reason)
     {
         std::vector<uint8_t> payload;
-        payload.reserve(reason.size() + 2);
-        payload.push_back(static_cast<uint8_t>((code >> 8) & 0xff));
-        payload.push_back(static_cast<uint8_t>(code & 0xff));
-        payload.insert(payload.end(), reason.begin(), reason.end());
+        // A missing status code is represented by an empty close payload.
+        if (code != -1) {
+            payload.reserve(reason.size() + 2);
+            payload.push_back(static_cast<uint8_t>((code >> 8) & 0xff));
+            payload.push_back(static_cast<uint8_t>(code & 0xff));
+            payload.insert(payload.end(), reason.begin(), reason.end());
+        }
         std::lock_guard<std::mutex> lock(queue_lock_);
         queue_.push_back({ false, true, code, std::move(payload) });
     }
@@ -1090,7 +1093,7 @@ private:
         size_t offset = 0;
         const unsigned int flags = outgoing.close ? CURLWS_CLOSE
             : outgoing.binary ? CURLWS_BINARY : CURLWS_TEXT;
-        do {
+        for (;;) {
             size_t sent = 0;
             const void* data = outgoing.data.empty()
                 ? nullptr : outgoing.data.data() + offset;
@@ -1104,8 +1107,9 @@ private:
             if (result != CURLE_OK)
                 return false;
             offset += sent;
-        } while (offset < outgoing.data.size());
-        return true;
+            if (offset == outgoing.data.size())
+                return true;
+        }
     }
 
     void Finished()
@@ -1266,7 +1270,7 @@ private:
                 break;
             }
             if (metadata->flags & CURLWS_CLOSE) {
-                int code = 1000;
+                int code = 1005; // No status was present in the peer's frame.
                 std::string reason;
                 if (received >= 2) {
                     code = (static_cast<int>(buffer[0]) << 8) | buffer[1];
@@ -3487,7 +3491,9 @@ void ApiSession::handleNetworkBroker(int contentsId,
     } else if (*operation == "websocket-close") {
         int code = payload.FindInt("code").value_or(1000);
         const std::string* reason = payload.FindString("reason");
-        if (code < 1000 || code > 4999
+        const bool no_status = code == -1;
+        if ((!no_status && (code < 1000 || code > 4999))
+            || (no_status && reason && !reason->empty())
             || (reason && reason->size() > 123)) {
             reply({}, "Invalid WebSocket close payload");
             return;

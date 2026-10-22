@@ -9,8 +9,8 @@
 #include <memory>
 #include <utility>
 
-#include "base/bind.h"
-#include "base/callback.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/location.h"
 #include "base/memory/ref_counted_delete_on_sequence.h"
 #include "base/numerics/safe_conversions.h"
@@ -18,7 +18,6 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/thread_annotations.h"
-#include "base/threading/sequenced_task_runner_handle.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
 
 namespace mojo {
@@ -73,9 +72,9 @@ private:
         if (producer_handle_.is_valid()) {
             // If we didn't nail it all on the first transaction attempt, setup a
             // watcher and complete the read asynchronously.
-            watcher_ = std::make_unique<SimpleWatcher>(FROM_HERE, SimpleWatcher::ArmingPolicy::AUTOMATIC, base::SequencedTaskRunnerHandle::Get());
+            watcher_ = std::make_unique<SimpleWatcher>(FROM_HERE, SimpleWatcher::ArmingPolicy::AUTOMATIC, base::SequencedTaskRunner::GetCurrentDefault());
             watcher_->Watch(
-                producer_handle_.get(), MOJO_HANDLE_SIGNAL_WRITABLE, MOJO_WATCH_CONDITION_SATISFIED, base::BindRepeating(&SequenceState::OnHandleReady, this));
+                producer_handle_.get(), MOJO_HANDLE_SIGNAL_WRITABLE, MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED, base::BindRepeating(&SequenceState::OnHandleReady, this));
         }
     }
 
@@ -119,7 +118,7 @@ private:
             if (static_cast<uint64_t>(size) > max_data_size)
                 size = static_cast<uint32_t>(max_data_size);
 
-            MojoResult mojo_result = producer_handle_->BeginWriteData(&pipe_buffer, &size, MOJO_WRITE_DATA_FLAG_NONE);
+            MojoResult mojo_result = producer_handle_->BeginWriteData(&pipe_buffer, &size, MOJO_BEGIN_WRITE_DATA_FLAG_NONE);
             if (mojo_result == MOJO_RESULT_SHOULD_WAIT)
                 return;
             if (mojo_result != MOJO_RESULT_OK) {
@@ -130,10 +129,18 @@ private:
             base::span<char> read_buffer(static_cast<char*>(pipe_buffer), size);
 
             DataSource::ReadResult result = data_source_->Read(bytes_transferred_, read_buffer);
-            producer_handle_->EndWriteData(result.bytes_read);
+            MojoResult write_result = producer_handle_->EndWriteData(base::checked_cast<uint32_t>(result.bytes_read));
 
             if (result.result != MOJO_RESULT_OK) {
                 Finish(result.result);
+                return;
+            }
+            if (write_result != MOJO_RESULT_OK) {
+                Finish(write_result);
+                return;
+            }
+            if (result.bytes_read < size) {
+                Finish(MOJO_RESULT_OK);
                 return;
             }
 
@@ -194,7 +201,7 @@ void DataPipeProducer::InitializeNewRequest(CompletionCallback callback)
     // (i.e., BEST_EFFORT is not enough).
     auto file_task_runner = base::ThreadPool::CreateSequencedTaskRunner({ base::MayBlock(), base::TaskPriority::USER_VISIBLE });
     sequence_state_ = new SequenceState(std::move(producer_), file_task_runner,
-        base::BindOnce(&DataPipeProducer::OnWriteComplete, weak_factory_.GetWeakPtr(), std::move(callback)), base::SequencedTaskRunnerHandle::Get());
+        base::BindOnce(&DataPipeProducer::OnWriteComplete, weak_factory_.GetWeakPtr(), std::move(callback)), base::SequencedTaskRunner::GetCurrentDefault());
 }
 
 void DataPipeProducer::OnWriteComplete(CompletionCallback callback, ScopedDataPipeProducerHandle producer, MojoResult ready_result)

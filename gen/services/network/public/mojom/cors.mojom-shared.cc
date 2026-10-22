@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/cors.mojom-params-data.h"
 namespace network {
@@ -214,6 +217,7 @@ CorsErrorStatus_Data::CorsErrorStatus_Data()
 } // namespace mojom
 } // namespace network
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -223,7 +227,9 @@ void TraceFormatTraits<::network::mojom::CorsPreflightPolicy>::WriteIntoTrace(pe
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -233,7 +239,9 @@ void TraceFormatTraits<::network::mojom::CorsError>::WriteIntoTrace(perfetto::Tr
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -244,3 +252,4 @@ void TraceFormatTraits<::network::mojom::PrivateNetworkAccessPreflightResult>::W
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

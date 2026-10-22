@@ -3,6 +3,8 @@
 #define browser_api_WindowInterface_h
 
 #include <v8.h>
+#include <string>
+#include "base/values.h"
 #if defined(_WIN32)
 typedef struct HWND__* HWND;
 typedef struct HMENU__* HMENU;
@@ -31,6 +33,9 @@ public:
     {
         return reinterpret_cast<NativeWindowHandle>(getHWND());
     }
+    // False means this embedding cannot perform the requested native action.
+    virtual bool handleNativeWindowCommand(
+        const std::string&, const base::Value::Dict&) { return false; }
 #if defined(_WIN32)
     virtual void setNativeMenu(HMENU menu);
 #else

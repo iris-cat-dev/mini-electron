@@ -37,8 +37,11 @@ struct GPU_EXPORT GpuFeatureInfo {
     GpuFeatureInfo(GpuFeatureInfo&&);
     ~GpuFeatureInfo();
 
-    // Set the GL workarounds and disabled GL extensions to the context.
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
+    // Set disabled extensions before the canonical GLContext initializes its
+    // bindings. mini-electron uses direct EGL/ANGLE contexts instead.
     void ApplyToGLContext(gl::GLContext* context) const;
+#endif
 
     bool IsWorkaroundEnabled(int32_t workaround) const;
 

@@ -5,6 +5,9 @@
 #ifndef NET_CERT_X509_CERTIFICATE_H_
 #define NET_CERT_X509_CERTIFICATE_H_
 
+#if defined(MINI_ELECTRON_USE_OPENSSL)
+#include "net/cert/x509_certificate_openssl.h"
+#else
 #include <stddef.h>
 #include <string.h>
 
@@ -227,6 +230,8 @@ public:
     // data. The data is not guaranteed to be valid DER or to encode a valid
     // Certificate object.
     base::span<const uint8_t> cert_span() const;
+    size_t intermediate_count() const { return intermediate_ca_certs_.size(); }
+    base::span<const uint8_t> intermediate_span(size_t index) const;
 
     // Returns the CRYPTO_BUFFER holding this certificate's DER encoded data. The
     // data is not guaranteed to be valid DER or to encode a valid Certificate
@@ -329,4 +334,5 @@ private:
 
 } // namespace net
 
+#endif // MINI_ELECTRON_USE_OPENSSL
 #endif // NET_CERT_X509_CERTIFICATE_H_

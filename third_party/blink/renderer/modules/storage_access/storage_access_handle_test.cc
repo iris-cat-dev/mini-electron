@@ -15,6 +15,7 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/modules/broadcastchannel/broadcast_channel.h"
+#include "third_party/blink/renderer/modules/storage_access/global_storage_access_handle.h"
 #include "third_party/blink/renderer/modules/file_system_access/file_system_directory_handle.h"
 #include "third_party/blink/renderer/platform/testing/scoped_mocked_url.h"
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
@@ -103,6 +104,7 @@ private:
     frame_test_helpers::WebViewHelper web_view_helper_;
 };
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
 TEST_P(StorageAccessHandleTest, LoadHandle)
 {
     LocalDOMWindow* window = getLocalDOMWindow();
@@ -246,6 +248,114 @@ TEST_P(StorageAccessHandleTest, LoadHandle)
         window->document()->IsUseCounted(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_BroadcastChannel_Use), all() || BroadcastChannel());
     EXPECT_EQ(window->document()->IsUseCounted(WebFeature::kStorageAccessAPI_requestStorageAccess_BeyondCookies_SharedWorker_Use), all() || SharedWorker());
 }
+#else
+TEST_P(StorageAccessHandleTest, UnsupportedBackendsNeverBind)
+{
+    LocalDOMWindow* window = getLocalDOMWindow();
+    auto* types = MakeGarbageCollected<StorageAccessTypes>();
+    types->setAll(all());
+    types->setSessionStorage(sessionStorage());
+    types->setLocalStorage(localStorage());
+    types->setIndexedDB(indexedDB());
+    types->setLocks(locks());
+    types->setCaches(caches());
+    types->setGetDirectory(getDirectory());
+    types->setEstimate(estimate());
+    types->setCreateObjectURL(createObjectURL());
+    types->setRevokeObjectURL(revokeObjectURL());
+    types->setBroadcastChannel(BroadcastChannel());
+    types->setSharedWorker(SharedWorker());
+    auto* handle = MakeGarbageCollected<StorageAccessHandle>(*window, types);
+
+    const auto expected_code = [](bool requested) {
+        return requested ? DOMExceptionCode::kNotSupportedError : DOMExceptionCode::kSecurityError;
+    };
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->sessionStorage(scope.GetExceptionState()) != nullptr, all() || sessionStorage());
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
+            (all() || sessionStorage()) ? DOMExceptionCode::kNoError : DOMExceptionCode::kSecurityError);
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->localStorage(scope.GetExceptionState()) != nullptr, all() || localStorage());
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
+            (all() || localStorage()) ? DOMExceptionCode::kNoError : DOMExceptionCode::kSecurityError);
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->indexedDB(scope.GetExceptionState()), nullptr);
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || indexedDB()));
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->locks(scope.GetExceptionState()), nullptr);
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || locks()));
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->caches(scope.GetExceptionState()), nullptr);
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || caches()));
+    }
+    {
+        V8TestingScope scope;
+        auto promise = handle->estimate(scope.GetScriptState(), scope.GetExceptionState());
+        ScriptPromiseTester tester(scope.GetScriptState(), promise);
+        tester.WaitUntilSettled();
+        ASSERT_TRUE(tester.IsRejected());
+        auto* error = V8DOMException::ToWrappable(scope.GetIsolate(), tester.Value().V8Value());
+        ASSERT_TRUE(error);
+        EXPECT_EQ(error->name(), (all() || estimate()) ? "NotSupportedError" : "SecurityError");
+    }
+    {
+        // The opaque calling context must fail permission checks first.
+        V8TestingScope scope;
+        auto promise = handle->getDirectory(scope.GetScriptState(), scope.GetExceptionState());
+        ScriptPromiseTester tester(scope.GetScriptState(), promise);
+        tester.WaitUntilSettled();
+        ASSERT_TRUE(tester.IsRejected());
+        auto* error = V8DOMException::ToWrappable(scope.GetIsolate(), tester.Value().V8Value());
+        ASSERT_TRUE(error);
+        EXPECT_EQ(error->name(), "SecurityError");
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_TRUE(handle->createObjectURL(Blob::Create(scope.GetExecutionContext()), scope.GetExceptionState()).empty());
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || createObjectURL()));
+    }
+    {
+        V8TestingScope scope;
+        handle->revokeObjectURL("", scope.GetExceptionState());
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || revokeObjectURL()));
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->BroadcastChannel(scope.GetExecutionContext(), "", scope.GetExceptionState()), nullptr);
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), expected_code(all() || BroadcastChannel()));
+    }
+    {
+        V8TestingScope scope;
+        EXPECT_EQ(handle->SharedWorker(scope.GetExecutionContext(), "", nullptr, scope.GetExceptionState()), nullptr);
+        EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), DOMExceptionCode::kSecurityError);
+    }
+}
+
+TEST(StorageAccessHandleUnsupportedTest, PermittedDirectoryRejectsWithoutBrowserService)
+{
+    test::TaskEnvironment task_environment;
+    V8TestingScope scope(KURL("https://example.test/"));
+    auto* types = MakeGarbageCollected<StorageAccessTypes>();
+    types->setGetDirectory(true);
+    auto* handle = MakeGarbageCollected<StorageAccessHandle>(scope.GetWindow(), types);
+    auto promise = handle->getDirectory(scope.GetScriptState(), scope.GetExceptionState());
+    ScriptPromiseTester tester(scope.GetScriptState(), promise);
+    tester.WaitUntilSettled();
+    ASSERT_TRUE(tester.IsRejected());
+    auto* error = V8DOMException::ToWrappable(scope.GetIsolate(), tester.Value().V8Value());
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->name(), "NotSupportedError");
+}
+#endif
 
 // Test all handles.
 INSTANTIATE_TEST_SUITE_P(
@@ -291,10 +401,15 @@ TEST(StorageAccessHandleRetentionTest, Lifespan)
     StorageAccessHandle* storage_access_handle = MakeGarbageCollected<StorageAccessHandle>(*window, storage_access_types);
     V8TestingScope scope;
     class BroadcastChannel* channel = storage_access_handle->BroadcastChannel(scope.GetExecutionContext(), "foo", scope.GetExceptionState());
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    EXPECT_EQ(channel, nullptr);
+    EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotSupportedError);
+#else
     EXPECT_TRUE(channel->IsRemoteClientConnectedForTesting());
     storage_access_handle = nullptr;
     WebHeap::CollectGarbageForTesting();
     EXPECT_TRUE(channel->IsRemoteClientConnectedForTesting());
+#endif
 }
 
 } // namespace blink

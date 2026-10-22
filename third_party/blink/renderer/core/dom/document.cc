@@ -3910,6 +3910,7 @@ bool Document::CheckCompletedInternal()
         }
     }
 
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (load_event_needed) {
         if (LCPCriticalPathPredictor* lcpp = GetFrame()->GetLCPP()) {
             lcpp->OnOutermostMainFrameDocumentLoad();
@@ -3917,6 +3918,7 @@ bool Document::CheckCompletedInternal()
         }
     }
 
+#endif
     return true;
 }
 
@@ -8927,6 +8929,7 @@ void Document::SetOverrideSiteForCookiesForCSPMedia(bool value)
 
 void Document::OnWarnUnusedPreloads(Vector<KURL> unused_preloads)
 {
+#if !defined(MINI_ELECTRON_IMPLEMENTATION)
     if (!GetFrame() || !GetFrame()->GetLCPP()) {
         return;
     }
@@ -8934,6 +8937,7 @@ void Document::OnWarnUnusedPreloads(Vector<KURL> unused_preloads)
     if (LCPCriticalPathPredictor* lcpp = GetFrame()->GetLCPP()) {
         lcpp->OnWarnedUnusedPreloads(unused_preloads);
     }
+#endif
 }
 
 VisitedLinkState& Document::GetVisitedLinkState()

@@ -81,8 +81,12 @@ public:
     static void newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         v8::Isolate* isolate = args.GetIsolate();
-        if (!args.IsConstructCall())
-            DebugBreak();
+        if (!args.IsConstructCall() || args.Length() != 1 || !args[0]->IsFunction()) {
+            isolate->ThrowException(v8::Exception::TypeError(
+                v8::String::NewFromUtf8(isolate,
+                    "Protocol must be constructed with a receiver function").ToLocalChecked()));
+            return;
+        }
 
         v8::Local<v8::Value> jsReciver = args[0];
 

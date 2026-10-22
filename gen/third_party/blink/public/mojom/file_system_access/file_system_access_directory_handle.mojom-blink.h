@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_directory_handle.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_directory_handle.mojom-shared.h" // IWYU pragma: export
@@ -230,147 +233,147 @@ public:
     virtual void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) = 0;
 };
 
-//class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerProxy : public FileSystemAccessDirectoryEntriesListener {
-//public:
-//    using InterfaceType = FileSystemAccessDirectoryEntriesListener;
-//
-//    explicit FileSystemAccessDirectoryEntriesListenerProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void DidReadDirectory(::blink::mojom::blink::FileSystemAccessErrorPtr result, WTF::Vector<FileSystemAccessEntryPtr> entries, bool has_more_entries) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
+class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerProxy : public FileSystemAccessDirectoryEntriesListener {
+public:
+    using InterfaceType = FileSystemAccessDirectoryEntriesListener;
 
-//class PLATFORM_EXPORT FileSystemAccessDirectoryHandleProxy : public FileSystemAccessDirectoryHandle {
-//public:
-//    using InterfaceType = FileSystemAccessDirectoryHandle;
-//
-//    explicit FileSystemAccessDirectoryHandleProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void GetPermissionStatus(bool writable, GetPermissionStatusCallback callback) final;
-//
-//    void RequestPermission(bool writable, RequestPermissionCallback callback) final;
-//
-//    void GetFile(const WTF::String& basename, bool create, GetFileCallback callback) final;
-//
-//    void GetDirectory(const WTF::String& basename, bool create, GetDirectoryCallback callback) final;
-//
-//    void GetEntries(::mojo::PendingRemote<FileSystemAccessDirectoryEntriesListener> listener) final;
-//
-//    void Rename(const WTF::String& new_entry_name, RenameCallback callback) final;
-//
-//    void Move(::mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessTransferToken> destination_directory, const WTF::String& new_entry_name,
-//        MoveCallback callback) final;
-//
-//    void Remove(bool recurse, RemoveCallback callback) final;
-//
-//    void RemoveEntry(const WTF::String& basename, bool recurse, RemoveEntryCallback callback) final;
-//
-//    void Resolve(::mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessTransferToken> possible_child, ResolveCallback callback) final;
-//
-//    void Transfer(::mojo::PendingReceiver<::blink::mojom::blink::FileSystemAccessTransferToken> token) final;
-//
-//    void GetUniqueId(GetUniqueIdCallback callback) final;
-//
-//    void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerStubDispatch {
-//public:
-//    static bool Accept(FileSystemAccessDirectoryEntriesListener* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(
-//        FileSystemAccessDirectoryEntriesListener* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    explicit FileSystemAccessDirectoryEntriesListenerProxy(mojo::MessageReceiverWithResponder* receiver);
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessDirectoryEntriesListener>>
-//class FileSystemAccessDirectoryEntriesListenerStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    FileSystemAccessDirectoryEntriesListenerStub() = default;
-//    ~FileSystemAccessDirectoryEntriesListenerStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessDirectoryEntriesListenerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessDirectoryEntriesListenerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT FileSystemAccessDirectoryHandleStubDispatch {
-//public:
-//    static bool Accept(FileSystemAccessDirectoryHandle* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(FileSystemAccessDirectoryHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+    void DidReadDirectory(::blink::mojom::blink::FileSystemAccessErrorPtr result, WTF::Vector<FileSystemAccessEntryPtr> entries, bool has_more_entries) final;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessDirectoryHandle>>
-//class FileSystemAccessDirectoryHandleStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    FileSystemAccessDirectoryHandleStub() = default;
-//    ~FileSystemAccessDirectoryHandleStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessDirectoryHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessDirectoryHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT FileSystemAccessDirectoryHandleRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT FileSystemAccessDirectoryHandleResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+
+class PLATFORM_EXPORT FileSystemAccessDirectoryHandleProxy : public FileSystemAccessDirectoryHandle {
+public:
+    using InterfaceType = FileSystemAccessDirectoryHandle;
+
+    explicit FileSystemAccessDirectoryHandleProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void GetPermissionStatus(bool writable, GetPermissionStatusCallback callback) final;
+
+    void RequestPermission(bool writable, RequestPermissionCallback callback) final;
+
+    void GetFile(const WTF::String& basename, bool create, GetFileCallback callback) final;
+
+    void GetDirectory(const WTF::String& basename, bool create, GetDirectoryCallback callback) final;
+
+    void GetEntries(::mojo::PendingRemote<FileSystemAccessDirectoryEntriesListener> listener) final;
+
+    void Rename(const WTF::String& new_entry_name, RenameCallback callback) final;
+
+    void Move(::mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessTransferToken> destination_directory, const WTF::String& new_entry_name,
+        MoveCallback callback) final;
+
+    void Remove(bool recurse, RemoveCallback callback) final;
+
+    void RemoveEntry(const WTF::String& basename, bool recurse, RemoveEntryCallback callback) final;
+
+    void Resolve(::mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessTransferToken> possible_child, ResolveCallback callback) final;
+
+    void Transfer(::mojo::PendingReceiver<::blink::mojom::blink::FileSystemAccessTransferToken> token) final;
+
+    void GetUniqueId(GetUniqueIdCallback callback) final;
+
+    void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerStubDispatch {
+public:
+    static bool Accept(FileSystemAccessDirectoryEntriesListener* impl, mojo::Message* message);
+    static bool AcceptWithResponder(
+        FileSystemAccessDirectoryEntriesListener* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessDirectoryEntriesListener>>
+class FileSystemAccessDirectoryEntriesListenerStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    FileSystemAccessDirectoryEntriesListenerStub() = default;
+    ~FileSystemAccessDirectoryEntriesListenerStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessDirectoryEntriesListenerStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessDirectoryEntriesListenerStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT FileSystemAccessDirectoryHandleStubDispatch {
+public:
+    static bool Accept(FileSystemAccessDirectoryHandle* impl, mojo::Message* message);
+    static bool AcceptWithResponder(FileSystemAccessDirectoryHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessDirectoryHandle>>
+class FileSystemAccessDirectoryHandleStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    FileSystemAccessDirectoryHandleStub() = default;
+    ~FileSystemAccessDirectoryHandleStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessDirectoryHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessDirectoryHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT FileSystemAccessDirectoryEntriesListenerRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT FileSystemAccessDirectoryHandleRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT FileSystemAccessDirectoryHandleResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class PLATFORM_EXPORT FileSystemAccessHandle {
 public:
@@ -412,14 +415,8 @@ public:
         return mojo::TypeConverter<U, FileSystemAccessHandle>::Convert(*this);
     }
 
-    FileSystemAccessHandle()
-    : tag_(Tag::kFile)
-{
-    data_.file = new ::mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessFileHandle>;
-}
-    ~FileSystemAccessHandle(){
-    DestroyActive();
-}
+    FileSystemAccessHandle();
+    ~FileSystemAccessHandle();
     // Delete the copy constructor and copy assignment operators because `data_`
     // contains raw pointers that must not be copied.
     FileSystemAccessHandle(const FileSystemAccessHandle& other) = delete;
@@ -517,21 +514,14 @@ public:
         return mojo::TypeConverter<U, FileSystemAccessEntry>::Convert(*this);
     }
 
-    FileSystemAccessEntry()
-    : entry_handle()
-    , name()
-{
-}
+    FileSystemAccessEntry();
 
-    FileSystemAccessEntry(FileSystemAccessHandlePtr entry_handle_in, const WTF::String& name_in)
-    : entry_handle(std::move(entry_handle_in))
-    , name(std::move(name_in)){
-}
+    FileSystemAccessEntry(FileSystemAccessHandlePtr entry_handle_in, const WTF::String& name_in);
 
     FileSystemAccessEntry(const FileSystemAccessEntry&) = delete;
     FileSystemAccessEntry& operator=(const FileSystemAccessEntry&) = delete;
 
-    ~FileSystemAccessEntry() = default;
+    ~FileSystemAccessEntry();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -595,8 +585,10 @@ public:
 
     WTF::String name;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

@@ -97,10 +97,7 @@ public:
 private:
     friend class mojo::internal::MessageFragment<SharedImageUsageSet_Data>;
 
-    SharedImageUsageSet_Data()
-        : header_({ sizeof(*this), 0 })
-    {
-    }
+    SharedImageUsageSet_Data();
 
     ~SharedImageUsageSet_Data() = delete;
 };
@@ -153,10 +150,7 @@ public:
 private:
     friend class mojo::internal::MessageFragment<AcceleratedStaticBitmapImage_Data>;
 
-    AcceleratedStaticBitmapImage_Data()
-        : header_({ sizeof(*this), 0 })
-    {
-    }
+    AcceleratedStaticBitmapImage_Data();
     ~AcceleratedStaticBitmapImage_Data() = delete;
 };
 static_assert(sizeof(AcceleratedStaticBitmapImage_Data) == 48, "Bad sizeof(AcceleratedStaticBitmapImage_Data)");

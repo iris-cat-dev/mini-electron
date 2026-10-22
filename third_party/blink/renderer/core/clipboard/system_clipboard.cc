@@ -34,11 +34,6 @@
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
-std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::ClipboardBuffer b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
 
 namespace blink {
 
