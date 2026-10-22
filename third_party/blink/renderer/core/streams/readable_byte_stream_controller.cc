@@ -1068,9 +1068,11 @@ void ReadableByteStreamController::PullInto(ScriptState* script_state, ReadableB
         case DOMArrayBufferView::kTypeUint32:
             ctor = &CreateAsArrayBufferView<DOMUint32Array>;
             break;
+#if !defined(MINI_UI_QUICKJS)
         case DOMArrayBufferView::kTypeFloat16:
             ctor = &CreateAsArrayBufferView<DOMFloat16Array>;
             break;
+#endif
         case DOMArrayBufferView::kTypeFloat32:
             ctor = &CreateAsArrayBufferView<DOMFloat32Array>;
             break;

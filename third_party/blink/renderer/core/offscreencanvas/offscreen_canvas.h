@@ -7,8 +7,10 @@
 
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
@@ -31,9 +33,6 @@ class CanvasContextCreationAttributesCore;
 class CanvasResourceProvider;
 class ImageBitmap;
 class ImageEncodeOptions;
-class OffscreenCanvasRenderingContext2DOrWebGLRenderingContextOrWebGL2RenderingContextOrImageBitmapRenderingContextOrGPUCanvasContext;
-typedef OffscreenCanvasRenderingContext2DOrWebGLRenderingContextOrWebGL2RenderingContextOrImageBitmapRenderingContextOrGPUCanvasContext
-    OffscreenRenderingContext;
 class ScriptState;
 
 class CORE_EXPORT OffscreenCanvas final : public EventTarget,
@@ -81,7 +80,9 @@ public:
     void RecordTransfer();
 
     void SetPlaceholderCanvasId(DOMNodeId canvas_id);
+#if !defined(MINI_UI_QUICKJS)
     void DeregisterFromAnimationFrameProvider();
+#endif
     DOMNodeId PlaceholderCanvasId() const
     {
         return placeholder_canvas_id_;
@@ -124,10 +125,12 @@ public:
         return sink_id_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void AllowHighPerformancePowerPreference()
     {
         allow_high_performance_power_preference_ = true;
     }
+#endif
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(contextlost, kContextlost)
     DEFINE_ATTRIBUTE_EVENT_LISTENER(contextrestored, kContextrestored)
@@ -153,9 +156,13 @@ public:
     void DidDraw(const SkIRect&) override;
     using CanvasRenderingContextHost::DidDraw;
     void Commit(scoped_refptr<CanvasResource>&& bitmap_image, const SkIRect& damage_rect) override;
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldAccelerate2dContext() const override;
+#endif
     CanvasResourceDispatcher* GetOrCreateResourceDispatcher() override;
+#if !defined(MINI_UI_QUICKJS)
     UkmParameters GetUkmParameters() override;
+#endif
 
     // Partial CanvasResourceHost implementation
     void NotifyGpuContextLost() override;
@@ -172,6 +179,7 @@ public:
     {
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     void SetTransferToGPUTextureWasInvoked() override
     {
         transfer_to_gpu_texture_was_invoked_ = true;
@@ -180,6 +188,7 @@ public:
     {
         return transfer_to_gpu_texture_was_invoked_;
     }
+#endif
 
     // EventTarget implementation
     const AtomicString& InterfaceName() const final
@@ -221,14 +230,17 @@ public:
     // overrides CanvasImageSource::IsAccelerated()
     bool IsAccelerated() const final;
 
+#if !defined(MINI_UI_QUICKJS)
     // overrides CanvasRenderingContextHost::EnableAcceleration()
     bool EnableAcceleration() final;
+#endif
 
     DispatchEventResult HostDispatchEvent(Event* event) override
     {
         return DispatchEvent(*event);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsWebGL1Enabled() const override
     {
         return true;
@@ -241,17 +253,21 @@ public:
     {
         return false;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     void CheckForGpuContextLost();
     void SetRestoringGpuContext(bool restoring_gpu_context)
     {
         restoring_gpu_context_ = restoring_gpu_context;
     }
+#endif
 
     FontSelector* GetFontSelector() override;
 
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     class ScopedInsideWorkerRAF {
         STACK_ALLOCATED();
 
@@ -299,6 +315,7 @@ public:
         const viz::BeginFrameArgs& begin_frame_args_;
         HeapVector<Member<OffscreenCanvas>> canvases_;
     };
+#endif
 
 private:
     int32_t memory_usage_ = 0;
@@ -308,7 +325,9 @@ private:
     static ContextFactoryVector& RenderingContextFactories();
     static CanvasRenderingContextFactory* GetRenderingContextFactory(int);
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordIdentifiabilityMetric(const blink::IdentifiableSurface& surface, const IdentifiableToken& token) const;
+#endif
 
     Member<CanvasRenderingContext> context_;
     WeakMember<ExecutionContext> execution_context_;
@@ -325,12 +344,14 @@ private:
     SkIRect current_frame_damage_rect_;
 
     bool needs_push_frame_ = false;
+#if !defined(MINI_UI_QUICKJS)
     bool inside_worker_raf_ = false;
 
     // An offscreen canvas should only prefer the high-performance GPU if it is
     // initialized by transferring control from an HTML canvas that is not
     // cross-origin.
     bool allow_high_performance_power_preference_ = false;
+#endif
 
     // cc::FrameSinkId is broken into two integer components as this can be used
     // in transfer of OffscreenCanvas across threads
@@ -339,9 +360,12 @@ private:
     // then the following members would remain as initialized zero values.
     uint32_t client_id_ = 0;
     uint32_t sink_id_ = 0;
-
+#if !defined(MINI_UI_QUICKJS)
     bool restoring_gpu_context_ = false;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     bool transfer_to_gpu_texture_was_invoked_ = false;
+#endif
 
     NO_UNIQUE_ADDRESS V8ExternalMemoryAccounterBase external_memory_accounter_;
 };

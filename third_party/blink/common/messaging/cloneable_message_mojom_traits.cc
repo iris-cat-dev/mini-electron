@@ -20,9 +20,14 @@ bool StructTraits<blink::mojom::CloneableMessage::DataView, blink::CloneableMess
     mojo_base::BigBufferView message_view;
     base::UnguessableToken sender_agent_cluster_id;
     if (!data.ReadEncodedMessage(&message_view) || !data.ReadBlobs(&out->blobs) || !data.ReadSenderAgentClusterId(&sender_agent_cluster_id)
-        || !data.ReadSenderOrigin(&out->sender_origin) || !data.ReadFileSystemAccessTokens(&out->file_system_access_tokens)) {
+        || !data.ReadSenderOrigin(&out->sender_origin)) {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
+    if (!data.ReadFileSystemAccessTokens(&out->file_system_access_tokens)) {
+        return false;
+    }
+#endif
 
     auto message_bytes = message_view.data();
     out->owned_encoded_message = { message_bytes.begin(), message_bytes.end() };

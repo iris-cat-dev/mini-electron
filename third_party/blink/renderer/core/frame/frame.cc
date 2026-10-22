@@ -50,9 +50,12 @@
 #include "third_party/blink/renderer/core/frame/frame_owner.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
+#include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_owner.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
@@ -61,7 +64,9 @@
 #include "third_party/blink/renderer/core/loader/form_submission.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/instrumentation/instance_counters.h"
@@ -70,9 +75,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/wtf/assertions.h"
 
-#if !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#if !BUILDFLAG(TARGET_OS_IS_ANDROID) && !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
-#endif // !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#endif
 
 namespace blink {
 
@@ -319,7 +324,7 @@ void Frame::NotifyUserActivationInFrameTree(mojom::blink::UserActivationNotifica
         NotifyUserActivationInFrame(node, notification_type, sticky_only);
     }
 
-#if !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#if !BUILDFLAG(TARGET_OS_IS_ANDROID) && !defined(MINI_UI_QUICKJS)
     if (RuntimeEnabledFeatures::DocumentPictureInPictureUserActivationEnabled()) {
         // If we are contained in a document picture-in-picture window, then also
         // propagate the activation up to our opener frame.
@@ -331,7 +336,7 @@ void Frame::NotifyUserActivationInFrameTree(mojom::blink::UserActivationNotifica
             }
         }
     }
-#endif // !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#endif
 
     // See the "Same-origin Visibility" section in |UserActivationState| class
     // doc.
@@ -346,7 +351,7 @@ void Frame::NotifyUserActivationInFrameTree(mojom::blink::UserActivationNotifica
             }
         }
 
-#if !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#if !BUILDFLAG(TARGET_OS_IS_ANDROID) && !defined(MINI_UI_QUICKJS)
         if (RuntimeEnabledFeatures::DocumentPictureInPictureUserActivationEnabled()) {
             // If we are contained in a frame that owns a document picture-in-picture
             // window, then also activate same-origin frames in the document
@@ -362,7 +367,7 @@ void Frame::NotifyUserActivationInFrameTree(mojom::blink::UserActivationNotifica
                 }
             }
         }
-#endif // !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#endif
     }
 }
 
@@ -379,7 +384,7 @@ bool Frame::ConsumeTransientUserActivationInFrameTree()
     for (Frame* node = &root; node; node = node->Tree().TraverseNext())
         node->user_activation_state_.ConsumeIfActive();
 
-#if !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#if !BUILDFLAG(TARGET_OS_IS_ANDROID) && !defined(MINI_UI_QUICKJS)
     if (RuntimeEnabledFeatures::DocumentPictureInPictureUserActivationEnabled()) {
         auto* local_top_frame = DynamicTo<LocalFrame>(Tree().Top());
         if (local_top_frame) {
@@ -399,7 +404,7 @@ bool Frame::ConsumeTransientUserActivationInFrameTree()
             }
         }
     }
-#endif // !BUILDFLAG(TARGET_OS_IS_ANDROID)
+#endif
 
     return was_active;
 }
@@ -723,11 +728,13 @@ bool Frame::Swap(WebLocalFrame* new_web_frame)
     return SwapImpl(new_web_frame, mojo::NullAssociatedRemote(), mojo::NullAssociatedReceiver());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool Frame::Swap(WebRemoteFrame* new_web_frame, mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> remote_frame_host,
     mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame> remote_frame_receiver)
 {
     return SwapImpl(new_web_frame, std::move(remote_frame_host), std::move(remote_frame_receiver));
 }
+#endif
 
 bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> remote_frame_host,
     mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame> remote_frame_receiver)
@@ -747,6 +754,10 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
     FrameSwapScope frame_swap_scope(owner);
     Page* page = page_;
     AtomicString name = Tree().GetName();
+#if defined(MINI_UI_QUICKJS)
+    CHECK(new_web_frame->IsWebLocalFrame());
+    CHECK_EQ(page, WebFrame::ToCoreFrame(*new_web_frame)->GetPage());
+#endif
 
     // TODO(dcheng): This probably isn't necessary if we fix the ordering of
     // events in `Swap()`, e.g. `Detach()` should not happen before
@@ -786,6 +797,7 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
     WindowProxyManager::GlobalProxyVector global_proxies(isolate);
     GetWindowProxyManager()->ReleaseGlobalProxies(global_proxies);
 
+#if !defined(MINI_UI_QUICKJS)
     if (new_web_frame->IsWebRemoteFrame()) {
         DCHECK(remote_frame_host && remote_frame_receiver);
         CHECK(!WebFrame::ToCoreFrame(*new_web_frame));
@@ -803,6 +815,9 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
         // TODO(dcheng): Make local and remote frame updates more uniform.
         DCHECK(!remote_frame_host && !remote_frame_receiver);
     }
+#else
+    DCHECK(!remote_frame_host && !remote_frame_receiver);
+#endif
 
     Frame* new_frame = WebFrame::ToCoreFrame(*new_web_frame);
     CHECK(new_frame);
@@ -856,6 +871,7 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
             }
         } else {
             Page* new_page = new_local_frame->GetPage();
+#if !defined(MINI_UI_QUICKJS)
             if (page != new_page) {
                 // The new frame can only belong to a different Page when doing a main
                 // frame LocalFrame <-> LocalFrame swap, where we want to detach the
@@ -894,6 +910,9 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
                 // clearing the opener, or detaching the provisional frame).
                 new_page->MainFrame()->Detach(FrameDetachType::kSwap);
             }
+#else
+            CHECK_EQ(page, new_page);
+#endif
 
             // Set the provisioanl LocalFrame to become the new page's main frame.
             new_page->SetMainFrame(new_local_frame);
@@ -912,11 +931,15 @@ bool Frame::SwapImpl(WebFrame* new_web_frame, mojo::PendingAssociatedRemote<mojo
 
     if (auto* frame_owner_element = DynamicTo<HTMLFrameOwnerElement>(owner)) {
         if (auto* new_local_frame = DynamicTo<LocalFrame>(new_frame)) {
+#if !defined(MINI_UI_QUICKJS)
             probe::FrameOwnerContentUpdated(new_local_frame, frame_owner_element);
+#endif
         } else if (auto* old_local_frame = DynamicTo<LocalFrame>(this)) {
             // TODO(dcheng): What is this probe for? Shouldn't it happen *before*
             // detach?
+#if !defined(MINI_UI_QUICKJS)
             probe::FrameOwnerContentUpdated(old_local_frame, frame_owner_element);
+#endif
         }
     }
 

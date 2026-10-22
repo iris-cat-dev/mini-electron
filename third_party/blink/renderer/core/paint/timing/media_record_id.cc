@@ -6,7 +6,9 @@
 
 #include "base/hash/hash.h"
 #include "third_party/blink/renderer/core/dom/node.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 
 namespace blink {
@@ -25,9 +27,10 @@ MediaRecordId::MediaRecordId(const LayoutObject* layout, const MediaTiming* medi
 MediaRecordIdHash MediaRecordId::GenerateHash(const LayoutObject* layout, const MediaTiming* media)
 {
     bool is_video = false;
-    if (Node* node = layout->GetNode(); IsA<HTMLVideoElement>(node)) {
+#if !defined(MINI_UI_QUICKJS)
+    if (Node* node = layout->GetNode(); IsA<HTMLVideoElement>(node))
         is_video = true;
-    }
+#endif
     return base::HashInts(reinterpret_cast<MediaRecordIdHash>(layout), reinterpret_cast<MediaRecordIdHash>(is_video ? nullptr : media));
 }
 

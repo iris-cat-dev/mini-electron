@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-runtime-checks-boundaries-after\\build\\ui-benchmark.exe"
+  ],
+  "library_sha256": "75a46b9cab7b1413046f64c65904ef70d254bef434364c14b2ca1db1d19dd2ba",
+  "source_sha256": "b1bf26ff294df0e536d9732fa3f98fdc1b8a1f15a5c42976742908f95d5cc2a9",
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 0.7904576000000816,
+  "stdout": "RUNTIME fixture=temporary resource_root=C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-runtime-checks-35668-124365671 entry=index.html ownership=owned-cleanup api=mini_ui::View+QuickJS-facade\r\nSNAPSHOT arena {\"peak_bytes\":1554432,\"peak_cells\":8448,\"peak_views\":8448,\"peak_live\":8255,\"released_bytes\":1554432,\"released_cells\":8448,\"released_views\":8448,\"released_live\":64,\"trimmed_bytes\":241664,\"trimmed_cells\":1536,\"trimmed_views\":512,\"trimmed_live\":64}\r\nSNAPSHOT joint_gc {\"epoch\":5,\"wrappers\":5,\"edges\":14,\"live_wrappers\":5,\"live_edges\":14,\"native_destructions\":1}\r\nPASS runtime_checks: native properties, inheritance/clone, interceptor/access ordering, idle eligibility, handle-arena reclamation, and joint native/JS lifetime\r\n",
+  "stderr": ""
+}

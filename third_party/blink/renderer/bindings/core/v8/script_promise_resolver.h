@@ -113,8 +113,10 @@ public:
     void RejectWithTypeError(const String& message);
     void RejectWithRangeError(const String& message);
 
+#if !defined(MINI_UI_QUICKJS)
     // Reject with WebAssembly Error object.
     void RejectWithWasmCompileError(const String& message);
+#endif
 
     ScriptState* GetScriptState() const
     {

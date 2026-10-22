@@ -12,7 +12,9 @@
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/paint/foreign_layer_display_item.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/scoped_image_rendering_settings.h"
 
 namespace blink {
@@ -44,6 +46,7 @@ void HTMLCanvasPainter::PaintReplaced(const PaintInfo& paint_info, const Physica
         PaintTiming::From(layout_html_canvas_.GetDocument()).MarkFirstContentfulPaint();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* layer = canvas->ContentsCcLayer()) {
         // TODO(crbug.com/705019): For a texture layer canvas, setting the layer
         // background color to an opaque color will cause the layer to be treated as
@@ -65,6 +68,7 @@ void HTMLCanvasPainter::PaintReplaced(const PaintInfo& paint_info, const Physica
             return;
         }
     }
+#endif
 
     if (DrawingRecorder::UseCachedDrawingIfPossible(context, layout_html_canvas_, paint_info.phase))
         return;

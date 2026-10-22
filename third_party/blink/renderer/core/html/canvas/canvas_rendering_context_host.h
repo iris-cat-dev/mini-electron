@@ -5,15 +5,19 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_RENDERING_CONTEXT_HOST_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_RENDERING_CONTEXT_HOST_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatcher.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_image_source.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/canvas/ukm_parameters.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_host.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
@@ -62,6 +66,7 @@ public:
     virtual DispatchEventResult HostDispatchEvent(Event*) = 0;
     virtual const KURL& GetExecutionContextUrl() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // If WebGL1 is disabled by enterprise policy or command line switch.
     virtual bool IsWebGL1Enabled() const = 0;
     // If WebGL2 is disabled by enterprise policy or command line switch.
@@ -72,14 +77,19 @@ public:
     virtual void SetContextCreationWasBlocked()
     {
     }
+#endif
 
     virtual FontSelector* GetFontSelector() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual bool ShouldAccelerate2dContext() const = 0;
+#endif
 
     virtual void Commit(scoped_refptr<CanvasResource>&& canvas_resource, const SkIRect& damage_rect);
 
+#if !defined(MINI_UI_QUICKJS)
     virtual UkmParameters GetUkmParameters() = 0;
+#endif
 
     bool IsPaintable() const;
 
@@ -101,8 +111,10 @@ public:
     CanvasResourceProvider* GetOrCreateCanvasResourceProvider(RasterModeHint hint) override;
     void PageVisibilityChanged() override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsWebGL() const;
     bool IsWebGPU() const;
+#endif
     bool IsRenderingContext2D() const;
     bool IsImageBitmapRenderingContext() const;
 
@@ -113,6 +125,7 @@ public:
     // blink::CanvasImageSource
     bool IsOffscreenCanvas() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     // This method attempts to ensure that the canvas' resource exists on the GPU.
     // A HTMLCanvasElement can downgrade itself from GPU to CPU when readback
     // occurs too frequently, so a canvas may exist on the CPU even if the browser
@@ -123,6 +136,7 @@ public:
     // existing pointers to these objects will be invalidated. If the canvas
     // resource provider did not exist at all, it may be created.
     virtual bool EnableAcceleration() = 0;
+#endif
 
 protected:
     ~CanvasRenderingContextHost() override = default;
@@ -130,15 +144,19 @@ protected:
     scoped_refptr<StaticBitmapImage> CreateTransparentImage(const gfx::Size&) const;
 
     void CreateCanvasResourceProvider2D(RasterModeHint hint);
+#if !defined(MINI_UI_QUICKJS)
     void CreateCanvasResourceProviderWebGL();
     void CreateCanvasResourceProviderWebGPU();
+#endif
 
     bool ContextHasOpenLayers(const CanvasRenderingContext*) const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Computes the digest that corresponds to the "input" of this canvas,
     // including the context type, and if applicable, canvas digest, and taint
     // bits.
     IdentifiableToken IdentifiabilityInputDigest(const CanvasRenderingContext* const context) const;
+#endif
 
     // `did_fail_to_create_resource_provider_` prevents repeated attempts in
     // allocating resources after the first attempt failed.

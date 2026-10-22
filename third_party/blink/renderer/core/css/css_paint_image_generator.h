@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_IMAGE_GENERATOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_IMAGE_GENERATOR_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/cssom/css_style_value.h"
@@ -62,4 +63,5 @@ public:
 
 } // namespace blink
 
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_IMAGE_GENERATOR_H_

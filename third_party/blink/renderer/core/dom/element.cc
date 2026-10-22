@@ -35,8 +35,10 @@
 #include "base/feature_list.h"
 #include "cc/input/snap_selection_strategy.h"
 #include "third_party/blink/public/common/features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
+#endif
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/public/web/web_autofill_state.h"
 #include "third_party/blink/renderer/bindings/core/v8/dictionary.h"
@@ -173,7 +175,9 @@
 #include "third_party/blink/renderer/core/html/html_style_element.h"
 #include "third_party/blink/renderer/core/html/html_table_rows_collection.h"
 #include "third_party/blink/renderer/core/html/html_template_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/nesting_level_incrementer.h"
 #include "third_party/blink/renderer/core/html/parser/html_element_stack.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
@@ -198,11 +202,15 @@
 #include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
 #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
+#endif
 #include "third_party/blink/renderer/core/page/spatial_navigation.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/resize_observer/resize_observation.h"
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_size.h"
 #include "third_party/blink/renderer/core/sanitizer/sanitizer_api.h"
@@ -210,7 +218,9 @@
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/svg/svg_a_element.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_href.h"
@@ -220,10 +230,12 @@
 #include "third_party/blink/renderer/core/svg/svg_use_element.h"
 #include "third_party/blink/renderer/core/svg_names.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_transition_element.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -269,9 +281,11 @@ public:
         if (auto* context = element_->GetDisplayLockContext()) {
             if (did_update_children_) {
                 context->DidStyleChildren();
+#if !defined(MINI_UI_QUICKJS)
                 if (auto* document_rules = DocumentSpeculationRules::FromIfExists(element_->GetDocument())) {
                     document_rules->DidStyleChildren(element_);
                 }
+#endif
             }
         }
     }
@@ -308,9 +322,11 @@ public:
         DCHECK(element_->GetDisplayLockContext());
 
         element_->GetDisplayLockContext()->NotifyChildStyleRecalcWasBlocked(change);
+#if !defined(MINI_UI_QUICKJS)
         if (auto* document_rules = DocumentSpeculationRules::FromIfExists(element_->GetDocument())) {
             document_rules->ChildStyleRecalcBlocked(element_);
         }
+#endif
     }
 
 private:
@@ -1682,6 +1698,7 @@ bool Element::IsViewportScrollElement()
     return (!quirks_mode && document.documentElement() == this) || (quirks_mode && IsHTMLElement() && document.body() == this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Element::RecordScrollbarSizeForStudy(int measurement, bool is_width, bool is_offset)
 {
     if (!IdentifiabilityStudySettings::Get()->ShouldSampleType(IdentifiableSurface::Type::kScrollbarSize) || (!is_offset && !IsViewportScrollElement())) {
@@ -1736,6 +1753,7 @@ void Element::RecordScrollbarSizeForStudy(int measurement, bool is_width, bool i
         .Add(blink::IdentifiableSurface::FromTypeAndToken(blink::IdentifiableSurface::Type::kScrollbarSize, surface), scrollbar_size)
         .Record(GetDocument().UkmRecorder());
 }
+#endif
 
 int Element::clientWidth()
 {
@@ -1755,13 +1773,17 @@ int Element::clientWidth()
                 // |layout_view| is not a scroll-container.
                 DCHECK(layout_view->IsScrollContainer());
                 int result = AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_view->OverflowClipRect(PhysicalOffset()).Width(), layout_view->StyleRef()).Round();
+#if !defined(MINI_UI_QUICKJS)
                 RecordScrollbarSizeForStudy(result, /* is_width= */ true,
                     /* is_offset= */ false);
+#endif
                 return result;
             }
             int result = AdjustForAbsoluteZoom::AdjustInt(layout_view->GetLayoutSize().width(), layout_view->StyleRef());
+#if !defined(MINI_UI_QUICKJS)
             RecordScrollbarSizeForStudy(result, /* is_width= */ true,
                 /* is_offset= */ false);
+#endif
             return result;
         }
     }
@@ -1771,8 +1793,10 @@ int Element::clientWidth()
     int result = 0;
     if (const auto* layout_object = GetLayoutBox()) {
         result = AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_object->ClientWidthWithTableSpecialBehavior(), layout_object->StyleRef()).Round();
+#if !defined(MINI_UI_QUICKJS)
         RecordScrollbarSizeForStudy(result, /* is_width= */ true,
             /* is_offset= */ false);
+#endif
     }
     return result;
 }
@@ -1795,13 +1819,17 @@ int Element::clientHeight()
                 // |layout_view| is not a scroll-container.
                 DCHECK(layout_view->IsScrollContainer());
                 int result = AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_view->OverflowClipRect(PhysicalOffset()).Height(), layout_view->StyleRef()).Round();
+#if !defined(MINI_UI_QUICKJS)
                 RecordScrollbarSizeForStudy(result, /* is_width= */ false,
                     /* is_offset= */ false);
+#endif
                 return result;
             }
             int result = AdjustForAbsoluteZoom::AdjustInt(layout_view->GetLayoutSize().height(), layout_view->StyleRef());
+#if !defined(MINI_UI_QUICKJS)
             RecordScrollbarSizeForStudy(result, /* is_width= */ false,
                 /* is_offset= */ false);
+#endif
             return result;
         }
     }
@@ -1811,8 +1839,10 @@ int Element::clientHeight()
     int result = 0;
     if (const auto* layout_object = GetLayoutBox()) {
         result = AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_object->ClientHeightWithTableSpecialBehavior(), layout_object->StyleRef()).Round();
+#if !defined(MINI_UI_QUICKJS)
         RecordScrollbarSizeForStudy(result, /* is_width= */ false,
             /* is_offset= */ false);
+#endif
     }
     return result;
 }
@@ -1841,9 +1871,11 @@ double Element::scrollLeft()
         return 0;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
 
     GetDocument().UpdateStyleAndLayoutForNode(this, DocumentUpdateReason::kJavaScript);
 
@@ -1877,9 +1909,11 @@ double Element::scrollTop()
         return 0;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
 
     GetDocument().UpdateStyleAndLayoutForNode(this, DocumentUpdateReason::kJavaScript);
 
@@ -1919,9 +1953,11 @@ void Element::setScrollLeft(double new_left)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     GetDocument().UpdateStyleAndLayoutForNode(this, DocumentUpdateReason::kJavaScript);
 
@@ -1965,9 +2001,11 @@ void Element::setScrollTop(double new_top)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     GetDocument().UpdateStyleAndLayoutForNode(this, DocumentUpdateReason::kJavaScript);
 
@@ -2064,9 +2102,11 @@ void Element::scrollBy(const ScrollToOptions* scroll_to_options)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     // FIXME: This should be removed once scroll updates are processed only after
     // the compositing update. See http://crbug.com/420741.
@@ -2093,9 +2133,11 @@ void Element::scrollTo(const ScrollToOptions* scroll_to_options)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     // FIXME: This should be removed once scroll updates are processed only after
     // the compositing update. See http://crbug.com/420741.
@@ -2364,9 +2406,11 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const
 
 DOMRectList* Element::getClientRects()
 {
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
     GetDocument().EnsurePaintLocationDataValidForNode(this, DocumentUpdateReason::kJavaScript);
     Vector<gfx::QuadF> quads;
     ClientQuads(quads);
@@ -2416,9 +2460,11 @@ DOMRect* Element::GetBoundingClientRect()
 
 DOMRect* Element::GetBoundingClientRectForBinding()
 {
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
     return GetBoundingClientRect();
 }
 
@@ -3219,7 +3265,9 @@ void Element::AttachLayoutTree(AttachContext& context)
 
 void Element::DetachLayoutTree(bool performing_reattach)
 {
+#if !defined(MINI_UI_QUICKJS)
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
 
     // Pseudo elements that may have child pseudo elements (such as ::column) must
     // be cleared before clearing the rare data vector below.
@@ -3240,7 +3288,9 @@ void Element::DetachLayoutTree(bool performing_reattach)
                 element_animations->CssAnimations().Cancel();
                 element_animations->SetAnimationStyleChange(false);
             }
+#if !defined(MINI_UI_QUICKJS)
             element_animations->RestartAnimationOnCompositor();
+#endif
         }
 
         data->RemoveAnchorPositionScrollData();
@@ -3273,7 +3323,9 @@ void Element::DetachLayoutTree(bool performing_reattach)
 
     if (!performing_reattach) {
         UpdateCallbackSelectors(GetComputedStyle(), nullptr);
+#if !defined(MINI_UI_QUICKJS)
         NotifyIfMatchedDocumentRulesSelectorsChanged(GetComputedStyle(), nullptr);
+#endif
         SetComputedStyle(nullptr);
     }
 
@@ -3957,7 +4009,9 @@ StyleRecalcChange Element::RecalcOwnStyle(const StyleRecalcChange change, const 
         }
     } else {
         INCREMENT_STYLE_STATS_COUNTER(GetDocument().GetStyleEngine(), styles_changed, 1);
+#if !defined(MINI_UI_QUICKJS)
         probe::DidUpdateComputedStyle(this, old_style, new_style);
+#endif
         if (this == GetDocument().documentElement()) {
             if (GetDocument().GetStyleEngine().UpdateRootFontRelativeUnits(old_style, new_style)) {
                 // Trigger a full document recalc on root font units changes. We could
@@ -3969,7 +4023,9 @@ StyleRecalcChange Element::RecalcOwnStyle(const StyleRecalcChange change, const 
         }
         child_change = ApplyComputedStyleDiff(child_change, diff);
         UpdateCallbackSelectors(old_style, new_style);
+#if !defined(MINI_UI_QUICKJS)
         NotifyIfMatchedDocumentRulesSelectorsChanged(old_style, new_style);
+#endif
     }
 
     if (auto* context = GetDisplayLockContext()) {
@@ -4223,6 +4279,7 @@ void Element::UpdateCallbackSelectors(const ComputedStyle* old_style, const Comp
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Element::NotifyIfMatchedDocumentRulesSelectorsChanged(const ComputedStyle* old_style, const ComputedStyle* new_style)
 {
     if (!IsLink() || !(HasTagName(html_names::kATag) || HasTagName(html_names::kAreaTag))) {
@@ -4257,6 +4314,7 @@ void Element::NotifyIfMatchedDocumentRulesSelectorsChanged(const ComputedStyle* 
         document_rules->LinkMatchedSelectorsUpdated(link);
     }
 }
+#endif
 
 TextDirection Element::ParentDirectionality() const
 {
@@ -4579,7 +4637,9 @@ ShadowRoot& Element::CreateAndAttachShadowRoot(ShadowRootMode type, SlotAssignme
 #if DCHECK_IS_ON()
     NestingLevelIncrementer slot_assignment_recalc_forbidden_scope(GetDocument().SlotAssignmentRecalcForbiddenRecursionDepth());
 #endif
+#if !defined(MINI_UI_QUICKJS)
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
     EventDispatchForbiddenScope assert_no_event_dispatch;
     ScriptForbiddenScope forbid_script;
 
@@ -4603,7 +4663,9 @@ ShadowRoot& Element::CreateAndAttachShadowRoot(ShadowRootMode type, SlotAssignme
     shadow_root->SetParentTreeScope(GetTreeScope());
     shadow_root->InsertedInto(*this);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::DidPushShadowRoot(this, shadow_root);
+#endif
 
     return *shadow_root;
 }
@@ -6290,13 +6352,18 @@ void Element::FocusVisibleStateChanged()
     PseudoStateChanged(CSSSelector::kPseudoFocusVisible);
 }
 
+
+#if !defined(MINI_UI_QUICKJS)
 void Element::ActiveViewTransitionStateChanged()
 {
     if (!RuntimeEnabledFeatures::ViewTransitionTypesEnabled()) {
         return;
     }
-    SetNeedsStyleRecalc(kLocalStyleChange,
-        StyleChangeReasonForTracing::CreateWithExtraData(style_change_reason::kPseudoClass, style_change_extra_data::g_active_view_transition));
+    SetNeedsStyleRecalc(
+        kLocalStyleChange,
+        StyleChangeReasonForTracing::CreateWithExtraData(
+            style_change_reason::kPseudoClass,
+            style_change_extra_data::g_active_view_transition));
     PseudoStateChanged(CSSSelector::kPseudoActiveViewTransition);
 }
 
@@ -6305,10 +6372,14 @@ void Element::ActiveViewTransitionTypeStateChanged()
     if (!RuntimeEnabledFeatures::ViewTransitionTypesEnabled()) {
         return;
     }
-    SetNeedsStyleRecalc(kLocalStyleChange,
-        StyleChangeReasonForTracing::CreateWithExtraData(style_change_reason::kPseudoClass, style_change_extra_data::g_active_view_transition_type));
+    SetNeedsStyleRecalc(
+        kLocalStyleChange,
+        StyleChangeReasonForTracing::CreateWithExtraData(
+            style_change_reason::kPseudoClass,
+            style_change_extra_data::g_active_view_transition_type));
     PseudoStateChanged(CSSSelector::kPseudoActiveViewTransitionType);
 }
+#endif
 
 void Element::FocusWithinStateChanged()
 {
@@ -6436,7 +6507,9 @@ ColumnPseudoElement* Element::CreateColumnPseudoElementIfNeeded(const PhysicalRe
     ElementRareDataVector& data = EnsureElementRareData();
     data.AddColumnPseudoElement(*column_pseudo_element);
     column_pseudo_element->InsertedInto(*this);
+#if !defined(MINI_UI_QUICKJS)
     probe::PseudoElementCreated(column_pseudo_element);
+#endif
     if (!style->CanGeneratePseudoElement(kPseudoIdScrollMarker)) {
         return column_pseudo_element;
     }
@@ -6451,7 +6524,9 @@ ColumnPseudoElement* Element::CreateColumnPseudoElementIfNeeded(const PhysicalRe
     scroll_marker->SetComputedStyle(scroll_marker_style);
     column_pseudo_element->EnsureElementRareData().SetPseudoElement(kPseudoIdScrollMarker, scroll_marker);
     scroll_marker->InsertedInto(*column_pseudo_element);
+#if !defined(MINI_UI_QUICKJS)
     probe::PseudoElementCreated(scroll_marker);
+#endif
 
     return column_pseudo_element;
 }
@@ -6741,7 +6816,9 @@ void Element::SetInnerHTMLInternal(const String& html, ParseDeclarativeShadowRoo
 
 void Element::setInnerHTML(const String& html, ExceptionState& exception_state)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::BreakableLocation(GetExecutionContext(), "Element.setInnerHTML");
+#endif
     SetInnerHTMLInternal(html, ParseDeclarativeShadowRoots::kDontParse, ForceHtml::kDontForce, SanitizeHtml::kDont,
         /*set_html_options=*/nullptr, exception_state);
 }
@@ -7163,7 +7240,12 @@ const ComputedStyle* Element::EnsureComputedStyle(PseudoId pseudo_element_specif
 
     StyleEngine::InEnsureComputedStyleScope ensure_scope(GetDocument().GetStyleEngine());
 
-    if (Element* element = GetStyledPseudoElement(pseudo_element_specifier, pseudo_argument)) {
+#if !defined(MINI_UI_QUICKJS)
+    if (Element* element = GetStyledPseudoElement(
+            pseudo_element_specifier, pseudo_argument)) {
+#else
+    if (Element* element = GetStyledPseudoElement(pseudo_element_specifier)) {
+#endif
         return element->EnsureComputedStyle();
     }
 
@@ -7418,7 +7500,7 @@ void Element::CancelSelectionAfterLayout()
 
 bool Element::ShouldUpdateBackdropPseudoElement(const StyleRecalcChange change)
 {
-    PseudoElement* element = GetPseudoElement(PseudoId::kPseudoIdBackdrop, /* view_transition_name */ g_null_atom);
+    PseudoElement* element = GetPseudoElement(PseudoId::kPseudoIdBackdrop);
     bool generate_pseudo = CanGeneratePseudoElement(PseudoId::kPseudoIdBackdrop);
 
     if (element) {
@@ -7453,13 +7535,12 @@ void Element::UpdateBackdropPseudoElement(const StyleRecalcChange change, const 
 
 void Element::ApplyPendingBackdropPseudoElementUpdate()
 {
-    PseudoElement* element = GetPseudoElement(PseudoId::kPseudoIdBackdrop, /* view_transition_name */ g_null_atom);
+    PseudoElement* element = GetPseudoElement(PseudoId::kPseudoIdBackdrop);
 
     if (!element && CanGeneratePseudoElement(PseudoId::kPseudoIdBackdrop)) {
-        element = PseudoElement::Create(this, PseudoId::kPseudoIdBackdrop,
-            /* view_transition_name */ g_null_atom);
-        EnsureElementRareData().SetPseudoElement(PseudoId::kPseudoIdBackdrop, element,
-            /* view_transition_name */ g_null_atom);
+        element = PseudoElement::Create(this, PseudoId::kPseudoIdBackdrop);
+        EnsureElementRareData().SetPseudoElement(
+            PseudoId::kPseudoIdBackdrop, element);
         element->InsertedInto(*this);
         GetDocument().AddToTopLayer(element, this);
     }
@@ -7568,11 +7649,22 @@ void Element::UpdateFirstLetterPseudoElement(StyleUpdatePhase phase, const Style
     }
 }
 
-void Element::ClearPseudoElement(PseudoId pseudo_id, const AtomicString& view_transition_name)
+#if !defined(MINI_UI_QUICKJS)
+void Element::ClearPseudoElement(
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name)
 {
-    GetElementRareData()->SetPseudoElement(pseudo_id, nullptr, view_transition_name);
+    GetElementRareData()->SetPseudoElement(
+        pseudo_id, nullptr, view_transition_name);
     GetDocument().GetStyleEngine().PseudoElementRemoved(*this);
 }
+#else
+void Element::ClearPseudoElement(PseudoId pseudo_id)
+{
+    GetElementRareData()->SetPseudoElement(pseudo_id, nullptr);
+    GetDocument().GetStyleEngine().PseudoElementRemoved(*this);
+}
+#endif
 
 void Element::UpdateColumnPseudoElements(const StyleRecalcChange change, const StyleRecalcContext& context)
 {
@@ -7594,12 +7686,33 @@ void Element::UpdateColumnPseudoElements(const StyleRecalcChange change, const S
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PseudoElement* Element::UpdatePseudoElement(
-    PseudoId pseudo_id, const StyleRecalcChange change, const StyleRecalcContext& style_recalc_context, const AtomicString& view_transition_name)
+    PseudoId pseudo_id,
+    const StyleRecalcChange& change,
+    const StyleRecalcContext& style_recalc_context,
+    const AtomicString& view_transition_name)
+#else
+PseudoElement* Element::UpdatePseudoElement(
+    PseudoId pseudo_id,
+    const StyleRecalcChange& change,
+    const StyleRecalcContext& style_recalc_context)
+#endif
 {
-    PseudoElement* element = GetPseudoElement(pseudo_id, view_transition_name);
+#if !defined(MINI_UI_QUICKJS)
+    PseudoElement* element =
+        GetPseudoElement(pseudo_id, view_transition_name);
+#else
+    PseudoElement* element = GetPseudoElement(pseudo_id);
+#endif
     if (!element) {
-        if ((element = CreatePseudoElementIfNeeded(pseudo_id, style_recalc_context, view_transition_name))) {
+#if !defined(MINI_UI_QUICKJS)
+        if ((element = CreatePseudoElementIfNeeded(
+                 pseudo_id, style_recalc_context, view_transition_name))) {
+#else
+        if ((element = CreatePseudoElementIfNeeded(
+                 pseudo_id, style_recalc_context))) {
+#endif
             // ::before and ::after can have a nested ::marker
             element->CreatePseudoElementIfNeeded(kPseudoIdMarker, style_recalc_context);
             element->SetNeedsReattachLayoutTree();
@@ -7619,7 +7732,11 @@ PseudoElement* Element::UpdatePseudoElement(
             }
         }
         if (!generate_pseudo) {
+#if !defined(MINI_UI_QUICKJS)
             ClearPseudoElement(pseudo_id, view_transition_name);
+#else
+            ClearPseudoElement(pseudo_id);
+#endif
             element = nullptr;
         }
     }
@@ -7627,8 +7744,15 @@ PseudoElement* Element::UpdatePseudoElement(
     return element;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PseudoElement* Element::CreatePseudoElementIfNeeded(
-    PseudoId pseudo_id, const StyleRecalcContext& style_recalc_context, const AtomicString& view_transition_name)
+    PseudoId pseudo_id,
+    const StyleRecalcContext& style_recalc_context,
+    const AtomicString& view_transition_name)
+#else
+PseudoElement* Element::CreatePseudoElementIfNeeded(
+    PseudoId pseudo_id, const StyleRecalcContext& style_recalc_context)
+#endif
 {
     if (!CanGeneratePseudoElement(pseudo_id)) {
         return nullptr;
@@ -7639,13 +7763,25 @@ PseudoElement* Element::CreatePseudoElementIfNeeded(
         }
     }
 
-    PseudoElement* pseudo_element = PseudoElement::Create(this, pseudo_id, view_transition_name);
-    EnsureElementRareData().SetPseudoElement(pseudo_id, pseudo_element, view_transition_name);
+#if !defined(MINI_UI_QUICKJS)
+    PseudoElement* pseudo_element =
+        PseudoElement::Create(this, pseudo_id, view_transition_name);
+    EnsureElementRareData().SetPseudoElement(
+        pseudo_id, pseudo_element, view_transition_name);
+#else
+    PseudoElement* pseudo_element = PseudoElement::Create(this, pseudo_id);
+    EnsureElementRareData().SetPseudoElement(pseudo_id, pseudo_element);
+#endif
     pseudo_element->InsertedInto(*this);
 
     const ComputedStyle* pseudo_style = pseudo_element->StyleForLayoutObject(style_recalc_context);
     if (!PseudoElementLayoutObjectIsNeeded(pseudo_id, pseudo_style, this)) {
-        GetElementRareData()->SetPseudoElement(pseudo_id, nullptr, view_transition_name);
+#if !defined(MINI_UI_QUICKJS)
+        GetElementRareData()->SetPseudoElement(
+            pseudo_id, nullptr, view_transition_name);
+#else
+        GetElementRareData()->SetPseudoElement(pseudo_id, nullptr);
+#endif
         return nullptr;
     }
 
@@ -7655,7 +7791,9 @@ PseudoElement* Element::CreatePseudoElementIfNeeded(
 
     pseudo_element->SetComputedStyle(pseudo_style);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::PseudoElementCreated(pseudo_element);
+#endif
 
     return pseudo_element;
 }
@@ -7674,28 +7812,41 @@ void Element::DetachPseudoElement(PseudoId pseudo_id, bool performing_reattach)
     }
 }
 
-PseudoElement* Element::GetPseudoElement(PseudoId pseudo_id, const AtomicString& view_transition_name) const
+#if !defined(MINI_UI_QUICKJS)
+PseudoElement* Element::GetPseudoElement(
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name) const
 {
     if (ElementRareDataVector* data = GetElementRareData()) {
         return data->GetPseudoElement(pseudo_id, view_transition_name);
     }
+#else
+PseudoElement* Element::GetPseudoElement(PseudoId pseudo_id) const
+{
+    if (ElementRareDataVector* data = GetElementRareData()) {
+        return data->GetPseudoElement(pseudo_id);
+    }
+#endif
     return nullptr;
 }
 
-Element* Element::GetStyledPseudoElement(PseudoId pseudo_id, const AtomicString& view_transition_name) const
+#if !defined(MINI_UI_QUICKJS)
+Element* Element::GetStyledPseudoElement(
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name) const
 {
     if (!IsTransitionPseudoElement(pseudo_id)) {
-        if (PseudoElement* result = GetPseudoElement(pseudo_id, view_transition_name)) {
+        if (PseudoElement* result =
+                GetPseudoElement(pseudo_id, view_transition_name)) {
             return result;
         }
-        const AtomicString& pseudo_string = shadow_element_utils::StringForUAShadowPseudoId(pseudo_id);
+        const AtomicString& pseudo_string =
+            shadow_element_utils::StringForUAShadowPseudoId(pseudo_id);
         if (pseudo_string != g_null_atom) {
-            // This is a pseudo-element that refers to an element in the UA shadow
-            // tree (such as a element-backed pseudo-element).  Find it in the
-            // shadow tree.
             if (ShadowRoot* root = GetShadowRoot()) {
                 if (root->IsUserAgent()) {
-                    for (Element& el : ElementTraversal::DescendantsOf(*root)) {
+                    for (Element& el :
+                        ElementTraversal::DescendantsOf(*root)) {
                         if (el.ShadowPseudoId() == pseudo_string) {
                             return &el;
                         }
@@ -7703,40 +7854,61 @@ Element* Element::GetStyledPseudoElement(PseudoId pseudo_id, const AtomicString&
                 }
             }
         }
-
         return nullptr;
     }
 
-    // The transition pseudos can currently only exist on the document element.
     if (!IsDocumentElement()) {
         return nullptr;
     }
-
-    // This traverses the pseudo element hierarchy generated in
-    // RecalcTransitionPseudoTreeStyle to query nested ::view-transition-group
-    // ::view-transition-image-pair and
-    // ::view-transition-{old,new} pseudo elements.
     auto* transition_pseudo = GetPseudoElement(kPseudoIdViewTransition);
     if (!transition_pseudo || pseudo_id == kPseudoIdViewTransition) {
         return transition_pseudo;
     }
-
-    auto* container_pseudo = To<ViewTransitionTransitionElement>(transition_pseudo)->FindViewTransitionGroupPseudoElement(view_transition_name);
+    auto* container_pseudo =
+        To<ViewTransitionTransitionElement>(transition_pseudo)
+            ->FindViewTransitionGroupPseudoElement(view_transition_name);
     if (!container_pseudo || pseudo_id == kPseudoIdViewTransitionGroup) {
         return container_pseudo;
     }
-
-    auto* wrapper_pseudo = container_pseudo->GetPseudoElement(kPseudoIdViewTransitionImagePair, view_transition_name);
+    auto* wrapper_pseudo = container_pseudo->GetPseudoElement(
+        kPseudoIdViewTransitionImagePair, view_transition_name);
     if (!wrapper_pseudo || pseudo_id == kPseudoIdViewTransitionImagePair) {
         return wrapper_pseudo;
     }
-
-    return wrapper_pseudo->GetPseudoElement(pseudo_id, view_transition_name);
+    return wrapper_pseudo->GetPseudoElement(
+        pseudo_id, view_transition_name);
 }
+#else
+Element* Element::GetStyledPseudoElement(PseudoId pseudo_id) const
+{
+    if (PseudoElement* result = GetPseudoElement(pseudo_id)) {
+        return result;
+    }
+    const AtomicString& pseudo_string =
+        shadow_element_utils::StringForUAShadowPseudoId(pseudo_id);
+    if (pseudo_string != g_null_atom) {
+        if (ShadowRoot* root = GetShadowRoot()) {
+            if (root->IsUserAgent()) {
+                for (Element& el : ElementTraversal::DescendantsOf(*root)) {
+                    if (el.ShadowPseudoId() == pseudo_string) {
+                        return &el;
+                    }
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+#endif
 
 LayoutObject* Element::PseudoElementLayoutObject(PseudoId pseudo_id) const
 {
-    if (Element* element = GetStyledPseudoElement(pseudo_id, /*view_transition_name*/ g_null_atom)) {
+#if !defined(MINI_UI_QUICKJS)
+    if (Element* element =
+            GetStyledPseudoElement(pseudo_id, g_null_atom)) {
+#else
+    if (Element* element = GetStyledPseudoElement(pseudo_id)) {
+#endif
         return element->GetLayoutObject();
     }
     return nullptr;
@@ -7918,10 +8090,12 @@ const ComputedStyle* Element::StyleForPseudoElement(const StyleRecalcContext& st
         return result;
     }
 
-    // We use the originating DOM element when resolving style for ::transition*
-    // pseudo elements instead of the element's direct ancestor (which could
-    // itself be a pseudo element).
-    DCHECK(!IsTransitionPseudoElement(GetPseudoId()) || (GetDocument().documentElement() == this));
+#if !defined(MINI_UI_QUICKJS)
+    DCHECK(!IsTransitionPseudoElement(GetPseudoId()) ||
+        GetDocument().documentElement() == this);
+#else
+    DCHECK_EQ(GetPseudoId(), kPseudoIdNone);
+#endif
 
     const ComputedStyle* result = GetDocument().GetStyleResolver().ResolveStyle(this, style_recalc_context, request);
     if (result && result->GetCounterDirectives()) {
@@ -7947,10 +8121,12 @@ const ComputedStyle* Element::StyleForSearchTextPseudoElement(const StyleRecalcC
 
 bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const
 {
+#if !defined(MINI_UI_QUICKJS)
     if (pseudo_id == kPseudoIdViewTransition) {
         DCHECK_EQ(this, GetDocument().documentElement());
         return !!ViewTransitionUtils::GetTransition(GetDocument());
     }
+#endif
     if (pseudo_id == kPseudoIdFirstLetter && IsSVGElement()) {
         return false;
     }
@@ -8414,7 +8590,9 @@ void Element::WillModifyAttribute(const QualifiedName& name, const AtomicString&
     if (MutationObserverInterestGroup* recipients = MutationObserverInterestGroup::CreateForAttributesMutation(*this, name)) {
         recipients->EnqueueMutationRecord(MutationRecord::CreateAttributes(this, name, old_value));
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::WillModifyDOMAttr(this, old_value, new_value);
+#endif
 }
 
 DISABLE_CFI_PERF
@@ -8424,7 +8602,9 @@ void Element::DidAddAttribute(const QualifiedName& name, const AtomicString& val
     if (name == html_names::kIdAttr) {
         UpdateId(g_null_atom, value);
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::DidModifyDOMAttr(this, name, value);
+#endif
     DispatchSubtreeModifiedEvent();
 }
 
@@ -8434,7 +8614,9 @@ void Element::DidModifyAttribute(const QualifiedName& name, const AtomicString& 
         UpdateId(old_value, new_value);
     }
     AttributeChanged(AttributeModificationParams(name, old_value, new_value, reason));
+#if !defined(MINI_UI_QUICKJS)
     probe::DidModifyDOMAttr(this, name, new_value);
+#endif
     // Do not dispatch a DOMSubtreeModified event here; see bug 81141.
 }
 
@@ -8444,7 +8626,9 @@ void Element::DidRemoveAttribute(const QualifiedName& name, const AtomicString& 
         UpdateId(old_value, g_null_atom);
     }
     AttributeChanged(AttributeModificationParams(name, old_value, g_null_atom, AttributeModificationReason::kDirectly));
+#if !defined(MINI_UI_QUICKJS)
     probe::DidRemoveDOMAttr(this, name);
+#endif
     DispatchSubtreeModifiedEvent();
 }
 
@@ -8781,12 +8965,14 @@ void Element::ClearMutableInlineStyleIfEmpty()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Element::NotifyInlineStyleMutation()
 {
     if (GetLayoutObject() && GetLayoutObject()->PreviousVisibilityVisible() && GetDocument().GetPage()) {
         GetDocument().GetPage()->Animator().SetHasInlineStyleMutation();
     }
 }
+#endif
 
 inline void Element::SetInlineStyleFromString(const AtomicString& new_style_string)
 {
@@ -8851,7 +9037,9 @@ void Element::StyleAttributeChanged(const AtomicString& new_style_string, Attrib
     GetElementData()->SetStyleAttributeIsDirty(false);
 
     SetNeedsStyleRecalc(kLocalStyleChange, StyleChangeReasonForTracing::Create(style_change_reason::kStyleAttributeChange));
+#if !defined(MINI_UI_QUICKJS)
     probe::DidInvalidateStyleAttr(this);
+#endif
 }
 
 void Element::InlineStyleChanged()
@@ -8862,7 +9050,9 @@ void Element::InlineStyleChanged()
 
     DCHECK(IsStyledElement());
     InvalidateStyleAttribute(only_changed_independent_properties);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidInvalidateStyleAttr(this);
+#endif
 
     if (MutationObserverInterestGroup* recipients = MutationObserverInterestGroup::CreateForAttributesMutation(*this, html_names::kStyleAttr)) {
         // We don't use getAttribute() here to get a style attribute value
@@ -9257,7 +9447,10 @@ void Element::InvalidateStyleAttribute(bool only_changed_independent_properties)
     GetDocument().GetStyleEngine().AttributeChangedForElement(html_names::kStyleAttr, *this);
 }
 
-void Element::RecalcTransitionPseudoTreeStyle(const Vector<AtomicString>& view_transition_names)
+
+#if !defined(MINI_UI_QUICKJS)
+void Element::RecalcTransitionPseudoTreeStyle(
+    const Vector<AtomicString>& view_transition_names)
 {
     DCHECK_EQ(this, GetDocument().documentElement());
 
@@ -9266,67 +9459,82 @@ void Element::RecalcTransitionPseudoTreeStyle(const Vector<AtomicString>& view_t
         return;
     }
 
-    PseudoElement* old_transition_pseudo = GetPseudoElement(kPseudoIdViewTransition);
-    const auto* transition = ViewTransitionUtils::GetTransition(GetDocument());
+    PseudoElement* old_transition_pseudo =
+        GetPseudoElement(kPseudoIdViewTransition);
+    const auto* transition =
+        ViewTransitionUtils::GetTransition(GetDocument());
     if (!transition && !old_transition_pseudo) {
         return;
     }
 
-    if (transition && old_transition_pseudo && !transition->IsGeneratingPseudo(To<ViewTransitionPseudoElementBase>(*old_transition_pseudo))) {
+    if (transition && old_transition_pseudo &&
+        !transition->IsGeneratingPseudo(
+            To<ViewTransitionPseudoElementBase>(*old_transition_pseudo))) {
         ClearPseudoElement(kPseudoIdViewTransition);
         old_transition_pseudo = nullptr;
     }
 
     const StyleRecalcChange style_recalc_change;
-    const StyleRecalcContext style_recalc_context = StyleRecalcContext::FromInclusiveAncestors(*GetDocument().documentElement());
-
-    PseudoElement* transition_pseudo = UpdatePseudoElement(kPseudoIdViewTransition, style_recalc_change, style_recalc_context, g_null_atom);
+    const StyleRecalcContext style_recalc_context =
+        StyleRecalcContext::FromInclusiveAncestors(
+            *GetDocument().documentElement());
+    PseudoElement* transition_pseudo = UpdatePseudoElement(
+        kPseudoIdViewTransition,
+        style_recalc_change,
+        style_recalc_context,
+        g_null_atom);
     if (!transition_pseudo) {
         return;
     }
 
     for (const auto& view_transition_name : view_transition_names) {
-        // If the container (::view-transition-group(name)) is already created
-        // for the implementation purposes of capturing the old state, we need
-        // to check if it needs to be reparented to its containing group.
-        bool container_already_created_in_view_transition_pseudo
-            = !!transition_pseudo->GetPseudoElement(PseudoId::kPseudoIdViewTransitionGroup, view_transition_name);
-        PseudoElement* parent = To<ViewTransitionTransitionElement>(transition_pseudo)->FindViewTransitionGroupPseudoElementParent(view_transition_name);
-        if (container_already_created_in_view_transition_pseudo && parent != transition_pseudo) {
-            transition_pseudo->ClearPseudoElement(PseudoId::kPseudoIdViewTransitionGroup, view_transition_name);
+        bool container_already_created =
+            !!transition_pseudo->GetPseudoElement(
+                kPseudoIdViewTransitionGroup, view_transition_name);
+        PseudoElement* parent =
+            To<ViewTransitionTransitionElement>(transition_pseudo)
+                ->FindViewTransitionGroupPseudoElementParent(
+                    view_transition_name);
+        if (container_already_created && parent != transition_pseudo) {
+            transition_pseudo->ClearPseudoElement(
+                kPseudoIdViewTransitionGroup, view_transition_name);
         }
-
-        PseudoElement* container_pseudo
-            = parent ? parent->UpdatePseudoElement(kPseudoIdViewTransitionGroup, style_recalc_change, style_recalc_context, view_transition_name) : nullptr;
+        PseudoElement* container_pseudo =
+            parent
+            ? parent->UpdatePseudoElement(
+                  kPseudoIdViewTransitionGroup,
+                  style_recalc_change,
+                  style_recalc_context,
+                  view_transition_name)
+            : nullptr;
         if (!container_pseudo) {
             continue;
         }
-
-        // Nested pseudo elements don't keep pointers to their children, only their
-        // parents (i.e. firstChild() in a  ::view-transition is nullptr but
-        // parentNode of ::view-transition-group is ::view-transition). However,
-        // the layout tree is reattached by descending the DOM tree by child
-        // pointers so if any pseudo needs a reattach we have to explicitly mark
-        // all descendant pseudos as needing a reattach explicitly.
-        // TODO(crbug.com/1455139): Implement tree traversal for nested pseudos.
         if (transition_pseudo->NeedsReattachLayoutTree()) {
             container_pseudo->SetNeedsReattachLayoutTree();
         }
-
-        PseudoElement* wrapper_pseudo
-            = container_pseudo->UpdatePseudoElement(kPseudoIdViewTransitionImagePair, style_recalc_change, style_recalc_context, view_transition_name);
+        PseudoElement* wrapper_pseudo =
+            container_pseudo->UpdatePseudoElement(
+                kPseudoIdViewTransitionImagePair,
+                style_recalc_change,
+                style_recalc_context,
+                view_transition_name);
         if (!wrapper_pseudo) {
             continue;
         }
         if (container_pseudo->NeedsReattachLayoutTree()) {
             wrapper_pseudo->SetNeedsReattachLayoutTree();
         }
-
-        PseudoElement* old_pseudo
-            = wrapper_pseudo->UpdatePseudoElement(kPseudoIdViewTransitionOld, style_recalc_change, style_recalc_context, view_transition_name);
-        PseudoElement* new_pseudo
-            = wrapper_pseudo->UpdatePseudoElement(kPseudoIdViewTransitionNew, style_recalc_change, style_recalc_context, view_transition_name);
-
+        PseudoElement* old_pseudo = wrapper_pseudo->UpdatePseudoElement(
+            kPseudoIdViewTransitionOld,
+            style_recalc_change,
+            style_recalc_context,
+            view_transition_name);
+        PseudoElement* new_pseudo = wrapper_pseudo->UpdatePseudoElement(
+            kPseudoIdViewTransitionNew,
+            style_recalc_change,
+            style_recalc_context,
+            view_transition_name);
         if (wrapper_pseudo->NeedsReattachLayoutTree()) {
             if (old_pseudo) {
                 old_pseudo->SetNeedsReattachLayoutTree();
@@ -9335,31 +9543,31 @@ void Element::RecalcTransitionPseudoTreeStyle(const Vector<AtomicString>& view_t
                 new_pseudo->SetNeedsReattachLayoutTree();
             }
         }
-
         container_pseudo->ClearChildNeedsStyleRecalc();
         wrapper_pseudo->ClearChildNeedsStyleRecalc();
     }
-
-    // Regular pseudo update doesn't clear child style, since there are
-    // (typically) no children / dirty child style. However, here we do need to
-    // clear the child dirty bit.
     transition_pseudo->ClearChildNeedsStyleRecalc();
 }
 
-void Element::RebuildTransitionPseudoLayoutTree(const Vector<AtomicString>& view_transition_names)
+void Element::RebuildTransitionPseudoLayoutTree(
+    const Vector<AtomicString>& view_transition_names)
 {
     DCHECK_EQ(this, GetDocument().documentElement());
-
-    const bool has_transition = !!ViewTransitionUtils::GetTransition(GetDocument());
+    const bool has_transition =
+        !!ViewTransitionUtils::GetTransition(GetDocument());
     if (!has_transition) {
         DCHECK(!GetPseudoElement(kPseudoIdViewTransition));
         return;
     }
-
     WhitespaceAttacher whitespace_attacher;
-    auto rebuild_pseudo_tree = [&whitespace_attacher](PseudoElement* pseudo_element) { pseudo_element->RebuildLayoutTree(whitespace_attacher); };
-    ViewTransitionUtils::ForEachTransitionPseudo(GetDocument(), rebuild_pseudo_tree);
+    auto rebuild_pseudo_tree =
+        [&whitespace_attacher](PseudoElement* pseudo_element) {
+            pseudo_element->RebuildLayoutTree(whitespace_attacher);
+        };
+    ViewTransitionUtils::ForEachTransitionPseudo(
+        GetDocument(), rebuild_pseudo_tree);
 }
+#endif
 
 bool Element::IsInertRoot() const
 {
@@ -9751,12 +9959,20 @@ bool Element::IsReplacedElementRespectingCSSOverflow() const
 {
     // See https://github.com/w3c/csswg-drafts/issues/7144 for details on enabling
     // ink overflow for replaced elements.
-    if (GetPseudoId() == kPseudoIdViewTransitionNew || GetPseudoId() == kPseudoIdViewTransitionOld) {
+#if !defined(MINI_UI_QUICKJS)
+    if (GetPseudoId() == kPseudoIdViewTransitionNew ||
+        GetPseudoId() == kPseudoIdViewTransitionOld) {
         return true;
     }
+#endif
 
-    return IsA<HTMLVideoElement>(this) || IsA<HTMLCanvasElement>(this) || IsA<HTMLImageElement>(this)
-        || (IsA<SVGSVGElement>(this) && To<SVGSVGElement>(this)->IsOutermostSVGSVGElement() && !IsDocumentElement()) || IsA<HTMLFrameOwnerElement>(this);
+    bool is_replaced = IsA<HTMLCanvasElement>(this) || IsA<HTMLImageElement>(this);
+#if !defined(MINI_UI_QUICKJS)
+    is_replaced |= IsA<HTMLVideoElement>(this);
+#endif
+    return is_replaced
+        || (IsA<SVGSVGElement>(this) && To<SVGSVGElement>(this)->IsOutermostSVGSVGElement() && !IsDocumentElement())
+        || IsA<HTMLFrameOwnerElement>(this);
 }
 
 AnchorPositionScrollData& Element::EnsureAnchorPositionScrollData()

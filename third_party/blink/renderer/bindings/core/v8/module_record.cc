@@ -4,13 +4,17 @@
 
 #include "third_party/blink/renderer/bindings/core/v8/module_record.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/feature_list.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/v8_cache_options.mojom-blink.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/boxed_v8_module.h"
 #include "third_party/blink/renderer/bindings/core/v8/referrer_script_info.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_common.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_script_runner.h"
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_creation_params.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
@@ -25,6 +29,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 ModuleRecordProduceCacheData::ModuleRecordProduceCacheData(
     v8::Isolate* isolate, CachedMetadataHandler* cache_handler, V8CodeCache::ProduceCacheOptions produce_cache_options, v8::Local<v8::Module> module)
     : cache_handler_(cache_handler)
@@ -44,7 +49,25 @@ void ModuleRecordProduceCacheData::Trace(Visitor* visitor) const
     visitor->Trace(cache_handler_);
     visitor->Trace(unbound_script_);
 }
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+v8::Local<v8::Module> ModuleRecord::Compile(
+    ScriptState* script_state, const ModuleScriptCreationParams& params,
+    const ScriptFetchOptions& options, const TextPosition& text_position)
+{
+    v8::Local<v8::Module> module;
+    if (!V8ScriptRunner::CompileModule(
+            script_state->GetIsolate(), params, text_position,
+            v8::ScriptCompiler::kNoCompileOptions,
+            v8::ScriptCompiler::kNoCacheBecauseCachingDisabled,
+            ReferrerScriptInfo(params.BaseURL(), options))
+             .ToLocal(&module)) {
+        return v8::Local<v8::Module>();
+    }
+    return module;
+}
+#else
 v8::Local<v8::Module> ModuleRecord::Compile(ScriptState* script_state, const ModuleScriptCreationParams& params, const ScriptFetchOptions& options,
     const TextPosition& text_position, mojom::blink::V8CacheOptions v8_cache_options, ModuleRecordProduceCacheData** out_produce_cache_data)
 {
@@ -83,6 +106,7 @@ v8::Local<v8::Module> ModuleRecord::Compile(ScriptState* script_state, const Mod
 
     return module;
 }
+#endif
 
 ScriptValue ModuleRecord::Instantiate(ScriptState* script_state, v8::Local<v8::Module> record, const KURL& source_url)
 {
@@ -121,7 +145,11 @@ Vector<ModuleRequest> ModuleRecord::ModuleRequests(ScriptState* script_state, v8
     int length = v8_module_requests->Length();
     Vector<ModuleRequest> requests;
     requests.ReserveInitialCapacity(length);
+#if defined(MINI_UI_QUICKJS)
+    constexpr bool needs_text_position = true;
+#else
     bool needs_text_position = !WTF::IsMainThread() || probe::ToCoreProbeSink(ExecutionContext::From(script_state))->HasDevToolsSessions();
+#endif
 
     for (int i = 0; i < length; ++i) {
         v8::Local<v8::ModuleRequest> v8_module_request = v8_module_requests->Get(script_state->GetContext(), i).As<v8::ModuleRequest>();

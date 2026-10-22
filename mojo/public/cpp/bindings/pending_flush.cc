@@ -1,4 +1,4 @@
-﻿// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,11 +11,10 @@
 
 namespace mojo {
 
-PendingFlush::PendingFlush(AsyncFlusher* flusher)
-{
-    ScopedMessagePipeHandle flusher_pipe;
-    CreateMessagePipe(/*options=*/nullptr, &pipe_, &flusher_pipe);
-    flusher->SetPipe(std::move(flusher_pipe));
+PendingFlush::PendingFlush(AsyncFlusher* flusher) {
+  ScopedMessagePipeHandle flusher_pipe;
+  CreateMessagePipe(/*options=*/nullptr, &pipe_, &flusher_pipe);
+  flusher->SetPipe(std::move(flusher_pipe));
 }
 
 PendingFlush::PendingFlush(PendingFlush&& other) = default;
@@ -24,10 +23,9 @@ PendingFlush& PendingFlush::operator=(PendingFlush&& other) = default;
 
 PendingFlush::~PendingFlush() = default;
 
-ScopedMessagePipeHandle PendingFlush::PassPipe()
-{
-    DCHECK(pipe_) << "This PendingFlush has already been consumed.";
-    return std::move(pipe_);
+ScopedMessagePipeHandle PendingFlush::PassPipe() {
+  DCHECK(pipe_) << "This PendingFlush has already been consumed.";
+  return std::move(pipe_);
 }
 
-} // namespace mojo
+}  // namespace mojo

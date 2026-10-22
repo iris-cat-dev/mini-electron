@@ -24,6 +24,12 @@ void DiscardableMemoryAllocator::SetInstance(DiscardableMemoryAllocator* allocat
 }
 
 // static
+bool DiscardableMemoryAllocator::HasInstance()
+{
+    return g_discardable_allocator != nullptr;
+}
+
+// static
 DiscardableMemoryAllocator* DiscardableMemoryAllocator::GetInstance()
 {
     DCHECK(g_discardable_allocator);

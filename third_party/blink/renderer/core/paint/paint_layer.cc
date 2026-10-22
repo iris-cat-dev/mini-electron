@@ -97,8 +97,10 @@
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/reference_clip_path_operation.h"
 #include "third_party/blink/renderer/core/style/reference_offset_path_operation.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
 #include "third_party/blink/renderer/platform/geometry/length_functions.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_filter_operations.h"
@@ -1161,6 +1163,7 @@ PaintLayer* PaintLayer::HitTestLayer(const PaintLayer& transform_container, cons
         check_position_visibility_scope.emplace(*this);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(vmpstr): We need to add a simple document flag which says whether
     // there is an ongoing transition, since this may be too heavy of a check for
     // each hit test.
@@ -1169,6 +1172,7 @@ PaintLayer* PaintLayer::HitTestLayer(const PaintLayer& transform_container, cons
         if (transition->IsRepresentedViaPseudoElements(layout_object))
             return nullptr;
     }
+#endif
 
     ShouldRespectOverflowClipType clip_behavior = kRespectOverflowClip;
     if (result.GetHitTestRequest().IgnoreClipping())

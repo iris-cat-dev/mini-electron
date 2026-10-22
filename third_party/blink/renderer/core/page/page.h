@@ -30,7 +30,9 @@
 #include "base/dcheck_is_on.h"
 #include "base/types/pass_key.h"
 #include "net/cookies/site_for_cookies.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/attribution.mojom-shared.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
@@ -46,13 +48,17 @@
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/public/web/web_lifecycle_update.h"
 #include "third_party/blink/public/web/web_window_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_consumer.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_producer.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/vision_deficiency.h"
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/settings_delegate.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_issue_storage.h"
+#endif
 #include "third_party/blink/renderer/core/page/page_visibility_observer.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -67,10 +73,12 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "ui/gfx/geometry/insets.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class AnimationHost;
 } // namespace cc
 
+#endif
 namespace ui {
 class ColorProvider;
 } // namespace ui
@@ -87,15 +95,19 @@ class DragCaret;
 class DragController;
 class FocusController;
 class Frame;
+#if !defined(MINI_UI_QUICKJS)
 class LinkHighlight;
+#endif
 class LocalFrame;
 class LocalFrameView;
 class MediaFeatureOverrides;
 class PageAnimator;
 struct PageScaleConstraints;
 class PageScaleConstraintsSet;
+#if !defined(MINI_UI_QUICKJS)
 class PluginData;
 class PluginsChangedObserver;
+#endif
 class PointerLockController;
 class PreferenceOverrides;
 class ScopedPagePauser;
@@ -194,12 +206,14 @@ public:
 
     ViewportDescription GetViewportDescription() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the plugin data.
     PluginData* GetPluginData();
 
     // Resets the plugin data for all pages in the renderer process and notifies
     // PluginsChangedObservers.
     static void ResetPluginData();
+#endif
 
     // When this method is called, page_scheduler_->SetIsMainFrameLocal should
     // also be called to update accordingly.
@@ -313,16 +327,20 @@ public:
     ConsoleMessageStorage& GetConsoleMessageStorage();
     const ConsoleMessageStorage& GetConsoleMessageStorage() const;
 
+#if !defined(MINI_UI_QUICKJS)
     InspectorIssueStorage& GetInspectorIssueStorage();
     const InspectorIssueStorage& GetInspectorIssueStorage() const;
+#endif
 
     TopDocumentRootScrollerController& GlobalRootScrollerController() const;
 
     VisualViewport& GetVisualViewport();
     const VisualViewport& GetVisualViewport() const;
 
+#if !defined(MINI_UI_QUICKJS)
     LinkHighlight& GetLinkHighlight();
 
+#endif
     void SetTabKeyCyclesThroughElements(bool b)
     {
         tab_key_cycles_through_elements_ = b;
@@ -437,12 +455,16 @@ public:
 
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     void DidInitializeCompositing(cc::AnimationHost&);
+#endif
     void WillStopCompositing();
 
     void WillBeDestroyed();
 
+#if !defined(MINI_UI_QUICKJS)
     void RegisterPluginsChangedObserver(PluginsChangedObserver*);
+#endif
 
     ScrollbarTheme& GetScrollbarTheme() const;
 
@@ -543,7 +565,9 @@ public:
     // with the 'persisted' property set to 'true'.
     bool DispatchedPagehidePersistedAndStillHidden();
 
+#if !defined(MINI_UI_QUICKJS)
     static void PrepareForLeakDetection();
+#endif
 
     // Fully invalidate paint of all local frames in this page.
     void InvalidatePaint();
@@ -562,6 +586,7 @@ public:
         return fenced_frame_mode_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     v8_compile_hints::V8CrowdsourcedCompileHintsProducer& GetV8CrowdsourcedCompileHintsProducer()
     {
         return *v8_compile_hints_producer_;
@@ -571,6 +596,8 @@ public:
     {
         return *v8_compile_hints_consumer_;
     }
+
+#endif
 
     // Returns the token uniquely identifying the browsing context group this page
     // lives in.
@@ -584,6 +611,7 @@ public:
     // place.
     void UpdateBrowsingContextGroup(const blink::BrowsingContextGroupInfo&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Attribution Reporting API ------------------------------------
     // Sets whether web or OS-level Attribution Reporting is supported
     void SetAttributionSupport(network::mojom::AttributionSupport attribution_support);
@@ -594,6 +622,7 @@ public:
     {
         return attribution_support_;
     }
+#endif
 
     // Called on a new Page, passing an old Page as the parameter, when doing a
     // LocalFrame <-> LocalFrame swap when committing a navigation, to ensure that
@@ -617,8 +646,10 @@ private:
     // SettingsDelegate overrides.
     void SettingsChanged(SettingsDelegate::ChangeType) override;
 
+#if !defined(MINI_UI_QUICKJS)
     // Notify |plugins_changed_observers_| that plugins have changed.
     void NotifyPluginsChanged() const;
+#endif
 
     void InvalidateColorScheme();
 
@@ -671,15 +702,21 @@ private:
     const Member<ConsoleMessageStorage> console_message_storage_;
     const Member<TopDocumentRootScrollerController> global_root_scroller_controller_;
     const Member<VisualViewport> visual_viewport_;
+#if !defined(MINI_UI_QUICKJS)
     const Member<LinkHighlight> link_highlight_;
+#endif
     Member<SpatialNavigationController> spatial_navigation_controller_;
     Member<SVGResourceDocumentCache> svg_resource_document_cache_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<PluginData> plugin_data_;
+#endif
 
     Member<ValidationMessageClient> validation_message_client_;
 
+#if !defined(MINI_UI_QUICKJS)
     InspectorIssueStorage inspector_issue_storage_;
+#endif
 
     Deprecation deprecation_;
     WebWindowFeatures window_features_;
@@ -735,7 +772,9 @@ private:
     // overriding the light, dark or forced colors color providers.
     std::unique_ptr<ui::ColorProvider> emulated_forced_colors_provider_;
 
+#if !defined(MINI_UI_QUICKJS)
     HeapHashSet<WeakMember<PluginsChangedObserver>> plugins_changed_observers_;
+#endif
 
     // A circular, double-linked list of pages that are related to the current
     // browsing context.  See also RelatedPages method.
@@ -787,14 +826,19 @@ private:
 
     WebScopedVirtualTimePauser history_navigation_virtual_time_pauser_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<v8_compile_hints::V8CrowdsourcedCompileHintsProducer> v8_compile_hints_producer_;
 
     Member<v8_compile_hints::V8CrowdsourcedCompileHintsConsumer> v8_compile_hints_consumer_;
 
+#endif
+
     // The information determining the browsing context group this page lives in.
     BrowsingContextGroupInfo browsing_context_group_info_;
 
+#if !defined(MINI_UI_QUICKJS)
     network::mojom::AttributionSupport attribution_support_ = network::mojom::AttributionSupport::kUnset;
+#endif
 
     Member<CloseTaskHandler> close_task_handler_;
 

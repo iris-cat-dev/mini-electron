@@ -19,7 +19,9 @@
 
 #include "base/check_op.h"
 #include "base/json/string_escape.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/raw_ptr.h"
+#endif
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -118,6 +120,7 @@ void AppendValueDebugString(const TraceArguments& args, size_t idx, std::string*
     *out += ")";
 }
 
+#if !defined(MINI_UI_QUICKJS)
 class PerfettoProtoAppender : public ConvertableToTraceFormat::ProtoAppender {
 public:
     explicit PerfettoProtoAppender(perfetto::protos::pbzero::DebugAnnotation* proto)
@@ -142,6 +145,7 @@ private:
     std::vector<protozero::ContiguousMemoryRange> ranges_;
     raw_ptr<perfetto::protos::pbzero::DebugAnnotation> annotation_proto_;
 };
+#endif
 
 } // namespace
 
@@ -212,11 +216,13 @@ void TraceValue::Append(unsigned char type, bool as_json, std::string* out) cons
     case TRACE_VALUE_TYPE_CONVERTABLE:
         this->as_convertable->AppendAsTraceFormat(out);
         break;
+#if !defined(MINI_UI_QUICKJS)
     case TRACE_VALUE_TYPE_PROTO:
         DCHECK(as_json);
         // Typed protobuf arguments aren't representable in JSON.
         *out += "\"Unsupported (crbug.com/1225176)\"";
         break;
+#endif
     default:
         NOTREACHED() << "Don't know how to print this value";
     }
@@ -315,6 +321,7 @@ void TraceArguments::AppendDebugString(std::string* out)
     *out += ")";
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ConvertableToTraceFormat::Add(perfetto::protos::pbzero::DebugAnnotation* annotation) const
 {
     PerfettoProtoAppender proto_appender(annotation);
@@ -326,6 +333,7 @@ void ConvertableToTraceFormat::Add(perfetto::protos::pbzero::DebugAnnotation* an
     AppendAsTraceFormat(&json);
     annotation->set_legacy_json_value(std::move(json));
 }
+#endif
 
 } // namespace trace_event
 } // namespace base

@@ -69,10 +69,12 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsVideoElement() const
     {
         return false;
     }
+#endif
     virtual bool IsCanvasElement() const
     {
         return false;
@@ -89,10 +91,12 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsVideoFrame() const
     {
         return false;
     }
+#endif
 
     // TODO(crbug.com/dawn/1197369): Implement check
     // the usability of the image argument.

@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/html/canvas/canvas_performance_monitor.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/trace_event/trace_event.h"
@@ -22,9 +23,11 @@ const char* const kHostTypeName_OffscreenCanvas = ".OffscreenCanvas";
 
 const char* const kRenderingAPIName_2D_Accelerated = ".2D.Accelerated";
 const char* const kRenderingAPIName_2D_Unaccelerated = ".2D.Unaccelerated";
+#if !defined(MINI_UI_QUICKJS)
 const char* const kRenderingAPIName_WebGL = ".WebGL";
 const char* const kRenderingAPIName_WebGL2 = ".WebGL2";
 const char* const kRenderingAPIName_WebGPU = ".WebGPU";
+#endif
 const char* const kRenderingAPIName_ImageBitmap = ".ImageBitmap";
 
 const char* const kFilterName_All = ".All";
@@ -120,12 +123,14 @@ const char* RenderingContextDescriptionCodec::GetRenderingAPIName() const
     switch (GetRenderingAPI()) {
     case CanvasRenderingContext::CanvasRenderingAPI::k2D:
         return IsAccelerated() ? kRenderingAPIName_2D_Accelerated : kRenderingAPIName_2D_Unaccelerated;
+#if !defined(MINI_UI_QUICKJS)
     case CanvasRenderingContext::CanvasRenderingAPI::kWebgl:
         return kRenderingAPIName_WebGL;
     case CanvasRenderingContext::CanvasRenderingAPI::kWebgl2:
         return kRenderingAPIName_WebGL2;
     case CanvasRenderingContext::CanvasRenderingAPI::kWebgpu:
         return kRenderingAPIName_WebGPU;
+#endif
     case CanvasRenderingContext::CanvasRenderingAPI::kBitmaprenderer:
         return kRenderingAPIName_ImageBitmap;
     default:
@@ -238,6 +243,7 @@ void CanvasPerformanceMonitor::RecordMetrics(TimeTicks start_time, TimeTicks end
                 WTF::String histogram_name = histogram_name_prefix + kMeasurementName_RenderTaskDuration + histogram_name_radical + kFilterName_Rectangle;
                 base::UmaHistogramMicrosecondsTimes(histogram_name.Latin1(), elapsed_time);
             }
+#if !defined(MINI_UI_QUICKJS)
         } else if (desc.GetRenderingAPI() == CanvasRenderingContext::CanvasRenderingAPI::kWebgl
             || desc.GetRenderingAPI() == CanvasRenderingContext::CanvasRenderingAPI::kWebgl2) {
             // Filtered histograms that apply to WebGL canvases
@@ -249,6 +255,7 @@ void CanvasPerformanceMonitor::RecordMetrics(TimeTicks start_time, TimeTicks end
                 WTF::String histogram_name = histogram_name_prefix + kMeasurementName_RenderTaskDuration + histogram_name_radical + kFilterName_DrawElements;
                 base::UmaHistogramMicrosecondsTimes(histogram_name.Latin1(), elapsed_time);
             }
+#endif
         }
         // TODO(junov) Add filtered histograms that apply to WebGPU canvases
 
@@ -291,3 +298,4 @@ void CanvasPerformanceMonitor::ResetForTesting()
 }
 
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)

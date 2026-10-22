@@ -7,7 +7,9 @@
 
 #include <algorithm>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/view_transition_element_resource_id.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/compositing_reasons.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_filter_operations.h"
@@ -114,14 +116,17 @@ public:
         CompositingReasons direct_compositing_reasons = CompositingReason::kNone;
         CompositorElementId compositor_element_id;
 
+#if !defined(MINI_UI_QUICKJS)
         // An identifier to tag transition element resources generated and cached in
         // the Viz process. This generated resource can be used as content for other
         // elements.
         viz::ViewTransitionElementResourceId view_transition_element_resource_id;
+#endif
 
         // Used to associate this effect node with its originating Element.
         RestrictionTargetId restriction_target_id;
 
+#if !defined(MINI_UI_QUICKJS)
         // When set, the affected elements should avoid doing clipping for
         // optimization purposes (like off-screen clipping). This is set by view
         // transition code to ensure that the element is fully painted since it will
@@ -129,6 +134,7 @@ public:
         // resize the painted output of the element. Note that this bit is
         // propagated to the subtree of the effect tree.
         bool self_or_ancestor_participates_in_view_transition = false;
+#endif
 
         PaintPropertyChangeType ComputeChange(const State& other, const AnimationState& animation_state) const;
 
@@ -309,7 +315,11 @@ public:
     // is entirely empty.
     bool DrawsContent() const
     {
-        return MayHaveFilter() || MayHaveBackdropEffect() || ViewTransitionElementResourceId().IsValid() || !ElementCaptureId()->is_zero();
+        return MayHaveFilter() || MayHaveBackdropEffect() || !ElementCaptureId()->is_zero()
+#if !defined(MINI_UI_QUICKJS)
+            || ViewTransitionElementResourceId().IsValid()
+#endif
+            ;
     }
 
     CompositingReasons DirectCompositingReasonsForDebugging() const
@@ -322,20 +332,24 @@ public:
         return state_.compositor_element_id;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const viz::ViewTransitionElementResourceId& ViewTransitionElementResourceId() const
     {
         return state_.view_transition_element_resource_id;
     }
+#endif
 
     const RestrictionTargetId& ElementCaptureId() const
     {
         return state_.restriction_target_id;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool SelfOrAncestorParticipatesInViewTransition() const
     {
         return state_.self_or_ancestor_participates_in_view_transition;
     }
+#endif
 
     std::unique_ptr<JSONObject> ToJSON() const final;
 

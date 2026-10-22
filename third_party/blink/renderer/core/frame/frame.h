@@ -133,8 +133,10 @@ public:
     bool Detach(FrameDetachType);
     void DisconnectOwnerElement();
     virtual bool ShouldClose() = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void HookBackForwardCacheEviction() = 0;
     virtual void RemoveBackForwardCacheEviction() = 0;
+#endif
 
     FrameClient* Client() const;
 
@@ -458,12 +460,14 @@ public:
     // See comments in SwapImpl()'s implementation for more details.
     bool Swap(WebLocalFrame*);
 
+#if !defined(MINI_UI_QUICKJS)
     // Swap out this frame for a new remote frame. This method takes the
     // mojo interfaces because they are provided in the construction IPC
     // as opposed to being fetched via an AssociatedInterfaceProvider which
     // WebLocalFrame uses.
     bool Swap(WebRemoteFrame*, mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> remote_frame_host,
         mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame> remote_frame_receiver);
+#endif
 
     // Removes the given child from this frame.
     void RemoveChild(Frame* child);

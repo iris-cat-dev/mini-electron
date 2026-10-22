@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,12 +32,13 @@ namespace mojo {
 //      During serialization, only the field getter corresponding to this tag
 //      will be called.
 //
-template <typename DataViewType, typename T> struct UnionTraits {
-    static_assert(internal::AlwaysFalse<T>::value,
-        "Cannot find the mojo::UnionTraits specialization. Did you "
-        "forget to include the corresponding header file?");
+template <typename DataViewType, typename T>
+struct UnionTraits {
+  static_assert(internal::AlwaysFalse<T>::value,
+                "Cannot find the mojo::UnionTraits specialization. Did you "
+                "forget to include the corresponding header file?");
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_UNION_TRAITS_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_UNION_TRAITS_H_

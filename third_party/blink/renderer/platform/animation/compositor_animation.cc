@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/platform/animation/compositor_animation.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_id_provider.h"
 #include "cc/animation/animation_timeline.h"
 #include "third_party/blink/renderer/platform/animation/compositor_animation_delegate.h"
@@ -144,3 +145,4 @@ void CompositorAnimation::NotifyLocalTimeUpdated(std::optional<base::TimeDelta> 
 }
 
 } // namespace blink
+#endif

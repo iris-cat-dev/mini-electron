@@ -46,7 +46,9 @@
 namespace blink {
 
 class Element;
+#if !defined(MINI_UI_QUICKJS)
 class TracedValue;
+#endif
 
 enum class InvalidationType { kInvalidateDescendants, kInvalidateSiblings, kInvalidateNthSiblings };
 
@@ -218,7 +220,9 @@ public:
         return is_alive_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     // Format the InvalidationSet for debugging purposes.
     //

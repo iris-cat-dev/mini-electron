@@ -7,7 +7,9 @@
 
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/core/scheduler/dom_scheduler.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
@@ -34,7 +36,9 @@ private:
 
     TaskHandle task_handle_;
     Member<ScriptPromiseResolver<IDLUndefined>> resolver_;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
     Member<AbortSignal> signal_;
     Member<AbortSignal::AlgorithmHandle> abort_handle_;
     // Do not remove. For dynamic priority task queues, `task_queue_` ensures that

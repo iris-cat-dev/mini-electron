@@ -28,8 +28,12 @@ namespace {
 ImagePaintTimingInfo ComputeImagePaintTimingInfo(const LayoutSVGImage& layout_image, const Image& image, const ImageResourceContent* image_content,
     const GraphicsContext& context, const gfx::Rect& image_border)
 {
+#if !defined(MINI_UI_QUICKJS)
     return ImagePaintTimingInfo(PaintTimingDetector::NotifyImagePaint(
         layout_image, image.Size(), *image_content, context.GetPaintController().CurrentPaintChunkProperties(), image_border));
+#else
+    return ImagePaintTimingInfo(/* image_may_be_lcp_candidate */ false);
+#endif
 }
 } // namespace
 

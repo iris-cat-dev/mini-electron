@@ -60,8 +60,10 @@
 #include "third_party/blink/renderer/core/script_type_names.h"
 #include "third_party/blink/renderer/core/securitypolicyviolation_disposition_names.h"
 #include "third_party/blink/renderer/core/svg_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timezone/timezone_controller.h"
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
+#endif
 #include "third_party/blink/renderer/core/xlink_names.h"
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/core/xmlns_names.h"
@@ -77,11 +79,13 @@ namespace blink {
 
 CoreInitializer* CoreInitializer::instance_ = nullptr;
 
+#if !defined(MINI_UI_QUICKJS)
 // Function defined in third_party/blink/public/web/blink.h.
 void ForceNextWebGLContextCreationToFailForTest()
 {
     CoreInitializer::GetInstance().ForceNextWebGLContextCreationToFail();
 }
+#endif
 
 void CoreInitializer::RegisterEventFactory()
 {
@@ -159,7 +163,9 @@ void CoreInitializer::Initialize()
     BindingSecurity::Init();
     ScriptStateImpl::Init();
 
+#if !defined(MINI_UI_QUICKJS)
     TimeZoneController::Init();
+#endif
 
     FontGlobalContext::Init();
 

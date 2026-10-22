@@ -6,9 +6,6 @@
 
 #include "cc/paint/skia_paint_canvas.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-#include "third_party/khronos/GLES2/gl2.h"
-#include "third_party/khronos/GLES2/gl2ext.h"
-#include "third_party/khronos/GLES3/gl3.h"
 #include "third_party/skia/include/core/SkSurfaceProps.h"
 #include "ui/gfx/color_space.h"
 

@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_V8_METRICS_H_
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_V8_METRICS_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "v8/include/v8-metrics.h"
@@ -63,5 +64,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_V8_METRICS_H_

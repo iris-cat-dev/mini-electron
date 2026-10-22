@@ -67,7 +67,9 @@ public:
     // Resource implementation
     bool WillFollowRedirect(const ResourceRequest&, const ResourceResponse&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetSerializedCachedMetadata(mojo_base::BigBuffer data) override;
+#endif
 
     scoped_refptr<BlobDataHandle> DownloadedBlob() const;
 
@@ -142,7 +144,9 @@ public:
     // [Case 1] A successful load:
     // 0+  RedirectReceived() and/or DataSent()
     // 1   ResponseReceived()
+#if !defined(MINI_UI_QUICKJS)
     // 0-1 SetSerializedCachedMetadata()
+#endif
     // One of:
     //   0+  DataReceived()
     //   0+  DataDownloaded()
@@ -167,9 +171,11 @@ public:
     virtual void ResponseReceived(Resource*, const ResourceResponse&)
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual void CachedMetadataReceived(Resource*, mojo_base::BigBuffer)
     {
     }
+#endif
     virtual bool RedirectReceived(Resource*, const ResourceRequest&, const ResourceResponse&)
     {
         return true;
@@ -206,7 +212,9 @@ public:
     void DataSent();
     void ResponseReceived();
     void ResponseBodyReceived();
+#if !defined(MINI_UI_QUICKJS)
     void SetSerializedCachedMetadata();
+#endif
     void DataReceived();
     void DataDownloaded();
     void DidDownloadToBlob();

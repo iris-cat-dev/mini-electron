@@ -8,8 +8,9 @@
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/image_layer_bridge.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
@@ -20,7 +21,9 @@ namespace blink {
 
 ImageBitmapRenderingContextBase::ImageBitmapRenderingContextBase(CanvasRenderingContextHost* host, const CanvasContextCreationAttributesCore& attrs)
     : CanvasRenderingContext(host, attrs, CanvasRenderingAPI::kBitmaprenderer)
+#if !defined(MINI_UI_QUICKJS)
     , image_layer_bridge_(MakeGarbageCollected<ImageLayerBridge>(attrs.alpha ? kNonOpaque : kOpaque))
+#endif
 {
 }
 
@@ -43,7 +46,11 @@ void ImageBitmapRenderingContextBase::Reset()
 
 void ImageBitmapRenderingContextBase::Stop()
 {
+#if defined(MINI_UI_QUICKJS)
+    image_ = nullptr;
+#else
     image_layer_bridge_->Dispose();
+#endif
 }
 
 void ImageBitmapRenderingContextBase::Dispose()
@@ -59,7 +66,11 @@ void ImageBitmapRenderingContextBase::ResetInternalBitmapToBlackTransparent(int 
         black_bitmap.eraseARGB(0, 0, 0, 0);
         auto image = SkImages::RasterFromBitmap(black_bitmap);
         if (image) {
+#if defined(MINI_UI_QUICKJS)
+            image_ = UnacceleratedStaticBitmapImage::Create(image);
+#else
             image_layer_bridge_->SetImage(UnacceleratedStaticBitmapImage::Create(image));
+#endif
         }
     }
 }
@@ -70,8 +81,13 @@ void ImageBitmapRenderingContextBase::SetImage(ImageBitmap* image_bitmap)
 
     // According to the standard TransferFromImageBitmap(null) has to reset the
     // internal bitmap and create a black transparent one.
-    if (image_bitmap)
+    if (image_bitmap) {
+#if defined(MINI_UI_QUICKJS)
+        image_ = image_bitmap->BitmapImage();
+#else
         image_layer_bridge_->SetImage(image_bitmap->BitmapImage());
+#endif
+    }
     else
         ResetInternalBitmapToBlackTransparent(Host()->width(), Host()->height());
 
@@ -83,43 +99,61 @@ void ImageBitmapRenderingContextBase::SetImage(ImageBitmap* image_bitmap)
 
 scoped_refptr<StaticBitmapImage> ImageBitmapRenderingContextBase::GetImage(FlushReason)
 {
+#if defined(MINI_UI_QUICKJS)
+    return image_;
+#else
     return image_layer_bridge_->GetImage();
+#endif
 }
 
 scoped_refptr<StaticBitmapImage> ImageBitmapRenderingContextBase::GetImageAndResetInternal()
 {
-    if (!image_layer_bridge_->GetImage())
+    scoped_refptr<StaticBitmapImage> copy_image = GetImage(FlushReason::kNon2DCanvas);
+    if (!copy_image)
         return nullptr;
-    scoped_refptr<StaticBitmapImage> copy_image = image_layer_bridge_->GetImage();
-
     ResetInternalBitmapToBlackTransparent(copy_image->width(), copy_image->height());
 
     return copy_image;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ImageBitmapRenderingContextBase::SetUV(const gfx::PointF& left_top, const gfx::PointF& right_bottom)
 {
     image_layer_bridge_->SetUV(left_top, right_bottom);
 }
+#endif
 
-void ImageBitmapRenderingContextBase::SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality)
+void ImageBitmapRenderingContextBase::SetFilterQuality(
+    cc::PaintFlags::FilterQuality filter_quality)
 {
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(filter_quality);
+#else
     image_layer_bridge_->SetFilterQuality(filter_quality);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::Layer* ImageBitmapRenderingContextBase::CcLayer() const
 {
     return image_layer_bridge_->CcLayer();
 }
+#endif
 
 bool ImageBitmapRenderingContextBase::IsPaintable() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return !!image_;
+#else
     return !!image_layer_bridge_->GetImage();
+#endif
 }
 
 void ImageBitmapRenderingContextBase::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(image_layer_bridge_);
+#endif
     CanvasRenderingContext::Trace(visitor);
 }
 
@@ -137,7 +171,7 @@ bool ImageBitmapRenderingContextBase::PushFrame()
     if (!CanCreateCanvas2dResourceProvider())
         return false;
 
-    scoped_refptr<StaticBitmapImage> image = image_layer_bridge_->GetImage();
+    scoped_refptr<StaticBitmapImage> image = GetImage(FlushReason::kNon2DCanvas);
     if (!image) {
         return false;
     }
@@ -145,15 +179,19 @@ bool ImageBitmapRenderingContextBase::PushFrame()
     paint_flags.setBlendMode(SkBlendMode::kSrc);
     Host()->ResourceProvider()->Canvas().drawImage(image->PaintImageForCurrentFrame(), 0, 0, SkSamplingOptions(), &paint_flags);
     scoped_refptr<CanvasResource> resource = Host()->ResourceProvider()->ProduceCanvasResource(FlushReason::kNon2DCanvas);
-    Host()->PushFrame(std::move(resource), SkIRect::MakeWH(image_layer_bridge_->GetImage()->Size().width(), image_layer_bridge_->GetImage()->Size().height()));
+    Host()->PushFrame(std::move(resource), SkIRect::MakeWH(image->Size().width(), image->Size().height()));
     return true;
 }
 
 bool ImageBitmapRenderingContextBase::IsOriginTopLeft() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return true;
+#else
     if (Host()->IsOffscreenCanvas())
         return false;
     return Host()->IsAccelerated();
+#endif
 }
 
 } // namespace blink

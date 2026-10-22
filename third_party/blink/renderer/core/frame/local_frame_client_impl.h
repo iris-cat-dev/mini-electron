@@ -54,7 +54,9 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class WebDevToolsAgentImpl;
+#endif
 class WebLocalFrameImpl;
 class WebSpellCheckPanelHostClient;
 
@@ -112,8 +114,10 @@ public:
         bool is_unfenced_top_navigation, mojom::blink::TriggeringEventInfo, HTMLFormElement*, network::mojom::CSPDisposition should_bypass_main_world_csp,
         mojo::PendingRemote<mojom::blink::BlobURLToken>, base::TimeTicks input_start_time, const String& href_translate,
         const std::optional<Impression>& impression, const LocalFrameToken* initiator_frame_token, std::unique_ptr<SourceLocation> source_location,
-        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle, bool is_container_initiated,
-        bool has_rel_opener) override;
+#if !defined(MINI_UI_QUICKJS)
+        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle,
+#endif
+        bool is_container_initiated, bool has_rel_opener) override;
     void DispatchWillSendSubmitEvent(HTMLFormElement*) override;
     void DidStartLoading() override;
     void DidStopLoading() override;
@@ -140,12 +144,18 @@ public:
     void TransitionToCommittedForNewPage() override;
     LocalFrame* CreateFrame(const WTF::AtomicString& name, HTMLFrameOwnerElement*) override;
 
+#if !defined(MINI_UI_QUICKJS)
     RemoteFrame* CreateFencedFrame(HTMLFencedFrameElement*, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>) override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* CreatePlugin(
         HTMLPlugInElement&, const KURL&, const Vector<WTF::String>&, const Vector<WTF::String>&, const WTF::String&, bool load_manually) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<WebMediaPlayer> CreateWebMediaPlayer(HTMLMediaElement&, const WebMediaPlayerSource&, WebMediaPlayerClient*) override;
     RemotePlaybackClient* CreateRemotePlaybackClient(HTMLMediaElement&) override;
+#endif
     void DidChangeScrollOffset() override;
     void NotifyCurrentHistoryItemChanged() override;
     void DidUpdateCurrentHistoryItem() override;
@@ -154,10 +164,14 @@ public:
 
     void DidChangeName(const String&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<WebServiceWorkerProvider> CreateServiceWorkerProvider() override;
+#endif
     WebContentSettingsClient* GetContentSettingsClient() override;
 
+#if !defined(MINI_UI_QUICKJS)
     void DispatchDidChangeManifest() override;
+#endif
 
     unsigned BackForwardLength() override;
 
@@ -171,18 +185,23 @@ public:
 
     WebTextCheckClient* GetTextCheckerClient() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override;
+#endif
     std::unique_ptr<URLLoader> CreateURLLoaderForTesting() override;
 
+#if !defined(MINI_UI_QUICKJS)
     blink::ChildURLLoaderFactoryBundle* GetLoaderFactoryBundle() override;
-
     scoped_refptr<WebBackgroundResourceFetchAssets> MaybeGetBackgroundResourceFetchAssets() override;
+#endif
 
     AssociatedInterfaceProvider* GetRemoteNavigationAssociatedInterfaces() override;
 
     base::UnguessableToken GetDevToolsFrameToken() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     String evaluateInInspectorOverlayForTesting(const String& script) override;
+#endif
 
     bool HandleCurrentKeyboardEvent() override;
 
@@ -204,30 +223,40 @@ public:
 
     void OnLargeStickyAdDetected() override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsPluginHandledExternally(HTMLPlugInElement&, const KURL&, const String&) override;
     v8::Local<v8::Object> GetScriptableObject(HTMLPlugInElement&, v8::Isolate*) override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<WebWorkerFetchContext> CreateWorkerFetchContext() override;
     scoped_refptr<WebWorkerFetchContext> CreateWorkerFetchContextForPlzDedicatedWorker(WebDedicatedWorkerHostFactoryClient*) override;
     std::unique_ptr<WebContentSettingsClient> CreateWorkerContentSettingsClient() override;
-
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void SetMouseCapture(bool capture) override;
-
     void NotifyAutoscrollForSelectionInMainFrame(bool autoscroll_selection) override;
+#endif
 
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> CreateResourceLoadInfoNotifierWrapper() override;
 
+#if !defined(MINI_UI_QUICKJS)
     void BindDevToolsAgent(
         mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver) override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsDomStorageDisabled() const override;
+#endif
 
 private:
     bool IsLocalFrameClientImpl() const override
     {
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     WebDevToolsAgentImpl* DevToolsAgent(bool create_if_necessary);
+#endif
 
     // The WebFrame that owns this object and manages its lifetime. Therefore,
     // the web frame object is guaranteed to exist.

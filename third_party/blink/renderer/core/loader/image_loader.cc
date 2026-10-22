@@ -46,7 +46,9 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/increment_load_event_delay_count.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/frame_owner.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
@@ -57,16 +59,24 @@
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/html_picture_element.h"
 #include "third_party/blink/renderer/core/html/loading_attribute.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_image.h"
 #include "third_party/blink/renderer/core/loader/fetch_priority_attribute.h"
 #include "third_party/blink/renderer/core/loader/lazy_image_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
@@ -115,8 +125,12 @@ public:
         : loader_(loader)
         , update_behavior_(update_behavior)
     {
+#if !defined(MINI_UI_QUICKJS)
         ExecutionContext* context = loader_->GetElement()->GetExecutionContext();
         async_task_context_.Schedule(context, "Image");
+#else
+        ExecutionContext* context = loader_->GetElement()->GetExecutionContext();
+#endif
         world_ = context->GetCurrentWorld();
     }
 
@@ -124,8 +138,10 @@ public:
     {
         if (!loader_)
             return;
+#if !defined(MINI_UI_QUICKJS)
         ExecutionContext* context = loader_->GetElement()->GetExecutionContext();
         probe::AsyncTask async_task(context, &async_task_context_);
+#endif
         loader_->DoUpdateFromElement(world_.Get(), update_behavior_);
     }
 
@@ -145,7 +161,9 @@ private:
     UpdateFromElementBehavior update_behavior_;
     Persistent<const DOMWrapperWorld> world_;
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
     base::WeakPtrFactory<Task> weak_factory_ { this };
 };
 
@@ -215,13 +233,20 @@ void ImageLoader::DispatchDecodeRequestsIfComplete()
             it = decode_requests_.erase(it);
             continue;
         }
-        // ImageLoader should be kept alive when decode is still pending. JS may
-        // invoke 'decode' without capturing the Image object. If GC kicks in,
-        // ImageLoader will be destroyed, leading to unresolved/unrejected Promise.
+#if defined(MINI_UI_QUICKJS)
+        bool decode_succeeded = !!image->PaintImageForCurrentFrame().GetSwSkImage();
+        if (decode_succeeded)
+            request->Resolve();
+        else
+            request->Reject();
+        it = decode_requests_.erase(it);
+#else
+        // ImageLoader must remain alive while compositor decoding is pending.
         frame->GetChromeClient().RequestDecode(frame, image->PaintImageForCurrentFrame(),
             WTF::BindOnce(&ImageLoader::DecodeRequestFinished, MakeUnwrappingCrossThreadHandle(this), request->request_id()));
         request->NotifyDecodeDispatched();
         ++it;
+#endif
     }
 }
 
@@ -464,11 +489,13 @@ void ImageLoader::DoUpdateFromElement(const DOMWrapperWorld* world, UpdateFromEl
         auto* frame = document.GetFrame();
 
         if (IsA<HTMLImageElement>(GetElement())) {
+#if !defined(MINI_UI_QUICKJS)
             if (GetElement()->FastHasAttribute(html_names::kAttributionsrcAttr)
                 && frame->GetAttributionSrcLoader()->CanRegister(url, To<HTMLImageElement>(GetElement()),
                     /*request_id=*/std::nullopt)) {
                 resource_request.SetAttributionReportingEligibility(network::mojom::AttributionReportingEligibility::kEventSourceOrTrigger);
             }
+#endif
             bool shared_storage_writable_opted_in = GetElement()->FastHasAttribute(html_names::kSharedstoragewritableAttr)
                 && RuntimeEnabledFeatures::SharedStorageAPIM118Enabled(GetElement()->GetExecutionContext())
                 && GetElement()->GetExecutionContext()->IsSecureContext() && !SecurityOrigin::Create(url)->IsOpaque();
@@ -483,14 +510,14 @@ void ImageLoader::DoUpdateFromElement(const DOMWrapperWorld* world, UpdateFromEl
             UseCounter::Count(document, WebFeature::kImageLoadAtDismissalEvent);
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Plug-ins should not load via service workers as plug-ins may have their
         // own origin checking logic that may get confused if service workers
         // respond with resources from another origin.
-        // https://w3c.github.io/ServiceWorker/#implementer-concerns
         auto* html_element = DynamicTo<HTMLElement>(GetElement());
-        if (html_element && html_element->IsPluginElement()) {
+        if (html_element && html_element->IsPluginElement())
             resource_request.SetSkipServiceWorker(true);
-        }
+#endif
 
         FetchParameters params(std::move(resource_request), resource_loader_options);
 
@@ -667,7 +694,11 @@ bool ImageLoader::ShouldLoadImmediately(const KURL& url) const
     // asynchronous path so that we can add the shadow DOM for the alt-text
     // content when style recalc is over and DOM mutation is allowed again.
     if (!url.IsNull()) {
+#if defined(MINI_UI_QUICKJS)
+        Resource* resource = MemoryCache::Get()->ResourceForURL(url, element_->GetDocument().Fetcher()->GetCacheIdentifier(url));
+#else
         Resource* resource = MemoryCache::Get()->ResourceForURL(url, element_->GetDocument().Fetcher()->GetCacheIdentifier(url, /*skip_service_worker=*/false));
+#endif
 
         if (resource && !resource->ErrorOccurred()
             && CanReuseFromListOfAvailableImages(resource, GetCrossOriginAttributeValue(element_->FastGetAttribute(html_names::kCrossoriginAttr)),
@@ -676,7 +707,11 @@ bool ImageLoader::ShouldLoadImmediately(const KURL& url) const
         }
     }
 
-    return (IsA<HTMLObjectElement>(*element_) || IsA<HTMLEmbedElement>(*element_) || IsA<HTMLVideoElement>(*element_));
+#if defined(MINI_UI_QUICKJS)
+    return IsA<HTMLObjectElement>(*element_) || IsA<HTMLEmbedElement>(*element_);
+#else
+    return IsA<HTMLObjectElement>(*element_) || IsA<HTMLEmbedElement>(*element_) || IsA<HTMLVideoElement>(*element_);
+#endif
 }
 
 void ImageLoader::ImageChanged(ImageResourceContent* content, CanDeferInvalidation)
@@ -761,9 +796,10 @@ LayoutImageResource* ImageLoader::GetLayoutImageResource() const
 
     if (layout_object->IsSVGImage())
         return To<LayoutSVGImage>(layout_object)->ImageResource();
-
+#if !defined(MINI_UI_QUICKJS)
     if (auto* layout_video = DynamicTo<LayoutVideo>(layout_object))
         return layout_video->ImageResource();
+#endif
 
     return nullptr;
 }

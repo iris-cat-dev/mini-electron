@@ -11,22 +11,29 @@
 #include <string>
 #include <utility>
 
-#include "base/json/json_writer.h"
+#include "base/check.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/lazy_instance.h"
+#endif
 #include "base/logging.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/raw_ptr.h"
 #include "base/trace_event/trace_event.h"
 #include "base/tracing/protos/chrome_track_event.pbzero.h"
 #include "services/tracing/public/cpp/perfetto/flow_event_utils.h"
 #include "services/tracing/public/cpp/perfetto/macros.h"
+#endif
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 using ::perfetto::protos::pbzero::ChromeLatencyInfo2;
 using ::perfetto::protos::pbzero::TrackEvent;
+#endif
 
 const size_t kMaxLatencyInfoNumber = 100;
 
+#if !defined(MINI_UI_QUICKJS)
 ChromeLatencyInfo2::LatencyComponentType GetComponentProtoEnum(ui::LatencyComponentType type)
 {
 #define CASE_TYPE(t)                                                                                                                                           \
@@ -50,12 +57,14 @@ ChromeLatencyInfo2::LatencyComponentType GetComponentProtoEnum(ui::LatencyCompon
     }
 #undef CASE_TYPE
 }
+#endif
 
 bool IsInputLatencyBeginComponent(ui::LatencyComponentType type)
 {
     return type == ui::INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 constexpr const char kTraceCategoriesForAsyncEvents[] = "benchmark,latencyInfo,rail,input.scrolling";
 
 struct LatencyInfoEnabledInitializer {
@@ -68,6 +77,7 @@ struct LatencyInfoEnabledInitializer {
 };
 
 static base::LazyInstance<LatencyInfoEnabledInitializer>::Leaky g_latency_info_enabled = LAZY_INSTANCE_INITIALIZER;
+#endif
 
 } // namespace
 
@@ -92,12 +102,15 @@ bool LatencyInfo::Verify(const std::vector<LatencyInfo>& latency_info, const cha
 {
     if (latency_info.size() > kMaxLatencyInfoNumber) {
         LOG(ERROR) << referring_msg << ", LatencyInfo vector size " << latency_info.size() << " is too big.";
+#if !defined(MINI_UI_QUICKJS)
         TRACE_EVENT_INSTANT1("input,benchmark,latencyInfo", "LatencyInfo::Verify Fails", TRACE_EVENT_SCOPE_GLOBAL, "size", latency_info.size());
+#endif
         return false;
     }
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ChromeLatencyInfo2* LatencyInfo::FillTraceEvent(perfetto::EventContext& ctx, int64_t latency_trace_id, ChromeLatencyInfo2::Step step,
     std::optional<ChromeLatencyInfo2::InputType> input_type, std::optional<ChromeLatencyInfo2::InputResultState> input_result_state)
 {
@@ -117,6 +130,7 @@ ChromeLatencyInfo2* LatencyInfo::FillTraceEvent(perfetto::EventContext& ctx, int
     }
     return info;
 }
+#endif
 
 void LatencyInfo::AddNewLatencyFrom(const LatencyInfo& other)
 {
@@ -157,7 +171,9 @@ void LatencyInfo::AddLatencyNumberWithTimestamp(LatencyComponentType component, 
 
 void LatencyInfo::AddLatencyNumberWithTimestampImpl(LatencyComponentType component, base::TimeTicks time, const char* trace_name_str)
 {
+#if !defined(MINI_UI_QUICKJS)
     const unsigned char* latency_info_enabled = g_latency_info_enabled.Get().latency_info_enabled;
+#endif
 
     if (IsInputLatencyBeginComponent(component)) {
         // Should only ever add begin component once.
@@ -166,6 +182,7 @@ void LatencyInfo::AddLatencyNumberWithTimestampImpl(LatencyComponentType compone
         // We should have a trace ID assigned by now.
         DCHECK(trace_id_ != -1);
 
+#if !defined(MINI_UI_QUICKJS)
         if (*latency_info_enabled) {
             // The timestamp for ASYNC_BEGIN trace event is used for drawing the
             // beginning of the trace event in trace viewer. For better visualization,
@@ -182,6 +199,7 @@ void LatencyInfo::AddLatencyNumberWithTimestampImpl(LatencyComponentType compone
 
             TRACE_EVENT_BEGIN(kTraceCategoriesForAsyncEvents, perfetto::StaticString { trace_name_str }, perfetto::Track::Global(trace_id_), ts);
         }
+#endif
     }
 
     auto it = latency_components_.find(component);
@@ -201,6 +219,7 @@ void LatencyInfo::Terminate()
     CHECK(!terminated_);
     terminated_ = true;
 
+#if !defined(MINI_UI_QUICKJS)
     if (*g_latency_info_enabled.Get().latency_info_enabled) {
         base::TimeTicks gpu_swap_end_timestamp;
         if (!this->FindLatency(INPUT_EVENT_LATENCY_FRAME_SWAP_COMPONENT, &gpu_swap_end_timestamp)) {
@@ -226,6 +245,7 @@ void LatencyInfo::Terminate()
             info->set_is_coalesced(coalesced_);
         });
     }
+#endif
 }
 
 bool LatencyInfo::FindLatency(LatencyComponentType type, base::TimeTicks* output) const

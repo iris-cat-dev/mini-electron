@@ -8,7 +8,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_frame_request_callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/dom_high_res_time_stamp.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -56,10 +58,12 @@ public:
         use_legacy_time_base_ = use_legacy_time_base;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext* async_task_context()
     {
         return &async_task_context_;
     }
+#endif
 
 protected:
     FrameCallback() = default;
@@ -68,7 +72,9 @@ private:
     int id_ = 0;
     bool is_cancelled_ = false;
     bool use_legacy_time_base_ = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
 };
 
 // |V8FrameCallback| is an adapter class for the conversion from

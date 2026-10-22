@@ -43,7 +43,9 @@
 #include "third_party/blink/renderer/core/layout/layout_embedded_object.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_data.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -191,6 +193,7 @@ WebPluginContainerImpl* PluginDocumentParser::GetPluginView() const
     return To<PluginDocument>(GetDocument())->GetPluginView();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PluginDocument::PluginDocument(const DocumentInit& initializer)
     : HTMLDocument(initializer, { DocumentClass::kPlugin })
     , background_color_(GetFrame()->GetPluginData()->PluginBackgroundColorForMimeType(initializer.GetMimeType()))
@@ -199,6 +202,7 @@ PluginDocument::PluginDocument(const DocumentInit& initializer)
     LockCompatibilityMode();
     GetExecutionContext()->GetScheduler()->RegisterStickyFeature(SchedulingPolicy::Feature::kContainsPlugins, { SchedulingPolicy::DisableBackForwardCache() });
 }
+#endif
 
 DocumentParser* PluginDocument::CreateParser()
 {

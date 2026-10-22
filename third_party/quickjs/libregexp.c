@@ -2013,6 +2013,8 @@ typedef struct {
     uint8_t* state_stack;
     size_t state_stack_size;
     size_t state_stack_len;
+    uint32_t backtrack_limit;
+    uint32_t backtrack_count;
 } REExecContext;
 
 static int push_state(
@@ -2050,6 +2052,16 @@ static int push_state(
     return 0;
 }
 
+static BOOL lre_consume_backtrack(REExecContext* s)
+{
+    if (s->backtrack_limit == 0)
+        return TRUE;
+    if (s->backtrack_count >= s->backtrack_limit)
+        return FALSE;
+    s->backtrack_count++;
+    return TRUE;
+}
+
 /* return 1 if match, 0 if not match or -1 if error. */
 static intptr_t lre_exec_backtrack(REExecContext* s, uint8_t** capture, StackInt* stack, int stack_len, const uint8_t* pc, const uint8_t* cptr, BOOL no_recurse)
 {
@@ -2082,6 +2094,8 @@ static intptr_t lre_exec_backtrack(REExecContext* s, uint8_t** capture, StackInt
                 rs = (REExecState*)(s->state_stack + (s->state_stack_len - 1) * s->state_size);
                 if (rs->type == RE_EXEC_STATE_SPLIT) {
                     if (!ret) {
+                        if (!lre_consume_backtrack(s))
+                            return 0;
                     pop_state:
                         memcpy(capture, rs->buf, sizeof(capture[0]) * 2 * s->capture_count);
                     pop_state1:
@@ -2095,6 +2109,8 @@ static intptr_t lre_exec_backtrack(REExecContext* s, uint8_t** capture, StackInt
                 } else if (rs->type == RE_EXEC_STATE_GREEDY_QUANT) {
                     if (!ret) {
                         uint32_t char_count, i;
+                        if (!lre_consume_backtrack(s))
+                            return 0;
                         memcpy(capture, rs->buf, sizeof(capture[0]) * 2 * s->capture_count);
                         stack_len = rs->stack_len;
                         memcpy(stack, rs->buf + 2 * s->capture_count, stack_len * sizeof(stack[0]));
@@ -2429,7 +2445,9 @@ static intptr_t lre_exec_backtrack(REExecContext* s, uint8_t** capture, StackInt
 /* Return 1 if match, 0 if not match or -1 if error. cindex is the
    starting position of the match and must be such as 0 <= cindex <=
    clen. */
-int lre_exec(uint8_t** capture, const uint8_t* bc_buf, const uint8_t* cbuf, int cindex, int clen, int cbuf_type, void* opaque)
+int lre_exec_with_backtrack_limit(uint8_t** capture,
+    const uint8_t* bc_buf, const uint8_t* cbuf, int cindex, int clen,
+    int cbuf_type, void* opaque, uint32_t backtrack_limit)
 {
     REExecContext s_s, *s = &s_s;
     int re_flags, i, alloca_size, ret;
@@ -2452,6 +2470,8 @@ int lre_exec(uint8_t** capture, const uint8_t* bc_buf, const uint8_t* cbuf, int 
     s->state_stack = NULL;
     s->state_stack_len = 0;
     s->state_stack_size = 0;
+    s->backtrack_limit = backtrack_limit;
+    s->backtrack_count = 0;
 
     for (i = 0; i < s->capture_count * 2; i++)
         capture[i] = NULL;
@@ -2460,6 +2480,13 @@ int lre_exec(uint8_t** capture, const uint8_t* bc_buf, const uint8_t* cbuf, int 
     ret = lre_exec_backtrack(s, capture, stack_buf, 0, bc_buf + RE_HEADER_LEN, cbuf + (cindex << cbuf_type), FALSE);
     lre_realloc(s->opaque, s->state_stack, 0);
     return ret;
+}
+
+int lre_exec(uint8_t** capture, const uint8_t* bc_buf,
+    const uint8_t* cbuf, int cindex, int clen, int cbuf_type, void* opaque)
+{
+    return lre_exec_with_backtrack_limit(capture, bc_buf, cbuf, cindex,
+        clen, cbuf_type, opaque, 0);
 }
 
 int lre_get_capture_count(const uint8_t* bc_buf)

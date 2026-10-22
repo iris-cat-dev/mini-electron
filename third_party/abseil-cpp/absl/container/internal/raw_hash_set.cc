@@ -32,6 +32,7 @@
 namespace absl {
 
 //---
+#if !defined(MINI_UI_QUICKJS)
 namespace hash_internal {
 
 uint64_t CityHash64(const char* s, size_t len)
@@ -40,6 +41,7 @@ uint64_t CityHash64(const char* s, size_t len)
     return 0;
 }
 }
+#endif // !defined(MINI_UI_QUICKJS)
 //---
 
 ABSL_NAMESPACE_BEGIN

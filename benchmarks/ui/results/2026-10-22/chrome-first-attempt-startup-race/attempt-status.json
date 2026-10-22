@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "cause": "Windows sharing violation while Chrome was still publishing DevToolsActivePort. This was browser-controller readiness, not a React DOM or timing assertion failure.",
+  "fix": "Wait only for the owned browser to publish a complete readable endpoint within its existing startup deadline; terminate/wait only for remaining processes in the owned Windows job before removing its private profile.",
+  "source_before": "benchmarks/ui/chrome.py#CF9B",
+  "source_after": "benchmarks/ui/chrome.py#F8F3",
+  "final_matrices": "The entire default-GPU matrix and entire software matrix were run afterward in fresh directories; both completed all eight cells with normal browser exits zero."
+}

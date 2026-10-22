@@ -48,7 +48,7 @@ public:
 
     static void MarkCurrentTaskAsInterestingForTracing();
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
     //  TRACE_EVENT argument helper, writing the task start time into
     //  EventContext.
     //  NOTE: Should only be used with TRACE_EVENT or TRACE_EVENT_BEGIN since the
@@ -66,7 +66,11 @@ public:
     // Called to indicate that a task is about to be queued to run in the future,
     // giving one last chance for this TaskAnnotator to add metadata to
     // |pending_task| before it is moved into the queue.
-    void WillQueueTask(perfetto::StaticString trace_event_name, TaskMetadata* pending_task);
+    void WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+        perfetto::StaticString trace_event_name,
+#endif
+        TaskMetadata* pending_task);
 
     // Creates a process-wide unique ID to represent this task in trace events.
     // This will be mangled with a Process ID hash to reduce the likelyhood of
@@ -75,6 +79,12 @@ public:
     // |queue_function == nullptr| in above methods).
     uint64_t GetTaskTraceID(const TaskMetadata& task) const;
 
+#if defined(MINI_UI_QUICKJS)
+    void RunTask(PendingTask& pending_task)
+    {
+        RunTaskImpl(pending_task);
+    }
+#else
     // Run the given task, emitting the toplevel trace event and additional
     // trace event arguments. Like for TRACE_EVENT macros, all of the arguments
     // are used (i.e. lambdas are invoked) before this function exits, so it's
@@ -92,6 +102,7 @@ public:
             std::forward<Args>(args)...);
         RunTaskImpl(pending_task);
     }
+#endif
 
 private:
     friend class TaskAnnotatorBacktraceIntegrationTest;
@@ -105,7 +116,7 @@ private:
     static void RegisterObserverForTesting(ObserverForTesting* observer);
     static void ClearObserverForTesting();
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
     // TRACE_EVENT argument helper, writing the task location data into
     // EventContext.
     static void EmitTaskLocation(perfetto::EventContext& ctx, const PendingTask& task);

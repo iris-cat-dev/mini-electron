@@ -28,10 +28,12 @@ void WorkerResourceFetcherProperties::Trace(Visitor* visitor) const
     ResourceFetcherProperties::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::ControllerServiceWorkerMode WorkerResourceFetcherProperties::GetControllerServiceWorkerMode() const
 {
     return web_context_->GetControllerServiceWorkerMode();
 }
+#endif
 
 bool WorkerResourceFetcherProperties::IsPaused() const
 {

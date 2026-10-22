@@ -1,0 +1,1616 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "metadata_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\run-metadata.json",
+  "definitions": {
+    "operation_js_commit_ms": "Browser performance.now elapsed from state mutation through the framework's synchronous commit (React flushSync) or queued DOM commit (Vue nextTick), excluding the subsequent shared DOM assertion and paint.",
+    "view_teardown.wall": "Native steady-clock wall duration of View destruction after populated capture; separate from JS operation timings, workload wall and the runner's full process wall.",
+    "cpu_offscreen_frame.generated_tick_wall": "Native steady-clock wall duration of workload View::Tick calls whose frame generation advanced; excludes the later populated-capture verification and is software offscreen output, not onscreen/vsync FPS.",
+    "cpu_offscreen_frame.throughput_per_cpu_tick_second": "Workload frame generation advance divided by summed wall time inside generation-producing workload View::Tick calls; excludes the later populated-capture verification and is software CPU offscreen throughput, not onscreen/vsync FPS.",
+    "p95_nearest_rank": "Sort ascending and select element ceil(0.95*N), using one-based rank.",
+    "median": "Arithmetic midpoint of the one or two central sorted observations."
+  },
+  "summaries": [
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 26.799999997019768,
+      "p95_nearest_rank": 31.600000008940697,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 5.5,
+      "p95_nearest_rank": 5.600000008940697,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 21.200000002980232,
+      "p95_nearest_rank": 23.900000005960464,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 47.3999999910593,
+      "p95_nearest_rank": 48.6000000089407,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 10.200000002980232,
+      "p95_nearest_rank": 10.799999997019768,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 48.8999999910593,
+      "p95_nearest_rank": 50.70000000298023,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 4.899999991059303,
+      "p95_nearest_rank": 5.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 4.729850000000001,
+      "p95_nearest_rank": 69.6941,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 4.729850000000001,
+      "p95_nearest_rank": 69.6941,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 16.2331,
+      "p95_nearest_rank": 16.2331,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 5.9674,
+      "p95_nearest_rank": 5.9674,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 54.0211,
+      "p95_nearest_rank": 54.0211,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 70.4015,
+      "p95_nearest_rank": 70.4015,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 3478.2715,
+      "p95_nearest_rank": 3478.2715,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 27.3058,
+      "p95_nearest_rank": 27.3058,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 2.515625,
+      "p95_nearest_rank": 2.515625,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 124968960.0,
+      "p95_nearest_rank": 124968960.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 139829248.0,
+      "p95_nearest_rank": 139829248.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 109858816.0,
+      "p95_nearest_rank": 109858816.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 100,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 51.42742743069593,
+      "p95_nearest_rank": 51.42742743069593,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-100.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 281.59999999403954,
+      "p95_nearest_rank": 293.6000000089407,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 50.79999999701977,
+      "p95_nearest_rank": 51.70000000298023,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 227.90000000596046,
+      "p95_nearest_rank": 237.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 249.90000000596046,
+      "p95_nearest_rank": 257.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 60.79999999701977,
+      "p95_nearest_rank": 66.8999999910593,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 288.40000000596046,
+      "p95_nearest_rank": 294.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 27.5,
+      "p95_nearest_rank": 28.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 17.95935,
+      "p95_nearest_rank": 537.2453,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 17.95935,
+      "p95_nearest_rank": 537.2453,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 17.4548,
+      "p95_nearest_rank": 17.4548,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 6.7195,
+      "p95_nearest_rank": 6.7195,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 61.6767,
+      "p95_nearest_rank": 61.6767,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 79.3187,
+      "p95_nearest_rank": 79.3187,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 18820.2447,
+      "p95_nearest_rank": 18820.2447,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 92.208,
+      "p95_nearest_rank": 92.208,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 18.546875,
+      "p95_nearest_rank": 18.546875,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 287768576.0,
+      "p95_nearest_rank": 287768576.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 322457600.0,
+      "p95_nearest_rank": 322457600.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 297820160.0,
+      "p95_nearest_rank": 297820160.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 7.424196347980075,
+      "p95_nearest_rank": 7.424196347980075,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-1000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1525.7000000029802,
+      "p95_nearest_rank": 1769.7999999970198,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 265.90000000596046,
+      "p95_nearest_rank": 273.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1287.7999999970198,
+      "p95_nearest_rank": 1365.300000011921,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1307.300000011921,
+      "p95_nearest_rank": 1373.8999999910593,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 303.0,
+      "p95_nearest_rank": 350.6000000089407,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1464.4000000059605,
+      "p95_nearest_rank": 1722.2000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 132.79999999701977,
+      "p95_nearest_rank": 140.40000000596046,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 74.60775,
+      "p95_nearest_rank": 2458.7376,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 74.60775,
+      "p95_nearest_rank": 2458.7376,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 19.2104,
+      "p95_nearest_rank": 19.2104,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 7.0723,
+      "p95_nearest_rank": 7.0723,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 59.7408,
+      "p95_nearest_rank": 59.7408,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 79.1428,
+      "p95_nearest_rank": 79.1428,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 104916.2081,
+      "p95_nearest_rank": 104916.2081,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 1328.0926,
+      "p95_nearest_rank": 1328.0926,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 106.515625,
+      "p95_nearest_rank": 106.515625,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1849905152.0,
+      "p95_nearest_rank": 1849905152.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1851801600.0,
+      "p95_nearest_rank": 1851801600.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1906098176.0,
+      "p95_nearest_rank": 1906098176.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 1.4669489537494789,
+      "p95_nearest_rank": 1.4669489537494789,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-5000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 3126.2000000029802,
+      "p95_nearest_rank": 3541.2000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 515.7000000029802,
+      "p95_nearest_rank": 524.1000000089407,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 2643.5,
+      "p95_nearest_rank": 2761.5999999940395,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 2592.0999999940395,
+      "p95_nearest_rank": 2678.6000000089407,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 613.7000000029802,
+      "p95_nearest_rank": 629.7000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 2939.7999999970198,
+      "p95_nearest_rank": 3033.2000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 273.29999999701977,
+      "p95_nearest_rank": 282.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 150.5789,
+      "p95_nearest_rank": 6834.11,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 150.5789,
+      "p95_nearest_rank": 6834.11,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 17.3697,
+      "p95_nearest_rank": 17.3697,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 6.378,
+      "p95_nearest_rank": 6.378,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 67.2968,
+      "p95_nearest_rank": 67.2968,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 84.8277,
+      "p95_nearest_rank": 84.8277,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 202746.3148,
+      "p95_nearest_rank": 202746.3148,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 1282.8734,
+      "p95_nearest_rank": 1282.8734,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 209.75,
+      "p95_nearest_rank": 209.75,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 3027972096.0,
+      "p95_nearest_rank": 3027972096.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 3377438720.0,
+      "p95_nearest_rank": 3377438720.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 3353157632.0,
+      "p95_nearest_rank": 3353157632.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 0.6731370760731346,
+      "p95_nearest_rank": 0.6731370760731346,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\vue-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 18.0,
+      "p95_nearest_rank": 19.299999997019768,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 3.3999999910593033,
+      "p95_nearest_rank": 3.9000000059604645,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 10.299999997019768,
+      "p95_nearest_rank": 10.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 26.200000002980232,
+      "p95_nearest_rank": 27.200000002980232,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 6.899999991059303,
+      "p95_nearest_rank": 9.199999988079071,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 31.799999997019768,
+      "p95_nearest_rank": 32.099999994039536,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 5.299999997019768,
+      "p95_nearest_rank": 5.399999991059303,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 4.6586,
+      "p95_nearest_rank": 53.1295,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 4.6586,
+      "p95_nearest_rank": 53.1295,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 16.159,
+      "p95_nearest_rank": 16.159,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 7.4411,
+      "p95_nearest_rank": 7.4411,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 47.1687,
+      "p95_nearest_rank": 47.1687,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 63.4919,
+      "p95_nearest_rank": 63.4919,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 2756.2621,
+      "p95_nearest_rank": 2756.2621,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 9.1594,
+      "p95_nearest_rank": 9.1594,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 1.765625,
+      "p95_nearest_rank": 1.765625,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 84725760.0,
+      "p95_nearest_rank": 84725760.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 117985280.0,
+      "p95_nearest_rank": 117985280.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 75341824.0,
+      "p95_nearest_rank": 75341824.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 100,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 72.71700630317937,
+      "p95_nearest_rank": 72.71700630317937,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-100.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 168.59999999403954,
+      "p95_nearest_rank": 170.79999999701977,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 26.899999991059303,
+      "p95_nearest_rank": 27.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 168.8999999910593,
+      "p95_nearest_rank": 183.70000000298023,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 90.70000000298023,
+      "p95_nearest_rank": 100.19999998807907,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 42.5,
+      "p95_nearest_rank": 44.19999998807907,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 170.29999999701977,
+      "p95_nearest_rank": 172.20000000298023,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 29.69999998807907,
+      "p95_nearest_rank": 34.8999999910593,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 30.014400000000002,
+      "p95_nearest_rank": 279.7633,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 30.014400000000002,
+      "p95_nearest_rank": 279.7633,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 16.5093,
+      "p95_nearest_rank": 16.5093,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 6.3212,
+      "p95_nearest_rank": 6.3212,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 55.8484,
+      "p95_nearest_rank": 55.8484,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 72.5214,
+      "p95_nearest_rank": 72.5214,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 12707.715,
+      "p95_nearest_rank": 12707.715,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 53.9828,
+      "p95_nearest_rank": 53.9828,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 11.9375,
+      "p95_nearest_rank": 11.9375,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 182562816.0,
+      "p95_nearest_rank": 182562816.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 216186880.0,
+      "p95_nearest_rank": 216186880.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 174563328.0,
+      "p95_nearest_rank": 174563328.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 1000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 11.631882169255187,
+      "p95_nearest_rank": 11.631882169255187,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-1000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 865.4000000059605,
+      "p95_nearest_rank": 874.2000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 138.59999999403954,
+      "p95_nearest_rank": 139.59999999403954,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 2518.2999999970198,
+      "p95_nearest_rank": 2525.7999999970198,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 386.70000000298023,
+      "p95_nearest_rank": 387.90000000596046,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 203.29999999701977,
+      "p95_nearest_rank": 205.59999999403954,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 807.9000000059605,
+      "p95_nearest_rank": 815.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 139.20000000298023,
+      "p95_nearest_rank": 142.20000000298023,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 79.4588,
+      "p95_nearest_rank": 3058.6503,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 79.4588,
+      "p95_nearest_rank": 3058.6503,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 16.2443,
+      "p95_nearest_rank": 16.2443,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 6.2221,
+      "p95_nearest_rank": 6.2221,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 52.6692,
+      "p95_nearest_rank": 52.6692,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 69.0748,
+      "p95_nearest_rank": 69.0748,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 89173.3866,
+      "p95_nearest_rank": 89173.3866,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 787.5187,
+      "p95_nearest_rank": 787.5187,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 89.875,
+      "p95_nearest_rank": 89.875,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1009278976.0,
+      "p95_nearest_rank": 1009278976.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1045995520.0,
+      "p95_nearest_rank": 1045995520.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1053470720.0,
+      "p95_nearest_rank": 1053470720.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 1.9519314389473106,
+      "p95_nearest_rank": 1.9519314389473106,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-5000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1697.1000000089407,
+      "p95_nearest_rank": 1730.4000000059605,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 267.5,
+      "p95_nearest_rank": 272.40000000596046,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 9198.300000011921,
+      "p95_nearest_rank": 9471.10000000894,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 758.9000000059605,
+      "p95_nearest_rank": 800.2000000029802,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 394.6000000089407,
+      "p95_nearest_rank": 436.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 1558.7000000029802,
+      "p95_nearest_rank": 1595.7999999970198,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 277.20000000298023,
+      "p95_nearest_rank": 295.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cpu_offscreen_frame.generated_tick_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 151.75205,
+      "p95_nearest_rank": 10147.8384,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "view_tick.all_call_wall",
+      "unit": "ms",
+      "sample_count": 126,
+      "median": 151.75205,
+      "p95_nearest_rank": 10147.8384,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.view_create",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 17.5238,
+      "p95_nearest_rank": 17.5238,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.load_file_call",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 6.3237,
+      "p95_nearest_rank": 6.3237,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.load_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 41.7155,
+      "p95_nearest_rank": 41.7155,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.process_host_entry_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 59.3989,
+      "p95_nearest_rank": 59.3989,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 195897.6177,
+      "p95_nearest_rank": 195897.6177,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "view_teardown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 616.489,
+      "p95_nearest_rank": 616.489,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "process_cpu.total",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 197.53125,
+      "p95_nearest_rank": 197.53125,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "process_memory.current_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1371455488.0,
+      "p95_nearest_rank": 1371455488.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "process_memory.peak_working_set",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1573470208.0,
+      "p95_nearest_rank": 1573470208.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "process_memory.current_private",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1485926400.0,
+      "p95_nearest_rank": 1485926400.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cpu_offscreen_frame.throughput_per_cpu_tick_second",
+      "unit": "frames/cpu_tick_second",
+      "sample_count": 1,
+      "median": 0.7572707853435886,
+      "p95_nearest_rank": 0.7572707853435886,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-opt-o1-full\\raw\\react-10000.json"
+    }
+  ],
+  "failures": []
+}

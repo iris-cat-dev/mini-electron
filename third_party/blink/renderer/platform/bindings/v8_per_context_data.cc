@@ -47,18 +47,27 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 constexpr char kContextLabel[] = "V8PerContextData::context_";
+#endif
 
 } // namespace
 
 V8PerContextData::V8PerContextData(v8::Local<v8::Context> context)
     : isolate_(context->GetIsolate())
+#if !defined(MINI_UI_QUICKJS)
     , context_holder_(std::make_unique<gin::ContextHolder>(isolate_))
+#endif
     , context_(isolate_, context)
     , activity_logger_(nullptr)
 {
+#if defined(MINI_UI_QUICKJS)
+    // The real context owns this cache through ScriptState, not the reverse.
+    context_.SetPhantom();
+#else
     context_holder_->SetContext(context);
     context_.Get().AnnotateStrongRetainer(kContextLabel);
+#endif
 
     if (IsMainThread()) {
         InstanceCounters::IncrementCounter(InstanceCounters::kV8PerContextDataCounter);
@@ -74,12 +83,16 @@ V8PerContextData::~V8PerContextData()
 
 void V8PerContextData::Dispose()
 {
+#if defined(MINI_UI_QUICKJS)
+    context_.Clear();
+#else
     // These fields are not traced by the garbage collector and could contain
     // strong GC roots that prevent `this` from otherwise being collected, so
     // explicitly break any potential cycles in the ownership graph now.
     context_holder_ = nullptr;
     if (!context_.IsEmpty())
         context_.SetPhantom();
+#endif
 }
 
 void V8PerContextData::Trace(Visitor* visitor) const

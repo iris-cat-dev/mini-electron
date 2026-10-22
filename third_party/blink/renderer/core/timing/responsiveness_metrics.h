@@ -187,11 +187,13 @@ public:
     // Flush UKM timestamps of composition events for testing.
     void FlushAllEventsForTesting();
 
+#if !defined(MINI_UI_QUICKJS)
     // Stop UKM sampling for testing.
     void StopUkmSamplingForTesting()
     {
         sampling_ = false;
     }
+#endif
 
     // The use might be dragging. The function will be called whenever we have a
     // pointermove.
@@ -218,8 +220,10 @@ public:
     //   perfetto::protos::pbzero::WebContentInteraction::Type
     //   UserInteractionTypeToProto(UserInteractionType interaction_type) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void EmitInteractionToNextPaintTraceEvent(
         const ResponsivenessMetrics::EventTimestamps& event, UserInteractionType interaction_type, base::TimeDelta total_event_duration);
+#endif
 
     void SetCurrentInteractionEventQueuedTimestamp(base::TimeTicks queued_time);
     base::TimeTicks CurrentInteractionEventQueuedTimestamp() const;
@@ -331,8 +335,10 @@ private:
     uint32_t current_interaction_id_for_event_timing_;
     uint32_t interaction_count_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Whether to perform UKM sampling.
     bool sampling_ = true;
+#endif
 };
 
 } // namespace blink

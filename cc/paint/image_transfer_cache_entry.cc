@@ -20,6 +20,7 @@
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkPixmap.h"
 #include "third_party/skia/include/core/SkYUVAInfo.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/GpuTypes.h"
 #include "third_party/skia/include/gpu/ganesh/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
@@ -27,10 +28,12 @@
 #include "third_party/skia/include/gpu/ganesh/SkImageGanesh.h"
 #include "third_party/skia/include/gpu/graphite/Image.h"
 #include "third_party/skia/include/gpu/graphite/Recorder.h"
+#endif
 #include "ui/gfx/color_conversion_sk_filter_cache.h"
 #include "ui/gfx/hdr_metadata.h"
 #include "ui/gfx/mojom/hdr_metadata.mojom.h"
 
+#if !defined(MINI_UI_QUICKJS)
 sk_sp<class SkImage> SkImages::TextureFromImage(skgpu::graphite::Recorder*, SkImage const*, SkImage::RequiredProperties)
 {
     *(int*)1 = 1;
@@ -42,10 +45,12 @@ int skgpu::graphite::Recorder::maxTextureSize(void) const
     *(int*)1 = 1;
     return 0;
 }
+#endif
 
 namespace cc {
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 struct Context {
     const std::vector<sk_sp<SkImage>> sk_planes_;
 };
@@ -55,6 +60,7 @@ void ReleaseContext(SkImages::ReleaseContext context)
     auto* texture_context = static_cast<Context*>(context);
     delete texture_context;
 }
+#endif
 
 bool IsYUVAInfoValid(SkYUVAInfo::PlaneConfig plane_config, SkYUVAInfo::Subsampling subsampling, SkYUVColorSpace yuv_color_space)
 {
@@ -69,6 +75,7 @@ int NumPixmapsForYUVConfig(SkYUVAInfo::PlaneConfig plane_config)
     return std::max(SkYUVAInfo::NumPlanes(plane_config), 1);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // Creates a SkImage backed by the YUV textures corresponding to |plane_images|.
 // The layout is specified by |plane_images_format|). The backend textures are
 // first extracted out of the |plane_images| (and work is flushed on each one).
@@ -121,6 +128,7 @@ sk_sp<SkImage> MakeYUVImageFromUploadedPlanes(GrDirectContext* gr_context, skgpu
 // 
 //     return image;
 }
+#endif
 
 base::CheckedNumeric<uint32_t> SafeSizeForPixmap(const SkPixmap& pixmap)
 {
@@ -254,9 +262,14 @@ bool WriteImage(PaintOpWriter& writer, const ClientImageTransferCacheEntry::Imag
     return true;
 }
 
+#if defined(MINI_UI_QUICKJS)
+sk_sp<SkImage> ReadImage(PaintOpReader& reader)
+#else
 sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skgpu::graphite::Recorder* graphite_recorder, bool mip_mapped_for_upload,
     std::optional<SkYUVAInfo>* out_yuva_info = nullptr, std::vector<sk_sp<SkImage>>* out_yuva_plane_images = nullptr)
+#endif
 {
+#if !defined(MINI_UI_QUICKJS)
     int max_size;
     if (gr_context) {
         max_size = gr_context->maxTextureSize();
@@ -266,6 +279,7 @@ sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skg
         // Allow a nullptr context for testing using the software renderer.
         max_size = 0;
     }
+#endif
 
     sk_sp<SkColorSpace> color_space;
     reader.Read(&color_space);
@@ -296,15 +310,27 @@ sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skg
         return nullptr;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    // Planar transfer images require texture-backed YUVA composition.
+    if (plane_config != SkYUVAInfo::PlaneConfig::kUnknown) {
+        DLOG(ERROR) << "Planar texture images are unavailable in software paint";
+        return nullptr;
+    }
+#endif
+
     std::array<SkPixmap, SkYUVAInfo::kMaxPlanes> pixmaps;
+#if !defined(MINI_UI_QUICKJS)
     bool fits_on_gpu = true;
+#endif
     const int num_pixmaps = NumPixmapsForYUVConfig(plane_config);
     for (int i = 0; i < num_pixmaps; ++i) {
         if (!ReadPixmap(reader, pixmaps[i])) {
             DLOG(ERROR) << "Failed to read pixmap";
             return nullptr;
         }
+#if !defined(MINI_UI_QUICKJS)
         fits_on_gpu &= pixmaps[i].width() <= max_size && pixmaps[i].height() <= max_size;
+#endif
 
         // This is likely unnecessary for YUVA images (the pixmaps of the individual
         // planes should be ignored), but is left here to avoid behavior changes
@@ -320,6 +346,7 @@ sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skg
             return nullptr;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Upload to the GPU if the image will fit.
         if (fits_on_gpu) {
             if (gr_context) {
@@ -344,8 +371,10 @@ sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skg
         if (out_yuva_plane_images) {
             out_yuva_plane_images->clear();
         }
+#endif
         return image;
     } else {
+#if !defined(MINI_UI_QUICKJS)
         if (!fits_on_gpu) {
             DLOG(ERROR) << "YUVA images must fit in the GPU texture size limit";
             return nullptr;
@@ -401,6 +430,9 @@ sk_sp<SkImage> ReadImage(PaintOpReader& reader, GrDirectContext* gr_context, skg
             *out_yuva_plane_images = std::move(plane_images);
         }
         return image;
+#else
+        NOTREACHED();
+#endif
     }
 }
 
@@ -437,6 +469,7 @@ ClientImageTransferCacheEntry::Image::Image(const SkPixmap* pixmap)
     pixmaps[0] = pixmap;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ClientImageTransferCacheEntry::Image::Image(base::span<const SkPixmap> yuva_pixmaps, const SkYUVAInfo& yuva_info, const SkColorSpace* color_space)
     : yuv_plane_config(yuva_info.planeConfig())
     , yuv_subsampling(yuva_info.subsampling())
@@ -455,6 +488,7 @@ ClientImageTransferCacheEntry::Image::Image(base::span<const SkPixmap> yuva_pixm
         pixmaps[i] = &yuva_pixmaps[i];
     }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // ClientImageTransferCacheEntry
@@ -556,6 +590,7 @@ ServiceImageTransferCacheEntry::~ServiceImageTransferCacheEntry() = default;
 ServiceImageTransferCacheEntry::ServiceImageTransferCacheEntry(ServiceImageTransferCacheEntry&& other) = default;
 ServiceImageTransferCacheEntry& ServiceImageTransferCacheEntry::operator=(ServiceImageTransferCacheEntry&& other) = default;
 
+#if !defined(MINI_UI_QUICKJS)
 bool ServiceImageTransferCacheEntry::BuildFromHardwareDecodedImage(GrDirectContext* gr_context, std::vector<sk_sp<SkImage>> plane_images,
     SkYUVAInfo::PlaneConfig plane_config, SkYUVAInfo::Subsampling subsampling, SkYUVColorSpace yuv_color_space, size_t buffer_byte_size, bool needs_mips)
 {
@@ -599,6 +634,7 @@ bool ServiceImageTransferCacheEntry::BuildFromHardwareDecodedImage(GrDirectConte
     DCHECK(image_->isTextureBacked());
     return true;
 }
+#endif
 
 size_t ServiceImageTransferCacheEntry::CachedSize() const
 {
@@ -607,8 +643,14 @@ size_t ServiceImageTransferCacheEntry::CachedSize() const
 
 bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, skgpu::graphite::Recorder* graphite_recorder, base::span<const uint8_t> data)
 {
+#if defined(MINI_UI_QUICKJS)
+    // The inherited transfer-cache interface is shared with GPU entry types.
+    CHECK(!gr_context);
+    CHECK(!graphite_recorder);
+#else
     gr_context_ = gr_context;
     graphite_recorder_ = graphite_recorder;
+#endif
 
     // We don't need to populate the DeSerializeOptions here since the reader is
     // only used for de-serializing primitives.
@@ -630,10 +672,14 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
     sk_sp<SkColorSpace> target_color_space;
     reader.Read(&target_color_space);
 
+#if defined(MINI_UI_QUICKJS)
+    image_ = ReadImage(reader);
+#else
     const bool mip_mapped_for_upload = needs_mips && !target_color_space;
 
     // Deserialize the image.
     image_ = ReadImage(reader, gr_context, graphite_recorder, mip_mapped_for_upload, &yuva_info_, &plane_images_);
+#endif
     if (!image_) {
         DLOG(ERROR) << "Failed to deserialize image.";
         return false;
@@ -645,14 +691,20 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
     if (!image_->isTextureBacked()) {
         image_referencing_transfer_buffer = image_;
     }
+#if !defined(MINI_UI_QUICKJS)
     for (const auto& plane_image : plane_images_) {
         plane_sizes_.push_back(plane_image->textureSize());
     }
+#endif
 
     // Read the gainmap image, if one was specified to exist.
     sk_sp<SkImage> gainmap_image_referencing_transfer_buffer;
     if (has_gainmap_) {
+#if defined(MINI_UI_QUICKJS)
+        gainmap_image_ = ReadImage(reader);
+#else
         gainmap_image_ = ReadImage(reader, gr_context, graphite_recorder, mip_mapped_for_upload);
+#endif
         if (!gainmap_image_) {
             DLOG(ERROR) << "Failed to deserialize gainmap image.";
             return false;
@@ -668,6 +720,9 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
 
     // Perform color conversion (if no tone mapping is needed).
     if (target_color_space && !is_tone_mapped) {
+#if defined(MINI_UI_QUICKJS)
+        image_ = image_->makeColorSpace(static_cast<GrDirectContext*>(nullptr), target_color_space);
+#else
         if (graphite_recorder_) {
             SkImage::RequiredProperties props { .fMipmapped = needs_mips };
             image_ = image_->makeColorSpace(graphite_recorder_, target_color_space, props);
@@ -681,11 +736,13 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
                 image_ = SkImages::TextureFromImage(gr_context, image_, skgpu::Mipmapped::kYes, skgpu::Budgeted::kNo);
             }
         }
+#endif
         if (!image_) {
             DLOG(ERROR) << "Failed image color conversion.";
             return false;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Color conversion converts to RGBA. Remove all YUV state.
         yuva_info_ = std::nullopt;
         plane_images_.clear();
@@ -695,6 +752,7 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
         if (image_->isTextureBacked()) {
             DCHECK_EQ(needs_mips, image_->hasMipmaps());
         }
+#endif
     }
 
     // If `image_` or `gainmap_image_` is still directly referencing the transfer
@@ -722,13 +780,26 @@ bool ServiceImageTransferCacheEntry::Deserialize(GrDirectContext* gr_context, sk
         return false;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    SkPixmap pixels;
+    CHECK(image_->peekPixels(&pixels));
+    base::CheckedNumeric<size_t> size(pixels.computeByteSize());
+    if (gainmap_image_) {
+        CHECK(gainmap_image_->peekPixels(&pixels));
+        size += pixels.computeByteSize();
+    }
+    if (!size.AssignIfValid(&size_))
+        return false;
+#else
     size_ = image_->textureSize();
     if (gainmap_image_) {
         size_ += gainmap_image_->textureSize();
     }
+#endif
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const sk_sp<SkImage>& ServiceImageTransferCacheEntry::GetPlaneImage(size_t index) const
 {
     DCHECK_GE(index, 0u);
@@ -812,5 +883,6 @@ bool ServiceImageTransferCacheEntry::fits_on_gpu() const
 {
     return image_ && image_->isTextureBacked();
 }
+#endif
 
 } // namespace cc

@@ -1,0 +1,22 @@
+[
+  {
+    "path": "out/ui-windows-x64/mini-ui.lib",
+    "bytes": 412670738,
+    "sha256": "75a46b9cab7b1413046f64c65904ef70d254bef434364c14b2ca1db1d19dd2ba"
+  },
+  {
+    "path": "out/ui-windows-x64/mini-ui-example.exe",
+    "bytes": 40128512,
+    "sha256": "4ecd727ed4be39390f056a148348792acfbf5e051b3294c491800dc26671117e"
+  },
+  {
+    "path": "out/ui-opt-final-native/build/ui-benchmark.exe",
+    "bytes": 40152576,
+    "sha256": "552ebd63ec124498ac5596239b5ab9201075bfccf9a52570677805a76620d6c9"
+  },
+  {
+    "path": "out/ui-runtime-checks-boundaries-after/build/ui-benchmark.exe",
+    "bytes": 44693504,
+    "sha256": "c3e45713364d4d56aa119984c5d98f38d31c1c1c9e489c32ee36f8587e96aab4"
+  }
+]

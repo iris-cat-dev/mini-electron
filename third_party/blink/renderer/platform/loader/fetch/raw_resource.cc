@@ -262,6 +262,7 @@ void RawResource::ResponseBodyReceived(ResponseBodyLoaderDrainableInterface& bod
     client->ResponseBodyReceived(this, body_loader.DrainAsBytesConsumer());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RawResource::SetSerializedCachedMetadata(mojo_base::BigBuffer data)
 {
     // Resource ignores the cached metadata.
@@ -274,6 +275,7 @@ void RawResource::SetSerializedCachedMetadata(mojo_base::BigBuffer data)
         c->CachedMetadataReceived(this, std::move(data));
     }
 }
+#endif
 
 void RawResource::DidSendData(uint64_t bytes_sent, uint64_t total_bytes_to_be_sent)
 {
@@ -345,10 +347,12 @@ NOINLINE void RawResourceClientStateChecker::ResponseReceived()
     state_ = kResponseReceived;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 NOINLINE void RawResourceClientStateChecker::SetSerializedCachedMetadata()
 {
     SECURITY_CHECK(state_ == kStarted || state_ == kResponseReceived || state_ == kDataReceivedAsBytesConsumer || state_ == kDataReceived);
 }
+#endif
 
 NOINLINE void RawResourceClientStateChecker::ResponseBodyReceived()
 {

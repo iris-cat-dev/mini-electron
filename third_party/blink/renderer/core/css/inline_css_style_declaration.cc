@@ -45,7 +45,9 @@ void InlineCSSStyleDeclaration::DidMutate(MutationType type)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     parent_element_->NotifyInlineStyleMutation();
+#endif
     parent_element_->ClearMutableInlineStyleIfEmpty();
 
     const bool only_changed_independent_properties = (type == kIndependentPropertyChanged);

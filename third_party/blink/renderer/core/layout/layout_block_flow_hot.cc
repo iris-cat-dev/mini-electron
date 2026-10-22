@@ -20,10 +20,13 @@ DISABLE_CFI_PERF
 bool LayoutBlockFlow::CreatesNewFormattingContext() const
 {
     NOT_DESTROYED();
-    if (IsInline() || IsFloatingOrOutOfFlowPositioned() || IsScrollContainer() || IsFlexItem() || IsCustomItem() || IsDocumentElement() || IsGridItem()
-        || IsWritingModeRoot() || IsMathItem() || StyleRef().Display() == EDisplay::kFlowRoot || StyleRef().Display() == EDisplay::kFlowRootListItem
-        || ShouldApplyPaintContainment() || ShouldApplyLayoutContainment() || StyleRef().HasLineClamp() || StyleRef().SpecifiesColumns()
-        || StyleRef().GetColumnSpan() == EColumnSpan::kAll) {
+    if (IsInline() || IsFloatingOrOutOfFlowPositioned() || IsScrollContainer() || IsFlexItem()
+#if !defined(MINI_UI_QUICKJS)
+        || IsCustomItem()
+#endif
+        || IsDocumentElement() || IsGridItem() || IsWritingModeRoot() || IsMathItem() || StyleRef().Display() == EDisplay::kFlowRoot
+        || StyleRef().Display() == EDisplay::kFlowRootListItem || ShouldApplyPaintContainment() || ShouldApplyLayoutContainment()
+        || StyleRef().HasLineClamp() || StyleRef().SpecifiesColumns() || StyleRef().GetColumnSpan() == EColumnSpan::kAll) {
         // The specs require this object to establish a new formatting context.
         return true;
     }

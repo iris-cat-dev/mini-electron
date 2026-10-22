@@ -33,7 +33,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_TIMING_PERFORMANCE_RESOURCE_TIMING_H_
 
 #include "base/time/time.h"
-#include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/performance_mark_or_measure.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink.h"
@@ -74,8 +73,10 @@ public:
     virtual V8RenderBlockingStatusType renderBlockingStatus() const;
     virtual AtomicString contentType() const;
     DOMHighResTimeStamp workerStart() const;
+#if !defined(MINI_UI_QUICKJS)
     DOMHighResTimeStamp workerRouterEvaluationStart() const;
     DOMHighResTimeStamp workerCacheLookupStart() const;
+#endif
     virtual DOMHighResTimeStamp redirectStart() const;
     virtual DOMHighResTimeStamp redirectEnd() const;
     virtual DOMHighResTimeStamp fetchStart() const;
@@ -94,8 +95,10 @@ public:
     virtual uint64_t decodedBodySize() const;
     uint16_t responseStatus() const;
     const HeapVector<Member<PerformanceServerTiming>>& serverTiming() const;
+#if !defined(MINI_UI_QUICKJS)
     AtomicString workerMatchedSourceType() const;
     AtomicString workerFinalSourceType() const;
+#endif
 
     void Trace(Visitor*) const override;
 

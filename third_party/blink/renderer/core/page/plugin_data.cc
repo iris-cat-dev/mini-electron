@@ -23,6 +23,8 @@
 
 #include "third_party/blink/renderer/core/page/plugin_data.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/plugins/plugin_registry.mojom-blink.h"
@@ -165,3 +167,4 @@ bool PluginData::IsExternalPluginMimeType(const String& mime_type) const
 }
 
 } // namespace blink
+#endif

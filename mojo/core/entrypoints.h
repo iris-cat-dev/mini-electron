@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,7 +22,7 @@ MOJO_SYSTEM_IMPL_EXPORT void ShutDownCore();
 // application loading.
 MOJO_SYSTEM_IMPL_EXPORT const MojoSystemThunks2& GetSystemThunks();
 
-} // namespace core
-} // namespace mojo
+}  // namespace core
+}  // namespace mojo
 
-#endif // MOJO_CORE_ENTRYPOINTS_H_
+#endif  // MOJO_CORE_ENTRYPOINTS_H_

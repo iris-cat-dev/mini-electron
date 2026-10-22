@@ -97,6 +97,7 @@ base::TimeTicks PerformanceTimingForReporting::NavigationStartAsMonotonicTime() 
     return timing->NavigationStart();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PerformanceTimingForReporting::BackForwardCacheRestoreTimings PerformanceTimingForReporting::BackForwardCacheRestore() const
 {
     DocumentLoadTiming* load_timing = GetDocumentLoadTiming();
@@ -131,6 +132,8 @@ PerformanceTimingForReporting::BackForwardCacheRestoreTimings PerformanceTimingF
     }
     return restore_timings;
 }
+
+#endif
 
 uint64_t PerformanceTimingForReporting::FirstPaintForMetrics() const
 {
@@ -186,6 +189,7 @@ uint64_t PerformanceTimingForReporting::FirstMeaningfulPaint() const
     return MonotonicTimeToIntegerMilliseconds(timing->FirstMeaningfulPaint());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 uint64_t PerformanceTimingForReporting::FirstMeaningfulPaintCandidate() const
 {
     const PaintTiming* timing = GetPaintTiming();
@@ -194,6 +198,7 @@ uint64_t PerformanceTimingForReporting::FirstMeaningfulPaintCandidate() const
 
     return MonotonicTimeToIntegerMilliseconds(timing->FirstMeaningfulPaintCandidate());
 }
+#endif
 
 LargestContentfulPaintDetailsForReporting PerformanceTimingForReporting::LargestContentfulPaintDetailsForMetrics() const
 {

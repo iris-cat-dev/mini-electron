@@ -64,6 +64,7 @@ constexpr auto kReasonDescriptionMap = std::to_array<ReasonAndDescription>({
     { CompositingReason::kPreserve3DWith3DDescendants,
         "Has a preserves-3d property that needs to be known by compositor because "
         "of 3d descendants." },
+#if !defined(MINI_UI_QUICKJS)
     { CompositingReason::kViewTransitionElement, "This element is shared during view transition." },
     { CompositingReason::kViewTransitionPseudoElement,
         "This element is a part of a pseudo element tree representing the view "
@@ -71,6 +72,7 @@ constexpr auto kReasonDescriptionMap = std::to_array<ReasonAndDescription>({
     { CompositingReason::kViewTransitionElementDescendantWithClipPath,
         "This element's ancestor is shared during view transition and it has a "
         "clip-path" },
+#endif
     { CompositingReason::kOverflowScrolling, "Is a scrollable overflow element using accelerated scrolling." },
     { CompositingReason::kElementCapture, "This element is undergoing element-level capture." },
     { CompositingReason::kOverlap, "Overlaps other composited content." },
@@ -85,7 +87,9 @@ constexpr auto kReasonDescriptionMap = std::to_array<ReasonAndDescription>({
     { CompositingReason::kScrollbar, "Is an accelerated scrollbar." },
     { CompositingReason::kLinkHighlight, "Is a tap highlight on a link." },
     { CompositingReason::kDevToolsOverlay, "Is DevTools overlay." },
+#if !defined(MINI_UI_QUICKJS)
     { CompositingReason::kViewTransitionContent, "The layer containing the contents of a view transition element." },
+#endif
 });
 
 } // anonymous namespace

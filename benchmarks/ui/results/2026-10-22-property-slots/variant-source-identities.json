@@ -1,0 +1,16 @@
+{
+  "own_data_helper": {
+    "path": "third_party/quickjs/quickjs.c",
+    "bytes": 1889038,
+    "sha256": "0df8d872902abf341b42c9b7b63dd7e655b957f93d831128981845acfa116d3b"
+  },
+  "slot_hint": {
+    "path": "third_party/quickjs/quickjs.c",
+    "bytes": 1889752,
+    "sha256": "2474bce99f421b98ac4574ac82d84ccdeb3414490277cfa3ca383c3b72571412"
+  },
+  "final_inline": {
+    "sha256": "1e41f44bb821fb22920abdd4004d22f81768049ac967f55483acdeb9a6035c04",
+    "bytes": 1889880
+  }
+}

@@ -17,9 +17,13 @@
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/exception_metadata.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/trustedtypes/event_handler_names.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_html.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_script.h"
@@ -210,7 +214,9 @@ TrustedTypePolicy* TrustedTypePolicyFactory::createPolicy(
     if (violation_details != ContentSecurityPolicy::ContentSecurityPolicy::AllowTrustedTypePolicyDetails::kAllowed) {
         // We may report a violation here even when disallowed is false
         // in case policy is a report-only one.
+#if !defined(MINI_UI_QUICKJS)
         probe::OnContentSecurityPolicyViolation(GetExecutionContext(), ContentSecurityPolicyViolationType::kTrustedTypesPolicyViolation);
+#endif
     }
     if (disallowed) {
         // For a better error message, we'd like to disambiguate between
@@ -221,7 +227,9 @@ TrustedTypePolicy* TrustedTypePolicyFactory::createPolicy(
         v8::Isolate* isolate = GetExecutionContext()->GetIsolate();
         TryRethrowScope rethrow_scope(isolate, exception_state);
         auto exception = V8ThrowException::CreateTypeError(isolate, message);
+#if !defined(MINI_UI_QUICKJS)
         MaybeAssociateExceptionMetaData(exception, "issueId", IdentifiersFactory::IdFromToken(issue_id));
+#endif
         V8ThrowException::ThrowException(isolate, exception);
         return nullptr;
     }

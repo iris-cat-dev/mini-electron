@@ -12,12 +12,15 @@
 #include "third_party/blink/renderer/core/frame/user_activation.h"
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/skia/include/core/SkImage.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 BlinkTransferableMessage BlinkTransferableMessage::FromTransferableMessage(TransferableMessage message)
 {
@@ -97,6 +100,8 @@ BlinkTransferableMessage BlinkTransferableMessage::FromTransferableMessage(Trans
     return result;
 }
 
+#endif
+
 BlinkTransferableMessage::BlinkTransferableMessage() = default;
 BlinkTransferableMessage::~BlinkTransferableMessage() = default;
 
@@ -112,6 +117,7 @@ scoped_refptr<StaticBitmapImage> ToStaticBitmapImage(const SkBitmap& sk_bitmap)
     return UnacceleratedStaticBitmapImage::Create(std::move(image));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<StaticBitmapImage> WrapAcceleratedBitmapImage(AcceleratedImageInfo image)
 {
     *(int*)1 = 1;
@@ -119,4 +125,5 @@ scoped_refptr<StaticBitmapImage> WrapAcceleratedBitmapImage(AcceleratedImageInfo
 //     return AcceleratedStaticBitmapImage::CreateFromExternalMailbox(image.mailbox_holder, image.usage, image.image_info, image.is_origin_top_left,
 //         image.supports_display_compositing, image.is_overlay_candidate, std::move(image.release_callback));
 }
+#endif
 } // namespace blink

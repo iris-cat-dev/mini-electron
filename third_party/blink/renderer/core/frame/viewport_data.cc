@@ -13,7 +13,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"

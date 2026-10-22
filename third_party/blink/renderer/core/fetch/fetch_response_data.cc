@@ -5,8 +5,9 @@
 #include "third_party/blink/renderer/core/fetch/fetch_response_data.h"
 
 #include "base/numerics/safe_conversions.h"
-//#include "storage/common/quota/padding_key.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/storage_key/storage_key.h"
+#endif
 #include "third_party/blink/public/mojom/fetch/fetch_api_response.mojom-blink.h"
 #include "third_party/blink/renderer/core/fetch/fetch_header_list.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
@@ -18,6 +19,7 @@
 #include "third_party/blink/renderer/platform/network/http_parsers.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/openssl/openssl/include/openssl/types.h"
 #include "third_party/openssl/openssl/include/openssl/evp.h"
 #include "third_party/openssl/openssl/include/openssl/hmac.h"
@@ -25,10 +27,12 @@
 #include "base/rand_util.h"
 #include "base/strings/stringprintf.h"
 #include <inttypes.h>
+#endif
 
 using Type = network::mojom::FetchResponseType;
 using ResponseSource = network::mojom::FetchResponseSource;
 
+#if !defined(MINI_UI_QUICKJS)
 namespace crypto::hash {
 // If you do need to be generic, you can use the Hash() function and pass a
 // HashKind instead.
@@ -153,6 +157,7 @@ int64_t ComputeStableResponsePadding(const blink::StorageKey& storage_key,
 }
 
 } // namespace storage
+#endif
 
 namespace blink {
 
@@ -334,7 +339,9 @@ FetchResponseData* FetchResponseData::Clone(ScriptState* script_state, Exception
 {
     FetchResponseData* new_response = Create();
     new_response->type_ = type_;
+#if !defined(MINI_UI_QUICKJS)
     new_response->padding_ = padding_;
+#endif
     new_response->response_source_ = response_source_;
     if (termination_reason_) {
         new_response->termination_reason_ = std::make_unique<TerminationReason>();
@@ -347,7 +354,9 @@ FetchResponseData* FetchResponseData::Clone(ScriptState* script_state, Exception
     new_response->mime_type_ = mime_type_;
     new_response->request_method_ = request_method_;
     new_response->response_time_ = response_time_;
+#if !defined(MINI_UI_QUICKJS)
     new_response->cache_storage_cache_name_ = cache_storage_cache_name_;
+#endif
     new_response->cors_exposed_header_names_ = cors_exposed_header_names_;
     new_response->connection_info_ = connection_info_;
     new_response->alpn_negotiated_protocol_ = alpn_negotiated_protocol_;
@@ -414,12 +423,16 @@ mojom::blink::FetchAPIResponsePtr FetchResponseData::PopulateFetchAPIResponse(co
     response->status_code = status_;
     response->status_text = status_message_;
     response->response_type = type_;
+#if !defined(MINI_UI_QUICKJS)
     response->padding = padding_;
+#endif
     response->response_source = response_source_;
     response->mime_type = mime_type_;
     response->request_method = request_method_;
     response->response_time = response_time_;
+#if !defined(MINI_UI_QUICKJS)
     response->cache_storage_cache_name = cache_storage_cache_name_;
+#endif
     response->cors_exposed_header_names = HeaderSetToVector(cors_exposed_header_names_);
     response->connection_info = connection_info_;
     response->alpn_negotiated_protocol = alpn_negotiated_protocol_;
@@ -435,9 +448,15 @@ mojom::blink::FetchAPIResponsePtr FetchResponseData::PopulateFetchAPIResponse(co
     return response;
 }
 
+#if defined(MINI_UI_QUICKJS)
+void FetchResponseData::InitFromResourceResponse(network::mojom::FetchResponseType response_type,
+    const Vector<KURL>& request_url_list, const AtomicString& request_method,
+    network::mojom::CredentialsMode request_credentials, const ResourceResponse& response)
+#else
 void FetchResponseData::InitFromResourceResponse(ExecutionContext* context, network::mojom::FetchResponseType response_type,
-    const Vector<KURL>& request_url_list, const AtomicString& request_method, network::mojom::CredentialsMode request_credentials,
-    const ResourceResponse& response)
+    const Vector<KURL>& request_url_list, const AtomicString& request_method,
+    network::mojom::CredentialsMode request_credentials, const ResourceResponse& response)
+#endif
 {
     SetStatus(response.HttpStatusCode());
     if (response.CurrentRequestUrl().ProtocolIsAbout() || response.CurrentRequestUrl().ProtocolIsData() || response.CurrentRequestUrl().ProtocolIs("blob")) {
@@ -449,27 +468,33 @@ void FetchResponseData::InitFromResourceResponse(ExecutionContext* context, netw
     for (auto& it : response.HttpHeaderFields())
         HeaderList()->Append(it.key, it.value);
 
-    // Corresponds to https://fetch.spec.whatwg.org/#main-fetch step:
-    // "If |internalResponse|’s URL list is empty, then set it to a clone of
-    // |request|’s URL list."
+    // The normal network response inherits the request URL list. Service workers
+    // may replace it with their response URL list.
+#if defined(MINI_UI_QUICKJS)
+    SetURLList(request_url_list);
+#else
     if (response.UrlListViaServiceWorker().empty()) {
-        // Note: |UrlListViaServiceWorker()| is empty, unless the response came from
-        // a service worker, in which case it will only be empty if it was created
-        // through new Response().
         SetURLList(request_url_list);
     } else {
         DCHECK(response.WasFetchedViaServiceWorker());
         SetURLList(response.UrlListViaServiceWorker());
     }
+#endif
 
     SetMimeType(response.MimeType());
     SetRequestMethod(request_method);
     SetResponseTime(response.ResponseTime());
+#if !defined(MINI_UI_QUICKJS)
     SetCacheStorageCacheName(response.CacheStorageCacheName());
+#endif
 
     if (response.WasCached()) {
         SetResponseSource(network::mojom::FetchResponseSource::kHttpCache);
+#if !defined(MINI_UI_QUICKJS)
     } else if (!response.WasFetchedViaServiceWorker()) {
+#else
+    } else {
+#endif
         SetResponseSource(network::mojom::FetchResponseSource::kNetwork);
     }
 
@@ -485,26 +510,19 @@ void FetchResponseData::InitFromResourceResponse(ExecutionContext* context, netw
 
     SetHasRangeRequested(response.HasRangeRequested());
 
-    // Use the explicit padding in the response provided by a service worker
-    // or compute a new padding if necessary.
+#if !defined(MINI_UI_QUICKJS)
+    // Apply storage padding to opaque/cache-storage responses.
     if (response.GetPadding()) {
         SetPadding(response.GetPadding());
-    } else {
-        if (storage::ShouldPadResponseType(response_type)) {
-            int64_t padding = response.WasCached() ? 
-                storage::ComputeStableResponsePadding(
-                    // TODO(https://crbug.com/1199077): Investigate the need to
-                    // have a specified storage key within the ExecutionContext
-                    // and if warranted change this to use the actual storage
-                    // key instead.
-                    blink::StorageKey::CreateFirstParty(context->GetSecurityOrigin()->ToUrlOrigin()),
-                    Url()->GetString().Utf8(), 
-                    ResponseTime(), 
-                    request_method.Utf8()) 
-                : storage::ComputeRandomResponsePadding();
-            SetPadding(padding);
-        }
+    } else if (storage::ShouldPadResponseType(response_type)) {
+        int64_t padding = response.WasCached()
+            ? storage::ComputeStableResponsePadding(
+                blink::StorageKey::CreateFirstParty(context->GetSecurityOrigin()->ToUrlOrigin()),
+                Url()->GetString().Utf8(), ResponseTime(), request_method.Utf8())
+            : storage::ComputeRandomResponsePadding();
+        SetPadding(padding);
     }
+#endif
 
     SetAuthChallengeInfo(response.AuthChallengeInfo());
     SetRequestIncludeCredentials(response.RequestIncludeCredentials());
@@ -512,7 +530,9 @@ void FetchResponseData::InitFromResourceResponse(ExecutionContext* context, netw
 
 FetchResponseData::FetchResponseData(Type type, network::mojom::FetchResponseSource source, uint16_t status, AtomicString status_message)
     : type_(type)
+#if !defined(MINI_UI_QUICKJS)
     , padding_(0)
+#endif
     , response_source_(source)
     , status_(status)
     , status_message_(status_message)

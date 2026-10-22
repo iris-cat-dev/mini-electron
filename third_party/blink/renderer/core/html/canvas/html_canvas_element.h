@@ -31,8 +31,10 @@
 #include <memory>
 
 #include "base/gtest_prod_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_blob_callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -45,10 +47,11 @@
 #include "third_party/blink/renderer/platform/bindings/v8_external_memory_accounter.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_host.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_types_3d.h"
 #include "third_party/blink/renderer/platform/graphics/offscreen_canvas_placeholder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/surface_layer_bridge.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
@@ -59,10 +62,14 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class CanvasHibernationHandler;
 class Canvas2DLayerBridge;
+#endif
 class CanvasContextCreationAttributesCore;
+#if !defined(MINI_UI_QUICKJS)
 class CanvasDrawListener;
+#endif
 class CanvasHighDynamicRangeOptions;
 class CanvasRenderingContext;
 class CanvasRenderingContextFactory;
@@ -70,21 +77,28 @@ class CanvasResourceProvider;
 class GraphicsContext;
 class HTMLCanvasElement;
 class ImageBitmapOptions;
+#if !defined(MINI_UI_QUICKJS)
 class StaticBitmapImageToVideoFrameCopier;
+#endif
 
-class CanvasRenderingContext2DOrWebGLRenderingContextOrWebGL2RenderingContextOrImageBitmapRenderingContextOrGPUCanvasContext;
-typedef CanvasRenderingContext2DOrWebGLRenderingContextOrWebGL2RenderingContextOrImageBitmapRenderingContextOrGPUCanvasContext RenderingContext;
 
+#if defined(MINI_UI_QUICKJS)
+// An HTML canvas owns a 2D or bitmap-renderer context, or acts as an
+// OffscreenCanvas placeholder.
+#else
 // This contains the information of HTML Canvas Element,
 // There are four different types of rendering context this HTML Canvas can own.
 // It can be a 3D Context (WebGL or WebGL2), 2D Context,
 // BitmapRenderingContext or it can have no context (Offscreen placeholder).
 // To check the no context case is good to check if there is a placeholder.
+#endif
 class CORE_EXPORT HTMLCanvasElement final : public HTMLElement,
                                             public ExecutionContextLifecycleObserver,
                                             public PageVisibilityObserver,
                                             public CanvasRenderingContextHost,
+#if !defined(MINI_UI_QUICKJS)
                                             public WebSurfaceLayerBridgeObserver,
+#endif
                                             public ImageBitmapSource,
                                             public OffscreenCanvasPlaceholder {
     DEFINE_WRAPPERTYPEINFO();
@@ -130,6 +144,7 @@ public:
     bool IsPresentationAttribute(const QualifiedName&) const final;
     void CollectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableCSSPropertyValueSet*) final;
 
+#if !defined(MINI_UI_QUICKJS)
     // Used for canvas capture.
     void AddListener(CanvasDrawListener*);
     void RemoveListener(CanvasDrawListener*);
@@ -138,6 +153,7 @@ public:
     {
         return !listeners_.empty();
     }
+#endif
 
     // Used for rendering
     void DidDraw(const SkIRect&) override;
@@ -156,14 +172,15 @@ public:
         origin_clean_ = false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     Canvas2DLayerBridge* GetCanvas2DLayerBridge()
     {
         return canvas2d_bridge_.get();
     }
 
     CanvasHibernationHandler* GetHibernationHandler() const;
-
     Canvas2DLayerBridge* GetOrCreateCanvas2DLayerBridge();
+#endif
 
     void DiscardResourceProvider() override;
 
@@ -206,10 +223,12 @@ public:
     bool IsOpaque() const override;
     bool IsAccelerated() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     // SurfaceLayerBridgeObserver implementation
     void OnWebLayerUpdated() override;
     void RegisterContentsLayer(cc::Layer*) override;
     void UnregisterContentsLayer(cc::Layer*) override;
+#endif
 
     // CanvasResourceHost implementation
     bool IsPageVisible() const override;
@@ -217,20 +236,28 @@ public:
     void SetNeedsCompositingUpdate() override;
     void UpdateMemoryUsage() override;
     size_t GetMemoryUsage() const override;
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldAccelerate2dContext() const override;
+#endif
     bool LowLatencyEnabled() const override;
     CanvasResourceProvider* GetOrCreateCanvasResourceProvider(RasterModeHint hint) override;
     bool IsPrinting() const override;
     void SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality) override;
+#if !defined(MINI_UI_QUICKJS)
     bool IsHibernating() const override;
     void SetTransferToGPUTextureWasInvoked() override;
     bool TransferToGPUTextureWasInvoked() override;
+#endif
 
     // CanvasRenderingContextHost implementation.
+#if !defined(MINI_UI_QUICKJS)
     UkmParameters GetUkmParameters() override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     void DisableAcceleration(std::unique_ptr<CanvasResourceProvider> new_provider_for_testing = nullptr);
     bool EnableAcceleration() final;
+#endif
 
     // ImageBitmapSource implementation
     gfx::Size BitmapSourceSize() const override;
@@ -240,7 +267,9 @@ public:
     void SetOffscreenCanvasResource(scoped_refptr<CanvasResource>&&, viz::ResourceId resource_id) override;
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetResourceProviderForTesting(std::unique_ptr<CanvasResourceProvider> provider, const gfx::Size& size);
+#endif
 
     static void RegisterRenderingContextFactory(std::unique_ptr<CanvasRenderingContextFactory>);
 
@@ -248,21 +277,28 @@ public:
     void StyleDidChange(const ComputedStyle* old_style, const ComputedStyle& new_style);
     void LayoutObjectDestroyed();
 
+#if !defined(MINI_UI_QUICKJS)
     void NotifyListenersCanvasChanged();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // For OffscreenCanvas that controls this html canvas element
+    // and for low-latency accelerated canvases.
     ::blink::SurfaceLayerBridge* SurfaceLayerBridge() const
     {
         return surface_layer_bridge_.get();
     }
     bool CreateLayer();
+#endif
 
     void DetachContext() override
     {
         context_ = nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void WillDrawImageTo2DContext(CanvasImageSource*);
+#endif
 
     ExecutionContext* GetTopExecutionContext() const override
     {
@@ -292,10 +328,12 @@ public:
     // return the settings from the frame. If it is a frameless element it will
     // try to fetch the global dom window and get the settings from there.
     Settings* GetSettings() const;
+#if !defined(MINI_UI_QUICKJS)
     bool IsWebGL1Enabled() const override;
     bool IsWebGL2Enabled() const override;
     bool IsWebGLBlocked() const override;
     void SetContextCreationWasBlocked() override;
+#endif
 
     bool NeedsUnbufferedInputEvents() const
     {
@@ -309,10 +347,12 @@ public:
 
     scoped_refptr<StaticBitmapImage> Snapshot(FlushReason, SourceDrawingBuffer) const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the cc layer containing the contents. It's the cc layer of
     // SurfaceLayerBridge() or RenderingContext(), or nullptr if the canvas is not
     // composited.
     cc::Layer* ContentsCcLayer() const;
+#endif
 
     // Return the image orientation setting from the layout object, if available.
     // In the absence of a layout object, kRespectImageOrientation will be
@@ -329,7 +369,9 @@ public:
         return IsOffscreenCanvasRegistered();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldDisableAccelerationBecauseOfReadback() const;
+#endif
 
 protected:
     void DidMoveToNewDocument(Document& old_document) override;
@@ -339,12 +381,15 @@ protected:
 private:
     void Dispose();
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/40280152): Remove parameter once the hibernation handler is
     // an instance variable of this class.
     CanvasResourceProvider* GetOrCreateCanvasResourceProviderFor2DContext(CanvasHibernationHandler& hibernation_handler);
+#endif
 
     void ColorSchemeMayHaveChanged();
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordIdentifiabilityMetric(IdentifiableSurface surface, IdentifiableToken value) const;
 
     // If the user is enrolled in the identifiability study, report the canvas
@@ -352,6 +397,7 @@ private:
     // |canvas_contents_token|, which represents the current bitmap displayed by
     // this canvas.
     void IdentifiabilityReportWithDigest(IdentifiableToken canvas_contents_token) const;
+#endif
 
     void PaintInternal(GraphicsContext&, const PhysicalRect&);
 
@@ -359,7 +405,9 @@ private:
     static ContextFactoryVector& RenderingContextFactories();
     static CanvasRenderingContextFactory* GetRenderingContextFactory(int);
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldAccelerate() const;
+#endif
     void ParseAttribute(const AttributeModificationParams&) override;
     LayoutObject* CreateLayoutObject(const ComputedStyle&) override;
     bool AreAuthorShadowsAllowed() const override
@@ -391,11 +439,15 @@ private:
 
     FRIEND_TEST_ALL_PREFIXES(HTMLCanvasElementTest, BrokenCanvasHighRes);
 
+#if !defined(MINI_UI_QUICKJS)
     HeapHashSet<WeakMember<CanvasDrawListener>> listeners_;
+#endif
 
     Member<CanvasRenderingContext> context_;
+#if !defined(MINI_UI_QUICKJS)
     // Used only for WebGL currently.
     bool context_creation_was_blocked_;
+#endif
 
     bool disposing_ = false;
     bool canvas_is_clear_ = true;
@@ -407,6 +459,7 @@ private:
     bool needs_unbuffered_input_ = false;
     bool style_is_visible_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Canvas2DLayerBridge is used when canvas has 2d rendering context
     std::unique_ptr<Canvas2DLayerBridge> canvas2d_bridge_;
     void ReplaceExisting2dLayerBridge(std::unique_ptr<CanvasResourceProvider> new_provider_for_testing = nullptr);
@@ -414,14 +467,16 @@ private:
     // Used for OffscreenCanvas that controls this HTML canvas element
     // and for low latency mode.
     std::unique_ptr<::blink::SurfaceLayerBridge> surface_layer_bridge_;
+#endif
 
     // Used for low latency mode.
     // TODO: rename to CanvasFrameDispatcher.
     std::unique_ptr<CanvasResourceDispatcher> frame_dispatcher_;
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<StaticBitmapImageToVideoFrameCopier> copier_;
-
     bool did_notify_listeners_for_current_frame_ = false;
+#endif
 
     // GPU Memory Management
     mutable intptr_t externally_allocated_memory_;

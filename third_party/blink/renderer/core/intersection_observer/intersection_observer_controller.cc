@@ -131,6 +131,7 @@ bool IntersectionObserverController::ComputeIntersections(
         "IntersectionObserverController::"
         "computeIntersections");
 
+#if !defined(MINI_UI_QUICKJS)
     int64_t internal_observation_count = 0;
     int64_t javascript_observation_count = 0;
 
@@ -139,22 +140,31 @@ bool IntersectionObserverController::ComputeIntersections(
     if (metrics_aggregator) {
         metrics_timer.emplace(*metrics_aggregator);
     }
+#endif
 
     auto compute_observer_intersections = [&](IntersectionObserver& observer, const auto& observations) {
         CHECK(!observations.empty());
         needs_occlusion_tracking_ |= observer.trackVisibility();
+#if !defined(MINI_UI_QUICKJS)
         if (metrics_timer && observer.GetUkmMetricId()) {
             metrics_timer->StartInterval(observer.GetUkmMetricId().value());
         }
         int64_t count = 0;
+#endif
         for (auto& observation : observations) {
+#if defined(MINI_UI_QUICKJS)
+            observation->ComputeIntersection(flags, accumulated_scroll_delta_since_last_update, context);
+#else
             count += observation->ComputeIntersection(flags, accumulated_scroll_delta_since_last_update, context);
+#endif
         }
+#if !defined(MINI_UI_QUICKJS)
         if (observer.IsInternal()) {
             internal_observation_count += count;
         } else {
             javascript_observation_count += count;
         }
+#endif
     };
 
     HeapVector<Member<IntersectionObserver>> observers_to_remove;
@@ -175,10 +185,12 @@ bool IntersectionObserverController::ComputeIntersections(
         compute_observer_intersections(*observer, observations);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (metrics_aggregator) {
         metrics_aggregator->RecordCountSample(LocalFrameUkmAggregator::kIntersectionObservationInternalCount, internal_observation_count);
         metrics_aggregator->RecordCountSample(LocalFrameUkmAggregator::kIntersectionObservationJavascriptCount, javascript_observation_count);
     }
+#endif
 
     base::TimeDelta delay = context.GetAndResetNextRunDelay();
     if (delay.is_positive()) {

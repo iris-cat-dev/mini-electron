@@ -70,7 +70,9 @@ public:
     // both composited and non-composited animations.
     void UpdateAnimations(DocumentLifecycle::LifecycleState required_lifecycle_state, const PaintArtifactCompositor*, bool compositor_properties_updated);
 
+#if !defined(MINI_UI_QUICKJS)
     size_t GetAnimationsCount();
+#endif
 
     void MarkAnimationsCompositorPending();
 
@@ -78,8 +80,10 @@ public:
 
     // Detach compositor timelines to prevent further ticking of any animations
     // associated with the timelines.  Detached timelines may be subsequently
-    // reattached if needed.
+#if !defined(MINI_UI_QUICKJS)
+    // Detaches timelines from the hardware compositor.
     void DetachCompositorTimelines();
+#endif
 
     const HeapHashSet<WeakMember<AnimationTimeline>>& GetTimelinesForTesting() const
     {
@@ -94,7 +98,9 @@ protected:
     void RemoveReplacedAnimations(ReplaceableAnimationsMap*);
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void MarkPendingIfCompositorPropertyAnimationChanges(const PaintArtifactCompositor*);
+#endif
 
     Member<Document> document_;
     HeapHashSet<WeakMember<AnimationTimeline>> timelines_;

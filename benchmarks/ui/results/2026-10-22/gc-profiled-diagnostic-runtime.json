@@ -1,0 +1,33 @@
+{
+  "command": [
+    "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\benchmark-teardown195\\ui-benchmark.exe",
+    "--framework",
+    "vue",
+    "--rows",
+    "1000",
+    "--warmups",
+    "2",
+    "--iterations",
+    "7",
+    "--resource-root",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "--output",
+    "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-teardown195.json",
+    "--capture",
+    "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-teardown195.bmp",
+    "--width",
+    "1280",
+    "--height",
+    "720",
+    "--device-scale",
+    "1",
+    "--timeout-ms",
+    "900000"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 169.4744769999961,
+  "stderr": "Workload assertions and populated capture complete; releasing the view.\nView released; returning from benchmark main.\n",
+  "stdout": "",
+  "library_sha256": "71119a1b1656d6e4a1ef1565d6eabedcc88f161e97a9d7858c664b58fc5f3fe8",
+  "profiling": "CDB attach after genuine workload-complete milestone; this diagnostic time is not a performance sample"
+}

@@ -6,7 +6,9 @@
 
 #include "third_party/blink/renderer/core/css/css_selector_list.h"
 #include "third_party/blink/renderer/core/css/style_scope.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/invalidation_set_to_selector_map.h"
+#endif
 
 namespace blink {
 
@@ -130,9 +132,11 @@ bool SupportsInvalidation(CSSSelector::PseudoType type)
     case CSSSelector::kPseudoFullScreenAncestor:
     case CSSSelector::kPseudoFullscreen:
     case CSSSelector::kPseudoPaused:
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoPermissionElementInvalidStyle:
     case CSSSelector::kPseudoPermissionElementOccluded:
     case CSSSelector::kPseudoPermissionGranted:
+#endif
     case CSSSelector::kPseudoPictureInPicture:
     case CSSSelector::kPseudoPlaying:
     case CSSSelector::kPseudoInRange:
@@ -172,6 +176,7 @@ bool SupportsInvalidation(CSSSelector::PseudoType type)
     case CSSSelector::kPseudoHas:
     case CSSSelector::kPseudoUnparsed: // Never invalidates.
     case CSSSelector::kPseudoTrue:
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoViewTransition:
     case CSSSelector::kPseudoViewTransitionGroup:
     case CSSSelector::kPseudoViewTransitionImagePair:
@@ -179,6 +184,7 @@ bool SupportsInvalidation(CSSSelector::PseudoType type)
     case CSSSelector::kPseudoViewTransitionOld:
     case CSSSelector::kPseudoActiveViewTransition:
     case CSSSelector::kPseudoActiveViewTransitionType:
+#endif
     case CSSSelector::kPseudoHasSlotted:
         return true;
     case CSSSelector::kPseudoUnknown:
@@ -1411,9 +1417,11 @@ RuleInvalidationDataVisitor<VisitorType>::InvalidationSetType* RuleInvalidationD
         case CSSSelector::kPseudoFullScreenAncestor:
         case CSSSelector::kPseudoFullscreen:
         case CSSSelector::kPseudoPaused:
+#if !defined(MINI_UI_QUICKJS)
         case CSSSelector::kPseudoPermissionElementInvalidStyle:
         case CSSSelector::kPseudoPermissionElementOccluded:
         case CSSSelector::kPseudoPermissionGranted:
+#endif
         case CSSSelector::kPseudoPictureInPicture:
         case CSSSelector::kPseudoPlaying:
         case CSSSelector::kPseudoInRange:
@@ -1429,8 +1437,10 @@ RuleInvalidationDataVisitor<VisitorType>::InvalidationSetType* RuleInvalidationD
         case CSSSelector::kPseudoMultiSelectFocus:
         case CSSSelector::kPseudoModal:
         case CSSSelector::kPseudoSelectorFragmentAnchor:
+#if !defined(MINI_UI_QUICKJS)
         case CSSSelector::kPseudoActiveViewTransition:
         case CSSSelector::kPseudoActiveViewTransitionType:
+#endif
         case CSSSelector::kPseudoHasSlotted:
             return EnsurePseudoInvalidationSet(selector.GetPseudoType(), type, position, in_nth_child);
         case CSSSelector::kPseudoFirstOfType:
@@ -1605,32 +1615,42 @@ void RuleInvalidationDataVisitor<VisitorType>::AddFeaturesToInvalidationSet(Inva
         if constexpr (is_builder()) {
             invalidation_set->AddId(id);
         }
+#if !defined(MINI_UI_QUICKJS)
         InvalidationSetToSelectorMap::RecordInvalidationSetEntry(invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kId, id);
+#endif
     }
     for (const auto& tag_name : features.tag_names) {
         if constexpr (is_builder()) {
             invalidation_set->AddTagName(tag_name);
         }
+#if !defined(MINI_UI_QUICKJS)
         InvalidationSetToSelectorMap::RecordInvalidationSetEntry(invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kTagName, tag_name);
+#endif
     }
     for (const auto& emitted_tag_name : features.emitted_tag_names) {
         if constexpr (is_builder()) {
             invalidation_set->AddTagName(emitted_tag_name);
         }
+#if !defined(MINI_UI_QUICKJS)
         InvalidationSetToSelectorMap::RecordInvalidationSetEntry(
             invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kTagName, emitted_tag_name);
+#endif
     }
     for (const auto& class_name : features.classes) {
         if constexpr (is_builder()) {
             invalidation_set->AddClass(class_name);
         }
+#if !defined(MINI_UI_QUICKJS)
         InvalidationSetToSelectorMap::RecordInvalidationSetEntry(invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kClass, class_name);
+#endif
     }
     for (const auto& attribute : features.attributes) {
         if constexpr (is_builder()) {
             invalidation_set->AddAttribute(attribute);
         }
+#if !defined(MINI_UI_QUICKJS)
         InvalidationSetToSelectorMap::RecordInvalidationSetEntry(invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kAttribute, attribute);
+#endif
     }
     if (features.invalidation_flags.InvalidateCustomPseudo()) {
         if constexpr (is_builder()) {
@@ -1645,7 +1665,9 @@ void RuleInvalidationDataVisitor<VisitorType>::SetWholeSubtreeInvalid(Invalidati
     if constexpr (is_builder()) {
         invalidation_set->SetWholeSubtreeInvalid();
     }
+#if !defined(MINI_UI_QUICKJS)
     InvalidationSetToSelectorMap::RecordInvalidationSetEntry(invalidation_set, InvalidationSetToSelectorMap::SelectorFeatureType::kWholeSubtree, g_empty_atom);
+#endif
 }
 
 template <RuleInvalidationDataVisitorType VisitorType> void RuleInvalidationDataVisitor<VisitorType>::SetInvalidatesSelf(InvalidationSetType* invalidation_set)

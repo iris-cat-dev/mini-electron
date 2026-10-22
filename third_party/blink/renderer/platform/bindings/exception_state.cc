@@ -68,10 +68,12 @@ NOINLINE void ExceptionState::ThrowTypeError(const char* message)
     ThrowTypeError(String(message));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 NOINLINE void ExceptionState::ThrowWasmCompileError(const char* message)
 {
     ThrowWasmCompileError(String(message));
 }
+#endif
 
 NOINLINE void ExceptionState::ThrowDOMException(DOMExceptionCode exception_code, const char* message)
 {
@@ -142,6 +144,7 @@ void ExceptionState::ThrowTypeError(const String& message)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ExceptionState::ThrowWasmCompileError(const String& message)
 {
 #if DCHECK_IS_ON()
@@ -152,6 +155,7 @@ void ExceptionState::ThrowWasmCompileError(const String& message)
         V8ThrowException::ThrowWasmCompileError(isolate_, message);
     }
 }
+#endif
 
 void ExceptionState::RethrowV8Exception(v8::TryCatch& try_catch)
 {

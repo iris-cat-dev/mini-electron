@@ -74,13 +74,16 @@
 #include "third_party/blink/renderer/core/html/html_table_cell_element.h"
 #include "third_party/blink/renderer/core/html/html_table_element.h"
 #include "third_party/blink/renderer/core/html/image_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
-#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/intersection_observer/element_intersection_observer_data.h"
 #include "third_party/blink/renderer/core/layout/block_node.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/custom/layout_custom.h"
+#endif
 #include "third_party/blink/renderer/core/layout/flex/layout_flexible_box.h"
 #include "third_party/blink/renderer/core/layout/forms/layout_fieldset.h"
 #include "third_party/blink/renderer/core/layout/geometry/transform_state.h"
@@ -147,6 +150,46 @@
 #include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
+namespace layout_invalidation_reason {
+const char kUnknown[] = "Unknown";
+const char kSizeChanged[] = "Size changed";
+const char kAncestorMoved[] = "Ancestor moved";
+const char kStyleChange[] = "Style changed";
+const char kDomChanged[] = "DOM changed";
+const char kTextChanged[] = "Text changed";
+const char kPrintingChanged[] = "Printing changed";
+const char kPaintPreview[] = "Enter/exit paint preview";
+const char kAttributeChanged[] = "Attribute changed";
+const char kColumnsChanged[] = "Attribute changed";
+const char kChildAnonymousBlockChanged[] = "Child anonymous block changed";
+const char kAnonymousBlockChange[] = "Anonymous block change";
+const char kFontsChanged[] = "Fonts changed";
+const char kFullscreen[] = "Fullscreen change";
+const char kChildChanged[] = "Child changed";
+const char kListValueChange[] = "List value change";
+const char kListStyleTypeChange[] = "List style type change";
+const char kCounterStyleChange[] = "Counter style change";
+const char kImageChanged[] = "Image changed";
+const char kSliderValueChanged[] = "Slider value changed";
+const char kAncestorMarginCollapsing[] = "Ancestor margin collapsing";
+const char kFieldsetChanged[] = "Fieldset changed";
+const char kTextAutosizing[] = "Text autosizing (font boosting)";
+const char kSvgResourceInvalidated[] = "SVG resource invalidated";
+const char kFloatDescendantChanged[] = "Floating descendant changed";
+const char kCountersChanged[] = "Counters changed";
+const char kGridChanged[] = "Grid changed";
+const char kMenuOptionsChanged[] = "Menu options changed";
+const char kRemovedFromLayout[] = "Removed from layout";
+const char kAddedToLayout[] = "Added to layout";
+const char kTableChanged[] = "Table changed";
+const char kPaddingChanged[] = "Padding changed";
+const char kTextControlChanged[] = "Text control changed";
+const char kSvgChanged[] = "SVG changed";
+const char kScrollbarChanged[] = "Scrollbar changed";
+const char kDisplayLock[] = "Display lock";
+const char kDevtools[] = "Inspected by devtools";
+const char kAnchorPositioning[] = "Anchor positioning";
+} // namespace layout_invalidation_reason
 
 namespace {
 
@@ -403,9 +446,11 @@ LayoutObject* LayoutObject::CreateObject(Element* element, const ComputedStyle& 
         return MakeGarbageCollected<LayoutRubyAsBlock>(element);
     case EDisplay::kRubyText:
         return MakeGarbageCollected<LayoutInline>(element);
+#if !defined(MINI_UI_QUICKJS)
     case EDisplay::kLayoutCustom:
     case EDisplay::kInlineLayoutCustom:
         return MakeGarbageCollected<LayoutCustom>(element);
+#endif
     }
 
     NOTREACHED();
@@ -1263,9 +1308,10 @@ LayoutBlockFlow* LayoutObject::FragmentItemsContainer() const
 LayoutBox* LayoutObject::ContainingNGBox() const
 {
     NOT_DESTROYED();
-    if (Parent() && Parent()->IsMedia()) {
+#if !defined(MINI_UI_QUICKJS)
+    if (Parent() && Parent()->IsMedia())
         return To<LayoutBox>(Parent());
-    }
+#endif
     LayoutBlock* containing_block = ContainingBlock();
     if (!containing_block)
         return nullptr;
@@ -1817,9 +1863,11 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle* style) const
     NOT_DESTROYED();
     if (!style)
         return false;
+#if !defined(MINI_UI_QUICKJS)
     if (IsViewTransitionRoot()) {
         return true;
     }
+#endif
     bool is_document_element = IsDocumentElement();
     // https://www.w3.org/TR/filter-effects-1/#FilterProperty
     if (!is_document_element && style->HasNonInitialFilter())
@@ -2916,10 +2964,12 @@ void LayoutObject::StyleWillChange(StyleDifference diff, const ComputedStyle& ne
         }
         MarkEffectiveAllowedTouchActionChanged();
     }
+#if !defined(MINI_UI_QUICKJS)
     if (is_document_element && style_ && style_->Opacity() == 0.0f && new_style.Opacity() != 0.0f) {
         if (LocalFrameView* frame_view = GetFrameView())
             frame_view->GetPaintTimingDetector().ReportIgnoredContent();
     }
+#endif
 }
 
 static bool AreNonIdenticalCursorListsEqual(const ComputedStyle* a, const ComputedStyle* b)
@@ -2972,7 +3022,11 @@ bool LayoutObject::BelongsToElementChangingOverflowBehaviour() const
     if (!element)
         return false;
 
+#if defined(MINI_UI_QUICKJS)
+    return IsA<HTMLCanvasElement>(element) || IsA<HTMLImageElement>(element);
+#else
     return IsA<HTMLVideoElement>(element) || IsA<HTMLCanvasElement>(element) || IsA<HTMLImageElement>(element);
+#endif
 }
 
 void LayoutObject::StyleDidChange(StyleDifference diff, const ComputedStyle* old_style)
@@ -3722,7 +3776,9 @@ void LayoutObject::WillBeRemovedFromTree()
     }
 
     if (LocalFrameView* frame_view = GetFrameView()) {
+#if !defined(MINI_UI_QUICKJS)
         frame_view->GetPaintTimingDetector().LayoutObjectWillBeDestroyed(*this);
+#endif
         frame_view->SetIntersectionObservationState(LocalFrameView::kDesired);
     }
 }
@@ -4151,8 +4207,10 @@ void LayoutObject::ImageNotifyFinished(ImageResourceContent* image)
 
     if (LocalDOMWindow* window = GetDocument().domWindow())
         ImageElementTiming::From(*window).NotifyImageFinished(*this, image);
+#if !defined(MINI_UI_QUICKJS)
     if (LocalFrameView* frame_view = GetFrameView())
         frame_view->GetPaintTimingDetector().NotifyImageFinished(*this, image);
+#endif
 }
 
 Element* LayoutObject::OffsetParent(const Element* base) const
@@ -4212,8 +4270,10 @@ void LayoutObject::NotifyImageFullyRemoved(ImageResourceContent* image)
     NOT_DESTROYED();
     if (LocalDOMWindow* window = GetDocument().domWindow())
         ImageElementTiming::From(*window).NotifyImageRemoved(this, image);
+#if !defined(MINI_UI_QUICKJS)
     if (LocalFrameView* frame_view = GetFrameView())
         frame_view->GetPaintTimingDetector().NotifyImageRemoved(*this, image);
+#endif
 }
 
 PositionWithAffinity LayoutObject::CreatePositionWithAffinity(int offset, TextAffinity affinity) const

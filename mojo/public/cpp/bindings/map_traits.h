@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -52,12 +52,13 @@ namespace mojo {
 //     static void SetToEmpty(CustomMap<K, V>* output);
 //   };
 //
-template <typename T> struct MapTraits {
-    static_assert(internal::AlwaysFalse<T>::value,
-        "Cannot find the mojo::MapTraits specialization. Did you "
-        "forget to include the corresponding header file?");
+template <typename T>
+struct MapTraits {
+  static_assert(internal::AlwaysFalse<T>::value,
+                "Cannot find the mojo::MapTraits specialization. Did you "
+                "forget to include the corresponding header file?");
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_MAP_TRAITS_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_MAP_TRAITS_H_

@@ -85,9 +85,11 @@ public:
     bool UserInputScrollable(ScrollbarOrientation) const override;
     bool ShouldPlaceVerticalScrollbarOnLeft() const override;
     void ScrollControlWasSetNeedsPaintInvalidation() override;
+#if !defined(MINI_UI_QUICKJS)
     cc::Layer* LayerForHorizontalScrollbar() const override;
     cc::Layer* LayerForVerticalScrollbar() const override;
     cc::Layer* LayerForScrollCorner() const override;
+#endif
     int HorizontalScrollbarHeight(OverlayScrollbarClipBehavior = kIgnoreOverlayScrollbarSize) const override;
     int VerticalScrollbarWidth(OverlayScrollbarClipBehavior = kIgnoreOverlayScrollbarSize) const override;
     ScrollResult UserScroll(ui::ScrollGranularity, const ScrollOffset&, ScrollableArea::ScrollCallback on_finish) override;
@@ -151,7 +153,9 @@ public:
     std::optional<cc::ElementId> GetTargetedSnapAreaId() override;
     void SetTargetedSnapAreaId(const std::optional<cc::ElementId>&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void DropCompositorScrollDeltaNextCommit() override;
+#endif
 
 private:
     FRIEND_TEST_ALL_PREFIXES(RootFrameViewportTest, DistributeScrollOrder);

@@ -30,7 +30,9 @@
 #include <memory>
 
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/mojom/content_security_policy.mojom-blink.h"
 #include "services/network/public/mojom/storage_access_api.mojom-blink.h"
@@ -74,7 +76,9 @@ class DOMVisualViewport;
 class Element;
 class ExceptionState;
 class External;
+#if !defined(MINI_UI_QUICKJS)
 class Fence;
+#endif
 class FrameConsole;
 class History;
 class InputMethodController;
@@ -157,7 +161,9 @@ public:
 
     void ResetWindowAgent(WindowAgent*);
 
+#if !defined(MINI_UI_QUICKJS)
     mojom::blink::V8CacheOptions GetV8CacheOptions() const override;
+#endif
 
     // Bind Content Security Policy to this window. This will cause the
     // CSP to resolve the 'self' attribute and all policies will then be
@@ -172,20 +178,26 @@ public:
         return true;
     }
     bool IsContextThread() const final;
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldInstallV8Extensions() const final;
+#endif
     ContentSecurityPolicy* GetContentSecurityPolicyForWorld(const DOMWrapperWorld* world) final;
     const KURL& Url() const final;
     const KURL& BaseURL() const final;
     KURL CompleteURL(const String&) const final;
     void DisableEval(const String& error_message) final;
+#if !defined(MINI_UI_QUICKJS)
     void SetWasmEvalErrorMessage(const String& error_message) final;
+#endif
     String UserAgent() const final;
     UserAgentMetadata GetUserAgentMetadata() const final;
     HttpsState GetHttpsState() const final;
     ResourceFetcher* Fetcher() final;
     bool CanExecuteScripts(ReasonForCallingCanExecuteScripts) final;
     void ExceptionThrown(ErrorEvent*) final;
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssue(AuditsIssue) final;
+#endif
     EventTarget* ErrorEventTarget() final
     {
         return this;
@@ -472,8 +484,10 @@ public:
     bool CrossOriginIsolatedCapability() const override;
     bool IsIsolatedContext() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     // These delegate to the document_.
     ukm::UkmRecorder* UkmRecorder() override;
+#endif
     ukm::SourceId UkmSourceID() const override;
 
     const BlinkStorageKey& GetStorageKey() const
@@ -512,7 +526,9 @@ public:
 
     bool IsInFencedFrame() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     Fence* fence();
+#endif
 
     CloseWatcher::WatcherStack* closewatcher_stack()
     {
@@ -540,12 +556,15 @@ public:
     // the status.
     void SetStorageAccessApiStatus(net::StorageAccessApiStatus status);
 
+#if !defined(MINI_UI_QUICKJS)
     // https://html.spec.whatwg.org/multipage/browsing-the-web.html#has-been-revealed
     bool HasBeenRevealed() const
     {
         return has_been_revealed_;
     }
     void SetHasBeenRevealed(bool revealed);
+
+#endif
 
 protected:
     // EventTarget overrides.
@@ -666,9 +685,11 @@ private:
     // of the back-forward cache.
     size_t total_bytes_buffered_while_in_back_forward_cache_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Collection of fenced frame APIs.
     // https://github.com/shivanigithub/fenced-frame/issues/14
     Member<Fence> fence_;
+#endif
 
     Member<CloseWatcher::WatcherStack> closewatcher_stack_;
 
@@ -690,8 +711,11 @@ private:
     // per-LocalDOMWindow class in the payments module.
     bool had_activationless_payment_request_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // https://html.spec.whatwg.org/multipage/browsing-the-web.html#has-been-revealed
     bool has_been_revealed_ = false;
+
+#endif
 
     // Used to indicate if the DOM window is reused or not.
     bool is_dom_window_reused_ = false;

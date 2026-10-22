@@ -34,13 +34,18 @@
 #include <optional>
 #include <string>
 
+#if defined(MINI_UI_QUICKJS)
+#include "runtime/ui/bindings_initializer.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/remote.h"
-#include "net/base/filename_util.h"
 #include "third_party/blink/public/mojom/file/file_utilities.mojom-blink.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+#include "third_party/blink/renderer/platform/mojo/mojo_binding_context.h"
+#endif
+#include "net/base/filename_util.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/web_string.h"
-#include "third_party/blink/renderer/platform/mojo/mojo_binding_context.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "url/gurl.h"
 
@@ -70,22 +75,31 @@ bool GetFileSize(const String& path, const MojoBindingContext& context, int64_t&
 
 bool GetFileMetadata(const String& path, const MojoBindingContext& context, FileMetadata& metadata)
 {
+#if defined(MINI_UI_QUICKJS)
+    base::File::Info file_info;
+    if (!mini_ui::GetLocalFileInfo(
+            context, WebStringToFilePath(WebString(path)), &file_info))
+        return false;
+    metadata = FileMetadata::From(file_info);
+    return true;
+#else
     mojo::Remote<mojom::blink::FileUtilitiesHost> host;
     context.GetBrowserInterfaceBroker().GetInterface(host.BindNewPipeAndPassReceiver());
 
     std::optional<base::File::Info> file_info;
-    if (!host->GetFileInfo(WebStringToFilePath(path), &file_info) || !file_info)
+    if (!host->GetFileInfo(WebStringToFilePath(WebString(path)), &file_info) || !file_info)
         return false;
 
     metadata.modification_time = NullableTimeToOptionalTime(file_info->last_modified);
     metadata.length = file_info->size;
     metadata.type = file_info->is_directory ? FileMetadata::kTypeDirectory : FileMetadata::kTypeFile;
     return true;
+#endif
 }
 
 KURL FilePathToURL(const String& path)
 {
-    base::FilePath file_path = WebStringToFilePath(path);
+    base::FilePath file_path = WebStringToFilePath(WebString(path));
 #if BUILDFLAG(IS_ANDROID)
     GURL gurl = file_path.IsContentUri() ? GURL(file_path.value()) : net::FilePathToFileURL(file_path);
 #else

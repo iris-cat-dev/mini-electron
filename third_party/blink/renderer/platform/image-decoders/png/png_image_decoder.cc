@@ -47,7 +47,11 @@
 
 #include "base/containers/adapters.h"
 #include "base/numerics/checked_math.h"
+#if defined(MINI_UI_QUICKJS)
+#include "skia/ext/cicp.h"
+#else
 #include "media/base/video_color_space.h"
+#endif
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/modules/skcms/skcms.h"
 
@@ -221,11 +225,16 @@ static std::unique_ptr<ColorProfile> ParseCicpChunk(const png_unknown_chunk& chu
     if (range_u8 != 0 && range_u8 != 1) {
         return nullptr;
     }
-    const auto range = range_u8 == 1 ? gfx::ColorSpace::RangeID::FULL : gfx::ColorSpace::RangeID::LIMITED;
-    if (range == gfx::ColorSpace::RangeID::LIMITED) {
+    if (range_u8 == 0) {
         // TODO(crbug/1339019): Implement this if needed.
         DLOG(WARNING) << "Limited range RGB is not fully supported";
     }
+#if defined(MINI_UI_QUICKJS)
+    // Samples follow the existing full-range RGB path after range validation.
+    sk_sp<SkColorSpace> sk_color_space = skia::CICPGetSkColorSpace(
+        primaries, trc, 0, 1, /*prefer_srgb_trfn=*/true);
+#else
+    const auto range = range_u8 == 1 ? gfx::ColorSpace::RangeID::FULL : gfx::ColorSpace::RangeID::LIMITED;
     media::VideoColorSpace color_space(primaries, trc, 0, range);
 
     // If not valid, do not return anything.
@@ -234,6 +243,7 @@ static std::unique_ptr<ColorProfile> ParseCicpChunk(const png_unknown_chunk& chu
     }
 
     sk_sp<SkColorSpace> sk_color_space = color_space.ToGfxColorSpace().GetAsFullRangeRGB().ToSkColorSpace();
+#endif
     if (!sk_color_space) {
         return nullptr;
     }

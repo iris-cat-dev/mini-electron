@@ -125,7 +125,11 @@ void JobTaskSource::WillEnqueue(int sequence_num, TaskAnnotator& annotator)
         return;
     }
     task_metadata_.sequence_num = sequence_num;
-    annotator.WillQueueTask("ThreadPool_PostJob", &task_metadata_);
+    annotator.WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+        "ThreadPool_PostJob",
+#endif
+        &task_metadata_);
 }
 
 bool JobTaskSource::WillJoin()

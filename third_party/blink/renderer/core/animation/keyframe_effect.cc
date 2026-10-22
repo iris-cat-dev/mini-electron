@@ -166,7 +166,13 @@ KeyframeEffect* KeyframeEffect::Create(ScriptState* script_state, Element* eleme
             AtomicString pseudo_argument = WTF::g_null_atom;
 
             PseudoId pseudo_id = CSSSelectorParser::ParsePseudoElement(pseudo, element, pseudo_argument);
-            effect->effect_target_ = element->GetStyledPseudoElement(pseudo_id, pseudo_argument);
+#if !defined(MINI_UI_QUICKJS)
+            effect->effect_target_ =
+                element->GetStyledPseudoElement(pseudo_id, pseudo_argument);
+#else
+            effect->effect_target_ =
+                element->GetStyledPseudoElement(pseudo_id);
+#endif
         }
     }
     return effect;
@@ -249,7 +255,11 @@ void KeyframeEffect::RefreshTarget()
         target_element_->GetDocument().UpdateStyleAndLayoutTreeForElement(target_element_, DocumentUpdateReason::kWebAnimation);
         AtomicString argument;
         PseudoId pseudoId = CSSSelectorParser::ParsePseudoElement(target_pseudo_, target_element_, argument);
+#if !defined(MINI_UI_QUICKJS)
         new_target = target_element_->GetPseudoElement(pseudoId, argument);
+#else
+        new_target = target_element_->GetPseudoElement(pseudoId);
+#endif
     }
 
     if (new_target != effect_target_) {
@@ -350,6 +360,7 @@ void KeyframeEffect::NotifySampledEffectRemovedFromEffectStack()
     sampled_effect_ = nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CompositorAnimations::FailureReasons KeyframeEffect::CheckCanStartAnimationOnCompositor(
     const PaintArtifactCompositor* paint_artifact_compositor, double animation_playback_rate, PropertyHandleSet* unsupported_properties) const
 {
@@ -460,6 +471,7 @@ void KeyframeEffect::AttachCompositedLayers()
     }
     CompositorAnimations::AttachCompositedLayers(*effect_target_, compositor_animation);
 }
+#endif
 
 bool KeyframeEffect::HasAnimation() const
 {
@@ -518,6 +530,7 @@ bool KeyframeEffect::UpdateBoxSizeAndCheckTransformAxisAlignment(const gfx::Size
     if (!has_transform)
         return true;
 
+#if !defined(MINI_UI_QUICKJS)
     if (HasAnimation()) {
         if (effect_target_size_) {
             if ((size_dependencies & TransformOperation::kDependsWidth) && (effect_target_size_->width() != box_size.width()))
@@ -528,10 +541,12 @@ bool KeyframeEffect::UpdateBoxSizeAndCheckTransformAxisAlignment(const gfx::Size
     }
 
     effect_target_size_ = box_size;
+#endif
 
     return preserves_axis_alignment;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void KeyframeEffect::RestartRunningAnimationOnCompositor()
 {
     Animation* animation = GetAnimation();
@@ -545,6 +560,7 @@ void KeyframeEffect::RestartRunningAnimationOnCompositor()
 
     animation->RestartAnimationOnCompositor();
 }
+#endif
 
 bool KeyframeEffect::IsIdentityOrTranslation() const
 {
@@ -575,9 +591,11 @@ void KeyframeEffect::ApplyEffects()
     if (!effect_target_ || !model_->HasFrames())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     if (GetAnimation() && HasIncompatibleStyle()) {
         GetAnimation()->CancelAnimationOnCompositor();
     }
+#endif
 
     std::optional<double> iteration = CurrentIteration();
     DCHECK(iteration);
@@ -631,8 +649,10 @@ void KeyframeEffect::ClearEffects()
     }
     sampled_effect_->Clear();
     sampled_effect_ = nullptr;
+#if !defined(MINI_UI_QUICKJS)
     if (GetAnimation())
         GetAnimation()->RestartAnimationOnCompositor();
+#endif
     if (!effect_target_->GetDocument().Lifecycle().InDetach()) {
         effect_target_->SetNeedsAnimationStyleRecalc();
     }
@@ -740,6 +760,7 @@ std::optional<AnimationTimeDelta> KeyframeEffect::TimelineDuration() const
     return std::nullopt;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // Returns true if transform, translate, rotate or scale is composited
 // and a motion path or other transform properties
 // has been introduced on the element
@@ -778,6 +799,7 @@ bool KeyframeEffect::AffectsImportantProperty() const
 
     return false;
 }
+#endif
 
 ActiveInterpolationsMap KeyframeEffect::InterpolationsForCommitStyles()
 {

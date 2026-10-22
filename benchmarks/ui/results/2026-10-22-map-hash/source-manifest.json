@@ -1,0 +1,47 @@
+{
+  "scope": "This optimization round only. One production source change; collection regression coverage and benchmark records. Rejected facade/atom experiments reverted.",
+  "changed_sources": [
+    {
+      "path": "third_party/quickjs/quickjs.c",
+      "bytes": 1888261,
+      "sha256": "39678f2a943340c6085f2b3494972d5479890b4ab5413f8a3c2503085e265b8d",
+      "previous_sha256": "3a37e32e3787bd629aae6c7e67a55d444aff7db688344d449fd29a8e6cdb7494"
+    },
+    {
+      "path": "benchmarks/ui/runtime_checks.cc",
+      "bytes": 63897,
+      "sha256": "3bc9a94b3ecd6820202864853dd9ee3d214aed5a79c01e00d3626b2cce29fb60",
+      "previous_sha256": "b1bf26ff294df0e536d9732fa3f98fdc1b8a1f15a5c42976742908f95d5cc2a9"
+    }
+  ],
+  "unchanged_rejected_experiment_sources": [
+    {
+      "path": "third_party/quickjs/quickjs.h",
+      "bytes": 64066,
+      "sha256": "af8f0e64d22daa8745b9e1e944fd1d36790699a575a3a195758d2cde54575ff9",
+      "previous_sha256": "af8f0e64d22daa8745b9e1e944fd1d36790699a575a3a195758d2cde54575ff9",
+      "matches_previous": true
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_objects.cc",
+      "bytes": 145658,
+      "sha256": "e3883c3cb044fe04b1f5ae8937763bef8f9498e458cb72869eceebaddd0da8c3",
+      "previous_sha256": "e3883c3cb044fe04b1f5ae8937763bef8f9498e458cb72869eceebaddd0da8c3",
+      "matches_previous": true
+    }
+  ],
+  "documentation": [
+    {
+      "path": "benchmarks/ui/README.md",
+      "bytes": 16796,
+      "sha256": "c5762f646ed0ea307ec9fda973d31fb282e0b3137d97888a38b5dacd8e094c73",
+      "previous_sha256": null
+    },
+    {
+      "path": "benchmarks/ui/results/2026-10-22-map-hash/README.md",
+      "bytes": 12227,
+      "sha256": "013865378ac26e362decfcc67c4014fc1661de912d39a920f0a92841e1a63462",
+      "previous_sha256": null
+    }
+  ]
+}

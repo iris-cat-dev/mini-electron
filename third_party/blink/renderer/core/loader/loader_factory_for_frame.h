@@ -8,13 +8,17 @@
 #include <memory>
 #include <utility>
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/keep_alive_handle.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/keep_alive_handle_factory.mojom-blink.h"
 #include "third_party/blink/public/platform/url_loader_throttle_provider.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/background_code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -23,7 +27,9 @@ namespace blink {
 
 class DocumentLoader;
 class LocalDOMWindow;
+#if !defined(MINI_UI_QUICKJS)
 class PrefetchedSignedExchangeManager;
+#endif
 
 class CORE_EXPORT LoaderFactoryForFrame final : public ResourceFetcher::LoaderFactory {
 public:
@@ -35,23 +41,35 @@ public:
     void Trace(Visitor*) const override;
 
     // LoaderFactory implementations
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&, scoped_refptr<base::SingleThreadTaskRunner>,
+        scoped_refptr<base::SingleThreadTaskRunner>, BackForwardCacheLoaderHelper*, bool is_from_origin_dirty_style_sheet) override;
+#else
     std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&, scoped_refptr<base::SingleThreadTaskRunner>,
         scoped_refptr<base::SingleThreadTaskRunner>, BackForwardCacheLoaderHelper*,
         const std::optional<base::UnguessableToken>& service_worker_race_network_request_token, bool is_from_origin_dirty_style_sheet) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     CodeCacheHost* GetCodeCacheHost() override;
+#endif
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<mojom::blink::KeepAliveHandle> MaybeIssueKeepAliveHandle(const network::ResourceRequest& network_request);
     scoped_refptr<BackgroundCodeCacheHost> GetBackgroundCodeCacheHost();
 
     URLLoaderThrottleProvider* GetURLLoaderThrottleProvider();
     Vector<std::unique_ptr<URLLoaderThrottle>> CreateThrottles(const network::ResourceRequest&);
 
+#endif
+
     const Member<DocumentLoader> document_loader_;
     const Member<LocalDOMWindow> window_;
+#if !defined(MINI_UI_QUICKJS)
     const Member<PrefetchedSignedExchangeManager> prefetched_signed_exchange_manager_;
     HeapMojoRemote<mojom::blink::KeepAliveHandleFactory> keep_alive_handle_factory_;
     scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host_;
+#endif
 };
 
 } // namespace blink

@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_OFFSCREEN_FONT_SELECTOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_OFFSCREEN_FONT_SELECTOR_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_font_selector_base.h"
 #include "third_party/blink/renderer/core/css/font_face_cache.h"
@@ -68,5 +70,7 @@ private:
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_OFFSCREEN_FONT_SELECTOR_H_

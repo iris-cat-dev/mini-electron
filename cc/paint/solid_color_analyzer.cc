@@ -279,7 +279,9 @@ std::optional<SkColor4f> SolidColorAnalyzer::DetermineIfSolidColor(
             break;
         }
         case PaintOpType::kDrawSkottie:
+#if !defined(MINI_UI_QUICKJS)
         case PaintOpType::kDrawSlug:
+#endif
         case PaintOpType::kDrawTextBlob:
         // Anything that has to do a save layer is probably not solid. As it will
         // likely need more than one draw op.

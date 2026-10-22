@@ -5,8 +5,6 @@
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 
 #include "base/numerics/checked_math.h"
-#include "gpu/command_buffer/client/gles2_interface.h"
-#include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/image_observer.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
@@ -16,7 +14,6 @@
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkSurface.h"
 #include "ui/gfx/geometry/skia_conversions.h"
-#include "v8/include/v8.h"
 
 namespace blink {
 

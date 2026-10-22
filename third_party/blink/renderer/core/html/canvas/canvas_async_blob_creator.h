@@ -10,8 +10,9 @@
 #include "base/location.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_blob_callback.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_encode_options.h"
@@ -49,9 +50,17 @@ public:
     void ScheduleAsyncBlobCreation(const double& quality);
 
     CanvasAsyncBlobCreator(scoped_refptr<StaticBitmapImage>, const ImageEncodeOptions* options, ToBlobFunctionType function_type, base::TimeTicks start_time,
-        ExecutionContext*, const IdentifiableToken& input_digest, ScriptPromiseResolver<Blob>*);
+        ExecutionContext*,
+#if !defined(MINI_UI_QUICKJS)
+        const IdentifiableToken& input_digest,
+#endif
+        ScriptPromiseResolver<Blob>*);
     CanvasAsyncBlobCreator(scoped_refptr<StaticBitmapImage>, const ImageEncodeOptions*, ToBlobFunctionType, V8BlobCallback*, base::TimeTicks start_time,
-        ExecutionContext*, const IdentifiableToken& input_digest, ScriptPromiseResolver<Blob>* = nullptr);
+        ExecutionContext*,
+#if !defined(MINI_UI_QUICKJS)
+        const IdentifiableToken& input_digest,
+#endif
+        ScriptPromiseResolver<Blob>* = nullptr);
     virtual ~CanvasAsyncBlobCreator();
 
     // Methods are virtual for mocking in unit tests
@@ -106,7 +115,9 @@ private:
     base::TimeTicks start_time_;
     base::TimeTicks schedule_idle_task_start_time_;
     bool static_bitmap_image_loaded_;
+#if !defined(MINI_UI_QUICKJS)
     IdentifiableToken input_digest_;
+#endif
 
     // Used when CanvasAsyncBlobCreator runs on main thread only
     scoped_refptr<base::SingleThreadTaskRunner> parent_frame_task_runner_;
@@ -130,8 +141,10 @@ private:
     void IdleTaskStartTimeoutEvent(double quality);
     void IdleTaskCompleteTimeoutEvent();
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordIdentifiabilityMetric();
     void TraceCanvasContent(Vector<unsigned char>* encoded_image);
+#endif
 };
 
 } // namespace blink

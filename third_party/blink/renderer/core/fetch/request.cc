@@ -35,7 +35,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_url_search_params.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/fetch/attribution_reporting_to_mojom.h"
+#endif
 #include "third_party/blink/renderer/core/fetch/blob_bytes_consumer.h"
 #include "third_party/blink/renderer/core/fetch/body_stream_buffer.h"
 #include "third_party/blink/renderer/core/fetch/fetch_manager.h"
@@ -174,9 +176,13 @@ FetchRequestData* CreateCopyOfFetchRequestDataForFetch(ScriptState* script_state
     }
     request->SetWindowId(original->WindowId());
     request->SetTrustTokenParams(original->TrustTokenParams());
+#if !defined(MINI_UI_QUICKJS)
     request->SetAttributionReportingEligibility(original->AttributionReportingEligibility());
     request->SetAttributionReportingSupport(original->AttributionSupport());
+#endif
+#if !defined(MINI_UI_QUICKJS)
     request->SetServiceWorkerRaceNetworkRequestToken(original->ServiceWorkerRaceNetworkRequestToken());
+#endif
 
     // When a new request is created from another the destination is always reset
     // to be `kEmpty`.  In order to facilitate some later checks when a service
@@ -194,10 +200,14 @@ FetchRequestData* CreateCopyOfFetchRequestDataForFetch(ScriptState* script_state
 
 static bool AreAnyMembersPresent(const RequestInit* init)
 {
-    return init->hasMethod() || init->hasHeaders() || init->hasBody() || init->hasReferrer() || init->hasReferrerPolicy() || init->hasMode()
-        || init->hasTargetAddressSpace() || init->hasCredentials() || init->hasCache() || init->hasRedirect() || init->hasIntegrity() || init->hasKeepalive()
-        || init->hasBrowsingTopics() || init->hasAdAuctionHeaders() || init->hasSharedStorageWritable() || init->hasPriority() || init->hasSignal()
-        || init->hasDuplex() || init->hasPrivateToken() || init->hasAttributionReporting();
+    bool any_members_present = init->hasMethod() || init->hasHeaders() || init->hasBody() || init->hasReferrer() || init->hasReferrerPolicy()
+        || init->hasMode() || init->hasTargetAddressSpace() || init->hasCredentials() || init->hasCache() || init->hasRedirect() || init->hasIntegrity()
+        || init->hasKeepalive() || init->hasBrowsingTopics() || init->hasAdAuctionHeaders() || init->hasSharedStorageWritable() || init->hasPriority()
+        || init->hasSignal() || init->hasDuplex() || init->hasPrivateToken();
+#if !defined(MINI_UI_QUICKJS)
+    any_members_present = any_members_present || init->hasAttributionReporting();
+#endif
+    return any_members_present;
 }
 
 static BodyStreamBuffer* ExtractBody(
@@ -212,7 +222,7 @@ static BodyStreamBuffer* ExtractBody(
     if (Blob* blob = V8Blob::ToWrappable(isolate, body)) {
         body_byte_length = blob->size();
         return_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<BlobBytesConsumer>(execution_context, blob->GetBlobDataHandle()),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
         content_type = blob->type();
     } else if (body->IsArrayBuffer()) {
         // Avoid calling into V8 from the following constructor parameters, which
@@ -226,7 +236,7 @@ static BodyStreamBuffer* ExtractBody(
         }
         body_byte_length = array_buffer->ByteLength();
         return_buffer = BodyStreamBuffer::Create(
-            script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer), nullptr /* AbortSignal */, nullptr);
     } else if (body->IsArrayBufferView()) {
         // Avoid calling into V8 from the following constructor parameters, which
         // is potentially unsafe.
@@ -239,7 +249,7 @@ static BodyStreamBuffer* ExtractBody(
         }
         body_byte_length = array_buffer_view->byteLength();
         return_buffer = BodyStreamBuffer::Create(
-            script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer_view), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer_view), nullptr /* AbortSignal */, nullptr);
     } else if (FormData* form = V8FormData::ToWrappable(isolate, body)) {
         scoped_refptr<EncodedFormData> form_data = form->EncodeMultiPartFormData();
         // Here we handle formData->boundary() as a C-style string. See
@@ -247,12 +257,12 @@ static BodyStreamBuffer* ExtractBody(
         content_type = AtomicString("multipart/form-data; boundary=") + form_data->Boundary().data();
         body_byte_length = form_data->SizeInBytes();
         return_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<FormDataBytesConsumer>(execution_context, std::move(form_data)),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
     } else if (URLSearchParams* url_search_params = V8URLSearchParams::ToWrappable(isolate, body)) {
         scoped_refptr<EncodedFormData> form_data = url_search_params->ToEncodedFormData();
         body_byte_length = form_data->SizeInBytes();
         return_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<FormDataBytesConsumer>(execution_context, std::move(form_data)),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
         content_type = "application/x-www-form-urlencoded;charset=UTF-8";
     } else if (ReadableStream* readable_stream = V8ReadableStream::ToWrappable(isolate, body);
                readable_stream && RuntimeEnabledFeatures::FetchUploadStreamingEnabled(execution_context)) {
@@ -269,7 +279,7 @@ static BodyStreamBuffer* ExtractBody(
             return nullptr;
         }
         //   "Set |stream| to |object|."
-        return_buffer = MakeGarbageCollected<BodyStreamBuffer>(script_state, readable_stream, /*cached_metadata_handler=*/nullptr);
+        return_buffer = MakeGarbageCollected<BodyStreamBuffer>(script_state, readable_stream, nullptr);
     } else {
         String string = NativeValueTraits<IDLUSVString>::NativeValue(isolate, body, exception_state);
         if (exception_state.HadException())
@@ -277,7 +287,7 @@ static BodyStreamBuffer* ExtractBody(
 
         body_byte_length = string.length();
         return_buffer = BodyStreamBuffer::Create(
-            script_state, MakeGarbageCollected<FormDataBytesConsumer>(string), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            script_state, MakeGarbageCollected<FormDataBytesConsumer>(string), nullptr /* AbortSignal */, nullptr);
         content_type = "text/plain;charset=UTF-8";
     }
 
@@ -663,6 +673,7 @@ Request* Request::CreateRequestWithRequestOrString(
         request->SetTrustTokenParams(std::move(params));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (init->hasAttributionReporting()) {
         if (!execution_context->IsSecureContext()) {
             exception_state.ThrowTypeError("attributionReporting: Attribution Reporting operations are only "
@@ -673,6 +684,7 @@ Request* Request::CreateRequestWithRequestOrString(
         request->SetAttributionReportingEligibility(
             ConvertAttributionReportingRequestOptionsToMojom(*init->attributionReporting(), *execution_context, exception_state));
     }
+#endif
 
     // "Let  signals  be [|signal|] if  signal  is non-null; otherwise []."
     HeapVector<Member<AbortSignal>> signals;
@@ -813,7 +825,7 @@ Request* Request::CreateRequestWithRequestOrString(
     // non-null, run these substeps:"
     if (input_request && input_request->BodyBuffer()) {
         // "Let |dummyStream| be an empty ReadableStream object."
-        auto* dummy_stream = BodyStreamBuffer::Create(script_state, BytesConsumer::CreateClosed(), nullptr, /*cached_metadata_handler=*/nullptr);
+        auto* dummy_stream = BodyStreamBuffer::Create(script_state, BytesConsumer::CreateClosed(), nullptr, nullptr);
         // "Set |input|'s request's body to a new body whose stream is
         // |dummyStream|."
         input_request->request_->SetBuffer(dummy_stream);
@@ -865,6 +877,7 @@ Request* Request::Create(ScriptState* script_state, FetchRequestData* request, A
     return MakeGarbageCollected<Request>(script_state, request, signal);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 Request* Request::Create(
     ScriptState* script_state, mojom::blink::FetchAPIRequestPtr fetch_api_request, ForServiceWorkerFetchEvent for_service_worker_fetch_event)
 {
@@ -872,6 +885,7 @@ Request* Request::Create(
     auto* signal = MakeGarbageCollected<AbortSignal>(ExecutionContext::From(script_state));
     return MakeGarbageCollected<Request>(script_state, data, signal);
 }
+#endif
 
 network::mojom::CredentialsMode Request::V8RequestCredentialsToCredentialsMode(V8RequestCredentials::Enum credentials_mode)
 {

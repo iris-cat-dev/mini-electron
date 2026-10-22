@@ -20,7 +20,9 @@
 #include "base/time/time.h"
 #include "base/trace_event/memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/disk_data_allocator.h"
+#endif
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/scheduler/public/rail_mode_observer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -162,6 +164,7 @@ private:
 
     Statistics ComputeStatistics() const;
 
+#if !defined(MINI_UI_QUICKJS)
     DiskDataAllocator& data_allocator() const
     {
         if (allocator_for_testing_)
@@ -174,6 +177,7 @@ private:
     {
         allocator_for_testing_ = std::move(allocator);
     }
+#endif
 
     void SetTaskRunnerForTesting(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     {
@@ -217,7 +221,9 @@ private:
     bool first_string_aging_was_delayed_ = false;
 
     scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<DiskDataAllocator> allocator_for_testing_;
+#endif
 
     friend class ParkableStringTest;
     FRIEND_TEST_ALL_PREFIXES(ParkableStringTest, SynchronousCompression);

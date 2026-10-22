@@ -5,15 +5,23 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PARKABLE_IMAGE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PARKABLE_IMAGE_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/containers/span.h"
+#endif
 #include "base/debug/stack_trace.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/feature_list.h"
+#endif
 #include "base/synchronization/lock.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
+#endif
 #include "base/threading/thread_checker.h"
 #include "base/time/time.h"
 #include "third_party/blink/public/platform/web_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/disk_data_metadata.h"
+#endif
 #include "third_party/blink/renderer/platform/image-decoders/rw_buffer.h"
 #include "third_party/blink/renderer/platform/image-decoders/segment_reader.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
@@ -25,7 +33,9 @@ class ParkableImageManager;
 class ParkableImage;
 class ParkableImageSegmentReader;
 
+#if !defined(MINI_UI_QUICKJS)
 PLATFORM_EXPORT BASE_DECLARE_FEATURE(kDelayParkingImages);
+#endif
 
 // Implementation of ParkableImage. See ParkableImage below.
 // We split ParkableImage like this because we want to avoid destroying the
@@ -38,6 +48,7 @@ public:
 
     // Smallest encoded size that will actually be parked.
     static constexpr size_t kMinSizeToPark = 1024; // 1 KiB
+#if !defined(MINI_UI_QUICKJS)
     // How long to wait before parking an image.
     //
     // Chosen arbitrarily, did not regress metrics in field trials in 2022. From
@@ -47,6 +58,7 @@ public:
     // something longer than e.g. 1s in case there is a looping GIF for instance,
     // and/or the decoded image cache is too small.
     static constexpr base::TimeDelta kParkingDelay = base::Seconds(30);
+#endif
 
 private:
     friend class ThreadSafeRefCounted<ParkableImageImpl>;
@@ -81,12 +93,12 @@ private:
         return !frozen_time_.is_null();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldReschedule() const LOCKS_EXCLUDED(lock_)
     {
         base::AutoLock lock(lock_);
         return TransientlyUnableToPark();
     }
-
     // Attempt to park to disk. Returns false if it cannot be parked right now for
     // whatever reason, true if we will _attempt_ to park it to disk.
     bool MaybePark(scoped_refptr<base::SingleThreadTaskRunner> task_runner) LOCKS_EXCLUDED(lock_);
@@ -113,6 +125,10 @@ private:
     // Discards the data in |rw_buffer_|. Caller is responsible for making sure
     // this is only called when the image can be parked.
     void DiscardData() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+#else
+    // The native UI profile retains encoded image data in memory.
+    void Unpark() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+#endif
 
     // Only larger images are parked, see kMinSizeToPark for the threshold used.
     bool is_below_min_parking_size() const;
@@ -120,6 +136,7 @@ private:
     // Returns whether the ParkableImageImpl is locked or not. See |Lock| and
     // |Unlock| for details.
     bool is_locked() const EXCLUSIVE_LOCKS_REQUIRED(lock_);
+#if !defined(MINI_UI_QUICKJS)
     bool is_on_disk() const EXCLUSIVE_LOCKS_REQUIRED(lock_)
     {
         return !rw_buffer_ && on_disk_metadata_;
@@ -129,14 +146,17 @@ private:
     bool TransientlyUnableToPark() const EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
     bool CanParkNow() const EXCLUSIVE_LOCKS_REQUIRED(lock_);
+#endif
 
     mutable base::Lock lock_;
 
     std::unique_ptr<RWBuffer> rw_buffer_ GUARDED_BY(lock_);
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<ReservedChunk> reserved_chunk_ GUARDED_BY(lock_);
     // Non-null iff we have the data from |rw_buffer_| saved to disk.
     std::unique_ptr<DiskDataMetadata> on_disk_metadata_ GUARDED_BY(lock_);
+#endif
     // |size_| is only modified on the main thread.
     size_t size_ = 0;
     // |frozen_time_| is only modified on the main thread. |frozen_time_| is the
@@ -147,8 +167,10 @@ private:
     // Unlock. The ParkableImageImpl is unlocked iff |lock_depth_| is 0, i.e.
     // we've called Lock and Unlock the same number of times.
     size_t lock_depth_ GUARDED_BY(lock_) = 0;
+#if !defined(MINI_UI_QUICKJS)
     bool background_task_in_progress_ GUARDED_BY(lock_) = false;
     bool used_ GUARDED_BY(lock_) = false;
+#endif
 
     THREAD_CHECKER(thread_checker_);
 };
@@ -199,8 +221,9 @@ private:
     // parked. Every call to Lock must have a corresponding call to Unlock.
     void LockData() EXCLUSIVE_LOCKS_REQUIRED(impl_->lock_);
     void UnlockData() EXCLUSIVE_LOCKS_REQUIRED(impl_->lock_);
-
+#if !defined(MINI_UI_QUICKJS)
     bool is_on_disk() const EXCLUSIVE_LOCKS_REQUIRED(impl_->lock_);
+#endif
 
     scoped_refptr<ParkableImageImpl> impl_;
 };

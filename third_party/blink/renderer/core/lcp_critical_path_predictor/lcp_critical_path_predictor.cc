@@ -10,29 +10,18 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/element_locator.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
+#endif
 
-class ElementLocator {
-public:
-    bool ParseFromString(const std::string& str)
-    {
-        *(int*)1 = 1;
-        return false;
-    }
-
-    std::string SerializeAsString()
-    {
-        *(int*)1 = 1;
-        return std::string();
-    }
-};
 
 namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 size_t GetLCPPFontURLPredictorMaxUrlLength()
 {
     return features::kLCPPFontURLPredictorMaxUrlLength.Get();
@@ -55,13 +44,16 @@ bool IsTimingPredictorEnabled()
 
     return false;
 }
+#endif
 
 } // namespace
 
 LCPCriticalPathPredictor::LCPCriticalPathPredictor(LocalFrame& frame)
     : frame_(&frame)
+#if !defined(MINI_UI_QUICKJS)
     , host_(frame.DomWindow())
     , task_runner_(frame.GetTaskRunner(TaskType::kInternalLoading))
+#endif
 {
     CHECK(LcppEnabled());
 }
@@ -70,9 +62,15 @@ LCPCriticalPathPredictor::~LCPCriticalPathPredictor() = default;
 
 bool LCPCriticalPathPredictor::HasAnyHintData() const
 {
-    return !lcp_element_locators_.empty() || !lcp_influencer_scripts_.empty() || !preconnected_origins_.empty();
+#if !defined(MINI_UI_QUICKJS)
+    if (!lcp_element_locators_.empty() || !preconnected_origins_.empty()) {
+        return true;
+    }
+#endif
+    return !lcp_influencer_scripts_.empty();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LCPCriticalPathPredictor::set_lcp_element_locators(const std::vector<std::string>& lcp_element_locator_strings)
 {
     // Clear current set of locators before receiving replacements.
@@ -95,6 +93,7 @@ void LCPCriticalPathPredictor::set_lcp_element_locators(const std::vector<std::s
     }
     CHECK_EQ(lcp_element_locators_.size(), lcp_element_locator_strings_.size());
 }
+#endif
 
 void LCPCriticalPathPredictor::set_lcp_influencer_scripts(HashSet<KURL> scripts)
 {
@@ -106,10 +105,12 @@ void LCPCriticalPathPredictor::set_fetched_fonts(Vector<KURL> fonts)
     fetched_fonts_ = std::move(fonts);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LCPCriticalPathPredictor::set_preconnected_origins(const Vector<url::Origin>& origins)
 {
     preconnected_origins_ = std::move(origins);
 }
+#endif
 
 void LCPCriticalPathPredictor::set_unused_preloads(Vector<KURL> preloads)
 {
@@ -118,20 +119,27 @@ void LCPCriticalPathPredictor::set_unused_preloads(Vector<KURL> preloads)
 
 void LCPCriticalPathPredictor::Reset()
 {
+#if !defined(MINI_UI_QUICKJS)
     lcp_element_locators_.clear();
     lcp_element_locator_strings_.clear();
+#endif
     lcp_influencer_scripts_.clear();
     fetched_fonts_.clear();
+#if !defined(MINI_UI_QUICKJS)
     preconnected_origins_.clear();
+#endif
     unused_preloads_.clear();
 
+#if !defined(MINI_UI_QUICKJS)
     lcp_predicted_callbacks_.clear();
     are_predicted_callbacks_called_ = false;
     has_lcp_occurred_ = false;
     is_outermost_main_frame_document_loaded_ = false;
     has_sent_unused_preloads_ = false;
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LCPCriticalPathPredictor::AddLCPPredictedCallback(LCPCallback callback)
 {
     CHECK(IsTimingPredictorEnabled());
@@ -167,9 +175,11 @@ bool LCPCriticalPathPredictor::IsElementMatchingLocator(const Element& element)
     std::string lcp_element_locator_string = element_locator::OfElement(element).SerializeAsString();
     return lcp_element_locator_strings_.Contains(lcp_element_locator_string);
 }
+#endif
 
 void LCPCriticalPathPredictor::OnLargestContentfulPaintUpdated(const Element& lcp_element, std::optional<const KURL> maybe_image_url)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (base::FeatureList::IsEnabled(features::kLCPCriticalPathPredictor) || base::FeatureList::IsEnabled(features::kLCPPLazyLoadImagePreload)
         || IsTimingPredictorEnabled()) {
         std::string lcp_element_locator_string = element_locator::OfElement(lcp_element).SerializeAsString();
@@ -230,6 +240,7 @@ void LCPCriticalPathPredictor::OnLargestContentfulPaintUpdated(const Element& lc
             }
         }
     }
+#endif
 
     if (blink::LcppScriptObserverEnabled()) {
         if (const HTMLImageElement* image_element = DynamicTo<HTMLImageElement>(lcp_element)) {
@@ -239,7 +250,10 @@ void LCPCriticalPathPredictor::OnLargestContentfulPaintUpdated(const Element& lc
             size_t max_url_length_encountered = 0;
             size_t prediction_match_count = 0;
 
+            size_t filtered_script_url_count = 0;
+#if !defined(MINI_UI_QUICKJS)
             Vector<KURL> filtered_script_urls;
+#endif
 
             for (auto& url : creators) {
                 max_url_length_encountered = std::max<size_t>(max_url_length_encountered, url.length());
@@ -250,17 +264,22 @@ void LCPCriticalPathPredictor::OnLargestContentfulPaintUpdated(const Element& lc
                 if (parsed_url.IsEmpty() || !parsed_url.IsValid() || !parsed_url.ProtocolIsInHTTPFamily()) {
                     continue;
                 }
+#if !defined(MINI_UI_QUICKJS)
                 filtered_script_urls.push_back(parsed_url);
+#endif
+                ++filtered_script_url_count;
                 if (lcp_influencer_scripts_.Contains(parsed_url)) {
                     prediction_match_count++;
                 }
-                if (filtered_script_urls.size() >= max_allowed_url_count) {
+                if (filtered_script_url_count >= max_allowed_url_count) {
                     break;
                 }
             }
+#if !defined(MINI_UI_QUICKJS)
             GetHost().SetLcpInfluencerScriptUrls(filtered_script_urls);
+#endif
 
-            base::UmaHistogramCounts10000("Blink.LCPP.LCPInfluencerUrlsCount", base::checked_cast<int>(filtered_script_urls.size()));
+            base::UmaHistogramCounts10000("Blink.LCPP.LCPInfluencerUrlsCount", base::checked_cast<int>(filtered_script_url_count));
             base::UmaHistogramCounts10000("Blink.LCPP.LCPInfluencerUrlsMaxLength", base::checked_cast<int>(max_url_length_encountered));
             base::UmaHistogramCounts10000("Blink.LCPP.LCPInfluencerUrlsPredictionMatchCount", base::checked_cast<int>(prediction_match_count));
             if (!lcp_influencer_scripts_.empty()) {
@@ -271,6 +290,7 @@ void LCPCriticalPathPredictor::OnLargestContentfulPaintUpdated(const Element& lc
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LCPCriticalPathPredictor::OnFontFetched(const KURL& url)
 {
     if (!base::FeatureList::IsEnabled(blink::features::kLCPPFontURLPredictor)) {
@@ -316,12 +336,14 @@ mojom::blink::LCPCriticalPathPredictorHost& LCPCriticalPathPredictor::GetHost()
     }
     return *host_.get();
 }
+#endif
 
 bool LCPCriticalPathPredictor::IsLcpInfluencerScript(const KURL& url)
 {
     return lcp_influencer_scripts_.Contains(url);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LCPCriticalPathPredictor::OnOutermostMainFrameDocumentLoad()
 {
     if (!IsTimingPredictorEnabled()) {
@@ -349,11 +371,14 @@ void LCPCriticalPathPredictor::OnWarnedUnusedPreloads(const Vector<KURL>& unused
     has_sent_unused_preloads_ = true;
     GetHost().SetUnusedPreloads(unused_preloads);
 }
+#endif
 
 void LCPCriticalPathPredictor::Trace(Visitor* visitor) const
 {
     visitor->Trace(frame_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(host_);
+#endif
 }
 
 } // namespace blink

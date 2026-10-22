@@ -18,13 +18,17 @@ namespace blink {
 
 struct ParkableImageManager::Statistics {
     size_t unparked_size = 0;
+#if !defined(MINI_UI_QUICKJS)
     size_t on_disk_size = 0;
+#endif
     size_t total_size = 0;
 };
 
 constexpr const char* ParkableImageManager::kAllocatorDumpName;
 
+#if !defined(MINI_UI_QUICKJS)
 constexpr base::TimeDelta ParkableImageManager::kDelayedParkingInterval;
+#endif
 
 // static
 ParkableImageManager& ParkableImageManager::Instance()
@@ -53,7 +57,9 @@ bool ParkableImageManager::OnMemoryDump(const base::trace_event::MemoryDumpArgs&
 
     dump->AddScalar("total_size", "bytes", stats.total_size);
     dump->AddScalar("unparked_size", "bytes", stats.unparked_size);
+#if !defined(MINI_UI_QUICKJS)
     dump->AddScalar("on_disk_size", "bytes", stats.on_disk_size);
+#endif
 
     return true;
 }
@@ -65,10 +71,14 @@ ParkableImageManager::Statistics ParkableImageManager::ComputeStatistics() const
     for (auto* unparked : unparked_images_)
         stats.unparked_size += unparked->size();
 
+#if !defined(MINI_UI_QUICKJS)
     for (auto* on_disk : on_disk_images_)
         stats.on_disk_size += on_disk->size();
 
     stats.total_size = stats.on_disk_size + stats.unparked_size;
+#else
+    stats.total_size = stats.unparked_size;
+#endif
 
     return stats;
 }
@@ -77,9 +87,14 @@ size_t ParkableImageManager::Size() const
 {
     base::AutoLock lock(lock_);
 
+#if defined(MINI_UI_QUICKJS)
+    return unparked_images_.size();
+#else
     return on_disk_images_.size() + unparked_images_.size();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 DiskDataAllocator& ParkableImageManager::data_allocator() const
 {
     if (allocator_for_testing_)
@@ -87,18 +102,23 @@ DiskDataAllocator& ParkableImageManager::data_allocator() const
 
     return DiskDataAllocator::Instance();
 }
+#endif
 
 void ParkableImageManager::ResetForTesting()
 {
     base::AutoLock lock(lock_);
 
+#if !defined(MINI_UI_QUICKJS)
     has_pending_parking_task_ = false;
+#endif
     has_posted_accounting_task_ = false;
     unparked_images_.clear();
+#if !defined(MINI_UI_QUICKJS)
     on_disk_images_.clear();
     allocator_for_testing_ = nullptr;
     total_disk_read_time_ = base::TimeDelta();
     total_disk_write_time_ = base::TimeDelta();
+#endif
 }
 
 void ParkableImageManager::Add(ParkableImageImpl* impl)
@@ -113,7 +133,9 @@ void ParkableImageManager::Add(ParkableImageImpl* impl)
 
     base::AutoLock lock(lock_);
 
+#if !defined(MINI_UI_QUICKJS)
     ScheduleDelayedParkingTaskIfNeeded();
+#endif
 
     if (!has_posted_accounting_task_) {
         // |base::Unretained(this)| is fine because |this| is a NoDestructor
@@ -136,15 +158,19 @@ void ParkableImageManager::RecordStatisticsAfter5Minutes() const
 
     // In KiB
     base::UmaHistogramCounts100000("Memory.ParkableImage.TotalSize.5min", static_cast<int>(stats.total_size / 1024));
+#if !defined(MINI_UI_QUICKJS)
     base::UmaHistogramCounts100000("Memory.ParkableImage.OnDiskSize.5min", static_cast<int>(stats.on_disk_size / 1024));
+#endif
     base::UmaHistogramCounts100000("Memory.ParkableImage.UnparkedSize.5min", static_cast<int>(stats.unparked_size / 1024));
 
-    // Metrics related to parking only should be recorded if the feature is
-    // enabled.
+#if !defined(MINI_UI_QUICKJS)
+    // Metrics related to disk parking should only be recorded if the feature is
+    // enabled and the allocator can write.
     if (IsParkableImagesToDiskEnabled() && data_allocator().may_write()) {
         base::UmaHistogramTimes("Memory.ParkableImage.TotalWriteTime.5min", total_disk_write_time_);
         base::UmaHistogramTimes("Memory.ParkableImage.TotalReadTime.5min", total_disk_read_time_);
     }
+#endif
 }
 
 scoped_refptr<ParkableImageImpl> ParkableImageManager::CreateParkableImage(size_t offset)
@@ -172,13 +198,20 @@ void ParkableImageManager::Remove(ParkableImageImpl* image)
 {
     base::AutoLock lock(lock_);
 
+#if defined(MINI_UI_QUICKJS)
+    auto it = unparked_images_.find(image);
+    CHECK(it != unparked_images_.end(), base::NotFatalUntil::M130);
+    unparked_images_.erase(it);
+#else
     // Image could be on disk or unparked. Remove it in either case.
     auto* map = image->is_on_disk() ? &on_disk_images_ : &unparked_images_;
     auto it = map->find(image);
     CHECK(it != map->end(), base::NotFatalUntil::M130);
     map->erase(it);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ParkableImageManager::MoveImage(ParkableImageImpl* image, WTF::HashSet<ParkableImageImpl*>* from, WTF::HashSet<ParkableImageImpl*>* to)
 {
     auto it = from->find(image);
@@ -187,17 +220,23 @@ void ParkableImageManager::MoveImage(ParkableImageImpl* image, WTF::HashSet<Park
     from->erase(it);
     to->insert(image);
 }
+#endif
 
 bool ParkableImageManager::IsRegistered(ParkableImageImpl* image)
 {
     base::AutoLock lock(lock_);
 
+#if defined(MINI_UI_QUICKJS)
+    return unparked_images_.Contains(image);
+#else
     auto* map = image->is_on_disk() ? &on_disk_images_ : &unparked_images_;
     auto it = map->find(image);
 
     return it != map->end();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ParkableImageManager::OnWrittenToDisk(ParkableImageImpl* image)
 {
     base::AutoLock lock(lock_);
@@ -261,5 +300,6 @@ void ParkableImageManager::MaybeParkImages()
     if (should_reschedule)
         ScheduleDelayedParkingTaskIfNeeded();
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 } // namespace blink

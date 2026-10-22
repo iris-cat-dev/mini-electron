@@ -15,6 +15,17 @@ namespace blink {
 
 using CompositingReasons = uint64_t;
 
+#if defined(MINI_UI_QUICKJS)
+#define FOR_EACH_VIEW_TRANSITION_COMPOSITING_REASON(V)
+#define FOR_EACH_VIEW_TRANSITION_CONTENT_COMPOSITING_REASON(V)
+#else
+#define FOR_EACH_VIEW_TRANSITION_COMPOSITING_REASON(V) \
+    V(ViewTransitionElement)                           \
+    V(ViewTransitionPseudoElement)                     \
+    V(ViewTransitionElementDescendantWithClipPath)
+#define FOR_EACH_VIEW_TRANSITION_CONTENT_COMPOSITING_REASON(V) V(ViewTransitionContent)
+#endif
+
 #define FOR_EACH_COMPOSITING_REASON(V)                                                                                                                         \
     /* Intrinsic reasons that can be known right away by the layer.           */                                                                               \
     V(3DTransform)                                                                                                                                             \
@@ -62,11 +73,7 @@ using CompositingReasons = uint64_t;
     V(PerspectiveWith3DDescendants)                                                                                                                            \
     V(Preserve3DWith3DDescendants)                                                                                                                             \
                                                                                                                                                                \
-    /* ViewTransition element.                                                   \
-     See third_party/blink/renderer/core/view_transition/README.md. */                                                                             \
-    V(ViewTransitionElement)                                                                                                                                   \
-    V(ViewTransitionPseudoElement)                                                                                                                             \
-    V(ViewTransitionElementDescendantWithClipPath)                                                                                                             \
+    FOR_EACH_VIEW_TRANSITION_COMPOSITING_REASON(V)                                                                                                             \
                                                                                                                                                                \
     /* For composited scrolling, determined after paint. */                                                                                                    \
     V(OverflowScrolling)                                                                                                                                       \
@@ -88,7 +95,7 @@ using CompositingReasons = uint64_t;
     V(Scrollbar)                                                                                                                                               \
     V(LinkHighlight)                                                                                                                                           \
     V(DevToolsOverlay)                                                                                                                                         \
-    V(ViewTransitionContent)
+    FOR_EACH_VIEW_TRANSITION_CONTENT_COMPOSITING_REASON(V)
 
 class PLATFORM_EXPORT CompositingReason {
     DISALLOW_NEW();
@@ -128,17 +135,23 @@ public:
         kDirectReasonsForPaintOffsetTranslationProperty
         = kFixedPosition | kAffectedByOuterViewportBoundsDelta | kUndoOverscroll | kVideo | kCanvas | kPlugin | kIFrame,
         // TODO(dbaron): kWillChangeOther probably shouldn't be in this list.
-        // TODO(vmpstr): kViewTransitionElement is needed to make sure that the
-        // capture escapes clips when view transition has a descendant that
-        // naturally escapes clips. See crbug.com/348590918 for details.
+#if defined(MINI_UI_QUICKJS)
+        kDirectReasonsForTransformProperty = k3DTransform | kTrivial3DTransform | kWillChangeTransform | kWillChangeOther | kPerspectiveWith3DDescendants
+            | kPreserve3DWith3DDescendants | kActiveTransformAnimation,
+        kDirectReasonsForEffectProperty = kActiveOpacityAnimation | kWillChangeOpacity | kBackdropFilter | kWillChangeBackdropFilter
+            | kActiveBackdropFilterAnimation | kTransform3DSceneLeaf | kElementCapture,
+#else
+        // kViewTransitionElement is needed to make sure that the capture escapes
+        // clips when a descendant naturally escapes clips. See crbug.com/348590918.
         kDirectReasonsForTransformProperty = k3DTransform | kTrivial3DTransform | kWillChangeTransform | kWillChangeOther | kPerspectiveWith3DDescendants
             | kPreserve3DWith3DDescendants | kActiveTransformAnimation | kViewTransitionElementDescendantWithClipPath | kViewTransitionElement,
+        kDirectReasonsForEffectProperty = kActiveOpacityAnimation | kWillChangeOpacity | kBackdropFilter | kWillChangeBackdropFilter
+            | kActiveBackdropFilterAnimation | kViewTransitionPseudoElement | kTransform3DSceneLeaf | kElementCapture,
+#endif
         kDirectReasonsForScaleProperty = k3DScale | kWillChangeScale | kActiveScaleAnimation,
         kDirectReasonsForRotateProperty = k3DRotate | kWillChangeRotate | kActiveRotateAnimation,
         kDirectReasonsForTranslateProperty = k3DTranslate | kWillChangeTranslate | kActiveTranslateAnimation,
         kDirectReasonsForScrollTranslationProperty = kRootScroller | kOverflowScrolling,
-        kDirectReasonsForEffectProperty = kActiveOpacityAnimation | kWillChangeOpacity | kBackdropFilter | kWillChangeBackdropFilter
-            | kActiveBackdropFilterAnimation | kViewTransitionPseudoElement | kTransform3DSceneLeaf | kElementCapture,
         kDirectReasonsForFilterProperty = kActiveFilterAnimation | kWillChangeFilter,
         kDirectReasonsForBackdropFilter = kBackdropFilter | kActiveBackdropFilterAnimation | kWillChangeBackdropFilter,
 

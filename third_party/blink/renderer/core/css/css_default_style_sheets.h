@@ -90,6 +90,7 @@ public:
     {
         return default_pseudo_element_style_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     RuleSet* DefaultMediaControlsStyle()
     {
         return default_media_controls_style_.Get();
@@ -98,6 +99,7 @@ public:
     {
         return default_forced_colors_media_controls_style_.Get();
     }
+#endif
     RuleSet* DefaultFullscreenStyle()
     {
         return default_fullscreen_style_.Get();
@@ -127,10 +129,12 @@ public:
     {
         return mathml_style_sheet_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     StyleSheetContents* MediaControlsStyleSheet()
     {
         return media_controls_style_sheet_.Get();
     }
+#endif
     StyleSheetContents* FullscreenStyleSheet()
     {
         return fullscreen_style_sheet_.Get();
@@ -146,6 +150,7 @@ public:
 
     CORE_EXPORT void PrepareForLeakDetection();
 
+#if !defined(MINI_UI_QUICKJS)
     // Media Controls UA stylesheet loading is handled by the media_controls
     // module.
     class CORE_EXPORT UAStyleSheetLoader {
@@ -161,6 +166,7 @@ public:
     {
         return media_controls_style_sheet_loader_.get();
     }
+#endif
 
     void CollectFeaturesTo(const Document&, RuleFeatureSet&);
 
@@ -186,7 +192,9 @@ private:
         kHTML,
         kMathML,
         kSVG,
+#if !defined(MINI_UI_QUICKJS)
         kMediaControls, // Not exactly a namespace
+#endif
     };
     void AddRulesToDefaultStyleSheets(StyleSheetContents* rules, NamespaceType type);
 
@@ -198,10 +206,14 @@ private:
     Member<RuleSet> default_view_source_style_;
     Member<RuleSet> default_forced_color_style_;
     Member<RuleSet> default_pseudo_element_style_;
+#if !defined(MINI_UI_QUICKJS)
     Member<RuleSet> default_media_controls_style_;
+#endif
     Member<RuleSet> default_fullscreen_style_;
     Member<RuleSet> default_json_document_style_;
+#if !defined(MINI_UI_QUICKJS)
     Member<RuleSet> default_forced_colors_media_controls_style_;
+#endif
     // If new RuleSets are added, make sure to add a new check in
     // VerifyUniversalRuleCount() as universal rule buckets are performance
     // sensitive. At least if the added UA styles are matched against all elements
@@ -211,16 +223,22 @@ private:
     Member<StyleSheetContents> quirks_style_sheet_;
     Member<StyleSheetContents> svg_style_sheet_;
     Member<StyleSheetContents> mathml_style_sheet_;
+#if !defined(MINI_UI_QUICKJS)
     Member<StyleSheetContents> media_controls_style_sheet_;
+#endif
     Member<StyleSheetContents> permission_element_style_sheet_;
+#if !defined(MINI_UI_QUICKJS)
     Member<StyleSheetContents> text_track_style_sheet_;
+#endif
     Member<StyleSheetContents> fullscreen_style_sheet_;
     Member<StyleSheetContents> customizable_select_style_sheet_;
     Member<StyleSheetContents> customizable_select_forced_colors_style_sheet_;
     Member<StyleSheetContents> marker_style_sheet_;
     Member<StyleSheetContents> forced_colors_style_sheet_;
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<UAStyleSheetLoader> media_controls_style_sheet_loader_;
+#endif
 };
 
 } // namespace blink

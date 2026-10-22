@@ -19,6 +19,7 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace blink {
 
 struct VisualProperties;
@@ -102,5 +103,6 @@ private:
 };
 
 } // namespace blink
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_SCREEN_METRICS_EMULATOR_H_

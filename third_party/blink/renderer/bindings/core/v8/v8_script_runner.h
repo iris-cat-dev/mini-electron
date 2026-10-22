@@ -132,15 +132,13 @@ public:
     // for exception handling and return value semantics.
     static ScriptEvaluationResult EvaluateModule(ModuleScript*, RethrowErrorsOption);
 
-    // Only to be used from ModuleRecord::ReportException().
-    static void ReportExceptionForModule(v8::Isolate*, v8::Local<v8::Value> exception, const String& file_name, const WTF::TextPosition&);
-
-    // Reports an exception to the message handler, as if it were an uncaught
-    // exception. Can only be called on the main thread.
-    //
-    // TODO(adamk): This should live on V8ThrowException, but it depends on
-    // V8Initializer and so can't trivially move to platform/bindings.
+    // Reports an exception through the current engine's main-thread
+    // HTML error-event path.
     static void ReportException(v8::Isolate*, v8::Local<v8::Value> exception);
+
+#if defined(MINI_UI_QUICKJS)
+    static void NotifyQuickJSPromiseRejection(v8::PromiseRejectMessage);
+#endif
 
 private:
     static v8::MaybeLocal<v8::Value> RunCompiledScript(v8::Isolate*, v8::Local<v8::Script>, v8::Local<v8::Data> host_defined_options, ExecutionContext*);

@@ -28,7 +28,9 @@
 #include "third_party/blink/renderer/core/css/css_image_set_option_value.h"
 #include "third_party/blink/renderer/core/css/css_image_set_value.h"
 #include "third_party/blink/renderer/core/css/css_image_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 #include "third_party/blink/renderer/core/css/css_uri_value.h"
@@ -97,11 +99,13 @@ StyleImage* StyleImageLoader::Load(CSSValue& value, FetchParameters::ImageReques
         return image_value->CacheImage(document_, image_request_behavior, cross_origin, override_image_resolution);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* paint_value = DynamicTo<CSSPaintValue>(value)) {
         auto* image = MakeGarbageCollected<StyleGeneratedImage>(*paint_value, ContainerSizes());
         builder_.AddPaintImage(image);
         return image;
     }
+#endif
 
     if (auto* crossfade_value = DynamicTo<cssvalue::CSSCrossfadeValue>(value)) {
         HeapVector<Member<StyleImage>> style_images;
@@ -133,11 +137,13 @@ StyleImage* StyleImageLoader::CrossfadeArgument(CSSValue& value, CrossOriginAttr
         DCHECK_EQ(identifier_value->GetValueID(), CSSValueID::kNone);
         return nullptr;
     }
+#if !defined(MINI_UI_QUICKJS)
     // Reject paint() functions. They make assumptions about the client (being
     // a LayoutObject) that we can't meet with the current implementation.
     if (IsA<CSSPaintValue>(value)) {
         return nullptr;
     }
+#endif
     return Load(value, FetchParameters::ImageRequestBehavior::kNone, cross_origin);
 }
 
@@ -182,11 +188,13 @@ bool ElementStyleResources::IsPending(const CSSValue& value) const
         return img_value->IsCachePending();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // paint(...) is always treated as pending because it needs to call
     // AddPaintImage() on the ComputedStyle.
     if (IsA<CSSPaintValue>(value)) {
         return true;
     }
+#endif
 
     // cross-fade(...) is always treated as pending (to avoid adding more complex
     // recursion).

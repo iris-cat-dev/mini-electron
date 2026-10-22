@@ -7,25 +7,29 @@
 #include <memory>
 
 #include "base/memory/ptr_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/tracing/protos/chrome_track_event.pbzero.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #endif
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_proto.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#endif
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 #include "v8/include/v8-inspector-protocol.h"
 #endif
 #include "v8/include/v8-debug.h"
 
 namespace blink {
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 namespace {
 
 String ToPlatformString(const v8_inspector::StringView& string)
@@ -50,7 +54,7 @@ String ToPlatformString(std::unique_ptr<v8_inspector::StringBuffer> buffer)
 } // namespace
 #endif
 
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
 namespace {
 
 std::unique_ptr<SourceLocation> CaptureNativeV8StackTrace(bool full)
@@ -97,7 +101,7 @@ std::unique_ptr<SourceLocation> CaptureNativeV8StackTrace(bool full)
 // static
 std::unique_ptr<SourceLocation> SourceLocation::CaptureWithFullStackTrace()
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     if (auto location = CaptureNativeV8StackTrace(true))
         return location;
     return std::make_unique<SourceLocation>(String(), String(), 0, 0, nullptr, 0);
@@ -110,7 +114,7 @@ std::unique_ptr<SourceLocation> SourceLocation::CaptureWithFullStackTrace()
 #endif
 }
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 // static
 std::unique_ptr<v8_inspector::V8StackTrace> SourceLocation::CaptureStackTraceInternal(bool full)
 {
@@ -138,7 +142,7 @@ std::unique_ptr<SourceLocation> SourceLocation::CreateFromNonEmptyV8StackTraceIn
 }
 #endif
 
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
 SourceLocation::SourceLocation(const String& url, const String& function, unsigned line_number, unsigned column_number, std::nullptr_t, int script_id,
     const String& stack_trace)
     : url_(url)
@@ -166,13 +170,14 @@ SourceLocation::~SourceLocation() = default;
 
 std::unique_ptr<SourceLocation> SourceLocation::Clone() const
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     return base::WrapUnique(new SourceLocation(url_, function_, line_number_, column_number_, nullptr, script_id_, stack_trace_text_));
 #else
     return base::WrapUnique(new SourceLocation(url_, function_, line_number_, column_number_, stack_trace_ ? stack_trace_->clone() : nullptr, script_id_));
 #endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void SourceLocation::WriteIntoTrace(perfetto::TracedProto<SourceLocation::Proto> proto) const
 {
 #if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
@@ -265,10 +270,11 @@ void SourceLocation::ToTracedValue(TracedValue* value, const char* name) const
     value->EndArray();
 #endif
 }
+#endif
 
 String SourceLocation::ToString() const
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     return stack_trace_text_;
 #else
     if (!stack_trace_)
@@ -277,7 +283,7 @@ String SourceLocation::ToString() const
 #endif
 }
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 std::unique_ptr<v8_inspector::protocol::Runtime::API::StackTrace> SourceLocation::BuildInspectorObject() const
 {
     return BuildInspectorObject(std::numeric_limits<int>::max());
@@ -291,7 +297,7 @@ std::unique_ptr<v8_inspector::protocol::Runtime::API::StackTrace> SourceLocation
 
 std::unique_ptr<SourceLocation> CaptureSourceLocation(const String& url, unsigned line_number, unsigned column_number)
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     if (auto location = CaptureNativeV8StackTrace(false))
         return location;
     return std::make_unique<SourceLocation>(url, String(), line_number, column_number, nullptr);
@@ -306,7 +312,7 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(const String& url, unsigne
 
 std::unique_ptr<SourceLocation> CaptureSourceLocation()
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     if (auto location = CaptureNativeV8StackTrace(false))
         return location;
     return std::make_unique<SourceLocation>(String(), String(), 0, 0, nullptr);

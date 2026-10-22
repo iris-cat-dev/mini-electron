@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/display_lock/display_lock_utilities.h"
 
+#include "base/trace_event/base_tracing.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_context.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_document_state.h"
@@ -16,7 +17,9 @@
 #include "third_party/blink/renderer/core/editing/editing_boundary.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"

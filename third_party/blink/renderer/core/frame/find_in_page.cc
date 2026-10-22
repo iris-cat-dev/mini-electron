@@ -35,8 +35,10 @@
 #include "base/numerics/safe_conversions.h"
 #include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
 #include "third_party/blink/public/web/web_plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/display_lock/display_lock_document_state.h"
 #include "third_party/blink/renderer/core/editing/finder/text_finder.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
@@ -63,9 +65,12 @@ void FindInPage::Find(int request_id, const String& search_text, mojom::blink::F
 {
     DCHECK(!search_text.empty());
 
+#if !defined(MINI_UI_QUICKJS)
     // Record the fact that we have a find-in-page request.
     frame_->GetFrame()->GetDocument()->MarkHasFindInPageRequest();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     blink::WebPlugin* plugin = GetWebPluginForFind();
     // Check if the plugin still exists in the document.
     if (plugin) {
@@ -80,6 +85,7 @@ void FindInPage::Find(int request_id, const String& search_text, mojom::blink::F
         }
         return;
     }
+#endif
 
     // Send "no results" if this frame has no visible content.
     if (!frame_->HasVisibleContent()) {
@@ -162,11 +168,13 @@ bool FindInPage::FindInternal(int identifier, const String& search_text, const m
 
 void FindInPage::StopFinding(mojom::StopFindAction action)
 {
+#if !defined(MINI_UI_QUICKJS)
     WebPlugin* const plugin = GetWebPluginForFind();
     if (plugin) {
         plugin->StopFind();
         return;
     }
+#endif
 
     const bool clear_selection = action == mojom::StopFindAction::kStopFindActionClearSelection;
     if (clear_selection)
@@ -295,6 +303,7 @@ TextFinder& FindInPage::EnsureTextFinder()
     return *text_finder_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FindInPage::SetPluginFindHandler(WebPluginContainer* plugin)
 {
     plugin_find_handler_ = plugin;
@@ -313,6 +322,7 @@ WebPlugin* FindInPage::GetWebPluginForFind()
         return plugin_find_handler_->Plugin();
     return nullptr;
 }
+#endif
 
 void FindInPage::BindToReceiver(mojo::PendingAssociatedReceiver<mojom::blink::FindInPage> receiver)
 {

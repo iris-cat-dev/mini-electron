@@ -6,20 +6,26 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_MOJO_HANDLER_H_
 
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/input/browser_controls_offset_tags_info.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/confidence_level.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/back_forward_cache_controller.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/fullscreen.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/media/fullscreen_video_element.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/reporting/reporting.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_receiver.h"
+#endif
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
@@ -46,19 +52,23 @@ class Page;
 //  - Data members of which types are defined by mojom.
 //
 // A single LocalFrame instance owns a single LocalFrameMojoHandler instance.
-class LocalFrameMojoHandler : public GarbageCollected<LocalFrameMojoHandler>,
-                              public mojom::blink::LocalFrame,
-                              public mojom::blink::LocalMainFrame,
-                              public mojom::blink::FullscreenVideoElementHandler,
-                              public mojom::blink::DevicePostureClient {
+class LocalFrameMojoHandler : public GarbageCollected<LocalFrameMojoHandler>
+#if !defined(MINI_UI_QUICKJS)
+    , public mojom::blink::LocalFrame
+    , public mojom::blink::LocalMainFrame
+    , public mojom::blink::FullscreenVideoElementHandler
+#endif
+    , public mojom::blink::DevicePostureClient {
 public:
     explicit LocalFrameMojoHandler(blink::LocalFrame& frame);
     void Trace(Visitor* visitor) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void WasAttachedAsLocalMainFrame();
     void DidDetachFrame();
 
     void ClosePageForTesting();
+#endif
 
     mojom::blink::LocalFrameHost& LocalFrameHostRemote()
     {
@@ -81,14 +91,17 @@ public:
 #endif
 
     mojom::blink::DevicePostureType GetDevicePosture();
+#if !defined(MINI_UI_QUICKJS)
     void OverrideDevicePostureForEmulation(mojom::blink::DevicePostureType device_posture_param);
     void DisableDevicePostureOverrideForEmulation();
+#endif
 
 private:
     Page* GetPage() const;
     LocalDOMWindow* DomWindow() const;
     Document* GetDocument() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void BindToLocalFrameReceiver(mojo::PendingAssociatedReceiver<mojom::blink::LocalFrame> receiver);
     void BindToMainFrameReceiver(mojo::PendingAssociatedReceiver<mojom::blink::LocalMainFrame> receiver);
     void BindFullscreenVideoElementReceiver(mojo::PendingAssociatedReceiver<mojom::blink::FullscreenVideoElementHandler> receiver);
@@ -144,8 +157,10 @@ private:
     void GetSavableResourceLinks(GetSavableResourceLinksCallback callback) final;
     void MixedContentFound(const KURL& main_resource_url, const KURL& mixed_content_url, mojom::blink::RequestContextType request_context, bool was_allowed,
         const KURL& url_before_redirects, bool had_redirect, network::mojom::blink::SourceLocationPtr source_location) final;
+#if !defined(MINI_UI_QUICKJS)
     void BindDevToolsAgent(
         mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver) final;
+#endif
 #if BUILDFLAG(IS_ANDROID)
     void ExtractSmartClipData(const gfx::Rect& rect, ExtractSmartClipDataCallback callback) final;
 #endif
@@ -188,6 +203,7 @@ private:
 
     // mojom::FullscreenVideoElementHandler implementation:
     void RequestFullscreenVideoElement() final;
+#endif
 
     // DevicePostureClient implementation:
     void OnPostureChanged(mojom::blink::DevicePostureType posture) final;
@@ -212,14 +228,17 @@ private:
 
     HeapMojoRemote<mojom::blink::NonAssociatedLocalFrameHost> non_associated_local_frame_host_remote_ { nullptr };
 
+#if !defined(MINI_UI_QUICKJS)
     // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
     HeapMojoAssociatedReceiver<mojom::blink::LocalFrame, LocalFrameMojoHandler> local_frame_receiver_ { this, nullptr };
     // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
     HeapMojoAssociatedReceiver<mojom::blink::LocalMainFrame, LocalFrameMojoHandler> main_frame_receiver_ { this, nullptr };
     // LocalFrameMojoHandler can be reused by multiple ExecutionContext.
     HeapMojoAssociatedReceiver<mojom::blink::FullscreenVideoElementHandler, LocalFrameMojoHandler> fullscreen_video_receiver_ { this, nullptr };
+#endif
 };
 
+#if !defined(MINI_UI_QUICKJS)
 class ActiveURLMessageFilter : public mojo::MessageFilter {
 public:
     explicit ActiveURLMessageFilter(LocalFrame* local_frame)
@@ -237,6 +256,7 @@ private:
     WeakPersistent<LocalFrame> local_frame_;
     bool debug_url_set_ = false;
 };
+#endif
 
 } // namespace blink
 

@@ -23,7 +23,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_task_queue.h"
 #include "third_party/blink/renderer/platform/scheduler/public/web_scheduling_priority.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -133,11 +135,13 @@ base::sequence_manager::TaskQueue::QueueEnabledVoter* FrameTaskQueueController::
     return it->value.get();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FrameTaskQueueController::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
     dict.Add("task_queues", task_queues_.Values());
 }
+#endif
 
 // static
 MainThreadTaskQueue::QueueType FrameTaskQueueController::QueueTypeFromQueueTraits(QueueTraits queue_traits)

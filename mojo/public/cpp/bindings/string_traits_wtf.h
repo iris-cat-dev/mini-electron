@@ -13,18 +13,14 @@
 
 namespace mojo {
 
-template <> struct /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS_BASE)*/ StringTraits<WTF::String> {
-    static bool IsNull(const WTF::String& input)
-    {
-        return input.IsNull();
-    }
-    static void SetToNull(WTF::String* output);
+template <>
+struct COMPONENT_EXPORT(MOJO_CPP_BINDINGS_BASE) StringTraits<WTF::String> {
+  static bool IsNull(const WTF::String& input) { return input.IsNull(); }
+  static void SetToNull(WTF::String* output);
 
-    static WTF::StringUTF8Adaptor GetUTF8(const WTF::String& input);
+  static WTF::StringUTF8Adaptor GetUTF8(const WTF::String& input);
 
-    static bool Read(StringDataView input, WTF::String* output);
-
-    static bool IsValidUTF8(const WTF::String& value);
+  static bool Read(StringDataView input, WTF::String* output);
 };
 
 } // namespace mojo

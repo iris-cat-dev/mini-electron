@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#if !defined(MINI_UI_QUICKJS)
 
 #include <memory>
 
@@ -705,3 +706,4 @@ void LocalFrameUkmAggregator::OnCommitRequested()
 }
 
 } // namespace blink
+#endif

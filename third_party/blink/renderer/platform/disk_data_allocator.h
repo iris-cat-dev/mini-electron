@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_DISK_DATA_ALLOCATOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_DISK_DATA_ALLOCATOR_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <map>
 #include <memory>
 
@@ -123,4 +124,5 @@ private:
 };
 
 } // namespace blink
+#endif  // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_DISK_DATA_ALLOCATOR_H_

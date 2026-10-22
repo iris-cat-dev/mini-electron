@@ -6,9 +6,13 @@
 
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_id_provider.h"
+#endif
 #include "cc/animation/scroll_offset_animation_curve_factory.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/trees/target_property.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
@@ -79,8 +83,14 @@ void ProgrammaticScrollAnimator::AnimateToOffset(const ScrollOffset& offset, boo
 
     scrollable_area_->RegisterForAnimation();
     if (!scrollable_area_->ScheduleAnimation()) {
+#if defined(MINI_UI_QUICKJS)
+        ScrollOffsetChanged(offset, GetScrollType());
+        ResetAnimationState();
+        return;
+#else
         ResetAnimationState();
         ScrollOffsetChanged(offset, GetScrollType());
+#endif
     }
     run_state_ = RunState::kWaitingToSendToCompositor;
 }
@@ -122,6 +132,7 @@ void ProgrammaticScrollAnimator::UpdateCompositorAnimations()
         return ResetAnimationState();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (compositor_animation_id() && run_state_ != RunState::kRunningOnCompositor) {
         // If the current run state is WaitingToSendToCompositor but we have a
         // non-zero compositor animation id, there's a currently running
@@ -137,11 +148,13 @@ void ProgrammaticScrollAnimator::UpdateCompositorAnimations()
         }
     }
 
+#endif
     if (run_state_ == RunState::kWaitingToSendToCompositor) {
+        bool sent_to_compositor = false;
+#if !defined(MINI_UI_QUICKJS)
         if (!element_id_)
             ReattachCompositorAnimationIfNeeded(GetScrollableArea()->GetCompositorAnimationTimeline());
 
-        bool sent_to_compositor = false;
         if (!scrollable_area_->ShouldScrollOnMainThread()) {
             // If MultiSmoothScrollIntoView is not enabled, we use sequenced scrolls
             // which we cannot send to the compositor thread. crbug.com/730705.
@@ -156,6 +169,7 @@ void ProgrammaticScrollAnimator::UpdateCompositorAnimations()
             }
         }
 
+#endif
         if (!sent_to_compositor) {
             run_state_ = RunState::kRunningOnMainThread;
             animation_curve_->SetInitialValue(CompositorOffsetFromBlinkOffset(scrollable_area_->GetScrollOffset()));
@@ -166,6 +180,7 @@ void ProgrammaticScrollAnimator::UpdateCompositorAnimations()
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // If the scrollable area switched to require main thread scrolling during a
     // composited animation, continue the animation on the main thread.
     if (run_state_ == RunState::kRunningOnCompositor && scrollable_area_->ShouldScrollOnMainThread()) {
@@ -178,8 +193,10 @@ void ProgrammaticScrollAnimator::UpdateCompositorAnimations()
             ScrollOffsetChanged(target_offset_, GetScrollType());
         }
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ProgrammaticScrollAnimator::NotifyCompositorAnimationFinished(int group_id)
 {
     DCHECK_NE(run_state_, RunState::kRunningOnCompositorButNeedsUpdate);
@@ -187,6 +204,7 @@ void ProgrammaticScrollAnimator::NotifyCompositorAnimationFinished(int group_id)
     AnimationFinished();
 }
 
+#endif
 void ProgrammaticScrollAnimator::AnimationFinished()
 {
     if (on_finish_)

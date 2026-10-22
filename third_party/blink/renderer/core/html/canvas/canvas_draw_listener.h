@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_DRAW_LISTENER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_DRAW_LISTENER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
@@ -40,5 +41,6 @@ protected:
 };
 
 } // namespace blink
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_DRAW_LISTENER_H_

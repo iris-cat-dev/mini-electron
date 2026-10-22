@@ -96,7 +96,9 @@
 #include "third_party/blink/renderer/core/events/touch_event.h"
 #include "third_party/blink/renderer/core/events/ui_event.h"
 #include "third_party/blink/renderer/core/events/wheel_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -110,19 +112,27 @@
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_object_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input/input_device_capabilities.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_box.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/mathml_names.h"
@@ -131,14 +141,18 @@
 #include "third_party/blink/renderer/core/page/scrolling/top_document_root_scroller_controller.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_script.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/core/xmlns_names.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
@@ -331,8 +345,10 @@ Node::Node(TreeScope* tree_scope, ConstructionType type)
 #endif
     InstanceCounters::IncrementCounter(InstanceCounters::kNodeCounter);
     // Document is required for probe sink.
+#if !defined(MINI_UI_QUICKJS)
     if (tree_scope_)
         probe::NodeCreated(this);
+#endif
 }
 
 Node::~Node()
@@ -395,14 +411,17 @@ Node* Node::PseudoAwarePreviousSibling() const
     // corresponds to the ordering of pseudo elements in a traversal:
     // ::scroll-marker-group(before), ::marker, ::scroll-marker, ::check,
     // ::before, non-pseudo Elements, ::after, ::select-arrow,
-    // ::scroll-marker-group(after), ::view-transition. The fallthroughs ensure
-    // this ordering by checking for each kind of node in-turn.
+    // ::scroll-marker-group(after). The fallthroughs ensure this ordering by
+    // checking for each kind of node in turn.
     switch (GetPseudoId()) {
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransition:
-        if (Node* previous = parent->GetPseudoElement(kPseudoIdScrollMarkerGroupAfter)) {
+        if (Node* previous =
+                parent->GetPseudoElement(kPseudoIdScrollMarkerGroupAfter)) {
             return previous;
         }
         [[fallthrough]];
+#endif
     case kPseudoIdScrollNextButton:
         if (Node* next = parent->GetPseudoElement(kPseudoIdScrollMarkerGroupAfter)) {
             return next;
@@ -453,27 +472,29 @@ Node* Node::PseudoAwarePreviousSibling() const
         [[fallthrough]];
     case kPseudoIdScrollPrevButton:
         return nullptr;
-    // The pseudos of the view transition subtree have a known structure and
-    // cannot create other pseudos so these are handled separately of the above
-    // fallthrough cases. For details on view-transition pseudo ordering, see
-    // https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/view_transition/README.md#pseudo-element-traversal
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransitionNew:
         CHECK_EQ(parent->GetPseudoId(), kPseudoIdViewTransitionImagePair);
-        return parent->GetPseudoElement(kPseudoIdViewTransitionOld, To<PseudoElement>(this)->view_transition_name());
+        return parent->GetPseudoElement(
+            kPseudoIdViewTransitionOld,
+            To<PseudoElement>(this)->view_transition_name());
     case kPseudoIdViewTransitionGroup: {
-        const Vector<AtomicString>& names = GetDocument().GetStyleEngine().ViewTransitionTags();
-        wtf_size_t found_index = names.Find(To<PseudoElement>(this)->view_transition_name());
+        const Vector<AtomicString>& names =
+            GetDocument().GetStyleEngine().ViewTransitionTags();
+        wtf_size_t found_index =
+            names.Find(To<PseudoElement>(this)->view_transition_name());
         CHECK_NE(found_index, kNotFound);
         if (found_index == 0) {
             return nullptr;
         }
-
         CHECK_EQ(parent->GetPseudoId(), kPseudoIdViewTransition);
-        return parent->GetPseudoElement(kPseudoIdViewTransitionGroup, names[found_index - 1]);
+        return parent->GetPseudoElement(
+            kPseudoIdViewTransitionGroup, names[found_index - 1]);
     }
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionOld:
         return nullptr;
+#endif
     default:
         NOTREACHED();
     }
@@ -536,29 +557,38 @@ Node* Node::PseudoAwareNextSibling() const
         }
         [[fallthrough]];
     case kPseudoIdScrollNextButton:
-        if (Node* next = parent->GetPseudoElement(kPseudoIdViewTransition)) {
+#if !defined(MINI_UI_QUICKJS)
+        if (Node* next =
+                parent->GetPseudoElement(kPseudoIdViewTransition)) {
             return next;
         }
         [[fallthrough]];
     case kPseudoIdViewTransition:
+#endif
         return nullptr;
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransitionOld:
         CHECK_EQ(parent->GetPseudoId(), kPseudoIdViewTransitionImagePair);
-        return parent->GetPseudoElement(kPseudoIdViewTransitionNew, To<PseudoElement>(this)->view_transition_name());
+        return parent->GetPseudoElement(
+            kPseudoIdViewTransitionNew,
+            To<PseudoElement>(this)->view_transition_name());
     case kPseudoIdViewTransitionGroup: {
-        const Vector<AtomicString>& names = GetDocument().GetStyleEngine().ViewTransitionTags();
-        wtf_size_t found_index = names.Find(To<PseudoElement>(this)->view_transition_name());
+        const Vector<AtomicString>& names =
+            GetDocument().GetStyleEngine().ViewTransitionTags();
+        wtf_size_t found_index =
+            names.Find(To<PseudoElement>(this)->view_transition_name());
         CHECK_NE(found_index, kNotFound);
         if (found_index == names.size() - 1) {
             return nullptr;
         }
-
         CHECK_EQ(parent->GetPseudoId(), kPseudoIdViewTransition);
-        return parent->GetPseudoElement(kPseudoIdViewTransitionGroup, names[found_index + 1]);
+        return parent->GetPseudoElement(
+            kPseudoIdViewTransitionGroup, names[found_index + 1]);
     }
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionNew:
         return nullptr;
+#endif
     default:
         NOTREACHED();
     }
@@ -567,26 +597,32 @@ Node* Node::PseudoAwareNextSibling() const
 Node* Node::PseudoAwareFirstChild() const
 {
     if (const auto* current_element = DynamicTo<Element>(this)) {
-        // See comments in PseudoAwarePreviousSibling for details on view-transition
-        // pseudo traversal.
+#if !defined(MINI_UI_QUICKJS)
         if (GetPseudoId() == kPseudoIdViewTransition) {
-            const Vector<AtomicString>& names = GetDocument().GetStyleEngine().ViewTransitionTags();
+            const Vector<AtomicString>& names =
+                GetDocument().GetStyleEngine().ViewTransitionTags();
             if (names.empty()) {
                 return nullptr;
             }
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionGroup, names.front());
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionGroup, names.front());
         }
         if (GetPseudoId() == kPseudoIdViewTransitionGroup) {
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionImagePair, To<PseudoElement>(this)->view_transition_name());
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionImagePair,
+                To<PseudoElement>(this)->view_transition_name());
         }
         if (GetPseudoId() == kPseudoIdViewTransitionImagePair) {
-            const AtomicString& name = To<PseudoElement>(this)->view_transition_name();
-            if (Node* first = current_element->GetPseudoElement(kPseudoIdViewTransitionOld, name)) {
+            const AtomicString& name =
+                To<PseudoElement>(this)->view_transition_name();
+            if (Node* first = current_element->GetPseudoElement(
+                    kPseudoIdViewTransitionOld, name)) {
                 return first;
             }
-
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionNew, name);
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionNew, name);
         }
+#endif
         if (Node* first = current_element->GetPseudoElement(kPseudoIdScrollPrevButton)) {
             return first;
         }
@@ -617,7 +653,11 @@ Node* Node::PseudoAwareFirstChild() const
         if (Node* first = current_element->GetPseudoElement(kPseudoIdScrollNextButton)) {
             return first;
         }
+#if !defined(MINI_UI_QUICKJS)
         return current_element->GetPseudoElement(kPseudoIdViewTransition);
+#else
+        return nullptr;
+#endif
     }
 
     return firstChild();
@@ -626,29 +666,36 @@ Node* Node::PseudoAwareFirstChild() const
 Node* Node::PseudoAwareLastChild() const
 {
     if (const auto* current_element = DynamicTo<Element>(this)) {
-        // See comments in PseudoAwarePreviousSibling for details on view-transition
-        // pseudo traversal.
+#if !defined(MINI_UI_QUICKJS)
         if (GetPseudoId() == kPseudoIdViewTransition) {
-            const Vector<AtomicString>& names = GetDocument().GetStyleEngine().ViewTransitionTags();
+            const Vector<AtomicString>& names =
+                GetDocument().GetStyleEngine().ViewTransitionTags();
             if (names.empty()) {
                 return nullptr;
             }
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionGroup, names.back());
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionGroup, names.back());
         }
         if (GetPseudoId() == kPseudoIdViewTransitionGroup) {
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionImagePair, To<PseudoElement>(this)->view_transition_name());
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionImagePair,
+                To<PseudoElement>(this)->view_transition_name());
         }
         if (GetPseudoId() == kPseudoIdViewTransitionImagePair) {
-            const AtomicString& name = To<PseudoElement>(this)->view_transition_name();
-            if (Node* last = current_element->GetPseudoElement(kPseudoIdViewTransitionNew, name)) {
+            const AtomicString& name =
+                To<PseudoElement>(this)->view_transition_name();
+            if (Node* last = current_element->GetPseudoElement(
+                    kPseudoIdViewTransitionNew, name)) {
                 return last;
             }
-
-            return current_element->GetPseudoElement(kPseudoIdViewTransitionOld, name);
+            return current_element->GetPseudoElement(
+                kPseudoIdViewTransitionOld, name);
         }
-        if (Node* last = current_element->GetPseudoElement(kPseudoIdViewTransition)) {
+        if (Node* last =
+                current_element->GetPseudoElement(kPseudoIdViewTransition)) {
             return last;
         }
+#endif
         if (Node* last = current_element->GetPseudoElement(kPseudoIdScrollNextButton)) {
             return last;
         }
@@ -1469,8 +1516,10 @@ void Node::SetNeedsStyleRecalc(StyleChangeType change_type, const StyleChangeRea
     if (ShouldSkipMarkingStyleDirty())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline.invalidationTracking"),
         "StyleRecalcInvalidationTracking", inspector_style_recalc_invalidation_tracking_event::Data, this, change_type, reason);
+#endif
 
     StyleChangeType existing_change_type = GetStyleChangeType();
     if (change_type > existing_change_type)
@@ -1484,18 +1533,19 @@ void Node::SetNeedsStyleRecalc(StyleChangeType change_type, const StyleChangeRea
     if (auto* this_element = DynamicTo<Element>(this)) {
         this_element->SetAnimationStyleChange(false);
 
-        // The style walk for the pseudo tree created for a ViewTransition is
-        // done after resolving style for the author DOM. See
-        // StyleEngine::RecalcTransitionPseudoStyle.
-        // Since the dirty bits from the originating element (root element) are not
-        // propagated to these pseudo elements during the default walk, we need to
-        // invalidate style for these elements here.
+#if !defined(MINI_UI_QUICKJS)
+        // View-transition pseudo style is walked separately from the author DOM.
         if (this_element->IsDocumentElement()) {
             auto update_style_change = [](PseudoElement* pseudo_element) {
-                pseudo_element->SetNeedsStyleRecalc(kLocalStyleChange, StyleChangeReasonForTracing::Create(style_change_reason::kViewTransition));
+                pseudo_element->SetNeedsStyleRecalc(
+                    kLocalStyleChange,
+                    StyleChangeReasonForTracing::Create(
+                        style_change_reason::kViewTransition));
             };
-            ViewTransitionUtils::ForEachTransitionPseudo(GetDocument(), update_style_change);
+            ViewTransitionUtils::ForEachTransitionPseudo(
+                GetDocument(), update_style_change);
         }
+#endif
     }
 
     if (auto* svg_element = DynamicTo<SVGElement>(this))
@@ -1532,6 +1582,7 @@ void Node::FocusabilityLost()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 LinkHighlightCandidate Node::IsLinkHighlightCandidate() const
 {
     if (const LayoutObject* layout_object = GetLayoutObject()) {
@@ -1545,6 +1596,7 @@ LinkHighlightCandidate Node::IsLinkHighlightCandidate() const
     }
     return LinkHighlightCandidate::kMayBe;
 }
+#endif
 
 unsigned Node::NodeIndex() const
 {
@@ -2444,11 +2496,15 @@ String Node::DebugName() const
 {
     StringBuilder name;
     name.Append(nodeName());
-    if (const auto* vt_pseudo = DynamicTo<ViewTransitionPseudoElementBase>(this)) {
+#if !defined(MINI_UI_QUICKJS)
+    if (const auto* vt_pseudo =
+            DynamicTo<ViewTransitionPseudoElementBase>(this)) {
         name.Append("(");
         name.Append(vt_pseudo->view_transition_name());
         name.Append(")");
-    } else if (const auto* this_element = DynamicTo<Element>(this)) {
+    } else
+#endif
+    if (const auto* this_element = DynamicTo<Element>(this)) {
         if (this_element->HasID()) {
             name.Append(" id=\'");
             name.Append(this_element->GetIdAttribute());
@@ -2515,10 +2571,13 @@ String Node::ToString() const
         builder.Append(" ");
         builder.Append(nodeValue().EncodeForDebugging());
         return builder.ReleaseString();
-    } else if (const auto* vt_pseudo = DynamicTo<ViewTransitionPseudoElementBase>(this)) {
+#if !defined(MINI_UI_QUICKJS)
+    } else if (const auto* vt_pseudo =
+                   DynamicTo<ViewTransitionPseudoElementBase>(this)) {
         builder.Append("(");
         builder.Append(vt_pseudo->view_transition_name());
         builder.Append(")");
+#endif
     } else if (const auto* element = DynamicTo<Element>(this)) {
         const AtomicString& pseudo = element->ShadowPseudoId();
         if (!pseudo.empty()) {
@@ -3106,16 +3165,17 @@ void Node::DefaultEventHandler(Event& event)
                 frame->GetEventHandler().DefaultTextInputEventHandler(To<TextEvent>(&event));
             }
         }
-    } else if (RuntimeEnabledFeatures::MiddleClickAutoscrollEnabled() && event_type == event_type_names::kMousedown && IsA<MouseEvent>(event)) {
+    } else if (
+#if defined(MINI_UI_QUICKJS)
+        false
+#else
+        RuntimeEnabledFeatures::MiddleClickAutoscrollEnabled()
+#endif
+        && event_type == event_type_names::kMousedown && IsA<MouseEvent>(event)) {
         auto& mouse_event = To<MouseEvent>(event);
         if (mouse_event.button() == static_cast<int16_t>(WebPointerProperties::Button::kMiddle)) {
             if (EnclosingLinkEventParentOrSelf())
                 return;
-
-            // Avoid that IsUserScrollable changes layout tree structure.
-            // FIXME: We should avoid synchronous layout if possible. We can
-            // remove this synchronous layout if we avoid synchronous layout in
-            // LayoutTextControlSingleLine::scrollHeight
             GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kInput);
             LayoutObject* layout_object = GetLayoutObject();
             while (layout_object && (!layout_object->IsBox() || !To<LayoutBox>(layout_object)->IsUserScrollable())) {
@@ -3400,7 +3460,7 @@ LayoutBox* Node::AutoscrollBox()
 void Node::StopAutoscroll()
 {
 }
-
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainerImpl* Node::GetWebPluginContainer() const
 {
     if (!IsA<HTMLObjectElement>(this) && !IsA<HTMLEmbedElement>(this)) {
@@ -3411,23 +3471,23 @@ WebPluginContainerImpl* Node::GetWebPluginContainer() const
         return embedded->Plugin();
     return nullptr;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool Node::HasMediaControlAncestor() const
 {
     const Node* current = this;
-
     while (current) {
         if (current->IsMediaControls() || current->IsMediaControlElement())
             return true;
-
         if (current->IsShadowRoot())
             current = current->OwnerShadowHost();
         else
             current = current->ParentOrShadowHostElement();
     }
-
     return false;
 }
+#endif
 
 void Node::ParentSlotChanged()
 {

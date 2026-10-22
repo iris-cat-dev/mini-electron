@@ -60,14 +60,18 @@ class TickClock;
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class BackgroundTracingHelper;
+#endif
 class EventCounts;
 class ExceptionState;
 class ExecutionContext;
 class LargestContentfulPaint;
 class LayoutShift;
 class MemoryInfo;
+#if !defined(MINI_UI_QUICKJS)
 class MemoryMeasurement;
+#endif
 class Node;
 class PerformanceElementTiming;
 class PerformanceEventTiming;
@@ -107,7 +111,9 @@ public:
     virtual PerformanceTiming* timing() const;
     virtual PerformanceNavigation* navigation() const;
     virtual MemoryInfo* memory(ScriptState*) const;
+#if !defined(MINI_UI_QUICKJS)
     virtual ScriptPromise<MemoryMeasurement> measureUserAgentSpecificMemory(ScriptState*, ExceptionState& exception_state) const;
+#endif
     virtual EventCounts* eventCounts();
     virtual std::uint64_t interactionCount() const = 0;
 
@@ -379,13 +385,17 @@ protected:
     // type. Entries are dropped when the buffer from that entry type is full.
     WTF::HashMap<PerformanceEntry::EntryType, int> dropped_entries_count_map_;
 
+#if !defined(MINI_UI_QUICKJS)
     // See crbug.com/1181774.
     Member<BackgroundTracingHelper> background_tracing_helper_;
+#endif
 
     Vector<std::pair<base::OnceCallback<void(Performance&)>, base::TimeTicks>> pending_entry_operations_with_render_coarsening_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Running counter for LongTask observations.
     size_t long_task_counter_ = 0;
+#endif
 };
 
 } // namespace blink

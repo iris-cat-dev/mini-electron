@@ -39,11 +39,15 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/parser/background_html_scanner.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/css_preload_scanner.h"
 #include "third_party/blink/renderer/core/html/parser/html_token.h"
 #include "third_party/blink/renderer/core/html/parser/preload_request.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/element_locator.h"
+#endif
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/text/segmented_string.h"
@@ -74,7 +78,9 @@ struct PendingPreloadData {
     MetaCHValues meta_ch_values;
     std::optional<ViewportDescription> viewport;
     int csp_meta_tag_count = 0;
+#if !defined(MINI_UI_QUICKJS)
     bool has_located_potential_lcp_element = false;
+#endif
     PreloadRequestStream requests;
 };
 
@@ -110,8 +116,13 @@ class TokenPreloadScanner {
 public:
     enum class ScannerType { kMainDocument, kInsertion };
 
-    TokenPreloadScanner(const KURL& document_url, std::unique_ptr<CachedDocumentParameters>, std::unique_ptr<MediaValuesCached::MediaValuesCachedData>,
-        const ScannerType, Vector<ElementLocator>);
+    TokenPreloadScanner(const KURL& document_url, std::unique_ptr<CachedDocumentParameters>,
+        std::unique_ptr<MediaValuesCached::MediaValuesCachedData>, const ScannerType
+#if !defined(MINI_UI_QUICKJS)
+        ,
+        Vector<ElementLocator>
+#endif
+    );
     TokenPreloadScanner(const TokenPreloadScanner&) = delete;
     TokenPreloadScanner& operator=(const TokenPreloadScanner&) = delete;
     ~TokenPreloadScanner();
@@ -124,10 +135,12 @@ public:
         predicted_base_element_url_ = url;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool HasLocatedPotentialLcpElement()
     {
         return seen_potential_lcp_element_;
     }
+#endif
 
 private:
     class StartTagScanner;
@@ -170,14 +183,18 @@ private:
     bool in_script_web_bundle_;
     bool seen_body_;
     bool seen_img_;
+#if !defined(MINI_UI_QUICKJS)
     bool seen_potential_lcp_element_ = false;
+#endif
     PictureData picture_data_;
     size_t template_count_;
     std::unique_ptr<CachedDocumentParameters> document_parameters_;
     std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data_;
     Persistent<MediaValuesCached> media_values_;
     ScannerType scanner_type_;
+#if !defined(MINI_UI_QUICKJS)
     element_locator::TokenStreamMatcher lcp_element_matcher_;
+#endif
 };
 
 class CORE_EXPORT HTMLPreloadScanner final {
@@ -204,8 +221,16 @@ public:
 
     HTMLPreloadScanner(std::unique_ptr<HTMLTokenizer>, const KURL& document_url, std::unique_ptr<CachedDocumentParameters>,
         std::unique_ptr<MediaValuesCached::MediaValuesCachedData>, const TokenPreloadScanner::ScannerType,
-        std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner, TakePreloadFn take_preload = TakePreloadFn(),
-        Vector<ElementLocator> locators = {}, bool disable_preload_scanning = false);
+#if !defined(MINI_UI_QUICKJS)
+        std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner,
+#endif
+        TakePreloadFn take_preload = TakePreloadFn()
+#if !defined(MINI_UI_QUICKJS)
+        ,
+        Vector<ElementLocator> locators = {}
+#endif
+        ,
+        bool disable_preload_scanning = false);
     HTMLPreloadScanner(const HTMLPreloadScanner&) = delete;
     HTMLPreloadScanner& operator=(const HTMLPreloadScanner&) = delete;
     ~HTMLPreloadScanner();
@@ -228,7 +253,9 @@ private:
     TokenPreloadScanner scanner_;
     SegmentedString source_;
     std::unique_ptr<HTMLTokenizer> tokenizer_;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner_;
+#endif
     TakePreloadFn take_preload_;
     bool skip_preload_scanning_;
     base::WeakPtrFactory<HTMLPreloadScanner> weak_ptr_factory_ { this };

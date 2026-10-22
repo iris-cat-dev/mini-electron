@@ -35,7 +35,9 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
@@ -100,7 +102,9 @@ void ProgressTracker::ProgressStarted()
     if (!frame_->IsLoading()) {
         GetLocalFrameClient()->DidStartLoading();
         frame_->SetIsLoading(true);
+#if !defined(MINI_UI_QUICKJS)
         probe::FrameStartedLoading(frame_);
+#endif
     }
 }
 
@@ -110,7 +114,9 @@ void ProgressTracker::ProgressCompleted()
     frame_->SetIsLoading(false);
     SendFinalProgress();
     Reset();
+#if !defined(MINI_UI_QUICKJS)
     probe::FrameStoppedLoading(frame_);
+#endif
     GetLocalFrameClient()->DidStopLoading();
     frame_->UpdateFaviconURL();
 }

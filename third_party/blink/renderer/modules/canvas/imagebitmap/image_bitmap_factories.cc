@@ -34,12 +34,17 @@
 #include <utility>
 
 #include "base/location.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/core/v8/v8_union_blob_htmlcanvaselement_htmlimageelement_imagebitmap_imagedata_offscreencanvas_svgimageelement.h"
+#else
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_blob_htmlcanvaselement_htmlimageelement_htmlvideoelement_imagebitmap_imagedata_offscreencanvas_svgimageelement_videoframe.h"
+#endif
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
@@ -48,17 +53,19 @@
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/canvas/image_data.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/svg/svg_image_element.h"
-#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
-#include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
@@ -83,7 +90,7 @@ enum CreateImageBitmapSource {
     kCreateImageBitmapSourceOffscreenCanvas = 6,
     kCreateImageBitmapSourceSVGImageElement = 7,
     kCreateImageBitmapSourceVideoFrame = 8,
-    kMaxValue = kCreateImageBitmapSourceVideoFrame,
+    kCreateImageBitmapSourceCount = 9,
 };
 
 constexpr const char* kImageBitmapOptionNone = "none";
@@ -109,32 +116,36 @@ inline ImageBitmapSource* ToImageBitmapSourceInternal(const V8ImageBitmapSource*
 
     switch (value->GetContentType()) {
     case V8ImageBitmapSource::ContentType::kBlob:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceBlob);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceBlob, kCreateImageBitmapSourceCount);
         return value->GetAsBlob();
     case V8ImageBitmapSource::ContentType::kHTMLCanvasElement:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLCanvasElement);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLCanvasElement, kCreateImageBitmapSourceCount);
         return value->GetAsHTMLCanvasElement();
     case V8ImageBitmapSource::ContentType::kHTMLImageElement:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLImageElement);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLImageElement, kCreateImageBitmapSourceCount);
         return value->GetAsHTMLImageElement();
+#if !defined(MINI_UI_QUICKJS)
     case V8ImageBitmapSource::ContentType::kHTMLVideoElement:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLVideoElement);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceHTMLVideoElement, kCreateImageBitmapSourceCount);
         return value->GetAsHTMLVideoElement();
+#endif
     case V8ImageBitmapSource::ContentType::kImageBitmap:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceImageBitmap);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceImageBitmap, kCreateImageBitmapSourceCount);
         return value->GetAsImageBitmap();
     case V8ImageBitmapSource::ContentType::kImageData:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceImageData);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceImageData, kCreateImageBitmapSourceCount);
         return value->GetAsImageData();
     case V8ImageBitmapSource::ContentType::kOffscreenCanvas:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceOffscreenCanvas);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceOffscreenCanvas, kCreateImageBitmapSourceCount);
         return value->GetAsOffscreenCanvas();
     case V8ImageBitmapSource::ContentType::kSVGImageElement:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceSVGImageElement);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceSVGImageElement, kCreateImageBitmapSourceCount);
         return value->GetAsSVGImageElement();
+#if !defined(MINI_UI_QUICKJS)
     case V8ImageBitmapSource::ContentType::kVideoFrame:
-        UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceVideoFrame);
+        base::UmaHistogramEnumeration("Blink.Canvas.CreateImageBitmapSource", kCreateImageBitmapSourceVideoFrame, kCreateImageBitmapSourceCount);
         return value->GetAsVideoFrame();
+#endif
     }
 
     NOTREACHED();

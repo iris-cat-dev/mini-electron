@@ -25,13 +25,13 @@ using QueryReason = CookieSettingsBase::QueryReason;
 ContentSettingPatternSource CreateSetting(ContentSetting setting)
 {
     return ContentSettingPatternSource(
-        ContentSettingsPattern::FromString(kDomain), ContentSettingsPattern::Wildcard(), base::Value(setting), std::string(), false);
+        ContentSettingsPattern::FromString(kDomain), ContentSettingsPattern::Wildcard(), base::Value(setting), mojom::ProviderType::kNone, false);
 }
 
 ContentSettingPatternSource CreateThirdPartySetting(ContentSetting setting)
 {
     return ContentSettingPatternSource(
-        ContentSettingsPattern::Wildcard(), ContentSettingsPattern::FromString(kDomain), base::Value(setting), std::string(), false);
+        ContentSettingsPattern::Wildcard(), ContentSettingsPattern::FromString(kDomain), base::Value(setting), mojom::ProviderType::kNone, false);
 }
 
 std::string BoolToString(bool b)

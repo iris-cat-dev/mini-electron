@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_MOBILE_METRICS_TAP_FRIENDLINESS_CHECKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_MOBILE_METRICS_TAP_FRIENDLINESS_CHECKER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/types/pass_key.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -38,5 +39,6 @@ private:
 };
 
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_MOBILE_METRICS_TAP_FRIENDLINESS_CHECKER_H_

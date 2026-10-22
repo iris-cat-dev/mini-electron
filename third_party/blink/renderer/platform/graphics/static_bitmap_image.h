@@ -6,22 +6,28 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_STATIC_BITMAP_IMAGE_H_
 
 #include "base/memory/weak_ptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/notreached.h"
 #include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/common/mailbox_holder.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/khronos/GLES2/gl2.h"
+#endif
 #include "third_party/skia/include/core/SkRefCnt.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace gpu {
 namespace gles2 {
 class GLES2Interface;
 }
 } // namespace gpu
+#endif
 
 namespace blink {
 class CanvasResourceProvider;
@@ -85,15 +91,18 @@ public:
         return this;
     }
 
-    // Methods overridden by AcceleratedStaticBitmapImage only
+#if !defined(MINI_UI_QUICKJS)
+    // Methods overridden by AcceleratedStaticBitmapImage only.
     // Assumes the destination texture has already been allocated.
     virtual bool CopyToTexture(gpu::gles2::GLES2Interface*, GLenum, GLuint, GLint, bool, bool, const gfx::Point&, const gfx::Rect&)
     {
         NOTREACHED();
     }
+#endif
 
     virtual bool CopyToResourceProvider(CanvasResourceProvider* resource_provider, const gfx::Rect& copy_rect) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void EnsureSyncTokenVerified()
     {
         NOTREACHED();
@@ -117,11 +126,11 @@ public:
 
     // For gpu based images the Usage is a bitmap indicating set of API(s) and
     // underlying gpu::SharedImage may be used with.
-    // The gpu::SharedImageInterface is using uint32_t directly.
     virtual gpu::SharedImageUsageSet GetUsage() const
     {
         NOTREACHED();
     }
+#endif
     bool IsPremultiplied() const
     {
         return GetSkImageInfo().alphaType() == SkAlphaType::kPremul_SkAlphaType;

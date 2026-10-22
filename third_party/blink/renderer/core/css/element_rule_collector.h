@@ -205,11 +205,13 @@ public:
 
     void AddMatchedRulesToTracker(StyleRuleUsageTracker*) const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Writes out the collected selector statistics and clears the values.
     // These values are gathered during rule matching and require higher-level
     // control of when they are output - the statistics are designed to be
     // aggregated per-rule for the entire style recalc pass.
     static void DumpAndClearRulesPerfMap();
+#endif
 
     const HeapVector<MatchedRule, 32>& MatchedRulesForTest() const
     {

@@ -14,7 +14,9 @@
 #include "base/numerics/safe_conversions.h"
 #include "third_party/blink/public/platform/scheduler/web_renderer_process_type.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/renderer_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/main_thread/frame_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
@@ -140,7 +142,9 @@ void MainThreadMetricsHelper::RecordMainThreadTaskLoad(base::TimeTicks time, dou
     int load_percentage = static_cast<int>(load * 100);
     DCHECK_LE(load_percentage, 100);
 
+#if !defined(MINI_UI_QUICKJS)
     ReportLowThreadLoadForPageAlmostIdleSignal(load_percentage);
+#endif
 
     UMA_HISTOGRAM_PERCENTAGE(MAIN_THREAD_LOAD_METRIC_NAME, load_percentage);
 
@@ -201,6 +205,7 @@ void MainThreadMetricsHelper::RecordBackgroundMainThreadTaskLoad(base::TimeTicks
     TRACE_COUNTER1(TRACE_DISABLED_BY_DEFAULT("renderer.scheduler"), "MainThreadScheduler.RendererMainThreadLoad.Background", load_percentage);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadMetricsHelper::ReportLowThreadLoadForPageAlmostIdleSignal(int load_percentage)
 {
     // Avoid sending IPCs when the renderer is shutting down as this wreaks havoc
@@ -221,6 +226,7 @@ void MainThreadMetricsHelper::ReportLowThreadLoadForPageAlmostIdleSignal(int loa
         }
     }
 }
+#endif
 
 } // namespace scheduler
 } // namespace blink

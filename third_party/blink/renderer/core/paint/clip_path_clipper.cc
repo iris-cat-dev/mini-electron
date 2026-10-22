@@ -163,6 +163,7 @@ CompositedPaintStatus CompositeClipPathStatus(Node* node)
     return element_animations->CompositedClipPathStatus();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void SetCompositeClipPathStatus(Node* node, bool is_compositable)
 {
     Element* element = DynamicTo<Element>(node);
@@ -186,6 +187,7 @@ bool CanCompositeClipPathAnimation(const LayoutObject& layout_object)
 
     return animation && (animation->CheckCanStartAnimationOnCompositor(nullptr) == CompositorAnimations::kNoFailure);
 }
+#endif
 
 void PaintWorkletBasedClip(
     GraphicsContext& context, const LayoutObject& clip_path_owner, const gfx::RectF& reference_box, const LayoutObject& reference_box_object)
@@ -236,7 +238,9 @@ bool ClipPathClipper::HasCompositeClipPathAnimation(const LayoutObject& layout_o
 
     switch (status) {
     case CompositedPaintStatus::kComposited:
+#if !defined(MINI_UI_QUICKJS)
         DCHECK(CanCompositeClipPathAnimation(layout_object));
+#endif
         return true;
     case CompositedPaintStatus::kNoAnimation:
     case CompositedPaintStatus::kNotComposited:
@@ -256,7 +260,9 @@ bool ClipPathClipper::HasCompositeClipPathAnimation(const LayoutObject& layout_o
 
         // Confirm this is the case be re-resolving status. Doing so here is
         // improper because it's unaware of fragmentation, so produce a crash dump
+#if !defined(MINI_UI_QUICKJS)
         ClipPathClipper::ResolveClipPathStatus(layout_object, false);
+#endif
         CHECK(CompositeClipPathStatus(layout_object.GetNode()) == CompositedPaintStatus::kComposited);
 
         base::debug::DumpWithoutCrashing();
@@ -277,6 +283,7 @@ bool ClipPathClipper::ClipPathStatusResolved(const LayoutObject& layout_object)
     return status != CompositedPaintStatus::kNeedsRepaint;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ClipPathClipper::ResolveClipPathStatus(const LayoutObject& layout_object, bool is_in_block_fragmentation)
 {
     if (!RuntimeEnabledFeatures::CompositeClipPathAnimationEnabled()) {
@@ -298,6 +305,7 @@ void ClipPathClipper::ResolveClipPathStatus(const LayoutObject& layout_object, b
 
     SetCompositeClipPathStatus(layout_object.GetNode(), CanCompositeClipPathAnimation(layout_object));
 }
+#endif
 
 gfx::RectF ClipPathClipper::LocalReferenceBox(const LayoutObject& object)
 {

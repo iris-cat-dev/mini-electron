@@ -1,0 +1,982 @@
+{
+  "method": "Main-thread RIP samples; diagnostic only, not exclusive CPU time or benchmark samples. Uses matching per-binary linker maps. ICF aliases and inlining limit attribution. NTDLL resolution is nearest-export only, not complete PDB symbols.",
+  "map_group_definition": "Symbols beginning map_ or js_map_, including collection GC helpers.",
+  "candidate_inlining": "map_find_record is absent as a standalone symbol in the candidate map; do not report its time as zero.",
+  "frameworks": {
+    "vue": {
+      "before": {
+        "total_samples": 3277,
+        "map_samples": 140,
+        "map_percent": 4.272200183094293,
+        "map_symbols": [
+          {
+            "symbol": "map_find_record",
+            "decoded": "map_find_record",
+            "samples": 117,
+            "percent": 3.570338724443088,
+            "cycles": 1863408088,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_mark",
+            "decoded": "js_map_mark",
+            "samples": 12,
+            "percent": 0.366188587122368,
+            "cycles": 170954300,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_get",
+            "decoded": "js_map_get",
+            "samples": 6,
+            "percent": 0.183094293561184,
+            "cycles": 109593172,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_add_record",
+            "decoded": "map_add_record",
+            "samples": 2,
+            "percent": 0.061031431187061336,
+            "cycles": 30183530,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_delete_record",
+            "decoded": "map_delete_record",
+            "samples": 1,
+            "percent": 0.030515715593530668,
+            "cycles": 13528020,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_set",
+            "decoded": "js_map_set",
+            "samples": 1,
+            "percent": 0.030515715593530668,
+            "cycles": 11653872,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_finalizer",
+            "decoded": "js_map_finalizer",
+            "samples": 1,
+            "percent": 0.030515715593530668,
+            "cycles": 17692854,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ],
+        "top_functions": [
+          {
+            "symbol": "JS_CallInternal",
+            "decoded": "JS_CallInternal",
+            "samples": 594,
+            "percent": 18.126335062557217,
+            "cycles": 9490614910,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "ntdll.dll",
+            "decoded": "ntdll.dll",
+            "samples": 520,
+            "percent": 15.868172108635948,
+            "cycles": 7138030602,
+            "owner": null
+          },
+          {
+            "symbol": "JS_GetPropertyImpl",
+            "decoded": "JS_GetPropertyImpl",
+            "samples": 198,
+            "percent": 6.042111687519072,
+            "cycles": 3192570188,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_find_record",
+            "decoded": "map_find_record",
+            "samples": 117,
+            "percent": 3.570338724443088,
+            "cycles": 1863408088,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?VisitRoot@RootMarkingVisitor@internal@cppgc@@MEAAXPEBXUTraceDescriptor@3@AEBVSourceLocation@v8@@@Z",
+            "decoded": "protected: virtual void __cdecl cppgc::internal::RootMarkingVisitor::VisitRoot(void const * __ptr64,struct cppgc::TraceDescriptor,class v8::SourceLocation const & __ptr64) __ptr64",
+            "samples": 70,
+            "percent": 2.1361000915471466,
+            "cycles": 1172684954,
+            "owner": "mini-ui:fa8740ea88140676a52a.obj"
+          },
+          {
+            "symbol": "mark_children",
+            "decoded": "mark_children",
+            "samples": 65,
+            "percent": 1.9835215135794935,
+            "cycles": 1014682978,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_RunGC",
+            "decoded": "JS_RunGC",
+            "samples": 58,
+            "percent": 1.7699115044247788,
+            "cycles": 911752632,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$_Find_last@UWorkKey@?A0xED9C33EB@mini_ui@@@?$_Hash@V?$_Uset_traits@UWorkKey@?A0xED9C33EB@mini_ui@@V?$_Uhash_compare@UWorkKey@?A0xED9C33EB@mini_ui@@UWorkKeyHash@?A0xED9C33EB@2@U?$equal_to@UWorkKey@?A0xED9C33EB@mini_ui@@@std@@@std@@V?$allocator@UWorkKey@?A0xED9C33EB@mini_ui@@@4@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@UWorkKey@?A0xED9C33EB@mini_ui@@PEAX@std@@@1@AEBUWorkKey@?A0xED9C33EB@mini_ui@@_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct mini_ui::`anonymous namespace'::WorkKey,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Uset_traits<struct mini_ui::`anonymous namespace'::WorkKey,class std::_Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >,class _Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >::allocator<struct mini_ui::`anonymous namespace'::WorkKey>,0> >::_Find_last<struct mini_ui::`anonymous namespace'::WorkKey>(struct mini_ui::`anonymous namespace'::WorkKey const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 45,
+            "percent": 1.37320720170888,
+            "cycles": 731004686,
+            "owner": "mini-ui:ae89c54f711830a24f6d.obj"
+          },
+          {
+            "symbol": "gc_decref_child",
+            "decoded": "gc_decref_child",
+            "samples": 43,
+            "percent": 1.3121757705218187,
+            "cycles": 691060046,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "set_value",
+            "decoded": "set_value",
+            "samples": 42,
+            "percent": 1.2816600549282882,
+            "cycles": 734734246,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?Traverse@?$HeapVisitor@VMutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@@internal@cppgc@@QEAAXAEAVBasePage@23@@Z",
+            "decoded": "public: void __cdecl cppgc::internal::HeapVisitor<class cppgc::internal::`anonymous namespace'::MutatorThreadSweeper>::Traverse(class cppgc::internal::BasePage & __ptr64) __ptr64",
+            "samples": 33,
+            "percent": 1.007018614586512,
+            "cycles": 482158324,
+            "owner": "mini-ui:83a1ebac9c881f354d31.obj"
+          },
+          {
+            "symbol": "??$_Find_last@_K@?$_Hash@V?$_Umap_traits@_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@2@V?$allocator@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@@2@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@PEAX@std@@@1@AEB_K_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> >,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Umap_traits<unsigned __int64,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo>,class std::_Uhash_compare<unsigned __int64,struct std::hash<unsigned __int64>,struct std::equal_to<unsigned __int64> >,class std::allocator<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> > >,0> >::_Find_last<unsigned __int64>(unsigned __int64 const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 32,
+            "percent": 0.9765028989929814,
+            "cycles": 554439564,
+            "owner": "mini-ui:6863b734668d8c06679c.obj"
+          },
+          {
+            "symbol": "js_strict_eq2",
+            "decoded": "js_strict_eq2",
+            "samples": 32,
+            "percent": 0.9765028989929814,
+            "cycles": 501488902,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "gc_scan_incref_child",
+            "decoded": "gc_scan_incref_child",
+            "samples": 28,
+            "percent": 0.8544400366188587,
+            "cycles": 433291368,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?Mark@?A0xEBED13CD@v8@@YAXPEAUJSRuntime@@UJSValue@@P6AX0PEAUJSGCObjectHeader@@PEAX@Z3@Z",
+            "decoded": "void __cdecl v8::`anonymous namespace'::Mark(struct JSRuntime * __ptr64,struct JSValue,void (__cdecl*)(struct JSRuntime * __ptr64,struct JSGCObjectHeader * __ptr64,void * __ptr64),void * __ptr64)",
+            "samples": 23,
+            "percent": 0.7018614586512053,
+            "cycles": 363885098,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "JS_SetPropertyInternal2",
+            "decoded": "JS_SetPropertyInternal2",
+            "samples": 23,
+            "percent": 0.7018614586512053,
+            "cycles": 345522864,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_FreeValue",
+            "decoded": "JS_FreeValue",
+            "samples": 21,
+            "percent": 0.6408300274641441,
+            "cycles": 315096194,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "add_property",
+            "decoded": "add_property",
+            "samples": 18,
+            "percent": 0.549282880683552,
+            "cycles": 295823140,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+            "decoded": "struct JSValue __cdecl v8::`anonymous namespace'::HostGet(struct JSContext * __ptr64,struct v8,unsigned int,struct v8)",
+            "samples": 17,
+            "percent": 0.5187671650900214,
+            "cycles": 261874446,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "js_call_c_function",
+            "decoded": "js_call_c_function",
+            "samples": 17,
+            "percent": 0.5187671650900214,
+            "cycles": 246821076,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_DefineProperty",
+            "decoded": "JS_DefineProperty",
+            "samples": 16,
+            "percent": 0.4882514494964907,
+            "cycles": 281158490,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?rect_memset32@sse2@@YAXQEAIIH_KH@Z",
+            "decoded": "void __cdecl sse2::rect_memset32(unsigned int * __ptr64 const,unsigned int,int,unsigned __int64,int)",
+            "samples": 16,
+            "percent": 0.4882514494964907,
+            "cycles": 268711764,
+            "owner": "mini-ui:ca898c2b23c12fdcdd2e.obj"
+          },
+          {
+            "symbol": "__JS_AtomToValue",
+            "decoded": "__JS_AtomToValue",
+            "samples": 15,
+            "percent": 0.45773573390296,
+            "cycles": 240359496,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?FindNative@?A0xEBED13CD@v8@@YAPEAUNativeProperty@?A0xEBED13CD@1@PEAUNativeState@?A0xEBED13CD@1@I@Z",
+            "decoded": "struct A0xEBED13CD::`anonymous namespace'::NativeProperty * __ptr64 __cdecl v8::`anonymous namespace'::FindNative(struct A0xEBED13CD::`anonymous namespace'::NativeState * __ptr64,unsigned int)",
+            "samples": 14,
+            "percent": 0.42722001830942935,
+            "cycles": 217570936,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "JS_GetOwnPropertyInternal",
+            "decoded": "JS_GetOwnPropertyInternal",
+            "samples": 14,
+            "percent": 0.42722001830942935,
+            "cycles": 224685966,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ]
+      },
+      "after": {
+        "total_samples": 3059,
+        "map_samples": 54,
+        "map_percent": 1.7652827721477609,
+        "map_symbols": [
+          {
+            "symbol": "js_map_get",
+            "decoded": "js_map_get",
+            "samples": 25,
+            "percent": 0.8172605426610003,
+            "cycles": 410191660,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_mark",
+            "decoded": "js_map_mark",
+            "samples": 20,
+            "percent": 0.6538084341288003,
+            "cycles": 344901582,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_set",
+            "decoded": "js_map_set",
+            "samples": 3,
+            "percent": 0.09807126511932004,
+            "cycles": 37877378,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_delete_record",
+            "decoded": "map_delete_record",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 16565600,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_delete",
+            "decoded": "js_map_delete",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 17406118,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_has",
+            "decoded": "js_map_has",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 20090854,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_add_record",
+            "decoded": "map_add_record",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 17883464,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "map_hash_key",
+            "decoded": "map_hash_key",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 18228242,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_finalizer",
+            "decoded": "js_map_finalizer",
+            "samples": 1,
+            "percent": 0.032690421706440015,
+            "cycles": 21382742,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ],
+        "top_functions": [
+          {
+            "symbol": "JS_CallInternal",
+            "decoded": "JS_CallInternal",
+            "samples": 593,
+            "percent": 19.38542007191893,
+            "cycles": 9448725416,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "ntdll.dll",
+            "decoded": "ntdll.dll",
+            "samples": 476,
+            "percent": 15.560640732265446,
+            "cycles": 6739562330,
+            "owner": null
+          },
+          {
+            "symbol": "JS_GetPropertyImpl",
+            "decoded": "JS_GetPropertyImpl",
+            "samples": 187,
+            "percent": 6.113108859104282,
+            "cycles": 2940584562,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?VisitRoot@RootMarkingVisitor@internal@cppgc@@MEAAXPEBXUTraceDescriptor@3@AEBVSourceLocation@v8@@@Z",
+            "decoded": "protected: virtual void __cdecl cppgc::internal::RootMarkingVisitor::VisitRoot(void const * __ptr64,struct cppgc::TraceDescriptor,class v8::SourceLocation const & __ptr64) __ptr64",
+            "samples": 58,
+            "percent": 1.8960444589735208,
+            "cycles": 928607116,
+            "owner": "mini-ui:fa8740ea88140676a52a.obj"
+          },
+          {
+            "symbol": "JS_RunGC",
+            "decoded": "JS_RunGC",
+            "samples": 54,
+            "percent": 1.7652827721477606,
+            "cycles": 848070776,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "set_value",
+            "decoded": "set_value",
+            "samples": 49,
+            "percent": 1.6018306636155606,
+            "cycles": 718866310,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "mark_children",
+            "decoded": "mark_children",
+            "samples": 43,
+            "percent": 1.4056881333769207,
+            "cycles": 666124026,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?Traverse@?$HeapVisitor@VMutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@@internal@cppgc@@QEAAXAEAVBasePage@23@@Z",
+            "decoded": "public: void __cdecl cppgc::internal::HeapVisitor<class cppgc::internal::`anonymous namespace'::MutatorThreadSweeper>::Traverse(class cppgc::internal::BasePage & __ptr64) __ptr64",
+            "samples": 42,
+            "percent": 1.3729977116704806,
+            "cycles": 677312666,
+            "owner": "mini-ui:83a1ebac9c881f354d31.obj"
+          },
+          {
+            "symbol": "gc_decref_child",
+            "decoded": "gc_decref_child",
+            "samples": 37,
+            "percent": 1.2095456031382805,
+            "cycles": 591357772,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$_Find_last@UWorkKey@?A0xED9C33EB@mini_ui@@@?$_Hash@V?$_Uset_traits@UWorkKey@?A0xED9C33EB@mini_ui@@V?$_Uhash_compare@UWorkKey@?A0xED9C33EB@mini_ui@@UWorkKeyHash@?A0xED9C33EB@2@U?$equal_to@UWorkKey@?A0xED9C33EB@mini_ui@@@std@@@std@@V?$allocator@UWorkKey@?A0xED9C33EB@mini_ui@@@4@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@UWorkKey@?A0xED9C33EB@mini_ui@@PEAX@std@@@1@AEBUWorkKey@?A0xED9C33EB@mini_ui@@_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct mini_ui::`anonymous namespace'::WorkKey,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Uset_traits<struct mini_ui::`anonymous namespace'::WorkKey,class std::_Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >,class _Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >::allocator<struct mini_ui::`anonymous namespace'::WorkKey>,0> >::_Find_last<struct mini_ui::`anonymous namespace'::WorkKey>(struct mini_ui::`anonymous namespace'::WorkKey const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 36,
+            "percent": 1.1768551814318404,
+            "cycles": 591570852,
+            "owner": "mini-ui:ae89c54f711830a24f6d.obj"
+          },
+          {
+            "symbol": "??$_Find_last@_K@?$_Hash@V?$_Umap_traits@_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@2@V?$allocator@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@@2@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@PEAX@std@@@1@AEB_K_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> >,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Umap_traits<unsigned __int64,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo>,class std::_Uhash_compare<unsigned __int64,struct std::hash<unsigned __int64>,struct std::equal_to<unsigned __int64> >,class std::allocator<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> > >,0> >::_Find_last<unsigned __int64>(unsigned __int64 const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 35,
+            "percent": 1.1441647597254005,
+            "cycles": 571484160,
+            "owner": "mini-ui:6863b734668d8c06679c.obj"
+          },
+          {
+            "symbol": "?Mark@?A0xEBED13CD@v8@@YAXPEAUJSRuntime@@UJSValue@@P6AX0PEAUJSGCObjectHeader@@PEAX@Z3@Z",
+            "decoded": "void __cdecl v8::`anonymous namespace'::Mark(struct JSRuntime * __ptr64,struct JSValue,void (__cdecl*)(struct JSRuntime * __ptr64,struct JSGCObjectHeader * __ptr64,void * __ptr64),void * __ptr64)",
+            "samples": 27,
+            "percent": 0.8826413860738803,
+            "cycles": 443386074,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "js_map_get",
+            "decoded": "js_map_get",
+            "samples": 25,
+            "percent": 0.8172605426610003,
+            "cycles": 410191660,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "add_property",
+            "decoded": "add_property",
+            "samples": 25,
+            "percent": 0.8172605426610003,
+            "cycles": 397279922,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "gc_scan_incref_child",
+            "decoded": "gc_scan_incref_child",
+            "samples": 22,
+            "percent": 0.7191892775416803,
+            "cycles": 344291152,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_FreeValue",
+            "decoded": "JS_FreeValue",
+            "samples": 22,
+            "percent": 0.7191892775416803,
+            "cycles": 329360114,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?rect_memset32@sse2@@YAXQEAIIH_KH@Z",
+            "decoded": "void __cdecl sse2::rect_memset32(unsigned int * __ptr64 const,unsigned int,int,unsigned __int64,int)",
+            "samples": 20,
+            "percent": 0.6538084341288003,
+            "cycles": 288882714,
+            "owner": "mini-ui:ca898c2b23c12fdcdd2e.obj"
+          },
+          {
+            "symbol": "js_strict_eq2",
+            "decoded": "js_strict_eq2",
+            "samples": 20,
+            "percent": 0.6538084341288003,
+            "cycles": 324199878,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_SetPropertyInternal2",
+            "decoded": "JS_SetPropertyInternal2",
+            "samples": 20,
+            "percent": 0.6538084341288003,
+            "cycles": 298708836,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "js_map_mark",
+            "decoded": "js_map_mark",
+            "samples": 20,
+            "percent": 0.6538084341288003,
+            "cycles": 344901582,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "free_property",
+            "decoded": "free_property",
+            "samples": 19,
+            "percent": 0.6211180124223602,
+            "cycles": 293264738,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+            "decoded": "struct JSValue __cdecl v8::`anonymous namespace'::HostGet(struct JSContext * __ptr64,struct v8,unsigned int,struct v8)",
+            "samples": 17,
+            "percent": 0.5557371690094802,
+            "cycles": 272564172,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "?Index@?A0xEBED13CD@v8@@YA_NPEAUJSContext@@IPEAI@Z",
+            "decoded": "bool __cdecl v8::`anonymous namespace'::Index(struct JSContext * __ptr64,unsigned int,unsigned int * __ptr64)",
+            "samples": 17,
+            "percent": 0.5557371690094802,
+            "cycles": 285905064,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "JS_DefineProperty",
+            "decoded": "JS_DefineProperty",
+            "samples": 17,
+            "percent": 0.5557371690094802,
+            "cycles": 265584050,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_GetOwnPropertyInternal",
+            "decoded": "JS_GetOwnPropertyInternal",
+            "samples": 12,
+            "percent": 0.3922850604772802,
+            "cycles": 176100706,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ]
+      }
+    },
+    "react": {
+      "before": {
+        "total_samples": 2094,
+        "map_samples": 0,
+        "map_percent": 0,
+        "map_symbols": [],
+        "top_functions": [
+          {
+            "symbol": "JS_CallInternal",
+            "decoded": "JS_CallInternal",
+            "samples": 344,
+            "percent": 16.427889207258833,
+            "cycles": 5480771436,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "ntdll.dll",
+            "decoded": "ntdll.dll",
+            "samples": 336,
+            "percent": 16.045845272206304,
+            "cycles": 4485445186,
+            "owner": null
+          },
+          {
+            "symbol": "JS_GetPropertyImpl",
+            "decoded": "JS_GetPropertyImpl",
+            "samples": 128,
+            "percent": 6.112702960840497,
+            "cycles": 2054177270,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?VisitRoot@RootMarkingVisitor@internal@cppgc@@MEAAXPEBXUTraceDescriptor@3@AEBVSourceLocation@v8@@@Z",
+            "decoded": "protected: virtual void __cdecl cppgc::internal::RootMarkingVisitor::VisitRoot(void const * __ptr64,struct cppgc::TraceDescriptor,class v8::SourceLocation const & __ptr64) __ptr64",
+            "samples": 74,
+            "percent": 3.5339063992359123,
+            "cycles": 1176974646,
+            "owner": "mini-ui:fa8740ea88140676a52a.obj"
+          },
+          {
+            "symbol": "?Traverse@?$HeapVisitor@VMutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@@internal@cppgc@@QEAAXAEAVBasePage@23@@Z",
+            "decoded": "public: void __cdecl cppgc::internal::HeapVisitor<class cppgc::internal::`anonymous namespace'::MutatorThreadSweeper>::Traverse(class cppgc::internal::BasePage & __ptr64) __ptr64",
+            "samples": 31,
+            "percent": 1.4804202483285578,
+            "cycles": 512762732,
+            "owner": "mini-ui:83a1ebac9c881f354d31.obj"
+          },
+          {
+            "symbol": "JS_SetPropertyInternal2",
+            "decoded": "JS_SetPropertyInternal2",
+            "samples": 29,
+            "percent": 1.384909264565425,
+            "cycles": 462859758,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_FreeValue",
+            "decoded": "JS_FreeValue",
+            "samples": 23,
+            "percent": 1.0983763132760267,
+            "cycles": 405597096,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$_Find_last@UWorkKey@?A0xED9C33EB@mini_ui@@@?$_Hash@V?$_Uset_traits@UWorkKey@?A0xED9C33EB@mini_ui@@V?$_Uhash_compare@UWorkKey@?A0xED9C33EB@mini_ui@@UWorkKeyHash@?A0xED9C33EB@2@U?$equal_to@UWorkKey@?A0xED9C33EB@mini_ui@@@std@@@std@@V?$allocator@UWorkKey@?A0xED9C33EB@mini_ui@@@4@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@UWorkKey@?A0xED9C33EB@mini_ui@@PEAX@std@@@1@AEBUWorkKey@?A0xED9C33EB@mini_ui@@_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct mini_ui::`anonymous namespace'::WorkKey,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Uset_traits<struct mini_ui::`anonymous namespace'::WorkKey,class std::_Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >,class _Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >::allocator<struct mini_ui::`anonymous namespace'::WorkKey>,0> >::_Find_last<struct mini_ui::`anonymous namespace'::WorkKey>(struct mini_ui::`anonymous namespace'::WorkKey const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 22,
+            "percent": 1.0506208213944603,
+            "cycles": 349350064,
+            "owner": "mini-ui:ae89c54f711830a24f6d.obj"
+          },
+          {
+            "symbol": "js_strict_eq2",
+            "decoded": "js_strict_eq2",
+            "samples": 17,
+            "percent": 0.8118433619866284,
+            "cycles": 250366108,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$_Find_last@_K@?$_Hash@V?$_Umap_traits@_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@2@V?$allocator@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@@2@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@PEAX@std@@@1@AEB_K_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> >,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Umap_traits<unsigned __int64,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo>,class std::_Uhash_compare<unsigned __int64,struct std::hash<unsigned __int64>,struct std::equal_to<unsigned __int64> >,class std::allocator<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> > >,0> >::_Find_last<unsigned __int64>(unsigned __int64 const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 15,
+            "percent": 0.7163323782234957,
+            "cycles": 243456398,
+            "owner": "mini-ui:6863b734668d8c06679c.obj"
+          },
+          {
+            "symbol": "?rect_memset32@sse2@@YAXQEAIIH_KH@Z",
+            "decoded": "void __cdecl sse2::rect_memset32(unsigned int * __ptr64 const,unsigned int,int,unsigned __int64,int)",
+            "samples": 15,
+            "percent": 0.7163323782234957,
+            "cycles": 225779102,
+            "owner": "mini-ui:ca898c2b23c12fdcdd2e.obj"
+          },
+          {
+            "symbol": "?NativeCall@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@1HPEAU2@H@Z",
+            "decoded": "struct JSValue __cdecl v8::`anonymous namespace'::NativeCall(struct JSContext * __ptr64,struct v8,struct v8,int,struct v8 * __ptr64,int)",
+            "samples": 12,
+            "percent": 0.5730659025787965,
+            "cycles": 189161262,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "__JS_AtomToValue",
+            "decoded": "__JS_AtomToValue",
+            "samples": 11,
+            "percent": 0.5253104106972302,
+            "cycles": 155564826,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_ToCStringLen2",
+            "decoded": "JS_ToCStringLen2",
+            "samples": 11,
+            "percent": 0.5253104106972302,
+            "cycles": 174863826,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "xsltStrxfrm",
+            "decoded": "xsltStrxfrm",
+            "samples": 10,
+            "percent": 0.4775549188156638,
+            "cycles": 154981540,
+            "owner": "mini-ui:176206c10b75869b81c8.obj"
+          },
+          {
+            "symbol": "JS_GetOwnPropertyInternal",
+            "decoded": "JS_GetOwnPropertyInternal",
+            "samples": 10,
+            "percent": 0.4775549188156638,
+            "cycles": 138599796,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?GetTraceDescriptor@TraceTraitFromInnerAddressImpl@internal@cppgc@@SA?AUTraceDescriptor@3@PEBX@Z",
+            "decoded": "public: static struct cppgc::TraceDescriptor __cdecl cppgc::internal::TraceTraitFromInnerAddressImpl::GetTraceDescriptor(void const * __ptr64)",
+            "samples": 10,
+            "percent": 0.4775549188156638,
+            "cycles": 154991842,
+            "owner": "mini-ui:1c4944d5f36f1bb125ee.obj"
+          },
+          {
+            "symbol": "add_shape_property",
+            "decoded": "add_shape_property",
+            "samples": 9,
+            "percent": 0.42979942693409745,
+            "cycles": 122125058,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$To@VPhysicalBoxFragment@blink@@VPhysicalFragment@2@@blink@@YAAEBVPhysicalBoxFragment@0@AEBVPhysicalFragment@0@@Z",
+            "decoded": "class blink::PhysicalBoxFragment const & __ptr64 __cdecl blink::To<class blink::PhysicalBoxFragment,class blink::PhysicalFragment>(class blink::PhysicalFragment const & __ptr64)",
+            "samples": 9,
+            "percent": 0.42979942693409745,
+            "cycles": 134187890,
+            "owner": "mini-ui:e94a0c163d8b6834f402.obj"
+          },
+          {
+            "symbol": "?at@?$Vector@VPositionTryFallback@blink@@$0A@VHeapAllocator@2@@WTF@@QEBAAEBVPositionTryFallback@blink@@I@Z",
+            "decoded": "public: class blink::PositionTryFallback const & __ptr64 __cdecl WTF::Vector<class blink::PositionTryFallback,0,class blink::HeapAllocator>::at(unsigned int)const __ptr64",
+            "samples": 9,
+            "percent": 0.42979942693409745,
+            "cycles": 127588300,
+            "owner": "mini-ui:6f2f861962780e13635b.obj"
+          },
+          {
+            "symbol": "?CheckIsolate@detail@v8@@YAXPEAVIsolate@2@@Z",
+            "decoded": "void __cdecl v8::detail::CheckIsolate(class v8::Isolate * __ptr64)",
+            "samples": 9,
+            "percent": 0.42979942693409745,
+            "cycles": 153257064,
+            "owner": "mini-ui:51b4a528527cb12a0aa0.obj"
+          },
+          {
+            "symbol": "?State@?A0xEBED13CD@v8@@YAPEAUNativeState@?A0xEBED13CD@1@UJSValue@@@Z",
+            "decoded": "struct A0xEBED13CD::`anonymous namespace'::NativeState * __ptr64 __cdecl v8::`anonymous namespace'::State(struct JSValue)",
+            "samples": 9,
+            "percent": 0.42979942693409745,
+            "cycles": 117306596,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "?Matches@?A0xEBED13CD@v8@@YA_NPEAUJSContext@@UJSValue@@1@Z",
+            "decoded": "bool __cdecl v8::`anonymous namespace'::Matches(struct JSContext * __ptr64,struct JSValue,struct JSValue)",
+            "samples": 8,
+            "percent": 0.38204393505253104,
+            "cycles": 141320574,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+            "decoded": "struct JSValue __cdecl v8::`anonymous namespace'::HostGet(struct JSContext * __ptr64,struct v8,unsigned int,struct v8)",
+            "samples": 8,
+            "percent": 0.38204393505253104,
+            "cycles": 134916814,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "?IsColumnSpanAll@LayoutObject@blink@@QEBA_NXZ",
+            "decoded": "public: bool __cdecl blink::LayoutObject::IsColumnSpanAll(void)const __ptr64",
+            "samples": 8,
+            "percent": 0.38204393505253104,
+            "cycles": 136444270,
+            "owner": "mini-ui:d705861b230686b82398.obj"
+          }
+        ]
+      },
+      "after": {
+        "total_samples": 2047,
+        "map_samples": 1,
+        "map_percent": 0.048851978505129456,
+        "map_symbols": [
+          {
+            "symbol": "js_map_delete",
+            "decoded": "js_map_delete",
+            "samples": 1,
+            "percent": 0.048851978505129456,
+            "cycles": 18005978,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ],
+        "top_functions": [
+          {
+            "symbol": "JS_CallInternal",
+            "decoded": "JS_CallInternal",
+            "samples": 333,
+            "percent": 16.26770884220811,
+            "cycles": 5339726462,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "ntdll.dll",
+            "decoded": "ntdll.dll",
+            "samples": 304,
+            "percent": 14.851001465559355,
+            "cycles": 3703584104,
+            "owner": null
+          },
+          {
+            "symbol": "JS_GetPropertyImpl",
+            "decoded": "JS_GetPropertyImpl",
+            "samples": 125,
+            "percent": 6.106497313141182,
+            "cycles": 1977328242,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?VisitRoot@RootMarkingVisitor@internal@cppgc@@MEAAXPEBXUTraceDescriptor@3@AEBVSourceLocation@v8@@@Z",
+            "decoded": "protected: virtual void __cdecl cppgc::internal::RootMarkingVisitor::VisitRoot(void const * __ptr64,struct cppgc::TraceDescriptor,class v8::SourceLocation const & __ptr64) __ptr64",
+            "samples": 70,
+            "percent": 3.419638495359062,
+            "cycles": 1114199700,
+            "owner": "mini-ui:fa8740ea88140676a52a.obj"
+          },
+          {
+            "symbol": "?Traverse@?$HeapVisitor@VMutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@@internal@cppgc@@QEAAXAEAVBasePage@23@@Z",
+            "decoded": "public: void __cdecl cppgc::internal::HeapVisitor<class cppgc::internal::`anonymous namespace'::MutatorThreadSweeper>::Traverse(class cppgc::internal::BasePage & __ptr64) __ptr64",
+            "samples": 34,
+            "percent": 1.6609672691744015,
+            "cycles": 535227790,
+            "owner": "mini-ui:83a1ebac9c881f354d31.obj"
+          },
+          {
+            "symbol": "JS_SetPropertyInternal2",
+            "decoded": "JS_SetPropertyInternal2",
+            "samples": 25,
+            "percent": 1.2212994626282365,
+            "cycles": 422396028,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_FreeValue",
+            "decoded": "JS_FreeValue",
+            "samples": 24,
+            "percent": 1.172447484123107,
+            "cycles": 373745534,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_GetOwnPropertyInternal",
+            "decoded": "JS_GetOwnPropertyInternal",
+            "samples": 21,
+            "percent": 1.0258915486077187,
+            "cycles": 325272586,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "JS_ToCStringLen2",
+            "decoded": "JS_ToCStringLen2",
+            "samples": 17,
+            "percent": 0.8304836345872008,
+            "cycles": 271558274,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$_Find_last@_K@?$_Hash@V?$_Umap_traits@_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@2@V?$allocator@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@@2@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@U?$pair@$$CB_KV?$weak_ptr@USourceInfo@?A0x576EB55A@v8@@@std@@@std@@PEAX@std@@@1@AEB_K_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> >,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Umap_traits<unsigned __int64,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo>,class std::_Uhash_compare<unsigned __int64,struct std::hash<unsigned __int64>,struct std::equal_to<unsigned __int64> >,class std::allocator<struct std::pair<unsigned __int64 const ,class std::weak_ptr<struct v8::`anonymous namespace'::SourceInfo> > >,0> >::_Find_last<unsigned __int64>(unsigned __int64 const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 14,
+            "percent": 0.6839276990718124,
+            "cycles": 240562472,
+            "owner": "mini-ui:6863b734668d8c06679c.obj"
+          },
+          {
+            "symbol": "?rect_memset32@sse2@@YAXQEAIIH_KH@Z",
+            "decoded": "void __cdecl sse2::rect_memset32(unsigned int * __ptr64 const,unsigned int,int,unsigned __int64,int)",
+            "samples": 13,
+            "percent": 0.6350757205666829,
+            "cycles": 210427844,
+            "owner": "mini-ui:ca898c2b23c12fdcdd2e.obj"
+          },
+          {
+            "symbol": "win32u.dll",
+            "decoded": "win32u.dll",
+            "samples": 11,
+            "percent": 0.537371763556424,
+            "cycles": 87365818,
+            "owner": null
+          },
+          {
+            "symbol": "?Select@?A0xEBED13CD@v8@@YA?AUHandler@?A0xEBED13CD@1@PEAUJSContext@@UJSValue@@IPEAUNativeState@?A0xEBED13CD@1@H@Z",
+            "decoded": "struct A0xEBED13CD::`anonymous namespace'::Handler __cdecl v8::`anonymous namespace'::Select(struct JSContext * __ptr64,struct JSValue,unsigned int,struct A0xEBED13CD::`anonymous namespace'::NativeState * __ptr64,int)",
+            "samples": 11,
+            "percent": 0.537371763556424,
+            "cycles": 185002498,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "?Index@?A0xEBED13CD@v8@@YA_NPEAUJSContext@@IPEAI@Z",
+            "decoded": "bool __cdecl v8::`anonymous namespace'::Index(struct JSContext * __ptr64,unsigned int,unsigned int * __ptr64)",
+            "samples": 11,
+            "percent": 0.537371763556424,
+            "cycles": 169552820,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "??$_Find_last@UWorkKey@?A0xED9C33EB@mini_ui@@@?$_Hash@V?$_Uset_traits@UWorkKey@?A0xED9C33EB@mini_ui@@V?$_Uhash_compare@UWorkKey@?A0xED9C33EB@mini_ui@@UWorkKeyHash@?A0xED9C33EB@2@U?$equal_to@UWorkKey@?A0xED9C33EB@mini_ui@@@std@@@std@@V?$allocator@UWorkKey@?A0xED9C33EB@mini_ui@@@4@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@UWorkKey@?A0xED9C33EB@mini_ui@@PEAX@std@@@1@AEBUWorkKey@?A0xED9C33EB@mini_ui@@_K@Z",
+            "decoded": "protected: struct std::_Hash_find_last_result<struct std::_List_node<struct mini_ui::`anonymous namespace'::WorkKey,void * __ptr64> * __ptr64> __cdecl std::_Hash<class std::_Uset_traits<struct mini_ui::`anonymous namespace'::WorkKey,class std::_Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >,class _Uhash_compare<struct mini_ui::`anonymous namespace'::WorkKey,struct A0xED9C33EB::`anonymous namespace'::WorkKeyHash,struct std::equal_to<struct mini_ui::`anonymous namespace'::WorkKey> >::allocator<struct mini_ui::`anonymous namespace'::WorkKey>,0> >::_Find_last<struct mini_ui::`anonymous namespace'::WorkKey>(struct mini_ui::`anonymous namespace'::WorkKey const & __ptr64,unsigned __int64)const __ptr64",
+            "samples": 11,
+            "percent": 0.537371763556424,
+            "cycles": 177866512,
+            "owner": "mini-ui:ae89c54f711830a24f6d.obj"
+          },
+          {
+            "symbol": "?at@?$Vector@VPositionTryFallback@blink@@$0A@VHeapAllocator@2@@WTF@@QEBAAEBVPositionTryFallback@blink@@I@Z",
+            "decoded": "public: class blink::PositionTryFallback const & __ptr64 __cdecl WTF::Vector<class blink::PositionTryFallback,0,class blink::HeapAllocator>::at(unsigned int)const __ptr64",
+            "samples": 10,
+            "percent": 0.48851978505129456,
+            "cycles": 158307832,
+            "owner": "mini-ui:6f2f861962780e13635b.obj"
+          },
+          {
+            "symbol": "JS_GetOpaque",
+            "decoded": "JS_GetOpaque",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 137505108,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?EffectiveContainment@ComputedStyle@blink@@QEBAIXZ",
+            "decoded": "public: unsigned int __cdecl blink::ComputedStyle::EffectiveContainment(void)const __ptr64",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 140491132,
+            "owner": "mini-ui:0c300d3509663e215bac.obj"
+          },
+          {
+            "symbol": "JS_IsWhatTypedArray",
+            "decoded": "JS_IsWhatTypedArray",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 141278846,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "?at@?$Vector@VStylePropertyShorthand@blink@@$03VPartitionAllocator@WTF@@@WTF@@QEBAAEBVStylePropertyShorthand@blink@@I@Z",
+            "decoded": "public: class blink::StylePropertyShorthand const & __ptr64 __cdecl WTF::Vector<class blink::StylePropertyShorthand,4,class WTF::PartitionAllocator>::at(unsigned int)const __ptr64",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 161305188,
+            "owner": "mini-ui:c742f78e1b8983364ba7.obj"
+          },
+          {
+            "symbol": "?Mark@?A0xEBED13CD@v8@@YAXPEAUJSRuntime@@UJSValue@@P6AX0PEAUJSGCObjectHeader@@PEAX@Z3@Z",
+            "decoded": "void __cdecl v8::`anonymous namespace'::Mark(struct JSRuntime * __ptr64,struct JSValue,void (__cdecl*)(struct JSRuntime * __ptr64,struct JSGCObjectHeader * __ptr64,void * __ptr64),void * __ptr64)",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 162159332,
+            "owner": "mini-ui:791eae3654574fd278fd.obj"
+          },
+          {
+            "symbol": "xsltStrxfrm",
+            "decoded": "xsltStrxfrm",
+            "samples": 9,
+            "percent": 0.4396678065461651,
+            "cycles": 143583162,
+            "owner": "mini-ui:176206c10b75869b81c8.obj"
+          },
+          {
+            "symbol": "__JS_AtomToValue",
+            "decoded": "__JS_AtomToValue",
+            "samples": 8,
+            "percent": 0.39081582804103565,
+            "cycles": 125714466,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          },
+          {
+            "symbol": "??$find@X@?$_Hash@V?$_Uset_traits@PEBXV?$_Uhash_compare@PEBXU?$hash@PEBX@std@@U?$equal_to@PEBX@2@@std@@V?$allocator@PEBX@2@$0A@@std@@@std@@QEBA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@PEBX@std@@@std@@@1@AEBQEBX@Z",
+            "decoded": "public: class std::_List_const_iterator<class std::_List_val<struct std::_List_simple_types<void const * __ptr64> > > __cdecl std::_Hash<class std::_Uset_traits<void const * __ptr64,class std::_Uhash_compare<void const * __ptr64,struct std::hash<void const * __ptr64>,struct std::equal_to<void const * __ptr64> >,class std::allocator<void const * __ptr64>,0> >::find<void>(void const * __ptr64 const & __ptr64)const __ptr64",
+            "samples": 8,
+            "percent": 0.39081582804103565,
+            "cycles": 113063404,
+            "owner": "mini-ui:ae89c54f711830a24f6d.obj"
+          },
+          {
+            "symbol": "js_strict_eq_slow",
+            "decoded": "js_strict_eq_slow",
+            "samples": 8,
+            "percent": 0.39081582804103565,
+            "cycles": 118611656,
+            "owner": "mini-ui:05c2888a0f2b380aed57.obj"
+          }
+        ]
+      }
+    }
+  }
+}

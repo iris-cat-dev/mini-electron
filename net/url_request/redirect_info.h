@@ -31,28 +31,14 @@ struct NET_EXPORT RedirectInfo {
     RedirectInfo();
     RedirectInfo(const RedirectInfo& other);
     ~RedirectInfo();
-
-    // Computes a new RedirectInfo.
+#if !defined(MINI_UI_IMPLEMENTATION)
+    // Computes the changed request metadata for a redirect.
     static RedirectInfo ComputeRedirectInfo(
-        // The following arguments |original_*| are the properties of the original
-        // request.
         const std::string& original_method, const GURL& original_url, const SiteForCookies& original_site_for_cookies,
         FirstPartyURLPolicy original_first_party_url_policy, ReferrerPolicy original_referrer_policy, const std::string& original_referrer,
-        // The HTTP status code of the redirect response.
-        int http_status_code,
-        // The new location URL of the redirect response.
-        const GURL& new_location,
-        // Referrer-Policy header of the redirect response.
-        const std::optional<std::string>& referrer_policy_header,
-        // Whether the URL was upgraded to HTTPS due to upgrade-insecure-requests.
-        bool insecure_scheme_was_upgraded,
-        // This method copies the URL fragment of the original URL to the new URL
-        // by default. Set false only when the network delegate has set the
-        // desired redirect URL (with or without fragment), so it must not be
-        // changed any more.
-        bool copy_fragment = true,
-        // Whether the redirect is caused by a failure of signed exchange loading.
-        bool is_signed_exchange_fallback_redirect = false);
+        int http_status_code, const GURL& new_location, const std::optional<std::string>& referrer_policy_header,
+        bool insecure_scheme_was_upgraded, bool copy_fragment = true, bool is_signed_exchange_fallback_redirect = false);
+#endif
 
     // The status code for the redirect response. This is almost redundant with
     // the response headers, but some URLRequestJobs emit redirects without

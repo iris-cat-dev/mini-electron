@@ -36,7 +36,9 @@
 #include "net/base/auth.h"
 #include "net/base/ip_endpoint.h"
 #include "net/http/alternate_protocol_usage.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_info.h"
+#endif
 #include "services/network/public/cpp/cors/cors_error_status.h"
 #include "services/network/public/mojom/cross_origin_embedder_policy.mojom-forward.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
@@ -55,7 +57,9 @@
 namespace blink {
 
 class ResourceLoadTiming;
+#if !defined(MINI_UI_QUICKJS)
 class ServiceWorkerRouterInfo;
+#endif
 class UseCounter;
 
 // A ResourceResponse is a "response" object used in blink. Conceptually
@@ -97,36 +101,25 @@ public:
     // incorrect to use this in security checks. Use GetType() to determine origin
     // sameness.
     //
-    // Specifically, if a service worker responded to the request for this
-    // resource, it may have fetched an entirely different URL and responded with
-    // that resource. WasFetchedViaServiceWorker() and ResponseUrl() can be used
-    // to determine whether and how a service worker responded to the request.
-    // Example service worker code:
-    //
-    // onfetch = (event => {
-    //   if (event.request.url == 'https://abc.com')
-    //     event.respondWith(fetch('https://def.com'));
-    // });
-    //
-    // If this service worker responds to an "https://abc.com" request, then for
-    // the resulting ResourceResponse, CurrentRequestUrl() is "https://abc.com",
-    // WasFetchedViaServiceWorker() is true, and ResponseUrl() is
-    // "https://def.com".
+#if !defined(MINI_UI_QUICKJS)
+    // A service worker may respond with a resource fetched from a different URL;
+    // WasFetchedViaServiceWorker() and ResponseUrl() distinguish that case.
+#endif
     const KURL& CurrentRequestUrl() const;
     void SetCurrentRequestUrl(const KURL&);
 
     // The response URL of this resource. Corresponds to:
     // https://fetch.spec.whatwg.org/#concept-response-url
     //
-    // This returns the same URL as CurrentRequestUrl() unless a service worker
-    // responded to the request. See the comments for that function.
+#if !defined(MINI_UI_QUICKJS)
+    // This may differ from CurrentRequestUrl() for service worker responses.
+#endif
     KURL ResponseUrl() const;
 
-    // Returns true if this response is the result of a service worker
-    // effectively calling `evt.respondWith(fetch(evt.request))`.  Specifically,
-    // it returns false for synthetic constructed responses, responses fetched
-    // from different URLs, and responses produced by cache_storage.
+#if !defined(MINI_UI_QUICKJS)
+    // True for a service worker pass-through response.
     bool IsServiceWorkerPassThrough() const;
+#endif
 
     const AtomicString& MimeType() const;
     void SetMimeType(const AtomicString&);
@@ -234,11 +227,13 @@ public:
         security_style_ = security_style;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const std::optional<net::SSLInfo>& GetSSLInfo() const
     {
         return ssl_info_;
     }
     void SetSSLInfo(const net::SSLInfo& ssl_info);
+#endif
 
     bool EmittedExtraInfo() const
     {
@@ -258,7 +253,7 @@ public:
         was_fetched_via_spdy_ = value;
     }
 
-    // See network.mojom.URLResponseHead.was_fetched_via_service_worker.
+#if !defined(MINI_UI_QUICKJS)
     bool WasFetchedViaServiceWorker() const
     {
         return was_fetched_via_service_worker_;
@@ -267,23 +262,20 @@ public:
     {
         was_fetched_via_service_worker_ = value;
     }
-
     network::mojom::FetchResponseSource GetServiceWorkerResponseSource() const
     {
         return service_worker_response_source_;
     }
-
-    // See network.mojom.URLResponseHead.service_worker_router_info.
     const blink::ServiceWorkerRouterInfo* GetServiceWorkerRouterInfo() const
     {
         return service_worker_router_info_.get();
     }
     void SetServiceWorkerRouterInfo(scoped_refptr<ServiceWorkerRouterInfo> value);
-
     void SetServiceWorkerResponseSource(network::mojom::FetchResponseSource value)
     {
         service_worker_response_source_ = value;
     }
+#endif
 
     network::mojom::FetchResponseType GetType() const
     {
@@ -298,6 +290,7 @@ public:
     // https://html.spec.whatwg.org/C/#cors-cross-origin
     bool IsCorsCrossOrigin() const;
 
+#if !defined(MINI_UI_QUICKJS)
     int64_t GetPadding() const
     {
         return padding_;
@@ -306,8 +299,6 @@ public:
     {
         padding_ = padding;
     }
-
-    // See network.mojom.URLResponseHead.url_list_via_service_worker.
     const Vector<KURL>& UrlListViaServiceWorker() const
     {
         return url_list_via_service_worker_;
@@ -316,7 +307,6 @@ public:
     {
         url_list_via_service_worker_ = url_list;
     }
-
     const String& CacheStorageCacheName() const
     {
         return cache_storage_cache_name_;
@@ -325,6 +315,7 @@ public:
     {
         cache_storage_cache_name_ = cache_storage_cache_name;
     }
+#endif
 
     const Vector<String>& CorsExposedHeaderNames() const
     {
@@ -335,6 +326,7 @@ public:
         cors_exposed_header_names_ = header_names;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool DidServiceWorkerNavigationPreload() const
     {
         return did_service_worker_navigation_preload_;
@@ -343,6 +335,7 @@ public:
     {
         did_service_worker_navigation_preload_ = value;
     }
+#endif
 
     bool DidUseSharedDictionary() const
     {
@@ -652,12 +645,10 @@ private:
     // Was the resource fetched over SPDY.  See http://dev.chromium.org/spdy
     bool was_fetched_via_spdy_ : 1;
 
-    // Was the resource fetched over a ServiceWorker.
+#if !defined(MINI_UI_QUICKJS)
     bool was_fetched_via_service_worker_ : 1;
-
-    // True if service worker navigation preload was performed due to
-    // the request for this resource.
     bool did_service_worker_navigation_preload_ : 1;
+#endif
 
     // True if a shared dictionary was used to decompress the response body.
     bool did_use_shared_dictionary_ : 1;
@@ -711,22 +702,12 @@ private:
     // matches the cached bytecode.
     bool should_use_source_hash_for_js_code_cache_ : 1;
 
-    // Pre-computed padding.  This should only be non-zero if |response_type| is
-    // set to kOpaque.  In addition, it is only set if the response was provided
-    // by a service worker FetchEvent handler.
+#if !defined(MINI_UI_QUICKJS)
+    // Opaque response padding supplied by a service worker FetchEvent.
     int64_t padding_ = 0;
-
-    // The time at which the resource's certificate expires. Null if there was no
-    // certificate.
-    base::Time cert_validity_start_;
-
-    // The source of the resource, if it was fetched via ServiceWorker. This is
-    // kUnspecified if |was_fetched_via_service_worker| is false.
     network::mojom::FetchResponseSource service_worker_response_source_ = network::mojom::FetchResponseSource::kUnspecified;
-
-    // The information about the ServiceWorker Static Router that handled the
-    // request. Null if there was no registered Static Routers.
     scoped_refptr<blink::ServiceWorkerRouterInfo> service_worker_router_info_;
+#endif
 
     // https://fetch.spec.whatwg.org/#concept-response-type
     network::mojom::FetchResponseType response_type_ = network::mojom::FetchResponseType::kDefault;
@@ -742,8 +723,10 @@ private:
     // enabled. (Otherwise, it contains a default value of Unknown.)
     SecurityStyle security_style_ = SecurityStyle::kUnknown;
 
+#if !defined(MINI_UI_QUICKJS)
     // Security details of this request's connection.
     std::optional<net::SSLInfo> ssl_info_;
+#endif
 
     scoped_refptr<ResourceLoadTiming> resource_load_timing_;
 
@@ -755,12 +738,10 @@ private:
     mutable std::optional<base::Time> last_modified_;
 
     // The URL list of the response which was fetched by the ServiceWorker.
-    // This is empty if the response was created inside the ServiceWorker.
+#if !defined(MINI_UI_QUICKJS)
     Vector<KURL> url_list_via_service_worker_;
-
-    // The cache name of the CacheStorage from where the response is served via
-    // the ServiceWorker. Null if the response isn't from the CacheStorage.
     String cache_storage_cache_name_;
+#endif
 
     // The headers that should be exposed according to CORS. Only guaranteed
     // to be set if the response was fetched by a ServiceWorker.

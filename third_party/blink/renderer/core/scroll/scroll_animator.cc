@@ -35,9 +35,13 @@
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_id_provider.h"
+#endif
 #include "cc/animation/scroll_offset_animation_curve_factory.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -220,7 +224,9 @@ bool ScrollAnimator::WillAnimateToOffset(const ScrollOffset& target_offset)
 void ScrollAnimator::AdjustAnimation(const gfx::Vector2d& adjustment)
 {
     if (run_state_ == RunState::kIdle) {
+#if !defined(MINI_UI_QUICKJS)
         AdjustImplOnlyScrollOffsetAnimation(adjustment);
+#endif
     } else if (HasRunningAnimation()) {
         target_offset_ += ScrollOffset(adjustment);
         if (animation_curve_) {
@@ -267,6 +273,7 @@ void ScrollAnimator::TickAnimation(base::TimeTicks monotonic_time)
     ScrollOffsetChanged(current_offset_, mojom::blink::ScrollType::kUser);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ScrollAnimator::SendAnimationToCompositor()
 {
     if (scrollable_area_->ShouldScrollOnMainThread())
@@ -290,6 +297,7 @@ bool ScrollAnimator::SendAnimationToCompositor()
     return sent_to_compositor;
 }
 
+#endif
 void ScrollAnimator::CreateAnimationCurve()
 {
     DCHECK(!animation_curve_);
@@ -304,13 +312,16 @@ void ScrollAnimator::CreateAnimationCurve()
 
 void ScrollAnimator::UpdateCompositorAnimations()
 {
+#if !defined(MINI_UI_QUICKJS)
     ScrollAnimatorCompositorCoordinator::UpdateCompositorAnimations();
+#endif
 
     if (run_state_ == RunState::kPostAnimationCleanup) {
         ResetAnimationState();
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (run_state_ == RunState::kWaitingToCancelOnCompositor) {
         DCHECK(compositor_animation_id());
         AbortAnimation();
@@ -348,14 +359,18 @@ void ScrollAnimator::UpdateCompositorAnimations()
         run_state_ = RunState::kWaitingToSendToCompositor;
     }
 
+#endif
     if (run_state_ == RunState::kWaitingToSendToCompositor) {
+#if !defined(MINI_UI_QUICKJS)
         if (!element_id_) {
             ReattachCompositorAnimationIfNeeded(GetScrollableArea()->GetCompositorAnimationTimeline());
         }
+#endif
 
         if (!animation_curve_)
             CreateAnimationCurve();
 
+#if !defined(MINI_UI_QUICKJS)
         bool running_on_main_thread = false;
         bool sent_to_compositor = SendAnimationToCompositor();
         if (!sent_to_compositor) {
@@ -363,9 +378,14 @@ void ScrollAnimator::UpdateCompositorAnimations()
             if (running_on_main_thread)
                 run_state_ = RunState::kRunningOnMainThread;
         }
+#else
+        if (RegisterAndScheduleAnimation())
+            run_state_ = RunState::kRunningOnMainThread;
+#endif
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScrollAnimator::NotifyCompositorAnimationAborted(int group_id)
 {
     // An animation aborted by the compositor is treated as a finished
@@ -382,6 +402,7 @@ void ScrollAnimator::NotifyCompositorAnimationFinished(int group_id)
         std::move(on_finish_).Run(ScrollableArea::ScrollCompletionMode::kFinished);
 }
 
+#endif
 void ScrollAnimator::CancelAnimation()
 {
     ScrollAnimatorCompositorCoordinator::CancelAnimation();
@@ -389,11 +410,13 @@ void ScrollAnimator::CancelAnimation()
         std::move(on_finish_).Run(ScrollableArea::ScrollCompletionMode::kFinished);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScrollAnimator::TakeOverCompositorAnimation()
 {
     ScrollAnimatorCompositorCoordinator::TakeOverCompositorAnimation();
 }
 
+#endif
 bool ScrollAnimator::RegisterAndScheduleAnimation()
 {
     GetScrollableArea()->RegisterForAnimation();

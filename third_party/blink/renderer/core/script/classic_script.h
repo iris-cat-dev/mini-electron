@@ -8,13 +8,17 @@
 #include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_source_location_type.h"
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
+#endif
 #include "third_party/blink/renderer/core/script/script.h"
 #include "third_party/blink/renderer/platform/loader/fetch/script_fetch_options.h"
+#include "third_party/blink/renderer/platform/bindings/parkable_string.h"
 
 namespace blink {
 
 struct WebScriptSource;
+class ScriptResource;
 
 class CORE_EXPORT ClassicScript final : public Script {
 public:
@@ -24,10 +28,19 @@ public:
     // For scripts specified in the HTML spec or for tests.
     // Please leave spec comments and spec links that explain given argument
     // values at non-test callers.
+#if defined(MINI_UI_QUICKJS)
+    static ClassicScript* Create(
+        const String& source_text, const KURL& source_url, const KURL& base_url,
+        const ScriptFetchOptions&,
+        ScriptSourceLocationType = ScriptSourceLocationType::kUnknown,
+        SanitizeScriptErrors = SanitizeScriptErrors::kSanitize,
+        const TextPosition& start_position = TextPosition::MinimumPosition());
+#else
     static ClassicScript* Create(const String& source_text, const KURL& source_url, const KURL& base_url, const ScriptFetchOptions&,
         ScriptSourceLocationType = ScriptSourceLocationType::kUnknown, SanitizeScriptErrors = SanitizeScriptErrors::kSanitize, CachedMetadataHandler* = nullptr,
         const TextPosition& start_position = TextPosition::MinimumPosition(),
         ScriptStreamer::NotStreamingReason = ScriptStreamer::NotStreamingReason::kInlineScript, InlineScriptStreamer* = nullptr);
+#endif
     static ClassicScript* CreateFromResource(ScriptResource*, const ScriptFetchOptions&);
 
     // For scripts not specified in the HTML spec.
@@ -42,10 +55,19 @@ public:
     static ClassicScript* CreateUnspecifiedScript(const WebScriptSource&, SanitizeScriptErrors = SanitizeScriptErrors::kSanitize);
 
     // Use Create*() helpers above.
+#if defined(MINI_UI_QUICKJS)
+    ClassicScript(
+        const ParkableString& source_text, const KURL& source_url,
+        const KURL& base_url, const ScriptFetchOptions&,
+        ScriptSourceLocationType, SanitizeScriptErrors,
+        const TextPosition& start_position = TextPosition::MinimumPosition(),
+        const String& source_map_url = String());
+#else
     ClassicScript(const ParkableString& source_text, const KURL& source_url, const KURL& base_url, const ScriptFetchOptions&, ScriptSourceLocationType,
         SanitizeScriptErrors, CachedMetadataHandler* = nullptr, const TextPosition& start_position = TextPosition::MinimumPosition(), ScriptStreamer* = nullptr,
         ScriptStreamer::NotStreamingReason = ScriptStreamer::NotStreamingReason::kInlineScript, ScriptCacheConsumer* = nullptr,
         const String& source_map_url = String());
+#endif
 
     void Trace(Visitor*) const override;
 
@@ -64,6 +86,7 @@ public:
         return sanitize_script_errors_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     CachedMetadataHandler* CacheHandler() const
     {
         return cache_handler_.Get();
@@ -82,6 +105,7 @@ public:
     {
         return cache_consumer_.Get();
     }
+#endif
 
     const String& SourceMapUrl() const
     {
@@ -111,12 +135,12 @@ private:
 
     const SanitizeScriptErrors sanitize_script_errors_;
 
+#if !defined(MINI_UI_QUICKJS)
     const Member<CachedMetadataHandler> cache_handler_;
-
     const Member<ScriptStreamer> streamer_;
     const ScriptStreamer::NotStreamingReason not_streaming_reason_;
-
     const Member<ScriptCacheConsumer> cache_consumer_;
+#endif
 
     const String source_map_url_;
 };

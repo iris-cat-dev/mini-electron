@@ -19,8 +19,9 @@
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/legacy_layout_tree_walking.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
-#include "third_party/blink/renderer/core/page/link_highlight.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/clip_path_clipper.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"

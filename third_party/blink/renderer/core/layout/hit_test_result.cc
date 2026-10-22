@@ -41,8 +41,10 @@
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/html_map_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/media_source_handle.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
@@ -57,7 +59,9 @@
 #include "third_party/blink/renderer/core/page/scrolling/top_document_root_scroller_controller.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
+#endif
 #include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
@@ -458,6 +462,7 @@ KURL HitTestResult::AbsoluteImageURL() const
     return AbsoluteImageURL(InnerNodeOrImageMapImage());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 KURL HitTestResult::AbsoluteMediaURL() const
 {
     if (HTMLMediaElement* media_elt = MediaElement())
@@ -501,6 +506,7 @@ HTMLMediaElement* HitTestResult::MediaElement() const
 
     return DynamicTo<HTMLMediaElement>(*inner_node_);
 }
+#endif
 
 KURL HitTestResult::AbsoluteLinkURL() const
 {

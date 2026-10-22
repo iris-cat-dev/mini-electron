@@ -7,7 +7,9 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_timeline.h"
+#endif
 #include "third_party/blink/renderer/core/animation/animation.h"
 #include "third_party/blink/renderer/core/animation/timeline_range.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -162,6 +164,7 @@ public:
         return animations_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationTimeline* CompositorTimeline() const
     {
         return compositor_timeline_.get();
@@ -170,12 +173,15 @@ public:
     virtual void UpdateCompositorTimeline()
     {
     }
+#endif
 
     void MarkAnimationsCompositorPending(bool source_changed = false);
 
+#if !defined(MINI_UI_QUICKJS)
     // Checks for animations of composited properties that would have no effect
     // and marks them as pending if this changes.
     void MarkPendingIfCompositorPropertyAnimationChanges(const PaintArtifactCompositor*);
+#endif
 
     using ReplaceableAnimationsMap = HeapHashMap<Member<Element>, Member<HeapVector<Member<Animation>>>>;
     void getReplaceableAnimations(ReplaceableAnimationsMap* replaceable_animation_set);
@@ -204,7 +210,9 @@ protected:
     // All animations attached to this timeline.
     HeapHashSet<WeakMember<Animation>> animations_;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<cc::AnimationTimeline> compositor_timeline_;
+#endif
 
     std::optional<PhaseAndTime> last_current_phase_and_time_;
 };

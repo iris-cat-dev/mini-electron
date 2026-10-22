@@ -17,10 +17,12 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
+#if !defined(MINI_UI_IMPLEMENTATION)
 #include "base/values.h"
+#include "net/log/net_log_capture_mode.h"
+#endif
 #include "net/base/net_export.h"
 #include "net/filter/source_stream.h"
-#include "net/log/net_log_capture_mode.h"
 #include "url/gurl.h"
 
 namespace net {
@@ -201,10 +203,11 @@ public:
     // header keys and values with ": ", and inserts "\r\n" between each header
     // line, and adds the trailing "\r\n".
     std::string ToString() const;
-
+#if !defined(MINI_UI_IMPLEMENTATION)
     // Takes in the request line and returns a Value for use with the NetLog
     // containing both the request line and all headers fields.
     base::Value::Dict NetLogParams(const std::string& request_line, NetLogCaptureMode capture_mode) const;
+#endif
 
     const HeaderVector& GetHeaderVector() const
     {

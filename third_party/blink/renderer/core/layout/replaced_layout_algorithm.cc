@@ -9,7 +9,9 @@
 #include "third_party/blink/renderer/core/layout/geometry/writing_mode_converter.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
 
 namespace blink {
@@ -24,9 +26,10 @@ const LayoutResult* ReplacedLayoutAlgorithm::Layout()
 {
     DCHECK(!GetBreakToken() || GetBreakToken()->IsBreakBefore());
 
-    if (Node().IsMedia()) {
+#if !defined(MINI_UI_QUICKJS)
+    if (Node().IsMedia())
         LayoutMediaChildren();
-    }
+#endif
 
     if (Node().IsCanvas() && RuntimeEnabledFeatures::CanvasPlaceElementEnabled()) {
         LayoutCanvasChildren();
@@ -62,6 +65,7 @@ void ReplacedLayoutAlgorithm::LayoutCanvasChildren()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ReplacedLayoutAlgorithm::LayoutMediaChildren()
 {
     WritingModeConverter converter(GetConstraintSpace().GetWritingDirection(), container_builder_.Size());
@@ -70,9 +74,8 @@ void ReplacedLayoutAlgorithm::LayoutMediaChildren()
 
     for (LayoutInputNode child = Node().FirstChild(); child; child = child.NextSibling()) {
         LayoutUnit width = new_rect.Width();
-        if (child.GetDOMNode()->IsMediaControls()) {
+        if (child.GetDOMNode()->IsMediaControls())
             width = To<LayoutMedia>(Node().GetLayoutBox())->ComputePanelWidth(new_rect);
-        }
 
         ConstraintSpaceBuilder space_builder(GetConstraintSpace().GetWritingMode(), child.Style().GetWritingDirection(),
             /* is_new_fc */ true);
@@ -86,5 +89,6 @@ void ReplacedLayoutAlgorithm::LayoutMediaChildren()
         container_builder_.AddResult(*result, offset);
     }
 }
+#endif
 
 } // namespace blink

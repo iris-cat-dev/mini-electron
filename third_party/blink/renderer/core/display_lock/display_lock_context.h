@@ -251,9 +251,12 @@ public:
 
     void ScheduleTopLayerCheck();
 
+#if !defined(MINI_UI_QUICKJS)
     // State control for view transition element render affecting state.
     void ResetDescendantIsViewTransitionElement();
     void SetDescendantIsViewTransitionElement();
+
+#endif
 
     void SetAffectedByAnchorPositioning(bool);
 
@@ -368,9 +371,12 @@ private:
     // top layer node up the ancestor chain looking for `element_`.
     void DetermineIfSubtreeHasTopLayerElement();
 
+#if !defined(MINI_UI_QUICKJS)
     // Determines if there are view transition elements in the subtree of this
     // element.
     void DetermineIfDescendantIsViewTransitionElement();
+
+#endif
 
     // Detaching the layout tree from the top layers nested under this lock.
     void DetachDescendantTopLayerElements();
@@ -514,7 +520,9 @@ private:
         kAutoStateUnlockedUntilLifecycle,
         kAutoUnlockedForPrint,
         kSubtreeHasTopLayerElement,
+#if !defined(MINI_UI_QUICKJS)
         kDescendantIsViewTransitionElement,
+#endif
         kDescendantIsAnchorTarget,
         kNumRenderAffectingStates
     };

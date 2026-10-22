@@ -136,6 +136,7 @@ void ThreadSchedulerBase::DispatchOnTaskCompletionCallbacks()
     GetOnTaskCompletionCallbacks().clear();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 const char* VirtualTimePolicyToString(VirtualTimeController::VirtualTimePolicy virtual_time_policy)
 {
@@ -157,6 +158,7 @@ void ThreadSchedulerBase::WriteVirtualTimeInfoIntoTrace(perfetto::TracedDictiona
     dict.Add("virtual_time_policy", VirtualTimePolicyToString(virtual_time_policy_));
     dict.Add("virtual_time", !!virtual_time_domain_);
 }
+#endif
 
 void ThreadSchedulerBase::SetVirtualTimeStopped(bool virtual_time_stopped)
 {

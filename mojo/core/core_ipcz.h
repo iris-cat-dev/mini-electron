@@ -1,4 +1,4 @@
-﻿// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,6 @@ namespace mojo::core {
 
 MOJO_SYSTEM_IMPL_EXPORT const MojoSystemThunks2* GetMojoIpczImpl();
 
-} // namespace mojo::core
+}  // namespace mojo::core
 
-#endif // MOJO_CORE_CORE_IPCZ_H_
+#endif  // MOJO_CORE_CORE_IPCZ_H_

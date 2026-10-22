@@ -38,7 +38,9 @@
 
 #include "base/time/time.h"
 #include "services/network/public/mojom/content_security_policy.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/no_vary_search.mojom-blink-forward.h"
+#endif
 #include "services/network/public/mojom/parsed_headers.mojom-blink-forward.h"
 #include "services/network/public/mojom/timing_allow_origin.mojom-blink.h"
 #include "third_party/blink/renderer/platform/network/content_security_policy_response_headers.h"
@@ -160,11 +162,13 @@ Vector<network::mojom::blink::ContentSecurityPolicyPtr> ParseContentSecurityPoli
 PLATFORM_EXPORT
 network::mojom::blink::TimingAllowOriginPtr ParseTimingAllowOrigin(const String& header_value);
 
+#if !defined(MINI_UI_QUICKJS)
 PLATFORM_EXPORT
 network::mojom::blink::NoVarySearchWithParseErrorPtr ParseNoVarySearch(const String& header_value);
 
 PLATFORM_EXPORT
 String GetNoVarySearchHintConsoleMessage(const network::mojom::NoVarySearchParseError& error);
+#endif
 } // namespace blink
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_NETWORK_HTTP_PARSERS_H_

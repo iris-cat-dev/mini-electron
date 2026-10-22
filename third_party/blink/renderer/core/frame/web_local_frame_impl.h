@@ -49,14 +49,18 @@
 #include "third_party/blink/public/mojom/back_forward_cache_not_restored_reasons.mojom.h"
 #include "third_party/blink/public/mojom/blob/blob_url_store.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/devtools_agent.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/fenced_frame/fenced_frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/find_in_page.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/tree_scope_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/input/input_handler.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/lcp_critical_path_predictor/lcp_critical_path_predictor.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/page/widget.mojom-blink.h"
 #include "third_party/blink/public/mojom/script/script_evaluation_params.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
@@ -71,7 +75,9 @@
 #include "third_party/blink/renderer/core/editing/forward.h"
 #include "third_party/blink/renderer/core/exported/web_input_method_controller_impl.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -90,7 +96,9 @@ class TextFinder;
 class WebAssociatedURLLoader;
 class WebAutofillClient;
 class WebContentSettingsClient;
+#if !defined(MINI_UI_QUICKJS)
 class WebDevToolsAgentImpl;
+#endif
 class WebFrameWidgetImpl;
 class WebLocalFrameClient;
 class WebNode;
@@ -164,9 +172,14 @@ public:
     void RequestExecuteV8Function(v8::Local<v8::Context>, v8::Local<v8::Function>, v8::Local<v8::Value> receiver, int argc, v8::Local<v8::Value> argv[],
         WebScriptExecutionCallback) override;
     void RequestExecuteScript(int32_t world_id, base::span<const WebScriptSource> sources, mojom::blink::UserActivationOption, mojom::blink::EvaluationTiming,
-        mojom::blink::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware back_forward_cache_aware, mojom::blink::WantResultOption,
+        mojom::blink::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware back_forward_cache_aware,
+#if !defined(MINI_UI_QUICKJS)
+        mojom::blink::WantResultOption,
+#endif
         mojom::blink::PromiseResultOption) override;
+#if !defined(MINI_UI_QUICKJS)
     bool IsInspectorConnected() override;
+#endif
     void Alert(const WebString& message) override;
     bool Confirm(const WebString& message) override;
     WebString Prompt(const WebString& message, const WebString& default_value) override;
@@ -240,19 +253,25 @@ public:
     bool HasVisibleContent() const override;
     gfx::Rect VisibleContentRect() const override;
     void DispatchBeforePrintEvent(base::WeakPtr<WebPrintClient> print_client) override;
+#if !defined(MINI_UI_QUICKJS)
     WebPlugin* GetPluginToPrint(const WebNode& constrain_to_node) override;
+#endif
     uint32_t PrintBegin(const WebPrintParams&, const WebNode& constrain_to_node) override;
     bool WillPrintSoon() override;
     void PrintPage(uint32_t page_to_print, cc::PaintCanvas*) override;
     void PrintEnd() override;
     void DispatchAfterPrintEvent() override;
+#if !defined(MINI_UI_QUICKJS)
     bool GetPrintPresetOptionsForPlugin(const WebNode&, WebPrintPresetOptions*) override;
+#endif
     bool CapturePaintPreview(const gfx::Rect& bounds, cc::PaintCanvas* canvas, bool include_linked_destinations, bool skip_accelerated_content) override;
     bool ShouldSuppressKeyboardForFocusedElement() override;
     WebPerformanceMetricsForReporting PerformanceMetricsForReporting() const override;
     WebPerformanceMetricsForNestedContexts PerformanceMetricsForNestedContexts() const override;
     bool IsAdFrame() const override;
+#if !defined(MINI_UI_QUICKJS)
     bool IsAdScriptInStack() const override;
+#endif
     void SetAdEvidence(const FrameAdEvidence& ad_evidence) override;
     const std::optional<blink::FrameAdEvidence>& AdEvidence() override;
     bool IsFrameCreatedByAdScript() override;
@@ -276,12 +295,16 @@ public:
     void UpdateCurrentHistoryItem() override;
     PageState CurrentHistoryItemToPageState() override;
     WebHistoryItem GetCurrentHistoryItem() const override;
+#if !defined(MINI_UI_QUICKJS)
     void SetLocalStorageArea(CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase> local_storage_area) override;
     void SetSessionStorageArea(CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase> session_storage_area) override;
+#endif
     void AddHitTestOnTouchStartCallback(base::RepeatingCallback<void(const WebHitTestResult&)> callback) override;
     void BlockParserForTesting() override;
     void ResumeParserForTesting() override;
+#if !defined(MINI_UI_QUICKJS)
     void FlushInputForTesting(base::OnceClosure done_callback) override;
+#endif
     bool AllowStorageAccessSyncAndNotify(WebContentSettingsClient::StorageType storage_type) override;
 
     // WebNavigationControl overrides:
@@ -305,9 +328,11 @@ public:
 
     const mojom::blink::BackForwardCacheNotRestoredReasonsPtr& GetNotRestoredReasons();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigationTimeHintPtr&) override;
 
-    bool IsFeatureEnabled(const mojom::blink::PermissionsPolicyFeature&) const override;
+#endif
+    bool IsFeatureEnabled(const mojom::PermissionsPolicyFeature&) const override;
 
     void InitializeCoreFrame(Page&, FrameOwner*, WebFrame* parent, WebFrame* previous_sibling, FrameInsertType, const AtomicString& name, WindowAgentFactory*,
         WebFrame* opener, const DocumentToken& document_token, mojo::PendingRemote<mojom::blink::BrowserInterfaceBroker> interface_broker,
@@ -330,20 +355,26 @@ public:
 
     WebLocalFrameImpl(
         base::PassKey<WebLocalFrameImpl>, mojom::blink::TreeScopeType, WebLocalFrameClient*, InterfaceRegistry*, const LocalFrameToken& frame_token);
+#if !defined(MINI_UI_QUICKJS)
     WebLocalFrameImpl(
         base::PassKey<WebRemoteFrameImpl>, mojom::blink::TreeScopeType, WebLocalFrameClient*, InterfaceRegistry*, const LocalFrameToken& frame_token);
+#endif
     ~WebLocalFrameImpl() override;
 
     LocalFrame* CreateChildFrame(const AtomicString& name, HTMLFrameOwnerElement*);
 
+#if !defined(MINI_UI_QUICKJS)
     RemoteFrame* CreateFencedFrame(HTMLFencedFrameElement*, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>);
+#endif
 
     void DidChangeContentsSize(const gfx::Size&);
 
+#if !defined(MINI_UI_QUICKJS)
     bool HasDevToolsOverlays() const;
     void UpdateDevToolsOverlaysPrePaint();
     void PaintDevToolsOverlays(GraphicsContext&);
 
+#endif
     void CreateFrameView();
 
     // Sometimes Blink makes Page/Frame for internal purposes like for SVGImage
@@ -364,6 +395,7 @@ public:
 
     void SendOrientationChangeEvent();
 
+#if !defined(MINI_UI_QUICKJS)
     WebDevToolsAgentImpl* DevToolsAgentImpl(bool create_if_necessary);
 
     // Instructs devtools to pause loading of the frame as soon as it's shown
@@ -371,6 +403,7 @@ public:
     // local root.
     void WaitForDebuggerWhenShown();
 
+#endif
     // When a Find operation ends, we want to set the selection to what was active
     // and set focus to the first focusable node we find (starting with the first
     // node in the matched range and going up the inheritance chain). If we find
@@ -444,9 +477,11 @@ protected:
     // WebLocalFrame protected overrides:
     void AddMessageToConsoleImpl(const WebConsoleMessage&, bool discard_duplicates) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssueImpl(mojom::blink::InspectorIssueCode code) override;
     void AddGenericIssueImpl(mojom::blink::GenericIssueErrorType error_type, int violating_node_id) override;
     void AddGenericIssueImpl(mojom::blink::GenericIssueErrorType error_type, int violating_node_id, const WebString& violating_node_attribute) override;
+#endif
 
 private:
     friend LocalFrameClientImpl;
@@ -462,22 +497,33 @@ private:
     bool IsWebRemoteFrame() const override;
     WebRemoteFrame* ToWebRemoteFrame() override;
     const WebRemoteFrame* ToWebRemoteFrame() const override;
+#if defined(MINI_UI_QUICKJS)
+    void CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
+        CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> mojo_widget_host,
+        const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
+        bool is_for_scalable_page, bool hidden) override;
+#else
     void CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
         CrossVariantMojoAssociatedRemote<mojom::blink::FrameWidgetHostInterfaceBase> mojo_frame_widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::blink::FrameWidgetInterfaceBase> mojo_frame_widget,
         CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> mojo_widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> mojo_widget, const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
         bool is_for_scalable_page, bool hidden) override;
+#endif
 
     HitTestResult HitTestResultForVisualViewportPos(const gfx::Point&);
 
+#if !defined(MINI_UI_QUICKJS)
     WebPlugin* FocusedPluginIfInputMethodSupported();
+#endif
     ScrollableArea* LayoutViewport() const;
 
     // A helper for DispatchBeforePrintEvent() and DispatchAfterPrintEvent().
     void DispatchPrintEventRecursively(const AtomicString& event_type);
 
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* GetPluginToPrintHelper(const WebNode& constrain_to_node);
+#endif
 
     Node* ContextMenuImageNodeInner() const;
     Node* ContextMenuNodeInner() const;
@@ -491,9 +537,11 @@ private:
     // mojom::blink::BackForwardCacheNotRestoredReasonsPtr.
     mojom::blink::BackForwardCacheNotRestoredReasonsPtr ConvertNotRestoredReasons(const mojom::BackForwardCacheNotRestoredReasonsPtr& reasons_struct);
 
+#if !defined(MINI_UI_QUICKJS)
     // If true, requests compositor warm-up when the page is under prerendering.
     // Please see crbug.com/41496019 for more details.
     bool ShouldWarmUpCompositorOnPrerenderFromThisPoint(features::Prerender2WarmUpCompositorTriggerPoint trigger_point);
+#endif
 
     WebLocalFrameClient* client_;
 
@@ -509,7 +557,7 @@ private:
     // widget for layout.
     Member<WebFrameWidgetImpl> frame_widget_;
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     Member<WebDevToolsAgentImpl> dev_tools_agent_;
 #endif
 

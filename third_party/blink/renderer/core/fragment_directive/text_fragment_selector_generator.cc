@@ -608,20 +608,26 @@ void TextFragmentSelectorGenerator::RecordAllMetrics(const TextFragmentSelector&
         = selector.Type() == TextFragmentSelector::SelectorType::kInvalid ? LinkGenerationStatus::kFailure : LinkGenerationStatus::kSuccess;
     shared_highlighting::LogLinkGenerationStatus(status);
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* recorder = frame_->GetDocument()->UkmRecorder();
     ukm::SourceId source_id = frame_->GetDocument()->UkmSourceID();
+#endif
 
     if (selector.Type() != TextFragmentSelector::SelectorType::kInvalid) {
         UMA_HISTOGRAM_TIMES("SharedHighlights.LinkGenerated.TimeToGenerate", base::DefaultTickClock::GetInstance()->NowTicks() - generation_start_time_);
 
+#if !defined(MINI_UI_QUICKJS)
         shared_highlighting::LogLinkGeneratedSuccessUkmEvent(recorder, source_id);
+#endif
     } else {
         UMA_HISTOGRAM_EXACT_LINEAR("SharedHighlights.LinkGenerated.Error.Iterations", iteration_, kMaxIterationCountToRecord);
         UMA_HISTOGRAM_TIMES("SharedHighlights.LinkGenerated.Error.TimeToGenerate", base::DefaultTickClock::GetInstance()->NowTicks() - generation_start_time_);
         if (error_ == LinkGenerationError::kNone)
             error_ = LinkGenerationError::kUnknown;
         shared_highlighting::LogLinkGenerationErrorReason(error_);
+#if !defined(MINI_UI_QUICKJS)
         shared_highlighting::LogLinkGeneratedErrorUkmEvent(recorder, source_id, error_);
+#endif
     }
 }
 

@@ -46,6 +46,7 @@
 #include <windows.h>
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool absl::str_format_internal::FormatUntyped(
     absl::str_format_internal::FormatRawSinkImpl,
     absl::str_format_internal::UntypedFormatSpecImpl, absl::Span<absl::str_format_internal::FormatArgImpl const>)
@@ -53,6 +54,7 @@ bool absl::str_format_internal::FormatUntyped(
     *(int*)1 = 1;
     return false;
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 namespace base {
 

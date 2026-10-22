@@ -31,9 +31,11 @@ public:
         , frame_index_(frame_index)
         , element_timing_rect_(element_timing_rect)
     {
+#if !defined(MINI_UI_QUICKJS)
         if (PaintTimingVisualizer::IsTracingEnabled()) {
             lcp_rect_info_ = std::make_unique<LCPRectInfo>(frame_visual_rect, gfx::ToRoundedRect(root_visual_rect));
         }
+#endif
     }
     TextRecord(const TextRecord&) = delete;
     TextRecord& operator=(const TextRecord&) = delete;
@@ -44,7 +46,9 @@ public:
     uint64_t recorded_size = 0;
     uint32_t frame_index_ = 0;
     gfx::RectF element_timing_rect_;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<LCPRectInfo> lcp_rect_info_;
+#endif
     // The time of the first paint after fully loaded.
     base::TimeTicks paint_time = base::TimeTicks();
 };
@@ -124,20 +128,28 @@ class CORE_EXPORT TextPaintTimingDetector final : public GarbageCollected<TextPa
     friend class TextPaintTimingDetectorTest;
 
 public:
+#if !defined(MINI_UI_QUICKJS)
     explicit TextPaintTimingDetector(LocalFrameView*, PaintTimingDetector*, PaintTimingCallbackManager*);
+#else
+    explicit TextPaintTimingDetector(LocalFrameView*, PaintTimingDetector*);
+#endif
     TextPaintTimingDetector(const TextPaintTimingDetector&) = delete;
     TextPaintTimingDetector& operator=(const TextPaintTimingDetector&) = delete;
 
     bool ShouldWalkObject(const LayoutBoxModelObject&) const;
     void RecordAggregatedText(const LayoutBoxModelObject& aggregator, const gfx::Rect& aggregated_visual_rect, const PropertyTreeStateOrAlias&);
+#if !defined(MINI_UI_QUICKJS)
     void OnPaintFinished();
+#endif
     void LayoutObjectWillBeDestroyed(const LayoutObject&);
     void StopRecordingLargestTextPaint();
     void RestartRecordingLargestTextPaint();
+#if !defined(MINI_UI_QUICKJS)
     void ResetCallbackManager(PaintTimingCallbackManager* manager)
     {
         callback_manager_ = manager;
     }
+#endif
     inline bool IsRecordingLargestTextPaint() const
     {
         return recording_largest_text_paint_;
@@ -147,13 +159,17 @@ public:
         return ltp_manager_->UpdateMetricsCandidate();
     }
     void ReportLargestIgnoredText();
+#if !defined(MINI_UI_QUICKJS)
     void ReportPresentationTime(uint32_t frame_index, base::TimeTicks timestamp);
+#endif
     void Trace(Visitor*) const;
 
 private:
     friend class LargestContentfulPaintCalculatorTest;
 
+#if !defined(MINI_UI_QUICKJS)
     void RegisterNotifyPresentationTime(PaintTimingCallbackManager::LocalThreadCallback callback);
+#endif
 
     void AssignPaintTimeToQueuedRecords(uint32_t frame_index, const base::TimeTicks&);
     void MaybeRecordTextRecord(const LayoutObject& object, const uint64_t& visual_size, const PropertyTreeStateOrAlias& property_tree_state,
@@ -172,7 +188,9 @@ private:
     // easy.
     HeapHashMap<Member<const LayoutObject>, Member<TextRecord>> texts_queued_for_paint_time_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<PaintTimingCallbackManager> callback_manager_;
+#endif
     Member<const LocalFrameView> frame_view_;
     // Set lazily because we may not have the correct Window when first
     // initializing this class.

@@ -9,10 +9,14 @@
 #include "ipc/ipc_message_utils.h"
 #include "ipc/ipc_mojo_param_traits.h"
 #include "ipc/ipc_platform_file.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/cert/cert_verify_result.h"
 #include "net/http/http_util.h"
+#endif
 
 namespace IPC {
+
+#if !defined(MINI_UI_QUICKJS)
 
 void ParamTraits<net::AuthCredentials>::Write(base::Pickle* m, const param_type& p)
 {
@@ -155,6 +159,8 @@ void ParamTraits<net::HttpRequestHeaders>::Log(const param_type& p, std::string*
     l->append(p.ToString());
 }
 
+#endif
+
 void ParamTraits<scoped_refptr<net::HttpResponseHeaders>>::Write(base::Pickle* m, const param_type& p)
 {
     WriteParam(m, p.get() != nullptr);
@@ -178,6 +184,8 @@ void ParamTraits<scoped_refptr<net::HttpResponseHeaders>>::Log(const param_type&
 {
     l->append("<HttpResponseHeaders>");
 }
+
+#if !defined(MINI_UI_QUICKJS)
 
 void ParamTraits<bssl::OCSPVerifyResult>::Write(base::Pickle* m, const param_type& p)
 {
@@ -395,6 +403,8 @@ void ParamTraits<net::LoadTimingInfo>::Log(const param_type& p, std::string* l)
     l->append(")");
 }
 
+#endif
+
 void ParamTraits<net::SiteForCookies>::Write(base::Pickle* m, const param_type& p)
 {
     WriteParam(m, p.site());
@@ -480,6 +490,7 @@ void ParamTraits<net::SchemefulSite>::Log(const net::SchemefulSite& p, std::stri
 {
     l->append(p.Serialize());
 }
+
 
 } // namespace IPC
 

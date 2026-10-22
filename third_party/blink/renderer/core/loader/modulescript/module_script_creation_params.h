@@ -9,11 +9,14 @@
 #include "services/network/public/mojom/referrer_policy.mojom-blink.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_source_location_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
-#include "third_party/blink/renderer/core/script/modulator.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -27,6 +30,27 @@ class ModuleScriptCreationParams {
     DISALLOW_NEW();
 
 public:
+#if defined(MINI_UI_QUICKJS)
+    ModuleScriptCreationParams(
+        const KURL& source_url, const KURL& base_url,
+        ScriptSourceLocationType source_location_type,
+        const ModuleType module_type, const ParkableString& source_text,
+        network::mojom::ReferrerPolicy response_referrer_policy)
+        : source_url_(source_url)
+        , base_url_(base_url)
+        , source_location_type_(source_location_type)
+        , module_type_(module_type)
+        , is_isolated_(false)
+        , source_text_(source_text)
+        , isolated_source_text_()
+        , response_referrer_policy_(response_referrer_policy)
+    {
+        DCHECK(source_location_type == ScriptSourceLocationType::kExternalFile ||
+            source_location_type == ScriptSourceLocationType::kInline);
+        if (source_location_type == ScriptSourceLocationType::kExternalFile)
+            DCHECK_EQ(source_url, base_url);
+    }
+#else
     ModuleScriptCreationParams(const KURL& source_url, const KURL& base_url, ScriptSourceLocationType source_location_type, const ModuleType module_type,
         const ParkableString& source_text, CachedMetadataHandler* cache_handler, network::mojom::ReferrerPolicy response_referrer_policy,
         ScriptStreamer* script_streamer = nullptr,
@@ -50,6 +74,7 @@ public:
         }
         DCHECK_EQ(!script_streamer, not_streaming_reason != ScriptStreamer::NotStreamingReason::kInvalid);
     }
+#endif
 
     ~ModuleScriptCreationParams() = default;
 
@@ -90,19 +115,21 @@ public:
 
     ModuleScriptCreationParams CopyWithClearedSourceText() const
     {
+#if defined(MINI_UI_QUICKJS)
+        return ModuleScriptCreationParams(
+            source_url_, base_url_, source_location_type_, module_type_,
+            ParkableString(), response_referrer_policy_);
+#else
         return ModuleScriptCreationParams(source_url_, base_url_, source_location_type_, module_type_, ParkableString(), /*cache_handler=*/nullptr,
             response_referrer_policy_,
             /*script_streamer=*/nullptr, ScriptStreamer::NotStreamingReason::kStreamingDisabled);
+#endif
     }
 
+#if !defined(MINI_UI_QUICKJS)
     CachedMetadataHandler* CacheHandler() const
     {
         return cache_handler_;
-    }
-
-    bool IsSafeToSendToAnotherThread() const
-    {
-        return is_isolated_;
     }
 
     ScriptStreamer* GetScriptStreamer() const
@@ -113,6 +140,7 @@ public:
     {
         return not_streaming_reason_;
     }
+#endif
 
     static String ModuleTypeToString(const ModuleType module_type);
 
@@ -133,6 +161,7 @@ private:
         , source_text_()
         , isolated_source_text_(isolated_source_text)
         , response_referrer_policy_(response_referrer_policy)
+#if !defined(MINI_UI_QUICKJS)
         ,
         // The ScriptStreamer is intentionally cleared since it cannot be passed
         // across threads. This only disables script streaming on worklet
@@ -140,6 +169,7 @@ private:
         // passed across threads.
         script_streamer_(nullptr)
         , not_streaming_reason_(ScriptStreamer::NotStreamingReason::kStreamingDisabled)
+#endif
     {
     }
 
@@ -154,8 +184,10 @@ private:
     mutable ParkableString source_text_;
     mutable String isolated_source_text_;
 
+#if !defined(MINI_UI_QUICKJS)
     // |cache_handler_| is cleared when crossing thread boundaries.
     Persistent<CachedMetadataHandler> cache_handler_;
+#endif
 
     // This is the referrer policy specified in the `Referrer-Policy` header on
     // the response associated with the module script that `this` represents. This
@@ -163,9 +195,11 @@ private:
     // response. Consumers of this policy are responsible for detecting this.
     const network::mojom::ReferrerPolicy response_referrer_policy_;
 
+#if !defined(MINI_UI_QUICKJS)
     // |script_streamer_| is cleared when crossing thread boundaries.
     Persistent<ScriptStreamer> script_streamer_;
     const ScriptStreamer::NotStreamingReason not_streaming_reason_;
+#endif
 };
 
 } // namespace blink

@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_ANIMATION_COMPOSITOR_ANIMATION_CLIENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_ANIMATION_COMPOSITOR_ANIMATION_CLIENT_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/platform_export.h"
 
 namespace blink {
@@ -20,5 +21,6 @@ public:
 };
 
 } // namespace blink
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_ANIMATION_COMPOSITOR_ANIMATION_CLIENT_H_

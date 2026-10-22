@@ -84,33 +84,41 @@ public:
     // used for CSP checks.
     void ExecuteJavaScriptURL(const KURL&, network::mojom::CSPDisposition, const DOMWrapperWorld* world_for_csp);
 
+#if !defined(MINI_UI_QUICKJS)
     // Creates a new isolated world for DevTools with the given human readable
     // |world_name| and returns it id or nullptr on failure.
     DOMWrapperWorld* CreateNewInspectorIsolatedWorld(const String& world_name);
+#endif
 
     // Disables eval for the main world.
     void DisableEval(const String& error_message);
 
-    // Disables wasm eval for the main world
+#if !defined(MINI_UI_QUICKJS)
+    // Disables wasm eval for the main world.
     void SetWasmEvalErrorMessage(const String& error_message);
+#endif
 
     // Disables eval for the given isolated |world_id|. This initializes the
     // window proxy for the isolated world, if it's not yet initialized.
     void DisableEvalForIsolatedWorld(int32_t world_id, const String& error_message);
 
+#if !defined(MINI_UI_QUICKJS)
     // Disables wasm eval for the given isolated |world_id|. This initializes the
     // window proxy for the isolated world, if it's not yet initialized.
     void SetWasmEvalErrorMessageForIsolatedWorld(int32_t world_id, const String& error_message);
+#endif
 
     TextPosition EventHandlerPosition() const;
 
     void UpdateDocument();
     void UpdateSecurityOrigin(const SecurityOrigin*);
 
+#if !defined(MINI_UI_QUICKJS)
     // Registers a v8 extension to be available on webpages. Will only
     // affect v8 contexts initialized after this call.
     static void RegisterExtensionIfNeeded(std::unique_ptr<v8::Extension>);
     static v8::ExtensionConfiguration ExtensionsFor(const ExecutionContext*);
+#endif
 
 private:
     bool CanExecuteScript(ExecuteScriptPolicy policy);
@@ -120,7 +128,9 @@ private:
     // |world|. |error_message| is used only when |allow_eval| is false.
     void SetEvalForWorld(DOMWrapperWorld& world, bool allow_eval, const String& error_message);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetWasmEvalErrorMessageForWorld(DOMWrapperWorld& world, bool allow_eval, const String& error_message);
+#endif
 
     const Member<LocalDOMWindow> window_;
     const Member<LocalWindowProxyManager> window_proxy_manager_;

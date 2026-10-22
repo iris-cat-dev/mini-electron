@@ -143,11 +143,13 @@ protected:
         font_data_table_.clear();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Report the font lookup for metrics collection. Only used for local font
     // face sources currently.
     virtual void ReportFontLookup(const FontDescription& font_description, const SimpleFontData* font_data, bool is_loading_fallback = false)
     {
     }
+#endif
 
 private:
     using FontDataTable = HeapHashMap<FontCacheKey, WeakMember<const SimpleFontData>>;

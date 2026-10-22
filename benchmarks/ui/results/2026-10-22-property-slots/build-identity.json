@@ -1,0 +1,18 @@
+{
+  "third_party/quickjs/quickjs.c": {
+    "sha256": "1e41f44bb821fb22920abdd4004d22f81768049ac967f55483acdeb9a6035c04",
+    "bytes": 1889880
+  },
+  "benchmarks/ui/runtime_checks.cc": {
+    "sha256": "ba133c25e7165068571cddb5e6885b7aac87646c858904b807e8ee92165b2003",
+    "bytes": 67340
+  },
+  "out/ui-windows-x64/mini-ui.lib": {
+    "sha256": "535ff5f4b421d9ec124c10aa5e6cf80bc3ed62eb7fbe647c2e8a0ab8ecf81c62",
+    "bytes": 412670380
+  },
+  "out/ui-windows-x64/mini-ui-example.exe": {
+    "sha256": "bf0772d9d0e6174999ce455b89d519d021673eded721738ac2a2a5fa548fe523",
+    "bytes": 40128512
+  }
+}

@@ -128,6 +128,7 @@ public:
         triggering_event_info_ = info;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> TakeInitiatorNavigationStateKeepAliveHandle()
     {
         return std::move(initiator_navigation_state_keep_alive_handle_);
@@ -136,6 +137,7 @@ public:
     {
         initiator_navigation_state_keep_alive_handle_ = std::move(handle);
     }
+#endif
 
     std::unique_ptr<SourceLocation> TakeSourceLocation()
     {
@@ -298,7 +300,9 @@ private:
     std::optional<WebPictureInPictureWindowOptions> picture_in_picture_window_options_;
     std::optional<blink::Impression> impression_;
     std::optional<LocalFrameToken> initiator_frame_token_;
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle_;
+#endif
     std::unique_ptr<SourceLocation> source_location_;
     KURL requestor_base_url_;
 

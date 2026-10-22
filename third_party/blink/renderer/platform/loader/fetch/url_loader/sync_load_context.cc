@@ -103,6 +103,14 @@ void SyncLoadContext::StartAsyncWithWaitableEvent(std::unique_ptr<network::Resou
 {
     scoped_refptr<SyncLoadContext> context(base::AdoptRef(new SyncLoadContext(request.get(), std::move(pending_url_loader_factory), response,
         context_for_redirect, redirect_or_response_event, abort_event, timeout, std::move(download_to_blob_registry), loading_task_runner)));
+#if defined(MINI_UI_QUICKJS)
+    context->resource_request_sender_->SendAsync(std::move(request), std::move(loading_task_runner), traffic_annotation, loader_options,
+        cors_exempt_header_list, context, context->url_loader_factory_, std::move(throttles), std::move(resource_load_info_notifier_wrapper),
+        /*evict_from_bfcache_callback=*/
+        base::OnceCallback<void(mojom::blink::RendererEvictionReason)>(),
+        /*did_buffer_load_while_in_bfcache_callback=*/
+        base::RepeatingCallback<void(size_t)>());
+#else
     context->resource_request_sender_->SendAsync(std::move(request), std::move(loading_task_runner), traffic_annotation, loader_options,
         cors_exempt_header_list, context, context->url_loader_factory_, std::move(throttles), std::move(resource_load_info_notifier_wrapper),
         /*code_cache_host=*/nullptr,
@@ -110,6 +118,7 @@ void SyncLoadContext::StartAsyncWithWaitableEvent(std::unique_ptr<network::Resou
         base::OnceCallback<void(mojom::blink::RendererEvictionReason)>(),
         /*did_buffer_load_while_in_bfcache_callback=*/
         base::RepeatingCallback<void(size_t)>());
+#endif
 }
 
 SyncLoadContext::SyncLoadContext(network::ResourceRequest* request, std::unique_ptr<network::PendingSharedURLLoaderFactory> url_loader_factory,

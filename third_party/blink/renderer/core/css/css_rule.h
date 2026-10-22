@@ -81,7 +81,9 @@ public:
         kPropertyRule,
         kScopeRule,
         kStartingStyleRule,
+#if !defined(MINI_UI_QUICKJS)
         kViewTransitionRule,
+#endif
         // Lexicographical order above.
     };
 

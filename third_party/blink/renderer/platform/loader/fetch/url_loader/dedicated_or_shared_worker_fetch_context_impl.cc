@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/dedicated_or_shared_worker_fetch_context_impl.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -545,3 +547,5 @@ void WebDedicatedOrSharedWorkerFetchContext::InstallRewriteURLFunction(RewriteUR
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

@@ -17,9 +17,11 @@ namespace blink {
 // This correctly prevents form controls from having such layoutObjects.
 static bool CanHaveGeneratedChildren(const LayoutObject& layout_object)
 {
-    // FIXME: LayoutMedia::layout makes assumptions about what children are
-    // allowed so we can't support generated content.
-    if (layout_object.IsMedia() || layout_object.IsTextControl() || layout_object.IsMenuList() || layout_object.IsInputButton()) {
+    bool disallow_generated_children = layout_object.IsTextControl() || layout_object.IsMenuList() || layout_object.IsInputButton();
+#if !defined(MINI_UI_QUICKJS)
+    disallow_generated_children |= layout_object.IsMedia();
+#endif
+    if (disallow_generated_children) {
         if (RuntimeEnabledFeatures::CustomizableSelectEnabled() && layout_object.IsMenuList()
             && To<HTMLSelectElement>(layout_object.GetNode())->IsAppearanceBaseButton()) {
             // appearance:base-select <select>s should be allowed to have ::after etc.

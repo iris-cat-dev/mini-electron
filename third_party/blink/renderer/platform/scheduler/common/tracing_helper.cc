@@ -218,6 +218,7 @@ const char* YesNoStateToString(bool is_yes)
 //   }
 // }
 
+#if !defined(MINI_UI_QUICKJS)
 TraceableVariableController::TraceableVariableController() = default;
 
 TraceableVariableController::~TraceableVariableController()
@@ -242,6 +243,7 @@ void TraceableVariableController::OnTraceLogEnabled()
         tracer->OnTraceLogEnabled();
     }
 }
+#endif
 
 } // namespace scheduler
 } // namespace blink

@@ -19,8 +19,10 @@
 #include "third_party/blink/renderer/core/timing/performance_entry.h"
 #include "third_party/blink/renderer/core/timing/performance_observer_entry_list.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/worker_global_scope_performance.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
@@ -39,10 +41,12 @@ PerformanceObserver* PerformanceObserver::Create(ScriptState* script_state, V8Pe
         UseCounter::Count(context, WebFeature::kPerformanceObserverForWindow);
         return MakeGarbageCollected<PerformanceObserver>(context, DOMWindowPerformance::performance(*window), callback);
     }
+#if !defined(MINI_UI_QUICKJS)
     if (auto* scope = DynamicTo<WorkerGlobalScope>(context)) {
         UseCounter::Count(context, WebFeature::kPerformanceObserverForWorker);
         return MakeGarbageCollected<PerformanceObserver>(context, WorkerGlobalScopePerformance::performance(*scope), callback);
     }
+#endif
     V8ThrowException::ThrowTypeError(
         script_state->GetIsolate(), ExceptionMessages::FailedToConstruct("PerformanceObserver", "No 'worker' or 'window' in current context."));
     return nullptr;

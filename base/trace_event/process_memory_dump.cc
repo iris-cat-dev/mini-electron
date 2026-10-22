@@ -11,6 +11,7 @@
 
 #include <errno.h>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -26,12 +27,17 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/memory_infra_background_allowlist.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event_impl.h"
+#include "base/trace_event/trace_event_memory_overhead.h"
+#endif
 #include "base/trace_event/traced_value.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/protos/perfetto/trace/memory_graph.pbzero.h"
 #include "third_party/perfetto/protos/perfetto/trace/trace_packet.pbzero.h"
+#endif
 
 #if BUILDFLAG(IS_IOS)
 #include <mach/vm_page_size.h>
@@ -53,7 +59,9 @@
 #include "base/notreached.h"
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 using ProcessSnapshot = ::perfetto::protos::pbzero::MemoryTrackerSnapshot_ProcessSnapshot;
+#endif
 
 namespace base {
 namespace trace_event {
@@ -334,12 +342,14 @@ MemoryAllocatorDump* ProcessMemoryDump::GetSharedGlobalAllocatorDump(const Memor
     return GetAllocatorDump(GetSharedGlobalAllocatorDumpName(guid));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ProcessMemoryDump::DumpHeapUsage(const std::unordered_map<base::trace_event::AllocationContext, base::trace_event::AllocationMetrics>& metrics_by_context,
     base::trace_event::TraceEventMemoryOverhead& overhead, const char* allocator_name)
 {
     std::string base_name = base::StringPrintf("tracing/heap_profiler_%s", allocator_name);
     overhead.DumpInto(base_name.c_str(), this);
 }
+#endif
 
 void ProcessMemoryDump::SetAllocatorDumpsForSerialization(std::vector<std::unique_ptr<MemoryAllocatorDump>> dumps)
 {
@@ -407,6 +417,7 @@ void ProcessMemoryDump::SerializeAllocatorDumpsInto(TracedValue* value) const
     value->EndArray();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ProcessMemoryDump::SerializeAllocatorDumpsInto(perfetto::protos::pbzero::MemoryTrackerSnapshot* memory_snapshot, const base::ProcessId pid) const
 {
     ProcessSnapshot* process_snapshot = memory_snapshot->add_process_memory_dumps();
@@ -427,6 +438,7 @@ void ProcessMemoryDump::SerializeAllocatorDumpsInto(perfetto::protos::pbzero::Me
         memory_edge->set_importance(static_cast<uint32_t>(edge.importance));
     }
 }
+#endif
 
 void ProcessMemoryDump::AddOwnershipEdge(const MemoryAllocatorDumpGuid& source, const MemoryAllocatorDumpGuid& target, int importance)
 {

@@ -29,7 +29,9 @@
 #include <memory>
 #include <utility>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
 #include "third_party/blink/renderer/core/dom/element.h"

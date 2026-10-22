@@ -13,13 +13,16 @@
 
 #include <utility>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/gfx/geometry/skia_conversions.h"
 
 namespace blink {
 
@@ -220,6 +223,7 @@ scoped_refptr<StaticBitmapImage> StaticBitmapImageTransform::ApplyWithBlit(
         SkImageInfo dest_info = SkImageInfo::Make(dest_size, dest_color_type, dest_alpha_type, dest_color_space);
         constexpr auto kFilterQuality = cc::PaintFlags::FilterQuality::kLow;
         constexpr auto kShouldInitialize = CanvasResourceProvider::ShouldInitialize::kNo;
+#if !defined(MINI_UI_QUICKJS)
         // If `source` is accelerated, then use a SharedImage provider.
         if (source_paint_image.IsTextureBacked()) {
             base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider = source->ContextProviderWrapper();
@@ -230,6 +234,7 @@ scoped_refptr<StaticBitmapImage> StaticBitmapImageTransform::ApplyWithBlit(
                     dest_info, kFilterQuality, kShouldInitialize, context_provider, RasterMode::kGPU, shared_image_usage_flags);
             }
         }
+#endif
         // If not (or if the SharedImage provider fails), fall back to software.
         if (!resource_provider) {
             resource_provider = CanvasResourceProvider::CreateBitmapProvider(dest_info, kFilterQuality, kShouldInitialize);

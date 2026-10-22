@@ -48,6 +48,7 @@ CloneableMessage CloneableMessage::ShallowClone() const
         source_serialized_blob->blob = source_blob.Unbind();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Clone the |file_system_access_tokens| pending remotes using the steps
     // described by the comment above.
     std::vector<mojo::PendingRemote<mojom::FileSystemAccessTransferToken>>& source_tokens
@@ -62,6 +63,7 @@ CloneableMessage CloneableMessage::ShallowClone() const
         clone.file_system_access_tokens.push_back(std::move(cloned_token));
         token = source_token.Unbind();
     }
+#endif
     clone.sender_agent_cluster_id = sender_agent_cluster_id;
     return clone;
 }

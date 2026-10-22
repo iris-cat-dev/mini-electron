@@ -42,7 +42,9 @@
 #include "third_party/blink/renderer/core/css/properties/css_property.h"
 #include "third_party/blink/renderer/core/css/property_bitsets.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
@@ -192,9 +194,11 @@ NamedPropertySetterResult CSSStyleDeclaration::AnonymousNamedSetter(ScriptState*
     // while we can use CSSProperty::GetPropertyName() here (see bug 829408).
     ExceptionState exception_state(script_state->GetIsolate(), v8::ExceptionContext::kAttributeSet, "CSSStyleDeclaration",
         CSSProperty::Get(ResolveCSSPropertyID(unresolved_property)).GetPropertyName());
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetStyle();
+#endif
     if (value->IsNumber()) {
         double double_value = NativeValueTraits<IDLUnrestrictedDouble>::NativeValue(script_state->GetIsolate(), value, exception_state);
         if (exception_state.HadException()) [[unlikely]] {

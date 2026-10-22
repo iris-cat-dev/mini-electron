@@ -31,7 +31,9 @@ class CSSParserContext;
 class CSSParserObserver;
 class CSSParserTokenStream;
 class StyleRule;
+#if !defined(MINI_UI_QUICKJS)
 class StyleRuleViewTransition;
+#endif
 class StyleRuleBase;
 class StyleRuleCharset;
 class StyleRuleCounterStyle;
@@ -179,7 +181,9 @@ private:
     StyleRuleProperty* ConsumePropertyRule(CSSParserTokenStream&);
     StyleRuleCounterStyle* ConsumeCounterStyleRule(CSSParserTokenStream&);
     StyleRuleBase* ConsumeScopeRule(CSSParserTokenStream&, CSSNestingType, StyleRule* parent_rule_for_nesting, bool is_within_scope);
+#if !defined(MINI_UI_QUICKJS)
     StyleRuleViewTransition* ConsumeViewTransitionRule(CSSParserTokenStream& stream);
+#endif
     StyleRuleContainer* ConsumeContainerRule(CSSParserTokenStream& stream, CSSNestingType, StyleRule* parent_rule_for_nesting, bool is_within_scope);
     StyleRuleBase* ConsumeLayerRule(CSSParserTokenStream&, CSSNestingType, StyleRule* parent_rule_for_nesting, bool is_within_scope);
     StyleRulePositionTry* ConsumePositionTryRule(CSSParserTokenStream&);

@@ -44,26 +44,38 @@
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/tiles/raster_dark_mode_filter.h"
 #include "cc/trees/raster_context_provider_wrapper.h"
+#endif
 #include "components/viz/common/surfaces/frame_sink_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "media/base/audio_capturer_source.h"
 #include "media/base/audio_latency.h"
 #include "media/base/audio_renderer_sink.h"
 #include "third_party/blink/public/common/security/protocol_handler_security_level.h"
+#endif
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/audio/web_audio_device_source_type.h"
+#endif
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/url_loader_throttle_provider.h"
 #include "third_party/blink/public/platform/web_audio_device.h"
+#endif
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/platform/web_data.h"
 #include "third_party/blink/public/platform/web_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_v8_value_converter.h"
 #include "third_party/blink/public/platform/websocket_handshake_throttle_provider.h"
+#endif
 //#include "third_party/webrtc/api/video/video_codec_type.h"
 #include "ui/base/resource/resource_scale_factor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "ui/gl/angle_implementation.h"
+#endif
 #include "v8/include/v8-local-handle.h"
 
 class SkCanvas;
@@ -137,6 +149,7 @@ class WebLocalFrame;
 class WebSandboxSupport;
 class WebSecurityOrigin;
 class WebThemeEngine;
+class WebURL;
 class WebVideoCaptureImplManager;
 class WebSecurityOrigin;
 struct WebContentSecurityPolicyHeader;
@@ -204,6 +217,7 @@ public:
     // Returns a theme engine. Should be non-null.
     WebThemeEngine* ThemeEngine();
 
+#if !defined(MINI_UI_QUICKJS)
     // Audio --------------------------------------------------------------
 
     virtual double AudioHardwareSampleRate()
@@ -218,11 +232,13 @@ public:
     {
         return 0;
     }
+#endif
     virtual base::TimeDelta GetHungRendererDelay()
     {
         return base::TimeDelta();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Creates an audio output device platform interface for Web Audio API.
     virtual std::unique_ptr<WebAudioDevice> CreateAudioDevice(const WebAudioSinkDescriptor& sink_descriptor, unsigned number_of_output_channels,
         const WebAudioLatencyHint& latency_hint, media::AudioRendererSink::RenderCallback*)
@@ -230,6 +246,7 @@ public:
         return nullptr;
     }
 
+#endif
     // IDN conversion ------------------------------------------------------
 
     virtual WebString ConvertIDNToUnicode(const WebString& host)
@@ -326,6 +343,7 @@ public:
         return blink::UserAgentMetadata();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Determines whether it is safe to redirect from |from_url| to |to_url|.
     virtual bool IsRedirectSafe(const GURL& from_url, const GURL& to_url)
     {
@@ -338,6 +356,9 @@ public:
     {
     }
 
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
     // Allows the embedder to return a (possibly null)
     // blink::URLLoaderThrottleProvider for a worker.
     virtual std::unique_ptr<URLLoaderThrottleProvider> CreateURLLoaderThrottleProviderForWorker(URLLoaderThrottleProviderType provider_type)
@@ -366,6 +387,7 @@ public:
         return true;
     }
 
+#endif
     // Resources -----------------------------------------------------------
 
     // Returns a localized string resource (with substitution parameters).
@@ -389,6 +411,7 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Threads -------------------------------------------------------
 
     // The two compositor-related functions below are called by the embedder.
@@ -416,6 +439,7 @@ public:
         return nullptr;
     }
 
+#endif
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
     // This is called after the thread is created, so the embedder
     // can initiate an IPC to change its thread type (on Linux we can't
@@ -449,6 +473,7 @@ public:
         return std::string();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Decodes the in-memory audio file data and returns the linear PCM audio data
     // in the |destination_bus|.
     // Returns true on success.
@@ -457,6 +482,7 @@ public:
         return false;
     }
 
+#endif
     // Process lifetime management -----------------------------------------
 
     // Disable/Enable sudden termination on a process level. When possible, it
@@ -475,6 +501,7 @@ public:
         return WebString();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns an interface to the IO task runner.
     virtual scoped_refptr<base::SingleThreadTaskRunner> GetIOTaskRunner() const
     {
@@ -505,6 +532,7 @@ public:
     {
         return nullptr;
     }
+#endif
     // Testing -------------------------------------------------------------
 
     // Record a UMA sequence action.  The UserMetricsAction construction must
@@ -517,6 +545,7 @@ public:
 
     typedef uint64_t WebMemoryAllocatorDumpGuid;
 
+#if !defined(MINI_UI_QUICKJS)
     // GPU ----------------------------------------------------------------
     //
     enum ContextType {
@@ -577,6 +606,7 @@ public:
         return nullptr;
     }
 
+#endif
     // When true, animations will run on a compositor thread independently from
     // the blink main thread.
     // This is true when there exists a renderer compositor in this process. But
@@ -639,6 +669,7 @@ public:
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns a context provider that will be bound on the main thread
     // thread.
     virtual scoped_refptr<viz::RasterContextProvider> SharedMainThreadContextProvider();
@@ -741,8 +772,10 @@ public:
 
     // WebWorker ----------------------------------------------------------
 
+#if !defined(MINI_UI_QUICKJS)
     virtual std::unique_ptr<WebDedicatedWorkerHostFactoryClient> CreateDedicatedWorkerHostFactoryClient(
         WebDedicatedWorker*, const BrowserInterfaceBrokerProxy&);
+#endif
     virtual void DidStartWorkerThread()
     {
     }
@@ -768,6 +801,7 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Clones the current `service_worker_container_host` and returns the original
     // host and the cloned one together.
     //
@@ -788,6 +822,7 @@ public:
         CrossVariantMojoRemote<mojom::ServiceWorkerContainerHostInterfaceBase> service_worker_container_host, const WebString& client_id,
         std::unique_ptr<network::PendingSharedURLLoaderFactory> fallback_factory, mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
         scoped_refptr<base::SequencedTaskRunner> task_runner);
+#endif
 
     // WebCrypto ----------------------------------------------------------
 
@@ -840,12 +875,17 @@ public:
         return nullptr;
     }
 
+#endif
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetRenderingColorSpace(const gfx::ColorSpace& color_space)
     {
     }
 
     virtual gfx::ColorSpace GetRenderingColorSpace() const;
 
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
     // V8 Metrics -----------------------------------------------------------
 
     // Called when adding a histogram entry. Allows customizing the name the
@@ -865,6 +905,7 @@ public:
         return false;
     }
 
+#endif
     // Crash Reporting -----------------------------------------------------
 
     // Set the active URL for crash reporting. The active URL is stored as crash
@@ -882,6 +923,7 @@ public:
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // V8 Converter -------------------------------------------------
 
     // Returns WebV8ValueConverter that converts between v8::Value and
@@ -891,6 +933,7 @@ public:
         return nullptr;
     }
 
+#endif
     // Content Security Policy --------------------------------------
 
     // Appends to `csp`, the default CSP which should be applied to the given

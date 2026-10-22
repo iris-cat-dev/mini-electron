@@ -7,8 +7,10 @@
 
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/texture_layer.h"
 #include "cc/layers/texture_layer_client.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_canvas.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
@@ -22,16 +24,28 @@ class PaintCanvas;
 namespace blink {
 
 class CanvasResourceProvider;
+#if !defined(MINI_UI_QUICKJS)
 class SharedContextRateLimiter;
+#endif
 
-class PLATFORM_EXPORT CanvasResourceHost : public cc::TextureLayerClient {
+class PLATFORM_EXPORT CanvasResourceHost
+#if !defined(MINI_UI_QUICKJS)
+    : public cc::TextureLayerClient
+#endif
+{
 public:
     explicit CanvasResourceHost(gfx::Size size);
+#if defined(MINI_UI_QUICKJS)
+    virtual ~CanvasResourceHost();
+#else
     ~CanvasResourceHost() override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // cc::TextureLayerClient implementation.
     bool PrepareTransferableResource(
         cc::SharedBitmapIdRegistrar* bitmap_registrar, viz::TransferableResource* out_resource, viz::ReleaseCallback* out_release_callback) override;
+#endif
 
     virtual void NotifyGpuContextLost() = 0;
     virtual void SetNeedsCompositingUpdate() = 0;
@@ -48,7 +62,9 @@ public:
         return GetOrCreateCanvasResourceProvider(preferred_2d_raster_mode());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsComposited() const;
+#endif
     bool IsResourceValid();
     gfx::Size Size() const
     {
@@ -109,23 +125,32 @@ public:
         return preferred_2d_raster_mode_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldTryToUseGpuRaster() const;
+#endif
     void SetPreferred2DRasterMode(RasterModeHint);
 
+#if !defined(MINI_UI_QUICKJS)
     // Temporary plumbing while relocating code from Canvas2DLayerBridge.
     SharedContextRateLimiter* RateLimiter() const;
     void CreateRateLimiter();
+#endif
+#if !defined(MINI_UI_QUICKJS)
     unsigned IncrementFramesSinceLastCommit()
     {
         return ++frames_since_last_commit_;
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void AlwaysEnableRasterTimersForTesting()
     {
         always_enable_raster_timers_for_testing_ = true;
     }
+#endif
 
     // Actual RasterMode used for rendering 2d primitives.
     RasterMode GetRasterMode() const;
+#if !defined(MINI_UI_QUICKJS)
     void ResetLayer();
     void ClearLayerTexture();
     void SetNeedsPushProperties();
@@ -136,6 +161,7 @@ public:
     }
     void DoPaintInvalidation(const gfx::Rect& dirty_rect);
     void SetOpacityMode(OpacityMode opacity_mode);
+#endif
 
     // Temporary, for canvas_2d_layer_bridge use.
     bool context_lost()
@@ -147,6 +173,7 @@ public:
         context_lost_ = value;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool shared_bitmap_gpu_channel_lost() const
     {
         return shared_bitmap_gpu_channel_lost_;
@@ -155,7 +182,9 @@ public:
     {
         shared_bitmap_gpu_channel_lost_ = value;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetTransferToGPUTextureWasInvoked()
     {
     }
@@ -163,21 +192,28 @@ public:
     {
         return false;
     }
+#endif
 
 private:
     bool is_displayed_ = false;
     bool context_lost_ = false;
+#if !defined(MINI_UI_QUICKJS)
     bool shared_bitmap_gpu_channel_lost_ = false;
     unsigned frames_since_last_commit_ = 0;
     std::unique_ptr<SharedContextRateLimiter> rate_limiter_;
+#endif
     std::unique_ptr<CanvasResourceProvider> resource_provider_;
     cc::PaintFlags::FilterQuality filter_quality_ = cc::PaintFlags::FilterQuality::kLow;
     gfx::HDRMetadata hdr_metadata_;
     RasterModeHint preferred_2d_raster_mode_ = RasterModeHint::kPreferCPU;
     gfx::Size size_;
+#if !defined(MINI_UI_QUICKJS)
     bool always_enable_raster_timers_for_testing_ = false;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<cc::TextureLayer> cc_layer_;
     OpacityMode opacity_mode_ = kNonOpaque;
+#endif
 };
 
 } // namespace blink

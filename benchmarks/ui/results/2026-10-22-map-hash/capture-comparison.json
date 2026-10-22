@@ -1,0 +1,82 @@
+[
+  {
+    "framework": "vue",
+    "rows": 100,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "vue",
+    "rows": 5000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "vue",
+    "rows": 10000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "react",
+    "rows": 100,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "react",
+    "rows": 5000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  },
+  {
+    "framework": "react",
+    "rows": 10000,
+    "size": [
+      1280,
+      720
+    ],
+    "identical_rgb_pixels": true,
+    "difference_bounds": null
+  }
+]

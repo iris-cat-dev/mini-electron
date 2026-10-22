@@ -41,7 +41,9 @@
 #include "services/network/public/mojom/content_security_policy.mojom-blink-forward.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/loader/url_loader_factory_bundle.h"
+#endif
 #include "third_party/blink/public/common/performance/performance_timeline_constants.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy_features.h"
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
@@ -51,19 +53,27 @@
 #include "third_party/blink/public/common/use_counter/use_counter_feature.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/blob/blob_url_store.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/devtools_agent.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/fenced_frame/fenced_frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/triggering_event_info.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/child_url_loader_factory_bundle.h"
-#include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
+#endif
+#include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
+#endif
 #include "third_party/blink/public/web/web_frame_load_type.h"
 #include "third_party/blink/public/web/web_history_commit_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_manifest_manager.h"
+#endif
 #include "third_party/blink/public/web/web_navigation_params.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/icon_url.h"
@@ -81,9 +91,11 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "v8/include/v8.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace network {
 class SharedURLLoaderFactory;
 } // namespace network
+#endif
 
 namespace blink {
 
@@ -92,26 +104,40 @@ class DocumentLoader;
 class HTMLFencedFrameElement;
 class HTMLFormElement;
 class HTMLFrameOwnerElement;
+#if !defined(MINI_UI_QUICKJS)
 class HTMLMediaElement;
+#endif
+#if !defined(MINI_UI_QUICKJS)
 class HTMLPlugInElement;
+#endif
 class HistoryItem;
 class KURL;
 class LocalDOMWindow;
 class LocalFrame;
 class RemoteFrame;
+#if !defined(MINI_UI_QUICKJS)
 class RemotePlaybackClient;
+#endif
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
 class SourceLocation;
 class WebContentCaptureClient;
+#if !defined(MINI_UI_QUICKJS)
 class WebDedicatedWorkerHostFactoryClient;
+#endif
 class WebLocalFrame;
+#if !defined(MINI_UI_QUICKJS)
 class WebMediaPlayer;
 class WebMediaPlayerClient;
 class WebMediaPlayerSource;
+#endif
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
+#if !defined(MINI_UI_QUICKJS)
 class WebServiceWorkerProvider;
+#endif
 class WebSpellCheckPanelHostClient;
 class WebTextCheckClient;
 class URLLoader;
@@ -178,8 +204,10 @@ public:
         network::mojom::CSPDisposition should_check_main_world_content_security_policy, mojo::PendingRemote<mojom::blink::BlobURLToken>,
         base::TimeTicks input_start_time, const String& href_translate, const std::optional<Impression>& impression,
         const LocalFrameToken* initiator_frame_token, std::unique_ptr<SourceLocation> source_location,
-        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle, bool is_container_initiated,
-        bool has_rel_opener)
+#if !defined(MINI_UI_QUICKJS)
+        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle,
+#endif
+        bool is_container_initiated, bool has_rel_opener)
         = 0;
 
     virtual void DispatchWillSendSubmitEvent(HTMLFormElement*) = 0;
@@ -255,17 +283,23 @@ public:
 
     virtual LocalFrame* CreateFrame(const AtomicString& name, HTMLFrameOwnerElement*) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Creates a remote fenced frame hosted by an MPArch frame tree for the
     // |HTMLFencedFrameElement|.
     virtual RemoteFrame* CreateFencedFrame(HTMLFencedFrameElement*, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>) = 0;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/40511450): Remove `load_manually` once PPAPI is gone.
     virtual WebPluginContainerImpl* CreatePlugin(
         HTMLPlugInElement&, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool load_manually)
         = 0;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     virtual std::unique_ptr<WebMediaPlayer> CreateWebMediaPlayer(HTMLMediaElement&, const WebMediaPlayerSource&, WebMediaPlayerClient*) = 0;
     virtual RemotePlaybackClient* CreateRemotePlaybackClient(HTMLMediaElement&) = 0;
+#endif
 
     virtual void DidCommitDocumentReplacementNavigation(DocumentLoader*) = 0;
     virtual void DispatchDidClearWindowObjectInMainWorld(v8::Isolate* isolate, v8::MicrotaskQueue* microtask_queue) = 0;
@@ -304,13 +338,17 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual std::unique_ptr<WebServiceWorkerProvider> CreateServiceWorkerProvider() = 0;
+#endif
 
     virtual WebContentSettingsClient* GetContentSettingsClient() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void DispatchDidChangeManifest()
     {
     }
+#endif
 
     unsigned BackForwardLength() override
     {
@@ -343,17 +381,22 @@ public:
 
     virtual WebTextCheckClient* GetTextCheckerClient() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() = 0;
+#endif
     virtual std::unique_ptr<URLLoader> CreateURLLoaderForTesting() = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual blink::ChildURLLoaderFactoryBundle* GetLoaderFactoryBundle() = 0;
-
     virtual scoped_refptr<WebBackgroundResourceFetchAssets> MaybeGetBackgroundResourceFetchAssets() = 0;
+#endif
 
     virtual void SetVirtualTimePauser(WebScopedVirtualTimePauser virtual_time_pauser)
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual String evaluateInInspectorOverlayForTesting(const String& script) = 0;
+#endif
 
     virtual bool HandleCurrentKeyboardEvent()
     {
@@ -387,6 +430,7 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true when the contents of plugin are handled externally. This means
     // the plugin element will own a content frame but the frame is than used
     // externally to load the required handelrs.
@@ -401,7 +445,9 @@ public:
     {
         return v8::Local<v8::Object>();
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns a new WebWorkerFetchContext for a dedicated worker (in the
     // non-PlzDedicatedWorker case) or worklet.
     virtual scoped_refptr<WebWorkerFetchContext> CreateWorkerFetchContext()
@@ -420,32 +466,34 @@ public:
     {
         return nullptr;
     }
+#endif
 
-    virtual void SetMouseCapture(bool)
-    {
-    }
-
-    virtual void NotifyAutoscrollForSelectionInMainFrame(bool)
-    {
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual void SetMouseCapture(bool) { }
+    virtual void NotifyAutoscrollForSelectionInMainFrame(bool) { }
+#endif
 
     virtual std::unique_ptr<ResourceLoadInfoNotifierWrapper> CreateResourceLoadInfoNotifierWrapper()
     {
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Specifies whether to disable DOM storage interfaces such as localStorage
     // and sessionStorage.
     virtual bool IsDomStorageDisabled() const
     {
         return false;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Debugging -----------------------------------------------------------
     virtual void BindDevToolsAgent(
         mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver)
     {
     }
+#endif
 };
 
 } // namespace blink

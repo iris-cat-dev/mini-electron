@@ -26,7 +26,9 @@
 #include "third_party/blink/renderer/core/layout/pagination_utils.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/link_highlight.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/clip_path_clipper.h"
 #include "third_party/blink/renderer/core/paint/object_paint_invalidator.h"
@@ -38,6 +40,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 bool IsLinkHighlighted(const LayoutObject& object)
@@ -46,6 +49,7 @@ bool IsLinkHighlighted(const LayoutObject& object)
 }
 
 } // anonymous namespace
+#endif
 
 bool PrePaintTreeWalk::ContainingFragment::IsInFragmentationContext() const
 {
@@ -346,10 +350,12 @@ FragmentData* PrePaintTreeWalk::GetOrCreateFragmentData(const LayoutObject& obje
         }
     } else {
         if (pre_paint_info.is_inside_fragment_child) {
-            if (!object.HasInlineFragments() && !IsLinkHighlighted(object)) {
-                // We don't need any additional fragments for culled inlines - unless
-                // this is the highlighted link (in which case even culled inlines get
-                // paint effects).
+            if (!object.HasInlineFragments()
+#if !defined(MINI_UI_QUICKJS)
+                && !IsLinkHighlighted(object)
+#endif
+            ) {
+                // Ordinary culled inlines do not need additional paint fragments.
                 return nullptr;
             }
 
@@ -484,9 +490,8 @@ void PrePaintTreeWalk::WalkInternal(const LayoutObject& object, PrePaintTreeWalk
         //
         // TODO(mstensho): If this is collapsed text or a culled inline, we might
         // not have any work to do (we could just return early here), as there'll be
-        // no need for paint property updates or invalidation. However, this is a
-        // bit tricky to determine, because of things like LinkHighlight, which
-        // might set paint properties on a culled inline.
+        // no need for paint property updates or invalidation. Culled inlines can
+        // still require fragment data for paint effects.
         pre_paint_info->fragment_data = GetOrCreateFragmentData(object, context, *pre_paint_info);
         if (!pre_paint_info->fragment_data)
             return;
@@ -695,6 +700,7 @@ void PrePaintTreeWalk::WalkMissedChildren(const PhysicalBoxFragment& fragment, b
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 LocalFrameView* FindWebViewPluginContentFrameView(const LayoutEmbeddedContent& embedded_content)
 {
     for (Frame* frame = embedded_content.GetFrame()->Tree().FirstChild(); frame; frame = frame->Tree().NextSibling()) {
@@ -703,6 +709,7 @@ LocalFrameView* FindWebViewPluginContentFrameView(const LayoutEmbeddedContent& e
     }
     return nullptr;
 }
+#endif
 
 void PrePaintTreeWalk::WalkFragmentationContextRootChildren(
     const LayoutObject& object, const PhysicalBoxFragment& fragment, const PrePaintTreeWalkContext& parent_context)
@@ -1123,19 +1130,17 @@ void PrePaintTreeWalk::WalkChildren(
     if (box) {
         if (traversable_fragment) {
             if (!box->IsLayoutFlowThread() && (!box->IsLayoutNGObject() || !box->PhysicalFragmentCount())) {
-                // We can traverse PhysicalFragments in LayoutMedia though it's not
-                // a LayoutNGObject.
-                if (!box->IsMedia()) {
+                bool switch_to_legacy_traversal = true;
+#if !defined(MINI_UI_QUICKJS)
+                // We can traverse PhysicalFragments in LayoutMedia though it's
+                // not a LayoutNGObject.
+                switch_to_legacy_traversal = !box->IsMedia();
+#endif
+                if (switch_to_legacy_traversal) {
                     // Leave LayoutNGBoxFragment-accompanied child LayoutObject
                     // traversal, since this object doesn't support that (or has no
-                    // fragments (happens for table columns)). We need to switch back to
-                    // legacy LayoutObject traversal for its children. We're then also
-                    // assuming that we're either not block-fragmenting, or that this is
-                    // monolithic content. We may re-enter
-                    // LayoutNGBoxFragment-accompanied traversal if we get to a
-                    // descendant that supports that.
+                    // fragments (happens for table columns)).
                     DCHECK(!box->FlowThreadContainingBlock() || box->IsMonolithic());
-
                     traversable_fragment = nullptr;
                 }
             }
@@ -1279,12 +1284,14 @@ void PrePaintTreeWalk::Walk(const LayoutObject& object, const PrePaintTreeWalkCo
                     }
                     if (embedded_view->IsLocalFrameView()) {
                         Walk(*To<LocalFrameView>(embedded_view), context);
-                    } else if (embedded_view->IsPluginView()) {
-                        // If it is a webview plugin, walk into the content frame view.
-                        if (auto* plugin_content_frame_view = FindWebViewPluginContentFrameView(*layout_embedded_content)) {
-                            Walk(*plugin_content_frame_view, context);
-                        }
                     } else {
+#if !defined(MINI_UI_QUICKJS)
+                        if (embedded_view->IsPluginView()) {
+                            // If it is a webview plugin, walk into the content frame view.
+                            if (auto* plugin_content_frame_view = FindWebViewPluginContentFrameView(*layout_embedded_content))
+                                Walk(*plugin_content_frame_view, context);
+                        }
+#endif
                         // We need to do nothing for RemoteFrameView. See crbug.com/579281.
                     }
                 }

@@ -13,7 +13,13 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace v8 {
+template <class T>
+class Local;
+class Promise;
+class Value;
+#if !defined(MINI_UI_QUICKJS)
 class PromiseRejectMessage;
+#endif
 }
 
 namespace blink {
@@ -32,8 +38,16 @@ public:
     ~RejectedPromises();
     void Dispose();
 
-    void RejectedWithNoHandler(ScriptState*, v8::PromiseRejectMessage, const String& error_message, std::unique_ptr<SourceLocation>, SanitizeScriptErrors);
+#if defined(MINI_UI_QUICKJS)
+    void RejectedWithNoHandler(
+        ScriptState*, v8::Local<v8::Promise>, v8::Local<v8::Value>,
+        SanitizeScriptErrors);
+    void HandlerAdded(v8::Local<v8::Promise>);
+#else
+    void RejectedWithNoHandler(ScriptState*, v8::PromiseRejectMessage, const String& error_message,
+        std::unique_ptr<SourceLocation>, SanitizeScriptErrors);
     void HandlerAdded(v8::PromiseRejectMessage);
+#endif
 
     void ProcessQueue();
 
@@ -46,10 +60,12 @@ private:
 
     void ProcessQueueNow(MessageQueue);
     void RevokeNow(std::unique_ptr<Message>);
+    void HandlerAddedInternal(v8::Local<v8::Promise>);
 
     MessageQueue queue_;
     Vector<std::unique_ptr<Message>> reported_as_errors_;
 };
+
 
 } // namespace blink
 

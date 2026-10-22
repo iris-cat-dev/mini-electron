@@ -12,7 +12,9 @@
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_idle_request_options.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
@@ -138,10 +140,14 @@ ScriptedIdleTaskController::CallbackId ScriptedIdleTaskController::RegisterCallb
     UpdateMaxIdleTasksCrashKey(idle_tasks_.size());
     uint32_t timeout_millis = options->timeout();
 
+#if !defined(MINI_UI_QUICKJS)
     idle_task->async_task_context()->Schedule(GetExecutionContext(), "requestIdleCallback");
+#endif
 
     PostSchedulerIdleAndTimeoutTasks(id, timeout_millis);
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("RequestIdleCallback", inspector_idle_callback_request_event::Data, GetExecutionContext(), id, timeout_millis);
+#endif
     return id;
 }
 
@@ -179,7 +185,9 @@ void ScriptedIdleTaskController::CancelCallback(CallbackId id)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("CancelIdleCallback", inspector_idle_callback_cancel_event::Data, GetExecutionContext(), id);
+#endif
     if (!IsValidCallbackId(id)) {
         return;
     }
@@ -264,12 +272,16 @@ void ScriptedIdleTaskController::RunIdleTask(CallbackId id, base::TimeTicks dead
 
     base::TimeDelta allotted_time = std::max(deadline - base::TimeTicks::Now(), base::TimeDelta());
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTask async_task(GetExecutionContext(), idle_task->async_task_context());
+#endif
     probe::UserCallback probe(GetExecutionContext(), "requestIdleCallback", AtomicString(), true);
 
     bool cross_origin_isolated_capability = GetExecutionContext() ? GetExecutionContext()->CrossOriginIsolatedCapability() : false;
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("FireIdleCallback", inspector_idle_callback_fire_event::Data, GetExecutionContext(), id, allotted_time.InMillisecondsF(),
         callback_type == IdleDeadline::CallbackType::kCalledByTimeout);
+#endif
     idle_task->invoke(MakeGarbageCollected<IdleDeadline>(deadline, cross_origin_isolated_capability, callback_type));
 
     // Finally there is no need to keep the idle task alive.

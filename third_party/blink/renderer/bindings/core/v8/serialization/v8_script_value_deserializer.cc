@@ -15,7 +15,9 @@
 #include "base/feature_list.h"
 #include "base/numerics/checked_math.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/fenced_frame/fenced_frame_utils.h"
+#endif
 #include "third_party/blink/public/platform/web_blob_info.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialization_tag.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/trailer_reader.h"
@@ -31,13 +33,17 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_quad.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_rect.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_rect_read_only.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_fenced_frame_config.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_file.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_file_list.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_data.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_message_port.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_offscreen_canvas.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_readable_stream.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_transform_stream.h"
@@ -56,11 +62,17 @@
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
 #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/fenced_frame_config.h"
+#endif
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/messaging/message_port.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mojo/mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/streams/readable_stream.h"
 #include "third_party/blink/renderer/core/streams/readable_stream_transferring_optimizer.h"
@@ -532,6 +544,7 @@ ScriptWrappable* V8ScriptValueDeserializer::ReadDOMObject(SerializationTag tag, 
             return nullptr;
         return (*transferred_message_ports_)[index].Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     case kMojoHandleTag: {
         uint32_t index = 0;
         if (!RuntimeEnabledFeatures::MojoJSEnabled() || !ReadUint32(&index) || index >= serialized_script_value_->MojoHandles().size()) {
@@ -539,6 +552,7 @@ ScriptWrappable* V8ScriptValueDeserializer::ReadDOMObject(SerializationTag tag, 
         }
         return MakeGarbageCollected<MojoHandle>(std::move(serialized_script_value_->MojoHandles()[index]));
     }
+#endif
     case kOffscreenCanvasTransferTag: {
         uint32_t width = 0, height = 0, canvas_id = 0, client_id = 0, sink_id = 0, filter_quality = 0;
         if (!ReadUint32(&width) || !ReadUint32(&height) || !ReadUint32(&canvas_id) || !ReadUint32(&client_id) || !ReadUint32(&sink_id)
@@ -609,6 +623,7 @@ ScriptWrappable* V8ScriptValueDeserializer::ReadDOMObject(SerializationTag tag, 
         // DOMException::Create takes its arguments in the opposite order.
         return DOMException::Create(message, name);
     }
+#if !defined(MINI_UI_QUICKJS)
     case kFencedFrameConfigTag: {
         String url_string, shared_storage_context, urn_uuid_string;
         uint32_t has_shared_storage_context, has_container_size, container_width, container_height, has_content_size, content_width, content_height,
@@ -666,6 +681,7 @@ ScriptWrappable* V8ScriptValueDeserializer::ReadDOMObject(SerializationTag tag, 
 
         return FencedFrameConfig::Create(url, shared_storage_context, urn_uuid, container_size, content_size, url_visibility, freeze_initial_size);
     }
+#endif
     default:
         break;
     }
@@ -755,6 +771,7 @@ v8::MaybeLocal<v8::Object> V8ScriptValueDeserializer::ReadHostObject(v8::Isolate
     return wrapper.As<v8::Object>();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 v8::MaybeLocal<v8::WasmModuleObject> V8ScriptValueDeserializer::GetWasmModuleFromId(v8::Isolate* isolate, uint32_t id)
 {
     if (id < serialized_script_value_->WasmModules().size()) {
@@ -763,6 +780,7 @@ v8::MaybeLocal<v8::WasmModuleObject> V8ScriptValueDeserializer::GetWasmModuleFro
     CHECK(serialized_script_value_->WasmModules().empty());
     return v8::MaybeLocal<v8::WasmModuleObject>();
 }
+#endif
 
 v8::MaybeLocal<v8::SharedArrayBuffer> V8ScriptValueDeserializer::GetSharedArrayBufferFromId(v8::Isolate* isolate, uint32_t id)
 {
@@ -783,6 +801,7 @@ v8::MaybeLocal<v8::SharedArrayBuffer> V8ScriptValueDeserializer::GetSharedArrayB
     return v8::MaybeLocal<v8::SharedArrayBuffer>();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const v8::SharedValueConveyor* V8ScriptValueDeserializer::GetSharedValueConveyor(v8::Isolate* isolate)
 {
     if (auto* conveyor = serialized_script_value_->MaybeGetSharedValueConveyor()) {
@@ -792,6 +811,7 @@ const v8::SharedValueConveyor* V8ScriptValueDeserializer::GetSharedValueConveyor
     exception_state.ThrowDOMException(DOMExceptionCode::kDataCloneError, "Unable to deserialize shared JS value.");
     return nullptr;
 }
+#endif
 
 // static
 bool V8ScriptValueDeserializer::ExecutionContextExposesInterface(ExecutionContext* execution_context, SerializationTag interface_tag)
@@ -838,11 +858,13 @@ bool V8ScriptValueDeserializer::ExecutionContextExposesInterface(ExecutionContex
         return V8DOMMatrixReadOnly::IsExposed(execution_context);
     case kMessagePortTag:
         return V8MessagePort::IsExposed(execution_context);
+#if !defined(MINI_UI_QUICKJS)
     case kMojoHandleTag:
         // This would ideally be V8MojoHandle::IsExposed, but WebUSB tests
         // currently rely on being able to send handles to frames and workers
         // which don't otherwise have MojoJS exposed.
         return (execution_context->IsWindow() || execution_context->IsWorkerGlobalScope()) && RuntimeEnabledFeatures::MojoJSEnabled();
+#endif
     case kOffscreenCanvasTransferTag:
         return V8OffscreenCanvas::IsExposed(execution_context);
     case kReadableStreamTransferTag:
@@ -859,8 +881,10 @@ bool V8ScriptValueDeserializer::ExecutionContextExposesInterface(ExecutionContex
     }
     case kDOMExceptionTag:
         return V8DOMException::IsExposed(execution_context);
+#if !defined(MINI_UI_QUICKJS)
     case kFencedFrameConfigTag:
         return V8FencedFrameConfig::IsExposed(execution_context);
+#endif
     default:
         return false;
     }

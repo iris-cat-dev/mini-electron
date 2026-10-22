@@ -6,7 +6,9 @@
 
 #include "base/auto_reset.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_host.h"
+#endif
 #include "third_party/blink/renderer/core/animation/document_animations.h"
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
@@ -20,15 +22,19 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
+#endif
 #include "third_party/blink/renderer/core/page/validation_message_client.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/svg/svg_document_extensions.h"
 #include "third_party/blink/renderer/core/timing/time_clamper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/page_reveal_event.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -103,9 +109,11 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_animation
     for (const auto& document : documents) {
         controllers.emplace_back(document.first->GetScriptedAnimationController(), document.second);
     }
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic heuristic(page_->MainFrame());
+#endif
     ServiceScriptedAnimations(monotonic_animation_start_time, controllers);
     page_->GetValidationMessageClient().LayoutOverlay();
 }
@@ -131,10 +139,12 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_time_now,
         if (can_throttle) {
             continue;
         }
+#if !defined(MINI_UI_QUICKJS)
         auto* animator = controller->GetPageAnimator();
         if (animator && controller->HasFrameCallback()) {
             animator->SetCurrentFrameHadRaf();
         }
+#endif
         if (!controller->HasScheduledFrameTasks()) {
             continue;
         }
@@ -159,6 +169,7 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_time_now,
 
     // https://html.spec.whatwg.org/multipage/webappapis.html#event-loop-processing-model
 
+#if !defined(MINI_UI_QUICKJS)
     // For each fully active Document doc in docs, run the reveal steps for doc.
     // Not currently in spec but comes from monkeypatch in:
     // https://drafts.csswg.org/css-view-transitions-2/#monkey-patch-to-html
@@ -206,6 +217,8 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_time_now,
         });
     }
 
+#endif
+
     // 6. For each fully active Document in docs, flush autofocus
     // candidates for that Document if its browsing context is a top-level
     // browsing context.
@@ -240,7 +253,9 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_time_now,
     // 8. For each fully active Document in docs, run the scroll steps
     // for that Document, passing in now as the timestamp.
     run_for_all_active_controllers_with_timing([&](wtf_size_t i) {
+#if !defined(MINI_UI_QUICKJS)
         auto scope = SyncScrollAttemptHeuristic::GetScrollHandlerScope();
+#endif
         active_controllers[i]->DispatchEvents(WTF::BindRepeating([](Event* event) {
             return event->type() == event_type_names::kScroll || event->type() == event_type_names::kScrollsnapchange
                 || event->type() == event_type_names::kScrollsnapchanging || event->type() == event_type_names::kScrollend;
@@ -267,7 +282,9 @@ void PageAnimator::ServiceScriptedAnimations(base::TimeTicks monotonic_time_now,
     // 13. For each fully active Document in docs, run the animation
     // frame callbacks for that Document, passing in now as the timestamp.
     run_for_all_active_controllers_with_timing([&](wtf_size_t i) {
+#if !defined(MINI_UI_QUICKJS)
         auto scope = SyncScrollAttemptHeuristic::GetRequestAnimationFrameScope();
+#endif
         active_controllers[i]->ExecuteFrameCallbacks();
         if (!active_controllers[i]->GetExecutionContext()) {
             return;
@@ -307,6 +324,7 @@ void PageAnimator::PostAnimate()
     next_frame_has_pending_raf_ = false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PageAnimator::SetHasCanvasInvalidation()
 {
     has_canvas_invalidation_ = true;
@@ -320,15 +338,20 @@ void PageAnimator::ReportFrameAnimations(cc::AnimationHost* animation_host)
         animation_host->SetHasSmilAnimation(has_smil_animation_);
         animation_host->SetCurrentFrameHadRaf(current_frame_had_raf_);
         animation_host->SetNextFrameHasPendingRaf(next_frame_has_pending_raf_);
+#if !defined(MINI_UI_QUICKJS)
         animation_host->SetHasViewTransition(has_view_transition_);
+#endif
     }
     has_canvas_invalidation_ = false;
     has_inline_style_mutation_ = false;
     has_smil_animation_ = false;
     current_frame_had_raf_ = false;
     // next_frame_has_pending_raf_ is reset at PostAnimate().
+#if !defined(MINI_UI_QUICKJS)
     // has_view_transition_ is reset when the transition ends.
+#endif
 }
+#endif
 
 void PageAnimator::SetSuppressFrameRequestsWorkaroundFor704763Only(bool suppress_frame_requests)
 {
@@ -338,6 +361,7 @@ void PageAnimator::SetSuppressFrameRequestsWorkaroundFor704763Only(bool suppress
     suppress_frame_requests_workaround_for704763_only_ = suppress_frame_requests;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PageAnimator::SetHasInlineStyleMutation()
 {
     has_inline_style_mutation_ = true;
@@ -352,16 +376,20 @@ void PageAnimator::SetCurrentFrameHadRaf()
 {
     current_frame_had_raf_ = true;
 }
+#endif
 
 void PageAnimator::SetNextFrameHasPendingRaf()
 {
     next_frame_has_pending_raf_ = true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PageAnimator::SetHasViewTransition(bool has_view_transition)
 {
     has_view_transition_ = has_view_transition;
 }
+
+#endif
 
 DISABLE_CFI_PERF
 void PageAnimator::ScheduleVisualUpdate(LocalFrame* frame)

@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/user_model.h"
 
 #include "base/trace_event/trace_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -139,6 +141,7 @@ void UserModel::Reset(base::TimeTicks now)
     pending_input_event_count_ = 0;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void UserModel::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -151,6 +154,7 @@ void UserModel::WriteIntoTrace(perfetto::TracedValue context) const
     dict.Add("is_gesture_expected", is_gesture_expected_);
     dict.Add("is_gesture_active", is_gesture_active_);
 }
+#endif
 
 } // namespace scheduler
 } // namespace blink

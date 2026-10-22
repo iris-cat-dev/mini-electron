@@ -35,7 +35,9 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
 #include "third_party/blink/renderer/core/dom/text.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -62,9 +64,11 @@
 #include "third_party/blink/renderer/core/script/script_element_base.h"
 #include "third_party/blink/renderer/core/script/script_runner.h"
 #include "third_party/blink/renderer/core/script_type_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rule_set.h"
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rules_metrics.h"
+#endif
 #include "third_party/blink/renderer/core/svg_names.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
@@ -145,7 +149,9 @@ void ScriptLoader::Trace(Visitor* visitor) const
     visitor->Trace(prepared_pending_script_);
     visitor->Trace(resource_keep_alive_);
     visitor->Trace(script_web_bundle_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(speculation_rule_set_);
+#endif
     ResourceFinishObserver::Trace(visitor);
 }
 
@@ -166,6 +172,7 @@ void ScriptLoader::Trace(Visitor* visitor) const
 // <spec step="A">The script element becomes connected.</spec>
 void ScriptLoader::DidNotifySubtreeInsertionsToDocument()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (already_started_
         && GetScriptTypeAtPrepare(element_->TypeAttributeValue(), element_->LanguageAttributeValue()) == ScriptTypeAtPrepare::kSpeculationRules) {
         // See https://crbug.com/359355331, where this was requested.
@@ -177,6 +184,7 @@ void ScriptLoader::DidNotifySubtreeInsertionsToDocument()
         element_->GetDocument().AddConsoleMessage(message,
             /*discard_duplicates=*/true);
     }
+#endif
 
     if (!parser_inserted_) {
         PendingScript* pending_script = PrepareScript(ParserBlockingInlineOption::kDeny, TextPosition::MinimumPosition());
@@ -189,6 +197,7 @@ void ScriptLoader::DidNotifySubtreeInsertionsToDocument()
 // inserted at that time.</spec>
 void ScriptLoader::ChildrenChanged(const ContainerNode::ChildrenChange& change)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (script_type_ == ScriptTypeAtPrepare::kSpeculationRules
         && (change.type == ContainerNode::ChildrenChangeType::kTextChanged || change.type == ContainerNode::ChildrenChangeType::kNonElementInserted
             || change.type == ContainerNode::ChildrenChangeType::kNonElementRemoved)
@@ -200,6 +209,7 @@ void ScriptLoader::ChildrenChanged(const ContainerNode::ChildrenChange& change)
         element_->GetDocument().AddConsoleMessage(message,
             /*discard_duplicates=*/true);
     }
+#endif
 
     if (change.IsChildInsertion() && !parser_inserted_ && element_->IsConnected()) {
         PendingScript* pending_script = PrepareScript(ParserBlockingInlineOption::kDeny, TextPosition::MinimumPosition());
@@ -235,9 +245,12 @@ void ScriptLoader::Removed()
         bundle->WillReleaseBundleLoaderAndUnregister();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     RemoveSpeculationRuleSet();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptLoader::DocumentBaseURLChanged()
 {
     if (GetScriptType() != ScriptTypeAtPrepare::kSpeculationRules) {
@@ -250,6 +263,7 @@ void ScriptLoader::DocumentBaseURLChanged()
         AddSpeculationRuleSet(rule_set->source());
     }
 }
+#endif
 
 namespace {
 
@@ -517,9 +531,11 @@ ScriptLoader::ScriptTypeAtPrepare ScriptLoader::GetScriptTypeAtPrepare(const Str
         return ScriptTypeAtPrepare::kImportMap;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (EqualIgnoringASCIICase(type, script_type_names::kSpeculationrules)) {
         return ScriptTypeAtPrepare::kSpeculationRules;
     }
+#endif
     if (EqualIgnoringASCIICase(type, script_type_names::kWebbundle)) {
         return ScriptTypeAtPrepare::kWebBundle;
     }
@@ -609,7 +625,9 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
     case ScriptTypeAtPrepare::kInvalid:
         return nullptr;
 
+#if !defined(MINI_UI_QUICKJS)
     case ScriptTypeAtPrepare::kSpeculationRules:
+#endif
     case ScriptTypeAtPrepare::kWebBundle:
     case ScriptTypeAtPrepare::kClassic:
     case ScriptTypeAtPrepare::kModule:
@@ -723,8 +741,10 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
 
     if (GetScriptType() == ScriptLoader::ScriptTypeAtPrepare::kModule) {
         UseCounter::Count(*context_window, WebFeature::kPrepareModuleScript);
+#if !defined(MINI_UI_QUICKJS)
     } else if (GetScriptType() == ScriptTypeAtPrepare::kSpeculationRules) {
         UseCounter::Count(*context_window, WebFeature::kSpeculationRules);
+#endif
     }
 
     DCHECK(!prepared_pending_script_);
@@ -789,6 +809,7 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
             return nullptr;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // TODO(apaseltiner): Propagate the element instead of passing nullptr.
         if (element_->HasAttributionsrcAttribute()
             && context_window->GetFrame()->GetAttributionSrcLoader()->CanRegister(url,
@@ -796,6 +817,7 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
                 /*request_id=*/std::nullopt)) {
             options.SetAttributionReportingEligibility(ScriptFetchOptions::AttributionReportingEligibility::kEligible);
         }
+#endif
 
         // <spec step="31.7">If el is potentially render-blocking, then block
         // rendering on el.</spec>
@@ -819,11 +841,13 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
         case ScriptTypeAtPrepare::kImportMap:
             NOTREACHED();
 
+#if !defined(MINI_UI_QUICKJS)
         case ScriptTypeAtPrepare::kSpeculationRules:
             // TODO(crbug.com/1182803): Implement external speculation rules.
             element_document.AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(mojom::blink::ConsoleMessageSource::kJavaScript,
                 mojom::blink::ConsoleMessageLevel::kError, "External speculation rules are not yet supported."));
             return nullptr;
+#endif
 
         case ScriptTypeAtPrepare::kWebBundle:
             element_document.AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
@@ -985,11 +1009,13 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
             return nullptr;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         case ScriptTypeAtPrepare::kSpeculationRules: {
             auto* source = SpeculationRuleSet::Source::FromInlineScript(source_text, element_document, element_->GetDOMNodeId());
             AddSpeculationRuleSet(source);
             return nullptr;
         }
+#endif
 
             // <spec step="30.2.A">"classic"</spec>
         case ScriptTypeAtPrepare::kClassic: {
@@ -1035,7 +1061,11 @@ PendingScript* ScriptLoader::PrepareScript(ParserBlockingInlineOption parser_blo
             // be the result of creating a JavaScript module script using source
             // text, settings object, base URL, and options.</spec>
             ModuleScriptCreationParams params(source_url, base_url, ScriptSourceLocationType::kInline, ModuleType::kJavaScript,
-                ParkableString(source_text.Impl()), nullptr, network::mojom::ReferrerPolicy::kDefault);
+                ParkableString(source_text.Impl()),
+#if !defined(MINI_UI_QUICKJS)
+                nullptr,
+#endif
+                network::mojom::ReferrerPolicy::kDefault);
             ModuleScript* module_script = JSModuleScript::Create(params, modulator, options, position);
 
             // TODO(crbug.com/364904756) - This spec step no longer exists.
@@ -1347,6 +1377,7 @@ String ScriptLoader::GetScriptText() const
     return GetStringForScriptExecution(child_text_content, element_->GetScriptElementType(), element_->GetExecutionContext());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptLoader::AddSpeculationRuleSet(SpeculationRuleSet::Source* source)
 {
     // https://wicg.github.io/nav-speculation/speculation-rules.html
@@ -1355,7 +1386,6 @@ void ScriptLoader::AddSpeculationRuleSet(SpeculationRuleSet::Source* source)
     // Set the script’s result to result.
     // If the script’s result is not null, append it to the element’s node
     // document's list of speculation rule sets.
-#if 0
     Document& element_document = element_->GetDocument();
     LocalDOMWindow* context_window = element_document.domWindow();
     if (!context_window) {
@@ -1366,7 +1396,6 @@ void ScriptLoader::AddSpeculationRuleSet(SpeculationRuleSet::Source* source)
     CHECK(speculation_rule_set_);
     DocumentSpeculationRules::From(element_document).AddRuleSet(speculation_rule_set_);
     speculation_rule_set_->AddConsoleMessageForValidation(*element_);
-#endif // 0
 }
 
 SpeculationRuleSet* ScriptLoader::RemoveSpeculationRuleSet()
@@ -1380,5 +1409,6 @@ SpeculationRuleSet* ScriptLoader::RemoveSpeculationRuleSet()
     }
     return nullptr;
 }
+#endif
 
 } // namespace blink

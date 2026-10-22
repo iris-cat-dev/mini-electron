@@ -64,6 +64,7 @@ class WebHitTestResult;
 
 class WebWidget {
 public:
+#if !defined(MINI_UI_QUICKJS)
     // Initialize compositing. This will create a LayerTreeHost but will not
     // allocate a frame sink or begin producing frames until SetCompositorVisible
     // is called. |settings| is typically null. When |settings| is null
@@ -81,6 +82,7 @@ public:
     // `kWarmUpCompositor` is enabled. Please see crbug.com/41496019
     // for more details.
     virtual void WarmUpCompositor() = 0;
+#endif
 
     // Returns the current size of the WebWidget.
     virtual gfx::Size Size()
@@ -160,26 +162,32 @@ public:
     // Set state that the widget is in the process of handling input events.
     virtual void SetHandlingInputEvent(bool handling) = 0;
 
-    // Process the input event, blocking until complete.
+#if !defined(MINI_UI_QUICKJS)
+    // Process the input event synchronously through the compositor input queue.
     virtual void ProcessInputEventSynchronouslyForTesting(const WebCoalescedInputEvent&) = 0;
 
-    // Dispatches the input event asynchronously, without blocking.
+    // Dispatches the input event asynchronously through the compositor input queue.
     virtual void DispatchNonBlockingEventForTesting(std::unique_ptr<WebCoalescedInputEvent> event) = 0;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void DidOverscrollForTesting(const gfx::Vector2dF& overscroll_delta, const gfx::Vector2dF& accumulated_overscroll,
         const gfx::PointF& position_in_viewport, const gfx::Vector2dF& velocity_in_viewport)
     {
     }
+#endif
 
     // Requests the text input state be updated. If anything has changed the
     // updated state will be sent to the browser.
     virtual void UpdateTextInputState() = 0;
 
-    // Flush any pending input.
+#if !defined(MINI_UI_QUICKJS)
+    // Flush any pending compositor input.
     virtual void FlushInputProcessedCallback() = 0;
 
-    // Cancel the current composition.
+    // Cancel the current Pepper composition.
     virtual void CancelCompositionForPepper() = 0;
+#endif
 
     // Requests the selection bounds be updated.
     virtual void UpdateSelectionBounds() = 0;
@@ -187,8 +195,10 @@ public:
     // Request the virtual keyboard be shown.
     virtual void ShowVirtualKeyboard() = 0;
 
-    // Apply the visual properties to the widget.
+#if !defined(MINI_UI_QUICKJS)
+    // Apply browser-delivered compositor visual properties to the widget.
     virtual void ApplyVisualProperties(const VisualProperties& visual_properties) = 0;
+#endif
 
     // Returns information about the screen where this view's widgets are being
     // displayed.
@@ -219,11 +229,10 @@ public:
     // Returns the visible viewport size (in screen coorindates).
     virtual gfx::Size VisibleViewportSizeInDIPs() = 0;
 
-    // Returns the emulator scale.
-    virtual float GetEmulatorScale()
-    {
-        return 1.0f;
-    }
+#if !defined(MINI_UI_QUICKJS)
+    // Returns the devtools device-emulator scale.
+    virtual float GetEmulatorScale() { return 1.0f; }
+#endif
 
     virtual bool IsHidden() const = 0;
 

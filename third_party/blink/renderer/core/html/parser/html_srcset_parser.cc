@@ -378,9 +378,15 @@ static unsigned AvoidDownloadIfHigherDensityResourceIsInCache(Vector<ImageCandid
         return winner;
     for (unsigned i = image_candidates.size() - 1; i > winner; --i) {
         KURL url = document->CompleteURL(StripLeadingAndTrailingHTMLSpaces(image_candidates[i]->Url()));
-        auto* resource = MemoryCache::Get()->ResourceForURL(url,
-            document->Fetcher()->GetCacheIdentifier(url,
-                /*skip_service_worker=*/false));
+#if defined(MINI_UI_QUICKJS)
+        String cache_identifier =
+            document->Fetcher()->GetCacheIdentifier(url);
+#else
+        String cache_identifier = document->Fetcher()->GetCacheIdentifier(
+            url, /*skip_service_worker=*/false);
+#endif
+        auto* resource =
+            MemoryCache::Get()->ResourceForURL(url, cache_identifier);
         if ((resource && resource->IsLoaded()) || url.ProtocolIsData()) {
             return i;
         }

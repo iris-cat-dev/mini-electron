@@ -12,6 +12,7 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
+#if !defined(MINI_UI_QUICKJS)
 
 class TransitionPseudoElementData final : public GarbageCollected<TransitionPseudoElementData> {
 public:
@@ -136,6 +137,7 @@ inline void TransitionPseudoElementData::AddPseudoElements(HeapVector<Member<Pse
         result->push_back(entry.value);
 }
 
+#endif
 } // namespace blink
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_DOM_TRANSITION_PSEUDO_ELEMENT_DATA_H_

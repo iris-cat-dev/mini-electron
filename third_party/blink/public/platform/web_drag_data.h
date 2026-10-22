@@ -31,11 +31,15 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_DRAG_DATA_H_
 #define THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_DRAG_DATA_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/scoped_refptr.h"
+#endif
 #include "services/network/public/mojom/referrer_policy.mojom-shared.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom-shared.h"
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
+#endif
 #include "third_party/blink/public/platform/web_blob_info.h"
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/platform/web_data.h"
@@ -46,7 +50,9 @@
 namespace blink {
 template <typename T> class WebVector;
 
+#if !defined(MINI_UI_QUICKJS)
 using FileSystemAccessDropData = base::RefCountedData<blink::CrossVariantMojoRemote<mojom::FileSystemAccessDataTransferTokenInterfaceBase>>;
+#endif
 
 // Holds data that may be exchanged through a drag-n-drop operation. It is
 // inexpensive to copy a WebDragData object.
@@ -70,7 +76,9 @@ public:
     struct FilenameItem {
         WebString filename;
         WebString display_name;
+#if !defined(MINI_UI_QUICKJS)
         scoped_refptr<FileSystemAccessDropData> file_system_access_entry;
+#endif
     };
 
     // An image being dragged out of the renderer. Contains a buffer holding

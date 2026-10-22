@@ -1,0 +1,2 @@
+# Benchmark tooling only; not linked into or distributed with mini-ui.
+websocket-client==1.9.2

@@ -90,7 +90,9 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/clear_collection_scope.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 
 namespace blink {
 
@@ -1864,9 +1866,11 @@ void CompositeEditCommand::AppliedEditing()
     }
     editor.RespondToChangedContents(new_selection.Anchor());
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* rc = GetDocument().GetResourceCoordinator()) {
         rc->SetHadUserEdits();
     }
+#endif
 }
 
 } // namespace blink

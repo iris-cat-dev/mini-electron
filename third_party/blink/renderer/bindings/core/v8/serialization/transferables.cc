@@ -6,7 +6,9 @@
 
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/messaging/message_port.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mojo/mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/streams/readable_stream.h"
 #include "third_party/blink/renderer/core/streams/transform_stream.h"
@@ -24,7 +26,9 @@ Transferables::~Transferables()
     image_bitmaps.clear();
     offscreen_canvases.clear();
     message_ports.clear();
+#if !defined(MINI_UI_QUICKJS)
     mojo_handles.clear();
+#endif
     readable_streams.clear();
     writable_streams.clear();
     transform_streams.clear();

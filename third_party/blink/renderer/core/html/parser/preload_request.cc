@@ -9,7 +9,9 @@
 #include "services/network/public/mojom/attribution.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
@@ -101,13 +103,14 @@ Resource* PreloadRequest::Start(Document* document)
 
     resource_request.SetFetchPriorityHint(fetch_priority_hint_);
 
-    // Disable issue logging to avoid duplicates, since `CanRegister()` will be
-    // called again later.
+#if !defined(MINI_UI_QUICKJS)
+    // Disable issue logging to avoid duplicates; CanRegister is called again later.
     if (is_attribution_reporting_eligible_img_or_script_
-        && document->domWindow()->GetFrame()->GetAttributionSrcLoader()->CanRegister(url, /*element=*/nullptr,
-            /*request_id=*/std::nullopt, /*log_issues=*/false)) {
+        && document->domWindow()->GetFrame()->GetAttributionSrcLoader()->CanRegister(
+            url, /*element=*/nullptr, /*request_id=*/std::nullopt, /*log_issues=*/false)) {
         resource_request.SetAttributionReportingEligibility(network::mojom::AttributionReportingEligibility::kEventSourceOrTrigger);
     }
+#endif
 
     bool shared_storage_writable_opted_in = shared_storage_writable_opted_in_ && RuntimeEnabledFeatures::SharedStorageAPIM118Enabled(document->domWindow())
         && document->domWindow()->IsSecureContext() && !document->domWindow()->GetSecurityOrigin()->IsOpaque();
@@ -170,9 +173,11 @@ Resource* PreloadRequest::Start(Document* document)
     params.SetIsPotentiallyLCPElement(is_potentially_lcp_element_);
     params.SetIsPotentiallyLCPInfluencer(is_potentially_lcp_influencer_);
 
+#if !defined(MINI_UI_QUICKJS)
     if (LCPCriticalPathPredictor* lcpp = document->GetFrame()->GetLCPP()) {
         lcpp->OnStartPreload(url, resource_type_);
     }
+#endif
 
     return PreloadHelper::StartPreload(resource_type_, params, *document);
 }

@@ -62,6 +62,7 @@ public:
 
     virtual unsigned Version() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Called when a page attempts to match a font family, and the font family is
     // available.
     virtual void ReportSuccessfulFontFamilyMatch(const AtomicString& font_family_name) = 0;
@@ -101,6 +102,7 @@ public:
     // Called whenever a page attempts to find a last-resort font.
     virtual void ReportLastResortFallbackFontLookup(const FontDescription& font_description, const SimpleFontData* resulting_font_data) = 0;
 
+#endif
     virtual void ReportNotDefGlyph() const = 0;
 
     // Called during text shaping of emoji presentation segments and after

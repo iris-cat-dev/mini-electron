@@ -8,7 +8,9 @@
 #include "base/memory/raw_ptr.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -33,7 +35,9 @@ public:
 
     explicit RenderWidgetSignals(Observer* observer);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 private:
     friend class WidgetSchedulerImpl;

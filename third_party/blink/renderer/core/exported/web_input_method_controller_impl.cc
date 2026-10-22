@@ -6,7 +6,9 @@
 
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
+#endif
 #include "third_party/blink/public/web/web_range.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
@@ -17,7 +19,9 @@
 #include "third_party/blink/renderer/core/editing/ime/ime_text_span_vector_builder.h"
 #include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
 #include "third_party/blink/renderer/core/editing/plain_text_range.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
@@ -60,9 +64,11 @@ bool WebInputMethodControllerImpl::SetComposition(
         return GetInputMethodController().GetActiveEditContext()->SetComposition(text, ime_text_spans, replacement_range, selection_start, selection_end);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         return plugin->SetComposition(text, ime_text_spans, replacement_range, selection_start, selection_end);
     }
+#endif
 
     // We should use this |editor| object only to complete the ongoing
     // composition.
@@ -107,8 +113,10 @@ bool WebInputMethodControllerImpl::FinishComposingText(ConfirmCompositionBehavio
         return GetInputMethodController().GetActiveEditContext()->FinishComposingText(selection_behavior);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported())
         return plugin->FinishComposingText(selection_behavior);
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -127,9 +135,11 @@ bool WebInputMethodControllerImpl::CommitText(
         return GetInputMethodController().GetActiveEditContext()->CommitText(text, ime_text_spans, replacement_range, relative_caret_position);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         return plugin->CommitText(text, ime_text_spans, replacement_range, relative_caret_position);
     }
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -237,6 +247,7 @@ InputMethodController& WebInputMethodControllerImpl::GetInputMethodController() 
     return GetFrame()->GetInputMethodController();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebPlugin* WebInputMethodControllerImpl::FocusedPluginIfInputMethodSupported() const
 {
     WebPluginContainerImpl* container = GetFrame()->GetWebPluginContainer();
@@ -245,5 +256,6 @@ WebPlugin* WebInputMethodControllerImpl::FocusedPluginIfInputMethodSupported() c
     }
     return nullptr;
 }
+#endif
 
 } // namespace blink

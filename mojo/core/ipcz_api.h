@@ -1,4 +1,4 @@
-﻿// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,10 +20,12 @@ MOJO_SYSTEM_IMPL_EXPORT IpczHandle GetIpczNode();
 // Initializes a global ipcz node for the calling process with a set of options
 // to configure the node.
 struct IpczNodeOptions {
-    bool is_broker;
-    bool use_local_shared_memory_allocation;
+  bool is_broker;
+  bool use_local_shared_memory_allocation;
+  bool enable_memv2;
 };
-MOJO_SYSTEM_IMPL_EXPORT bool InitializeIpczNodeForProcess(const IpczNodeOptions& options = {});
+MOJO_SYSTEM_IMPL_EXPORT bool InitializeIpczNodeForProcess(
+    const IpczNodeOptions& options = {});
 
 // Used by tests to tear down global state initialized by
 // InitializeIpczNodeForProcess().
@@ -33,6 +35,6 @@ MOJO_SYSTEM_IMPL_EXPORT void DestroyIpczNodeForProcess();
 // InitializeIpczNodeForProcess().
 MOJO_SYSTEM_IMPL_EXPORT const IpczNodeOptions& GetIpczNodeOptions();
 
-} // namespace mojo::core
+}  // namespace mojo::core
 
-#endif // MOJO_CORE_IPCZ_API_H_
+#endif  // MOJO_CORE_IPCZ_API_H_

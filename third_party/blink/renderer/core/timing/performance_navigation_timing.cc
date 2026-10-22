@@ -29,7 +29,7 @@
 
 namespace blink {
 
-using network::mojom::blink::NavigationDeliveryType;
+using network::mojom::NavigationDeliveryType;
 
 namespace {
 

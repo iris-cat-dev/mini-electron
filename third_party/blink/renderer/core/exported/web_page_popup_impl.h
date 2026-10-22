@@ -49,9 +49,12 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class Layer;
 }
+
+#endif
 
 namespace blink {
 class AgentGroupScheduler;
@@ -61,6 +64,7 @@ class Node;
 class Page;
 class PagePopupChromeClient;
 class PagePopupClient;
+class WebViewClient;
 class WebViewImpl;
 class LocalDOMWindow;
 class WidgetBase;
@@ -87,6 +91,11 @@ public:
     // origin in the DOM disppears, then the Cancel() step would be skipped and go
     // directly to ClosePopup().
     void Cancel();
+#if defined(MINI_UI_QUICKJS)
+    // Synchronously stops the popup page and invalidates the borrowed embedder
+    // pointer. Stack-held references keep reentrant input/focus calls alive.
+    // Only HasSamePopupClient() may be used after this returns.
+#else
     // Once ClosePopup() has been called, the WebPagePopupImpl should be disowned
     // by any clients, and will be reaped when then browser closes its
     // RenderWidget which closes this object. This will call back to the
@@ -94,6 +103,7 @@ public:
     // its reference to the popup.
     //
     // Only HasSamePopupClient() may still be called after ClosePopup() runs.
+#endif
     void ClosePopup();
 
     // Returns whether another WebPagePopupImpl has the same PopupClient as this
@@ -110,6 +120,10 @@ public:
     // WebPagePopup implementation.
     WebDocument GetDocument() override;
 
+#if defined(MINI_UI_QUICKJS)
+    void PaintContent(cc::PaintCanvas*, const gfx::Rect&) override;
+#endif
+
     // PagePopup implementation.
     void PostMessageToPopup(const String& message) override;
     void Update() override;
@@ -117,39 +131,63 @@ public:
     // WidgetEventHandler implementation.
     WebInputEventResult HandleKeyEvent(const WebKeyboardEvent&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     // Return the LayerTreeHost backing this popup widget.
     cc::LayerTreeHost* LayerTreeHostForTesting();
 
+#endif
+
+#if defined(MINI_UI_QUICKJS)
+    // Called only after WebViewImpl owns the fully constructed popup.
+    void Show();
+    static scoped_refptr<WebPagePopupImpl> Create(WebViewImpl* opener_impl,
+        AgentGroupScheduler&, const display::ScreenInfos&, PagePopupClient*);
+#else
     // Called when the browser has shown the popup.
     void DidShowPopup();
-
     static WebPagePopupImpl* Create(CrossVariantMojoAssociatedRemote<mojom::blink::PopupWidgetHostInterfaceBase> popup_widget_host,
         CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> widget_host,
-        CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> widget, WebViewImpl* opener_impl, AgentGroupScheduler& agent_group_scheduler,
+        CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> widget,
+        WebViewImpl* opener_impl, AgentGroupScheduler& agent_group_scheduler,
         const display::ScreenInfos& screen_infos, PagePopupClient*);
+#endif
 
 private:
     // WidgetBaseClient overrides:
+#if !defined(MINI_UI_QUICKJS)
     void OnCommitRequested() override;
+#endif
     void BeginMainFrame(base::TimeTicks last_frame_time) override;
     void SetSuppressFrameRequestsWorkaroundFor704763Only(bool) final;
     WebInputEventResult DispatchBufferedTouchEvents() override;
     void WillHandleGestureEvent(const WebGestureEvent& event, bool* suppress) override;
     void WillHandleMouseEvent(const WebMouseEvent& event) override;
+#if !defined(MINI_UI_QUICKJS)
     void ObserveGestureEventAndResult(const WebGestureEvent& gesture_event, const gfx::Vector2dF& unused_delta,
         const cc::OverscrollBehavior& overscroll_behavior, bool event_processed) override;
+#endif
     bool SupportsBufferedTouchEvents() override
     {
         return true;
     }
     void FocusChanged(mojom::blink::FocusState focus_state) override;
     void ScheduleAnimation() override;
+#if defined(MINI_UI_QUICKJS)
+    WebViewClient* NativeViewClient() override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void UpdateVisualProperties(const VisualProperties& visual_properties) override;
+#endif
     gfx::Rect ViewportVisibleRect() override;
+#if !defined(MINI_UI_QUICKJS)
     void ScreenRectToEmulated(gfx::Rect& screen_rect) override;
     void EmulatedToScreenRect(gfx::Rect& screen_rect) override;
+#endif
     KURL GetURLForDebugTrace() override;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<cc::LayerTreeFrameSink> AllocateNewLayerTreeFrameSink() override;
+
+#endif
 
     // WebWidget implementation.
     // NOTE: The WebWidget may still be used after requesting the popup to be
@@ -157,29 +195,41 @@ private:
     // immediately. So all methods (outside of initialization) that are part
     // of the WebWidget need to check if close has already been initiated (they
     // can do so by checking |page_|) and not crash! https://crbug.com/906340
+#if !defined(MINI_UI_QUICKJS)
     void SetCompositorVisible(bool visible) override;
     void WarmUpCompositor() override;
+#endif
     void UpdateLifecycle(WebLifecycleUpdate requested_update, DocumentUpdateReason reason) override;
     void Resize(const gfx::Size&) override;
     WebInputEventResult HandleInputEvent(const WebCoalescedInputEvent&) override;
     void SetFocus(bool) override;
     bool HasFocus() override;
+#if defined(MINI_UI_QUICKJS)
+    WebHitTestResult HitTestResultAt(const gfx::PointF&) override;
+#else
     WebHitTestResult HitTestResultAt(const gfx::PointF&) override
     {
         return {};
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void InitializeCompositing(const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings) override;
+#endif
     void SetCursor(const ui::Cursor& cursor) override;
     bool HandlingInputEvent() override;
     void SetHandlingInputEvent(bool handling) override;
+#if !defined(MINI_UI_QUICKJS)
     void ProcessInputEventSynchronouslyForTesting(const WebCoalescedInputEvent&) override;
     void DispatchNonBlockingEventForTesting(std::unique_ptr<WebCoalescedInputEvent> event) override;
+#endif
     void UpdateTextInputState() override;
     void UpdateSelectionBounds() override;
     void ShowVirtualKeyboard() override;
+#if !defined(MINI_UI_QUICKJS)
     void FlushInputProcessedCallback() override;
     void CancelCompositionForPepper() override;
     void ApplyVisualProperties(const VisualProperties& visual_properties) override;
+#endif
     const display::ScreenInfo& GetScreenInfo() override;
     const display::ScreenInfos& GetScreenInfos() override;
     const display::ScreenInfo& GetOriginalScreenInfo() override;
@@ -199,7 +249,10 @@ private:
     // This may only be called if page_ is non-null.
     LocalFrame& MainFrame() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void Close();
+
+#endif
 
     Element* FocusedElement() const;
 
@@ -214,23 +267,37 @@ private:
     AXObject* RootAXObject(Element* popover_owner) override;
     void SetWindowRect(const gfx::Rect&) override;
 
+#if defined(MINI_UI_QUICKJS)
+    WebPagePopupImpl(WebViewImpl* opener_impl, AgentGroupScheduler&,
+        const display::ScreenInfos&, PagePopupClient*);
+#else
     WebPagePopupImpl(CrossVariantMojoAssociatedRemote<mojom::blink::PopupWidgetHostInterfaceBase> popup_widget_host,
         CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> widget_host,
-        CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> widget, WebViewImpl* opener_impl, AgentGroupScheduler& agent_group_scheduler,
+        CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> widget,
+        WebViewImpl* opener_impl, AgentGroupScheduler& agent_group_scheduler,
         const display::ScreenInfos& screen_infos, PagePopupClient*);
+#endif
 
     void DestroyPage();
     void MainFrameDetached();
+#if !defined(MINI_UI_QUICKJS)
     void SetRootLayer(scoped_refptr<cc::Layer>);
+#endif
     void SetWebView(WebViewImpl* web_view);
 
     gfx::Rect WindowRectInScreen() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void InjectScrollbarGestureScroll(
         const gfx::Vector2dF& delta, ui::ScrollGranularity granularity, cc::ElementId scrollable_area_element_id, WebInputEvent::Type injected_type);
 
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
     void WidgetHostDisconnected();
     void DidSetBounds();
+
+#endif
 
     // This is the WebView that opened the popup.
     WebViewImpl* opener_web_view_ = nullptr;
@@ -245,12 +312,15 @@ private:
     PagePopupClient* popup_client_;
     bool closing_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<cc::Layer> root_layer_;
+#endif
     base::TimeTicks raf_aligned_input_start_time_;
 
     bool suppress_next_keypress_event_ = false;
     Persistent<DOMRect> popup_owner_client_rect_;
 
+#if !defined(MINI_UI_QUICKJS)
     // When emulation is enabled, and a popup widget is opened, the popup widget
     // needs these values to move between the popup's (non-emulated) coordinates
     // and the opener widget's (emulated) coordinates. They are only valid when
@@ -258,10 +328,17 @@ private:
     gfx::Point opener_widget_screen_origin_;
     gfx::Point opener_original_widget_screen_origin_;
     float opener_emulator_scale_ = 0;
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+    // Borrowed from the opener; its embedder outlives the popup.
+    WebViewClient* const popup_host_;
+    bool is_shown_ = false;
+#else
     // The channel associated with the browser. When this is closed the popup will
     // be destroyed.
     mojo::AssociatedRemote<mojom::blink::PopupWidgetHost> popup_widget_host_;
+#endif
 
     // The rect before the widget is shown.
     gfx::Rect initial_rect_;

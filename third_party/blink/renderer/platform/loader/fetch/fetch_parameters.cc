@@ -103,8 +103,10 @@ void FetchParameters::MakeSynchronous()
     resource_request_.SetPriority(ResourceLoadPriority::kHighest);
     // Skip ServiceWorker for synchronous loads from the main thread to avoid
     // deadlocks.
+#if !defined(MINI_UI_QUICKJS)
     if (IsMainThread())
         resource_request_.SetSkipServiceWorker(true);
+#endif
     options_.synchronous_policy = kRequestSynchronously;
 }
 

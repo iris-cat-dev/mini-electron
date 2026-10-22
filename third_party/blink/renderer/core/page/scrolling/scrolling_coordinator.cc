@@ -99,17 +99,25 @@ void ScrollingCoordinator::DidChangeScrollbarsHidden(CompositorElementId element
 
 bool ScrollingCoordinator::UpdateCompositorScrollOffset(const LocalFrame& frame, const ScrollableArea& scrollable_area)
 {
+#if !defined(MINI_UI_QUICKJS)
     auto* paint_artifact_compositor = frame.LocalFrameRoot().View()->GetPaintArtifactCompositor();
     if (!paint_artifact_compositor)
         return false;
     return paint_artifact_compositor->DirectlySetScrollOffset(scrollable_area.GetScrollElementId(), scrollable_area.ScrollPosition());
+#else
+    static_cast<void>(frame);
+    static_cast<void>(scrollable_area);
+    return false;
+#endif
 }
 
 void ScrollingCoordinator::WillBeDestroyed()
 {
     DCHECK(page_);
     page_ = nullptr;
+#if !defined(MINI_UI_QUICKJS)
     callbacks_.reset();
+#endif
 }
 
 } // namespace blink

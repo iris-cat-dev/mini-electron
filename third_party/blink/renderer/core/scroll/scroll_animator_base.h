@@ -97,12 +97,15 @@ public:
     void CancelAnimation() override
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     void TakeOverCompositorAnimation() override
     {
     }
+#endif
     void UpdateCompositorAnimations() override
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     void NotifyCompositorAnimationFinished(int group_id) override
     {
     }
@@ -110,6 +113,7 @@ public:
     {
     }
 
+#endif
     void Trace(Visitor*) const override;
 
 protected:

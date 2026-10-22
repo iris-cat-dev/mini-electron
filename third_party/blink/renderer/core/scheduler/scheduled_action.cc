@@ -50,12 +50,25 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace blink {
+namespace {
+
+bool CanAccessScheduledActionTarget(ScriptState* script_state, ExecutionContext& target)
+{
+#if !defined(MINI_UI_QUICKJS)
+    if (script_state->World().IsWorkerOrWorkletWorld())
+        return true;
+#endif
+    return BindingSecurity::ShouldAllowAccessTo(
+        EnteredDOMWindow(script_state->GetIsolate()), To<LocalDOMWindow>(&target));
+}
+
+} // namespace
+
 
 ScheduledAction::ScheduledAction(ScriptState* script_state, ExecutionContext& target, V8Function* handler, const HeapVector<ScriptValue>& arguments)
     : script_state_(MakeGarbageCollected<ScriptStateProtectingContext>(script_state))
 {
-    if (script_state->World().IsWorkerOrWorkletWorld()
-        || BindingSecurity::ShouldAllowAccessTo(EnteredDOMWindow(script_state->GetIsolate()), To<LocalDOMWindow>(&target))) {
+    if (CanAccessScheduledActionTarget(script_state, target)) {
         function_ = handler;
         arguments_ = arguments;
         auto* tracker = scheduler::TaskAttributionTracker::From(script_state->GetIsolate());
@@ -70,8 +83,7 @@ ScheduledAction::ScheduledAction(ScriptState* script_state, ExecutionContext& ta
 ScheduledAction::ScheduledAction(ScriptState* script_state, ExecutionContext& target, const String& handler)
     : script_state_(MakeGarbageCollected<ScriptStateProtectingContext>(script_state))
 {
-    if (script_state->World().IsWorkerOrWorkletWorld()
-        || BindingSecurity::ShouldAllowAccessTo(EnteredDOMWindow(script_state->GetIsolate()), To<LocalDOMWindow>(&target))) {
+    if (CanAccessScheduledActionTarget(script_state, target)) {
         code_ = handler;
         auto* tracker = scheduler::TaskAttributionTracker::From(script_state->GetIsolate());
         if (tracker && script_state->World().IsMainWorld()) {

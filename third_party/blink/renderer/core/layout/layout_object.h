@@ -41,10 +41,13 @@
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/editing/forward.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/layout/geometry/transform_state.h"
 #include "third_party/blink/renderer/core/layout/hit_test_phase.h"
+#include "third_party/blink/renderer/core/layout/layout_invalidation_reason.h"
 #include "third_party/blink/renderer/core/layout/layout_object_child_list.h"
 #include "third_party/blink/renderer/core/layout/map_coordinates_flags.h"
 #include "third_party/blink/renderer/core/layout/min_max_sizes.h"
@@ -58,7 +61,9 @@
 #include "third_party/blink/renderer/core/paint/pre_paint_disable_side_effects_scope.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/style_difference.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/compositing_reasons.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_client.h"
@@ -746,9 +751,11 @@ public:
     bool IsInTopOrViewTransitionLayer() const
     {
         NOT_DESTROYED();
+#if !defined(MINI_UI_QUICKJS)
         if (IsViewTransitionRoot()) {
             return true;
         }
+#endif
         if (Element* element = DynamicTo<Element>(GetNode())) {
             return StyleRef().IsRenderedInTopLayer(*element);
         }
@@ -947,11 +954,13 @@ public:
         NOT_DESTROYED();
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsMedia() const
     {
         NOT_DESTROYED();
         return false;
     }
+#endif
     virtual bool IsProgress() const
     {
         NOT_DESTROYED();
@@ -962,11 +971,13 @@ public:
         NOT_DESTROYED();
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsLayoutCustom() const
     {
         NOT_DESTROYED();
         return false;
     }
+#endif
     virtual bool IsLayoutGrid() const
     {
         NOT_DESTROYED();
@@ -1064,6 +1075,7 @@ public:
         NOT_DESTROYED();
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsViewTransitionContent() const
     {
         NOT_DESTROYED();
@@ -1074,6 +1086,7 @@ public:
         NOT_DESTROYED();
         return false;
     }
+#endif
     virtual bool IsLayoutBlock() const
     {
         NOT_DESTROYED();
@@ -4428,8 +4441,10 @@ inline void LayoutObject::SetNeedsLayout(LayoutInvalidationReasonForTracing reas
     SetSubgridMinMaxSizesCacheDirty(true);
     SetTableColumnConstraintDirty(true);
     if (!already_needed_layout) {
+#if !defined(MINI_UI_QUICKJS)
         DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline.invalidationTracking"), "LayoutInvalidationTracking",
             inspector_layout_invalidation_tracking_event::Data, this, reason);
+#endif
         if (mark_parents == kMarkContainerChain) {
             MarkContainerChainForLayout();
         }

@@ -44,7 +44,9 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen_request_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation_controller.h"
@@ -220,6 +222,7 @@ void FullscreenController::FullscreenElementChanged(
 {
     DCHECK_NE(old_element, new_element);
 
+#if !defined(MINI_UI_QUICKJS)
     // We only override the WebView's background color for overlay fullscreen
     // video elements, so have to restore the override when the element changes.
     auto* old_video_element = DynamicTo<HTMLVideoElement>(old_element);
@@ -228,18 +231,21 @@ void FullscreenController::FullscreenElementChanged(
 
     if (new_element) {
         DCHECK(Fullscreen::IsFullscreenElement(*new_element));
-
-        if (auto* video_element = DynamicTo<HTMLVideoElement>(*new_element)) {
+        if (auto* video_element = DynamicTo<HTMLVideoElement>(*new_element))
             video_element->DidEnterFullscreen();
-        }
     }
 
     if (old_element) {
         DCHECK(!Fullscreen::IsFullscreenElement(*old_element));
-
         if (old_video_element)
             old_video_element->DidExitFullscreen();
     }
+#else
+    if (new_element)
+        DCHECK(Fullscreen::IsFullscreenElement(*new_element));
+    if (old_element)
+        DCHECK(!Fullscreen::IsFullscreenElement(*old_element));
+#endif
 
     // Tell the browser the fullscreen state has changed.
     if (Element* owner = new_element ? new_element : old_element) {
@@ -255,10 +261,12 @@ void FullscreenController::FullscreenElementChanged(
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FullscreenController::RestoreBackgroundColorOverride()
 {
     web_view_base_->SetBackgroundColorOverrideForFullscreenController(std::nullopt);
 }
+#endif
 
 void FullscreenController::NotifyFramesOfFullscreenEntry(bool granted)
 {

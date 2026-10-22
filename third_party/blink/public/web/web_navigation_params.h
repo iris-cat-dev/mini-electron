@@ -23,7 +23,9 @@
 #include "services/network/public/mojom/web_client_hints_types.mojom-shared.h"
 #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
 #include "third_party/blink/public/common/frame/frame_policy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/frame/view_transition_state.h"
+#endif
 #include "third_party/blink/public/common/navigation/impression.h"
 #include "third_party/blink/public/common/page/browsing_context_group_info.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
@@ -66,7 +68,9 @@ class TickClock;
 namespace blink {
 
 class WebDocumentLoader;
+#if !defined(MINI_UI_QUICKJS)
 class WebServiceWorkerNetworkProvider;
+#endif
 
 // This structure holds all information collected by Blink when
 // navigation is being initiated.
@@ -188,10 +192,12 @@ struct BLINK_EXPORT WebNavigationInfo {
     // The frame token of the initiator Frame.
     std::optional<LocalFrameToken> initiator_frame_token;
 
+#if !defined(MINI_UI_QUICKJS)
     // A handle for keeping the initiator RenderFrameHost's
     // NavigationStateKeepAlive alive until we create the NavigationRequest.
     CrossVariantMojoRemote<mojom::NavigationStateKeepAliveHandleInterfaceBase> initiator_navigation_state_keep_alive_handle;
 
+#endif
     // The initiator frame's LocalDOMWindow's Storage Access API status.
     net::StorageAccessApiStatus storage_access_api_status = net::StorageAccessApiStatus::kNone;
 
@@ -382,9 +388,11 @@ struct BLINK_EXPORT WebNavigationParams {
     bool is_browser_initiated = false;
     // Whether the document should be able to access local file:// resources.
     bool grant_load_local_resources = false;
+#if !defined(MINI_UI_QUICKJS)
     // The service worker network provider to be used in the new
     // document.
     std::unique_ptr<blink::WebServiceWorkerNetworkProvider> service_worker_network_provider;
+#endif
 
     // This is `true` only for commit requests coming from
     // `RenderFrameImpl::SynchronouslyConmmitAboutBlankForBug778318`.
@@ -496,9 +504,12 @@ struct BLINK_EXPORT WebNavigationParams {
     // renderer side.
     network::mojom::NavigationDeliveryType navigation_delivery_type = network::mojom::NavigationDeliveryType::kDefault;
 
+#if !defined(MINI_UI_QUICKJS)
     // Provides cached state from the previous Document that will be replaced by
     // this navigation for a ViewTransition.
     std::optional<ViewTransitionState> view_transition_state;
+
+#endif
 
     // If this is a navigation to an "opaque-ads" fenced frame through an ad
     // auction, this stores the collection of properties that were loaded into a

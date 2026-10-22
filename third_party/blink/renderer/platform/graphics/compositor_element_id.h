@@ -37,8 +37,10 @@ enum class CompositorElementIdNamespace {
     kVerticalScrollbar,
     kHorizontalScrollbar,
     kScrollCorner,
+#if !defined(MINI_UI_QUICKJS)
     kViewTransitionSubframeRoot,
     kViewTransitionElement,
+#endif
     kElementCapture,
     kDOMNodeId,
     // The following values are for internal usage only.

@@ -1,0 +1,82 @@
+[
+  {
+    "framework": "vue",
+    "rows": 100,
+    "previous_commit_ms": 167.49999997019768,
+    "final_commit_ms": 150.69999998807907,
+    "commit_reduction_percent": 10.029850737377755,
+    "previous_workload_ms": 3652.0594,
+    "final_workload_ms": 3445.7425,
+    "workload_reduction_percent": 5.649330347693693
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "previous_commit_ms": 1195.9000000059605,
+    "final_commit_ms": 1066.7000000029802,
+    "commit_reduction_percent": 10.803578894751764,
+    "previous_workload_ms": 18217.6308,
+    "final_workload_ms": 16861.4583,
+    "workload_reduction_percent": 7.444285784955095
+  },
+  {
+    "framework": "vue",
+    "rows": 5000,
+    "previous_commit_ms": 6212.499999985099,
+    "final_commit_ms": 5587.5,
+    "commit_reduction_percent": 10.0603621728225,
+    "previous_workload_ms": 90602.1738,
+    "final_workload_ms": 85261.3331,
+    "workload_reduction_percent": 5.89482622325338
+  },
+  {
+    "framework": "vue",
+    "rows": 10000,
+    "previous_commit_ms": 12613.39999999106,
+    "final_commit_ms": 11347.899999976158,
+    "commit_reduction_percent": 10.032980798323987,
+    "previous_workload_ms": 182176.6832,
+    "final_workload_ms": 166466.2835,
+    "workload_reduction_percent": 8.623715957520528
+  },
+  {
+    "framework": "react",
+    "rows": 100,
+    "previous_commit_ms": 99.59999997913837,
+    "final_commit_ms": 79.40000000596046,
+    "commit_reduction_percent": 20.28112447531012,
+    "previous_workload_ms": 2637.3192,
+    "final_workload_ms": 2339.7115,
+    "workload_reduction_percent": 11.284477813682924
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "previous_commit_ms": 713.8000000268221,
+    "final_commit_ms": 575.4000000059605,
+    "commit_reduction_percent": 19.389184647753023,
+    "previous_workload_ms": 12187.6119,
+    "final_workload_ms": 10568.48,
+    "workload_reduction_percent": 13.285062843197359
+  },
+  {
+    "framework": "react",
+    "rows": 5000,
+    "previous_commit_ms": 5058.800000026822,
+    "final_commit_ms": 4424.100000008941,
+    "commit_reduction_percent": 12.546453704722783,
+    "previous_workload_ms": 73249.7204,
+    "final_workload_ms": 67152.5008,
+    "workload_reduction_percent": 8.323881056070226
+  },
+  {
+    "framework": "react",
+    "rows": 10000,
+    "previous_commit_ms": 14138.59999999404,
+    "final_commit_ms": 12936.79999999702,
+    "commit_reduction_percent": 8.500134383867753,
+    "previous_workload_ms": 187355.1663,
+    "final_workload_ms": 172535.294,
+    "workload_reduction_percent": 7.910041976782156
+  }
+]

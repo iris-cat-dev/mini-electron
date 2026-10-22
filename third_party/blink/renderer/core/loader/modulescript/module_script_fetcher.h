@@ -8,7 +8,6 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_creation_params.h"
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
-#include "third_party/blink/renderer/core/script/modulator.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
@@ -17,6 +16,7 @@ namespace blink {
 
 class ConsoleMessage;
 class ModuleScriptLoader;
+enum class ModuleGraphLevel;
 
 // ModuleScriptFetcher is an abstract class to fetch module scripts. Derived
 // classes are expected to fetch a module script for the given FetchParameters

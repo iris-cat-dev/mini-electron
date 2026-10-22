@@ -25,6 +25,7 @@
 
 #include "third_party/blink/renderer/bindings/core/v8/v8_script_runner.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
@@ -32,13 +33,20 @@
 #include "third_party/blink/public/common/page/v8_compile_hints_histograms.h"
 #include "third_party/blink/public/mojom/v8_cache_options.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/buildflags.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/binding_security.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
+#include "third_party/blink/renderer/bindings/core/v8/rejected_promises.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/referrer_script_info.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_cache_consumer.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_function.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/core/v8/script_value.h"
+#else
+#include "third_party/blink/renderer/bindings/core/v8/script_cache_consumer.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_code_cache.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_common.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_consumer.h"
@@ -46,28 +54,40 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_initializer.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_local_compile_hints_consumer.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_local_compile_hints_producer.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
+#endif
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/core/events/error_event.h"
+#include "third_party/blink/renderer/core/execution_context/agent.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_creation_params.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/page.h"
+#endif
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
 #include "third_party/blink/renderer/core/script/module_script.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/loader/fetch/cached_metadata.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
-#include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
-#include "third_party/blink/renderer/platform/wtf/text/text_encoding.h"
+#endif
 
 namespace blink {
 
@@ -111,6 +131,7 @@ v8::MaybeLocal<v8::Value> ThrowStackOverflowExceptionIfNeeded(v8::Isolate* isola
     return result;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 v8::MaybeLocal<v8::Script> CompileScriptInternal(v8::Isolate* isolate, ScriptState* script_state, const ClassicScript& classic_script, v8::ScriptOrigin origin,
     v8::ScriptCompiler::CompileOptions compile_options, v8::ScriptCompiler::NoCacheReason no_cache_reason, bool can_use_crowdsourced_compile_hints,
     std::optional<inspector_compile_script_event::V8ConsumeCacheResult>* cache_result)
@@ -135,6 +156,7 @@ v8::MaybeLocal<v8::Script> CompileScriptInternal(v8::Isolate* isolate, ScriptSta
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Allow inspector to use its own compilation cache store.
     v8::ScriptCompiler::CachedData* inspector_data = nullptr;
     // The probe below allows inspector to either inject the cached code
@@ -147,6 +169,7 @@ v8::MaybeLocal<v8::Script> CompileScriptInternal(v8::Isolate* isolate, ScriptSta
         v8::MaybeLocal<v8::Script> script = v8::ScriptCompiler::Compile(script_state->GetContext(), &source, v8::ScriptCompiler::kConsumeCodeCache);
         return script;
     }
+#endif
 
     switch (static_cast<int>(compile_options)) {
     case v8::ScriptCompiler::kConsumeCompileHints:
@@ -248,6 +271,7 @@ v8::MaybeLocal<v8::Script> CompileScriptInternal(v8::Isolate* isolate, ScriptSta
         NOTREACHED();
     }
 }
+#endif  // !defined(MINI_UI_QUICKJS)
 
 int GetMicrotasksScopeDepth(v8::Isolate* isolate, v8::MicrotaskQueue* microtask_queue)
 {
@@ -269,11 +293,21 @@ v8::MaybeLocal<v8::Script> V8ScriptRunner::CompileScript(ScriptState* script_sta
 
     const String& file_name = classic_script.SourceUrl();
     const TextPosition& script_start_position = classic_script.StartPosition();
+    ExecutionContext* execution_context = ExecutionContext::From(script_state);
+    probe::V8Compile probe(execution_context, file_name, script_start_position.line_.ZeroBasedInt(), script_start_position.column_.ZeroBasedInt());
+#if defined(MINI_UI_QUICKJS)
+    script_state->RecordScriptCompilation(classic_script.SourceUrl(), false);
+    v8::ScriptCompiler::Source source(V8String(isolate, classic_script.SourceText()), origin);
+    return v8::ScriptCompiler::Compile(
+        script_state->GetContext(), &source,
+        v8::ScriptCompiler::kNoCompileOptions,
+        v8::ScriptCompiler::kNoCacheBecauseCachingDisabled);
+#else
+
 
     constexpr const char* kTraceEventCategoryGroup = "v8,devtools.timeline";
     TRACE_EVENT_BEGIN1(kTraceEventCategoryGroup, "v8.compile", "fileName", file_name.Utf8());
-    ExecutionContext* execution_context = ExecutionContext::From(script_state);
-    probe::V8Compile probe(execution_context, file_name, script_start_position.line_.ZeroBasedInt(), script_start_position.column_.ZeroBasedInt());
+
 
     if (false/*!*TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(kTraceEventCategoryGroup)*/) {
         return CompileScriptInternal(
@@ -288,14 +322,17 @@ v8::MaybeLocal<v8::Script> V8ScriptRunner::CompileScript(ScriptState* script_sta
             compile_options == v8::ScriptCompiler::kEagerCompile, classic_script.Streamer(), classic_script.NotStreamingReason());
     });
     return script;
+#endif
 }
 
 v8::MaybeLocal<v8::Module> V8ScriptRunner::CompileModule(v8::Isolate* isolate, const ModuleScriptCreationParams& params, const TextPosition& start_position,
     v8::ScriptCompiler::CompileOptions compile_options, v8::ScriptCompiler::NoCacheReason no_cache_reason, const ReferrerScriptInfo& referrer_info)
 {
     const String file_name = params.SourceURL();
+#if !defined(MINI_UI_QUICKJS)
     constexpr const char* kTraceEventCategoryGroup = "v8,devtools.timeline";
     TRACE_EVENT_BEGIN1(kTraceEventCategoryGroup, "v8.compileModule", "fileName", file_name.Utf8());
+#endif
 
     // |resource_is_shared_cross_origin| is always true and |resource_is_opaque|
     // is always false because CORS is enforced to module scripts.
@@ -309,6 +346,12 @@ v8::MaybeLocal<v8::Module> V8ScriptRunner::CompileModule(v8::Isolate* isolate, c
         referrer_info.ToV8HostDefinedOptions(isolate, params.SourceURL()));
 
     v8::Local<v8::String> code = V8String(isolate, params.GetSourceText());
+#if defined(MINI_UI_QUICKJS)
+    v8::ScriptCompiler::Source source(code, origin);
+    return v8::ScriptCompiler::CompileModule(
+        isolate, &source, v8::ScriptCompiler::kNoCompileOptions,
+        v8::ScriptCompiler::kNoCacheBecauseCachingDisabled);
+#else
     std::optional<inspector_compile_script_event::V8ConsumeCacheResult> cache_result;
     v8::MaybeLocal<v8::Module> script;
     ScriptStreamer* streamer = params.GetScriptStreamer();
@@ -372,6 +415,7 @@ v8::MaybeLocal<v8::Module> V8ScriptRunner::CompileModule(v8::Isolate* isolate, c
             streamer, params.NotStreamingReason());
     });
     return script;
+#endif
 }
 
 v8::MaybeLocal<v8::Value> V8ScriptRunner::RunCompiledScript(
@@ -379,10 +423,12 @@ v8::MaybeLocal<v8::Value> V8ScriptRunner::RunCompiledScript(
 {
     DCHECK(!script.IsEmpty());
 
-    v8::Local<v8::Value> script_name = script->GetUnboundScript()->GetScriptName();
+    v8::Local<v8::Value> script_name = script->GetResourceName();
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1("v8", "v8.run", "fileName", TRACE_STR_COPY(*v8::String::Utf8Value(isolate, script_name)));
     RuntimeCallStatsScopedTracer rcs_scoped_tracer(isolate);
     RUNTIME_CALL_TIMER_SCOPE(isolate, RuntimeCallStats::CounterId::kV8);
+#endif
 
     v8::MicrotaskQueue* microtask_queue = ToMicrotaskQueue(context);
     if (GetMicrotasksScopeDepth(isolate, microtask_queue) > kMaxRecursionDepth)
@@ -415,10 +461,13 @@ v8::MaybeLocal<v8::Value> V8ScriptRunner::RunCompiledScript(
         result = script->Run(isolate->GetCurrentContext(), host_defined_options);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     CHECK(!isolate->IsDead());
+#endif
     return result;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 void DelayedProduceCodeCacheTask(ScriptState* script_state, v8::Global<v8::Script> script, CachedMetadataHandler* cache_handler, size_t source_text_length,
     KURL source_url, TextPosition source_start_position)
@@ -432,6 +481,7 @@ void DelayedProduceCodeCacheTask(ScriptState* script_state, v8::Global<v8::Scrip
         source_url, source_start_position, V8CodeCache::ProduceCacheOptions::kProduceCodeCache);
 }
 } // namespace
+#endif  // !defined(MINI_UI_QUICKJS)
 
 ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
     ScriptState* script_state, ClassicScript* classic_script, ExecuteScriptPolicy policy, RethrowErrorsOption rethrow_errors)
@@ -453,21 +503,27 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
     const SanitizeScriptErrors sanitize_script_errors = classic_script->GetSanitizeScriptErrors();
 
     LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(execution_context);
-    WorkerOrWorkletGlobalScope* worker_or_worklet_global_scope = DynamicTo<WorkerOrWorkletGlobalScope>(execution_context);
     LocalFrame* frame = window ? window->GetFrame() : nullptr;
+#if !defined(MINI_UI_QUICKJS)
+    WorkerOrWorkletGlobalScope* worker_or_worklet_global_scope = DynamicTo<WorkerOrWorkletGlobalScope>(execution_context);
+#endif
 
     if (window && window->document()->IsInitialEmptyDocument()) {
         window->GetFrame()->Loader().DidAccessInitialDocument();
+#if !defined(MINI_UI_QUICKJS)
     } else if (worker_or_worklet_global_scope) {
         DCHECK_EQ(script_state, worker_or_worklet_global_scope->ScriptController()->GetScriptState());
         DCHECK(worker_or_worklet_global_scope->ScriptController()->IsContextInitialized());
         DCHECK(worker_or_worklet_global_scope->ScriptController()->IsReadyToEvaluate());
+#endif
     }
 
     v8::Context::Scope scope(script_state->GetContext());
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT(
         "EvaluateScript", inspector_evaluate_script_event::Data, isolate, frame, classic_script->SourceUrl().GetString(), classic_script->StartPosition());
+#endif
 
     // Scope for |v8::TryCatch|.
     {
@@ -483,7 +539,18 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
         }
 
         v8::Local<v8::Script> script;
-
+        v8::ScriptOrigin origin = classic_script->CreateScriptOrigin(isolate);
+        v8::MaybeLocal<v8::Value> maybe_result;
+#if defined(MINI_UI_QUICKJS)
+        if (V8ScriptRunner::CompileScript(
+                script_state, *classic_script, origin,
+                v8::ScriptCompiler::kNoCompileOptions,
+                v8::ScriptCompiler::kNoCacheBecauseCachingDisabled, false)
+                .ToLocal(&script)) {
+            maybe_result = V8ScriptRunner::RunCompiledScript(
+                isolate, script, origin.GetHostDefinedOptions(), execution_context);
+        }
+#else
         CachedMetadataHandler* cache_handler = classic_script->CacheHandler();
         if (cache_handler) {
             cache_handler->Check(ExecutionContext::GetCodeCacheHostFromContext(execution_context), classic_script->SourceText());
@@ -501,14 +568,16 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
             = V8CodeCache::GetCompileOptions(execution_context->GetV8CacheOptions(), *classic_script, might_generate_crowdsourced_compile_hints,
                 can_use_crowdsourced_compile_hints, v8_compile_hints::GetMagicCommentMode(execution_context));
 
-        v8::ScriptOrigin origin = classic_script->CreateScriptOrigin(isolate);
-        v8::MaybeLocal<v8::Value> maybe_result;
         if (V8ScriptRunner::CompileScript(script_state, *classic_script, origin, compile_options, no_cache_reason, can_use_crowdsourced_compile_hints)
                 .ToLocal(&script)) {
+#if !defined(MINI_UI_QUICKJS)
             DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.target-rundown"), "ScriptCompiled",
                 inspector_target_rundown_event::Data, execution_context, isolate, script_state, script->GetUnboundScript()->GetId());
+#endif
             maybe_result = V8ScriptRunner::RunCompiledScript(isolate, script, origin.GetHostDefinedOptions(), execution_context);
+#if !defined(MINI_UI_QUICKJS)
             probe::DidProduceCompilationCache(probe::ToCoreProbeSink(execution_context), *classic_script, script);
+#endif
 
             // The ScriptState has an associated context. We expect the current
             // context to match the context associated with Script context when
@@ -556,12 +625,15 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
                 frame->GetV8LocalCompileHintsProducer().RecordScript(execution_context, script, classic_script);
             }
         }
+#endif  // defined(MINI_UI_QUICKJS)
 
         // TODO(crbug/1114601): Investigate whether to check CanContinue() in other
         // script evaluation code paths.
         if (!try_catch.CanContinue()) {
+#if !defined(MINI_UI_QUICKJS)
             if (worker_or_worklet_global_scope)
                 worker_or_worklet_global_scope->ScriptController()->ForbidExecution();
+#endif
             return ScriptEvaluationResult::FromClassicAborted();
         }
 
@@ -594,9 +666,13 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
         // Step 8.1.3. Otherwise, rethrow errors is false. Perform the following
         // steps: [spec text]
         if (!rethrow_errors.ShouldRethrow()) {
-            // #report-the-error for rethrow errors == true is already handled via
-            // `TryCatch::SetVerbose(true)` above.
-            return ScriptEvaluationResult::FromClassicException(try_catch.Exception());
+            v8::Local<v8::Value> exception = try_catch.Exception();
+#if defined(MINI_UI_QUICKJS)
+            // QuickJS has no V8 message-listener installation. Report through
+            // the retained main-thread HTML error-event path explicitly.
+            V8ScriptRunner::ReportException(isolate, exception);
+#endif
+            return ScriptEvaluationResult::FromClassicException(exception);
         }
     }
     // |v8::TryCatch| is (and should be) exited, before ThrowException() below.
@@ -618,8 +694,10 @@ ScriptEvaluationResult V8ScriptRunner::CompileAndRunScript(
 v8::MaybeLocal<v8::Value> V8ScriptRunner::CallAsConstructor(
     v8::Isolate* isolate, v8::Local<v8::Object> constructor, ExecutionContext* context, int argc, v8::Local<v8::Value> argv[])
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT0("v8", "v8.callAsConstructor");
     RUNTIME_CALL_TIMER_SCOPE(isolate, RuntimeCallStats::CounterId::kV8);
+#endif
 
     v8::MicrotaskQueue* microtask_queue = ToMicrotaskQueue(context);
     int depth = GetMicrotasksScopeDepth(isolate, microtask_queue);
@@ -647,17 +725,24 @@ v8::MaybeLocal<v8::Value> V8ScriptRunner::CallAsConstructor(
 
     v8::MicrotasksScope microtasks_scope(isolate, ToMicrotaskQueue(context), v8::MicrotasksScope::kRunMicrotasks);
     probe::CallFunction probe(context, isolate->GetCurrentContext(), function, depth);
+#if !defined(MINI_UI_QUICKJS)
+
 
     if (!depth) {
         TRACE_EVENT_BEGIN1("devtools.timeline", "FunctionCall", "data",
             [&](perfetto::TracedValue ctx) { inspector_function_call_event::Data(std::move(ctx), context, function); });
     }
+#endif
 
     v8::MaybeLocal<v8::Value> result = constructor->CallAsConstructor(isolate->GetCurrentContext(), argc, argv);
+#if !defined(MINI_UI_QUICKJS)
     CHECK(!isolate->IsDead());
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (!depth)
         TRACE_EVENT_END0("devtools.timeline", "FunctionCall");
+#endif
 
     return result;
 }
@@ -666,9 +751,11 @@ v8::MaybeLocal<v8::Value> V8ScriptRunner::CallFunction(
     v8::Local<v8::Function> function, ExecutionContext* context, v8::Local<v8::Value> receiver, int argc, v8::Local<v8::Value> argv[], v8::Isolate* isolate)
 {
     LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(context);
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT0("v8", "v8.callFunction");
     RuntimeCallStatsScopedTracer rcs_scoped_tracer(isolate);
     RUNTIME_CALL_TIMER_SCOPE(isolate, RuntimeCallStats::CounterId::kV8);
+#endif
 
     v8::MicrotaskQueue* microtask_queue = ToMicrotaskQueue(context);
     int depth = GetMicrotasksScopeDepth(isolate, microtask_queue);
@@ -689,17 +776,24 @@ v8::MaybeLocal<v8::Value> V8ScriptRunner::CallFunction(
 
     DCHECK(!window || !window->GetFrame() || BindingSecurity::ShouldAllowAccessTo(ToLocalDOMWindow(function->GetCreationContextChecked()), window));
     v8::MicrotasksScope microtasks_scope(isolate, microtask_queue, v8::MicrotasksScope::kRunMicrotasks);
+    probe::CallFunction probe(context, isolate->GetCurrentContext(), function, depth);
+#if !defined(MINI_UI_QUICKJS)
     if (!depth) {
         TRACE_EVENT_BEGIN1("devtools.timeline", "FunctionCall", "data",
             [&](perfetto::TracedValue trace_context) { inspector_function_call_event::Data(std::move(trace_context), context, function); });
     }
 
-    probe::CallFunction probe(context, isolate->GetCurrentContext(), function, depth);
-    v8::MaybeLocal<v8::Value> result = function->Call(isolate, isolate->GetCurrentContext(), receiver, argc, argv);
-    CHECK(!isolate->IsDead());
 
+#endif
+    v8::MaybeLocal<v8::Value> result = function->Call(isolate, isolate->GetCurrentContext(), receiver, argc, argv);
+#if !defined(MINI_UI_QUICKJS)
+    CHECK(!isolate->IsDead());
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
     if (!depth)
         TRACE_EVENT_END0("devtools.timeline", "FunctionCall");
+#endif
 
     return result;
 }
@@ -774,8 +868,12 @@ ScriptEvaluationResult V8ScriptRunner::EvaluateModule(ModuleScript* module_scrip
         probe::ExecuteScript probe(execution_context, script_state->GetContext(), module_script->SourceUrl(),
             record->GetStatus() != v8::Module::kErrored && record->IsSourceTextModule() ? record->ScriptId() : v8::UnboundScript::kNoScriptId);
 
+#if !defined(MINI_UI_QUICKJS)
+
+
         TRACE_EVENT0("v8,devtools.timeline", "v8.evaluateModule");
         RUNTIME_CALL_TIMER_SCOPE(isolate, RuntimeCallStats::CounterId::kV8);
+#endif
 
         // Do not perform a microtask checkpoint here. A checkpoint is performed
         // only after module error handling to ensure proper timing with and
@@ -795,6 +893,7 @@ ScriptEvaluationResult V8ScriptRunner::EvaluateModule(ModuleScript* module_scrip
         // DOMException, [[Target]]: empty }.</spec>
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // [not specced] Store V8 code cache on successful evaluation.
     if (result.GetResultType() == ScriptEvaluationResult::ResultType::kSuccess) {
         DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.target-rundown"), "ModuleEvaluated",
@@ -804,6 +903,7 @@ ScriptEvaluationResult V8ScriptRunner::EvaluateModule(ModuleScript* module_scrip
                 WTF::BindOnce(
                     &Modulator::ProduceCacheModuleTreeTopLevel, WrapWeakPersistent(Modulator::From(script_state)), WrapWeakPersistent(module_script)));
     }
+#endif
 
     if (!rethrow_errors.ShouldRethrow()) {
         // <spec step="7"> If report errors is true, then upon rejection of
@@ -820,16 +920,80 @@ ScriptEvaluationResult V8ScriptRunner::EvaluateModule(ModuleScript* module_scrip
     return result;
 }
 
+#if defined(MINI_UI_QUICKJS)
+void V8ScriptRunner::NotifyQuickJSPromiseRejection(
+    v8::PromiseRejectMessage notification)
+{
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::Promise> promise = notification.GetPromise();
+    v8::Local<v8::Value> reason = notification.GetValue();
+    ScriptState* script_state = ScriptState::MaybeFrom(isolate, context);
+    if (!script_state || !script_state->ContextIsValid())
+        return;
+
+    ExecutionContext* execution_context = ExecutionContext::From(script_state);
+    LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(execution_context);
+    if (!window || !window->IsCurrentlyDisplayedInFrame())
+        return;
+
+    RejectedPromises& rejected_promises =
+        window->GetAgent()->GetRejectedPromises();
+    if (notification.GetEvent() == v8::kPromiseHandlerAddedAfterReject) {
+        rejected_promises.HandlerAdded(promise);
+        return;
+    }
+
+    if (notification.GetEvent() != v8::kPromiseRejectWithNoHandler)
+        return;
+
+    SanitizeScriptErrors sanitize_script_errors =
+        SanitizeScriptErrors::kSanitize;
+    v8::Local<v8::Message> message =
+        v8::Exception::CreateMessage(isolate, reason);
+    if (!message.IsEmpty() && message->IsSharedCrossOrigin())
+        sanitize_script_errors = SanitizeScriptErrors::kDoNotSanitize;
+
+    rejected_promises.RejectedWithNoHandler(
+        script_state, promise, reason, sanitize_script_errors);
+}
+#endif
+
 void V8ScriptRunner::ReportException(v8::Isolate* isolate, v8::Local<v8::Value> exception)
 {
     CHECK(!exception.IsEmpty());
 
     // https://html.spec.whatwg.org/C/#report-the-error
     v8::Local<v8::Message> message = v8::Exception::CreateMessage(isolate, exception);
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(IsMainThread());
+    if (!IsMainThread() || isolate->GetEnteredOrMicrotaskContext().IsEmpty())
+        return;
+
+    ScriptState* script_state = ScriptState::ForCurrentRealm(isolate);
+    if (!script_state || !script_state->ContextIsValid())
+        return;
+
+    ExecutionContext* context = ExecutionContext::From(script_state);
+    if (!context)
+        return;
+
+    std::unique_ptr<SourceLocation> location =
+        CaptureSourceLocation(isolate, message, context);
+    ErrorEvent* event = ErrorEvent::Create(
+        ToCoreStringWithNullCheck(isolate, message->Get()),
+        std::move(location), ScriptValue(isolate, exception),
+        &script_state->World());
+    const auto sanitize_script_errors = message->IsSharedCrossOrigin()
+        ? SanitizeScriptErrors::kDoNotSanitize
+        : SanitizeScriptErrors::kSanitize;
+    context->DispatchErrorEvent(event, sanitize_script_errors);
+#else
     if (IsMainThread())
         V8Initializer::MessageHandlerInMainThread(message, exception);
     else
         V8Initializer::MessageHandlerInWorker(message, exception);
+#endif
 }
 
 } // namespace blink

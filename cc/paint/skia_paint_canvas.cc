@@ -29,10 +29,13 @@
 #include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/include/core/SkTextBlob.h"
 #include "third_party/skia/include/docs/SkPDFDocument.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
 #include "third_party/skia/include/gpu/ganesh/GrRecordingContext.h"
+#endif
 #include "third_party/skia/src/core/SkCanvasPriv.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #if !defined(SK_GANESH)
 int GrRecordingContext::maxTextureSize(void) const
 {
@@ -40,20 +43,31 @@ int GrRecordingContext::maxTextureSize(void) const
     return 0;
 }
 #endif
+#endif
 
 namespace cc {
+#if !defined(MINI_UI_QUICKJS)
 SkiaPaintCanvas::ContextFlushes::ContextFlushes()
     : enable(false)
     , max_draws_before_flush(-1)
 {
 }
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+SkiaPaintCanvas::SkiaPaintCanvas(SkCanvas* canvas, ImageProvider* image_provider)
+    : canvas_(canvas)
+    , image_provider_(image_provider)
+{
+}
+#else
 SkiaPaintCanvas::SkiaPaintCanvas(SkCanvas* canvas, ImageProvider* image_provider, ContextFlushes context_flushes)
     : canvas_(canvas)
     , image_provider_(image_provider)
     , context_flushes_(context_flushes)
 {
 }
+#endif
 
 SkiaPaintCanvas::SkiaPaintCanvas(const SkBitmap& bitmap, ImageProvider* image_provider)
     : canvas_(new SkCanvas(bitmap, skia::LegacyDisplayGlobals::GetSkSurfaceProps()))
@@ -84,12 +98,14 @@ void* SkiaPaintCanvas::accessTopLayerPixels(SkImageInfo* info, size_t* rowBytes,
     return canvas_->accessTopLayerPixels(info, rowBytes, origin);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void SkiaPaintCanvas::flush()
 {
     if (GrDirectContext* direct_context = GrAsDirectContext(canvas_->recordingContext())) {
         direct_context->flushAndSubmit();
     }
 }
+#endif
 
 bool SkiaPaintCanvas::NeedsFlush() const
 {
@@ -215,7 +231,9 @@ void SkiaPaintCanvas::drawLine(SkScalar x0, SkScalar y0, SkScalar x1, SkScalar y
         return;
 
     raster_flags.flags()->DrawToSk(canvas_, [x0, y0, x1, y1](SkCanvas* c, const SkPaint& p) { c->drawLine(x0, y0, x1, y1, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawArc(const SkRect& oval, SkScalar start_angle_degrees, SkScalar sweep_angle_degrees, const PaintFlags& flags)
@@ -227,7 +245,9 @@ void SkiaPaintCanvas::drawArc(const SkRect& oval, SkScalar start_angle_degrees, 
 
     DrawArcOp op(oval, start_angle_degrees, sweep_angle_degrees, flags);
     op.RasterWithFlagsImpl(raster_flags.flags(), canvas_);
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawRect(const SkRect& rect, const PaintFlags& flags)
@@ -236,7 +256,9 @@ void SkiaPaintCanvas::drawRect(const SkRect& rect, const PaintFlags& flags)
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&rect](SkCanvas* c, const SkPaint& p) { c->drawRect(rect, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawIRect(const SkIRect& rect, const PaintFlags& flags)
@@ -245,7 +267,9 @@ void SkiaPaintCanvas::drawIRect(const SkIRect& rect, const PaintFlags& flags)
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&rect](SkCanvas* c, const SkPaint& p) { c->drawIRect(rect, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawOval(const SkRect& oval, const PaintFlags& flags)
@@ -254,7 +278,9 @@ void SkiaPaintCanvas::drawOval(const SkRect& oval, const PaintFlags& flags)
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&oval](SkCanvas* c, const SkPaint& p) { c->drawOval(oval, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawRRect(const SkRRect& rrect, const PaintFlags& flags)
@@ -263,7 +289,9 @@ void SkiaPaintCanvas::drawRRect(const SkRRect& rrect, const PaintFlags& flags)
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&rrect](SkCanvas* c, const SkPaint& p) { c->drawRRect(rrect, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawDRRect(const SkRRect& outer, const SkRRect& inner, const PaintFlags& flags)
@@ -272,7 +300,9 @@ void SkiaPaintCanvas::drawDRRect(const SkRRect& outer, const SkRRect& inner, con
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&outer, &inner](SkCanvas* c, const SkPaint& p) { c->drawDRRect(outer, inner, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawRoundRect(const SkRect& rect, SkScalar rx, SkScalar ry, const PaintFlags& flags)
@@ -281,7 +311,9 @@ void SkiaPaintCanvas::drawRoundRect(const SkRect& rect, SkScalar rx, SkScalar ry
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&rect, rx, ry](SkCanvas* c, const SkPaint& p) { c->drawRoundRect(rect, rx, ry, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawPath(const SkPath& path, const PaintFlags& flags, UsePaintCache)
@@ -290,7 +322,9 @@ void SkiaPaintCanvas::drawPath(const SkPath& path, const PaintFlags& flags, UseP
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&path](SkCanvas* c, const SkPaint& p) { c->drawPath(path, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawImage(const PaintImage& image, SkScalar left, SkScalar top, const SkSamplingOptions& sampling, const PaintFlags* flags)
@@ -307,7 +341,9 @@ void SkiaPaintCanvas::drawImage(const PaintImage& image, SkScalar left, SkScalar
     PlaybackParams params(image_provider_, canvas_->getLocalToDevice());
     DrawImageOp draw_image_op(image, left, top, sampling, nullptr);
     DrawImageOp::RasterWithFlags(&draw_image_op, raster_flags, canvas_, params);
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawImageRect(const PaintImage& image, const SkRect& src, const SkRect& dst, const SkSamplingOptions& sampling, const PaintFlags* flags,
@@ -324,7 +360,9 @@ void SkiaPaintCanvas::drawImageRect(const PaintImage& image, const SkRect& src, 
     PlaybackParams params(image_provider_, canvas_->getLocalToDevice());
     DrawImageRectOp draw_image_rect_op(image, src, dst, sampling, flags, constraint);
     DrawImageRectOp::RasterWithFlags(&draw_image_rect_op, raster_flags, canvas_, params);
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawVertices(scoped_refptr<RefCountedBuffer<SkPoint>> vertices, scoped_refptr<RefCountedBuffer<SkPoint>> uvs,
@@ -340,7 +378,9 @@ void SkiaPaintCanvas::drawVertices(scoped_refptr<RefCountedBuffer<SkPoint>> vert
     PlaybackParams params(image_provider_);
     DrawVerticesOp::RasterWithFlags(&op, raster_flags.flags(), canvas_, params);
 
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawSkottie(scoped_refptr<SkottieWrapper> skottie, const SkRect& dst, float t, SkottieFrameDataMap images,
@@ -362,7 +402,9 @@ void SkiaPaintCanvas::drawTextBlob(sk_sp<SkTextBlob> blob, SkScalar x, SkScalar 
     if (!raster_flags.flags())
         return;
     raster_flags.flags()->DrawToSk(canvas_, [&blob, x, y](SkCanvas* c, const SkPaint& p) { c->drawTextBlob(blob, x, y, p); });
+#if !defined(MINI_UI_QUICKJS)
     FlushAfterDrawIfNeeded();
+#endif
 }
 
 void SkiaPaintCanvas::drawTextBlob(sk_sp<SkTextBlob> blob, SkScalar x, SkScalar y, NodeId node_id, const PaintFlags& flags)
@@ -416,13 +458,16 @@ void SkiaPaintCanvas::drawPicture(PaintRecord record, PlaybackCallbacks::CustomD
 {
     PlaybackCallbacks callbacks;
     callbacks.custom_callback = custom_raster_callback;
+#if !defined(MINI_UI_QUICKJS)
     if (context_flushes_.enable) {
         callbacks.did_draw_op_callback = base::BindRepeating(&SkiaPaintCanvas::FlushAfterDrawIfNeeded, base::Unretained(this));
     }
+#endif
     PlaybackParams params(image_provider_, canvas_->getLocalToDevice(), callbacks);
     record.Playback(canvas_, params, local_ctm);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void SkiaPaintCanvas::FlushAfterDrawIfNeeded()
 {
     if (!context_flushes_.enable)
@@ -436,11 +481,17 @@ void SkiaPaintCanvas::FlushAfterDrawIfNeeded()
         }
     }
 }
+#endif
 
 int SkiaPaintCanvas::GetMaxTextureSize() const
 {
+#if defined(MINI_UI_QUICKJS)
+    // Zero denotes no texture-size restriction for software rasterization.
+    return 0;
+#else
     auto* context = canvas_->recordingContext();
     return context ? context->maxTextureSize() : 0;
+#endif
 }
 
 } // namespace cc

@@ -29,8 +29,10 @@
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/html/html_style_element.h"
 #include "third_party/blink/renderer/core/html/html_wbr_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/layout/inline/inline_node.h"
 #include "third_party/blink/renderer/core/layout/inline/offset_mapping.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
@@ -77,14 +79,18 @@ bool FindBuffer::ShouldIgnoreContents(const Node& node)
     const auto* element = DynamicTo<HTMLElement>(node);
     if (!element)
         return false;
-    return (RuntimeEnabledFeatures::InertElementNonSearchableEnabled() && element->IsInertRoot())
+    bool should_ignore = (RuntimeEnabledFeatures::InertElementNonSearchableEnabled() && element->IsInertRoot())
         || (!element->ShouldSerializeEndTag() && !IsA<HTMLInputElement>(*element))
-        || (IsA<TextControlElement>(*element) && !To<TextControlElement>(*element).SuggestedValue().empty()) || IsA<HTMLIFrameElement>(*element)
-        || IsA<HTMLImageElement>(*element) || IsA<HTMLMeterElement>(*element) || IsA<HTMLObjectElement>(*element) || IsA<HTMLProgressElement>(*element)
-        || (IsA<HTMLSelectElement>(*element) && To<HTMLSelectElement>(*element).UsesMenuList()) || IsA<HTMLStyleElement>(*element)
-        || IsA<HTMLScriptElement>(*element) || IsA<HTMLVideoElement>(*element) || IsA<HTMLAudioElement>(*element)
-        || (element->GetDisplayLockContext() && element->GetDisplayLockContext()->IsLocked()
-            && !element->GetDisplayLockContext()->IsActivatable(DisplayLockActivationReason::kFindInPage));
+        || (IsA<TextControlElement>(*element) && !To<TextControlElement>(*element).SuggestedValue().empty())
+        || IsA<HTMLIFrameElement>(*element) || IsA<HTMLImageElement>(*element) || IsA<HTMLMeterElement>(*element)
+        || IsA<HTMLObjectElement>(*element) || IsA<HTMLProgressElement>(*element)
+        || (IsA<HTMLSelectElement>(*element) && To<HTMLSelectElement>(*element).UsesMenuList())
+        || IsA<HTMLStyleElement>(*element) || IsA<HTMLScriptElement>(*element);
+#if !defined(MINI_UI_QUICKJS)
+    should_ignore |= IsA<HTMLVideoElement>(*element) || IsA<HTMLAudioElement>(*element);
+#endif
+    return should_ignore || (element->GetDisplayLockContext() && element->GetDisplayLockContext()->IsLocked()
+        && !element->GetDisplayLockContext()->IsActivatable(DisplayLockActivationReason::kFindInPage));
 }
 
 std::optional<UChar> FindBuffer::CharConstantForNode(const Node& node)

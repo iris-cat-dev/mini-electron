@@ -1,0 +1,170 @@
+{
+  "removed_paths": [
+    {
+      "path": "out/ui-runtime-checks-boundaries-before",
+      "files": 7,
+      "bytes": 91057771,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-final",
+      "files": 7,
+      "bytes": 91013512,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-dispatch-o1",
+      "files": 13,
+      "bytes": 93693791,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-dispatch",
+      "files": 7,
+      "bytes": 90805915,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-facade-matrix",
+      "files": 16,
+      "bytes": 97474644,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-facade-checks",
+      "files": 7,
+      "bytes": 90846748,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-only-facade",
+      "files": 12,
+      "bytes": 470265840,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-quickjs-matrix",
+      "files": 17,
+      "bytes": 101336472,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-quickjs-checks",
+      "files": 7,
+      "bytes": 90990027,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-only-quickjs",
+      "files": 8,
+      "bytes": 470415434,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-regexp-comparison",
+      "files": 2,
+      "bytes": 372388,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-regexp-full",
+      "files": 25,
+      "bytes": 115996237,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-regexp-after",
+      "files": 7,
+      "bytes": 90782913,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-regexp-before",
+      "files": 7,
+      "bytes": 90769283,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-gc64-trial",
+      "files": 13,
+      "bytes": 93694251,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-native-ephemeron",
+      "files": 7,
+      "bytes": 90763019,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o2-trial",
+      "files": 14,
+      "bytes": 90252809,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-hot-o2",
+      "files": 13,
+      "bytes": 471989697,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-ephemeron",
+      "files": 7,
+      "bytes": 90761372,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o1-comparison",
+      "files": 2,
+      "bytes": 372513,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o1-full",
+      "files": 19,
+      "bytes": 29748213,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-o1-trial",
+      "files": 14,
+      "bytes": 93696517,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-p1",
+      "files": 7,
+      "bytes": 90748561,
+      "removed": true
+    },
+    {
+      "path": "out/ui-runtime-checks-before-callback-fix",
+      "files": 7,
+      "bytes": 86218454,
+      "removed": true
+    },
+    {
+      "path": "out/ui-opt-comparison-tool-smoke",
+      "files": 2,
+      "bytes": 372841,
+      "removed": true
+    },
+    {
+      "path": ".build-tools/ui-opt",
+      "files": 221,
+      "bytes": 2328611591,
+      "removed": true
+    }
+  ],
+  "preserved": [
+    "out/ui-windows-x64",
+    "out/ui-opt-final-native",
+    "out/ui-opt-final-chrome-default",
+    "out/ui-opt-final-chrome-software",
+    "out/ui-runtime-checks-boundaries-after",
+    "benchmarks/ui/results/2026-10-22",
+    "benchmarks/ui/results/2026-10-22-p1-p2"
+  ],
+  "scope": "Only optimization scratch and intermediate build outputs created in this task; measurement records archived before removal."
+}

@@ -35,7 +35,9 @@
 
 #include "base/debug/stack_trace.h"
 #include "base/metrics/histogram_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_timeline.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_timeline_range_offset.h"
@@ -65,17 +67,24 @@
 #include "third_party/blink/renderer/core/display_lock/display_lock_utilities.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/events/animation_playback_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/animation/compositor_animation.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
@@ -188,6 +197,7 @@ Animation::AnimationClassPriority AnimationPriority(const Animation& animation)
     return priority;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RecordCompositorAnimationFailureReasons(CompositorAnimations::FailureReasons failure_reasons)
 {
     // UMA_HISTOGRAM_ENUMERATION requires that the enum_max must be strictly
@@ -208,6 +218,7 @@ void RecordCompositorAnimationFailureReasons(CompositorAnimations::FailureReason
         }
     }
 }
+#endif
 
 Element* OriginatingElement(Element* owning_element)
 {
@@ -315,7 +326,9 @@ Animation::Animation(ExecutionContext* execution_context, AnimationTimeline* tim
     , content_(content)
     , timeline_(timeline)
     , is_paused_for_testing_(false)
+#if !defined(MINI_UI_QUICKJS)
     , is_composited_animation_disabled_for_testing_(false)
+#endif
     , pending_pause_(false)
     , pending_play_(false)
     , pending_finish_notification_(false)
@@ -323,12 +336,18 @@ Animation::Animation(ExecutionContext* execution_context, AnimationTimeline* tim
     , outdated_(false)
     , finished_(true)
     , committed_finish_notification_(false)
+#if !defined(MINI_UI_QUICKJS)
     , compositor_state_(nullptr)
+#endif
     , compositor_pending_(false)
+#if !defined(MINI_UI_QUICKJS)
     , compositor_group_(0)
+#endif
     , effect_suppressed_(false)
+#if !defined(MINI_UI_QUICKJS)
     , compositor_property_animations_have_no_effect_(false)
     , animation_has_no_effect_(false)
+#endif
 {
     if (execution_context && !execution_context->IsContextDestroyed())
         SetExecutionContext(execution_context);
@@ -348,24 +367,30 @@ Animation::Animation(ExecutionContext* execution_context, AnimationTimeline* tim
     DCHECK(document_);
     attached_timeline->AnimationAttached(this);
     timeline_duration_ = attached_timeline->GetDuration();
+#if !defined(MINI_UI_QUICKJS)
     probe::DidCreateAnimation(document_, sequence_number_);
+#endif
 }
 
 Animation::~Animation()
 {
+#if !defined(MINI_UI_QUICKJS)
     // Verify that compositor_animation_ has been disposed of.
     DCHECK(!compositor_animation_);
+#endif
 }
 
 void Animation::Dispose()
 {
     if (timeline_)
         timeline_->AnimationDetached(this);
+#if !defined(MINI_UI_QUICKJS)
     DestroyCompositorAnimation();
     // If the DocumentTimeline and its Animation objects are
     // finalized by the same GC, we have to eagerly clear out
     // this Animation object's compositor animation registration.
     DCHECK(!compositor_animation_);
+#endif
 }
 
 AnimationTimeDelta Animation::EffectEnd() const
@@ -619,6 +644,7 @@ V8AnimationPlayState Animation::playState() const
     return V8AnimationPlayState(CalculateAnimationPlayState());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool Animation::PreCommit(int compositor_group, const PaintArtifactCompositor* paint_artifact_compositor, bool start_on_compositor)
 {
     if (CompositorPendingCancel()) {
@@ -702,20 +728,24 @@ bool Animation::PreCommit(int compositor_group, const PaintArtifactCompositor* p
             animation_has_no_effect_ = failure_reasons == CompositorAnimations::kAnimationHasNoVisibleChange;
 
             DCHECK_EQ(V8AnimationPlayState::Enum::kRunning, CalculateAnimationPlayState());
+#if !defined(MINI_UI_QUICKJS)
             TRACE_EVENT_NESTABLE_ASYNC_INSTANT1(
                 "blink.animations,devtools.timeline,benchmark,rail", "Animation", this, "data", [&](perfetto::TracedValue context) {
                     inspector_animation_compositor_event::Data(std::move(context), failure_reasons, unsupported_properties);
                 });
+#endif
         }
     }
 
     return true;
 }
+#endif
 
 void Animation::PostCommit()
 {
     compositor_pending_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     if (!compositor_state_ || compositor_state_->pending_action == CompositorAction::kNone) {
         return;
     }
@@ -725,6 +755,7 @@ void Animation::PostCommit()
         DCHECK(TimingCalculations::IsWithinAnimationTimeEpsilon(start_time_.value().InSecondsF(), compositor_state_->start_time.value()));
         compositor_state_->pending_action = CompositorAction::kNone;
     }
+#endif
 }
 
 bool Animation::HasLowerCompositeOrdering(const Animation* animation1, const Animation* animation2, CompareAnimationsOrdering compare_animation_type)
@@ -821,11 +852,13 @@ void Animation::NotifyReady(AnimationTimeDelta ready_time)
     else if (pending_pause_)
         CommitPendingPause(ready_time);
 
+#if !defined(MINI_UI_QUICKJS)
     if (compositor_state_ && compositor_state_->pending_action == CompositorAction::kStart) {
         DCHECK(!compositor_state_->start_time);
         compositor_state_->pending_action = CompositorAction::kNone;
         compositor_state_->start_time = start_time_ ? std::make_optional(start_time_.value().InSecondsF()) : std::nullopt;
     }
+#endif
 
     // Notify of change to play state.
     NotifyProbe();
@@ -2079,6 +2112,7 @@ void Animation::ForceServiceOnNextFrame()
         timeline_->ScheduleServiceOnNextFrame();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CompositorAnimations::FailureReasons Animation::CheckCanStartAnimationOnCompositor(
     const PaintArtifactCompositor* paint_artifact_compositor, PropertyHandleSet* unsupported_properties) const
 {
@@ -2253,12 +2287,14 @@ void Animation::StartAnimationOnCompositor(const PaintArtifactCompositor* paint_
         ->StartAnimationOnCompositor(compositor_group_, start_time_s, time_offset, EffectivePlaybackRate(),
             /*compositor_animation=*/nullptr, timeline()->IsMonotonicallyIncreasing(), boundary_aligned);
 }
+#endif
 
 // TODO(crbug.com/960944): Rename to SetPendingCommit. This method handles both
 // composited and non-composited animations. The use of 'compositor' in the name
 // is confusing.
 void Animation::SetCompositorPending(CompositorPendingReason reason)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Determine if we need to reset the cached state for a property that is
     // composited via a native paint worklet. If reset, it forces Paint to
     // re-evaluate whether to paint with a native paint worklet.
@@ -2291,12 +2327,17 @@ void Animation::SetCompositorPending(CompositorPendingReason reason)
             return;
         }
     }
+#else
+    if (reason == CompositorPendingReason::kPendingCancel)
+        return;
+#endif
 
     if (compositor_pending_) {
         return;
     }
 
     if (is_paused_for_testing_) {
+#if !defined(MINI_UI_QUICKJS)
         // Since the pause for testing API does not add the animation to the
         // list of pending animations, we must deal with any cancellations
         // immediately.
@@ -2304,9 +2345,11 @@ void Animation::SetCompositorPending(CompositorPendingReason reason)
         if (CompositorPendingCancel()) {
             CancelAnimationOnCompositor();
         }
+#endif
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // In general, we need to update the compositor-side if anything has changed
     // on the blink version of the animation. There is also an edge case; if
     // neither the compositor nor blink side have a start time we still have to
@@ -2317,7 +2360,9 @@ void Animation::SetCompositorPending(CompositorPendingReason reason)
         || compositor_state_->playback_rate != EffectivePlaybackRate() || compositor_state_->start_time.has_value() != start_time_.has_value()
         || (compositor_state_->start_time && start_time_
             && !TimingCalculations::IsWithinAnimationTimeEpsilon(compositor_state_->start_time.value(), start_time_.value().InSecondsF()))
-        || !compositor_state_->start_time || !start_time_) {
+        || !compositor_state_->start_time || !start_time_)
+#endif
+    {
         compositor_pending_ = true;
         document_->GetPendingAnimations().Add(this);
     }
@@ -2611,6 +2656,7 @@ bool Animation::ResolveTimelineOffsets(const TimelineRange& timeline_range)
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Animation::CancelAnimationOnCompositor()
 {
     VERIFY_PAINT_CLEAN_LOG_ONCE()
@@ -2649,6 +2695,7 @@ bool Animation::HasActiveAnimationsOnCompositor()
 
     return keyframe_effect->HasActiveAnimationsOnCompositor();
 }
+#endif
 
 // Update current time of the animation. Refer to step 1 in:
 // https://www.w3.org/TR/web-animations-1/#update-animations-and-send-events
@@ -2748,7 +2795,11 @@ std::optional<AnimationTimeDelta> Animation::TimeToEffectChange()
     }
 
     // If this animation has no effect, we can skip ticking it on main.
-    if (!HasActiveAnimationsOnCompositor() && !animation_has_no_effect_ && (content_->GetPhase() == Timing::kPhaseActive)) {
+    if (
+#if !defined(MINI_UI_QUICKJS)
+        !HasActiveAnimationsOnCompositor() && !animation_has_no_effect_ &&
+#endif
+        content_->GetPhase() == Timing::kPhaseActive) {
         return AnimationTimeDelta();
     }
 
@@ -2798,6 +2849,7 @@ void Animation::cancel()
     NotifyProbe();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Animation::CreateCompositorAnimation(std::optional<int> replaced_cc_animation_id)
 {
     VERIFY_PAINT_CLEAN_LOG_ONCE()
@@ -2838,7 +2890,9 @@ void Animation::AttachCompositorTimeline()
 
     // Note that while we attach here but we don't detach because the
     // |compositor_timeline| is detached in its destructor.
+#if !defined(MINI_UI_QUICKJS)
     document_->AttachCompositorTimeline(compositor_timeline);
+#endif
 }
 
 void Animation::DetachCompositorTimeline()
@@ -2878,6 +2932,7 @@ void Animation::NotifyAnimationStarted(base::TimeDelta monotonic_time, int group
 {
     document_->GetPendingAnimations().NotifyCompositorAnimationStarted(monotonic_time.InSecondsF(), group);
 }
+#endif
 
 void Animation::AddedEventListener(const AtomicString& event_type, RegisteredEventListener& registered_listener)
 {
@@ -2888,11 +2943,13 @@ void Animation::AddedEventListener(const AtomicString& event_type, RegisteredEve
 
 void Animation::PauseForTesting(AnimationTimeDelta pause_time)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Normally, cancel is deferred until Precommit, but cannot here since
     // updated below and must not be stale.
     if (CompositorPendingCancel()) {
         CancelAnimationOnCompositor();
     }
+#endif
 
     // Do not restart a canceled animation.
     if (CalculateAnimationPlayState() == V8AnimationPlayState::Enum::kIdle) {
@@ -2902,11 +2959,13 @@ void Animation::PauseForTesting(AnimationTimeDelta pause_time)
     // Pause a running animation, or update the hold time of a previously paused
     // animation.
     SetCurrentTimeInternal(pause_time);
+#if !defined(MINI_UI_QUICKJS)
     if (HasActiveAnimationsOnCompositor()) {
         std::optional<AnimationTimeDelta> current_time = CurrentTimeInternal();
         DCHECK(current_time);
         To<KeyframeEffect>(content_.Get())->PauseAnimationForTestingOnCompositor(base::Seconds(current_time.value().InSecondsF()));
     }
+#endif
 
     // Do not wait for animation ready to lock in the hold time. Otherwise,
     // the pause won't take effect until the next frame and the hold time will
@@ -2916,22 +2975,28 @@ void Animation::PauseForTesting(AnimationTimeDelta pause_time)
     pending_play_ = false;
     hold_time_ = pause_time;
     start_time_ = std::nullopt;
+#if !defined(MINI_UI_QUICKJS)
     UpdateCompositedPaintStatus();
+#endif
 }
 
 void Animation::SetEffectSuppressed(bool suppressed)
 {
     effect_suppressed_ = suppressed;
+#if !defined(MINI_UI_QUICKJS)
     if (suppressed) {
         SetCompositorPending(CompositorPendingReason::kPendingCancel);
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Animation::DisableCompositedAnimationForTesting()
 {
     is_composited_animation_disabled_for_testing_ = true;
     CancelAnimationOnCompositor();
 }
+#endif
 
 void Animation::InvalidateKeyframeEffect(const TreeScope& tree_scope, const StyleChangeReasonForTracing& reason)
 {
@@ -3000,11 +3065,14 @@ void Animation::NotifyProbe()
 {
     V8AnimationPlayState::Enum old_play_state = reported_play_state_;
     V8AnimationPlayState::Enum new_play_state = PendingInternal() ? V8AnimationPlayState::Enum::kPending : CalculateAnimationPlayState();
+#if !defined(MINI_UI_QUICKJS)
     probe::AnimationUpdated(document_, this);
+#endif
 
     if (old_play_state != new_play_state) {
         reported_play_state_ = new_play_state;
 
+#if !defined(MINI_UI_QUICKJS)
         bool was_active = old_play_state == V8AnimationPlayState::Enum::kPending || old_play_state == V8AnimationPlayState::Enum::kRunning;
         bool is_active = new_play_state == V8AnimationPlayState::Enum::kPending || new_play_state == V8AnimationPlayState::Enum::kRunning;
 
@@ -3018,6 +3086,7 @@ void Animation::NotifyProbe()
             TRACE_EVENT_NESTABLE_ASYNC_INSTANT1("blink.animations,devtools.timeline,benchmark,rail", "Animation", this, "data",
                 [&](perfetto::TracedValue context) { inspector_animation_state_event::Data(std::move(context), *this); });
         }
+#endif
     }
 }
 
@@ -3197,6 +3266,7 @@ bool Animation::IsInDisplayLockedSubtree()
     return is_in_display_locked_subtree_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Animation::UpdateCompositedPaintStatus()
 {
     if (!NativePaintImageGenerator::NativePaintWorkletAnimationsEnabled()) {
@@ -3223,6 +3293,7 @@ void Animation::UpdateCompositedPaintStatus()
         element_animations->RecalcCompositedStatus(target, GetCSSPropertyClipPath());
     }
 }
+#endif
 
 void Animation::Trace(Visitor* visitor) const
 {
@@ -3234,13 +3305,16 @@ void Animation::Trace(Visitor* visitor) const
     visitor->Trace(pending_remove_event_);
     visitor->Trace(finished_promise_);
     visitor->Trace(ready_promise_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(compositor_animation_);
+#endif
     visitor->Trace(style_dependent_range_start_);
     visitor->Trace(style_dependent_range_end_);
     EventTarget::Trace(visitor);
     ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 Animation::CompositorAnimationHolder* Animation::CompositorAnimationHolder::Create(Animation* animation, std::optional<int> replaced_cc_animation_id)
 {
     return MakeGarbageCollected<CompositorAnimationHolder>(animation, replaced_cc_animation_id);
@@ -3269,4 +3343,5 @@ void Animation::CompositorAnimationHolder::Detach()
     animation_ = nullptr;
     compositor_animation_.reset();
 }
+#endif
 } // namespace blink

@@ -12,6 +12,15 @@
 #include "base/pickle.h"
 #include "ipc/ipc_param_traits.h"
 #include "ipc/param_traits_macros.h"
+#include "net/base/schemeful_site.h"
+#include "net/http/http_connection_info.h"
+#include "net/http/http_response_headers.h"
+#include "net/url_request/redirect_info.h"
+#include "net/url_request/referrer_policy.h"
+#include "url/ipc/url_param_traits.h"
+#include "url/origin.h"
+
+#if !defined(MINI_UI_QUICKJS)
 #include "net/base/auth.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/ip_address.h"
@@ -19,24 +28,16 @@
 #include "net/base/load_timing_info.h"
 #include "net/base/proxy_server.h"
 #include "net/base/request_priority.h"
-#include "net/base/schemeful_site.h"
-#if 0
 #include "net/cert/ct_policy_status.h"
 #include "net/cert/signed_certificate_timestamp.h"
 #include "net/cert/signed_certificate_timestamp_and_status.h"
 #include "net/cert/x509_certificate.h"
 #include "net/dns/public/resolve_error_info.h"
-#include "net/http/http_connection_info.h"
 #include "net/http/http_request_headers.h"
-#include "net/http/http_response_headers.h"
 #include "net/nqe/effective_connection_type.h"
 #include "net/ssl/ssl_info.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
-#include "net/url_request/redirect_info.h"
-#include "net/url_request/referrer_policy.h"
-#include "url/ipc/url_param_traits.h"
-#include "url/origin.h"
-
+#endif
 // This file defines IPC::ParamTraits for net:: classes / structs.
 // For IPC::ParamTraits for network:: class / structs,
 // see network_ipc_param_traits.h.
@@ -47,11 +48,14 @@
 #undef IPC_MESSAGE_EXPORT
 #define IPC_MESSAGE_EXPORT COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
 
+#if !defined(MINI_UI_QUICKJS)
 namespace net {
 class CertVerifyResult;
 }
+#endif
 
 namespace IPC {
+#if !defined(MINI_UI_QUICKJS)
 
 template <>
 struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
@@ -160,6 +164,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
   static void Log(const param_type& p, std::string* l);
 };
 
+#endif
 template <>
 struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
     ParamTraits<scoped_refptr<net::HttpResponseHeaders>> {
@@ -170,6 +175,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
                    param_type* r);
   static void Log(const param_type& p, std::string* l);
 };
+#if !defined(MINI_UI_QUICKJS)
 
 template <>
 struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
@@ -192,6 +198,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
                    param_type* r);
   static void Log(const param_type& p, std::string* l);
 };
+#endif
 
 template <>
 struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
@@ -229,6 +236,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM)
 
 #endif // INTERNAL_SERVICES_NETWORK_PUBLIC_CPP_NET_IPC_PARAM_TRAITS_H_
 
+#if !defined(MINI_UI_QUICKJS)
 IPC_ENUM_TRAITS_MAX_VALUE(
     net::ct::CTPolicyCompliance,
     net::ct::CTPolicyCompliance::CT_POLICY_COMPLIANCE_DETAILS_NOT_AVAILABLE)
@@ -246,8 +254,11 @@ IPC_ENUM_TRAITS_MAX_VALUE(net::RequestPriority, net::MAXIMUM_PRIORITY)
 IPC_ENUM_TRAITS_MAX_VALUE(net::SSLInfo::HandshakeType,
                           net::SSLInfo::HANDSHAKE_FULL)
 
+#endif
+
 IPC_ENUM_TRAITS_MAX_VALUE(net::ReferrerPolicy, net::ReferrerPolicy::MAX)
 
+#if !defined(MINI_UI_QUICKJS)
 IPC_STRUCT_TRAITS_BEGIN(net::HttpRequestHeaders::HeaderKeyValuePair)
   IPC_STRUCT_TRAITS_MEMBER(key)
   IPC_STRUCT_TRAITS_MEMBER(value)
@@ -261,6 +272,7 @@ IPC_STRUCT_TRAITS_BEGIN(net::SignedCertificateTimestampAndStatus)
   IPC_STRUCT_TRAITS_MEMBER(sct)
   IPC_STRUCT_TRAITS_MEMBER(status)
 IPC_STRUCT_TRAITS_END()
+#endif
 
 IPC_STRUCT_TRAITS_BEGIN(net::RedirectInfo)
   IPC_STRUCT_TRAITS_MEMBER(status_code)
@@ -277,8 +289,9 @@ IPC_STRUCT_TRAITS_END()
 IPC_ENUM_TRAITS_MAX_VALUE(net::HttpConnectionInfo,
                           net::HttpConnectionInfo::kMaxValue)
 
+#if !defined(MINI_UI_QUICKJS)
 IPC_ENUM_TRAITS_MAX_VALUE(net::EffectiveConnectionType,
                           net::EFFECTIVE_CONNECTION_TYPE_LAST - 1)
-#endif // if 0
+#endif
 
 #endif // SERVICES_NETWORK_PUBLIC_CPP_NET_IPC_PARAM_TRAITS_H_

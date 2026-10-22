@@ -1,0 +1,31 @@
+{
+  "production_sources": [
+    {
+      "path": "third_party/quickjs/quickjs.c",
+      "sha256": "1e41f44bb821fb22920abdd4004d22f81768049ac967f55483acdeb9a6035c04",
+      "bytes": 1889880,
+      "baseline_sha256": "39678f2a943340c6085f2b3494972d5479890b4ab5413f8a3c2503085e265b8d"
+    }
+  ],
+  "regression_sources": [
+    {
+      "path": "benchmarks/ui/runtime_checks.cc",
+      "sha256": "ba133c25e7165068571cddb5e6885b7aac87646c858904b807e8ee92165b2003",
+      "bytes": 67340,
+      "baseline_sha256": "3bc9a94b3ecd6820202864853dd9ee3d214aed5a79c01e00d3626b2cce29fb60"
+    }
+  ],
+  "scope": "Only ordinary bytecode field reads; no public API, framework, workload, GC-root or native host changes.",
+  "documentation": [
+    {
+      "path": "benchmarks/ui/README.md",
+      "sha256": "751a26e4c11e4500cebbdb76bac85861f10af1921606028ab89dabba67ff3834",
+      "bytes": 17373
+    },
+    {
+      "path": "benchmarks/ui/results/2026-10-22-property-slots/README.md",
+      "sha256": "68d567bcfd2314c364257fed12d14b63f8e5c122f3156cb1009e04ecd8b8da59",
+      "bytes": 9767
+    }
+  ]
+}

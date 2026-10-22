@@ -35,7 +35,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/animation/css/css_animations.h"
 #include "third_party/blink/renderer/core/animation/effect_stack.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/animation/worklet_animation_base.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/properties/css_bitset.h"
 #include "third_party/blink/renderer/core/dom/element_rare_data_field.h"
@@ -48,7 +50,9 @@ namespace blink {
 class CSSAnimations;
 
 using AnimationCountedSet = HeapHashCountedSet<WeakMember<Animation>>;
+#if !defined(MINI_UI_QUICKJS)
 using WorkletAnimationSet = HeapHashSet<WeakMember<WorkletAnimationBase>>;
+#endif
 
 class CORE_EXPORT ElementAnimations final : public GarbageCollected<ElementAnimations>, public ElementRareDataField {
 public:
@@ -111,18 +115,26 @@ public:
     {
         return animations_;
     }
+#if !defined(MINI_UI_QUICKJS)
     // Worklet Animations which have effects targeting this element.
     WorkletAnimationSet& GetWorkletAnimations()
     {
         return worklet_animations_;
     }
+#endif
 
     bool IsEmpty() const
     {
-        return effect_stack_.IsEmpty() && css_animations_.IsEmpty() && animations_.empty() && worklet_animations_.empty();
+        return effect_stack_.IsEmpty() && css_animations_.IsEmpty() && animations_.empty()
+#if !defined(MINI_UI_QUICKJS)
+            && worklet_animations_.empty()
+#endif
+            ;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void RestartAnimationOnCompositor();
+#endif
 
     void SetAnimationStyleChange(bool animation_style_change)
     {
@@ -165,7 +177,9 @@ private:
     EffectStack effect_stack_;
     CSSAnimations css_animations_;
     AnimationCountedSet animations_;
+#if !defined(MINI_UI_QUICKJS)
     WorkletAnimationSet worklet_animations_;
+#endif
 
     // When an Element is being animated, its entire style will be dirtied every
     // frame by the running animation - even if the animation is only changing a

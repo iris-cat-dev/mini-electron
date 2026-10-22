@@ -7,7 +7,6 @@
 #include "base/command_line.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/system/sys_info.h"
-#include "services/network/public/cpp/features.h"
 #include "third_party/blink/public/common/features.h"
 
 namespace blink {

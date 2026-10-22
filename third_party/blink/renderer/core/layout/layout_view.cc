@@ -39,9 +39,13 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/input/event_handler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/block_node.h"
 #include "third_party/blink/renderer/core/layout/constraint_space_builder.h"
 #include "third_party/blink/renderer/core/layout/geometry/transform_state.h"
@@ -50,7 +54,9 @@
 #include "third_party/blink/renderer/core/layout/layout_counter.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_result.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_view_transition_root.h"
+#endif
 #include "third_party/blink/renderer/core/layout/length_utils.h"
 #include "third_party/blink/renderer/core/layout/list/layout_inline_list_item.h"
 #include "third_party/blink/renderer/core/layout/list/layout_list_item.h"
@@ -64,8 +70,10 @@
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/paint/view_painter.h"
 #include "third_party/blink/renderer/core/svg/svg_document_extensions.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -154,7 +162,9 @@ bool LayoutView::HitTest(const HitTestLocation& location, HitTestResult& result)
 bool LayoutView::HitTestNoLifecycleUpdate(const HitTestLocation& location, HitTestResult& result)
 {
     NOT_DESTROYED();
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_BEGIN0("blink,devtools.timeline", "HitTest");
+#endif
     hit_test_count_++;
 
     uint64_t dom_tree_version = GetDocument().DomTreeVersion();
@@ -204,8 +214,10 @@ bool LayoutView::HitTestNoLifecycleUpdate(const HitTestLocation& location, HitTe
             hit_test_cache_->AddCachedResult(location, result, dom_tree_version);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_END1("blink,devtools.timeline", "HitTest", "endData",
         [&](perfetto::TracedValue context) { inspector_hit_test_event::EndData(std::move(context), result.GetHitTestRequest(), location, result); });
+#endif
     return hit_layer;
 }
 
@@ -229,6 +241,7 @@ LayoutUnit LayoutView::ComputeMinimumWidth()
 
 void LayoutView::AddChild(LayoutObject* new_child, LayoutObject* before_child)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (new_child->StyleRef().StyleType() == kPseudoIdViewTransition) {
         // The view-transition pseudo tree is needs to be laid out within the
         // "snapshot containing block". This is implemented by inserting an
@@ -247,6 +260,7 @@ void LayoutView::AddChild(LayoutObject* new_child, LayoutObject* before_child)
         transition->UpdateSnapshotContainingBlockStyle();
         return;
     }
+#endif
 
     LayoutBlockFlow::AddChild(new_child, before_child);
 }
@@ -267,13 +281,12 @@ bool LayoutView::CanHaveChildren() const
     // Window.print() on display:none iframes. https://crbug.com/819327.
     if (GetDocument().Printing())
         return true;
+#if !defined(MINI_UI_QUICKJS)
     // A PluginDocument needs a layout tree during loading, even if it is inside a
-    // display: none iframe.  This is because WebLocalFrameImpl::DidFinish expects
-    // the PluginDocument's <embed> element to have an EmbeddedContentView, which
-    // it acquires during LocalFrameView::UpdatePlugins, which operates on the
-    // <embed> element's layout object (LayoutEmbeddedObject).
+    // display: none iframe.
     if (IsA<PluginDocument>(GetDocument()) || GetDocument().IsForExternalHandler())
         return true;
+#endif
     return !owner->IsDisplayNone();
 }
 
@@ -374,11 +387,13 @@ VariableLengthTransformResult LayoutView::GetVariableLengthTransformResult(const
     return text_to_variable_length_transform_result_.at(&text);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 LayoutViewTransitionRoot* LayoutView::GetViewTransitionRoot() const
 {
     // Returns nullptr if LastChild isn't a ViewTransitionRoot.
     return DynamicTo<LayoutViewTransitionRoot>(LastChild());
 }
+#endif
 
 void LayoutView::InvalidatePaintForViewAndDescendants()
 {
@@ -479,6 +494,7 @@ PhysicalRect LayoutView::ViewRect() const
     if (!frame_view_)
         return PhysicalRect();
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(bokan): This shouldn't be just for the outermost main frame, we
     // should do it for all frames. crbug.com/1311518.
     if (frame_view_->GetFrame().IsOutermostMainFrame()) {
@@ -500,6 +516,7 @@ PhysicalRect LayoutView::ViewRect() const
             return PhysicalRect(PhysicalOffset(transition->GetFrameToSnapshotRootOffset()), PhysicalSize(transition->GetSnapshotRootSize()));
         }
     }
+#endif
 
     return PhysicalRect(PhysicalOffset(), PhysicalSize(frame_view_->Size()));
 }
@@ -514,6 +531,7 @@ PhysicalRect LayoutView::OverflowClipRect(const PhysicalOffset& location, Overla
 
     rect.offset += location;
 
+#if !defined(MINI_UI_QUICKJS)
     // When capturing the root snapshot for a transition, we paint the
     // background color where the scrollbar would be so keep the clip rect
     // the full ViewRect size.
@@ -521,6 +539,10 @@ PhysicalRect LayoutView::OverflowClipRect(const PhysicalOffset& location, Overla
     bool is_in_transition = transition && transition->IsRootTransitioning();
     if (IsScrollContainer() && !is_in_transition)
         ExcludeScrollbars(rect, overlay_scrollbar_clip_behavior);
+#else
+    if (IsScrollContainer())
+        ExcludeScrollbars(rect, overlay_scrollbar_clip_behavior);
+#endif
 
     return rect;
 }
@@ -865,6 +887,7 @@ void LayoutView::StyleDidChange(StyleDifference diff, const ComputedStyle* old_s
     NOT_DESTROYED();
     LayoutBlockFlow::StyleDidChange(diff, old_style);
 
+#if !defined(MINI_UI_QUICKJS)
     LocalFrame& frame = GetFrameView()->GetFrame();
     VisualViewport& visual_viewport = frame.GetPage()->GetVisualViewport();
     if (frame.IsMainFrame() && visual_viewport.IsActiveViewport()) {
@@ -877,6 +900,7 @@ void LayoutView::StyleDidChange(StyleDifference diff, const ComputedStyle* old_s
             visual_viewport.ScrollbarColorChanged();
         }
     }
+#endif
 }
 
 PhysicalRect LayoutView::DebugRect() const

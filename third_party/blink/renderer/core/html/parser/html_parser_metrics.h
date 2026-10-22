@@ -9,16 +9,22 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 }
+#endif
 
 namespace blink {
 
 // Store and report metrics data for the HTMLDocumentParser.
 class CORE_EXPORT HTMLParserMetrics {
 public:
+#if defined(MINI_UI_QUICKJS)
+    HTMLParserMetrics() = default;
+#else
     HTMLParserMetrics(int64_t source_id, ukm::UkmRecorder*);
+#endif
     HTMLParserMetrics(const HTMLParserMetrics&) = delete;
     HTMLParserMetrics& operator=(const HTMLParserMetrics&) = delete;
     ~HTMLParserMetrics() = default;
@@ -29,12 +35,14 @@ public:
 
     void AddInput(unsigned length);
 
+#if !defined(MINI_UI_QUICKJS)
     void AddFetchQueuedPreloadsTime(int64_t elapsed_time);
     void AddPreloadTime(int64_t elapsed_time);
     void AddPrepareToStopParsingTime(int64_t elapsed_time);
     void AddPumpTokenizerTime(int64_t elapsed_time);
     void AddScanAndPreloadTime(int64_t elapsed_time);
     void AddScanTime(int64_t elapsed_time);
+#endif
 
     void ReportMetricsAtParseEnd();
 
@@ -51,9 +59,11 @@ public:
 private:
     void ReportUMAs();
 
+#if !defined(MINI_UI_QUICKJS)
     // UKM System data.
     const int64_t source_id_;
     ukm::UkmRecorder* const recorder_;
+#endif
 
     // Metrics data.
     unsigned chunk_count_ = 0; // For computing averages.
@@ -72,6 +82,7 @@ private:
     base::TimeDelta min_yield_interval_ = base::TimeDelta::Max();
     base::TimeDelta max_yield_interval_; // Constructed with 0 value
 
+#if !defined(MINI_UI_QUICKJS)
     // Accumulated time intervals for various steps of document parsing.
     int64_t fetch_queued_preloads_time_ = 0;
     int64_t preload_time_ = 0;
@@ -79,6 +90,7 @@ private:
     int64_t pump_tokenizer_time_ = 0;
     int64_t scan_and_preload_time_ = 0;
     int64_t scan_time_ = 0;
+#endif
 
     // Track total number of characters parsed in one instantiation of the
     // parser.

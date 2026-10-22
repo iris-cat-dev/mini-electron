@@ -40,7 +40,6 @@ n * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/loader/content_security_notifier.mojom-blink.h"
-#include "third_party/blink/public/mojom/service_worker/service_worker_object.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/loader/base_fetch_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -92,7 +91,9 @@ public:
 
     bool DoesLCPPHaveAnyHintData() override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool DoesLCPPHaveLcpElementLocatorHintData() override;
+#endif
 
     // Exposed for testing.
     void ModifyRequestForCSP(ResourceRequest&);
@@ -122,7 +123,9 @@ public:
 
     const Vector<KURL>& GetPotentiallyUnusedPreloads() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     void AddLcpPredictedCallback(base::OnceClosure callback) override;
+#endif
 
 private:
     friend class FrameFetchContextTest;

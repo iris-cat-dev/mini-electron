@@ -56,6 +56,7 @@ BASE_FEATURE(kRecordSequenceManagerCrashKeys, "RecordSequenceManagerCrashKeys", 
 
 constinit thread_local internal::SequenceManagerImpl* thread_local_sequence_manager = nullptr;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 class TracedBaseValue : public trace_event::ConvertableToTraceFormat {
 public:
     explicit TracedBaseValue(Value value)
@@ -78,6 +79,8 @@ public:
 private:
     base::Value value_;
 };
+
+#endif
 
 } // namespace
 
@@ -573,9 +576,11 @@ std::optional<SequenceManagerImpl::SelectedTask> SequenceManagerImpl::SelectNext
 
     while (true) {
         internal::WorkQueue* work_queue = main_thread_only().selector.SelectWorkQueueToService(option);
+#if BUILDFLAG(ENABLE_BASE_TRACING)
         TRACE_EVENT_OBJECT_SNAPSHOT_WITH_ID(TRACE_DISABLED_BY_DEFAULT("sequence_manager.debug"), "SequenceManager", this,
             AsValueWithSelectorResultForTracing(work_queue,
                 /* force_verbose */ false));
+#endif
 
         if (!work_queue)
             return std::nullopt;
@@ -918,11 +923,14 @@ EnqueueOrder SequenceManagerImpl::GetNextSequenceNumber()
     return enqueue_order_generator_.GenerateNext();
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 std::unique_ptr<trace_event::ConvertableToTraceFormat> SequenceManagerImpl::AsValueWithSelectorResultForTracing(
     internal::WorkQueue* selected_work_queue, bool force_verbose) const
 {
     return std::make_unique<TracedBaseValue>(Value(AsValueWithSelectorResult(selected_work_queue, force_verbose)));
 }
+
+#endif
 
 Value::Dict SequenceManagerImpl::AsValueWithSelectorResult(internal::WorkQueue* selected_work_queue, bool force_verbose) const
 {

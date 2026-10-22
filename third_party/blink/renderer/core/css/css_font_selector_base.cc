@@ -37,6 +37,7 @@ void CSSFontSelectorBase::ReportEmojiSegmentGlyphCoverage(unsigned num_clusters,
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CSSFontSelectorBase::ReportFontFamilyLookupByGenericFamily(const AtomicString& generic_font_family_name, UScriptCode script,
     FontDescription::GenericFamilyType generic_family_type, const AtomicString& resulting_font_name)
 {
@@ -103,6 +104,7 @@ void CSSFontSelectorBase::ReportLastResortFallbackFontLookup(const FontDescripti
         font_matching_metrics->ReportLastResortFallbackFontLookup(font_description, resulting_font_data);
     }
 }
+#endif
 
 void CSSFontSelectorBase::ReportNotDefGlyph() const
 {

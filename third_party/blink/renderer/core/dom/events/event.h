@@ -29,7 +29,9 @@
 #include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_result.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -386,10 +388,12 @@ public:
 
     virtual DispatchEventResult DispatchEvent(EventDispatcher&);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext* async_task_context()
     {
         return &async_task_context_;
     }
+#endif
 
     void Trace(Visitor*) const override;
 
@@ -435,7 +439,9 @@ private:
 
     PassiveMode handling_passive_;
     PhaseType event_phase_;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
 
     Member<EventTarget> current_target_;
     Member<EventTarget> target_;

@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,33 +30,24 @@ namespace core {
 //   flag_.Set(false);
 // }
 class AtomicFlag {
-public:
-    AtomicFlag();
-    AtomicFlag(const AtomicFlag&) = delete;
-    AtomicFlag& operator=(const AtomicFlag&) = delete;
+ public:
+  AtomicFlag();
+  AtomicFlag(const AtomicFlag&) = delete;
+  AtomicFlag& operator=(const AtomicFlag&) = delete;
 
-    ~AtomicFlag() = default;
+  ~AtomicFlag() = default;
 
-    void Set(bool value)
-    {
-        flag_.store(value, std::memory_order_release);
-    }
+  void Set(bool value) { flag_.store(value, std::memory_order_release); }
 
-    bool Get() const
-    {
-        return flag_.load(std::memory_order_acquire);
-    }
+  bool Get() const { return flag_.load(std::memory_order_acquire); }
 
-    operator const bool() const
-    {
-        return Get();
-    }
+  operator const bool() const { return Get(); }
 
-private:
-    std::atomic<bool> flag_;
+ private:
+  std::atomic<bool> flag_;
 };
 
-} // namespace core
-} // namespace mojo
+}  // namespace core
+}  // namespace mojo
 
-#endif // MOJO_CORE_ATOMIC_FLAG_H_
+#endif  // MOJO_CORE_ATOMIC_FLAG_H_

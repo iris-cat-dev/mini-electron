@@ -115,7 +115,9 @@ private:
     bool AsyncAttributeValue() const override;
     bool DeferAttributeValue() const override;
     bool HasSourceAttribute() const override;
+#if !defined(MINI_UI_QUICKJS)
     bool HasAttributionsrcAttribute() const override;
+#endif
     bool IsConnected() const override;
     bool HasChildren() const override;
     const AtomicString& GetNonceForElement() const override;

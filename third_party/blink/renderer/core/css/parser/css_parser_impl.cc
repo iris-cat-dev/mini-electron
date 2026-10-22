@@ -52,7 +52,9 @@
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -404,12 +406,14 @@ StyleRuleBase* CSSParserImpl::ParseRule(const String& string, const CSSParserCon
 ParseSheetResult CSSParserImpl::ParseStyleSheet(const String& string, const CSSParserContext* context, StyleSheetContents* style_sheet,
     CSSDeferPropertyParsing defer_property_parsing, bool allow_import_rules)
 {
+#if !defined(MINI_UI_QUICKJS)
     std::optional<LocalFrameUkmAggregator::ScopedUkmHierarchicalTimer> timer;
     if (context->GetDocument() && context->GetDocument()->View()) {
         if (auto* metrics_aggregator = context->GetDocument()->View()->GetUkmAggregator()) {
             timer.emplace(metrics_aggregator->GetScopedTimer(static_cast<size_t>(LocalFrameUkmAggregator::kParseStyleSheet)));
         }
     }
+#endif
     TRACE_EVENT_BEGIN2("blink,blink_style", "CSSParserImpl::parseStyleSheet", "baseUrl", context->BaseURL().GetString().Utf8(), "mode", context->Mode());
 
     TRACE_EVENT_BEGIN0("blink,blink_style", "CSSParserImpl::parseStyleSheet.parse");
@@ -434,7 +438,9 @@ ParseSheetResult CSSParserImpl::ParseStyleSheet(const String& string, const CSSP
                 Document* document = style_sheet->AnyOwnerDocument();
                 if (document) {
                     TextPosition position = TextPosition::MinimumPosition();
+#if !defined(MINI_UI_QUICKJS)
                     probe::GetTextPosition(document, offset, &string, &position);
+#endif
                     To<StyleRuleImport>(rule)->SetPositionHint(position);
                 }
             }
@@ -753,7 +759,10 @@ StyleRuleBase* CSSParserImpl::ConsumeAtRuleContents(CSSAtRuleID id, CSSParserTok
             id != CSSAtRuleID::kCSSAtRuleContainer && // [css-contain-3]
             id != CSSAtRuleID::kCSSAtRuleLayer && // [css-cascade-5]
             id != CSSAtRuleID::kCSSAtRuleScope && // [css-cascade-6]
-            id != CSSAtRuleID::kCSSAtRuleStartingStyle && id != CSSAtRuleID::kCSSAtRuleViewTransition && id != CSSAtRuleID::kCSSAtRuleApplyMixin
+            id != CSSAtRuleID::kCSSAtRuleStartingStyle && id != CSSAtRuleID::kCSSAtRuleApplyMixin
+#if !defined(MINI_UI_QUICKJS)
+            && id != CSSAtRuleID::kCSSAtRuleViewTransition
+#endif
             && (id < CSSAtRuleID::kCSSAtRuleTopLeftCorner || id > CSSAtRuleID::kCSSAtRuleRightBottom)) {
             ConsumeErroneousAtRule(stream, id);
             return nullptr;
@@ -803,8 +812,10 @@ StyleRuleBase* CSSParserImpl::ConsumeAtRuleContents(CSSAtRuleID id, CSSParserTok
         DCHECK_LE(allowed_rules, kRegularRules);
 
         switch (id) {
+#if !defined(MINI_UI_QUICKJS)
         case CSSAtRuleID::kCSSAtRuleViewTransition:
             return ConsumeViewTransitionRule(stream);
+#endif
         case CSSAtRuleID::kCSSAtRuleContainer:
             return ConsumeContainerRule(stream, nesting_type, parent_rule_for_nesting, is_within_scope);
         case CSSAtRuleID::kCSSAtRuleMedia:
@@ -1835,6 +1846,7 @@ StyleRuleBase* CSSParserImpl::ConsumeScopeRule(
     return MakeGarbageCollected<StyleRuleScope>(*style_scope, std::move(rules));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 StyleRuleViewTransition* CSSParserImpl::ConsumeViewTransitionRule(CSSParserTokenStream& stream)
 {
     CHECK(RuntimeEnabledFeatures::ViewTransitionOnNavigationEnabled());
@@ -1863,6 +1875,7 @@ StyleRuleViewTransition* CSSParserImpl::ConsumeViewTransitionRule(CSSParserToken
 
     return MakeGarbageCollected<StyleRuleViewTransition>(*CreateCSSPropertyValueSet(parsed_properties_, context_->Mode(), context_->GetDocument()));
 }
+#endif
 
 StyleRuleContainer* CSSParserImpl::ConsumeContainerRule(
     CSSParserTokenStream& stream, CSSNestingType nesting_type, StyleRule* parent_rule_for_nesting, bool is_within_scope)
@@ -2738,7 +2751,11 @@ bool CSSParserImpl::ConsumeDeclaration(CSSParserTokenStream& stream, StyleRule::
     size_t properties_count = parsed_properties_.size();
 
     bool parsing_descriptor = rule_type == StyleRule::kFontFace || rule_type == StyleRule::kFontPaletteValues || rule_type == StyleRule::kProperty
-        || rule_type == StyleRule::kCounterStyle || rule_type == StyleRule::kViewTransition;
+        || rule_type == StyleRule::kCounterStyle
+#if !defined(MINI_UI_QUICKJS)
+        || rule_type == StyleRule::kViewTransition
+#endif
+        ;
 
     uint64_t id = parsing_descriptor ? static_cast<uint64_t>(lhs.ParseAsAtRuleDescriptorID())
                                      : static_cast<uint64_t>(lhs.ParseAsUnresolvedCSSPropertyID(context_->GetExecutionContext(), context_->Mode()));

@@ -5,23 +5,48 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_ANIMATION_FRAME_TIMING_MONITOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_ANIMATION_FRAME_TIMING_MONITOR_H_
 
+#include <optional>
+#include <variant>
+
 #include "base/task/sequence_manager/task_time_observer.h"
+#include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/frame/frame.h"
-#include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/timing/animation_frame_timing_info.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace base {
 class TimeTicks;
 }
 
+#if !defined(MINI_UI_QUICKJS)
+namespace viz {
+struct FrameTimingDetails;
+}
+#endif
+
 namespace blink {
 
+class CoreProbeSink;
+class ExecutionContext;
+class LocalDOMWindow;
 class LocalFrame;
+class ScriptState;
+
+namespace probe {
+class EvaluateScriptBlock;
+class ExecuteScript;
+class InvokeCallback;
+class InvokeEventHandler;
+class ProbeBase;
+class RecalculateStyle;
+class UpdateLayout;
+}
 
 // Monitors long-animation-frame timing (LoAF).
 // This object is a supplement to a WebFrameWidgetImpl. It handles the state
@@ -35,8 +60,10 @@ public:
         virtual void ReportLongTaskTiming(base::TimeTicks start, base::TimeTicks end, ExecutionContext* context) = 0;
         virtual bool ShouldReportLongAnimationFrameTiming() const = 0;
         virtual bool RequestedMainFramePending() = 0;
+#if !defined(MINI_UI_QUICKJS)
         virtual ukm::UkmRecorder* MainFrameUkmRecorder() = 0;
         virtual ukm::SourceId MainFrameUkmSourceId() = 0;
+#endif
     };
     AnimationFrameTimingMonitor(Client&, CoreProbeSink*);
     AnimationFrameTimingMonitor(const AnimationFrameTimingMonitor&) = delete;
@@ -64,26 +91,15 @@ public:
     // probes
     void WillHandlePromise(ScriptState*, bool resolving, const char* class_like, std::variant<const char*, String> property_like, const String& script_url);
     void Will(const probe::EvaluateScriptBlock&);
-    void Did(const probe::EvaluateScriptBlock& probe_data)
-    {
-        PopScriptEntryPoint(&probe_data.script_state, &probe_data);
-    }
+    void Did(const probe::EvaluateScriptBlock&);
     void Will(const probe::ExecuteScript&);
-    void Did(const probe::ExecuteScript& probe_data)
-    {
-        v8::Isolate* isolate = probe_data.context->GetIsolate();
-        ScriptState* script_state = ScriptState::From(isolate, probe_data.v8_context);
-        PopScriptEntryPoint(script_state, &probe_data);
-    }
+    void Did(const probe::ExecuteScript&);
     void Will(const probe::RecalculateStyle&);
     void Did(const probe::RecalculateStyle&);
     void Will(const probe::UpdateLayout&);
     void Did(const probe::UpdateLayout&);
     void Will(const probe::InvokeCallback&);
-    void Did(const probe::InvokeCallback& probe_data)
-    {
-        PopScriptEntryPoint(&probe_data.script_state, &probe_data);
-    }
+    void Did(const probe::InvokeCallback&);
     void Will(const probe::InvokeEventHandler&);
     void Did(const probe::InvokeEventHandler&);
     void WillRunJavaScriptDialog();
@@ -112,14 +128,17 @@ private:
 
     bool PushScriptEntryPoint(ScriptState*);
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordLongAnimationFrameUKMAndTrace(const AnimationFrameTimingInfo&, LocalDOMWindow& window);
     void RecordLongAnimationFrameTrace(const AnimationFrameTimingInfo& info, LocalDOMWindow& window);
     void RequestPresentationTimeForTracing(LocalFrame& frame);
     void ReportPresentationTimeToTrace(uint64_t trace_id, const viz::FrameTimingDetails& presentation_details);
+#endif
     void ApplyTaskDuration(base::TimeDelta task_duration);
 
     std::optional<PendingScriptInfo> pending_script_info_;
     Client& client_;
+    Member<CoreProbeSink> probe_sink_;
 
     enum class State {
         // No task running, no pending frames.

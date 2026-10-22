@@ -28,10 +28,13 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8-callbacks.h"
 #include "v8/include/v8.h"
+#endif
 
 namespace blink {
+#if !defined(MINI_UI_QUICKJS)
 
 // Specifies how the near V8 heap limit event was handled by the callback.
 // This enum is also used for UMA histogram recording. It must be kept in sync
@@ -78,6 +81,7 @@ public:
         v8::Local<v8::Value> compilation_result, v8::WasmAsyncSuccess success);
 };
 
+#endif  // !defined(MINI_UI_QUICKJS)
 } // namespace blink
 
 #endif // THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_V8_INITIALIZER_H_

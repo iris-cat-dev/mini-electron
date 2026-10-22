@@ -10,10 +10,14 @@
 #include "third_party/blink/renderer/bindings/core/v8/native_value_traits_impl.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/js_event_handler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_ctype_traits.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8-fast-api-calls.h"
+#endif
 
 namespace blink {
 
@@ -39,6 +43,7 @@ template <>
 CORE_TEMPLATE_EXPORT typename NativeValueTraits<IDLSequence<IDLLong>>::ImplType CreateIDLSequenceFromV8Array<IDLLong>(
     v8::Isolate* isolate, v8::Local<v8::Array> v8_array, ExceptionState& exception_state)
 {
+#if !defined(MINI_UI_QUICKJS)
     typename NativeValueTraits<IDLSequence<IDLLong>>::ImplType result;
 
     // https://webidl.spec.whatwg.org/#create-sequence-from-iterable
@@ -53,6 +58,7 @@ CORE_TEMPLATE_EXPORT typename NativeValueTraits<IDLSequence<IDLLong>>::ImplType 
     if (v8::TryToCopyAndConvertArrayToCppBuffer<V8CTypeTraits<IDLLong>::kCTypeInfo.GetId()>(v8_array, result.data(), length)) {
         return result;
     }
+#endif
 
     // Slow path
     return bindings::CreateIDLSequenceFromV8ArraySlow<IDLLong>(isolate, v8_array, exception_state);

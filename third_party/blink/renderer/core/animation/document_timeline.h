@@ -100,7 +100,9 @@ public:
     void ResetForTesting();
     void SetTimingForTesting(PlatformTiming* timing);
 
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationTimeline* EnsureCompositorTimeline() override;
+#endif
 
     void Trace(Visitor*) const override;
 

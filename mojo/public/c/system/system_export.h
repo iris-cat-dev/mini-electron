@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@
 #define MOJO_SYSTEM_EXPORT __declspec(dllimport)
 #endif
 
-#else // !defined(WIN32)
+#else  // !defined(WIN32)
 
 #if defined(MOJO_SYSTEM_IMPLEMENTATION)
 #define MOJO_SYSTEM_EXPORT __attribute__((visibility("default")))
@@ -22,12 +22,12 @@
 #define MOJO_SYSTEM_EXPORT
 #endif
 
-#endif // defined(WIN32)
+#endif  // defined(WIN32)
 
-#else // !defined(COMPONENT_BUILD)
+#else  // !defined(COMPONENT_BUILD)
 
 #define MOJO_SYSTEM_EXPORT
 
-#endif // defined(COMPONENT_BUILD)
+#endif  // defined(COMPONENT_BUILD)
 
-#endif // MOJO_PUBLIC_C_SYSTEM_SYSTEM_EXPORT_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_SYSTEM_EXPORT_H_

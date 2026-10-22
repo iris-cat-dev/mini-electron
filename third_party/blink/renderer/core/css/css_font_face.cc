@@ -30,11 +30,15 @@
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
 #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
 #include "third_party/blink/renderer/core/css/font_face_set_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/font_face_set_worker.h"
+#endif
 #include "third_party/blink/renderer/core/css/font_size_functions.h"
 #include "third_party/blink/renderer/core/css/remote_font_face_source.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
 #include "third_party/blink/renderer/platform/fonts/simple_font_data.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -261,10 +265,12 @@ void CSSFontFace::SetLoadStatus(FontFace::LoadStatusType new_status)
         if (new_status == FontFace::kLoading) {
             FontFaceSetDocument::From(*window->document())->BeginFontLoading(font_face_);
         }
+#if !defined(MINI_UI_QUICKJS)
     } else if (auto* scope = DynamicTo<WorkerGlobalScope>(font_face_->GetExecutionContext())) {
         if (new_status == FontFace::kLoading) {
             FontFaceSetWorker::From(*scope)->BeginFontLoading(font_face_);
         }
+#endif
     }
 }
 

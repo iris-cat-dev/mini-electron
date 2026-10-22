@@ -46,18 +46,22 @@ ElementAnimations::ElementAnimations()
 
 ElementAnimations::~ElementAnimations() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 void ElementAnimations::RestartAnimationOnCompositor()
 {
     for (const auto& entry : animations_)
         entry.key->RestartAnimationOnCompositor();
 }
+#endif
 
 void ElementAnimations::Trace(Visitor* visitor) const
 {
     visitor->Trace(css_animations_);
     visitor->Trace(effect_stack_);
     visitor->Trace(animations_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(worklet_animations_);
+#endif
     ElementRareDataField::Trace(visitor);
 }
 

@@ -83,10 +83,12 @@ public:
     {
         return box_->IsBlockInInline();
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsCustom() const
     {
         return IsBlock() && box_->IsLayoutCustom();
     }
+#endif
     bool IsColumnSpanAll() const
     {
         return IsBlock() && box_->IsColumnSpanAll();
@@ -175,10 +177,12 @@ public:
     {
         return box_->IsInitialLetterBox();
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsMedia() const
     {
         return box_->IsMedia();
     }
+#endif
     bool IsCanvas() const
     {
         return box_->IsCanvas();
@@ -428,12 +432,14 @@ public:
         return box_->ChildLayoutBlockedByDisplayLock();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     CustomLayoutChild* GetCustomLayoutChild() const
     {
         // TODO(ikilpatrick): Support InlineNode.
         DCHECK(IsBlock());
         return box_->GetCustomLayoutChild();
     }
+#endif
 
     // Return whether we can directly traverse fragments generated from this node
     // (for painting, hit-testing and other layout read operations). If false is

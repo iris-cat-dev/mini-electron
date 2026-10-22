@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/core/loader/frame_resource_fetcher_properties.h"
 
 #include "base/metrics/field_trial_params.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -56,6 +58,7 @@ bool FrameResourceFetcherProperties::IsOutermostMainFrame() const
     return frame->IsOutermostMainFrame();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::ControllerServiceWorkerMode FrameResourceFetcherProperties::GetControllerServiceWorkerMode() const
 {
     auto* service_worker_network_provider = document_loader_->GetServiceWorkerNetworkProvider();
@@ -71,6 +74,7 @@ int64_t FrameResourceFetcherProperties::ServiceWorkerId() const
     DCHECK(service_worker_network_provider);
     return service_worker_network_provider->ControllerServiceWorkerID();
 }
+#endif
 
 bool FrameResourceFetcherProperties::IsPaused() const
 {

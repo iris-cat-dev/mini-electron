@@ -31,7 +31,9 @@
 #include "third_party/blink/renderer/platform/bindings/buildflags.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string_manager.h"
 #include "third_party/blink/renderer/platform/crypto.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/disk_data_allocator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_process_memory_dump.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
@@ -194,12 +196,17 @@ private:
 // well. |string|'s reference counting is *not* thread-safe, hence |string|'s
 // reference count must *not* change on the background thread.
 struct BackgroundTaskParams final {
-    BackgroundTaskParams(scoped_refptr<ParkableStringImpl> string, base::span<const uint8_t> data, std::unique_ptr<ReservedChunk> reserved_chunk,
+    BackgroundTaskParams(scoped_refptr<ParkableStringImpl> string, base::span<const uint8_t> data,
+#if !defined(MINI_UI_QUICKJS)
+        std::unique_ptr<ReservedChunk> reserved_chunk,
+#endif
         scoped_refptr<base::SingleThreadTaskRunner> callback_task_runner)
         : callback_task_runner(callback_task_runner)
         , string(std::move(string))
         , data(data)
+#if !defined(MINI_UI_QUICKJS)
         , reserved_chunk(std::move(reserved_chunk))
+#endif
     {
     }
 
@@ -213,7 +220,9 @@ struct BackgroundTaskParams final {
     const scoped_refptr<base::SingleThreadTaskRunner> callback_task_runner;
     const scoped_refptr<ParkableStringImpl> string;
     base::raw_span<const uint8_t> data;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<ReservedChunk> reserved_chunk;
+#endif
 };
 
 // Valid transitions are:
@@ -317,6 +326,7 @@ scoped_refptr<ParkableStringImpl> ParkableStringImpl::MakeParkable(scoped_refptr
 // static
 ParkableStringImpl::CompressionAlgorithm ParkableStringImpl::GetCompressionAlgorithm()
 {
+#if !defined(MINI_UI_QUICKJS)
 #if BUILDFLAG(HAS_ZSTD_COMPRESSION)
     if (base::FeatureList::IsEnabled(features::kUseZstdForParkableStrings)) {
         return CompressionAlgorithm::kZstd;
@@ -325,6 +335,7 @@ ParkableStringImpl::CompressionAlgorithm ParkableStringImpl::GetCompressionAlgor
     if (features::ParkableStringsUseSnappy()) {
         return CompressionAlgorithm::kSnappy;
     }
+#endif
     return CompressionAlgorithm::kZlib;
 }
 
@@ -350,7 +361,9 @@ ParkableStringImpl::~ParkableStringImpl()
     // Cannot destroy while parking is in progress, as the object is kept alive by
     // the background task.
     DCHECK(!metadata_->background_task_in_progress_);
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(!has_on_disk_data());
+#endif
 #if DCHECK_IS_ON()
     ParkableStringManager::Instance().AssertRemoved(this);
 #endif
@@ -521,6 +534,10 @@ bool ParkableStringImpl::ParkInternal(ParkingMode mode)
             PostBackgroundCompressionTask();
         break;
     case ParkingMode::kToDisk:
+#if defined(MINI_UI_QUICKJS)
+        // Keep the compressed representation: UI has no disk parking service.
+        return false;
+#else
         auto& manager = ParkableStringManager::Instance();
         if (has_on_disk_data()) {
             DiscardCompressedData();
@@ -539,6 +556,7 @@ bool ParkableStringImpl::ParkInternal(ParkingMode mode)
             PostBackgroundWritingTask(std::move(reserved_chunk));
         }
         break;
+#endif
     }
     return true;
 }
@@ -553,6 +571,7 @@ void ParkableStringImpl::DiscardUncompressedData()
     ParkableStringManager::Instance().OnParked(this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ParkableStringImpl::DiscardCompressedData()
 {
     metadata_->compressed_ = nullptr;
@@ -560,6 +579,7 @@ void ParkableStringImpl::DiscardCompressedData()
     metadata_->last_disk_parking_time_ = base::TimeTicks::Now();
     ParkableStringManager::Instance().OnWrittenToDisk(this);
 }
+#endif
 
 bool ParkableStringImpl::is_parked_no_lock() const
 {
@@ -624,18 +644,26 @@ void ParkableStringImpl::Unpark()
         auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
         auto* data = event->set_parkable_string_unpark();
         data->set_size_bytes(base::saturated_cast<int32_t>(CharactersSizeInBytes()));
+#if !defined(MINI_UI_QUICKJS)
         int32_t write_time = base::saturated_cast<int32_t>(
             metadata_->last_disk_parking_time_.is_null() ? -1 : (base::TimeTicks::Now() - metadata_->last_disk_parking_time_).InSeconds());
         data->set_time_since_last_disk_write_sec(write_time);
+#endif
     });
 
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(metadata_->compressed_);
+#else
     DCHECK(metadata_->compressed_ || metadata_->on_disk_metadata_);
+#endif
     string_ = UnparkInternal();
+#if !defined(MINI_UI_QUICKJS)
     if (metadata_->last_disk_parking_time_ != base::TimeTicks()) {
         // Can be quite short, can be multiple hours, hence long times, and 100
         // buckets.
         metadata_->last_disk_parking_time_ = base::TimeTicks();
     }
+#endif
 }
 
 String ParkableStringImpl::UnparkInternal()
@@ -646,6 +674,7 @@ String ParkableStringImpl::UnparkInternal()
     auto& manager = ParkableStringManager::Instance();
 
     base::TimeDelta disk_elapsed = base::TimeDelta::Min();
+#if !defined(MINI_UI_QUICKJS)
     if (is_on_disk_no_lock()) {
         TRACE_EVENT("blink", "ParkableStringImpl::ReadFromDisk");
         base::ElapsedTimer disk_read_timer;
@@ -657,6 +686,7 @@ String ParkableStringImpl::UnparkInternal()
         disk_elapsed = disk_read_timer.Elapsed();
         RecordStatistics(metadata_->on_disk_metadata_->size(), disk_elapsed, ParkingAction::kRead);
     }
+#endif
 
     TRACE_EVENT("blink", "ParkableStringImpl::Decompress");
     std::string_view compressed_string_piece(reinterpret_cast<const char*>(metadata_->compressed_->data()), metadata_->compressed_->size() * sizeof(uint8_t));
@@ -694,6 +724,7 @@ String ParkableStringImpl::UnparkInternal()
         }
         break;
     }
+#if !defined(MINI_UI_QUICKJS)
     case CompressionAlgorithm::kSnappy: {
         *(int*)1 = 1;
         //       size_t uncompressed_size;
@@ -727,6 +758,7 @@ String ParkableStringImpl::UnparkInternal()
         break;
     }
 #endif // BUILDFLAG(HAS_ZSTD_COMPRESSION)
+#endif
     }
 
     base::TimeDelta elapsed = timer.Elapsed();
@@ -750,7 +782,11 @@ void ParkableStringImpl::PostBackgroundCompressionTask()
     auto& manager = ParkableStringManager::Instance();
     DCHECK(manager.task_runner()->BelongsToCurrentThread());
     // |params| keeps |this| alive until |OnParkingCompleteOnMainThread()|.
-    auto params = std::make_unique<BackgroundTaskParams>(this, string_.RawByteSpan(), /* reserved_chunk */ nullptr, manager.task_runner());
+    auto params = std::make_unique<BackgroundTaskParams>(this, string_.RawByteSpan(),
+#if !defined(MINI_UI_QUICKJS)
+        /* reserved_chunk */ nullptr,
+#endif
+        manager.task_runner());
     worker_pool::PostTask(FROM_HERE, { base::TaskPriority::BEST_EFFORT }, CrossThreadBindOnce(&ParkableStringImpl::CompressInBackground, std::move(params)));
 }
 
@@ -807,6 +843,7 @@ void ParkableStringImpl::CompressInBackground(std::unique_ptr<BackgroundTaskPara
         case CompressionAlgorithm::kZlib:
             buffer_size = data.size();
             break;
+#if !defined(MINI_UI_QUICKJS)
         case CompressionAlgorithm::kSnappy:
             // Contrary to other compression algorithms, snappy requires the buffer
             // to be at least this size, rather than aborting if the provided buffer
@@ -820,6 +857,7 @@ void ParkableStringImpl::CompressInBackground(std::unique_ptr<BackgroundTaskPara
             *(int*)1 = 1;
             break;
 #endif
+#endif
         }
 
         NullableCharBuffer buffer(buffer_size);
@@ -830,6 +868,7 @@ void ParkableStringImpl::CompressInBackground(std::unique_ptr<BackgroundTaskPara
             case CompressionAlgorithm::kZlib:
                 ok = compression::GzipCompress(base::span<const char>(data.data(), data.size()), buffer.data(), buffer.size(), &compressed_size, nullptr, nullptr);
                 break;
+#if !defined(MINI_UI_QUICKJS)
             case CompressionAlgorithm::kSnappy:
                 //           snappy::RawCompress(data.data(), data.size(), buffer.data(),
                 //                               &compressed_size);
@@ -848,6 +887,7 @@ void ParkableStringImpl::CompressInBackground(std::unique_ptr<BackgroundTaskPara
                 //               !ZSTD_isError(compressed_size) && (compressed_size < data.size());
                 break;
 #endif // BUILDFLAG(HAS_ZSTD_COMPRESSION)
+#endif
             }
         }
 
@@ -914,6 +954,7 @@ void ParkableStringImpl::OnParkingCompleteOnMainThread(
     ParkableStringManager::Instance().RecordParkingThreadTime(parking_thread_time);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ParkableStringImpl::PostBackgroundWritingTask(std::unique_ptr<ReservedChunk> reserved_chunk)
 {
     *(int*)1 = 1;
@@ -984,6 +1025,7 @@ void ParkableStringImpl::OnWritingCompleteOnMainThread(
     // writing cost was paid.
     ParkableStringManager::Instance().RecordDiskWriteTime(writing_time);
 }
+#endif
 
 ParkableString::ParkableString(scoped_refptr<StringImpl>&& impl)
     : ParkableString(std::move(impl), nullptr)

@@ -342,6 +342,7 @@ void WebURLRequest::SetKeepalive(bool keepalive)
     resource_request_->SetKeepalive(keepalive);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebURLRequest::GetSkipServiceWorker() const
 {
     return resource_request_->GetSkipServiceWorker();
@@ -351,6 +352,7 @@ void WebURLRequest::SetSkipServiceWorker(bool skip_service_worker)
 {
     resource_request_->SetSkipServiceWorker(skip_service_worker);
 }
+#endif
 
 network::mojom::RequestMode WebURLRequest::GetMode() const
 {

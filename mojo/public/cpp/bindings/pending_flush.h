@@ -1,4 +1,4 @@
-﻿// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -47,27 +47,27 @@ class AsyncFlusher;
 // it may be desirable to create a PendingFlush before issuing a corresponding
 // |FlushAsync()| call. In that case, use the single-argument constructor
 // defined below.
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ PendingFlush {
-public:
-    // Constructs a new PendingFlush associated with |*flusher|. |*flusher| should
-    // be a default-constructed AsyncFlusher, and once it is initialized by this
-    // constructor it should be used to flush some Remote or Receiver using their
-    // |FlushAsyncWithFlusher()| method.
-    explicit PendingFlush(AsyncFlusher* flusher);
-    PendingFlush(PendingFlush&&);
-    PendingFlush(const PendingFlush&) = delete;
-    PendingFlush& operator=(PendingFlush&&);
-    PendingFlush& operator=(const PendingFlush&) = delete;
-    ~PendingFlush();
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) PendingFlush {
+ public:
+  // Constructs a new PendingFlush associated with |*flusher|. |*flusher| should
+  // be a default-constructed AsyncFlusher, and once it is initialized by this
+  // constructor it should be used to flush some Remote or Receiver using their
+  // |FlushAsyncWithFlusher()| method.
+  explicit PendingFlush(AsyncFlusher* flusher);
+  PendingFlush(PendingFlush&&);
+  PendingFlush(const PendingFlush&) = delete;
+  PendingFlush& operator=(PendingFlush&&);
+  PendingFlush& operator=(const PendingFlush&) = delete;
+  ~PendingFlush();
 
-private:
-    friend class PipeControlMessageProxy;
+ private:
+  friend class PipeControlMessageProxy;
 
-    ScopedMessagePipeHandle PassPipe();
+  ScopedMessagePipeHandle PassPipe();
 
-    ScopedMessagePipeHandle pipe_;
+  ScopedMessagePipeHandle pipe_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_PENDING_FLUSH_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_PENDING_FLUSH_H_

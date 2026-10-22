@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <stdint.h>
 
 #include "base/feature_list.h"
@@ -63,3 +65,5 @@ void InitSkiaEventTracer()
     // take ownership of and clean up the memory allocated here.
     SkEventTracer::SetInstance(new skia::SkChromiumEventTracer(), base::FeatureList::IsEnabled(kLeakSkiaEventTracerAtExit));
 }
+
+#endif // !defined(MINI_UI_QUICKJS)

@@ -5,16 +5,20 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_CLIENT_HINTS_PREFERENCES_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_CLIENT_HINTS_PREFERENCES_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#endif
 #include "services/network/public/cpp/client_hints.h"
 #include "third_party/blink/public/common/client_hints/enabled_client_hints.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 } // namespace ukm
+#endif
 
 namespace blink {
 
@@ -28,8 +32,10 @@ class PLATFORM_EXPORT ClientHintsPreferences {
 public:
     class Context {
     public:
+#if !defined(MINI_UI_QUICKJS)
         virtual ukm::SourceId GetUkmSourceId() = 0;
         virtual ukm::UkmRecorder* GetUkmRecorder() = 0;
+#endif
         virtual void CountClientHints(network::mojom::WebClientHintsType) = 0;
 
     protected:

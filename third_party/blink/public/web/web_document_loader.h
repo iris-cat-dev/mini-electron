@@ -34,7 +34,9 @@
 #include <memory>
 
 #include "services/network/public/mojom/ip_address_space.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-shared.h"
+#endif
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
 #include "third_party/blink/public/platform/web_archive_info.h"
 #include "third_party/blink/public/platform/web_common.h"
@@ -44,7 +46,9 @@
 namespace blink {
 
 class WebDocumentSubresourceFilter;
+#if !defined(MINI_UI_QUICKJS)
 class WebServiceWorkerNetworkProvider;
+#endif
 class WebURL;
 class WebURLResponse;
 
@@ -108,11 +112,13 @@ public:
     // or not to allow the load. The passed-in filter object is deleted when the
     // datasource is destroyed or when a new filter is set.
     virtual void SetSubresourceFilter(WebDocumentSubresourceFilter*) = 0;
+#if !defined(MINI_UI_QUICKJS)
     // Allows the embedder to set and return the service worker provider
     // associated with the data source. The provider may provide the service
     // worker that controls the resource loading from this data source.
     virtual void SetServiceWorkerNetworkProvider(std::unique_ptr<WebServiceWorkerNetworkProvider>) = 0;
     virtual WebServiceWorkerNetworkProvider* GetServiceWorkerNetworkProvider() = 0;
+#endif
 
     // Can be used to temporarily suspend feeding the parser with new data. The
     // parser will be allowed to read new data when ResumeParser() is called the
@@ -133,10 +139,12 @@ public:
     // committed in this WebDocumentLoader had transient activation.
     virtual bool LastNavigationHadTransientUserActivation() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Sets the CodeCacheHosts for this loader.
     virtual void SetCodeCacheHost(CrossVariantMojoRemote<mojom::CodeCacheHostInterfaceBase> code_cache_host,
         CrossVariantMojoRemote<mojom::CodeCacheHostInterfaceBase> code_cache_host_for_background)
         = 0;
+#endif
 
     virtual WebString OriginCalculationDebugInfo() const = 0;
 

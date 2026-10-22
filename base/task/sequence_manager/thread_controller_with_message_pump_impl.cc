@@ -148,7 +148,11 @@ void ThreadControllerWithMessagePumpImpl::SetWorkBatchSize(int work_batch_size)
 
 void ThreadControllerWithMessagePumpImpl::WillQueueTask(PendingTask* pending_task)
 {
-    task_annotator_.WillQueueTask("SequenceManager PostTask", pending_task);
+    task_annotator_.WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+        "SequenceManager PostTask",
+#endif
+        pending_task);
 }
 
 void ThreadControllerWithMessagePumpImpl::ScheduleWork()
@@ -431,6 +435,9 @@ std::optional<WakeUp> ThreadControllerWithMessagePumpImpl::DoWorkImpl(LazyNow* c
             // Always track the start of the task, as this is low-overhead.
             TaskAnnotator::LongTaskTracker long_task_tracker(time_source_, selected_task->task, &task_annotator_, lazy_now_task_selected.Now());
 
+#if defined(MINI_UI_QUICKJS)
+            task_annotator_.RunTask(selected_task->task);
+#else
             // Note: all arguments after task are just passed to a TRACE_EVENT for
             // logging so lambda captures are safe as lambda is executed inline.
             SequencedTaskSource* source = main_thread_only().task_source;
@@ -440,6 +447,7 @@ std::optional<WakeUp> ThreadControllerWithMessagePumpImpl::DoWorkImpl(LazyNow* c
                 }
                 source->MaybeEmitTaskDetails(ctx, selected_task.value());
             });
+#endif
         }
 
         // Reset `selected_task` before the call to `DidRunTask()` below makes its

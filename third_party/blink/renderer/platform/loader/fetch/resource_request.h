@@ -117,8 +117,13 @@ public:
     // Constructs a new ResourceRequest for a redirect from this instance.
     // Since body for a redirect request is kept and handled in the network
     // service, the returned instance here in blink side doesn't contain body.
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<ResourceRequest> CreateRedirectRequest(const KURL& new_url, const AtomicString& new_method, const net::SiteForCookies& new_site_for_cookies,
+        const String& new_referrer, network::mojom::ReferrerPolicy new_referrer_policy) const;
+#else
     std::unique_ptr<ResourceRequest> CreateRedirectRequest(const KURL& new_url, const AtomicString& new_method, const net::SiteForCookies& new_site_for_cookies,
         const String& new_referrer, network::mojom::ReferrerPolicy new_referrer_policy, bool skip_service_worker) const;
+#endif
 
     bool IsNull() const;
 
@@ -371,6 +376,7 @@ public:
         shared_storage_writable_eligible_ = shared_storage_writable_eligible;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // True if service workers should not get events for the request.
     bool GetSkipServiceWorker() const
     {
@@ -380,6 +386,7 @@ public:
     {
         skip_service_worker_ = skip_service_worker;
     }
+#endif
 
     // Extra data associated with this request.
     const scoped_refptr<WebURLRequestExtraData>& GetURLRequestExtraData() const
@@ -796,20 +803,17 @@ public:
         shared_dictionary_writer_enabled_ = shared_dictionary_writer_enabled;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const std::optional<base::UnguessableToken>& GetServiceWorkerRaceNetworkRequestToken() const
     {
         return service_worker_race_network_request_token_;
     }
-
     void SetServiceWorkerRaceNetworkRequestToken(const base::UnguessableToken& token)
     {
-        // TODO(crbug.com/1492640) Consider using base::TokenType not to include
-        // null token by strong typing.
-        if (token.is_empty()) {
-            return;
-        }
-        service_worker_race_network_request_token_ = token;
+        if (!token.is_empty())
+            service_worker_race_network_request_token_ = token;
     }
+#endif
 
     void SetKnownTransparentPlaceholderImageIndex(wtf_size_t index)
     {
@@ -872,7 +876,9 @@ private:
     bool shared_storage_writable_opted_in_ : 1;
     bool shared_storage_writable_eligible_ : 1;
     bool allow_stale_response_ : 1;
+#if !defined(MINI_UI_QUICKJS)
     bool skip_service_worker_ : 1;
+#endif
     bool download_to_cache_only_ : 1;
     bool site_for_cookies_set_ : 1;
     bool is_form_submission_ : 1;
@@ -977,7 +983,9 @@ private:
     // applicable to all static resource load.
     wtf_size_t known_transparent_placeholder_image_index_ = kNotFound;
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<base::UnguessableToken> service_worker_race_network_request_token_;
+#endif
 #if DCHECK_IS_ON()
     bool is_set_url_allowed_ = true;
 #endif

@@ -5,9 +5,11 @@
 
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_state_host.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
+#endif
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -57,9 +59,8 @@ bool RuntimeFeatureStateOverrideContext::
 {% if (feature.name)|string == 'DisableThirdPartyStoragePartitioning2' %}
   UseCounter::Count(use_counter_,
                           WebFeature::kDisableThirdPartyStoragePartitioning2);
-  // If the base::Feature for the deprecation trial is disabled, we should
-  // not send any overrides to the browser, so we return false immediately,
-  // skipping any mojom messaging.
+  // Do not apply this deprecation-trial override when its base feature is
+  // disabled.
   if(!base::FeatureList::IsEnabled(
     blink::features::kDisableThirdPartyStoragePartitioningDeprecationTrial2)){
     return false;
@@ -69,7 +70,11 @@ bool RuntimeFeatureStateOverrideContext::
   // the browser, so we only add a value if has not already been set
   // in the override_values_ map with an identical token set. Return
   // whether the override was successful.
+#if defined(MINI_UI_QUICKJS)
+  const auto& value = tokens;
+#else
   auto value = mojom::blink::OriginTrialFeatureState::New(true, tokens);
+#endif
   if(!override_values_.contains(
       mojom::RuntimeFeature::k{{feature.name}}) ||
      origin_trial_overrides_[
@@ -77,10 +82,13 @@ bool RuntimeFeatureStateOverrideContext::
     // Update the state of all feature overrides in this class.
     override_values_
       [mojom::RuntimeFeature::k{{feature.name}}] = true;
-    // Add successful overrides to the list of features we sent back
-    // to the browser process.
+    // Retain the validating tokens for future local override comparisons.
+#if defined(MINI_UI_QUICKJS)
+    origin_trial_overrides_[mojom::RuntimeFeature::k{{feature.name}}] = tokens;
+#else
     origin_trial_overrides_[
       mojom::RuntimeFeature::k{{feature.name}}] = std::move(value);
+#endif
     return true;
   }
   return false;
@@ -91,72 +99,68 @@ bool RuntimeFeatureStateOverrideContext::
 void RuntimeFeatureStateOverrideContext::ApplyOriginTrialOverride(
     const blink::mojom::blink::OriginTrialFeature& origin_trial_feature,
     const WTF::Vector<WTF::String>& tokens) {
-  // Determine which of the overrideable features has been set
-  // via Origin Trial.
+  // Retain enabled state and validating tokens locally.
+#if !defined(MINI_UI_QUICKJS)
   bool overridden = false;
+#endif
 {% for feature in overridable_features %}
 {% if origin_trial_controlled_features.count(feature) > 0 %}
   if(origin_trial_feature == blink::mojom::blink::OriginTrialFeature::k{{feature.name}}) {
-    overridden = Set{{feature.name}}Enabled(tokens);
+#if !defined(MINI_UI_QUICKJS)
+    overridden =
+#endif
+        Set{{feature.name}}Enabled(tokens);
   }
 {% endif %}
 {% endfor %}
-  // Send the newly overriden values to the browser via IPC.
-  if(overridden){
-    // We must convert from std:: types to WTF:: types.
-    // TODO(https://crbug.com/1377000): make origin_trial_overrides_ a
-    // WTF:: type in a follow-up CL.
+#if !defined(MINI_UI_QUICKJS)
+  if (overridden) {
     WTF::HashMap<mojom::blink::RuntimeFeature,
                  mojom::blink::OriginTrialFeatureStatePtr>
         blink_overrides;
-    for (auto& o : origin_trial_overrides_){
-      blink_overrides.insert(o.first, std::move(o.second));
+    for (auto& override : origin_trial_overrides_) {
+      blink_overrides.insert(override.first, std::move(override.second));
     }
-    // Feature overrides and origin trial information should only be
-    // sent to the browser process if the corresponding base::Feature
-    // is enabled.
     if (base::FeatureList::IsEnabled(
             blink::features::kOriginTrialStateHostApplyFeatureDiff)) {
       GetOrBindOriginTrialStateHost()->ApplyFeatureDiffForOriginTrial(
           std::move(blink_overrides));
     }
-    // TODO(https://crbug.com/1377000): when we convert to WTF:: types,
-    // we use std::move, so we have to do some cleanup.
     origin_trial_overrides_.clear();
   }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RuntimeFeatureStateOverrideContext::EnablePersistentTrial(
-      const WTF::String& raw_token,
-      const WTF::Vector<scoped_refptr<const blink::SecurityOrigin>>&
-          script_origins) {
-    GetOrBindOriginTrialStateHost()->EnablePersistentTrial(
-        raw_token, script_origins);
-  }
+    const WTF::String& raw_token,
+    const WTF::Vector<scoped_refptr<const blink::SecurityOrigin>>&
+        script_origins) {
+  GetOrBindOriginTrialStateHost()->EnablePersistentTrial(raw_token,
+                                                         script_origins);
+}
 
 mojom::blink::OriginTrialStateHost*
-RuntimeFeatureStateOverrideContext::GetOrBindOriginTrialStateHost(){
-  // It's possible that the prior interface we bound is no longer available
-  // in which case we should reset the connection and re-bind a new one.
+RuntimeFeatureStateOverrideContext::GetOrBindOriginTrialStateHost() {
   if (origin_trial_state_host_remote_.is_bound() &&
       !origin_trial_state_host_remote_.is_connected()) {
     origin_trial_state_host_remote_.reset();
   }
-  // TODO(https://crbug.com/1410817): add support for workers/non-frames that
-  // are enabling origin trials to send their information to the browser too.
   if (!origin_trial_state_host_remote_.is_bound()) {
-      CHECK(send_runtime_features_to_browser_);
-      binding_context_->GetBrowserInterfaceBroker().GetInterface(
-          origin_trial_state_host_remote_.BindNewPipeAndPassReceiver(
-              binding_context_->GetTaskRunner(TaskType::kInternalDefault)));
-    }
+    CHECK(send_runtime_features_to_browser_);
+    binding_context_->GetBrowserInterfaceBroker().GetInterface(
+        origin_trial_state_host_remote_.BindNewPipeAndPassReceiver(
+            binding_context_->GetTaskRunner(TaskType::kInternalDefault)));
+  }
   return origin_trial_state_host_remote_.get();
 }
-
+#endif
 void RuntimeFeatureStateOverrideContext::Trace(Visitor* visitor) const{
-  visitor->Trace(binding_context_);
   visitor->Trace(use_counter_);
+#if !defined(MINI_UI_QUICKJS)
+  visitor->Trace(binding_context_);
   visitor->Trace(origin_trial_state_host_remote_);
+#endif
 }
 
 }  // namespace blink

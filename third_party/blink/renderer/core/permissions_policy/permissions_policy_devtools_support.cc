@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/permissions_policy/permissions_policy_devtools_support.h"
+#if !defined(MINI_UI_QUICKJS)
 
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
@@ -89,3 +90,4 @@ std::optional<PermissionsPolicyBlockLocator> TracePermissionsPolicyBlockSource(F
     }
 }
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)

@@ -8,40 +8,51 @@
 #include <vector>
 
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/metrics/begin_main_frame_metrics.h"
 #include "cc/metrics/frame_sequence_tracker_collection.h"
 #include "cc/paint/element_id.h"
 #include "cc/trees/layer_tree_host_client.h"
 #include "services/viz/public/mojom/hit_test/input_target_client.mojom-blink.h"
+#endif
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
 #include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 #include "third_party/blink/public/platform/web_input_event_result.h"
 #include "third_party/blink/public/platform/web_text_input_type.h"
 #include "third_party/blink/public/web/web_lifecycle_update.h"
-#include "third_party/blink/renderer/platform/widget/input/input_handler_proxy.h"
 #include "ui/base/mojom/menu_source_type.mojom-blink-forward.h"
 #include "ui/display/mojom/screen_orientation.mojom-blink.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class LayerTreeFrameSink;
 struct BeginMainFrameMetrics;
 } // namespace cc
+#endif
 
 namespace blink {
 
 class FrameWidget;
 class WebGestureEvent;
 class WebMouseEvent;
+#if defined(MINI_UI_QUICKJS)
+class WebViewClient;
+#endif
 
 // This class is part of the foundation of all widgets. It provides
 // callbacks from the compositing infrastructure that the individual widgets
 // will need to implement.
 class WidgetBaseClient {
 public:
+#if defined(MINI_UI_QUICKJS)
+    virtual WebViewClient* NativeViewClient() = 0;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     // Called when a compositing update is first requested.
     virtual void OnCommitRequested()
     {
     }
+#endif
 
     // Called to record the time taken to dispatch rAF aligned input.
     virtual void RecordDispatchRafAlignedInputTime(base::TimeTicks raf_aligned_input_start_time)
@@ -60,6 +71,7 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Called when main frame metrics are desired. The local frame's UKM
     // aggregator must be informed that collection is starting for the
     // frame.
@@ -141,6 +153,7 @@ public:
     // of LayerTreeFrameSinks (usually for tests). If this method returns null
     // a frame sink will be requested from the browser process (ie. default flow)
     virtual std::unique_ptr<cc::LayerTreeFrameSink> AllocateNewLayerTreeFrameSink() = 0;
+#endif
 
     virtual void FocusChangeComplete()
     {
@@ -155,9 +168,11 @@ public:
     }
     virtual void WillHandleGestureEvent(const WebGestureEvent& event, bool* suppress) = 0;
     virtual void WillHandleMouseEvent(const WebMouseEvent& event) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void ObserveGestureEventAndResult(
         const WebGestureEvent& gesture_event, const gfx::Vector2dF& unused_delta, const cc::OverscrollBehavior& overscroll_behavior, bool event_processed)
         = 0;
+#endif
 
     virtual WebTextInputType GetTextInputType()
     {
@@ -192,6 +207,7 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Apply the visual properties.
     virtual void UpdateVisualProperties(const VisualProperties& visual_properties) = 0;
 
@@ -202,7 +218,9 @@ public:
     {
         return false;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Convert screen coordinates to device emulated coordinates (scaled
     // coordinates when devtools is used). This occurs for popups where their
     // window bounds are emulated.
@@ -212,6 +230,7 @@ public:
     virtual void EmulatedToScreenRect(gfx::Rect& screen_rect)
     {
     }
+#endif
 
     // Signal the orientation has changed.
     virtual void OrientationChanged()
@@ -241,6 +260,7 @@ public:
         return 0.f;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Test-specific methods below this point.
     virtual void ScheduleAnimationForWebTests()
     {
@@ -259,6 +279,7 @@ public:
     virtual void RunPaintBenchmark(int repeat_count, cc::PaintBenchmarkResult& result)
     {
     }
+#endif
 
     // Called to indicate a synthetic event was queued.
     virtual void WillQueueSyntheticEvent(const WebCoalescedInputEvent& event)
@@ -295,9 +316,11 @@ public:
     virtual void ShowContextMenu(ui::mojom::blink::MenuSourceType source_type, const gfx::Point& location)
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual void BindInputTargetClient(mojo::PendingReceiver<viz::mojom::blink::InputTargetClient> receiver)
     {
     }
+#endif
 };
 
 } // namespace blink

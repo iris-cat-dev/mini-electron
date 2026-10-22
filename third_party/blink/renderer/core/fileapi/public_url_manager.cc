@@ -26,31 +26,50 @@
 
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 
-#include "base/feature_list.h"
+#include <memory>
+
 #include "base/notreached.h"
 #include "base/types/pass_key.h"
 #include "base/unguessable_token.h"
+#if defined(MINI_UI_QUICKJS)
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
+#include "url/gurl.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/bindings/self_owned_receiver.h"
+#include "net/base/net_errors.h"
+#include "services/network/public/cpp/url_loader_completion_status.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "base/task/thread_pool.h"
+#include "services/network/public/mojom/url_loader.mojom-blink.h"
+#include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
+#include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
+#endif
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "net/base/features.h"
-#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
-#include "third_party/blink/public/common/blob/blob_utils.h"
-#include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
 #include "third_party/blink/public/mojom/blob/blob_url_store.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
+#endif
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/url_registry.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
-#include "third_party/blink/renderer/platform/blob/blob_data.h"
+#endif
 #include "third_party/blink/renderer/platform/blob/blob_url.h"
 #include "third_party/blink/renderer/platform/blob/blob_url_null_origin_map.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/network/blink_schemeful_site.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/task_type_names.h"
+#endif
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
@@ -65,12 +84,124 @@ static void RemoveFromNullOriginMapIfNecessary(const KURL& blob_url)
 }
 
 } // namespace
+#if defined(MINI_UI_QUICKJS)
+using NativeBlobURLMap =
+    HashMap<String,
+        std::unique_ptr<mojo::Remote<mojom::blink::Blob>>>;
+
+static const scoped_refptr<base::SingleThreadTaskRunner>&
+NativeBlobURLTaskRunner()
+{
+    static const scoped_refptr<base::SingleThreadTaskRunner> runner =
+        base::ThreadPool::CreateSingleThreadTaskRunner(
+            {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN});
+    return runner;
+}
+
+NativeBlobURLMap& GetNativeBlobURLMap()
+{
+    DEFINE_STATIC_LOCAL(NativeBlobURLMap, urls, ());
+    return urls;
+}
+
+class NativeBlobURLLoaderFactory final
+    : public network::mojom::blink::URLLoaderFactory {
+public:
+    NativeBlobURLLoaderFactory(
+        mojo::PendingRemote<mojom::blink::Blob> blob,
+        GURL url)
+        : blob_pending_(std::move(blob)),
+          url_(std::move(url)) {}
+    void CreateLoaderAndStart(
+        mojo::PendingReceiver<network::mojom::blink::URLLoader> loader,
+        int32_t, uint32_t, const network::ResourceRequest& request,
+        mojo::PendingRemote<network::mojom::blink::URLLoaderClient> client,
+        const net::MutableNetworkTrafficAnnotationTag&) override
+    {
+        if (request.url.GetWithoutRef() != url_) {
+            mojo::Remote<network::mojom::blink::URLLoaderClient>(
+                std::move(client))
+                ->OnComplete(network::URLLoaderCompletionStatus(
+                    net::ERR_INVALID_URL));
+            return;
+        }
+        Blob()->Load(std::move(loader), String::FromUTF8(request.method),
+            request.headers, std::move(client));
+    }
+
+    void Clone(
+        mojo::PendingReceiver<network::mojom::blink::URLLoaderFactory>
+            receiver) override
+    {
+        mojo::PendingRemote<mojom::blink::Blob> blob;
+        Blob()->Clone(blob.InitWithNewPipeAndPassReceiver());
+        mojo::MakeSelfOwnedReceiver(
+            std::make_unique<NativeBlobURLLoaderFactory>(
+                std::move(blob), url_),
+            std::move(receiver));
+    }
+
+private:
+    mojom::blink::Blob* Blob()
+    {
+        if (!blob_.is_bound())
+            blob_.Bind(std::move(blob_pending_));
+        return blob_.get();
+    }
+    mojo::PendingRemote<mojom::blink::Blob> blob_pending_;
+    mojo::Remote<mojom::blink::Blob> blob_;
+    const GURL url_;
+};
+
+class NativeBlobURLToken final : public mojom::blink::BlobURLToken {
+public:
+    explicit NativeBlobURLToken(
+        mojo::PendingRemote<mojom::blink::Blob> blob)
+        : blob_pending_(std::move(blob)),
+          token_(base::UnguessableToken::Create()) {}
+    NativeBlobURLToken(mojo::PendingRemote<mojom::blink::Blob> blob,
+        const base::UnguessableToken& token)
+        : blob_pending_(std::move(blob)), token_(token) {}
+
+    void Clone(
+        mojo::PendingReceiver<mojom::blink::BlobURLToken> receiver)
+        override
+    {
+        mojo::PendingRemote<mojom::blink::Blob> blob;
+        Blob()->Clone(blob.InitWithNewPipeAndPassReceiver());
+        mojo::MakeSelfOwnedReceiver(
+            std::make_unique<NativeBlobURLToken>(
+                std::move(blob), token_),
+            std::move(receiver));
+    }
+    void GetToken(GetTokenCallback callback) override
+    {
+        std::move(callback).Run(token_);
+    }
+
+private:
+    mojom::blink::Blob* Blob()
+    {
+        if (!blob_.is_bound())
+            blob_.Bind(std::move(blob_pending_));
+        return blob_.get();
+    }
+    mojo::PendingRemote<mojom::blink::Blob> blob_pending_;
+    mojo::Remote<mojom::blink::Blob> blob_;
+    const base::UnguessableToken token_;
+};
+#endif
 
 PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
     : ExecutionContextLifecycleObserver(execution_context)
+#if !defined(MINI_UI_QUICKJS)
     , frame_url_store_(execution_context)
     , worker_url_store_(execution_context)
+#endif
 {
+#if defined(MINI_UI_QUICKJS)
+    return;
+#else
     if (auto* window = DynamicTo<LocalDOMWindow>(execution_context)) {
         LocalFrame* frame = window->GetFrame();
         if (!frame) {
@@ -116,17 +247,27 @@ PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
     } else {
         NOTREACHED();
     }
+#endif
 }
 
-PublicURLManager::PublicURLManager(base::PassKey<GlobalStorageAccessHandle>, ExecutionContext* execution_context,
-    mojo::PendingAssociatedRemote<mojom::blink::BlobURLStore> frame_url_store_remote)
+PublicURLManager::PublicURLManager(
+    base::PassKey<GlobalStorageAccessHandle>,
+    ExecutionContext* execution_context,
+    mojo::PendingAssociatedRemote<mojom::blink::BlobURLStore>
+        frame_url_store_remote)
     : ExecutionContextLifecycleObserver(execution_context)
+#if !defined(MINI_UI_QUICKJS)
     , frame_url_store_(execution_context)
     , worker_url_store_(execution_context)
+#endif
 {
-    frame_url_store_.Bind(std::move(frame_url_store_remote), execution_context->GetTaskRunner(TaskType::kFileReading));
+#if !defined(MINI_UI_QUICKJS)
+    frame_url_store_.Bind(std::move(frame_url_store_remote),
+        execution_context->GetTaskRunner(TaskType::kFileReading));
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::blink::BlobURLStore& PublicURLManager::GetBlobURLStore()
 {
     DCHECK_NE(frame_url_store_.is_bound(), worker_url_store_.is_bound());
@@ -136,6 +277,7 @@ mojom::blink::BlobURLStore& PublicURLManager::GetBlobURLStore()
         return *worker_url_store_.get();
     }
 }
+#endif
 
 String PublicURLManager::RegisterURL(URLRegistrable* registrable)
 {
@@ -148,21 +290,28 @@ String PublicURLManager::RegisterURL(URLRegistrable* registrable)
 
     if (registrable->IsMojoBlob()) {
         mojo::PendingRemote<mojom::blink::Blob> blob_remote;
-        mojo::PendingReceiver<mojom::blink::Blob> blob_receiver = blob_remote.InitWithNewPipeAndPassReceiver();
-
-        // Determining the top-level site for workers is non-trivial. We assume
-        // usage of blob URLs in workers is much lower than in windows, so we
-        // should still get useful metrics even while ignoring workers.
+        auto blob_receiver =
+            blob_remote.InitWithNewPipeAndPassReceiver();
+#if defined(MINI_UI_QUICKJS)
+        auto remote =
+            std::make_unique<mojo::Remote<mojom::blink::Blob>>(
+                std::move(blob_remote));
+        GetNativeBlobURLMap().Set(url_string, std::move(remote));
+#else
         std::optional<BlinkSchemefulSite> top_level_site;
         if (GetExecutionContext()->IsWindow()) {
-            auto* window = To<LocalDOMWindow>(GetExecutionContext());
+            auto* window =
+                To<LocalDOMWindow>(GetExecutionContext());
             if (window->top() && window->top()->GetFrame()) {
-                top_level_site = BlinkSchemefulSite(window->top()->GetFrame()->GetSecurityContext()->GetSecurityOrigin());
+                top_level_site = BlinkSchemefulSite(
+                    window->top()->GetFrame()
+                        ->GetSecurityContext()->GetSecurityOrigin());
             }
         }
-
-        GetBlobURLStore().Register(std::move(blob_remote), url, GetExecutionContext()->GetAgentClusterID(), top_level_site);
-
+        GetBlobURLStore().Register(std::move(blob_remote), url,
+            GetExecutionContext()->GetAgentClusterID(),
+            top_level_site);
+#endif
         mojo_urls_.insert(url_string);
         registrable->CloneMojoBlob(std::move(blob_receiver));
     } else {
@@ -190,7 +339,11 @@ void PublicURLManager::Revoke(const KURL& url)
     if (!SecurityOrigin::Create(url)->IsSameOriginWith(GetExecutionContext()->GetSecurityOrigin()))
         return;
 
+#if defined(MINI_UI_QUICKJS)
+    GetNativeBlobURLMap().erase(url.GetString());
+#else
     GetBlobURLStore().Revoke(url);
+#endif
     mojo_urls_.erase(url.GetString());
 
     RemoveFromNullOriginMapIfNecessary(url);
@@ -207,6 +360,27 @@ void PublicURLManager::Resolve(const KURL& url, mojo::PendingReceiver<network::m
         return;
 
     DCHECK(url.ProtocolIs("blob"));
+#if defined(MINI_UI_QUICKJS)
+    if (!SecurityOrigin::Create(url)->IsSameOriginWith(
+            GetExecutionContext()->GetSecurityOrigin()))
+        return;
+    KURL lookup_url = url;
+    lookup_url.RemoveFragmentIdentifier();
+    auto it = GetNativeBlobURLMap().find(lookup_url.GetString());
+    if (it == GetNativeBlobURLMap().end())
+        return;
+    mojo::PendingRemote<mojom::blink::Blob> blob;
+    (*it->value)->Clone(blob.InitWithNewPipeAndPassReceiver());
+    NativeBlobURLTaskRunner()->PostTask(FROM_HERE, base::BindOnce(
+        [](mojo::PendingRemote<mojom::blink::Blob> blob, GURL url,
+            mojo::PendingReceiver<network::mojom::blink::URLLoaderFactory> receiver) {
+            mojo::MakeSelfOwnedReceiver(
+                std::make_unique<NativeBlobURLLoaderFactory>(
+                    std::move(blob), std::move(url)),
+                std::move(receiver));
+        }, std::move(blob), GURL(lookup_url.GetString().Utf8()), std::move(factory_receiver)));
+    return;
+#else
 
     auto metrics_callback = [](ExecutionContext* execution_context, const std::optional<base::UnguessableToken>& unsafe_agent_cluster_id,
                                 const std::optional<BlinkSchemefulSite>& unsafe_top_level_site) {
@@ -239,6 +413,7 @@ void PublicURLManager::Resolve(const KURL& url, mojo::PendingReceiver<network::m
     };
 
     GetBlobURLStore().ResolveAsURLLoaderFactory(url, std::move(factory_receiver), WTF::BindOnce(metrics_callback, WrapPersistent(GetExecutionContext())));
+#endif
 }
 
 void PublicURLManager::Resolve(const KURL& url, mojo::PendingReceiver<mojom::blink::BlobURLToken> token_receiver)
@@ -247,6 +422,26 @@ void PublicURLManager::Resolve(const KURL& url, mojo::PendingReceiver<mojom::bli
         return;
 
     DCHECK(url.ProtocolIs("blob"));
+#if defined(MINI_UI_QUICKJS)
+    if (!SecurityOrigin::Create(url)->IsSameOriginWith(
+            GetExecutionContext()->GetSecurityOrigin()))
+        return;
+    KURL lookup_url = url;
+    lookup_url.RemoveFragmentIdentifier();
+    auto it = GetNativeBlobURLMap().find(lookup_url.GetString());
+    if (it == GetNativeBlobURLMap().end())
+        return;
+    mojo::PendingRemote<mojom::blink::Blob> blob;
+    (*it->value)->Clone(blob.InitWithNewPipeAndPassReceiver());
+    NativeBlobURLTaskRunner()->PostTask(FROM_HERE, base::BindOnce(
+        [](mojo::PendingRemote<mojom::blink::Blob> blob,
+            mojo::PendingReceiver<mojom::blink::BlobURLToken> receiver) {
+            mojo::MakeSelfOwnedReceiver(
+                std::make_unique<NativeBlobURLToken>(std::move(blob)),
+                std::move(receiver));
+        }, std::move(blob), std::move(token_receiver)));
+    return;
+#else
 
     auto metrics_callback = [](ExecutionContext* execution_context, const std::optional<base::UnguessableToken>& unsafe_agent_cluster_id) {
         if (execution_context->GetAgentClusterID() != unsafe_agent_cluster_id) {
@@ -255,6 +450,7 @@ void PublicURLManager::Resolve(const KURL& url, mojo::PendingReceiver<mojom::bli
     };
 
     GetBlobURLStore().ResolveForNavigation(url, std::move(token_receiver), WTF::BindOnce(metrics_callback, WrapPersistent(GetExecutionContext())));
+#endif
 }
 
 void PublicURLManager::ResolveForWorkerScriptFetch(const KURL& url, mojo::PendingReceiver<mojom::blink::BlobURLToken> token_receiver)
@@ -264,6 +460,10 @@ void PublicURLManager::ResolveForWorkerScriptFetch(const KURL& url, mojo::Pendin
     }
 
     DCHECK(url.ProtocolIs("blob"));
+#if defined(MINI_UI_QUICKJS)
+    Resolve(url, std::move(token_receiver));
+    return;
+#else
 
     // This code used to be executed as part of the ResolveForNavigation flow, so
     // it is repeated to preserve the existing functionality.
@@ -274,6 +474,7 @@ void PublicURLManager::ResolveForWorkerScriptFetch(const KURL& url, mojo::Pendin
     };
 
     GetBlobURLStore().ResolveForWorkerScriptFetch(url, std::move(token_receiver), WTF::BindOnce(metrics_callback, WrapPersistent(GetExecutionContext())));
+#endif
 }
 
 void PublicURLManager::ContextDestroyed()
@@ -290,13 +491,19 @@ void PublicURLManager::ContextDestroyed()
         RemoveFromNullOriginMapIfNecessary(KURL(url));
 
     url_to_registry_.clear();
+#if defined(MINI_UI_QUICKJS)
+    for (const auto& url : mojo_urls_)
+        GetNativeBlobURLMap().erase(url);
+#endif
     mojo_urls_.clear();
 }
 
 void PublicURLManager::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(frame_url_store_);
     visitor->Trace(worker_url_store_);
+#endif
     ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

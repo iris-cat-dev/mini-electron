@@ -33,7 +33,9 @@
 
 #include "base/memory/ptr_util.h"
 #include "cc/input/main_thread_scrolling_reason.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
@@ -104,10 +106,12 @@ void FrameOverlay::Paint(GraphicsContext& context) const
 PropertyTreeState FrameOverlay::DefaultPropertyTreeState() const
 {
     auto state = PropertyTreeState::Root();
+#if !defined(MINI_UI_QUICKJS)
     if (frame_->IsMainFrame() && !frame_->IsInFencedFrameTree()) {
         if (const auto* device_emulation = frame_->GetPage()->GetVisualViewport().GetDeviceEmulationTransformNode())
             state.SetTransform(*device_emulation);
     }
+#endif
     return state;
 }
 

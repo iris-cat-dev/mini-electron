@@ -16,7 +16,9 @@
 #include "base/thread_annotations.h"
 #include "base/time/time.h"
 #include "third_party/blink/renderer/platform/bindings/buildflags.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/disk_data_metadata.h"
+#endif
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
@@ -49,9 +51,11 @@ public:
     enum class Age { kYoung = 0, kOld = 1, kVeryOld = 2 };
     enum class CompressionAlgorithm {
         kZlib = 0,
+#if !defined(MINI_UI_QUICKJS)
         kSnappy = 1,
 #if BUILDFLAG(HAS_ZSTD_COMPRESSION)
         kZstd = 2
+#endif
 #endif
     };
 
@@ -148,10 +152,12 @@ public:
     {
         return !!metadata_->compressed_;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool has_on_disk_data() const
     {
         return !!metadata_->on_disk_metadata_;
     }
+#endif
 
     // Returns the compressed size, must not be called unless the string has a
     // compressed representation.
@@ -161,6 +167,7 @@ public:
         return metadata_->compressed_->size();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the on-disk size, must not be called unless the string has data
     // on-disk.
     size_t on_disk_size() const
@@ -168,6 +175,7 @@ public:
         DCHECK(has_on_disk_data());
         return metadata_->on_disk_metadata_->size();
     }
+#endif
 
     Age age_for_testing()
     {
@@ -258,6 +266,7 @@ private:
     void OnParkingCompleteOnMainThread(
         std::unique_ptr<BackgroundTaskParams> params, std::unique_ptr<Vector<uint8_t>> compressed, base::TimeDelta parking_thread_time);
 
+#if !defined(MINI_UI_QUICKJS)
     void PostBackgroundWritingTask(std::unique_ptr<ReservedChunk> reserved_chunk) EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
     static void WriteToDiskInBackground(std::unique_ptr<BackgroundTaskParams>, DiskDataAllocator* data_allocator);
     // Called on the main thread after writing is done.
@@ -265,9 +274,12 @@ private:
     // |metadata| is the on-disk metadata, nullptr if writing failed.
     // |writing_time| is the elapsed background thread time used by disk writing.
     void OnWritingCompleteOnMainThread(std::unique_ptr<BackgroundTaskParams> params, std::unique_ptr<DiskDataMetadata> metadata, base::TimeDelta writing_time);
+#endif
 
     void DiscardUncompressedData() EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
+#if !defined(MINI_UI_QUICKJS)
     void DiscardCompressedData() EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
+#endif
 
     int lock_depth_for_testing()
     {
@@ -297,9 +309,13 @@ private:
         bool background_task_in_progress_ { false };
         bool compression_failed_ GUARDED_BY(lock_);
         std::unique_ptr<Vector<uint8_t>> compressed_;
+#if !defined(MINI_UI_QUICKJS)
         std::unique_ptr<DiskDataMetadata> on_disk_metadata_;
+#endif
         const SecureDigest digest_;
+#if !defined(MINI_UI_QUICKJS)
         base::TimeTicks last_disk_parking_time_;
+#endif
 
         // A string can be young, old or very old. It starts young, and ages with
         // |MaybeAgeOrParkString()|.

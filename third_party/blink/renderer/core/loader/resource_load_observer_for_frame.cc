@@ -14,7 +14,9 @@
 #include "third_party/blink/renderer/core/core_probes_inl.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -22,7 +24,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
@@ -145,10 +149,14 @@ void ResourceLoadObserverForFrame::WillSendRequest(const ResourceRequest& reques
         frame->Loader().Progress().WillStartLoading(request.InspectorId(), request.Priority());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     frame->GetAttributionSrcLoader()->MaybeRegisterAttributionHeaders(request, redirect_response);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     probe::WillSendRequest(document_->domWindow(), document_loader_, fetcher_properties_->GetFetchClientSettingsObject().GlobalObjectUrl(), request,
         redirect_response, options, resource_type, render_blocking_behavior, base::TimeTicks::Now());
+#endif
     if (auto* idleness_detector = frame->GetIdlenessDetector())
         idleness_detector->OnWillSendRequest(document_->Fetcher());
     if (auto* interactive_detector = InteractiveDetector::From(*document_))
@@ -157,8 +165,10 @@ void ResourceLoadObserverForFrame::WillSendRequest(const ResourceRequest& reques
 
 void ResourceLoadObserverForFrame::DidChangePriority(uint64_t identifier, ResourceLoadPriority priority, int intra_priority_value)
 {
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("ResourceChangePriority", inspector_change_resource_priority_event::Data, document_loader_, identifier, priority);
     probe::DidChangeResourcePriority(document_->GetFrame(), document_loader_, identifier, priority);
+#endif
 }
 
 void ResourceLoadObserverForFrame::DidReceiveResponse(
@@ -178,15 +188,19 @@ void ResourceLoadObserverForFrame::DidReceiveResponse(
                 String::FromUTF8(response.MimeType().Utf8()), resource_request.GetRequestDestination(), response.RequestIncludeCredentials());
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Note: probe::WillSendRequest needs to precede before this probe method.
         probe::MarkResourceAsCached(frame, document_loader_, identifier);
+#endif
         if (response.IsNull())
             return;
     }
 
     RecordAddressSpaceFeature(frame, response);
 
+#if !defined(MINI_UI_QUICKJS)
     document_->Loader()->MaybeRecordServiceWorkerFallbackMainResource(response.WasFetchedViaServiceWorker());
+#endif
 
     std::unique_ptr<AlternateSignedExchangeResourceInfo> alternate_resource_info;
 
@@ -217,10 +231,14 @@ void ResourceLoadObserverForFrame::DidReceiveResponse(
             document_loader_->GetContentSecurityNotifier());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     frame->GetAttributionSrcLoader()->MaybeRegisterAttributionHeaders(request, response);
+#endif
 
     frame->Loader().Progress().IncrementProgress(identifier, response);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveResourceResponse(GetProbe(), identifier, document_loader_, response, resource);
+#endif
     // It is essential that inspector gets resource response BEFORE console.
     frame->Console().ReportResourceResponseReceived(document_loader_, identifier, response);
 }
@@ -230,19 +248,25 @@ void ResourceLoadObserverForFrame::DidReceiveData(uint64_t identifier, base::Spa
     LocalFrame* frame = document_->GetFrame();
     DCHECK(frame);
     frame->Loader().Progress().IncrementProgress(identifier, chunk.size());
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveData(GetProbe(), identifier, document_loader_, chunk);
+#endif
 }
 
 void ResourceLoadObserverForFrame::DidReceiveTransferSizeUpdate(uint64_t identifier, int transfer_size_diff)
 {
     DCHECK_GT(transfer_size_diff, 0);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveEncodedDataLength(GetProbe(), document_loader_, identifier, transfer_size_diff);
+#endif
 }
 
 void ResourceLoadObserverForFrame::DidDownloadToBlob(uint64_t identifier, BlobDataHandle* blob)
 {
     if (blob) {
+#if !defined(MINI_UI_QUICKJS)
         probe::DidReceiveBlob(GetProbe(), identifier, document_loader_, blob);
+#endif
     }
 }
 
@@ -251,7 +275,9 @@ void ResourceLoadObserverForFrame::DidFinishLoading(uint64_t identifier, base::T
     LocalFrame* frame = document_->GetFrame();
     DCHECK(frame);
     frame->Loader().Progress().CompleteProgress(identifier);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFinishLoading(GetProbe(), identifier, document_loader_, finish_time, encoded_data_length, decoded_body_length);
+#endif
 
     if (auto* interactive_detector = InteractiveDetector::From(*document_)) {
         interactive_detector->OnResourceLoadEnd(finish_time);
@@ -268,7 +294,9 @@ void ResourceLoadObserverForFrame::DidFailLoading(const KURL&, uint64_t identifi
     DCHECK(frame);
     frame->Loader().Progress().CompleteProgress(identifier);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFailLoading(GetProbe(), identifier, document_loader_, error, frame->GetDevToolsFrameToken());
+#endif
 
     // Notification to FrameConsole should come AFTER InspectorInstrumentation
     // call, DevTools front-end relies on this.
@@ -288,18 +316,22 @@ void ResourceLoadObserverForFrame::DidFailLoading(const KURL&, uint64_t identifi
 
 void ResourceLoadObserverForFrame::DidChangeRenderBlockingBehavior(Resource* resource, const FetchParameters& params)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_INSTANT_WITH_TIMESTAMP1(
         "devtools.timeline", "PreloadRenderBlockingStatusChange", TRACE_EVENT_SCOPE_THREAD, base::TimeTicks::Now(), "data", [&](perfetto::TracedValue ctx) {
             inspector_change_render_blocking_behavior_event::Data(std::move(ctx), document_->Loader(), resource->GetResourceRequest().InspectorId(),
                 resource->GetResourceRequest(), params.GetResourceRequest().GetRenderBlockingBehavior());
         });
+#endif
 }
 
 bool ResourceLoadObserverForFrame::InterestedInAllRequests()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (GetProbe()) {
         return GetProbe()->HasInspectorNetworkAgents();
     }
+#endif
     return false;
 }
 

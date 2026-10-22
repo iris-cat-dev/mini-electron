@@ -61,7 +61,9 @@ public:
 
     void* accessTopLayerPixels(SkImageInfo* info, size_t* rowBytes, SkIPoint* origin = nullptr) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void flush() override;
+#endif
     bool NeedsFlush() const override;
 
     int save() override;

@@ -26,6 +26,7 @@ void TextRecord::Trace(Visitor* visitor) const
     visitor->Trace(node_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 TextPaintTimingDetector::TextPaintTimingDetector(
     LocalFrameView* frame_view, PaintTimingDetector* paint_timing_detector, PaintTimingCallbackManager* callback_manager)
     : callback_manager_(callback_manager)
@@ -33,6 +34,13 @@ TextPaintTimingDetector::TextPaintTimingDetector(
     , ltp_manager_(MakeGarbageCollected<LargestTextPaintManager>(frame_view, paint_timing_detector))
 {
 }
+#else
+TextPaintTimingDetector::TextPaintTimingDetector(LocalFrameView* frame_view, PaintTimingDetector* paint_timing_detector)
+    : frame_view_(frame_view)
+    , ltp_manager_(MakeGarbageCollected<LargestTextPaintManager>(frame_view, paint_timing_detector))
+{
+}
+#endif
 
 void LargestTextPaintManager::PopulateTraceValue(TracedValue& value, const TextRecord& first_text_paint)
 {
@@ -42,9 +50,11 @@ void LargestTextPaintManager::PopulateTraceValue(TracedValue& value, const TextR
     value.SetBoolean("isMainFrame", frame_view_->GetFrame().IsMainFrame());
     value.SetBoolean("isOutermostMainFrame", frame_view_->GetFrame().IsOutermostMainFrame());
     value.SetBoolean("isEmbeddedFrame", !frame_view_->GetFrame().LocalFrameRoot().IsMainFrame() || frame_view_->GetFrame().IsInFencedFrameTree());
+#if !defined(MINI_UI_QUICKJS)
     if (first_text_paint.lcp_rect_info_) {
         first_text_paint.lcp_rect_info_->OutputToTraceValue(value);
     }
+#endif
 }
 
 void LargestTextPaintManager::ReportCandidateToTrace(const TextRecord& largest_text_record)
@@ -77,6 +87,7 @@ std::pair<TextRecord*, bool> LargestTextPaintManager::UpdateMetricsCandidate()
     return { largest_text_.Get(), changed };
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void TextPaintTimingDetector::OnPaintFinished()
 {
     if (!added_entry_in_latest_frame_)
@@ -87,6 +98,7 @@ void TextPaintTimingDetector::OnPaintFinished()
     RegisterNotifyPresentationTime(WTF::BindOnce(&TextPaintTimingDetector::ReportPresentationTime, WrapWeakPersistent(this), frame_index_++));
     added_entry_in_latest_frame_ = false;
 }
+#endif
 
 void TextPaintTimingDetector::LayoutObjectWillBeDestroyed(const LayoutObject& object)
 {
@@ -95,6 +107,7 @@ void TextPaintTimingDetector::LayoutObjectWillBeDestroyed(const LayoutObject& ob
     texts_queued_for_paint_time_.erase(&object);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void TextPaintTimingDetector::RegisterNotifyPresentationTime(PaintTimingCallbackManager::LocalThreadCallback callback)
 {
     callback_manager_->RegisterCallback(std::move(callback));
@@ -113,6 +126,7 @@ void TextPaintTimingDetector::ReportPresentationTime(uint32_t frame_index, base:
     }
     AssignPaintTimeToQueuedRecords(frame_index, timestamp);
 }
+#endif
 
 bool TextPaintTimingDetector::ShouldWalkObject(const LayoutBoxModelObject& object) const
 {
@@ -183,9 +197,11 @@ void TextPaintTimingDetector::RecordAggregatedText(
     }
     recorded_set_.insert(&aggregator);
     MaybeRecordTextRecord(aggregator, aggregated_size, property_tree_state, aggregated_visual_rect, mapped_visual_rect);
+#if !defined(MINI_UI_QUICKJS)
     if (std::optional<PaintTimingVisualizer>& visualizer = frame_view_->GetPaintTimingDetector().Visualizer()) {
         visualizer->DumpTextDebuggingRect(aggregator, mapped_visual_rect);
     }
+#endif
 }
 
 void TextPaintTimingDetector::StopRecordingLargestTextPaint()
@@ -220,7 +236,9 @@ void TextPaintTimingDetector::ReportLargestIgnoredText()
 
 void TextPaintTimingDetector::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(callback_manager_);
+#endif
     visitor->Trace(frame_view_);
     visitor->Trace(text_element_timing_);
     visitor->Trace(rewalkable_set_);

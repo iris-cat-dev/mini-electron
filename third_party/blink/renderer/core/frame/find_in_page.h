@@ -74,11 +74,11 @@ public:
     // Otherwise creates it and then returns.
     TextFinder& EnsureTextFinder();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetPluginFindHandler(WebPluginContainer* plugin);
-
     WebPluginContainer* PluginFindHandler() const;
-
     WebPlugin* GetWebPluginForFind();
+#endif
 
     void BindToReceiver(mojo::PendingAssociatedReceiver<mojom::blink::FindInPage> receiver);
 
@@ -96,7 +96,9 @@ private:
     // Will be initialized after first call to ensureTextFinder().
     Member<TextFinder> text_finder_;
 
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainer* plugin_find_handler_;
+#endif
 
     const Member<WebLocalFrameImpl> frame_;
 

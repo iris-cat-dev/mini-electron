@@ -291,7 +291,9 @@ bool CheckEvalAndReportViolation(const network::mojom::blink::ContentSecurityPol
     ReportEvalViolation(csp, policy, raw_directive, CSPDirectiveName::ScriptSrc, console_message + "\"" + raw_directive + "\"." + suffix + "\n", KURL(),
         exception_status, directive.source_list->report_sample ? content : g_empty_string);
     if (!CSPDirectiveListIsReportOnly(csp)) {
+#if !defined(MINI_UI_QUICKJS)
         policy->ReportBlockedScriptExecutionToInspector(raw_directive);
+#endif
         return false;
     }
     return true;
@@ -314,7 +316,9 @@ bool CheckWasmEvalAndReportViolation(const network::mojom::blink::ContentSecurit
     ReportWasmEvalViolation(csp, policy, raw_directive, CSPDirectiveName::ScriptSrc, console_message + "\"" + raw_directive + "\"." + suffix + "\n", KURL(),
         exception_status, directive.source_list->report_sample ? content : g_empty_string);
     if (!CSPDirectiveListIsReportOnly(csp)) {
+#if !defined(MINI_UI_QUICKJS)
         policy->ReportBlockedScriptExecutionToInspector(raw_directive);
+#endif
         return false;
     }
     return true;
@@ -358,8 +362,10 @@ bool CheckInlineAndReportViolation(const network::mojom::blink::ContentSecurityP
         context_line, element, directive.source_list->report_sample ? source : g_empty_string);
 
     if (!CSPDirectiveListIsReportOnly(csp)) {
+#if !defined(MINI_UI_QUICKJS)
         if (is_script)
             policy->ReportBlockedScriptExecutionToInspector(raw_directive);
+#endif
         return false;
     }
     return true;

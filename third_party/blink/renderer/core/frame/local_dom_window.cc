@@ -31,6 +31,7 @@
 #include <utility>
 
 #include "base/containers/contains.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_id_helper.h"
@@ -41,7 +42,9 @@
 #include "net/storage_access_api/status.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/navigation/impression.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/policy_disposition.mojom-blink.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
@@ -81,13 +84,16 @@
 #include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
 #include "third_party/blink/renderer/core/editing/spellcheck/spell_checker.h"
 #include "third_party/blink/renderer/core/editing/suggestion/text_suggestion_controller.h"
+#include "third_party/blink/renderer/core/events/error_event.h"
 #include "third_party/blink/renderer/core/events/hash_change_event.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/events/page_transition_event.h"
 #include "third_party/blink/renderer/core/events/pop_state_event.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/execution_context/window_agent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/bar_prop.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/document_policy_violation_report_body.h"
@@ -109,16 +115,24 @@
 #include "third_party/blink/renderer/core/frame/viewport_data.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element_registry.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/fence.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue_storage.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
@@ -129,7 +143,9 @@
 #include "third_party/blink/renderer/core/page/create_window.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/scrolling/scrolling_coordinator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
+#endif
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/scheduler/scripted_idle_task_controller.h"
@@ -141,7 +157,9 @@
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_type_policy_factory.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
+#endif
 #include "third_party/blink/renderer/platform/back_forward_cache_buffer_limit_tracker.h"
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
@@ -188,9 +206,11 @@ void SetCurrentTaskAsCallbackParent(CallbackFunctionWithTaskAttributionBase* cal
 
 int RequestAnimationFrame(Document* document, V8FrameRequestCallback* callback, bool legacy)
 {
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidRequestAnimationFrame();
+#endif
     SetCurrentTaskAsCallbackParent(callback);
     auto* frame_callback = MakeGarbageCollected<V8FrameCallback>(callback);
     frame_callback->SetUseLegacyTimeBase(legacy);
@@ -373,6 +393,7 @@ LocalDOMWindow* LocalDOMWindow::From(const ScriptState* script_state)
     return blink::ToLocalDOMWindow(script_state);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::blink::V8CacheOptions LocalDOMWindow::GetV8CacheOptions() const
 {
     if (LocalFrame* frame = GetFrame()) {
@@ -382,16 +403,19 @@ mojom::blink::V8CacheOptions LocalDOMWindow::GetV8CacheOptions() const
 
     return mojom::blink::V8CacheOptions::kDefault;
 }
+#endif
 
 bool LocalDOMWindow::IsContextThread() const
 {
     return IsMainThread();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool LocalDOMWindow::ShouldInstallV8Extensions() const
 {
     return GetFrame()->Client()->AllowScriptExtensions();
 }
+#endif
 
 ContentSecurityPolicy* LocalDOMWindow::GetContentSecurityPolicyForWorld(const DOMWrapperWorld* world)
 {
@@ -431,10 +455,12 @@ void LocalDOMWindow::DisableEval(const String& error_message)
     GetScriptController().DisableEval(error_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalDOMWindow::SetWasmEvalErrorMessage(const String& error_message)
 {
     GetScriptController().SetWasmEvalErrorMessage(error_message);
 }
+#endif
 
 String LocalDOMWindow::UserAgent() const
 {
@@ -524,7 +550,14 @@ String LocalDOMWindow::CheckAndGetJavascriptUrl(const DOMWrapperWorld* world, co
 
 void LocalDOMWindow::ExceptionThrown(ErrorEvent* event)
 {
+#if defined(MINI_UI_QUICKJS)
+    if (LocalFrame* frame = GetFrame()) {
+        frame->Console().ReportMessageToClient(
+            mojom::ConsoleMessageSource::kJavaScript, mojom::ConsoleMessageLevel::kError, event->MessageForConsole(), event->Location());
+    }
+#else
     MainThreadDebugger::Instance(GetIsolate())->ExceptionThrown(this, event);
+#endif
 }
 
 // https://w3c.github.io/webappsec-referrer-policy/#determine-requests-referrer
@@ -710,12 +743,14 @@ scoped_refptr<base::SingleThreadTaskRunner> LocalDOMWindow::GetAgentGroupSchedul
     return frame_scheduler->GetAgentGroupScheduler()->CompositorTaskRunner();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalDOMWindow::AddInspectorIssue(AuditsIssue issue)
 {
     if (GetFrame()) {
         GetFrame()->GetPage()->GetInspectorIssueStorage().AddInspectorIssue(this, std::move(issue));
     }
 }
+#endif
 
 void LocalDOMWindow::CountUse(mojom::WebFeature feature)
 {
@@ -793,10 +828,14 @@ Document* LocalDOMWindow::InstallNewDocument(const DocumentInit& init)
 
     auto* frame_scheduler = GetFrame()->GetFrameScheduler();
     frame_scheduler->OnDidInstallNewDocument();
+#if !defined(MINI_UI_QUICKJS)
     frame_scheduler->TraceUrlChange(document_->Url().GetString());
+#endif
     frame_scheduler->SetCrossOriginToNearestMainFrame(GetFrame()->IsCrossOriginToNearestMainFrame());
 
+#if !defined(MINI_UI_QUICKJS)
     GetFrame()->GetPage()->GetChromeClient().InstallSupplements(*GetFrame());
+#endif
 
     UpdateEventListenerCountsToDocumentForReuseIfNeeded();
 
@@ -969,7 +1008,9 @@ void LocalDOMWindow::FrameDestroyed()
     GetAgent()->DetachContext(this);
     NotifyContextDestroyed();
     RemoveAllEventListeners();
+#if !defined(MINI_UI_QUICKJS)
     MainThreadDebugger::Instance(GetIsolate())->DidClearContextsForFrame(GetFrame());
+#endif
     DisconnectFromFrame();
 }
 
@@ -1144,6 +1185,7 @@ void LocalDOMWindow::SchedulePostMessage(PostedMessage* posted_message)
         ->PostTask(FROM_HERE,
             WTF::BindOnce(&LocalDOMWindow::DispatchPostMessage, WrapPersistent(this), WrapPersistent(event), std::move(posted_message->target_origin),
                 std::move(location), source->GetAgent()->cluster_id()));
+#if !defined(MINI_UI_QUICKJS)
     event->async_task_context()->Schedule(this, "postMessage");
     uint64_t trace_id = base::trace_event::GetNextGlobalTraceId();
     event->SetTraceId(trace_id);
@@ -1151,23 +1193,28 @@ void LocalDOMWindow::SchedulePostMessage(PostedMessage* posted_message)
         "devtools.timeline", "SchedulePostMessage", "data",
         [&](perfetto::TracedValue context) { inspector_schedule_post_message_event::Data(std::move(context), GetExecutionContext(), trace_id); },
         perfetto::Flow::Global(trace_id));
+#endif
 }
 
 void LocalDOMWindow::DispatchPostMessage(MessageEvent* event, scoped_refptr<const SecurityOrigin> intended_target_origin,
     std::unique_ptr<SourceLocation> location, const base::UnguessableToken& source_agent_cluster_id)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Do not report postMessage tasks to the ad tracker. This allows non-ad
     // script to perform operations in response to events created by ad frames.
     probe::AsyncTask async_task(this, event->async_task_context(), nullptr /* step */, true /* enabled */, probe::AsyncTask::AdTrackingType::kIgnore);
+#endif
     if (!IsCurrentlyDisplayedInFrame())
         return;
 
     event->EntangleMessagePorts(this);
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT(
         "devtools.timeline", "HandlePostMessage", "data",
         [&](perfetto::TracedValue context) { inspector_handle_post_message_event::Data(std::move(context), GetExecutionContext(), *event); },
         perfetto::Flow::Global(event->GetTraceId()));
+#endif
 
     DispatchMessageEventWithOriginCheck(intended_target_origin.get(), event, std::move(location), source_agent_cluster_id);
 }
@@ -1547,9 +1594,11 @@ double LocalDOMWindow::scrollX() const
     if (!view)
         return 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
 
     document()->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
 
@@ -1568,9 +1617,11 @@ double LocalDOMWindow::scrollY() const
     if (!view)
         return 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+#endif
 
     document()->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
 
@@ -1669,9 +1720,11 @@ void LocalDOMWindow::scrollBy(const ScrollToOptions* scroll_to_options) const
     if (!page)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     document()->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
 
@@ -1718,9 +1771,11 @@ void LocalDOMWindow::scrollTo(const ScrollToOptions* scroll_to_options) const
     if (!page)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
     // impact is understood.
     SyncScrollAttemptHeuristic::DidSetScrollOffset();
+#endif
 
     // It is only necessary to have an up-to-date layout if the position may be
     // clamped, which is never the case for (0, 0).
@@ -1986,8 +2041,12 @@ void LocalDOMWindow::DispatchLoadEvent()
             owner->DispatchLoad();
 
         if (frame->IsAttached()) {
+#if !defined(MINI_UI_QUICKJS)
             DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("MarkLoad", inspector_mark_load_event::Data, frame);
+#endif
+#if !defined(MINI_UI_QUICKJS)
             probe::LoadEventFired(frame);
+#endif
             frame->GetFrameScheduler()->OnDispatchLoadEvent();
         }
     }
@@ -2004,7 +2063,9 @@ DispatchEventResult LocalDOMWindow::DispatchEvent(Event& event, EventTarget* tar
     event.SetCurrentTarget(this);
     event.SetEventPhase(Event::PhaseType::kAtTarget);
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("EventDispatch", inspector_event_dispatch_event::Data, event, GetIsolate());
+#endif
     return FireEventListeners(event);
 }
 
@@ -2148,6 +2209,7 @@ DOMWindow* LocalDOMWindow::open(
     bool has_user_gesture = LocalFrame::HasTransientUserActivation(GetFrame());
     frame_request.GetResourceRequest().SetHasUserGesture(has_user_gesture);
 
+#if !defined(MINI_UI_QUICKJS)
     if (window_features.attribution_srcs.has_value()) {
         // An impression must be attached prior to the
         // `FindOrCreateFrameForNavigation()` call, as that call may result in
@@ -2156,6 +2218,7 @@ DOMWindow* LocalDOMWindow::open(
         frame_request.SetImpression(entered_window->GetFrame()->GetAttributionSrcLoader()->RegisterNavigation(
             /*navigation_url=*/completed_url, *window_features.attribution_srcs, has_user_gesture, referrer.referrer_policy));
     }
+#endif
 
     FrameTree::FindResult result = GetFrame()->Tree().FindOrCreateFrameForNavigation(frame_request, target.empty() ? AtomicString("_blank") : target);
     if (!result.frame)
@@ -2276,7 +2339,9 @@ void LocalDOMWindow::Trace(Visitor* visitor) const
     visitor->Trace(text_suggestion_controller_);
     visitor->Trace(isolated_world_csp_map_);
     visitor->Trace(network_state_observer_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(fence_);
+#endif
     visitor->Trace(closewatcher_stack_);
     DOMWindow::Trace(visitor);
     ExecutionContext::Trace(visitor);
@@ -2294,12 +2359,14 @@ bool LocalDOMWindow::IsIsolatedContext() const
     return Agent::IsIsolatedContext();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ukm::UkmRecorder* LocalDOMWindow::UkmRecorder()
 {
     DCHECK(document_);
     return document_->UkmRecorder();
 }
 
+#endif
 ukm::SourceId LocalDOMWindow::UkmSourceID() const
 {
     DCHECK(document_);
@@ -2368,6 +2435,7 @@ bool LocalDOMWindow::IsInFencedFrame() const
     return GetFrame() && GetFrame()->IsInFencedFrameTree();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 Fence* LocalDOMWindow::fence()
 {
     // Return nullptr if we aren't in a fenced subtree.
@@ -2390,6 +2458,7 @@ Fence* LocalDOMWindow::fence()
 
     return fence_.Get();
 }
+#endif
 
 bool LocalDOMWindow::IsPictureInPictureWindow() const
 {
@@ -2417,6 +2486,7 @@ void LocalDOMWindow::GenerateNewNavigationId()
     navigation_id_ = WTF::CreateCanonicalUUIDString();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalDOMWindow::SetHasBeenRevealed(bool revealed)
 {
     if (has_been_revealed_ == revealed)
@@ -2425,6 +2495,8 @@ void LocalDOMWindow::SetHasBeenRevealed(bool revealed)
     CHECK(document_);
     ViewTransitionSupplement::From(*document_)->DidChangeRevealState();
 }
+
+#endif
 
 void LocalDOMWindow::UpdateEventListenerCountsToDocumentForReuseIfNeeded()
 {

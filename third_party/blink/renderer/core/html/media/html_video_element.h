@@ -110,10 +110,12 @@ public:
 
     // CanvasImageSource implementation
     scoped_refptr<Image> GetSourceImageForCanvas(FlushReason, SourceImageStatus*, const gfx::SizeF&, const AlphaDisposition alpha_disposition) override;
+#if !defined(MINI_UI_QUICKJS)
     bool IsVideoElement() const override
     {
         return true;
     }
+#endif
     bool WouldTaintOrigin() const override;
     gfx::SizeF ElementSize(const gfx::SizeF&, const RespectImageOrientationEnum) const override;
     const KURL& SourceURL() const override

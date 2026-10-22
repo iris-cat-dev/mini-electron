@@ -23,8 +23,10 @@
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/paint/transform_utils.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 
 namespace blink {
 
@@ -341,6 +343,7 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(cons
 
     reasons |= BackfaceInvisibility3DAncestorReason(*layer);
 
+#if !defined(MINI_UI_QUICKJS)
     switch (style.StyleType()) {
     case kPseudoIdViewTransition:
     case kPseudoIdViewTransitionGroup:
@@ -361,6 +364,7 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(cons
             reasons |= CompositingReason::kViewTransitionElement;
         }
     }
+#endif
 
     auto* element = DynamicTo<Element>(object.GetNode());
     if (element && element->GetRestrictionTargetId()) {

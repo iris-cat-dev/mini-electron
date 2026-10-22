@@ -65,6 +65,7 @@ public:
 
     virtual void* accessTopLayerPixels(SkImageInfo* info, size_t* rowBytes, SkIPoint* origin = nullptr) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(enne): It would be nice to get rid of flush() entirely, as it
     // doesn't really make sense for recording.  However, this gets used by
     // PaintCanvasVideoRenderer which takes a PaintCanvas to paint both
@@ -72,6 +73,7 @@ public:
     // and canvas/video painting in Blink where the same paths are used for
     // both recording and gpu work.
     virtual void flush() = 0;
+#endif
 
     virtual int save() = 0;
     virtual int saveLayer(const PaintFlags& flags) = 0;

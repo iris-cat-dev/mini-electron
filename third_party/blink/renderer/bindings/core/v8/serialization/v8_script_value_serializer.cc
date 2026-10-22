@@ -26,7 +26,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_data.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_message_port.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_offscreen_canvas.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_readable_stream.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
@@ -45,10 +47,14 @@
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
 #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/fenced_frame_config.h"
+#endif
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/messaging/message_port.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mojo/mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/streams/readable_stream.h"
 #include "third_party/blink/renderer/core/streams/transform_stream.h"
@@ -232,7 +238,12 @@ scoped_refptr<SerializedScriptValue> V8ScriptValueSerializer::Serialize(v8::Loca
 
     if (shared_array_buffers_.size()) {
         auto* execution_context = ExecutionContext::From(script_state_);
-        if (!execution_context->CheckSharedArrayBufferTransferAllowedAndReport()) {
+#if defined(MINI_UI_QUICKJS)
+        const bool transfer_allowed = execution_context->SharedArrayBufferTransferAllowed();
+#else
+        const bool transfer_allowed = execution_context->CheckSharedArrayBufferTransferAllowedAndReport();
+#endif
+        if (!transfer_allowed) {
             exception_state.ThrowDOMException(DOMExceptionCode::kDataCloneError, "SharedArrayBuffer transfer requires self.crossOriginIsolated.");
             return nullptr;
         }
@@ -716,6 +727,7 @@ bool V8ScriptValueSerializer::WriteDOMObject(ScriptWrappable* wrappable, Excepti
         WriteUTF8String(stack_unused);
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     if (auto* config = dispatcher.ToMostDerived<FencedFrameConfig>()) {
         if (for_storage_) {
             exception_state.ThrowDOMException(DOMExceptionCode::kDataCloneError, "A FencedFrameConfig cannot be serialized for storage.");
@@ -754,6 +766,7 @@ bool V8ScriptValueSerializer::WriteDOMObject(ScriptWrappable* wrappable, Excepti
 
         return true;
     }
+#endif
     return false;
 }
 
@@ -879,6 +892,7 @@ v8::Maybe<uint32_t> V8ScriptValueSerializer::GetSharedArrayBufferId(v8::Isolate*
     return v8::Just<uint32_t>(index);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 v8::Maybe<uint32_t> V8ScriptValueSerializer::GetWasmModuleTransferId(v8::Isolate* isolate, v8::Local<v8::WasmModuleObject> module)
 {
     if (for_storage_) {
@@ -914,6 +928,7 @@ v8::Maybe<uint32_t> V8ScriptValueSerializer::GetWasmModuleTransferId(v8::Isolate
     }
     return v8::Nothing<uint32_t>();
 }
+#endif
 
 void* V8ScriptValueSerializer::ReallocateBufferMemory(void* old_buffer, size_t size, size_t* actual_size)
 {
@@ -926,6 +941,7 @@ void V8ScriptValueSerializer::FreeBufferMemory(void* buffer)
     return WTF::Partitions::BufferFree(buffer);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool V8ScriptValueSerializer::AdoptSharedValueConveyor(v8::Isolate* isolate, v8::SharedValueConveyor&& conveyor)
 {
     auto* execution_context = ExecutionContext::From(script_state_);
@@ -937,5 +953,6 @@ bool V8ScriptValueSerializer::AdoptSharedValueConveyor(v8::Isolate* isolate, v8:
     serialized_script_value_->shared_value_conveyor_.emplace(std::move(conveyor));
     return true;
 }
+#endif
 
 } // namespace blink

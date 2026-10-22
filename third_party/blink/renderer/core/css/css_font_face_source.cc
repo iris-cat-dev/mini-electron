@@ -39,7 +39,9 @@ const SimpleFontData* CSSFontFaceSource::GetFontData(const FontDescription& font
 {
     // If the font hasn't loaded or an error occurred, then we've got nothing.
     if (!IsValid()) {
+#if !defined(MINI_UI_QUICKJS)
         ReportFontLookup(font_description, nullptr);
+#endif
         return nullptr;
     }
 

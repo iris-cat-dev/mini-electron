@@ -70,10 +70,12 @@
 #include "third_party/blink/renderer/core/layout/box_fragment_builder.h"
 #include "third_party/blink/renderer/core/layout/constraint_space.h"
 #include "third_party/blink/renderer/core/layout/constraint_space_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/custom/custom_layout_child.h"
 #include "third_party/blink/renderer/core/layout/custom/layout_custom.h"
 #include "third_party/blink/renderer/core/layout/custom/layout_worklet.h"
 #include "third_party/blink/renderer/core/layout/custom/layout_worklet_global_scope_proxy.h"
+#endif
 #include "third_party/blink/renderer/core/layout/custom_scrollbar.h"
 #include "third_party/blink/renderer/core/layout/disable_layout_side_effects_scope.h"
 #include "third_party/blink/renderer/core/layout/forms/layout_fieldset.h"
@@ -435,7 +437,9 @@ LayoutBoxRareData::LayoutBoxRareData()
 void LayoutBoxRareData::Trace(Visitor* visitor) const
 {
     visitor->Trace(spanner_placeholder_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(layout_child_);
+#endif
 }
 
 LayoutBox::LayoutBox(ContainerNode* node)
@@ -507,13 +511,17 @@ void LayoutBox::InsertedIntoTree()
 {
     NOT_DESTROYED();
     LayoutBoxModelObject::InsertedIntoTree();
+#if !defined(MINI_UI_QUICKJS)
     AddCustomLayoutChildIfNeeded();
+#endif
 }
 
 void LayoutBox::WillBeRemovedFromTree()
 {
     NOT_DESTROYED();
+#if !defined(MINI_UI_QUICKJS)
     ClearCustomLayoutChild();
+#endif
     LayoutBoxModelObject::WillBeRemovedFromTree();
 }
 
@@ -685,9 +693,11 @@ void LayoutBox::StyleDidChange(StyleDifference diff, const ComputedStyle* old_st
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Update the script style map, from the new computed style.
     if (IsCustomItem())
         GetCustomLayoutChild()->styleMap()->UpdateStyle(GetDocument(), StyleRef());
+#endif
 
     // Non-atomic inlines should be LayoutInline or LayoutText, not LayoutBox.
     DCHECK(!IsInline() || IsAtomicInlineLevel());
@@ -2804,7 +2814,11 @@ bool LayoutBox::SkipContainingBlockForPercentHeightCalculation(const LayoutBox* 
     }
 
     return !containing_block->IsLayoutReplaced() && !containing_block->IsTableCell() && !containing_block->IsOutOfFlowPositioned()
-        && !containing_block->IsLayoutGrid() && !containing_block->IsFlexibleBox() && !containing_block->IsLayoutCustom();
+        && !containing_block->IsLayoutGrid() && !containing_block->IsFlexibleBox()
+#if !defined(MINI_UI_QUICKJS)
+        && !containing_block->IsLayoutCustom()
+#endif
+        ;
 }
 
 LayoutUnit LayoutBox::ContainingBlockLogicalHeightForPositioned(const LayoutBoxModelObject* containing_block) const
@@ -2975,6 +2989,7 @@ bool LayoutBox::ShouldBeConsideredAsReplaced() const
     return IsA<HTMLImageElement>(element);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // Children of LayoutCustom object's are only considered "items" when it has a
 // loaded algorithm.
 bool LayoutBox::IsCustomItem() const
@@ -2983,6 +2998,7 @@ bool LayoutBox::IsCustomItem() const
     auto* parent_layout_box = DynamicTo<LayoutCustom>(Parent());
     return parent_layout_box && parent_layout_box->IsLoaded();
 }
+#endif
 
 PhysicalBoxStrut LayoutBox::ComputeVisualEffectOverflowOutsets()
 {
@@ -3619,6 +3635,7 @@ ShapeOutsideInfo* LayoutBox::GetShapeOutsideInfo() const
     return ShapeOutsideInfo::Info(*this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CustomLayoutChild* LayoutBox::GetCustomLayoutChild() const
 {
     NOT_DESTROYED();
@@ -3657,6 +3674,7 @@ void LayoutBox::ClearCustomLayoutChild()
 
     rare_data_->layout_child_ = nullptr;
 }
+#endif
 
 PhysicalRect LayoutBox::DebugRect() const
 {

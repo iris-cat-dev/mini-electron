@@ -1,0 +1,9 @@
+{
+  "native_cells": 8,
+  "chrome_cells": 16,
+  "regression_exit_code": 0,
+  "library_sha256": "75a46b9cab7b1413046f64c65904ef70d254bef434364c14b2ca1db1d19dd2ba",
+  "broken_report_links": [],
+  "removed_owned_scratch_directories": 26,
+  "shutdown_performed": false
+}

@@ -1,0 +1,39 @@
+{
+  "command": [
+    "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+    "-o",
+    "-c",
+    "sxe av; sxe 0xc0000409; bp ui_benchmark+0x3180a; g; .echo ADOPT_MISSING_ISOLATE_CONTEXT; r; dq @rdi L20; kv 15; lm m ui*; q",
+    "D:\\Project\\mini-electron\\out\\ui-opt-o2-facade-matrix\\build\\ui-benchmark.exe",
+    "--framework",
+    "react",
+    "--rows",
+    "5000",
+    "--warmups",
+    "2",
+    "--iterations",
+    "7",
+    "--resource-root",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "--output",
+    "d:\\Project\\mini-electron\\.build-tools\\ui-opt\\o2-facade-context-result.json",
+    "--capture",
+    "d:\\Project\\mini-electron\\.build-tools\\ui-opt\\o2-facade-context.bmp",
+    "--width",
+    "1280",
+    "--height",
+    "720",
+    "--device-scale",
+    "1.0",
+    "--timeout-ms",
+    "900000"
+  ],
+  "environment_overrides": {
+    "_NO_DEBUG_HEAP": "1",
+    "_NT_SYMBOL_PATH": ""
+  },
+  "timed_out": false,
+  "exit_code": 0,
+  "wall_seconds": 63.741551800005254,
+  "log": "d:\\Project\\mini-electron\\.build-tools\\ui-opt\\o2-facade-context-cdb.log"
+}

@@ -45,7 +45,7 @@ int ContentSettingTypeToHistogramValue(ContentSettingsType content_setting, size
 
 struct ContentSettingPatternSource {
     ContentSettingPatternSource(const ContentSettingsPattern& primary_pattern, const ContentSettingsPattern& secondary_patttern, base::Value setting_value,
-        const std::string& source, bool incognito, content_settings::RuleMetaData metadata = {});
+        content_settings::mojom::ProviderType provider, bool incognito, content_settings::RuleMetaData metadata = {});
     ContentSettingPatternSource(const ContentSettingPatternSource& other);
     ContentSettingPatternSource();
     ContentSettingPatternSource& operator=(const ContentSettingPatternSource& other);
@@ -57,7 +57,7 @@ struct ContentSettingPatternSource {
     ContentSettingsPattern secondary_pattern;
     base::Value setting_value;
     content_settings::RuleMetaData metadata;
-    std::string source;
+    content_settings::mojom::ProviderType source = content_settings::mojom::ProviderType::kNone;
     bool incognito;
 };
 
@@ -89,6 +89,8 @@ struct RendererContentSettingRules {
 };
 
 namespace content_settings {
+
+using ProviderType = mojom::ProviderType;
 
 // Enum containing the various source for content settings. Settings can be
 // set by policy, extension, the user or by the custodian of a supervised user.

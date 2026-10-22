@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-runtime-checks-before-callback-fix\\build\\ui-benchmark.exe"
+  ],
+  "library_sha256": "9e13602e3ee7f57449f4c947eb95de1b93110865d7a73797723ab5fbf84e3df1",
+  "source_sha256": "8340900bd71346850be34047413f5a487591a78171f5827d2454c975bf7bd1c9",
+  "exit_code": 1,
+  "timed_out": false,
+  "wall_seconds": 0.9303303999913624,
+  "stdout": "RUNTIME fixture=temporary resource_root=C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-runtime-checks-22104-116438609 entry=index.html ownership=owned-cleanup api=mini_ui::View+QuickJS-facade\r\nSNAPSHOT arena {\"peak_bytes\":1216512,\"peak_cells\":8448,\"peak_views\":0,\"peak_live\":8255,\"released_bytes\":1216512,\"released_cells\":8448,\"released_views\":0,\"released_live\":64,\"trimmed_bytes\":221184,\"trimmed_cells\":1536,\"trimmed_views\":0,\"trimmed_live\":64}\r\nSNAPSHOT joint_gc {\"epoch\":5,\"wrappers\":5,\"edges\":14,\"live_wrappers\":5,\"live_edges\":14,\"native_destructions\":1}\r\n",
+  "stderr": "FAIL runtime_checks: native setter receives its own data, not the interceptor payload\r\nFAIL runtime_checks: configuration checks do not spuriously invoke native getter\r\nFAIL runtime_checks: skipped symbol never enters named callback\r\nFAIL runtime_checks: direct C++ native accessor callback is not a host-idle safe point\r\nFAIL runtime_checks: arena burst allocated several thousand real Cells and ApiViews\r\nFAIL runtime_checks: persistent Cells and primary/secondary ApiViews retain addresses before trim\r\nFAIL runtime_checks: trim removes wholly free capacity from both arenas\r\nFAIL runtime_checks: trim never moves live Cells or primary/secondary ApiViews\r\nFAIL runtime_checks: 8 invariant failure(s)\r\n"
+}

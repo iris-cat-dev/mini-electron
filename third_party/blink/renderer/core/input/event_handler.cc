@@ -33,6 +33,7 @@
 
 #include "base/check.h"
 #include "base/debug/dump_without_crashing.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_mouse_wheel_event.h"
@@ -80,7 +81,9 @@
 #include "third_party/blink/renderer/core/layout/layout_custom_scrollbar_part.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/anchor_element_interaction_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/page/autoscroll_controller.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
@@ -961,12 +964,14 @@ WebInputEventResult EventHandler::HandleMouseMoveOrLeaveEvent(const WebMouseEven
 
     mouse_event_manager_->HandleSvgPanIfNeeded(false);
 
+#if !defined(MINI_UI_QUICKJS)
     if (mouse_event.GetType() == WebInputEvent::Type::kMouseMove) {
         AnchorElementInteractionTracker* tracker = frame_->GetDocument()->GetAnchorElementInteractionTracker();
         if (tracker) {
             tracker->OnMouseMoveEvent(mouse_event);
         }
     }
+#endif
 
     // Mouse states need to be reset when mouse move with no button down.
     // This is for popup/context_menu opened at mouse_down event and
@@ -2254,7 +2259,9 @@ void EventHandler::CaptureMouseEventsToWidget(bool capture)
     if (capture == is_widget_capturing_mouse_events_)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     frame_->LocalFrameRoot().Client()->SetMouseCapture(capture);
+#endif
     is_widget_capturing_mouse_events_ = capture;
 }
 

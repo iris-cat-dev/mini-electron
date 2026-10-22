@@ -15,9 +15,15 @@ namespace scheduler {
 
 using base::sequence_manager::TaskQueue;
 
+#if !defined(MINI_UI_QUICKJS)
 CPUTimeBudgetPool::CPUTimeBudgetPool(const char* name, TraceableVariableController* tracing_controller, base::TimeTicks now)
     : BudgetPool(name)
     , current_budget_level_(base::TimeDelta(), "RendererScheduler.BackgroundBudgetMs", tracing_controller, TimeDeltaToMilliseconds)
+#else
+CPUTimeBudgetPool::CPUTimeBudgetPool(const char* name, base::TimeTicks now)
+    : BudgetPool(name)
+    , current_budget_level_(base::TimeDelta())
+#endif
     , last_checkpoint_(now)
     , cpu_percentage_(1)
 {
@@ -115,6 +121,7 @@ void CPUTimeBudgetPool::OnWakeUp(base::TimeTicks now)
 {
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CPUTimeBudgetPool::WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -132,6 +139,7 @@ void CPUTimeBudgetPool::WriteIntoTrace(perfetto::TracedValue context, base::Time
         dict.Add("max_budget_level_in_seconds", max_budget_level_.value().InSecondsF());
     }
 }
+#endif
 
 void CPUTimeBudgetPool::Advance(base::TimeTicks now)
 {

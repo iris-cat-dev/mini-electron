@@ -5,28 +5,33 @@
 #include "third_party/blink/renderer/core/frame/animation_frame_timing_monitor.h"
 
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing.h"
 #include "components/viz/common/frame_timing_details.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-#include "third_party/blink/public/mojom/script/script_type.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/js_based_event_listener.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/core_probe_sink.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/html_names.h"
-#include "third_party/blink/renderer/core/script/script.h"
+#include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/timing/animation_frame_timing_info.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/third_party_script_detector.h"
-#include "third_party/blink/renderer/platform/bindings/source_location.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
-#include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
+#endif
 #include "v8-local-handle.h"
 #include "v8-message.h"
 
@@ -40,16 +45,22 @@ constexpr base::TimeDelta kLongScriptDuration = base::Milliseconds(5);
 
 AnimationFrameTimingMonitor::AnimationFrameTimingMonitor(Client& client, CoreProbeSink* sink)
     : client_(client)
+    , probe_sink_(sink)
 {
     Thread::Current()->AddTaskTimeObserver(this);
-    sink->AddAnimationFrameTimingMonitor(this);
+    probe_sink_->AddAnimationFrameTimingMonitor(this);
     enabled_ = true;
 }
 
 void AnimationFrameTimingMonitor::Shutdown()
 {
+    if (!probe_sink_) {
+        return;
+    }
     enabled_ = false;
     frame_handling_input_ = nullptr;
+    probe_sink_->RemoveAnimationFrameTimingMonitor(this);
+    probe_sink_ = nullptr;
     Thread::Current()->RemoveTaskTimeObserver(this);
 }
 
@@ -78,7 +89,9 @@ void AnimationFrameTimingMonitor::BeginMainFrame(LocalDOMWindow& local_root_wind
     state_ = State::kRenderingFrame;
     ApplyTaskDuration(now - current_task_start_);
 
+#if !defined(MINI_UI_QUICKJS)
     RequestPresentationTimeForTracing(*local_root_window.GetFrame());
+#endif
 }
 
 void AnimationFrameTimingMonitor::WillPerformStyleAndLayoutCalculation()
@@ -128,7 +141,9 @@ void AnimationFrameTimingMonitor::DidBeginMainFrame(LocalDOMWindow& local_root_w
 
         client_.ReportLongAnimationFrameTiming(current_frame_timing_info_);
     }
+#if !defined(MINI_UI_QUICKJS)
     RecordLongAnimationFrameUKMAndTrace(*current_frame_timing_info_, local_root_window);
+#endif
 
     first_ui_event_timestamp_ = base::TimeTicks();
     current_frame_timing_info_.Clear();
@@ -251,38 +266,13 @@ void AnimationFrameTimingMonitor::OnTaskCompleted(base::TimeTicks start_time, ba
     if (RuntimeEnabledFeatures::LongAnimationFrameTimingEnabled(frame->DomWindow())) {
         DOMWindowPerformance::performance(*frame->DomWindow())->ReportLongAnimationFrameTiming(timing_info);
     }
+#if !defined(MINI_UI_QUICKJS)
     RecordLongAnimationFrameUKMAndTrace(*timing_info, *frame->DomWindow());
+#endif
 }
 
-namespace {
 
-// perfetto::protos::pbzero::AnimationFrameScriptTimingInfo::InvokerType ToProtoEnum(ScriptTimingInfo::InvokerType type)
-// {
-//     using ProtoType = perfetto::protos::pbzero::AnimationFrameScriptTimingInfo::InvokerType;
-//     switch (type) {
-//     case ScriptTimingInfo::InvokerType::kClassicScript:
-//         return ProtoType::CLASSIC_SCRIPT;
-//     case ScriptTimingInfo::InvokerType::kModuleScript:
-//         return ProtoType::MODULE_SCRIPT;
-//     case ScriptTimingInfo::InvokerType::kUserCallback:
-//         return ProtoType::USER_CALLBACK;
-//     case ScriptTimingInfo::InvokerType::kEventHandler:
-//         return ProtoType::EVENT_HANDLER;
-//     case ScriptTimingInfo::InvokerType::kPromiseResolve:
-//         return ProtoType::PROMISE_RESOLVE;
-//     case ScriptTimingInfo::InvokerType::kPromiseReject:
-//         return ProtoType::PROMISE_REJECT;
-//     }
-//     return ProtoType::UNDEFINED;
-// }
-// 
-// perfetto::protos::pbzero::AnimationFrameScriptTimingInfo::ThirdPartyTechnology ToProtoEnum(ThirdPartyScriptDetector::Technology technology)
-// {
-//     return static_cast<perfetto::protos::pbzero::AnimationFrameScriptTimingInfo::ThirdPartyTechnology>(std::bit_width(static_cast<uint64_t>(technology)) + 1);
-// }
-
-} // namespace
-
+#if !defined(MINI_UI_QUICKJS)
 void AnimationFrameTimingMonitor::RequestPresentationTimeForTracing(LocalFrame& frame)
 {
     bool tracing_enabled;
@@ -302,6 +292,7 @@ void AnimationFrameTimingMonitor::ReportPresentationTimeToTrace(uint64_t trace_i
 //     TRACE_EVENT_INSTANT("devtools.timeline", "AnimationFrame::Presentation", track_id, presentation_details.presentation_feedback.timestamp, flow_id, "id",
 //         String::Format("%016" PRIx64, trace_id));
 }
+
 
 void AnimationFrameTimingMonitor::RecordLongAnimationFrameTrace(const AnimationFrameTimingInfo& info, LocalDOMWindow& window)
 {
@@ -358,11 +349,15 @@ void AnimationFrameTimingMonitor::RecordLongAnimationFrameTrace(const AnimationF
 // 
 //     TRACE_EVENT_END("devtools.timeline", track_id, info.RenderEndTime());
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void AnimationFrameTimingMonitor::RecordLongAnimationFrameUKMAndTrace(const AnimationFrameTimingInfo& info, LocalDOMWindow& window)
 {
     // Record all animation frames to traces, but only long ones to UKM.
+#if !defined(MINI_UI_QUICKJS)
     RecordLongAnimationFrameTrace(info, window);
+#endif
     if (info.Duration() < kLongAnimationFrameDuration) {
         return;
     }
@@ -427,12 +422,14 @@ void AnimationFrameTimingMonitor::RecordLongAnimationFrameUKMAndTrace(const Anim
     builder.SetCategorized3PScriptLongAnimationFrameScriptExecutionContributors(third_party_script_execution_contributors);
     builder.Record(recorder);
 }
+#endif
 
 void AnimationFrameTimingMonitor::Trace(Visitor* visitor) const
 {
     visitor->Trace(current_frame_timing_info_);
     visitor->Trace(current_scripts_);
     visitor->Trace(frame_handling_input_);
+    visitor->Trace(probe_sink_);
 }
 
 namespace {
@@ -560,6 +557,11 @@ void AnimationFrameTimingMonitor::Will(const probe::EvaluateScriptBlock& probe_d
     }
 }
 
+void AnimationFrameTimingMonitor::Did(const probe::EvaluateScriptBlock& probe_data)
+{
+    PopScriptEntryPoint(&probe_data.script_state, &probe_data);
+}
+
 void AnimationFrameTimingMonitor::Will(const probe::ExecuteScript& probe_data)
 {
     // In some cases we get here without a EvaluateScriptBlock, e.g. when
@@ -576,6 +578,13 @@ void AnimationFrameTimingMonitor::Will(const probe::ExecuteScript& probe_data)
     if (pending_script_info_ && pending_script_info_->execution_start_time.is_null()) {
         pending_script_info_->execution_start_time = probe_data.CaptureStartTime();
     }
+}
+
+void AnimationFrameTimingMonitor::Did(const probe::ExecuteScript& probe_data)
+{
+    v8::Isolate* isolate = probe_data.context->GetIsolate();
+    ScriptState* script_state = ScriptState::From(isolate, probe_data.v8_context);
+    PopScriptEntryPoint(script_state, &probe_data);
 }
 
 namespace {
@@ -612,7 +621,9 @@ ScriptTimingInfo::ScriptSourceLocation CaptureScriptSourceLocation(v8::Isolate* 
     }
 
     source_location.function_name = ToCoreStringWithUndefinedOrNullCheck(isolate, function->GetName());
+#if !defined(MINI_UI_QUICKJS)
     source_location.char_position = function->GetScriptStartPosition();
+#endif
     return source_location;
 }
 
@@ -631,6 +642,11 @@ void AnimationFrameTimingMonitor::Will(const probe::InvokeCallback& probe_data)
         .property_like_name = probe_data.name,
         .source_location = CaptureScriptSourceLocation(
             probe_data.script_state.GetIsolate(), probe_data.callback ? probe_data.callback->CallbackObject() : probe_data.function) };
+}
+
+void AnimationFrameTimingMonitor::Did(const probe::InvokeCallback& probe_data)
+{
+    PopScriptEntryPoint(&probe_data.script_state, &probe_data);
 }
 
 void AnimationFrameTimingMonitor::Will(const probe::InvokeEventHandler& probe_data)

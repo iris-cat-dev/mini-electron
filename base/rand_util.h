@@ -19,7 +19,7 @@
 #include "base/gtest_prod_util.h"
 #include "build/build_config.h"
 
-#if !BUILDFLAG(IS_NACL)
+#if !BUILDFLAG(IS_NACL) && !defined(MINI_UI_QUICKJS)
 #include "third_party/openssl/openssl/include/openssl/rand.h"
 #endif
 
@@ -33,7 +33,7 @@ class TimeDelta;
 
 namespace internal {
 
-#if !BUILDFLAG(IS_NACL)
+#if !BUILDFLAG(IS_NACL) && !defined(MINI_UI_QUICKJS)
 void ConfigureBoringSSLBackedRandBytesFieldTrial();
 #endif
 
@@ -141,10 +141,14 @@ public:
     }
     result_type operator()() const
     {
+#if defined(MINI_UI_QUICKJS)
+        return RandUint64();
+#else
         uint64_t result;
         if (RAND_bytes(reinterpret_cast<unsigned char*>(&result), sizeof(result)) != 1)
             std::abort();
         return result;
+#endif
     }
 
     NonAllocatingRandomBitGenerator() = default;

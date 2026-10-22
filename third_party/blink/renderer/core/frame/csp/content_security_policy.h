@@ -61,7 +61,9 @@ class OrdinalNumber;
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class AuditsIssue;
+#endif
 class ConsoleMessage;
 class DOMWrapperWorld;
 class Element;
@@ -117,10 +119,16 @@ public:
     virtual void Count(WebFeature) = 0;
 
     virtual void AddConsoleMessage(ConsoleMessage*) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void AddInspectorIssue(AuditsIssue) = 0;
+#endif
     virtual void DisableEval(const String& error_message) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetWasmEvalErrorMessage(const String& error_message) = 0;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     virtual void ReportBlockedScriptExecutionToInspector(const String& directive_text) = 0;
+#endif
     virtual void DidAddContentSecurityPolicies(WTF::Vector<network::mojom::blink::ContentSecurityPolicyPtr>) = 0;
 };
 
@@ -268,7 +276,9 @@ public:
     // policy.
     void ReportMixedContent(const KURL& blocked_url, RedirectStatus);
 
+#if !defined(MINI_UI_QUICKJS)
     void ReportBlockedScriptExecutionToInspector(const String& directive_text) const;
+#endif
 
     // Used as <object>'s URL when there is no `src` attribute.
     const KURL FallbackUrlForPlugin() const;

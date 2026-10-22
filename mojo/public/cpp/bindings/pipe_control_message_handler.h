@@ -1,4 +1,4 @@
-﻿// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,39 +17,42 @@ namespace mojo {
 class PipeControlMessageHandlerDelegate;
 
 // Handler for messages defined in pipe_control_messages.mojom.
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ PipeControlMessageHandler : public MessageReceiver {
-public:
-    explicit PipeControlMessageHandler(PipeControlMessageHandlerDelegate* delegate);
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) PipeControlMessageHandler
+    : public MessageReceiver {
+ public:
+  explicit PipeControlMessageHandler(
+      PipeControlMessageHandlerDelegate* delegate);
 
-    PipeControlMessageHandler(const PipeControlMessageHandler&) = delete;
-    PipeControlMessageHandler& operator=(const PipeControlMessageHandler&) = delete;
+  PipeControlMessageHandler(const PipeControlMessageHandler&) = delete;
+  PipeControlMessageHandler& operator=(const PipeControlMessageHandler&) =
+      delete;
 
-    ~PipeControlMessageHandler() override;
+  ~PipeControlMessageHandler() override;
 
-    // Sets the description for this handler. Used only when reporting validation
-    // errors.
-    void SetDescription(const std::string& description);
+  // Sets the description for this handler. Used only when reporting validation
+  // errors.
+  void SetDescription(const std::string& description);
 
-    // NOTE: |message| must have passed message header validation.
-    static bool IsPipeControlMessage(const Message* message);
+  // NOTE: |message| must have passed message header validation.
+  static bool IsPipeControlMessage(const Message* message);
 
-    // MessageReceiver implementation:
+  // MessageReceiver implementation:
 
-    // NOTE: |message| must:
-    //   - have passed message header validation; and
-    //   - be a pipe control message (i.e., IsPipeControlMessage() returns true).
-    // If the method returns false, the message pipe should be closed.
-    bool Accept(Message* message) override;
+  // NOTE: |message| must:
+  //   - have passed message header validation; and
+  //   - be a pipe control message (i.e., IsPipeControlMessage() returns true).
+  // If the method returns false, the message pipe should be closed.
+  bool Accept(Message* message) override;
 
-private:
-    // |message| must have passed message header validation.
-    bool Validate(Message* message);
-    bool RunOrClosePipe(Message* message);
+ private:
+  // |message| must have passed message header validation.
+  bool Validate(Message* message);
+  bool RunOrClosePipe(Message* message);
 
-    std::string description_;
-    const raw_ptr<PipeControlMessageHandlerDelegate> delegate_;
+  std::string description_;
+  const raw_ptr<PipeControlMessageHandlerDelegate> delegate_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_PIPE_CONTROL_MESSAGE_HANDLER_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_PIPE_CONTROL_MESSAGE_HANDLER_H_

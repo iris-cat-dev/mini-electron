@@ -54,13 +54,17 @@
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/sequence_bound.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
 
 namespace blink {
 
 class AtomicHTMLToken;
+#if !defined(MINI_UI_QUICKJS)
 class BackgroundHTMLScanner;
+#endif
 class Document;
 class DocumentFragment;
 class Element;
@@ -270,7 +274,9 @@ private:
     std::unique_ptr<HTMLPreloadScanner> preload_scanner_;
     // A scanner used only for input provided to the insert() method.
     std::unique_ptr<HTMLPreloadScanner> insertion_preload_scanner_;
+#if !defined(MINI_UI_QUICKJS)
     WTF::SequenceBound<BackgroundHTMLScanner> background_script_scanner_;
+#endif
     HTMLPreloadScanner::BackgroundPtr background_scanner_;
     using BackgroundScanFn = WTF::CrossThreadRepeatingFunction<void(const KURL&, const String&)>;
     BackgroundScanFn background_scan_fn_;

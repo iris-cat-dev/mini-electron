@@ -1,4 +1,4 @@
-﻿// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,8 +15,9 @@
 typedef uint32_t MojoTrapEventFlags;
 
 #ifdef __cplusplus
-const MojoTrapEventFlags MOJO_TRAP_EVENT_FLAG_NONE = 0;
-const MojoTrapEventFlags MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL = 1 << 0;
+inline constexpr MojoTrapEventFlags MOJO_TRAP_EVENT_FLAG_NONE = 0;
+inline constexpr MojoTrapEventFlags MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL = 1
+                                                                           << 0;
 #else
 #define MOJO_TRAP_EVENT_FLAG_NONE ((MojoTrapEventFlags)0)
 #define MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL ((MojoTrapEventFlags)1 << 0)
@@ -24,46 +25,47 @@ const MojoTrapEventFlags MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL = 1 << 0;
 
 // Structure passed to trap event handlers when invoked by a tripped trap.
 struct MOJO_ALIGNAS(8) MojoTrapEvent {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // May take on some combination of the following values:
-    //
-    //   |MOJO_TRAP_EVENT_FLAG_NONE|: No flags.
-    //
-    //   |MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL|: The trap was tripped within the
-    //       extent of a user call to some Mojo API. This means that the event
-    //       handler itself is re-entering user code. May happen, for example, if
-    //       user code writes to an intra-process pipe and the receiving end trips
-    //       a trap as a result. In that case the event handler executes within
-    //       the extent of the |MojoWriteMessage()| call.
-    MojoTrapEventFlags flags;
+  // May take on some combination of the following values:
+  //
+  //   |MOJO_TRAP_EVENT_FLAG_NONE|: No flags.
+  //
+  //   |MOJO_TRAP_EVENT_FLAG_WITHIN_API_CALL|: The trap was tripped within the
+  //       extent of a user call to some Mojo API. This means that the event
+  //       handler itself is re-entering user code. May happen, for example, if
+  //       user code writes to an intra-process pipe and the receiving end trips
+  //       a trap as a result. In that case the event handler executes within
+  //       the extent of the |MojoWriteMessage()| call.
+  MojoTrapEventFlags flags;
 
-    // The context for the trigger which tripped the trap.
-    MOJO_POINTER_FIELD(uintptr_t, trigger_context);
+  // The context for the trigger which tripped the trap.
+  MOJO_POINTER_FIELD(uintptr_t, trigger_context);
 
-    // A result code indicating the cause of the event. May take on any of the
-    // following values:
-    //
-    //   |MOJO_RESULT_OK|: The trigger's conditions were met.
-    //   |MOJO_RESULT_FAILED_PRECONDITION|: The trigger's observed handle has
-    //       changed state in such a way that the trigger's conditions can never
-    //       be met again.
-    //   |MOJO_RESULT_CANCELLED|: The trigger has been removed and will never
-    //       cause another event to fire. This is always the last event fired by
-    //       a trigger and it will fire when: the trigger is explicitly removed
-    //       with |MojoRemoteTrigger()|, the trigger's owning trap handle is
-    //       closed, or the handle observed by the trigger is closed.
-    //
-    //       Unlike the other result types above |MOJO_RESULT_CANCELLED| can
-    //       fire even when the trap is disarmed.
-    MojoResult result;
+  // A result code indicating the cause of the event. May take on any of the
+  // following values:
+  //
+  //   |MOJO_RESULT_OK|: The trigger's conditions were met.
+  //   |MOJO_RESULT_FAILED_PRECONDITION|: The trigger's observed handle has
+  //       changed state in such a way that the trigger's conditions can never
+  //       be met again.
+  //   |MOJO_RESULT_CANCELLED|: The trigger has been removed and will never
+  //       cause another event to fire. This is always the last event fired by
+  //       a trigger and it will fire when: the trigger is explicitly removed
+  //       with |MojoRemoteTrigger()|, the trigger's owning trap handle is
+  //       closed, or the handle observed by the trigger is closed.
+  //
+  //       Unlike the other result types above |MOJO_RESULT_CANCELLED| can
+  //       fire even when the trap is disarmed.
+  MojoResult result;
 
-    // The last known signalling state of the trigger's observed handle at the
-    // time the trap was tripped.
-    struct MojoHandleSignalsState signals_state;
+  // The last known signalling state of the trigger's observed handle at the
+  // time the trap was tripped.
+  struct MojoHandleSignalsState signals_state;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoTrapEvent) == 32, "MojoTrapEvent has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoTrapEvent) == 32,
+                   "MojoTrapEvent has wrong size.");
 
 // Value given to |MojoAddTrigger| to configure what condition should cause it
 // to trip its trap. May be one of the following values:
@@ -78,8 +80,10 @@ MOJO_STATIC_ASSERT(sizeof(struct MojoTrapEvent) == 32, "MojoTrapEvent has wrong 
 typedef uint32_t MojoTriggerCondition;
 
 #ifdef __cplusplus
-const MojoTriggerCondition MOJO_TRIGGER_CONDITION_SIGNALS_UNSATISFIED = 0;
-const MojoTriggerCondition MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED = 1;
+inline constexpr MojoTriggerCondition
+    MOJO_TRIGGER_CONDITION_SIGNALS_UNSATISFIED = 0;
+inline constexpr MojoTriggerCondition MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED =
+    1;
 #else
 #define MOJO_TRIGGER_CONDITION_SIGNALS_UNSATISFIED ((MojoTriggerCondition)0)
 #define MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED ((MojoTriggerCondition)1)
@@ -89,77 +93,81 @@ const MojoTriggerCondition MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED = 1;
 typedef uint32_t MojoCreateTrapFlags;
 
 #ifdef __cplusplus
-const MojoCreateTrapFlags MOJO_CREATE_TRAP_FLAG_NONE = 0;
+inline constexpr MojoCreateTrapFlags MOJO_CREATE_TRAP_FLAG_NONE = 0;
 #else
 #define MOJO_CREATE_TRAP_FLAG_NONE ((MojoCreateTrapFlags)0)
 #endif
 
 // Options passed to |MojoCreateTrap()|.
 struct MOJO_ALIGNAS(8) MojoCreateTrapOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // Flags. Currently unused.
-    MojoCreateTrapFlags flags;
+  // Flags. Currently unused.
+  MojoCreateTrapFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateTrapOptions) == 8, "MojoCreateTrapOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateTrapOptions) == 8,
+                   "MojoCreateTrapOptions has wrong size.");
 
 // Flags passed to |MojoAddTrigger()| via |MojoAddTriggerOptions|.
 typedef uint32_t MojoAddTriggerFlags;
 
 #ifdef __cplusplus
-const MojoAddTriggerFlags MOJO_ADD_TRIGGER_FLAG_NONE = 0;
+inline constexpr MojoAddTriggerFlags MOJO_ADD_TRIGGER_FLAG_NONE = 0;
 #else
 #define MOJO_ADD_TRIGGER_FLAG_NONE ((MojoAddTriggerFlags)0)
 #endif
 
 // Options passed to |MojoAddTrigger()|.
 struct MOJO_ALIGNAS(8) MojoAddTriggerOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // Flags. Currently unused.
-    MojoAddTriggerFlags flags;
+  // Flags. Currently unused.
+  MojoAddTriggerFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoAddTriggerOptions) == 8, "MojoAddTriggerOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoAddTriggerOptions) == 8,
+                   "MojoAddTriggerOptions has wrong size.");
 
 // Flags passed to |MojoRemoveTrigger()| via |MojoRemoveTriggerOptions|.
 typedef uint32_t MojoRemoveTriggerFlags;
 
 #ifdef __cplusplus
-const MojoRemoveTriggerFlags MOJO_REMOVE_TRIGGER_FLAG_NONE = 0;
+inline constexpr MojoRemoveTriggerFlags MOJO_REMOVE_TRIGGER_FLAG_NONE = 0;
 #else
 #define MOJO_REMOVE_TRIGGER_FLAG_NONE ((MojoRemoveTriggerFlags)0)
 #endif
 
 // Options passed to |MojoRemoveTrigger()|.
 struct MOJO_ALIGNAS(8) MojoRemoveTriggerOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // Flags. Currently unused.
-    MojoRemoveTriggerFlags flags;
+  // Flags. Currently unused.
+  MojoRemoveTriggerFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoRemoveTriggerOptions) == 8, "MojoRemoveTriggerOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoRemoveTriggerOptions) == 8,
+                   "MojoRemoveTriggerOptions has wrong size.");
 
 // Flags passed to |MojoArmTrap()| via |MojoArmTrapOptions|.
 typedef uint32_t MojoArmTrapFlags;
 
 #ifdef __cplusplus
-const MojoArmTrapFlags MOJO_ARM_TRAP_FLAG_NONE = 0;
+inline constexpr MojoArmTrapFlags MOJO_ARM_TRAP_FLAG_NONE = 0;
 #else
 #define MOJO_ARM_TRAP_FLAG_NONE ((MojoArmTrapFlags)0)
 #endif
 
 // Options passed to |MojoArmTrap()|.
 struct MOJO_ALIGNAS(8) MojoArmTrapOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // Flags. Currently unused.
-    MojoArmTrapFlags flags;
+  // Flags. Currently unused.
+  MojoArmTrapFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoArmTrapOptions) == 8, "MojoArmTrapOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoArmTrapOptions) == 8,
+                   "MojoArmTrapOptions has wrong size.");
 
 #ifdef __cplusplus
 extern "C" {
@@ -196,7 +204,10 @@ typedef void (*MojoTrapEventHandler)(const struct MojoTrapEvent* event);
 //   |MOJO_RESULT_OK| if the trap has been successfully created.
 //   |MOJO_RESULT_RESOURCE_EXHAUSTED| if a handle could not be allocated for
 //       this trap.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateTrap(MojoTrapEventHandler handler, const struct MojoCreateTrapOptions* options, MojoHandle* trap_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoCreateTrap(MojoTrapEventHandler handler,
+               const struct MojoCreateTrapOptions* options,
+               MojoHandle* trap_handle);
 
 // Adds a trigger to a trap. This configures the trap to invoke its event
 // handler if the specified conditions are met (or can no longer be met) while
@@ -231,8 +242,13 @@ MOJO_SYSTEM_EXPORT MojoResult MojoCreateTrap(MojoTrapEventHandler handler, const
 //       or |condition| are an invalid value.
 //   |MOJO_RESULT_ALREADY_EXISTS| if the trap already has a trigger associated
 //       with |context| or |handle|.
-MOJO_SYSTEM_EXPORT MojoResult MojoAddTrigger(MojoHandle trap_handle, MojoHandle handle, MojoHandleSignals signals, MojoTriggerCondition condition,
-    uintptr_t context, const struct MojoAddTriggerOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoAddTrigger(MojoHandle trap_handle,
+               MojoHandle handle,
+               MojoHandleSignals signals,
+               MojoTriggerCondition condition,
+               uintptr_t context,
+               const struct MojoAddTriggerOptions* options);
 
 // Removes a trigger from a trap.
 //
@@ -254,7 +270,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoAddTrigger(MojoHandle trap_handle, MojoHandle 
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |trap_handle| is not a trap handle.
 //   |MOJO_RESULT_NOT_FOUND| if there is no trigger registered on this trap for
 //       the given value of |context|.
-MOJO_SYSTEM_EXPORT MojoResult MojoRemoveTrigger(MojoHandle trap_handle, uintptr_t context, const struct MojoRemoveTriggerOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoRemoveTrigger(MojoHandle trap_handle,
+                  uintptr_t context,
+                  const struct MojoRemoveTriggerOptions* options);
 
 // Arms a trap, allowing it to invoke its event handler the next time any of its
 // triggers' conditions are met.
@@ -293,11 +312,14 @@ MOJO_SYSTEM_EXPORT MojoResult MojoRemoveTrigger(MojoHandle trap_handle, uintptr_
 //       effort to circulate triggers returned by consecutive failed
 //       |MojoArmTrap()| calls so that callers may avoid handle starvation when
 //       observing a large number of active handles with a single trap.
-MOJO_SYSTEM_EXPORT MojoResult MojoArmTrap(
-    MojoHandle trap_handle, const struct MojoArmTrapOptions* options, uint32_t* num_blocking_events, struct MojoTrapEvent* blocking_events);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoArmTrap(MojoHandle trap_handle,
+            const struct MojoArmTrapOptions* options,
+            uint32_t* num_blocking_events,
+            struct MojoTrapEvent* blocking_events);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_TRAP_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_TRAP_H_

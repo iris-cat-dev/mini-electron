@@ -7,21 +7,26 @@
 #include "base/compiler_specific.h"
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/common/features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token_builder.h"
+#endif
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_ua_data_values.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/dactyloscoper.h"
 #include "third_party/blink/renderer/core/frame/web_feature_forward.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 // Record identifiability study metrics for a single field requested by a
@@ -54,6 +59,7 @@ void MaybeRecordMetric(bool record_identifiability, const String& hint, const Ve
 }
 
 } // namespace
+#endif
 
 NavigatorUAData::NavigatorUAData(ExecutionContext* context)
     : ExecutionContextClient(context)
@@ -145,10 +151,13 @@ bool NavigatorUAData::mobile() const
 
 const HeapVector<Member<NavigatorUABrandVersion>>& NavigatorUAData::brands() const
 {
+#if !defined(MINI_UI_QUICKJS)
     constexpr auto identifiable_surface = IdentifiableSurface::FromTypeAndToken(IdentifiableSurface::Type::kWebFeature, WebFeature::kNavigatorUAData_Brands);
+#endif
 
     ExecutionContext* context = GetExecutionContext();
     if (context) {
+#if !defined(MINI_UI_QUICKJS)
         // Record IdentifiabilityStudy metrics if the client is in the study.
         if (IdentifiabilityStudySettings::Get()->ShouldSampleSurface(identifiable_surface)) [[unlikely]] {
             IdentifiableTokenBuilder token_builder;
@@ -163,6 +172,7 @@ const HeapVector<Member<NavigatorUABrandVersion>>& NavigatorUAData::brands() con
             IdentifiabilityMetricBuilder(context->UkmSourceID()).Add(identifiable_surface, token_builder.GetToken()).Record(context->UkmRecorder());
         }
 
+#endif
         return brand_set_;
     }
 
@@ -184,7 +194,9 @@ ScriptPromise<UADataValues> NavigatorUAData::getHighEntropyValues(ScriptState* s
     auto* execution_context = ExecutionContext::From(script_state); // GetExecutionContext();
     DCHECK(execution_context);
 
+#if !defined(MINI_UI_QUICKJS)
     bool record_identifiability = IdentifiabilityStudySettings::Get()->ShouldSampleType(IdentifiableSurface::Type::kNavigatorUAData_GetHighEntropyValues);
+#endif
     UADataValues* values = MakeGarbageCollected<UADataValues>();
     // TODO: It'd be faster to compare hint when turning |hints| into an
     // AtomicString vector and turning the const string literals |hint| into
@@ -195,40 +207,58 @@ ScriptPromise<UADataValues> NavigatorUAData::getHighEntropyValues(ScriptState* s
     // mobile and platform should be included regardless of whether they were
     // asked for.
 
+#if !defined(MINI_UI_QUICKJS)
     // Use `brands()` and not `brand_set_` directly since the former also
     // records IdentifiabilityStudy metrics.
+#endif
     values->setBrands(brands());
     values->setMobile(is_mobile_);
     values->setPlatform(platform_);
+#if !defined(MINI_UI_QUICKJS)
     // Record IdentifiabilityStudy metrics for `mobile()` and `platform()` (the
     // `brands()` part is already recorded inside that function).
     Dactyloscoper::RecordDirectSurface(GetExecutionContext(), WebFeature::kNavigatorUAData_Mobile, mobile());
     Dactyloscoper::RecordDirectSurface(GetExecutionContext(), WebFeature::kNavigatorUAData_Platform, platform());
 
+#endif
     for (const String& hint : hints) {
         if (hint == "platformVersion") {
             values->setPlatformVersion(platform_version_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, platform_version_, execution_context);
+#endif
         } else if (hint == "architecture") {
             values->setArchitecture(architecture_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, architecture_, execution_context);
+#endif
         } else if (hint == "model") {
             values->setModel(model_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, model_, execution_context);
+#endif
         } else if (hint == "uaFullVersion") {
             values->setUaFullVersion(ua_full_version_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, ua_full_version_, execution_context);
+#endif
         } else if (hint == "bitness") {
             values->setBitness(bitness_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, bitness_, execution_context);
+#endif
         } else if (hint == "fullVersionList") {
             values->setFullVersionList(full_version_list_);
         } else if (hint == "wow64") {
             values->setWow64(is_wow64_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, is_wow64_ ? "?1" : "?0", execution_context);
+#endif
         } else if (hint == "formFactors") {
             values->setFormFactors(form_factors_);
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMetric(record_identifiability, hint, form_factors_, execution_context);
+#endif
         }
     }
 
@@ -247,11 +277,13 @@ ScriptValue NavigatorUAData::toJSON(ScriptState* script_state) const
     builder.AddBoolean("mobile", mobile());
     builder.AddString("platform", platform());
 
+#if !defined(MINI_UI_QUICKJS)
     // Record IdentifiabilityStudy metrics for `mobile()` and `platform()`
     // (the `brands()` part is already recorded inside that function).
     Dactyloscoper::RecordDirectSurface(GetExecutionContext(), WebFeature::kNavigatorUAData_Mobile, mobile());
     Dactyloscoper::RecordDirectSurface(GetExecutionContext(), WebFeature::kNavigatorUAData_Platform, platform());
 
+#endif
     return builder.GetScriptValue();
 }
 

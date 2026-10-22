@@ -45,9 +45,17 @@
 #include "third_party/skia/include/core/SkScalar.h"
 #include "third_party/skia/include/core/SkSize.h"
 #include "third_party/skia/include/effects/SkHighContrastFilter.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/private/chromium/SkChromeRemoteGlyphCache.h"
+#endif
 #include "third_party/skia/include/private/chromium/SkImageChromium.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/skia/include/core/SkSerialProcs.h"
+#include "third_party/skia/include/core/SkTextBlob.h"
+#include "third_party/skia/include/core/SkTypeface.h"
+#else
 #include "third_party/skia/include/private/chromium/Slug.h"
+#endif
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/mojom/hdr_metadata.mojom.h"
@@ -517,6 +525,34 @@ void PaintOpWriter::Write(const SkGainmapInfo& gainmap_info)
     Write(gainmap_info.fGainmapMathColorSpace.get());
 }
 
+#if defined(MINI_UI_QUICKJS)
+void PaintOpWriter::Write(const sk_sp<SkTextBlob>& blob)
+{
+    if (!valid_)
+        return;
+
+    void* size_memory = SkipSize();
+    if (!valid_)
+        return;
+    if (!blob) {
+        valid_ = false;
+        return;
+    }
+
+    // Embed the actual fonts, including downloaded and fallback typefaces.
+    SkSerialProcs procs;
+    procs.fTypefaceProc = [](SkTypeface* typeface, void*) {
+        return typeface->serialize(SkTypeface::SerializeBehavior::kDoIncludeData);
+    };
+    size_t bytes_written = blob->serialize(procs, memory_, base::bits::AlignDown(remaining_bytes(), kDefaultAlignment));
+    if (!bytes_written) {
+        valid_ = false;
+        return;
+    }
+    WriteSizeAt(size_memory, bytes_written);
+    DidWrite(bytes_written);
+}
+#else
 void PaintOpWriter::Write(const sk_sp<sktext::gpu::Slug>& slug)
 {
     if (!valid_) {
@@ -543,6 +579,7 @@ void PaintOpWriter::Write(const sk_sp<sktext::gpu::Slug>& slug)
     WriteSizeAt(size_memory, bytes_written);
     DidWrite(bytes_written);
 }
+#endif
 
 sk_sp<PaintShader> PaintOpWriter::TransformShaderIfNecessary(const PaintShader* original, PaintFlags::FilterQuality quality, const SkM44& current_ctm,
     uint32_t* paint_image_transfer_cache_entry_id, gfx::SizeF* paint_record_post_scale, bool* paint_image_needs_mips, gpu::Mailbox* mailbox_out)

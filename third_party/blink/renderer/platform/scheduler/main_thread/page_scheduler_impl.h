@@ -28,7 +28,9 @@
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -109,7 +111,9 @@ public:
 
     void OnVirtualTimeEnabled();
 
+#if !defined(MINI_UI_QUICKJS)
     void OnTraceLogEnabled();
+#endif
 
     // Virtual for testing.
     virtual bool IsWaitingForMainFrameContentfulPaint() const;
@@ -124,6 +128,7 @@ public:
     // frames or pages that are stored in the back-forward cache
     bool has_ipc_detection_enabled_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Generally UKMs are associated with the main frame of a page, but the
     // implementation allows to request a recorder from any local frame with
     // the same result (e.g. for OOPIF support), therefore we need to select
@@ -131,11 +136,14 @@ public:
     // Note that selecting main frame doesn't work for OOPIFs where the main
     // frame it not a local one.
     FrameSchedulerImpl* SelectFrameForUkmAttribution();
+#endif
 
     // Update policy for all frames.
     void UpdatePolicy();
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const;
+#endif
 
     base::WeakPtr<PageSchedulerImpl> GetWeakPtr()
     {
@@ -220,7 +228,9 @@ private:
     static constexpr int kNumWakeUpBudgetPools = 4;
     std::array<WakeUpBudgetPool*, kNumWakeUpBudgetPools> AllWakeUpBudgetPools();
 
+#if !defined(MINI_UI_QUICKJS)
     TraceableVariableController tracing_controller_;
+#endif
     HashSet<FrameSchedulerImpl*> frame_schedulers_;
     raw_ptr<MainThreadSchedulerImpl, DanglingUntriaged> main_thread_scheduler_;
     Persistent<AgentGroupSchedulerImpl> agent_group_scheduler_;

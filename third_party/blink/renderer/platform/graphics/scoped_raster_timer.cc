@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/metrics/histogram_macros.h"
 #include "base/rand_util.h"
 #include "gpu/GLES2/gl2extchromium.h"
@@ -94,3 +96,5 @@ void ScopedRasterTimer::Host::AddGpuTimer(std::unique_ptr<AsyncGpuRasterTimer> t
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

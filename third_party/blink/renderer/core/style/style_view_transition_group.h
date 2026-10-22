@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_STYLE_STYLE_VIEW_TRANSITION_GROUP_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_STYLE_STYLE_VIEW_TRANSITION_GROUP_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/memory/values_equivalent.h"
 #include "third_party/blink/renderer/core/css/style_rule_view_transition.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
@@ -84,5 +86,7 @@ private:
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_STYLE_STYLE_VIEW_TRANSITION_GROUP_H_

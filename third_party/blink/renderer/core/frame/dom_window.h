@@ -7,9 +7,11 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "base/rand_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cross_origin_opener_policy.mojom-blink.h"
-#include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
+#endif
+#include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/messaging/delegated_capability.mojom-blink.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink-forward.h"
@@ -19,12 +21,16 @@
 #include "third_party/blink/renderer/core/frame/window_properties.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/assertions.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class ContextLifecycleNotifier;
+#endif
 class DOMWrapperWorld;
 class InputDeviceCapabilitiesConstants;
 class LocalDOMWindow;
@@ -131,6 +137,7 @@ public:
     void PostMessageForTesting(
         scoped_refptr<SerializedScriptValue> message, const MessagePortArray&, const String& target_origin, LocalDOMWindow* source, ExceptionState&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Cross-Origin-Opener-Policy (COOP):
     // Check accesses from |accessing_frame| and every same-origin iframe toward
     // this window. A report is sent to |reporter| when this happens.
@@ -143,6 +150,7 @@ public:
     // This function must be called when accessing any attributes and methods
     // marked as "CrossOrigin" in the window.idl.
     void ReportCoopAccess(const char* property_name);
+#endif
 
     // Records metrics for cross-origin access to the WindowProxy properties,
     void RecordWindowProxyAccessMetrics(mojom::blink::WebFeature property_access, mojom::blink::WebFeature property_access_from_other_page,
@@ -180,10 +188,12 @@ private:
     void DoPostMessage(scoped_refptr<SerializedScriptValue> message, const MessagePortArray&, const WindowPostMessageOptions* options, LocalDOMWindow* source,
         ExceptionState&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Removed the CoopAccessMonitor with the given |accessing_main_frame| from
     // the |coop_access_monitor| list. This is called when the COOP reporter is
     // gone or a more recent CoopAccessMonitor is being added.
     void DisconnectCoopAccessMonitor(const LocalFrameToken& accessing_main_frame);
+#endif
 
     Member<Frame> frame_;
     // Unlike |frame_|, |window_proxy_manager_| is available even after the
@@ -200,6 +210,7 @@ private:
     // implementation details to scripts.
     bool window_is_closing_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Cross-Origin-Opener-Policy (COOP):
     // Check accesses made toward this window from |accessing_main_frame|. If this
     // happens a report will sent to |reporter|.
@@ -221,6 +232,7 @@ private:
         bool is_in_same_virtual_coop_related_group = false;
     };
     HeapVector<Member<CoopAccessMonitor>> coop_access_monitor_;
+#endif
     // Mutable: only used to downsample metrics, no change to observable state.
     mutable base::MetricsSubSampler metrics_sub_sampler_;
 };

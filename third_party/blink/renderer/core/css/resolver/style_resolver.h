@@ -287,7 +287,9 @@ private:
     void ApplyAnchorData(StyleResolverState&);
 
     void ApplyCallbackSelectors(StyleResolverState&);
+#if !defined(MINI_UI_QUICKJS)
     void ApplyDocumentRulesSelectors(StyleResolverState&, ContainerNode* scope);
+#endif
     StyleRuleList* CollectMatchingRulesFromUnconnectedRuleSet(StyleResolverState&, RuleSet*, ContainerNode* scope);
 
     Document& GetDocument() const

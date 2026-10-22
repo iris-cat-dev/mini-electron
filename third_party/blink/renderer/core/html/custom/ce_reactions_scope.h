@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CUSTOM_CE_REACTIONS_SCOPE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CUSTOM_CE_REACTIONS_SCOPE_H_
 
+#include <optional>
+
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"

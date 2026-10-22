@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_VIEW_TRANSITION_RULE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_VIEW_TRANSITION_RULE_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/core/css/css_rule.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -45,5 +47,7 @@ template <> struct DowncastTraits<CSSViewTransitionRule> {
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_VIEW_TRANSITION_RULE_H_

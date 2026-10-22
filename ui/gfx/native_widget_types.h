@@ -110,7 +110,12 @@ using AtkObject = struct _AtkObject;
 
 namespace gfx {
 
-#if defined(USE_AURA)
+#if defined(MINI_UI_QUICKJS) && BUILDFLAG(IS_WIN)
+using NativeCursor = HCURSOR;
+using NativeView = HWND;
+using NativeWindow = HWND;
+using NativeEvent = CHROME_MSG*;
+#elif defined(USE_AURA)
 using NativeCursor = ui::Cursor;
 using NativeView = aura::Window*;
 using NativeWindow = aura::Window*;

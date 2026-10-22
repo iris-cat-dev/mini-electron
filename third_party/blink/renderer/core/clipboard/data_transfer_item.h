@@ -45,9 +45,11 @@ class ExecutionContext;
 class File;
 class ScriptState;
 
+#if !defined(MINI_UI_QUICKJS)
 namespace probe {
 class AsyncTaskContext;
 }
+#endif
 
 class CORE_EXPORT DataTransferItem final : public ScriptWrappable {
     DEFINE_WRAPPERTYPEINFO();
@@ -75,7 +77,11 @@ public:
     void Trace(Visitor*) const override;
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void RunGetAsStringTask(ExecutionContext*, V8FunctionStringCallback*, const String& data, std::unique_ptr<probe::AsyncTaskContext>);
+#else
+    void RunGetAsStringTask(ExecutionContext*, V8FunctionStringCallback*, const String& data);
+#endif
 
     Member<DataTransfer> data_transfer_;
     Member<DataObjectItem> item_;

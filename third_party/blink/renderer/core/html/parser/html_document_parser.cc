@@ -48,6 +48,7 @@
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
@@ -55,16 +56,22 @@
 #include "third_party/blink/renderer/core/html/html_template_element.h"
 #include "third_party/blink/renderer/core/html/nesting_level_incrementer.h"
 #include "third_party/blink/renderer/core/html/parser/atomic_html_token.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/parser/background_html_scanner.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_element_stack.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_metrics.h"
 #include "third_party/blink/renderer/core/html/parser/html_preload_scanner.h"
 #include "third_party/blink/renderer/core/html/parser/html_resource_preloader.h"
 #include "third_party/blink/renderer/core/html/parser/html_tree_builder.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/prefetched_signed_exchange_manager.h"
+#endif
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/script/html_parser_script_runner.h"
@@ -133,6 +140,7 @@ bool CheckParserBudgetLessOften()
     return kEnabled;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool PrecompileInlineScriptsEnabled(FeatureResetMode reset_mode = FeatureResetMode::kUseCached)
 {
     // Cache the feature value since checking for each parser regresses some micro
@@ -142,6 +150,7 @@ bool PrecompileInlineScriptsEnabled(FeatureResetMode reset_mode = FeatureResetMo
         kEnabled = base::FeatureList::IsEnabled(features::kPrecompileInlineScripts);
     return kEnabled;
 }
+#endif
 
 NonMainThread* GetPreloadScannerThread()
 {
@@ -401,12 +410,15 @@ HTMLDocumentParser::HTMLDocumentParser(
         GetPreloadScannerThread();
 
     // Report metrics for async document parsing or forced synchronous parsing.
-    // The document must be outermost main frame to meet UKM requirements, and
-    // must have a high resolution clock for high quality data. Additionally, only
-    // report metrics for http urls, which excludes things such as the ntp.
+    // Require a high resolution clock for high quality data. Keep the existing
+    // outermost-main-frame and HTTP eligibility for the shared UMA/UKM sample.
     if (sync_policy == kAllowDeferredParsing && document.IsInOutermostMainFrame() && base::TimeTicks::IsHighResolution()
         && document.Url().ProtocolIsInHTTPFamily()) {
+#if defined(MINI_UI_QUICKJS)
+        metrics_reporter_ = std::make_unique<HTMLParserMetrics>();
+#else
         metrics_reporter_ = std::make_unique<HTMLParserMetrics>(document.UkmSourceID(), document.UkmRecorder());
+#endif
     }
 
     // Don't create preloader for parsing clipboard content.
@@ -467,7 +479,9 @@ void HTMLDocumentParser::Detach()
     // fast/dom/HTMLScriptElement/script-load-events.html we do.
     preload_scanner_.reset();
     insertion_preload_scanner_.reset();
+#if !defined(MINI_UI_QUICKJS)
     background_script_scanner_.Reset();
+#endif
     background_scanner_.reset();
     tokenizer_.Reset();
 }
@@ -530,9 +544,11 @@ void HTMLDocumentParser::PrepareToStopParsing()
     if (metrics_sub_sampler_.ShouldSample(0.01)) {
         base::UmaHistogramTimes("Blink.PrepareToStopParsingTime", elapsed_time);
     }
+#if !defined(MINI_UI_QUICKJS)
     if (metrics_reporter_) {
         metrics_reporter_->AddPrepareToStopParsingTime(elapsed_time.InMicroseconds());
     }
+#endif
 }
 
 bool HTMLDocumentParser::IsParsingFragment() const
@@ -658,8 +674,10 @@ bool HTMLDocumentParser::PumpTokenizer()
     // pumping nothing.  It can filter out empty pumps itself.
     // FIXME: input_.Current().length() is only accurate if we end up parsing the
     // whole buffer in this pump.  We should pass how much we parsed as part of
+#if !defined(MINI_UI_QUICKJS)
     // DidWriteHTML instead of WillWriteHTML.
     probe::ParseHTML probe(GetDocument(), this);
+#endif
 
     bool should_yield = false;
     // If we've yielded more than 2 times, then set the budget to a very large
@@ -756,9 +774,11 @@ bool HTMLDocumentParser::PumpTokenizer()
     if (metrics_sub_sampler_.ShouldSample(0.01)) {
         base::UmaHistogramTimes("Blink.PumpTokenizerTime", pump_tokenizer_elapsed_time);
     }
+#if !defined(MINI_UI_QUICKJS)
     if (metrics_reporter_) {
         metrics_reporter_->AddPumpTokenizerTime(pump_tokenizer_elapsed_time.InMicroseconds());
     }
+#endif
 
     if (is_tracing) {
         TRACE_EVENT_END2("blink", "HTMLDocumentParser::PumpTokenizer", "parsed_tokens", tokens_parsed, "parsed_bytes", starting_bytes - input_.length());
@@ -1176,7 +1196,9 @@ void HTMLDocumentParser::NotifyScriptLoaded()
 void HTMLDocumentParser::ResetCachedFeaturesForTesting()
 {
     ThreadedPreloadScannerEnabled(FeatureResetMode::kResetForTesting);
+#if !defined(MINI_UI_QUICKJS)
     PrecompileInlineScriptsEnabled(FeatureResetMode::kResetForTesting);
+#endif
 }
 
 // static
@@ -1344,11 +1366,13 @@ void HTMLDocumentParser::ScanAndPreload(HTMLPreloadScanner* scanner)
     // Keep old histogram until next expiry date.
     base::UmaHistogramTimes(base::StrCat({ "Blink.ScanAndPreloadTime", GetPreloadHistogramSuffix() }), scan_and_preload_time);
     base::UmaHistogramMicrosecondsTimes(base::StrCat({ kHistogramScanAndPreloadTime, ".Preload", GetPreloadHistogramSuffix() }), preload_time);
+#if !defined(MINI_UI_QUICKJS)
     if (metrics_reporter_) {
         metrics_reporter_->AddScanTime(scan_time.InMicroseconds());
         metrics_reporter_->AddScanAndPreloadTime(scan_and_preload_time.InMicroseconds());
         metrics_reporter_->AddPreloadTime(preload_time.InMicroseconds());
     }
+#endif
 }
 
 void HTMLDocumentParser::ProcessPreloadData(std::unique_ptr<PendingPreloadData> preload_data)
@@ -1377,6 +1401,7 @@ void HTMLDocumentParser::ProcessPreloadData(std::unique_ptr<PendingPreloadData> 
                 GetDocument()->Loader()->DispatchLcppFontPreloads(
                     base::OptionalToPtr(preload_data->viewport), PreloadHelper::LoadLinksFromHeaderMode::kSubresourceNotFromMemoryCache);
             }
+#if !defined(MINI_UI_QUICKJS)
             if (GetDocument()->Loader()->GetPrefetchedSignedExchangeManager()) {
                 TRACE_EVENT_WITH_FLOW0(
                     "blink", "HTMLDocumentParser::DispatchSignedExchangeManager", TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT);
@@ -1385,6 +1410,7 @@ void HTMLDocumentParser::ProcessPreloadData(std::unique_ptr<PendingPreloadData> 
                 // comment of PrefetchedSignedExchangeManager.
                 GetDocument()->Loader()->GetPrefetchedSignedExchangeManager()->StartPrefetchedLinkHeaderPreloads();
             }
+#endif
             task_runner_state_->DispatchedLinkHeaderPreloads();
         }
     }
@@ -1397,6 +1423,7 @@ void HTMLDocumentParser::ProcessPreloadData(std::unique_ptr<PendingPreloadData> 
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (base::FeatureList::IsEnabled(features::kDelayAsyncScriptExecution) && features::kDelayAsyncScriptExecutionWhenLcpFoundInHtml.Get()) {
         // If LCP element is found during preload scanning of main document,
         // start/continue delaying async script execution on the document until the
@@ -1418,6 +1445,7 @@ void HTMLDocumentParser::ProcessPreloadData(std::unique_ptr<PendingPreloadData> 
             document->SetLcpElementFoundInHtml(true);
         }
     }
+#endif
 
     MaybeFetchQueuedPreloads();
 }
@@ -1435,9 +1463,11 @@ void HTMLDocumentParser::MaybeFetchQueuedPreloads()
     preloader_->TakeAndPreload(queued_preloads_);
     base::TimeDelta elapsed_time = timer.Elapsed();
     base::UmaHistogramTimes(base::StrCat({ "Blink.FetchQueuedPreloadsTime", GetPreloadHistogramSuffix() }), elapsed_time);
+#if !defined(MINI_UI_QUICKJS)
     if (metrics_reporter_) {
         metrics_reporter_->AddFetchQueuedPreloadsTime(elapsed_time.InMicroseconds());
     }
+#endif
 }
 
 std::string HTMLDocumentParser::GetPreloadHistogramSuffix()
@@ -1486,6 +1516,7 @@ void HTMLDocumentParser::ScanInBackground(const String& source)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (!PrecompileInlineScriptsEnabled()) {
         return;
     }
@@ -1497,6 +1528,7 @@ void HTMLDocumentParser::ScanInBackground(const String& source)
     if (background_script_scanner_) {
         background_script_scanner_.AsyncCall(&BackgroundHTMLScanner::Scan).WithArgs(source);
     }
+#endif
 }
 
 // static
@@ -1549,10 +1581,12 @@ bool HTMLDocumentParser::ShouldPumpTokenizerNowForFinishAppend() const
     // When a debugger is attached a nested message loop may be created during
     // commit. Processing the data now can lead to unexpected states.
     // TODO(https://crbug.com/1364695): see if this limitation can be removed.
+#if !defined(MINI_UI_QUICKJS)
     if (auto* sink = probe::ToCoreProbeSink(GetDocument())) {
         if (sink->HasAgentsGlobal(CoreProbeSink::kDevToolsSession))
             return false;
     }
+#endif
 
     if (GetDocument()->IsInOutermostMainFrame()) {
         if (!features::kProcessHtmlDataImmediatelyMainFrame.Get())

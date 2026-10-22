@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "removed",
+  "files": [
+    {
+      "path": "--smoke",
+      "bytes": 58013,
+      "sha256": "0d6d41413ba8d976f82561102c379b13317fee9dbee5c42839686fddcae4ef37",
+      "reason": "Stray serialized Unicode table output from the development-only generator previously selected as a console entrypoint; not a project source or resource."
+    },
+    {
+      "path": "artifacts.json",
+      "bytes": 682,
+      "sha256": "52c4ce8f7937c66eeed6740842bec4817e829e988f2807eab60a2bf932be2fa2",
+      "reason": "Unreferenced Electron/Node npm installer and release manifest; the native-only build.py and benchmark have no consumer."
+    }
+  ],
+  "notes": [
+    "These two pre-deletion byte counts and SHA-256 values were captured before removal. They are separate from the earlier 1176-file source cleanup manifest.",
+    "The root --smoke file was accidental serialized Unicode-character generator output, not source or a benchmark result.",
+    "The obsolete root artifacts.json described the removed Electron/Node release and had no remaining reference.",
+    "Unrelated user outputs, selected canonical CPU sources/headers, upstream generation metadata and dependency license notices were preserved.",
+    "Temporary native probe tools and their result captures remain until final performance and evidence publication complete. No files used by the running benchmark are removed."
+  ]
+}

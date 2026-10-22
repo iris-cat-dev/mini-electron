@@ -16,7 +16,9 @@
 #include "third_party/blink/public/platform/web_input_event_result.h"
 #include "third_party/blink/public/platform/web_touch_action.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/widget/input/input_handler_proxy.h"
+#endif
 #include "ui/base/cursor/cursor.h"
 #include "ui/events/types/scroll_types.h"
 
@@ -29,9 +31,11 @@ namespace ui {
 class LatencyInfo;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace viz {
 class FrameSinkId;
 }
+#endif
 
 namespace blink {
 
@@ -43,13 +47,25 @@ public:
     WidgetBaseInputHandler(const WidgetBaseInputHandler&) = delete;
     WidgetBaseInputHandler& operator=(const WidgetBaseInputHandler&) = delete;
 
+#if !defined(MINI_UI_QUICKJS)
     // Hit test the given point to find out the frame underneath and
     // returns the FrameSinkId for that frame. |local_point| returns the point
     // in the coordinate space of the FrameSinkId that was hit.
     viz::FrameSinkId GetFrameSinkIdAtPoint(const gfx::PointF& point, gfx::PointF* local_point);
+#endif
 
-    using HandledEventCallback = base::OnceCallback<void(mojom::InputEventResultState ack_state, const ui::LatencyInfo& latency_info,
-        std::unique_ptr<InputHandlerProxy::DidOverscrollParams>, std::optional<WebTouchAction>)>;
+#if defined(MINI_UI_QUICKJS)
+    using HandledEventCallback = base::OnceCallback<void(
+        mojom::InputEventResultState ack_state,
+        const ui::LatencyInfo& latency_info,
+        std::optional<WebTouchAction>)>;
+#else
+    using HandledEventCallback = base::OnceCallback<void(
+        mojom::InputEventResultState ack_state,
+        const ui::LatencyInfo& latency_info,
+        std::unique_ptr<InputHandlerProxy::DidOverscrollParams>,
+        std::optional<WebTouchAction>)>;
+#endif
 
     // Handle input events from the input event provider. `metrics` contains
     // information used in reporting latency metrics in case the event causes

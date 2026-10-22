@@ -31,12 +31,16 @@
 #include "base/tracing/protos/chrome_track_event.pbzero.h"
 #include "build/build_config.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/policy_disposition.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/policy_value.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/v8_cache_options.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
@@ -46,20 +50,27 @@
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/csp/execution_context_csp_delegate.h"
+#include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/origin_trials/origin_trial_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/context_lifecycle_notifier.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/memory_cache.h"
 #include "third_party/blink/renderer/platform/runtime_feature_state/runtime_feature_state_override_context.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
@@ -79,12 +90,14 @@ ExecutionContext::ExecutionContext(v8::Isolate* isolate, Agent* agent, bool is_w
     , csp_delegate_(MakeGarbageCollected<ExecutionContextCSPDelegate>(*this))
     , window_interaction_tokens_(0)
     , origin_trial_context_(MakeGarbageCollected<OriginTrialContext>(this))
-    ,
-    // RuntimeFeatureStateOverrideContext shouldn't attempt to communcate back
-    // to browser for ExecutionContexts that aren't windows.
-    // TODO(https://crbug.com/1410817): Add support for workers/non-frames.
-    runtime_feature_state_override_context_(MakeGarbageCollected<RuntimeFeatureStateOverrideContext>(this, this,
-        /*send_runtime_features_to_browser=*/is_window))
+#if defined(MINI_UI_QUICKJS)
+    , runtime_feature_state_override_context_(
+          MakeGarbageCollected<RuntimeFeatureStateOverrideContext>(this))
+#else
+    , runtime_feature_state_override_context_(
+          MakeGarbageCollected<RuntimeFeatureStateOverrideContext>(
+              this, this, is_window))
+#endif
 {
     DCHECK(agent_);
 }
@@ -103,6 +116,7 @@ ExecutionContext* ExecutionContext::From(v8::Local<v8::Context> context)
     return ToExecutionContext(context);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 CodeCacheHost* ExecutionContext::GetCodeCacheHostFromContext(ExecutionContext* execution_context)
 {
@@ -129,6 +143,8 @@ CodeCacheHost* ExecutionContext::GetCodeCacheHostFromContext(ExecutionContext* e
 
     return nullptr;
 }
+
+#endif
 
 void ExecutionContext::SetIsInBackForwardCache(bool value)
 {
@@ -205,6 +221,9 @@ bool ExecutionContext::SharedArrayBufferTransferAllowed() const
         return true;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    const SecurityOrigin* origin = GetSecurityOrigin();
+#else
     // Check if the SharedArrayBuffer is always allowed for this origin. For
     // worklets use the origin of the main document (consistent with how origin is
     // verified in origin trials).
@@ -213,6 +232,7 @@ bool ExecutionContext::SharedArrayBufferTransferAllowed() const
         origin = worklet_scope->DocumentSecurityOrigin();
     else
         origin = GetSecurityOrigin();
+#endif
 
     CHECK(origin);
 
@@ -229,6 +249,7 @@ bool ExecutionContext::SharedArrayBufferTransferAllowed() const
 #endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ExecutionContext::CheckSharedArrayBufferTransferAllowedAndReport()
 {
     const bool allowed = SharedArrayBufferTransferAllowed();
@@ -254,6 +275,8 @@ void ExecutionContext::FileSharedArrayBufferCreationIssue()
     // In enforced mode, the SAB constructor isn't available.
     AuditsIssue::ReportSharedArrayBufferIssue(this, true, SharedArrayBufferIssueType::kCreationIssue);
 }
+
+#endif
 
 void ExecutionContext::AddConsoleMessageImpl(mojom::blink::ConsoleMessageSource source, mojom::blink::ConsoleMessageLevel level, const String& message,
     bool discard_duplicates, std::optional<mojom::ConsoleMessageCategory> category)
@@ -542,10 +565,13 @@ bool ExecutionContext::IsSameAgentCluster(const base::UnguessableToken& other_id
     return this_id == other_id;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::blink::V8CacheOptions ExecutionContext::GetV8CacheOptions() const
 {
     return mojom::blink::V8CacheOptions::kDefault;
 }
+
+#endif
 
 v8::MicrotaskQueue* ExecutionContext::GetMicrotaskQueue() const
 {

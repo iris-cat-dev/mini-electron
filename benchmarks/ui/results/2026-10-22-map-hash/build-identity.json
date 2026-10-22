@@ -1,0 +1,27 @@
+{
+  "production_library": {
+    "path": "D:\\Project\\mini-electron\\out\\ui-windows-x64\\mini-ui.lib",
+    "bytes": 412669916,
+    "sha256": "c02cf3da4a07981541d2c0039c6ff752a1c30d029ada03adc118e66af61f7b2d"
+  },
+  "candidate_library": {
+    "path": "D:\\Project\\mini-electron\\out\\ui-map-candidate\\mini-ui.lib",
+    "bytes": 412669920,
+    "sha256": "adb7407b65962d4ccfdf59b497cf73a6447b6425b0e81967f177c6dd883525b5"
+  },
+  "production_example": {
+    "path": "D:\\Project\\mini-electron\\out\\ui-windows-x64\\mini-ui-example.exe",
+    "bytes": 40128000,
+    "sha256": "c0e4f3093cc2d47b1b995b15e73d2df3ae1705faf0d34ee95265ac08b38c4e52"
+  },
+  "regression_source": {
+    "path": "D:\\Project\\mini-electron\\benchmarks\\ui\\runtime_checks.cc",
+    "bytes": 63897,
+    "sha256": "3bc9a94b3ecd6820202864853dd9ee3d214aed5a79c01e00d3626b2cce29fb60"
+  },
+  "quickjs_source": {
+    "path": "D:\\Project\\mini-electron\\third_party\\quickjs\\quickjs.c",
+    "bytes": 1888261,
+    "sha256": "39678f2a943340c6085f2b3494972d5479890b4ab5413f8a3c2503085e265b8d"
+  }
+}

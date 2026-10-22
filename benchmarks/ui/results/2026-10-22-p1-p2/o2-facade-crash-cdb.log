@@ -1,0 +1,123 @@
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Project\mini-electron\out\ui-opt-o2-facade-matrix\build\ui-benchmark.exe --framework react --rows 5000 --warmups 2 --iterations 7 --resource-root D:\Project\mini-electron\benchmarks\ui\assets --output d:\Project\mini-electron\.build-tools\ui-opt\o2-facade-crash-result.json --capture d:\Project\mini-electron\.build-tools\ui-opt\o2-facade-crash.bmp --width 1280 --height 720 --device-scale 1.0 --timeout-ms 900000
+Symbol search path is: *** Invalid ***
+****************************************************************************
+* Symbol loading may be unreliable without a symbol search path.           *
+* Use .symfix to have the debugger choose a symbol path.                   *
+* After setting your symbol path, use .reload to refresh symbol locations. *
+****************************************************************************
+Executable search path is: 
+ModLoad: 00007ff6`e7df0000 00007ff6`ea452000   ui-benchmark.exe
+ModLoad: 00007ffd`55250000 00007ffd`55448000   ntdll.dll
+ModLoad: 00007ffd`534d0000 00007ffd`53592000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffd`529e0000 00007ffd`52cd6000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffd`536f0000 00007ffd`53e60000   C:\Windows\System32\SHELL32.dll
+ModLoad: 00007ffd`52f00000 00007ffd`52f9d000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffd`528e0000 00007ffd`529e0000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffd`54e70000 00007ffd`55011000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffd`531c0000 00007ffd`531e2000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffd`55020000 00007ffd`5504b000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffd`53050000 00007ffd`53169000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffd`55080000 00007ffd`55131000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffd`535a0000 00007ffd`5363e000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffd`44be0000 00007ffd`44c07000   C:\Windows\SYSTEM32\WINMM.dll
+ModLoad: 00007ffd`54530000 00007ffd`545cf000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffd`500c0000 00007ffd`5033f000   C:\Windows\SYSTEM32\DWrite.dll
+ModLoad: 00007ffd`54c60000 00007ffd`54d80000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00000245`abfb0000 00000245`ac0d0000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffd`52ce0000 00007ffd`52d07000   C:\Windows\System32\bcrypt.dll
+ModLoad: 00007ffd`54400000 00007ffd`5452b000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffd`54030000 00007ffd`54384000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffd`46f40000 00007ffd`46f59000   C:\Windows\SYSTEM32\USP10.dll
+ModLoad: 00007ffd`50c10000 00007ffd`50e11000   C:\Windows\SYSTEM32\dbghelp.dll
+(6bbc.6bc4): Break instruction exception - code 80000003 (first chance)
+ntdll!LdrInitShimEngineDynamic+0x360:
+00007ffd`55320860 cc              int     3
+0:000> cdb: Reading initial command 'sxe av; sxe 0xc0000409; g; .exr -1; .ecxr; kv 35; lm m ui*; r; q'
+ModLoad: 00007ffd`55050000 00007ffd`5507f000   C:\Windows\System32\IMM32.DLL
+ModLoad: 00007ffd`52d10000 00007ffd`52d92000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffd`53270000 00007ffd`5331d000   C:\Windows\System32\shcore.dll
+ModLoad: 00007ffd`4f410000 00007ffd`4f4ae000   C:\Windows\system32\uxtheme.dll
+ModLoad: 00007ffd`510d0000 00007ffd`510e2000   C:\Windows\SYSTEM32\kernel.appcore.dll
+(6bbc.6bc4): Security check failure or stack buffer overrun - code c0000409 (!!! second chance !!!)
+*** WARNING: Unable to verify checksum for ui-benchmark.exe
+ExceptionAddress: 00007ff6e947cff5 (ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0x0000000000e1786f)
+   ExceptionCode: c0000409 (Security check failure or stack buffer overrun)
+  ExceptionFlags: 00000001
+NumberParameters: 1
+   Parameter[0]: 0000000000000007
+Subcode: 0x7 FAST_FAIL_FATAL_APP_EXIT
+Unable to get exception context, HRESULT 0x8000FFFF
+Child-SP          RetAddr           : Args to Child                                                           : Call Site
+0000006e`65dfcaf0 00007ff6`e7e21829 : 00007ff6`e7e297e0 00007ff6`e7f687e7 0000006e`65dfcb38 00007ff6`e7e22c29 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0xe1786f
+0000006e`65dfcb20 00007ff6`e7f6a40d : 0000006e`65dfcc20 00007ff6`e7e1eccd ffffffff`fffffffe 0000006e`65dfcf50 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0x7df9
+0000006e`65dfcba0 00007ff6`e7f64f1d : 00000245`af06a8b0 00000000`00000000 00000000`00000002 00000000`00000000 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x8bced
+0000006e`65dfcc40 00007ff6`e7e5a4ec : ffffffff`ffffffff 0000006e`65dfd060 00000245`af06a8b0 0000006e`65dfcf90 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x867fd
+0000006e`65dfcef0 00007ff6`e7e5b9ed : 0000006e`65dfd4b0 00003a0f`bc6281af 00000000`00001113 00000000`00000000 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1544c
+0000006e`65dfcff0 00007ff6`e7e647f2 : 0000006e`65dfd1d0 00000000`00000000 0000006e`65dfd99c 00000000`00000000 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1694d
+0000006e`65dfd0a0 00007ff6`e7e6227d : 00000245`abefcd80 00007ff6`e7e63a40 00000000`00000000 00003a0f`bc62992f : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1f752
+0000006e`65dfd560 00007ff6`e7e8624d : 00000245`b6907c40 ffffffff`ffffffff 00000000`00000000 00000000`00000003 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+0000006e`65dfd910 00007ff6`e7e95c3b : 0000006e`65dfda18 00000000`00000000 00000000`00000000 ffffffff`fffffffe : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x411ad
+0000006e`65dfd9c0 00007ff6`e7e72494 : 000002ec`0015cf98 00003a0f`bc6296df 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x50b9b
+0000006e`65dfdb10 00007ff6`e7e61b16 : 00000245`abefe5f0 00007ff6`e7e264f0 00000000`00000000 00000000`00000003 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x2d3f4
+0000006e`65dfdb80 00007ff6`e7e94c14 : 0000006e`65dfe100 00000245`abf3daf0 0000006e`65dfdfb0 00007ff6`e7e1eccd : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1ca76
+0000006e`65dfdf20 00007ff6`e7e4fc15 : 00000000`00000000 00007ff6`e7e21c59 00000245`af089368 00007ff6`e7f852bb : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x4fb74
+0000006e`65dfe020 00007ff6`e7e1d96c : 00000000`00000000 40d1a9e6`66666666 00000000`00000007 00000245`af0895a8 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0xab75
+0000006e`65dfe0d0 00007ff6`e7e2756c : 00000000`00000000 00003a0f`bc62ad5f 00000245`af0896c8 00000000`00000000 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0x3f3c
+0000006e`65dfe1c0 00007ff6`e8080567 : 00000000`00000000 00000000`00000000 00000000`00000000 00000245`00000000 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0xdb3c
+0000006e`65dfe210 00007ff6`e8c1ba1b : 00007ff6`e7e297e0 00007ff6`e7dfc6b0 00003a0f`00000001 00007ff6`e7e214f1 : ui_benchmark!cppgc::LivenessBroker::IsHeapObjectAliveImpl+0x2c02f
+0000006e`65dfe300 00007ff6`e8c1b969 : 0000006e`65dfe4d0 00000245`af089638 0000006e`65dfe56f 0000006e`65dfe430 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0x5b6295
+0000006e`65dfe3c0 00007ff6`e8c1d752 : 00000000`00000000 00000000`00000020 00000000`00000010 00000000`00000004 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0x5b61e3
+0000006e`65dfe3f0 00007ff6`e8c1d90d : 00000245`c5caeef0 00007ff6`e84af42d 00000245`be9feae0 00000000`000007ed : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0x5b7fcc
+0000006e`65dfe530 00007ff6`e85a334d : 00003a0f`bc62aa1f 00007ff6`ea1d6f52 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0x5b8187
+0000006e`65dfe650 00007ff6`e85a3133 : 000002ec`00159e48 00000000`00000000 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0x621b1
+0000006e`65dfe690 00007ff6`e802bfcf : 0000006e`65dfe8e0 00000000`00000004 0000006e`65dfe8e0 000002ec`00159e48 : ui_benchmark!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0x61f97
+0000006e`65dfe7c0 00007ff6`e802b590 : 00007ff6`ea29db70 00007ff6`e7f2f2f3 00000245`abefd140 0000006e`65dfe980 : ui_benchmark!cppgc::internal::WriteBarrier::GenerationalBarrierForSourceObjectSlow+0x9a187
+0000006e`65dfe8b0 00007ff6`e7f99499 : 00000245`abdb02a4 00007ff6`e7f1a8cc 00000000`00000010 0000001c`00b8795b : ui_benchmark!cppgc::internal::WriteBarrier::GenerationalBarrierForSourceObjectSlow+0x99748
+0000006e`65dfe980 00007ff6`e7e3394c : 00000245`abf60eb0 00000245`abefe5f0 00000000`00000046 0000006e`65dfee78 : ui_benchmark!cppgc::internal::WriteBarrier::GenerationalBarrierForSourceObjectSlow+0x7651
+0000006e`65dfe9c0 00007ff6`e7e0c2ea : 00000245`abf43190 00000000`00000000 0000006e`65dfeb38 00007ff6`e8491ba5 : ui_benchmark!v8::SourceLocation::Line+0x789c
+0000006e`65dfea40 00007ff6`e7e0dc44 : 0000006e`65dfec08 00003a0f`bc62a6cf 0000006e`65dfecd0 00000245`abf94b50 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0xf60a
+0000006e`65dfeb30 00007ff6`e7e0dfcb : 0000006e`65dfeda8 00003a0f`bc62a76f 00007ff6`e957c6d0 00003a0f`bc62a74f : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0x10f64
+0000006e`65dfeba0 00007ff6`e7e0dfcb : 00007ff6`e7e0b402 0000001c`00b87938 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0x112eb
+0000006e`65dfec20 00007ff6`e7e1a8fb : 00000000`00000001 00007ff6`e7f2c63d 0000006e`65dfed20 00007ff6`e832a495 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0x112eb
+0000006e`65dfeca0 00007ff6`e8616feb : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0xecb
+0000006e`65dfed50 00007ff6`e8616c1d : 40fd5cf2`c8747878 00000000`00000000 00000000`00000001 00000000`00000000 : ui_benchmark!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xd5e4f
+0000006e`65dfeee0 00007ff6`e809049e : 00007ff6`ea1c357a 00007ff6`ea20374e 00003a0f`00000122 00000000`00000000 : ui_benchmark!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xd5a81
+0000006e`65dfefb0 00007ff6`e808fe97 : 0000006e`65dff0a3 00000245`abefbc70 00003a0f`bc62bc1f 00000000`00000001 : ui_benchmark!cppgc::internal::TraceTraitFromInnerAddressImpl::GetTraceDescriptor+0xe222
+0000006e`65dff050 00007ff6`e86173b8 : 0000006e`65dff1d0 00007ff6`e7e19bc6 00000000`00000000 00007ff6`ea1c357a : ui_benchmark!cppgc::internal::TraceTraitFromInnerAddressImpl::GetTraceDescriptor+0xdc1b
+0000006e`65dff0d0 00007ff6`e7e1addf : 0000006e`65dff208 00000000`00000046 00000245`cc1b9b28 0000006e`65dff3d0 : ui_benchmark!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xd621c
+0000006e`65dff160 00007ff6`e7e0b458 : 00000000`00000000 00000000`00000000 00000000`00000000 0000006e`65dff270 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0x13af
+0000006e`65dff230 00007ff6`e7e0e2a0 : 0000006e`65dffca0 00000000`00000000 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0xe778
+0000006e`65dff390 00007ff6`e7e0c1f5 : 00000245`af268c50 00000245`af413220 0000006e`65dff4d0 00000245`abeb0000 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0x115c0
+0000006e`65dff430 00007ff6`e7df677f : 00000245`abf60eb0 0000006e`00000000 0000006e`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::BaseObjectSizeTrait::operator=+0xf515
+0000006e`65dff520 00007ff6`e7df286b : 00000000`00000000 00000245`abeef840 00007ff6`ea25870e 0000006e`65dff780 : ui_benchmark+0x677f
+0000006e`65dff700 00007ff6`e9465d62 : 00007ff6`e9532d40 00007ff6`e9465dd9 00000000`00000000 00000000`00000000 : ui_benchmark+0x286b
+0000006e`65dffe70 00007ffd`534e7374 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0xe005dc
+0000006e`65dffeb0 00007ffd`5529cc91 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : KERNEL32!BaseThreadInitThunk+0x14
+0000006e`65dffee0 00000000`00000000 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : ntdll!RtlUserThreadStart+0x21
+start             end                 module name
+00007ff6`e7df0000 00007ff6`ea452000   ui_benchmark C (export symbols)       D:\Project\mini-electron\out\ui-opt-o2-facade-matrix\build\ui-benchmark.exe
+rax=0000000000000001 rbx=0000006e65dfcbf0 rcx=0000000000000007
+rdx=0000006e65dfcb00 rsi=0000006e65dfcbd8 rdi=00000245aebfe810
+rip=00007ff6e947cff5 rsp=0000006e65dfcaf0 rbp=0000006e65dfccc0
+ r8=0000006e65dfcaf0  r9=0000006e65dfcaf8 r10=0000000000008000
+r11=0000006e65dfcae8 r12=00000245abefe5f0 r13=00000245d0309e58
+r14=0000006e65dfcbf0 r15=00000245aebfe810
+iopl=0         nv up ei pl nz na pe nc
+cs=0033  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000202
+ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0xe1786f:
+00007ff6`e947cff5 cd29            int     29h
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

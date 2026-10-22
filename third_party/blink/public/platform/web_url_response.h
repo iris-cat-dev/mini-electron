@@ -39,7 +39,9 @@
 #include "base/unguessable_token.h"
 #include "net/base/auth.h"
 #include "net/base/ip_endpoint.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/cert/ct_policy_status.h"
+#endif
 #include "net/http/alternate_protocol_usage.h"
 #include "net/http/http_connection_info.h"
 #include "third_party/blink/public/common/security/security_style.h"
@@ -50,19 +52,25 @@
 namespace network {
 namespace mojom {
 enum class AlternateProtocolUsage;
+#if !defined(MINI_UI_QUICKJS)
 enum class FetchResponseSource;
+#endif
 enum class FetchResponseType : int32_t;
 enum class IPAddressSpace : int32_t;
 enum class PrivateNetworkAccessPreflightResult;
 class URLResponseHead;
 class LoadTimingInfo;
+#if !defined(MINI_UI_QUICKJS)
 class ServiceWorkerRouterInfo;
+#endif
 } // namespace mojom
 } // namespace network
 
+#if !defined(MINI_UI_QUICKJS)
 namespace net {
 class SSLInfo;
 }
+#endif
 
 namespace blink {
 
@@ -146,7 +154,9 @@ public:
 
     void SetSecurityStyle(SecurityStyle);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetSSLInfo(const net::SSLInfo&);
+#endif
 
     void SetAsyncRevalidationRequested(bool);
     void SetNetworkAccessed(bool);
@@ -163,6 +173,7 @@ public:
     bool WasFetchedViaSPDY() const;
     void SetWasFetchedViaSPDY(bool);
 
+#if !defined(MINI_UI_QUICKJS)
     // Flag whether this request was loaded via a ServiceWorker.
     // See network.mojom.URLResponseHead.was_fetched_via_service_worker.
     bool WasFetchedViaServiceWorker() const;
@@ -176,6 +187,8 @@ public:
     // See network.mojom.URLResponseHead.static_routing_info.
     void SetServiceWorkerRouterInfo(const network::mojom::ServiceWorkerRouterInfo&);
 
+#endif
+
     // Flag whether a shared dictionary was used to decompress the response body.
     void SetDidUseSharedDictionary(bool);
 
@@ -183,6 +196,7 @@ public:
     void SetType(network::mojom::FetchResponseType);
     network::mojom::FetchResponseType GetType() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Pre-computed padding.  This should only be non-zero if the type is
     // kOpaque.  In addition, it is only set for responses provided by a
     // service worker FetchEvent handler.
@@ -201,14 +215,19 @@ public:
     WebString CacheStorageCacheName() const;
     void SetCacheStorageCacheName(const WebString&);
 
+#endif
+
     // The headers that should be exposed according to CORS. Only guaranteed
     // to be set if the response was served by a ServiceWorker.
     WebVector<WebString> CorsExposedHeaderNames() const;
     void SetCorsExposedHeaderNames(const WebVector<WebString>&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Whether service worker navigation preload occurred.
     // See network.mojom.URLResponseHead.did_navigation_preload.
     void SetDidServiceWorkerNavigationPreload(bool);
+
+#endif
 
     // Remote IP endpoint of the socket which fetched this resource.
     net::IPEndPoint RemoteIPEndpoint() const;

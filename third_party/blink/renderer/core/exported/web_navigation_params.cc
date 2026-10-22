@@ -7,7 +7,9 @@
 #include "base/uuid.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/navigation/navigation_params.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/static_data_navigation_body_loader.h"
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
 #include "third_party/blink/renderer/platform/network/http_names.h"

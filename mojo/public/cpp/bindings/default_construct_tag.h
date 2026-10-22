@@ -28,18 +28,16 @@ struct DefaultConstructTag;
 // This is essentially a variant of `base::PassKey` that is specialized for the
 // Mojo deserialization case.
 struct DefaultConstruct {
-public:
-    struct Tag {
-    private:
-        friend internal::DefaultConstructTag;
-        // Intentionally not defaulted to prevent list initialization syntax from
-        // bypassing the constructor visibility restrictions.
-        constexpr Tag()
-        {
-        }
-    };
+ public:
+  struct Tag {
+   private:
+    friend internal::DefaultConstructTag;
+    // Intentionally not defaulted to prevent list initialization syntax from
+    // bypassing the constructor visibility restrictions.
+    constexpr Tag() {}
+  };
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_DEFAULT_CONSTRUCT_TAG_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_DEFAULT_CONSTRUCT_TAG_H_

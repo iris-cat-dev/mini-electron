@@ -57,7 +57,9 @@
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/custom/element_internals.h"
@@ -71,15 +73,19 @@
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
-#if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
 #endif
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/track/vtt/vtt_element.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/custom_scrollbar.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
@@ -87,14 +93,18 @@
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation_controller.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
@@ -1419,6 +1429,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return IsLastOfType(element, element.TagQName());
     }
     case CSSSelector::kPseudoOnlyChild: {
+#if !defined(MINI_UI_QUICKJS)
         if (IsTransitionPseudoElement(context.pseudo_id)) {
             DCHECK(element.IsDocumentElement());
             DCHECK(context.pseudo_argument);
@@ -1427,6 +1438,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
             DCHECK(transition);
             return transition->MatchForOnlyChild(context.pseudo_id, *context.pseudo_argument);
         }
+#endif
 
         ContainerNode* parent = element.ParentElementOrDocumentFragment();
         if (mode_ == kResolvingStyle) {
@@ -1455,7 +1467,9 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return IsFirstOfType(element, element.TagQName()) && IsLastOfType(element, element.TagQName());
     }
     case CSSSelector::kPseudoPlaceholderShown: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoPlaceholderShown, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1515,7 +1529,9 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
     case CSSSelector::kPseudoSelectorFragmentAnchor:
         return MatchesSelectorFragmentAnchorPseudoClass(element);
     case CSSSelector::kPseudoTarget:
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoTarget, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1588,7 +1604,9 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         if (ImpactsSubject(context)) {
             result.SetFlag(MatchFlag::kAffectedByFocusWithin);
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoFocusWithin, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1613,7 +1631,9 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         if (!ShouldMatchHoverOrActive(context)) {
             return false;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoHover, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1632,32 +1652,44 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         if (!ShouldMatchHoverOrActive(context)) {
             return false;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoActive, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
         return element.IsActive();
     case CSSSelector::kPseudoEnabled: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoEnabled, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoDisabled, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.MatchesEnabledPseudoClass();
     }
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoFullPageMedia:
         return element.GetDocument().IsMediaDocument();
+#endif
     case CSSSelector::kPseudoDefault:
         return element.MatchesDefaultPseudoClass();
     case CSSSelector::kPseudoDisabled:
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoDisabled, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoEnabled, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
@@ -1670,55 +1702,75 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         }
         return element.IsDisabledFormControl();
     case CSSSelector::kPseudoReadOnly: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoReadOnly, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoReadWrite, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.MatchesReadOnlyPseudoClass();
     }
     case CSSSelector::kPseudoReadWrite: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoReadWrite, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoReadOnly, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.MatchesReadWritePseudoClass();
     }
     case CSSSelector::kPseudoOptional: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoOptional, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoRequired, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.IsOptionalFormControl();
     }
     case CSSSelector::kPseudoRequired: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoRequired, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoOptional, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.IsRequiredFormControl();
     }
     case CSSSelector::kPseudoUserInvalid: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoUserInvalid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoUserValid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
@@ -1728,11 +1780,15 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return false;
     }
     case CSSSelector::kPseudoUserValid: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoUserValid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoUserInvalid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
@@ -1742,28 +1798,38 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return false;
     }
     case CSSSelector::kPseudoValid:
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoValid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoInvalid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.MatchesValidityPseudoClasses() && element.IsValidElement();
     case CSSSelector::kPseudoInvalid: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoInvalid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoValid, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.MatchesValidityPseudoClasses() && !element.IsValidElement();
     }
     case CSSSelector::kPseudoChecked: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoChecked, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1786,7 +1852,9 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         break;
     }
     case CSSSelector::kPseudoIndeterminate: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoIndeterminate, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
@@ -1795,8 +1863,12 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
     case CSSSelector::kPseudoRoot:
         return element == element.GetDocument().documentElement();
     case CSSSelector::kPseudoLang: {
+#if !defined(MINI_UI_QUICKJS)
         auto* vtt_element = DynamicTo<VTTElement>(element);
         AtomicString value = vtt_element ? vtt_element->Language() : element.ComputeInheritedLanguage();
+#else
+        AtomicString value = element.ComputeInheritedLanguage();
+#endif
         const AtomicString& argument = selector.Argument();
         if (value.empty() || !value.StartsWith(argument, kTextCaseASCIIInsensitive)) {
             break;
@@ -1889,11 +1961,14 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return Fullscreen::IsFullscreenFlagSetFor(element);
     case CSSSelector::kPseudoFullScreenAncestor:
         return element.ContainsFullScreenElement();
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoPaused: {
         DCHECK(RuntimeEnabledFeatures::CSSPseudoPlayingPausedEnabled());
         auto* media_element = DynamicTo<HTMLMediaElement>(element);
         return media_element && media_element->paused();
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoPermissionGranted: {
 #if defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
         return false;
@@ -1921,8 +1996,12 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         return permission_element && permission_element->IsOccluded();
 #endif
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoPictureInPicture:
         return PictureInPictureController::IsElementInPictureInPicture(&element);
+#endif
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoPlaying: {
         DCHECK(RuntimeEnabledFeatures::CSSPseudoPlayingPausedEnabled());
         auto* media_element = DynamicTo<HTMLMediaElement>(element);
@@ -1936,33 +2015,43 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
     case CSSSelector::kPseudoVideoPersistentAncestor:
         DCHECK(is_ua_rule_);
         return element.ContainsPersistentVideo();
+#endif
     case CSSSelector::kPseudoXrOverlay:
         // In immersive AR overlay mode, apply a pseudostyle to the DOM Overlay
         // element. This is the same as the fullscreen element in the current
         // implementation, but could be different for AR headsets.
         return element.GetDocument().IsXrOverlay() && Fullscreen::IsFullscreenElement(element);
     case CSSSelector::kPseudoInRange: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoInRange, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoOutOfRange, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.IsInRange();
     }
     case CSSSelector::kPseudoOutOfRange: {
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoOutOfRange, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::ForcePseudoState(&element, CSSSelector::kPseudoInRange, &force_pseudo_state);
+#endif
         if (force_pseudo_state) {
             return false;
         }
         return element.IsOutOfRange();
     }
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoFutureCue: {
         auto* vtt_element = DynamicTo<VTTElement>(element);
         return vtt_element && !vtt_element->IsPastNode();
@@ -1971,6 +2060,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         auto* vtt_element = DynamicTo<VTTElement>(element);
         return vtt_element && vtt_element->IsPastNode();
     }
+#endif
     case CSSSelector::kPseudoScope:
         return CheckPseudoScope(context, result);
     case CSSSelector::kPseudoDefined:
@@ -2075,6 +2165,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
     case CSSSelector::kPseudoRelativeAnchor:
         DCHECK(context.relative_anchor_element);
         return context.relative_anchor_element == &element;
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoActiveViewTransition: {
         // :active-view-transition is only valid on the document element.
         if (!element.IsDocumentElement()) {
@@ -2105,6 +2196,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context, M
         // Ask the transition to match based on the argument list.
         return transition->MatchForActiveViewTransitionType(selector.IdentList());
     }
+#endif
     case CSSSelector::kPseudoUnparsed:
         // Only kept around for parsing; can never match anything
         // (because we don't know what it's supposed to mean).
@@ -2133,7 +2225,9 @@ static bool MatchesUAShadowElement(Element& element, const AtomicString& id)
 bool SelectorChecker::CheckPseudoAutofill(CSSSelector::PseudoType pseudo_type, Element& element) const
 {
     bool force_pseudo_state = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ForcePseudoState(&element, CSSSelector::kPseudoAutofill, &force_pseudo_state);
+#endif
     if (force_pseudo_state) {
         return true;
     }
@@ -2243,6 +2337,7 @@ bool SelectorChecker::CheckPseudoElement(const SelectorCheckingContext& context,
         }
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoViewTransition:
     case CSSSelector::kPseudoViewTransitionGroup:
     case CSSSelector::kPseudoViewTransitionImagePair:
@@ -2289,6 +2384,7 @@ bool SelectorChecker::CheckPseudoElement(const SelectorCheckingContext& context,
         return base::ranges::all_of(selector.IdentList().begin() + 1, selector.IdentList().end(),
             [&](const AtomicString& class_from_selector) { return base::Contains(pseudo_ident_list_, class_from_selector); });
     }
+#endif
     case CSSSelector::kPseudoScrollbarButton:
     case CSSSelector::kPseudoScrollbarCorner:
     case CSSSelector::kPseudoScrollbarThumb:
@@ -2502,7 +2598,9 @@ bool SelectorChecker::MatchesFocusPseudoClass(const Element& element, PseudoId m
         }
     }
     bool force_pseudo_state = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ForcePseudoState(const_cast<Element*>(matching_element), CSSSelector::kPseudoFocus, &force_pseudo_state);
+#endif
     if (force_pseudo_state) {
         return true;
     }
@@ -2512,7 +2610,9 @@ bool SelectorChecker::MatchesFocusPseudoClass(const Element& element, PseudoId m
 bool SelectorChecker::MatchesFocusVisiblePseudoClass(const Element& element)
 {
     bool force_pseudo_state = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ForcePseudoState(const_cast<Element*>(&element), CSSSelector::kPseudoFocusVisible, &force_pseudo_state);
+#endif
     if (force_pseudo_state) {
         return true;
     }

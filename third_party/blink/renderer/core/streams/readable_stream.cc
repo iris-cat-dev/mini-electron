@@ -830,9 +830,11 @@ void ReadableStream::Serialize(ScriptState* script_state, MessagePort* port, Exc
 ReadableStream* ReadableStream::Deserialize(
     ScriptState* script_state, MessagePort* port, std::unique_ptr<ReadableStreamTransferringOptimizer> optimizer, ExceptionState& exception_state)
 {
+#if !defined(MINI_UI_QUICKJS)
     // We need to execute JavaScript to call "Then" on v8::Promises. We will not
     // run author code.
     v8::Isolate::AllowJavascriptExecutionScope allow_js(script_state->GetIsolate());
+#endif
 
     // https://streams.spec.whatwg.org/#rs-transfer
     // These steps are done by V8ScriptValueDeserializer::ReadDOMObject().

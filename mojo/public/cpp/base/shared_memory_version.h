@@ -86,62 +86,66 @@ namespace shared_memory_version {
 static constexpr VersionType kInvalidVersion = 0ULL;
 static constexpr VersionType kInitialVersion = 1ULL;
 
-} // namespace shared_memory_version
+}  // namespace shared_memory_version
 
 // Used to modify the version number and issue read only handles to it.
-class /*COMPONENT_EXPORT(MOJO_BASE)*/ SharedMemoryVersionController {
-public:
-    SharedMemoryVersionController();
-    ~SharedMemoryVersionController();
+class COMPONENT_EXPORT(MOJO_BASE) SharedMemoryVersionController {
+ public:
+  SharedMemoryVersionController();
+  ~SharedMemoryVersionController();
 
-    // Not copyable or movable
-    SharedMemoryVersionController(const SharedMemoryVersionController&) = delete;
-    SharedMemoryVersionController& operator=(const SharedMemoryVersionController&) = delete;
+  // Not copyable or movable
+  SharedMemoryVersionController(const SharedMemoryVersionController&) = delete;
+  SharedMemoryVersionController& operator=(
+      const SharedMemoryVersionController&) = delete;
 
-    // Get a shared memory region to be sent to a different process. It will be
-    // used to instantiate a SharedMemoryVersionClient.
-    base::ReadOnlySharedMemoryRegion GetSharedMemoryRegion() const;
+  // Get a shared memory region to be sent to a different process. It will be
+  // used to instantiate a SharedMemoryVersionClient.
+  base::ReadOnlySharedMemoryRegion GetSharedMemoryRegion() const;
 
-    VersionType GetSharedVersion() const;
+  VersionType GetSharedVersion() const;
 
-    // Increment shared version. This is not expected to cause a wrap of the value
-    // during normal operation. This invariant is guaranteed with a CHECK.
-    void Increment();
+  // Increment shared version. This is not expected to cause a wrap of the value
+  // during normal operation. This invariant is guaranteed with a CHECK.
+  void Increment();
 
-    // Directly set shared version. `version` must be strictly larger than
-    // previous version. `version` cannot be maximum representable value for
-    // VersionType.
-    void SetVersion(VersionType version);
+  // Directly set shared version. `version` must be strictly larger than
+  // previous version. `version` cannot be maximum representable value for
+  // VersionType.
+  void SetVersion(VersionType version);
 
-private:
-    const base::AtomicSharedMemory<VersionType> mapped_region_;
+ private:
+  const base::AtomicSharedMemory<VersionType> mapped_region_;
 };
 
 // Used to keep track of a remote version number and compare it to a
 // locally tracked version.
-class /*COMPONENT_EXPORT(MOJO_BASE)*/ SharedMemoryVersionClient {
-public:
-    explicit SharedMemoryVersionClient(base::ReadOnlySharedMemoryRegion shared_region);
-    ~SharedMemoryVersionClient();
+class COMPONENT_EXPORT(MOJO_BASE) SharedMemoryVersionClient {
+ public:
+  explicit SharedMemoryVersionClient(
+      base::ReadOnlySharedMemoryRegion shared_region);
+  ~SharedMemoryVersionClient();
 
-    // Not copyable or movable
-    SharedMemoryVersionClient(const SharedMemoryVersionClient&) = delete;
-    SharedMemoryVersionClient& operator=(const SharedMemoryVersionClient&) = delete;
+  // Not copyable or movable
+  SharedMemoryVersionClient(const SharedMemoryVersionClient&) = delete;
+  SharedMemoryVersionClient& operator=(const SharedMemoryVersionClient&) =
+      delete;
 
-    // These functions can be used to form statements such as:
-    // "Skip the IPC if `SharedVersionIsLessThan()` returns true."
-    // The functions err on the side of caution and return true if the comparison
-    // is impossible since issuing an IPC should always be an option.
-    bool SharedVersionIsLessThan(VersionType version) const;
-    bool SharedVersionIsGreaterThan(VersionType version) const;
+  // These functions can be used to form statements such as:
+  // "Skip the IPC if `SharedVersionIsLessThan()` returns true."
+  // The functions err on the side of caution and return true if the comparison
+  // is impossible since issuing an IPC should always be an option.
+  bool SharedVersionIsLessThan(VersionType version) const;
+  bool SharedVersionIsGreaterThan(VersionType version) const;
 
-private:
-    // Returns the current value in shared memory.
-    VersionType GetSharedVersion() const;
+ private:
+  // Returns the current value in shared memory.
+  VersionType GetSharedVersion() const;
 
-    const base::AtomicSharedMemory<VersionType>::ReadOnlyMapping read_only_mapping_;
+  const base::AtomicSharedMemory<VersionType>::ReadOnlyMapping
+      read_only_mapping_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BASE_SHARED_MEMORY_VERSION_H_
+#endif  // MOJO_PUBLIC_CPP_BASE_SHARED_MEMORY_VERSION_H_

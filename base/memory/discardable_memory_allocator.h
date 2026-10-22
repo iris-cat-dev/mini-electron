@@ -30,6 +30,9 @@ public:
 
     // Returns the allocator instance.
     static DiscardableMemoryAllocator* GetInstance();
+    // Returns whether an allocator has been installed. This optional lookup is
+    // intended for startup code that must preserve an embedder-owned allocator.
+    static bool HasInstance();
 
     // Sets the allocator instance. Can only be called once, e.g. on startup.
     // Ownership of |instance| remains with the caller.

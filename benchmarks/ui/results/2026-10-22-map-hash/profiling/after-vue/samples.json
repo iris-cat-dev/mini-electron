@@ -1,0 +1,7873 @@
+{
+  "profiled_diagnostic": true,
+  "method": "process-local main-thread suspension/context sampling with randomized 3-7ms intervals; sample counts and inter-sample CPU cycles are approximate, not ETW exclusive CPU durations",
+  "pid": 41736,
+  "thread_id": 33612,
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-map-after\\build\\ui-benchmark.exe",
+    "--framework",
+    "vue",
+    "--rows",
+    "1000",
+    "--warmups",
+    "2",
+    "--iterations",
+    "7",
+    "--resource-root",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "--output",
+    "D:\\Project\\mini-electron\\out\\ui-map-thread-profile-vue\\workload.json",
+    "--capture",
+    "D:\\Project\\mini-electron\\out\\ui-map-thread-profile-vue\\capture.bmp",
+    "--width",
+    "1280",
+    "--height",
+    "720",
+    "--device-scale",
+    "1",
+    "--timeout-ms",
+    "900000"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 16.505085800017696,
+  "errors": [],
+  "modules": [
+    {
+      "base": 140695468310528,
+      "size": 40366080,
+      "path": "D:\\Project\\mini-electron\\out\\ui-map-after\\build\\ui-benchmark.exe"
+    },
+    {
+      "base": 140726031941632,
+      "size": 2064384,
+      "path": "C:\\Windows\\SYSTEM32\\ntdll.dll"
+    },
+    {
+      "base": 140726001008640,
+      "size": 794624,
+      "path": "C:\\Windows\\System32\\KERNEL32.DLL"
+    },
+    {
+      "base": 140725989539840,
+      "size": 3104768,
+      "path": "C:\\Windows\\System32\\KERNELBASE.dll"
+    },
+    {
+      "base": 140726003236864,
+      "size": 7798784,
+      "path": "C:\\Windows\\System32\\SHELL32.dll"
+    },
+    {
+      "base": 140725994913792,
+      "size": 643072,
+      "path": "C:\\Windows\\System32\\msvcp_win.dll"
+    },
+    {
+      "base": 140725988491264,
+      "size": 1048576,
+      "path": "C:\\Windows\\System32\\ucrtbase.dll"
+    },
+    {
+      "base": 140726027878400,
+      "size": 1708032,
+      "path": "C:\\Windows\\System32\\USER32.dll"
+    },
+    {
+      "base": 140725997797376,
+      "size": 139264,
+      "path": "C:\\Windows\\System32\\win32u.dll"
+    },
+    {
+      "base": 140726029647872,
+      "size": 176128,
+      "path": "C:\\Windows\\System32\\GDI32.dll"
+    },
+    {
+      "base": 140725996290048,
+      "size": 1150976,
+      "path": "C:\\Windows\\System32\\gdi32full.dll"
+    },
+    {
+      "base": 140726030041088,
+      "size": 724992,
+      "path": "C:\\Windows\\System32\\ADVAPI32.dll"
+    },
+    {
+      "base": 140726001860608,
+      "size": 647168,
+      "path": "C:\\Windows\\System32\\msvcrt.dll"
+    },
+    {
+      "base": 140726018179072,
+      "size": 651264,
+      "path": "C:\\Windows\\System32\\sechost.dll"
+    },
+    {
+      "base": 140726025715712,
+      "size": 1179648,
+      "path": "C:\\Windows\\System32\\RPCRT4.dll"
+    },
+    {
+      "base": 140725992685568,
+      "size": 159744,
+      "path": "C:\\Windows\\System32\\bcrypt.dll"
+    },
+    {
+      "base": 140726016933888,
+      "size": 1224704,
+      "path": "C:\\Windows\\System32\\ole32.dll"
+    },
+    {
+      "base": 140726012936192,
+      "size": 3489792,
+      "path": "C:\\Windows\\System32\\combase.dll"
+    },
+    {
+      "base": 140725946417152,
+      "size": 2617344,
+      "path": "C:\\Windows\\SYSTEM32\\DWrite.dll"
+    },
+    {
+      "base": 140725756755968,
+      "size": 159744,
+      "path": "C:\\Windows\\SYSTEM32\\WINMM.dll"
+    },
+    {
+      "base": 140725958279168,
+      "size": 2101248,
+      "path": "C:\\Windows\\SYSTEM32\\dbghelp.dll"
+    },
+    {
+      "base": 140725793849344,
+      "size": 102400,
+      "path": "C:\\Windows\\SYSTEM32\\USP10.dll"
+    },
+    {
+      "base": 140726029844480,
+      "size": 192512,
+      "path": "C:\\Windows\\System32\\IMM32.DLL"
+    },
+    {
+      "base": 140725992882176,
+      "size": 532480,
+      "path": "C:\\Windows\\System32\\bcryptPrimitives.dll"
+    },
+    {
+      "base": 140725998518272,
+      "size": 708608,
+      "path": "C:\\Windows\\System32\\shcore.dll"
+    },
+    {
+      "base": 140725933113344,
+      "size": 647168,
+      "path": "C:\\Windows\\system32\\uxtheme.dll"
+    },
+    {
+      "base": 140725963259904,
+      "size": 73728,
+      "path": "C:\\Windows\\SYSTEM32\\kernel.appcore.dll"
+    }
+  ],
+  "samples": [
+    {
+      "pc": 140726032256112,
+      "count": 1,
+      "cycles_since_prior_sample": 787702
+    },
+    {
+      "pc": 140725997825188,
+      "count": 1,
+      "cycles_since_prior_sample": 11066724
+    },
+    {
+      "pc": 140725997809028,
+      "count": 1,
+      "cycles_since_prior_sample": 19672622
+    },
+    {
+      "pc": 140726031982959,
+      "count": 12,
+      "cycles_since_prior_sample": 204595716
+    },
+    {
+      "pc": 140695492273696,
+      "count": 1,
+      "cycles_since_prior_sample": 12597478
+    },
+    {
+      "pc": 140695474405155,
+      "count": 1,
+      "cycles_since_prior_sample": 16289520
+    },
+    {
+      "pc": 140726032587812,
+      "count": 98,
+      "cycles_since_prior_sample": 719126118
+    },
+    {
+      "pc": 140695484604004,
+      "count": 5,
+      "cycles_since_prior_sample": 57420078
+    },
+    {
+      "pc": 140726032627194,
+      "count": 35,
+      "cycles_since_prior_sample": 584718262
+    },
+    {
+      "pc": 140695469229458,
+      "count": 1,
+      "cycles_since_prior_sample": 10794026
+    },
+    {
+      "pc": 140695469237440,
+      "count": 1,
+      "cycles_since_prior_sample": 10601906
+    },
+    {
+      "pc": 140695468721151,
+      "count": 1,
+      "cycles_since_prior_sample": 19230094
+    },
+    {
+      "pc": 140695484604043,
+      "count": 1,
+      "cycles_since_prior_sample": 14898050
+    },
+    {
+      "pc": 140726032119958,
+      "count": 7,
+      "cycles_since_prior_sample": 119300026
+    },
+    {
+      "pc": 140726032001325,
+      "count": 1,
+      "cycles_since_prior_sample": 10570860
+    },
+    {
+      "pc": 140695468805289,
+      "count": 3,
+      "cycles_since_prior_sample": 55606154
+    },
+    {
+      "pc": 140695468823894,
+      "count": 1,
+      "cycles_since_prior_sample": 18296398
+    },
+    {
+      "pc": 140695468807831,
+      "count": 25,
+      "cycles_since_prior_sample": 387500974
+    },
+    {
+      "pc": 140695468800496,
+      "count": 1,
+      "cycles_since_prior_sample": 21338594
+    },
+    {
+      "pc": 140695468795455,
+      "count": 1,
+      "cycles_since_prior_sample": 21155610
+    },
+    {
+      "pc": 140695468807793,
+      "count": 1,
+      "cycles_since_prior_sample": 10688968
+    },
+    {
+      "pc": 140695468758348,
+      "count": 50,
+      "cycles_since_prior_sample": 784196858
+    },
+    {
+      "pc": 140695468813578,
+      "count": 2,
+      "cycles_since_prior_sample": 37044030
+    },
+    {
+      "pc": 140695468795804,
+      "count": 2,
+      "cycles_since_prior_sample": 34216258
+    },
+    {
+      "pc": 140695473048608,
+      "count": 1,
+      "cycles_since_prior_sample": 15108706
+    },
+    {
+      "pc": 140726031982966,
+      "count": 4,
+      "cycles_since_prior_sample": 69372068
+    },
+    {
+      "pc": 140695492273715,
+      "count": 2,
+      "cycles_since_prior_sample": 31610308
+    },
+    {
+      "pc": 140695468780154,
+      "count": 2,
+      "cycles_since_prior_sample": 27251032
+    },
+    {
+      "pc": 140726032119714,
+      "count": 47,
+      "cycles_since_prior_sample": 738848464
+    },
+    {
+      "pc": 140695468804835,
+      "count": 1,
+      "cycles_since_prior_sample": 15901974
+    },
+    {
+      "pc": 140695468803330,
+      "count": 9,
+      "cycles_since_prior_sample": 150063304
+    },
+    {
+      "pc": 140695468765289,
+      "count": 1,
+      "cycles_since_prior_sample": 11908092
+    },
+    {
+      "pc": 140695468729926,
+      "count": 1,
+      "cycles_since_prior_sample": 11907910
+    },
+    {
+      "pc": 140695469503035,
+      "count": 1,
+      "cycles_since_prior_sample": 14767626
+    },
+    {
+      "pc": 140695468757295,
+      "count": 9,
+      "cycles_since_prior_sample": 143732984
+    },
+    {
+      "pc": 140695468728113,
+      "count": 1,
+      "cycles_since_prior_sample": 9405310
+    },
+    {
+      "pc": 140695469036450,
+      "count": 1,
+      "cycles_since_prior_sample": 16504648
+    },
+    {
+      "pc": 140695468811671,
+      "count": 8,
+      "cycles_since_prior_sample": 130206512
+    },
+    {
+      "pc": 140695468928544,
+      "count": 1,
+      "cycles_since_prior_sample": 11918870
+    },
+    {
+      "pc": 140695468755916,
+      "count": 1,
+      "cycles_since_prior_sample": 21391478
+    },
+    {
+      "pc": 140695468804901,
+      "count": 2,
+      "cycles_since_prior_sample": 37244946
+    },
+    {
+      "pc": 140695471062756,
+      "count": 1,
+      "cycles_since_prior_sample": 10452218
+    },
+    {
+      "pc": 140695468757299,
+      "count": 7,
+      "cycles_since_prior_sample": 101117194
+    },
+    {
+      "pc": 140726031983851,
+      "count": 14,
+      "cycles_since_prior_sample": 228720952
+    },
+    {
+      "pc": 140726032119972,
+      "count": 44,
+      "cycles_since_prior_sample": 680983520
+    },
+    {
+      "pc": 140695468755715,
+      "count": 2,
+      "cycles_since_prior_sample": 23460196
+    },
+    {
+      "pc": 140695468502728,
+      "count": 1,
+      "cycles_since_prior_sample": 19653438
+    },
+    {
+      "pc": 140695492188667,
+      "count": 1,
+      "cycles_since_prior_sample": 16386146
+    },
+    {
+      "pc": 140695468507245,
+      "count": 1,
+      "cycles_since_prior_sample": 21096598
+    },
+    {
+      "pc": 140695469990396,
+      "count": 1,
+      "cycles_since_prior_sample": 20330738
+    },
+    {
+      "pc": 140695468933358,
+      "count": 1,
+      "cycles_since_prior_sample": 16429418
+    },
+    {
+      "pc": 140695470924692,
+      "count": 1,
+      "cycles_since_prior_sample": 16353676
+    },
+    {
+      "pc": 140695468597283,
+      "count": 1,
+      "cycles_since_prior_sample": 10538632
+    },
+    {
+      "pc": 140695468757451,
+      "count": 2,
+      "cycles_since_prior_sample": 31386718
+    },
+    {
+      "pc": 140695468818692,
+      "count": 1,
+      "cycles_since_prior_sample": 15377124
+    },
+    {
+      "pc": 140695468593308,
+      "count": 1,
+      "cycles_since_prior_sample": 12320400
+    },
+    {
+      "pc": 140695473114370,
+      "count": 1,
+      "cycles_since_prior_sample": 16038010
+    },
+    {
+      "pc": 140695473117617,
+      "count": 1,
+      "cycles_since_prior_sample": 17971068
+    },
+    {
+      "pc": 140695472669762,
+      "count": 1,
+      "cycles_since_prior_sample": 17099606
+    },
+    {
+      "pc": 140695484501230,
+      "count": 24,
+      "cycles_since_prior_sample": 387160418
+    },
+    {
+      "pc": 140695478372638,
+      "count": 1,
+      "cycles_since_prior_sample": 16937536
+    },
+    {
+      "pc": 140695470928664,
+      "count": 1,
+      "cycles_since_prior_sample": 16598200
+    },
+    {
+      "pc": 140695469604816,
+      "count": 1,
+      "cycles_since_prior_sample": 19732182
+    },
+    {
+      "pc": 140695468382208,
+      "count": 7,
+      "cycles_since_prior_sample": 113020376
+    },
+    {
+      "pc": 140695476789333,
+      "count": 32,
+      "cycles_since_prior_sample": 504125068
+    },
+    {
+      "pc": 140695469628145,
+      "count": 2,
+      "cycles_since_prior_sample": 28909906
+    },
+    {
+      "pc": 140695486867369,
+      "count": 2,
+      "cycles_since_prior_sample": 32095054
+    },
+    {
+      "pc": 140695481337136,
+      "count": 1,
+      "cycles_since_prior_sample": 10539054
+    },
+    {
+      "pc": 140695474289016,
+      "count": 1,
+      "cycles_since_prior_sample": 18274576
+    },
+    {
+      "pc": 140695470241392,
+      "count": 1,
+      "cycles_since_prior_sample": 21248602
+    },
+    {
+      "pc": 140695468523914,
+      "count": 1,
+      "cycles_since_prior_sample": 15109692
+    },
+    {
+      "pc": 140695473268526,
+      "count": 1,
+      "cycles_since_prior_sample": 8777420
+    },
+    {
+      "pc": 140726032116187,
+      "count": 3,
+      "cycles_since_prior_sample": 44495162
+    },
+    {
+      "pc": 140695468810652,
+      "count": 5,
+      "cycles_since_prior_sample": 84309090
+    },
+    {
+      "pc": 140695468994124,
+      "count": 1,
+      "cycles_since_prior_sample": 19628932
+    },
+    {
+      "pc": 140695468781762,
+      "count": 1,
+      "cycles_since_prior_sample": 11863596
+    },
+    {
+      "pc": 140695468502022,
+      "count": 2,
+      "cycles_since_prior_sample": 34719620
+    },
+    {
+      "pc": 140695469309398,
+      "count": 1,
+      "cycles_since_prior_sample": 16074810
+    },
+    {
+      "pc": 140695468791565,
+      "count": 3,
+      "cycles_since_prior_sample": 46385162
+    },
+    {
+      "pc": 140695469604573,
+      "count": 2,
+      "cycles_since_prior_sample": 28821124
+    },
+    {
+      "pc": 140695468455266,
+      "count": 3,
+      "cycles_since_prior_sample": 63714606
+    },
+    {
+      "pc": 140726032627014,
+      "count": 5,
+      "cycles_since_prior_sample": 66290672
+    },
+    {
+      "pc": 140695470354320,
+      "count": 1,
+      "cycles_since_prior_sample": 18812206
+    },
+    {
+      "pc": 140695479373378,
+      "count": 1,
+      "cycles_since_prior_sample": 21948480
+    },
+    {
+      "pc": 140695471559456,
+      "count": 1,
+      "cycles_since_prior_sample": 20267584
+    },
+    {
+      "pc": 140695469430135,
+      "count": 5,
+      "cycles_since_prior_sample": 89312324
+    },
+    {
+      "pc": 140726032625154,
+      "count": 2,
+      "cycles_since_prior_sample": 26785242
+    },
+    {
+      "pc": 140695468801031,
+      "count": 12,
+      "cycles_since_prior_sample": 179368818
+    },
+    {
+      "pc": 140695468802073,
+      "count": 5,
+      "cycles_since_prior_sample": 65355554
+    },
+    {
+      "pc": 140695491966864,
+      "count": 1,
+      "cycles_since_prior_sample": 19407964
+    },
+    {
+      "pc": 140695468811843,
+      "count": 3,
+      "cycles_since_prior_sample": 58369666
+    },
+    {
+      "pc": 140695468815343,
+      "count": 1,
+      "cycles_since_prior_sample": 12002434
+    },
+    {
+      "pc": 140695468715409,
+      "count": 10,
+      "cycles_since_prior_sample": 150222478
+    },
+    {
+      "pc": 140695468810644,
+      "count": 40,
+      "cycles_since_prior_sample": 621143708
+    },
+    {
+      "pc": 140695469984288,
+      "count": 11,
+      "cycles_since_prior_sample": 166495902
+    },
+    {
+      "pc": 140695469934347,
+      "count": 4,
+      "cycles_since_prior_sample": 57989976
+    },
+    {
+      "pc": 140695468757613,
+      "count": 4,
+      "cycles_since_prior_sample": 64851240
+    },
+    {
+      "pc": 140695468801044,
+      "count": 1,
+      "cycles_since_prior_sample": 14617246
+    },
+    {
+      "pc": 140726032614686,
+      "count": 1,
+      "cycles_since_prior_sample": 9547110
+    },
+    {
+      "pc": 140726032625178,
+      "count": 3,
+      "cycles_since_prior_sample": 41060758
+    },
+    {
+      "pc": 140726032626887,
+      "count": 2,
+      "cycles_since_prior_sample": 30644446
+    },
+    {
+      "pc": 140695468803292,
+      "count": 1,
+      "cycles_since_prior_sample": 21026742
+    },
+    {
+      "pc": 140695468940046,
+      "count": 1,
+      "cycles_since_prior_sample": 19543532
+    },
+    {
+      "pc": 140695468757413,
+      "count": 5,
+      "cycles_since_prior_sample": 84664930
+    },
+    {
+      "pc": 140695468730154,
+      "count": 1,
+      "cycles_since_prior_sample": 19618148
+    },
+    {
+      "pc": 140695468755587,
+      "count": 2,
+      "cycles_since_prior_sample": 25715424
+    },
+    {
+      "pc": 140695468755536,
+      "count": 2,
+      "cycles_since_prior_sample": 31863406
+    },
+    {
+      "pc": 140695468962562,
+      "count": 1,
+      "cycles_since_prior_sample": 10551774
+    },
+    {
+      "pc": 140695468810589,
+      "count": 3,
+      "cycles_since_prior_sample": 36949420
+    },
+    {
+      "pc": 140695468809723,
+      "count": 2,
+      "cycles_since_prior_sample": 40869540
+    },
+    {
+      "pc": 140726032089833,
+      "count": 6,
+      "cycles_since_prior_sample": 85036128
+    },
+    {
+      "pc": 140695468715406,
+      "count": 33,
+      "cycles_since_prior_sample": 480226496
+    },
+    {
+      "pc": 140695468815727,
+      "count": 1,
+      "cycles_since_prior_sample": 13528226
+    },
+    {
+      "pc": 140695468918400,
+      "count": 1,
+      "cycles_since_prior_sample": 10809272
+    },
+    {
+      "pc": 140695469992255,
+      "count": 2,
+      "cycles_since_prior_sample": 21460984
+    },
+    {
+      "pc": 140695469931797,
+      "count": 1,
+      "cycles_since_prior_sample": 11795286
+    },
+    {
+      "pc": 140726032119683,
+      "count": 1,
+      "cycles_since_prior_sample": 13644886
+    },
+    {
+      "pc": 140695468507592,
+      "count": 1,
+      "cycles_since_prior_sample": 17588992
+    },
+    {
+      "pc": 140695474629912,
+      "count": 1,
+      "cycles_since_prior_sample": 14795846
+    },
+    {
+      "pc": 140695476795512,
+      "count": 3,
+      "cycles_since_prior_sample": 45777984
+    },
+    {
+      "pc": 140695485583307,
+      "count": 1,
+      "cycles_since_prior_sample": 14952288
+    },
+    {
+      "pc": 140695478559454,
+      "count": 1,
+      "cycles_since_prior_sample": 9375882
+    },
+    {
+      "pc": 140695469594563,
+      "count": 1,
+      "cycles_since_prior_sample": 16533136
+    },
+    {
+      "pc": 140695472186920,
+      "count": 1,
+      "cycles_since_prior_sample": 15006190
+    },
+    {
+      "pc": 140695471116132,
+      "count": 1,
+      "cycles_since_prior_sample": 10347970
+    },
+    {
+      "pc": 140695472084846,
+      "count": 1,
+      "cycles_since_prior_sample": 20791220
+    },
+    {
+      "pc": 140695470924399,
+      "count": 1,
+      "cycles_since_prior_sample": 16407610
+    },
+    {
+      "pc": 140695483366695,
+      "count": 1,
+      "cycles_since_prior_sample": 12316018
+    },
+    {
+      "pc": 140695484052633,
+      "count": 1,
+      "cycles_since_prior_sample": 17437688
+    },
+    {
+      "pc": 140695478372138,
+      "count": 2,
+      "cycles_since_prior_sample": 29807426
+    },
+    {
+      "pc": 140695474166836,
+      "count": 1,
+      "cycles_since_prior_sample": 10647632
+    },
+    {
+      "pc": 140695477280856,
+      "count": 1,
+      "cycles_since_prior_sample": 9542102
+    },
+    {
+      "pc": 140695473101296,
+      "count": 1,
+      "cycles_since_prior_sample": 18221388
+    },
+    {
+      "pc": 140695468594194,
+      "count": 1,
+      "cycles_since_prior_sample": 11458418
+    },
+    {
+      "pc": 140695472020718,
+      "count": 1,
+      "cycles_since_prior_sample": 18535926
+    },
+    {
+      "pc": 140695484741144,
+      "count": 1,
+      "cycles_since_prior_sample": 17570892
+    },
+    {
+      "pc": 140695468935077,
+      "count": 8,
+      "cycles_since_prior_sample": 135424574
+    },
+    {
+      "pc": 140695468935545,
+      "count": 24,
+      "cycles_since_prior_sample": 355533978
+    },
+    {
+      "pc": 140695468637775,
+      "count": 1,
+      "cycles_since_prior_sample": 22990176
+    },
+    {
+      "pc": 140695468637825,
+      "count": 1,
+      "cycles_since_prior_sample": 19231326
+    },
+    {
+      "pc": 140695468635819,
+      "count": 7,
+      "cycles_since_prior_sample": 110472762
+    },
+    {
+      "pc": 140695468638628,
+      "count": 18,
+      "cycles_since_prior_sample": 313126518
+    },
+    {
+      "pc": 140695468638669,
+      "count": 7,
+      "cycles_since_prior_sample": 109909872
+    },
+    {
+      "pc": 140695471116265,
+      "count": 4,
+      "cycles_since_prior_sample": 65527430
+    },
+    {
+      "pc": 140695468531948,
+      "count": 16,
+      "cycles_since_prior_sample": 255708256
+    },
+    {
+      "pc": 140695468637285,
+      "count": 3,
+      "cycles_since_prior_sample": 50016538
+    },
+    {
+      "pc": 140695468735298,
+      "count": 1,
+      "cycles_since_prior_sample": 13589216
+    },
+    {
+      "pc": 140695476788924,
+      "count": 2,
+      "cycles_since_prior_sample": 42412746
+    },
+    {
+      "pc": 140726032600884,
+      "count": 4,
+      "cycles_since_prior_sample": 50641046
+    },
+    {
+      "pc": 140695468741390,
+      "count": 35,
+      "cycles_since_prior_sample": 563678614
+    },
+    {
+      "pc": 140726032627258,
+      "count": 6,
+      "cycles_since_prior_sample": 99732492
+    },
+    {
+      "pc": 140695478391994,
+      "count": 1,
+      "cycles_since_prior_sample": 10487734
+    },
+    {
+      "pc": 140695468638688,
+      "count": 1,
+      "cycles_since_prior_sample": 11938134
+    },
+    {
+      "pc": 140695468531966,
+      "count": 4,
+      "cycles_since_prior_sample": 70844496
+    },
+    {
+      "pc": 140695471116272,
+      "count": 1,
+      "cycles_since_prior_sample": 16601018
+    },
+    {
+      "pc": 140695468638680,
+      "count": 7,
+      "cycles_since_prior_sample": 98520270
+    },
+    {
+      "pc": 140695468741506,
+      "count": 19,
+      "cycles_since_prior_sample": 303335390
+    },
+    {
+      "pc": 140695469613978,
+      "count": 4,
+      "cycles_since_prior_sample": 60689780
+    },
+    {
+      "pc": 140695485942240,
+      "count": 1,
+      "cycles_since_prior_sample": 17943546
+    },
+    {
+      "pc": 140695468824600,
+      "count": 1,
+      "cycles_since_prior_sample": 12332754
+    },
+    {
+      "pc": 140695468801896,
+      "count": 6,
+      "cycles_since_prior_sample": 105335430
+    },
+    {
+      "pc": 140695468802206,
+      "count": 3,
+      "cycles_since_prior_sample": 45239634
+    },
+    {
+      "pc": 140695468764322,
+      "count": 1,
+      "cycles_since_prior_sample": 10278648
+    },
+    {
+      "pc": 140695468801028,
+      "count": 26,
+      "cycles_since_prior_sample": 432989430
+    },
+    {
+      "pc": 140695468801904,
+      "count": 2,
+      "cycles_since_prior_sample": 32519552
+    },
+    {
+      "pc": 140695492060688,
+      "count": 2,
+      "cycles_since_prior_sample": 26946932
+    },
+    {
+      "pc": 140695469919498,
+      "count": 1,
+      "cycles_since_prior_sample": 13258582
+    },
+    {
+      "pc": 140726032120052,
+      "count": 3,
+      "cycles_since_prior_sample": 54123608
+    },
+    {
+      "pc": 140695468768709,
+      "count": 3,
+      "cycles_since_prior_sample": 33477602
+    },
+    {
+      "pc": 140695468815708,
+      "count": 1,
+      "cycles_since_prior_sample": 12034582
+    },
+    {
+      "pc": 140695468813619,
+      "count": 2,
+      "cycles_since_prior_sample": 23982954
+    },
+    {
+      "pc": 140695468757424,
+      "count": 16,
+      "cycles_since_prior_sample": 247637782
+    },
+    {
+      "pc": 140695468805004,
+      "count": 1,
+      "cycles_since_prior_sample": 13499998
+    },
+    {
+      "pc": 140726031959024,
+      "count": 1,
+      "cycles_since_prior_sample": 12000452
+    },
+    {
+      "pc": 140695468800695,
+      "count": 1,
+      "cycles_since_prior_sample": 18043248
+    },
+    {
+      "pc": 140695468796226,
+      "count": 1,
+      "cycles_since_prior_sample": 20854868
+    },
+    {
+      "pc": 140695468810837,
+      "count": 1,
+      "cycles_since_prior_sample": 20478778
+    },
+    {
+      "pc": 140695468813466,
+      "count": 2,
+      "cycles_since_prior_sample": 42735782
+    },
+    {
+      "pc": 140695468806199,
+      "count": 2,
+      "cycles_since_prior_sample": 32866114
+    },
+    {
+      "pc": 140695468824315,
+      "count": 1,
+      "cycles_since_prior_sample": 15285284
+    },
+    {
+      "pc": 140695468809223,
+      "count": 1,
+      "cycles_since_prior_sample": 21297874
+    },
+    {
+      "pc": 140695468808854,
+      "count": 3,
+      "cycles_since_prior_sample": 44294308
+    },
+    {
+      "pc": 140695468810580,
+      "count": 6,
+      "cycles_since_prior_sample": 93527728
+    },
+    {
+      "pc": 140695468799783,
+      "count": 13,
+      "cycles_since_prior_sample": 216447972
+    },
+    {
+      "pc": 140695468816011,
+      "count": 1,
+      "cycles_since_prior_sample": 11955334
+    },
+    {
+      "pc": 140695468507302,
+      "count": 1,
+      "cycles_since_prior_sample": 19482070
+    },
+    {
+      "pc": 140695469931154,
+      "count": 5,
+      "cycles_since_prior_sample": 88412040
+    },
+    {
+      "pc": 140695492273648,
+      "count": 3,
+      "cycles_since_prior_sample": 42171210
+    },
+    {
+      "pc": 140695468804907,
+      "count": 2,
+      "cycles_since_prior_sample": 33749574
+    },
+    {
+      "pc": 140695468810633,
+      "count": 12,
+      "cycles_since_prior_sample": 181535160
+    },
+    {
+      "pc": 140726032070965,
+      "count": 1,
+      "cycles_since_prior_sample": 13704864
+    },
+    {
+      "pc": 140695478755287,
+      "count": 1,
+      "cycles_since_prior_sample": 20829332
+    },
+    {
+      "pc": 140695470598826,
+      "count": 2,
+      "cycles_since_prior_sample": 33123350
+    },
+    {
+      "pc": 140695477665480,
+      "count": 1,
+      "cycles_since_prior_sample": 22320338
+    },
+    {
+      "pc": 140695478350629,
+      "count": 1,
+      "cycles_since_prior_sample": 19881280
+    },
+    {
+      "pc": 140695477405935,
+      "count": 1,
+      "cycles_since_prior_sample": 12199458
+    },
+    {
+      "pc": 140695488938733,
+      "count": 1,
+      "cycles_since_prior_sample": 10644688
+    },
+    {
+      "pc": 140695468815974,
+      "count": 3,
+      "cycles_since_prior_sample": 45726212
+    },
+    {
+      "pc": 140695468501560,
+      "count": 1,
+      "cycles_since_prior_sample": 19625802
+    },
+    {
+      "pc": 140695468759081,
+      "count": 1,
+      "cycles_since_prior_sample": 13576384
+    },
+    {
+      "pc": 140695468806205,
+      "count": 14,
+      "cycles_since_prior_sample": 205197654
+    },
+    {
+      "pc": 140695468767317,
+      "count": 6,
+      "cycles_since_prior_sample": 82978362
+    },
+    {
+      "pc": 140695470334474,
+      "count": 1,
+      "cycles_since_prior_sample": 15044252
+    },
+    {
+      "pc": 140695468857136,
+      "count": 1,
+      "cycles_since_prior_sample": 16499078
+    },
+    {
+      "pc": 140695469931883,
+      "count": 4,
+      "cycles_since_prior_sample": 60358084
+    },
+    {
+      "pc": 140695474411346,
+      "count": 1,
+      "cycles_since_prior_sample": 13685136
+    },
+    {
+      "pc": 140695488946968,
+      "count": 1,
+      "cycles_since_prior_sample": 20517690
+    },
+    {
+      "pc": 140695484604019,
+      "count": 2,
+      "cycles_since_prior_sample": 23819784
+    },
+    {
+      "pc": 140695468757416,
+      "count": 13,
+      "cycles_since_prior_sample": 196501980
+    },
+    {
+      "pc": 140695468769110,
+      "count": 1,
+      "cycles_since_prior_sample": 15460684
+    },
+    {
+      "pc": 140695468800465,
+      "count": 1,
+      "cycles_since_prior_sample": 13513330
+    },
+    {
+      "pc": 140695468795714,
+      "count": 1,
+      "cycles_since_prior_sample": 18482100
+    },
+    {
+      "pc": 140695468812559,
+      "count": 2,
+      "cycles_since_prior_sample": 31455286
+    },
+    {
+      "pc": 140695468775715,
+      "count": 1,
+      "cycles_since_prior_sample": 10486220
+    },
+    {
+      "pc": 140695468679008,
+      "count": 5,
+      "cycles_since_prior_sample": 74364028
+    },
+    {
+      "pc": 140695471799657,
+      "count": 1,
+      "cycles_since_prior_sample": 13207526
+    },
+    {
+      "pc": 140695478161120,
+      "count": 1,
+      "cycles_since_prior_sample": 14945972
+    },
+    {
+      "pc": 140695491967072,
+      "count": 5,
+      "cycles_since_prior_sample": 82436252
+    },
+    {
+      "pc": 140695468727708,
+      "count": 1,
+      "cycles_since_prior_sample": 21052570
+    },
+    {
+      "pc": 140695469083708,
+      "count": 5,
+      "cycles_since_prior_sample": 95430180
+    },
+    {
+      "pc": 140695468500459,
+      "count": 1,
+      "cycles_since_prior_sample": 13494362
+    },
+    {
+      "pc": 140726032089558,
+      "count": 1,
+      "cycles_since_prior_sample": 12482352
+    },
+    {
+      "pc": 140695468810548,
+      "count": 8,
+      "cycles_since_prior_sample": 140438150
+    },
+    {
+      "pc": 140726032091004,
+      "count": 1,
+      "cycles_since_prior_sample": 17478164
+    },
+    {
+      "pc": 140695469992236,
+      "count": 1,
+      "cycles_since_prior_sample": 10621086
+    },
+    {
+      "pc": 140695468943691,
+      "count": 1,
+      "cycles_since_prior_sample": 19833812
+    },
+    {
+      "pc": 140695468801009,
+      "count": 19,
+      "cycles_since_prior_sample": 310350266
+    },
+    {
+      "pc": 140695468801024,
+      "count": 2,
+      "cycles_since_prior_sample": 23695190
+    },
+    {
+      "pc": 140695468857151,
+      "count": 4,
+      "cycles_since_prior_sample": 64130308
+    },
+    {
+      "pc": 140726032119563,
+      "count": 1,
+      "cycles_since_prior_sample": 20339550
+    },
+    {
+      "pc": 140726032089804,
+      "count": 4,
+      "cycles_since_prior_sample": 69731138
+    },
+    {
+      "pc": 140726032118730,
+      "count": 1,
+      "cycles_since_prior_sample": 20856354
+    },
+    {
+      "pc": 140695468758337,
+      "count": 33,
+      "cycles_since_prior_sample": 555115480
+    },
+    {
+      "pc": 140695468822851,
+      "count": 5,
+      "cycles_since_prior_sample": 69831052
+    },
+    {
+      "pc": 140726032091168,
+      "count": 1,
+      "cycles_since_prior_sample": 16479902
+    },
+    {
+      "pc": 140695468920064,
+      "count": 1,
+      "cycles_since_prior_sample": 21905916
+    },
+    {
+      "pc": 140726032091031,
+      "count": 2,
+      "cycles_since_prior_sample": 36023328
+    },
+    {
+      "pc": 140695468502790,
+      "count": 2,
+      "cycles_since_prior_sample": 31308708
+    },
+    {
+      "pc": 140695468630501,
+      "count": 1,
+      "cycles_since_prior_sample": 12519934
+    },
+    {
+      "pc": 140695478483609,
+      "count": 1,
+      "cycles_since_prior_sample": 16540044
+    },
+    {
+      "pc": 140695484501237,
+      "count": 18,
+      "cycles_since_prior_sample": 297728398
+    },
+    {
+      "pc": 140695476789381,
+      "count": 1,
+      "cycles_since_prior_sample": 13081908
+    },
+    {
+      "pc": 140695478543997,
+      "count": 1,
+      "cycles_since_prior_sample": 11657670
+    },
+    {
+      "pc": 140695479720555,
+      "count": 1,
+      "cycles_since_prior_sample": 13678146
+    },
+    {
+      "pc": 140726032018554,
+      "count": 2,
+      "cycles_since_prior_sample": 35994622
+    },
+    {
+      "pc": 140695489465843,
+      "count": 3,
+      "cycles_since_prior_sample": 45264128
+    },
+    {
+      "pc": 140695468594562,
+      "count": 1,
+      "cycles_since_prior_sample": 17915448
+    },
+    {
+      "pc": 140695476589556,
+      "count": 1,
+      "cycles_since_prior_sample": 20477634
+    },
+    {
+      "pc": 140695478248696,
+      "count": 1,
+      "cycles_since_prior_sample": 15044050
+    },
+    {
+      "pc": 140695484441283,
+      "count": 1,
+      "cycles_since_prior_sample": 13278066
+    },
+    {
+      "pc": 140695472050794,
+      "count": 1,
+      "cycles_since_prior_sample": 13403530
+    },
+    {
+      "pc": 140695489488475,
+      "count": 1,
+      "cycles_since_prior_sample": 13525772
+    },
+    {
+      "pc": 140695469430152,
+      "count": 2,
+      "cycles_since_prior_sample": 40522616
+    },
+    {
+      "pc": 140695484439373,
+      "count": 1,
+      "cycles_since_prior_sample": 13106548
+    },
+    {
+      "pc": 140695470646055,
+      "count": 1,
+      "cycles_since_prior_sample": 14265924
+    },
+    {
+      "pc": 140695478376991,
+      "count": 1,
+      "cycles_since_prior_sample": 17147962
+    },
+    {
+      "pc": 140695491949388,
+      "count": 1,
+      "cycles_since_prior_sample": 18006480
+    },
+    {
+      "pc": 140695472187389,
+      "count": 1,
+      "cycles_since_prior_sample": 12854242
+    },
+    {
+      "pc": 140695473900922,
+      "count": 1,
+      "cycles_since_prior_sample": 69898
+    },
+    {
+      "pc": 140695468808916,
+      "count": 1,
+      "cycles_since_prior_sample": 18123986
+    },
+    {
+      "pc": 140695470332449,
+      "count": 1,
+      "cycles_since_prior_sample": 17390986
+    },
+    {
+      "pc": 140695468937550,
+      "count": 1,
+      "cycles_since_prior_sample": 20709044
+    },
+    {
+      "pc": 140695468809977,
+      "count": 1,
+      "cycles_since_prior_sample": 16378294
+    },
+    {
+      "pc": 140695468799456,
+      "count": 2,
+      "cycles_since_prior_sample": 30437904
+    },
+    {
+      "pc": 140695468800847,
+      "count": 1,
+      "cycles_since_prior_sample": 21020022
+    },
+    {
+      "pc": 140695468758341,
+      "count": 5,
+      "cycles_since_prior_sample": 70727294
+    },
+    {
+      "pc": 140726032626995,
+      "count": 3,
+      "cycles_since_prior_sample": 43364980
+    },
+    {
+      "pc": 140695468733945,
+      "count": 2,
+      "cycles_since_prior_sample": 38304934
+    },
+    {
+      "pc": 140695468757447,
+      "count": 4,
+      "cycles_since_prior_sample": 54799292
+    },
+    {
+      "pc": 140695468502000,
+      "count": 1,
+      "cycles_since_prior_sample": 11604234
+    },
+    {
+      "pc": 140695468500877,
+      "count": 1,
+      "cycles_since_prior_sample": 15955996
+    },
+    {
+      "pc": 140695468801989,
+      "count": 1,
+      "cycles_since_prior_sample": 21289270
+    },
+    {
+      "pc": 140695468679038,
+      "count": 7,
+      "cycles_since_prior_sample": 113587068
+    },
+    {
+      "pc": 140695468531962,
+      "count": 5,
+      "cycles_since_prior_sample": 82556776
+    },
+    {
+      "pc": 140695468630460,
+      "count": 2,
+      "cycles_since_prior_sample": 31341718
+    },
+    {
+      "pc": 140726032118669,
+      "count": 1,
+      "cycles_since_prior_sample": 20301038
+    },
+    {
+      "pc": 140695468941514,
+      "count": 1,
+      "cycles_since_prior_sample": 19280314
+    },
+    {
+      "pc": 140695470448564,
+      "count": 1,
+      "cycles_since_prior_sample": 17445066
+    },
+    {
+      "pc": 140726032119568,
+      "count": 2,
+      "cycles_since_prior_sample": 28469562
+    },
+    {
+      "pc": 140695468502860,
+      "count": 1,
+      "cycles_since_prior_sample": 11982924
+    },
+    {
+      "pc": 140695468530606,
+      "count": 1,
+      "cycles_since_prior_sample": 18171724
+    },
+    {
+      "pc": 140695468799824,
+      "count": 1,
+      "cycles_since_prior_sample": 13152532
+    },
+    {
+      "pc": 140695468768958,
+      "count": 1,
+      "cycles_since_prior_sample": 10534274
+    },
+    {
+      "pc": 140726031959115,
+      "count": 1,
+      "cycles_since_prior_sample": 21026578
+    },
+    {
+      "pc": 140726032116160,
+      "count": 1,
+      "cycles_since_prior_sample": 16863254
+    },
+    {
+      "pc": 140695468810841,
+      "count": 2,
+      "cycles_since_prior_sample": 30640694
+    },
+    {
+      "pc": 140726032091038,
+      "count": 1,
+      "cycles_since_prior_sample": 15129312
+    },
+    {
+      "pc": 140695468506966,
+      "count": 2,
+      "cycles_since_prior_sample": 34556160
+    },
+    {
+      "pc": 140695468775888,
+      "count": 2,
+      "cycles_since_prior_sample": 34465442
+    },
+    {
+      "pc": 140695468810638,
+      "count": 1,
+      "cycles_since_prior_sample": 12968202
+    },
+    {
+      "pc": 140695491989151,
+      "count": 1,
+      "cycles_since_prior_sample": 10085632
+    },
+    {
+      "pc": 140695478483851,
+      "count": 1,
+      "cycles_since_prior_sample": 18277474
+    },
+    {
+      "pc": 140695485063733,
+      "count": 1,
+      "cycles_since_prior_sample": 14554556
+    },
+    {
+      "pc": 140695468594474,
+      "count": 2,
+      "cycles_since_prior_sample": 38086594
+    },
+    {
+      "pc": 140695470408256,
+      "count": 1,
+      "cycles_since_prior_sample": 12086518
+    },
+    {
+      "pc": 140695489465826,
+      "count": 2,
+      "cycles_since_prior_sample": 29708314
+    },
+    {
+      "pc": 140695469628172,
+      "count": 1,
+      "cycles_since_prior_sample": 13625690
+    },
+    {
+      "pc": 140695469590482,
+      "count": 1,
+      "cycles_since_prior_sample": 19315046
+    },
+    {
+      "pc": 140695472197453,
+      "count": 1,
+      "cycles_since_prior_sample": 14768224
+    },
+    {
+      "pc": 140695486096826,
+      "count": 1,
+      "cycles_since_prior_sample": 14215380
+    },
+    {
+      "pc": 140695470408252,
+      "count": 2,
+      "cycles_since_prior_sample": 31879362
+    },
+    {
+      "pc": 140695469786899,
+      "count": 1,
+      "cycles_since_prior_sample": 11992500
+    },
+    {
+      "pc": 140695489208661,
+      "count": 1,
+      "cycles_since_prior_sample": 10902686
+    },
+    {
+      "pc": 140695484439653,
+      "count": 1,
+      "cycles_since_prior_sample": 15898870
+    },
+    {
+      "pc": 140695470298624,
+      "count": 1,
+      "cycles_since_prior_sample": 14796298
+    },
+    {
+      "pc": 140695471115110,
+      "count": 3,
+      "cycles_since_prior_sample": 48718816
+    },
+    {
+      "pc": 140695471538387,
+      "count": 1,
+      "cycles_since_prior_sample": 18308198
+    },
+    {
+      "pc": 140695485944216,
+      "count": 1,
+      "cycles_since_prior_sample": 15324630
+    },
+    {
+      "pc": 140726032627346,
+      "count": 2,
+      "cycles_since_prior_sample": 29674488
+    },
+    {
+      "pc": 140695468939983,
+      "count": 1,
+      "cycles_since_prior_sample": 11935286
+    },
+    {
+      "pc": 140695468775974,
+      "count": 1,
+      "cycles_since_prior_sample": 15314574
+    },
+    {
+      "pc": 140695468811593,
+      "count": 12,
+      "cycles_since_prior_sample": 203021974
+    },
+    {
+      "pc": 140695468823812,
+      "count": 3,
+      "cycles_since_prior_sample": 52525418
+    },
+    {
+      "pc": 140695468932623,
+      "count": 1,
+      "cycles_since_prior_sample": 13574230
+    },
+    {
+      "pc": 140695468773796,
+      "count": 2,
+      "cycles_since_prior_sample": 29780498
+    },
+    {
+      "pc": 140695478484011,
+      "count": 1,
+      "cycles_since_prior_sample": 10745784
+    },
+    {
+      "pc": 140695470233665,
+      "count": 1,
+      "cycles_since_prior_sample": 16253526
+    },
+    {
+      "pc": 140695474609972,
+      "count": 1,
+      "cycles_since_prior_sample": 19599958
+    },
+    {
+      "pc": 140695481715333,
+      "count": 1,
+      "cycles_since_prior_sample": 11976738
+    },
+    {
+      "pc": 140695474390579,
+      "count": 1,
+      "cycles_since_prior_sample": 18894960
+    },
+    {
+      "pc": 140695481315672,
+      "count": 1,
+      "cycles_since_prior_sample": 20975324
+    },
+    {
+      "pc": 140695468681052,
+      "count": 8,
+      "cycles_since_prior_sample": 126776560
+    },
+    {
+      "pc": 140695469988484,
+      "count": 17,
+      "cycles_since_prior_sample": 284120904
+    },
+    {
+      "pc": 140726032587108,
+      "count": 9,
+      "cycles_since_prior_sample": 138995506
+    },
+    {
+      "pc": 140726032118521,
+      "count": 3,
+      "cycles_since_prior_sample": 50717370
+    },
+    {
+      "pc": 140695468635828,
+      "count": 3,
+      "cycles_since_prior_sample": 44723074
+    },
+    {
+      "pc": 140695468681781,
+      "count": 1,
+      "cycles_since_prior_sample": 10182208
+    },
+    {
+      "pc": 140695468681371,
+      "count": 4,
+      "cycles_since_prior_sample": 59708294
+    },
+    {
+      "pc": 140695468685244,
+      "count": 7,
+      "cycles_since_prior_sample": 106860704
+    },
+    {
+      "pc": 140726032627023,
+      "count": 1,
+      "cycles_since_prior_sample": 13924684
+    },
+    {
+      "pc": 140695469988170,
+      "count": 1,
+      "cycles_since_prior_sample": 16406158
+    },
+    {
+      "pc": 140695470008796,
+      "count": 1,
+      "cycles_since_prior_sample": 11991394
+    },
+    {
+      "pc": 140695468685348,
+      "count": 11,
+      "cycles_since_prior_sample": 181243304
+    },
+    {
+      "pc": 140695468935506,
+      "count": 1,
+      "cycles_since_prior_sample": 17558772
+    },
+    {
+      "pc": 140695468926472,
+      "count": 8,
+      "cycles_since_prior_sample": 125970184
+    },
+    {
+      "pc": 140695468641169,
+      "count": 6,
+      "cycles_since_prior_sample": 101552240
+    },
+    {
+      "pc": 140726032119818,
+      "count": 5,
+      "cycles_since_prior_sample": 76643898
+    },
+    {
+      "pc": 140695468635796,
+      "count": 1,
+      "cycles_since_prior_sample": 20539714
+    },
+    {
+      "pc": 140695468531981,
+      "count": 4,
+      "cycles_since_prior_sample": 67522736
+    },
+    {
+      "pc": 140695468531994,
+      "count": 2,
+      "cycles_since_prior_sample": 37515910
+    },
+    {
+      "pc": 140695468582878,
+      "count": 1,
+      "cycles_since_prior_sample": 20634280
+    },
+    {
+      "pc": 140695485948660,
+      "count": 1,
+      "cycles_since_prior_sample": 20625220
+    },
+    {
+      "pc": 140695484767926,
+      "count": 1,
+      "cycles_since_prior_sample": 12113822
+    },
+    {
+      "pc": 140695469065070,
+      "count": 1,
+      "cycles_since_prior_sample": 20122474
+    },
+    {
+      "pc": 140695468818039,
+      "count": 3,
+      "cycles_since_prior_sample": 33066894
+    },
+    {
+      "pc": 140695468800015,
+      "count": 1,
+      "cycles_since_prior_sample": 14630758
+    },
+    {
+      "pc": 140695468758346,
+      "count": 1,
+      "cycles_since_prior_sample": 11623796
+    },
+    {
+      "pc": 140695469083728,
+      "count": 5,
+      "cycles_since_prior_sample": 71750428
+    },
+    {
+      "pc": 140695468768379,
+      "count": 1,
+      "cycles_since_prior_sample": 20671566
+    },
+    {
+      "pc": 140695468879338,
+      "count": 1,
+      "cycles_since_prior_sample": 9596340
+    },
+    {
+      "pc": 140695468990405,
+      "count": 1,
+      "cycles_since_prior_sample": 12111614
+    },
+    {
+      "pc": 140695468719410,
+      "count": 2,
+      "cycles_since_prior_sample": 25589694
+    },
+    {
+      "pc": 140726032087105,
+      "count": 1,
+      "cycles_since_prior_sample": 16676460
+    },
+    {
+      "pc": 140726032119968,
+      "count": 2,
+      "cycles_since_prior_sample": 29951152
+    },
+    {
+      "pc": 140695492273698,
+      "count": 1,
+      "cycles_since_prior_sample": 21778336
+    },
+    {
+      "pc": 140695468807821,
+      "count": 4,
+      "cycles_since_prior_sample": 53544562
+    },
+    {
+      "pc": 140695469087342,
+      "count": 1,
+      "cycles_since_prior_sample": 16565600
+    },
+    {
+      "pc": 140695468673878,
+      "count": 1,
+      "cycles_since_prior_sample": 13483122
+    },
+    {
+      "pc": 140695468802039,
+      "count": 1,
+      "cycles_since_prior_sample": 18059898
+    },
+    {
+      "pc": 140695468802132,
+      "count": 1,
+      "cycles_since_prior_sample": 19797512
+    },
+    {
+      "pc": 140695468757409,
+      "count": 3,
+      "cycles_since_prior_sample": 56522652
+    },
+    {
+      "pc": 140695468928590,
+      "count": 1,
+      "cycles_since_prior_sample": 21362696
+    },
+    {
+      "pc": 140695492274289,
+      "count": 1,
+      "cycles_since_prior_sample": 14743094
+    },
+    {
+      "pc": 140695474721365,
+      "count": 1,
+      "cycles_since_prior_sample": 13909498
+    },
+    {
+      "pc": 140695468815696,
+      "count": 8,
+      "cycles_since_prior_sample": 130702288
+    },
+    {
+      "pc": 140695468791488,
+      "count": 1,
+      "cycles_since_prior_sample": 19651700
+    },
+    {
+      "pc": 140695472013942,
+      "count": 2,
+      "cycles_since_prior_sample": 21970728
+    },
+    {
+      "pc": 140695468497600,
+      "count": 1,
+      "cycles_since_prior_sample": 19080986
+    },
+    {
+      "pc": 140695478557074,
+      "count": 2,
+      "cycles_since_prior_sample": 37153512
+    },
+    {
+      "pc": 140695469789511,
+      "count": 1,
+      "cycles_since_prior_sample": 21350984
+    },
+    {
+      "pc": 140695472084805,
+      "count": 1,
+      "cycles_since_prior_sample": 19534442
+    },
+    {
+      "pc": 140695483994424,
+      "count": 1,
+      "cycles_since_prior_sample": 16468072
+    },
+    {
+      "pc": 140695484027045,
+      "count": 1,
+      "cycles_since_prior_sample": 16480632
+    },
+    {
+      "pc": 140695485948614,
+      "count": 2,
+      "cycles_since_prior_sample": 26928226
+    },
+    {
+      "pc": 140695489177103,
+      "count": 1,
+      "cycles_since_prior_sample": 13487840
+    },
+    {
+      "pc": 140695484026078,
+      "count": 1,
+      "cycles_since_prior_sample": 16182204
+    },
+    {
+      "pc": 140695471434022,
+      "count": 1,
+      "cycles_since_prior_sample": 10558494
+    },
+    {
+      "pc": 140695484501284,
+      "count": 11,
+      "cycles_since_prior_sample": 164215148
+    },
+    {
+      "pc": 140695472020689,
+      "count": 1,
+      "cycles_since_prior_sample": 15085088
+    },
+    {
+      "pc": 140695474280132,
+      "count": 1,
+      "cycles_since_prior_sample": 14628116
+    },
+    {
+      "pc": 140695476973793,
+      "count": 1,
+      "cycles_since_prior_sample": 18042426
+    },
+    {
+      "pc": 140695473495768,
+      "count": 1,
+      "cycles_since_prior_sample": 17957928
+    },
+    {
+      "pc": 140695468804505,
+      "count": 2,
+      "cycles_since_prior_sample": 23118478
+    },
+    {
+      "pc": 140726032089748,
+      "count": 4,
+      "cycles_since_prior_sample": 61255920
+    },
+    {
+      "pc": 140695468933115,
+      "count": 1,
+      "cycles_since_prior_sample": 16469502
+    },
+    {
+      "pc": 140695468937467,
+      "count": 2,
+      "cycles_since_prior_sample": 38137132
+    },
+    {
+      "pc": 140695468810576,
+      "count": 1,
+      "cycles_since_prior_sample": 21050722
+    },
+    {
+      "pc": 140695468806213,
+      "count": 3,
+      "cycles_since_prior_sample": 43666530
+    },
+    {
+      "pc": 140695468781835,
+      "count": 1,
+      "cycles_since_prior_sample": 20204474
+    },
+    {
+      "pc": 140695468823877,
+      "count": 1,
+      "cycles_since_prior_sample": 14878698
+    },
+    {
+      "pc": 140695468813573,
+      "count": 1,
+      "cycles_since_prior_sample": 16500948
+    },
+    {
+      "pc": 140695468801037,
+      "count": 1,
+      "cycles_since_prior_sample": 13657858
+    },
+    {
+      "pc": 140695468809641,
+      "count": 2,
+      "cycles_since_prior_sample": 33492152
+    },
+    {
+      "pc": 140695468757277,
+      "count": 1,
+      "cycles_since_prior_sample": 15324824
+    },
+    {
+      "pc": 140695468759028,
+      "count": 1,
+      "cycles_since_prior_sample": 19669094
+    },
+    {
+      "pc": 140695468821156,
+      "count": 3,
+      "cycles_since_prior_sample": 54675524
+    },
+    {
+      "pc": 140695468757337,
+      "count": 1,
+      "cycles_since_prior_sample": 18242956
+    },
+    {
+      "pc": 140695468801005,
+      "count": 7,
+      "cycles_since_prior_sample": 122010554
+    },
+    {
+      "pc": 140726032116267,
+      "count": 1,
+      "cycles_since_prior_sample": 16579556
+    },
+    {
+      "pc": 140695468800992,
+      "count": 1,
+      "cycles_since_prior_sample": 18083216
+    },
+    {
+      "pc": 140695468678384,
+      "count": 2,
+      "cycles_since_prior_sample": 37585024
+    },
+    {
+      "pc": 140695468674887,
+      "count": 1,
+      "cycles_since_prior_sample": 20489856
+    },
+    {
+      "pc": 140695469993239,
+      "count": 2,
+      "cycles_since_prior_sample": 33050120
+    },
+    {
+      "pc": 140695478770851,
+      "count": 1,
+      "cycles_since_prior_sample": 20602384
+    },
+    {
+      "pc": 140695470323916,
+      "count": 1,
+      "cycles_since_prior_sample": 19438942
+    },
+    {
+      "pc": 140695492274232,
+      "count": 1,
+      "cycles_since_prior_sample": 20612204
+    },
+    {
+      "pc": 140695474775928,
+      "count": 1,
+      "cycles_since_prior_sample": 18091492
+    },
+    {
+      "pc": 140695484766941,
+      "count": 1,
+      "cycles_since_prior_sample": 13144034
+    },
+    {
+      "pc": 140695480464434,
+      "count": 2,
+      "cycles_since_prior_sample": 35492314
+    },
+    {
+      "pc": 140695485945195,
+      "count": 1,
+      "cycles_since_prior_sample": 16455584
+    },
+    {
+      "pc": 140695468928394,
+      "count": 1,
+      "cycles_since_prior_sample": 15159736
+    },
+    {
+      "pc": 140695468799802,
+      "count": 4,
+      "cycles_since_prior_sample": 73361088
+    },
+    {
+      "pc": 140695468815731,
+      "count": 6,
+      "cycles_since_prior_sample": 91449386
+    },
+    {
+      "pc": 140695469513456,
+      "count": 1,
+      "cycles_since_prior_sample": 15183642
+    },
+    {
+      "pc": 140695472050455,
+      "count": 1,
+      "cycles_since_prior_sample": 18239606
+    },
+    {
+      "pc": 140695468802071,
+      "count": 1,
+      "cycles_since_prior_sample": 14893466
+    },
+    {
+      "pc": 140695468799771,
+      "count": 1,
+      "cycles_since_prior_sample": 15121952
+    },
+    {
+      "pc": 140695473481883,
+      "count": 1,
+      "cycles_since_prior_sample": 20984540
+    },
+    {
+      "pc": 140695474619997,
+      "count": 1,
+      "cycles_since_prior_sample": 15462208
+    },
+    {
+      "pc": 140695469083734,
+      "count": 1,
+      "cycles_since_prior_sample": 21028800
+    },
+    {
+      "pc": 140695468773780,
+      "count": 1,
+      "cycles_since_prior_sample": 19505288
+    },
+    {
+      "pc": 140726032094992,
+      "count": 1,
+      "cycles_since_prior_sample": 16022852
+    },
+    {
+      "pc": 140695468506777,
+      "count": 1,
+      "cycles_since_prior_sample": 15362398
+    },
+    {
+      "pc": 140695468839331,
+      "count": 1,
+      "cycles_since_prior_sample": 10946584
+    },
+    {
+      "pc": 140695468631573,
+      "count": 1,
+      "cycles_since_prior_sample": 17985230
+    },
+    {
+      "pc": 140695468799761,
+      "count": 3,
+      "cycles_since_prior_sample": 55964452
+    },
+    {
+      "pc": 140695468501664,
+      "count": 1,
+      "cycles_since_prior_sample": 16560934
+    },
+    {
+      "pc": 140695469930982,
+      "count": 8,
+      "cycles_since_prior_sample": 126501688
+    },
+    {
+      "pc": 140695468801978,
+      "count": 2,
+      "cycles_since_prior_sample": 30247904
+    },
+    {
+      "pc": 140726001096848,
+      "count": 1,
+      "cycles_since_prior_sample": 18622758
+    },
+    {
+      "pc": 140695469919830,
+      "count": 2,
+      "cycles_since_prior_sample": 36111124
+    },
+    {
+      "pc": 140695468813584,
+      "count": 4,
+      "cycles_since_prior_sample": 65013932
+    },
+    {
+      "pc": 140695468507258,
+      "count": 2,
+      "cycles_since_prior_sample": 32016710
+    },
+    {
+      "pc": 140695469930991,
+      "count": 1,
+      "cycles_since_prior_sample": 19235656
+    },
+    {
+      "pc": 140695468802157,
+      "count": 2,
+      "cycles_since_prior_sample": 28099546
+    },
+    {
+      "pc": 140695468791558,
+      "count": 2,
+      "cycles_since_prior_sample": 33877586
+    },
+    {
+      "pc": 140695492188733,
+      "count": 1,
+      "cycles_since_prior_sample": 14942814
+    },
+    {
+      "pc": 140695468767925,
+      "count": 1,
+      "cycles_since_prior_sample": 19552484
+    },
+    {
+      "pc": 140695470007325,
+      "count": 2,
+      "cycles_since_prior_sample": 38409046
+    },
+    {
+      "pc": 140695468810662,
+      "count": 11,
+      "cycles_since_prior_sample": 180860994
+    },
+    {
+      "pc": 140695469919870,
+      "count": 1,
+      "cycles_since_prior_sample": 20812044
+    },
+    {
+      "pc": 140695468500891,
+      "count": 1,
+      "cycles_since_prior_sample": 14973012
+    },
+    {
+      "pc": 140695468531931,
+      "count": 1,
+      "cycles_since_prior_sample": 13130746
+    },
+    {
+      "pc": 140695468715728,
+      "count": 2,
+      "cycles_since_prior_sample": 37279068
+    },
+    {
+      "pc": 140695478556820,
+      "count": 1,
+      "cycles_since_prior_sample": 11967334
+    },
+    {
+      "pc": 140695479719376,
+      "count": 1,
+      "cycles_since_prior_sample": 18122324
+    },
+    {
+      "pc": 140695469594592,
+      "count": 1,
+      "cycles_since_prior_sample": 13014622
+    },
+    {
+      "pc": 140695479595406,
+      "count": 1,
+      "cycles_since_prior_sample": 17909904
+    },
+    {
+      "pc": 140695478372666,
+      "count": 1,
+      "cycles_since_prior_sample": 10793698
+    },
+    {
+      "pc": 140695483366971,
+      "count": 1,
+      "cycles_since_prior_sample": 14964684
+    },
+    {
+      "pc": 140695489172557,
+      "count": 1,
+      "cycles_since_prior_sample": 15116494
+    },
+    {
+      "pc": 140695477281088,
+      "count": 1,
+      "cycles_since_prior_sample": 12059628
+    },
+    {
+      "pc": 140695472243072,
+      "count": 1,
+      "cycles_since_prior_sample": 16559574
+    },
+    {
+      "pc": 140695474372790,
+      "count": 1,
+      "cycles_since_prior_sample": 21099246
+    },
+    {
+      "pc": 140695485948524,
+      "count": 1,
+      "cycles_since_prior_sample": 18675262
+    },
+    {
+      "pc": 140695472178637,
+      "count": 1,
+      "cycles_since_prior_sample": 9493722
+    },
+    {
+      "pc": 140695468807946,
+      "count": 1,
+      "cycles_since_prior_sample": 10553368
+    },
+    {
+      "pc": 140695468767305,
+      "count": 3,
+      "cycles_since_prior_sample": 60166276
+    },
+    {
+      "pc": 140695478366332,
+      "count": 1,
+      "cycles_since_prior_sample": 12755258
+    },
+    {
+      "pc": 140695492273691,
+      "count": 1,
+      "cycles_since_prior_sample": 11978628
+    },
+    {
+      "pc": 140695468795773,
+      "count": 1,
+      "cycles_since_prior_sample": 19774240
+    },
+    {
+      "pc": 140695468800851,
+      "count": 1,
+      "cycles_since_prior_sample": 16599744
+    },
+    {
+      "pc": 140695468769057,
+      "count": 1,
+      "cycles_since_prior_sample": 14660712
+    },
+    {
+      "pc": 140695468757469,
+      "count": 2,
+      "cycles_since_prior_sample": 28827822
+    },
+    {
+      "pc": 140695468940764,
+      "count": 1,
+      "cycles_since_prior_sample": 13156022
+    },
+    {
+      "pc": 140695468719887,
+      "count": 2,
+      "cycles_since_prior_sample": 38975100
+    },
+    {
+      "pc": 140695468502786,
+      "count": 4,
+      "cycles_since_prior_sample": 68066288
+    },
+    {
+      "pc": 140695468810863,
+      "count": 2,
+      "cycles_since_prior_sample": 34832168
+    },
+    {
+      "pc": 140695469997375,
+      "count": 1,
+      "cycles_since_prior_sample": 20671234
+    },
+    {
+      "pc": 140695468715458,
+      "count": 1,
+      "cycles_since_prior_sample": 14928070
+    },
+    {
+      "pc": 140726032119340,
+      "count": 1,
+      "cycles_since_prior_sample": 11498986
+    },
+    {
+      "pc": 140695468962560,
+      "count": 1,
+      "cycles_since_prior_sample": 20441034
+    },
+    {
+      "pc": 140695468810958,
+      "count": 2,
+      "cycles_since_prior_sample": 24204740
+    },
+    {
+      "pc": 140695468773784,
+      "count": 5,
+      "cycles_since_prior_sample": 80965312
+    },
+    {
+      "pc": 140695468918569,
+      "count": 1,
+      "cycles_since_prior_sample": 10945676
+    },
+    {
+      "pc": 140695468799775,
+      "count": 2,
+      "cycles_since_prior_sample": 41923892
+    },
+    {
+      "pc": 140695468808860,
+      "count": 7,
+      "cycles_since_prior_sample": 111279466
+    },
+    {
+      "pc": 140695468497611,
+      "count": 1,
+      "cycles_since_prior_sample": 9991284
+    },
+    {
+      "pc": 140695468767499,
+      "count": 1,
+      "cycles_since_prior_sample": 13720670
+    },
+    {
+      "pc": 140695468805280,
+      "count": 5,
+      "cycles_since_prior_sample": 72683282
+    },
+    {
+      "pc": 140695468500936,
+      "count": 1,
+      "cycles_since_prior_sample": 16700066
+    },
+    {
+      "pc": 140695468758012,
+      "count": 1,
+      "cycles_since_prior_sample": 17964896
+    },
+    {
+      "pc": 140695478556795,
+      "count": 1,
+      "cycles_since_prior_sample": 17596186
+    },
+    {
+      "pc": 140695472127873,
+      "count": 1,
+      "cycles_since_prior_sample": 15120954
+    },
+    {
+      "pc": 140695468642950,
+      "count": 2,
+      "cycles_since_prior_sample": 34508858
+    },
+    {
+      "pc": 140695468622602,
+      "count": 1,
+      "cycles_since_prior_sample": 21231840
+    },
+    {
+      "pc": 140695470408213,
+      "count": 1,
+      "cycles_since_prior_sample": 16562886
+    },
+    {
+      "pc": 140695468587448,
+      "count": 1,
+      "cycles_since_prior_sample": 12340698
+    },
+    {
+      "pc": 140695471027369,
+      "count": 1,
+      "cycles_since_prior_sample": 10846744
+    },
+    {
+      "pc": 140695484248934,
+      "count": 1,
+      "cycles_since_prior_sample": 21352144
+    },
+    {
+      "pc": 140695474678650,
+      "count": 1,
+      "cycles_since_prior_sample": 17461250
+    },
+    {
+      "pc": 140695484119329,
+      "count": 1,
+      "cycles_since_prior_sample": 13430726
+    },
+    {
+      "pc": 140695478265557,
+      "count": 1,
+      "cycles_since_prior_sample": 15918638
+    },
+    {
+      "pc": 140695479608268,
+      "count": 1,
+      "cycles_since_prior_sample": 10629458
+    },
+    {
+      "pc": 140695470368723,
+      "count": 1,
+      "cycles_since_prior_sample": 13498214
+    },
+    {
+      "pc": 140695481334454,
+      "count": 1,
+      "cycles_since_prior_sample": 15096826
+    },
+    {
+      "pc": 140695479393752,
+      "count": 1,
+      "cycles_since_prior_sample": 21154782
+    },
+    {
+      "pc": 140695472240874,
+      "count": 1,
+      "cycles_since_prior_sample": 17453294
+    },
+    {
+      "pc": 140695468939808,
+      "count": 2,
+      "cycles_since_prior_sample": 27759752
+    },
+    {
+      "pc": 140726032119429,
+      "count": 1,
+      "cycles_since_prior_sample": 18093714
+    },
+    {
+      "pc": 140695468856963,
+      "count": 2,
+      "cycles_since_prior_sample": 33879412
+    },
+    {
+      "pc": 140695468819370,
+      "count": 1,
+      "cycles_since_prior_sample": 11193300
+    },
+    {
+      "pc": 140695468857040,
+      "count": 1,
+      "cycles_since_prior_sample": 20195504
+    },
+    {
+      "pc": 140695476296194,
+      "count": 1,
+      "cycles_since_prior_sample": 20285964
+    },
+    {
+      "pc": 140695478238655,
+      "count": 1,
+      "cycles_since_prior_sample": 20543530
+    },
+    {
+      "pc": 140695476789530,
+      "count": 1,
+      "cycles_since_prior_sample": 18724606
+    },
+    {
+      "pc": 140695485413056,
+      "count": 1,
+      "cycles_since_prior_sample": 14925268
+    },
+    {
+      "pc": 140695478313940,
+      "count": 1,
+      "cycles_since_prior_sample": 13879426
+    },
+    {
+      "pc": 140695476635427,
+      "count": 1,
+      "cycles_since_prior_sample": 20915942
+    },
+    {
+      "pc": 140695468801001,
+      "count": 7,
+      "cycles_since_prior_sample": 108848524
+    },
+    {
+      "pc": 140695468814370,
+      "count": 1,
+      "cycles_since_prior_sample": 19143968
+    },
+    {
+      "pc": 140695468800045,
+      "count": 1,
+      "cycles_since_prior_sample": 20580898
+    },
+    {
+      "pc": 140695468814708,
+      "count": 1,
+      "cycles_since_prior_sample": 10447072
+    },
+    {
+      "pc": 140695491966901,
+      "count": 1,
+      "cycles_since_prior_sample": 18893144
+    },
+    {
+      "pc": 140695468768159,
+      "count": 1,
+      "cycles_since_prior_sample": 10641358
+    },
+    {
+      "pc": 140695468804058,
+      "count": 4,
+      "cycles_since_prior_sample": 72747614
+    },
+    {
+      "pc": 140695468810950,
+      "count": 6,
+      "cycles_since_prior_sample": 102380782
+    },
+    {
+      "pc": 140695468810944,
+      "count": 3,
+      "cycles_since_prior_sample": 56108710
+    },
+    {
+      "pc": 140695468941507,
+      "count": 1,
+      "cycles_since_prior_sample": 18417974
+    },
+    {
+      "pc": 140695468805276,
+      "count": 4,
+      "cycles_since_prior_sample": 69839116
+    },
+    {
+      "pc": 140695468928454,
+      "count": 1,
+      "cycles_since_prior_sample": 20908118
+    },
+    {
+      "pc": 140695468755584,
+      "count": 3,
+      "cycles_since_prior_sample": 45962224
+    },
+    {
+      "pc": 140695469920603,
+      "count": 2,
+      "cycles_since_prior_sample": 29794224
+    },
+    {
+      "pc": 140695468917984,
+      "count": 1,
+      "cycles_since_prior_sample": 13550170
+    },
+    {
+      "pc": 140695468640583,
+      "count": 1,
+      "cycles_since_prior_sample": 16632246
+    },
+    {
+      "pc": 140726032096187,
+      "count": 1,
+      "cycles_since_prior_sample": 10434282
+    },
+    {
+      "pc": 140695468681234,
+      "count": 8,
+      "cycles_since_prior_sample": 114971880
+    },
+    {
+      "pc": 140695468681397,
+      "count": 3,
+      "cycles_since_prior_sample": 49961824
+    },
+    {
+      "pc": 140695468933407,
+      "count": 1,
+      "cycles_since_prior_sample": 22065718
+    },
+    {
+      "pc": 140695468679104,
+      "count": 1,
+      "cycles_since_prior_sample": 15424260
+    },
+    {
+      "pc": 140726032089563,
+      "count": 2,
+      "cycles_since_prior_sample": 42293184
+    },
+    {
+      "pc": 140695471869310,
+      "count": 1,
+      "cycles_since_prior_sample": 19853880
+    },
+    {
+      "pc": 140695469988850,
+      "count": 2,
+      "cycles_since_prior_sample": 37127474
+    },
+    {
+      "pc": 140695468639760,
+      "count": 6,
+      "cycles_since_prior_sample": 104567782
+    },
+    {
+      "pc": 140726032627037,
+      "count": 1,
+      "cycles_since_prior_sample": 16523822
+    },
+    {
+      "pc": 140726032118630,
+      "count": 1,
+      "cycles_since_prior_sample": 19458796
+    },
+    {
+      "pc": 140695469988590,
+      "count": 4,
+      "cycles_since_prior_sample": 63507886
+    },
+    {
+      "pc": 140695468640782,
+      "count": 4,
+      "cycles_since_prior_sample": 58670434
+    },
+    {
+      "pc": 140695469372322,
+      "count": 1,
+      "cycles_since_prior_sample": 14813460
+    },
+    {
+      "pc": 140695485583236,
+      "count": 1,
+      "cycles_since_prior_sample": 15454408
+    },
+    {
+      "pc": 140695470332426,
+      "count": 1,
+      "cycles_since_prior_sample": 21313006
+    },
+    {
+      "pc": 140695484501212,
+      "count": 2,
+      "cycles_since_prior_sample": 25504516
+    },
+    {
+      "pc": 140695486040975,
+      "count": 1,
+      "cycles_since_prior_sample": 11991926
+    },
+    {
+      "pc": 140695489499318,
+      "count": 1,
+      "cycles_since_prior_sample": 18307918
+    },
+    {
+      "pc": 140695483367051,
+      "count": 1,
+      "cycles_since_prior_sample": 16800876
+    },
+    {
+      "pc": 140695473515850,
+      "count": 1,
+      "cycles_since_prior_sample": 20907516
+    },
+    {
+      "pc": 140695484027284,
+      "count": 1,
+      "cycles_since_prior_sample": 12368800
+    },
+    {
+      "pc": 140695484371839,
+      "count": 1,
+      "cycles_since_prior_sample": 15395744
+    },
+    {
+      "pc": 140695472031409,
+      "count": 4,
+      "cycles_since_prior_sample": 58679538
+    },
+    {
+      "pc": 140695492276075,
+      "count": 1,
+      "cycles_since_prior_sample": 16646388
+    },
+    {
+      "pc": 140695472050397,
+      "count": 1,
+      "cycles_since_prior_sample": 13526604
+    },
+    {
+      "pc": 140695469594550,
+      "count": 1,
+      "cycles_since_prior_sample": 10594214
+    },
+    {
+      "pc": 140695472084853,
+      "count": 1,
+      "cycles_since_prior_sample": 13139162
+    },
+    {
+      "pc": 140695485943145,
+      "count": 1,
+      "cycles_since_prior_sample": 16640830
+    },
+    {
+      "pc": 140695480528756,
+      "count": 1,
+      "cycles_since_prior_sample": 16433304
+    },
+    {
+      "pc": 140695474263949,
+      "count": 1,
+      "cycles_since_prior_sample": 10411474
+    },
+    {
+      "pc": 140695468768071,
+      "count": 2,
+      "cycles_since_prior_sample": 28401596
+    },
+    {
+      "pc": 140695469934357,
+      "count": 1,
+      "cycles_since_prior_sample": 12652534
+    },
+    {
+      "pc": 140695468800911,
+      "count": 1,
+      "cycles_since_prior_sample": 20661990
+    },
+    {
+      "pc": 140695468989648,
+      "count": 1,
+      "cycles_since_prior_sample": 19621992
+    },
+    {
+      "pc": 140695468801013,
+      "count": 6,
+      "cycles_since_prior_sample": 80682430
+    },
+    {
+      "pc": 140726032119529,
+      "count": 1,
+      "cycles_since_prior_sample": 18604894
+    },
+    {
+      "pc": 140726032119894,
+      "count": 2,
+      "cycles_since_prior_sample": 37213194
+    },
+    {
+      "pc": 140695468675440,
+      "count": 1,
+      "cycles_since_prior_sample": 21469682
+    },
+    {
+      "pc": 140695469985119,
+      "count": 1,
+      "cycles_since_prior_sample": 13684906
+    },
+    {
+      "pc": 140695468934608,
+      "count": 1,
+      "cycles_since_prior_sample": 11824558
+    },
+    {
+      "pc": 140695468799509,
+      "count": 1,
+      "cycles_since_prior_sample": 19407732
+    },
+    {
+      "pc": 140726032089691,
+      "count": 4,
+      "cycles_since_prior_sample": 58034462
+    },
+    {
+      "pc": 140695468801845,
+      "count": 1,
+      "cycles_since_prior_sample": 21888790
+    },
+    {
+      "pc": 140726032087093,
+      "count": 2,
+      "cycles_since_prior_sample": 25594848
+    },
+    {
+      "pc": 140726032119558,
+      "count": 1,
+      "cycles_since_prior_sample": 13449286
+    },
+    {
+      "pc": 140695468508214,
+      "count": 1,
+      "cycles_since_prior_sample": 18462644
+    },
+    {
+      "pc": 140695469991001,
+      "count": 1,
+      "cycles_since_prior_sample": 10048750
+    },
+    {
+      "pc": 140695478561360,
+      "count": 1,
+      "cycles_since_prior_sample": 10466184
+    },
+    {
+      "pc": 140695476795576,
+      "count": 1,
+      "cycles_since_prior_sample": 13949034
+    },
+    {
+      "pc": 140695472723593,
+      "count": 2,
+      "cycles_since_prior_sample": 34505242
+    },
+    {
+      "pc": 140695474372871,
+      "count": 1,
+      "cycles_since_prior_sample": 19803500
+    },
+    {
+      "pc": 140695481702029,
+      "count": 2,
+      "cycles_since_prior_sample": 35833892
+    },
+    {
+      "pc": 140695472746796,
+      "count": 1,
+      "cycles_since_prior_sample": 16241830
+    },
+    {
+      "pc": 140695479383811,
+      "count": 1,
+      "cycles_since_prior_sample": 16693310
+    },
+    {
+      "pc": 140695468933411,
+      "count": 2,
+      "cycles_since_prior_sample": 30452614
+    },
+    {
+      "pc": 140695471823690,
+      "count": 4,
+      "cycles_since_prior_sample": 56821784
+    },
+    {
+      "pc": 140695468857048,
+      "count": 1,
+      "cycles_since_prior_sample": 16398956
+    },
+    {
+      "pc": 140695468812571,
+      "count": 1,
+      "cycles_since_prior_sample": 16727260
+    },
+    {
+      "pc": 140695468811103,
+      "count": 1,
+      "cycles_since_prior_sample": 21601554
+    },
+    {
+      "pc": 140695468941509,
+      "count": 1,
+      "cycles_since_prior_sample": 18024456
+    },
+    {
+      "pc": 140695468795648,
+      "count": 2,
+      "cycles_since_prior_sample": 25605640
+    },
+    {
+      "pc": 140695468759073,
+      "count": 3,
+      "cycles_since_prior_sample": 47128172
+    },
+    {
+      "pc": 140695468795697,
+      "count": 2,
+      "cycles_since_prior_sample": 34139620
+    },
+    {
+      "pc": 140726032119624,
+      "count": 10,
+      "cycles_since_prior_sample": 169989674
+    },
+    {
+      "pc": 140695468823779,
+      "count": 2,
+      "cycles_since_prior_sample": 33872000
+    },
+    {
+      "pc": 140726032095515,
+      "count": 1,
+      "cycles_since_prior_sample": 15019946
+    },
+    {
+      "pc": 140695468989688,
+      "count": 4,
+      "cycles_since_prior_sample": 66603892
+    },
+    {
+      "pc": 140726031959106,
+      "count": 1,
+      "cycles_since_prior_sample": 14053508
+    },
+    {
+      "pc": 140695468642901,
+      "count": 1,
+      "cycles_since_prior_sample": 18803114
+    },
+    {
+      "pc": 140695468715376,
+      "count": 5,
+      "cycles_since_prior_sample": 73489266
+    },
+    {
+      "pc": 140695468508121,
+      "count": 1,
+      "cycles_since_prior_sample": 13589146
+    },
+    {
+      "pc": 140695471797297,
+      "count": 1,
+      "cycles_since_prior_sample": 15031454
+    },
+    {
+      "pc": 140695468799757,
+      "count": 1,
+      "cycles_since_prior_sample": 11669462
+    },
+    {
+      "pc": 140695468764490,
+      "count": 1,
+      "cycles_since_prior_sample": 14201080
+    },
+    {
+      "pc": 140695469900648,
+      "count": 1,
+      "cycles_since_prior_sample": 11869778
+    },
+    {
+      "pc": 140695468734983,
+      "count": 1,
+      "cycles_since_prior_sample": 20816352
+    },
+    {
+      "pc": 140695469979967,
+      "count": 1,
+      "cycles_since_prior_sample": 22020536
+    },
+    {
+      "pc": 140695468510760,
+      "count": 1,
+      "cycles_since_prior_sample": 18751410
+    },
+    {
+      "pc": 140726032089440,
+      "count": 5,
+      "cycles_since_prior_sample": 88276140
+    },
+    {
+      "pc": 140695468757106,
+      "count": 3,
+      "cycles_since_prior_sample": 47889460
+    },
+    {
+      "pc": 140695469932103,
+      "count": 1,
+      "cycles_since_prior_sample": 19496328
+    },
+    {
+      "pc": 140695468533218,
+      "count": 1,
+      "cycles_since_prior_sample": 15030140
+    },
+    {
+      "pc": 140695468800117,
+      "count": 1,
+      "cycles_since_prior_sample": 18158984
+    },
+    {
+      "pc": 140695468518345,
+      "count": 1,
+      "cycles_since_prior_sample": 10649492
+    },
+    {
+      "pc": 140695474807859,
+      "count": 1,
+      "cycles_since_prior_sample": 21818140
+    },
+    {
+      "pc": 140726032588708,
+      "count": 1,
+      "cycles_since_prior_sample": 11980940
+    },
+    {
+      "pc": 140695478682677,
+      "count": 2,
+      "cycles_since_prior_sample": 30330946
+    },
+    {
+      "pc": 140695476789396,
+      "count": 1,
+      "cycles_since_prior_sample": 15210980
+    },
+    {
+      "pc": 140695478555528,
+      "count": 1,
+      "cycles_since_prior_sample": 20870262
+    },
+    {
+      "pc": 140695470425248,
+      "count": 1,
+      "cycles_since_prior_sample": 16724810
+    },
+    {
+      "pc": 140695486101924,
+      "count": 1,
+      "cycles_since_prior_sample": 20451180
+    },
+    {
+      "pc": 140695474672677,
+      "count": 1,
+      "cycles_since_prior_sample": 10429278
+    },
+    {
+      "pc": 140695472084834,
+      "count": 4,
+      "cycles_since_prior_sample": 60403418
+    },
+    {
+      "pc": 140695484501322,
+      "count": 2,
+      "cycles_since_prior_sample": 39012586
+    },
+    {
+      "pc": 140695481337172,
+      "count": 1,
+      "cycles_since_prior_sample": 16371728
+    },
+    {
+      "pc": 140695470387615,
+      "count": 1,
+      "cycles_since_prior_sample": 21289794
+    },
+    {
+      "pc": 140695485943685,
+      "count": 1,
+      "cycles_since_prior_sample": 21315030
+    },
+    {
+      "pc": 140695470560294,
+      "count": 1,
+      "cycles_since_prior_sample": 11899496
+    },
+    {
+      "pc": 140695485533109,
+      "count": 1,
+      "cycles_since_prior_sample": 14245982
+    },
+    {
+      "pc": 140695468810473,
+      "count": 1,
+      "cycles_since_prior_sample": 11247804
+    },
+    {
+      "pc": 140695468811586,
+      "count": 1,
+      "cycles_since_prior_sample": 13444424
+    },
+    {
+      "pc": 140695468800998,
+      "count": 3,
+      "cycles_since_prior_sample": 50225876
+    },
+    {
+      "pc": 140695468807439,
+      "count": 1,
+      "cycles_since_prior_sample": 18575502
+    },
+    {
+      "pc": 140695468799792,
+      "count": 3,
+      "cycles_since_prior_sample": 39963360
+    },
+    {
+      "pc": 140695468679086,
+      "count": 1,
+      "cycles_since_prior_sample": 16364020
+    },
+    {
+      "pc": 140695468764502,
+      "count": 1,
+      "cycles_since_prior_sample": 20946976
+    },
+    {
+      "pc": 140695468775900,
+      "count": 1,
+      "cycles_since_prior_sample": 20697244
+    },
+    {
+      "pc": 140726032614703,
+      "count": 1,
+      "cycles_since_prior_sample": 21047564
+    },
+    {
+      "pc": 140695468757462,
+      "count": 3,
+      "cycles_since_prior_sample": 47251884
+    },
+    {
+      "pc": 140695469934295,
+      "count": 1,
+      "cycles_since_prior_sample": 16430928
+    },
+    {
+      "pc": 140695468500533,
+      "count": 1,
+      "cycles_since_prior_sample": 21316584
+    },
+    {
+      "pc": 140695468436465,
+      "count": 2,
+      "cycles_since_prior_sample": 39986160
+    },
+    {
+      "pc": 140695468778535,
+      "count": 1,
+      "cycles_since_prior_sample": 12769094
+    },
+    {
+      "pc": 140695468784979,
+      "count": 1,
+      "cycles_since_prior_sample": 14996964
+    },
+    {
+      "pc": 140726032119685,
+      "count": 1,
+      "cycles_since_prior_sample": 12305008
+    },
+    {
+      "pc": 140695468811575,
+      "count": 1,
+      "cycles_since_prior_sample": 13841372
+    },
+    {
+      "pc": 140695469990657,
+      "count": 1,
+      "cycles_since_prior_sample": 10327804
+    },
+    {
+      "pc": 140695468437921,
+      "count": 1,
+      "cycles_since_prior_sample": 22133688
+    },
+    {
+      "pc": 140695468802383,
+      "count": 2,
+      "cycles_since_prior_sample": 24558448
+    },
+    {
+      "pc": 140695468775957,
+      "count": 1,
+      "cycles_since_prior_sample": 16217146
+    },
+    {
+      "pc": 140695468679027,
+      "count": 3,
+      "cycles_since_prior_sample": 53283176
+    },
+    {
+      "pc": 140695469919534,
+      "count": 1,
+      "cycles_since_prior_sample": 13834576
+    },
+    {
+      "pc": 140695469934301,
+      "count": 1,
+      "cycles_since_prior_sample": 17957432
+    },
+    {
+      "pc": 140695470100599,
+      "count": 1,
+      "cycles_since_prior_sample": 16821590
+    },
+    {
+      "pc": 140695469988302,
+      "count": 1,
+      "cycles_since_prior_sample": 17857866
+    },
+    {
+      "pc": 140695474630562,
+      "count": 1,
+      "cycles_since_prior_sample": 12650280
+    },
+    {
+      "pc": 140695468936018,
+      "count": 5,
+      "cycles_since_prior_sample": 74042024
+    },
+    {
+      "pc": 140695468681740,
+      "count": 4,
+      "cycles_since_prior_sample": 55647402
+    },
+    {
+      "pc": 140695468934636,
+      "count": 8,
+      "cycles_since_prior_sample": 136268586
+    },
+    {
+      "pc": 140695475822310,
+      "count": 1,
+      "cycles_since_prior_sample": 17257974
+    },
+    {
+      "pc": 140726032587268,
+      "count": 4,
+      "cycles_since_prior_sample": 74613500
+    },
+    {
+      "pc": 140695468639613,
+      "count": 2,
+      "cycles_since_prior_sample": 30961804
+    },
+    {
+      "pc": 140695468935363,
+      "count": 1,
+      "cycles_since_prior_sample": 15847578
+    },
+    {
+      "pc": 140695477274234,
+      "count": 1,
+      "cycles_since_prior_sample": 16072168
+    },
+    {
+      "pc": 140695476290702,
+      "count": 1,
+      "cycles_since_prior_sample": 13618760
+    },
+    {
+      "pc": 140695484737838,
+      "count": 1,
+      "cycles_since_prior_sample": 16505446
+    },
+    {
+      "pc": 140695486086380,
+      "count": 1,
+      "cycles_since_prior_sample": 21058716
+    },
+    {
+      "pc": 140695474611394,
+      "count": 1,
+      "cycles_since_prior_sample": 15182400
+    },
+    {
+      "pc": 140695484501927,
+      "count": 1,
+      "cycles_since_prior_sample": 11907212
+    },
+    {
+      "pc": 140695484178651,
+      "count": 1,
+      "cycles_since_prior_sample": 13749242
+    },
+    {
+      "pc": 140695477664800,
+      "count": 1,
+      "cycles_since_prior_sample": 17687984
+    },
+    {
+      "pc": 140695484027258,
+      "count": 1,
+      "cycles_since_prior_sample": 10640142
+    },
+    {
+      "pc": 140695478392035,
+      "count": 1,
+      "cycles_since_prior_sample": 11785302
+    },
+    {
+      "pc": 140695479369769,
+      "count": 1,
+      "cycles_since_prior_sample": 18001872
+    },
+    {
+      "pc": 140695474403546,
+      "count": 1,
+      "cycles_since_prior_sample": 20999102
+    },
+    {
+      "pc": 140695485948638,
+      "count": 1,
+      "cycles_since_prior_sample": 16138528
+    },
+    {
+      "pc": 140695469613862,
+      "count": 1,
+      "cycles_since_prior_sample": 16047212
+    },
+    {
+      "pc": 140695484755241,
+      "count": 1,
+      "cycles_since_prior_sample": 9353260
+    },
+    {
+      "pc": 140725997802020,
+      "count": 3,
+      "cycles_since_prior_sample": 11370568
+    },
+    {
+      "pc": 140695468770369,
+      "count": 1,
+      "cycles_since_prior_sample": 13477948
+    },
+    {
+      "pc": 140695468761078,
+      "count": 2,
+      "cycles_since_prior_sample": 23354118
+    },
+    {
+      "pc": 140695468917731,
+      "count": 3,
+      "cycles_since_prior_sample": 55857168
+    },
+    {
+      "pc": 140695472569638,
+      "count": 1,
+      "cycles_since_prior_sample": 10728612
+    },
+    {
+      "pc": 140695472120374,
+      "count": 1,
+      "cycles_since_prior_sample": 9844566
+    },
+    {
+      "pc": 140695469564350,
+      "count": 1,
+      "cycles_since_prior_sample": 11914812
+    },
+    {
+      "pc": 140695468593918,
+      "count": 1,
+      "cycles_since_prior_sample": 14023768
+    },
+    {
+      "pc": 140695477647100,
+      "count": 1,
+      "cycles_since_prior_sample": 12045490
+    },
+    {
+      "pc": 140695474280468,
+      "count": 1,
+      "cycles_since_prior_sample": 18319974
+    },
+    {
+      "pc": 140695470769841,
+      "count": 3,
+      "cycles_since_prior_sample": 60562408
+    },
+    {
+      "pc": 140695468811605,
+      "count": 1,
+      "cycles_since_prior_sample": 18247142
+    },
+    {
+      "pc": 140695468673717,
+      "count": 1,
+      "cycles_since_prior_sample": 19462516
+    },
+    {
+      "pc": 140695468933463,
+      "count": 1,
+      "cycles_since_prior_sample": 16779148
+    },
+    {
+      "pc": 140695468800499,
+      "count": 1,
+      "cycles_since_prior_sample": 19451500
+    },
+    {
+      "pc": 140726032086692,
+      "count": 1,
+      "cycles_since_prior_sample": 14721426
+    },
+    {
+      "pc": 140695468729749,
+      "count": 1,
+      "cycles_since_prior_sample": 18628336
+    },
+    {
+      "pc": 140695468811638,
+      "count": 1,
+      "cycles_since_prior_sample": 17153020
+    },
+    {
+      "pc": 140726032079571,
+      "count": 1,
+      "cycles_since_prior_sample": 16465774
+    },
+    {
+      "pc": 140695468989993,
+      "count": 1,
+      "cycles_since_prior_sample": 14276466
+    },
+    {
+      "pc": 140695468811786,
+      "count": 1,
+      "cycles_since_prior_sample": 16243118
+    },
+    {
+      "pc": 140695468803737,
+      "count": 4,
+      "cycles_since_prior_sample": 68567970
+    },
+    {
+      "pc": 140695468807817,
+      "count": 3,
+      "cycles_since_prior_sample": 45906354
+    },
+    {
+      "pc": 140726032119462,
+      "count": 2,
+      "cycles_since_prior_sample": 32074154
+    },
+    {
+      "pc": 140695468766918,
+      "count": 1,
+      "cycles_since_prior_sample": 14961950
+    },
+    {
+      "pc": 140695472718731,
+      "count": 1,
+      "cycles_since_prior_sample": 20525872
+    },
+    {
+      "pc": 140695472127527,
+      "count": 1,
+      "cycles_since_prior_sample": 14756596
+    },
+    {
+      "pc": 140695470413034,
+      "count": 2,
+      "cycles_since_prior_sample": 31385412
+    },
+    {
+      "pc": 140695471469680,
+      "count": 1,
+      "cycles_since_prior_sample": 20820598
+    },
+    {
+      "pc": 140695472530312,
+      "count": 1,
+      "cycles_since_prior_sample": 19458394
+    },
+    {
+      "pc": 140695484168089,
+      "count": 2,
+      "cycles_since_prior_sample": 31607200
+    },
+    {
+      "pc": 140695472209226,
+      "count": 1,
+      "cycles_since_prior_sample": 13536816
+    },
+    {
+      "pc": 140695478265488,
+      "count": 1,
+      "cycles_since_prior_sample": 21140006
+    },
+    {
+      "pc": 140695472021225,
+      "count": 1,
+      "cycles_since_prior_sample": 11925980
+    },
+    {
+      "pc": 140695486165448,
+      "count": 1,
+      "cycles_since_prior_sample": 14919330
+    },
+    {
+      "pc": 140695468361856,
+      "count": 4,
+      "cycles_since_prior_sample": 57145984
+    },
+    {
+      "pc": 140695470180349,
+      "count": 1,
+      "cycles_since_prior_sample": 16926564
+    },
+    {
+      "pc": 140695474390726,
+      "count": 1,
+      "cycles_since_prior_sample": 13534530
+    },
+    {
+      "pc": 140695468594542,
+      "count": 1,
+      "cycles_since_prior_sample": 18100640
+    },
+    {
+      "pc": 140695484603600,
+      "count": 2,
+      "cycles_since_prior_sample": 33000704
+    },
+    {
+      "pc": 140695472746628,
+      "count": 1,
+      "cycles_since_prior_sample": 10446914
+    },
+    {
+      "pc": 140695468800607,
+      "count": 1,
+      "cycles_since_prior_sample": 20583066
+    },
+    {
+      "pc": 140695469919841,
+      "count": 1,
+      "cycles_since_prior_sample": 15095894
+    },
+    {
+      "pc": 140695469984376,
+      "count": 1,
+      "cycles_since_prior_sample": 21352318
+    },
+    {
+      "pc": 140695468802328,
+      "count": 1,
+      "cycles_since_prior_sample": 16501764
+    },
+    {
+      "pc": 140726032614670,
+      "count": 1,
+      "cycles_since_prior_sample": 15425782
+    },
+    {
+      "pc": 140695469083751,
+      "count": 10,
+      "cycles_since_prior_sample": 156449206
+    },
+    {
+      "pc": 140695468803650,
+      "count": 1,
+      "cycles_since_prior_sample": 16732680
+    },
+    {
+      "pc": 140726032614456,
+      "count": 1,
+      "cycles_since_prior_sample": 16997870
+    },
+    {
+      "pc": 140695468501556,
+      "count": 1,
+      "cycles_since_prior_sample": 18031826
+    },
+    {
+      "pc": 140695468773761,
+      "count": 4,
+      "cycles_since_prior_sample": 48253054
+    },
+    {
+      "pc": 140726032627209,
+      "count": 2,
+      "cycles_since_prior_sample": 31150780
+    },
+    {
+      "pc": 140695468818591,
+      "count": 4,
+      "cycles_since_prior_sample": 50941668
+    },
+    {
+      "pc": 140695468969234,
+      "count": 1,
+      "cycles_since_prior_sample": 21499156
+    },
+    {
+      "pc": 140695468800995,
+      "count": 4,
+      "cycles_since_prior_sample": 70792042
+    },
+    {
+      "pc": 140695468766887,
+      "count": 1,
+      "cycles_since_prior_sample": 19542400
+    },
+    {
+      "pc": 140726032627132,
+      "count": 2,
+      "cycles_since_prior_sample": 22439516
+    },
+    {
+      "pc": 140695492273790,
+      "count": 1,
+      "cycles_since_prior_sample": 11983472
+    },
+    {
+      "pc": 140695468802046,
+      "count": 1,
+      "cycles_since_prior_sample": 19524910
+    },
+    {
+      "pc": 140695472344959,
+      "count": 1,
+      "cycles_since_prior_sample": 15186348
+    },
+    {
+      "pc": 140695469931050,
+      "count": 1,
+      "cycles_since_prior_sample": 20344464
+    },
+    {
+      "pc": 140695468754650,
+      "count": 1,
+      "cycles_since_prior_sample": 13833780
+    },
+    {
+      "pc": 140695472576524,
+      "count": 1,
+      "cycles_since_prior_sample": 18665470
+    },
+    {
+      "pc": 140695470298809,
+      "count": 1,
+      "cycles_since_prior_sample": 19939876
+    },
+    {
+      "pc": 140695485924866,
+      "count": 1,
+      "cycles_since_prior_sample": 11007994
+    },
+    {
+      "pc": 140695484603593,
+      "count": 1,
+      "cycles_since_prior_sample": 15169790
+    },
+    {
+      "pc": 140695468584923,
+      "count": 1,
+      "cycles_since_prior_sample": 14923898
+    },
+    {
+      "pc": 140695468883488,
+      "count": 1,
+      "cycles_since_prior_sample": 1753302
+    },
+    {
+      "pc": 140695484603558,
+      "count": 1,
+      "cycles_since_prior_sample": 19431110
+    },
+    {
+      "pc": 140695468933520,
+      "count": 1,
+      "cycles_since_prior_sample": 17910330
+    },
+    {
+      "pc": 140695469985397,
+      "count": 2,
+      "cycles_since_prior_sample": 36134980
+    },
+    {
+      "pc": 140695468755935,
+      "count": 1,
+      "cycles_since_prior_sample": 9906922
+    },
+    {
+      "pc": 140695468802061,
+      "count": 1,
+      "cycles_since_prior_sample": 20955926
+    },
+    {
+      "pc": 140695468678390,
+      "count": 3,
+      "cycles_since_prior_sample": 44600936
+    },
+    {
+      "pc": 140695469084896,
+      "count": 1,
+      "cycles_since_prior_sample": 17406118
+    },
+    {
+      "pc": 140695469993539,
+      "count": 1,
+      "cycles_since_prior_sample": 16269132
+    },
+    {
+      "pc": 140695474405685,
+      "count": 1,
+      "cycles_since_prior_sample": 18262686
+    },
+    {
+      "pc": 140726032614679,
+      "count": 1,
+      "cycles_since_prior_sample": 13671894
+    },
+    {
+      "pc": 140695469084001,
+      "count": 2,
+      "cycles_since_prior_sample": 33968862
+    },
+    {
+      "pc": 140695468673931,
+      "count": 1,
+      "cycles_since_prior_sample": 14801574
+    },
+    {
+      "pc": 140695468804831,
+      "count": 1,
+      "cycles_since_prior_sample": 15534700
+    },
+    {
+      "pc": 140695468810585,
+      "count": 2,
+      "cycles_since_prior_sample": 30206722
+    },
+    {
+      "pc": 140695469316992,
+      "count": 1,
+      "cycles_since_prior_sample": 14991414
+    },
+    {
+      "pc": 140695468767200,
+      "count": 1,
+      "cycles_since_prior_sample": 16501768
+    },
+    {
+      "pc": 140695469919883,
+      "count": 2,
+      "cycles_since_prior_sample": 31019874
+    },
+    {
+      "pc": 140695468795431,
+      "count": 1,
+      "cycles_since_prior_sample": 12036424
+    },
+    {
+      "pc": 140695468774306,
+      "count": 1,
+      "cycles_since_prior_sample": 14418306
+    },
+    {
+      "pc": 140726032096161,
+      "count": 1,
+      "cycles_since_prior_sample": 11941780
+    },
+    {
+      "pc": 140726032614550,
+      "count": 1,
+      "cycles_since_prior_sample": 11161288
+    },
+    {
+      "pc": 140695468721559,
+      "count": 2,
+      "cycles_since_prior_sample": 33544814
+    },
+    {
+      "pc": 140695468679031,
+      "count": 4,
+      "cycles_since_prior_sample": 46203716
+    },
+    {
+      "pc": 140695468818585,
+      "count": 2,
+      "cycles_since_prior_sample": 39835718
+    },
+    {
+      "pc": 140695469264701,
+      "count": 1,
+      "cycles_since_prior_sample": 17910820
+    },
+    {
+      "pc": 140695468803336,
+      "count": 1,
+      "cycles_since_prior_sample": 10433070
+    },
+    {
+      "pc": 140695469984250,
+      "count": 1,
+      "cycles_since_prior_sample": 21208508
+    },
+    {
+      "pc": 140695472611582,
+      "count": 1,
+      "cycles_since_prior_sample": 21038388
+    },
+    {
+      "pc": 140695478372621,
+      "count": 1,
+      "cycles_since_prior_sample": 14672850
+    },
+    {
+      "pc": 140695471144931,
+      "count": 1,
+      "cycles_since_prior_sample": 12105848
+    },
+    {
+      "pc": 140695474705768,
+      "count": 1,
+      "cycles_since_prior_sample": 19332732
+    },
+    {
+      "pc": 140695476789342,
+      "count": 1,
+      "cycles_since_prior_sample": 20107178
+    },
+    {
+      "pc": 140695478224668,
+      "count": 1,
+      "cycles_since_prior_sample": 21573202
+    },
+    {
+      "pc": 140695489531855,
+      "count": 1,
+      "cycles_since_prior_sample": 11872862
+    },
+    {
+      "pc": 140695476789348,
+      "count": 1,
+      "cycles_since_prior_sample": 16603316
+    },
+    {
+      "pc": 140695479595363,
+      "count": 1,
+      "cycles_since_prior_sample": 14806568
+    },
+    {
+      "pc": 140695472031444,
+      "count": 1,
+      "cycles_since_prior_sample": 19535870
+    },
+    {
+      "pc": 140695468577526,
+      "count": 1,
+      "cycles_since_prior_sample": 18035676
+    },
+    {
+      "pc": 140695481704424,
+      "count": 1,
+      "cycles_since_prior_sample": 18131786
+    },
+    {
+      "pc": 140695484604046,
+      "count": 2,
+      "cycles_since_prior_sample": 36594214
+    },
+    {
+      "pc": 140695485951802,
+      "count": 1,
+      "cycles_since_prior_sample": 16567150
+    },
+    {
+      "pc": 140695468810607,
+      "count": 2,
+      "cycles_since_prior_sample": 28361168
+    },
+    {
+      "pc": 140695474683408,
+      "count": 1,
+      "cycles_since_prior_sample": 15064374
+    },
+    {
+      "pc": 140695468813473,
+      "count": 2,
+      "cycles_since_prior_sample": 41958826
+    },
+    {
+      "pc": 140726032067925,
+      "count": 3,
+      "cycles_since_prior_sample": 57738604
+    },
+    {
+      "pc": 140695468804066,
+      "count": 1,
+      "cycles_since_prior_sample": 15662192
+    },
+    {
+      "pc": 140726032626984,
+      "count": 3,
+      "cycles_since_prior_sample": 58418386
+    },
+    {
+      "pc": 140695468757616,
+      "count": 2,
+      "cycles_since_prior_sample": 34814882
+    },
+    {
+      "pc": 140695468803313,
+      "count": 1,
+      "cycles_since_prior_sample": 16494006
+    },
+    {
+      "pc": 140695470975989,
+      "count": 1,
+      "cycles_since_prior_sample": 15311308
+    },
+    {
+      "pc": 140695469901233,
+      "count": 1,
+      "cycles_since_prior_sample": 11580282
+    },
+    {
+      "pc": 140695468816007,
+      "count": 1,
+      "cycles_since_prior_sample": 15145340
+    },
+    {
+      "pc": 140695468807839,
+      "count": 4,
+      "cycles_since_prior_sample": 57930104
+    },
+    {
+      "pc": 140695470101088,
+      "count": 1,
+      "cycles_since_prior_sample": 12036460
+    },
+    {
+      "pc": 140695468774059,
+      "count": 1,
+      "cycles_since_prior_sample": 17261526
+    },
+    {
+      "pc": 140695468811916,
+      "count": 1,
+      "cycles_since_prior_sample": 14973164
+    },
+    {
+      "pc": 140695468805260,
+      "count": 1,
+      "cycles_since_prior_sample": 13857882
+    },
+    {
+      "pc": 140695468507277,
+      "count": 1,
+      "cycles_since_prior_sample": 11602688
+    },
+    {
+      "pc": 140695468776843,
+      "count": 1,
+      "cycles_since_prior_sample": 12506576
+    },
+    {
+      "pc": 140726032087286,
+      "count": 1,
+      "cycles_since_prior_sample": 19170594
+    },
+    {
+      "pc": 140695468805264,
+      "count": 3,
+      "cycles_since_prior_sample": 48460136
+    },
+    {
+      "pc": 140726032586916,
+      "count": 2,
+      "cycles_since_prior_sample": 36264608
+    },
+    {
+      "pc": 140695469332082,
+      "count": 1,
+      "cycles_since_prior_sample": 16809128
+    },
+    {
+      "pc": 140695468799499,
+      "count": 1,
+      "cycles_since_prior_sample": 18022974
+    },
+    {
+      "pc": 140695469920578,
+      "count": 1,
+      "cycles_since_prior_sample": 14633442
+    },
+    {
+      "pc": 140695474276364,
+      "count": 1,
+      "cycles_since_prior_sample": 11532734
+    },
+    {
+      "pc": 140695478557676,
+      "count": 1,
+      "cycles_since_prior_sample": 17840432
+    },
+    {
+      "pc": 140695478546354,
+      "count": 1,
+      "cycles_since_prior_sample": 19708440
+    },
+    {
+      "pc": 140695470332480,
+      "count": 1,
+      "cycles_since_prior_sample": 18423482
+    },
+    {
+      "pc": 140695470133956,
+      "count": 1,
+      "cycles_since_prior_sample": 14659014
+    },
+    {
+      "pc": 140695476795879,
+      "count": 2,
+      "cycles_since_prior_sample": 31539754
+    },
+    {
+      "pc": 140695471116224,
+      "count": 1,
+      "cycles_since_prior_sample": 12147792
+    },
+    {
+      "pc": 140695472632570,
+      "count": 1,
+      "cycles_since_prior_sample": 12169692
+    },
+    {
+      "pc": 140695470924726,
+      "count": 2,
+      "cycles_since_prior_sample": 30398166
+    },
+    {
+      "pc": 140695484080065,
+      "count": 1,
+      "cycles_since_prior_sample": 14947390
+    },
+    {
+      "pc": 140695481574206,
+      "count": 1,
+      "cycles_since_prior_sample": 18048256
+    },
+    {
+      "pc": 140695474291400,
+      "count": 1,
+      "cycles_since_prior_sample": 21293378
+    },
+    {
+      "pc": 140695492273899,
+      "count": 6,
+      "cycles_since_prior_sample": 89785128
+    },
+    {
+      "pc": 140695468919317,
+      "count": 1,
+      "cycles_since_prior_sample": 13624826
+    },
+    {
+      "pc": 140695468637289,
+      "count": 2,
+      "cycles_since_prior_sample": 24809860
+    },
+    {
+      "pc": 140695468532299,
+      "count": 1,
+      "cycles_since_prior_sample": 20271554
+    },
+    {
+      "pc": 140695468926676,
+      "count": 11,
+      "cycles_since_prior_sample": 197473826
+    },
+    {
+      "pc": 140695469070382,
+      "count": 5,
+      "cycles_since_prior_sample": 79766298
+    },
+    {
+      "pc": 140695468918879,
+      "count": 1,
+      "cycles_since_prior_sample": 20979120
+    },
+    {
+      "pc": 140726032089785,
+      "count": 4,
+      "cycles_since_prior_sample": 63543106
+    },
+    {
+      "pc": 140695468934622,
+      "count": 7,
+      "cycles_since_prior_sample": 97892914
+    },
+    {
+      "pc": 140695470008803,
+      "count": 1,
+      "cycles_since_prior_sample": 18117624
+    },
+    {
+      "pc": 140695468935104,
+      "count": 2,
+      "cycles_since_prior_sample": 34901744
+    },
+    {
+      "pc": 140695468741534,
+      "count": 1,
+      "cycles_since_prior_sample": 18944490
+    },
+    {
+      "pc": 140695468681259,
+      "count": 2,
+      "cycles_since_prior_sample": 31944004
+    },
+    {
+      "pc": 140695471647132,
+      "count": 1,
+      "cycles_since_prior_sample": 20389048
+    },
+    {
+      "pc": 140695471569200,
+      "count": 1,
+      "cycles_since_prior_sample": 19550186
+    },
+    {
+      "pc": 140695468769095,
+      "count": 1,
+      "cycles_since_prior_sample": 15008522
+    },
+    {
+      "pc": 140695468795776,
+      "count": 1,
+      "cycles_since_prior_sample": 16459726
+    },
+    {
+      "pc": 140695468934929,
+      "count": 1,
+      "cycles_since_prior_sample": 15361354
+    },
+    {
+      "pc": 140695468728172,
+      "count": 1,
+      "cycles_since_prior_sample": 10799650
+    },
+    {
+      "pc": 140695472568510,
+      "count": 1,
+      "cycles_since_prior_sample": 12029848
+    },
+    {
+      "pc": 140695472077751,
+      "count": 1,
+      "cycles_since_prior_sample": 23390736
+    },
+    {
+      "pc": 140695472050108,
+      "count": 1,
+      "cycles_since_prior_sample": 20291232
+    },
+    {
+      "pc": 140695484410463,
+      "count": 2,
+      "cycles_since_prior_sample": 33091674
+    },
+    {
+      "pc": 140695469613846,
+      "count": 3,
+      "cycles_since_prior_sample": 49878150
+    },
+    {
+      "pc": 140695485531878,
+      "count": 1,
+      "cycles_since_prior_sample": 14987340
+    },
+    {
+      "pc": 140695468721947,
+      "count": 1,
+      "cycles_since_prior_sample": 15658366
+    },
+    {
+      "pc": 140695469084416,
+      "count": 1,
+      "cycles_since_prior_sample": 20090854
+    },
+    {
+      "pc": 140695468502241,
+      "count": 1,
+      "cycles_since_prior_sample": 20960198
+    },
+    {
+      "pc": 140695468757600,
+      "count": 3,
+      "cycles_since_prior_sample": 41015818
+    },
+    {
+      "pc": 140695468811839,
+      "count": 1,
+      "cycles_since_prior_sample": 22128992
+    },
+    {
+      "pc": 140726031959109,
+      "count": 2,
+      "cycles_since_prior_sample": 30043456
+    },
+    {
+      "pc": 140695468800706,
+      "count": 1,
+      "cycles_since_prior_sample": 22376204
+    },
+    {
+      "pc": 140695468811582,
+      "count": 3,
+      "cycles_since_prior_sample": 53637428
+    },
+    {
+      "pc": 140695468773805,
+      "count": 3,
+      "cycles_since_prior_sample": 54916516
+    },
+    {
+      "pc": 140695468800166,
+      "count": 1,
+      "cycles_since_prior_sample": 21362522
+    },
+    {
+      "pc": 140695468802356,
+      "count": 1,
+      "cycles_since_prior_sample": 18002154
+    },
+    {
+      "pc": 140695468759080,
+      "count": 1,
+      "cycles_since_prior_sample": 15932746
+    },
+    {
+      "pc": 140695470753110,
+      "count": 1,
+      "cycles_since_prior_sample": 17526974
+    },
+    {
+      "pc": 140695470108272,
+      "count": 2,
+      "cycles_since_prior_sample": 39524250
+    },
+    {
+      "pc": 140695469931825,
+      "count": 1,
+      "cycles_since_prior_sample": 15028056
+    },
+    {
+      "pc": 140695468764306,
+      "count": 5,
+      "cycles_since_prior_sample": 74239724
+    },
+    {
+      "pc": 140695476299948,
+      "count": 1,
+      "cycles_since_prior_sample": 16190064
+    },
+    {
+      "pc": 140695471424839,
+      "count": 1,
+      "cycles_since_prior_sample": 15121900
+    },
+    {
+      "pc": 140695480092940,
+      "count": 1,
+      "cycles_since_prior_sample": 17214548
+    },
+    {
+      "pc": 140695472605050,
+      "count": 1,
+      "cycles_since_prior_sample": 19653462
+    },
+    {
+      "pc": 140695478248654,
+      "count": 1,
+      "cycles_since_prior_sample": 19453152
+    },
+    {
+      "pc": 140695477281042,
+      "count": 1,
+      "cycles_since_prior_sample": 19108032
+    },
+    {
+      "pc": 140695472199270,
+      "count": 1,
+      "cycles_since_prior_sample": 18454832
+    },
+    {
+      "pc": 140695472184180,
+      "count": 1,
+      "cycles_since_prior_sample": 15054970
+    },
+    {
+      "pc": 140695484063129,
+      "count": 1,
+      "cycles_since_prior_sample": 19781640
+    },
+    {
+      "pc": 140695485285318,
+      "count": 1,
+      "cycles_since_prior_sample": 16218074
+    },
+    {
+      "pc": 140695470372266,
+      "count": 1,
+      "cycles_since_prior_sample": 20069240
+    },
+    {
+      "pc": 140695474411377,
+      "count": 2,
+      "cycles_since_prior_sample": 27956212
+    },
+    {
+      "pc": 140695492273904,
+      "count": 2,
+      "cycles_since_prior_sample": 28528424
+    },
+    {
+      "pc": 140695479421319,
+      "count": 1,
+      "cycles_since_prior_sample": 4075984
+    },
+    {
+      "pc": 140695481366718,
+      "count": 1,
+      "cycles_since_prior_sample": 17449494
+    },
+    {
+      "pc": 140695468764240,
+      "count": 1,
+      "cycles_since_prior_sample": 16765446
+    },
+    {
+      "pc": 140695468992212,
+      "count": 1,
+      "cycles_since_prior_sample": 14953882
+    },
+    {
+      "pc": 140695468729230,
+      "count": 1,
+      "cycles_since_prior_sample": 16723506
+    },
+    {
+      "pc": 140695468930304,
+      "count": 1,
+      "cycles_since_prior_sample": 11031846
+    },
+    {
+      "pc": 140695468928564,
+      "count": 1,
+      "cycles_since_prior_sample": 14938372
+    },
+    {
+      "pc": 140695468577478,
+      "count": 1,
+      "cycles_since_prior_sample": 11924352
+    },
+    {
+      "pc": 140695468796333,
+      "count": 1,
+      "cycles_since_prior_sample": 12232600
+    },
+    {
+      "pc": 140695468805723,
+      "count": 1,
+      "cycles_since_prior_sample": 10345532
+    },
+    {
+      "pc": 140695468810616,
+      "count": 1,
+      "cycles_since_prior_sample": 17751398
+    },
+    {
+      "pc": 140695468757056,
+      "count": 3,
+      "cycles_since_prior_sample": 40355818
+    },
+    {
+      "pc": 140726032119397,
+      "count": 1,
+      "cycles_since_prior_sample": 19201668
+    },
+    {
+      "pc": 140695468917684,
+      "count": 1,
+      "cycles_since_prior_sample": 11805458
+    },
+    {
+      "pc": 140695468818517,
+      "count": 1,
+      "cycles_since_prior_sample": 13310786
+    },
+    {
+      "pc": 140695468805284,
+      "count": 1,
+      "cycles_since_prior_sample": 13530084
+    },
+    {
+      "pc": 140695468857161,
+      "count": 1,
+      "cycles_since_prior_sample": 15039092
+    },
+    {
+      "pc": 140726032079377,
+      "count": 1,
+      "cycles_since_prior_sample": 18107458
+    },
+    {
+      "pc": 140695469984192,
+      "count": 1,
+      "cycles_since_prior_sample": 13687558
+    },
+    {
+      "pc": 140695473046458,
+      "count": 1,
+      "cycles_since_prior_sample": 21164320
+    },
+    {
+      "pc": 140695478681244,
+      "count": 1,
+      "cycles_since_prior_sample": 20990458
+    },
+    {
+      "pc": 140695483365010,
+      "count": 1,
+      "cycles_since_prior_sample": 20009606
+    },
+    {
+      "pc": 140695485255495,
+      "count": 1,
+      "cycles_since_prior_sample": 10573778
+    },
+    {
+      "pc": 140695475923493,
+      "count": 1,
+      "cycles_since_prior_sample": 21410308
+    },
+    {
+      "pc": 140695473482108,
+      "count": 1,
+      "cycles_since_prior_sample": 14977336
+    },
+    {
+      "pc": 140695468992071,
+      "count": 1,
+      "cycles_since_prior_sample": 11890846
+    },
+    {
+      "pc": 140695468807771,
+      "count": 1,
+      "cycles_since_prior_sample": 13986380
+    },
+    {
+      "pc": 140695469930902,
+      "count": 1,
+      "cycles_since_prior_sample": 18296168
+    },
+    {
+      "pc": 140695470331697,
+      "count": 1,
+      "cycles_since_prior_sample": 22186852
+    },
+    {
+      "pc": 140695485924959,
+      "count": 1,
+      "cycles_since_prior_sample": 21178368
+    },
+    {
+      "pc": 140695480456170,
+      "count": 1,
+      "cycles_since_prior_sample": 12127198
+    },
+    {
+      "pc": 140695468437881,
+      "count": 1,
+      "cycles_since_prior_sample": 16812922
+    },
+    {
+      "pc": 140695468804255,
+      "count": 1,
+      "cycles_since_prior_sample": 19210432
+    },
+    {
+      "pc": 140695468822845,
+      "count": 1,
+      "cycles_since_prior_sample": 10405820
+    },
+    {
+      "pc": 140695468804915,
+      "count": 1,
+      "cycles_since_prior_sample": 12028860
+    },
+    {
+      "pc": 140695468796141,
+      "count": 1,
+      "cycles_since_prior_sample": 11650842
+    },
+    {
+      "pc": 140695468776851,
+      "count": 1,
+      "cycles_since_prior_sample": 20937986
+    },
+    {
+      "pc": 140695468679067,
+      "count": 1,
+      "cycles_since_prior_sample": 15052138
+    },
+    {
+      "pc": 140695468839924,
+      "count": 1,
+      "cycles_since_prior_sample": 9565130
+    },
+    {
+      "pc": 140695468809597,
+      "count": 1,
+      "cycles_since_prior_sample": 10465078
+    },
+    {
+      "pc": 140695469564813,
+      "count": 1,
+      "cycles_since_prior_sample": 15031650
+    },
+    {
+      "pc": 140695468810349,
+      "count": 1,
+      "cycles_since_prior_sample": 18122546
+    },
+    {
+      "pc": 140726031959132,
+      "count": 1,
+      "cycles_since_prior_sample": 14403620
+    },
+    {
+      "pc": 140695468775698,
+      "count": 1,
+      "cycles_since_prior_sample": 10830246
+    },
+    {
+      "pc": 140695468940754,
+      "count": 1,
+      "cycles_since_prior_sample": 14713194
+    },
+    {
+      "pc": 140695472951647,
+      "count": 1,
+      "cycles_since_prior_sample": 19465778
+    },
+    {
+      "pc": 140695469518704,
+      "count": 1,
+      "cycles_since_prior_sample": 17093520
+    },
+    {
+      "pc": 140695486147154,
+      "count": 1,
+      "cycles_since_prior_sample": 15275144
+    },
+    {
+      "pc": 140726032109750,
+      "count": 1,
+      "cycles_since_prior_sample": 18277092
+    },
+    {
+      "pc": 140695469900867,
+      "count": 1,
+      "cycles_since_prior_sample": 15440022
+    },
+    {
+      "pc": 140695474678706,
+      "count": 1,
+      "cycles_since_prior_sample": 15026024
+    },
+    {
+      "pc": 140695473750258,
+      "count": 1,
+      "cycles_since_prior_sample": 20105800
+    },
+    {
+      "pc": 140695484737847,
+      "count": 1,
+      "cycles_since_prior_sample": 16437142
+    },
+    {
+      "pc": 140695470779474,
+      "count": 1,
+      "cycles_since_prior_sample": 16570760
+    },
+    {
+      "pc": 140695473901887,
+      "count": 1,
+      "cycles_since_prior_sample": 17731890
+    },
+    {
+      "pc": 140695471589341,
+      "count": 1,
+      "cycles_since_prior_sample": 13155094
+    },
+    {
+      "pc": 140695485963321,
+      "count": 1,
+      "cycles_since_prior_sample": 16300844
+    },
+    {
+      "pc": 140695470392483,
+      "count": 1,
+      "cycles_since_prior_sample": 18007666
+    },
+    {
+      "pc": 140695484604009,
+      "count": 3,
+      "cycles_since_prior_sample": 35179422
+    },
+    {
+      "pc": 140695468878206,
+      "count": 1,
+      "cycles_since_prior_sample": 17883464
+    },
+    {
+      "pc": 140695468757421,
+      "count": 1,
+      "cycles_since_prior_sample": 17100878
+    },
+    {
+      "pc": 140695468795725,
+      "count": 1,
+      "cycles_since_prior_sample": 15187238
+    },
+    {
+      "pc": 140695468795731,
+      "count": 1,
+      "cycles_since_prior_sample": 19526906
+    },
+    {
+      "pc": 140695469990893,
+      "count": 1,
+      "cycles_since_prior_sample": 18046828
+    },
+    {
+      "pc": 140695474008111,
+      "count": 1,
+      "cycles_since_prior_sample": 18652576
+    },
+    {
+      "pc": 140695468839439,
+      "count": 1,
+      "cycles_since_prior_sample": 12593026
+    },
+    {
+      "pc": 140695468811601,
+      "count": 1,
+      "cycles_since_prior_sample": 10918910
+    },
+    {
+      "pc": 140695471799827,
+      "count": 1,
+      "cycles_since_prior_sample": 16840680
+    },
+    {
+      "pc": 140695468677838,
+      "count": 1,
+      "cycles_since_prior_sample": 12140462
+    },
+    {
+      "pc": 140695492060670,
+      "count": 1,
+      "cycles_since_prior_sample": 21220940
+    },
+    {
+      "pc": 140726032119648,
+      "count": 1,
+      "cycles_since_prior_sample": 19359490
+    },
+    {
+      "pc": 140695468765061,
+      "count": 1,
+      "cycles_since_prior_sample": 12313802
+    },
+    {
+      "pc": 140695469954482,
+      "count": 1,
+      "cycles_since_prior_sample": 21709122
+    },
+    {
+      "pc": 140695468728069,
+      "count": 1,
+      "cycles_since_prior_sample": 11982318
+    },
+    {
+      "pc": 140695468733971,
+      "count": 1,
+      "cycles_since_prior_sample": 15861456
+    },
+    {
+      "pc": 140695468775386,
+      "count": 1,
+      "cycles_since_prior_sample": 19483410
+    },
+    {
+      "pc": 140695468810631,
+      "count": 2,
+      "cycles_since_prior_sample": 21213236
+    },
+    {
+      "pc": 140695468804885,
+      "count": 1,
+      "cycles_since_prior_sample": 20452916
+    },
+    {
+      "pc": 140695468939987,
+      "count": 3,
+      "cycles_since_prior_sample": 54034318
+    },
+    {
+      "pc": 140695468918592,
+      "count": 1,
+      "cycles_since_prior_sample": 18185702
+    },
+    {
+      "pc": 140695470907214,
+      "count": 1,
+      "cycles_since_prior_sample": 16953562
+    },
+    {
+      "pc": 140695469604530,
+      "count": 1,
+      "cycles_since_prior_sample": 14605198
+    },
+    {
+      "pc": 140695469604800,
+      "count": 1,
+      "cycles_since_prior_sample": 14737132
+    },
+    {
+      "pc": 140695486922266,
+      "count": 1,
+      "cycles_since_prior_sample": 12032444
+    },
+    {
+      "pc": 140695470323566,
+      "count": 1,
+      "cycles_since_prior_sample": 22098620
+    },
+    {
+      "pc": 140695471771891,
+      "count": 1,
+      "cycles_since_prior_sample": 21331204
+    },
+    {
+      "pc": 140695476789524,
+      "count": 2,
+      "cycles_since_prior_sample": 26008930
+    },
+    {
+      "pc": 140695485409584,
+      "count": 1,
+      "cycles_since_prior_sample": 18335990
+    },
+    {
+      "pc": 140726032475718,
+      "count": 2,
+      "cycles_since_prior_sample": 26137670
+    },
+    {
+      "pc": 140695469614012,
+      "count": 1,
+      "cycles_since_prior_sample": 16734426
+    },
+    {
+      "pc": 140695472723893,
+      "count": 1,
+      "cycles_since_prior_sample": 16768778
+    },
+    {
+      "pc": 140695474672697,
+      "count": 1,
+      "cycles_since_prior_sample": 20376004
+    },
+    {
+      "pc": 140695474620005,
+      "count": 1,
+      "cycles_since_prior_sample": 16442396
+    },
+    {
+      "pc": 140695484604014,
+      "count": 3,
+      "cycles_since_prior_sample": 53369562
+    },
+    {
+      "pc": 140726032625162,
+      "count": 1,
+      "cycles_since_prior_sample": 16472734
+    },
+    {
+      "pc": 140695468767928,
+      "count": 1,
+      "cycles_since_prior_sample": 13547994
+    },
+    {
+      "pc": 140695468989988,
+      "count": 1,
+      "cycles_since_prior_sample": 10566222
+    },
+    {
+      "pc": 140695468810595,
+      "count": 1,
+      "cycles_since_prior_sample": 15624008
+    },
+    {
+      "pc": 140695478478481,
+      "count": 1,
+      "cycles_since_prior_sample": 19707362
+    },
+    {
+      "pc": 140695469604397,
+      "count": 1,
+      "cycles_since_prior_sample": 21051890
+    },
+    {
+      "pc": 140695470332456,
+      "count": 1,
+      "cycles_since_prior_sample": 13747284
+    },
+    {
+      "pc": 140695474404309,
+      "count": 1,
+      "cycles_since_prior_sample": 12482786
+    },
+    {
+      "pc": 140695492086496,
+      "count": 1,
+      "cycles_since_prior_sample": 11180572
+    },
+    {
+      "pc": 140695477644686,
+      "count": 1,
+      "cycles_since_prior_sample": 21011584
+    },
+    {
+      "pc": 140695468721786,
+      "count": 2,
+      "cycles_since_prior_sample": 27957316
+    },
+    {
+      "pc": 140695492188550,
+      "count": 1,
+      "cycles_since_prior_sample": 18344042
+    },
+    {
+      "pc": 140695468774165,
+      "count": 1,
+      "cycles_since_prior_sample": 13579840
+    },
+    {
+      "pc": 140695468679082,
+      "count": 1,
+      "cycles_since_prior_sample": 10505968
+    },
+    {
+      "pc": 140695468719408,
+      "count": 1,
+      "cycles_since_prior_sample": 12008274
+    },
+    {
+      "pc": 140695468804860,
+      "count": 1,
+      "cycles_since_prior_sample": 12836776
+    },
+    {
+      "pc": 140695468721830,
+      "count": 2,
+      "cycles_since_prior_sample": 34649590
+    },
+    {
+      "pc": 140695468798495,
+      "count": 1,
+      "cycles_since_prior_sample": 11938248
+    },
+    {
+      "pc": 140695468823826,
+      "count": 2,
+      "cycles_since_prior_sample": 31711944
+    },
+    {
+      "pc": 140695468799829,
+      "count": 2,
+      "cycles_since_prior_sample": 20986568
+    },
+    {
+      "pc": 140695468768418,
+      "count": 1,
+      "cycles_since_prior_sample": 12032946
+    },
+    {
+      "pc": 140726032086620,
+      "count": 1,
+      "cycles_since_prior_sample": 17056974
+    },
+    {
+      "pc": 140695468799535,
+      "count": 1,
+      "cycles_since_prior_sample": 12107284
+    },
+    {
+      "pc": 140695468810465,
+      "count": 1,
+      "cycles_since_prior_sample": 11702886
+    },
+    {
+      "pc": 140726032079925,
+      "count": 1,
+      "cycles_since_prior_sample": 11686586
+    },
+    {
+      "pc": 140695470191240,
+      "count": 1,
+      "cycles_since_prior_sample": 12003464
+    },
+    {
+      "pc": 140695468807855,
+      "count": 1,
+      "cycles_since_prior_sample": 14581826
+    },
+    {
+      "pc": 140695468690572,
+      "count": 1,
+      "cycles_since_prior_sample": 16423708
+    },
+    {
+      "pc": 140695474276353,
+      "count": 2,
+      "cycles_since_prior_sample": 30721090
+    },
+    {
+      "pc": 140695477280814,
+      "count": 1,
+      "cycles_since_prior_sample": 19070742
+    },
+    {
+      "pc": 140695468593714,
+      "count": 1,
+      "cycles_since_prior_sample": 10800616
+    },
+    {
+      "pc": 140695468554687,
+      "count": 1,
+      "cycles_since_prior_sample": 11985240
+    },
+    {
+      "pc": 140695474191648,
+      "count": 1,
+      "cycles_since_prior_sample": 17986538
+    },
+    {
+      "pc": 140695473136352,
+      "count": 1,
+      "cycles_since_prior_sample": 19454592
+    },
+    {
+      "pc": 140695472231619,
+      "count": 1,
+      "cycles_since_prior_sample": 13089592
+    },
+    {
+      "pc": 140695492275776,
+      "count": 1,
+      "cycles_since_prior_sample": 10335146
+    },
+    {
+      "pc": 140695483987297,
+      "count": 1,
+      "cycles_since_prior_sample": 12356110
+    },
+    {
+      "pc": 140695481719839,
+      "count": 1,
+      "cycles_since_prior_sample": 12325236
+    },
+    {
+      "pc": 140695468593660,
+      "count": 1,
+      "cycles_since_prior_sample": 13957776
+    },
+    {
+      "pc": 140695468594191,
+      "count": 1,
+      "cycles_since_prior_sample": 15779234
+    },
+    {
+      "pc": 140695468741447,
+      "count": 1,
+      "cycles_since_prior_sample": 17778290
+    },
+    {
+      "pc": 140695469989114,
+      "count": 1,
+      "cycles_since_prior_sample": 15620366
+    },
+    {
+      "pc": 140695468638650,
+      "count": 2,
+      "cycles_since_prior_sample": 36247650
+    },
+    {
+      "pc": 140695469988586,
+      "count": 1,
+      "cycles_since_prior_sample": 10024154
+    },
+    {
+      "pc": 140695470133963,
+      "count": 1,
+      "cycles_since_prior_sample": 17044846
+    },
+    {
+      "pc": 140695468436477,
+      "count": 1,
+      "cycles_since_prior_sample": 12061886
+    },
+    {
+      "pc": 140695468735237,
+      "count": 1,
+      "cycles_since_prior_sample": 16410364
+    },
+    {
+      "pc": 140726032096182,
+      "count": 2,
+      "cycles_since_prior_sample": 34966574
+    },
+    {
+      "pc": 140695468638661,
+      "count": 1,
+      "cycles_since_prior_sample": 21828408
+    },
+    {
+      "pc": 140695473136399,
+      "count": 1,
+      "cycles_since_prior_sample": 17958226
+    },
+    {
+      "pc": 140695470753102,
+      "count": 1,
+      "cycles_since_prior_sample": 16148392
+    },
+    {
+      "pc": 140695492274202,
+      "count": 1,
+      "cycles_since_prior_sample": 7556724
+    },
+    {
+      "pc": 140695474759156,
+      "count": 4,
+      "cycles_since_prior_sample": 61948658
+    },
+    {
+      "pc": 140695468784893,
+      "count": 1,
+      "cycles_since_prior_sample": 15139600
+    },
+    {
+      "pc": 140695468810552,
+      "count": 1,
+      "cycles_since_prior_sample": 16462090
+    },
+    {
+      "pc": 140695468857090,
+      "count": 1,
+      "cycles_since_prior_sample": 21279546
+    },
+    {
+      "pc": 140695468822859,
+      "count": 1,
+      "cycles_since_prior_sample": 14230660
+    },
+    {
+      "pc": 140695468773792,
+      "count": 2,
+      "cycles_since_prior_sample": 31337160
+    },
+    {
+      "pc": 140695468802371,
+      "count": 2,
+      "cycles_since_prior_sample": 29504186
+    },
+    {
+      "pc": 140695468800424,
+      "count": 1,
+      "cycles_since_prior_sample": 10389644
+    },
+    {
+      "pc": 140726031958992,
+      "count": 4,
+      "cycles_since_prior_sample": 69402984
+    },
+    {
+      "pc": 140695475624567,
+      "count": 1,
+      "cycles_since_prior_sample": 20755390
+    },
+    {
+      "pc": 140695468800017,
+      "count": 1,
+      "cycles_since_prior_sample": 15284830
+    },
+    {
+      "pc": 140695468758802,
+      "count": 1,
+      "cycles_since_prior_sample": 16533972
+    },
+    {
+      "pc": 140695468510834,
+      "count": 1,
+      "cycles_since_prior_sample": 14917652
+    },
+    {
+      "pc": 140695478556278,
+      "count": 1,
+      "cycles_since_prior_sample": 11342516
+    },
+    {
+      "pc": 140695478248553,
+      "count": 1,
+      "cycles_since_prior_sample": 11925486
+    },
+    {
+      "pc": 140695485286481,
+      "count": 1,
+      "cycles_since_prior_sample": 18596186
+    },
+    {
+      "pc": 140695469594468,
+      "count": 1,
+      "cycles_since_prior_sample": 12110714
+    },
+    {
+      "pc": 140695470372001,
+      "count": 1,
+      "cycles_since_prior_sample": 11949002
+    },
+    {
+      "pc": 140695471536432,
+      "count": 1,
+      "cycles_since_prior_sample": 14491828
+    },
+    {
+      "pc": 140695479373105,
+      "count": 1,
+      "cycles_since_prior_sample": 11892644
+    },
+    {
+      "pc": 140695470631844,
+      "count": 1,
+      "cycles_since_prior_sample": 3571018
+    },
+    {
+      "pc": 140695478350759,
+      "count": 1,
+      "cycles_since_prior_sample": 16903664
+    },
+    {
+      "pc": 140726032089598,
+      "count": 1,
+      "cycles_since_prior_sample": 10837728
+    },
+    {
+      "pc": 140695471815152,
+      "count": 1,
+      "cycles_since_prior_sample": 13373312
+    },
+    {
+      "pc": 140695470329071,
+      "count": 2,
+      "cycles_since_prior_sample": 27607002
+    },
+    {
+      "pc": 140695477779696,
+      "count": 1,
+      "cycles_since_prior_sample": 18138522
+    },
+    {
+      "pc": 140695469890614,
+      "count": 1,
+      "cycles_since_prior_sample": 14957392
+    },
+    {
+      "pc": 140695477632930,
+      "count": 1,
+      "cycles_since_prior_sample": 10454096
+    },
+    {
+      "pc": 140695468808909,
+      "count": 1,
+      "cycles_since_prior_sample": 15865222
+    },
+    {
+      "pc": 140695468796360,
+      "count": 1,
+      "cycles_since_prior_sample": 12341180
+    },
+    {
+      "pc": 140695468809569,
+      "count": 4,
+      "cycles_since_prior_sample": 61022820
+    },
+    {
+      "pc": 140695468811597,
+      "count": 1,
+      "cycles_since_prior_sample": 16544554
+    },
+    {
+      "pc": 140695468800309,
+      "count": 1,
+      "cycles_since_prior_sample": 16812696
+    },
+    {
+      "pc": 140695468807894,
+      "count": 2,
+      "cycles_since_prior_sample": 27055596
+    },
+    {
+      "pc": 140695468804517,
+      "count": 1,
+      "cycles_since_prior_sample": 10516164
+    },
+    {
+      "pc": 140695468531924,
+      "count": 2,
+      "cycles_since_prior_sample": 24388660
+    },
+    {
+      "pc": 140726032089712,
+      "count": 2,
+      "cycles_since_prior_sample": 40244026
+    },
+    {
+      "pc": 140695468800680,
+      "count": 1,
+      "cycles_since_prior_sample": 15163098
+    },
+    {
+      "pc": 140695468839354,
+      "count": 1,
+      "cycles_since_prior_sample": 10503162
+    },
+    {
+      "pc": 140695468776870,
+      "count": 1,
+      "cycles_since_prior_sample": 14998034
+    },
+    {
+      "pc": 140695468674321,
+      "count": 1,
+      "cycles_since_prior_sample": 16214632
+    },
+    {
+      "pc": 140695469920625,
+      "count": 1,
+      "cycles_since_prior_sample": 18338746
+    },
+    {
+      "pc": 140695468856944,
+      "count": 1,
+      "cycles_since_prior_sample": 13481002
+    },
+    {
+      "pc": 140695468643296,
+      "count": 1,
+      "cycles_since_prior_sample": 14668824
+    },
+    {
+      "pc": 140695471144772,
+      "count": 1,
+      "cycles_since_prior_sample": 15161908
+    },
+    {
+      "pc": 140695482135824,
+      "count": 1,
+      "cycles_since_prior_sample": 19633226
+    },
+    {
+      "pc": 140695478492181,
+      "count": 1,
+      "cycles_since_prior_sample": 21046368
+    },
+    {
+      "pc": 140695478294583,
+      "count": 1,
+      "cycles_since_prior_sample": 12896948
+    },
+    {
+      "pc": 140695474411398,
+      "count": 1,
+      "cycles_since_prior_sample": 18141640
+    },
+    {
+      "pc": 140695492275962,
+      "count": 1,
+      "cycles_since_prior_sample": 16501884
+    },
+    {
+      "pc": 140695489232552,
+      "count": 1,
+      "cycles_since_prior_sample": 18232440
+    },
+    {
+      "pc": 140695468593875,
+      "count": 2,
+      "cycles_since_prior_sample": 35151714
+    },
+    {
+      "pc": 140695469604932,
+      "count": 1,
+      "cycles_since_prior_sample": 19513364
+    },
+    {
+      "pc": 140695478250682,
+      "count": 1,
+      "cycles_since_prior_sample": 16467946
+    },
+    {
+      "pc": 140695474372780,
+      "count": 1,
+      "cycles_since_prior_sample": 15764224
+    },
+    {
+      "pc": 140695471583996,
+      "count": 1,
+      "cycles_since_prior_sample": 16386754
+    },
+    {
+      "pc": 140726032119353,
+      "count": 1,
+      "cycles_since_prior_sample": 17984204
+    },
+    {
+      "pc": 140695471503277,
+      "count": 1,
+      "cycles_since_prior_sample": 12130338
+    },
+    {
+      "pc": 140695471589375,
+      "count": 1,
+      "cycles_since_prior_sample": 11034286
+    },
+    {
+      "pc": 140695472084793,
+      "count": 1,
+      "cycles_since_prior_sample": 18027422
+    },
+    {
+      "pc": 140695468757464,
+      "count": 1,
+      "cycles_since_prior_sample": 13792778
+    },
+    {
+      "pc": 140695468781627,
+      "count": 1,
+      "cycles_since_prior_sample": 12190402
+    },
+    {
+      "pc": 140695468757102,
+      "count": 1,
+      "cycles_since_prior_sample": 15027870
+    },
+    {
+      "pc": 140695468501625,
+      "count": 1,
+      "cycles_since_prior_sample": 21000750
+    },
+    {
+      "pc": 140695468803652,
+      "count": 1,
+      "cycles_since_prior_sample": 11639492
+    },
+    {
+      "pc": 140695478161104,
+      "count": 1,
+      "cycles_since_prior_sample": 16532390
+    },
+    {
+      "pc": 140695468757418,
+      "count": 1,
+      "cycles_since_prior_sample": 13168598
+    },
+    {
+      "pc": 140695468500870,
+      "count": 1,
+      "cycles_since_prior_sample": 12160932
+    },
+    {
+      "pc": 140695468879207,
+      "count": 1,
+      "cycles_since_prior_sample": 13587326
+    },
+    {
+      "pc": 140726032119770,
+      "count": 2,
+      "cycles_since_prior_sample": 27853574
+    },
+    {
+      "pc": 140695468775895,
+      "count": 2,
+      "cycles_since_prior_sample": 34914308
+    },
+    {
+      "pc": 140695468795478,
+      "count": 1,
+      "cycles_since_prior_sample": 12175174
+    },
+    {
+      "pc": 140695468811137,
+      "count": 1,
+      "cycles_since_prior_sample": 10856024
+    },
+    {
+      "pc": 140695468768372,
+      "count": 1,
+      "cycles_since_prior_sample": 18013242
+    },
+    {
+      "pc": 140726032626977,
+      "count": 1,
+      "cycles_since_prior_sample": 17806000
+    },
+    {
+      "pc": 140695468727775,
+      "count": 1,
+      "cycles_since_prior_sample": 14922686
+    },
+    {
+      "pc": 140695478561250,
+      "count": 1,
+      "cycles_since_prior_sample": 19591900
+    },
+    {
+      "pc": 140695478468860,
+      "count": 1,
+      "cycles_since_prior_sample": 15079052
+    },
+    {
+      "pc": 140695468624114,
+      "count": 1,
+      "cycles_since_prior_sample": 19776486
+    },
+    {
+      "pc": 140695470298815,
+      "count": 1,
+      "cycles_since_prior_sample": 17968178
+    },
+    {
+      "pc": 140695481572936,
+      "count": 1,
+      "cycles_since_prior_sample": 10541684
+    },
+    {
+      "pc": 140695470924405,
+      "count": 1,
+      "cycles_since_prior_sample": 15058092
+    },
+    {
+      "pc": 140695484501286,
+      "count": 1,
+      "cycles_since_prior_sample": 14986050
+    },
+    {
+      "pc": 140695484027264,
+      "count": 1,
+      "cycles_since_prior_sample": 20410186
+    },
+    {
+      "pc": 140695472030059,
+      "count": 1,
+      "cycles_since_prior_sample": 12165878
+    },
+    {
+      "pc": 140695481719885,
+      "count": 1,
+      "cycles_since_prior_sample": 12057394
+    },
+    {
+      "pc": 140695470371948,
+      "count": 1,
+      "cycles_since_prior_sample": 21327798
+    },
+    {
+      "pc": 140695478374102,
+      "count": 3,
+      "cycles_since_prior_sample": 46633416
+    },
+    {
+      "pc": 140695468989718,
+      "count": 2,
+      "cycles_since_prior_sample": 30383012
+    },
+    {
+      "pc": 140695469930959,
+      "count": 1,
+      "cycles_since_prior_sample": 13115048
+    },
+    {
+      "pc": 140695478561275,
+      "count": 1,
+      "cycles_since_prior_sample": 19875380
+    },
+    {
+      "pc": 140695485582991,
+      "count": 1,
+      "cycles_since_prior_sample": 11257144
+    },
+    {
+      "pc": 140695471817638,
+      "count": 1,
+      "cycles_since_prior_sample": 10659534
+    },
+    {
+      "pc": 140695469614007,
+      "count": 1,
+      "cycles_since_prior_sample": 15637498
+    },
+    {
+      "pc": 140695472034109,
+      "count": 1,
+      "cycles_since_prior_sample": 20500798
+    },
+    {
+      "pc": 140695473906856,
+      "count": 1,
+      "cycles_since_prior_sample": 16199090
+    },
+    {
+      "pc": 140695474922117,
+      "count": 1,
+      "cycles_since_prior_sample": 9724532
+    },
+    {
+      "pc": 140695468810968,
+      "count": 1,
+      "cycles_since_prior_sample": 5929300
+    },
+    {
+      "pc": 140695468800010,
+      "count": 2,
+      "cycles_since_prior_sample": 32598324
+    },
+    {
+      "pc": 140695468800377,
+      "count": 1,
+      "cycles_since_prior_sample": 12136808
+    },
+    {
+      "pc": 140695468679180,
+      "count": 1,
+      "cycles_since_prior_sample": 20704394
+    },
+    {
+      "pc": 140695468808452,
+      "count": 1,
+      "cycles_since_prior_sample": 16469322
+    },
+    {
+      "pc": 140695468811911,
+      "count": 1,
+      "cycles_since_prior_sample": 12357000
+    },
+    {
+      "pc": 140695468799519,
+      "count": 1,
+      "cycles_since_prior_sample": 18999192
+    },
+    {
+      "pc": 140695468798535,
+      "count": 1,
+      "cycles_since_prior_sample": 10705494
+    },
+    {
+      "pc": 140695468775696,
+      "count": 1,
+      "cycles_since_prior_sample": 13506540
+    },
+    {
+      "pc": 140695468755564,
+      "count": 1,
+      "cycles_since_prior_sample": 13672194
+    },
+    {
+      "pc": 140695468815335,
+      "count": 1,
+      "cycles_since_prior_sample": 14921180
+    },
+    {
+      "pc": 140726032614605,
+      "count": 1,
+      "cycles_since_prior_sample": 13921960
+    },
+    {
+      "pc": 140726032119861,
+      "count": 1,
+      "cycles_since_prior_sample": 18550778
+    },
+    {
+      "pc": 140726032118666,
+      "count": 1,
+      "cycles_since_prior_sample": 11721704
+    },
+    {
+      "pc": 140695468810896,
+      "count": 1,
+      "cycles_since_prior_sample": 14756120
+    },
+    {
+      "pc": 140695468794437,
+      "count": 1,
+      "cycles_since_prior_sample": 16526080
+    },
+    {
+      "pc": 140695469934399,
+      "count": 1,
+      "cycles_since_prior_sample": 21726360
+    },
+    {
+      "pc": 140695469510169,
+      "count": 1,
+      "cycles_since_prior_sample": 15960856
+    },
+    {
+      "pc": 140695468812756,
+      "count": 1,
+      "cycles_since_prior_sample": 18579900
+    },
+    {
+      "pc": 140695478471055,
+      "count": 1,
+      "cycles_since_prior_sample": 13495856
+    },
+    {
+      "pc": 140695472124477,
+      "count": 1,
+      "cycles_since_prior_sample": 16753526
+    },
+    {
+      "pc": 140695478477304,
+      "count": 1,
+      "cycles_since_prior_sample": 14663216
+    },
+    {
+      "pc": 140695470331365,
+      "count": 1,
+      "cycles_since_prior_sample": 12120872
+    },
+    {
+      "pc": 140695484371837,
+      "count": 1,
+      "cycles_since_prior_sample": 13309870
+    },
+    {
+      "pc": 140695469604961,
+      "count": 1,
+      "cycles_since_prior_sample": 12077040
+    },
+    {
+      "pc": 140695483982796,
+      "count": 1,
+      "cycles_since_prior_sample": 16501014
+    },
+    {
+      "pc": 140695483982801,
+      "count": 1,
+      "cycles_since_prior_sample": 12381380
+    },
+    {
+      "pc": 140695485405296,
+      "count": 1,
+      "cycles_since_prior_sample": 19142598
+    },
+    {
+      "pc": 140695489574028,
+      "count": 1,
+      "cycles_since_prior_sample": 13446908
+    },
+    {
+      "pc": 140695468577522,
+      "count": 3,
+      "cycles_since_prior_sample": 54406066
+    },
+    {
+      "pc": 140695474672705,
+      "count": 1,
+      "cycles_since_prior_sample": 14437066
+    },
+    {
+      "pc": 140695480457346,
+      "count": 1,
+      "cycles_since_prior_sample": 19331156
+    },
+    {
+      "pc": 140695471173846,
+      "count": 1,
+      "cycles_since_prior_sample": 4405596
+    },
+    {
+      "pc": 140695468937588,
+      "count": 1,
+      "cycles_since_prior_sample": 13480660
+    },
+    {
+      "pc": 140695468673977,
+      "count": 2,
+      "cycles_since_prior_sample": 34273590
+    },
+    {
+      "pc": 140695468766890,
+      "count": 1,
+      "cycles_since_prior_sample": 20003314
+    },
+    {
+      "pc": 140695468823821,
+      "count": 1,
+      "cycles_since_prior_sample": 13374328
+    },
+    {
+      "pc": 140695468775927,
+      "count": 1,
+      "cycles_since_prior_sample": 10113360
+    },
+    {
+      "pc": 140695468806277,
+      "count": 1,
+      "cycles_since_prior_sample": 12198948
+    },
+    {
+      "pc": 140695468796266,
+      "count": 1,
+      "cycles_since_prior_sample": 18688778
+    },
+    {
+      "pc": 140695468823887,
+      "count": 1,
+      "cycles_since_prior_sample": 21646464
+    },
+    {
+      "pc": 140695468761213,
+      "count": 1,
+      "cycles_since_prior_sample": 18703318
+    },
+    {
+      "pc": 140695468928519,
+      "count": 2,
+      "cycles_since_prior_sample": 32277366
+    },
+    {
+      "pc": 140695468728105,
+      "count": 1,
+      "cycles_since_prior_sample": 21411870
+    },
+    {
+      "pc": 140695474803490,
+      "count": 1,
+      "cycles_since_prior_sample": 10558904
+    },
+    {
+      "pc": 140695474281570,
+      "count": 1,
+      "cycles_since_prior_sample": 10911498
+    },
+    {
+      "pc": 140695485943526,
+      "count": 1,
+      "cycles_since_prior_sample": 19504492
+    },
+    {
+      "pc": 140726032119585,
+      "count": 1,
+      "cycles_since_prior_sample": 18276502
+    },
+    {
+      "pc": 140695468918888,
+      "count": 3,
+      "cycles_since_prior_sample": 48400682
+    },
+    {
+      "pc": 140695468926643,
+      "count": 1,
+      "cycles_since_prior_sample": 21457572
+    },
+    {
+      "pc": 140695468935055,
+      "count": 2,
+      "cycles_since_prior_sample": 29455328
+    },
+    {
+      "pc": 140726032626938,
+      "count": 1,
+      "cycles_since_prior_sample": 16569924
+    },
+    {
+      "pc": 140695478223933,
+      "count": 1,
+      "cycles_since_prior_sample": 17991668
+    },
+    {
+      "pc": 140726031982928,
+      "count": 1,
+      "cycles_since_prior_sample": 10158632
+    },
+    {
+      "pc": 140726032118399,
+      "count": 1,
+      "cycles_since_prior_sample": 21153654
+    },
+    {
+      "pc": 140695468681792,
+      "count": 3,
+      "cycles_since_prior_sample": 57354004
+    },
+    {
+      "pc": 140695468934320,
+      "count": 1,
+      "cycles_since_prior_sample": 11661186
+    },
+    {
+      "pc": 140695468734061,
+      "count": 1,
+      "cycles_since_prior_sample": 15173270
+    },
+    {
+      "pc": 140695477277278,
+      "count": 1,
+      "cycles_since_prior_sample": 21186730
+    },
+    {
+      "pc": 140695468635673,
+      "count": 2,
+      "cycles_since_prior_sample": 36432076
+    },
+    {
+      "pc": 140695468638238,
+      "count": 1,
+      "cycles_since_prior_sample": 13002176
+    },
+    {
+      "pc": 140726031959161,
+      "count": 1,
+      "cycles_since_prior_sample": 10442306
+    },
+    {
+      "pc": 140695468637322,
+      "count": 1,
+      "cycles_since_prior_sample": 14825404
+    },
+    {
+      "pc": 140695472231444,
+      "count": 1,
+      "cycles_since_prior_sample": 10550406
+    },
+    {
+      "pc": 140695469514051,
+      "count": 1,
+      "cycles_since_prior_sample": 19774938
+    },
+    {
+      "pc": 140695478227319,
+      "count": 1,
+      "cycles_since_prior_sample": 18202104
+    },
+    {
+      "pc": 140695470408236,
+      "count": 1,
+      "cycles_since_prior_sample": 16262368
+    },
+    {
+      "pc": 140695469510851,
+      "count": 1,
+      "cycles_since_prior_sample": 16238092
+    },
+    {
+      "pc": 140695468511290,
+      "count": 1,
+      "cycles_since_prior_sample": 15192422
+    },
+    {
+      "pc": 140695468584942,
+      "count": 1,
+      "cycles_since_prior_sample": 19864150
+    },
+    {
+      "pc": 140726032119917,
+      "count": 1,
+      "cycles_since_prior_sample": 14821890
+    },
+    {
+      "pc": 140695468758105,
+      "count": 1,
+      "cycles_since_prior_sample": 10663642
+    },
+    {
+      "pc": 140695468801998,
+      "count": 1,
+      "cycles_since_prior_sample": 12548520
+    },
+    {
+      "pc": 140695468758799,
+      "count": 1,
+      "cycles_since_prior_sample": 10906770
+    },
+    {
+      "pc": 140695468802006,
+      "count": 1,
+      "cycles_since_prior_sample": 21352784
+    },
+    {
+      "pc": 140726032119533,
+      "count": 2,
+      "cycles_since_prior_sample": 34510114
+    },
+    {
+      "pc": 140695468800757,
+      "count": 1,
+      "cycles_since_prior_sample": 17859966
+    },
+    {
+      "pc": 140695469989696,
+      "count": 1,
+      "cycles_since_prior_sample": 21274242
+    },
+    {
+      "pc": 140726032119355,
+      "count": 1,
+      "cycles_since_prior_sample": 16026912
+    },
+    {
+      "pc": 140695468804804,
+      "count": 1,
+      "cycles_since_prior_sample": 17966292
+    },
+    {
+      "pc": 140695477783559,
+      "count": 1,
+      "cycles_since_prior_sample": 14046106
+    },
+    {
+      "pc": 140695468455228,
+      "count": 1,
+      "cycles_since_prior_sample": 10659440
+    },
+    {
+      "pc": 140695468940095,
+      "count": 1,
+      "cycles_since_prior_sample": 19353552
+    },
+    {
+      "pc": 140695468734125,
+      "count": 1,
+      "cycles_since_prior_sample": 21991368
+    },
+    {
+      "pc": 140695468773728,
+      "count": 2,
+      "cycles_since_prior_sample": 27498898
+    },
+    {
+      "pc": 140726032086453,
+      "count": 1,
+      "cycles_since_prior_sample": 16518214
+    },
+    {
+      "pc": 140726032079652,
+      "count": 1,
+      "cycles_since_prior_sample": 16734906
+    },
+    {
+      "pc": 140695469605147,
+      "count": 1,
+      "cycles_since_prior_sample": 13478382
+    },
+    {
+      "pc": 140695469523038,
+      "count": 1,
+      "cycles_since_prior_sample": 16723036
+    },
+    {
+      "pc": 140695472123573,
+      "count": 1,
+      "cycles_since_prior_sample": 14418040
+    },
+    {
+      "pc": 140695469517038,
+      "count": 1,
+      "cycles_since_prior_sample": 12604642
+    },
+    {
+      "pc": 140695483982760,
+      "count": 1,
+      "cycles_since_prior_sample": 21574694
+    },
+    {
+      "pc": 140695489525192,
+      "count": 1,
+      "cycles_since_prior_sample": 15263198
+    },
+    {
+      "pc": 140695473454718,
+      "count": 1,
+      "cycles_since_prior_sample": 13497134
+    },
+    {
+      "pc": 140695469372316,
+      "count": 2,
+      "cycles_since_prior_sample": 22942856
+    },
+    {
+      "pc": 140695470271130,
+      "count": 2,
+      "cycles_since_prior_sample": 38411038
+    },
+    {
+      "pc": 140695478225952,
+      "count": 1,
+      "cycles_since_prior_sample": 15226204
+    },
+    {
+      "pc": 140695472242968,
+      "count": 1,
+      "cycles_since_prior_sample": 16266312
+    },
+    {
+      "pc": 140695477664647,
+      "count": 1,
+      "cycles_since_prior_sample": 11992970
+    },
+    {
+      "pc": 140695478315072,
+      "count": 1,
+      "cycles_since_prior_sample": 15627170
+    },
+    {
+      "pc": 140695473504698,
+      "count": 1,
+      "cycles_since_prior_sample": 19133618
+    },
+    {
+      "pc": 140695488925917,
+      "count": 1,
+      "cycles_since_prior_sample": 17956526
+    },
+    {
+      "pc": 140695480528805,
+      "count": 1,
+      "cycles_since_prior_sample": 15379426
+    },
+    {
+      "pc": 140695468593850,
+      "count": 1,
+      "cycles_since_prior_sample": 12689652
+    },
+    {
+      "pc": 140695469083440,
+      "count": 1,
+      "cycles_since_prior_sample": 19308706
+    },
+    {
+      "pc": 140695468801311,
+      "count": 1,
+      "cycles_since_prior_sample": 18299488
+    },
+    {
+      "pc": 140695468771298,
+      "count": 1,
+      "cycles_since_prior_sample": 21245472
+    },
+    {
+      "pc": 140695468508253,
+      "count": 2,
+      "cycles_since_prior_sample": 30086358
+    },
+    {
+      "pc": 140726032627320,
+      "count": 2,
+      "cycles_since_prior_sample": 41660410
+    },
+    {
+      "pc": 140695468794948,
+      "count": 1,
+      "cycles_since_prior_sample": 16576700
+    },
+    {
+      "pc": 140695468784864,
+      "count": 1,
+      "cycles_since_prior_sample": 16110338
+    },
+    {
+      "pc": 140695469934308,
+      "count": 2,
+      "cycles_since_prior_sample": 26945306
+    },
+    {
+      "pc": 140695468502057,
+      "count": 1,
+      "cycles_since_prior_sample": 12788058
+    },
+    {
+      "pc": 140695468767888,
+      "count": 1,
+      "cycles_since_prior_sample": 17432790
+    },
+    {
+      "pc": 140695468940069,
+      "count": 1,
+      "cycles_since_prior_sample": 11097492
+    },
+    {
+      "pc": 140695470108288,
+      "count": 2,
+      "cycles_since_prior_sample": 31858496
+    },
+    {
+      "pc": 140695468519290,
+      "count": 1,
+      "cycles_since_prior_sample": 17557702
+    },
+    {
+      "pc": 140695468999212,
+      "count": 1,
+      "cycles_since_prior_sample": 15043932
+    },
+    {
+      "pc": 140695468501477,
+      "count": 1,
+      "cycles_since_prior_sample": 16470076
+    },
+    {
+      "pc": 140695468502214,
+      "count": 1,
+      "cycles_since_prior_sample": 18376964
+    },
+    {
+      "pc": 140695475084179,
+      "count": 1,
+      "cycles_since_prior_sample": 9874802
+    },
+    {
+      "pc": 140695468500467,
+      "count": 2,
+      "cycles_since_prior_sample": 35968538
+    },
+    {
+      "pc": 140695469941952,
+      "count": 1,
+      "cycles_since_prior_sample": 13826942
+    },
+    {
+      "pc": 140695472117555,
+      "count": 1,
+      "cycles_since_prior_sample": 19724684
+    },
+    {
+      "pc": 140695470937413,
+      "count": 1,
+      "cycles_since_prior_sample": 12060026
+    },
+    {
+      "pc": 140695472676810,
+      "count": 1,
+      "cycles_since_prior_sample": 11952004
+    },
+    {
+      "pc": 140695481599267,
+      "count": 1,
+      "cycles_since_prior_sample": 18146070
+    },
+    {
+      "pc": 140695478351293,
+      "count": 1,
+      "cycles_since_prior_sample": 16267990
+    },
+    {
+      "pc": 140695468642926,
+      "count": 1,
+      "cycles_since_prior_sample": 14818888
+    },
+    {
+      "pc": 140695485512058,
+      "count": 1,
+      "cycles_since_prior_sample": 17707142
+    },
+    {
+      "pc": 140695489519034,
+      "count": 1,
+      "cycles_since_prior_sample": 11988414
+    },
+    {
+      "pc": 140695486030525,
+      "count": 1,
+      "cycles_since_prior_sample": 13113328
+    },
+    {
+      "pc": 140695472233011,
+      "count": 1,
+      "cycles_since_prior_sample": 21385702
+    },
+    {
+      "pc": 140695469680174,
+      "count": 1,
+      "cycles_since_prior_sample": 11888200
+    },
+    {
+      "pc": 140695474678898,
+      "count": 1,
+      "cycles_since_prior_sample": 4798438
+    },
+    {
+      "pc": 140695474922062,
+      "count": 1,
+      "cycles_since_prior_sample": 15032188
+    },
+    {
+      "pc": 140695469082942,
+      "count": 1,
+      "cycles_since_prior_sample": 18228242
+    },
+    {
+      "pc": 140695468781377,
+      "count": 1,
+      "cycles_since_prior_sample": 21508624
+    },
+    {
+      "pc": 140695469933373,
+      "count": 1,
+      "cycles_since_prior_sample": 19596154
+    },
+    {
+      "pc": 140695468630421,
+      "count": 1,
+      "cycles_since_prior_sample": 13576956
+    },
+    {
+      "pc": 140695472605086,
+      "count": 1,
+      "cycles_since_prior_sample": 19840122
+    },
+    {
+      "pc": 140695489574146,
+      "count": 1,
+      "cycles_since_prior_sample": 13225070
+    },
+    {
+      "pc": 140695477162215,
+      "count": 1,
+      "cycles_since_prior_sample": 22732186
+    },
+    {
+      "pc": 140695472048195,
+      "count": 1,
+      "cycles_since_prior_sample": 13540068
+    },
+    {
+      "pc": 140695485940917,
+      "count": 1,
+      "cycles_since_prior_sample": 20685698
+    },
+    {
+      "pc": 140695471638152,
+      "count": 1,
+      "cycles_since_prior_sample": 13868418
+    },
+    {
+      "pc": 140695468802213,
+      "count": 1,
+      "cycles_since_prior_sample": 16283544
+    },
+    {
+      "pc": 140695468795721,
+      "count": 1,
+      "cycles_since_prior_sample": 19777144
+    },
+    {
+      "pc": 140695468800305,
+      "count": 1,
+      "cycles_since_prior_sample": 10725416
+    },
+    {
+      "pc": 140695468809601,
+      "count": 1,
+      "cycles_since_prior_sample": 19471628
+    },
+    {
+      "pc": 140695468757857,
+      "count": 1,
+      "cycles_since_prior_sample": 21000876
+    },
+    {
+      "pc": 140695492250875,
+      "count": 1,
+      "cycles_since_prior_sample": 11954344
+    },
+    {
+      "pc": 140695468985937,
+      "count": 1,
+      "cycles_since_prior_sample": 19538358
+    },
+    {
+      "pc": 140695468823829,
+      "count": 1,
+      "cycles_since_prior_sample": 14591618
+    },
+    {
+      "pc": 140695491966880,
+      "count": 1,
+      "cycles_since_prior_sample": 16158494
+    },
+    {
+      "pc": 140726032095047,
+      "count": 1,
+      "cycles_since_prior_sample": 11540914
+    },
+    {
+      "pc": 140695468818574,
+      "count": 1,
+      "cycles_since_prior_sample": 13461826
+    },
+    {
+      "pc": 140695472717336,
+      "count": 1,
+      "cycles_since_prior_sample": 18328976
+    },
+    {
+      "pc": 140695478551284,
+      "count": 1,
+      "cycles_since_prior_sample": 16466554
+    },
+    {
+      "pc": 140695478555418,
+      "count": 1,
+      "cycles_since_prior_sample": 14992380
+    },
+    {
+      "pc": 140695478556596,
+      "count": 1,
+      "cycles_since_prior_sample": 19526130
+    },
+    {
+      "pc": 140695476789453,
+      "count": 1,
+      "cycles_since_prior_sample": 21037934
+    },
+    {
+      "pc": 140695472718699,
+      "count": 1,
+      "cycles_since_prior_sample": 12073720
+    },
+    {
+      "pc": 140695489468061,
+      "count": 1,
+      "cycles_since_prior_sample": 11299280
+    },
+    {
+      "pc": 140695470924395,
+      "count": 2,
+      "cycles_since_prior_sample": 36282610
+    },
+    {
+      "pc": 140695470311805,
+      "count": 1,
+      "cycles_since_prior_sample": 17186958
+    },
+    {
+      "pc": 140695489598934,
+      "count": 1,
+      "cycles_since_prior_sample": 11595370
+    },
+    {
+      "pc": 140695484188978,
+      "count": 1,
+      "cycles_since_prior_sample": 13663042
+    },
+    {
+      "pc": 140695474625854,
+      "count": 1,
+      "cycles_since_prior_sample": 13811876
+    },
+    {
+      "pc": 140695492275939,
+      "count": 1,
+      "cycles_since_prior_sample": 10474546
+    },
+    {
+      "pc": 140695472240570,
+      "count": 1,
+      "cycles_since_prior_sample": 19480696
+    },
+    {
+      "pc": 140695474403781,
+      "count": 1,
+      "cycles_since_prior_sample": 12117518
+    },
+    {
+      "pc": 140695485948323,
+      "count": 1,
+      "cycles_since_prior_sample": 18034060
+    },
+    {
+      "pc": 140695468497216,
+      "count": 1,
+      "cycles_since_prior_sample": 18770842
+    },
+    {
+      "pc": 140695492094576,
+      "count": 1,
+      "cycles_since_prior_sample": 20606764
+    },
+    {
+      "pc": 140695468807926,
+      "count": 1,
+      "cycles_since_prior_sample": 19961584
+    },
+    {
+      "pc": 140726032120038,
+      "count": 1,
+      "cycles_since_prior_sample": 14246526
+    },
+    {
+      "pc": 140695468810563,
+      "count": 1,
+      "cycles_since_prior_sample": 21216328
+    },
+    {
+      "pc": 140695468928384,
+      "count": 1,
+      "cycles_since_prior_sample": 20232662
+    },
+    {
+      "pc": 140695468803288,
+      "count": 1,
+      "cycles_since_prior_sample": 15491614
+    },
+    {
+      "pc": 140695468774358,
+      "count": 1,
+      "cycles_since_prior_sample": 13725990
+    },
+    {
+      "pc": 140695468823880,
+      "count": 1,
+      "cycles_since_prior_sample": 16900836
+    },
+    {
+      "pc": 140695468674941,
+      "count": 1,
+      "cycles_since_prior_sample": 19508444
+    },
+    {
+      "pc": 140695468812810,
+      "count": 1,
+      "cycles_since_prior_sample": 19797642
+    },
+    {
+      "pc": 140726032091216,
+      "count": 1,
+      "cycles_since_prior_sample": 11699488
+    },
+    {
+      "pc": 140695469919888,
+      "count": 1,
+      "cycles_since_prior_sample": 21479840
+    },
+    {
+      "pc": 140695478555356,
+      "count": 1,
+      "cycles_since_prior_sample": 21351208
+    },
+    {
+      "pc": 140695470323979,
+      "count": 1,
+      "cycles_since_prior_sample": 17469624
+    },
+    {
+      "pc": 140695480533632,
+      "count": 1,
+      "cycles_since_prior_sample": 18198674
+    },
+    {
+      "pc": 140695474777656,
+      "count": 1,
+      "cycles_since_prior_sample": 13923306
+    },
+    {
+      "pc": 140695480528905,
+      "count": 1,
+      "cycles_since_prior_sample": 21004086
+    },
+    {
+      "pc": 140695471585826,
+      "count": 1,
+      "cycles_since_prior_sample": 19635602
+    },
+    {
+      "pc": 140695485940774,
+      "count": 1,
+      "cycles_since_prior_sample": 14062582
+    },
+    {
+      "pc": 140695475980569,
+      "count": 1,
+      "cycles_since_prior_sample": 19424720
+    },
+    {
+      "pc": 140695468691680,
+      "count": 1,
+      "cycles_since_prior_sample": 11477120
+    },
+    {
+      "pc": 140695468728160,
+      "count": 1,
+      "cycles_since_prior_sample": 13529938
+    },
+    {
+      "pc": 140695478769560,
+      "count": 1,
+      "cycles_since_prior_sample": 16556204
+    },
+    {
+      "pc": 140695489172970,
+      "count": 1,
+      "cycles_since_prior_sample": 20975170
+    },
+    {
+      "pc": 140695473590950,
+      "count": 1,
+      "cycles_since_prior_sample": 19816110
+    },
+    {
+      "pc": 140695469064731,
+      "count": 2,
+      "cycles_since_prior_sample": 25724052
+    },
+    {
+      "pc": 140695492274641,
+      "count": 1,
+      "cycles_since_prior_sample": 12244602
+    },
+    {
+      "pc": 140695468807909,
+      "count": 1,
+      "cycles_since_prior_sample": 17571060
+    },
+    {
+      "pc": 140695468804823,
+      "count": 4,
+      "cycles_since_prior_sample": 74959548
+    },
+    {
+      "pc": 140695468764165,
+      "count": 1,
+      "cycles_since_prior_sample": 10344112
+    },
+    {
+      "pc": 140695468764354,
+      "count": 1,
+      "cycles_since_prior_sample": 14939206
+    },
+    {
+      "pc": 140695468809156,
+      "count": 1,
+      "cycles_since_prior_sample": 16882966
+    },
+    {
+      "pc": 140726032116283,
+      "count": 1,
+      "cycles_since_prior_sample": 11989994
+    },
+    {
+      "pc": 140695469992143,
+      "count": 1,
+      "cycles_since_prior_sample": 21172000
+    },
+    {
+      "pc": 140695468632764,
+      "count": 1,
+      "cycles_since_prior_sample": 14917872
+    },
+    {
+      "pc": 140695468734439,
+      "count": 1,
+      "cycles_since_prior_sample": 10720644
+    },
+    {
+      "pc": 140695468800033,
+      "count": 1,
+      "cycles_since_prior_sample": 20942198
+    },
+    {
+      "pc": 140695468500653,
+      "count": 1,
+      "cycles_since_prior_sample": 10384114
+    },
+    {
+      "pc": 140695468757084,
+      "count": 1,
+      "cycles_since_prior_sample": 10556548
+    },
+    {
+      "pc": 140695471399019,
+      "count": 1,
+      "cycles_since_prior_sample": 12667890
+    },
+    {
+      "pc": 140695468810893,
+      "count": 1,
+      "cycles_since_prior_sample": 11747752
+    },
+    {
+      "pc": 140695468856997,
+      "count": 1,
+      "cycles_since_prior_sample": 20848278
+    },
+    {
+      "pc": 140695468813505,
+      "count": 1,
+      "cycles_since_prior_sample": 18015990
+    },
+    {
+      "pc": 140695476212987,
+      "count": 1,
+      "cycles_since_prior_sample": 21776476
+    },
+    {
+      "pc": 140695469988306,
+      "count": 1,
+      "cycles_since_prior_sample": 15127424
+    },
+    {
+      "pc": 140695468935011,
+      "count": 1,
+      "cycles_since_prior_sample": 8992918
+    },
+    {
+      "pc": 140695468935528,
+      "count": 1,
+      "cycles_since_prior_sample": 12169946
+    },
+    {
+      "pc": 140695468935043,
+      "count": 1,
+      "cycles_since_prior_sample": 21316230
+    },
+    {
+      "pc": 140695468639315,
+      "count": 2,
+      "cycles_since_prior_sample": 33588376
+    },
+    {
+      "pc": 140695471771973,
+      "count": 1,
+      "cycles_since_prior_sample": 16857106
+    },
+    {
+      "pc": 140695468935653,
+      "count": 1,
+      "cycles_since_prior_sample": 15352006
+    },
+    {
+      "pc": 140695468681406,
+      "count": 3,
+      "cycles_since_prior_sample": 53420592
+    },
+    {
+      "pc": 140695468919066,
+      "count": 1,
+      "cycles_since_prior_sample": 13770046
+    },
+    {
+      "pc": 140695468749797,
+      "count": 1,
+      "cycles_since_prior_sample": 12079510
+    },
+    {
+      "pc": 140695468928480,
+      "count": 1,
+      "cycles_since_prior_sample": 15293468
+    },
+    {
+      "pc": 140695468631915,
+      "count": 1,
+      "cycles_since_prior_sample": 17480810
+    },
+    {
+      "pc": 140695491949408,
+      "count": 1,
+      "cycles_since_prior_sample": 11985532
+    },
+    {
+      "pc": 140726032599444,
+      "count": 1,
+      "cycles_since_prior_sample": 14553598
+    },
+    {
+      "pc": 140695468741450,
+      "count": 1,
+      "cycles_since_prior_sample": 9900868
+    },
+    {
+      "pc": 140695468741530,
+      "count": 1,
+      "cycles_since_prior_sample": 10412578
+    },
+    {
+      "pc": 140695478484999,
+      "count": 1,
+      "cycles_since_prior_sample": 10856998
+    },
+    {
+      "pc": 140695471424628,
+      "count": 1,
+      "cycles_since_prior_sample": 19594244
+    },
+    {
+      "pc": 140695477280983,
+      "count": 1,
+      "cycles_since_prior_sample": 14953132
+    },
+    {
+      "pc": 140695489208370,
+      "count": 1,
+      "cycles_since_prior_sample": 19436112
+    },
+    {
+      "pc": 140695483987308,
+      "count": 1,
+      "cycles_since_prior_sample": 17887820
+    },
+    {
+      "pc": 140695477279034,
+      "count": 1,
+      "cycles_since_prior_sample": 21032186
+    },
+    {
+      "pc": 140695478350625,
+      "count": 1,
+      "cycles_since_prior_sample": 20899664
+    },
+    {
+      "pc": 140695472604937,
+      "count": 1,
+      "cycles_since_prior_sample": 19382718
+    },
+    {
+      "pc": 140725997835940,
+      "count": 1,
+      "cycles_since_prior_sample": 10502342
+    },
+    {
+      "pc": 140695471648485,
+      "count": 2,
+      "cycles_since_prior_sample": 34733448
+    },
+    {
+      "pc": 140695472495386,
+      "count": 1,
+      "cycles_since_prior_sample": 16408814
+    },
+    {
+      "pc": 140726032089824,
+      "count": 1,
+      "cycles_since_prior_sample": 13978382
+    },
+    {
+      "pc": 140695468757607,
+      "count": 1,
+      "cycles_since_prior_sample": 20959674
+    },
+    {
+      "pc": 140695468795694,
+      "count": 1,
+      "cycles_since_prior_sample": 15822754
+    },
+    {
+      "pc": 140695468807789,
+      "count": 1,
+      "cycles_since_prior_sample": 16836424
+    },
+    {
+      "pc": 140695469079096,
+      "count": 1,
+      "cycles_since_prior_sample": 18032390
+    },
+    {
+      "pc": 140726032089757,
+      "count": 1,
+      "cycles_since_prior_sample": 10560674
+    },
+    {
+      "pc": 140695468800709,
+      "count": 1,
+      "cycles_since_prior_sample": 14991876
+    },
+    {
+      "pc": 140695468928422,
+      "count": 1,
+      "cycles_since_prior_sample": 12143182
+    },
+    {
+      "pc": 140695468990524,
+      "count": 1,
+      "cycles_since_prior_sample": 19495986
+    },
+    {
+      "pc": 140695468768173,
+      "count": 1,
+      "cycles_since_prior_sample": 21076326
+    },
+    {
+      "pc": 140695468774188,
+      "count": 1,
+      "cycles_since_prior_sample": 21077104
+    },
+    {
+      "pc": 140695468934799,
+      "count": 1,
+      "cycles_since_prior_sample": 14523636
+    },
+    {
+      "pc": 140695468810213,
+      "count": 1,
+      "cycles_since_prior_sample": 16658422
+    },
+    {
+      "pc": 140695468500565,
+      "count": 1,
+      "cycles_since_prior_sample": 18262138
+    },
+    {
+      "pc": 140695468818699,
+      "count": 1,
+      "cycles_since_prior_sample": 14695598
+    },
+    {
+      "pc": 140695468811396,
+      "count": 1,
+      "cycles_since_prior_sample": 19782528
+    },
+    {
+      "pc": 140695468631710,
+      "count": 1,
+      "cycles_since_prior_sample": 12357762
+    },
+    {
+      "pc": 140726032118698,
+      "count": 1,
+      "cycles_since_prior_sample": 17431968
+    },
+    {
+      "pc": 140695468791556,
+      "count": 1,
+      "cycles_since_prior_sample": 15544634
+    },
+    {
+      "pc": 140695471767860,
+      "count": 1,
+      "cycles_since_prior_sample": 10376260
+    },
+    {
+      "pc": 140695468727792,
+      "count": 1,
+      "cycles_since_prior_sample": 10522118
+    },
+    {
+      "pc": 140695468800828,
+      "count": 1,
+      "cycles_since_prior_sample": 18049824
+    },
+    {
+      "pc": 140695468796361,
+      "count": 1,
+      "cycles_since_prior_sample": 12029546
+    },
+    {
+      "pc": 140695468775821,
+      "count": 1,
+      "cycles_since_prior_sample": 18348468
+    },
+    {
+      "pc": 140695492275593,
+      "count": 3,
+      "cycles_since_prior_sample": 51016498
+    },
+    {
+      "pc": 140695472676082,
+      "count": 1,
+      "cycles_since_prior_sample": 19626286
+    },
+    {
+      "pc": 140695471781707,
+      "count": 1,
+      "cycles_since_prior_sample": 19018346
+    },
+    {
+      "pc": 140695485417535,
+      "count": 1,
+      "cycles_since_prior_sample": 18067910
+    },
+    {
+      "pc": 140695474411408,
+      "count": 1,
+      "cycles_since_prior_sample": 19873640
+    },
+    {
+      "pc": 140695468630526,
+      "count": 1,
+      "cycles_since_prior_sample": 15931544
+    },
+    {
+      "pc": 140695486871225,
+      "count": 1,
+      "cycles_since_prior_sample": 10437112
+    },
+    {
+      "pc": 140695477010737,
+      "count": 1,
+      "cycles_since_prior_sample": 17787410
+    },
+    {
+      "pc": 140695468594543,
+      "count": 1,
+      "cycles_since_prior_sample": 11936120
+    },
+    {
+      "pc": 140695468674915,
+      "count": 1,
+      "cycles_since_prior_sample": 15086742
+    },
+    {
+      "pc": 140726032119978,
+      "count": 1,
+      "cycles_since_prior_sample": 18375890
+    },
+    {
+      "pc": 140726032086823,
+      "count": 1,
+      "cycles_since_prior_sample": 16473872
+    },
+    {
+      "pc": 140695468764267,
+      "count": 1,
+      "cycles_since_prior_sample": 12415824
+    },
+    {
+      "pc": 140695478561347,
+      "count": 1,
+      "cycles_since_prior_sample": 16048392
+    },
+    {
+      "pc": 140695479720526,
+      "count": 1,
+      "cycles_since_prior_sample": 9427346
+    },
+    {
+      "pc": 140695486936861,
+      "count": 1,
+      "cycles_since_prior_sample": 16179430
+    },
+    {
+      "pc": 140695472084807,
+      "count": 1,
+      "cycles_since_prior_sample": 16532200
+    },
+    {
+      "pc": 140695468594501,
+      "count": 1,
+      "cycles_since_prior_sample": 11998938
+    },
+    {
+      "pc": 140695474710596,
+      "count": 1,
+      "cycles_since_prior_sample": 19761336
+    },
+    {
+      "pc": 140695477385376,
+      "count": 1,
+      "cycles_since_prior_sample": 12236144
+    },
+    {
+      "pc": 140695477632952,
+      "count": 1,
+      "cycles_since_prior_sample": 19591396
+    },
+    {
+      "pc": 140695468719423,
+      "count": 1,
+      "cycles_since_prior_sample": 14886328
+    },
+    {
+      "pc": 140695468804858,
+      "count": 1,
+      "cycles_since_prior_sample": 21028516
+    },
+    {
+      "pc": 140695468818523,
+      "count": 1,
+      "cycles_since_prior_sample": 10486176
+    },
+    {
+      "pc": 140695468729511,
+      "count": 1,
+      "cycles_since_prior_sample": 19830492
+    },
+    {
+      "pc": 140695468811634,
+      "count": 2,
+      "cycles_since_prior_sample": 31535272
+    },
+    {
+      "pc": 140695468928446,
+      "count": 1,
+      "cycles_since_prior_sample": 19460424
+    },
+    {
+      "pc": 140695468721795,
+      "count": 1,
+      "cycles_since_prior_sample": 19477878
+    },
+    {
+      "pc": 140695468928397,
+      "count": 1,
+      "cycles_since_prior_sample": 20984954
+    },
+    {
+      "pc": 140695471752858,
+      "count": 1,
+      "cycles_since_prior_sample": 13030382
+    },
+    {
+      "pc": 140726001096860,
+      "count": 2,
+      "cycles_since_prior_sample": 25950568
+    },
+    {
+      "pc": 140695468674949,
+      "count": 1,
+      "cycles_since_prior_sample": 21014064
+    },
+    {
+      "pc": 140695471990892,
+      "count": 1,
+      "cycles_since_prior_sample": 11878260
+    },
+    {
+      "pc": 140695478486427,
+      "count": 1,
+      "cycles_since_prior_sample": 13538746
+    },
+    {
+      "pc": 140695468492222,
+      "count": 1,
+      "cycles_since_prior_sample": 10812722
+    },
+    {
+      "pc": 140695471237759,
+      "count": 1,
+      "cycles_since_prior_sample": 19316170
+    },
+    {
+      "pc": 140695472036151,
+      "count": 1,
+      "cycles_since_prior_sample": 11627438
+    },
+    {
+      "pc": 140695476135632,
+      "count": 1,
+      "cycles_since_prior_sample": 13901768
+    },
+    {
+      "pc": 140695473122390,
+      "count": 1,
+      "cycles_since_prior_sample": 10640162
+    },
+    {
+      "pc": 140695483990904,
+      "count": 1,
+      "cycles_since_prior_sample": 19802948
+    },
+    {
+      "pc": 140695484027512,
+      "count": 1,
+      "cycles_since_prior_sample": 10902254
+    },
+    {
+      "pc": 140695472042443,
+      "count": 1,
+      "cycles_since_prior_sample": 19573084
+    },
+    {
+      "pc": 140695474407748,
+      "count": 1,
+      "cycles_since_prior_sample": 11908162
+    },
+    {
+      "pc": 140695485941796,
+      "count": 1,
+      "cycles_since_prior_sample": 16473854
+    },
+    {
+      "pc": 140695479383845,
+      "count": 1,
+      "cycles_since_prior_sample": 10449714
+    },
+    {
+      "pc": 140695480463098,
+      "count": 1,
+      "cycles_since_prior_sample": 19831770
+    },
+    {
+      "pc": 140695468690977,
+      "count": 1,
+      "cycles_since_prior_sample": 9845578
+    },
+    {
+      "pc": 140695468823896,
+      "count": 1,
+      "cycles_since_prior_sample": 21426544
+    },
+    {
+      "pc": 140695468941561,
+      "count": 1,
+      "cycles_since_prior_sample": 10428740
+    },
+    {
+      "pc": 140695468803607,
+      "count": 1,
+      "cycles_since_prior_sample": 11881768
+    },
+    {
+      "pc": 140695471386851,
+      "count": 1,
+      "cycles_since_prior_sample": 11606488
+    },
+    {
+      "pc": 140695468917632,
+      "count": 1,
+      "cycles_since_prior_sample": 20829098
+    },
+    {
+      "pc": 140695468809653,
+      "count": 1,
+      "cycles_since_prior_sample": 15743964
+    },
+    {
+      "pc": 140695491989110,
+      "count": 1,
+      "cycles_since_prior_sample": 15185548
+    },
+    {
+      "pc": 140695468507173,
+      "count": 1,
+      "cycles_since_prior_sample": 17457734
+    },
+    {
+      "pc": 140695468774093,
+      "count": 1,
+      "cycles_since_prior_sample": 10606584
+    },
+    {
+      "pc": 140695471890608,
+      "count": 1,
+      "cycles_since_prior_sample": 12644226
+    },
+    {
+      "pc": 140695478386960,
+      "count": 1,
+      "cycles_since_prior_sample": 21870374
+    },
+    {
+      "pc": 140695470230448,
+      "count": 1,
+      "cycles_since_prior_sample": 15111436
+    },
+    {
+      "pc": 140695474755354,
+      "count": 1,
+      "cycles_since_prior_sample": 17176048
+    },
+    {
+      "pc": 140695479299845,
+      "count": 1,
+      "cycles_since_prior_sample": 20160704
+    },
+    {
+      "pc": 140695468585521,
+      "count": 1,
+      "cycles_since_prior_sample": 21866976
+    },
+    {
+      "pc": 140695468934523,
+      "count": 1,
+      "cycles_since_prior_sample": 20715860
+    },
+    {
+      "pc": 140695468791552,
+      "count": 1,
+      "cycles_since_prior_sample": 16670488
+    },
+    {
+      "pc": 140695472188610,
+      "count": 1,
+      "cycles_since_prior_sample": 14888248
+    },
+    {
+      "pc": 140695469990668,
+      "count": 1,
+      "cycles_since_prior_sample": 10309908
+    },
+    {
+      "pc": 140695471703790,
+      "count": 1,
+      "cycles_since_prior_sample": 15124082
+    },
+    {
+      "pc": 140695468502793,
+      "count": 1,
+      "cycles_since_prior_sample": 16094312
+    },
+    {
+      "pc": 140726031959010,
+      "count": 1,
+      "cycles_since_prior_sample": 21089362
+    },
+    {
+      "pc": 140695481377853,
+      "count": 1,
+      "cycles_since_prior_sample": 21013902
+    },
+    {
+      "pc": 140695470408206,
+      "count": 1,
+      "cycles_since_prior_sample": 11534716
+    },
+    {
+      "pc": 140695468801941,
+      "count": 1,
+      "cycles_since_prior_sample": 14914402
+    },
+    {
+      "pc": 140695469083622,
+      "count": 1,
+      "cycles_since_prior_sample": 12255478
+    },
+    {
+      "pc": 140695468796270,
+      "count": 1,
+      "cycles_since_prior_sample": 17410438
+    },
+    {
+      "pc": 140695492273703,
+      "count": 1,
+      "cycles_since_prior_sample": 13474560
+    },
+    {
+      "pc": 140695468918402,
+      "count": 1,
+      "cycles_since_prior_sample": 20869870
+    },
+    {
+      "pc": 140695468857058,
+      "count": 1,
+      "cycles_since_prior_sample": 15389214
+    },
+    {
+      "pc": 140695468691037,
+      "count": 1,
+      "cycles_since_prior_sample": 16670014
+    },
+    {
+      "pc": 140695468500441,
+      "count": 1,
+      "cycles_since_prior_sample": 20886582
+    },
+    {
+      "pc": 140695468724490,
+      "count": 1,
+      "cycles_since_prior_sample": 19185896
+    },
+    {
+      "pc": 140695468496508,
+      "count": 1,
+      "cycles_since_prior_sample": 18622264
+    },
+    {
+      "pc": 140695468928629,
+      "count": 1,
+      "cycles_since_prior_sample": 19480014
+    },
+    {
+      "pc": 140695469543978,
+      "count": 1,
+      "cycles_since_prior_sample": 19394610
+    },
+    {
+      "pc": 140695469931952,
+      "count": 2,
+      "cycles_since_prior_sample": 33726198
+    },
+    {
+      "pc": 140695492109600,
+      "count": 1,
+      "cycles_since_prior_sample": 14462550
+    },
+    {
+      "pc": 140695468774220,
+      "count": 1,
+      "cycles_since_prior_sample": 20571520
+    },
+    {
+      "pc": 140695492060624,
+      "count": 1,
+      "cycles_since_prior_sample": 15309122
+    },
+    {
+      "pc": 140695478469388,
+      "count": 1,
+      "cycles_since_prior_sample": 17288022
+    },
+    {
+      "pc": 140695471991090,
+      "count": 1,
+      "cycles_since_prior_sample": 20031222
+    },
+    {
+      "pc": 140695477003279,
+      "count": 1,
+      "cycles_since_prior_sample": 12257172
+    },
+    {
+      "pc": 140695471424596,
+      "count": 1,
+      "cycles_since_prior_sample": 16739664
+    },
+    {
+      "pc": 140695470473845,
+      "count": 1,
+      "cycles_since_prior_sample": 21574726
+    },
+    {
+      "pc": 140695489177895,
+      "count": 1,
+      "cycles_since_prior_sample": 13504186
+    },
+    {
+      "pc": 140695489529507,
+      "count": 1,
+      "cycles_since_prior_sample": 18478374
+    },
+    {
+      "pc": 140695468531956,
+      "count": 1,
+      "cycles_since_prior_sample": 19816580
+    },
+    {
+      "pc": 140695486165574,
+      "count": 1,
+      "cycles_since_prior_sample": 20493910
+    },
+    {
+      "pc": 140695484025889,
+      "count": 1,
+      "cycles_since_prior_sample": 14832550
+    },
+    {
+      "pc": 140695472084849,
+      "count": 1,
+      "cycles_since_prior_sample": 10919906
+    },
+    {
+      "pc": 140695474403859,
+      "count": 1,
+      "cycles_since_prior_sample": 11971284
+    },
+    {
+      "pc": 140695474406348,
+      "count": 1,
+      "cycles_since_prior_sample": 13773284
+    },
+    {
+      "pc": 140695474620033,
+      "count": 1,
+      "cycles_since_prior_sample": 20734212
+    },
+    {
+      "pc": 140695480528740,
+      "count": 1,
+      "cycles_since_prior_sample": 18126744
+    },
+    {
+      "pc": 140695468879184,
+      "count": 1,
+      "cycles_since_prior_sample": 14693712
+    },
+    {
+      "pc": 140695468939473,
+      "count": 1,
+      "cycles_since_prior_sample": 19424162
+    },
+    {
+      "pc": 140695468937457,
+      "count": 1,
+      "cycles_since_prior_sample": 18742666
+    },
+    {
+      "pc": 140695468502828,
+      "count": 1,
+      "cycles_since_prior_sample": 13189716
+    },
+    {
+      "pc": 140695468768407,
+      "count": 1,
+      "cycles_since_prior_sample": 13473320
+    },
+    {
+      "pc": 140726032127937,
+      "count": 1,
+      "cycles_since_prior_sample": 10533650
+    },
+    {
+      "pc": 140695468500557,
+      "count": 1,
+      "cycles_since_prior_sample": 18175308
+    },
+    {
+      "pc": 140695468800127,
+      "count": 1,
+      "cycles_since_prior_sample": 16413004
+    },
+    {
+      "pc": 140695468755768,
+      "count": 1,
+      "cycles_since_prior_sample": 10509362
+    },
+    {
+      "pc": 140695469990443,
+      "count": 1,
+      "cycles_since_prior_sample": 10502750
+    },
+    {
+      "pc": 140695468811665,
+      "count": 1,
+      "cycles_since_prior_sample": 10556750
+    },
+    {
+      "pc": 140695468721591,
+      "count": 1,
+      "cycles_since_prior_sample": 10560618
+    },
+    {
+      "pc": 140726031959090,
+      "count": 1,
+      "cycles_since_prior_sample": 14908430
+    },
+    {
+      "pc": 140695468774146,
+      "count": 1,
+      "cycles_since_prior_sample": 21926622
+    },
+    {
+      "pc": 140695469990918,
+      "count": 1,
+      "cycles_since_prior_sample": 11501042
+    },
+    {
+      "pc": 140695468630424,
+      "count": 1,
+      "cycles_since_prior_sample": 19731110
+    },
+    {
+      "pc": 140695469989408,
+      "count": 1,
+      "cycles_since_prior_sample": 20942536
+    },
+    {
+      "pc": 140695468778384,
+      "count": 1,
+      "cycles_since_prior_sample": 19478812
+    },
+    {
+      "pc": 140695468796489,
+      "count": 1,
+      "cycles_since_prior_sample": 12247138
+    },
+    {
+      "pc": 140695468839424,
+      "count": 1,
+      "cycles_since_prior_sample": 19616688
+    },
+    {
+      "pc": 140695468822839,
+      "count": 1,
+      "cycles_since_prior_sample": 15150972
+    },
+    {
+      "pc": 140695468760938,
+      "count": 1,
+      "cycles_since_prior_sample": 18871078
+    },
+    {
+      "pc": 140695468811400,
+      "count": 1,
+      "cycles_since_prior_sample": 14108308
+    },
+    {
+      "pc": 140695468811579,
+      "count": 1,
+      "cycles_since_prior_sample": 10873520
+    },
+    {
+      "pc": 140695468721791,
+      "count": 1,
+      "cycles_since_prior_sample": 9941486
+    },
+    {
+      "pc": 140695468638500,
+      "count": 1,
+      "cycles_since_prior_sample": 14267808
+    },
+    {
+      "pc": 140695468640850,
+      "count": 1,
+      "cycles_since_prior_sample": 18195934
+    },
+    {
+      "pc": 140695469070154,
+      "count": 1,
+      "cycles_since_prior_sample": 12239988
+    },
+    {
+      "pc": 140695468934576,
+      "count": 1,
+      "cycles_since_prior_sample": 17393690
+    },
+    {
+      "pc": 140695471026330,
+      "count": 1,
+      "cycles_since_prior_sample": 12050844
+    },
+    {
+      "pc": 140695469988186,
+      "count": 1,
+      "cycles_since_prior_sample": 12035304
+    },
+    {
+      "pc": 140726032615268,
+      "count": 1,
+      "cycles_since_prior_sample": 12183916
+    },
+    {
+      "pc": 140695468935540,
+      "count": 1,
+      "cycles_since_prior_sample": 19570952
+    },
+    {
+      "pc": 140695468741513,
+      "count": 1,
+      "cycles_since_prior_sample": 11598694
+    },
+    {
+      "pc": 140695485583052,
+      "count": 1,
+      "cycles_since_prior_sample": 12131872
+    },
+    {
+      "pc": 140695471823694,
+      "count": 1,
+      "cycles_since_prior_sample": 18350396
+    },
+    {
+      "pc": 140695474666552,
+      "count": 1,
+      "cycles_since_prior_sample": 18971764
+    },
+    {
+      "pc": 140695470362964,
+      "count": 1,
+      "cycles_since_prior_sample": 17847810
+    },
+    {
+      "pc": 140695472219786,
+      "count": 1,
+      "cycles_since_prior_sample": 11505360
+    },
+    {
+      "pc": 140695472243015,
+      "count": 1,
+      "cycles_since_prior_sample": 19812934
+    },
+    {
+      "pc": 140695473984623,
+      "count": 1,
+      "cycles_since_prior_sample": 14314890
+    },
+    {
+      "pc": 140695478350499,
+      "count": 1,
+      "cycles_since_prior_sample": 11913684
+    },
+    {
+      "pc": 140695469997429,
+      "count": 1,
+      "cycles_since_prior_sample": 10570950
+    },
+    {
+      "pc": 140695484768098,
+      "count": 1,
+      "cycles_since_prior_sample": 10473618
+    },
+    {
+      "pc": 140695471631659,
+      "count": 1,
+      "cycles_since_prior_sample": 18306842
+    },
+    {
+      "pc": 140695485948422,
+      "count": 1,
+      "cycles_since_prior_sample": 13259986
+    },
+    {
+      "pc": 140726032586404,
+      "count": 1,
+      "cycles_since_prior_sample": 21386922
+    },
+    {
+      "pc": 140695471754733,
+      "count": 1,
+      "cycles_since_prior_sample": 9950226
+    },
+    {
+      "pc": 140695468926167,
+      "count": 1,
+      "cycles_since_prior_sample": 21382742
+    },
+    {
+      "pc": 140695468734295,
+      "count": 1,
+      "cycles_since_prior_sample": 20070268
+    },
+    {
+      "pc": 140695468933344,
+      "count": 1,
+      "cycles_since_prior_sample": 15471262
+    },
+    {
+      "pc": 140726032067984,
+      "count": 1,
+      "cycles_since_prior_sample": 18315116
+    },
+    {
+      "pc": 140695468641241,
+      "count": 1,
+      "cycles_since_prior_sample": 17624504
+    }
+  ]
+}

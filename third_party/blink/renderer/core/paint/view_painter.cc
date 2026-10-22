@@ -21,8 +21,10 @@
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scoped_paint_chunk_properties.h"
@@ -87,14 +89,19 @@ void ViewPainter::PaintBoxDecorationBackground(const PaintInfo& paint_info)
         // really matters.
         !(painting_background_in_contents_space && paint_info.ShouldSkipBackground());
     bool paints_scroll_hit_test = !painting_background_in_contents_space && layout_view.FirstFragment().PaintProperties()->Scroll();
+#if !defined(MINI_UI_QUICKJS)
     bool is_represented_via_pseudo_elements = [&layout_view]() {
         if (auto* transition = ViewTransitionUtils::GetTransition(layout_view.GetDocument())) {
             return transition->IsRepresentedViaPseudoElements(layout_view);
         }
         return false;
     }();
-    if (!layout_view.HasBoxDecorationBackground() && !paints_hit_test_data && !paints_scroll_hit_test && !paints_region_capture_data
-        && !is_represented_via_pseudo_elements) {
+#endif
+    bool should_paint = layout_view.HasBoxDecorationBackground() || paints_hit_test_data || paints_scroll_hit_test || paints_region_capture_data;
+#if !defined(MINI_UI_QUICKJS)
+    should_paint |= is_represented_via_pseudo_elements;
+#endif
+    if (!should_paint) {
         return;
     }
 
@@ -133,7 +140,11 @@ void ViewPainter::PaintBoxDecorationBackground(const PaintInfo& paint_info)
 
     bool should_apply_root_background_behavior = document.IsHTMLDocument() || document.IsXHTMLDocument();
 
+#if !defined(MINI_UI_QUICKJS)
     bool should_paint_background = !paint_info.ShouldSkipBackground() && (layout_view.HasBoxDecorationBackground() || is_represented_via_pseudo_elements);
+#else
+    bool should_paint_background = !paint_info.ShouldSkipBackground() && layout_view.HasBoxDecorationBackground();
+#endif
 
     LayoutObject* root_object = nullptr;
     if (auto* document_element = document.documentElement())

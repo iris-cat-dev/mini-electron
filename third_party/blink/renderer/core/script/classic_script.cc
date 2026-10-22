@@ -11,8 +11,11 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
+#endif
+#include "third_party/blink/renderer/core/loader/resource/script_resource.h"
+#include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 
 namespace blink {
 
@@ -75,6 +78,20 @@ KURL ClassicScript::StripFragmentIdentifier(const KURL& url)
     return copy;
 }
 
+#if defined(MINI_UI_QUICKJS)
+ClassicScript* ClassicScript::Create(
+    const String& source_text, const KURL& source_url, const KURL& base_url,
+    const ScriptFetchOptions& fetch_options,
+    ScriptSourceLocationType source_location_type,
+    SanitizeScriptErrors sanitize_script_errors,
+    const TextPosition& start_position)
+{
+    DCHECK(source_location_type != ScriptSourceLocationType::kExternalFile);
+    return MakeGarbageCollected<ClassicScript>(
+        ParkableString(source_text.Impl()), source_url, base_url, fetch_options,
+        source_location_type, sanitize_script_errors, start_position);
+}
+#else
 ClassicScript* ClassicScript::Create(const String& source_text, const KURL& source_url, const KURL& base_url, const ScriptFetchOptions& fetch_options,
     ScriptSourceLocationType source_location_type, SanitizeScriptErrors sanitize_script_errors, CachedMetadataHandler* cache_handler,
     const TextPosition& start_position, ScriptStreamer::NotStreamingReason not_streaming_reason, InlineScriptStreamer* streamer)
@@ -85,9 +102,11 @@ ClassicScript* ClassicScript::Create(const String& source_text, const KURL& sour
     return MakeGarbageCollected<ClassicScript>(ParkableString(source_text.Impl()), source_url, base_url, fetch_options, source_location_type,
         sanitize_script_errors, cache_handler, start_position, streamer, not_streaming_reason);
 }
+#endif
 
 ClassicScript* ClassicScript::CreateFromResource(ScriptResource* resource, const ScriptFetchOptions& fetch_options)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Check if we can use the script streamer.
     ScriptStreamer* streamer;
     ScriptStreamer::NotStreamingReason not_streamed_reason;
@@ -95,6 +114,7 @@ ClassicScript* ClassicScript::CreateFromResource(ScriptResource* resource, const
     DCHECK_EQ(!streamer, not_streamed_reason != ScriptStreamer::NotStreamingReason::kInvalid);
 
     ScriptCacheConsumer* cache_consumer = resource->TakeCacheConsumer();
+#endif
 
     KURL source_url = StripFragmentIdentifier(resource->Url());
 
@@ -106,9 +126,20 @@ ClassicScript* ClassicScript::CreateFromResource(ScriptResource* resource, const
 
     // We lose the encoding information from ScriptResource.
     // Not sure if that matters.
+#if defined(MINI_UI_QUICKJS)
+    return MakeGarbageCollected<ClassicScript>(
+        resource->SourceText(), source_url, base_url, fetch_options,
+        ScriptSourceLocationType::kExternalFile,
+        resource->GetResponse().IsCorsSameOrigin()
+            ? SanitizeScriptErrors::kDoNotSanitize
+            : SanitizeScriptErrors::kSanitize,
+        TextPosition::MinimumPosition(),
+        SourceMapUrlFromResponse(resource->GetResponse()));
+#else
     return MakeGarbageCollected<ClassicScript>(resource->SourceText(), source_url, base_url, fetch_options, ScriptSourceLocationType::kExternalFile,
         resource->GetResponse().IsCorsSameOrigin() ? SanitizeScriptErrors::kDoNotSanitize : SanitizeScriptErrors::kSanitize, resource->CacheHandler(),
         TextPosition::MinimumPosition(), streamer, not_streamed_reason, cache_consumer, SourceMapUrlFromResponse(resource->GetResponse()));
+#endif
 }
 
 ClassicScript* ClassicScript::CreateUnspecifiedScript(
@@ -124,6 +155,21 @@ ClassicScript* ClassicScript::CreateUnspecifiedScript(const WebScriptSource& sou
         ScriptFetchOptions(), ScriptSourceLocationType::kUnknown, sanitize_script_errors);
 }
 
+#if defined(MINI_UI_QUICKJS)
+ClassicScript::ClassicScript(
+    const ParkableString& source_text, const KURL& source_url,
+    const KURL& base_url, const ScriptFetchOptions& fetch_options,
+    ScriptSourceLocationType source_location_type,
+    SanitizeScriptErrors sanitize_script_errors,
+    const TextPosition& start_position, const String& source_map_url)
+    : Script(fetch_options, SanitizeBaseUrl(base_url, sanitize_script_errors), source_url, start_position)
+    , source_text_(TreatNullSourceAsEmpty(source_text))
+    , source_location_type_(source_location_type)
+    , sanitize_script_errors_(sanitize_script_errors)
+    , source_map_url_(source_map_url)
+{
+}
+#else
 ClassicScript::ClassicScript(const ParkableString& source_text, const KURL& source_url, const KURL& base_url, const ScriptFetchOptions& fetch_options,
     ScriptSourceLocationType source_location_type, SanitizeScriptErrors sanitize_script_errors, CachedMetadataHandler* cache_handler,
     const TextPosition& start_position, ScriptStreamer* streamer, ScriptStreamer::NotStreamingReason not_streaming_reason, ScriptCacheConsumer* cache_consumer,
@@ -139,13 +185,16 @@ ClassicScript::ClassicScript(const ParkableString& source_text, const KURL& sour
     , source_map_url_(source_map_url)
 {
 }
+#endif
 
 void ClassicScript::Trace(Visitor* visitor) const
 {
     Script::Trace(visitor);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(cache_handler_);
     visitor->Trace(streamer_);
     visitor->Trace(cache_consumer_);
+#endif
 }
 
 v8::Local<v8::Data> ClassicScript::CreateHostDefinedOptions(v8::Isolate* isolate) const

@@ -95,11 +95,14 @@ public:
         // in a world id that should be used. The embedder is supposed to respect
         // the `kEmbedderWorldIdLimit` for creating the isolated world.
         kIsolated,
+#if !defined(MINI_UI_QUICKJS)
         // An isolated world for the inspector. The world id is generated
         // internally.
         kInspectorIsolated,
+#endif
         // A utility world that is not considered an isolated world.
         kRegExp,
+#if !defined(MINI_UI_QUICKJS)
         // A utility world for context snapshotting that is not considered an
         // isolated world.
         kForV8ContextSnapshotNonMain,
@@ -111,6 +114,7 @@ public:
         // a distinguishable world type. Shadow realms can be created not only in
         // the main isolate but also in worker isolates and other isolates.
         kShadowRealm,
+#endif
     };
 
     static constexpr bool IsIsolatedWorldId(int32_t world_id)
@@ -176,6 +180,7 @@ public:
     {
         return world_type_ == WorldType::kMain;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsWorkerOrWorkletWorld() const
     {
         return world_type_ == WorldType::kWorkerOrWorklet;
@@ -184,9 +189,14 @@ public:
     {
         return world_type_ == WorldType::kShadowRealm;
     }
+#endif
     bool IsIsolatedWorld() const
     {
+#if defined(MINI_UI_QUICKJS)
+        return world_type_ == WorldType::kIsolated;
+#else
         return world_type_ == WorldType::kIsolated || world_type_ == WorldType::kInspectorIsolated;
+#endif
     }
 
     WorldType GetWorldType() const

@@ -1,0 +1,9 @@
+{
+  "profiled_diagnostic": true,
+  "scope": "CPU sampling; never pool timings with benchmark matrices",
+  "recorder_start": {
+    "exit_code": 3310899217,
+    "stdout": "",
+    "stderr": "\n\tFailed to enable the policy to profile system performance.\n\n\n\tProfile Id: CPU.Verbose.File\n\t\n\tError code: 0xc5585011\n\t\n\tFailed to enable the policy to profile system performance.\n\n\t\n\t\n"
+  }
+}

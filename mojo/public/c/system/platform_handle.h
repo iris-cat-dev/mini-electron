@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -43,11 +43,15 @@ typedef uint32_t MojoPlatformHandleType;
 
 // The |MojoPlatformHandle| value represents a Mach send right (e.g. a value
 // opaquely of type |mach_port_t|). Only usable on macOS hosts.
-#define MOJO_PLATFORM_HANDLE_TYPE_MACH_SEND_RIGHT MOJO_PLATFORM_HANDLE_TYPE_MACH_PORT
+#define MOJO_PLATFORM_HANDLE_TYPE_MACH_SEND_RIGHT \
+  MOJO_PLATFORM_HANDLE_TYPE_MACH_PORT
 
 // The |MojoPlatformHandle| value represents a Mach receive right (e.g. a value
 // opaquely of type |mach_port_t|). Only usable on macOS hosts.
 #define MOJO_PLATFORM_HANDLE_TYPE_MACH_RECEIVE_RIGHT ((MojoPlatformHandleType)5)
+
+// An Android IBinder reference.
+#define MOJO_PLATFORM_HANDLE_TYPE_BINDER ((MojoPlatformHandleType)6)
 
 // |MojoPlatformHandle|: A handle to a native platform object.
 //
@@ -64,17 +68,18 @@ typedef uint32_t MojoPlatformHandleType;
 // Represents a native platform handle value for coersion to or from a wrapping
 // Mojo handle.
 struct MOJO_ALIGNAS(8) MojoPlatformHandle {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // The type of platform handle represented by |value|.
-    MojoPlatformHandleType type;
+  // The type of platform handle represented by |value|.
+  MojoPlatformHandleType type;
 
-    // An opaque representation of the native platform handle. Interpretation and
-    // treatment of this value by Mojo depends on the value of |type|.
-    uint64_t value;
+  // An opaque representation of the native platform handle. Interpretation and
+  // treatment of this value by Mojo depends on the value of |type|.
+  uint64_t value;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoPlatformHandle) == 16, "MojoPlatformHandle has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoPlatformHandle) == 16,
+                   "MojoPlatformHandle has wrong size");
 
 // Flags passed to |MojoWrapPlatformHandle()| via
 // |MojoWrapPlatformHandleOptions|.
@@ -85,13 +90,14 @@ typedef uint32_t MojoWrapPlatformHandleFlags;
 
 // Options passed to |MojoWrapPlatformHandle()|.
 struct MOJO_ALIGNAS(8) MojoWrapPlatformHandleOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoWrapPlatformHandleFlags|.
-    MojoWrapPlatformHandleFlags flags;
+  // See |MojoWrapPlatformHandleFlags|.
+  MojoWrapPlatformHandleFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoWrapPlatformHandleOptions) == 8, "MojoWrapPlatformHandleOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoWrapPlatformHandleOptions) == 8,
+                   "MojoWrapPlatformHandleOptions has wrong size");
 
 // Flags passed to |MojoUnwrapPlatformHandle()| via
 // |MojoUnwrapPlatformHandleOptions|.
@@ -102,19 +108,20 @@ typedef uint32_t MojoUnwrapPlatformHandleFlags;
 
 // Options passed to |MojoUnwrapPlatformHandle()|.
 struct MOJO_ALIGNAS(8) MojoUnwrapPlatformHandleOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoUnwrapPlatformHandleFlags|.
-    MojoUnwrapPlatformHandleFlags flags;
+  // See |MojoUnwrapPlatformHandleFlags|.
+  MojoUnwrapPlatformHandleFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoUnwrapPlatformHandleOptions) == 8, "MojoUnwrapPlatformHandleOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoUnwrapPlatformHandleOptions) == 8,
+                   "MojoUnwrapPlatformHandleOptions has wrong size");
 
 // A GUID value used to identify the shared memory region backing a Mojo shared
 // buffer handle.
 struct MOJO_ALIGNAS(8) MojoSharedBufferGuid {
-    uint64_t high;
-    uint64_t low;
+  uint64_t high;
+  uint64_t low;
 };
 
 // The access type of shared memory region wrapped by a Mojo shared buffer
@@ -129,7 +136,8 @@ typedef uint32_t MojoPlatformSharedMemoryRegionAccessMode;
 // meaning and usage of different access modes. This CANNOT be used to change
 // a buffer's access mode; it is merely an informational value to allow Mojo
 // to retain consistency between wrapping and unwrapping of buffer handles.
-#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_READ_ONLY ((MojoPlatformSharedMemoryRegionAccessMode)0)
+#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_READ_ONLY \
+  ((MojoPlatformSharedMemoryRegionAccessMode)0)
 
 // The region is writable, meaning there is exactly one handle to the region and
 // it is mappable read/writable.
@@ -138,7 +146,8 @@ typedef uint32_t MojoPlatformSharedMemoryRegionAccessMode;
 // meaning and usage of different access modes. This CANNOT be used to change
 // a buffer's access mode; it is merely an informational value to allow Mojo
 // to retain consistency between wrapping and unwrapping of buffer handles.
-#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_WRITABLE ((MojoPlatformSharedMemoryRegionAccessMode)1)
+#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_WRITABLE \
+  ((MojoPlatformSharedMemoryRegionAccessMode)1)
 
 // The region is unsafe, meaning any number of read/writable handles may refer
 // to it.
@@ -147,41 +156,48 @@ typedef uint32_t MojoPlatformSharedMemoryRegionAccessMode;
 // meaning and usage of different access modes. This CANNOT be used to change
 // a buffer's access mode; it is merely an informational value to allow Mojo
 // to retain consistency between wrapping and unwrapping of buffer handles.
-#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_UNSAFE ((MojoPlatformSharedMemoryRegionAccessMode)2)
+#define MOJO_PLATFORM_SHARED_MEMORY_REGION_ACCESS_MODE_UNSAFE \
+  ((MojoPlatformSharedMemoryRegionAccessMode)2)
 
 // Flags passed to |MojoWrapPlatformSharedMemoryRegion()| via
 // |MojoWrapPlatformSharedMemoryRegionOptions|.
 typedef uint32_t MojoWrapPlatformSharedMemoryRegionFlags;
 
 // No flags. Default behavior.
-#define MOJO_WRAP_PLATFORM_SHARED_BUFFER_HANDLE_FLAG_NONE ((MojoWrapPlatformSharedMemoryRegionFlags)0)
+#define MOJO_WRAP_PLATFORM_SHARED_BUFFER_HANDLE_FLAG_NONE \
+  ((MojoWrapPlatformSharedMemoryRegionFlags)0)
 
 // Options passed to |MojoWrapPlatformSharedMemoryRegion()|.
 struct MOJO_ALIGNAS(8) MojoWrapPlatformSharedMemoryRegionOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoWrapPlatformSharedMemoryRegionFlags|.
-    MojoWrapPlatformSharedMemoryRegionFlags flags;
+  // See |MojoWrapPlatformSharedMemoryRegionFlags|.
+  MojoWrapPlatformSharedMemoryRegionFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoWrapPlatformSharedMemoryRegionOptions) == 8, "MojoWrapPlatformSharedMemoryRegionOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoWrapPlatformSharedMemoryRegionOptions) ==
+                       8,
+                   "MojoWrapPlatformSharedMemoryRegionOptions has wrong size");
 
 // Flags passed to |MojoUnwrapPlatformSharedMemoryRegion()| via
 // |MojoUnwrapPlatformSharedMemoryRegionOptions|.
 typedef uint32_t MojoUnwrapPlatformSharedMemoryRegionFlags;
 
 // No flags. Default behavior.
-#define MOJO_UNWRAP_PLATFORM_SHARED_BUFFER_HANDLE_FLAG_NONE ((MojoUnwrapPlatformSharedMemoryRegionFlags)0)
+#define MOJO_UNWRAP_PLATFORM_SHARED_BUFFER_HANDLE_FLAG_NONE \
+  ((MojoUnwrapPlatformSharedMemoryRegionFlags)0)
 
 // Options passed to |MojoUnwrapPlatformSharedMemoryRegion()|.
 struct MOJO_ALIGNAS(8) MojoUnwrapPlatformSharedMemoryRegionOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoUnwrapPlatformSharedMemoryRegionFlags|.
-    MojoUnwrapPlatformSharedMemoryRegionFlags flags;
+  // See |MojoUnwrapPlatformSharedMemoryRegionFlags|.
+  MojoUnwrapPlatformSharedMemoryRegionFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoUnwrapPlatformSharedMemoryRegionOptions) == 8, "MojoUnwrapPlatformSharedMemoryRegionOptions has wrong size");
+MOJO_STATIC_ASSERT(
+    sizeof(struct MojoUnwrapPlatformSharedMemoryRegionOptions) == 8,
+    "MojoUnwrapPlatformSharedMemoryRegionOptions has wrong size");
 
 // Wraps a native platform handle as a Mojo handle which can be transferred
 // over a message pipe. Takes ownership of the underlying native platform
@@ -203,8 +219,10 @@ MOJO_STATIC_ASSERT(sizeof(struct MojoUnwrapPlatformSharedMemoryRegionOptions) ==
 // NOTE: It is not always possible to detect if |platform_handle| is valid,
 // particularly when |platform_handle->type| is valid but
 // |platform_handle->value| does not represent a valid platform object.
-MOJO_SYSTEM_EXPORT MojoResult MojoWrapPlatformHandle(
-    const struct MojoPlatformHandle* platform_handle, const struct MojoWrapPlatformHandleOptions* options, MojoHandle* mojo_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoWrapPlatformHandle(const struct MojoPlatformHandle* platform_handle,
+                       const struct MojoWrapPlatformHandleOptions* options,
+                       MojoHandle* mojo_handle);
 
 // Unwraps a native platform handle from a Mojo handle. If this call succeeds,
 // ownership of the underlying platform object is assumed by the caller. The
@@ -220,8 +238,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoWrapPlatformHandle(
 //         |*platform_handle| contains the unwrapped platform handle.
 //     |MOJO_RESULT_INVALID_ARGUMENT| if |mojo_handle| was not a valid Mojo
 //         handle wrapping a platform handle.
-MOJO_SYSTEM_EXPORT MojoResult MojoUnwrapPlatformHandle(
-    MojoHandle mojo_handle, const struct MojoUnwrapPlatformHandleOptions* options, struct MojoPlatformHandle* platform_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoUnwrapPlatformHandle(MojoHandle mojo_handle,
+                         const struct MojoUnwrapPlatformHandleOptions* options,
+                         struct MojoPlatformHandle* platform_handle);
 
 // Wraps a native platform shared memory region with a Mojo shared buffer handle
 // which can be used exactly like a shared buffer handle created by
@@ -253,9 +273,14 @@ MOJO_SYSTEM_EXPORT MojoResult MojoUnwrapPlatformHandle(
 //         |*mojo_handle| contains a Mojo shared buffer handle.
 //     |MOJO_RESULT_INVALID_ARGUMENT| if |platform_handle| was not a valid
 //         platform shared buffer handle.
-MOJO_SYSTEM_EXPORT MojoResult MojoWrapPlatformSharedMemoryRegion(const struct MojoPlatformHandle* platform_handles, uint32_t num_platform_handles,
-    uint64_t num_bytes, const struct MojoSharedBufferGuid* guid, MojoPlatformSharedMemoryRegionAccessMode access_mode,
-    const struct MojoWrapPlatformSharedMemoryRegionOptions* options, MojoHandle* mojo_handle);
+MOJO_SYSTEM_EXPORT MojoResult MojoWrapPlatformSharedMemoryRegion(
+    const struct MojoPlatformHandle* platform_handles,
+    uint32_t num_platform_handles,
+    uint64_t num_bytes,
+    const struct MojoSharedBufferGuid* guid,
+    MojoPlatformSharedMemoryRegionAccessMode access_mode,
+    const struct MojoWrapPlatformSharedMemoryRegionOptions* options,
+    MojoHandle* mojo_handle);
 
 // Unwraps a native platform shared memory region from a Mojo shared buffer
 // handle. If this call succeeds, ownership of the underlying shared buffer
@@ -293,12 +318,17 @@ MOJO_SYSTEM_EXPORT MojoResult MojoWrapPlatformSharedMemoryRegion(const struct Mo
 //    |MOJO_RESULT_INVALID_ARGUMENT| if |mojo_handle| is not a valid Mojo
 //        shared buffer handle or |*num_platform_handles| is not large enough
 //        to hold all the handles that would have been unwrapped on success.
-MOJO_SYSTEM_EXPORT MojoResult MojoUnwrapPlatformSharedMemoryRegion(MojoHandle mojo_handle, const struct MojoUnwrapPlatformSharedMemoryRegionOptions* options,
-    struct MojoPlatformHandle* platform_handles, uint32_t* num_platform_handles, uint64_t* num_bytes, struct MojoSharedBufferGuid* guid,
+MOJO_SYSTEM_EXPORT MojoResult MojoUnwrapPlatformSharedMemoryRegion(
+    MojoHandle mojo_handle,
+    const struct MojoUnwrapPlatformSharedMemoryRegionOptions* options,
+    struct MojoPlatformHandle* platform_handles,
+    uint32_t* num_platform_handles,
+    uint64_t* num_bytes,
+    struct MojoSharedBufferGuid* guid,
     MojoPlatformSharedMemoryRegionAccessMode* access_mode);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_PLATFORM_HANDLE_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_PLATFORM_HANDLE_H_

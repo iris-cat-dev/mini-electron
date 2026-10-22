@@ -5,15 +5,14 @@
 #include "services/network/public/cpp/header_util.h"
 
 #include <string>
-#include <vector>
 
-#include "base/containers/fixed_flat_map.h"
-#include "base/strings/string_split.h"
+#include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "net/base/mime_sniffer.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_status_code.h"
+#include "net/url_request/referrer_policy.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "url/gurl.h"
 

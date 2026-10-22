@@ -29,8 +29,10 @@ public:
 
     // This constructor captures current location if available.
     ConsoleMessage(Source, Level, const String& message, const String& url, DocumentLoader*, uint64_t request_identifier);
+#if !defined(MINI_UI_QUICKJS)
     // Creates message from WorkerMessageSource.
     ConsoleMessage(Level, const String& message, std::unique_ptr<SourceLocation>, WorkerThread*);
+#endif
     // Creates a ConsoleMessage from a similar WebConsoleMessage.
     ConsoleMessage(const WebConsoleMessage&, LocalFrame*);
     // If provided, source_location must be non-null.
@@ -43,7 +45,9 @@ public:
     Source GetSource() const;
     Level GetLevel() const;
     const String& Message() const;
+#if !defined(MINI_UI_QUICKJS)
     const String& WorkerId() const;
+#endif
     LocalFrame* Frame() const;
     Vector<DOMNodeId>& Nodes();
     void SetNodes(LocalFrame*, Vector<DOMNodeId> nodes);
@@ -60,7 +64,9 @@ private:
     std::unique_ptr<SourceLocation> location_;
     String request_identifier_;
     double timestamp_;
+#if !defined(MINI_UI_QUICKJS)
     String worker_id_;
+#endif
     WeakMember<LocalFrame> frame_;
     Vector<DOMNodeId> nodes_;
 };

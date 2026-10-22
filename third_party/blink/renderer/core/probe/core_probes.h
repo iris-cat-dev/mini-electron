@@ -35,7 +35,9 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/platform/bindings/callback_function_base.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
@@ -53,17 +55,23 @@ namespace blink {
 
 class CoreProbeSink;
 class OffscreenCanvas;
+#if !defined(MINI_UI_QUICKJS)
 class ThreadDebugger;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace protocol {
 namespace Audits {
 class InspectorIssue;
 } // namespace Audits
 } // namespace protocol
+#endif
 
 namespace probe {
 
+#if !defined(MINI_UI_QUICKJS)
 class AsyncTaskContext;
+#endif
 
 class CORE_EXPORT ProbeBase {
     STACK_ALLOCATED();
@@ -78,6 +86,7 @@ private:
     mutable base::TimeTicks end_time_;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Tracks execution of a (previously scheduled) asynchronous task. An instance
 // should exist for the full duration of the task's execution.
 class CORE_EXPORT AsyncTask {
@@ -113,6 +122,7 @@ private:
     // This persistent is safe since the class is STACK_ALLOCATED.
     Persistent<AdTracker> ad_tracker_;
 };
+#endif // !defined(MINI_UI_QUICKJS)
 
 // Called from generated instrumentation code.
 inline CoreProbeSink* ToCoreProbeSink(LocalFrame* frame)
@@ -162,7 +172,9 @@ inline CoreProbeSink* ToCoreProbeSink(EventTarget* event_target)
 
 CoreProbeSink* ToCoreProbeSink(OffscreenCanvas* offscreen_canvas);
 
+#if !defined(MINI_UI_QUICKJS)
 CORE_EXPORT void AllAsyncTasksCanceled(ExecutionContext*);
+#endif
 
 } // namespace probe
 } // namespace blink

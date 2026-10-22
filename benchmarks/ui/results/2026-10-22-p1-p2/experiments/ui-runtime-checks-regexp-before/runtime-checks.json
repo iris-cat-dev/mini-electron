@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-runtime-checks-regexp-before\\build\\ui-benchmark.exe"
+  ],
+  "library_sha256": "5e1ae03513fd9d7c490b55c4528eec6693eb6dbd4abaac7de3cee462b26ed21e",
+  "source_sha256": "370f040ea9ecae93c4d6e593445711d29619509467110c51988d30f635af58e6",
+  "exit_code": 1,
+  "timed_out": false,
+  "wall_seconds": 0.8283160999999382,
+  "stdout": "RUNTIME fixture=temporary resource_root=C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-runtime-checks-40028-118018984 entry=index.html ownership=owned-cleanup api=mini_ui::View+QuickJS-facade\r\nSNAPSHOT arena {\"peak_bytes\":1554432,\"peak_cells\":8448,\"peak_views\":8448,\"peak_live\":8255,\"released_bytes\":1554432,\"released_cells\":8448,\"released_views\":8448,\"released_live\":64,\"trimmed_bytes\":241664,\"trimmed_cells\":1536,\"trimmed_views\":512,\"trimmed_live\":64}\r\nSNAPSHOT joint_gc {\"epoch\":5,\"wrappers\":5,\"edges\":14,\"live_wrappers\":5,\"live_edges\":14,\"native_destructions\":1}\r\n",
+  "stderr": "FAIL runtime_checks: RegExp execution releases every acquired constructor reference\r\nFAIL runtime_checks: RegExp constructor getter exception propagates without fabricated match\r\nFAIL runtime_checks: 2 invariant failure(s)\r\n"
+}

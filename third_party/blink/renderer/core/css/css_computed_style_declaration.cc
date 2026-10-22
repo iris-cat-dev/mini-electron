@@ -198,7 +198,11 @@ Element* CSSComputedStyleDeclaration::StyledElement() const
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (Element* pseudo_element = element_->GetStyledPseudoElement(pseudo_element_specifier_, pseudo_argument_)) {
+#else
+    if (Element* pseudo_element = element_->GetStyledPseudoElement(pseudo_element_specifier_)) {
+#endif
         return pseudo_element;
     }
     return element_.Get();
@@ -275,6 +279,7 @@ void CSSComputedStyleDeclaration::UpdateStyleAndLayoutTreeIfNeeded(const CSSProp
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Transition pseudo-elements require data computed in pre-paint to generate
     // the UA stylesheet for these pseudo-elements.
     // TODO(khushalsagar): We can probably optimize this to run only when a
@@ -285,6 +290,7 @@ void CSSComputedStyleDeclaration::UpdateStyleAndLayoutTreeIfNeeded(const CSSProp
         }
         return;
     }
+#endif
 
     document.UpdateStyleAndLayoutTreeForElement(styled_element, DocumentUpdateReason::kComputedStyle);
 }

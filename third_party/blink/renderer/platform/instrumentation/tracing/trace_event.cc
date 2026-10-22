@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 #include "base/trace_event/trace_event.h"
@@ -47,3 +48,4 @@ void RemoveEnabledStateObserver(EnabledStateObserver* observer)
 
 } // namespace trace_event
 } // namespace blink
+#endif

@@ -5,6 +5,7 @@
 #include "third_party/blink/renderer/core/paint/cull_rect_updater.h"
 
 #include "base/auto_reset.h"
+#include "base/trace_event/base_tracing.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -19,7 +20,9 @@
 #include "third_party/blink/renderer/core/paint/paint_layer_painter.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/paint/paint_property_tree_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
@@ -81,7 +84,12 @@ bool SetFragmentContentsCullRect(PaintLayer& layer, FragmentData& fragment, cons
     return true;
 }
 
-bool ShouldUseInfiniteCullRect(const PaintLayer& layer, ViewTransitionSupplement* view_transition_supplement, bool& subtree_should_use_infinite_cull_rect)
+#if !defined(MINI_UI_QUICKJS)
+bool ShouldUseInfiniteCullRect(const PaintLayer& layer, ViewTransitionSupplement* view_transition_supplement,
+    bool& subtree_should_use_infinite_cull_rect)
+#else
+bool ShouldUseInfiniteCullRect(const PaintLayer& layer, bool& subtree_should_use_infinite_cull_rect)
+#endif
 {
     if (RuntimeEnabledFeatures::InfiniteCullRectEnabled())
         return true;
@@ -145,6 +153,7 @@ bool ShouldUseInfiniteCullRect(const PaintLayer& layer, ViewTransitionSupplement
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (view_transition_supplement) {
         auto* transition = view_transition_supplement->GetTransition();
 
@@ -153,6 +162,7 @@ bool ShouldUseInfiniteCullRect(const PaintLayer& layer, ViewTransitionSupplement
         if (transition && transition->IsRepresentedViaPseudoElements(object))
             return true;
     }
+#endif
 
     return false;
 }
@@ -176,7 +186,9 @@ CullRectUpdater::CullRectUpdater(PaintLayer& starting_layer, bool disable_expans
     : starting_layer_(starting_layer)
     , expansion_ratio_(disable_expansion ? 0.f : ExpansionRatio(starting_layer.GetLayoutObject()))
 {
+#if !defined(MINI_UI_QUICKJS)
     view_transition_supplement_ = ViewTransitionSupplement::FromIfExists(starting_layer.GetLayoutObject().GetDocument());
+#endif
 }
 
 void CullRectUpdater::Update()
@@ -225,7 +237,11 @@ void CullRectUpdater::UpdateInternal(const CullRect& input_cull_rect)
     root_state_ = object.View()->FirstFragment().LocalBorderBoxProperties().Unalias();
     Context context;
     context.current.container = &starting_layer_;
+#if !defined(MINI_UI_QUICKJS)
     bool should_use_infinite = ShouldUseInfiniteCullRect(starting_layer_, view_transition_supplement_, context.current.subtree_should_use_infinite_cull_rect);
+#else
+    bool should_use_infinite = ShouldUseInfiniteCullRect(starting_layer_, context.current.subtree_should_use_infinite_cull_rect);
+#endif
 
     auto& fragment = object.GetMutableForPainting().FirstFragment();
     SetFragmentCullRect(starting_layer_, fragment, should_use_infinite ? CullRect::Infinite() : input_cull_rect);
@@ -339,8 +355,13 @@ bool CullRectUpdater::UpdateForSelf(Context& context, PaintLayer& layer)
     // traversal).
     bool should_match_fragments = parent_object.IsFragmented();
     bool force_update_children = false;
+#if !defined(MINI_UI_QUICKJS)
     bool should_use_infinite_cull_rect = !context.current.subtree_is_out_of_cull_rect
         && ShouldUseInfiniteCullRect(layer, view_transition_supplement_, context.current.subtree_should_use_infinite_cull_rect);
+#else
+    bool should_use_infinite_cull_rect = !context.current.subtree_is_out_of_cull_rect
+        && ShouldUseInfiniteCullRect(layer, context.current.subtree_should_use_infinite_cull_rect);
+#endif
 
     for (FragmentData& fragment : MutableFragmentDataIterator(layer.GetLayoutObject())) {
         CullRect cull_rect;
@@ -481,9 +502,14 @@ void CullRectUpdater::PaintPropertiesChanged(const LayoutObject& object, const P
     bool should_use_infinite_cull_rect = false;
     if (object.HasLayer()) {
         bool subtree_should_use_infinite_cull_rect = false;
+#if !defined(MINI_UI_QUICKJS)
         auto* view_transition_supplement = ViewTransitionSupplement::FromIfExists(object.GetDocument());
         should_use_infinite_cull_rect
             = ShouldUseInfiniteCullRect(*To<LayoutBoxModelObject>(object).Layer(), view_transition_supplement, subtree_should_use_infinite_cull_rect);
+#else
+        should_use_infinite_cull_rect
+            = ShouldUseInfiniteCullRect(*To<LayoutBoxModelObject>(object).Layer(), subtree_should_use_infinite_cull_rect);
+#endif
         if (should_use_infinite_cull_rect && object.FirstFragment().GetCullRect().IsInfinite() && object.FirstFragment().GetContentsCullRect().IsInfinite()) {
             return;
         }

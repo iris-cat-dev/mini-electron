@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_FOREIGN_LAYER_DISPLAY_ITEM_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_FOREIGN_LAYER_DISPLAY_ITEM_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/dcheck_is_on.h"
 #include "cc/layers/layer.h"
 #include "third_party/blink/renderer/platform/graphics/paint/display_item.h"
@@ -59,4 +60,5 @@ PLATFORM_EXPORT void RecordForeignLayer(GraphicsContext& context, const DisplayI
 
 } // namespace blink
 
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_FOREIGN_LAYER_DISPLAY_ITEM_H_

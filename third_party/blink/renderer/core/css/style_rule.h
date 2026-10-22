@@ -78,7 +78,9 @@ public:
         kScope,
         kSupports,
         kStartingStyle,
+#if !defined(MINI_UI_QUICKJS)
         kViewTransition,
+#endif
         kFunction,
         kMixin,
         kApplyMixin,
@@ -184,10 +186,12 @@ public:
     {
         return GetType() == kStartingStyle;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsViewTransitionRule() const
     {
         return GetType() == kViewTransition;
     }
+#endif
     bool IsConditionRule() const
     {
         return GetType() == kContainer || GetType() == kMedia || GetType() == kSupports || GetType() == kStartingStyle;

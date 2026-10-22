@@ -28,8 +28,11 @@
 #include "third_party/blink/renderer/platform/bindings/bigint.h"
 #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
 #include "third_party/blink/renderer/platform/heap/heap_traits.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8-fast-api-calls.h"
+#endif
 
 namespace blink {
 

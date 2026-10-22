@@ -74,6 +74,7 @@ public:
     // document in a frame. Includes supported JavaScript MIME types.
     static bool IsSupportedNonImageMIMEType(const String& mime_type);
 
+#if !defined(MINI_UI_QUICKJS)
     // Checks to see if the mime type and codecs are supported media MIME types.
     static bool IsSupportedMediaMIMEType(const String& mime_type, const String& codecs);
 
@@ -90,6 +91,7 @@ public:
     // kMaybeSupported indicates the mime type is supported, but the mime type
     // requires a codecs parameter that is missing.
     static SupportsType SupportsMediaSourceMIMEType(const String& mime_type, const String& codecs);
+#endif
 
     // Checks to see if a mime type is a valid Java applet mime type
     static bool IsJavaAppletMIMEType(const String& mime_type);

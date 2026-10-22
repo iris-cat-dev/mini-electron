@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
 
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
@@ -240,3 +241,4 @@ void CSSPaintValue::TraceAfterDispatch(blink::Visitor* visitor) const
 }
 
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)

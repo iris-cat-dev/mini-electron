@@ -1,0 +1,95 @@
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+*** wait with pending attach
+Symbol search path is: srv*
+Executable search path is: 
+ModLoad: 00007ff6`79650000 00007ff6`7bc8a000   D:\Project\mini-electron\.build-tools\ui-smoke\framework-memory-profile-final.exe
+ModLoad: 00007ffd`55250000 00007ffd`55448000   C:\Windows\SYSTEM32\ntdll.dll
+ModLoad: 00007ffd`534d0000 00007ffd`53592000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffd`529e0000 00007ffd`52cd6000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffd`4e4e0000 00007ffd`4e574000   C:\Windows\SYSTEM32\apphelp.dll
+ModLoad: 00007ffd`54e70000 00007ffd`55011000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffd`531c0000 00007ffd`531e2000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffd`55020000 00007ffd`5504b000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffd`53050000 00007ffd`53169000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffd`52f00000 00007ffd`52f9d000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffd`528e0000 00007ffd`529e0000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffd`536f0000 00007ffd`53e60000   C:\Windows\System32\SHELL32.dll
+ModLoad: 00007ffd`55080000 00007ffd`55131000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffd`535a0000 00007ffd`5363e000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffd`54530000 00007ffd`545cf000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffd`54c60000 00007ffd`54d80000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffd`52ce0000 00007ffd`52d07000   C:\Windows\System32\bcrypt.dll
+ModLoad: 00007ffd`54400000 00007ffd`5452b000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffd`54030000 00007ffd`54384000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffd`44be0000 00007ffd`44c07000   C:\Windows\SYSTEM32\WINMM.dll
+ModLoad: 00007ffd`500c0000 00007ffd`5033f000   C:\Windows\SYSTEM32\DWrite.dll
+ModLoad: 00007ffd`46f40000 00007ffd`46f59000   C:\Windows\SYSTEM32\USP10.dll
+ModLoad: 00007ffd`50c10000 00007ffd`50e11000   C:\Windows\SYSTEM32\dbghelp.dll
+ModLoad: 00007ffd`55050000 00007ffd`5507f000   C:\Windows\System32\IMM32.DLL
+ModLoad: 00007ffd`52d10000 00007ffd`52d92000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffd`4f410000 00007ffd`4f4ae000   C:\Windows\system32\uxtheme.dll
+ModLoad: 00007ffd`510d0000 00007ffd`510e2000   C:\Windows\SYSTEM32\kernel.appcore.dll
+(9928.9624): Break instruction exception - code 80000003 (first chance)
+ntdll!DbgBreakPoint:
+00007ffd`552f10d0 cc              int     3
+0:008> cdb: Reading initial command '.time; ~0s; r rip; k 24; qd'
+Debug session time: Thu Oct 22 13:48:18.496 2026 (UTC + 8:00)
+System Uptime: 1 days 6:17:55.831
+Process Uptime: 0 days 0:00:22.460
+  Kernel time: 0 days 0:00:00.046
+  User time: 0 days 0:00:12.328
+*** WARNING: Unable to verify checksum for D:\Project\mini-electron\.build-tools\ui-smoke\framework-memory-profile-final.exe
+framework_memory_profile_final!GetHandleVerifier+0x6426fa:
+00007ff6`7a1b83ee 418b4014        mov     eax,dword ptr [r8+14h] ds:000000f5`1d5f51cc=ffffffff
+rip=00007ff67a1b83ee
+Child-SP          RetAddr           Call Site
+000000f5`1d5f50a0 00007ff6`7a1b8f2b framework_memory_profile_final!GetHandleVerifier+0x6426fa
+000000f5`1d5f5190 00007ff6`7a700e68 framework_memory_profile_final!GetHandleVerifier+0x643237
+000000f5`1d5f5210 00007ff6`7a6ff5ae framework_memory_profile_final!GetHandleVerifier+0xb8b174
+000000f5`1d5f5290 00007ff6`7a6fe929 framework_memory_profile_final!GetHandleVerifier+0xb898ba
+000000f5`1d5f5330 00007ff6`7a6fb275 framework_memory_profile_final!GetHandleVerifier+0xb88c35
+000000f5`1d5f5370 00007ff6`7a0bb4ab framework_memory_profile_final!GetHandleVerifier+0xb85581
+000000f5`1d5f56b0 00007ff6`7a5f4e78 framework_memory_profile_final!GetHandleVerifier+0x5457b7
+000000f5`1d5f5930 00007ff6`7a5ef2b3 framework_memory_profile_final!GetHandleVerifier+0xa7f184
+000000f5`1d5f5a40 00007ff6`7a5ee6f2 framework_memory_profile_final!GetHandleVerifier+0xa795bf
+000000f5`1d5f5bb0 00007ff6`7a5ee5ab framework_memory_profile_final!GetHandleVerifier+0xa789fe
+000000f5`1d5f9660 00007ff6`79f72fc9 framework_memory_profile_final!GetHandleVerifier+0xa788b7
+000000f5`1d5f96a0 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fd2d5
+000000f5`1d5f9a50 00007ff6`7a5cef58 framework_memory_profile_final!GetHandleVerifier+0x3f806e
+000000f5`1d5f9c20 00007ff6`7a5ce953 framework_memory_profile_final!GetHandleVerifier+0xa59264
+000000f5`1d5f9db0 00007ff6`79f729b8 framework_memory_profile_final!GetHandleVerifier+0xa58c5f
+000000f5`1d5f9f10 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fccc4
+000000f5`1d5fa230 00007ff6`7a5cfed9 framework_memory_profile_final!GetHandleVerifier+0x3f806e
+000000f5`1d5fa400 00007ff6`79f72a30 framework_memory_profile_final!GetHandleVerifier+0xa5a1e5
+000000f5`1d5fa5c0 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fcd3c
+000000f5`1d5fa8e0 00007ff6`7a5c9838 framework_memory_profile_final!GetHandleVerifier+0x3f806e
+000000f5`1d5faab0 00007ff6`7a5c801e framework_memory_profile_final!GetHandleVerifier+0xa53b44
+000000f5`1d5fad80 00007ff6`79f72940 framework_memory_profile_final!GetHandleVerifier+0xa5232a
+000000f5`1d5faf60 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fcc4c
+000000f5`1d5fb280 00007ff6`7a5f26cb framework_memory_profile_final!GetHandleVerifier+0x3f806e
+000000f5`1d5fb450 00007ff6`7a5f1bfc framework_memory_profile_final!GetHandleVerifier+0xa7c9d7
+000000f5`1d5fb610 00007ff6`7a5ef328 framework_memory_profile_final!GetHandleVerifier+0xa7bf08
+000000f5`1d5fb7b0 00007ff6`7a5ee5b7 framework_memory_profile_final!GetHandleVerifier+0xa79634
+000000f5`1d5fb920 00007ff6`79f72fc9 framework_memory_profile_final!GetHandleVerifier+0xa788c3
+000000f5`1d5fb960 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fd2d5
+000000f5`1d5fbd10 00007ff6`7a5f26cb framework_memory_profile_final!GetHandleVerifier+0x3f806e
+000000f5`1d5fbee0 00007ff6`7a5f1bfc framework_memory_profile_final!GetHandleVerifier+0xa7c9d7
+000000f5`1d5fc0a0 00007ff6`7a5ef328 framework_memory_profile_final!GetHandleVerifier+0xa7bf08
+000000f5`1d5fc240 00007ff6`7a5ee5b7 framework_memory_profile_final!GetHandleVerifier+0xa79634
+000000f5`1d5fc3b0 00007ff6`79f72fc9 framework_memory_profile_final!GetHandleVerifier+0xa788c3
+000000f5`1d5fc3f0 00007ff6`79f6dd62 framework_memory_profile_final!GetHandleVerifier+0x3fd2d5
+000000f5`1d5fc7a0 00007ff6`7a5f4e92 framework_memory_profile_final!GetHandleVerifier+0x3f806e
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

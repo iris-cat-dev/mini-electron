@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,14 +26,13 @@ namespace mojo {
 namespace internal {
 
 struct Unmapper {
-    void operator()(void* buffer)
-    {
-        MojoResult result = MojoUnmapBuffer(buffer);
-        DCHECK_EQ(MOJO_RESULT_OK, result);
-    }
+  void operator()(void* buffer) {
+    [[maybe_unused]] MojoResult result = MojoUnmapBuffer(buffer);
+    DCHECK_EQ(MOJO_RESULT_OK, result);
+  }
 };
 
-} // namespace internal
+}  // namespace internal
 
 using ScopedSharedBufferMapping = std::unique_ptr<void, internal::Unmapper>;
 
@@ -44,45 +43,42 @@ typedef ScopedHandleBase<SharedBufferHandle> ScopedSharedBufferHandle;
 // A strongly-typed representation of a |MojoHandle| referring to a shared
 // buffer.
 class MOJO_CPP_SYSTEM_EXPORT SharedBufferHandle : public Handle {
-public:
-    enum class AccessMode {
-        READ_WRITE,
-        READ_ONLY,
-    };
+ public:
+  enum class AccessMode {
+    READ_WRITE,
+    READ_ONLY,
+  };
 
-    SharedBufferHandle()
-    {
-    }
-    explicit SharedBufferHandle(MojoHandle value)
-        : Handle(value)
-    {
-    }
+  SharedBufferHandle() {}
+  explicit SharedBufferHandle(MojoHandle value) : Handle(value) {}
 
-    // Copying and assignment allowed.
+  // Copying and assignment allowed.
 
-    // Creates a new SharedBufferHandle. Returns an invalid handle on failure.
-    static ScopedSharedBufferHandle Create(uint64_t num_bytes);
+  // Creates a new SharedBufferHandle. Returns an invalid handle on failure.
+  static ScopedSharedBufferHandle Create(uint64_t num_bytes);
 
-    // Clones this shared buffer handle. If |access_mode| is READ_ONLY or this is
-    // a read-only handle, the new handle will be read-only. On failure, this will
-    // return an empty result.
-    ScopedSharedBufferHandle Clone(AccessMode access_mode) const;
+  // Clones this shared buffer handle. If |access_mode| is READ_ONLY or this is
+  // a read-only handle, the new handle will be read-only. On failure, this will
+  // return an empty result.
+  ScopedSharedBufferHandle Clone(AccessMode access_mode) const;
 
-    // Maps |size| bytes of this shared buffer. On failure, this will return a
-    // null mapping.
-    ScopedSharedBufferMapping Map(uint64_t size) const;
+  // Maps |size| bytes of this shared buffer. On failure, this will return a
+  // null mapping.
+  ScopedSharedBufferMapping Map(uint64_t size) const;
 
-    // Maps |size| bytes of this shared buffer, starting |offset| bytes into the
-    // buffer. On failure, this will return a null mapping.
-    ScopedSharedBufferMapping MapAtOffset(uint64_t size, uint64_t offset) const;
+  // Maps |size| bytes of this shared buffer, starting |offset| bytes into the
+  // buffer. On failure, this will return a null mapping.
+  ScopedSharedBufferMapping MapAtOffset(uint64_t size, uint64_t offset) const;
 
-    // Get the size of this shared buffer.
-    uint64_t GetSize() const;
+  // Get the size of this shared buffer.
+  uint64_t GetSize() const;
 };
 
-static_assert(sizeof(SharedBufferHandle) == sizeof(Handle), "Bad size for C++ SharedBufferHandle");
-static_assert(sizeof(ScopedSharedBufferHandle) == sizeof(SharedBufferHandle), "Bad size for C++ ScopedSharedBufferHandle");
+static_assert(sizeof(SharedBufferHandle) == sizeof(Handle),
+              "Bad size for C++ SharedBufferHandle");
+static_assert(sizeof(ScopedSharedBufferHandle) == sizeof(SharedBufferHandle),
+              "Bad size for C++ ScopedSharedBufferHandle");
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_BUFFER_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_BUFFER_H_

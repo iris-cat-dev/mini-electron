@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_DEDICATED_OR_SHARED_WORKER_FETCH_CONTEXT_IMPL_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_DEDICATED_OR_SHARED_WORKER_FETCH_CONTEXT_IMPL_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/memory/raw_ptr.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/single_thread_task_runner.h"
@@ -261,4 +263,6 @@ template <> struct DowncastTraits<DedicatedOrSharedWorkerFetchContextImpl> {
 
 } // namespace blink
 
+
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_DEDICATED_OR_SHARED_WORKER_FETCH_CONTEXT_IMPL_H_

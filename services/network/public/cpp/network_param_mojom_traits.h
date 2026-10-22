@@ -15,7 +15,9 @@
 #include "net/dns/public/resolve_error_info.h"
 #include "net/http/http_version.h"
 #include "net/log/net_log_source.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_cert_request_info.h"
+#endif
 #include "services/network/public/mojom/network_param.mojom-shared.h"
 #include "url/mojom/scheme_host_port_mojom_traits.h"
 
@@ -127,6 +129,7 @@ public:
     static bool Read(network::mojom::ProxyChainDataView data, net::ProxyChain* out);
 };
 
+#if !defined(MINI_UI_QUICKJS)
 template <> class COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM) StructTraits<network::mojom::SSLCertRequestInfoDataView, scoped_refptr<net::SSLCertRequestInfo>> {
 public:
     static bool IsNull(const scoped_refptr<net::SSLCertRequestInfo>& r)
@@ -161,6 +164,7 @@ public:
 
     static bool Read(network::mojom::SSLCertRequestInfoDataView data, scoped_refptr<net::SSLCertRequestInfo>* out);
 };
+#endif
 
 template <> struct COMPONENT_EXPORT(NETWORK_CPP_NETWORK_PARAM) StructTraits<network::mojom::NetLogSourceDataView, net::NetLogSource> {
     static uint32_t source_id(const net::NetLogSource& params)

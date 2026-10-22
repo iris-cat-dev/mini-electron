@@ -36,7 +36,9 @@
 #include "net/url_request/referrer_policy.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/mojom/referrer_policy.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/restricted_cookie_manager.mojom-shared.h"
+#endif
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
 #include "third_party/blink/public/platform/web_common.h"
@@ -103,7 +105,9 @@ public:
     WebLocalFrame* GetFrame() const;
     bool IsHTMLDocument() const;
     bool IsXHTMLDocument() const;
+#if !defined(MINI_UI_QUICKJS)
     bool IsPluginDocument() const;
+#endif
     WebURL BaseURL() const;
     ukm::SourceId GetUkmSourceId() const;
 
@@ -165,15 +169,20 @@ public:
     // Returns true if the document is in prerendering.
     bool IsPrerendering();
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if the document has a Document Picture-in-Picture window.
     bool HasDocumentPictureInPictureWindow() const;
+#endif
 
     // Adds `callback` to the post-prerendering activation steps.
     // https://wicg.github.io/nav-speculation/prerendering.html#document-post-prerendering-activation-steps-list
     void AddPostPrerenderingActivationStep(base::OnceClosure callback);
 
+#if !defined(MINI_UI_QUICKJS)
     // Sets a cookie manager which can be used for this document.
     void SetCookieManager(CrossVariantMojoRemote<network::mojom::RestrictedCookieManagerInterfaceBase> cookie_manager);
+
+#endif
 
     // Returns the referrer policy for this document's referrer.
     net::ReferrerPolicy GetReferrerPolicy() const;
@@ -181,10 +190,12 @@ public:
     // Returns the referrer for this document.
     WebString OutgoingReferrer() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // (Experimental) Initiates Link Preview for `url`.
     //
     // It is intended to be used in WebLinkPreviewTriggerer.
     void InitiatePreview(const WebURL& url);
+#endif
 
 #if INSIDE_BLINK
     WebDocument(Document*);

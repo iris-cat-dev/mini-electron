@@ -13,7 +13,7 @@
 #include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/include/core/SkTypeface.h"
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_ANDROID) || (BUILDFLAG(IS_WIN) && !defined(MINI_UI_QUICKJS))
 #include "third_party/blink/public/common/font_unique_name_lookup/font_table_matcher.h"
 #endif
 
@@ -69,9 +69,10 @@ public:
 protected:
     FontUniqueNameLookup();
 
-    // Windows and Android share the concept of connecting to a Mojo service for
-    // retrieving a ReadOnlySharedMemoryRegion with the lookup table in it.
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
+    // Android and the multi-process Windows build share a Mojo-provided lookup
+    // table. The native UI Windows build resolves names directly with
+    // DirectWrite.
+#if BUILDFLAG(IS_ANDROID) || (BUILDFLAG(IS_WIN) && !defined(MINI_UI_QUICKJS))
     std::unique_ptr<FontTableMatcher> font_table_matcher_;
 #endif
 };

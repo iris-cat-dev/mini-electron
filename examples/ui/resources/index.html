@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QuickJS + Blink UI</title>
+  <link rel="stylesheet" href="./app.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <aside>
+    <div class="brand"><img src="./logo.svg" alt="本地 SVG"><strong>mini-ui</strong></div>
+    <div class="caption">C++ EMBEDDED UI</div>
+    <nav><a class="selected" href="#workspace">工作区</a><a href="#features">本地资源</a><a href="#interaction">交互验证</a></nav>
+    <div class="engine"><span class="dot"></span> QuickJS + Blink<br><small>CPU raster · local only</small></div>
+  </aside>
+  <main id="workspace">
+    <header><div><div class="eyebrow">NATIVE HOST / STANDARD DOM</div><h1>一个轻量的界面运行时</h1></div><span class="badge">LOCAL</span></header>
+    <p class="intro">HTML、CSS 与 JavaScript，由 C++ 宿主驱动。没有 Node，也不连接网络。</p>
+    <section class="cards" id="features">
+      <article><div class="label">脚本引擎</div><h2>QuickJS</h2><p>原生 DOM 对象、事件、Promise 与本地 ES modules。</p></article>
+      <article><div class="label">渲染方式</div><h2>Blink + Skia</h2><p>标准布局与软件绘制，输出预乘 BGRA 像素。</p></article>
+      <article><div class="label">资源边界</div><h2>本地目录</h2><p>样式、脚本与 SVG 均来自宿主指定的资源根目录。</p></article>
+    </section>
+    <section class="workbench" id="interaction">
+      <div class="interaction"><div class="label">DOM / EVENTS</div><h2>试着与页面交互</h2><p class="count"><span id="count">0</span><small> 次点击</small></p><button id="increment" type="button">增加计数</button><label for="name">键盘输入</label><input id="name" placeholder="输入一些文字"><p id="status" role="status">等待输入</p></div>
+      <div class="canvas-panel"><div class="label">CANVAS 2D / REQUESTANIMATIONFRAME</div><canvas id="plot" width="440" height="200"></canvas><div class="canvas-note"><span class="dot"></span> 实时帧由宿主 Tick() 推进</div></div>
+    </section>
+    <footer>所有资源均为本地文件 <span>DOM identity · input · resize · lifecycle</span></footer>
+  </main>
+</body>
+</html>

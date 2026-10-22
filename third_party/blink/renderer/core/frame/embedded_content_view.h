@@ -36,10 +36,12 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsPluginView() const
     {
         return false;
     }
+#endif
 
     virtual LocalFrameView* ParentFrameView() const = 0;
     virtual LayoutEmbeddedContent* GetLayoutEmbeddedContent() const = 0;

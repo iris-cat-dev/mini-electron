@@ -167,8 +167,10 @@ public:
     // BaseRenderingContext2D implementation
     bool OriginClean() const final;
     void SetOriginTainted() final;
+#if !defined(MINI_UI_QUICKJS)
     void DisableAcceleration() override;
     bool ShouldDisableAccelerationBecauseOfReadback() const override;
+#endif
 
     int Width() const final;
     int Height() const final;
@@ -201,7 +203,11 @@ public:
 
     bool IsPaintable() const final
     {
+#if defined(MINI_UI_QUICKJS)
+        return canvas() && canvas()->ResourceProvider();
+#else
         return canvas() && canvas()->GetCanvas2DLayerBridge();
+#endif
     }
 
     void WillDrawImage(CanvasImageSource*) const final;
@@ -212,6 +218,7 @@ public:
 
     ImageData* getImageDataInternal(int sx, int sy, int sw, int sh, ImageDataSettings*, ExceptionState&) final;
 
+#if !defined(MINI_UI_QUICKJS)
     IdentifiableToken IdentifiableTextToken() const override
     {
         return identifiability_study_helper_.GetToken();
@@ -226,13 +233,16 @@ public:
     {
         return identifiability_study_helper_.encountered_sensitive_ops();
     }
+#endif
 
     void SendContextLostEventIfNeeded() override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IdentifiabilityEncounteredPartiallyDigestedImage() const override
     {
         return identifiability_study_helper_.encountered_partially_digested_image();
     }
+#endif
 
     int LayerCount() const override;
 
@@ -260,7 +270,9 @@ private:
     // TODO(crbug.com/40280152): Fold this method into PageVisibilityChanged().
     void OnPageVisibilityChangeWhenPaintable();
 
+#if !defined(MINI_UI_QUICKJS)
     bool Restore();
+#endif
 
     void PruneLocalFontCache(size_t target_size);
 
@@ -284,7 +296,9 @@ private:
     void PageVisibilityChanged() override;
     void Stop() final;
 
+#if !defined(MINI_UI_QUICKJS)
     cc::Layer* CcLayer() const override;
+#endif
     bool IsCanvas2DBufferValid() const override;
 
     void ColorSchemeMayHaveChanged() override;

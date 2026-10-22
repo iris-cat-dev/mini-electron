@@ -49,7 +49,9 @@ class Node;
 class WebDocument;
 class WebElement;
 class WebElementCollection;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainer;
+#endif
 
 // Provides access to some properties of a DOM node.
 // Note that the class design requires that neither this class nor any of its
@@ -138,8 +140,9 @@ public:
     WebVector<WebNode> FindAllTextNodesMatchingRegex(const WebString& regex) const;
 
     bool Focused() const;
-
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainer* PluginContainer() const;
+#endif
 
     bool IsInsideFocusableElementOrARIAWidget() const;
 

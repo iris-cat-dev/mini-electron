@@ -123,7 +123,9 @@ bool ExternalPopupMenu::ShowInternal()
         auto* box = To<LayoutBox>(layout_object);
         gfx::Rect rect = ToEnclosingRect(box->LocalToAbsoluteRect(box->PhysicalBorderBoxRect()));
         gfx::Rect rect_in_viewport = local_frame_->View()->FrameToViewport(rect);
+#if !defined(MINI_UI_QUICKJS)
         float scale_for_emulation = WebLocalFrameImpl::FromFrame(local_frame_)->LocalRootFrameWidget()->GetEmulatorScale();
+#endif
 
         // rect_in_viewport needs to be in CSS pixels.
         float dpr = GetDprForSizeAdjustment(*owner_element_);
@@ -131,8 +133,12 @@ bool ExternalPopupMenu::ShowInternal()
             rect_in_viewport = gfx::ScaleToRoundedRect(rect_in_viewport, 1 / dpr);
         }
 
+#if defined(MINI_UI_QUICKJS)
+        gfx::Rect bounds = rect_in_viewport;
+#else
         gfx::Rect bounds = gfx::Rect(
             rect_in_viewport.x() * scale_for_emulation, rect_in_viewport.y() * scale_for_emulation, rect_in_viewport.width(), rect_in_viewport.height());
+#endif
         local_frame_->GetLocalFrameHostRemote().ShowPopupMenu(
             receiver_.BindNewPipeAndPassRemote(execution_context->GetTaskRunner(TaskType::kInternalUserInteraction)), bounds, item_height, font_size,
             selected_item, std::move(menu_items), right_aligned, allow_multiple_selection);

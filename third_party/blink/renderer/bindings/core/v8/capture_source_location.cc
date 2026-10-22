@@ -11,7 +11,7 @@
 #include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 #include "third_party/blink/renderer/core/inspector/v8_inspector_string.h"
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #endif
@@ -23,7 +23,7 @@
 
 namespace blink {
 
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
 namespace {
 
 String FormatV8StackTrace(v8::Isolate* isolate, v8::Local<v8::StackTrace> stack_trace)
@@ -57,11 +57,11 @@ String FormatV8StackTrace(v8::Isolate* isolate, v8::Local<v8::StackTrace> stack_
 #endif
 std::unique_ptr<SourceLocation> CaptureSourceLocation(ExecutionContext* execution_context)
 {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     if (auto location = blink::CaptureSourceLocation(); !location->IsUnknown())
         return location;
 #endif
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     std::unique_ptr<v8_inspector::V8StackTrace> stack_trace = SourceLocation::CaptureStackTraceInternal(false);
     if (stack_trace && !stack_trace->isEmpty()) {
         return SourceLocation::CreateFromNonEmptyV8StackTraceInternal(std::move(stack_trace));
@@ -76,14 +76,14 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(ExecutionContext* executio
                 line_number = document->GetScriptableDocumentParser()->LineNumber().OneBasedInt();
             }
         }
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
         return std::make_unique<SourceLocation>(document->Url().GetString(), String(), line_number, 0, nullptr);
 #else
         return std::make_unique<SourceLocation>(document->Url().GetString(), String(), line_number, 0, std::move(stack_trace));
 #endif
     }
 
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     return std::make_unique<SourceLocation>(execution_context ? execution_context->Url().GetString() : String(), String(), 0, 0, nullptr);
 #else
     return std::make_unique<SourceLocation>(
@@ -94,7 +94,7 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(ExecutionContext* executio
 std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::Local<v8::Message> message, ExecutionContext* execution_context)
 {
     v8::Local<v8::StackTrace> stack = message->GetStackTrace();
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     std::unique_ptr<v8_inspector::V8StackTrace> stack_trace;
     if (ThreadDebugger* debugger = ThreadDebugger::From(isolate)) {
         if (v8_inspector::V8Inspector* inspector = debugger->GetV8Inspector())
@@ -116,7 +116,7 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::
         ++column_number;
     }
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     if ((!script_id || !line_number) && stack_trace && !stack_trace->isEmpty()) {
         return SourceLocation::CreateFromNonEmptyV8StackTraceInternal(std::move(stack_trace));
     }
@@ -126,7 +126,7 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::
     if (url.empty()) {
         url = execution_context->Url();
     }
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     return std::make_unique<SourceLocation>(
         url, String(), line_number, column_number, nullptr, script_id, FormatV8StackTrace(isolate, stack));
 #else

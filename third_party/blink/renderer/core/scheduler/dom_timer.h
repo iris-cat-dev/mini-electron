@@ -30,7 +30,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -92,7 +94,9 @@ private:
 
     int timeout_id_;
     int nesting_level_;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
     Member<ScheduledAction> action_;
 };
 

@@ -38,6 +38,7 @@
 #include "cc/input/scroll_utils.h"
 #include "cc/input/scrollbar.h"
 #include "cc/input/snap_selection_strategy.h"
+#include "third_party/blink/public/common/input/web_gesture_event.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/animation/scroll_timeline.h"
@@ -47,7 +48,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/anchor_element_viewport_position_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
@@ -68,7 +71,9 @@
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
@@ -144,11 +149,15 @@ void ScrollableArea::ClearScrollableArea()
     if (mac_scrollbar_animator_)
         mac_scrollbar_animator_->Dispose();
     if (scroll_animator_) {
+#if !defined(MINI_UI_QUICKJS)
         scroll_animator_->DetachElement();
+#endif
         scroll_animator_.Clear();
     }
     if (programmatic_scroll_animator_) {
+#if !defined(MINI_UI_QUICKJS)
         programmatic_scroll_animator_->DetachElement();
+#endif
         programmatic_scroll_animator_.Clear();
     }
     if (fade_overlay_scrollbars_timer_)
@@ -827,6 +836,7 @@ void ScrollableArea::SetScrollbarNeedsPaintInvalidation(ScrollbarOrientation ori
     else
         vertical_scrollbar_needs_paint_invalidation_ = true;
 
+#if !defined(MINI_UI_QUICKJS)
     // Invalidate the scrollbar directly if it's already composited.
     // GetLayoutBox() may be null in some unit tests.
     if (auto* box = GetLayoutBox()) {
@@ -846,6 +856,7 @@ void ScrollableArea::SetScrollbarNeedsPaintInvalidation(ScrollbarOrientation ori
         }
     }
 
+#endif
     // TODO(crbug.com/1505560): we don't need to invalidate paint of scrollbar
     // for changes inside of the scrollbar. We'll invalidate raster if needed
     // after paint. We can remove some of paint invalidation code in this class,
@@ -856,8 +867,10 @@ void ScrollableArea::SetScrollbarNeedsPaintInvalidation(ScrollbarOrientation ori
 
 void ScrollableArea::SetScrollCornerNeedsPaintInvalidation()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (cc::Layer* layer = LayerForScrollCorner())
         layer->SetNeedsDisplay();
+#endif
     scroll_corner_needs_paint_invalidation_ = true;
     ScrollControlWasSetNeedsPaintInvalidation();
 }
@@ -873,17 +886,29 @@ void ScrollableArea::SetScrollControlsNeedFullPaintInvalidation()
 
 bool ScrollableArea::HasLayerForHorizontalScrollbar() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return LayerForHorizontalScrollbar();
+#endif
 }
 
 bool ScrollableArea::HasLayerForVerticalScrollbar() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return LayerForVerticalScrollbar();
+#endif
 }
 
 bool ScrollableArea::HasLayerForScrollCorner() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return LayerForScrollCorner();
+#endif
 }
 
 void ScrollableArea::ServiceScrollAnimations(double monotonic_time)
@@ -1154,9 +1179,11 @@ void ScrollableArea::OnScrollFinished(bool scroll_did_end)
             active_smooth_scroll_type_.reset();
             UpdateSnappedTargetsAndEnqueueScrollSnapChange();
             if (Node* node = EventTargetNode()) {
+#if !defined(MINI_UI_QUICKJS)
                 if (auto* viewport_position_tracker = AnchorElementViewportPositionTracker::MaybeGetOrCreateFor(node->GetDocument())) {
                     viewport_position_tracker->OnScrollEnd();
                 }
+#endif
                 if (RuntimeEnabledFeatures::ScrollEndEventsEnabled()) {
                     node->GetDocument().EnqueueScrollEndEventForNode(node);
                 }
@@ -1273,7 +1300,16 @@ void ScrollableArea::InjectScrollbarGestureScroll(ScrollOffset delta, ui::Scroll
         delta.Scale(scale);
     }
 
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<WebGestureEvent> gesture_event = WebGestureEvent::GenerateInjectedScrollbarGestureScroll(
+        gesture_type, base::TimeTicks::Now(), gfx::PointF(), delta, granularity);
+    if (gesture_type == WebInputEvent::Type::kGestureScrollBegin) {
+        gesture_event->data.scroll_begin.scrollable_area_element_id = GetScrollElementId().GetInternalValue();
+    }
+    GetLayoutBox()->GetFrame()->GetEventHandler().HandleGestureEvent(*gesture_event);
+#else
     GetChromeClient()->InjectScrollbarGestureScroll(*GetLayoutBox()->GetFrame(), delta, granularity, GetScrollElementId(), gesture_type);
+#endif
 }
 
 ScrollableArea* ScrollableArea::GetForScrolling(const LayoutBox* layout_box)

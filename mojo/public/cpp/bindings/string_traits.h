@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,7 +20,7 @@ namespace mojo {
 //     static bool IsNull(const CustomString& input);
 //     static void SetToNull(CustomString* output);
 //
-//     // This doesn't need to be a base::StringPiece; it simply needs to be a
+//     // This doesn't need to be a std::string_view; it simply needs to be a
 //     // type that exposes a data() method that returns a pointer to the UTF-8
 //     // bytes and a size() method that returns the length of the UTF-8 bytes.
 //     static std::span<char> GetUTF8(const CustomString& input);
@@ -28,12 +28,13 @@ namespace mojo {
 //     // The caller guarantees that |!input.is_null()|.
 //     static bool Read(StringDataView input, CustomString* output);
 //   };
-template <typename T> struct StringTraits {
-    static_assert(internal::AlwaysFalse<T>::value,
-        "Cannot find the mojo::StringTraits specialization. Did you "
-        "forget to include the corresponding header file?");
+template <typename T>
+struct StringTraits {
+  static_assert(internal::AlwaysFalse<T>::value,
+                "Cannot find the mojo::StringTraits specialization. Did you "
+                "forget to include the corresponding header file?");
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_STRING_TRAITS_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_STRING_TRAITS_H_

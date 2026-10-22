@@ -13,7 +13,9 @@ class CSSParserContext;
 
 enum class CSSAtRuleID {
     kCSSAtRuleInvalid,
+#if !defined(MINI_UI_QUICKJS)
     kCSSAtRuleViewTransition,
+#endif
     kCSSAtRuleCharset,
     kCSSAtRuleFontFace,
     kCSSAtRuleFontPaletteValues,

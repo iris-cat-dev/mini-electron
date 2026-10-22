@@ -27,11 +27,15 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_RENDERING_CONTEXT_H_
 
 #include "base/containers/span.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/functional/callback_forward.h"
+#endif
 #include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
 #include "cc/paint/paint_flags.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_context_creation_attributes_core.h"
@@ -40,7 +44,7 @@
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_types_3d.h"
+#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
@@ -60,13 +64,17 @@ class Layer;
 class PaintCanvas;
 } // namespace cc
 
+#if !defined(MINI_UI_QUICKJS)
 namespace gfx {
 class ColorSpace;
 } // namespace gfx
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace media {
 class VideoFrame;
 } // namespace media
+#endif
 
 namespace blink {
 
@@ -79,9 +87,14 @@ class ExecutionContext;
 class ImageBitmap;
 class ScriptState;
 class StaticBitmapImage;
+#if defined(MINI_UI_QUICKJS)
+class V8UnionCanvasRenderingContext2DOrImageBitmapRenderingContext;
+class V8UnionImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2D;
+#else
 class V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext;
 class V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext;
 class WebGraphicsContext3DVideoFramePool;
+#endif
 
 class CORE_EXPORT CanvasRenderingContext : public ScriptWrappable, public ActiveScriptWrappable<CanvasRenderingContext>, public Thread::TaskObserver {
     USING_PRE_FINALIZER(CanvasRenderingContext, Dispose);
@@ -96,12 +109,17 @@ public:
     enum class CanvasRenderingAPI {
         kUnknown = -1, // Not used by histogram.
         k2D = 0,
+#if !defined(MINI_UI_QUICKJS)
         kWebgl = 1,
         kWebgl2 = 2,
+#endif
         kBitmaprenderer = 3,
+#if !defined(MINI_UI_QUICKJS)
         kWebgpu = 4,
-
         kMaxValue = kWebgpu,
+#else
+        kMaxValue = kBitmaprenderer,
+#endif
     };
 
     CanvasRenderingAPI GetRenderingAPI() const
@@ -117,6 +135,7 @@ public:
     {
         return canvas_rendering_type_ == CanvasRenderingAPI::kBitmaprenderer;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsWebGL() const
     {
         return canvas_rendering_type_ == CanvasRenderingAPI::kWebgl || canvas_rendering_type_ == CanvasRenderingAPI::kWebgl2;
@@ -129,6 +148,7 @@ public:
     {
         return canvas_rendering_type_ == CanvasRenderingAPI::kWebgpu;
     }
+#endif
 
     // ActiveScriptWrappable
     // As this class inherits from ActiveScriptWrappable, as long as
@@ -148,11 +168,15 @@ public:
         return host->GetTopExecutionContext();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordUKMCanvasRenderingAPI();
+#endif
     void RecordUMACanvasRenderingAPI();
 
+#if !defined(MINI_UI_QUICKJS)
     // This is only used in WebGL
     void RecordUKMCanvasDrawnToRenderingAPI();
+#endif
 
     static CanvasRenderingAPI RenderingAPIFromId(const String& id);
 
@@ -199,6 +223,18 @@ public:
     {
         return true;
     }
+#if defined(MINI_UI_QUICKJS)
+    virtual V8UnionCanvasRenderingContext2DOrImageBitmapRenderingContext*
+    AsV8RenderingContext()
+    {
+        NOTREACHED();
+    }
+    virtual V8UnionImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2D*
+    AsV8OffscreenRenderingContext()
+    {
+        NOTREACHED();
+    }
+#else
     // TODO(fserb): remove AsV8RenderingContext and AsV8OffscreenRenderingContext.
     virtual V8UnionCanvasRenderingContext2DOrGPUCanvasContextOrImageBitmapRenderingContextOrWebGL2RenderingContextOrWebGLRenderingContext*
     AsV8RenderingContext()
@@ -210,6 +246,7 @@ public:
     {
         NOTREACHED();
     }
+#endif
     virtual bool IsPaintable() const = 0;
     void DidDraw(CanvasPerformanceMonitor::DrawType draw_type)
     {
@@ -224,6 +261,7 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Copy the contents of the rendering context to a media::VideoFrame created
     // using `frame_pool`, with color space specified by `dst_color_space`. If
     // successful, take (using std::move) `callback` and issue it with the
@@ -235,6 +273,7 @@ public:
     {
         return false;
     }
+#endif
 
     virtual cc::Layer* CcLayer() const
     {
@@ -247,8 +286,10 @@ public:
         // Lost context occurred at the graphics system level.
         kRealLostContext,
 
+#if !defined(MINI_UI_QUICKJS)
         // Lost context provoked by WEBGL_lose_context.
         kWebGLLoseContextLostContext,
+#endif
 
         // Lost context occurred due to internal implementation reasons.
         kSyntheticLostContext,
@@ -309,6 +350,7 @@ public:
         NOTREACHED();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // WebGL-specific interface
     virtual bool UsingSwapChain() const
     {
@@ -331,14 +373,16 @@ public:
     virtual void SetHdrMetadata(const gfx::HDRMetadata& hdr_metadata)
     {
     }
-    virtual void SetFilterQuality(cc::PaintFlags::FilterQuality)
-    {
-        NOTREACHED();
-    }
     virtual void Reshape(int width, int height)
     {
     }
     virtual int ExternallyAllocatedBufferCountPerPixel()
+    {
+        NOTREACHED();
+    }
+#endif
+
+    virtual void SetFilterQuality(cc::PaintFlags::FilterQuality)
     {
         NOTREACHED();
     }
@@ -373,6 +417,7 @@ public:
     void Trace(Visitor*) const override;
     virtual void Stop() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual IdentifiableToken IdentifiableTextToken() const
     {
         // Token representing no bytes.
@@ -388,13 +433,18 @@ public:
     {
         return false;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     static CanvasPerformanceMonitor& GetCanvasPerformanceMonitor();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IdentifiabilityEncounteredPartiallyDigestedImage() const
     {
         return false;
     }
+#endif
 
     bool did_print_in_current_task() const
     {

@@ -39,7 +39,9 @@
 #include "third_party/blink/public/common/subresource_load_metrics.h"
 #include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/service_worker/controller_service_worker_mode.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -71,7 +73,9 @@ namespace blink {
 
 enum class ResourceType : uint8_t;
 class BackForwardCacheLoaderHelper;
+#if !defined(MINI_UI_QUICKJS)
 class CodeCacheHost;
+#endif
 class DetachableConsoleLogger;
 class DetachableUseCounter;
 class DetachableResourceFetcherProperties;
@@ -115,14 +119,23 @@ public:
         // Create a URLLoader for given the request information and task runners.
         // TODO(yuzus): Take only unfreezable task runner once both
         // URLLoaderClientImpl and ResponseBodyLoader use unfreezable task runner.
+#if defined(MINI_UI_QUICKJS)
+        virtual std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&,
+            scoped_refptr<base::SingleThreadTaskRunner>, scoped_refptr<base::SingleThreadTaskRunner>,
+            BackForwardCacheLoaderHelper*, bool is_from_origin_dirty_style_sheet)
+            = 0;
+#else
         virtual std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&,
             scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner, scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
             BackForwardCacheLoaderHelper*, const std::optional<base::UnguessableToken>& service_worker_race_network_request_token,
             bool is_from_origin_dirty_style_sheet)
             = 0;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
         // Get a code cache host to fetch data from code caches.
         virtual CodeCacheHost* GetCodeCacheHost() = 0;
+#endif
     };
 
     // ResourceFetcher creators are responsible for setting consistent objects
@@ -185,11 +198,18 @@ public:
     }
 
     // Create a loader. This cannot be called after ClearContext is called.
-    std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&, const mojom::blink::RequestContextType,
-        const RenderBlockingBehavior, const std::optional<base::UnguessableToken>& service_worker_race_network_request_token,
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&, mojom::blink::RequestContextType,
+        RenderBlockingBehavior, bool is_from_origin_dirty_style_sheet);
+#else
+    std::unique_ptr<URLLoader> CreateURLLoader(const network::ResourceRequest&, const ResourceLoaderOptions&, mojom::blink::RequestContextType,
+        RenderBlockingBehavior, const std::optional<base::UnguessableToken>& service_worker_race_network_request_token,
         bool is_from_origin_dirty_style_sheet);
+#endif
+#if !defined(MINI_UI_QUICKJS)
     // Get a code cache host. This cannot be called after ClearContext is called.
     CodeCacheHost* GetCodeCacheHost();
+#endif
 
     Resource* CachedResource(const KURL&) const;
     bool ResourceHasBeenEmulatedLoadStartedForInspector(const KURL&) const;
@@ -271,13 +291,21 @@ public:
     enum LoaderFinishType { kDidFinishLoading, kDidFinishFirstPartInMultipart };
     void HandleLoaderFinish(Resource*, base::TimeTicks finish_time, LoaderFinishType, uint32_t inflight_keepalive_bytes);
     void HandleLoaderError(Resource*, base::TimeTicks finish_time, const ResourceError&, uint32_t inflight_keepalive_bytes);
+#if !defined(MINI_UI_QUICKJS)
     blink::mojom::ControllerServiceWorkerMode IsControlledByServiceWorker() const;
+#endif
 
     // Returns a cache identifier for MemoryCache.
     // `url` is used for finding a matching WebBundle.
+#if !defined(MINI_UI_QUICKJS)
     // If `skip_service_worker` is true, the identifier won't be a ServiceWorker's
     // identifier to keep the cache separated.
+#endif
+#if defined(MINI_UI_QUICKJS)
+    String GetCacheIdentifier(const KURL& url) const;
+#else
     String GetCacheIdentifier(const KURL& url, bool skip_service_worker) const;
+#endif
 
     // If `url` exists as a resource in a subresource bundle in this frame,
     // returns its UnguessableToken; otherwise, returns std::nullopt.
@@ -603,7 +631,9 @@ private:
 
     uint32_t inflight_keepalive_bytes_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     HeapMojoRemote<mojom::blink::BlobRegistry> blob_registry_remote_;
+#endif
 
     // Lazily initialized when the first <script type=webbundle> is inserted.
     Member<SubresourceWebBundleList> subresource_web_bundles_;

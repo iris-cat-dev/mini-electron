@@ -44,6 +44,9 @@ int lre_get_capture_count(const uint8_t* bc_buf);
 int lre_get_flags(const uint8_t* bc_buf);
 const char* lre_get_groupnames(const uint8_t* bc_buf);
 int lre_exec(uint8_t** capture, const uint8_t* bc_buf, const uint8_t* cbuf, int cindex, int clen, int cbuf_type, void* opaque);
+int lre_exec_with_backtrack_limit(uint8_t** capture,
+    const uint8_t* bc_buf, const uint8_t* cbuf, int cindex, int clen,
+    int cbuf_type, void* opaque, uint32_t backtrack_limit);
 
 int lre_parse_escape(const uint8_t** pp, int allow_utf16);
 LRE_BOOL lre_is_space(int c);

@@ -1,0 +1,959 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "reproducibility": {
+    "host_version": 2,
+    "public_api": "include/mini_ui/ui.h",
+    "framework_requested": "vue",
+    "page": "vue.html",
+    "resource_root": "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "clock": {
+      "name": "std::chrono::steady_clock",
+      "is_steady": true,
+      "period_numerator": 1,
+      "period_denominator": 1000000000
+    },
+    "viewport": {
+      "css_width": 1280,
+      "css_height": 720,
+      "device_scale": 1
+    },
+    "run_definition": {
+      "rows": 1000,
+      "warmups": 2,
+      "measured_iterations": 7,
+      "operation_order": [
+        "mount",
+        "update_selected",
+        "keyed_reorder",
+        "prepend",
+        "filter",
+        "restore",
+        "unmount"
+      ],
+      "final_capture_state": "untimed mounted full row count with every tenth row selected",
+      "workload_wall_interval": "uiBench.start dispatch through warmup and measured operations; excludes final capture"
+    },
+    "timeout_ms": 120000
+  },
+  "cold_startup_wall_ms": {
+    "view_create": 16.838,
+    "load_file_call": 5.1625,
+    "load_to_protocol_ready": 56.8734,
+    "process_host_entry_to_protocol_ready": 73.8871
+  },
+  "workload_wall_ms": 17125.3351,
+  "view_teardown_wall_ms": 201.582,
+  "process_cpu": {
+    "source": "GetProcessTimes",
+    "interval": "before View::Create through populated capture; excludes View and process teardown",
+    "kernel_100ns_delta": 1562500,
+    "user_100ns_delta": 163593750,
+    "total_seconds_delta": 16.515625
+  },
+  "process_memory": {
+    "source": "GetProcessMemoryInfo",
+    "current_working_set_bytes": 384262144,
+    "peak_working_set_bytes": 385970176,
+    "current_private_bytes": 378040320
+  },
+  "cpu_offscreen_frames": {
+    "description": "Software offscreen frames produced by workload View::Tick calls, excluding the separate populated-capture phase; this is not onscreen or vsync FPS.",
+    "startup_tick_calls": 4,
+    "startup_generation_advance": 4,
+    "workload_tick_calls": 126,
+    "workload_generation_advance": 126,
+    "capture_verification_tick_calls": 2,
+    "capture_verification_generation_advance": 2,
+    "generation_change_tick_count": 126,
+    "generated_frame_tick_wall_ms_sum": 13711.5794,
+    "throughput_frames_per_cpu_tick_second": 9.189313376984128,
+    "all_tick_wall_ms": [
+      338.3305,
+      3.8091,
+      80.9421,
+      4.5516,
+      304.7142,
+      4.9053,
+      252.3486,
+      4.6759,
+      60.3495,
+      1.9903,
+      347.4601,
+      4.4528,
+      26.8493,
+      1.8444,
+      340.9473,
+      3.4173,
+      85.2855,
+      4.8426,
+      305.4856,
+      4.7448,
+      255.3902,
+      3.8948,
+      62.6867,
+      1.9434,
+      349.8581,
+      3.9807,
+      27.7626,
+      2.2482,
+      338.8709,
+      3.4653,
+      97.4706,
+      4.5603,
+      306.3138,
+      5.2376,
+      265.3607,
+      4.2284,
+      65.4808,
+      2.139,
+      361.4739,
+      4.09,
+      29.3873,
+      2.066,
+      339.4593,
+      3.4257,
+      85.6277,
+      4.631,
+      313.2552,
+      4.5596,
+      264.0723,
+      3.9304,
+      64.0938,
+      2.1237,
+      352.6114,
+      4.1018,
+      27.3665,
+      1.7957,
+      340.6185,
+      3.6717,
+      97.2458,
+      4.422,
+      306.5869,
+      4.7387,
+      269.9306,
+      4.2041,
+      62.9893,
+      2.2679,
+      360.624,
+      3.8948,
+      28.0725,
+      1.8356,
+      350.508,
+      3.5988,
+      86.1769,
+      5.2745,
+      329.7852,
+      4.6472,
+      573.5895,
+      3.9384,
+      66.601,
+      2.0643,
+      363.984,
+      4.069,
+      27.8337,
+      1.7507,
+      346.263,
+      5.0256,
+      84.5547,
+      4.4659,
+      319.4235,
+      8.212,
+      267.7,
+      4.2398,
+      65.112,
+      2.2683,
+      367.2207,
+      4.1551,
+      28.762,
+      2.2117,
+      342.9901,
+      4.1239,
+      88.3538,
+      15.7234,
+      310.302,
+      5.031,
+      287.0363,
+      4.2469,
+      67.2421,
+      2.2675,
+      355.2723,
+      3.9001,
+      28.8273,
+      1.7752,
+      351.4121,
+      3.9779,
+      89.9733,
+      4.5781,
+      330.9293,
+      4.5975,
+      272.7843,
+      4.8517,
+      66.957,
+      2.0518,
+      352.0993,
+      3.7562,
+      29.7766,
+      1.2943
+    ],
+    "generation_change_ticks": [
+      {
+        "wall_ms": 338.3305,
+        "generation_before": 11,
+        "generation_after": 12
+      },
+      {
+        "wall_ms": 3.8091,
+        "generation_before": 13,
+        "generation_after": 14
+      },
+      {
+        "wall_ms": 80.9421,
+        "generation_before": 15,
+        "generation_after": 16
+      },
+      {
+        "wall_ms": 4.5516,
+        "generation_before": 17,
+        "generation_after": 18
+      },
+      {
+        "wall_ms": 304.7142,
+        "generation_before": 19,
+        "generation_after": 20
+      },
+      {
+        "wall_ms": 4.9053,
+        "generation_before": 21,
+        "generation_after": 22
+      },
+      {
+        "wall_ms": 252.3486,
+        "generation_before": 23,
+        "generation_after": 24
+      },
+      {
+        "wall_ms": 4.6759,
+        "generation_before": 25,
+        "generation_after": 26
+      },
+      {
+        "wall_ms": 60.3495,
+        "generation_before": 27,
+        "generation_after": 28
+      },
+      {
+        "wall_ms": 1.9903,
+        "generation_before": 29,
+        "generation_after": 30
+      },
+      {
+        "wall_ms": 347.4601,
+        "generation_before": 31,
+        "generation_after": 32
+      },
+      {
+        "wall_ms": 4.4528,
+        "generation_before": 33,
+        "generation_after": 34
+      },
+      {
+        "wall_ms": 26.8493,
+        "generation_before": 35,
+        "generation_after": 36
+      },
+      {
+        "wall_ms": 1.8444,
+        "generation_before": 37,
+        "generation_after": 38
+      },
+      {
+        "wall_ms": 340.9473,
+        "generation_before": 39,
+        "generation_after": 40
+      },
+      {
+        "wall_ms": 3.4173,
+        "generation_before": 41,
+        "generation_after": 42
+      },
+      {
+        "wall_ms": 85.2855,
+        "generation_before": 43,
+        "generation_after": 44
+      },
+      {
+        "wall_ms": 4.8426,
+        "generation_before": 45,
+        "generation_after": 46
+      },
+      {
+        "wall_ms": 305.4856,
+        "generation_before": 47,
+        "generation_after": 48
+      },
+      {
+        "wall_ms": 4.7448,
+        "generation_before": 49,
+        "generation_after": 50
+      },
+      {
+        "wall_ms": 255.3902,
+        "generation_before": 51,
+        "generation_after": 52
+      },
+      {
+        "wall_ms": 3.8948,
+        "generation_before": 53,
+        "generation_after": 54
+      },
+      {
+        "wall_ms": 62.6867,
+        "generation_before": 55,
+        "generation_after": 56
+      },
+      {
+        "wall_ms": 1.9434,
+        "generation_before": 57,
+        "generation_after": 58
+      },
+      {
+        "wall_ms": 349.8581,
+        "generation_before": 59,
+        "generation_after": 60
+      },
+      {
+        "wall_ms": 3.9807,
+        "generation_before": 61,
+        "generation_after": 62
+      },
+      {
+        "wall_ms": 27.7626,
+        "generation_before": 63,
+        "generation_after": 64
+      },
+      {
+        "wall_ms": 2.2482,
+        "generation_before": 65,
+        "generation_after": 66
+      },
+      {
+        "wall_ms": 338.8709,
+        "generation_before": 67,
+        "generation_after": 68
+      },
+      {
+        "wall_ms": 3.4653,
+        "generation_before": 69,
+        "generation_after": 70
+      },
+      {
+        "wall_ms": 97.4706,
+        "generation_before": 71,
+        "generation_after": 72
+      },
+      {
+        "wall_ms": 4.5603,
+        "generation_before": 73,
+        "generation_after": 74
+      },
+      {
+        "wall_ms": 306.3138,
+        "generation_before": 75,
+        "generation_after": 76
+      },
+      {
+        "wall_ms": 5.2376,
+        "generation_before": 77,
+        "generation_after": 78
+      },
+      {
+        "wall_ms": 265.3607,
+        "generation_before": 79,
+        "generation_after": 80
+      },
+      {
+        "wall_ms": 4.2284,
+        "generation_before": 81,
+        "generation_after": 82
+      },
+      {
+        "wall_ms": 65.4808,
+        "generation_before": 83,
+        "generation_after": 84
+      },
+      {
+        "wall_ms": 2.139,
+        "generation_before": 85,
+        "generation_after": 86
+      },
+      {
+        "wall_ms": 361.4739,
+        "generation_before": 87,
+        "generation_after": 88
+      },
+      {
+        "wall_ms": 4.09,
+        "generation_before": 89,
+        "generation_after": 90
+      },
+      {
+        "wall_ms": 29.3873,
+        "generation_before": 91,
+        "generation_after": 92
+      },
+      {
+        "wall_ms": 2.066,
+        "generation_before": 93,
+        "generation_after": 94
+      },
+      {
+        "wall_ms": 339.4593,
+        "generation_before": 95,
+        "generation_after": 96
+      },
+      {
+        "wall_ms": 3.4257,
+        "generation_before": 97,
+        "generation_after": 98
+      },
+      {
+        "wall_ms": 85.6277,
+        "generation_before": 99,
+        "generation_after": 100
+      },
+      {
+        "wall_ms": 4.631,
+        "generation_before": 101,
+        "generation_after": 102
+      },
+      {
+        "wall_ms": 313.2552,
+        "generation_before": 103,
+        "generation_after": 104
+      },
+      {
+        "wall_ms": 4.5596,
+        "generation_before": 105,
+        "generation_after": 106
+      },
+      {
+        "wall_ms": 264.0723,
+        "generation_before": 107,
+        "generation_after": 108
+      },
+      {
+        "wall_ms": 3.9304,
+        "generation_before": 109,
+        "generation_after": 110
+      },
+      {
+        "wall_ms": 64.0938,
+        "generation_before": 111,
+        "generation_after": 112
+      },
+      {
+        "wall_ms": 2.1237,
+        "generation_before": 113,
+        "generation_after": 114
+      },
+      {
+        "wall_ms": 352.6114,
+        "generation_before": 115,
+        "generation_after": 116
+      },
+      {
+        "wall_ms": 4.1018,
+        "generation_before": 117,
+        "generation_after": 118
+      },
+      {
+        "wall_ms": 27.3665,
+        "generation_before": 119,
+        "generation_after": 120
+      },
+      {
+        "wall_ms": 1.7957,
+        "generation_before": 121,
+        "generation_after": 122
+      },
+      {
+        "wall_ms": 340.6185,
+        "generation_before": 123,
+        "generation_after": 124
+      },
+      {
+        "wall_ms": 3.6717,
+        "generation_before": 125,
+        "generation_after": 126
+      },
+      {
+        "wall_ms": 97.2458,
+        "generation_before": 127,
+        "generation_after": 128
+      },
+      {
+        "wall_ms": 4.422,
+        "generation_before": 129,
+        "generation_after": 130
+      },
+      {
+        "wall_ms": 306.5869,
+        "generation_before": 131,
+        "generation_after": 132
+      },
+      {
+        "wall_ms": 4.7387,
+        "generation_before": 133,
+        "generation_after": 134
+      },
+      {
+        "wall_ms": 269.9306,
+        "generation_before": 135,
+        "generation_after": 136
+      },
+      {
+        "wall_ms": 4.2041,
+        "generation_before": 137,
+        "generation_after": 138
+      },
+      {
+        "wall_ms": 62.9893,
+        "generation_before": 139,
+        "generation_after": 140
+      },
+      {
+        "wall_ms": 2.2679,
+        "generation_before": 141,
+        "generation_after": 142
+      },
+      {
+        "wall_ms": 360.624,
+        "generation_before": 143,
+        "generation_after": 144
+      },
+      {
+        "wall_ms": 3.8948,
+        "generation_before": 145,
+        "generation_after": 146
+      },
+      {
+        "wall_ms": 28.0725,
+        "generation_before": 147,
+        "generation_after": 148
+      },
+      {
+        "wall_ms": 1.8356,
+        "generation_before": 149,
+        "generation_after": 150
+      },
+      {
+        "wall_ms": 350.508,
+        "generation_before": 151,
+        "generation_after": 152
+      },
+      {
+        "wall_ms": 3.5988,
+        "generation_before": 153,
+        "generation_after": 154
+      },
+      {
+        "wall_ms": 86.1769,
+        "generation_before": 155,
+        "generation_after": 156
+      },
+      {
+        "wall_ms": 5.2745,
+        "generation_before": 157,
+        "generation_after": 158
+      },
+      {
+        "wall_ms": 329.7852,
+        "generation_before": 159,
+        "generation_after": 160
+      },
+      {
+        "wall_ms": 4.6472,
+        "generation_before": 161,
+        "generation_after": 162
+      },
+      {
+        "wall_ms": 573.5895,
+        "generation_before": 163,
+        "generation_after": 164
+      },
+      {
+        "wall_ms": 3.9384,
+        "generation_before": 165,
+        "generation_after": 166
+      },
+      {
+        "wall_ms": 66.601,
+        "generation_before": 167,
+        "generation_after": 168
+      },
+      {
+        "wall_ms": 2.0643,
+        "generation_before": 169,
+        "generation_after": 170
+      },
+      {
+        "wall_ms": 363.984,
+        "generation_before": 171,
+        "generation_after": 172
+      },
+      {
+        "wall_ms": 4.069,
+        "generation_before": 173,
+        "generation_after": 174
+      },
+      {
+        "wall_ms": 27.8337,
+        "generation_before": 175,
+        "generation_after": 176
+      },
+      {
+        "wall_ms": 1.7507,
+        "generation_before": 177,
+        "generation_after": 178
+      },
+      {
+        "wall_ms": 346.263,
+        "generation_before": 179,
+        "generation_after": 180
+      },
+      {
+        "wall_ms": 5.0256,
+        "generation_before": 181,
+        "generation_after": 182
+      },
+      {
+        "wall_ms": 84.5547,
+        "generation_before": 183,
+        "generation_after": 184
+      },
+      {
+        "wall_ms": 4.4659,
+        "generation_before": 185,
+        "generation_after": 186
+      },
+      {
+        "wall_ms": 319.4235,
+        "generation_before": 187,
+        "generation_after": 188
+      },
+      {
+        "wall_ms": 8.212,
+        "generation_before": 189,
+        "generation_after": 190
+      },
+      {
+        "wall_ms": 267.7,
+        "generation_before": 191,
+        "generation_after": 192
+      },
+      {
+        "wall_ms": 4.2398,
+        "generation_before": 193,
+        "generation_after": 194
+      },
+      {
+        "wall_ms": 65.112,
+        "generation_before": 195,
+        "generation_after": 196
+      },
+      {
+        "wall_ms": 2.2683,
+        "generation_before": 197,
+        "generation_after": 198
+      },
+      {
+        "wall_ms": 367.2207,
+        "generation_before": 199,
+        "generation_after": 200
+      },
+      {
+        "wall_ms": 4.1551,
+        "generation_before": 201,
+        "generation_after": 202
+      },
+      {
+        "wall_ms": 28.762,
+        "generation_before": 203,
+        "generation_after": 204
+      },
+      {
+        "wall_ms": 2.2117,
+        "generation_before": 205,
+        "generation_after": 206
+      },
+      {
+        "wall_ms": 342.9901,
+        "generation_before": 207,
+        "generation_after": 208
+      },
+      {
+        "wall_ms": 4.1239,
+        "generation_before": 209,
+        "generation_after": 210
+      },
+      {
+        "wall_ms": 88.3538,
+        "generation_before": 211,
+        "generation_after": 212
+      },
+      {
+        "wall_ms": 15.7234,
+        "generation_before": 213,
+        "generation_after": 214
+      },
+      {
+        "wall_ms": 310.302,
+        "generation_before": 215,
+        "generation_after": 216
+      },
+      {
+        "wall_ms": 5.031,
+        "generation_before": 217,
+        "generation_after": 218
+      },
+      {
+        "wall_ms": 287.0363,
+        "generation_before": 219,
+        "generation_after": 220
+      },
+      {
+        "wall_ms": 4.2469,
+        "generation_before": 221,
+        "generation_after": 222
+      },
+      {
+        "wall_ms": 67.2421,
+        "generation_before": 223,
+        "generation_after": 224
+      },
+      {
+        "wall_ms": 2.2675,
+        "generation_before": 225,
+        "generation_after": 226
+      },
+      {
+        "wall_ms": 355.2723,
+        "generation_before": 227,
+        "generation_after": 228
+      },
+      {
+        "wall_ms": 3.9001,
+        "generation_before": 229,
+        "generation_after": 230
+      },
+      {
+        "wall_ms": 28.8273,
+        "generation_before": 231,
+        "generation_after": 232
+      },
+      {
+        "wall_ms": 1.7752,
+        "generation_before": 233,
+        "generation_after": 234
+      },
+      {
+        "wall_ms": 351.4121,
+        "generation_before": 235,
+        "generation_after": 236
+      },
+      {
+        "wall_ms": 3.9779,
+        "generation_before": 237,
+        "generation_after": 238
+      },
+      {
+        "wall_ms": 89.9733,
+        "generation_before": 239,
+        "generation_after": 240
+      },
+      {
+        "wall_ms": 4.5781,
+        "generation_before": 241,
+        "generation_after": 242
+      },
+      {
+        "wall_ms": 330.9293,
+        "generation_before": 243,
+        "generation_after": 244
+      },
+      {
+        "wall_ms": 4.5975,
+        "generation_before": 245,
+        "generation_after": 246
+      },
+      {
+        "wall_ms": 272.7843,
+        "generation_before": 247,
+        "generation_after": 248
+      },
+      {
+        "wall_ms": 4.8517,
+        "generation_before": 249,
+        "generation_after": 250
+      },
+      {
+        "wall_ms": 66.957,
+        "generation_before": 251,
+        "generation_after": 252
+      },
+      {
+        "wall_ms": 2.0518,
+        "generation_before": 253,
+        "generation_after": 254
+      },
+      {
+        "wall_ms": 352.0993,
+        "generation_before": 255,
+        "generation_after": 256
+      },
+      {
+        "wall_ms": 3.7562,
+        "generation_before": 257,
+        "generation_after": 258
+      },
+      {
+        "wall_ms": 29.7766,
+        "generation_before": 259,
+        "generation_after": 260
+      },
+      {
+        "wall_ms": 1.2943,
+        "generation_before": 261,
+        "generation_after": 262
+      }
+    ]
+  },
+  "frame": {
+    "pixel_format": "premultiplied BGRA8",
+    "width": 1280,
+    "height": 720,
+    "stride_bytes": 5120,
+    "generation": 271,
+    "capture_bmp": "D:\\Project\\mini-electron\\out\\ui-view-after\\captures\\vue-1000.bmp"
+  },
+  "application_result": {
+    "schema_version": 1,
+    "workload_version": 1,
+    "framework": {
+      "name": "vue",
+      "version": "3.5.13",
+      "renderer": "vue-dom",
+      "distribution": "production global"
+    },
+    "config": {
+      "rows": 1000,
+      "warmups": 2,
+      "iterations": 7,
+      "prepend_rows": 100,
+      "selected_stride": 10,
+      "filter_divisor": 10,
+      "final_capture_state": "mounted full row count with every tenth row selected"
+    },
+    "operation_js_commit_ms": {
+      "mount": [
+        240.5,
+        239,
+        246.59999999403954,
+        250.3999999910593,
+        245.79999999701977,
+        243.90000000596046,
+        259.8999999910593
+      ],
+      "update_selected": [
+        45.70000000298023,
+        46.5,
+        46.400000005960464,
+        46.900000005960464,
+        45.69999998807907,
+        49.099999994039536,
+        49
+      ],
+      "keyed_reorder": [
+        211.3999999910593,
+        212.70000000298023,
+        213.6000000089407,
+        221.09999999403954,
+        215.5,
+        217.8999999910593,
+        219.40000000596046
+      ],
+      "prepend": [
+        228.70000000298023,
+        228.20000000298023,
+        232.29999999701977,
+        239.79999999701977,
+        230.29999999701977,
+        235.5,
+        234.70000000298023
+      ],
+      "filter": [
+        57.599999994039536,
+        56.5,
+        55.3999999910593,
+        59,
+        57.5,
+        59.3999999910593,
+        59.099999994039536
+      ],
+      "restore": [
+        252.79999999701977,
+        249.40000000596046,
+        252.70000000298023,
+        256.5,
+        269.40000000596046,
+        257.59999999403954,
+        250.5
+      ],
+      "unmount": [
+        28.399999991059303,
+        26.399999991059303,
+        27.200000002980232,
+        26.900000005960464,
+        27.80000001192093,
+        27.900000005960464,
+        28.599999994039536
+      ]
+    },
+    "correctness_assertions": 64,
+    "capture_verification_assertions": 1,
+    "assertion_failures": []
+  },
+  "process_execution": {
+    "command": [
+      "D:\\Project\\mini-electron\\out\\ui-view-after\\build\\ui-benchmark.exe",
+      "--framework",
+      "vue",
+      "--rows",
+      "1000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--resource-root",
+      "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+      "--output",
+      "D:\\Project\\mini-electron\\out\\ui-view-after\\raw\\vue-1000.json",
+      "--capture",
+      "D:\\Project\\mini-electron\\out\\ui-view-after\\captures\\vue-1000.bmp",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1.0",
+      "--timeout-ms",
+      "120000"
+    ],
+    "exit_code": 0,
+    "wall_ms": 18862.79129999457,
+    "timeout_ms": 390000,
+    "stdout": "",
+    "stderr": "Workload assertions and populated capture complete; releasing the view.\nView released; writing the benchmark report.\n"
+  }
+}

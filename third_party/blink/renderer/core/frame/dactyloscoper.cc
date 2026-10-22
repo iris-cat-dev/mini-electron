@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/dactyloscoper.h"
 
 #include "base/trace_event/typed_macros.h"
@@ -222,3 +223,5 @@ Dactyloscoper::HighEntropyTracer::~HighEntropyTracer()
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

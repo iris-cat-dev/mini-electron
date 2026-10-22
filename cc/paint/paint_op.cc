@@ -50,7 +50,9 @@
 #include "third_party/skia/include/core/SkTiledImageUtils.h"
 #include "third_party/skia/include/core/SkVertices.h"
 #include "third_party/skia/include/docs/SkPDFDocument.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/private/chromium/Slug.h"
+#endif
 #include "third_party/skia/src/core/SkCanvasPriv.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 
@@ -141,6 +143,12 @@ PaintFlags::ScalingOperation MatrixToScalingOperation(SkMatrix m)
     return PaintFlags::ScalingOperation::kUnknown;
 }
 
+#if defined(MINI_UI_QUICKJS)
+#define GPU_TEXT_TYPE(M)
+#else
+#define GPU_TEXT_TYPE(M) M(DrawSlugOp)
+#endif
+
 #define TYPES(M)                                                                                                                                               \
     M(AnnotateOp)                                                                                                                                              \
     M(ClipPathOp)                                                                                                                                              \
@@ -164,7 +172,7 @@ PaintFlags::ScalingOperation MatrixToScalingOperation(SkMatrix m)
     M(DrawRRectOp)                                                                                                                                             \
     M(DrawScrollingContentsOp)                                                                                                                                 \
     M(DrawSkottieOp)                                                                                                                                           \
-    M(DrawSlugOp)                                                                                                                                              \
+    GPU_TEXT_TYPE(M)                                                                                                                                           \
     M(DrawTextBlobOp)                                                                                                                                          \
     M(DrawVerticesOp)                                                                                                                                          \
     M(NoopOp)                                                                                                                                                  \
@@ -580,6 +588,7 @@ void DrawSkottieOp::Serialize(PaintOpWriter& writer, const PaintFlags* flags_to_
     });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DrawSlugOp::SerializeSlugs(const sk_sp<sktext::gpu::Slug>& slug, const std::vector<sk_sp<sktext::gpu::Slug>>& extra_slugs, PaintOpWriter& writer,
     const PaintFlags* flags_to_serialize, const SkM44& current_ctm)
 {
@@ -596,10 +605,19 @@ void DrawSlugOp::Serialize(PaintOpWriter& writer, const PaintFlags* flags_to_ser
 {
     DrawSlugOp::SerializeSlugs(slug, extra_slugs, writer, flags_to_serialize, current_ctm);
 }
+#endif
 
 void DrawTextBlobOp::Serialize(PaintOpWriter& writer, const PaintFlags* flags_to_serialize, const SkM44& current_ctm, const SkM44& original_ctm) const
 {
+#if defined(MINI_UI_QUICKJS)
+    writer.Write(flags_to_serialize ? *flags_to_serialize : flags, current_ctm);
+    writer.Write(blob);
+    writer.Write(x);
+    writer.Write(y);
+    writer.Write(node_id);
+#else
     DrawSlugOp::SerializeSlugs(slug, extra_slugs, writer, flags_to_serialize, current_ctm);
+#endif
 }
 
 void NoopOp::Serialize(PaintOpWriter& writer, const PaintFlags* flags_to_serialize, const SkM44& current_ctm, const SkM44& original_ctm) const
@@ -969,6 +987,7 @@ PaintOp* DrawSkottieOp::Deserialize(PaintOpReader& reader, void* output)
     return op;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PaintOp* DrawSlugOp::Deserialize(PaintOpReader& reader, void* output)
 {
     DrawSlugOp* op = new (output) DrawSlugOp;
@@ -988,10 +1007,21 @@ PaintOp* DrawSlugOp::Deserialize(PaintOpReader& reader, void* output)
     }
     return op;
 }
+#endif
 
 PaintOp* DrawTextBlobOp::Deserialize(PaintOpReader& reader, void* output)
 {
+#if defined(MINI_UI_QUICKJS)
+    DrawTextBlobOp* op = new (output) DrawTextBlobOp;
+    reader.Read(&op->flags);
+    reader.Read(&op->blob);
+    reader.Read(&op->x);
+    reader.Read(&op->y);
+    reader.Read(&op->node_id);
+    return op;
+#else
     NOTREACHED();
+#endif
 }
 
 PaintOp* NoopOp::Deserialize(PaintOpReader& reader, void* output)
@@ -1493,6 +1523,12 @@ void DrawTextBlobOp::RasterWithFlags(const DrawTextBlobOp* op, const PaintFlags*
     if (op->node_id)
         SkPDF::SetNodeId(canvas, op->node_id);
 
+#if defined(MINI_UI_QUICKJS)
+    flags->DrawToSk(canvas, [op](SkCanvas* c, const SkPaint& p) {
+        DCHECK(op->blob);
+        c->drawTextBlob(op->blob.get(), op->x, op->y, p);
+    });
+#else
     // The PaintOpBuffer could be rasterized with different global matrix. It is
     // used for over scall on Android. So we cannot reuse slugs, they have to be
     // recreated.
@@ -1517,12 +1553,14 @@ void DrawTextBlobOp::RasterWithFlags(const DrawTextBlobOp* op, const PaintFlags*
         }
         i++;
     });
+#endif
 
     if (op->node_id) {
         SkPDF::SetNodeId(canvas, 0);
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DrawSlugOp::RasterWithFlags(const DrawSlugOp* op, const PaintFlags* flags, SkCanvas* canvas, const PlaybackParams& params)
 {
     size_t i = 0;
@@ -1537,6 +1575,7 @@ void DrawSlugOp::RasterWithFlags(const DrawSlugOp* op, const PaintFlags* flags, 
         ++i;
     });
 }
+#endif
 
 void RestoreOp::Raster(const RestoreOp* op, SkCanvas* canvas, const PlaybackParams& params)
 {
@@ -1755,11 +1794,13 @@ bool DrawTextBlobOp::EqualsForTesting(const DrawTextBlobOp& other) const
         x == other.x && y == other.y && node_id == other.node_id;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool DrawSlugOp::EqualsForTesting(const DrawSlugOp& other) const
 {
     return flags.EqualsForTesting(other.flags) && // IN-TEST
         !slug == !other.slug && (!slug || slug->serialize()->equals(other.slug->serialize().get()));
 }
+#endif
 
 bool NoopOp::EqualsForTesting(const NoopOp& other) const
 {
@@ -1852,10 +1893,12 @@ size_t PaintOp::Serialize(
     writer.ReserveOpHeader();
     g_serialize_functions[type](*this, writer, flags_to_serialize, current_ctm, original_ctm);
 
+#if !defined(MINI_UI_QUICKJS)
     // Convert DrawTextBlobOp to DrawSlugOp.
     if (GetType() == PaintOpType::kDrawTextBlob) {
         return writer.FinishOp(static_cast<uint8_t>(PaintOpType::kDrawSlug));
     }
+#endif
     return writer.FinishOp(type);
 }
 
@@ -2001,12 +2044,14 @@ bool PaintOp::GetBounds(const PaintOp& op, SkRect* rect)
         rect->sort();
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     case PaintOpType::kDrawSlug: {
         const auto& slug_op = static_cast<const DrawSlugOp&>(op);
         *rect = slug_op.slug->sourceBoundsWithOrigin();
         rect->sort();
         return true;
     }
+#endif
     case PaintOpType::kDrawVertices: {
         const auto& vertices_op = static_cast<const DrawVerticesOp&>(op);
         rect->setBounds(vertices_op.vertices->data().data(), base::checked_cast<int>(vertices_op.vertices->data().size()));
@@ -2440,6 +2485,7 @@ DrawTextBlobOp::DrawTextBlobOp(sk_sp<SkTextBlob> blob, SkScalar x, SkScalar y, N
 
 DrawTextBlobOp::~DrawTextBlobOp() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 DrawSlugOp::DrawSlugOp()
     : PaintOpWithFlags(kType)
 {
@@ -2452,6 +2498,7 @@ DrawSlugOp::DrawSlugOp(sk_sp<sktext::gpu::Slug> slug, const PaintFlags& flags)
 }
 
 DrawSlugOp::~DrawSlugOp() = default;
+#endif
 
 SaveLayerFiltersOp::SaveLayerFiltersOp(base::span<const sk_sp<PaintFilter>> filters, const PaintFlags& flags)
     : PaintOpWithFlags(kType, flags)

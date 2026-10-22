@@ -12,6 +12,7 @@
 #include "base/trace_event/process_memory_dump.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/resources/bitmap_allocation.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
@@ -25,19 +26,28 @@
 #include "gpu/command_buffer/common/mailbox.h"
 #include "gpu/command_buffer/common/shared_image_trace_utils.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
+#endif
 #include "gpu/command_buffer/common/sync_token.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_dispatcher.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_gpu.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/skia/include/core/SkAlphaType.h"
@@ -45,11 +55,13 @@
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkPixmap.h"
 #include "third_party/skia/include/core/SkSize.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/GpuTypes.h"
 #include "third_party/skia/include/gpu/ganesh/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/GrTypes.h"
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLTypes.h"
+#endif
 //#include "ui/gfx/buffer_format_util.h"
 #include "ui/gfx/color_space.h"
 
@@ -89,6 +101,7 @@ void CanvasResource::Release()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 gpu::InterfaceBase* CanvasResource::InterfaceBase() const
 {
     if (!ContextProviderWrapper())
@@ -116,7 +129,9 @@ gpu::webgpu::WebGPUInterface* CanvasResource::WebGPUInterface() const
         return nullptr;
     return ContextProviderWrapper()->ContextProvider()->WebGPUInterface();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResource::WaitSyncToken(const gpu::SyncToken& sync_token)
 {
     if (sync_token.HasData()) {
@@ -183,12 +198,17 @@ bool CanvasResource::PrepareTransferableResource(
     if (!out_resource)
         return true;
     if (SupportsAcceleratedCompositing()) {
-        return UsesClientSharedImage() ? PrepareAcceleratedTransferableResourceFromClientSI(out_resource, needs_verified_synctoken)
-                                       : PrepareAcceleratedTransferableResourceWithoutClientSI(out_resource);
+        return UsesClientSharedImage()
+            ? PrepareAcceleratedTransferableResourceFromClientSI(
+                  out_resource, needs_verified_synctoken)
+            : PrepareAcceleratedTransferableResourceWithoutClientSI(
+                  out_resource);
     }
     return PrepareUnacceleratedTransferableResource(out_resource);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool CanvasResource::PrepareAcceleratedTransferableResourceFromClientSI(viz::TransferableResource* out_resource, bool needs_verified_synctoken)
 {
     TRACE_EVENT0("blink", "CanvasResource::PrepareAcceleratedTransferableResource");
@@ -225,16 +245,19 @@ bool CanvasResource::PrepareAcceleratedTransferableResourceFromClientSI(viz::Tra
 
     return true;
 }
+#endif
 
 SkImageInfo CanvasResource::CreateSkImageInfo() const
 {
     return SkImageInfo::Make(SkISize::Make(Size().width(), Size().height()), info_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 viz::SharedImageFormat CanvasResource::GetSharedImageFormat() const
 {
     return viz::SkColorTypeToSinglePlaneSharedImageFormat(info_.colorType());
 }
+#endif
 
 gfx::ColorSpace CanvasResource::GetColorSpace() const
 {
@@ -242,6 +265,7 @@ gfx::ColorSpace CanvasResource::GetColorSpace() const
     return color_space ? gfx::ColorSpace(*color_space) : gfx::ColorSpace::CreateSRGB();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // CanvasResourceSharedBitmap
 //==============================================================================
 
@@ -1041,4 +1065,5 @@ CanvasResourceSwapChain::CanvasResourceSwapChain(const SkImageInfo& info, base::
     raster_interface->BeginSharedImageAccessDirectCHROMIUM(back_buffer_texture_id_, GL_SHARED_IMAGE_ACCESS_MODE_READWRITE_CHROMIUM);
 }
 
+#endif
 } // namespace blink

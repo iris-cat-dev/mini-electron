@@ -48,8 +48,10 @@
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/animation/compositor_animation_client.h"
 #include "third_party/blink/renderer/platform/animation/compositor_animation_delegate.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
@@ -66,8 +68,10 @@ class TimelineRange;
 class CORE_EXPORT Animation : public EventTarget,
                               public ActiveScriptWrappable<Animation>,
                               public ExecutionContextLifecycleObserver,
+#if !defined(MINI_UI_QUICKJS)
                               public CompositorAnimationDelegate,
                               public CompositorAnimationClient,
+#endif
                               public AnimationEffectOwner {
     DEFINE_WRAPPERTYPEINFO();
     USING_PRE_FINALIZER(Animation, Dispose);
@@ -300,7 +304,9 @@ public:
     // paused() and must never overlap with pausing via pause().
     // Deprecated: Do not use in new tests.
     void PauseForTesting(AnimationTimeDelta pause_time);
+#if !defined(MINI_UI_QUICKJS)
     void DisableCompositedAnimationForTesting();
+#endif
 
     // This should only be used for CSS
     void Unpause();
@@ -315,6 +321,7 @@ public:
         return outdated_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     CompositorAnimations::FailureReasons CheckCanStartAnimationOnCompositor(
         const PaintArtifactCompositor* paint_artifact_compositor, PropertyHandleSet* unsupported_properties = nullptr) const;
     void StartAnimationOnCompositor(const PaintArtifactCompositor* paint_artifact_compositor);
@@ -322,6 +329,7 @@ public:
     void RestartAnimationOnCompositor();
     void CancelIncompatibleAnimationsOnCompositor();
     bool HasActiveAnimationsOnCompositor();
+#endif
 
     enum class CompositorPendingReason {
         kPendingUpdate, // Update due to an API call that may affect
@@ -337,17 +345,21 @@ public:
     void NotifyReady(AnimationTimeDelta ready_time);
     void CommitPendingPlay(AnimationTimeDelta ready_time);
     void CommitPendingPause(AnimationTimeDelta ready_time);
+#if !defined(MINI_UI_QUICKJS)
     // CompositorAnimationClient implementation.
     CompositorAnimation* GetCompositorAnimation() const override
     {
         return compositor_animation_ ? compositor_animation_->GetAnimation() : nullptr;
     }
+#endif
 
     bool Affects(const Element&, const CSSProperty&) const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns whether we should continue with the commit for this animation or
     // wait until next commit.
     bool PreCommit(int compositor_group, const PaintArtifactCompositor*, bool start_on_compositor);
+#endif
     void PostCommit();
 
     unsigned SequenceNumber() const override
@@ -355,10 +367,12 @@ public:
         return sequence_number_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     int CompositorGroup() const
     {
         return compositor_group_;
     }
+#endif
 
     static bool HasLowerCompositeOrdering(const Animation* animation1, const Animation* animation2, CompareAnimationsOrdering compare_animation_type);
 
@@ -378,10 +392,12 @@ public:
     {
         return compositor_pending_;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool CompositorPendingCancel() const
     {
         return compositor_state_ && compositor_state_->pending_action == CompositorAction::kCancel;
     }
+#endif
 
     // Methods for handling removal and persistence of animations.
     bool IsReplaceable();
@@ -407,6 +423,7 @@ public:
 
     bool IsInDisplayLockedSubtree();
 
+#if !defined(MINI_UI_QUICKJS)
     base::TimeDelta ComputeCompositorTimeOffset() const;
 
     // Updates |compositor_property_animations_have_no_effect_| and marks the
@@ -420,6 +437,7 @@ public:
     {
         return animation_has_no_effect_;
     }
+#endif
 
     bool WaitingOnDeferredStartTime()
     {
@@ -466,6 +484,7 @@ private:
     void BeginUpdatingState();
     void EndUpdatingState();
 
+#if !defined(MINI_UI_QUICKJS)
     CompositorAnimations::FailureReasons CheckCanStartAnimationOnCompositorInternal() const;
     void CreateCompositorAnimation(std::optional<int> replaced_cc_animation_id);
     void DestroyCompositorAnimation();
@@ -481,6 +500,7 @@ private:
     void NotifyAnimationAborted(base::TimeDelta monotonic_time, int group) override
     {
     }
+#endif
 
     using AnimationPromise = ScriptPromiseProperty<Animation, DOMException>;
     void ResolvePromiseMaybeAsync(AnimationPromise*);
@@ -513,6 +533,7 @@ private:
     // Tracking the state of animations in dev tools.
     void NotifyProbe();
 
+#if !defined(MINI_UI_QUICKJS)
     // Reset the cached value for the status of a possible background color
     // animation if required. Any time an animation affecting background color
     // changes we need to reset the flag so that Paint can make a fresh
@@ -521,6 +542,7 @@ private:
     // TODO(crbug.com/1310961): Investigate if we need a similar fix for
     // non-native paint worklets.
     void UpdateCompositedPaintStatus();
+#endif
 
     // Updates the start time for a running animation that is linked to a scroll
     // timeline. As the animation is linked to a timeline range, we don't
@@ -584,7 +606,9 @@ private:
 
     // Testing flags.
     bool is_paused_for_testing_;
+#if !defined(MINI_UI_QUICKJS)
     bool is_composited_animation_disabled_for_testing_;
+#endif
 
     // Pending micro-tasks. These flags are used for tracking purposes only for
     // the Animation.pending attribute, and do not otherwise affect internal flow
@@ -613,6 +637,7 @@ private:
 
     Member<Event> pending_remove_event_;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(crbug.com/960944): Consider reintroducing kPause and cleanup use of
     // mutually exclusive pending_play_ and pending_pause_ flags.
     enum class CompositorAction { kNone, kStart, kCancel };
@@ -674,10 +699,13 @@ private:
     // animation is started. Updated once the start time is known and each time
     // modifications are pushed to the compositor.
     std::unique_ptr<CompositorState> compositor_state_;
+#endif
     bool compositor_pending_;
+#if !defined(MINI_UI_QUICKJS)
     int compositor_group_;
 
     Member<CompositorAnimationHolder> compositor_animation_;
+#endif
 
     bool effect_suppressed_;
 
@@ -687,6 +715,7 @@ private:
     base::TimeTicks last_display_lock_update_time_ = base::TimeTicks();
     bool is_in_display_locked_subtree_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // True if we animate compositor properties but they would have no effect due
     // to being optimized out on the compositor. Updated in |Animation::PreCommit|
     // and |MarkPendingIfCompositorPropertyAnimationChanges|.
@@ -694,6 +723,7 @@ private:
     // True if the only reason for not running the animation on the compositor is
     // that the animation would have no effect. Updated in |Animation::PreCommit|.
     bool animation_has_no_effect_;
+#endif
 
     FRIEND_TEST_ALL_PREFIXES(AnimationAnimationTestCompositing, NoCompositeWithoutCompositedElementId);
     FRIEND_TEST_ALL_PREFIXES(AnimationAnimationTestNoCompositing, PendingActivityWithFinishedEventListener);

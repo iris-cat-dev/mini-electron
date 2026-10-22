@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,23 +14,23 @@ namespace mojo {
 
 // A strongly-typed representation of a |MojoHandle| for a trap.
 class TrapHandle : public Handle {
-public:
-    TrapHandle() = default;
-    explicit TrapHandle(MojoHandle value)
-        : Handle(value)
-    {
-    }
+ public:
+  TrapHandle() = default;
+  explicit TrapHandle(MojoHandle value) : Handle(value) {}
 
-    // Copying and assignment allowed.
+  // Copying and assignment allowed.
 };
 
-static_assert(sizeof(TrapHandle) == sizeof(Handle), "Bad size for C++ TrapHandle");
+static_assert(sizeof(TrapHandle) == sizeof(Handle),
+              "Bad size for C++ TrapHandle");
 
 typedef ScopedHandleBase<TrapHandle> ScopedTrapHandle;
-static_assert(sizeof(ScopedTrapHandle) == sizeof(TrapHandle), "Bad size for C++ ScopedTrapHandle");
+static_assert(sizeof(ScopedTrapHandle) == sizeof(TrapHandle),
+              "Bad size for C++ ScopedTrapHandle");
 
-MOJO_CPP_SYSTEM_EXPORT MojoResult CreateTrap(MojoTrapEventHandler handler, ScopedTrapHandle* trap_handle);
+MOJO_CPP_SYSTEM_EXPORT MojoResult CreateTrap(MojoTrapEventHandler handler,
+                                             ScopedTrapHandle* trap_handle);
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_TRAP_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_TRAP_H_

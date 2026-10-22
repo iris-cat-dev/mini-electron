@@ -37,12 +37,16 @@
 #include "services/network/public/mojom/referrer_policy.mojom-blink-forward.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/permissions_policy/policy_disposition.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/v8_cache_options.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
@@ -66,9 +70,11 @@ namespace base {
 class UnguessableToken;
 } // namespace base
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 } // namespace ukm
+#endif
 
 namespace v8 {
 class MicrotaskQueue;
@@ -81,8 +87,12 @@ class BlinkExecutionContext;
 namespace blink {
 
 class Agent;
+#if !defined(MINI_UI_QUICKJS)
 class AuditsIssue;
+#endif
+#if !defined(MINI_UI_QUICKJS)
 class CodeCacheHost;
+#endif
 class ConsoleMessage;
 class ContentSecurityPolicy;
 class ContentSecurityPolicyDelegate;
@@ -144,10 +154,12 @@ public:
     static ExecutionContext* From(const ScriptState*);
     static ExecutionContext* From(v8::Local<v8::Context>);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the CodeCacheHost interface associated with the execution
     // context. This could return nullptr if there is no CodeCacheHost associated
     // with the current execution context.
     static CodeCacheHost* GetCodeCacheHostFromContext(ExecutionContext*);
+#endif
 
     virtual bool IsWindow() const
     {
@@ -273,7 +285,9 @@ public:
     virtual const KURL& BaseURL() const = 0;
     virtual KURL CompleteURL(const String& url) const = 0;
     virtual void DisableEval(const String& error_message) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetWasmEvalErrorMessage(const String& error_message) = 0;
+#endif
     virtual String UserAgent() const = 0;
     virtual UserAgentMetadata GetUserAgentMetadata() const
     {
@@ -302,7 +316,9 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual mojom::blink::V8CacheOptions GetV8CacheOptions() const;
+#endif
 
     void DispatchErrorEvent(ErrorEvent*, SanitizeScriptErrors);
 
@@ -329,7 +345,9 @@ public:
     {
         AddConsoleMessageImpl(message, discard_duplicates);
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual void AddInspectorIssue(AuditsIssue) = 0;
+#endif
 
     void CountDeprecation(WebFeature feature) override;
 
@@ -489,12 +507,16 @@ public:
     // timers useful for Spectre-style side channel attacks, so are restricted
     // to cross-origin isolated contexts.
     bool SharedArrayBufferTransferAllowed() const;
+#if !defined(MINI_UI_QUICKJS)
     // Returns SharedArrayBufferTransferAllowed() but potentially reports an
     // inspector issue if the transfer was disallowed, or will be disallowed in
     // the future.
     bool CheckSharedArrayBufferTransferAllowedAndReport();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     virtual ukm::UkmRecorder* UkmRecorder() = 0;
+#endif
     virtual ukm::SourceId UkmSourceID() const = 0;
 
     // Returns the token that uniquely identifies this ExecutionContext.
@@ -519,12 +541,14 @@ public:
         NOTREACHED();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool has_filed_shared_array_buffer_creation_issue() const
     {
         return has_filed_shared_array_buffer_creation_issue_;
     }
 
     void FileSharedArrayBufferCreationIssue();
+#endif
 
     bool IsInRequestAnimationFrame() const
     {
@@ -597,8 +621,10 @@ private:
 
     bool is_in_back_forward_cache_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     bool has_filed_shared_array_buffer_transfer_issue_ = false;
     bool has_filed_shared_array_buffer_creation_issue_ = false;
+#endif
 
     bool is_in_request_animation_frame_ = false;
 

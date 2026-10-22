@@ -44,7 +44,14 @@ inline static bool HasDisplayContentsStyle(const Node& node)
 
 static bool IsLayoutObjectReparented(const LayoutObject* layout_object)
 {
+#if !defined(MINI_UI_QUICKJS)
     return layout_object->IsInTopOrViewTransitionLayer();
+#else
+    if (Element* element = DynamicTo<Element>(layout_object->GetNode())) {
+        return layout_object->StyleRef().IsRenderedInTopLayer(*element);
+    }
+    return false;
+#endif
 }
 
 ContainerNode* LayoutTreeBuilderTraversal::Parent(const Node& node)
@@ -74,12 +81,11 @@ ContainerNode* LayoutTreeBuilderTraversal::LayoutParent(const Node& node)
 
 LayoutObject* LayoutTreeBuilderTraversal::ParentLayoutObject(const Node& node)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (node.GetPseudoId() == kPseudoIdViewTransition) {
-        // The view-transition pseudo is wrapped by the anonymous
-        // LayoutViewTransitionRoot but that's created by adding the
-        // view-transition to the LayoutView.
         return node.GetDocument().GetLayoutView();
     }
+#endif
     const Node* search_start_node = &node;
     // Parent of ::scroll-marker-group should be layout parent of its
     // originating element.
@@ -155,23 +161,26 @@ Node* LayoutTreeBuilderTraversal::NextSibling(const Node& node)
         [[fallthrough]];
     case kPseudoIdScrollNextButton:
         return nullptr;
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransition:
         return nullptr;
     case kPseudoIdViewTransitionGroup: {
         auto* pseudo_element = DynamicTo<PseudoElement>(node);
         DCHECK(pseudo_element);
-
-        // Iterate the list of IDs until we hit the entry for |node's| ID. The
-        // sibling is the next ID in the list which generates a pseudo element.
         bool found = false;
-        for (const auto& view_transition_name : parent_element->GetDocument().GetStyleEngine().ViewTransitionTags()) {
+        for (const auto& view_transition_name :
+            parent_element->GetDocument()
+                .GetStyleEngine()
+                .ViewTransitionTags()) {
             if (!found) {
-                if (view_transition_name == pseudo_element->view_transition_name())
+                if (view_transition_name ==
+                    pseudo_element->view_transition_name()) {
                     found = true;
+                }
                 continue;
             }
-
-            if (auto* sibling = parent_element->GetPseudoElement(kPseudoIdViewTransitionGroup, view_transition_name)) {
+            if (auto* sibling = parent_element->GetPseudoElement(
+                    kPseudoIdViewTransitionGroup, view_transition_name)) {
                 return sibling;
             }
         }
@@ -181,6 +190,7 @@ Node* LayoutTreeBuilderTraversal::NextSibling(const Node& node)
     case kPseudoIdViewTransitionOld:
     case kPseudoIdViewTransitionNew:
         return nullptr;
+#endif
     default:
         NOTREACHED();
     }

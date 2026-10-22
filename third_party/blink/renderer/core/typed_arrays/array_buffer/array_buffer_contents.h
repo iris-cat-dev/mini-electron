@@ -70,6 +70,13 @@ public:
     };
 
     ArrayBufferContents() = default;
+#if defined(MINI_UI_QUICKJS)
+    ArrayBufferContents(size_t num_elements, size_t element_byte_size, SharingType is_shared, InitializationPolicy policy,
+        AllocationFailureBehavior allocation_failure_behavior = AllocationFailureBehavior::kInvalid)
+    {
+        InitializeFixedBackingStore(num_elements, element_byte_size, is_shared, policy, allocation_failure_behavior);
+    }
+#else
     ArrayBufferContents(size_t num_elements, size_t element_byte_size, SharingType is_shared, InitializationPolicy policy,
         AllocationFailureBehavior allocation_failure_behavior = AllocationFailureBehavior::kInvalid)
         : ArrayBufferContents(num_elements, std::nullopt, element_byte_size, is_shared, policy, allocation_failure_behavior)
@@ -82,6 +89,8 @@ public:
         InitializationPolicy policy, AllocationFailureBehavior allocation_failure_behavior = AllocationFailureBehavior::kInvalid);
 
     ArrayBufferContents(const base::subtle::PlatformSharedMemoryRegion& shared_memory_region, uint64_t offset, size_t length);
+
+#endif
 
     ArrayBufferContents(ArrayBufferContents&&) = default;
 
@@ -163,6 +172,8 @@ public:
     static void FreeMemory(void*);
 
 private:
+    void InitializeFixedBackingStore(size_t num_elements, size_t element_byte_size, SharingType,
+        InitializationPolicy, AllocationFailureBehavior);
     template <partition_alloc::AllocFlags flags> static void* AllocateMemory(size_t, InitializationPolicy);
 
     std::shared_ptr<v8::BackingStore> backing_store_;

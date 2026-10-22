@@ -46,17 +46,22 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/user_activation.h"
 #include "third_party/blink/renderer/core/messaging/blink_transferable_message_mojom_traits.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/scheduler/public/task_attribution_tracker.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
+#if !defined(MINI_UI_QUICKJS)
 enum skia::mojom::ColorType mojo::EnumTraits<enum skia::mojom::ColorType, enum SkColorType>::ToMojom(enum SkColorType t)
 {
     return (skia::mojom::ColorType)t;
@@ -68,6 +73,8 @@ mojo::StructTraits<class blink::mojom::AcceleratedStaticBitmapImageDataView, bli
     *(int*)1 = 1;
     return mojo::PendingRemote<blink::mojom::ImageReleaseCallback>();
 }
+
+#endif
 
 namespace blink {
 
@@ -128,9 +135,11 @@ void MessagePort::postMessage(ScriptState* script_state, const ScriptValue& mess
 
     msg.sender_origin = GetExecutionContext()->GetSecurityOrigin()->IsolatedCopy();
 
+#if !defined(MINI_UI_QUICKJS)
     ThreadDebugger* debugger = ThreadDebugger::From(script_state->GetIsolate());
     if (debugger)
         msg.sender_stack_trace_id = debugger->StoreCurrentStackTrace("postMessage");
+#endif
 
     msg.sender_agent_cluster_id = GetExecutionContext()->GetAgentClusterID();
     msg.locked_to_sender_agent_cluster = msg.message->IsLockedToAgentCluster();
@@ -342,12 +351,14 @@ bool MessagePort::Accept(mojo::Message* mojo_message)
     if (!context)
         return false;
 
+#if !defined(MINI_UI_QUICKJS)
     // WorkerGlobalScope::close() in Worker onmessage handler should prevent
     // the next message from dispatching.
     if (auto* scope = DynamicTo<WorkerGlobalScope>(context)) {
         if (scope->IsClosing())
             return true;
     }
+#endif
 
     Event* evt = CreateMessageEvent(message);
     std::optional<scheduler::TaskAttributionTracker::TaskScope> task_attribution_scope;
@@ -381,13 +392,17 @@ bool MessagePort::Accept(mojo::Message* mojo_message)
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     v8::Isolate* isolate = context->GetIsolate();
     ThreadDebugger* debugger = ThreadDebugger::From(isolate);
     if (debugger)
         debugger->ExternalAsyncTaskStarted(message.sender_stack_trace_id);
+#endif
     DispatchEvent(*evt);
+#if !defined(MINI_UI_QUICKJS)
     if (debugger)
         debugger->ExternalAsyncTaskFinished(message.sender_stack_trace_id);
+#endif
     return true;
 }
 

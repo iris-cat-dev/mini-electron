@@ -16,8 +16,11 @@
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observer_entry.h"
 #include "third_party/blink/renderer/core/layout/layout_block.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+
+#endif
 
 namespace {
 
@@ -255,6 +258,7 @@ bool DisplayLockDocumentState::MarkAncestorContextsHaveTopLayerElement(Element* 
     return had_locked_ancestor;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DisplayLockDocumentState::NotifyViewTransitionPseudoTreeChanged()
 {
     // Reset the view transition element flag.
@@ -285,6 +289,8 @@ void DisplayLockDocumentState::UpdateViewTransitionElementAncestorLocks()
         }
     }
 }
+
+#endif
 
 void DisplayLockDocumentState::NotifySelectionRemoved()
 {

@@ -175,6 +175,7 @@ public:
         return render_blocking_behavior_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsAttributionReportingEligibleImgOrScript() const
     {
         return is_attribution_reporting_eligible_img_or_script_;
@@ -184,6 +185,7 @@ public:
     {
         is_attribution_reporting_eligible_img_or_script_ = eligible;
     }
+#endif
 
     void SetIsPotentiallyLCPElement(bool flag)
     {
@@ -258,7 +260,9 @@ private:
     const ResourceFetcher::IsImageSet is_image_set_;
     bool is_lazy_load_image_enabled_ = false;
     base::TimeTicks creation_time_ = base::TimeTicks::Now();
+#if !defined(MINI_UI_QUICKJS)
     bool is_attribution_reporting_eligible_img_or_script_ = false;
+#endif
     bool is_potentially_lcp_element_ = false;
     bool is_potentially_lcp_influencer_ = false;
     bool shared_storage_writable_opted_in_ = false;

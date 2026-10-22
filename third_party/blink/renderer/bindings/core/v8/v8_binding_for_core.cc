@@ -49,7 +49,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
+#endif
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
@@ -57,12 +59,16 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/shadow_realm/shadow_realm_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
@@ -650,6 +656,7 @@ v8::Local<v8::Context> ToV8Context(ExecutionContext* context, DOMWrapperWorld& w
     if (LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(context)) {
         if (LocalFrame* frame = window->GetFrame())
             return ToV8Context(frame, world);
+#if !defined(MINI_UI_QUICKJS)
     } else if (auto* scope = DynamicTo<WorkerOrWorkletGlobalScope>(context)) {
         if (WorkerOrWorkletScriptController* script = scope->ScriptController()) {
             if (ScriptState* script_state = script->GetScriptState()) {
@@ -657,6 +664,7 @@ v8::Local<v8::Context> ToV8Context(ExecutionContext* context, DOMWrapperWorld& w
                     return script_state->GetContext();
             }
         }
+#endif
     }
     return v8::Local<v8::Context>();
 }
@@ -713,6 +721,7 @@ ScriptState* ToScriptState(ExecutionContext* context, DOMWrapperWorld& world)
     DCHECK(context);
     if (LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(context)) {
         return ToScriptState(window->GetFrame(), world);
+#if !defined(MINI_UI_QUICKJS)
     } else if (auto* scope = DynamicTo<WorkerOrWorkletGlobalScope>(context)) {
         if (WorkerOrWorkletScriptController* script = scope->ScriptController()) {
             if (ScriptState* script_state = script->GetScriptState()) {
@@ -720,6 +729,7 @@ ScriptState* ToScriptState(ExecutionContext* context, DOMWrapperWorld& world)
                     return script_state;
             }
         }
+#endif
     }
     return nullptr;
 }

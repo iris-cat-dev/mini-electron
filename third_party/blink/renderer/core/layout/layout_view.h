@@ -41,7 +41,9 @@ class HitTestCache;
 class HitTestLocation;
 class HitTestResult;
 class LayoutText;
+#if !defined(MINI_UI_QUICKJS)
 class LayoutViewTransitionRoot;
+#endif
 class LocalFrameView;
 
 struct VariableLengthTransformResult {
@@ -348,7 +350,9 @@ public:
     void UnregisterVariableLengthTransformResult(const LayoutText& text);
     VariableLengthTransformResult GetVariableLengthTransformResult(const LayoutText& text);
 
+#if !defined(MINI_UI_QUICKJS)
     LayoutViewTransitionRoot* GetViewTransitionRoot() const;
+#endif
 
 private:
     void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;

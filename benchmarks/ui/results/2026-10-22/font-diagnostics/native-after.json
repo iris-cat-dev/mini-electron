@@ -1,0 +1,154 @@
+{
+  "environment": {
+    "ua": "mini-ui/1 Blink/QuickJS",
+    "dpr": 1
+  },
+  "lines": [
+    {
+      "font": "12px \"Segoe UI\"",
+      "fontSize": "12px",
+      "fontFamily": "\"Segoe UI\"",
+      "lineHeight": "normal",
+      "boxHeight": 21,
+      "textHeight": 16,
+      "textTop": 64.84375
+    },
+    {
+      "font": "14px \"Segoe UI\"",
+      "fontSize": "14px",
+      "fontFamily": "\"Segoe UI\"",
+      "lineHeight": "normal",
+      "boxHeight": 24,
+      "textHeight": 19,
+      "textTop": 85.84375
+    },
+    {
+      "font": "16px \"Segoe UI\"",
+      "fontSize": "16px",
+      "fontFamily": "\"Segoe UI\"",
+      "lineHeight": "normal",
+      "boxHeight": 26,
+      "textHeight": 21,
+      "textTop": 109.84375
+    },
+    {
+      "font": "18px \"Segoe UI\"",
+      "fontSize": "18px",
+      "fontFamily": "\"Segoe UI\"",
+      "lineHeight": "normal",
+      "boxHeight": 29,
+      "textHeight": 24,
+      "textTop": 135.84375
+    },
+    {
+      "font": "700 14px \"Segoe UI\"",
+      "fontSize": "14px",
+      "fontFamily": "\"Segoe UI\"",
+      "lineHeight": "normal",
+      "boxHeight": 24,
+      "textHeight": 19,
+      "textTop": 164.84375
+    },
+    {
+      "font": "14px Arial",
+      "fontSize": "14px",
+      "fontFamily": "Arial",
+      "lineHeight": "normal",
+      "boxHeight": 21,
+      "textHeight": 16,
+      "textTop": 188.84375
+    },
+    {
+      "font": "14px sans-serif",
+      "fontSize": "14px",
+      "fontFamily": "sans-serif",
+      "lineHeight": "normal",
+      "boxHeight": 21,
+      "textHeight": 16,
+      "textTop": 209.84375
+    },
+    {
+      "font": "14px system-ui",
+      "fontSize": "14px",
+      "fontFamily": "system-ui",
+      "lineHeight": "normal",
+      "boxHeight": 23,
+      "textHeight": 18,
+      "textTop": 230.84375
+    }
+  ],
+  "canvas": [
+    {
+      "font": "normal 12px \"Segoe UI\"",
+      "actualFont": "12px \"Segoe UI\"",
+      "width": 91.41796875,
+      "actualAscent": 9,
+      "actualDescent": 3,
+      "fontAscent": 13,
+      "fontDescent": 3
+    },
+    {
+      "font": "normal 14px \"Segoe UI\"",
+      "actualFont": "14px \"Segoe UI\"",
+      "width": 106.654296875,
+      "actualAscent": 10,
+      "actualDescent": 3,
+      "fontAscent": 15,
+      "fontDescent": 4
+    },
+    {
+      "font": "normal 16px \"Segoe UI\"",
+      "actualFont": "16px \"Segoe UI\"",
+      "width": 121.890625,
+      "actualAscent": 12,
+      "actualDescent": 4,
+      "fontAscent": 17,
+      "fontDescent": 4
+    },
+    {
+      "font": "normal 18px \"Segoe UI\"",
+      "actualFont": "18px \"Segoe UI\"",
+      "width": 137.126953125,
+      "actualAscent": 14,
+      "actualDescent": 4,
+      "fontAscent": 19,
+      "fontDescent": 5
+    },
+    {
+      "font": "bold 14px \"Segoe UI\"",
+      "actualFont": "bold 14px \"Segoe UI\"",
+      "width": 113.2099609375,
+      "actualAscent": 10,
+      "actualDescent": 3,
+      "fontAscent": 15,
+      "fontDescent": 4
+    },
+    {
+      "font": "normal 14px Arial",
+      "actualFont": "14px Arial",
+      "width": 109.7373046875,
+      "actualAscent": 10,
+      "actualDescent": 3,
+      "fontAscent": 13,
+      "fontDescent": 3
+    },
+    {
+      "font": "normal 14px sans-serif",
+      "actualFont": "14px sans-serif",
+      "width": 109.7373046875,
+      "actualAscent": 10,
+      "actualDescent": 3,
+      "fontAscent": 13,
+      "fontDescent": 3
+    },
+    {
+      "font": "normal 14px system-ui",
+      "actualFont": "14px system-ui",
+      "width": 115.80078125,
+      "actualAscent": 11,
+      "actualDescent": 3,
+      "fontAscent": 14,
+      "fontDescent": 4
+    }
+  ]
+}

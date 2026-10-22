@@ -90,6 +90,7 @@ public:
         return frame_number_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Unique trace flow id for the given task, used to connect the places where
     // the task was posted from and the task itself.
     uint64_t trace_task_id()
@@ -101,6 +102,7 @@ public:
         trace_task_id_ = id;
     }
 
+#endif
     // Subclasses should implement this method. RunOnWorkerThread may be called
     // on any thread, and subclasses are responsible for locking and thread
     // safety.
@@ -115,7 +117,9 @@ protected:
 private:
     TaskState state_;
     int64_t frame_number_ = -1;
+#if !defined(MINI_UI_QUICKJS)
     int64_t trace_task_id_ = 0;
+#endif
 };
 
 // A task dependency graph describes the order in which to execute a set

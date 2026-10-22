@@ -39,7 +39,9 @@ public:
     void SetPluginsEnabled(bool);
     void SetScriptEnabled(bool);
     void SetHideScrollbars(bool);
+#if !defined(MINI_UI_QUICKJS)
     void SetCookieEnabled(bool);
+#endif
     void SetDoubleTapToZoomEnabled(bool);
     bool DoubleTapToZoomEnabled() const;
     void SetAvailablePointerTypes(int);
@@ -63,7 +65,9 @@ public:
     void SetTouchEventEmulationEnabled(bool, int max_touch_points);
     void SetScriptExecutionDisabled(bool);
     void SetScrollbarsHidden(bool);
+#if !defined(MINI_UI_QUICKJS)
     void SetDocumentCookieDisabled(bool);
+#endif
     void SetAutoDarkModeOverride(bool);
     void ResetAutoDarkModeOverride();
 
@@ -159,8 +163,10 @@ private:
     bool embedder_hide_scrollbars_;
     bool scrollbars_hidden_;
 
+#if !defined(MINI_UI_QUICKJS)
     bool embedder_cookie_enabled_;
     bool document_cookie_disabled_;
+#endif
 
     bool embedder_force_dark_mode_enabled_;
     bool auto_dark_overriden_;

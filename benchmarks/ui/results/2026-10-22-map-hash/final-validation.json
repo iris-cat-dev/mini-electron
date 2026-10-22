@@ -1,0 +1,106 @@
+[
+  {
+    "name": "profile-vue",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "D:\\Project\\mini-electron\\.build-tools\\ui-atom\\sample-thread.py",
+      "vue",
+      "out/ui-map-after/build/ui-benchmark.exe",
+      "out/ui-map-thread-profile"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 16.615919000003487,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\profile-vue.log",
+    "retained_log": "validation-logs/profile-vue.log.gz"
+  },
+  {
+    "name": "profile-react",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "D:\\Project\\mini-electron\\.build-tools\\ui-atom\\sample-thread.py",
+      "react",
+      "out/ui-map-after/build/ui-benchmark.exe",
+      "out/ui-map-thread-profile"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 11.150268499972299,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\profile-react.log",
+    "retained_log": "validation-logs/profile-react.log.gz"
+  },
+  {
+    "name": "production-build",
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe",
+      "-f",
+      "out/ui-windows-x64/build.ninja",
+      "-j4",
+      "host"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 2831.549004600005,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\production-build.log",
+    "retained_log": "validation-logs/production-build.log.gz"
+  },
+  {
+    "name": "runtime-regression",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-windows-x64",
+      "--out-dir",
+      "out/ui-map-final-checks"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 6.012772899994161,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\runtime-regression.log",
+    "retained_log": "validation-logs/runtime-regression.log.gz"
+  },
+  {
+    "name": "production-framework-smoke",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/run.py",
+      "--ui-out",
+      "out/ui-windows-x64",
+      "--build",
+      "--counts",
+      "1000",
+      "--timeout-ms",
+      "900000",
+      "--out-dir",
+      "out/ui-map-final-smoke"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 33.82518079999136,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\production-framework-smoke.log",
+    "retained_log": "validation-logs/production-framework-smoke.log.gz"
+  },
+  {
+    "name": "chrome-default",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/chrome.py",
+      "--out-dir",
+      "out/ui-map-chrome-default"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 56.645435399987036,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\chrome-default.log",
+    "retained_log": "validation-logs/chrome-default.log.gz"
+  },
+  {
+    "name": "chrome-software",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/chrome.py",
+      "--disable-gpu",
+      "--out-dir",
+      "out/ui-map-chrome-software"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 57.053263200010406,
+    "log": "D:\\Project\\mini-electron\\out\\ui-map-final-validation\\chrome-software.log",
+    "retained_log": "validation-logs/chrome-software.log.gz"
+  }
+]

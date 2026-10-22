@@ -26,7 +26,12 @@ namespace blink {
 // 2. Trigger a load event on its owner element once it finishes a load.
 class CORE_EXPORT RemoteFrameOwner final : public GarbageCollected<RemoteFrameOwner>, public FrameOwner {
 public:
+#if defined(MINI_UI_QUICKJS)
+    // OOP embedding cannot create an owner in the local-only profile.
+    RemoteFrameOwner(const FramePolicy&, const WebFrameOwnerProperties&) = delete;
+#else
     RemoteFrameOwner(const FramePolicy&, const WebFrameOwnerProperties&);
+#endif
 
     // FrameOwner overrides:
     Frame* ContentFrame() const override
@@ -41,7 +46,9 @@ public:
     }
     void AddResourceTiming(mojom::blink::ResourceTimingInfoPtr) override;
     void DispatchLoad() override;
+#if !defined(MINI_UI_QUICKJS)
     void IntrinsicSizingInfoChanged() override;
+#endif
     void SetNeedsOcclusionTracking(bool) override;
 
     AtomicString BrowsingContextContainerName() const override

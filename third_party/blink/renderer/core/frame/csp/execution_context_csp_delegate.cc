@@ -21,12 +21,18 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/report.h"
 #include "third_party/blink/renderer/core/frame/reporting_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/ping_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
@@ -63,12 +69,14 @@ void ExecutionContextCSPDelegate::SetSandboxFlags(network::mojom::blink::WebSand
     // an ExecutionContext's agent in the middle of an object lifecycle
     // is not permitted.
 
+#if !defined(MINI_UI_QUICKJS)
     // Since Workers and Worklets don't share agents (each one is unique)
     // we allow them to apply new sandbox flags on top of the current ones.
     WorkerOrWorkletGlobalScope* worklet_or_worker = DynamicTo<WorkerOrWorkletGlobalScope>(execution_context_.Get());
     if (worklet_or_worker) {
         worklet_or_worker->SetSandboxFlags(mask);
     }
+#endif
     // Just check that all the sandbox flags that are set by CSP have
     // already been set on the security context. Meta tags can't set them
     // and we should have already constructed the document with the correct
@@ -162,6 +170,7 @@ void ExecutionContextCSPDelegate::PostViolationReport(const SecurityPolicyViolat
     DCHECK_EQ(is_frame_ancestors_violation,
         network::mojom::blink::CSPDirectiveName::FrameAncestors == ContentSecurityPolicy::GetDirectiveType(violation_data.effectiveDirective()));
 
+#if !defined(MINI_UI_QUICKJS)
     // We do not support reporting for worklets, since they don't have a
     // ResourceFetcher.
     //
@@ -169,6 +178,7 @@ void ExecutionContextCSPDelegate::PostViolationReport(const SecurityPolicyViolat
     // owner document's ResourceFetcher.
     if (DynamicTo<WorkletGlobalScope>(execution_context_.Get()))
         return;
+#endif
 
     scoped_refptr<EncodedFormData> report = EncodedFormData::Create(stringified_report.Utf8());
 
@@ -197,25 +207,31 @@ void ExecutionContextCSPDelegate::AddConsoleMessage(ConsoleMessage* console_mess
     execution_context_->AddConsoleMessage(console_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ExecutionContextCSPDelegate::AddInspectorIssue(AuditsIssue issue)
 {
     execution_context_->AddInspectorIssue(std::move(issue));
 }
+#endif
 
 void ExecutionContextCSPDelegate::DisableEval(const String& error_message)
 {
     execution_context_->DisableEval(error_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ExecutionContextCSPDelegate::SetWasmEvalErrorMessage(const String& error_message)
 {
     execution_context_->SetWasmEvalErrorMessage(error_message);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void ExecutionContextCSPDelegate::ReportBlockedScriptExecutionToInspector(const String& directive_text)
 {
     probe::ScriptExecutionBlockedByCSP(execution_context_, directive_text);
 }
+#endif
 
 void ExecutionContextCSPDelegate::DidAddContentSecurityPolicies(WTF::Vector<network::mojom::blink::ContentSecurityPolicyPtr> policies)
 {
@@ -257,9 +273,11 @@ Document* ExecutionContextCSPDelegate::GetDocument()
 
 void ExecutionContextCSPDelegate::DispatchViolationEventInternal(const SecurityPolicyViolationEventInit* violation_data, Element* element)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Worklets don't support Events in general.
     if (execution_context_->IsWorkletGlobalScope())
         return;
+#endif
 
     // https://w3c.github.io/webappsec-csp/#report-violation.
     // Step 3.1. If target is not null, and global is a Window, and target’s
@@ -274,14 +292,19 @@ void ExecutionContextCSPDelegate::DispatchViolationEventInternal(const SecurityP
     SecurityPolicyViolationEvent& event = *SecurityPolicyViolationEvent::Create(event_type_names::kSecuritypolicyviolation, violation_data);
     DCHECK(event.bubbles());
 
-    if (auto* document = GetDocument()) {
+    Document* document = GetDocument();
+    if (document) {
         if (element && element->isConnected() && element->GetDocument() == document)
             element->DispatchEvent(event);
         else
             document->DispatchEvent(event);
-    } else if (auto* scope = DynamicTo<WorkerGlobalScope>(*execution_context_)) {
-        scope->DispatchEvent(event);
     }
+#if !defined(MINI_UI_QUICKJS)
+    if (!document) {
+        if (auto* scope = DynamicTo<WorkerGlobalScope>(*execution_context_))
+            scope->DispatchEvent(event);
+    }
+#endif
 }
 
 } // namespace blink

@@ -28,7 +28,9 @@
 #include "services/network/public/mojom/url_response_head.mojom-forward.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom.h"
 #include "third_party/blink/public/mojom/navigation/renderer_eviction_reason.mojom-blink-forward.h"
@@ -53,8 +55,10 @@ struct URLLoaderCompletionStatus;
 } // namespace network
 
 namespace blink {
+#if !defined(MINI_UI_QUICKJS)
 class CodeCacheFetcher;
 class CodeCacheHost;
+#endif
 class ResourceLoadInfoNotifierWrapper;
 class ThrottlingURLLoader;
 class MojoURLLoaderClient;
@@ -95,12 +99,21 @@ public:
     //
     // You need to pass a non-null |loading_task_runner| to specify task queue to
     // execute loading tasks on.
+#if defined(MINI_UI_QUICKJS)
+    virtual int SendAsync(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<base::SequencedTaskRunner> loading_task_runner,
+        const net::NetworkTrafficAnnotationTag& traffic_annotation, uint32_t loader_options, const Vector<String>& cors_exempt_header_list,
+        scoped_refptr<ResourceRequestClient> client, scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+        WebVector<std::unique_ptr<URLLoaderThrottle>> throttles, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
+        base::OnceCallback<void(mojom::blink::RendererEvictionReason)> evict_from_bfcache_callback,
+        base::RepeatingCallback<void(size_t)> did_buffer_load_while_in_bfcache_callback);
+#else
     virtual int SendAsync(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<base::SequencedTaskRunner> loading_task_runner,
         const net::NetworkTrafficAnnotationTag& traffic_annotation, uint32_t loader_options, const Vector<String>& cors_exempt_header_list,
         scoped_refptr<ResourceRequestClient> client, scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
         WebVector<std::unique_ptr<URLLoaderThrottle>> throttles, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
         CodeCacheHost* code_cache_host, base::OnceCallback<void(mojom::blink::RendererEvictionReason)> evict_from_bfcache_callback,
         base::RepeatingCallback<void(size_t)> did_buffer_load_while_in_bfcache_callback);
+#endif
 
     // Cancels the current request and `request_info_` will be released.
     virtual void Cancel(scoped_refptr<base::SequencedTaskRunner> task_runner);
@@ -196,31 +209,41 @@ private:
     // converted response start time.
     base::TimeTicks ToLocalURLResponseHead(const PendingRequestInfo& request_info, network::mojom::URLResponseHead& response_head) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void DidReceiveCachedCode();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldDeferTask() const;
 
     void MaybeRunPendingTasks();
+#endif
 
     // The instance is created on StartAsync() or StartSync(), and it's deleted
     // when the response has finished, or when the request is canceled.
     std::unique_ptr<PendingRequestInfo> request_info_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Set to true when an operation integral to resource loading latency is
     // delayed waiting on a response from the code cache.
     bool latency_critical_operation_deferred_ = false;
     bool used_code_cache_fetcher_ = false;
+#endif
 
     scoped_refptr<base::SequencedTaskRunner> loading_task_runner_;
 
+#if !defined(MINI_UI_QUICKJS)
     // `pending_tasks_` are queued while waiting for the response from the
     // IsolatedCode Cache Host. Ideally for the code health, we should not have
     // such deferring logic. However, it is difficult because the current code for
     // ScriptCachedMetadataHandler is written with the assumption that metadata
     // comes first.
     WTF::Vector<base::OnceClosure> pending_tasks_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<CodeCacheFetcher> code_cache_fetcher_;
+#endif
 
     base::WeakPtrFactory<ResourceRequestSender> weak_factory_ { this };
 };

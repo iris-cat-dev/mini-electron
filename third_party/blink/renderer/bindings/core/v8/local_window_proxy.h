@@ -54,6 +54,10 @@ public:
 
     v8::Local<v8::Context> ContextIfInitialized() const
     {
+#if defined(MINI_UI_QUICKJS)
+        if (lifecycle_ != Lifecycle::kContextIsInitialized)
+            return {};
+#endif
         return script_state_ ? script_state_->GetContext() : v8::Local<v8::Context>();
     }
 
@@ -67,7 +71,9 @@ public:
     // (e.g., after setting docoument.domain).
     void UpdateSecurityOrigin(const SecurityOrigin*);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetAbortScriptExecution(v8::Context::AbortScriptExecutionCallback callback);
+#endif
 
 private:
     // LocalWindowProxy overrides:
@@ -114,7 +120,9 @@ private:
     }
 
     Member<ScriptState> script_state_;
+#if !defined(MINI_UI_QUICKJS)
     bool context_was_created_from_snapshot_ = false;
+#endif
 };
 
 template <> struct DowncastTraits<LocalWindowProxy> {

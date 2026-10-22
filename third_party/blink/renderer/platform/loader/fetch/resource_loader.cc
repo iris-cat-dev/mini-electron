@@ -49,7 +49,6 @@
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/network/public/cpp/cross_origin_embedder_policy.h"
-#include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/blocked_by_response_reason.mojom-shared.h"
 #include "services/network/public/mojom/fetch_api.mojom-blink.h"
@@ -76,7 +75,9 @@
 #include "third_party/blink/renderer/platform/loader/cors/cors.h"
 #include "third_party/blink/renderer/platform/loader/cors/cors_error_string.h"
 #include "third_party/blink/renderer/platform/loader/fetch/back_forward_cache_loader_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/console_logger.h"
 #include "third_party/blink/renderer/platform/loader/fetch/detachable_use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_context.h"
@@ -90,7 +91,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/response_body_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/shared_buffer_bytes_consumer.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_response_processor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/request_conversion.h"
 #include "third_party/blink/renderer/platform/loader/mixed_content_autoupgrade_status.h"
 #include "third_party/blink/renderer/platform/network/http_names.h"
@@ -223,10 +226,12 @@ bool ShouldActivateCacheAwareLoading(const ResourceFetcher* fetcher, const Resou
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Don't activate if the page is controlled by service worker.
     if (fetcher->IsControlledByServiceWorker() != mojom::blink::ControllerServiceWorkerMode::kNoController) {
         return false;
     }
+#endif
     return true;
 }
 
@@ -311,9 +316,14 @@ void ResourceLoader::Start()
             // reload with original request will be triggered in DidFail().
             network_resource_request_->load_flags |= net::LOAD_ONLY_FROM_CACHE;
         }
+#if defined(MINI_UI_QUICKJS)
+        loader_ = fetcher_->CreateURLLoader(*network_resource_request_, resource_->Options(), resource_->GetResourceRequest().GetRequestContext(),
+            resource_->GetResourceRequest().GetRenderBlockingBehavior(), resource_->GetResourceRequest().IsFromOriginDirtyStyleSheet());
+#else
         loader_ = fetcher_->CreateURLLoader(*network_resource_request_, resource_->Options(), resource_->GetResourceRequest().GetRequestContext(),
             resource_->GetResourceRequest().GetRenderBlockingBehavior(), resource_->GetResourceRequest().GetServiceWorkerRaceNetworkRequestToken(),
             resource_->GetResourceRequest().IsFromOriginDirtyStyleSheet());
+#endif
         task_runner_for_body_loader_ = loader_->GetTaskRunnerForBodyLoader();
     } else {
         // ResourceLoader doesn't support DownloadToBlob option for data URL. This
@@ -436,9 +446,14 @@ void ResourceLoader::Restart()
     CHECK(!network_resource_request_);
     CHECK(!resource_->Url().ProtocolIsData());
     network_resource_request_ = CreateNetworkRequest(request, request_body_);
+#if defined(MINI_UI_QUICKJS)
+    loader_ = fetcher_->CreateURLLoader(*network_resource_request_, resource_->Options(), resource_->GetResourceRequest().GetRequestContext(),
+        resource_->GetResourceRequest().GetRenderBlockingBehavior(), resource_->GetResourceRequest().IsFromOriginDirtyStyleSheet());
+#else
     loader_ = fetcher_->CreateURLLoader(*network_resource_request_, resource_->Options(), resource_->GetResourceRequest().GetRequestContext(),
         resource_->GetResourceRequest().GetRenderBlockingBehavior(), resource_->GetResourceRequest().GetServiceWorkerRaceNetworkRequestToken(),
         resource_->GetResourceRequest().IsFromOriginDirtyStyleSheet());
+#endif
     task_runner_for_body_loader_ = loader_->GetTaskRunnerForBodyLoader();
     StartFetch();
 }
@@ -570,8 +585,13 @@ bool ResourceLoader::WillFollowRedirect(const WebURL& new_url, const net::SiteFo
         return false;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<ResourceRequest> new_request = resource_->LastResourceRequest().CreateRedirectRequest(
+        new_url, new_method, new_site_for_cookies, new_referrer, new_referrer_policy);
+#else
     std::unique_ptr<ResourceRequest> new_request = resource_->LastResourceRequest().CreateRedirectRequest(
         new_url, new_method, new_site_for_cookies, new_referrer, new_referrer_policy, !passed_redirect_response.WasFetchedViaServiceWorker());
+#endif
 
     ResourceType resource_type = resource_->GetType();
 
@@ -835,6 +855,7 @@ void ResourceLoader::DidReceiveResponseInternal(const ResourceResponse& response
     const KURL& original_url = previous_redirect_info ? previous_redirect_info->original_url : request.Url();
     const ResourceRequest::RedirectInfo redirect_info(original_url, request.Url());
 
+#if !defined(MINI_UI_QUICKJS)
     if (response.WasFetchedViaServiceWorker()) {
         // Run post-request CSP checks. This is the "Should response to request be
         // blocked by Content Security Policy?" algorithm in the CSP specification:
@@ -868,6 +889,7 @@ void ResourceLoader::DidReceiveResponseInternal(const ResourceResponse& response
             return;
         }
     }
+#endif
 
     if (base::FeatureList::IsEnabled(features::kSendCnameAliasesToSubresourceFilterFromRenderer)) {
         bool should_block = ShouldBlockRequestBasedOnSubresourceFilterDnsAliasCheck(
@@ -909,11 +931,13 @@ void ResourceLoader::DidReceiveResponseInternal(const ResourceResponse& response
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Not SetSerializedCachedMetadata in a successful revalidation
     // because resource content would not expect to be changed.
     if (!resource_->HasSuccessfulRevalidation() && cached_metadata && cached_metadata->size()) {
         resource_->SetSerializedCachedMetadata(std::move(*cached_metadata));
     }
+#endif
 
     if (auto* frame_or_worker_scheduler = fetcher_->GetFrameOrWorkerScheduler()) {
         if (response.CacheControlContainsNoCache()) {
@@ -964,16 +988,11 @@ void ResourceLoader::DidReceiveDataImpl(absl::variant<SegmentedBuffer, base::spa
     }
     resource_->AppendData(std::move(data));
 
+#if !defined(MINI_UI_QUICKJS)
     // This value should not be exposed for opaque responses.
-    if (resource_->response_.WasFetchedViaServiceWorker() && resource_->response_.GetType() != network::mojom::FetchResponseType::kOpaque) {
-        // `received_body_length_from_service_worker_` needs to fit into both a
-        // uint64_t and an int64_t so must be >= 0 and also <=
-        // std::numeric_limits<int64_t>::max(); Since `length` is guaranteed never
-        // to be negative, the value must always increase, giving assurance that it
-        // will always be >= 0, but the CheckAdd is used to enforce the second
-        // constraint.
+    if (resource_->response_.WasFetchedViaServiceWorker() && resource_->response_.GetType() != network::mojom::FetchResponseType::kOpaque)
         received_body_length_from_service_worker_ = base::CheckAdd(received_body_length_from_service_worker_, data_size).ValueOrDie<int64_t>();
-    }
+#endif
 }
 
 void ResourceLoader::DidReceiveTransferSizeUpdate(int transfer_size_diff)
@@ -993,10 +1012,12 @@ void ResourceLoader::DidFinishLoadingFirstPartInMultipart()
 
 void ResourceLoader::DidFinishLoading(base::TimeTicks response_end_time, int64_t encoded_data_length, uint64_t encoded_body_length, int64_t decoded_body_length)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (resource_->response_.WasFetchedViaServiceWorker()) {
         encoded_body_length = received_body_length_from_service_worker_;
         decoded_body_length = received_body_length_from_service_worker_;
     }
+#endif
 
     resource_->SetEncodedDataLength(encoded_data_length);
     resource_->SetEncodedBodyLength(encoded_body_length);
@@ -1128,8 +1149,12 @@ void ResourceLoader::RequestSynchronously()
         // the data url with invalid mime type in some cases.
         // CanHandleDataURLRequestLocally() has already checked if the data url can
         // be handled here.
+#if defined(MINI_UI_QUICKJS)
+        auto [result, response, data] = network_utils::ParseDataURL(resource_->Url(), request.HttpMethod());
+#else
         auto [result, response, data] = network_utils::ParseDataURL(resource_->Url(), request.HttpMethod(), request.GetUkmSourceId(),
             /*fetcher_->UkmRecorder()*/ nullptr);
+#endif
         if (result != net::OK) {
             error_out = WebURLError(result, resource_->Url());
         } else {
@@ -1194,6 +1219,7 @@ void ResourceLoader::RequestAsynchronously()
     CHECK(loader_);
     CHECK(network_resource_request_);
 
+#if !defined(MINI_UI_QUICKJS)
     // When `loader_` is a BackgroundURLLoader and
     // kBackgroundResponseProcessorBackground feature param is enabled, creates a
     // BackgroundResponseProcessor for the `resource_`, and set it to the
@@ -1204,9 +1230,15 @@ void ResourceLoader::RequestAsynchronously()
         }
     }
 
+#endif
+
     // Don't do mime sniffing for fetch (crbug.com/2016)
     bool no_mime_sniffing = resource_->GetResourceRequest().GetRequestContext() == blink::mojom::blink::RequestContextType::FETCH;
 
+#if defined(MINI_UI_QUICKJS)
+    loader_->LoadAsynchronously(std::move(network_resource_request_), Context().GetTopFrameOrigin(), no_mime_sniffing,
+        Context().CreateResourceLoadInfoNotifierWrapper(), this);
+#else
     // Don't pass a CodeCacheHost when DownloadToBlob is true. The detailed
     // decision logic for whether or not to fetch code cache from the isolated
     // code cache is implemented in ResourceRequestSender::CodeCacheFetcher. We
@@ -1214,6 +1246,7 @@ void ResourceLoader::RequestAsynchronously()
     // know.
     loader_->LoadAsynchronously(std::move(network_resource_request_), Context().GetTopFrameOrigin(), no_mime_sniffing,
         Context().CreateResourceLoadInfoNotifierWrapper(), !resource_->GetResourceRequest().DownloadToBlob() ? fetcher_->GetCodeCacheHost() : nullptr, this);
+#endif
 }
 
 void ResourceLoader::Dispose()
@@ -1332,9 +1365,13 @@ void ResourceLoader::HandleDataUrl()
     // data url with invalid mime type in some cases.
     // CanHandleDataURLRequestLocally() has already checked if the data url can be
     // handled here.
+#if defined(MINI_UI_QUICKJS)
+    auto [result, response, data] = network_utils::ParseDataURL(resource_->Url(), resource_->GetResourceRequest().HttpMethod());
+#else
     auto [result, response, data]
         = network_utils::ParseDataURL(resource_->Url(), resource_->GetResourceRequest().HttpMethod(), resource_->GetResourceRequest().GetUkmSourceId(),
             /*fetcher_->UkmRecorder()*/ nullptr);
+#endif
     if (result != net::OK) {
         HandleError(ResourceError(result, resource_->Url(), std::nullopt));
         return;

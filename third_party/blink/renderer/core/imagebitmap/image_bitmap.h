@@ -28,7 +28,9 @@
 
 namespace blink {
 class HTMLCanvasElement;
+#if !defined(MINI_UI_QUICKJS)
 class HTMLVideoElement;
+#endif
 class ImageData;
 class ImageElementBase;
 class ImageDecoder;
@@ -45,7 +47,9 @@ public:
     static sk_sp<SkImage> GetSkImageFromDecoder(std::unique_ptr<ImageDecoder>);
 
     ImageBitmap(ImageElementBase*, std::optional<gfx::Rect>, const ImageBitmapOptions* = ImageBitmapOptions::Create());
+#if !defined(MINI_UI_QUICKJS)
     ImageBitmap(HTMLVideoElement*, std::optional<gfx::Rect>, const ImageBitmapOptions* = ImageBitmapOptions::Create());
+#endif
     ImageBitmap(HTMLCanvasElement*, std::optional<gfx::Rect>, const ImageBitmapOptions* = ImageBitmapOptions::Create());
     ImageBitmap(OffscreenCanvas*, std::optional<gfx::Rect>, const ImageBitmapOptions* = ImageBitmapOptions::Create());
     ImageBitmap(ImageData*, std::optional<gfx::Rect>, const ImageBitmapOptions* = ImageBitmapOptions::Create());

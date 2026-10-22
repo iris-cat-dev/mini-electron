@@ -340,7 +340,8 @@ static inline JS_BOOL JS_VALUE_IS_NAN(JSValue v)
 /* don't include the stack frames before this eval in the Error() backtraces */
 #define JS_EVAL_FLAG_BACKTRACE_BARRIER (1 << 6)
 
-typedef JSValue JSCFunction(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv, void* userdata, JS_BOOL is_constructor);
+typedef JSValue JSCFunction(JSContext* ctx, JSValueConst this_val,
+    int argc, JSValueConst* argv);
 typedef JSValue JSCFunctionMagic(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv, int magic);
 typedef JSValue JSCFunctionData(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv, int magic, JSValue* func_data);
 
@@ -357,7 +358,7 @@ typedef struct JSMallocFunctions {
     void* (*js_realloc)(JSMallocState* s, void* ptr, size_t size);
     size_t (*js_malloc_usable_size)(const void* ptr);
 
-    void* (*js_malloc_array_buffer)(JSMallocState* s, size_t size); // Õâ¸ö²»ÄÜºÍÉÏÃæºÏ²¢£¬ÒòÎªv8µÄArrayBuffer::AllocatorÃ»ÓÐrealloc
+    void* (*js_malloc_array_buffer)(JSMallocState* s, size_t size); // è¿™ä¸ªä¸èƒ½å’Œä¸Šé¢åˆå¹¶ï¼Œå› ä¸ºv8çš„ArrayBuffer::Allocatoræ²¡æœ‰realloc
     void (*js_free_array_buffer)(JSMallocState* s, void* ptr);
 } JSMallocFunctions;
 
@@ -368,6 +369,12 @@ JSRuntime* JS_NewRuntime(void);
 void JS_SetRuntimeInfo(JSRuntime* rt, const char* info);
 void JS_SetMemoryLimit(JSRuntime* rt, size_t limit);
 void JS_SetGCThreshold(JSRuntime* rt, size_t gc_threshold);
+JS_BOOL JS_GetCompletedGCEpoch(JSRuntime* rt,
+    uint64_t* completed_epoch);
+/* Constant-time allocation query. Returns false during VM execution, active
+   job dispatch, or GC; callers must also exclude pending host callbacks and
+   microtasks. */
+JS_BOOL JS_GetHostGCAllocation(JSRuntime* rt, size_t* allocated_bytes);
 /* use 0 to disable maximum stack size check */
 void JS_SetMaxStackSize(JSRuntime* rt, size_t stack_size);
 /* should be called when changing thread to update the stack top value
@@ -377,14 +384,26 @@ JSRuntime* JS_NewRuntime2(const JSMallocFunctions* mf, void* opaque);
 void JS_FreeRuntime(JSRuntime* rt);
 void* JS_GetRuntimeOpaque(JSRuntime* rt);
 void JS_SetRuntimeOpaque(JSRuntime* rt, void* opaque);
+JSValue JS_GetContinuationPreservedEmbedderData(JSRuntime* rt);
+void JS_SetContinuationPreservedEmbedderData(JSRuntime* rt,
+    JSValueConst value);
 typedef void JS_MarkFunc(JSRuntime* rt, JSGCObjectHeader* gp, void* userdata);
+typedef enum JSExternalGCPhase {
+    JS_EXTERNAL_GC_PHASE_DECREF,
+    JS_EXTERNAL_GC_PHASE_SCAN,
+    JS_EXTERNAL_GC_PHASE_SWEEP,
+} JSExternalGCPhase;
+typedef void JSExternalGCTracer(JSRuntime* rt, JSExternalGCPhase phase,
+    JS_MarkFunc* mark_func, void* opaque);
+void JS_SetExternalGCRootTracer(JSRuntime* rt,
+    JSExternalGCTracer* tracer, void* opaque);
 void JS_MarkValue(JSRuntime* rt, JSValueConst val, JS_MarkFunc* mark_func, void* userdata);
 void JS_RunGC(JSRuntime* rt);
 JS_BOOL JS_IsLiveObject(JSRuntime* rt, JSValueConst obj);
 void JS_MarkTraceCountValue(JSRuntime* rt, JSGCObjectHeader* gbh, int trace_count);
 int JS_GetTraceCountValue(JSRuntime* rt, JSGCObjectHeader* gbh);
 
-// miniv8°ó¶¨ÁËuserdata¶ÔÏóÒÔºó£¬ÓÃÕâº¯Êý¿ÉÒÔ±éÀúÓÐuserdataµÄ×Ó¶ÔÏó
+// miniv8ç»‘å®šäº†userdataå¯¹è±¡ä»¥åŽï¼Œç”¨è¿™å‡½æ•°å¯ä»¥éåŽ†æœ‰userdataçš„å­å¯¹è±¡
 //typedef void JS_MarkUserdataFunc(JSRuntime *rt, JSValueConst val, void* userdata);
 void JS_MarkUserdataObj(JSRuntime* rt, JSValueConst val, JS_MarkFunc* mark_func, void* userdata);
 void JS_MarkUserdataObjByGP(JSRuntime* rt, JSGCObjectHeader* gp, JS_MarkFunc* mark_func, void* userdata);
@@ -392,10 +411,29 @@ void JS_MarkUserdataObjByGP(JSRuntime* rt, JSGCObjectHeader* gp, JS_MarkFunc* ma
 JSContext* JS_NewContext(JSRuntime* rt);
 void JS_FreeContext(JSContext* s);
 JSContext* JS_DupContext(JSContext* ctx);
+typedef struct JSWeakContext JSWeakContext;
+typedef void JSWeakContextFinalizer(JSRuntime* rt, void* opaque);
+JSWeakContext* JS_NewWeakContext(JSContext* ctx,
+    JSWeakContextFinalizer* finalizer, void* opaque);
+/* Borrowed; becomes NULL before the death callback is invoked. */
+JSContext* JS_GetWeakContext(JSWeakContext* weak);
+void JS_FreeWeakContext(JSRuntime* rt, JSWeakContext* weak);
 void JS_SetIsEmptyContext(JSContext* ctx);
 void* JS_GetContextOpaque(JSContext* ctx);
 void JS_SetContextOpaque(JSContext* ctx, void* opaque);
+typedef void JSContextOpaqueFinalizer(JSRuntime* rt, void* opaque);
+void JS_SetContextOpaqueFinalizer(JSContext* ctx,
+    JSContextOpaqueFinalizer* finalizer);
+typedef void JSContextNativeFinalizer(JSRuntime* rt, void* data);
+typedef void JSContextNativeGCMark(JSRuntime* rt, void* data,
+    JS_MarkFunc* mark_func, void* mark_userdata);
+void JS_SetContextNativeData(JSContext* ctx, void* data,
+    JSContextNativeFinalizer* finalizer,
+    JSContextNativeGCMark* gc_mark);
+void* JS_GetContextNativeData(JSContext* ctx);
 JSRuntime* JS_GetRuntime(JSContext* ctx);
+JSContext* JS_GetObjectContext(JSValueConst obj);
+int JS_SetObjectContext(JSContext* ctx, JSValueConst obj);
 void JS_SetClassProto(JSContext* ctx, JSClassID class_id, JSValue obj);
 JSValue JS_GetClassProto(JSContext* ctx, JSClassID class_id);
 
@@ -512,6 +550,18 @@ typedef struct JSClassExoticMethods {
     JSValue (*get_property)(JSContext* ctx, JSValueConst obj, JSAtom atom, JSValueConst receiver);
     /* return < 0 if exception or TRUE/FALSE */
     int (*set_property)(JSContext* ctx, JSValueConst obj, JSAtom atom, JSValueConst value, JSValueConst receiver, int flags);
+    JSValue (*get_prototype)(JSContext* ctx, JSValueConst obj);
+    /* return < 0 if exception or TRUE/FALSE */
+    int (*set_prototype)(JSContext* ctx, JSValueConst obj,
+        JSValueConst proto, int flags);
+    /* return < 0 if exception or TRUE/FALSE */
+    int (*is_extensible)(JSContext* ctx, JSValueConst obj);
+    /* return < 0 if exception or TRUE/FALSE */
+    int (*prevent_extensions)(JSContext* ctx, JSValueConst obj);
+    /* Flag-aware delete hook for native classes. The legacy three-argument
+       hook remains available for built-ins. */
+    int (*delete_property_flags)(JSContext* ctx, JSValueConst obj,
+        JSAtom prop, int flags);
 } JSClassExoticMethods;
 
 typedef void JSClassFinalizer(JSRuntime* rt, JSValue val);
@@ -689,12 +739,35 @@ static inline JS_BOOL JS_IsObject(JSValueConst v)
 }
 
 JS_BOOL JS_IsRegExp(JSValueConst v);
+/* limit is counted in native backtrack-pop steps; zero is unlimited. */
+int JS_SetRegExpBacktrackLimit(JSContext* ctx, JSValueConst regexp,
+    uint32_t limit);
 JS_BOOL JS_IsSet(JSValueConst v);
 JS_BOOL JS_IsMap(JSValueConst obj);
 JS_BOOL JS_IsMapIterator(JSValueConst obj);
 JS_BOOL JS_IsSetIterator(JSValueConst obj);
 JS_BOOL JS_IsPromise(JSValueConst v);
 JS_BOOL JS_IsProxy(JSValueConst v);
+/* Target and handler are owned; revoked proxies return JS_NULL. */
+JSValue JS_GetProxyTarget(JSContext* ctx, JSValueConst proxy);
+JSValue JS_GetProxyHandler(JSContext* ctx, JSValueConst proxy);
+JS_BOOL JS_IsProxyRevoked(JSValueConst proxy);
+int JS_RevokeProxy(JSContext* ctx, JSValueConst proxy);
+/* Direct bytecode debug metadata: 1 available, 0 unavailable, -1 exception.
+   Optional filename output is owned; optional line is one-based or -1.
+   Native/bound/proxy functions are not traversed. */
+int JS_GetFunctionLocation(JSContext* ctx, JSValueConst func,
+    JSValue* filename, int* line);
+/* Read-only runtime-local compilation identity; zero means unavailable.
+   Accepts compiled bytecode, ordinary bytecode functions, or a module's
+   retained underlying function. Never unwraps bound functions or proxies.
+   No allocation, property lookup, or exception/pending-state mutation.
+   IDs are not serialized; each compiled-object read receives a fresh ID. */
+uint64_t JS_GetCompilationId(JSContext* ctx, JSValueConst artifact);
+/* Owned bound target, or undefined when func is not a bound function. */
+JSValue JS_GetBoundFunction(JSContext* ctx, JSValueConst func);
+/* True only for an engine-created cooked template object in this context. */
+JS_BOOL JS_HasTemplateLiteralObject(JSContext* ctx, JSValueConst value);
 JS_BOOL JS_IsArrayBuffer(JSValueConst v);
 JS_BOOL JS_IsSharedArrayBuffer(JSValueConst v);
 JS_BOOL JS_IsArrayBufferView(JSValueConst v);
@@ -712,6 +785,11 @@ JSValue JS_GetException(JSContext* ctx);
 JS_BOOL JS_IsError(JSContext* ctx, JSValueConst val);
 void JS_ResetUncatchableError(JSContext* ctx);
 JSValue JS_NewError(JSContext* ctx);
+int JS_GetErrorLocation(JSContext* ctx, JSValueConst error,
+    JSValue* filename, int* line, int* column);
+JSValue JS_GetErrorStackFrames(JSContext* ctx, JSValueConst error);
+JSValue JS_CaptureStackFrames(JSContext* ctx, int limit);
+int JS_CaptureStackTrace(JSContext* ctx, JSValueConst target);
 JSValue __js_printf_like(2, 3) JS_ThrowSyntaxError(JSContext* ctx, const char* fmt, ...);
 JSValue __js_printf_like(2, 3) JS_ThrowTypeError(JSContext* ctx, const char* fmt, ...);
 JSValue __js_printf_like(2, 3) JS_ThrowReferenceError(JSContext* ctx, const char* fmt, ...);
@@ -720,7 +798,6 @@ JSValue __js_printf_like(2, 3) JS_ThrowInternalError(JSContext* ctx, const char*
 JSValue JS_ThrowOutOfMemory(JSContext* ctx);
 
 int JS_GetRefCount(JSContext* ctx, JSValue v);
-void JS_MaskTestValue(JSContext* ctx, JSValue v);
 
 void JS_FreeValue(JSContext* ctx, JSValue v);
 void JS_FreeValueRT(JSRuntime* rt, JSValue v);
@@ -742,22 +819,46 @@ int JS_ToFloat64(JSContext* ctx, double* pres, JSValueConst val);
 int JS_ToBigInt64(JSContext* ctx, int64_t* pres, JSValueConst val);
 /* same as JS_ToInt64() but allow BigInt */
 int JS_ToInt64Ext(JSContext* ctx, int64_t* pres, JSValueConst val);
+int JS_GetBigIntWords(JSContext* ctx, JSValueConst value, int* sign,
+    size_t* count, uint64_t* words);
+JSValue JS_NewBigIntWords(JSContext* ctx, int sign, size_t count,
+    const uint64_t* words);
 
-// ¶ÔÓ¦v8µÄExternalStringResourceBase£¬±íÊ¾Íâ²¿ÉêÇëµÄ×Ö·û´®£¬quickjsÀ´¹ÜÀíÉúÃüÖÜÆÚ
+// å¯¹åº”v8çš„ExternalStringResourceBaseï¼Œè¡¨ç¤ºå¤–éƒ¨ç”³è¯·çš„å­—ç¬¦ä¸²ï¼Œquickjsæ¥ç®¡ç†ç”Ÿå‘½å‘¨æœŸ
 typedef void (*FreeExternalStringFunc)(void* userdata);
 // JSValue JS_NewExternalOneString(JSContext *ctx, const char* str, size_t len,);
 // JSValue JS_NewExternalTwoString(JSContext *ctx, const uint16_t* str, size_t len);
 JSValue JS_ExternalString(JSContext* ctx, const char* utf8data, const uint16_t* utf16data, size_t len);
+typedef void JSExternalStringFreeFunc(void* opaque);
+JSValue JS_NewExternalString(JSContext* ctx, const void* chars, size_t len,
+    JS_BOOL wide, JSExternalStringFreeFunc* free_func, void* opaque);
+JS_BOOL JS_IsExternalString(JSValueConst value);
+JS_BOOL JS_CanMakeExternalString(JSValueConst value, JS_BOOL wide);
+void* JS_GetExternalStringOpaque(JSValueConst value);
+int JS_MakeExternalString(JSContext* ctx, JSValueConst value,
+    const void* chars, size_t len, JS_BOOL wide,
+    JSExternalStringFreeFunc* free_func, void* opaque);
 
 JSValue JS_NewStringLen(JSContext* ctx, const char* str1, size_t len1);
+JSValue JS_NewStringUTF16(JSContext* ctx, const uint16_t* chars, size_t len);
+JSValue JS_NewStringLatin1(JSContext* ctx, const uint8_t* chars, size_t len);
+const void* JS_GetStringChars(JSValueConst value, size_t* len,
+    JS_BOOL* is_wide);
 JSValue JS_NewString(JSContext* ctx, const char* str);
 JSValue JS_NewAtomString(JSContext* ctx, const char* str);
 JSValue JS_ToString(JSContext* ctx, JSValueConst val);
+/* hint: 0 = default, 1 = number, 2 = string */
+JSValue JS_ToPrimitive(JSContext* ctx, JSValueConst val, int hint);
+JSValue JS_ToObject(JSContext* ctx, JSValueConst val);
 JSValue JS_ToPropertyKey(JSContext* ctx, JSValueConst val);
 
 JSValue JS_NewSymbolByStr(JSContext* ctx, const char* str, size_t len);
+JSValue JS_NewPrivateSymbol(JSContext* ctx,
+    JSValueConst description);
+JSValue JS_NewWeakRef(JSContext* ctx, JSValueConst target);
+JSValue JS_GetWeakRefValue(JSContext* ctx, JSValueConst weak_ref);
 
-// »ñÈ¡Ô­Ê¼Êý¾Ý£¬Èç¹ûÊÇ1byte¾Í²»¿½±´£¬Èç¹ûÊÇ2btye¾Í¿½±´
+// èŽ·å–åŽŸå§‹æ•°æ®ï¼Œå¦‚æžœæ˜¯1byteå°±ä¸æ‹·è´ï¼Œå¦‚æžœæ˜¯2btyeå°±æ‹·è´
 const char* JS_GetStringData(JSContext* ctx, size_t* plen, JSValue* new_val, JSValueConst val);
 size_t JS_GetStringSize(JSContext* ctx, JSValueConst val);
 int JS_ContainsOnlyOneByte(JSContext* ctx, JSValueConst val);
@@ -774,12 +875,60 @@ static inline const char* JS_ToCString(JSContext* ctx, JSValueConst val1)
 void JS_FreeCString(JSContext* ctx, JSValueConst val, const char* ptr);
 void JS_FreeAtomCString(JSContext* ctx, JSAtom val, const char* ptr);
 
+typedef enum JSBuiltinType {
+    JS_BUILTIN_UNKNOWN = 0,
+    JS_BUILTIN_OBJECT = 1,
+    JS_BUILTIN_ARRAY = 2,
+    JS_BUILTIN_FUNCTION = 3,
+    JS_BUILTIN_DATE = 4,
+    JS_BUILTIN_REGEXP = 5,
+    JS_BUILTIN_MAP = 6,
+    JS_BUILTIN_SET = 7,
+    JS_BUILTIN_PROMISE = 8,
+    JS_BUILTIN_PROXY = 9,
+    JS_BUILTIN_ARRAY_BUFFER = 10,
+    JS_BUILTIN_SHARED_ARRAY_BUFFER = 11,
+    JS_BUILTIN_DATA_VIEW = 12,
+    JS_BUILTIN_UINT8_CLAMPED_ARRAY = 13,
+    JS_BUILTIN_INT8_ARRAY = 14,
+    JS_BUILTIN_UINT8_ARRAY = 15,
+    JS_BUILTIN_INT16_ARRAY = 16,
+    JS_BUILTIN_UINT16_ARRAY = 17,
+    JS_BUILTIN_INT32_ARRAY = 18,
+    JS_BUILTIN_UINT32_ARRAY = 19,
+    JS_BUILTIN_BIGINT64_ARRAY = 20,
+    JS_BUILTIN_BIGUINT64_ARRAY = 21,
+    JS_BUILTIN_FLOAT32_ARRAY = 22,
+    JS_BUILTIN_FLOAT64_ARRAY = 23,
+    JS_BUILTIN_BOOLEAN_OBJECT = 24,
+    JS_BUILTIN_NUMBER_OBJECT = 25,
+    JS_BUILTIN_STRING_OBJECT = 26,
+    JS_BUILTIN_SYMBOL_OBJECT = 27,
+    JS_BUILTIN_BIGINT_OBJECT = 28,
+    JS_BUILTIN_ARGUMENTS = 29,
+    JS_BUILTIN_GENERATOR = 30,
+    JS_BUILTIN_MODULE_NAMESPACE = 31,
+    JS_BUILTIN_WEAKMAP = 32,
+    JS_BUILTIN_WEAKSET = 33,
+    JS_BUILTIN_ERROR = 34,
+} JSBuiltinType;
+JSBuiltinType JS_GetBuiltinType(JSValueConst value);
+JSValue JS_GetIntrinsic(JSContext* ctx, const char* name);
+JSValue JS_NewNativeError(JSContext* ctx, const char* name,
+    JSValueConst message, JSValueConst options);
+JSValue JS_CallIntrinsic(JSContext* ctx, const char* owner,
+    const char* method, JSValueConst receiver, int argc,
+    JSValueConst* argv);
+
 JSValue JS_NewObjectProtoClass(JSContext* ctx, JSValueConst proto, JSClassID class_id);
 JSValue JS_NewObjectClass(JSContext* ctx, int class_id);
 JSValue JS_NewObjectProto(JSContext* ctx, JSValueConst proto);
 JSValue JS_NewObject(JSContext* ctx);
 
-JS_BOOL JS_IsAsyncFunction(JSContext* ctx, JSValueConst val);
+/* Generator includes async generator functions. */
+JS_BOOL JS_IsGeneratorFunction(JSValueConst val);
+/* Async includes async generator functions. */
+JS_BOOL JS_IsAsyncFunction(JSValueConst val);
 JS_BOOL JS_IsFunction(JSContext* ctx, JSValueConst val);
 JS_BOOL JS_IsBytecodeFunction(JSContext* ctx, JSValueConst val);
 JS_BOOL JS_IsConstructor(JSContext* ctx, JSValueConst val);
@@ -789,6 +938,12 @@ JSValue JS_NewArray(JSContext* ctx);
 int JS_IsArray(JSContext* ctx, JSValueConst val);
 
 JSValue JS_NewMap(JSContext* ctx);
+JSValue JS_NewSet(JSContext* ctx);
+int JS_MapSet(JSContext* ctx, JSValueConst map, JSValueConst key,
+    JSValueConst value);
+int JS_SetAdd(JSContext* ctx, JSValueConst set, JSValueConst value);
+JSValue JS_GetMapEntries(JSContext* ctx, JSValueConst map);
+JSValue JS_GetSetValues(JSContext* ctx, JSValueConst set);
 
 int JS_GetObjId(JSValue val);
 
@@ -801,6 +956,7 @@ static js_force_inline JSValue JS_GetProperty(JSContext* ctx, JSValueConst this_
 JSValue JS_GetPropertyStr(JSContext* ctx, JSValueConst this_obj, const char* prop);
 JSValue JS_GetPropertyUint32(JSContext* ctx, JSValueConst this_obj, uint32_t idx);
 
+JS_BOOL JS_ShouldThrowOnError(JSContext* ctx, int flags);
 int JS_SetPropertyInternal(JSContext* ctx, JSValueConst this_obj, JSAtom prop, JSValue val, int flags);
 static inline int JS_SetProperty(JSContext* ctx, JSValueConst this_obj, JSAtom prop, JSValue val)
 {
@@ -823,7 +979,12 @@ int JS_PreventExtensions(JSContext* ctx, JSValueConst obj);
 int JS_DeleteProperty(JSContext* ctx, JSValueConst obj, JSAtom prop, int flags);
 int JS_DeletePropertyStr(JSContext* ctx, JSValueConst obj, const char* prop, int flags);
 int JS_SetPrototype(JSContext* ctx, JSValueConst obj, JSValueConst proto_val);
+int JS_SetPrototypeForEmbedding(JSContext* ctx, JSValueConst obj,
+    JSValueConst proto_val);
+int JS_SetImmutablePrototype(JSContext* ctx, JSValueConst obj);
+int JS_SetGlobalObject(JSContext* ctx, JSValueConst obj);
 JSValue JS_GetPrototype(JSContext* ctx, JSValueConst val);
+JSValue JS_GetPrototypeForEmbedding(JSContext* ctx, JSValueConst obj);
 static inline JSValue JS_GetPrototypeFree(JSContext* ctx, JSValue obj)
 {
     JSValue obj1 = JS_GetPrototype(ctx, obj);
@@ -851,9 +1012,21 @@ JSValue JS_CallConstructor2(JSContext* ctx, JSValueConst func_obj, JSValueConst 
 JS_BOOL JS_DetectModule(const char* input, size_t input_len);
 /* 'input' must be zero terminated i.e. input[input_len] = '\0'. */
 JSValue JS_Eval(JSContext* ctx, const char* input, size_t input_len, const char* filename, int eval_flags);
+/* Parse and compile a module without resolving or linking imports. */
+JSValue JS_CompileModule(JSContext* ctx, const char* source,
+    size_t source_len, const char* filename);
+JSValue JS_CompileFunction(JSContext* ctx, const char* body,
+    size_t body_len, const char* filename, int line_offset,
+    int column_offset, size_t argc, JSValueConst* names,
+    size_t extension_count, JSValueConst* extensions);
 /* same as JS_Eval() but with an explicit 'this_obj' parameter */
 JSValue JS_EvalThis(JSContext* ctx, JSValueConst this_obj, const char* input, size_t input_len, const char* filename, int eval_flags);
 JSValue JS_GetGlobalObject(JSContext* ctx);
+JSValue JS_GetGlobalThis(JSContext* ctx);
+int JS_SetGlobalThis(JSContext* ctx, JSValueConst global_this);
+void JS_SetCodeGenerationAllowed(JSContext* ctx, JS_BOOL allowed);
+/* message is borrowed and retained by the context. */
+void JS_SetCodeGenerationError(JSContext* ctx, JSValueConst message);
 void JS_DetachGlobalObject(JSContext* ctx);
 int JS_IsInstanceOf(JSContext* ctx, JSValueConst val, JSValueConst obj);
 int JS_DefineProperty(JSContext* ctx, JSValueConst this_obj, JSAtom prop, JSValueConst val, JSValueConst getter, JSValueConst setter, int flags);
@@ -861,6 +1034,7 @@ int JS_DefinePropertyValue(JSContext* ctx, JSValueConst this_obj, JSAtom prop, J
 int JS_DefinePropertyValueUint32(JSContext* ctx, JSValueConst this_obj, uint32_t idx, JSValue val, int flags);
 int JS_DefinePropertyValueStr(JSContext* ctx, JSValueConst this_obj, const char* prop, JSValue val, int flags);
 int JS_DefinePropertyGetSet(JSContext* ctx, JSValueConst this_obj, JSAtom prop, JSValue getter, JSValue setter, int flags);
+JSClassID JS_GetClassID(JSValueConst obj);
 void JS_SetOpaque(JSValue obj, void* opaque);
 void* JS_GetOpaque(JSValueConst obj, JSClassID class_id);
 void* JS_GetOpaque2(JSContext* ctx, JSValueConst obj, JSClassID class_id);
@@ -893,8 +1067,39 @@ typedef void JSFreeArrayBufferDataFunc(JSRuntime* rt, void* opaque, void* ptr);
 JSValue JS_NewArrayBuffer(JSContext* ctx, uint8_t* buf, size_t len, JSFreeArrayBufferDataFunc* free_func, void* opaque, JS_BOOL is_shared);
 JSValue JS_NewArrayBufferCopy(JSContext* ctx, const uint8_t* buf, size_t len);
 void JS_DetachArrayBuffer(JSContext* ctx, JSValueConst obj);
+int JS_SetArrayBufferDetachKey(JSContext* ctx, JSValueConst obj,
+    JSValueConst key);
+int JS_DetachArrayBufferWithKey(JSContext* ctx, JSValueConst obj,
+    JSValueConst key);
+JS_BOOL JS_IsDetachedArrayBuffer(JSValueConst obj);
 uint8_t* JS_GetArrayBuffer(JSContext* ctx, size_t* psize, JSValueConst obj);
 JSValue JS_GetTypedArrayBuffer(JSContext* ctx, JSValueConst obj, size_t* pbyte_offset, size_t* pbyte_length, size_t* pbytes_per_element);
+JSValue JS_GetDataViewBuffer(JSContext* ctx, JSValueConst obj, size_t* pbyte_offset, size_t* pbyte_length);
+JSValue JS_GetArrayBufferViewInfo(JSContext* ctx, JSValueConst value,
+    size_t* offset, size_t* length, size_t* element_size);
+int JS_GetArrayBufferOwner(JSContext* ctx, JSValueConst obj,
+    uint8_t** data, size_t* len,
+    JSFreeArrayBufferDataFunc** free_func, void** opaque);
+int JS_SetArrayBufferOwner(JSContext* ctx, JSValueConst obj,
+    JSFreeArrayBufferDataFunc* free_func, void* opaque);
+typedef enum JSArrayBufferReleaseKind {
+    JS_ARRAY_BUFFER_RELEASE_NONE = 0,
+    JS_ARRAY_BUFFER_RELEASE_MALLOC,
+    JS_ARRAY_BUFFER_RELEASE_SHARED,
+} JSArrayBufferReleaseKind;
+typedef struct JSArrayBufferReleaseData {
+    JSArrayBufferReleaseKind kind;
+    JSMallocFunctions malloc_functions;
+    JSMallocState malloc_state;
+    void (*sab_free)(void* opaque, void* ptr);
+    void* sab_opaque;
+} JSArrayBufferReleaseData;
+/* Atomically replaces the owner and snapshots a runtime-independent release. */
+int JS_TransferArrayBufferOwner(JSContext* ctx, JSValueConst obj,
+    JSFreeArrayBufferDataFunc* replacement, void* replacement_opaque,
+    JSArrayBufferReleaseData* previous);
+void JS_ReleaseArrayBufferData(JSArrayBufferReleaseData* release,
+    void* data);
 typedef struct {
     void* (*sab_alloc)(void* opaque, size_t size);
     void (*sab_free)(void* opaque, void* ptr);
@@ -908,6 +1113,12 @@ JSValue JS_NewArrayBufferCopy(JSContext* ctx, const uint8_t* buf, size_t len);
 
 JSValue JS_NewPromiseCapability(JSContext* ctx, JSValue* resolving_funcs);
 
+int JS_PromiseState(JSContext* ctx, JSValueConst promise);
+JSValue JS_PromiseResult(JSContext* ctx, JSValueConst promise);
+int JS_PromiseHasHandler(JSContext* ctx, JSValueConst promise);
+int JS_MarkPromiseHandled(JSContext* ctx, JSValueConst promise);
+JSValue JS_PromiseThen(JSContext* ctx, JSValueConst promise,
+    JSValueConst on_fulfilled, JSValueConst on_rejected);
 JS_BOOL JS_IsPromisePending(JSValue val);
 
 /* is_handled = TRUE means that the rejection is handled */
@@ -923,6 +1134,8 @@ void JS_SetCanBlock(JSRuntime* rt, JS_BOOL can_block);
 void JS_SetIsHTMLDDA(JSContext* ctx, JSValueConst obj);
 
 typedef struct JSModuleDef JSModuleDef;
+typedef JSModuleDef* JSModuleResolveFunc(JSContext* ctx,
+    JSModuleDef* referrer, const char* specifier, void* opaque);
 
 /* return the module specifier (allocated with js_malloc()) or NULL if
    exception */
@@ -935,6 +1148,22 @@ void JS_SetModuleLoaderFunc(JSRuntime* rt, JSModuleNormalizeFunc* module_normali
 /* return the import.meta object of a module */
 JSValue JS_GetImportMeta(JSContext* ctx, JSModuleDef* m);
 JSAtom JS_GetModuleName(JSContext* ctx, JSModuleDef* m);
+JSValue JS_GetModuleNamespace(JSContext* ctx, JSModuleDef* m);
+int JS_GetModuleRequestCount(JSModuleDef* m);
+JSValue JS_GetModuleRequestName(JSContext* ctx, JSModuleDef* m, int index);
+int JS_GetModuleRequestOffset(JSModuleDef* m, int index);
+int JS_GetModuleStatus(JSModuleDef* m);
+JSValue JS_GetModuleException(JSContext* ctx, JSModuleDef* m);
+int JS_InstantiateModule(JSContext* ctx, JSModuleDef* m,
+    JSModuleResolveFunc* resolver, void* opaque);
+JSValue JS_EvaluateModule(JSContext* ctx, JSModuleDef* m);
+int JS_SetSyntheticModuleExport(JSContext* ctx, JSModuleDef* m,
+    const char* export_name, JSValueConst value);
+JS_BOOL JS_GetModuleTopLevelAwait(JSModuleDef* m);
+JS_BOOL JS_IsModuleGraphAsync(JSModuleDef* m);
+void JS_SetModuleHostData(JSModuleDef* m, void* opaque,
+    void (*finalizer)(JSRuntime*, void*));
+void* JS_GetModuleHostData(JSModuleDef* m);
 
 /* JS Job support */
 
@@ -942,6 +1171,8 @@ typedef JSValue JSJobFunc(JSContext* ctx, int argc, JSValueConst* argv);
 int JS_EnqueueJob(JSContext* ctx, JSJobFunc* job_func, int argc, JSValueConst* argv);
 
 JS_BOOL JS_IsJobPending(JSRuntime* rt);
+/* True while one or more pending jobs are being dispatched. */
+JS_BOOL JS_IsJobRunning(JSRuntime* rt);
 typedef void JSRunJobPendingCb(JSContext* ctx, JS_BOOL is_pre_call, void* cb_data);
 int JS_ExecutePendingJob(JSRuntime* rt, JSContext** pctx, JSRunJobPendingCb* cb, void* cb_data);
 
@@ -1005,8 +1236,9 @@ typedef union JSCFunctionType {
     JSCFunction* constructor_or_func;
     double (*f_f)(double);
     double (*f_f_f)(double, double);
-    JSValue (*getter)(JSContext* ctx, JSValueConst this_val, void* userdata); // weolar
-    JSValue (*setter)(JSContext* ctx, JSValueConst this_val, JSValueConst val, void* userdata);
+    JSValue (*getter)(JSContext* ctx, JSValueConst this_val);
+    JSValue (*setter)(JSContext* ctx, JSValueConst this_val,
+        JSValueConst val);
     JSValue (*getter_magic)(JSContext* ctx, JSValueConst this_val, int magic);
     JSValue (*setter_magic)(JSContext* ctx, JSValueConst this_val, JSValueConst val, int magic);
     JSValue (*iterator_next)(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv, int* pdone, int magic);
@@ -1017,17 +1249,20 @@ typedef union JSCFunctionType {
     int (*name_property_query)(JSContext* ctx, JSValueConst this_val, JSAtom prop, void* userdata);
 } JSCFunctionType;
 
-JSValue JS_NewCFunction2(JSContext* ctx, JSCFunction* func, const char* name, int length, JSCFunctionEnum cproto, int magic, void* userdata); // weolar
+JSValue JS_NewCFunction2(JSContext* ctx, JSCFunction* func,
+    const char* name, int length, JSCFunctionEnum cproto, int magic);
 JSValue JS_NewCFunctionData(JSContext* ctx, JSCFunctionData* func, int length, int magic, int data_len, JSValueConst* data);
 
 static inline JSValue JS_NewCFunction(JSContext* ctx, JSCFunction* func, const char* name, int length)
 {
-    return JS_NewCFunction2(ctx, func, name, length, JS_CFUNC_generic, 0, NULL); // weolar
+    return JS_NewCFunction2(ctx, func, name, length,
+        JS_CFUNC_generic, 0);
 }
 
 static inline JSValue JS_NewCFunctionMagic(JSContext* ctx, JSCFunctionMagic* func, const char* name, int length, JSCFunctionEnum cproto, int magic)
 {
-    return JS_NewCFunction2(ctx, (JSCFunction*)func, name, length, cproto, magic, NULL); // weolar
+    return JS_NewCFunction2(ctx, (JSCFunction*)func, name, length,
+        cproto, magic);
 }
 void JS_SetConstructor(JSContext* ctx, JSValueConst func_obj, JSValueConst proto);
 void JS_DelConstructor(JSContext* ctx, JSValueConst func_obj);
@@ -1048,7 +1283,6 @@ typedef struct JSCFunctionListEntry {
         struct {
             JSCFunctionType get;
             JSCFunctionType set;
-            void* userdata; // weolar
         } getset;
         struct {
             const char* name;
@@ -1152,7 +1386,6 @@ int JS_AddModuleExportList(JSContext* ctx, JSModuleDef* m, const JSCFunctionList
 int JS_SetModuleExport(JSContext* ctx, JSModuleDef* m, const char* export_name, JSValue val);
 int JS_SetModuleExportList(JSContext* ctx, JSModuleDef* m, const JSCFunctionListEntry* tab, int len);
 
-void JS_SetTestCtx(JSContext* ctx);
 void JS_MarkCtxIsEmptyCtx(JSContext* ctx);
 
 #undef js_unlikely

@@ -88,7 +88,9 @@ public:
     double InputForNavigationStart() const;
     double NavigationStart() const;
     base::TimeTicks NavigationStartAsMonotonicTime() const;
+#if !defined(MINI_UI_QUICKJS)
     BackForwardCacheRestoreTimings BackForwardCacheRestore() const;
+#endif
     double DomainLookupStart() const;
     double DomainLookupEnd() const;
     double ConnectStart() const;

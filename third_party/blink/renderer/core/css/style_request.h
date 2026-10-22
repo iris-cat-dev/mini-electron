@@ -89,7 +89,9 @@ public:
         , pseudo_id(pseudo_id)
         , pseudo_argument(pseudo_argument)
     {
+#if !defined(MINI_UI_QUICKJS)
         DCHECK(!IsTransitionPseudoElement(pseudo_id) || pseudo_id == kPseudoIdViewTransition || pseudo_argument);
+#endif
     }
 
     StyleRequest(PseudoId pseudo_id, CustomScrollbar* scrollbar, ScrollbarPart scrollbar_part, const ComputedStyle* parent_override)

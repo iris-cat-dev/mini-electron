@@ -60,8 +60,10 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
@@ -137,12 +139,16 @@ namespace blink {
 namespace {
 
 using ::attribution_reporting::AttributionSrcRequestStatus;
+#if !defined(MINI_UI_QUICKJS)
 using ::attribution_reporting::IssueType;
+#endif
 using ::attribution_reporting::mojom::RegistrationEligibility;
 using ::attribution_reporting::mojom::SourceType;
 using ::network::mojom::AttributionReportingEligibility;
 
+#if !defined(MINI_UI_QUICKJS)
 using mojom::blink::AttributionReportingIssueType;
+#endif
 
 void RecordAttributionSrcRequestStatus(const ResourceRequestHead& request, AttributionSrcRequestStatus status)
 {
@@ -152,6 +158,7 @@ void RecordAttributionSrcRequestStatus(const ResourceRequestHead& request, Attri
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LogAuditIssue(ExecutionContext* execution_context, AttributionReportingIssueType issue_type, HTMLElement* element, std::optional<uint64_t> request_id,
     const String& invalid_parameter)
 {
@@ -162,6 +169,7 @@ void LogAuditIssue(ExecutionContext* execution_context, AttributionReportingIssu
 
     AuditsIssue::ReportAttributionIssue(execution_context, issue_type, element, id_string, invalid_parameter);
 }
+#endif
 
 base::expected<attribution_reporting::RegistrationInfo, attribution_reporting::RegistrationInfoError> GetRegistrationInfo(
     const HTTPHeaderMap& map, ExecutionContext* execution_context, uint64_t request_id, bool cross_app_web_enabled)
@@ -187,9 +195,11 @@ Vector<KURL> ParseAttributionSrcUrls(AttributionSrcLoader& loader, LocalDOMWindo
     CHECK(window);
 
     if (!network::HasAttributionSupport(loader.GetSupport())) {
+#if !defined(MINI_UI_QUICKJS)
         LogAuditIssue(window, AttributionReportingIssueType::kNoWebOrOsSupport, element,
             /*request_id=*/std::nullopt,
             /*invalid_parameter=*/String());
+#endif
         return {};
     }
 
@@ -260,6 +270,7 @@ struct AttributionSrcLoader::AttributionHeaders {
         return source_count() + trigger_count();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void LogOsSourceIgnored(ExecutionContext* execution_context) const
     {
         *(int*)1 = 1;
@@ -358,6 +369,7 @@ struct AttributionSrcLoader::AttributionHeaders {
             }
         }
     }
+#endif
 };
 
 class AttributionSrcLoader::ResourceClient : public GarbageCollected<AttributionSrcLoader::ResourceClient>, public RawResourceClient {
@@ -405,8 +417,10 @@ private:
     void HandleTriggerRegistration(const AttributionHeaders&, attribution_reporting::SuitableOrigin reporting_origin,
         const attribution_reporting::RegistrationInfo&, bool was_fetched_via_service_worker);
 
+#if !defined(MINI_UI_QUICKJS)
     void LogAuditIssueAndMaybeReportHeaderError(const AttributionHeaders&, bool report_header_errors, attribution_reporting::RegistrationHeaderErrorDetails,
         attribution_reporting::SuitableOrigin reporting_origin);
+#endif
 
     // RawResourceClient:
     String DebugName() const override;
@@ -472,9 +486,11 @@ std::optional<Impression> AttributionSrcLoader::RegisterNavigationInternal(const
     HTMLAnchorElementBase* element, bool has_transient_user_activation, network::mojom::ReferrerPolicy referrer_policy)
 {
     if (!has_transient_user_activation) {
+#if !defined(MINI_UI_QUICKJS)
         LogAuditIssue(local_frame_->DomWindow(), AttributionReportingIssueType::kNavigationRegistrationWithoutTransientUserActivation, element,
             /*request_id=*/std::nullopt,
             /*invalid_parameter=*/String());
+#endif
         return std::nullopt;
     }
 
@@ -602,6 +618,7 @@ std::optional<attribution_reporting::SuitableOrigin> AttributionSrcLoader::Repor
     LocalDOMWindow* window = local_frame_->DomWindow();
     DCHECK(window);
 
+#if !defined(MINI_UI_QUICKJS)
     auto maybe_log_audit_issue = [&](AttributionReportingIssueType issue_type, const SecurityOrigin* invalid_origin = nullptr) {
         if (!log_issues) {
             return;
@@ -611,6 +628,7 @@ std::optional<attribution_reporting::SuitableOrigin> AttributionSrcLoader::Repor
             /*invalid_parameter=*/
             invalid_origin ? invalid_origin->ToString() : String());
     };
+#endif
 
     if (!RuntimeEnabledFeatures::AttributionReportingEnabled(window) && !RuntimeEnabledFeatures::AttributionReportingCrossAppWebEnabled(window)) {
         return std::nullopt;
@@ -619,12 +637,16 @@ std::optional<attribution_reporting::SuitableOrigin> AttributionSrcLoader::Repor
     bool enabled = window->IsFeatureEnabled(mojom::blink::PermissionsPolicyFeature::kAttributionReporting);
     RecordAttributionFeatureAllowed(enabled);
     if (!enabled) {
+#if !defined(MINI_UI_QUICKJS)
         maybe_log_audit_issue(AttributionReportingIssueType::kPermissionPolicyDisabled);
+#endif
         return std::nullopt;
     }
 
     if (!window->IsSecureContext()) {
+#if !defined(MINI_UI_QUICKJS)
         maybe_log_audit_issue(AttributionReportingIssueType::kInsecureContext, window->GetSecurityContext().GetSecurityOrigin());
+#endif
         return std::nullopt;
     }
 
@@ -633,7 +655,9 @@ std::optional<attribution_reporting::SuitableOrigin> AttributionSrcLoader::Repor
     std::optional<attribution_reporting::SuitableOrigin> reporting_origin = attribution_reporting::SuitableOrigin::Create(security_origin->ToUrlOrigin());
 
     if (!url.ProtocolIsInHTTPFamily() || !reporting_origin) {
+#if !defined(MINI_UI_QUICKJS)
         maybe_log_audit_issue(AttributionReportingIssueType::kUntrustworthyReportingOrigin, security_origin.get());
+#endif
         return std::nullopt;
     }
 
@@ -708,8 +732,10 @@ bool AttributionSrcLoader::MaybeRegisterAttributionHeaders(const ResourceRequest
     std::optional<RegistrationEligibility> registration_eligibility
         = attribution_reporting::GetRegistrationEligibility(request.GetAttributionReportingEligibility());
     if (!registration_eligibility.has_value()) {
+#if !defined(MINI_UI_QUICKJS)
         headers.MaybeLogAllSourceHeadersIgnored(local_frame_->DomWindow());
         headers.MaybeLogAllTriggerHeadersIgnored(local_frame_->DomWindow());
+#endif
         return false;
     }
 
@@ -868,9 +894,11 @@ void AttributionSrcLoader::ResourceClient::HandleResponseHeaders(attribution_rep
         const bool has_trigger = headers.trigger_count() > 0;
 
         if (has_source && has_trigger) {
+#if !defined(MINI_UI_QUICKJS)
             LogAuditIssue(loader_->local_frame_->DomWindow(), AttributionReportingIssueType::kSourceAndTriggerHeaders,
                 /*element=*/nullptr, headers.request_id,
                 /*invalid_parameter=*/String());
+#endif
             return;
         }
 
@@ -1005,6 +1033,7 @@ void AttributionSrcLoader::ResourceClient::HandleTriggerRegistration(const Attri
 //     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void AttributionSrcLoader::ResourceClient::LogAuditIssueAndMaybeReportHeaderError(const AttributionHeaders& headers, bool report_header_errors,
     attribution_reporting::RegistrationHeaderErrorDetails error_details, attribution_reporting::SuitableOrigin reporting_origin)
 {
@@ -1041,5 +1070,6 @@ void AttributionSrcLoader::ResourceClient::LogAuditIssueAndMaybeReportHeaderErro
             std::move(reporting_origin), attribution_reporting::RegistrationHeaderError(StringUTF8Adaptor(header).AsStringView(), error_details));
     }
 }
+#endif
 
 } // namespace blink

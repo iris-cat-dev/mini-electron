@@ -5,10 +5,13 @@
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/local_window_proxy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/remote_window_proxy.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
+#include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace blink {
@@ -116,8 +119,10 @@ WindowProxy* WindowProxyManager::CreateWindowProxy(DOMWrapperWorld& world)
         // available (we cannot use LocalFrame::isLocalFrame).  Ditto for
         // RemoteFrame.
         return MakeGarbageCollected<LocalWindowProxy>(isolate_, *static_cast<LocalFrame*>(frame_.Get()), &world);
+#if !defined(MINI_UI_QUICKJS)
     case FrameType::kRemote:
         return MakeGarbageCollected<RemoteWindowProxy>(isolate_, *static_cast<RemoteFrame*>(frame_.Get()), &world);
+#endif
     }
     NOTREACHED();
 }
@@ -159,6 +164,7 @@ void LocalWindowProxyManager::UpdateSecurityOrigin(const SecurityOrigin* securit
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalWindowProxyManager::SetAbortScriptExecution(v8::Context::AbortScriptExecutionCallback callback)
 {
     v8::HandleScope handle_scope(GetIsolate());
@@ -169,5 +175,6 @@ void LocalWindowProxyManager::SetAbortScriptExecution(v8::Context::AbortScriptEx
         To<LocalWindowProxy>(entry.value.Get())->SetAbortScriptExecution(callback);
     }
 }
+#endif
 
 } // namespace blink

@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/frame/overlay_interstitial_ad_detector.h"
 
+#include "base/trace_event/base_tracing.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -104,10 +105,12 @@ void OverlayInterstitialAdDetector::MaybeFireDetection(LocalFrame* outermost_mai
         last_detection_outermost_main_frame_size_ = outermost_main_frame_size;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // We want to explicitly prevent mid-roll ads from being categorized as
     // pop-ups. Skip the detection if we are in the middle of a video play.
     if (outermost_main_frame->View()->HasDominantVideoElement())
         return;
+#endif
 
     HitTestLocation location(gfx::PointF(outermost_main_frame_size.width() / 2.0, outermost_main_frame_size.height() / 2.0));
     HitTestResult result;

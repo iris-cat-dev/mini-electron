@@ -10,8 +10,11 @@
 
 #include "base/base_export.h"
 #include "base/memory/raw_ptr_exclusion.h"
-#include "base/trace_event/base_tracing_forward.h"
 #include "build/build_config.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "base/trace_event/base_tracing_forward.h"
+#endif
 
 namespace base {
 
@@ -86,8 +89,10 @@ public:
     // are not available, this will return "pc:<hex address>".
     std::string ToString() const;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Write a representation of this object into a trace.
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     static Location Current(const char* function_name = __builtin_FUNCTION(), const char* file_name = __builtin_FILE(), int line_number = __builtin_LINE());
 

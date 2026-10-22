@@ -16,52 +16,38 @@ ROOT = Path(__file__).resolve().parent
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build mini-electron from this checkout on Windows x64 or macOS arm64."
+        description="Build the local-only QuickJS/Blink UI library and native Windows host."
     )
     parser.add_argument("--out", help="output directory, relative to the repository root")
     parser.add_argument(
         "--jobs", "-j", type=int, default=min(os.cpu_count() or 1, 16),
         help="maximum parallel build jobs (default: up to 16)",
     )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--run", action="store_true", help="build and run the platform smoke check")
-    mode.add_argument("--electron", action="store_true", help="build and run the shared Electron demo")
-    mode.add_argument("--gui", action="store_true", help="build and run the native browser demo (macOS)")
-    mode.add_argument("--package-dist", action="store_true", help="build the publishable runtime distribution and zip")
-    mode.add_argument("--omp-desktop", action="store_true", help="package OMP Desktop")
     parser.add_argument(
-        "--electron-main", default="examples/electron/main.js",
-        help="Electron-compatible main script (default: shared example)",
+        "--ui", action="store_true", required=True,
+        help="select the local-only QuickJS/Blink UI build",
     )
     parser.add_argument(
-        "--interactive", action="store_true",
-        help="keep the Electron demo or packaged OMP Desktop open until its last window closes",
+        "--ui-target", choices=("host", "library"), default="host",
+        help="independent UI target (default: host, which also links mini-ui.lib)",
     )
-    parser.add_argument("--screenshot", help="verification snapshot path (macOS)")
     parser.add_argument(
-        "--frontend", default="examples/browser/index.html",
-        help="browser demo HTML path or HTTP(S) URL (macOS)",
+        "--ui-configure-only", action="store_true",
+        help="generate and inventory the independent UI graph without compiling",
     )
-    parser.add_argument("--omp-source", default="../omp-desktop", help="OMP Desktop source checkout")
-    parser.add_argument("--app-output", help="output directory for packaged OMP Desktop")
-    parser.add_argument(
-        "--dist-output",
-        help="runtime distribution directory (default: PLATFORM_OUT/runtime-dist)",
-    )
+    parser.add_argument("--run", action="store_true", help="build and run the native Windows host")
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")
+    if args.ui and args.run and (args.ui_target != "host" or args.ui_configure_only):
+        parser.error("--ui --run requires a built --ui-target host")
 
     sys.path.insert(0, str(ROOT / "build"))
     machine = platform.machine().lower()
-    if sys.platform == "win32" and machine in ("amd64", "x86_64"):
-        from mini_electron import windows as backend
-        args.out = args.out or "out/windows-x64"
-    elif sys.platform == "darwin" and machine == "arm64":
-        from mini_electron import macos as backend
-        args.out = args.out or "out/mac-arm64"
-    else:
-        parser.error("supported hosts are Windows x64 and Apple Silicon macOS")
+    if sys.platform != "win32" or machine not in ("amd64", "x86_64"):
+        parser.error("the native UI target requires Windows x64")
+    from mini_ui import windows as backend
+    args.out = args.out or "out/ui-windows-x64"
 
     try:
         return backend.build(ROOT, args)

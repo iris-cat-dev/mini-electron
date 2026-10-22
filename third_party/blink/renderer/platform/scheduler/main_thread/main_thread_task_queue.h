@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/platform/scheduler/public/web_scheduling_priority.h"
 #include "third_party/blink/renderer/platform/scheduler/public/web_scheduling_queue_type.h"
 #include "third_party/blink/renderer/platform/wtf/thread_safe_ref_counted.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base::sequence_manager {
 class SequenceManager;
@@ -268,7 +270,9 @@ public:
             return key;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
         bool can_be_deferred : 1 = false;
         bool can_be_deferred_for_rendering : 1 = false;
@@ -486,7 +490,9 @@ public:
 
     void OnTaskCompleted(const base::sequence_manager::Task& task, TaskQueue::TaskTiming* task_timing, base::LazyNow* lazy_now);
 
+#if !defined(MINI_UI_QUICKJS)
     void LogTaskExecution(perfetto::EventContext& ctx, const base::sequence_manager::Task& task);
+#endif
 
     void SetOnIPCTaskPosted(base::RepeatingCallback<void(const base::sequence_manager::Task&)> on_ipc_task_posted_callback);
     void DetachOnIPCTaskPostedWhileInBackForwardCache();
@@ -602,7 +608,9 @@ public:
         return weak_ptr_factory_.GetWeakPtr();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 protected:
     void SetFrameSchedulerForTest(FrameSchedulerImpl* frame_scheduler);

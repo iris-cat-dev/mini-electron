@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/paint/timing/lcp_objects.h"
 #include "third_party/blink/renderer/core/paint/timing/media_record_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_visualizer.h"
+#endif
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_deque.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -50,9 +52,11 @@ public:
         , hash(hash)
         , recorded_size(new_recorded_size)
     {
+#if !defined(MINI_UI_QUICKJS)
         if (PaintTimingVisualizer::IsTracingEnabled()) {
             lcp_rect_info_ = std::make_unique<LCPRectInfo>(frame_visual_rect, gfx::ToRoundedRect(root_visual_rect));
         }
+#endif
     }
 
     ImageRecord() = delete;
@@ -82,8 +86,10 @@ public:
     bool loaded = false;
     // An animated frame is queued for paint timing.
     bool queue_animated_paint = false;
+#if !defined(MINI_UI_QUICKJS)
     // LCP rect information, only populated when tracing is enabled.
     std::unique_ptr<LCPRectInfo> lcp_rect_info_;
+#endif
 
     // A non-style image, or a style image that comes from an origin-clean style.
     // Images that come from origin-dirty styles should have some limitations on
@@ -241,7 +247,11 @@ private:
 // https://docs.google.com/document/d/1DRVd4a2VU8-yyWftgOparZF-sf16daf0vfbsHuz2rws/edit#heading=h.1k2rnrs6mdmt
 class CORE_EXPORT ImagePaintTimingDetector final : public GarbageCollected<ImagePaintTimingDetector> {
 public:
+#if !defined(MINI_UI_QUICKJS)
     ImagePaintTimingDetector(LocalFrameView*, PaintTimingCallbackManager*);
+#else
+    explicit ImagePaintTimingDetector(LocalFrameView*);
+#endif
     // Record an image paint. This method covers both img and background image. In
     // the case of a normal img, the last parameter will be nullptr. This
     // parameter is needed only for the purposes of plumbing the correct loadTime
@@ -251,7 +261,9 @@ public:
     bool RecordImage(const LayoutObject&, const gfx::Size& intrinsic_size, const MediaTiming&, const PropertyTreeStateOrAlias& current_paint_properties,
         const StyleImage*, const gfx::Rect& image_border);
     void NotifyImageFinished(const LayoutObject&, const MediaTiming*);
+#if !defined(MINI_UI_QUICKJS)
     void OnPaintFinished();
+#endif
     void NotifyImageRemoved(const LayoutObject&, const MediaTiming*);
     // After the method being called, the detector stops to recording new entries.
     // We manually clean up the |images_queued_for_paint_time_| since those may be
@@ -260,11 +272,13 @@ public:
     // do nothing after this method is called, and is now just waiting to be
     // GarbageCollected.
     void StopRecordEntries();
+#if !defined(MINI_UI_QUICKJS)
     void ResetCallbackManager(PaintTimingCallbackManager* manager)
     {
         callback_manager_ = manager;
     }
     void ReportPresentationTime(unsigned last_queued_frame_index, base::TimeTicks);
+#endif
 
     // Return the image LCP candidate and whether the candidate has changed.
     std::pair<ImageRecord*, bool> UpdateMetricsCandidate();
@@ -296,7 +310,9 @@ private:
     FRIEND_TEST_ALL_PREFIXES(ImagePaintTimingDetectorTest, LargestImagePaint_Detached_Frame);
 
     void PopulateTraceValue(TracedValue&, const ImageRecord& first_image_paint);
+#if !defined(MINI_UI_QUICKJS)
     void RegisterNotifyPresentationTime();
+#endif
     void ReportCandidateToTrace(ImageRecord&, base::TimeTicks);
     void ReportNoCandidateToTrace();
     // Computes the size of an image for the purpose of LargestContentfulPaint,
@@ -314,7 +330,9 @@ private:
     unsigned last_registered_frame_index_ = 0;
     bool added_entry_in_latest_frame_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     bool contains_full_viewport_image_ = false;
+#endif
 
     // We cache the viewport size computation to avoid performing it on every
     // image. This value is reset when paint is finished and is computed if unset
@@ -328,7 +346,9 @@ private:
 
     ImageRecordsManager records_manager_;
     Member<LocalFrameView> frame_view_;
+#if !defined(MINI_UI_QUICKJS)
     Member<PaintTimingCallbackManager> callback_manager_;
+#endif
 };
 } // namespace blink
 

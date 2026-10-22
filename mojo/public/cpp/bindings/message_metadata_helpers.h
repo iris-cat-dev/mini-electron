@@ -1,4 +1,4 @@
-﻿// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,6 +24,6 @@ using MessageToMethodInfoCallback = IPCStableHashFunction (*)(Message&);
 // Alias for a function taking mojo::Message and returning method name.
 using MessageToMethodNameCallback = const char* (*)(Message&);
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_MESSAGE_METADATA_HELPERS_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_MESSAGE_METADATA_HELPERS_H_

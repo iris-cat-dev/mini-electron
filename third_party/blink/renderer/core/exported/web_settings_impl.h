@@ -39,12 +39,18 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class DevToolsEmulator;
+#endif
 class Settings;
 
 class CORE_EXPORT WebSettingsImpl final : public WebSettings {
 public:
+#if !defined(MINI_UI_QUICKJS)
     WebSettingsImpl(Settings*, DevToolsEmulator*);
+#else
+    explicit WebSettingsImpl(Settings*);
+#endif
     virtual ~WebSettingsImpl() = default;
 
     void SetFromStrings(const WebString& name, const WebString& value) override;
@@ -52,7 +58,9 @@ public:
     bool ShrinksViewportContentToFit() const override;
     bool ViewportEnabled() const override;
     void SetAccelerated2dCanvasMSAASampleCount(int) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetAutoplayPolicy(mojom::blink::AutoplayPolicy) override;
+#endif
     void SetRequireTransientActivationForGetDisplayMedia(bool) override;
     void SetRequireTransientActivationForShowFileOrDirectoryPicker(bool) override;
     void SetLCDTextPreference(LCDTextPreference) override;
@@ -69,7 +77,9 @@ public:
     void SetAntialiasedClips2dCanvasEnabled(bool) override;
     void SetAutoZoomFocusedEditableToLegibleScale(bool) override;
     void SetClobberUserAgentInitialScaleQuirk(bool) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetCookieEnabled(bool) override;
+#endif
     void SetCaretBrowsingEnabled(bool) override;
     void SetCursiveFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) override;
     void SetDNSPrefetchingEnabled(bool) override;
@@ -111,7 +121,9 @@ public:
     void SetLoadsImagesAutomatically(bool) override;
     void SetLoadWithOverviewMode(bool) override;
     void SetShouldReuseGlobalForUnownedMainFrame(bool) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetLocalStorageEnabled(bool) override;
+#endif
     void SetMainFrameClipsContent(bool) override;
     void SetMainFrameResizesAreOrientationChanges(bool) override;
     void SetMaxTouchPoints(int) override;
@@ -165,7 +177,9 @@ public:
     void SetAccessibilityFontScaleFactor(float) override;
     void SetAccessibilityTextSizeContrastFactor(int) override;
     void SetAccessibilityAlwaysShowFocus(bool) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetTextTrackKindUserPreference(TextTrackKindUserPreference) override;
+#endif
     void SetTextTrackBackgroundColor(const WebString&) override;
     void SetTextTrackFontFamily(const WebString&) override;
     void SetTextTrackFontStyle(const WebString&) override;
@@ -181,7 +195,9 @@ public:
     void SetBarrelButtonForDragEnabled(bool) override;
     void SetViewportStyle(mojom::blink::ViewportStyle) override;
     void SetUseWideViewport(bool) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetV8CacheOptions(mojom::blink::V8CacheOptions) override;
+#endif
     void SetValidationMessageTimerMagnification(int) override;
     void SetViewportEnabled(bool) override;
     void SetViewportMetaEnabled(bool) override;
@@ -255,7 +271,11 @@ public:
 
 private:
     Settings* settings_;
+#if !defined(MINI_UI_QUICKJS)
     Persistent<DevToolsEmulator> dev_tools_emulator_;
+#else
+    bool double_tap_to_zoom_enabled_;
+#endif
     bool render_v_sync_notification_enabled_;
     bool auto_zoom_focused_editable_to_legible_scale_;
     bool support_deprecated_target_density_dpi_;

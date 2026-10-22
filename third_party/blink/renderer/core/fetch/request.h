@@ -40,7 +40,9 @@ class CORE_EXPORT Request final : public ScriptWrappable, public Body {
     DEFINE_WRAPPERTYPEINFO();
 
 public:
+#if !defined(MINI_UI_QUICKJS)
     using ForServiceWorkerFetchEvent = FetchRequestData::ForServiceWorkerFetchEvent;
+#endif
 
     // These "create" function must be called with entering an appropriate
     // V8 context.
@@ -52,7 +54,9 @@ public:
     static Request* Create(ScriptState*, Request*, ExceptionState&);
     static Request* Create(ScriptState*, Request*, const RequestInit*, ExceptionState&);
     static Request* Create(ScriptState*, FetchRequestData*, AbortSignal*);
+#if !defined(MINI_UI_QUICKJS)
     static Request* Create(ScriptState*, mojom::blink::FetchAPIRequestPtr, ForServiceWorkerFetchEvent);
+#endif
 
     Request(ScriptState*, FetchRequestData*, Headers*, AbortSignal*);
     Request(ScriptState*, FetchRequestData*, AbortSignal*);

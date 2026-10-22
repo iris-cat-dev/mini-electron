@@ -152,6 +152,7 @@ FrameSchedulerImpl::FrameSchedulerImpl(MainThreadSchedulerImpl* main_thread_sche
     , main_thread_scheduler_(main_thread_scheduler)
     , parent_page_scheduler_(parent_page_scheduler)
     , delegate_(delegate)
+#if !defined(MINI_UI_QUICKJS)
     , page_visibility_(parent_page_scheduler_ && parent_page_scheduler_->IsPageVisible() ? PageVisibilityState::kVisible : PageVisibilityState::kHidden,
           "FrameScheduler.PageVisibility", &tracing_controller_, PageVisibilityStateToString)
     , frame_visible_(true, "FrameScheduler.FrameVisible", &tracing_controller_, VisibilityStateToString)
@@ -174,6 +175,25 @@ FrameSchedulerImpl::FrameSchedulerImpl(MainThreadSchedulerImpl* main_thread_sche
     , waiting_for_contentful_paint_(true, "FrameScheduler.WaitingForContentfulPaint", &tracing_controller_, YesNoStateToString)
     , waiting_for_meaningful_paint_(true, "FrameScheduler.WaitingForMeaningfulPaint", &tracing_controller_, YesNoStateToString)
     , is_load_event_dispatched_(false, "FrameScheduler.IsLoadEventDispatched", &tracing_controller_, YesNoStateToString)
+#else
+    , page_visibility_(parent_page_scheduler_ && parent_page_scheduler_->IsPageVisible() ? PageVisibilityState::kVisible : PageVisibilityState::kHidden)
+    , frame_visible_(true)
+    , is_visible_area_large_(true)
+    , had_user_activation_(false)
+    , frame_paused_(false)
+    , frame_origin_type_(frame_type == FrameType::kMainFrame ? FrameOriginType::kMainFrame : FrameOriginType::kSameOriginToMainFrame)
+    , subresource_loading_paused_(false)
+    , throttling_type_(ThrottlingType::kNone)
+    , preempted_for_cooperative_scheduling_(false)
+    , aggressive_throttling_opt_out_count_(0)
+    , opted_out_from_aggressive_throttling_(false)
+    , subresource_loading_pause_count_(0u)
+    , back_forward_cache_disabling_feature_tracker_(main_thread_scheduler_)
+    , low_priority_async_script_task_priority_(GetLowPriorityAsyncScriptTaskPriority())
+    , waiting_for_contentful_paint_(true)
+    , waiting_for_meaningful_paint_(true)
+    , is_load_event_dispatched_(false)
+#endif
 {
     frame_task_queue_controller_ = base::WrapUnique(new FrameTaskQueueController(main_thread_scheduler_, this, this));
     back_forward_cache_disabling_feature_tracker_.SetDelegate(delegate_);
@@ -383,10 +403,12 @@ void FrameSchedulerImpl::SetAgentClusterId(const base::UnguessableToken& agent_c
     policy_updater.UpdateFramePolicy(this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FrameSchedulerImpl::TraceUrlChange(const String& url)
 {
     url_tracer_.TraceString(url);
 }
+#endif
 
 void FrameSchedulerImpl::AddTaskTime(base::TimeDelta time)
 {
@@ -683,9 +705,11 @@ void FrameSchedulerImpl::OnStartedUsingNonStickyFeature(SchedulingPolicy::Featur
             base::PlatformThread::SetCurrentThreadType(base::ThreadType::kDefault);
         }
 
+#if !defined(MINI_UI_QUICKJS)
         if (auto* rc = delegate_->GetDocumentResourceCoordinator()) {
             rc->OnStartedUsingWebRTC();
         }
+#endif
     }
 }
 
@@ -710,11 +734,13 @@ void FrameSchedulerImpl::OnStoppedUsingNonStickyFeature(SchedulingAffectingFeatu
         back_forward_cache_disabling_feature_tracker_.Remove(handle->GetFeatureAndJSLocationBlockingBFCache());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (handle->GetFeature() == SchedulingPolicy::Feature::kWebRTC) {
         if (auto* rc = delegate_->GetDocumentResourceCoordinator()) {
             rc->OnStoppedUsingWebRTC();
         }
     }
+#endif
 }
 
 base::WeakPtr<FrameScheduler> FrameSchedulerImpl::GetWeakPtr()
@@ -818,10 +844,12 @@ void FrameSchedulerImpl::SetShouldReportPostedTasksWhenDisabled(bool should_repo
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FrameSchedulerImpl::SetPageFrozenForTracing(bool frozen)
 {
     page_frozen_for_tracing_ = frozen;
 }
+#endif
 
 void FrameSchedulerImpl::UpdatePolicy()
 {
@@ -1117,6 +1145,7 @@ void FrameSchedulerImpl::RemovePauseSubresourceLoadingHandle()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ukm::UkmRecorder* FrameSchedulerImpl::GetUkmRecorder()
 {
     if (!delegate_)
@@ -1130,6 +1159,7 @@ ukm::SourceId FrameSchedulerImpl::GetUkmSourceId()
         return ukm::kInvalidSourceId;
     return delegate_->GetUkmSourceId();
 }
+#endif
 
 void FrameSchedulerImpl::OnTaskQueueCreated(MainThreadTaskQueue* task_queue, base::sequence_manager::TaskQueue::QueueEnabledVoter* voter)
 {

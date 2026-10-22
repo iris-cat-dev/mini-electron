@@ -17,7 +17,9 @@
 #include "base/debug/crash_logging.h"
 #include "base/gtest_prod_util.h"
 #include "base/strings/string_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing_forward.h"
+#endif
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -314,7 +316,9 @@ public:
     // and precursor information.
     std::string GetDebugString(bool include_nonce = true) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     // Estimates dynamic memory usage.
     // See base/trace_event/memory_usage_estimator.h for more info.

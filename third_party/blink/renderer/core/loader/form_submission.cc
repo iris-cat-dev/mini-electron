@@ -155,8 +155,11 @@ void FormSubmission::Attributes::CopyFrom(const Attributes& other)
 inline FormSubmission::FormSubmission(SubmitMethod method, const KURL& action, const AtomicString& target, const AtomicString& content_type, Element* submitter,
     scoped_refptr<EncodedFormData> data, const Event* event, NavigationPolicy navigation_policy, mojom::blink::TriggeringEventInfo triggering_event_info,
     ClientNavigationReason reason, std::unique_ptr<ResourceRequest> resource_request, Frame* target_frame, WebFrameLoadType load_type,
-    LocalDOMWindow* origin_window, const LocalFrameToken& initiator_frame_token, bool has_rel_opener, std::unique_ptr<SourceLocation> source_location,
-    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle)
+    LocalDOMWindow* origin_window, const LocalFrameToken& initiator_frame_token, bool has_rel_opener, std::unique_ptr<SourceLocation> source_location
+#if !defined(MINI_UI_QUICKJS)
+    , mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle
+#endif
+    )
     : method_(method)
     , action_(action)
     , target_(target)
@@ -173,7 +176,9 @@ inline FormSubmission::FormSubmission(SubmitMethod method, const KURL& action, c
     , initiator_frame_token_(initiator_frame_token)
     , has_rel_opener_(has_rel_opener)
     , source_location_(std::move(source_location))
+#if !defined(MINI_UI_QUICKJS)
     , initiator_navigation_state_keep_alive_handle_(std::move(initiator_navigation_state_keep_alive_handle))
+#endif
 {
 }
 
@@ -329,7 +334,11 @@ FormSubmission* FormSubmission::Create(HTMLFormElement* form, const Attributes& 
     return MakeGarbageCollected<FormSubmission>(copied_attributes.Method(), action_url, target_or_base_target, encoding_type, frame_request.GetSourceElement(),
         std::move(form_data), event, frame_request.GetNavigationPolicy(), triggering_event_info, reason, std::move(resource_request), target_frame, load_type,
         form->GetDocument().domWindow(), form_local_frame->GetLocalFrameToken(), frame_request.GetWindowFeatures().explicit_opener,
-        CaptureSourceLocation(form->GetDocument().domWindow()), form_local_frame->IssueKeepAliveHandle());
+        CaptureSourceLocation(form->GetDocument().domWindow())
+#if !defined(MINI_UI_QUICKJS)
+        , form_local_frame->IssueKeepAliveHandle()
+#endif
+    );
 }
 
 void FormSubmission::Trace(Visitor* visitor) const
@@ -347,7 +356,9 @@ void FormSubmission::Navigate()
     frame_request.SetSourceElement(submitter_);
     frame_request.SetTriggeringEventInfo(triggering_event_info_);
     frame_request.SetInitiatorFrameToken(initiator_frame_token_);
+#if !defined(MINI_UI_QUICKJS)
     frame_request.SetInitiatorNavigationStateKeepAliveHandle(std::move(initiator_navigation_state_keep_alive_handle_));
+#endif
     frame_request.SetSourceLocation(std::move(source_location_));
     if (has_rel_opener_) {
         frame_request.SetExplicitOpener();

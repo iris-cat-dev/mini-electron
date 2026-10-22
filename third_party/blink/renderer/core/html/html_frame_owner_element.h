@@ -45,7 +45,9 @@ class ExceptionState;
 class Frame;
 class LayoutEmbeddedContent;
 class LazyLoadFrameObserver;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
 class ResourceRequestHead;
 
 class CORE_EXPORT HTMLFrameOwnerElement : public HTMLElement, public FrameOwner {
@@ -84,6 +86,7 @@ public:
     void SetColorScheme(mojom::blink::ColorScheme);
     void SetPreferredColorScheme(mojom::blink::PreferredColorScheme);
 
+#if !defined(MINI_UI_QUICKJS)
     class PluginDisposeSuspendScope {
         STACK_ALLOCATED();
 
@@ -107,6 +110,7 @@ public:
 
         friend class HTMLFrameOwnerElement;
     };
+#endif
 
     // Node overrides:
     Node::InsertionNotificationRequest InsertedInto(ContainerNode& insertion_point) override;
@@ -195,7 +199,9 @@ protected:
     bool IsKeyboardFocusable(UpdateBehavior update_behavior = UpdateBehavior::kStyleAndLayout) const override;
     void FrameOwnerPropertiesChanged() override;
 
+#if !defined(MINI_UI_QUICKJS)
     void DisposePluginSoon(WebPluginContainerImpl*);
+#endif
 
     // Return the origin which is to be used for permissions policy container
     // policies, as "the origin of the URL in the frame's src attribute" (see

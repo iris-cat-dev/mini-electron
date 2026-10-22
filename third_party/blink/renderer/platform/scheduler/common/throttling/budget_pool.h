@@ -12,7 +12,9 @@
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/task_queue_throttler.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 namespace trace_event {
@@ -59,8 +61,10 @@ public:
     // Specify how this budget pool should block affected queues.
     virtual QueueBlockType GetBlockType() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Records state for tracing.
     virtual void WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const = 0;
+#endif
 
     // Adds |throttler| to given pool and invokes
     // TaskQueueThrottler::UpdateQueueState().

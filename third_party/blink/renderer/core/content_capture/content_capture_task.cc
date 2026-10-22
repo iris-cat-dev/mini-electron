@@ -8,7 +8,10 @@
 
 #include "base/auto_reset.h"
 #include "base/feature_list.h"
+#include "base/trace_event/base_tracing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/trees/layer_tree_host.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/web/web_content_capture_client.h"
 #include "third_party/blink/public/web/web_content_holder.h"
@@ -77,6 +80,7 @@ bool ContentCaptureTask::CaptureContent(Vector<cc::NodeInfo>& data)
         data = captured_content_for_testing_.value();
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     // Because this is called from a different task, the frame may be in any
     // lifecycle step so we need to early-out in many cases.
     if (const auto* root_frame_view = local_frame_root_->View()) {
@@ -92,6 +96,7 @@ bool ContentCaptureTask::CaptureContent(Vector<cc::NodeInfo>& data)
             }
         }
     }
+#endif
     return false;
 }
 

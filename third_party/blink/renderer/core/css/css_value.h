@@ -136,10 +136,12 @@ public:
     {
         return class_type_ == kDynamicRangeLimitMixClass;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsPaintValue() const
     {
         return class_type_ == kPaintClass;
     }
+#endif
     bool IsFontFeatureValue() const
     {
         return class_type_ == kFontFeatureClass;
@@ -454,7 +456,9 @@ protected:
 
         // Image generator classes.
         kCrossfadeClass,
+#if !defined(MINI_UI_QUICKJS)
         kPaintClass,
+#endif
         kLinearGradientClass,
         kRadialGradientClass,
         kConicGradientClass,

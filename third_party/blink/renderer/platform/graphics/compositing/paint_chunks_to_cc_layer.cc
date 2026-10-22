@@ -8,15 +8,18 @@
 #include "base/logging.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/numerics/safe_conversions.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/input/layer_selection_bound.h"
 #include "cc/layers/layer.h"
+#endif
 #include "cc/paint/display_item_list.h"
 #include "cc/paint/paint_op_buffer.h"
 #include "cc/paint/render_surface_filters.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/trees/layer_tree_host.h"
 #include "cc/trees/property_tree.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/compositing/chunk_to_layer_mapper.h"
-#include "third_party/blink/renderer/platform/graphics/compositing/property_tree_manager.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_list.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_display_item.h"
@@ -1071,6 +1074,7 @@ PaintRecord PaintChunksToCcLayer::Convert(const PaintChunkSubset& chunks, const 
     return buffer.ReleaseAsRecord();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 struct NonCompositedScroll {
@@ -1514,9 +1518,12 @@ void PaintChunksToCcLayer::UpdateLayerProperties(
 {
     LayerPropertiesUpdater(layer, layer_state, chunks, layer_selection, selection_only).Update();
 }
+#endif
 
 } // namespace blink
 
+#if !defined(MINI_UI_QUICKJS)
+WTF_ALLOW_MOVE_INIT_AND_COMPARE_WITH_MEM_FUNCTIONS(blink::NonCompositedScroll)
+#endif
 WTF_ALLOW_MOVE_INIT_AND_COMPARE_WITH_MEM_FUNCTIONS(blink::StateEntry)
 WTF_ALLOW_MOVE_INIT_AND_COMPARE_WITH_MEM_FUNCTIONS(blink::EffectBoundsInfo)
-WTF_ALLOW_MOVE_INIT_AND_COMPARE_WITH_MEM_FUNCTIONS(blink::NonCompositedScroll)

@@ -1,4 +1,4 @@
-﻿// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,6 @@ namespace mojo::core::ipcz_driver {
 // to simplify the transition of the Mojo bindings implementation to ipcz.
 MOJO_SYSTEM_IMPL_EXPORT extern const IpczDriver kDriver;
 
-} // namespace mojo::core::ipcz_driver
+}  // namespace mojo::core::ipcz_driver
 
-#endif // MOJO_CORE_IPCZ_DRIVER_DRIVER_H_
+#endif  // MOJO_CORE_IPCZ_DRIVER_DRIVER_H_

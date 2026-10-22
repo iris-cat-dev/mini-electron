@@ -10,22 +10,27 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/load_flags.h"
 #include "net/log/net_log_source.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cookie_access_observer.mojom.h"
 #include "services/network/public/mojom/devtools_observer.mojom.h"
 #include "services/network/public/mojom/trust_token_access_observer.mojom.h"
+#endif
 #include "services/network/public/mojom/url_request.mojom.h"
 #include "services/network/public/mojom/web_bundle_handle.mojom.h"
 
 namespace network {
 
+#if !defined(MINI_UI_QUICKJS)
 bool DocumentIsolationPolicy::operator==(struct network::DocumentIsolationPolicy const&) const
 {
     *(int*)1 = 1;
     return false;
 }
+#endif
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 mojo::PendingRemote<mojom::CookieAccessObserver> Clone(mojo::PendingRemote<mojom::CookieAccessObserver>* observer)
 {
     if (!*observer) {
@@ -97,6 +102,7 @@ mojo::PendingRemote<mojom::SharedDictionaryAccessObserver> Clone(mojo::PendingRe
     observer = remote.Unbind();
     return new_remote;
 }
+#endif
 
 // Returns true iff either holds true:
 //
@@ -156,13 +162,17 @@ ResourceRequest::TrustedParams& ResourceRequest::TrustedParams::operator=(const 
     has_user_activation = other.has_user_activation;
     allow_cookies_from_browser = other.allow_cookies_from_browser;
     include_request_cookies_with_response = other.include_request_cookies_with_response;
+#if !defined(MINI_UI_QUICKJS)
     cookie_observer = Clone(&const_cast<mojo::PendingRemote<mojom::CookieAccessObserver>&>(other.cookie_observer));
     trust_token_observer = Clone(&const_cast<mojo::PendingRemote<mojom::TrustTokenAccessObserver>&>(other.trust_token_observer));
     url_loader_network_observer = Clone(&const_cast<mojo::PendingRemote<mojom::URLLoaderNetworkServiceObserver>&>(other.url_loader_network_observer));
     devtools_observer = Clone(&const_cast<mojo::PendingRemote<mojom::DevToolsObserver>&>(other.devtools_observer));
+#endif
     client_security_state = other.client_security_state.Clone();
+#if !defined(MINI_UI_QUICKJS)
     accept_ch_frame_observer = Clone(const_cast<mojo::PendingRemote<mojom::AcceptCHFrameObserver>&>(other.accept_ch_frame_observer));
     shared_dictionary_observer = Clone(const_cast<mojo::PendingRemote<mojom::SharedDictionaryAccessObserver>&>(other.shared_dictionary_observer));
+#endif
     return *this;
 }
 

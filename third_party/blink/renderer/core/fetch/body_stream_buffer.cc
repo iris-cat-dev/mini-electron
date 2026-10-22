@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/script_cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_or_worker_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -120,6 +122,26 @@ private:
 // Initialisation may result in nested calls to ContextDestroyed() and so is not
 // safe to do during construction.
 
+#if defined(MINI_UI_QUICKJS)
+BodyStreamBuffer* BodyStreamBuffer::Create(ScriptState* script_state, BytesConsumer* consumer, AbortSignal* signal,
+    scoped_refptr<BlobDataHandle> side_data_blob)
+{
+    auto* buffer = MakeGarbageCollected<BodyStreamBuffer>(PassKey(), script_state, consumer, signal, std::move(side_data_blob));
+    buffer->Init();
+    return buffer;
+}
+
+BodyStreamBuffer::BodyStreamBuffer(PassKey, ScriptState* script_state, BytesConsumer* consumer, AbortSignal* signal,
+    scoped_refptr<BlobDataHandle> side_data_blob)
+    : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state))
+    , script_state_(script_state)
+    , consumer_(consumer)
+    , signal_(signal)
+    , side_data_blob_(std::move(side_data_blob))
+    , made_from_readable_stream_(false)
+{
+}
+#else
 // static
 BodyStreamBuffer* BodyStreamBuffer::Create(ScriptState* script_state, BytesConsumer* consumer, AbortSignal* signal,
     ScriptCachedMetadataHandler* cached_metadata_handler, scoped_refptr<BlobDataHandle> side_data_blob)
@@ -140,6 +162,8 @@ BodyStreamBuffer::BodyStreamBuffer(PassKey, ScriptState* script_state, BytesCons
     , made_from_readable_stream_(false)
 {
 }
+
+#endif
 
 void BodyStreamBuffer::Init()
 {
@@ -167,6 +191,18 @@ void BodyStreamBuffer::Init()
     OnStateChange();
 }
 
+#if defined(MINI_UI_QUICKJS)
+BodyStreamBuffer::BodyStreamBuffer(ScriptState* script_state, ReadableStream* stream, scoped_refptr<BlobDataHandle> side_data_blob)
+    : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state))
+    , script_state_(script_state)
+    , stream_(stream)
+    , signal_(nullptr)
+    , side_data_blob_(std::move(side_data_blob))
+    , made_from_readable_stream_(true)
+{
+    DCHECK(stream_);
+}
+#else
 BodyStreamBuffer::BodyStreamBuffer(
     ScriptState* script_state, ReadableStream* stream, ScriptCachedMetadataHandler* cached_metadata_handler, scoped_refptr<BlobDataHandle> side_data_blob)
     : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state))
@@ -179,6 +215,8 @@ BodyStreamBuffer::BodyStreamBuffer(
 {
     DCHECK(stream_);
 }
+
+#endif
 
 scoped_refptr<BlobDataHandle> BodyStreamBuffer::DrainAsBlobDataHandle(BytesConsumer::BlobSizePolicy policy, ExceptionState& exception_state)
 {
@@ -264,7 +302,9 @@ void BodyStreamBuffer::Tee(BodyStreamBuffer** branch1, BodyStreamBuffer** branch
     DCHECK(!IsStreamDisturbed());
     *branch1 = nullptr;
     *branch2 = nullptr;
+#if !defined(MINI_UI_QUICKJS)
     auto* cached_metadata_handler = cached_metadata_handler_.Get();
+#endif
     scoped_refptr<BlobDataHandle> side_data_blob = TakeSideDataBlob();
 
     if (made_from_readable_stream_) {
@@ -290,8 +330,13 @@ void BodyStreamBuffer::Tee(BodyStreamBuffer** branch1, BodyStreamBuffer** branch
             return;
         }
 
+#if defined(MINI_UI_QUICKJS)
+        *branch1 = MakeGarbageCollected<BodyStreamBuffer>(script_state_, stream1, side_data_blob);
+        *branch2 = MakeGarbageCollected<BodyStreamBuffer>(script_state_, stream2, side_data_blob);
+#else
         *branch1 = MakeGarbageCollected<BodyStreamBuffer>(script_state_, stream1, cached_metadata_handler, side_data_blob);
         *branch2 = MakeGarbageCollected<BodyStreamBuffer>(script_state_, stream2, cached_metadata_handler, side_data_blob);
+#endif
         return;
     }
     BytesConsumer* dest1 = nullptr;
@@ -302,8 +347,13 @@ void BodyStreamBuffer::Tee(BodyStreamBuffer** branch1, BodyStreamBuffer** branch
         return;
     }
     BytesConsumerTee(ExecutionContext::From(script_state_), handle, &dest1, &dest2);
+#if defined(MINI_UI_QUICKJS)
+    *branch1 = BodyStreamBuffer::Create(script_state_, dest1, signal_, side_data_blob);
+    *branch2 = BodyStreamBuffer::Create(script_state_, dest2, signal_, side_data_blob);
+#else
     *branch1 = BodyStreamBuffer::Create(script_state_, dest1, signal_, cached_metadata_handler, side_data_blob);
     *branch2 = BodyStreamBuffer::Create(script_state_, dest2, signal_, cached_metadata_handler, side_data_blob);
+#endif
 }
 
 ScriptPromise<IDLUndefined> BodyStreamBuffer::Pull(ReadableByteStreamController* controller, ExceptionState& exception_state)
@@ -400,7 +450,9 @@ void BodyStreamBuffer::CloseAndLockAndDisturb(ExceptionState& exception_state)
 {
     DCHECK(!stream_broken_);
 
+#if !defined(MINI_UI_QUICKJS)
     cached_metadata_handler_ = nullptr;
+#endif
 
     if (IsStreamReadable()) {
         // Note that the stream cannot be "draining", because it doesn't have
@@ -433,7 +485,9 @@ void BodyStreamBuffer::Trace(Visitor* visitor) const
     visitor->Trace(signal_);
     visitor->Trace(stream_buffer_abort_handle_);
     visitor->Trace(loader_client_abort_handle_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(cached_metadata_handler_);
+#endif
     UnderlyingByteSourceBase::Trace(visitor);
     ExecutionContextLifecycleObserver::Trace(visitor);
 }

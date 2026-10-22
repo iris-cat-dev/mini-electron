@@ -706,6 +706,7 @@ bool CSSPropertyEquality::PropertiesEqual(const PropertyHandle& property, const 
     case CSSPropertyID::kVerticalAlign:
         return a.VerticalAlign() == b.VerticalAlign()
             && (a.VerticalAlign() != EVerticalAlign::kLength || a.GetVerticalAlignLength() == b.GetVerticalAlignLength());
+#if !defined(MINI_UI_QUICKJS)
     case CSSPropertyID::kViewTransitionClass:
         return a.ViewTransitionClass() == b.ViewTransitionClass();
     case CSSPropertyID::kViewTransitionGroup:
@@ -714,6 +715,7 @@ bool CSSPropertyEquality::PropertiesEqual(const PropertyHandle& property, const 
         return a.ViewTransitionName() == b.ViewTransitionName();
     case CSSPropertyID::kViewTransitionCaptureMode:
         return a.ViewTransitionCaptureMode() == b.ViewTransitionCaptureMode();
+#endif
     case CSSPropertyID::kVisibility:
         return a.Visibility() == b.Visibility();
     case CSSPropertyID::kWebkitBorderHorizontalSpacing:
@@ -1232,7 +1234,9 @@ bool CSSPropertyEquality::PropertiesEqual(const PropertyHandle& property, const 
     case CSSPropertyID::kInherits:
     case CSSPropertyID::kInitialValue:
     case CSSPropertyID::kLineGapOverride:
+#if !defined(MINI_UI_QUICKJS)
     case CSSPropertyID::kNavigation:
+#endif
     case CSSPropertyID::kNegative:
     case CSSPropertyID::kOverrideColors:
     case CSSPropertyID::kPad:
@@ -1244,7 +1248,9 @@ bool CSSPropertyEquality::PropertiesEqual(const PropertyHandle& property, const 
     case CSSPropertyID::kSymbols:
     case CSSPropertyID::kSyntax:
     case CSSPropertyID::kSystem:
+#if !defined(MINI_UI_QUICKJS)
     case CSSPropertyID::kTypes:
+#endif
     case CSSPropertyID::kUnicodeRange:
         return true;
 

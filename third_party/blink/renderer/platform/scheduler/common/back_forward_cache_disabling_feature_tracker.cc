@@ -9,12 +9,17 @@
 namespace blink {
 namespace scheduler {
 
+#if !defined(MINI_UI_QUICKJS)
 BackForwardCacheDisablingFeatureTracker::BackForwardCacheDisablingFeatureTracker(
     TraceableVariableController* tracing_controller, ThreadSchedulerBase* scheduler)
     : opted_out_from_back_forward_cache_ { false,
         "FrameScheduler."
         "OptedOutFromBackForwardCache",
         tracing_controller, YesNoStateToString }
+#else
+BackForwardCacheDisablingFeatureTracker::BackForwardCacheDisablingFeatureTracker(ThreadSchedulerBase* scheduler)
+    : opted_out_from_back_forward_cache_(false)
+#endif
     , scheduler_ { scheduler }
 {
 }

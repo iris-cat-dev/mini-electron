@@ -1,10 +1,11 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef MOJO_PUBLIC_CPP_SYSTEM_ISOLATED_CONNECTION_H_
 #define MOJO_PUBLIC_CPP_SYSTEM_ISOLATED_CONNECTION_H_
 
+#include "base/process/process.h"
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/platform/platform_channel_endpoint.h"
 #include "mojo/public/cpp/platform/platform_channel_server_endpoint.h"
@@ -35,27 +36,34 @@ namespace mojo {
 // spanning that connection, will remain valid and connected as long as this
 // object remains alive.
 class MOJO_CPP_SYSTEM_EXPORT IsolatedConnection {
-public:
-    IsolatedConnection();
+ public:
+  IsolatedConnection();
 
-    IsolatedConnection(const IsolatedConnection&) = delete;
-    IsolatedConnection& operator=(const IsolatedConnection&) = delete;
+  IsolatedConnection(const IsolatedConnection&) = delete;
+  IsolatedConnection& operator=(const IsolatedConnection&) = delete;
 
-    ~IsolatedConnection();
+  ~IsolatedConnection();
 
-    // Connects to a process at the other end of the channel. Returns a primordial
-    // message pipe that can be used for Mojo IPC. The connection
-    // will be connected to a corresponding peer pipe in the remote process.
-    ScopedMessagePipeHandle Connect(PlatformChannelEndpoint endpoint);
+  // Connects to a process at the other end of the channel. Returns a primordial
+  // message pipe that can be used for Mojo IPC. The connection
+  // will be connected to a corresponding peer pipe in the remote process.
+  ScopedMessagePipeHandle Connect(PlatformChannelEndpoint endpoint);
 
-    // Same as above but works with a server endpoint. The corresponding client
-    // could use the above signature with NamedPlatformChannel::ConnectToServer.
-    ScopedMessagePipeHandle Connect(PlatformChannelServerEndpoint endpoint);
+  // Connects to a process at the other end of the channel. Returns a primordial
+  // message pipe that can be used for Mojo IPC. The connection
+  // will be connected to a corresponding peer pipe in the remote process.
+  // `process` identifies the remote process.
+  ScopedMessagePipeHandle Connect(PlatformChannelEndpoint endpoint,
+                                  base::Process process);
 
-private:
-    const base::UnguessableToken token_;
+  // Same as above but works with a server endpoint. The corresponding client
+  // could use the above signature with NamedPlatformChannel::ConnectToServer.
+  ScopedMessagePipeHandle Connect(PlatformChannelServerEndpoint endpoint);
+
+ private:
+  const base::UnguessableToken token_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_ISOLATED_CONNECTION_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_ISOLATED_CONNECTION_H_

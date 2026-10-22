@@ -27,17 +27,20 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FILEAPI_PUBLIC_URL_MANAGER_H_
 
 #include "base/types/pass_key.h"
-#include "mojo/public/cpp/bindings/associated_remote.h"
+#include "mojo/public/cpp/bindings/pending_associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-blink-forward.h"
-#include "third_party/blink/public/mojom/blob/blob_url_store.mojom-blink.h"
+#include "third_party/blink/public/mojom/blob/blob_url_store.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
@@ -74,14 +77,16 @@ public:
 
     void Trace(Visitor*) const override;
 
-    void SetURLStoreForTesting(HeapMojoAssociatedRemote<mojom::blink::BlobURLStore> frame_url_store)
+#if !defined(MINI_UI_QUICKJS)
+    void SetURLStoreForTesting(
+        HeapMojoAssociatedRemote<mojom::blink::BlobURLStore>
+            frame_url_store)
     {
         frame_url_store_ = std::move(frame_url_store);
     }
 
-    // Returns a reference to the BlobURLStore from either `frame_url_store_` or
-    // `worker_url_store_` (depending on the context).
     mojom::blink::BlobURLStore& GetBlobURLStore();
+#endif
 
 private:
     typedef String URLString;
@@ -98,8 +103,10 @@ private:
     // For workers and threaded worklets, the interface is exposed via
     // `BrowserInterfaceBroker`s, and the remotes for that are stored in
     // `worker_url_store_`.
+#if !defined(MINI_UI_QUICKJS)
     HeapMojoAssociatedRemote<mojom::blink::BlobURLStore> frame_url_store_;
     HeapMojoRemote<mojom::blink::BlobURLStore> worker_url_store_;
+#endif
 };
 
 } // namespace blink

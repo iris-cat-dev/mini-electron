@@ -34,9 +34,14 @@ class ThreadSchedulerBase;
 // determine back-forward cache eligibility.
 class PLATFORM_EXPORT BackForwardCacheDisablingFeatureTracker {
 public:
+#if !defined(MINI_UI_QUICKJS)
     // `tracing_controller` and `scheduler` must not be null and must outlive this
     // instance except for tests.
     BackForwardCacheDisablingFeatureTracker(TraceableVariableController* tracing_controller, ThreadSchedulerBase* scheduler);
+#else
+    // `scheduler` must outlive this instance.
+    explicit BackForwardCacheDisablingFeatureTracker(ThreadSchedulerBase* scheduler);
+#endif
 
     // Sets the delegate to notify the feature usage update. This must be called
     // only once for initialization. `delegate` must not be null and must outlive

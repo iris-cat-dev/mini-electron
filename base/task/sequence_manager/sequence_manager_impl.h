@@ -29,6 +29,7 @@
 #include "base/observer_list.h"
 #include "base/pending_task.h"
 #include "base/rand_util.h"
+#include "base/tracing_buildflags.h"
 #include "base/run_loop.h"
 #include "base/synchronization/lock.h"
 #include "base/task/current_thread.h"
@@ -370,8 +371,10 @@ private:
 
     bool GetAddQueueTimeToTasks();
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     std::unique_ptr<trace_event::ConvertableToTraceFormat> AsValueWithSelectorResultForTracing(
         internal::WorkQueue* selected_work_queue, bool force_verbose) const;
+#endif
     Value::Dict AsValueWithSelectorResult(internal::WorkQueue* selected_work_queue, bool force_verbose) const;
 
     // Used in construction of TaskQueueImpl to obtain an AtomicFlag which it can

@@ -197,16 +197,15 @@ bool CalculateCorsFlag(
 
 HTTPHeaderSet ExtractCorsExposedHeaderNamesList(network::mojom::CredentialsMode credentials_mode, const ResourceResponse& response)
 {
-    // If a response was fetched via a service worker, it will always have
-    // CorsExposedHeaderNames set from the Access-Control-Expose-Headers header.
-    // For requests that didn't come from a service worker, just parse the CORS
-    // header.
+#if !defined(MINI_UI_QUICKJS)
+    // Service worker responses carry their already-parsed exposed header list.
     if (response.WasFetchedViaServiceWorker()) {
         HTTPHeaderSet header_set;
         for (const auto& header : response.CorsExposedHeaderNames())
             header_set.insert(header.Ascii());
         return header_set;
     }
+#endif
 
     HTTPHeaderSet header_set;
     HTTPHeaderNameListParser parser(response.HttpHeaderField(http_names::kAccessControlExposeHeaders));

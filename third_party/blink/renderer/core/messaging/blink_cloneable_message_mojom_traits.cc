@@ -37,8 +37,15 @@ bool StructTraits<blink::mojom::blink::CloneableMessage::DataView, blink::BlinkC
     if (!data.ReadSenderOrigin(&out->sender_origin)) {
         return false;
     }
+#if defined(MINI_UI_QUICKJS)
+    out->stack_trace_id = data.stack_trace_id();
+    out->stack_trace_debugger_id_first = data.stack_trace_debugger_id_first();
+    out->stack_trace_debugger_id_second = data.stack_trace_debugger_id_second();
+    out->stack_trace_should_pause = data.stack_trace_should_pause();
+#else
     out->sender_stack_trace_id = v8_inspector::V8StackTraceId(static_cast<uintptr_t>(data.stack_trace_id()),
         std::make_pair(data.stack_trace_debugger_id_first(), data.stack_trace_debugger_id_second()), data.stack_trace_should_pause());
+#endif
 
     base::UnguessableToken sender_agent_cluster_id;
     if (!data.ReadSenderAgentClusterId(&sender_agent_cluster_id))
@@ -46,10 +53,12 @@ bool StructTraits<blink::mojom::blink::CloneableMessage::DataView, blink::BlinkC
     out->sender_agent_cluster_id = sender_agent_cluster_id;
     out->locked_to_sender_agent_cluster = data.locked_to_sender_agent_cluster();
 
+#if !defined(MINI_UI_QUICKJS)
     Vector<PendingRemote<blink::mojom::blink::FileSystemAccessTransferToken>>& tokens = out->message->FileSystemAccessTokens();
     if (!data.ReadFileSystemAccessTokens(&tokens)) {
         return false;
     }
+#endif
     return true;
 }
 

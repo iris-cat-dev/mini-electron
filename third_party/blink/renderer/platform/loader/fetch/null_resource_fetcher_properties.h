@@ -32,6 +32,7 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     ControllerServiceWorkerMode GetControllerServiceWorkerMode() const override
     {
         return ControllerServiceWorkerMode::kNoController;
@@ -40,6 +41,7 @@ public:
     {
         NOTREACHED();
     }
+#endif
     bool IsPaused() const override
     {
         return false;

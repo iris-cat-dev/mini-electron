@@ -8,16 +8,20 @@
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 struct SameSizeAsScriptWrappable {
     virtual ~SameSizeAsScriptWrappable() = default;
     v8::Persistent<v8::Object> main_world_wrapper_;
 };
 
 ASSERT_SIZE(ScriptWrappable, SameSizeAsScriptWrappable);
+#endif
 
 v8::Local<v8::Value> ScriptWrappable::ToV8(ScriptState* script_state)
 {

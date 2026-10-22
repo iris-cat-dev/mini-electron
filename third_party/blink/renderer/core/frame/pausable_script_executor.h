@@ -27,14 +27,21 @@ enum class ExecuteScriptPolicy;
 // - Executes with user activation (`UserActivationOption`, Window only)
 // - Executes sync/async (`EvaluationTiming`)
 // - Delays the load event (`LoadEventBlockingOption`, Window only)
-// - Converts results to `base::Value` (`WantResultOption`)
+// - Converts results to `base::Value` outside the local UI profile (`WantResultOption`)
 // - Waits for promise resolution (`PromiseResultOption`)
 class CORE_EXPORT PausableScriptExecutor final : public GarbageCollected<PausableScriptExecutor>, public ExecutionContextLifecycleObserver {
 public:
     static void CreateAndRun(v8::Local<v8::Context>, v8::Local<v8::Function>, v8::Local<v8::Value> receiver, int argc, v8::Local<v8::Value> argv[],
-        mojom::blink::WantResultOption, WebScriptExecutionCallback);
+#if !defined(MINI_UI_QUICKJS)
+        mojom::blink::WantResultOption,
+#endif
+        WebScriptExecutionCallback);
     static void CreateAndRun(ScriptState*, Vector<WebScriptSource>, ExecuteScriptPolicy, mojom::blink::UserActivationOption, mojom::blink::EvaluationTiming,
-        mojom::blink::LoadEventBlockingOption, mojom::blink::WantResultOption, mojom::blink::PromiseResultOption, WebScriptExecutionCallback);
+        mojom::blink::LoadEventBlockingOption,
+#if !defined(MINI_UI_QUICKJS)
+        mojom::blink::WantResultOption,
+#endif
+        mojom::blink::PromiseResultOption, WebScriptExecutionCallback);
 
     class Executor : public GarbageCollected<Executor> {
     public:
@@ -47,7 +54,10 @@ public:
         }
     };
 
-    PausableScriptExecutor(ScriptState*, mojom::blink::UserActivationOption, mojom::blink::LoadEventBlockingOption, mojom::blink::WantResultOption,
+    PausableScriptExecutor(ScriptState*, mojom::blink::UserActivationOption, mojom::blink::LoadEventBlockingOption,
+#if !defined(MINI_UI_QUICKJS)
+        mojom::blink::WantResultOption,
+#endif
         mojom::blink::PromiseResultOption, WebScriptExecutionCallback, Executor*);
     ~PausableScriptExecutor() override;
 
@@ -69,7 +79,9 @@ private:
     base::TimeTicks start_time_;
     const mojom::blink::UserActivationOption user_activation_option_;
     const mojom::blink::LoadEventBlockingOption blocking_option_;
+#if !defined(MINI_UI_QUICKJS)
     const mojom::blink::WantResultOption want_result_option_;
+#endif
     // Whether to wait for a promise to resolve, if the executed script evaluates
     // to a promise.
     const mojom::blink::PromiseResultOption wait_for_promise_;

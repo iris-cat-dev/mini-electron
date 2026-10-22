@@ -1,0 +1,87 @@
+[
+  {
+    "name": "production-build",
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe",
+      "-f",
+      "out/ui-windows-x64/build.ninja",
+      "-j4",
+      "host"
+    ],
+    "exit_code": 0,
+    "seconds": 21.307905699999537,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\production-build.log"
+  },
+  {
+    "name": "production-regression",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--out-dir",
+      "out/ui-field-final-checks"
+    ],
+    "exit_code": 0,
+    "seconds": 3.5792423999810126,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\production-regression.log"
+  },
+  {
+    "name": "production-smoke",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--out-dir",
+      "out/ui-field-final-smoke",
+      "--counts",
+      "1000",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 31.352168599987635,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\production-smoke.log"
+  },
+  {
+    "name": "chrome-default",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/chrome.py",
+      "--out-dir",
+      "out/ui-field-chrome-default"
+    ],
+    "exit_code": 0,
+    "seconds": 59.680900599982124,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\chrome-default.log"
+  },
+  {
+    "name": "chrome-software",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/chrome.py",
+      "--disable-gpu",
+      "--out-dir",
+      "out/ui-field-chrome-software"
+    ],
+    "exit_code": 0,
+    "seconds": 59.12398159998702,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\chrome-software.log"
+  },
+  {
+    "name": "chrome-comparison",
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/compare.py",
+      "--mini-out",
+      "out/ui-field-inline-after",
+      "--chrome-out",
+      "out/ui-field-chrome-default",
+      "--chrome-software-out",
+      "out/ui-field-chrome-software",
+      "--out-dir",
+      "out/ui-field-chrome-comparison"
+    ],
+    "exit_code": 0,
+    "seconds": 0.1033414000121411,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-final-validation\\chrome-comparison.log"
+  }
+]

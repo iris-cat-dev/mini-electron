@@ -12,7 +12,7 @@
 #include "base/rand_util.h"
 #include "build/build_config.h"
 
-#if !BUILDFLAG(IS_NACL)
+#if !BUILDFLAG(IS_NACL) && !defined(MINI_UI_QUICKJS)
 //#include "third_party/boringssl/src/include/openssl/mem.h"
 #include "third_party/openssl/openssl/include/openssl/mem.h"
 #endif
@@ -65,7 +65,11 @@ std::optional<UnguessableToken> UnguessableToken::DeserializeFromString(std::str
 
 bool operator==(const UnguessableToken& lhs, const UnguessableToken& rhs)
 {
-#if BUILDFLAG(IS_NACL)
+#if defined(MINI_UI_QUICKJS)
+    const uint64_t high_difference = lhs.token_.high() ^ rhs.token_.high();
+    const uint64_t low_difference = lhs.token_.low() ^ rhs.token_.low();
+    return (high_difference | low_difference) == 0;
+#elif BUILDFLAG(IS_NACL)
     // BoringSSL is unavailable for NaCl builds so it remains timing dependent.
     return lhs.token_ == rhs.token_;
 #else

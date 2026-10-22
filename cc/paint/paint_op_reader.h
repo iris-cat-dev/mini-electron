@@ -23,9 +23,13 @@
 struct SkGainmapInfo;
 struct SkHighContrastConfig;
 class SkColorSpace;
+#if defined(MINI_UI_QUICKJS)
+class SkTextBlob;
+#else
 namespace sktext::gpu {
 class Slug;
 }
+#endif
 
 namespace gpu {
 struct Mailbox;
@@ -91,7 +95,11 @@ public:
     void Read(CorePaintFlags* flags);
     void Read(PaintImage* image, PaintFlags::DynamicRangeLimitMixture dynamic_range_limit);
     void Read(sk_sp<SkData>* data);
+#if defined(MINI_UI_QUICKJS)
+    void Read(sk_sp<SkTextBlob>* blob);
+#else
     void Read(sk_sp<sktext::gpu::Slug>* slug);
+#endif
     void Read(sk_sp<DrawLooper>* looper);
     void Read(sk_sp<PaintFilter>* filter);
     void Read(sk_sp<PaintShader>* shader);
@@ -208,7 +216,9 @@ private:
         kInsufficientRemainingBytes_Read_SkData = 9,
         kInsufficientRemainingBytes_Read_SkPath = 10,
         kInsufficientRemainingBytes_Read_SkRegion = 11,
+#if !defined(MINI_UI_QUICKJS)
         kInsufficientRemainingBytes_Read_Slug = 12,
+#endif
         kInsufficientRemainingBytes_ReadData = 13,
         kInsufficientRemainingBytes_ReadFlattenable = 14,
         kInsufficientRemainingBytes_ReadMatrixConvolutionPaintFilter = 15,
@@ -239,7 +249,9 @@ private:
         kSkPathEffectUnflattenFailure = 40,
         kSkPathReadFromMemoryFailure = 41,
         kSkRegionReadFromMemoryFailure = 42,
+#if !defined(MINI_UI_QUICKJS)
         kSlugDeserializeFailure = 43,
+#endif
         kUnexpectedPaintShaderType = 44,
         kUnexpectedSerializedImageType = 45,
         kZeroMailbox = 46,

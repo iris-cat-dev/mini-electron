@@ -1,0 +1,306 @@
+[
+  {
+    "framework": "react",
+    "rows": 1000,
+    "before_callback_preparations": 3879176,
+    "after_callback_preparations": 1023376,
+    "removed": 2855800,
+    "change_percent": -73.61872727610194,
+    "before_categories": [
+      {
+        "name": "host_api_inclusive",
+        "scope_calls": 270,
+        "outermost_calls": 270,
+        "outermost_ticks": 121731168,
+        "outermost_milliseconds": 12173.1168
+      },
+      {
+        "name": "js_execution_boundaries_inclusive_native_callbacks",
+        "scope_calls": 14229533,
+        "outermost_calls": 890,
+        "outermost_ticks": 73485184,
+        "outermost_milliseconds": 7348.5184
+      },
+      {
+        "name": "native_callback_inclusive_reentrant_js",
+        "scope_calls": 3879176,
+        "outermost_calls": 3879132,
+        "outermost_ticks": 17228966,
+        "outermost_milliseconds": 1722.8966
+      },
+      {
+        "name": "layout_lifecycle_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 32831572,
+        "outermost_milliseconds": 3283.1572
+      },
+      {
+        "name": "software_paint_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 8031945,
+        "outermost_milliseconds": 803.1945
+      },
+      {
+        "name": "paint_total_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 40864075,
+        "outermost_milliseconds": 4086.4075
+      },
+      {
+        "name": "joint_gc_host_cycle_inclusive",
+        "scope_calls": 2,
+        "outermost_calls": 2,
+        "outermost_ticks": 5591774,
+        "outermost_milliseconds": 559.1774
+      },
+      {
+        "name": "quickjs_gc_inclusive",
+        "scope_calls": 5,
+        "outermost_calls": 5,
+        "outermost_ticks": 6887331,
+        "outermost_milliseconds": 688.7331
+      },
+      {
+        "name": "cppgc_native_gc_inclusive",
+        "scope_calls": 2,
+        "outermost_calls": 2,
+        "outermost_ticks": 428353,
+        "outermost_milliseconds": 42.8353
+      },
+      {
+        "name": "quickjs_bridge_gc_pass_inclusive",
+        "scope_calls": 4,
+        "outermost_calls": 4,
+        "outermost_ticks": 5162549,
+        "outermost_milliseconds": 516.2549
+      }
+    ],
+    "after_categories": [
+      {
+        "name": "host_api_inclusive",
+        "scope_calls": 270,
+        "outermost_calls": 270,
+        "outermost_ticks": 110242979,
+        "outermost_milliseconds": 11024.2979
+      },
+      {
+        "name": "js_execution_boundaries_inclusive_native_callbacks",
+        "scope_calls": 14229533,
+        "outermost_calls": 890,
+        "outermost_ticks": 63151195,
+        "outermost_milliseconds": 6315.1195
+      },
+      {
+        "name": "native_callback_inclusive_reentrant_js",
+        "scope_calls": 1023376,
+        "outermost_calls": 1023358,
+        "outermost_ticks": 9221692,
+        "outermost_milliseconds": 922.1692
+      },
+      {
+        "name": "layout_lifecycle_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 33170580,
+        "outermost_milliseconds": 3317.058
+      },
+      {
+        "name": "software_paint_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 8337369,
+        "outermost_milliseconds": 833.7369
+      },
+      {
+        "name": "paint_total_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 41508544,
+        "outermost_milliseconds": 4150.8544
+      },
+      {
+        "name": "joint_gc_host_cycle_inclusive",
+        "scope_calls": 2,
+        "outermost_calls": 2,
+        "outermost_ticks": 4185823,
+        "outermost_milliseconds": 418.5823
+      },
+      {
+        "name": "quickjs_gc_inclusive",
+        "scope_calls": 5,
+        "outermost_calls": 5,
+        "outermost_ticks": 5180286,
+        "outermost_milliseconds": 518.0286
+      },
+      {
+        "name": "cppgc_native_gc_inclusive",
+        "scope_calls": 2,
+        "outermost_calls": 2,
+        "outermost_ticks": 369988,
+        "outermost_milliseconds": 36.9988
+      },
+      {
+        "name": "quickjs_bridge_gc_pass_inclusive",
+        "scope_calls": 4,
+        "outermost_calls": 4,
+        "outermost_ticks": 3814808,
+        "outermost_milliseconds": 381.4808
+      }
+    ]
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "before_callback_preparations": 2108360,
+    "after_callback_preparations": 1016905,
+    "removed": 1091455,
+    "change_percent": -51.76796182815079,
+    "before_categories": [
+      {
+        "name": "host_api_inclusive",
+        "scope_calls": 270,
+        "outermost_calls": 270,
+        "outermost_ticks": 188780391,
+        "outermost_milliseconds": 18878.0391
+      },
+      {
+        "name": "js_execution_boundaries_inclusive_native_callbacks",
+        "scope_calls": 40407319,
+        "outermost_calls": 1032,
+        "outermost_ticks": 120436816,
+        "outermost_milliseconds": 12043.6816
+      },
+      {
+        "name": "native_callback_inclusive_reentrant_js",
+        "scope_calls": 2108360,
+        "outermost_calls": 2108313,
+        "outermost_ticks": 14072498,
+        "outermost_milliseconds": 1407.2498
+      },
+      {
+        "name": "layout_lifecycle_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 32277644,
+        "outermost_milliseconds": 3227.7644
+      },
+      {
+        "name": "software_paint_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 8321608,
+        "outermost_milliseconds": 832.1608
+      },
+      {
+        "name": "paint_total_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 40599813,
+        "outermost_milliseconds": 4059.9813
+      },
+      {
+        "name": "joint_gc_host_cycle_inclusive",
+        "scope_calls": 9,
+        "outermost_calls": 9,
+        "outermost_ticks": 26424070,
+        "outermost_milliseconds": 2642.407
+      },
+      {
+        "name": "quickjs_gc_inclusive",
+        "scope_calls": 19,
+        "outermost_calls": 19,
+        "outermost_ticks": 26824867,
+        "outermost_milliseconds": 2682.4867
+      },
+      {
+        "name": "cppgc_native_gc_inclusive",
+        "scope_calls": 9,
+        "outermost_calls": 9,
+        "outermost_ticks": 1387678,
+        "outermost_milliseconds": 138.7678
+      },
+      {
+        "name": "quickjs_bridge_gc_pass_inclusive",
+        "scope_calls": 18,
+        "outermost_calls": 18,
+        "outermost_ticks": 25034807,
+        "outermost_milliseconds": 2503.4807
+      }
+    ],
+    "after_categories": [
+      {
+        "name": "host_api_inclusive",
+        "scope_calls": 270,
+        "outermost_calls": 270,
+        "outermost_ticks": 176348859,
+        "outermost_milliseconds": 17634.8859
+      },
+      {
+        "name": "js_execution_boundaries_inclusive_native_callbacks",
+        "scope_calls": 40407319,
+        "outermost_calls": 1032,
+        "outermost_ticks": 113297489,
+        "outermost_milliseconds": 11329.7489
+      },
+      {
+        "name": "native_callback_inclusive_reentrant_js",
+        "scope_calls": 1016905,
+        "outermost_calls": 1016888,
+        "outermost_ticks": 11246635,
+        "outermost_milliseconds": 1124.6635
+      },
+      {
+        "name": "layout_lifecycle_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 30974315,
+        "outermost_milliseconds": 3097.4315
+      },
+      {
+        "name": "software_paint_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 7592925,
+        "outermost_milliseconds": 759.2925
+      },
+      {
+        "name": "paint_total_inclusive",
+        "scope_calls": 271,
+        "outermost_calls": 271,
+        "outermost_ticks": 38567756,
+        "outermost_milliseconds": 3856.7756
+      },
+      {
+        "name": "joint_gc_host_cycle_inclusive",
+        "scope_calls": 7,
+        "outermost_calls": 7,
+        "outermost_ticks": 23064926,
+        "outermost_milliseconds": 2306.4926
+      },
+      {
+        "name": "quickjs_gc_inclusive",
+        "scope_calls": 15,
+        "outermost_calls": 15,
+        "outermost_ticks": 23937437,
+        "outermost_milliseconds": 2393.7437
+      },
+      {
+        "name": "cppgc_native_gc_inclusive",
+        "scope_calls": 7,
+        "outermost_calls": 7,
+        "outermost_ticks": 1190156,
+        "outermost_milliseconds": 119.0156
+      },
+      {
+        "name": "quickjs_bridge_gc_pass_inclusive",
+        "scope_calls": 14,
+        "outermost_calls": 14,
+        "outermost_ticks": 21873546,
+        "outermost_milliseconds": 2187.3546
+      }
+    ]
+  }
+]

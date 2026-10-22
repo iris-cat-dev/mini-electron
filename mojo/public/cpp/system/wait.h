@@ -1,4 +1,4 @@
-﻿// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -33,14 +33,19 @@ namespace mojo {
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |handle| is not a valid handle.
 //   |MOJO_RESULT_CANCELLED| if the wait was cancelled because |handle| was
 //       closed by some other sequence while waiting.
-MOJO_CPP_SYSTEM_EXPORT MojoResult Wait(
-    Handle handle, MojoHandleSignals signals, MojoTriggerCondition condition, MojoHandleSignalsState* signals_state = nullptr);
+MOJO_CPP_SYSTEM_EXPORT MojoResult
+Wait(Handle handle,
+     MojoHandleSignals signals,
+     MojoTriggerCondition condition,
+     MojoHandleSignalsState* signals_state = nullptr);
 
 // A pseudonym for the above Wait() which always waits on
 // |MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED|.
-inline MojoResult Wait(Handle handle, MojoHandleSignals signals, MojoHandleSignalsState* signals_state = nullptr)
-{
-    return Wait(handle, signals, MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED, signals_state);
+inline MojoResult Wait(Handle handle,
+                       MojoHandleSignals signals,
+                       MojoHandleSignalsState* signals_state = nullptr) {
+  return Wait(handle, signals, MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED,
+              signals_state);
 }
 
 // Waits on |handles[0]|, ..., |handles[num_handles-1]| until:
@@ -72,9 +77,13 @@ inline MojoResult Wait(Handle handle, MojoHandleSignals signals, MojoHandleSigna
 //       |handles| was closed by some other sequence while waiting.
 //       |*result_index| contains the index of the closed Handle if
 //       |result_index| is non-null.
-MOJO_CPP_SYSTEM_EXPORT MojoResult WaitMany(const Handle* handles, const MojoHandleSignals* signals, size_t num_handles, size_t* result_index = nullptr,
-    MojoHandleSignalsState* signals_states = nullptr);
+MOJO_CPP_SYSTEM_EXPORT MojoResult
+WaitMany(const Handle* handles,
+         const MojoHandleSignals* signals,
+         size_t num_handles,
+         size_t* result_index = nullptr,
+         MojoHandleSignalsState* signals_states = nullptr);
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_WAIT_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_WAIT_H_

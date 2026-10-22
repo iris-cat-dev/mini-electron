@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "generated_scaffold_directory": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke",
+  "actual_du_sb_bytes_before": 2585023136,
+  "du_command": [
+    "du",
+    "-sb",
+    ".build-tools/ui-smoke"
+  ],
+  "directory_removed": true,
+  "scaffold_count_note": "Specialized glob listing was limited to200; no complete file count is claimed. Directory byte count is the actual du -sb result.",
+  "exact_recorded_temporary_paths": [
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-chrome-rb53ftne",
+      "existed": true,
+      "removed": true
+    },
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-native-blob-27204",
+      "existed": true,
+      "removed": true
+    },
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-native-blob-35584",
+      "existed": true,
+      "removed": true
+    },
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-native-blob-39628",
+      "existed": true,
+      "removed": true
+    },
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-native-blob-39736",
+      "existed": true,
+      "removed": true
+    },
+    {
+      "path": "C:\\Users\\11297\\AppData\\Local\\Temp\\omp-sshots-15afd4fe34bfb0c1.webp",
+      "existed": true,
+      "removed": true
+    }
+  ],
+  "preserved": [
+    "Official production library and host in out/ui-windows-x64",
+    "All permanent benchmark sources, pinned assets, real result records and captures",
+    "User/unrelated output directories and developer tool caches"
+  ],
+  "notes": [
+    "Only this task-owned completed diagnostic scaffold and exact recorded temporary paths were removed.",
+    "All native/debugger processes completed before cleanup. Windows junction targets are not recursively followed by Python3.14 shutil.rmtree.",
+    "No shutdown command issued."
+  ]
+}

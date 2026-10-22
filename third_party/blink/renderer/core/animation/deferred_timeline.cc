@@ -60,7 +60,9 @@ DeferredTimeline::TimelineState DeferredTimeline::ComputeTimelineState() const
 
 void DeferredTimeline::OnAttachedTimelineChange()
 {
+#if !defined(MINI_UI_QUICKJS)
     compositor_timeline_ = nullptr;
+#endif
     MarkAnimationsCompositorPending(/* source_changed */ true);
 }
 

@@ -37,7 +37,11 @@ FindInPageBudgetPoolController::FindInPageBudgetPoolController(MainThreadSchedul
     }
 
     base::TimeTicks now = scheduler_->GetTickClock()->NowTicks();
+#if !defined(MINI_UI_QUICKJS)
     find_in_page_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("FindInPageBudgetPool", &scheduler_->tracing_controller_, now);
+#else
+    find_in_page_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("FindInPageBudgetPool", now);
+#endif
     find_in_page_budget_pool_->SetMaxBudgetLevel(now, kFindInPageMaxBudget);
     find_in_page_budget_pool_->SetTimeBudgetRecoveryRate(now, kFindInPageBudgetRecoveryRate);
 }

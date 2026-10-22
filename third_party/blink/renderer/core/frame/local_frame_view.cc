@@ -39,14 +39,20 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/timer/lap_timer.h"
 #include "base/trace_event/typed_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_host.h"
 #include "cc/animation/animation_timeline.h"
+#endif
 #include "cc/base/features.h"
 #include "cc/input/main_thread_scrolling_reason.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
-#include "cc/tiles/frame_viewer_instrumentation.h"
 #include "cc/trees/layer_tree_host.h"
 #include "cc/view_transition/view_transition_request.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
+#include "cc/tiles/frame_viewer_instrumentation.h"
+#endif
 //#include "components/paint_preview/common/paint_preview_tracker.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
@@ -72,7 +78,9 @@
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/editing/markers/document_marker_controller.h"
 #include "third_party/blink/renderer/core/events/error_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/fragment_directive/fragment_directive_utils.h"
 #include "third_party/blink/renderer/core/fragment_directive/text_fragment_handler.h"
 #include "third_party/blink/renderer/core/frame/browser_controls.h"
@@ -82,12 +90,16 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#endif
 #include "third_party/blink/renderer/core/frame/location.h"
 #include "third_party/blink/renderer/core/frame/page_scale_constraints_set.h"
 #include "third_party/blink/renderer/core/frame/pagination_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
+#endif
 #include "third_party/blink/renderer/core/frame/root_frame_viewport.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
@@ -95,19 +107,25 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/highlight/highlight_registry.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_set_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observation.h"
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observer_controller.h"
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
@@ -128,13 +146,17 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/media_type_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
 #include "third_party/blink/renderer/core/mobile_metrics/tap_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/page/autoscroll_controller.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/frame_tree.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/link_highlight.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
@@ -160,20 +182,26 @@
 #include "third_party/blink/renderer/core/style/position_try_fallbacks.h"
 #include "third_party/blink/renderer/core/svg/svg_document_extensions.h"
 #include "third_party/blink/renderer/core/svg/svg_svg_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_request.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/dark_mode_settings_builder.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/cull_rect.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/blink/renderer/platform/language.h"
@@ -233,6 +261,7 @@ void LogCursorSizeCounter(LocalFrame* frame, const ui::Cursor& cursor)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 gfx::QuadF GetQuadForTimelinePaintEvent(const scoped_refptr<cc::Layer>& layer)
 {
     gfx::RectF rect(layer->update_rect());
@@ -240,13 +269,17 @@ gfx::QuadF GetQuadForTimelinePaintEvent(const scoped_refptr<cc::Layer>& layer)
         rect = layer->ScreenSpaceTransform().MapRect(rect);
     return gfx::QuadF(rect);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 // Default value for how long we want to delay the
 // compositor commit beyond the start of document lifecycle updates to avoid
 // flash between navigations. The delay should be small enough so that it won't
 // confuse users expecting a new page to appear after navigation and the omnibar
 // has updated the url display.
 constexpr int kCommitDelayDefaultInMs = 500; // 30 frames @ 60hz
+
+#endif
 
 } // namespace
 
@@ -298,13 +331,17 @@ LocalFrameView::LocalFrameView(LocalFrame& frame, gfx::Rect frame_rect)
     , suppress_adjust_view_size_(false)
     , intersection_observation_state_(kNotNeeded)
     , main_thread_scrolling_reasons_(0)
+#if !defined(MINI_UI_QUICKJS)
     , forced_layout_stack_depth_(0)
+#endif
     , paint_frame_count_(0)
     , unique_id_(NewUniqueObjectId())
     , layout_shift_tracker_(MakeGarbageCollected<LayoutShiftTracker>(this))
     , paint_timing_detector_(MakeGarbageCollected<PaintTimingDetector>(this))
+#if !defined(MINI_UI_QUICKJS)
     , mobile_friendliness_checker_(MobileFriendlinessChecker::Create(*this))
     , tap_friendliness_checker_(TapFriendlinessChecker::CreateIfMobile(*this))
+#endif
 #if DCHECK_IS_ON()
     , is_updating_descendant_dependent_flags_(false)
     , is_updating_layout_(false)
@@ -335,19 +372,27 @@ void LocalFrameView::Trace(Visitor* visitor) const
     visitor->Trace(background_attachment_fixed_objects_);
     visitor->Trace(auto_size_info_);
     visitor->Trace(pagination_state_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(plugins_);
+#endif
     visitor->Trace(scrollbars_);
     visitor->Trace(viewport_scrollable_area_);
     visitor->Trace(anchoring_adjustment_queue_);
     visitor->Trace(scroll_event_queue_);
     visitor->Trace(paint_controller_persistent_data_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(paint_artifact_compositor_);
+#endif
     visitor->Trace(layout_shift_tracker_);
     visitor->Trace(paint_timing_detector_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(mobile_friendliness_checker_);
     visitor->Trace(tap_friendliness_checker_);
+#endif
     visitor->Trace(lifecycle_observers_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(fullscreen_video_elements_);
+#endif
     visitor->Trace(pending_transform_updates_);
     visitor->Trace(pending_opacity_updates_);
     visitor->Trace(pending_sticky_updates_);
@@ -363,6 +408,7 @@ void LocalFrameView::ForAllChildViewsAndPlugins(base::FunctionRef<void(EmbeddedC
             function(*child->View());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     for (const auto& plugin : plugins_) {
         function(*plugin);
     }
@@ -375,6 +421,7 @@ void LocalFrameView::ForAllChildViewsAndPlugins(base::FunctionRef<void(EmbeddedC
             }
         }
     }
+#endif
 }
 
 void LocalFrameView::ForAllChildLocalFrameViews(base::FunctionRef<void(LocalFrameView&)> function)
@@ -414,6 +461,7 @@ void LocalFrameView::ForAllThrottledLocalFrameViews(base::FunctionRef<void(Local
     ForAllChildLocalFrameViews([&function](LocalFrameView& child_view) { child_view.ForAllThrottledLocalFrameViews(function); });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::ForAllRemoteFrameViews(base::FunctionRef<void(RemoteFrameView&)> function)
 {
     for (Frame* child = frame_->Tree().FirstChild(); child; child = child->Tree().NextSibling()) {
@@ -437,6 +485,7 @@ void LocalFrameView::ForAllRemoteFrameViews(base::FunctionRef<void(RemoteFrameVi
     }
 }
 
+#endif
 void LocalFrameView::Dispose()
 {
     CHECK(!IsInPerformLayout());
@@ -488,6 +537,7 @@ void LocalFrameView::Dispose()
     if (owner_element && owner_element->OwnedEmbeddedContentView() == this)
         owner_element->SetEmbeddedContentView(nullptr);
 
+#if !defined(MINI_UI_QUICKJS)
     if (ukm_aggregator_) {
         LocalFrame& root_frame = GetFrame().LocalFrameRoot();
         Document* root_document = root_frame.GetDocument();
@@ -496,6 +546,7 @@ void LocalFrameView::Dispose()
         }
         ukm_aggregator_.reset();
     }
+#endif
     layout_shift_tracker_->Dispose();
 
 #if DCHECK_IS_ON()
@@ -571,6 +622,7 @@ LayoutView* LocalFrameView::GetLayoutView() const
     return GetFrame().ContentLayoutObject();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::AnimationHost* LocalFrameView::GetCompositorAnimationHost() const
 {
     if (!GetChromeClient())
@@ -586,6 +638,7 @@ cc::AnimationTimeline* LocalFrameView::GetScrollAnimationTimeline() const
 
     return GetChromeClient()->GetScrollAnimationTimeline(*frame_);
 }
+#endif
 
 void LocalFrameView::SetLayoutOverflowSize(const gfx::Size& size)
 {
@@ -773,8 +826,11 @@ void LocalFrameView::PerformLayout()
     Lifecycle().AdvanceTo(DocumentLifecycle::kAfterPerformLayout);
 
     TRACE_EVENT_END0(PERFORM_LAYOUT_TRACE_CATEGORIES, "LocalFrameView::performLayout");
+#if !defined(MINI_UI_QUICKJS)
     FirstMeaningfulPaintDetector::From(*document).MarkNextPaintAsMeaningfulIfNeeded(
         layout_object_counter_, contents_height_before_layout, GetLayoutView()->DocumentRect().Height(), Height());
+
+#endif
 
     if (old_size != Size()) {
         InvalidateLayoutForViewportConstrainedObjects();
@@ -806,7 +862,9 @@ void LocalFrameView::UpdateLayout()
     HeapVector<LayoutObjectWithDepth> layout_roots;
 
     v8::Isolate* isolate = frame_->GetPage()->GetAgentGroupScheduler().Isolate();
+#if !defined(MINI_UI_QUICKJS)
     ENTER_EMBEDDER_STATE(isolate, frame_, BlinkState::LAYOUT);
+#endif
     TRACE_EVENT_BEGIN0("blink,benchmark", "LocalFrameView::layout");
     if (RuntimeEnabledFeatures::BlinkRuntimeCallStatsEnabled()) [[unlikely]] {
         rcs_scope.emplace(RuntimeCallStats::From(isolate), RuntimeCallStats::CounterId::kUpdateLayout);
@@ -814,19 +872,24 @@ void LocalFrameView::UpdateLayout()
     layout_roots = layout_subtree_root_list_.Ordered();
     if (layout_roots.empty())
         layout_roots.push_back(LayoutObjectWithDepth(GetLayoutView()));
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_BEGIN1(
         "devtools.timeline", "Layout", "beginData", [&](perfetto::TracedValue context) { inspector_layout_event::BeginData(std::move(context), this); });
+#endif
 
     PerformLayout();
     Lifecycle().AdvanceTo(DocumentLifecycle::kLayoutClean);
 
     TRACE_EVENT_END0("blink,benchmark", "LocalFrameView::layout");
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_END1(
         "devtools.timeline", "Layout", "endData", [&](perfetto::TracedValue context) { inspector_layout_event::EndData(std::move(context), layout_roots); });
     probe::DidChangeViewport(frame_.Get());
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::WillStartForcedLayout(DocumentUpdateReason reason)
 {
     if (!base::TimeTicks::IsHighResolution()) {
@@ -857,6 +920,7 @@ void LocalFrameView::DidFinishForcedLayout()
     }
 }
 
+#endif
 void LocalFrameView::MarkFirstEligibleToPaint()
 {
     if (frame_ && frame_->GetDocument()) {
@@ -964,10 +1028,14 @@ void LocalFrameView::RunPostLifecycleSteps()
     AllowThrottlingScope allow_throttling(*this);
     RunAccessibilitySteps();
     RunIntersectionObserverSteps();
+#if !defined(MINI_UI_QUICKJS)
     if (mobile_friendliness_checker_)
         mobile_friendliness_checker_->MaybeRecompute();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     ForAllRemoteFrameViews([](RemoteFrameView& frame_view) { frame_view.UpdateCompositingScaleFactor(); });
+#endif
 }
 
 void LocalFrameView::RunIntersectionObserverSteps()
@@ -991,7 +1059,9 @@ void LocalFrameView::RunIntersectionObserverSteps()
     }
 
     TRACE_EVENT0("blink,benchmark", "LocalFrameView::UpdateViewportIntersectionsForSubtree");
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kIntersectionObservation);
+#endif
 
     ComputeIntersectionsContext context;
     bool needs_occlusion_tracking = UpdateViewportIntersectionsForSubtree(0, context);
@@ -1185,8 +1255,10 @@ void LocalFrameView::ViewportSizeChanged()
         InvalidateLayoutForViewportConstrainedObjects();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (GetPaintTimingDetector().Visualizer())
         GetPaintTimingDetector().Visualizer()->OnViewportChanged();
+#endif
 }
 
 void LocalFrameView::InvalidateLayoutForViewportConstrainedObjects()
@@ -1387,8 +1459,10 @@ void LocalFrameView::ScheduleRelayout()
         return;
     if (!frame_->GetDocument()->ShouldScheduleLayout())
         return;
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "InvalidateLayout",
         inspector_invalidate_layout_event::Data, frame_.Get(), GetLayoutView()->OwnerNodeId());
+#endif
 
     ClearLayoutSubtreeRootsAndMarkContainingBlocks();
 
@@ -1435,8 +1509,10 @@ void LocalFrameView::ScheduleRelayoutOfSubtree(LayoutObject* relayout_root)
         if (GetPage()->Animator().IsServicingAnimations())
             Lifecycle().EnsureStateAtMost(DocumentLifecycle::kStyleClean);
     }
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "InvalidateLayout",
         inspector_invalidate_layout_event::Data, frame_.Get(), relayout_root->OwnerNodeId());
+#endif
 }
 
 bool LocalFrameView::LayoutPending() const
@@ -1676,7 +1752,11 @@ void LocalFrameView::PerformPostLayoutTasks(bool visual_viewport_size_changed)
 float LocalFrameView::InputEventsScaleFactor() const
 {
     float page_scale = frame_->GetPage()->GetVisualViewport().Scale();
+#if defined(MINI_UI_QUICKJS)
+    return page_scale;
+#else
     return page_scale * frame_->GetPage()->GetChromeClient().InputEventsScaleForEmulation();
+#endif
 }
 
 void LocalFrameView::NotifyPageThatContentAreaWillPaint() const
@@ -1728,10 +1808,12 @@ void LocalFrameView::DidAttachDocument()
             InitializeRootScroller();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (frame_->IsMainFrame()) {
         // Allow for commits to be deferred because this is a new document.
         have_deferred_main_frame_commits_ = false;
     }
+#endif
 }
 
 void LocalFrameView::InitializeRootScroller()
@@ -1805,8 +1887,10 @@ Color LocalFrameView::DocumentBackgroundColor()
 
 void LocalFrameView::WillBeRemovedFromFrame()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (paint_artifact_compositor_)
         paint_artifact_compositor_->WillBeRemovedFromFrame();
+#endif
 }
 
 bool LocalFrameView::IsUpdatingLifecycle() const
@@ -1917,6 +2001,7 @@ void LocalFrameView::DryRunPaintingForPrerender()
     if (!update_result) {
         return;
     }
+#if !defined(MINI_UI_QUICKJS)
     if (paint_artifact_compositor_) {
         // If `paint_artifact_compositor_` has been created, PaintArtifact might be
         // referred in its `pending_layers`, and since creating the paint tree again
@@ -1925,6 +2010,7 @@ void LocalFrameView::DryRunPaintingForPrerender()
         // unlikely to reach here, just to avoid race conditions.
         return;
     }
+#endif
     std::optional<PaintController> paint_controller;
     PaintTree(PaintBenchmarkMode::kNormal, paint_controller);
     return;
@@ -2150,6 +2236,7 @@ bool LocalFrameView::UpdateLifecyclePhases(DocumentLifecycle::LifecycleState tar
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Hit testing metrics include the entire time processing a document update
     // in preparation for a hit test.
     if (reason == DocumentUpdateReason::kHitTest) {
@@ -2159,6 +2246,7 @@ bool LocalFrameView::UpdateLifecyclePhases(DocumentLifecycle::LifecycleState tar
         }
     }
 
+#endif
     return Lifecycle().GetState() == target_state;
 }
 
@@ -2225,13 +2313,17 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(DocumentLifecycle::LifecycleS
             DisallowLayoutInvalidationScope disallow_layout_invalidation(this);
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
             DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(
                 TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "SetLayerTreeId", inspector_set_layer_tree_id::Data, frame_.Get());
+#endif
             // The Compositing Inputs lifecycle phase should be integrated into the
             // PrePaint lifecycle phase in the future. The difference between these
             // two stages is not relevant to web developers, so include them both
             // under PrePaint.
+#if !defined(MINI_UI_QUICKJS)
             DEVTOOLS_TIMELINE_TRACE_EVENT("PrePaint", inspector_pre_paint_event::Data, frame_.Get());
+#endif
             run_more_lifecycle_phases = RunCompositingInputsLifecyclePhase(target_state);
             if (!run_more_lifecycle_phases)
                 return;
@@ -2239,6 +2331,7 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(DocumentLifecycle::LifecycleS
             run_more_lifecycle_phases = RunPrePaintLifecyclePhase(target_state);
         }
 
+#if !defined(MINI_UI_QUICKJS)
         if (!run_more_lifecycle_phases) {
             // If we won't be proceeding to paint, update view transition stylesheet
             // here.
@@ -2246,6 +2339,8 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(DocumentLifecycle::LifecycleS
             if (needs_to_repeat_lifecycle)
                 continue;
         }
+
+#endif
 
         DCHECK(ShouldThrottleRendering() || Lifecycle().GetState() >= DocumentLifecycle::kPrePaintClean);
         if (ShouldThrottleRendering() || !run_more_lifecycle_phases)
@@ -2287,12 +2382,15 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(DocumentLifecycle::LifecycleS
         if (needs_to_repeat_lifecycle)
             continue;
 
+#if !defined(MINI_UI_QUICKJS)
         // ViewTransition mutates the tree and mirrors post layout transform for
         // transitioning elements to UA created elements. This may dirty
         // style/layout requiring another lifecycle update.
         needs_to_repeat_lifecycle = RunViewTransitionSteps(target_state);
-        if (!needs_to_repeat_lifecycle)
-            break;
+        if (needs_to_repeat_lifecycle)
+            continue;
+#endif
+        break;
     }
 
     // This must be after all other updates for position-visibility.
@@ -2309,11 +2407,13 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(DocumentLifecycle::LifecycleS
     DisallowLayoutInvalidationScope disallow_layout_invalidation(this);
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
     // This needs to be done prior to paint: it will update the cc::Layer bounds
     // for the remote frame views, which will be wrapped during paint in
     // ForeignLayerDisplayItem's whose visual rect is set at construction based
     // on cc::Layer bounds.
     ForAllRemoteFrameViews([](RemoteFrameView& frame_view) { frame_view.UpdateCompositingRect(); });
+#endif
 
     DCHECK_EQ(target_state, DocumentLifecycle::kPaintClean);
     RunPaintLifecyclePhase(PaintBenchmarkMode::kNormal);
@@ -2334,6 +2434,7 @@ bool LocalFrameView::RunScrollSnapshotClientSteps()
     return re_run_lifecycles;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool LocalFrameView::RunViewTransitionSteps(DocumentLifecycle::LifecycleState target_state)
 {
     DCHECK(frame_ && frame_->GetDocument());
@@ -2363,6 +2464,8 @@ bool LocalFrameView::RunViewTransitionSteps(DocumentLifecycle::LifecycleState ta
 
     return re_run_lifecycle;
 }
+
+#endif
 
 bool LocalFrameView::RunResizeObserverSteps(DocumentLifecycle::LifecycleState target_state)
 {
@@ -2471,7 +2574,9 @@ bool LocalFrameView::RunCompositingInputsLifecyclePhase(DocumentLifecycle::Lifec
     auto* layout_view = GetLayoutView();
     DCHECK(layout_view);
 
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kCompositingInputs);
+#endif
     // TODO(pdr): This descendant dependent treewalk should be integrated into
     // the prepaint tree walk.
     {
@@ -2535,19 +2640,27 @@ bool LocalFrameView::RunPrePaintLifecyclePhase(DocumentLifecycle::LifecycleState
         kPostOrder);
 
     {
+#if !defined(MINI_UI_QUICKJS)
         SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kPrePaint);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
         GetPage()->GetLinkHighlight().UpdateBeforePrePaint();
+#endif
         PrePaintTreeWalk().WalkTree(*this);
+#if !defined(MINI_UI_QUICKJS)
         GetPage()->GetLinkHighlight().UpdateAfterPrePaint();
+#endif
 
         frame_->GetPage()->GetValidationMessageClient().UpdatePrePaint();
         ForAllNonThrottledLocalFrameViews([](LocalFrameView& view) {
             view.frame_->UpdateFrameColorOverlayPrePaint();
             view.frame_->CheckPositionAnchorsForCssVisibilityChanges();
         });
+#if !defined(MINI_UI_QUICKJS)
         if (auto* web_local_frame_impl = WebLocalFrameImpl::FromFrame(frame_))
             web_local_frame_impl->UpdateDevToolsOverlaysPrePaint();
+#endif
     }
 
     ForAllNonThrottledLocalFrameViews([](LocalFrameView& frame_view) { frame_view.Lifecycle().AdvanceTo(DocumentLifecycle::kPrePaintClean); });
@@ -2576,41 +2689,55 @@ void LocalFrameView::RunPaintLifecyclePhase(PaintBenchmarkMode benchmark_mode)
     if (AnyFrameIsPrintingOrPaintingPreview())
         return;
 
-    bool needed_full_update = false;
+    bool needed_full_update = true;
     {
-        // paint_controller will be constructed when PaintTree repaints, and will
-        // be destructed after PushPaintArtifactToCompositor.
+        // The paint controller is only needed while recording this paint phase.
         std::optional<PaintController> paint_controller;
         PaintTree(benchmark_mode, paint_controller);
-
+#if !defined(MINI_UI_QUICKJS)
         if (paint_artifact_compositor_ && benchmark_mode == PaintBenchmarkMode::kForcePaintArtifactCompositorUpdate) {
             paint_artifact_compositor_->SetNeedsUpdate();
         }
         needed_full_update = !paint_artifact_compositor_ || paint_artifact_compositor_->NeedsUpdate() == PaintArtifactCompositor::UpdateType::kFull;
         PushPaintArtifactToCompositor(paint_controller.has_value());
+#endif
     }
 
+#if !defined(MINI_UI_QUICKJS)
     size_t total_animations_count = 0;
     ForAllNonThrottledLocalFrameViews([this, needed_full_update, &total_animations_count](LocalFrameView& frame_view) {
+#else
+    ForAllNonThrottledLocalFrameViews([needed_full_update](LocalFrameView& frame_view) {
+#endif
         if (auto* scrollable_area = frame_view.GetScrollableArea())
             scrollable_area->UpdateCompositorScrollAnimations();
         if (const auto* animating_scrollable_areas = frame_view.AnimatingScrollableAreas()) {
             for (PaintLayerScrollableArea* area : *animating_scrollable_areas)
                 area->UpdateCompositorScrollAnimations();
         }
+#if !defined(MINI_UI_QUICKJS)
         frame_view.GetPage()->GetLinkHighlight().UpdateAfterPaint(paint_artifact_compositor_.Get());
+#endif
         Document& document = frame_view.GetLayoutView()->GetDocument();
         // Attach the compositor timeline during the commit as it blocks on
         // the previous commit completion.
+#if !defined(MINI_UI_QUICKJS)
         document.AttachCompositorTimeline(document.Timeline().CompositorTimeline());
+#endif
         {
             // Updating animations can notify ready promises which could mutate
             // the DOM. We should delay these until we have finished the lifecycle
             // update. https://crbug.com/1196781
             ScriptForbiddenScope forbid_script;
+#if !defined(MINI_UI_QUICKJS)
             document.GetDocumentAnimations().UpdateAnimations(DocumentLifecycle::kPaintClean, paint_artifact_compositor_.Get(), needed_full_update);
+#else
+            document.GetDocumentAnimations().UpdateAnimations(DocumentLifecycle::kPaintClean, nullptr, needed_full_update);
+#endif
         }
+#if !defined(MINI_UI_QUICKJS)
         total_animations_count += document.GetDocumentAnimations().GetAnimationsCount();
+#endif
     });
 
     // If this is a throttled local root, then we shouldn't run animation steps
@@ -2618,30 +2745,38 @@ void LocalFrameView::RunPaintLifecyclePhase(PaintBenchmarkMode benchmark_mode)
     if (frame_->IsLocalRoot() && ShouldThrottleRendering())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* animation_host = GetCompositorAnimationHost()) {
         animation_host->SetAnimationCounts(total_animations_count);
     }
+#endif
 
     // Initialize animation properties in the newly created paint property
     // nodes according to the current animation state. This is mainly for
     // the running composited animations which didn't change state during
     // above UpdateAnimations() but associated with new paint property nodes.
+#if !defined(MINI_UI_QUICKJS)
     if (needed_full_update) {
         auto* root_layer = RootCcLayer();
         if (root_layer && root_layer->layer_tree_host()) {
             root_layer->layer_tree_host()->mutator_host()->InitClientAnimationState();
         }
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (GetPage())
         GetPage()->Animator().ReportFrameAnimations(GetCompositorAnimationHost());
+#endif
 }
 
 void LocalFrameView::RunAccessibilitySteps()
 {
     TRACE_EVENT0("blink,benchmark", "LocalFrameView::RunAccessibilitySteps");
 
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kAccessibility);
+#endif
 
     // Reduce redundant ancestor chain walking for display lock computations.
     auto display_lock_memoization_scope = DisplayLockUtilities::CreateLockCheckMemoizationScope();
@@ -2705,13 +2840,17 @@ void LocalFrameView::EnqueueScrollEvents()
 
 void LocalFrameView::PaintTree(PaintBenchmarkMode benchmark_mode, std::optional<PaintController>& paint_controller)
 {
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kPaint);
+#endif
 
     DCHECK(GetFrame().IsLocalRoot());
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<MobileFriendlinessChecker::PaintScope> mf_scope;
     if (mobile_friendliness_checker_)
         mf_scope.emplace(*mobile_friendliness_checker_);
+#endif
 
     auto* layout_view = GetLayoutView();
     DCHECK(layout_view);
@@ -2750,8 +2889,11 @@ void LocalFrameView::PaintTree(PaintBenchmarkMode benchmark_mode, std::optional<
 
     if (benchmark_mode >= PaintBenchmarkMode::kForcePaint || !paint_controller_persistent_data_ || GetLayoutView()->Layer()->SelfOrDescendantNeedsRepaint()
         || visual_viewport_or_overlay_needs_repaint_) {
-        const PaintArtifact& previous_artifact = EnsurePaintControllerPersistentData().GetPaintArtifact();
-        paint_controller.emplace(PaintDebugInfoEnabled(), paint_controller_persistent_data_.Get(), benchmark_mode);
+        auto& persistent_data = EnsurePaintControllerPersistentData();
+#if !defined(MINI_UI_QUICKJS)
+        const PaintArtifact& previous_artifact = persistent_data.GetPaintArtifact();
+#endif
+        paint_controller.emplace(PaintDebugInfoEnabled(), &persistent_data, benchmark_mode);
         GraphicsContext graphics_context(*paint_controller);
 
         // Draw the WebXR DOM overlay if present.
@@ -2763,24 +2905,32 @@ void LocalFrameView::PaintTree(PaintBenchmarkMode benchmark_mode, std::optional<
             GetPage()->GetValidationMessageClient().PaintOverlay(graphics_context);
             ForAllNonThrottledLocalFrameViews([&graphics_context](LocalFrameView& view) { view.frame_->PaintFrameColorOverlay(graphics_context); });
 
+#if !defined(MINI_UI_QUICKJS)
             // Devtools overlays query the inspected page's paint data so this
             // update needs to be after other paintings.
             if (auto* web_local_frame_impl = WebLocalFrameImpl::FromFrame(frame_))
                 web_local_frame_impl->PaintDevToolsOverlays(graphics_context);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
             if (frame_->IsMainFrame())
                 GetPage()->GetVisualViewport().Paint(graphics_context);
+#endif
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Link highlights paint after all other paintings.
         GetPage()->GetLinkHighlight().Paint(graphics_context);
+#endif
 
         paint_controller->CommitNewDisplayItems();
 
         needs_clear_repaint_flags = true;
+#if !defined(MINI_UI_QUICKJS)
         if (paint_artifact_compositor_) {
             paint_artifact_compositor_->SetNeedsUpdateAfterRepaint(previous_artifact, paint_controller_persistent_data_->GetPaintArtifact());
         }
+#endif
     }
 
     visual_viewport_or_overlay_needs_repaint_ = false;
@@ -2795,6 +2945,7 @@ void LocalFrameView::PaintTree(PaintBenchmarkMode benchmark_mode, std::optional<
     });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::Layer* LocalFrameView::RootCcLayer()
 {
     return paint_artifact_compositor_ ? paint_artifact_compositor_->RootLayer() : nullptr;
@@ -2893,7 +3044,9 @@ void LocalFrameView::PushPaintArtifactToCompositor(bool repainted)
 
     CreatePaintTimelineEvents();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::AppendViewTransitionRequests(WTF::Vector<std::unique_ptr<ViewTransitionRequest>>& requests)
 {
     DCHECK(frame_ && frame_->GetDocument());
@@ -2909,11 +3062,15 @@ void LocalFrameView::AppendViewTransitionRequests(WTF::Vector<std::unique_ptr<Vi
     });
 }
 
+#endif
+
 std::unique_ptr<JSONObject> LocalFrameView::CompositedLayersAsJSON(LayerTreeFlags flags)
 {
+#if !defined(MINI_UI_QUICKJS)
     auto* root_frame_view = GetFrame().LocalFrameRoot().View();
     if (root_frame_view->paint_artifact_compositor_)
         return root_frame_view->paint_artifact_compositor_->GetLayersAsJSON(flags);
+#endif
     return std::make_unique<JSONObject>();
 }
 
@@ -2931,9 +3088,11 @@ void LocalFrameView::UpdateStyleAndLayoutIfNeededRecursive()
     // TODO(rendering-core) This currently runs the entire lifecycle on plugin
     // WebViews. We should have a way to only run these other Documents to the
     // same lifecycle stage as this frame.
+#if !defined(MINI_UI_QUICKJS)
     for (const auto& plugin : plugins_) {
         plugin->UpdateAllLifecyclePhases();
     }
+#endif
     CheckDoesNotNeedLayout();
 
     // FIXME: Calling layout() shouldn't trigger script execution or have any
@@ -3068,7 +3227,9 @@ bool LocalFrameView::UpdateStyleAndLayoutInternal()
         UpdateCanCompositeBackgroundAttachmentFixed();
 
         if (NeedsLayout()) {
+#if !defined(MINI_UI_QUICKJS)
             SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kLayout);
+#endif
             UpdateLayout();
             layout_updated = true;
         }
@@ -3357,9 +3518,11 @@ void LocalFrameView::SetTracksRasterInvalidations(bool track_raster_invalidation
     UpdateAllLifecyclePhasesForTest();
 
     is_tracking_raster_invalidations_ = track_raster_invalidations;
+#if !defined(MINI_UI_QUICKJS)
     if (paint_artifact_compositor_) {
         paint_artifact_compositor_->SetTracksRasterInvalidations(track_raster_invalidations);
     }
+#endif
 
     TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("blink.invalidation"), "LocalFrameView::setTracksPaintInvalidations", TRACE_EVENT_SCOPE_GLOBAL, "enabled",
         track_raster_invalidations);
@@ -3389,8 +3552,12 @@ void LocalFrameView::ServiceScrollAnimations(base::TimeTicks start_time)
         // frame.
         GetFrame().UpdateScrollSnapshots();
 
+#if !defined(MINI_UI_QUICKJS)
         if (SVGDocumentExtensions::ServiceSmilOnAnimationFrame(*document))
             GetPage()->Animator().SetHasSmilAnimation();
+#else
+        SVGDocumentExtensions::ServiceSmilOnAnimationFrame(*document);
+#endif
         SVGDocumentExtensions::ServiceWebAnimationsOnAnimationFrame(*document);
         document->GetDocumentAnimations().UpdateAnimationTimingForAnimationFrame();
     }
@@ -3403,6 +3570,7 @@ void LocalFrameView::ScheduleAnimation(base::TimeDelta delay, base::Location loc
         client->ScheduleAnimation(this, delay);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::OnCommitRequested()
 {
     DCHECK(frame_->IsLocalRoot());
@@ -3411,6 +3579,7 @@ void LocalFrameView::OnCommitRequested()
     }
 }
 
+#endif
 void LocalFrameView::AddScrollAnchoringScrollableArea(PaintLayerScrollableArea* scrollable_area)
 {
     DCHECK(scrollable_area);
@@ -3496,6 +3665,7 @@ void LocalFrameView::DetachFromLayout()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::AddPlugin(WebPluginContainerImpl* plugin)
 {
     DCHECK(!plugins_.Contains(plugin));
@@ -3507,6 +3677,7 @@ void LocalFrameView::RemovePlugin(WebPluginContainerImpl* plugin)
     DCHECK(plugins_.Contains(plugin));
     plugins_.erase(plugin);
 }
+#endif
 
 void LocalFrameView::RemoveScrollbar(Scrollbar* scrollbar)
 {
@@ -3804,7 +3975,9 @@ void LocalFrameView::PaintOutsideOfLifecycle(GraphicsContext& context, const Pai
 
     UpdateAllLifecyclePhasesExceptPaint(DocumentUpdateReason::kPrinting);
 
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kPaint);
+#endif
 
     ForAllNonThrottledLocalFrameViews([](LocalFrameView& frame_view) { frame_view.Lifecycle().AdvanceTo(DocumentLifecycle::kInPaint); });
 
@@ -4041,7 +4214,9 @@ bool LocalFrameView::UpdateViewportIntersectionsForSubtree(unsigned parent_flags
     }
 
     {
+#if !defined(MINI_UI_QUICKJS)
         SCOPED_UMA_AND_UKM_TIMER(GetUkmAggregator(), LocalFrameUkmAggregator::kUpdateViewportIntersection);
+#endif
         UpdateViewportIntersection(flags, needs_occlusion_tracking);
     }
 
@@ -4049,6 +4224,7 @@ bool LocalFrameView::UpdateViewportIntersectionsForSubtree(unsigned parent_flags
         needs_occlusion_tracking |= child->View()->UpdateViewportIntersectionsForSubtree(flags, context);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (DocumentFencedFrames* fenced_frames = DocumentFencedFrames::Get(*frame_->GetDocument())) {
         for (HTMLFencedFrameElement* fenced_frame : fenced_frames->GetFencedFrames()) {
             if (Frame* frame = fenced_frame->ContentFrame()) {
@@ -4057,6 +4233,7 @@ bool LocalFrameView::UpdateViewportIntersectionsForSubtree(unsigned parent_flags
         }
     }
 
+#endif
     return needs_occlusion_tracking;
 }
 
@@ -4201,6 +4378,7 @@ bool LocalFrameView::VisualViewportOrOverlayNeedsRepaintForTesting() const
     return visual_viewport_or_overlay_needs_repaint_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::SetPaintArtifactCompositorNeedsUpdate()
 {
     LocalFrameView* root = GetFrame().LocalFrameRoot().View();
@@ -4213,6 +4391,7 @@ PaintArtifactCompositor* LocalFrameView::GetPaintArtifactCompositor() const
     LocalFrameView* root = GetFrame().LocalFrameRoot().View();
     return root ? root->paint_artifact_compositor_.Get() : nullptr;
 }
+#endif
 
 unsigned LocalFrameView::GetIntersectionObservationFlags(unsigned parent_flags) const
 {
@@ -4288,7 +4467,11 @@ bool LocalFrameView::ShouldThrottleRenderingForTest() const
 
 bool LocalFrameView::CanThrottleRendering() const
 {
-    if (lifecycle_updates_throttled_ || IsSubtreeThrottled() || IsDisplayLocked() || throttled_for_view_transition_) {
+    if (lifecycle_updates_throttled_ || IsSubtreeThrottled() || IsDisplayLocked()
+#if !defined(MINI_UI_QUICKJS)
+        || throttled_for_view_transition_
+#endif
+    ) {
         return true;
     }
     // We only throttle hidden cross-origin frames. This is to avoid a situation
@@ -4308,6 +4491,7 @@ void LocalFrameView::UpdateRenderThrottlingStatus(bool hidden_for_throttling, bo
         RenderThrottlingStatusChanged();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::SetThrottledForViewTransition(bool throttled)
 {
     if (throttled_for_view_transition_ == throttled) {
@@ -4324,6 +4508,8 @@ void LocalFrameView::SetThrottledForViewTransition(bool throttled)
         RenderThrottlingStatusChanged();
     }
 }
+
+#endif
 
 void LocalFrameView::BeginLifecycleUpdates()
 {
@@ -4344,6 +4530,7 @@ void LocalFrameView::BeginLifecycleUpdates()
     if (GetFrame().GetDocument()->IsInitialEmptyDocument())
         MarkIneligibleToPaint();
 
+#if !defined(MINI_UI_QUICKJS)
     // Non-main-frame lifecycle and commit deferral are controlled by their
     // main frame.
     if (!GetFrame().IsMainFrame())
@@ -4365,24 +4552,30 @@ void LocalFrameView::BeginLifecycleUpdates()
     }
 
     chrome_client.BeginLifecycleUpdates(GetFrame());
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool LocalFrameView::WillDoPaintHoldingForFCP() const
 {
     Document* document = GetFrame().GetDocument();
     return document && document->DeferredCompositorCommitIsAllowed() && !have_deferred_main_frame_commits_ && GetFrame().IsOutermostMainFrame();
 }
 
+#endif
+
 String LocalFrameView::MainThreadScrollingReasonsAsText()
 {
     MainThreadScrollingReasons reasons = 0;
     DCHECK_GE(Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
+#if !defined(MINI_UI_QUICKJS)
     const auto* properties = GetLayoutView()->FirstFragment().PaintProperties();
     if (properties && properties->Scroll()) {
         const auto* compositor = GetFrame().LocalFrameRoot().View()->paint_artifact_compositor_.Get();
         CHECK(compositor);
         reasons = compositor->GetMainThreadRepaintReasons(*properties->Scroll());
     }
+#endif
     return String(cc::MainThreadScrollingReason::AsText(reasons).c_str());
 }
 
@@ -4415,6 +4608,7 @@ LayoutUnit LocalFrameView::CaretWidth() const
     return LayoutUnit(std::max<float>(1.0f, GetChromeClient()->WindowToViewportScalar(&GetFrame(), 1.0f)));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::RegisterTapEvent(Element* target)
 {
     if (tap_friendliness_checker_) {
@@ -4442,17 +4636,22 @@ void LocalFrameView::ResetUkmAggregatorForTesting()
     ukm_aggregator_.reset();
 }
 
+#endif
 void LocalFrameView::OnFirstContentfulPaint()
 {
     if (frame_->IsMainFrame()) {
+#if !defined(MINI_UI_QUICKJS)
         // Restart commits that may have been deferred.
         GetPage()->GetChromeClient().StopDeferringCommits(*frame_, cc::PaintHoldingCommitTrigger::kFirstContentfulPaint);
+#endif
         if (frame_->GetDocument()->ShouldMarkFontPerformance())
             FontPerformance::MarkFirstContentfulPaint();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* metrics_aggregator = GetUkmAggregator())
         metrics_aggregator->DidReachFirstContentfulPaint();
+#endif
 }
 
 void LocalFrameView::RegisterForLifecycleNotifications(LifecycleNotificationObserver* observer)
@@ -4470,6 +4669,7 @@ void LocalFrameView::EnqueueStartOfLifecycleTask(base::OnceClosure closure)
     start_of_lifecycle_tasks_.push_back(std::move(closure));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameView::NotifyVideoIsDominantVisibleStatus(HTMLVideoElement* element, bool is_dominant)
 {
     if (is_dominant) {
@@ -4484,6 +4684,7 @@ bool LocalFrameView::HasDominantVideoElement() const
 {
     return !fullscreen_video_elements_.empty();
 }
+#endif
 
 #if DCHECK_IS_ON()
 LocalFrameView::DisallowLayoutInvalidationScope::DisallowLayoutInvalidationScope(LocalFrameView* view)
@@ -4515,11 +4716,17 @@ bool LocalFrameView::UpdatePaintDebugInfoEnabled()
 #if DCHECK_IS_ON()
     DCHECK(paint_debug_info_enabled_);
 #else
-    bool should_enable = cc::frame_viewer_instrumentation::IsTracingLayerTreeSnapshots() || RuntimeEnabledFeatures::PaintUnderInvalidationCheckingEnabled()
-        || WebTestSupport::IsRunningWebTest() || CoreProbeSink::HasAgentsGlobal(CoreProbeSink::kInspectorLayerTreeAgent);
+    bool should_enable = RuntimeEnabledFeatures::PaintUnderInvalidationCheckingEnabled() || WebTestSupport::IsRunningWebTest()
+#if !defined(MINI_UI_QUICKJS)
+        || cc::frame_viewer_instrumentation::IsTracingLayerTreeSnapshots()
+        || CoreProbeSink::HasAgentsGlobal(CoreProbeSink::kInspectorLayerTreeAgent)
+#endif
+        ;
     if (should_enable != paint_debug_info_enabled_) {
         paint_debug_info_enabled_ = should_enable;
+#if !defined(MINI_UI_QUICKJS)
         SetPaintArtifactCompositorNeedsUpdate();
+#endif
         return true;
     }
 #endif
@@ -4662,15 +4869,21 @@ void LocalFrameView::RunPaintBenchmark(int repeat_count, cc::PaintBenchmarkResul
     result.record_time_caching_disabled_ms = run_benchmark(PaintBenchmarkMode::kCachingDisabled);
     result.record_time_subsequence_caching_disabled_ms = run_benchmark(PaintBenchmarkMode::kSubsequenceCachingDisabled);
     result.raster_invalidation_and_convert_time_ms = run_benchmark(PaintBenchmarkMode::kForceRasterInvalidationAndConvert);
+#if !defined(MINI_UI_QUICKJS)
     result.paint_artifact_compositor_update_time_ms = run_benchmark(PaintBenchmarkMode::kForcePaintArtifactCompositorUpdate);
+#else
+    result.paint_artifact_compositor_update_time_ms = 0;
+#endif
 
     result.painter_memory_usage = 0;
     if (paint_controller_persistent_data_) {
         result.painter_memory_usage += paint_controller_persistent_data_->ApproximateUnsharedMemoryUsage();
     }
+#if !defined(MINI_UI_QUICKJS)
     if (paint_artifact_compositor_) {
         result.painter_memory_usage += paint_artifact_compositor_->ApproximateUnsharedMemoryUsage();
     }
+#endif
 }
 
 DarkModeFilter& LocalFrameView::EnsureDarkModeFilter()

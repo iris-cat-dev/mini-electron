@@ -32,11 +32,15 @@
 #include "third_party/blink/renderer/core/event_interface_names.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_animator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
@@ -152,7 +156,9 @@ bool ScriptedAnimationController::DispatchEvents(DispatchFilter filter)
         // avoid special casting window.
         // FIXME: We should not fire events for nodes that are no longer in the
         // tree.
+#if !defined(MINI_UI_QUICKJS)
         probe::AsyncTask async_task(event_target->GetExecutionContext(), event->async_task_context());
+#endif
         if (LocalDOMWindow* window = event_target->ToLocalDOMWindow())
             window->DispatchEvent(*event, nullptr);
         else
@@ -215,7 +221,9 @@ void ScriptedAnimationController::EnqueueTask(base::OnceClosure task)
 
 void ScriptedAnimationController::EnqueueEvent(Event* event)
 {
+#if !defined(MINI_UI_QUICKJS)
     event->async_task_context()->Schedule(event->target()->GetExecutionContext(), event->type());
+#endif
     event_queue_.push_back(event);
     ScheduleAnimationIfNeeded();
 }

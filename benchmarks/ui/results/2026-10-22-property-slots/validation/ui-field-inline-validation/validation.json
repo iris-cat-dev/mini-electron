@@ -1,0 +1,60 @@
+[
+  {
+    "name": "candidate-build",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      ".build-tools/ui-field/build-candidate.py",
+      "out/ui-field-inline-candidate"
+    ],
+    "exit_code": 0,
+    "seconds": 8.849105999979656,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-inline-validation\\candidate-build.log"
+  },
+  {
+    "name": "candidate-regression",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-field-inline-candidate",
+      "--out-dir",
+      "out/ui-field-inline-checks-after"
+    ],
+    "exit_code": 0,
+    "seconds": 5.248183899995638,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-inline-validation\\candidate-regression.log"
+  },
+  {
+    "name": "candidate-matrix",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--ui-out",
+      "out/ui-field-inline-candidate",
+      "--out-dir",
+      "out/ui-field-inline-after",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 506.3242930000124,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-inline-validation\\candidate-matrix.log"
+  },
+  {
+    "name": "compare",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/before_after.py",
+      "--before",
+      "out/ui-field-before",
+      "--after",
+      "out/ui-field-inline-after",
+      "--out-dir",
+      "out/ui-field-inline-comparison"
+    ],
+    "exit_code": 0,
+    "seconds": 0.08853809998254292,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-inline-validation\\compare.log"
+  }
+]

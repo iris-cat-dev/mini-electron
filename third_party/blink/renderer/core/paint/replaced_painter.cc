@@ -14,7 +14,9 @@
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_root.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/paint/box_background_paint_context.h"
 #include "third_party/blink/renderer/core/paint/box_decoration_data.h"
 #include "third_party/blink/renderer/core/paint/box_model_object_painter.h"
@@ -47,7 +49,9 @@ public:
     ScopedReplacedContentPaintState(const ScopedPaintState& input, const LayoutReplaced& replaced);
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     std::optional<MobileFriendlinessChecker::IgnoreBeyondViewportScope> mf_ignore_scope_;
+#endif
 };
 
 ScopedReplacedContentPaintState::ScopedReplacedContentPaintState(const ScopedPaintState& input, const LayoutReplaced& replaced)
@@ -56,6 +60,7 @@ ScopedReplacedContentPaintState::ScopedReplacedContentPaintState(const ScopedPai
     if (!fragment_to_paint_)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     if (input_paint_info_.phase == PaintPhase::kForeground) {
         if (auto* mf_checker = MobileFriendlinessChecker::From(replaced.GetDocument())) {
             PhysicalRect content_rect = replaced.ReplacedContentRect();
@@ -65,6 +70,7 @@ ScopedReplacedContentPaintState::ScopedReplacedContentPaintState(const ScopedPai
             mf_ignore_scope_.emplace(*mf_checker);
         }
     }
+#endif
 
     const auto* paint_properties = fragment_to_paint_->PaintProperties();
     if (!paint_properties)

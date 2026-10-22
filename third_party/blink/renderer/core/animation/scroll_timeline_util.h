@@ -10,7 +10,7 @@
 #include "cc/animation/scroll_timeline.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_axis.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/platform/animation/compositor_animation.h"
+#include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 
 namespace blink {
 
@@ -24,9 +24,11 @@ class Node;
 
 namespace scroll_timeline_util {
 
+#if !defined(MINI_UI_QUICKJS)
 // Converts the input timeline to the compositor representation of a
 // ScrollTimeline. Returns nullptr if the input is not a ScrollTimeline.
 scoped_refptr<CompositorScrollTimeline> CORE_EXPORT ToCompositorScrollTimeline(AnimationTimeline*);
+#endif
 
 // Retrieves the 'scroll' compositor element id for the input node, or
 // std::nullopt if it does not exist.

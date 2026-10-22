@@ -33,7 +33,9 @@ public:
         kTypeUint16,
         kTypeInt32,
         kTypeUint32,
+#if !defined(MINI_UI_QUICKJS)
         kTypeFloat16,
+#endif
         kTypeFloat32,
         kTypeFloat64,
         kTypeBigInt64,
@@ -88,8 +90,10 @@ public:
             return "BigInt64";
         case kTypeBigUint64:
             return "BigUint64";
+#if !defined(MINI_UI_QUICKJS)
         case kTypeFloat16:
             return "Float16";
+#endif
         case kTypeFloat32:
             return "Float32";
         case kTypeFloat64:

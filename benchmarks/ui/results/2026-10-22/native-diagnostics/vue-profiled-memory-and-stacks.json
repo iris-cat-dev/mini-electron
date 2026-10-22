@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "framework": "vue",
+  "rows": 1000,
+  "warmups": 2,
+  "iterations": 7,
+  "command": [
+    "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\framework-memory-profile-final.exe",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "vue",
+    "1000",
+    "7"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 49.826938700003666,
+  "diagnostic_not_benchmark": true,
+  "instrumentation": "CDB main-thread stack snapshots and explicit real JS/native collection after the original unmounted workload; no production scheduling change",
+  "stdout": "MEMORY {\"phase\":\"ready_empty\",\"process_private_bytes\":23359488,\"process_working_set_bytes\":41508864,\"js_malloc_bytes\":3569833,\"js_used_bytes\":3200777,\"js_objects\":10250,\"js_properties\":13608,\"js_functions\":1252,\"js_shapes\":310,\"native_used_bytes\":1191832,\"native_committed_bytes\":1310720,\"native_pooled_bytes\":0,\"joint_epoch\":0,\"wrapper_count\":12,\"edge_count\":32}\r\nWORKLOAD_BEGIN\r\nWORKLOAD_END\r\nMEMORY {\"phase\":\"workload_unmounted_before_forced_gc\",\"process_private_bytes\":911585280,\"process_working_set_bytes\":914800640,\"js_malloc_bytes\":523799459,\"js_used_bytes\":447640708,\"js_objects\":1604419,\"js_properties\":9060272,\"js_functions\":1252,\"js_shapes\":405,\"native_used_bytes\":85618056,\"native_committed_bytes\":141671472,\"native_pooled_bytes\":11673600,\"joint_epoch\":0,\"wrapper_count\":171517,\"edge_count\":190537}\r\nMEMORY {\"phase\":\"workload_unmounted_after_forced_gc\",\"process_private_bytes\":673783808,\"process_working_set_bytes\":544006144,\"js_malloc_bytes\":70224250,\"js_used_bytes\":44204122,\"js_objects\":184290,\"js_properties\":425582,\"js_functions\":1252,\"js_shapes\":299,\"native_used_bytes\":606384,\"native_committed_bytes\":32637008,\"native_pooled_bytes\":0,\"joint_epoch\":4,\"wrapper_count\":10,\"edge_count\":54}\r\nMEMORY {\"phase\":\"populated_before_forced_gc\",\"process_private_bytes\":682221568,\"process_working_set_bytes\":577052672,\"js_malloc_bytes\":100110024,\"js_used_bytes\":69320903,\"js_objects\":273240,\"js_properties\":943157,\"js_functions\":1252,\"js_shapes\":328,\"native_used_bytes\":23743336,\"native_committed_bytes\":38788080,\"native_pooled_bytes\":1966080,\"joint_epoch\":4,\"wrapper_count\":9241,\"edge_count\":10291}\r\nMEMORY {\"phase\":\"populated_after_forced_gc\",\"process_private_bytes\":700694528,\"process_working_set_bytes\":587583488,\"js_malloc_bytes\":100066104,\"js_used_bytes\":69280583,\"js_objects\":273030,\"js_properties\":943153,\"js_functions\":1252,\"js_shapes\":328,\"native_used_bytes\":18960592,\"native_committed_bytes\":36145936,\"native_pooled_bytes\":0,\"joint_epoch\":8,\"wrapper_count\":9138,\"edge_count\":10186}\r\nMEMORY {\"phase\":\"view_released_before_extra_gc\",\"process_private_bytes\":225542144,\"process_working_set_bytes\":127004672,\"js_malloc_bytes\":1607390,\"js_used_bytes\":1366064,\"js_objects\":5991,\"js_properties\":1284,\"js_functions\":0,\"js_shapes\":54,\"native_used_bytes\":19383032,\"native_committed_bytes\":36145936,\"native_pooled_bytes\":0,\"joint_epoch\":9,\"wrapper_count\":0,\"edge_count\":0}\r\nMEMORY {\"phase\":\"view_released_after_extra_gc\",\"process_private_bytes\":214622208,\"process_working_set_bytes\":91451392,\"js_malloc_bytes\":1607390,\"js_used_bytes\":1366064,\"js_objects\":5991,\"js_properties\":1284,\"js_functions\":0,\"js_shapes\":54,\"native_used_bytes\":187872,\"native_committed_bytes\":3145728,\"native_pooled_bytes\":0,\"joint_epoch\":13,\"wrapper_count\":0,\"edge_count\":0}\r\nPASS diagnostic: actual workload, unmounted/mounted/destroyed heap counters, forced joint/native GC and mounted DOM survival; diagnostic data are not benchmark samples\r\n",
+  "stderr": "",
+  "memory_snapshots": [
+    {
+      "phase": "ready_empty",
+      "process_private_bytes": 23359488,
+      "process_working_set_bytes": 41508864,
+      "js_malloc_bytes": 3569833,
+      "js_used_bytes": 3200777,
+      "js_objects": 10250,
+      "js_properties": 13608,
+      "js_functions": 1252,
+      "js_shapes": 310,
+      "native_used_bytes": 1191832,
+      "native_committed_bytes": 1310720,
+      "native_pooled_bytes": 0,
+      "joint_epoch": 0,
+      "wrapper_count": 12,
+      "edge_count": 32
+    },
+    {
+      "phase": "workload_unmounted_before_forced_gc",
+      "process_private_bytes": 911585280,
+      "process_working_set_bytes": 914800640,
+      "js_malloc_bytes": 523799459,
+      "js_used_bytes": 447640708,
+      "js_objects": 1604419,
+      "js_properties": 9060272,
+      "js_functions": 1252,
+      "js_shapes": 405,
+      "native_used_bytes": 85618056,
+      "native_committed_bytes": 141671472,
+      "native_pooled_bytes": 11673600,
+      "joint_epoch": 0,
+      "wrapper_count": 171517,
+      "edge_count": 190537
+    },
+    {
+      "phase": "workload_unmounted_after_forced_gc",
+      "process_private_bytes": 673783808,
+      "process_working_set_bytes": 544006144,
+      "js_malloc_bytes": 70224250,
+      "js_used_bytes": 44204122,
+      "js_objects": 184290,
+      "js_properties": 425582,
+      "js_functions": 1252,
+      "js_shapes": 299,
+      "native_used_bytes": 606384,
+      "native_committed_bytes": 32637008,
+      "native_pooled_bytes": 0,
+      "joint_epoch": 4,
+      "wrapper_count": 10,
+      "edge_count": 54
+    },
+    {
+      "phase": "populated_before_forced_gc",
+      "process_private_bytes": 682221568,
+      "process_working_set_bytes": 577052672,
+      "js_malloc_bytes": 100110024,
+      "js_used_bytes": 69320903,
+      "js_objects": 273240,
+      "js_properties": 943157,
+      "js_functions": 1252,
+      "js_shapes": 328,
+      "native_used_bytes": 23743336,
+      "native_committed_bytes": 38788080,
+      "native_pooled_bytes": 1966080,
+      "joint_epoch": 4,
+      "wrapper_count": 9241,
+      "edge_count": 10291
+    },
+    {
+      "phase": "populated_after_forced_gc",
+      "process_private_bytes": 700694528,
+      "process_working_set_bytes": 587583488,
+      "js_malloc_bytes": 100066104,
+      "js_used_bytes": 69280583,
+      "js_objects": 273030,
+      "js_properties": 943153,
+      "js_functions": 1252,
+      "js_shapes": 328,
+      "native_used_bytes": 18960592,
+      "native_committed_bytes": 36145936,
+      "native_pooled_bytes": 0,
+      "joint_epoch": 8,
+      "wrapper_count": 9138,
+      "edge_count": 10186
+    },
+    {
+      "phase": "view_released_before_extra_gc",
+      "process_private_bytes": 225542144,
+      "process_working_set_bytes": 127004672,
+      "js_malloc_bytes": 1607390,
+      "js_used_bytes": 1366064,
+      "js_objects": 5991,
+      "js_properties": 1284,
+      "js_functions": 0,
+      "js_shapes": 54,
+      "native_used_bytes": 19383032,
+      "native_committed_bytes": 36145936,
+      "native_pooled_bytes": 0,
+      "joint_epoch": 9,
+      "wrapper_count": 0,
+      "edge_count": 0
+    },
+    {
+      "phase": "view_released_after_extra_gc",
+      "process_private_bytes": 214622208,
+      "process_working_set_bytes": 91451392,
+      "js_malloc_bytes": 1607390,
+      "js_used_bytes": 1366064,
+      "js_objects": 5991,
+      "js_properties": 1284,
+      "js_functions": 0,
+      "js_shapes": 54,
+      "native_used_bytes": 187872,
+      "native_committed_bytes": 3145728,
+      "native_pooled_bytes": 0,
+      "joint_epoch": 13,
+      "wrapper_count": 0,
+      "edge_count": 0
+    }
+  ],
+  "stack_samples": [
+    {
+      "sample": 1,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-1.log"
+    },
+    {
+      "sample": 2,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-2.log"
+    },
+    {
+      "sample": 3,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-3.log"
+    },
+    {
+      "sample": 4,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-4.log"
+    },
+    {
+      "sample": 5,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-5.log"
+    },
+    {
+      "sample": 6,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-6.log"
+    },
+    {
+      "sample": 7,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-7.log"
+    },
+    {
+      "sample": 8,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-8.log"
+    },
+    {
+      "sample": 9,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-9.log"
+    },
+    {
+      "sample": 10,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-10.log"
+    },
+    {
+      "sample": 11,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-11.log"
+    },
+    {
+      "sample": 12,
+      "command": [
+        "C:\\Program Files (x86)\\Windows Kits\\10\\Debuggers\\x64\\cdb.exe",
+        "-p",
+        "39208",
+        "-y",
+        "",
+        "-c",
+        ".time; ~0s; r rip; k 24; qd"
+      ],
+      "exit_code": 0,
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-12.log"
+    }
+  ]
+}

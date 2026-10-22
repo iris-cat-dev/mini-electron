@@ -1,0 +1,124 @@
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Project\mini-electron\.build-tools\ui-smoke\font-geometry-smoke-final.exe D:\Project\mini-electron\.build-tools\ui-smoke\font-assets D:\Project\mini-electron\.build-tools\ui-smoke\font-native-before215-debug.bmp
+Symbol search path is: srv*
+Executable search path is: 
+ModLoad: 00007ff7`9a670000 00007ff7`9cca9000   font-geometry-smoke-final.exe
+ModLoad: 00007ffd`55250000 00007ffd`55448000   ntdll.dll
+ModLoad: 00007ffd`534d0000 00007ffd`53592000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffd`529e0000 00007ffd`52cd6000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffd`54e70000 00007ffd`55011000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffd`531c0000 00007ffd`531e2000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffd`55020000 00007ffd`5504b000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffd`53050000 00007ffd`53169000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffd`52f00000 00007ffd`52f9d000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffd`528e0000 00007ffd`529e0000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffd`536f0000 00007ffd`53e60000   C:\Windows\System32\SHELL32.dll
+ModLoad: 00007ffd`55080000 00007ffd`55131000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffd`535a0000 00007ffd`5363e000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffd`44be0000 00007ffd`44c07000   C:\Windows\SYSTEM32\WINMM.dll
+ModLoad: 00007ffd`54530000 00007ffd`545cf000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffd`54c60000 00007ffd`54d80000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffd`52ce0000 00007ffd`52d07000   C:\Windows\System32\bcrypt.dll
+ModLoad: 00007ffd`54400000 00007ffd`5452b000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffd`54030000 00007ffd`54384000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffd`46f40000 00007ffd`46f59000   C:\Windows\SYSTEM32\USP10.dll
+ModLoad: 00007ffd`50c10000 00007ffd`50e11000   C:\Windows\SYSTEM32\dbghelp.dll
+ModLoad: 00007ffd`500c0000 00007ffd`5033f000   C:\Windows\SYSTEM32\DWrite.dll
+(8bc8.9420): Break instruction exception - code 80000003 (first chance)
+ntdll!LdrpDoDebuggerBreak+0x30:
+00007ffd`55320860 cc              int     3
+0:000> cdb: Reading initial command 'sxe av; sxe 0xc0000409; g; .exr -1; kv 35; lm m mini*; lm m native*; r; q'
+ModLoad: 00007ffd`55050000 00007ffd`5507f000   C:\Windows\System32\IMM32.DLL
+ModLoad: 00007ffd`52d10000 00007ffd`52d92000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffd`53270000 00007ffd`5331d000   C:\Windows\System32\shcore.dll
+ModLoad: 00007ffd`4f410000 00007ffd`4f4ae000   C:\Windows\system32\uxtheme.dll
+ModLoad: 00007ffd`510d0000 00007ffd`510e2000   C:\Windows\SYSTEM32\kernel.appcore.dll
+(8bc8.9420): Access violation - code c0000005 (first chance)
+First chance exceptions are reported before any exception handling.
+This exception may be expected and handled.
+*** WARNING: Unable to verify checksum for font-geometry-smoke-final.exe
+ExceptionAddress: 00007ff79aaf7137 (font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x0000000000032ddb)
+   ExceptionCode: c0000005 (Access violation)
+  ExceptionFlags: 00000000
+NumberParameters: 2
+   Parameter[0]: 0000000000000000
+   Parameter[1]: 0000000000000000
+Attempt to read from address 0000000000000000
+Child-SP          RetAddr           : Args to Child                                                           : Call Site
+00000054`2c7fc350 00007ff7`9aaf7547 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x32ddb
+00000054`2c7fc3e0 00007ff7`9ada3259 : 00000000`00000000 00007ff7`9a85ed57 00000248`00000001 00000000`00000000 : font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x331eb
+00000054`2c7fc470 00007ff7`9ada312d : 00000000`00000000 00007ff7`9a83072b 00008407`ac9234bc 00000054`2c7fc5f0 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xb4fd
+00000054`2c7fc500 00007ff7`9ada2eb0 : 00000000`00000028 00007ffd`55346b7c 00008407`ac92354c 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xb3d1
+00000054`2c7fc550 00007ff7`9ada2e48 : 000002ec`001e2550 00007ff7`9b416134 00000054`2c7fc8b0 00008407`ac9235ec : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xb154
+00000054`2c7fc5c0 00007ff7`9a9be51d : 00000248`fa020000 00008407`ac92359c 000002ec`001e3668 00000248`fd00f900 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::PrefinalizerRegistration+0xb0ec
+00000054`2c7fc620 00007ff7`9b4e49f7 : 00000000`00000000 00000000`00000028 00000000`00000004 00007ffd`55270000 : font_geometry_smoke_final!cppgc::ShutdownProcess+0xa0e9e
+00000054`2c7fc650 00007ff7`9b4e4859 : 00000248`fa07a950 00007ff7`9aaabec7 00000248`fa0bee98 00008407`ac92386c : font_geometry_smoke_final!cppgc::internal::AgeTable::ResetForTesting+0x875d9
+00000054`2c7fc820 00007ff7`9b4ba141 : 00000248`fc19f700 40736000`00000000 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::AgeTable::ResetForTesting+0x8743b
+00000054`2c7fc860 00007ff7`9a7cbf44 : 00000248`fcfee450 ffffffff`ffffffff 00000000`50000163 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::AgeTable::ResetForTesting+0x5cd23
+00000054`2c7fc9f0 00007ff7`9a6cea04 : 00000000`0000004e 00007ffd`55346b7c 00000000`00000000 00000054`2c7fce34 : font_geometry_smoke_final!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x80754
+00000054`2c7fce10 00007ff7`9a6cf287 : 00000248`fcc0d43c 00000054`2c7fd260 00000000`0000009d 00000054`2c7fd250 : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x1b032
+00000054`2c7fd1b0 00007ff7`9a721590 : 00000000`00000007 00007ffd`5527b44d ffffffff`ffffff00 00000248`fcfccfa0 : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x1b8b5
+00000054`2c7fd5f0 00007ff7`9a6bc059 : 00000000`00000000 00000000`00000000 00000000`00000001 00000000`00000000 : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x6dbbe
+00000054`2c7fd800 00007ff7`9a6cea04 : 00000000`03ffffff 00000000`00000001 00000000`00000006 00007ff7`9a6ca2ab : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x8687
+00000054`2c7fd930 00007ff7`9a6cf287 : 00000054`2c7fdd70 00000054`2c7fdd80 00000248`fcb4bd50 00007ff7`9a6d0c4a : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x1b032
+00000054`2c7fdcd0 00007ff7`9a6c6938 : 00000000`ffffffff 00007ff7`9a6d6c8e 00000004`fcc0b84d 00000248`fcc08be0 : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x1b8b5
+00000054`2c7fe130 00007ff7`9a6d6a72 : 000002ec`0016dcc8 00000000`00000000 00000054`2c7fe280 00007ff7`9a6b0313 : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x12f66
+00000054`2c7fe1f0 00007ff7`9a6d64c8 : 00000000`00000004 00000248`fa0bfca8 00000248`fa07a950 00008407`ac9212fc : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x230a0
+00000054`2c7fe290 00007ff7`9a7d354f : 00000054`2c7fe340 00000054`2c7fe470 00000054`2c7fe400 00007ff7`9a6944fe : font_geometry_smoke_final!cppgc::Visitor::VisitMultipleCompressedMember+0x22af6
+00000054`2c7fe300 00007ff7`9a7d3676 : 00000000`00000001 00000248`fa07a950 00000054`2c7fe458 00000054`2c7fe400 : font_geometry_smoke_final!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x87d5f
+00000054`2c7fe3a0 00007ff7`9a8daf73 : 000002ec`0015e9c0 00007ff7`9a8daa1f ffffffff`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x87e86
+00000054`2c7fe430 00007ff7`9a8db47d : 00008407`ac92157c 00000054`2c7fe588 00000054`2c7fe718 00000054`2c7fe718 : font_geometry_smoke_final!cppgc::LivenessBroker::IsHeapObjectAliveImpl+0x2b90b
+00000054`2c7fe530 00007ff7`9ab39a95 : 00000000`00000000 00000000`00000000 000002ec`0015cf98 ffffffff`fffffffe : font_geometry_smoke_final!cppgc::LivenessBroker::IsHeapObjectAliveImpl+0x2be15
+00000054`2c7fe6e0 00007ff7`9ab3a0e4 : 40fad65c`2f177a70 00000000`00000000 00000248`fa0bfca8 000002ec`0015cf98 : font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x75739
+00000054`2c7fe780 00007ff7`9ab3a194 : 80000019`98160391 00000000`7ffed000 00000000`546c6148 00007ff7`9a83e48c : font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x75d88
+00000054`2c7fe810 00007ff7`9b303d93 : ffffffff`00000000 ffffffff`00000000 ffffffff`00000000 ffffffff`00000000 : font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x75e38
+00000054`2c7fe870 00007ff7`9b303a67 : 00000054`2c7fec90 00000000`00000002 00000054`2c7feca0 00000054`2c7fed10 : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x4d0715
+00000054`2c7fe910 00007ff7`9b7931dd : 00000000`00000000 00007ffd`5527b44d 00000248`fa020000 00007ff7`9ca69040 : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x4d03e9
+00000054`2c7fe9f0 00007ff7`9b3b8dd5 : 00000000`00000000 00000000`00000000 00000000`0098966f 00007ff7`9ace8638 : font_geometry_smoke_final!cppgc::internal::AgeTable::ResetForTesting+0x335dbf
+00000054`2c7fedf0 00007ff7`9b3b8c83 : 00000054`2c7ff020 00007ff7`9a7995dd 00000000`00000012 00000000`00000000 : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x585757
+00000054`2c7feef0 00007ff7`9ace4b56 : 00000054`2c7ff018 00007ff7`9ab80ab5 000002ec`0015d0c8 00008407`ac921ecc : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x585605
+00000054`2c7fef40 00007ff7`9ace418a : 00000000`00000008 00008407`ac921f4c 00008407`ac921f3c 00007ff7`9a7858a2 : font_geometry_smoke_final!cppgc::internal::GCInfoTable::RegisterNewGCInfo+0x14e9fa
+00000054`2c7fef80 00007ff7`9ace3d0a : 00000000`00000000 000002ec`0015d0c8 00000248`fa054b98 00000054`2c7ff268 : font_geometry_smoke_final!cppgc::internal::GCInfoTable::RegisterNewGCInfo+0x14e02e
+00000054`2c7ff170 00007ff7`9ace3f1f : 00000000`00000023 00000000`00000000 00000000`00000000 00000248`fa10f430 : font_geometry_smoke_final!cppgc::internal::GCInfoTable::RegisterNewGCInfo+0x14dbae
+00000054`2c7ff1a0 00007ff7`9a6820eb : 00007ff7`9ace489e 00000019`9815fffb 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::GCInfoTable::RegisterNewGCInfo+0x14ddc3
+00000054`2c7ff200 00007ff7`9a68eadb : 00000000`00000001 00007ff7`9a7995dd 00000054`2c7ff300 00007ff7`9ab81351 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::operator=+0xd96b
+00000054`2c7ff280 00007ff7`9ae70cbb : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0xecb
+00000054`2c7ff330 00007ff7`9ae708ed : 00000001`2c7ff500 00007ff7`9cb39800 00007ff7`9cb39818 00008407`ac9204dc : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x3d63d
+00000054`2c7ff4c0 00007ff7`9a8ebc52 : 00007ff7`9ca1f2c3 00007ff7`9ca5f329 00008407`000000f2 00000000`00000000 : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x3d26f
+00000054`2c7ff590 00007ff7`9a8eb64b : 00000054`2c7ff683 00000248`fa0547a0 00008407`ac92067c 00000000`00000001 : font_geometry_smoke_final!cppgc::internal::TraceTraitFromInnerAddressImpl::GetTraceDescriptor+0xe18e
+00000054`2c7ff630 00007ff7`9ae71088 : 00000054`2c7ff7b0 00007ff7`9a68dda6 00000000`00000000 00007ff7`9ca1f2c3 : font_geometry_smoke_final!cppgc::internal::TraceTraitFromInnerAddressImpl::GetTraceDescriptor+0xdb87
+00000054`2c7ff6b0 00007ff7`9a68efbf : 00000054`2c7ff7e8 00000054`2c7ffb28 00000054`2c7ffc98 00000054`2c7ff9b0 : font_geometry_smoke_final!cppgc::Heap::GetHeapHandle+0x3da0a
+00000054`2c7ff740 00007ff7`9a67f770 : 00000248`fc33f4c0 00000000`00000000 00000000`00000000 00007ff7`9ca1f2c3 : font_geometry_smoke_final!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0x13af
+00000054`2c7ff810 00007ff7`9a6823c0 : 00000054`2c7ffa00 00007ff7`00000000 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::operator=+0xaff0
+00000054`2c7ff970 00007ff7`9a68050d : 00000000`00000000 00000000`00000008 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::operator=+0xdc40
+00000054`2c7ffa10 00007ff7`9a67124a : 00000248`fa0429f0 00000248`fa023ae0 00000000`00000000 00007ffd`552802c9 : font_geometry_smoke_final!cppgc::internal::PrefinalizerRegistration::operator=+0xbd8d
+00000054`2c7ffb00 00007ff7`9bcc1638 : 00007ff7`9bd8ebe0 00007ff7`9bcc16b1 00000000`00000000 00000000`00000000 : font_geometry_smoke_final+0x124a
+00000054`2c7ffe30 00007ffd`534e7374 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : font_geometry_smoke_final!cppgc::internal::AgeTable::ResetForTesting+0x86421a
+00000054`2c7ffe70 00007ffd`5529cc91 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : KERNEL32!BaseThreadInitThunk+0x14
+00000054`2c7ffea0 00000000`00000000 : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : ntdll!RtlUserThreadStart+0x21
+start             end                 module name
+start             end                 module name
+rax=0000000000000000 rbx=0000000000000000 rcx=000002ec00141850
+rdx=000002ec00221e28 rsi=000002ec00221e28 rdi=000002ec00141850
+rip=00007ff79aaf7137 rsp=000000542c7fc350 rbp=000000542c7fca70
+ r8=000000542c7fc408  r9=0000000000000000 r10=0000000000000009
+r11=fffffffff80d53a3 r12=000002ec00221e28 r13=000000542c7fcd40
+r14=000000542c7fc408 r15=000000542c7fc8b0
+iopl=0         nv up ei pl nz na pe nc
+cs=0033  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00010202
+font_geometry_smoke_final!cppgc::subtle::HeapState::PreviousGCWasConservative+0x32ddb:
+00007ff7`9aaf7137 488b00          mov     rax,qword ptr [rax] ds:00000000`00000000=????????????????
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

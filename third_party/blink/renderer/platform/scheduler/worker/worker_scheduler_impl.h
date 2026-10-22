@@ -84,7 +84,9 @@ private:
 
     base::WeakPtr<WorkerSchedulerImpl> GetWeakPtr();
 
+#if !defined(MINI_UI_QUICKJS)
     TraceableVariableController tracing_controller_;
+#endif
 
     // The tasks runners below are listed in increasing QoS order.
     // - throttleable task queue. Designed for custom user-provided javascript

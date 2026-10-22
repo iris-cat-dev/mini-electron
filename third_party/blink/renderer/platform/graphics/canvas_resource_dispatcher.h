@@ -8,16 +8,23 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/read_only_shared_memory_region.h"
+#endif
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "cc/paint/paint_flags.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
+#endif
 #include "components/viz/common/resources/resource_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame_sinks/embedded_frame_sink.mojom-blink.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/resource_id_traits.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "ui/gfx/geometry/size.h"
@@ -32,9 +39,15 @@ public:
     virtual void SetFilterQualityInResource(cc::PaintFlags::FilterQuality filter_quality) = 0;
 };
 
-class PLATFORM_EXPORT CanvasResourceDispatcher : public viz::mojom::blink::CompositorFrameSinkClient {
+class PLATFORM_EXPORT CanvasResourceDispatcher
+#if !defined(MINI_UI_QUICKJS)
+    : public viz::mojom::blink::CompositorFrameSinkClient
+#endif
+{
 public:
+#if !defined(MINI_UI_QUICKJS)
     static constexpr unsigned kMaxPendingCompositorFrames = 2;
+#endif
 
     // In theory, the spec allows an unlimited number of frames to be retained
     // on the main thread. For example, by acquiring ImageBitmaps from the
@@ -58,14 +71,36 @@ public:
         kInvalidPlaceholderCanvasId = -1,
     };
 
+#if defined(MINI_UI_QUICKJS)
+    // `placeholder_task_runner` posts retained software images to the owning
+    // HTML canvas placeholder.
+#else
     // `task_runner` is the task runner this object is associated with and
     // executes on. `agent_group_scheduler_compositor_task_runner` is the
     // compositor task runner for the associated canvas element.
-    CanvasResourceDispatcher(CanvasResourceDispatcherClient*, scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-        scoped_refptr<base::SingleThreadTaskRunner> agent_group_scheduler_compositor_task_runner, uint32_t client_id, uint32_t sink_id,
-        int placeholder_canvas_id, const gfx::Size&);
+#endif
+#if defined(MINI_UI_QUICKJS)
+    CanvasResourceDispatcher(
+        CanvasResourceDispatcherClient*,
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+        scoped_refptr<base::SingleThreadTaskRunner>
+            placeholder_task_runner,
+        int placeholder_canvas_id,
+        const gfx::Size&);
+#else
+    CanvasResourceDispatcher(CanvasResourceDispatcherClient*,
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+        scoped_refptr<base::SingleThreadTaskRunner>
+            agent_group_scheduler_compositor_task_runner,
+        uint32_t client_id, uint32_t sink_id, int placeholder_canvas_id,
+        const gfx::Size&);
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+    ~CanvasResourceDispatcher();
+#else
     ~CanvasResourceDispatcher() override;
+#endif
     void SetNeedsBeginFrame(bool);
     void SetSuspendAnimation(bool);
     bool NeedsBeginFrame() const
@@ -80,15 +115,17 @@ public:
         scoped_refptr<CanvasResource>&&, base::TimeTicks commit_start_time, const SkIRect& damage_rect, bool needs_vertical_flip, bool is_opaque);
     // virtual for mocking
     virtual void ReclaimResource(viz::ResourceId, scoped_refptr<CanvasResource>&&);
+#if !defined(MINI_UI_QUICKJS)
     void DispatchFrameSync(
         scoped_refptr<CanvasResource>&&, base::TimeTicks commit_start_time, const SkIRect& damage_rect, bool needs_vertical_flip, bool is_opaque);
     void ReplaceBeginFrameAck(const viz::BeginFrameArgs& args)
     {
         current_begin_frame_ack_ = viz::BeginFrameAck(args, true);
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     bool HasTooManyPendingFrames() const;
 
-    void Reshape(const gfx::Size&);
 
     // viz::mojom::blink::CompositorFrameSinkClient implementation.
     void DidReceiveCompositorFrameAck(WTF::Vector<viz::ReturnedResource> resources) final;
@@ -107,6 +144,8 @@ public:
 
     void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion region, const viz::SharedBitmapId& id);
     void DidDeleteSharedBitmap(const viz::SharedBitmapId& id);
+#endif
+    void Reshape(const gfx::Size&);
 
     void SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality);
     void SetPlaceholderCanvasDispatcher(int placeholder_canvas_id);
@@ -114,6 +153,7 @@ public:
 private:
     friend class OffscreenCanvasPlaceholderTest;
     friend class CanvasResourceDispatcherTest;
+#if !defined(MINI_UI_QUICKJS)
     struct FrameResource;
 
     using ResourceMap = HashMap<viz::ResourceId, std::unique_ptr<FrameResource>>;
@@ -124,12 +164,17 @@ private:
     // Surface-related
     viz::ParentLocalSurfaceIdAllocator parent_local_surface_id_allocator_;
     const viz::FrameSinkId frame_sink_id_;
+#endif
 
     gfx::Size size_;
+#if !defined(MINI_UI_QUICKJS)
     bool change_size_for_next_commit_;
+#endif
     bool suspend_animation_ = false;
     bool needs_begin_frame_ = false;
+#if !defined(MINI_UI_QUICKJS)
     unsigned pending_compositor_frames_ = 0;
+#endif
     bool local_begin_frame_pending_ = false;
 
     void SetNeedsBeginFrameInternal();
@@ -140,6 +185,7 @@ private:
     // virtual for testing
     virtual void PostImageToPlaceholder(scoped_refptr<CanvasResource>&&, viz::ResourceId resource_id);
 
+#if !defined(MINI_UI_QUICKJS)
     void ReclaimResourceInternal(viz::ResourceId resource_id, scoped_refptr<CanvasResource>&&);
     void ReclaimResourceInternal(const ResourceMap::iterator&);
 
@@ -147,12 +193,15 @@ private:
     mojo::Remote<mojom::blink::SurfaceEmbedder> surface_embedder_;
     mojo::Receiver<viz::mojom::blink::CompositorFrameSinkClient> receiver_ { this };
 
+#endif
     int placeholder_canvas_id_;
 
     viz::ResourceIdGenerator id_generator_;
+#if !defined(MINI_UI_QUICKJS)
     ResourceMap resources_;
 
     viz::FrameTokenGenerator next_frame_token_;
+#endif
 
     // The latest_unposted_resource_id_ always refers to the Id of the frame
     // resource used by the latest_unposted_image_.
@@ -160,7 +209,9 @@ private:
     viz::ResourceId latest_unposted_resource_id_;
     unsigned num_unreclaimed_frames_posted_;
 
+#if !defined(MINI_UI_QUICKJS)
     viz::BeginFrameAck current_begin_frame_ack_;
+#endif
 
     raw_ptr<CanvasResourceDispatcherClient> client_;
 

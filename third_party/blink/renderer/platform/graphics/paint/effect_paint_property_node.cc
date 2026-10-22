@@ -30,9 +30,13 @@ PaintPropertyChangeType ComputeBackdropFilterChange(const EffectPaintPropertyNod
 
 PaintPropertyChangeType EffectPaintPropertyNode::State::ComputeChange(const State& other, const AnimationState& animation_state) const
 {
-    if (local_transform_space != other.local_transform_space || output_clip != other.output_clip || blend_mode != other.blend_mode
-        || view_transition_element_resource_id != other.view_transition_element_resource_id
-        || self_or_ancestor_participates_in_view_transition != other.self_or_ancestor_participates_in_view_transition) {
+    bool structural_change
+        = local_transform_space != other.local_transform_space || output_clip != other.output_clip || blend_mode != other.blend_mode;
+#if !defined(MINI_UI_QUICKJS)
+    structural_change |= view_transition_element_resource_id != other.view_transition_element_resource_id
+        || self_or_ancestor_participates_in_view_transition != other.self_or_ancestor_participates_in_view_transition;
+#endif
+    if (structural_change) {
         return PaintPropertyChangeType::kChangedOnlyValues;
     }
     bool opacity_changed = opacity != other.opacity;

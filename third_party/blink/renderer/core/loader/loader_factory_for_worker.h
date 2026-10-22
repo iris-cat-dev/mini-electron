@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_LOADER_FACTORY_FOR_WORKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_LOADER_FACTORY_FOR_WORKER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <memory>
 #include <utility>
 #include "base/task/single_thread_task_runner.h"
@@ -35,4 +37,6 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_LOADER_FACTORY_FOR_WORKER_H_

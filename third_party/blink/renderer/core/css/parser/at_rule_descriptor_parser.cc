@@ -266,8 +266,10 @@ CSSValue* ConsumeDescriptor(StyleRule::RuleType rule_type, AtRuleDescriptorID id
         return Parser::ParseAtPropertyDescriptor(id, stream, context);
     case StyleRule::kCounterStyle:
         return Parser::ParseAtCounterStyleDescriptor(id, stream, context);
+#if !defined(MINI_UI_QUICKJS)
     case StyleRule::kViewTransition:
         return Parser::ParseAtViewTransitionDescriptor(id, stream, context);
+#endif
     case StyleRule::kCharset:
     case StyleRule::kContainer:
     case StyleRule::kStyle:
@@ -438,6 +440,7 @@ CSSValue* AtRuleDescriptorParser::ParseAtPropertyDescriptor(AtRuleDescriptorID i
     return parsed_value;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CSSValue* AtRuleDescriptorParser::ParseAtViewTransitionDescriptor(AtRuleDescriptorID id, CSSParserTokenStream& stream, const CSSParserContext& context)
 {
     CSSValue* parsed_value = nullptr;
@@ -472,6 +475,7 @@ CSSValue* AtRuleDescriptorParser::ParseAtViewTransitionDescriptor(AtRuleDescript
 
     return parsed_value;
 }
+#endif
 
 bool AtRuleDescriptorParser::ParseDescriptorValue(StyleRule::RuleType rule_type, AtRuleDescriptorID id, CSSParserTokenStream& stream,
     const CSSParserContext& context, HeapVector<CSSPropertyValue, 64>& parsed_descriptors)

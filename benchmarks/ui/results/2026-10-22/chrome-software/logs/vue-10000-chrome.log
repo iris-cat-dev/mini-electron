@@ -1,0 +1,8 @@
+
+DevTools listening on ws://127.0.0.1:54642/devtools/browser/5004d232-8772-4790-b7b4-ee129fadd9d4
+[38756:37020:1022/134436.281:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[38756:37020:1022/134436.281:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[38756:37020:1022/134436.284:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[38756:37020:1022/134436.480:ERROR:google_apis\gcm\engine\mcs_client.cc:702]   Error code: 401  Error message: Authentication Failed: wrong_secret
+[38756:37020:1022/134436.481:ERROR:google_apis\gcm\engine\mcs_client.cc:704] Failed to log in to GCM, resetting connection.
+Created TensorFlow Lite XNNPACK delegate for CPU.

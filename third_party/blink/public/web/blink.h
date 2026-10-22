@@ -88,17 +88,21 @@ BLINK_EXPORT void SetBrowserCanHandleFocusForWebTest(bool);
 BLINK_EXPORT void SetFontAntialiasingEnabledForTest(bool);
 BLINK_EXPORT bool FontAntialiasingEnabledForTest();
 
+#if !defined(MINI_UI_QUICKJS)
 // Purge the plugin list cache. This can cause a web-visible and out-of-spec
 // change to |navigator.plugins| if the plugin list has changed (see
 // https://crbug.com/735854). |reloadPages| is unsupported and must be false.
 BLINK_EXPORT void ResetPluginCache(bool reload_pages = false);
+#endif
 
 // The embedder should call this periodically in an attempt to balance overall
 // performance and memory usage.
 BLINK_EXPORT void DecommitFreeableMemory();
 
+#if !defined(MINI_UI_QUICKJS)
 // Send memory pressure notification to isolates.
 BLINK_EXPORT void MemoryPressureNotificationToAllIsolates(v8::MemoryPressureLevel);
+#endif
 
 // Send a request to the all isolates to prioritize energy efficiency
 // because the embedder is running in battery saver mode.

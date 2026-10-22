@@ -32,9 +32,11 @@
 #include "third_party/blink/public/common/css/forced_colors.h"
 #include "third_party/blink/public/common/css/navigation_controls.h"
 #include "third_party/blink/public/common/css/scripting.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
+#endif
 #include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom-blink.h"
 #include "third_party/blink/public/mojom/manifest/display_mode.mojom-shared.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
@@ -60,7 +62,9 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/media_type_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -72,6 +76,7 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 template <class T> void MaybeRecordMediaFeatureValue(const MediaValues& media_values, const IdentifiableSurface::MediaFeatureName feature_name, T value)
 {
     Document* document = nullptr;
@@ -83,6 +88,7 @@ template <class T> void MaybeRecordMediaFeatureValue(const MediaValues& media_va
         document->SetMediaFeatureEvaluated(static_cast<int>(feature_name));
     }
 }
+#endif
 
 KleeneValue KleeneOr(KleeneValue a, KleeneValue b)
 {
@@ -360,7 +366,9 @@ static bool ColorMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOpe
 {
     float number;
     int bits_per_component = media_values.ColorBitsPerComponent();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kColor, bits_per_component);
+#endif
     if (value.IsValid()) {
         return NumberValue(value, number, media_values) && CompareValue(bits_per_component, static_cast<int>(number), op);
     }
@@ -387,7 +395,9 @@ static bool MonochromeMediaFeatureEval(const MediaQueryExpValue& value, MediaQue
 {
     float number;
     int bits_per_component = media_values.MonochromeBitsPerComponent();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kMonochrome, bits_per_component);
+#endif
     if (value.IsValid()) {
         return NumberValue(value, number, media_values) && CompareValue(bits_per_component, static_cast<int>(number), op);
     }
@@ -411,7 +421,9 @@ static bool DisplayModeMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
 
     blink::mojom::DisplayMode mode = media_values.DisplayMode();
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kDisplayMode, mode);
+#endif
 
     switch (value.Id()) {
     case CSSValueID::kFullscreen:
@@ -449,7 +461,9 @@ static bool DisplayStateMediaFeatureEval(const MediaQueryExpValue& value, MediaQ
     }
 
     ui::mojom::blink::WindowShowState state = media_values.WindowShowState();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kDisplayState, state);
+#endif
 
     switch (value.Id()) {
     case CSSValueID::kFullscreen:
@@ -479,7 +493,9 @@ static bool ResizableMediaFeatureEval(const MediaQueryExpValue& value, MediaQuer
     }
 
     bool resizable = media_values.Resizable();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kResizable, resizable);
+#endif
 
     return (resizable && value.Id() == CSSValueID::kTrue) || (!resizable && value.Id() == CSSValueID::kFalse);
 }
@@ -491,11 +507,15 @@ static bool OrientationMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
 
     if (value.IsId()) {
         if (width > height) { // Square viewport is portrait.
+#if !defined(MINI_UI_QUICKJS)
             MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kOrientation, CSSValueID::kLandscape);
+#endif
             return CSSValueID::kLandscape == value.Id();
         }
 
+#if !defined(MINI_UI_QUICKJS)
         MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kOrientation, CSSValueID::kPortrait);
+#endif
         return CSSValueID::kPortrait == value.Id();
     }
 
@@ -505,8 +525,10 @@ static bool OrientationMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
 
 static bool AspectRatioMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator op, const MediaValues& media_values)
 {
+#if !defined(MINI_UI_QUICKJS)
     double aspect_ratio = std::max(*media_values.Width(), *media_values.Height()) / std::min(*media_values.Width(), *media_values.Height());
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kAspectRatioNormalized, aspect_ratio);
+#endif
     if (value.IsValid()) {
         return CompareAspectRatioValue(value, *media_values.Width(), *media_values.Height(), op, media_values);
     }
@@ -537,11 +559,15 @@ static bool DynamicRangeMediaFeatureEval(const MediaQueryExpValue& value, MediaQ
 
     switch (value.Id()) {
     case CSSValueID::kStandard:
+#if !defined(MINI_UI_QUICKJS)
         MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kDynamicRange, CSSValueID::kStandard);
+#endif
         return true;
 
     case CSSValueID::kHigh:
+#if !defined(MINI_UI_QUICKJS)
         MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kDynamicRange, media_values.DeviceSupportsHDR());
+#endif
         return media_values.DeviceSupportsHDR();
 
     default:
@@ -576,7 +602,9 @@ static bool EvalResolution(const MediaQueryExpValue& value, MediaQueryOperator o
         actual_resolution = 300 / kCssPixelsPerInch;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kResolution, actual_resolution);
+#endif
 
     if (!value.IsValid()) {
         return !!actual_resolution;
@@ -855,7 +883,9 @@ static bool Transform3dMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
     int have3d_rendering;
 
     bool three_d_enabled = media_values.ThreeDEnabled();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kTransform3d, three_d_enabled);
+#endif
 
     return_value_if_no_parameter = three_d_enabled;
     have3d_rendering = three_d_enabled ? 1 : 0;
@@ -870,7 +900,9 @@ static bool Transform3dMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
 static bool HoverMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     HoverType hover = media_values.PrimaryHoverType();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kHover, hover);
+#endif
 
     if (!value.IsValid()) {
         return hover != HoverType::kHoverNone;
@@ -886,7 +918,9 @@ static bool HoverMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOpe
 static bool AnyHoverMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     int available_hover_types = media_values.AvailableHoverTypes();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kAnyHover, available_hover_types);
+#endif
 
     if (!value.IsValid()) {
         return available_hover_types & ~static_cast<int>(HoverType::kHoverNone);
@@ -917,7 +951,9 @@ static bool OriginTrialTestMediaFeatureEval(const MediaQueryExpValue& value, Med
 static bool PointerMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     PointerType pointer = media_values.PrimaryPointerType();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPointer, pointer);
+#endif
 
     if (!value.IsValid()) {
         return pointer != PointerType::kPointerNone;
@@ -936,7 +972,9 @@ static bool PrefersReducedMotionMediaFeatureEval(const MediaQueryExpValue& value
 {
     UseCounter::Count(media_values.GetDocument(), WebFeature::kPrefersReducedMotionMediaFeature);
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPrefersReducedMotion, media_values.PrefersReducedMotion());
+#endif
 
     // If the value is not valid, this was passed without an argument. In that
     // case, it implicitly resolves to 'reduce'.
@@ -954,7 +992,9 @@ static bool PrefersReducedMotionMediaFeatureEval(const MediaQueryExpValue& value
 static bool PrefersReducedDataMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     UseCounter::Count(media_values.GetDocument(), WebFeature::kPrefersReducedDataMediaFeature);
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPrefersReducedData, media_values.PrefersReducedData());
+#endif
 
     if (!value.IsValid()) {
         return media_values.PrefersReducedData();
@@ -970,7 +1010,9 @@ static bool PrefersReducedDataMediaFeatureEval(const MediaQueryExpValue& value, 
 static bool PrefersReducedTransparencyMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     UseCounter::Count(media_values.GetDocument(), WebFeature::kPrefersReducedTransparencyMediaFeature);
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPrefersReducedTransparency, media_values.PrefersReducedTransparency());
+#endif
 
     if (!value.IsValid()) {
         return media_values.PrefersReducedTransparency();
@@ -986,7 +1028,9 @@ static bool PrefersReducedTransparencyMediaFeatureEval(const MediaQueryExpValue&
 static bool AnyPointerMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     int available_pointers = media_values.AvailablePointerTypes();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kAnyPointer, available_pointers);
+#endif
 
     if (!value.IsValid()) {
         return available_pointers & ~static_cast<int>(PointerType::kPointerNone);
@@ -1010,7 +1054,9 @@ static bool AnyPointerMediaFeatureEval(const MediaQueryExpValue& value, MediaQue
 
 static bool ScanMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kScan, media_values.MediaType().Utf8());
+#endif
 
     // Scan only applies to 'tv' media.
     if (!EqualIgnoringASCIICase(media_values.MediaType(), media_type_names::kTv)) {
@@ -1047,7 +1093,9 @@ static bool ColorGamutMediaFeatureEval(const MediaQueryExpValue& value, MediaQue
     DCHECK(value.Id() == CSSValueID::kSRGB || value.Id() == CSSValueID::kP3 || value.Id() == CSSValueID::kRec2020);
 
     ColorSpaceGamut gamut = media_values.ColorGamut();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kColorGamut, gamut);
+#endif
 
     switch (gamut) {
     case ColorSpaceGamut::kUnknown:
@@ -1076,7 +1124,9 @@ static bool PrefersColorSchemeMediaFeatureEval(const MediaQueryExpValue& value, 
     UseCounter::Count(media_values.GetDocument(), WebFeature::kPrefersColorSchemeMediaFeature);
 
     auto preferred_scheme = media_values.GetPreferredColorScheme();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPrefersColorScheme, preferred_scheme);
+#endif
 
     if (!value.IsValid()) {
         return true;
@@ -1095,7 +1145,9 @@ static bool PrefersContrastMediaFeatureEval(const MediaQueryExpValue& value, Med
     UseCounter::Count(media_values.GetDocument(), WebFeature::kPrefersContrastMediaFeature);
 
     auto preferred_contrast = media_values.GetPreferredContrast();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kPrefersContrast, preferred_contrast);
+#endif
 
     if (!value.IsValid()) {
         return preferred_contrast != mojom::blink::PreferredContrast::kNoPreference;
@@ -1124,7 +1176,9 @@ static bool ForcedColorsMediaFeatureEval(const MediaQueryExpValue& value, MediaQ
     UseCounter::Count(media_values.GetDocument(), WebFeature::kForcedColorsMediaFeature);
 
     ForcedColors forced_colors = media_values.GetForcedColors();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kForcedColors, forced_colors);
+#endif
 
     if (!value.IsValid()) {
         return forced_colors != ForcedColors::kNone;
@@ -1142,7 +1196,9 @@ static bool ForcedColorsMediaFeatureEval(const MediaQueryExpValue& value, MediaQ
 static bool NavigationControlsMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     NavigationControls navigation_controls = media_values.GetNavigationControls();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kNavigationControls, navigation_controls);
+#endif
 
     if (!value.IsValid()) {
         return navigation_controls != NavigationControls::kNone;
@@ -1163,7 +1219,9 @@ static bool HorizontalViewportSegmentsMediaFeatureEval(const MediaQueryExpValue&
     UseCounter::Count(media_values.GetDocument(), WebFeature::kFoldableAPIs);
     int horizontal_viewport_segments = media_values.GetHorizontalViewportSegments();
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kHorizontalViewportSegments, horizontal_viewport_segments);
+#endif
 
     if (!value.IsValid()) {
         return true;
@@ -1179,7 +1237,9 @@ static bool VerticalViewportSegmentsMediaFeatureEval(const MediaQueryExpValue& v
     UseCounter::Count(media_values.GetDocument(), WebFeature::kFoldableAPIs);
     int vertical_viewport_segments = media_values.GetVerticalViewportSegments();
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kVerticalViewportSegments, vertical_viewport_segments);
+#endif
 
     if (!value.IsValid()) {
         return true;
@@ -1247,7 +1307,9 @@ static bool DevicePostureMediaFeatureEval(const MediaQueryExpValue& value, Media
     DCHECK(value.IsId());
 
     DevicePostureType device_posture = media_values.GetDevicePosture();
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kDevicePosture, device_posture);
+#endif
 
     switch (value.Id()) {
     case CSSValueID::kContinuous:
@@ -1367,7 +1429,9 @@ static bool OverflowingMediaFeatureEval(const MediaQueryExpValue& value, MediaQu
 static bool InvertedColorsMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     UseCounter::Count(media_values.GetDocument(), WebFeature::kInvertedColorsMediaFeature);
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kInvertedColors, media_values.InvertedColors());
+#endif
 
     if (!value.IsValid()) {
         return media_values.InvertedColors();
@@ -1383,7 +1447,9 @@ static bool InvertedColorsMediaFeatureEval(const MediaQueryExpValue& value, Medi
 static bool ScriptingMediaFeatureEval(const MediaQueryExpValue& value, MediaQueryOperator, const MediaValues& media_values)
 {
     UseCounter::Count(media_values.GetDocument(), WebFeature::kScriptingMediaFeature);
+#if !defined(MINI_UI_QUICKJS)
     MaybeRecordMediaFeatureValue(media_values, IdentifiableSurface::MediaFeatureName::kScripting, media_values.GetScripting());
+#endif
 
     if (!value.IsValid()) {
         return media_values.GetScripting() == Scripting::kEnabled;

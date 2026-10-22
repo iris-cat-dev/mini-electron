@@ -22,6 +22,7 @@ class ModuleScriptLoaderClient;
 class ModuleScriptLoaderRegistry;
 class ResourceFetcher;
 enum class ModuleGraphLevel;
+enum class ModuleScriptCustomFetchType;
 
 // ModuleScriptLoader is responsible for loading a new single ModuleScript.
 //

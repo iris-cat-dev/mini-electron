@@ -10,11 +10,11 @@
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/renderer/bindings/core/v8/module_record.h"
-#include "third_party/blink/renderer/core/script/import_map_error.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
-#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
@@ -49,7 +49,9 @@ private:
 
     bool IsScriptingDisabled() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     mojom::blink::V8CacheOptions GetV8CacheOptions() const final;
+#endif
 
     ModuleRecordResolver* GetModuleRecordResolver() override
     {
@@ -85,8 +87,10 @@ private:
     // modification of |reason|.
     virtual bool IsDynamicImportForbidden(String* reason) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     void ProduceCacheModuleTreeTopLevel(ModuleScript*) override;
     void ProduceCacheModuleTree(ModuleScript*, HeapHashSet<Member<const ModuleScript>>*);
+#endif
 
     Member<ScriptState> const script_state_;
     scoped_refptr<base::SingleThreadTaskRunner> task_runner_;

@@ -10,7 +10,9 @@
 #include "third_party/blink/renderer/core/dom/document_parser_timing.h"
 #include "third_party/blink/renderer/core/dom/document_timing.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_load_timing.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/interactive_detector.h"
@@ -329,10 +331,12 @@ ResourceLoadTiming* PerformanceTiming::GetResourceLoadTiming() const
     return loader->GetResponse().GetResourceLoadTiming();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PerformanceTiming::WriteInto(perfetto::TracedDictionary& dict) const
 {
     dict.Add("navigationId", IdentifiersFactory::LoaderId(GetDocumentLoader()));
 }
+#endif
 
 // static
 bool PerformanceTiming::IsAttributeName(const AtomicString& name)

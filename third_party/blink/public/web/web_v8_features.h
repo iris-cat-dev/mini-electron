@@ -22,6 +22,7 @@ namespace blink {
 //
 // See src/third_party/blink/renderer/bindings/IDLExtendedAttributes.md for more
 // information.
+#if !defined(MINI_UI_QUICKJS)
 class BLINK_EXPORT WebV8Features {
 public:
     static void EnableMojoJS(v8::Local<v8::Context>, bool);
@@ -57,6 +58,7 @@ public:
 private:
     WebV8Features() = delete;
 };
+#endif
 
 } // namespace blink
 

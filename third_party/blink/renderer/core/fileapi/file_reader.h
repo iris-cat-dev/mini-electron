@@ -40,7 +40,9 @@
 #include "third_party/blink/renderer/core/fileapi/file_read_type.h"
 #include "third_party/blink/renderer/core/fileapi/file_reader_client.h"
 #include "third_party/blink/renderer/core/fileapi/file_reader_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
@@ -82,10 +84,12 @@ public:
         return error_.Get();
     }
     V8UnionArrayBufferOrString* result() const;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext* async_task_context()
     {
         return &async_task_context_;
     }
+#endif
 
     // ExecutionContextLifecycleObserver
     void ContextDestroyed() override;
@@ -136,7 +140,9 @@ private:
     scoped_refptr<BlobDataHandle> blob_data_handle_;
     FileReadType read_type_;
     String encoding_;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
 
     Member<FileReaderLoader> loader_;
     Member<V8UnionArrayBufferOrString> result_ = nullptr;

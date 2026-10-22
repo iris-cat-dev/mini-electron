@@ -3,9 +3,13 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_script_observer.h"
+
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/lcp_critical_path_predictor_util.h"
-#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#include "third_party/blink/renderer/core/core_probe_sink.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/probe/core_probes.h"
 
 namespace blink {
 

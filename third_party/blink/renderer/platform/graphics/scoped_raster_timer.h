@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_SCOPED_RASTER_TIMER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_SCOPED_RASTER_TIMER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <optional>
 
 #include "base/timer/elapsed_timer.h"
@@ -75,4 +77,6 @@ private:
 
 } // namespace blink
 
+
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_SCOPED_RASTER_TIMER_H_

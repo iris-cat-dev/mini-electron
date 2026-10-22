@@ -143,7 +143,11 @@ void ThreadControllerImpl::BindToCurrentThread(std::unique_ptr<MessagePump> mess
 
 void ThreadControllerImpl::WillQueueTask(PendingTask* pending_task)
 {
-    task_annotator_.WillQueueTask("SequenceManager PostTask", pending_task);
+    task_annotator_.WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+        "SequenceManager PostTask",
+#endif
+        pending_task);
 }
 
 void ThreadControllerImpl::DoWork(WorkType work_type)
@@ -184,6 +188,9 @@ void ThreadControllerImpl::DoWork(WorkType work_type)
             // See https://crbug.com/681863 and https://crbug.com/874982
             TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "RunTask");
 
+#if defined(MINI_UI_QUICKJS)
+            task_annotator_.RunTask(selected_task->task);
+#else
             // Note: all arguments after task are just passed to a TRACE_EVENT for
             // logging so lambda captures are safe as lambda is executed inline.
             SequencedTaskSource* source = sequence_;
@@ -192,6 +199,7 @@ void ThreadControllerImpl::DoWork(WorkType work_type)
                     selected_task->task_execution_trace_logger.Run(ctx, selected_task->task);
                 source->MaybeEmitTaskDetails(ctx, *selected_task);
             });
+#endif
             if (!weak_ptr)
                 return;
 

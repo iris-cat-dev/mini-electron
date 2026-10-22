@@ -32,12 +32,60 @@
 #define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_VIEW_CLIENT_H_
 
 #include "ui/gfx/geometry/size.h"
+#if defined(MINI_UI_QUICKJS)
+#include "ui/gfx/geometry/rect.h"
+#include "ui/base/ime/text_input_mode.h"
+#include "ui/base/ime/text_input_type.h"
+namespace ui {
+class Cursor;
+}
+#endif
 
 namespace blink {
+
+#if defined(MINI_UI_QUICKJS)
+class WebPagePopup;
+class WebString;
+#endif
 
 class WebViewClient {
 public:
     virtual ~WebViewClient() = default;
+#if defined(MINI_UI_QUICKJS)
+    // The popup is borrowed and paints through its real software WebWidget API.
+    // Bounds are screen DIPs; apply accepted bounds using SetScreenRects/Resize.
+    virtual void DidOpenNonCompositedPopup(WebPagePopup*, const gfx::Rect& bounds) = 0;
+    virtual void DidChangeNonCompositedPopupBounds(WebPagePopup*, const gfx::Rect& bounds) = 0;
+    // Invalidates the borrowed popup pointer before native ownership is dropped.
+    virtual void DidCloseNonCompositedPopup(WebPagePopup*) = 0;
+
+    // Native requests return false when no host or suitable native target exists,
+    // or when the platform operation fails. DidFocus() remains a notification.
+    virtual bool RequestFocus() = 0;
+    virtual bool CanTakeFocus(bool reverse) const = 0;
+    virtual bool RequestTakeFocus(bool reverse) = 0;
+    // Requests host-managed closing; must not destroy a borrowed native window.
+    virtual bool RequestClose() = 0;
+    // Applies the cursor to the borrowed native host, including custom pixels.
+    // Offscreen views or failed platform requests return false.
+    virtual bool RequestSetCursor(const ui::Cursor&) = 0;
+    // Updates the host's input scope and default IME composition/candidate
+    // position. Caret bounds are relative to the view in DIPs.
+    virtual bool RequestTextInputState(ui::TextInputType, ui::TextInputMode,
+        const gfx::Rect& caret_bounds) = 0;
+    virtual bool RequestTooltip(const WebString&, const gfx::Rect& bounds,
+        bool keyboard, bool right_to_left) = 0;
+    virtual bool RequestClearKeyboardTooltip() = 0;
+
+    // Screen DIPs: outer window bounds and the view's client bounds respectively.
+    // Offscreen views report their known viewport, not another native window.
+    virtual gfx::Rect WindowRect() const = 0;
+    virtual gfx::Rect ViewRect() const = 0;
+    // Attempts the requested outer bounds synchronously. Refresh the real widget
+    // screen/client rects before returning, even if the request cannot be applied.
+    virtual bool RequestSetWindowRect(const gfx::Rect& bounds) = 0;
+#endif
+
     // Factory methods -----------------------------------------------------
 
     // Misc ----------------------------------------------------------------

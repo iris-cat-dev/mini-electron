@@ -771,13 +771,13 @@ Resource::MatchStatus Resource::CanReuse(const FetchParameters& params) const
     DCHECK(existing_origin);
     DCHECK(new_origin);
 
-    // Never reuse opaque responses from a service worker for requests that are
-    // not no-cors. https://crbug.com/625575
-    // TODO(yhirano): Remove this.
+#if !defined(MINI_UI_QUICKJS)
+    // Never reuse opaque service worker responses for non-no-cors requests.
     if (GetResponse().WasFetchedViaServiceWorker() && GetResponse().GetType() == network::mojom::FetchResponseType::kOpaque
         && new_request.GetMode() != network::mojom::RequestMode::kNoCors) {
         return MatchStatus::kUnknownFailure;
     }
+#endif
 
     // Use GetResourceRequest to get the const resource_request_.
     const ResourceRequestHead& current_request = GetResourceRequest();

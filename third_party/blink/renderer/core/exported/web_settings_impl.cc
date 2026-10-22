@@ -33,11 +33,14 @@
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/dev_tools_emulator.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/deferred_image_decoder.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 WebSettingsImpl::WebSettingsImpl(Settings* settings, DevToolsEmulator* dev_tools_emulator)
     : settings_(settings)
     , dev_tools_emulator_(dev_tools_emulator)
@@ -49,6 +52,19 @@ WebSettingsImpl::WebSettingsImpl(Settings* settings, DevToolsEmulator* dev_tools
 {
     DCHECK(settings);
 }
+#else
+WebSettingsImpl::WebSettingsImpl(Settings* settings)
+    : settings_(settings)
+    , double_tap_to_zoom_enabled_(false)
+    , render_v_sync_notification_enabled_(false)
+    , auto_zoom_focused_editable_to_legible_scale_(false)
+    , support_deprecated_target_density_dpi_(false)
+    , viewport_meta_non_user_scalable_quirk_(false)
+    , clobber_user_agent_initial_scale_quirk_(false)
+{
+    DCHECK(settings);
+}
+#endif
 
 void WebSettingsImpl::SetFromStrings(const WebString& name, const WebString& value)
 {
@@ -142,10 +158,13 @@ void WebSettingsImpl::SetMinimumLogicalFontSize(int size)
     settings_->SetMinimumLogicalFontSize(size);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebSettingsImpl::SetAutoplayPolicy(mojom::blink::AutoplayPolicy policy)
 {
     settings_->SetAutoplayPolicy(static_cast<blink::AutoplayPolicy::Type>(policy));
 }
+
+#endif
 
 void WebSettingsImpl::SetRequireTransientActivationForGetDisplayMedia(bool required)
 {
@@ -164,7 +183,11 @@ void WebSettingsImpl::SetAutoZoomFocusedEditableToLegibleScale(bool auto_zoom_fo
 
 void WebSettingsImpl::SetTextAutosizingEnabled(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetTextAutosizingEnabled(enabled);
+#else
+    settings_->SetTextAutosizingEnabled(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetAccessibilityFontScaleFactor(float font_scale_factor)
@@ -194,7 +217,11 @@ void WebSettingsImpl::SetAccessibilityFontWeightAdjustment(int size)
 
 void WebSettingsImpl::SetDeviceScaleAdjustment(float device_scale_adjustment)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetDeviceScaleAdjustment(device_scale_adjustment);
+#else
+    settings_->SetDeviceScaleAdjustment(device_scale_adjustment);
+#endif
 }
 
 void WebSettingsImpl::SetDefaultTextEncodingName(const WebString& encoding)
@@ -204,7 +231,11 @@ void WebSettingsImpl::SetDefaultTextEncodingName(const WebString& encoding)
 
 void WebSettingsImpl::SetJavaScriptEnabled(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetScriptEnabled(enabled);
+#else
+    settings_->SetScriptEnabled(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetWebSecurityEnabled(bool enabled)
@@ -283,32 +314,56 @@ void WebSettingsImpl::SetShouldReuseGlobalForUnownedMainFrame(bool enabled)
 
 void WebSettingsImpl::SetPluginsEnabled(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetPluginsEnabled(enabled);
+#else
+    settings_->SetPluginsEnabled(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetAvailablePointerTypes(int pointers)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetAvailablePointerTypes(pointers);
+#else
+    settings_->SetAvailablePointerTypes(pointers);
+#endif
 }
 
 void WebSettingsImpl::SetPrimaryPointerType(mojom::blink::PointerType pointer)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetPrimaryPointerType(pointer);
+#else
+    settings_->SetPrimaryPointerType(pointer);
+#endif
 }
 
 void WebSettingsImpl::SetAvailableHoverTypes(int types)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetAvailableHoverTypes(types);
+#else
+    settings_->SetAvailableHoverTypes(types);
+#endif
 }
 
 void WebSettingsImpl::SetPrimaryHoverType(mojom::blink::HoverType type)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetPrimaryHoverType(type);
+#else
+    settings_->SetPrimaryHoverType(type);
+#endif
 }
 
 void WebSettingsImpl::SetOutputDeviceUpdateAbilityType(mojom::blink::OutputDeviceUpdateAbilityType type)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetOutputDeviceUpdateAbilityType(type);
+#else
+    settings_->SetOutputDeviceUpdateAbilityType(type);
+#endif
 }
 
 void WebSettingsImpl::SetPreferHiddenVolumeControls(bool enabled)
@@ -328,7 +383,11 @@ void WebSettingsImpl::SetDOMPasteAllowed(bool enabled)
 
 void WebSettingsImpl::SetShrinksViewportContentToFit(bool shrink_viewport_content)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetShrinksViewportContentToFit(shrink_viewport_content);
+#else
+    settings_->SetShrinksViewportContentToFit(shrink_viewport_content);
+#endif
 }
 
 void WebSettingsImpl::SetSpatialNavigationEnabled(bool enabled)
@@ -368,7 +427,11 @@ void WebSettingsImpl::SetDontSendKeyEventsToJavascript(bool dont_send_key_events
 
 void WebSettingsImpl::SetDoubleTapToZoomEnabled(bool double_tap_to_zoom_enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetDoubleTapToZoomEnabled(double_tap_to_zoom_enabled);
+#else
+    double_tap_to_zoom_enabled_ = double_tap_to_zoom_enabled;
+#endif
 }
 
 void WebSettingsImpl::SetDownloadableBinaryFontsEnabled(bool enabled)
@@ -386,10 +449,13 @@ void WebSettingsImpl::SetJavaScriptCanAccessClipboard(bool enabled)
     settings_->SetJavaScriptCanAccessClipboard(enabled);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebSettingsImpl::SetTextTrackKindUserPreference(TextTrackKindUserPreference preference)
 {
     settings_->SetTextTrackKindUserPreference(static_cast<blink::TextTrackKindUserPreference>(preference));
 }
+
+#endif
 
 void WebSettingsImpl::SetTextTrackBackgroundColor(const WebString& color)
 {
@@ -446,10 +512,12 @@ void WebSettingsImpl::SetDNSPrefetchingEnabled(bool enabled)
     settings_->SetDNSPrefetchingEnabled(enabled);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebSettingsImpl::SetLocalStorageEnabled(bool enabled)
 {
     settings_->SetLocalStorageEnabled(enabled);
 }
+#endif
 
 void WebSettingsImpl::SetMainFrameClipsContent(bool enabled)
 {
@@ -533,7 +601,11 @@ void WebSettingsImpl::SetEditingBehavior(mojom::blink::EditingBehavior behavior)
 
 void WebSettingsImpl::SetHideScrollbars(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetHideScrollbars(enabled);
+#else
+    settings_->SetHideScrollbars(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetPrefersDefaultScrollbarStyles(bool enabled)
@@ -563,7 +635,11 @@ void WebSettingsImpl::SetAntialiasedClips2dCanvasEnabled(bool enabled)
 
 void WebSettingsImpl::SetLCDTextPreference(LCDTextPreference preference)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetLCDTextPreference(preference);
+#else
+    settings_->SetLCDTextPreference(preference);
+#endif
 }
 
 void WebSettingsImpl::SetHideDownloadUI(bool hide)
@@ -673,7 +749,11 @@ bool WebSettingsImpl::ViewportMetaEnabled() const
 
 bool WebSettingsImpl::DoubleTapToZoomEnabled() const
 {
+#if !defined(MINI_UI_QUICKJS)
     return dev_tools_emulator_->DoubleTapToZoomEnabled();
+#else
+    return double_tap_to_zoom_enabled_;
+#endif
 }
 
 bool WebSettingsImpl::MockGestureTapHighlightsEnabled() const
@@ -713,12 +793,20 @@ void WebSettingsImpl::SetImmersiveModeEnabled(bool enabled)
 
 void WebSettingsImpl::SetViewportEnabled(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetViewportEnabled(enabled);
+#else
+    settings_->SetViewportEnabled(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetViewportMetaEnabled(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetViewportMetaEnabled(enabled);
+#else
+    settings_->SetViewportMetaEnabled(enabled);
+#endif
 }
 
 void WebSettingsImpl::SetSyncXHRInDocumentsEnabled(bool enabled)
@@ -741,10 +829,12 @@ void WebSettingsImpl::SetCaretBrowsingEnabled(bool enabled)
     settings_->SetCaretBrowsingEnabled(enabled);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebSettingsImpl::SetCookieEnabled(bool enabled)
 {
     dev_tools_emulator_->SetCookieEnabled(enabled);
 }
+#endif
 
 void WebSettingsImpl::SetAllowCustomScrollbarInMainFrame(bool enabled)
 {
@@ -773,17 +863,28 @@ void WebSettingsImpl::SetSmartInsertDeleteEnabled(bool enabled)
 
 void WebSettingsImpl::SetMainFrameResizesAreOrientationChanges(bool enabled)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetMainFrameResizesAreOrientationChanges(enabled);
+#else
+    settings_->SetMainFrameResizesAreOrientationChanges(enabled);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebSettingsImpl::SetV8CacheOptions(mojom::blink::V8CacheOptions options)
 {
     settings_->SetV8CacheOptions(options);
 }
 
+#endif
+
 void WebSettingsImpl::SetViewportStyle(mojom::blink::ViewportStyle style)
 {
+#if !defined(MINI_UI_QUICKJS)
     dev_tools_emulator_->SetViewportStyle(style);
+#else
+    settings_->SetViewportStyle(style);
+#endif
 }
 
 void WebSettingsImpl::SetMediaControlsEnabled(bool enabled)

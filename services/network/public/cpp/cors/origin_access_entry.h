@@ -9,7 +9,6 @@
 
 #include "base/component_export.h"
 #include "mojo/public/cpp/bindings/struct_ptr.h"
-#include "services/network/public/mojom/cors.mojom-shared.h"
 #include "services/network/public/mojom/cors_origin_pattern.mojom-shared.h"
 
 namespace url {

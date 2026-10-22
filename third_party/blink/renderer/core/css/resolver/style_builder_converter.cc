@@ -93,7 +93,9 @@
 #include "third_party/blink/renderer/core/style/shape_offset_path_operation.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/style/style_view_transition_group.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_palette.h"
 #include "third_party/blink/renderer/platform/fonts/opentype/open_type_math_support.h"
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
@@ -2118,6 +2120,7 @@ scoped_refptr<SVGDashArray> StyleBuilderConverter::ConvertStrokeDasharray(StyleR
     return array;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 StyleViewTransitionGroup StyleBuilderConverter::ConvertViewTransitionGroup(StyleResolverState& state, const CSSValue& value)
 {
     if (auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
@@ -2183,6 +2186,7 @@ ScopedCSSNameList* StyleBuilderConverter::ConvertViewTransitionClass(StyleResolv
     }
     return MakeGarbageCollected<ScopedCSSNameList>(std::move(names));
 }
+#endif
 
 namespace {
 

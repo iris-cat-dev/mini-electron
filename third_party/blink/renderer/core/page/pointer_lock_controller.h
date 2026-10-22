@@ -92,9 +92,12 @@ private:
 
     Member<Page> page_;
     bool lock_pending_;
+    bool lock_change_pending_ = false;
     Member<Element> element_;
     Member<Document> document_of_removed_element_while_waiting_for_unlock_;
 
+    // A real in-process native host owns the other end in non-composited UI.
+    // Closing either end releases the lock; option changes use the same pipe.
     HeapMojoRemote<mojom::blink::PointerLockContext> mouse_lock_context_ { nullptr };
 
     // Store the locked position so that the event position keeps unchanged when

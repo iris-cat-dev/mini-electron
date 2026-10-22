@@ -28,7 +28,9 @@
 #include "third_party/blink/renderer/core/svg/graphics/isolated_svg_document_host.h"
 
 #include "base/trace_event/trace_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/cpp/single_request_url_loader_factory.h"
+#endif
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_forbidden_scope.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -64,6 +66,7 @@ public:
     }
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override
     {
         // SVG Images have unique security rules that prevent all subresource
@@ -72,6 +75,7 @@ private:
             WTF::BindOnce([](const network::ResourceRequest& resource_request, mojo::PendingReceiver<network::mojom::URLLoader> receiver,
                               mojo::PendingRemote<network::mojom::URLLoaderClient> client) { NOTREACHED(); }));
     }
+#endif
 
     void DispatchDidHandleOnloadEvents() override
     {

@@ -28,13 +28,21 @@
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "runtime/engine/renderer/brokered_file_registry.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/file_path_conversion.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/platform.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_file_property_bag.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_initializer.h"
+#endif
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/file_backed_blob_factory_dispatcher.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -162,6 +170,7 @@ File* File::CreateWithRelativePath(ExecutionContext* context, const String& path
     return file;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata,
     UserVisibility user_visibility, const String& relative_path)
@@ -182,7 +191,8 @@ File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, 
             content_type);
         if (!handle || handle->size() != static_cast<uint64_t>(metadata.length))
             return nullptr;
-    } else {
+    }
+    if (!url.ProtocolIs("mini-electron-broker")) {
         CoreInitializer::GetInstance().GetFileSystemManager(&context).RegisterBlob(
             content_type, url, metadata.length, metadata.modification_time, &handle);
     }
@@ -193,6 +203,7 @@ File* File::CreateForFileSystemFile(ExecutionContext& context, const KURL& url, 
     return file;
 }
 
+#endif
 File::File(ExecutionContext* context, const String& path, ContentTypeLookupPolicy policy, UserVisibility user_visibility)
     : Blob(CreateBlobDataHandleForFile(context, path, policy))
     , has_backing_file_(true)

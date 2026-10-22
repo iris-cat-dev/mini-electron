@@ -54,9 +54,11 @@
 
 class SkImage;
 class SkTextBlob;
+#if !defined(MINI_UI_QUICKJS)
 namespace sktext::gpu {
 class Slug;
 }
+#endif
 
 namespace cc {
 
@@ -110,7 +112,9 @@ enum class PaintOpType : uint8_t {
     kDrawRRect,
     kDrawScrollingContents,
     kDrawSkottie,
+#if !defined(MINI_UI_QUICKJS)
     kDrawSlug,
+#endif
     kDrawTextBlob,
     kDrawVertices,
     kNoop,
@@ -1075,6 +1079,7 @@ private:
     DrawSkottieOp();
 };
 
+#if !defined(MINI_UI_QUICKJS)
 class CC_PAINT_EXPORT DrawSlugOp final : public PaintOpWithFlags {
 public:
     static constexpr PaintOpType kType = PaintOpType::kDrawSlug;
@@ -1101,6 +1106,7 @@ public:
 private:
     DrawSlugOp();
 };
+#endif
 
 class CC_PAINT_EXPORT DrawTextBlobOp final : public PaintOpWithFlags {
 public:
@@ -1122,8 +1128,10 @@ public:
     HAS_SERIALIZATION_FUNCTIONS();
 
     sk_sp<SkTextBlob> blob;
+#if !defined(MINI_UI_QUICKJS)
     mutable sk_sp<sktext::gpu::Slug> slug;
     mutable std::vector<sk_sp<sktext::gpu::Slug>> extra_slugs;
+#endif
     SkScalar x;
     SkScalar y;
     // This field isn't serialized.

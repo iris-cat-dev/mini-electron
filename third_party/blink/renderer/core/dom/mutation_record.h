@@ -33,7 +33,9 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/static_node_list.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -85,13 +87,17 @@ public:
         return String();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext* async_task_context()
     {
         return &async_task_context_;
     }
+#endif
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
 };
 
 } // namespace blink

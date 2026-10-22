@@ -13,12 +13,16 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_id_helper.h"
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "base/types/cxx23_to_underlying.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/string_helpers.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
+#endif
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/events/base_event_utils.h"
@@ -38,6 +42,7 @@ int g_custom_event_types = base::to_underlying(EventType::kLast);
 
 #define UMA_HISTOGRAM_EVENT_LATENCY_TIMES(name, sample) UMA_HISTOGRAM_CUSTOM_TIMES(name, sample, base::Milliseconds(1), base::Minutes(1), 50)
 
+#if !defined(MINI_UI_QUICKJS)
 // Record a trace if the `current_time` - `time_stamp` is above a threshold.
 // `name` must be a static string so that the trace is not privacy filtered.
 void RecordEventLatencyTrace(perfetto::StaticString name, base::TimeTicks time_stamp, base::TimeTicks current_time)
@@ -54,6 +59,7 @@ void RecordEventLatencyTrace(perfetto::StaticString name, base::TimeTicks time_s
         TRACE_EVENT_END("latency", track, current_time);
     }
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 } // namespace
 
@@ -159,23 +165,33 @@ void ComputeEventLatencyOS(EventType type, base::TimeTicks time_stamp, base::Tim
         return;
     case EventType::kTouchPressed:
         UMA_HISTOGRAM_EVENT_LATENCY_TIMES(kTouchPressedEventName, delta);
+#if !defined(MINI_UI_QUICKJS)
         RecordEventLatencyTrace(kTouchPressedEventName, time_stamp, current_time);
+#endif
         return;
     case EventType::kTouchReleased:
         UMA_HISTOGRAM_EVENT_LATENCY_TIMES(kTouchReleasedEventName, delta);
+#if !defined(MINI_UI_QUICKJS)
         RecordEventLatencyTrace(kTouchReleasedEventName, time_stamp, current_time);
+#endif
         return;
     case EventType::kTouchCancelled:
         UMA_HISTOGRAM_EVENT_LATENCY_TIMES(kTouchCancelledEventName, delta);
+#if !defined(MINI_UI_QUICKJS)
         RecordEventLatencyTrace(kTouchCancelledEventName, time_stamp, current_time);
+#endif
         return;
     case EventType::kKeyPressed:
         UMA_HISTOGRAM_EVENT_LATENCY_TIMES(kKeyPressedEventName, delta);
+#if !defined(MINI_UI_QUICKJS)
         RecordEventLatencyTrace(kKeyPressedEventName, time_stamp, current_time);
+#endif
         return;
     case EventType::kMousePressed:
         UMA_HISTOGRAM_EVENT_LATENCY_TIMES(kMousePressedEventName, delta);
+#if !defined(MINI_UI_QUICKJS)
         RecordEventLatencyTrace(kMousePressedEventName, time_stamp, current_time);
+#endif
         return;
     default:
         return;

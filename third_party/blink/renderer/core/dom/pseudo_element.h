@@ -37,24 +37,31 @@ class ComputedStyle;
 
 class CORE_EXPORT PseudoElement : public Element {
 public:
-    // |view_transition_name| is used to uniquely identify a pseudo element
-    // from a set of pseudo elements which share the same |pseudo_id|. The current
-    // usage of this ID is limited to pseudo elements generated for a
-    // ViewTransition. See
-    // third_party/blink/renderer/core/view_transition/README.md
-    static PseudoElement* Create(Element* parent, PseudoId pseudo_id, const AtomicString& view_transition_name = g_null_atom);
-
-    PseudoElement(Element*, PseudoId, const AtomicString& view_transition_name = g_null_atom);
+#if !defined(MINI_UI_QUICKJS)
+    static PseudoElement* Create(
+        Element* parent,
+        PseudoId pseudo_id,
+        const AtomicString& view_transition_name = g_null_atom);
+    PseudoElement(
+        Element*,
+        PseudoId,
+        const AtomicString& view_transition_name = g_null_atom);
+#else
+    static PseudoElement* Create(Element* parent, PseudoId pseudo_id);
+    PseudoElement(Element*, PseudoId);
+#endif
 
     bool IsPseudoElement() const final
     {
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const AtomicString& view_transition_name() const
     {
         return view_transition_name_;
     }
+#endif
     const ComputedStyle* CustomStyleForLayoutObject(const StyleRecalcContext&) override;
     void AttachLayoutTree(AttachContext&) override;
     bool LayoutObjectIsNeeded(const DisplayStyle&) const override;
@@ -111,7 +118,9 @@ private:
     };
 
     PseudoId pseudo_id_;
+#if !defined(MINI_UI_QUICKJS)
     const AtomicString view_transition_name_;
+#endif
 };
 
 CORE_EXPORT const QualifiedName& PseudoElementTagName(PseudoId);

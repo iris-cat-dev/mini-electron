@@ -31,6 +31,30 @@
 
 namespace ui {
 
+namespace {
+
+const std::vector<std::string>& WebCustomPlatformNames()
+{
+    static const base::NoDestructor<std::vector<std::string>> names([] {
+        std::vector<std::string> result;
+        result.reserve(kMaxRegisteredClipboardFormats);
+        for (int index = 0; index < kMaxRegisteredClipboardFormats; ++index)
+            result.push_back(ClipboardFormatType::WebCustomFormatName(index));
+        return result;
+    }());
+    return *names;
+}
+
+bool IsValidWebCustomPlatformName(std::string_view name)
+{
+    if (name.empty() || name.size() >= kMaxWebCustomFormatSize)
+        return false;
+    const auto& names = WebCustomPlatformNames();
+    return base::ranges::find(names, name) != names.end();
+}
+
+} // namespace
+
 Clipboard::HtmlData::HtmlData() noexcept = default;
 Clipboard::HtmlData::~HtmlData() = default;
 Clipboard::HtmlData::HtmlData(const HtmlData&) = default;
@@ -165,30 +189,45 @@ void Clipboard::ClearLastModifiedTime()
 
 std::map<std::string, std::string> Clipboard::ExtractCustomPlatformNames(ClipboardBuffer buffer, const DataTransferEndpoint* data_dst) const
 {
-    // Read the JSON metadata payload.
     std::map<std::string, std::string> custom_format_names;
-    if (IsFormatAvailable(ui::ClipboardFormatType::WebCustomFormatMap(), buffer, data_dst)) {
-        std::string custom_format_json;
-        // Read the custom format map.
-        ReadData(ui::ClipboardFormatType::WebCustomFormatMap(), data_dst, &custom_format_json);
-        if (!custom_format_json.empty()) {
-            std::optional<base::Value> json_val = base::JSONReader::Read(custom_format_json);
-            if (json_val.has_value() && json_val->is_dict()) {
-                for (const auto it : json_val->GetDict()) {
-                    const std::string* custom_format_name = it.second.GetIfString();
-                    if (custom_format_name) {
-                        // Prepend "web " prefix to the custom format.
-                        std::string web_top_level_mime_type;
-                        std::string web_mime_sub_type;
-                        std::string web_format = it.first;
-                        if (net::ParseMimeTypeWithoutParameter(web_format, &web_top_level_mime_type, &web_mime_sub_type)) {
-                            std::string web_custom_format_string = base::StrCat({ kWebClipboardFormatPrefix, web_top_level_mime_type, "/", web_mime_sub_type });
-                            custom_format_names.emplace(std::move(web_custom_format_string), *custom_format_name);
-                        }
-                    }
-                }
-            }
+    if (!IsFormatAvailable(ui::ClipboardFormatType::WebCustomFormatMap(),
+            buffer, data_dst)) {
+        return custom_format_names;
+    }
+
+    std::string custom_format_json;
+    if (!ReadDataWithMaxSize(ui::ClipboardFormatType::WebCustomFormatMap(),
+            data_dst, kMaxWebCustomFormatMapSize, &custom_format_json)
+        || custom_format_json.empty()) {
+        return custom_format_names;
+    }
+
+    std::optional<base::Value> json_val = base::JSONReader::Read(custom_format_json);
+    if (!json_val.has_value() || !json_val->is_dict()
+        || json_val->GetDict().size()
+            > static_cast<size_t>(kMaxRegisteredClipboardFormats)) {
+        return custom_format_names;
+    }
+
+    const std::string_view kWebPrefix(kWebClipboardFormatPrefix);
+    for (const auto& it : json_val->GetDict()) {
+        const std::string* custom_format_name = it.second.GetIfString();
+        if (!custom_format_name
+            || !IsValidWebCustomPlatformName(*custom_format_name)
+            || it.first.size() >= kMaxWebCustomFormatSize - kWebPrefix.size()) {
+            continue;
         }
+
+        std::string web_top_level_mime_type;
+        std::string web_mime_sub_type;
+        if (!net::ParseMimeTypeWithoutParameter(
+                it.first, &web_top_level_mime_type, &web_mime_sub_type)) {
+            continue;
+        }
+        std::string web_custom_format_string = base::StrCat(
+            { kWebPrefix, web_top_level_mime_type, "/", web_mime_sub_type });
+        custom_format_names.emplace(
+            std::move(web_custom_format_string), *custom_format_name);
     }
     return custom_format_names;
 }
@@ -451,6 +490,19 @@ void Clipboard::ReadData(const ClipboardFormatType& format, const DataTransferEn
     std::string result;
     ReadData(format, data_dst, &result);
     std::move(callback).Run(std::move(result));
+}
+
+bool Clipboard::ReadDataWithMaxSize(const ClipboardFormatType& format,
+    const DataTransferEndpoint* data_dst, size_t max_size,
+    std::string* result) const
+{
+    CHECK(result);
+    result->clear();
+    ReadData(format, data_dst, result);
+    if (result->size() < max_size)
+        return true;
+    result->clear();
+    return false;
 }
 
 } // namespace ui

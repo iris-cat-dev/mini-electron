@@ -14,14 +14,20 @@
 #include "third_party/blink/renderer/platform/wtf/threading.h"
 #include "v8/include/cppgc/common.h" // IWYU pragma: export (for ThreadState::StackState alias)
 #include "v8/include/cppgc/heap-consistency.h"
+#if defined(MINI_UI_QUICKJS)
+#include "runtime/ui/native_heap.h"
+#else
 #include "v8/include/v8-callbacks.h"
 #include "v8/include/v8-cppgc.h"
 #include "v8/include/v8-profiler.h"
+#endif
 
 namespace v8 {
 class CppHeap;
 class EmbedderGraph;
 class EmbedderRootsHandler;
+class Isolate;
+class Platform;
 } // namespace v8
 
 namespace blink {
@@ -60,7 +66,11 @@ public:
     {
         return heap_handle_;
     }
+#if defined(MINI_UI_QUICKJS)
+    ALWAYS_INLINE mini_ui::NativeHeap& cpp_heap() const
+#else
     ALWAYS_INLINE v8::CppHeap& cpp_heap() const
+#endif
     {
         return *cpp_heap_;
     }
@@ -90,6 +100,7 @@ public:
     // Collects garbage as long as live memory decreases (capped at 5).
     void CollectAllGarbageForTesting(StackState stack_state = StackState::kNoHeapPointers);
 
+#if !defined(MINI_UI_QUICKJS)
     // Perform stop-the-world garbage collection in young generation for testing.
     void CollectGarbageInYoungGenerationForTesting(StackState stack_state = StackState::kNoHeapPointers);
 
@@ -112,13 +123,22 @@ public:
     // Copies a string into the V8 heap profiler, and returns a pointer to the
     // copy. Only valid while taking a heap snapshot.
     const char* CopyNameForHeapSnapshot(const char* name) const;
+#endif
 
 private:
+#if defined(MINI_UI_QUICKJS)
+    ThreadState();
+#else
     explicit ThreadState(v8::Platform*);
+#endif
     ~ThreadState();
 
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<mini_ui::NativeHeap> cpp_heap_;
+#else
     std::unique_ptr<v8::CppHeap> cpp_heap_;
     std::unique_ptr<v8::EmbedderRootsHandler> embedder_roots_handler_;
+#endif
     cppgc::HeapHandle& heap_handle_;
     v8::Isolate* isolate_ = nullptr;
     base::PlatformThreadId thread_id_;

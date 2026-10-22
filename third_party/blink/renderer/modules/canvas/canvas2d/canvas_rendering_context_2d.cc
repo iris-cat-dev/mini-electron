@@ -45,12 +45,17 @@
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/time/time.h"
+#include "base/trace_event/base_tracing.h"
 #include "base/trace_event/common/trace_event_common.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/texture_layer.h" // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2044)
 #include "cc/layers/texture_layer_impl.h"
+#endif
 #include "cc/paint/paint_canvas.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/resources/transferable_resource.h"
 #include "gpu/command_buffer/client/context_support.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
@@ -61,7 +66,11 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_rendering_context_2d_settings.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_will_read_frequently.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasrenderingcontext2d_imagebitmaprenderingcontext.h"
+#else
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasrenderingcontext2d_gpucanvascontext_imagebitmaprenderingcontext_webgl2renderingcontext_webglrenderingcontext.h"
+#endif
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
@@ -91,10 +100,14 @@
 #include "third_party/blink/renderer/modules/canvas/canvas2d/path_2d.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_layer_bridge.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_canvas.h" // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2044)
@@ -147,6 +160,7 @@ static mojom::blink::ColorScheme GetColorSchemeFromCanvas(HTMLCanvasElement* can
     return mojom::blink::ColorScheme::kLight;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 gpu::ContextSupport* GetContextSupport()
@@ -158,6 +172,7 @@ gpu::ContextSupport* GetContextSupport()
 }
 
 } // namespace
+#endif
 
 CanvasRenderingContext* CanvasRenderingContext2D::Factory::Create(CanvasRenderingContextHost* host, const CanvasContextCreationAttributesCore& attrs)
 {
@@ -195,14 +210,15 @@ bool CanvasRenderingContext2D::IsOriginTopLeft() const
 
 bool CanvasRenderingContext2D::IsComposited() const
 {
-    // The following case is necessary for handling the special case of canvases
-    // in the dev tools overlay.
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     const HTMLCanvasElement* const element = canvas();
     auto* settings = element->GetDocument().GetSettings();
-    if (settings && !settings->GetAcceleratedCompositingEnabled()) {
+    if (settings && !settings->GetAcceleratedCompositingEnabled())
         return false;
-    }
     return element->IsComposited();
+#endif
 }
 
 void CanvasRenderingContext2D::Stop()
@@ -273,7 +289,9 @@ void CanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(context_lost_mode_ != kWebGLLoseContextLostContext);
+#endif
 
     // If lost mode is |kSyntheticLostContext| and |context_restorable_| is set to
     // true, it means context is forced to be lost for testing purpose. Restore
@@ -288,11 +306,13 @@ void CanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
 
     // If RealLostContext, it means the context was not lost due to surface
     // failure but rather due to a an eviction, which means image buffer exists.
+#if !defined(MINI_UI_QUICKJS)
     if (context_lost_mode_ == kRealLostContext && IsPaintable() && Restore()) {
         try_restore_context_event_timer_.Stop();
         DispatchContextRestoredEvent(nullptr);
         return;
     }
+#endif
 
     // If it fails to restore the context, TryRestoreContextEvent again.
     if (++try_restore_context_attempt_count_ > kMaxTryRestoreContextAttempts) {
@@ -307,6 +327,7 @@ void CanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool CanvasRenderingContext2D::Restore()
 {
     CanvasRenderingContextHost* host = Host();
@@ -340,10 +361,15 @@ bool CanvasRenderingContext2D::Restore()
 
     return host->ResourceProvider();
 }
+#endif
 
 void CanvasRenderingContext2D::WillDrawImage(CanvasImageSource* source) const
 {
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(source);
+#else
     canvas()->WillDrawImageTo2DContext(source);
+#endif
 }
 
 bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info, const void* pixels, size_t row_bytes, int x, int y)
@@ -471,31 +497,22 @@ sk_sp<PaintFilter> CanvasRenderingContext2D::StateGetFilter()
 
 cc::PaintCanvas* CanvasRenderingContext2D::GetOrCreatePaintCanvas()
 {
-    if (isContextLost()) [[unlikely]] {
+    if (isContextLost()) [[unlikely]]
         return nullptr;
-    }
-
-    Canvas2DLayerBridge* bridge = canvas()->GetOrCreateCanvas2DLayerBridge();
-    if (bridge == nullptr) [[unlikely]] {
+#if !defined(MINI_UI_QUICKJS)
+    if (canvas()->GetOrCreateCanvas2DLayerBridge() == nullptr) [[unlikely]]
         return nullptr;
-    }
-
+#endif
     CanvasResourceProvider* provider = ResourceProvider();
     if (provider != nullptr) [[likely]] {
-        // If we already had a provider, we can check whether it recorded ops passed
-        // the autoflush limit.
-        if (layer_count_ == 0) [[likely]] {
-            // TODO(crbug.com/1246486): Make auto-flushing layer friendly.
+        if (layer_count_ == 0) [[likely]]
             provider->FlushIfRecordingLimitExceeded();
-        }
     } else {
-        // If we have no provider, try creating one.
-        provider = canvas()->GetOrCreateResourceProviderWithCurrentRasterModeHint();
-        if (provider == nullptr) [[unlikely]] {
+        provider =
+            canvas()->GetOrCreateResourceProviderWithCurrentRasterModeHint();
+        if (provider == nullptr) [[unlikely]]
             return nullptr;
-        }
     }
-
     return &provider->Recorder().getRecordingCanvas();
 }
 
@@ -714,28 +731,30 @@ int CanvasRenderingContext2D::Height() const
 
 bool CanvasRenderingContext2D::CanCreateCanvas2dResourceProvider() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return !!canvas()->GetOrCreateResourceProviderWithCurrentRasterModeHint();
+#else
     return canvas()->GetOrCreateCanvas2DLayerBridge();
+#endif
 }
 
-scoped_refptr<StaticBitmapImage> blink::CanvasRenderingContext2D::GetImage(FlushReason reason)
+scoped_refptr<StaticBitmapImage> blink::CanvasRenderingContext2D::GetImage(
+    FlushReason reason)
 {
-    CanvasHibernationHandler* hibernation_handler = canvas()->GetHibernationHandler();
-    if (!hibernation_handler) {
+#if !defined(MINI_UI_QUICKJS)
+    CanvasHibernationHandler* hibernation_handler =
+        canvas()->GetHibernationHandler();
+    if (!hibernation_handler)
         return nullptr;
-    }
-
     if (hibernation_handler->IsHibernating()) {
-        return UnacceleratedStaticBitmapImage::Create(hibernation_handler->GetImage());
+        return UnacceleratedStaticBitmapImage::Create(
+            hibernation_handler->GetImage());
     }
-
-    if (!Host()->IsResourceValid()) {
+#endif
+    if (!Host()->IsResourceValid())
         return nullptr;
-    }
-    // GetOrCreateResourceProvider needs to be called before FlushRecording, to
-    // make sure "hint" is properly taken into account.
-    if (!Host()->GetOrCreateResourceProviderWithCurrentRasterModeHint()) {
+    if (!Host()->GetOrCreateResourceProviderWithCurrentRasterModeHint())
         return nullptr;
-    }
     Host()->FlushRecording(reason);
     return Host()->ResourceProvider()->Snapshot(reason);
 }
@@ -765,6 +784,7 @@ void CanvasRenderingContext2D::FinalizeFrame(FlushReason reason)
     CHECK(host);
 
     host->FlushRecording(reason);
+#if !defined(MINI_UI_QUICKJS)
     if (reason == FlushReason::kCanvasPushFrame) {
         if (host->IsDisplayed()) {
             // Make sure the GPU is never more than two animation frames behind.
@@ -780,6 +800,7 @@ void CanvasRenderingContext2D::FinalizeFrame(FlushReason reason)
             host->RateLimiter()->Tick();
         }
     }
+#endif
 }
 
 CanvasRenderingContextHost* CanvasRenderingContext2D::GetCanvasRenderingContextHost() const
@@ -818,52 +839,32 @@ void CanvasRenderingContext2D::OnPageVisibilityChangeWhenPaintable()
 {
     CHECK(IsPaintable());
     HTMLCanvasElement* const element = canvas();
-    Canvas2DLayerBridge* bridge = canvas()->GetCanvas2DLayerBridge();
-
-    bool page_is_visible = element->IsPageVisible();
-    if (element->ResourceProvider()) {
+    const bool page_is_visible = element->IsPageVisible();
+    if (element->ResourceProvider())
         element->ResourceProvider()->SetResourceRecyclingEnabled(page_is_visible);
-    }
-
-    // Conserve memory.
+#if !defined(MINI_UI_QUICKJS)
+    Canvas2DLayerBridge* bridge = canvas()->GetCanvas2DLayerBridge();
     if (element->GetRasterMode() == RasterMode::kGPU) {
-        if (auto* context_support = GetContextSupport()) {
+        if (auto* context_support = GetContextSupport())
             context_support->SetAggressivelyFreeResources(!page_is_visible);
-        }
     }
-
-    if (features::IsCanvas2DHibernationEnabled() && element->ResourceProvider() && element->GetRasterMode() == RasterMode::kGPU && !page_is_visible) {
+    if (features::IsCanvas2DHibernationEnabled()
+        && element->ResourceProvider()
+        && element->GetRasterMode() == RasterMode::kGPU
+        && !page_is_visible) {
         bridge->InitiateHibernationIfNecessary();
     }
-
-    // The impl tree may have dropped the transferable resource for this canvas
-    // while it wasn't visible. Make sure that it gets pushed there again, now
-    // that we've visible.
-    //
-    // This is done all the time, but it is especially important when canvas
-    // hibernation is disabled. In this case, when the impl-side active tree
-    // releases the TextureLayer's transferable resource, it will not be freed
-    // since the texture has not been cleared above (there is a remaining
-    // reference held from the TextureLayer). Then the next time the page becomes
-    // visible, the TextureLayer will note the resource hasn't changed (in
-    // Update()), and will not add the layer to the list of those that need to
-    // push properties. But since the impl-side tree no longer holds the resource,
-    // we need TreeSynchronizer to always consider this layer.
-    //
-    // This makes sure that we do push properties. It is not needed when canvas
-    // hibernation is enabled (since the resource will have changed, it will be
-    // pushed), but we do it anyway, since these interactions are subtle.
-    bool resource_may_have_been_dropped = cc::TextureLayerImpl::MayEvictResourceInBackground(viz::TransferableResource::ResourceSource::kCanvas);
-    if (page_is_visible && resource_may_have_been_dropped) {
+    const bool resource_may_have_been_dropped =
+        cc::TextureLayerImpl::MayEvictResourceInBackground(
+            viz::TransferableResource::ResourceSource::kCanvas);
+    if (page_is_visible && resource_may_have_been_dropped)
         element->SetNeedsPushProperties();
-    }
-
-    if (page_is_visible && bridge->GetHibernationHandler().IsHibernating()) {
-        element->GetOrCreateResourceProviderWithCurrentRasterModeHint(); // Rude
-            // awakening
-    }
+    if (page_is_visible && bridge->GetHibernationHandler().IsHibernating())
+        element->GetOrCreateResourceProviderWithCurrentRasterModeHint();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::Layer* CanvasRenderingContext2D::CcLayer() const
 {
     if (!IsPaintable()) {
@@ -871,6 +872,7 @@ cc::Layer* CanvasRenderingContext2D::CcLayer() const
     }
     return canvas()->GetOrCreateCcLayerIfNeeded();
 }
+#endif
 
 CanvasRenderingContext2DSettings* CanvasRenderingContext2D::getContextAttributes() const
 {
@@ -992,6 +994,7 @@ void CanvasRenderingContext2D::UpdateElementAccessibility(const Path& path, Elem
     ax_object_cache->SetCanvasObjectBounds(canvas_element, element, element_rect);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // TODO(aaronhk) This is only used for the size heuristic. Delete this function
 // once always accelerate fully lands.
 void CanvasRenderingContext2D::DisableAcceleration()
@@ -1003,6 +1006,7 @@ bool CanvasRenderingContext2D::ShouldDisableAccelerationBecauseOfReadback() cons
 {
     return canvas()->ShouldDisableAccelerationBecauseOfReadback();
 }
+#endif
 
 bool CanvasRenderingContext2D::IsCanvas2DBufferValid() const
 {

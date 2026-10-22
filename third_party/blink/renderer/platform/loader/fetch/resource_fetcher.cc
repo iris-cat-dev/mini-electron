@@ -44,7 +44,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
-#include "services/network/public/cpp/request_mode.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/blink/public/common/features.h"
@@ -61,6 +60,7 @@
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
+#include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
@@ -669,6 +669,7 @@ ResourceLoadPriority ResourceFetcher::AdjustImagePriority(const ResourceLoadPrio
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The following code disables AdjustImagePriority when there is LCPP
     // LcpElementLocator hint data. The reason why not to early return from this
     // function is that we want to record UMA with following
@@ -680,6 +681,7 @@ ResourceLoadPriority ResourceFetcher::AdjustImagePriority(const ResourceLoadPrio
         new_priority = priority_so_far;
     }
 
+#endif
     // Only records HTTP family URLs (e.g. Exclude data URLs).
     if (resource_request.Url().ProtocolIsInHTTPFamily()) {
         MaybeRecordBoostImagePriorityReason(priority_so_far != new_priority, is_potentially_lcp_element, is_small_image);
@@ -702,7 +704,9 @@ ResourceFetcher::ResourceFetcher(const ResourceFetcherInit& init)
     , archive_(init.archive)
     , resource_timing_report_timer_(freezable_task_runner_, this, &ResourceFetcher::ResourceTimingReportTimerFired)
     , frame_or_worker_scheduler_(init.frame_or_worker_scheduler ? init.frame_or_worker_scheduler->GetWeakPtr() : nullptr)
+#if !defined(MINI_UI_QUICKJS)
     , blob_registry_remote_(init.context_lifecycle_notifier)
+#endif
     , context_lifecycle_notifier_(init.context_lifecycle_notifier)
     , auto_load_images_(true)
     , allow_stale_resources_(false)
@@ -769,10 +773,12 @@ const HeapHashSet<Member<Resource>> ResourceFetcher::MoveResourceStrongReference
     return std::move(document_resource_strong_refs_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::ControllerServiceWorkerMode ResourceFetcher::IsControlledByServiceWorker() const
 {
     return properties_->GetControllerServiceWorkerMode();
 }
+#endif
 
 ResourceFetcher::DeferPolicy ResourceFetcher::GetDeferPolicy(ResourceType type, const FetchParameters& params) const
 {
@@ -890,7 +896,11 @@ Resource* ResourceFetcher::CreateResourceForStaticData(const FetchParameters& pa
         return nullptr;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    const String cache_identifier = GetCacheIdentifier(url);
+#else
     const String cache_identifier = GetCacheIdentifier(url, params.GetResourceRequest().GetSkipServiceWorker());
+#endif
     // Most off-main-thread resource fetches use Resource::kRaw and don't reach
     // this point, but off-main-thread module fetches might.
     if (IsMainThread()) {
@@ -915,8 +925,12 @@ Resource* ResourceFetcher::CreateResourceForStaticData(const FetchParameters& pa
         // TODO(crbug.com/41496436): Revisit this.
     } else if (url.ProtocolIsData()) {
         int result;
+#if defined(MINI_UI_QUICKJS)
+        std::tie(result, response, data) = network_utils::ParseDataURL(url, params.GetResourceRequest().HttpMethod());
+#else
         std::tie(result, response, data) = network_utils::ParseDataURL(
             url, params.GetResourceRequest().HttpMethod(), params.GetResourceRequest().GetUkmSourceId(), /*UkmRecorder()*/ nullptr);
+#endif
         if (result != net::OK) {
             return nullptr;
         }
@@ -1117,10 +1131,10 @@ KURL ResourceFetcher::PrepareRequestForWebBundle(ResourceRequest& resource_reque
         resource_request.SetWebBundleTokenParams(
             ResourceRequestHead::WebBundleTokenParams(bundle->GetBundleUrl(), bundle->WebBundleToken(), mojo::NullRemote()));
 
-        // Skip the service worker for a short term solution.
-        // TODO(crbug.com/1240424): Figure out the ideal design of the service
-        // worker integration.
+#if !defined(MINI_UI_QUICKJS)
+        // Skip the service worker for resources resolved through the bundle.
         resource_request.SetSkipServiceWorker(true);
+#endif
     }
     if (resource_request.Url().Protocol() == "uuid-in-package" && resource_request.GetWebBundleTokenParams()) {
         // We use the bundle URL for uuid-in-package: resources for security
@@ -1255,7 +1269,11 @@ Resource* ResourceFetcher::RequestResource(FetchParameters& params, const Resour
             // found, we may need to make it block the onload event.
             MakePreloadedResourceBlockOnloadIfNeeded(resource, params);
         } else if (IsMainThread()) {
+#if defined(MINI_UI_QUICKJS)
+            resource = MemoryCache::Get()->ResourceForURL(params.Url(), GetCacheIdentifier(params.Url()));
+#else
             resource = MemoryCache::Get()->ResourceForURL(params.Url(), GetCacheIdentifier(params.Url(), params.GetResourceRequest().GetSkipServiceWorker()));
+#endif
             if (resource) {
                 policy = DetermineRevalidationPolicy(resource_type, params, *resource, is_static_data);
                 scoped_refptr<const SecurityOrigin> top_frame_origin = resource_request.TopFrameOrigin();
@@ -1419,7 +1437,9 @@ void ResourceFetcher::InitializeRevalidation(ResourceRequest& revalidating_reque
     DCHECK(resource->IsLoaded());
     DCHECK(resource->CanUseCacheValidator());
     DCHECK(!resource->IsCacheValidator());
+#if !defined(MINI_UI_QUICKJS)
     DCHECK_EQ(properties_->GetControllerServiceWorkerMode(), mojom::ControllerServiceWorkerMode::kNoController);
+#endif
     // RawResource doesn't support revalidation.
     CHECK(!IsRawResource(*resource));
 
@@ -1469,9 +1489,15 @@ bool UseRenderBlockingTaskPriority(const mojom::blink::RequestContextType reques
 
 } // namespace
 
+#if defined(MINI_UI_QUICKJS)
 std::unique_ptr<URLLoader> ResourceFetcher::CreateURLLoader(const network::ResourceRequest& network_request, const ResourceLoaderOptions& options,
-    const mojom::blink::RequestContextType request_context, const RenderBlockingBehavior render_blocking_behavior,
+    mojom::blink::RequestContextType request_context, RenderBlockingBehavior render_blocking_behavior,
+    bool is_from_origin_dirty_style_sheet)
+#else
+std::unique_ptr<URLLoader> ResourceFetcher::CreateURLLoader(const network::ResourceRequest& network_request, const ResourceLoaderOptions& options,
+    mojom::blink::RequestContextType request_context, RenderBlockingBehavior render_blocking_behavior,
     const std::optional<base::UnguessableToken>& service_worker_race_network_request_token, bool is_from_origin_dirty_style_sheet)
+#endif
 {
     DCHECK(!GetProperties().IsDetached());
     // TODO(http://crbug.com/1252983): Revert this to DCHECK.
@@ -1499,10 +1525,16 @@ std::unique_ptr<URLLoader> ResourceFetcher::CreateURLLoader(const network::Resou
             }
         }
     }
+#if defined(MINI_UI_QUICKJS)
+    return loader_factory_->CreateURLLoader(network_request, options, freezable_task_runner_, task_runner, back_forward_cache_loader_helper_,
+        is_from_origin_dirty_style_sheet);
+#else
     return loader_factory_->CreateURLLoader(network_request, options, freezable_task_runner_, task_runner, back_forward_cache_loader_helper_,
         service_worker_race_network_request_token, is_from_origin_dirty_style_sheet);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CodeCacheHost* ResourceFetcher::GetCodeCacheHost()
 {
     DCHECK(!GetProperties().IsDetached());
@@ -1510,6 +1542,7 @@ CodeCacheHost* ResourceFetcher::GetCodeCacheHost()
     CHECK(loader_factory_);
     return loader_factory_->GetCodeCacheHost();
 }
+#endif
 
 void ResourceFetcher::AddToMemoryCacheIfNeeded(const FetchParameters& params, Resource* resource)
 {
@@ -1522,7 +1555,11 @@ void ResourceFetcher::AddToMemoryCacheIfNeeded(const FetchParameters& params, Re
 
 Resource* ResourceFetcher::CreateResourceForLoading(const FetchParameters& params, const ResourceFactory& factory)
 {
+#if defined(MINI_UI_QUICKJS)
+    const String cache_identifier = GetCacheIdentifier(params.GetResourceRequest().Url());
+#else
     const String cache_identifier = GetCacheIdentifier(params.GetResourceRequest().Url(), params.GetResourceRequest().GetSkipServiceWorker());
+#endif
     DCHECK(!IsMainThread() || params.IsStaleRevalidation() || !MemoryCache::Get()->ResourceForURL(params.GetResourceRequest().Url(), cache_identifier));
 
     RESOURCE_LOADING_DVLOG(1) << "Loading Resource for " << params.GetResourceRequest().Url().ElidedString();
@@ -1878,6 +1915,7 @@ std::pair<ResourceFetcher::RevalidationPolicy, const char*> ResourceFetcher::Det
             return { RevalidationPolicy::kReload, "Revalidation is harmful for non-matched preloads." };
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // See if the resource has usable ETag or Last-modified headers. If the page
         // is controlled by the ServiceWorker, we choose the Reload policy because
         // the revalidation headers should not be exposed to the
@@ -1888,6 +1926,9 @@ std::pair<ResourceFetcher::RevalidationPolicy, const char*> ResourceFetcher::Det
         // non-S13nSW, we don't know what controller the request will ultimately go
         // to (due to skipWaiting) so be conservative.
         if (existing_resource.CanUseCacheValidator() && properties_->GetControllerServiceWorkerMode() == mojom::ControllerServiceWorkerMode::kNoController) {
+#else
+        if (existing_resource.CanUseCacheValidator()) {
+#endif
             // If the resource is already a cache validator but not started yet, the
             // |Use| policy should be applied to subsequent requests.
             if (existing_resource.IsCacheValidator()) {
@@ -2107,11 +2148,13 @@ void ResourceFetcher::HandleLoaderFinish(Resource* resource, base::TimeTicks res
     // kRaw might not be subresource, and we do not need them.
     if (resource->GetType() != ResourceType::kRaw) {
         ++subresource_load_metrics_.number_of_subresources_loaded;
-        if (resource->GetResponse().WasFetchedViaServiceWorker()) {
+#if !defined(MINI_UI_QUICKJS)
+        if (resource->GetResponse().WasFetchedViaServiceWorker())
             ++subresource_load_metrics_.number_of_subresource_loads_handled_by_service_worker;
-        }
+#endif
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsControlledByServiceWorker() == mojom::blink::ControllerServiceWorkerMode::kControlled) {
         if (resource->GetResponse().WasFetchedViaServiceWorker()) {
             base::UmaHistogramEnumeration("ServiceWorker.Subresource.Handled.Type2", resource->GetType());
@@ -2121,6 +2164,7 @@ void ResourceFetcher::HandleLoaderFinish(Resource* resource, base::TimeTicks res
         UpdateServiceWorkerSubresourceMetrics(
             resource->GetType(), resource->GetResponse().WasFetchedViaServiceWorker(), resource->GetResponse().GetServiceWorkerRouterInfo());
     }
+#endif
 
     context_->UpdateSubresourceLoadMetrics(subresource_load_metrics_);
 
@@ -2328,6 +2372,10 @@ void ResourceFetcher::ScheduleLoadingPotentiallyUnusedPreload(Resource* resource
     }
     deferred_preloads_.insert(key, resource);
 
+#if defined(MINI_UI_QUICKJS)
+    // UI has no browser LCP predictor; keep the existing posted preload start.
+    ScheduleStartLoadAndFinishIfFailed(resource, /*is_potentially_unused_preload=*/true);
+#else
     switch (features::kLcppDeferUnusedPreloadTiming.Get()) {
     case features::LcppDeferUnusedPreloadTiming::kPostTask:
         ScheduleStartLoadAndFinishIfFailed(resource, /*is_potentially_unused_preload=*/true);
@@ -2342,6 +2390,7 @@ void ResourceFetcher::ScheduleLoadingPotentiallyUnusedPreload(Resource* resource
                 /*is_potentially_unused_preload=*/true));
         break;
     }
+#endif
 }
 
 void ResourceFetcher::StartLoadAndFinishIfFailed(Resource* resource, bool is_potentially_unused_preload)
@@ -2481,26 +2530,29 @@ void ResourceFetcher::UpdateAllImageResourcePriorities()
     to_be_removed.clear();
 }
 
-String ResourceFetcher::GetCacheIdentifier(const KURL& url, bool skip_service_worker) const
+#if defined(MINI_UI_QUICKJS)
+String ResourceFetcher::GetCacheIdentifier(const KURL& url) const
 {
-    if (!skip_service_worker && properties_->GetControllerServiceWorkerMode() != mojom::ControllerServiceWorkerMode::kNoController) {
-        return String::Number(properties_->ServiceWorkerId());
-    }
-
-    // Requests that can be satisfied via `archive_` (i.e. MHTML) or
-    // `subresource_web_bundles_` should not participate in the global caching,
-    // but should use a bundle/mhtml-specific cache.
-    if (archive_) {
+    if (archive_)
         return archive_->GetCacheIdentifier();
-    }
-
     SubresourceWebBundle* bundle = GetMatchingBundle(url);
-    if (bundle) {
+    if (bundle)
         return bundle->GetCacheIdentifier();
-    }
-
     return MemoryCache::DefaultCacheIdentifier();
 }
+#else
+String ResourceFetcher::GetCacheIdentifier(const KURL& url, bool skip_service_worker) const
+{
+    if (!skip_service_worker && properties_->GetControllerServiceWorkerMode() != mojom::ControllerServiceWorkerMode::kNoController)
+        return String::Number(properties_->ServiceWorkerId());
+    if (archive_)
+        return archive_->GetCacheIdentifier();
+    SubresourceWebBundle* bundle = GetMatchingBundle(url);
+    if (bundle)
+        return bundle->GetCacheIdentifier();
+    return MemoryCache::DefaultCacheIdentifier();
+}
+#endif
 
 std::optional<base::UnguessableToken> ResourceFetcher::GetSubresourceBundleToken(const KURL& url) const
 {
@@ -2633,7 +2685,9 @@ void ResourceFetcher::RevalidateStaleResource(Resource* stale_resource)
     // null `world` in the ResourceLoaderOptions below.
     FetchParameters params(std::move(request), ResourceLoaderOptions(/*world=*/nullptr));
     params.SetStaleRevalidation(true);
+#if !defined(MINI_UI_QUICKJS)
     params.MutableResourceRequest().SetSkipServiceWorker(true);
+#endif
     // Stale revalidation resource requests should be very low regardless of
     // the |type|.
     params.MutableResourceRequest().SetPriority(ResourceLoadPriority::kVeryLow);
@@ -2642,10 +2696,16 @@ void ResourceFetcher::RevalidateStaleResource(Resource* stale_resource)
 
 mojom::blink::BlobRegistry* ResourceFetcher::GetBlobRegistry()
 {
+#if defined(MINI_UI_QUICKJS)
+    return BlobDataHandle::GetBlobRegistry();
+#else
     if (!blob_registry_remote_.is_bound()) {
-        Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(blob_registry_remote_.BindNewPipeAndPassReceiver(freezable_task_runner_));
+        Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(
+            blob_registry_remote_.BindNewPipeAndPassReceiver(
+                freezable_task_runner_));
     }
     return blob_registry_remote_.get();
+#endif
 }
 
 FrameOrWorkerScheduler* ResourceFetcher::GetFrameOrWorkerScheduler()
@@ -2806,9 +2866,13 @@ void ResourceFetcher::MarkEarlyHintConsumedIfNeeded(uint64_t inspector_id, Resou
         unused_early_hints_preloaded_resources_.erase(iter);
         // The network service may not reuse the response fetched by the early hints
         // due to cache control policies.
-        if (!response.NetworkAccessed() && (!response.WasFetchedViaServiceWorker() || response.IsServiceWorkerPassThrough())) {
+#if defined(MINI_UI_QUICKJS)
+        if (!response.NetworkAccessed())
             resource->SetIsPreloadedByEarlyHints();
-        }
+#else
+        if (!response.NetworkAccessed() && (!response.WasFetchedViaServiceWorker() || response.IsServiceWorkerPassThrough()))
+            resource->SetIsPreloadedByEarlyHints();
+#endif
     }
 }
 
@@ -2898,7 +2962,9 @@ void ResourceFetcher::Trace(Visitor* visitor) const
     visitor->Trace(matched_preloads_);
     visitor->Trace(deferred_preloads_);
     visitor->Trace(resource_timing_info_map_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(blob_registry_remote_);
+#endif
     visitor->Trace(subresource_web_bundles_);
     visitor->Trace(document_resource_strong_refs_);
     visitor->Trace(context_lifecycle_notifier_);

@@ -51,7 +51,9 @@ v8::Local<v8::Value> WindowProperties::AnonymousNamedGetter(const AtomicString& 
     // https://html.spec.whatwg.org/C/#document-tree-child-browsing-context-name-property-set
     Frame* child = frame->Tree().ScopedChild(name);
     if (child) {
+#if !defined(MINI_UI_QUICKJS)
         window->ReportCoopAccess("named");
+#endif
         window->RecordWindowProxyAccessMetrics(WebFeature::kWindowProxyCrossOriginAccessNamedGetter,
             WebFeature::kWindowProxyCrossOriginAccessFromOtherPageNamedGetter, mojom::blink::WindowProxyAccessType::kAnonymousNamedGetter);
         UseCounter::Count(CurrentExecutionContext(isolate), WebFeature::kNamedAccessOnWindow_ChildBrowsingContext);
@@ -86,7 +88,9 @@ v8::Local<v8::Value> WindowProperties::AnonymousNamedGetter(const AtomicString& 
     if (!has_named_item && !has_id_item) {
         return v8::Local<v8::Value>();
     }
+#if !defined(MINI_UI_QUICKJS)
     window->ReportCoopAccess("named");
+#endif
     window->RecordWindowProxyAccessMetrics(WebFeature::kWindowProxyCrossOriginAccessNamedGetter,
         WebFeature::kWindowProxyCrossOriginAccessFromOtherPageNamedGetter, mojom::blink::WindowProxyAccessType::kAnonymousNamedGetter);
 

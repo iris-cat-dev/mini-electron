@@ -19,7 +19,9 @@
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/include/core/SkYUVAInfo.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/ganesh/GrTypes.h"
+#endif
 #include "third_party/skia/include/private/SkGainmapInfo.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/hdr_metadata.h"
@@ -58,8 +60,10 @@ public:
         // Constructor for RGBA images.
         explicit Image(const SkPixmap* pixmap);
 
+#if !defined(MINI_UI_QUICKJS)
         // Constructor for YUVA images.
         Image(base::span<const SkPixmap> yuva_pixmaps, const SkYUVAInfo& yuva_info, const SkColorSpace* color_space);
+#endif
 
         // The pixmaps for each plane.
         std::array<const SkPixmap*, SkYUVAInfo::kMaxPlanes> pixmaps = { nullptr, nullptr, nullptr, nullptr };
@@ -126,6 +130,7 @@ public:
     ServiceImageTransferCacheEntry(ServiceImageTransferCacheEntry&& other);
     ServiceImageTransferCacheEntry& operator=(ServiceImageTransferCacheEntry&& other);
 
+#if !defined(MINI_UI_QUICKJS)
     // Populates this entry using the result of a hardware decode. The assumption
     // is that |plane_images| are backed by textures that are in turn backed by a
     // buffer (dmabuf in Chrome OS) containing the planes of the decoded image.
@@ -141,6 +146,7 @@ public:
     // Returns true if the entry can be built, false otherwise.
     bool BuildFromHardwareDecodedImage(GrDirectContext* gr_context, std::vector<sk_sp<SkImage>> plane_images, SkYUVAInfo::PlaneConfig plane_config,
         SkYUVAInfo::Subsampling subsampling, SkYUVColorSpace yuv_color_space, size_t buffer_byte_size, bool needs_mips);
+#endif
 
     // ServiceTransferCacheEntry implementation:
     size_t CachedSize() const final;
@@ -164,6 +170,7 @@ public:
         return gainmap_info_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Ensures the cached image has mips.
     void EnsureMips();
 
@@ -187,6 +194,7 @@ public:
         return plane_images_.size();
     }
     bool fits_on_gpu() const;
+#endif
 
     const std::optional<gfx::HDRMetadata>& hdr_metadata() const
     {
@@ -194,8 +202,10 @@ public:
     }
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     raw_ptr<GrDirectContext, DanglingUntriaged> gr_context_ = nullptr;
     raw_ptr<skgpu::graphite::Recorder> graphite_recorder_ = nullptr;
+#endif
     sk_sp<SkImage> image_;
 
     // HDR local tone mapping may be done with a gainmap.
@@ -211,12 +221,14 @@ private:
     // (even if the size of the image changes due to mipmaps being requested).
     size_t size_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // The individual planes that are used by `image_` when `image_` is a YUVA
     // image. The planes are kept around for use in EnsureMips(), memory dumps,
     // and unit tests.
     std::optional<SkYUVAInfo> yuva_info_;
     std::vector<sk_sp<SkImage>> plane_images_;
     std::vector<size_t> plane_sizes_;
+#endif
 };
 
 } // namespace cc

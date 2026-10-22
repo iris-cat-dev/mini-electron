@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_url_loader.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -31,7 +33,9 @@
 #include "third_party/blink/public/platform/web_url_response.h"
 #include "third_party/blink/renderer/platform/back_forward_cache_buffer_limit_tracker.h"
 #include "third_party/blink/renderer/platform/loader/fetch/back_forward_cache_loader_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/background_code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
@@ -194,6 +198,18 @@ BackgroundResourceFetchSupportStatus CanHandleRequestInternal(
 
 class BackgroundURLLoader::Context : public WTF::ThreadSafeRefCounted<BackgroundURLLoader::Context> {
 public:
+#if defined(MINI_UI_QUICKJS)
+    Context(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context, const Vector<String>& cors_exempt_header_list,
+        scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner, BackForwardCacheLoaderHelper* back_forward_cache_loader_helper)
+        : background_resource_fetch_context_(std::move(background_resource_fetch_context))
+        , cors_exempt_header_list_(cors_exempt_header_list)
+        , unfreezable_task_runner_(std::move(unfreezable_task_runner))
+        , background_task_runner_(background_resource_fetch_context_->GetTaskRunner())
+        , back_forward_cache_loader_helper_(std::make_unique<WeakPersistent<BackForwardCacheLoaderHelper>>(back_forward_cache_loader_helper))
+    {
+        DETACH_FROM_SEQUENCE(background_sequence_checker_);
+    }
+#else
     Context(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context, const Vector<String>& cors_exempt_header_list,
         scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner, BackForwardCacheLoaderHelper* back_forward_cache_loader_helper,
         scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host)
@@ -206,6 +222,7 @@ public:
     {
         DETACH_FROM_SEQUENCE(background_sequence_checker_);
     }
+#endif
 
     ~Context()
     {
@@ -258,7 +275,11 @@ public:
     }
 
     void Start(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
-        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, bool should_use_code_cache_host, URLLoaderClient* client)
+        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
+#if !defined(MINI_UI_QUICKJS)
+        bool should_use_code_cache_host,
+#endif
+        URLLoaderClient* client)
     {
         DCHECK_CALLED_ON_VALID_SEQUENCE(main_thread_sequence_checker_);
         url_ = KURL(request->url);
@@ -268,7 +289,11 @@ public:
         PostCrossThreadTask(*background_task_runner_, FROM_HERE,
             CrossThreadBindOnce(&Context::StartOnBackground, scoped_refptr(this), std::move(background_resource_fetch_context_), std::move(request),
                 top_frame_origin ? top_frame_origin->ToUrlOrigin() : url::Origin(), no_mime_sniffing, cors_exempt_header_list_,
-                std::move(resource_load_info_notifier_wrapper), should_use_code_cache_host, std::move(background_response_processor_factory_)));
+                std::move(resource_load_info_notifier_wrapper),
+#if !defined(MINI_UI_QUICKJS)
+                should_use_code_cache_host,
+#endif
+                std::move(background_response_processor_factory_)));
     }
 
 private:
@@ -367,7 +392,10 @@ private:
 
     void StartOnBackground(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context, std::unique_ptr<network::ResourceRequest> request,
         const url::Origin& top_frame_origin, bool no_mime_sniffing, const Vector<String>& cors_exempt_header_list,
-        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, bool should_use_code_cache_host,
+        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
+#if !defined(MINI_UI_QUICKJS)
+        bool should_use_code_cache_host,
+#endif
         std::unique_ptr<BackgroundResponseProcessorFactory> background_response_processor_factory)
     {
         DCHECK_CALLED_ON_VALID_SEQUENCE(background_sequence_checker_);
@@ -397,6 +425,14 @@ private:
             loader_options |= network::mojom::kURLLoadOptionSniffMimeType;
             throttles.push_back(std::make_unique<MimeSniffingThrottle>(background_task_runner_));
         }
+#if defined(MINI_UI_QUICKJS)
+        request_id_ = resource_request_sender_->SendAsync(std::move(request), background_task_runner_, tag, loader_options, cors_exempt_header_list,
+            base::MakeRefCounted<RequestClient>(
+                this, background_task_runner_, background_response_processor_factory ? std::move(*background_response_processor_factory).Create() : nullptr),
+            background_resource_fetch_context->GetLoaderFactory(), std::move(throttles), std::move(resource_load_info_notifier_wrapper),
+            base::BindOnce(&Context::EvictFromBackForwardCacheOnBackground, this),
+            base::BindRepeating(&Context::DidBufferLoadWhileInBackForwardCacheOnBackground, this));
+#else
         request_id_ = resource_request_sender_->SendAsync(std::move(request), background_task_runner_, tag, loader_options, cors_exempt_header_list,
             base::MakeRefCounted<RequestClient>(
                 this, background_task_runner_, background_response_processor_factory ? std::move(*background_response_processor_factory).Create() : nullptr),
@@ -404,6 +440,7 @@ private:
             should_use_code_cache_host && background_code_cache_host_ ? &background_code_cache_host_->GetCodeCacheHost(background_task_runner_) : nullptr,
             base::BindOnce(&Context::EvictFromBackForwardCacheOnBackground, this),
             base::BindRepeating(&Context::DidBufferLoadWhileInBackForwardCacheOnBackground, this));
+#endif
     }
 
     void CancelOnBackground()
@@ -600,7 +637,9 @@ private:
 
     std::unique_ptr<WeakPersistent<BackForwardCacheLoaderHelper>> back_forward_cache_loader_helper_ GUARDED_BY_CONTEXT(main_thread_sequence_checker_);
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host_ GUARDED_BY_CONTEXT(background_sequence_checker_);
+#endif
 
     Deque<CrossThreadOnceFunction<void(void)>> tasks_ GUARDED_BY(tasks_lock_);
     base::Lock tasks_lock_;
@@ -629,14 +668,25 @@ bool BackgroundURLLoader::CanHandleRequest(const network::ResourceRequest& reque
     return result == BackgroundResourceFetchSupportStatus::kSupported;
 }
 
+#if defined(MINI_UI_QUICKJS)
 BackgroundURLLoader::BackgroundURLLoader(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context,
     const Vector<String>& cors_exempt_header_list, scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
-    BackForwardCacheLoaderHelper* back_forward_cache_loader_helper, scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host)
-    : context_(base::MakeRefCounted<Context>(std::move(background_resource_fetch_context), cors_exempt_header_list, std::move(unfreezable_task_runner),
-        back_forward_cache_loader_helper, std::move(background_code_cache_host)))
+    BackForwardCacheLoaderHelper* back_forward_cache_loader_helper)
+    : context_(base::MakeRefCounted<Context>(std::move(background_resource_fetch_context), cors_exempt_header_list,
+          std::move(unfreezable_task_runner), back_forward_cache_loader_helper))
 {
     CHECK(IsMainThread());
 }
+#else
+BackgroundURLLoader::BackgroundURLLoader(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context,
+    const Vector<String>& cors_exempt_header_list, scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
+    BackForwardCacheLoaderHelper* back_forward_cache_loader_helper, scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host)
+    : context_(base::MakeRefCounted<Context>(std::move(background_resource_fetch_context), cors_exempt_header_list,
+          std::move(unfreezable_task_runner), back_forward_cache_loader_helper, std::move(background_code_cache_host)))
+{
+    CHECK(IsMainThread());
+}
+#endif
 
 BackgroundURLLoader::~BackgroundURLLoader()
 {
@@ -653,6 +703,14 @@ void BackgroundURLLoader::LoadSynchronously(std::unique_ptr<network::ResourceReq
     NOTREACHED();
 }
 
+#if defined(MINI_UI_QUICKJS)
+void BackgroundURLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin,
+    bool no_mime_sniffing, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, URLLoaderClient* client)
+{
+    context_->Start(
+        std::move(request), std::move(top_frame_origin), no_mime_sniffing, std::move(resource_load_info_notifier_wrapper), client);
+}
+#else
 void BackgroundURLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin,
     bool no_mime_sniffing, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host,
     URLLoaderClient* client)
@@ -661,6 +719,7 @@ void BackgroundURLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRe
     context_->Start(
         std::move(request), std::move(top_frame_origin), no_mime_sniffing, std::move(resource_load_info_notifier_wrapper), should_use_code_cache_host, client);
 }
+#endif
 
 void BackgroundURLLoader::Freeze(LoaderFreezeMode mode)
 {
@@ -683,3 +742,5 @@ void BackgroundURLLoader::SetBackgroundResponseProcessorFactory(std::unique_ptr<
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

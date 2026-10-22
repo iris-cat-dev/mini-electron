@@ -7,16 +7,22 @@
 
 #include <memory>
 #include "base/gtest_prod_util.h"
+#include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/keyframe_model.h"
 #include "cc/animation/scroll_offset_animations.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/scroll/scroll_types.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/animation/compositor_animation_client.h"
 #include "third_party/blink/renderer/platform/animation/compositor_animation_delegate.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "ui/gfx/animation/keyframe/animation_curve.h"
 
 namespace cc {
@@ -34,10 +40,15 @@ class CompositorAnimation;
 //
 // See ScrollAnimator.h for more information about scroll animations.
 
-class CORE_EXPORT ScrollAnimatorCompositorCoordinator : public GarbageCollected<ScrollAnimatorCompositorCoordinator>,
-                                                        private CompositorAnimationClient,
-                                                        CompositorAnimationDelegate {
+class CORE_EXPORT ScrollAnimatorCompositorCoordinator : public GarbageCollected<ScrollAnimatorCompositorCoordinator>
+#if !defined(MINI_UI_QUICKJS)
+    , private CompositorAnimationClient
+    , CompositorAnimationDelegate
+#endif
+{
+#if !defined(MINI_UI_QUICKJS)
     USING_PRE_FINALIZER(ScrollAnimatorCompositorCoordinator, Dispose);
+#endif
 
 public:
     enum class RunState {
@@ -86,27 +97,41 @@ public:
 
     ScrollAnimatorCompositorCoordinator(const ScrollAnimatorCompositorCoordinator&) = delete;
     ScrollAnimatorCompositorCoordinator& operator=(const ScrollAnimatorCompositorCoordinator&) = delete;
+#if defined(MINI_UI_QUICKJS)
+    virtual ~ScrollAnimatorCompositorCoordinator();
+#else
     ~ScrollAnimatorCompositorCoordinator() override;
+#endif
 
     bool HasAnimationThatRequiresService() const;
+#if !defined(MINI_UI_QUICKJS)
     void Dispose();
+#endif
     String RunStateAsText() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void DetachElement();
+#endif
 
     virtual void ResetAnimationState();
     virtual void CancelAnimation();
+#if !defined(MINI_UI_QUICKJS)
     // Aborts the currently running scroll offset animation on the compositor
     // and continues it on the main thread. This should only be called when in
     // DocumentLifecycle::LifecycleState::CompositingClean state.
     virtual void TakeOverCompositorAnimation();
     virtual void UpdateCompositorAnimations();
+#else
+    virtual void UpdateCompositorAnimations() = 0;
+#endif
 
     virtual ScrollableArea* GetScrollableArea() const = 0;
     virtual void TickAnimation(base::TimeTicks monotonic_time) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void NotifyCompositorAnimationFinished(int group_id) = 0;
     virtual void NotifyCompositorAnimationAborted(int group_id) = 0;
 
+#endif
     RunState RunStateForTesting()
     {
         return run_state_;
@@ -121,6 +146,7 @@ protected:
 
     void ScrollOffsetChanged(const ScrollOffset&, mojom::blink::ScrollType);
 
+#if !defined(MINI_UI_QUICKJS)
     void AdjustImplOnlyScrollOffsetAnimation(const gfx::Vector2d& adjustment);
     gfx::Vector2d ImplOnlyAnimationAdjustmentForTesting()
     {
@@ -131,6 +157,7 @@ protected:
     void RemoveAnimation();
     virtual void AbortAnimation();
 
+#endif
     // "offset" in the cc scrolling code is analagous to "position" in the blink
     // scrolling code:
     // they both represent the distance from the top-left of the overflow rect to
@@ -146,6 +173,7 @@ protected:
     gfx::PointF CompositorOffsetFromBlinkOffset(ScrollOffset);
     ScrollOffset BlinkOffsetFromCompositorOffset(gfx::PointF);
 
+#if !defined(MINI_UI_QUICKJS)
     void CompositorAnimationFinished(int group_id);
     // Returns true if the compositor animation was attached to a new layer.
     bool ReattachCompositorAnimationIfNeeded(cc::AnimationTimeline*);
@@ -161,6 +189,7 @@ protected:
     // CompositorAnimationClient implementation.
     CompositorAnimation* GetCompositorAnimation() const override;
 
+#endif
     friend class Internals;
     friend class TestScrollAnimator;
     // TODO(ymalik): Tests are added as friends to access m_RunState. Use the
@@ -176,11 +205,14 @@ protected:
     // TODO(crbug.com/1313270): Remove this when ScrollAnchorTest runs on Fuchsia.
     FRIEND_TEST_ALL_PREFIXES(DISABLED_ScrollAnchorTest, ClampAdjustsAnchorAnimation);
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<CompositorAnimation> compositor_animation_;
     // The element id to which the compositor animation is attached when
     // the animation is present.
     CompositorElementId element_id_;
-    RunState run_state_;
+#endif
+    RunState run_state_ = RunState::kIdle;
+#if !defined(MINI_UI_QUICKJS)
     int compositor_animation_id() const
     {
         return compositor_animation_id_;
@@ -193,9 +225,11 @@ protected:
     // If set to true, sends a cc::ScrollOffsetAnimationUpdate to cc which will
     // abort the impl-only scroll offset animation and continue it on main
     // thread.
-    bool impl_only_animation_takeover_;
+    bool impl_only_animation_takeover_ = false;
 
+#endif
 private:
+#if !defined(MINI_UI_QUICKJS)
     bool element_detached_ = false;
 
     CompositorElementId GetScrollElementId() const;
@@ -205,8 +239,9 @@ private:
     // DocumentLifecycle::LifecycleState::CompositingClean.
     void TakeOverImplOnlyScrollOffsetAnimation();
 
-    int compositor_animation_id_;
-    int compositor_animation_group_id_;
+    int compositor_animation_id_ = 0;
+    int compositor_animation_group_id_ = 0;
+#endif
 };
 
 } // namespace blink

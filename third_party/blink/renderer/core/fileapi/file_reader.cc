@@ -41,7 +41,9 @@
 #include "third_party/blink/renderer/core/fileapi/file_error.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -96,7 +98,9 @@ public:
         if (!controller)
             return;
 
+#if !defined(MINI_UI_QUICKJS)
         reader->async_task_context()->Schedule(context, "FileReader");
+#endif
         controller->PushReader(reader);
     }
 
@@ -116,7 +120,9 @@ public:
             return;
 
         controller->FinishReader(reader, next_step);
+#if !defined(MINI_UI_QUICKJS)
         reader->async_task_context()->Cancel();
+#endif
     }
 
     explicit ThrottlingController(ExecutionContext& context)
@@ -466,7 +472,9 @@ void FileReader::DidFail(FileErrorCode error_code)
 
 void FileReader::FireEvent(const AtomicString& type)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTask async_task(GetExecutionContext(), async_task_context(), "event");
+#endif
     if (!loader_) {
         DispatchEvent(*ProgressEvent::Create(type, false, 0, 0));
         return;

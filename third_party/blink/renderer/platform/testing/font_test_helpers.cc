@@ -77,6 +77,7 @@ public:
     void FontCacheInvalidated() override
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     void ReportSuccessfulFontFamilyMatch(const AtomicString& font_family_name) override
     {
     }
@@ -104,6 +105,7 @@ public:
     void ReportLastResortFallbackFontLookup(const FontDescription& font_description, const SimpleFontData* resulting_font_data) override
     {
     }
+#endif
     void ReportNotDefGlyph() const override
     {
     }

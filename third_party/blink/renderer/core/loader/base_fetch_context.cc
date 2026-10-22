@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/core/loader/base_fetch_context.h"
 
 #include "base/command_line.h"
-#include "services/network/public/cpp/request_mode.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/switches.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"

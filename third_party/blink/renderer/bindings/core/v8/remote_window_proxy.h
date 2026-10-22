@@ -30,6 +30,7 @@
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_REMOTE_WINDOW_PROXY_H_
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_REMOTE_WINDOW_PROXY_H_
+#if !defined(MINI_UI_QUICKJS)
 
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy.h"
@@ -68,5 +69,7 @@ template <> struct DowncastTraits<RemoteWindowProxy> {
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_REMOTE_WINDOW_PROXY_H_

@@ -29,16 +29,22 @@
 #include <string>
 
 #include "base/memory/scoped_refptr.h"
-#include "net/http/structured_headers.h"
+#include "net/http/http_response_headers.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_info.h"
+#endif
 #include "services/network/public/cpp/cors/cors.h"
+#include "services/network/public/cpp/cross_origin_embedder_policy.h"
+#include "services/network/public/cpp/cross_origin_embedder_policy_parser.h"
 #include "services/network/public/mojom/fetch_api.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink.h"
 #include "third_party/blink/public/platform/web_url_response.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/service_worker_router_info.h"
+#endif
 #include "third_party/blink/renderer/platform/network/http_names.h"
 #include "third_party/blink/renderer/platform/network/http_parsers.h"
 #include "third_party/blink/renderer/platform/wtf/assertions.h"
@@ -73,8 +79,10 @@ ResourceResponse::ResourceResponse()
     , has_range_requested_(false)
     , timing_allow_passed_(false)
     , was_fetched_via_spdy_(false)
+#if !defined(MINI_UI_QUICKJS)
     , was_fetched_via_service_worker_(false)
     , did_service_worker_navigation_preload_(false)
+#endif
     , did_use_shared_dictionary_(false)
     , async_revalidation_requested_(false)
     , is_signed_exchange_inner_response_(false)
@@ -127,35 +135,21 @@ void ResourceResponse::SetCurrentRequestUrl(const KURL& url)
 
 KURL ResourceResponse::ResponseUrl() const
 {
-    // Ideally ResourceResponse would have a |url_list_| to match Fetch
-    // specification's URL list concept
-    // (https://fetch.spec.whatwg.org/#concept-response-url-list), and its
-    // last element would be returned here.
-    //
-    // Instead it has |url_list_via_service_worker_| which is only populated when
-    // the response came from a service worker, and that response was not created
-    // through `new Response()`. Use it when available.
+#if !defined(MINI_UI_QUICKJS)
     if (!url_list_via_service_worker_.empty()) {
         DCHECK(WasFetchedViaServiceWorker());
         return url_list_via_service_worker_.back();
     }
-
-    // Otherwise, use the current request URL. This is OK because the Fetch
-    // specification's "main fetch" algorithm[1] sets the response URL list to the
-    // request's URL list when the list isn't present. That step can't be
-    // implemented now because there is no |url_list_| memeber, but effectively
-    // the same thing happens by returning CurrentRequestUrl() here.
-    //
-    // [1] "If internalResponse’s URL list is empty, then set it to a clone of
-    // request’s URL list." at
-    // https://fetch.spec.whatwg.org/#ref-for-concept-response-url-list%E2%91%A4
+#endif
     return CurrentRequestUrl();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ResourceResponse::IsServiceWorkerPassThrough() const
 {
     return cache_storage_cache_name_.empty() && !url_list_via_service_worker_.empty() && ResponseUrl() == CurrentRequestUrl();
 }
+#endif
 
 const AtomicString& ResourceResponse::MimeType() const
 {
@@ -240,17 +234,21 @@ void ResourceResponse::UpdateHeaderParsedState(const AtomicString& name)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ResourceResponse::SetSSLInfo(const net::SSLInfo& ssl_info)
 {
     DCHECK_NE(security_style_, SecurityStyle::kUnknown);
     DCHECK_NE(security_style_, SecurityStyle::kNeutral);
     ssl_info_ = ssl_info;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void ResourceResponse::SetServiceWorkerRouterInfo(scoped_refptr<ServiceWorkerRouterInfo> value)
 {
     service_worker_router_info_ = std::move(value);
 }
+#endif
 
 bool ResourceResponse::IsCorsSameOrigin() const
 {
@@ -519,22 +517,11 @@ void ResourceResponse::SetDecodedBodyLength(int64_t value)
 
 network::mojom::CrossOriginEmbedderPolicyValue ResourceResponse::GetCrossOriginEmbedderPolicy() const
 {
-    *(int*)1 = 1;
-    return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   const std::string value =
-    //       HttpHeaderField(http_names::kLowerCrossOriginEmbedderPolicy).Utf8();
-    //   using Item = net::structured_headers::Item;
-    //   const auto item = net::structured_headers::ParseItem(value);
-    //   if (!item || item->item.Type() != Item::kTokenType) {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   }
-    //   if (item->item.GetString() == "require-corp") {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kRequireCorp;
-    //   } else if (item->item.GetString() == "credentialless") {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kCredentialless;
-    //   } else {
-    //     return network::mojom::CrossOriginEmbedderPolicyValue::kNone;
-    //   }
+    auto headers = base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK\n");
+    const AtomicString& value = HttpHeaderField(http_names::kLowerCrossOriginEmbedderPolicy);
+    if (!value.IsNull())
+        headers->AddHeader("Cross-Origin-Embedder-Policy", value.Utf8());
+    return network::ParseCrossOriginEmbedderPolicy(*headers).value;
 }
 
 STATIC_ASSERT_ENUM(WebURLResponse::kHTTPVersionUnknown, ResourceResponse::kHTTPVersionUnknown);

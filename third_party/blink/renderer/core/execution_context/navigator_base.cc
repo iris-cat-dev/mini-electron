@@ -9,7 +9,9 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 #if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
@@ -88,7 +90,9 @@ unsigned int NavigatorBase::hardwareConcurrency() const
 {
     unsigned int hardware_concurrency = NavigatorConcurrentHardware::hardwareConcurrency();
 
+#if !defined(MINI_UI_QUICKJS)
     probe::ApplyHardwareConcurrencyOverride(probe::ToCoreProbeSink(GetExecutionContext()), hardware_concurrency);
+#endif
     return hardware_concurrency;
 }
 

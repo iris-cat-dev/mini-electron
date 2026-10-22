@@ -242,6 +242,7 @@ inline unsigned CSSSelector::SpecificityForOneSelector() const
         case kPseudoSlotted:
             DCHECK(SelectorList()->HasOneSelector());
             return kTagSpecificity + SelectorList()->First()->Specificity();
+#if !defined(MINI_UI_QUICKJS)
         case kPseudoViewTransitionGroup:
         case kPseudoViewTransitionImagePair:
         case kPseudoViewTransitionOld:
@@ -249,6 +250,7 @@ inline unsigned CSSSelector::SpecificityForOneSelector() const
             CHECK(!IdentList().empty());
             return (IdentList().size() == 1u && IdentList()[0].IsNull()) ? 0 : kTagSpecificity;
         }
+#endif
         default:
             break;
         }
@@ -372,6 +374,7 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type)
         // need to refactor something here (possibly the callers of this method)
         // to account for this.
         return kPseudoIdPickerSelect;
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoViewTransition:
         return kPseudoIdViewTransition;
     case kPseudoViewTransitionGroup:
@@ -382,9 +385,12 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type)
         return kPseudoIdViewTransitionOld;
     case kPseudoViewTransitionNew:
         return kPseudoIdViewTransitionNew;
+#endif
     case kPseudoActive:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoActiveViewTransition:
     case kPseudoActiveViewTransitionType:
+#endif
     case kPseudoAny:
     case kPseudoAnyLink:
     case kPseudoAutofill:
@@ -455,9 +461,11 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type)
     case kPseudoPart:
     case kPseudoPastCue:
     case kPseudoPaused:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoPermissionElementInvalidStyle:
     case kPseudoPermissionElementOccluded:
     case kPseudoPermissionGranted:
+#endif
     case kPseudoPictureInPicture:
     case kPseudoPlaceholderShown:
     case kPseudoPlaying:
@@ -534,12 +542,16 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "-internal-selector-fragment-anchor", CSSSelector::kPseudoSelectorFragmentAnchor },
     { "-internal-shadow-host-has-non-auto-appearance", CSSSelector::kPseudoHostHasNonAutoAppearance },
     { "-internal-spatial-navigation-focus", CSSSelector::kPseudoSpatialNavigationFocus },
+#if !defined(MINI_UI_QUICKJS)
     { "-internal-video-persistent", CSSSelector::kPseudoVideoPersistent },
     { "-internal-video-persistent-ancestor", CSSSelector::kPseudoVideoPersistentAncestor },
+#endif
     { "-webkit-any-link", CSSSelector::kPseudoWebkitAnyLink },
     { "-webkit-autofill", CSSSelector::kPseudoWebKitAutofill },
     { "-webkit-drag", CSSSelector::kPseudoDrag },
+#if !defined(MINI_UI_QUICKJS)
     { "-webkit-full-page-media", CSSSelector::kPseudoFullPageMedia },
+#endif
     { "-webkit-full-screen", CSSSelector::kPseudoFullScreen },
     { "-webkit-full-screen-ancestor", CSSSelector::kPseudoFullScreenAncestor },
     { "-webkit-resizer", CSSSelector::kPseudoResizer },
@@ -550,7 +562,9 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "-webkit-scrollbar-track", CSSSelector::kPseudoScrollbarTrack },
     { "-webkit-scrollbar-track-piece", CSSSelector::kPseudoScrollbarTrackPiece },
     { "active", CSSSelector::kPseudoActive },
+#if !defined(MINI_UI_QUICKJS)
     { "active-view-transition", CSSSelector::kPseudoActiveViewTransition },
+#endif
     { "after", CSSSelector::kPseudoAfter },
     { "any-link", CSSSelector::kPseudoAnyLink },
     { "autofill", CSSSelector::kPseudoAutofill },
@@ -582,9 +596,13 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "focus-visible", CSSSelector::kPseudoFocusVisible },
     { "focus-within", CSSSelector::kPseudoFocusWithin },
     { "fullscreen", CSSSelector::kPseudoFullscreen },
+#if !defined(MINI_UI_QUICKJS)
     { "future", CSSSelector::kPseudoFutureCue },
+#endif
     { "grammar-error", CSSSelector::kPseudoGrammarError },
+#if !defined(MINI_UI_QUICKJS)
     { "granted", CSSSelector::kPseudoPermissionGranted },
+#endif
     { "has-slotted", CSSSelector::kPseudoHasSlotted },
     { "horizontal", CSSSelector::kPseudoHorizontal },
     { "host", CSSSelector::kPseudoHost },
@@ -593,7 +611,9 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "increment", CSSSelector::kPseudoIncrement },
     { "indeterminate", CSSSelector::kPseudoIndeterminate },
     { "invalid", CSSSelector::kPseudoInvalid },
+#if !defined(MINI_UI_QUICKJS)
     { "invalid-style", CSSSelector::kPseudoPermissionElementInvalidStyle },
+#endif
     { "last-child", CSSSelector::kPseudoLastChild },
     { "last-of-type", CSSSelector::kPseudoLastOfType },
     { "left", CSSSelector::kPseudoLeftPage },
@@ -601,18 +621,24 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "marker", CSSSelector::kPseudoMarker },
     { "modal", CSSSelector::kPseudoModal },
     { "no-button", CSSSelector::kPseudoNoButton },
+#if !defined(MINI_UI_QUICKJS)
     { "occluded", CSSSelector::kPseudoPermissionElementOccluded },
+#endif
     { "only-child", CSSSelector::kPseudoOnlyChild },
     { "only-of-type", CSSSelector::kPseudoOnlyOfType },
     { "open", CSSSelector::kPseudoOpen },
     { "optional", CSSSelector::kPseudoOptional },
     { "out-of-range", CSSSelector::kPseudoOutOfRange },
+#if !defined(MINI_UI_QUICKJS)
     { "past", CSSSelector::kPseudoPastCue },
     { "paused", CSSSelector::kPseudoPaused },
     { "picture-in-picture", CSSSelector::kPseudoPictureInPicture },
+#endif
     { "placeholder", CSSSelector::kPseudoPlaceholder },
     { "placeholder-shown", CSSSelector::kPseudoPlaceholderShown },
+#if !defined(MINI_UI_QUICKJS)
     { "playing", CSSSelector::kPseudoPlaying },
+#endif
     { "popover-open", CSSSelector::kPseudoPopoverOpen },
     { "read-only", CSSSelector::kPseudoReadOnly },
     { "read-write", CSSSelector::kPseudoReadWrite },
@@ -636,7 +662,9 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     { "user-valid", CSSSelector::kPseudoUserValid },
     { "valid", CSSSelector::kPseudoValid },
     { "vertical", CSSSelector::kPseudoVertical },
+#if !defined(MINI_UI_QUICKJS)
     { "view-transition", CSSSelector::kPseudoViewTransition },
+#endif
     { "visited", CSSSelector::kPseudoVisited },
     { "window-inactive", CSSSelector::kPseudoWindowInactive },
     { "xr-overlay", CSSSelector::kPseudoXrOverlay },
@@ -644,7 +672,9 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
 
 constexpr static NameToPseudoStruct kPseudoTypeWithArgumentsMap[] = {
     { "-webkit-any", CSSSelector::kPseudoAny },
+#if !defined(MINI_UI_QUICKJS)
     { "active-view-transition-type", CSSSelector::kPseudoActiveViewTransitionType },
+#endif
     { "cue", CSSSelector::kPseudoCue },
     { "dir", CSSSelector::kPseudoDir },
     { "has", CSSSelector::kPseudoHas },
@@ -662,10 +692,12 @@ constexpr static NameToPseudoStruct kPseudoTypeWithArgumentsMap[] = {
     { "picker", CSSSelector::kPseudoPicker },
     { "slotted", CSSSelector::kPseudoSlotted },
     { "state", CSSSelector::kPseudoState },
+#if !defined(MINI_UI_QUICKJS)
     { "view-transition-group", CSSSelector::kPseudoViewTransitionGroup },
     { "view-transition-image-pair", CSSSelector::kPseudoViewTransitionImagePair },
     { "view-transition-new", CSSSelector::kPseudoViewTransitionNew },
     { "view-transition-old", CSSSelector::kPseudoViewTransitionOld },
+#endif
     { "where", CSSSelector::kPseudoWhere },
 };
 
@@ -712,6 +744,7 @@ CSSSelector::PseudoType CSSSelector::NameToPseudoType(const AtomicString& name, 
         return CSSSelector::kPseudoUnknown;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (match->type == CSSSelector::kPseudoPermissionElementInvalidStyle
         && !RuntimeEnabledFeatures::PermissionElementEnabled(document ? document->GetExecutionContext() : nullptr)) {
         return CSSSelector::kPseudoUnknown;
@@ -726,6 +759,7 @@ CSSSelector::PseudoType CSSSelector::NameToPseudoType(const AtomicString& name, 
         && !RuntimeEnabledFeatures::PermissionElementEnabled(document ? document->GetExecutionContext() : nullptr)) {
         return CSSSelector::kPseudoUnknown;
     }
+#endif
 
     if ((match->type == CSSSelector::kPseudoScrollMarker || match->type == CSSSelector::kPseudoScrollMarkerGroup)
         && !RuntimeEnabledFeatures::CSSPseudoScrollMarkersEnabled()) {
@@ -950,9 +984,11 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value, const CSSParserCon
     case kPseudoParent:
     case kPseudoPastCue:
     case kPseudoPaused:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoPermissionElementInvalidStyle:
     case kPseudoPermissionElementOccluded:
     case kPseudoPermissionGranted:
+#endif
     case kPseudoPictureInPicture:
     case kPseudoPlaceholderShown:
     case kPseudoPlaying:
@@ -1659,9 +1695,11 @@ bool CSSSelector::IsAllowedAfterPart() const
     case kPseudoLink:
     case kPseudoModal:
     case kPseudoOptional:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoPermissionElementInvalidStyle:
     case kPseudoPermissionElementOccluded:
     case kPseudoPermissionGranted:
+#endif
     case kPseudoPlaceholderShown:
     case kPseudoReadOnly:
     case kPseudoReadWrite:

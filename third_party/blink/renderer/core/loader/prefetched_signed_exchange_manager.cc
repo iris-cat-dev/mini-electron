@@ -31,7 +31,9 @@
 #include "third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.h"
 #include "third_party/blink/renderer/core/loader/loader_factory_for_frame.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
@@ -98,6 +100,31 @@ public:
     {
         NOTREACHED();
     }
+#if defined(MINI_UI_QUICKJS)
+    void LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
+        std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, URLLoaderClient* client) override
+    {
+        if (url_loader_) {
+            url_loader_->LoadAsynchronously(
+                std::move(request), std::move(top_frame_origin), no_mime_sniffing, std::move(resource_load_info_notifier_wrapper), client);
+            return;
+        }
+        // It is safe to use Unretained(client), because |client| is a
+        // ResourceLoader which owns |this|, and we are binding with weak ptr of
+        // |this| here.
+        pending_method_calls_.push(WTF::BindOnce(
+            [](base::WeakPtr<PrefetchedSignedExchangeLoader> self, std::unique_ptr<network::ResourceRequest> request,
+                scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
+                std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, URLLoaderClient* client) {
+                if (self) {
+                    self->LoadAsynchronously(
+                        std::move(request), top_frame_origin, no_mime_sniffing, std::move(resource_load_info_notifier_wrapper), client);
+                }
+            },
+            GetWeakPtr(), std::move(request), std::move(top_frame_origin), no_mime_sniffing, std::move(resource_load_info_notifier_wrapper),
+            WTF::Unretained(client)));
+    }
+#else
     void LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
         std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host,
         URLLoaderClient* client) override
@@ -123,6 +150,7 @@ public:
             GetWeakPtr(), std::move(request), std::move(top_frame_origin), no_mime_sniffing, std::move(resource_load_info_notifier_wrapper),
             code_cache_host ? code_cache_host->GetWeakPtr() : nullptr, WTF::Unretained(client)));
     }
+#endif
     void Freeze(LoaderFreezeMode value) override
     {
         if (url_loader_) {

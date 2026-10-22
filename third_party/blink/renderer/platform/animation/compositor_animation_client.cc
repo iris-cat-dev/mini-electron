@@ -4,8 +4,10 @@
 
 #include "third_party/blink/renderer/platform/animation/compositor_animation_client.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace blink {
 
 CompositorAnimationClient::~CompositorAnimationClient() = default;
 
 } // namespace blink
+#endif

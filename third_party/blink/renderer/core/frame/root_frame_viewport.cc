@@ -476,6 +476,7 @@ void RootFrameViewport::ScrollControlWasSetNeedsPaintInvalidation()
     LayoutViewport().ScrollControlWasSetNeedsPaintInvalidation();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::Layer* RootFrameViewport::LayerForHorizontalScrollbar() const
 {
     return LayoutViewport().LayerForHorizontalScrollbar();
@@ -490,6 +491,7 @@ cc::Layer* RootFrameViewport::LayerForScrollCorner() const
 {
     return LayoutViewport().LayerForScrollCorner();
 }
+#endif
 
 // This method distributes the scroll between the visual and layout viewport.
 ScrollResult RootFrameViewport::UserScroll(ui::ScrollGranularity granularity, const ScrollOffset& delta, ScrollableArea::ScrollCallback on_finish)
@@ -646,11 +648,13 @@ bool RootFrameViewport::SetTargetSnapAreaElementIds(cc::TargetSnapAreaElementIds
     return LayoutViewport().SetTargetSnapAreaElementIds(snap_target_ids);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RootFrameViewport::DropCompositorScrollDeltaNextCommit()
 {
     LayoutViewport().DropCompositorScrollDeltaNextCommit();
     GetVisualViewport().DropCompositorScrollDeltaNextCommit();
 }
+#endif
 
 bool RootFrameViewport::SnapContainerDataNeedsUpdate() const
 {

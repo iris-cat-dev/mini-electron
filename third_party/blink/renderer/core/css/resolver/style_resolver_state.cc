@@ -43,7 +43,11 @@ Element* ComputeStyledElement(const StyleRequest& style_request, Element& elemen
         styled_element = &element;
     }
     if (style_request.IsPseudoStyleRequest()) {
+#if !defined(MINI_UI_QUICKJS)
         styled_element = styled_element->GetStyledPseudoElement(style_request.pseudo_id, style_request.pseudo_argument);
+#else
+        styled_element = styled_element->GetStyledPseudoElement(style_request.pseudo_id);
+#endif
     }
     return styled_element;
 }

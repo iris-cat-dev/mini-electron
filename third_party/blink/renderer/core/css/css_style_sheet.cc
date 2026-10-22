@@ -42,11 +42,16 @@
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/dom/tree_scope.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_link_element.h"
 #include "third_party/blink/renderer/core/html/html_style_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/svg/svg_style_element.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
@@ -116,9 +121,11 @@ CSSStyleSheet* CSSStyleSheet::Create(Document& document, const CSSStyleSheetInit
 CSSStyleSheet* CSSStyleSheet::Create(Document& document, const KURL& base_url, const CSSStyleSheetInit* options, ExceptionState& exception_state)
 {
     auto* parser_context = MakeGarbageCollected<CSSParserContext>(document, base_url);
+#if !defined(MINI_UI_QUICKJS)
     if (AdTracker::IsAdScriptExecutingInDocument(&document)) {
         parser_context->SetIsAdRelated();
     }
+#endif
 
     auto* contents = MakeGarbageCollected<StyleSheetContents>(parser_context);
     return MakeGarbageCollected<CSSStyleSheet>(contents, document, options);
@@ -142,9 +149,11 @@ CSSStyleSheet* CSSStyleSheet::CreateInline(Node& owner_node, const KURL& base_ur
             // when fetching.
             Referrer::ClientReferrerString(), network::mojom::ReferrerPolicy::kDefault),
         encoding);
+#if !defined(MINI_UI_QUICKJS)
     if (AdTracker::IsAdScriptExecutingInDocument(&owner_node.GetDocument())) {
         parser_context->SetIsAdRelated();
     }
+#endif
     auto* sheet = MakeGarbageCollected<StyleSheetContents>(parser_context, base_url.GetString());
     return MakeGarbageCollected<CSSStyleSheet>(sheet, owner_node, true, start_position);
 }
@@ -253,7 +262,9 @@ void CSSStyleSheet::DidMutate(Mutation mutation)
         if (invalidate_matched_properties_cache) {
             document->GetStyleResolver().InvalidateMatchedPropertiesCache();
         }
+#if !defined(MINI_UI_QUICKJS)
         probe::DidMutateStyleSheet(document, this);
+#endif
     }
 }
 
@@ -493,7 +504,9 @@ ScriptPromise<CSSStyleSheet> CSSStyleSheet::replace(ScriptState* script_state, c
         return EmptyPromise();
     }
     SetText(text, CSSImportRules::kIgnoreWithWarning);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReplaceStyleSheetText(OwnerDocument(), this, text);
+#endif
     // We currently parse synchronously, and since @import support was removed,
     // nothing else happens asynchronously. This API is left as-is, so that future
     // async parsing can still be supported here.
@@ -506,7 +519,9 @@ void CSSStyleSheet::replaceSync(const String& text, ExceptionState& exception_st
         return exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError, "Can't call replaceSync on non-constructed CSSStyleSheets.");
     }
     SetText(text, CSSImportRules::kIgnoreWithWarning);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReplaceStyleSheetText(OwnerDocument(), this, text);
+#endif
 }
 
 CSSRuleList* CSSStyleSheet::cssRules(ExceptionState& exception_state)

@@ -108,7 +108,9 @@ class StyleScopeFrame;
 class StyleSheet;
 class StyleSheetContents;
 class StyleInitialData;
+#if !defined(MINI_UI_QUICKJS)
 class TextTrack;
+#endif
 class TreeScopeStyleSheetCollection;
 class ViewportStyleResolver;
 class SelectorFilter;
@@ -237,6 +239,7 @@ public:
         return inspector_style_sheet_.Get();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void AddTextTrack(TextTrack*);
     void RemoveTextTrack(TextTrack*);
 
@@ -247,6 +250,7 @@ public:
     // TODO(https://github.com/w3c/webvtt/issues/477): Make originating element
     // actually featureless.
     Element* EnsureVTTOriginatingElement();
+#endif
 
     const ActiveStyleSheetVector ActiveStyleSheetsForInspector();
 
@@ -260,7 +264,9 @@ public:
     void AdoptedStyleSheetRemoved(TreeScope& tree_scope, CSSStyleSheet* sheet);
 
     void WatchedSelectorsChanged();
+#if !defined(MINI_UI_QUICKJS)
     void DocumentRulesSelectorsChanged();
+#endif
     void InitialStyleChanged();
     void ColorSchemeChanged();
     void SetOwnerColorScheme(mojom::blink::ColorScheme color_scheme, mojom::blink::PreferredColorScheme preferred_color_scheme);
@@ -279,11 +285,13 @@ public:
         DCHECK(global_rule_set_);
         return global_rule_set_->WatchedSelectorsRuleSet();
     }
+#if !defined(MINI_UI_QUICKJS)
     RuleSet* DocumentRulesSelectorsRuleSet()
     {
         DCHECK(global_rule_set_);
         return global_rule_set_->DocumentRulesSelectorsRuleSet();
     }
+#endif
 
     // Helper class for making sure RuleSets that are ensured when collecting
     // sheets for a TreeScope are not shared between two equal sheets which
@@ -768,6 +776,7 @@ public:
     }
     Color ColorAdjustBackgroundColor() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetViewTransitionNames(const Vector<AtomicString>& names)
     {
         view_transition_names_ = names;
@@ -776,6 +785,7 @@ public:
     {
         return view_transition_names_;
     }
+#endif
 
     ImageResourceContent* CacheImageContent(FetchParameters& params)
     {
@@ -791,8 +801,10 @@ public:
         return "StyleEngine";
     }
 
+#if !defined(MINI_UI_QUICKJS)
     RuleSet* DefaultViewTransitionStyle() const;
     void UpdateViewTransitionOptIn();
+#endif
 
     const ActiveStyleSheetVector& ActiveUserStyleSheets() const
     {
@@ -810,7 +822,9 @@ public:
     // Returns true if marked dirty for layout
     bool UpdateLastSuccessfulPositionFallbacks();
 
+#if !defined(MINI_UI_QUICKJS)
     void RevisitActiveStyleSheetsForInspector();
+#endif
 
 private:
     void UpdateCounters(const Element& element, CountersAttachmentContext& context);
@@ -842,15 +856,21 @@ private:
         return *document_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void RevisitStyleRulesForInspector(const RuleFeatureSet& features, const HeapVector<Member<StyleRuleBase>>& rules);
+#endif
 
     typedef HeapHashSet<Member<TreeScope>> UnorderedTreeScopeSet;
 
     bool MediaQueryAffectingValueChanged(const ActiveStyleSheetVector&, MediaValueChange);
     void MediaQueryAffectingValueChanged(TreeScope&, MediaValueChange);
     void MediaQueryAffectingValueChanged(UnorderedTreeScopeSet&, MediaValueChange);
+#if !defined(MINI_UI_QUICKJS)
     void MediaQueryAffectingValueChanged(HeapHashSet<Member<TextTrack>>&, MediaValueChange);
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void EnsureUAStyleForTransitionPseudos();
+#endif
 
     const RuleFeatureSet& GetRuleFeatureSet() const
     {
@@ -919,7 +939,9 @@ private:
     void AddFontFeatureValuesRules(const RuleSet& rule_set);
     void AddPropertyRules(AtRuleCascadeMap&, const RuleSet&, bool is_user_style);
     bool UserKeyframeStyleShouldOverride(const StyleRuleKeyframes* new_rule, const StyleRuleKeyframes* existing_rule) const;
+#if !defined(MINI_UI_QUICKJS)
     void AddViewTransitionRules(const ActiveStyleSheetVector& sheets);
+#endif
 
     CounterStyleMap& EnsureUserCounterStyleMap();
 
@@ -937,7 +959,9 @@ private:
     bool RecalcHighlightStylesForContainer(Element& container);
     void RecalcPositionTryStyleForPseudoElement(PseudoElement& pseudo_element, const StyleRecalcChange, const StyleRecalcContext&);
 
+#if !defined(MINI_UI_QUICKJS)
     void RecalcTransitionPseudoStyle();
+#endif
 
     // We may need to update whitespaces in the layout tree after a flat tree
     // removal which caused a layout subtree to be detached.
@@ -1146,8 +1170,10 @@ private:
     friend class StyleImageCacheTest;
     FRIEND_TEST_ALL_PREFIXES(BlockChildIteratorTest, DeleteNodeWhileIteration);
 
+#if !defined(MINI_UI_QUICKJS)
     HeapHashSet<Member<TextTrack>> text_tracks_;
     Member<Element> vtt_originating_element_;
+#endif
 
     // When removing subtrees from the flat tree DOM, whitespace siblings of the
     // root may need to be updated. The LayoutObject parent of the detached
@@ -1155,12 +1181,14 @@ private:
     // re-attachment after the removal.
     Member<LayoutObject> parent_for_detached_subtree_;
 
+#if !defined(MINI_UI_QUICKJS)
     // The set of IDs for which ::view-transition-group pseudo elements are
     // generated during a ViewTransition.
     Vector<AtomicString> view_transition_names_;
 
     // The @view-transition rule currently applying to the document.
     Member<StyleRuleViewTransition> view_transition_rule_;
+#endif
 
     // Cache for sharing ImageResourceContent between CSSValues referencing the
     // same URL.

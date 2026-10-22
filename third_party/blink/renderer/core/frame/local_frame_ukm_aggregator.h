@@ -5,12 +5,15 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_UKM_AGGREGATOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_UKM_AGGREGATOR_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <optional>
 
 #include "base/rand_util.h"
 #include "base/time/time.h"
 #include "cc/metrics/frame_sequence_tracker_collection.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -27,8 +30,10 @@ namespace ukm {
 class UkmRecorder;
 }
 
+#endif
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 enum class DocumentUpdateReason;
 
 // This class aggregates and records time based UKM and UMA metrics
@@ -116,7 +121,12 @@ enum class DocumentUpdateReason;
     if (aggregator)                                                                                                                                            \
         timer.emplace(aggregator->GetScopedTimer(static_cast<size_t>(ukm_enum)));
 
-class CORE_EXPORT LocalFrameUkmAggregator : public RefCounted<LocalFrameUkmAggregator> {
+#endif
+class CORE_EXPORT LocalFrameUkmAggregator
+#if !defined(MINI_UI_QUICKJS)
+    : public RefCounted<LocalFrameUkmAggregator>
+#endif
+{
 public:
     // Changing these values requires changing the names of metrics specified
     // below. For every metric name added here, add an entry in the array in
@@ -157,6 +167,7 @@ public:
         kMainFrame,
     };
 
+#if !defined(MINI_UI_QUICKJS)
     // For metrics that require it, this converts the input value to use
     // exponential bucketing.
     static int64_t ApplyBucketIfNecessary(int64_t value, unsigned metric_id);
@@ -455,6 +466,10 @@ private:
     base::TimeTicks last_frame_request_timestamp_for_test_;
 
     base::MetricsSubSampler metrics_subsampler_;
+#else
+private:
+    LocalFrameUkmAggregator() = delete;
+#endif
 };
 
 } // namespace blink

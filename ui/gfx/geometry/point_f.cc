@@ -8,7 +8,9 @@
 
 #include "base/check.h"
 #include "base/strings/stringprintf.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "build/build_config.h"
 
 #if BUILDFLAG(IS_IOS)
@@ -56,12 +58,14 @@ std::string PointF::ToString() const
     return base::StringPrintf("%g,%g", x(), y());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PointF::WriteIntoTrace(perfetto::TracedValue ctx) const
 {
     perfetto::TracedDictionary dict = std::move(ctx).WriteDictionary();
     dict.Add("x", x());
     dict.Add("y", y());
 }
+#endif
 
 PointF ScalePoint(const PointF& p, float x_scale, float y_scale)
 {

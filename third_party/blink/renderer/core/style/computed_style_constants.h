@@ -139,6 +139,7 @@ inline bool UsesHighlightPseudoInheritance(PseudoId pseudo_id)
         || pseudo_id == PseudoId::kPseudoIdHighlight || pseudo_id == PseudoId::kPseudoIdSpellingError || pseudo_id == PseudoId::kPseudoIdGrammarError);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 inline bool IsTransitionPseudoElement(PseudoId pseudo_id)
 {
     switch (pseudo_id) {
@@ -152,15 +153,18 @@ inline bool IsTransitionPseudoElement(PseudoId pseudo_id)
         return false;
     }
 }
+#endif
 
 inline bool PseudoElementHasArguments(PseudoId pseudo_id)
 {
     switch (pseudo_id) {
     case kPseudoIdHighlight:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransitionGroup:
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionNew:
     case kPseudoIdViewTransitionOld:
+#endif
         return true;
     default:
         return false;

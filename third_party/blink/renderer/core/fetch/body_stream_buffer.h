@@ -29,7 +29,9 @@ class EncodedFormData;
 class ExceptionState;
 class ReadableStream;
 class ScriptState;
+#if !defined(MINI_UI_QUICKJS)
 class ScriptCachedMetadataHandler;
+#endif
 
 class CORE_EXPORT BodyStreamBuffer final : public UnderlyingByteSourceBase, public ExecutionContextLifecycleObserver, public BytesConsumer::Client {
 public:
@@ -40,6 +42,13 @@ public:
     // This function must be called after entering an appropriate V8 context.
     // |signal| should be non-null when this BodyStreamBuffer is associated with a
     // Response that was created by fetch().
+#if defined(MINI_UI_QUICKJS)
+    static BodyStreamBuffer* Create(ScriptState*, BytesConsumer*, AbortSignal*,
+        scoped_refptr<BlobDataHandle> side_data_blob = nullptr);
+    BodyStreamBuffer(PassKey, ScriptState*, BytesConsumer*, AbortSignal*,
+        scoped_refptr<BlobDataHandle> side_data_blob);
+    BodyStreamBuffer(ScriptState*, ReadableStream*, scoped_refptr<BlobDataHandle> side_data_blob = nullptr);
+#else
     static BodyStreamBuffer* Create(ScriptState*, BytesConsumer* consumer, AbortSignal* signal, ScriptCachedMetadataHandler* cached_metadata_handler,
         scoped_refptr<BlobDataHandle> side_data_blob = nullptr);
 
@@ -49,6 +58,8 @@ public:
 
     BodyStreamBuffer(
         ScriptState*, ReadableStream* stream, ScriptCachedMetadataHandler* cached_metadata_handler, scoped_refptr<BlobDataHandle> side_data_blob = nullptr);
+
+#endif
 
     BodyStreamBuffer(const BodyStreamBuffer&) = delete;
     BodyStreamBuffer& operator=(const BodyStreamBuffer&) = delete;
@@ -96,6 +107,7 @@ public:
 
     bool IsAborted();
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the ScriptCachedMetadataHandler associated with the contents of
     // this stream. This can return nullptr. Streams' ownership model applies, so
     // this function is expected to be called by the owner of this stream.
@@ -105,6 +117,8 @@ public:
         DCHECK(!IsStreamDisturbed());
         return cached_metadata_handler_.Get();
     }
+
+#endif
 
     // Take the blob representing any side data associated with this body
     // stream.  This must be called before the body is drained or begins
@@ -155,8 +169,10 @@ private:
     // We need to keep the abort algorithms alive for the duration of the load.
     Member<AbortSignal::AlgorithmHandle> stream_buffer_abort_handle_;
     Member<AbortSignal::AlgorithmHandle> loader_client_abort_handle_;
+#if !defined(MINI_UI_QUICKJS)
     // CachedMetadata handler used for loading compiled WASM code.
     Member<ScriptCachedMetadataHandler> cached_metadata_handler_;
+#endif
     // Additional side data associated with this body stream.  It should only be
     // retained until the body is drained or starts loading.  Client code, such
     // as service workers, can call TakeSideDataBlob() prior to consumption.

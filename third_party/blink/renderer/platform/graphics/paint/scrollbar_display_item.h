@@ -14,9 +14,11 @@
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class ScrollbarLayerBase;
 }
+#endif
 
 namespace blink {
 
@@ -52,8 +54,10 @@ public:
 
     bool NeedsUpdateDisplay() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Create or reuse the cc scrollbar layer, for composited scrollbar.
     scoped_refptr<cc::ScrollbarLayerBase> CreateOrReuseLayer(cc::ScrollbarLayerBase* existing_layer, gfx::Vector2dF offset_of_decomposited_transforms) const;
+#endif
 
     // Records a scrollbar into a GraphicsContext. Must check
     // PaintController::UseCachedItem() before calling this function.

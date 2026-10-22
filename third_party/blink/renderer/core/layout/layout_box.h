@@ -54,7 +54,9 @@ class AnchorPositionScrollData;
 class BlockBreakToken;
 class ColumnSpannerPath;
 class ConstraintSpace;
+#if !defined(MINI_UI_QUICKJS)
 class CustomLayoutChild;
+#endif
 class EarlyBreak;
 class Element;
 class LayoutMultiColumnSpannerPlaceholder;
@@ -100,10 +102,12 @@ public:
     // true.
     PhysicalRect previous_physical_content_box_rect_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Used by CSSLayoutDefinition::Instance::Layout. Represents the script
     // object for this box that web developers can query style, and perform
     // layout upon. Only created if IsCustomItem() is true.
     Member<CustomLayoutChild> layout_child_;
+#endif
 };
 
 // LayoutBox implements the full CSS box model.
@@ -904,7 +908,9 @@ public:
         return !Parent() || Parent()->StyleRef().GetWritingMode() != StyleRef().GetWritingMode();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsCustomItem() const;
+#endif
 
     bool IsFlexItem() const
     {
@@ -1031,12 +1037,14 @@ public:
 
     ShapeOutsideInfo* GetShapeOutsideInfo() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // CustomLayoutChild only exists if this LayoutBox is a IsCustomItem (aka. a
     // child of a LayoutCustom). This is created/destroyed when this LayoutBox is
     // inserted/removed from the layout tree.
     CustomLayoutChild* GetCustomLayoutChild() const;
     void AddCustomLayoutChildIfNeeded();
     void ClearCustomLayoutChild();
+#endif
 
     bool HitTestClippedOutByBorder(const HitTestLocation&, const PhysicalOffset& border_box_location) const;
 

@@ -52,6 +52,7 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 bool IsExcludedHeaderForServiceWorkerFetchEvent(const String& header_name)
 {
     // Excluding Sec-Fetch-... headers as suggested in
@@ -62,6 +63,7 @@ bool IsExcludedHeaderForServiceWorkerFetchEvent(const String& header_name)
 
     return false;
 }
+#endif
 
 void SignalError(Persistent<DataPipeBytesConsumer::CompletionNotifier> notifier, uint32_t reason, const std::string& description)
 {
@@ -81,6 +83,7 @@ void SignalSize(std::unique_ptr<mojo::Remote<network::mojom::blink::ChunkedDataP
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 FetchRequestData* FetchRequestData::Create(
     ScriptState* script_state, mojom::blink::FetchAPIRequestPtr fetch_api_request, ForServiceWorkerFetchEvent for_service_worker_fetch_event)
 {
@@ -103,13 +106,13 @@ FetchRequestData* FetchRequestData::Create(
         DCHECK(fetch_api_request->body.IsEmpty());
         request->SetBuffer(
             BodyStreamBuffer::Create(script_state, MakeGarbageCollected<BlobBytesConsumer>(ExecutionContext::From(script_state), fetch_api_request->blob),
-                nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr),
+                nullptr /* AbortSignal */, nullptr),
             fetch_api_request->blob->size());
     } else if (fetch_api_request->body.FormBody()) {
         request->SetBuffer(BodyStreamBuffer::Create(script_state,
                                MakeGarbageCollected<FormDataBytesConsumer>(ExecutionContext::From(script_state), fetch_api_request->body.FormBody()),
                                nullptr /* AbortSignal */,
-                               /*cached_metadata_handler=*/nullptr),
+                               nullptr),
             fetch_api_request->body.FormBody()->SizeInBytes());
     } else if (fetch_api_request->body.StreamBody()) {
         mojo::ScopedDataPipeConsumerHandle readable;
@@ -123,10 +126,10 @@ FetchRequestData* FetchRequestData::Create(
             auto* stream = BodyStreamBuffer::Create(script_state,
                 MakeGarbageCollected<DataPipeBytesConsumer>(
                     ExecutionContext::From(script_state)->GetTaskRunner(TaskType::kNetworking), std::move(readable), &completion_notifier),
-                /*AbortSignal=*/nullptr, /*cached_metadata_handler=*/nullptr)
+                /*AbortSignal=*/nullptr, nullptr)
                                ->Stream();
             request->SetBuffer(MakeGarbageCollected<BodyStreamBuffer>(script_state, stream,
-                /*AbortSignal=*/nullptr));
+                nullptr));
 
             auto body_remote = std::make_unique<mojo::Remote<network::mojom::blink::ChunkedDataPipeGetter>>(fetch_api_request->body.TakeStreamBody());
             body_remote->set_disconnect_with_reason_handler(WTF::BindOnce(SignalError, WrapPersistent(completion_notifier)));
@@ -135,7 +138,7 @@ FetchRequestData* FetchRequestData::Create(
             (*body_remote_raw)->StartReading(std::move(writable));
         } else {
             request->SetBuffer(BodyStreamBuffer::Create(
-                script_state, BytesConsumer::CreateErrored(BytesConsumer::Error()), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr));
+                script_state, BytesConsumer::CreateErrored(BytesConsumer::Error()), nullptr /* AbortSignal */, nullptr));
         }
     }
 
@@ -177,15 +180,19 @@ FetchRequestData* FetchRequestData::Create(
         request->SetTrustTokenParams(trust_token_params);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     request->SetAttributionReportingEligibility(fetch_api_request->attribution_reporting_eligibility);
     request->SetAttributionReportingSupport(fetch_api_request->attribution_reporting_support);
+#endif
 
-    if (fetch_api_request->service_worker_race_network_request_token) {
+#if !defined(MINI_UI_QUICKJS)
+    if (fetch_api_request->service_worker_race_network_request_token)
         request->SetServiceWorkerRaceNetworkRequestToken(fetch_api_request->service_worker_race_network_request_token.value());
-    }
+#endif
 
     return request;
 }
+#endif
 
 FetchRequestData* FetchRequestData::CloneExceptBody()
 {
@@ -216,18 +223,21 @@ FetchRequestData* FetchRequestData::CloneExceptBody()
     request->is_history_navigation_ = is_history_navigation_;
     request->window_id_ = window_id_;
     request->trust_token_params_ = trust_token_params_;
+#if !defined(MINI_UI_QUICKJS)
     request->attribution_reporting_eligibility_ = attribution_reporting_eligibility_;
     request->attribution_reporting_support_ = attribution_reporting_support_;
     request->service_worker_race_network_request_token_ = service_worker_race_network_request_token_;
+#endif
     return request;
 }
 
 FetchRequestData* FetchRequestData::Clone(ScriptState* script_state, ExceptionState& exception_state)
 {
     FetchRequestData* request = FetchRequestData::CloneExceptBody();
-    if (request->service_worker_race_network_request_token_) {
+#if !defined(MINI_UI_QUICKJS)
+    if (request->service_worker_race_network_request_token_)
         request->service_worker_race_network_request_token_ = base::UnguessableToken::Null();
-    }
+#endif
     if (buffer_) {
         BodyStreamBuffer* new1 = nullptr;
         BodyStreamBuffer* new2 = nullptr;
@@ -252,7 +262,7 @@ FetchRequestData* FetchRequestData::Pass(ScriptState* script_state, ExceptionSta
         request->buffer_ = buffer_;
         request->buffer_byte_length_ = buffer_byte_length_;
         buffer_ = BodyStreamBuffer::Create(script_state, BytesConsumer::CreateClosed(), nullptr /* AbortSignal */,
-            /*cached_metadata_handler=*/nullptr);
+            nullptr);
         buffer_->CloseAndLockAndDisturb(exception_state);
         buffer_byte_length_ = 0;
     }

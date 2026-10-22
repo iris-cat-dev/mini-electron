@@ -59,7 +59,9 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -130,11 +132,13 @@ Notification* Notification::Create(ExecutionContext* context, const String& titl
 
     notification->SchedulePrepareShow();
 
+#if !defined(MINI_UI_QUICKJS)
     if (window) {
         if (auto* document_resource_coordinator = window->document()->GetResourceCoordinator()) {
             document_resource_coordinator->OnNonPersistentNotificationCreated();
         }
     }
+#endif
 
     return notification;
 }

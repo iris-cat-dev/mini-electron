@@ -1,0 +1,82 @@
+[
+  {
+    "framework": "vue",
+    "rows": 100,
+    "default_commit_median_ms": 7.69999997317791,
+    "default_workload_ms": 969.2567000020063,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 7.200000017881393,
+    "software_workload_ms": 879.7064000100363,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "default_commit_median_ms": 42.29999998211861,
+    "default_workload_ms": 1738.298099997337,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 43.0,
+    "software_workload_ms": 1742.4919000040973,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "vue",
+    "rows": 5000,
+    "default_commit_median_ms": 221.79999999701977,
+    "default_workload_ms": 7716.566499992041,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 222.30000001192093,
+    "software_workload_ms": 7920.024699997157,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "vue",
+    "rows": 10000,
+    "default_commit_median_ms": 484.40000000596046,
+    "default_workload_ms": 16342.60250000807,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 530.4000000059605,
+    "software_workload_ms": 17597.787200007588,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "react",
+    "rows": 100,
+    "default_commit_median_ms": 4.700000002980232,
+    "default_workload_ms": 982.4460000090767,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 6.700000032782555,
+    "software_workload_ms": 884.4117000116967,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "default_commit_median_ms": 24.30000002682209,
+    "default_workload_ms": 1592.9406000068411,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 28.200000002980232,
+    "software_workload_ms": 1890.7801000023028,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "react",
+    "rows": 5000,
+    "default_commit_median_ms": 156.49999998509884,
+    "default_workload_ms": 7576.800700000604,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 156.7000000178814,
+    "software_workload_ms": 7994.933599999058,
+    "software_exit_code": 0
+  },
+  {
+    "framework": "react",
+    "rows": 10000,
+    "default_commit_median_ms": 396.09999999403954,
+    "default_workload_ms": 15670.76530000486,
+    "default_exit_code": 0,
+    "software_commit_median_ms": 387.5999999791384,
+    "software_workload_ms": 15294.17699998885,
+    "software_exit_code": 0
+  }
+]

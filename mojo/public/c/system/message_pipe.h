@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,10 +15,6 @@
 #include "mojo/public/c/system/system_export.h"
 #include "mojo/public/c/system/types.h"
 
-#ifdef _DEBUG
-#include <intrin.h>
-#endif
-
 // Used to refer to message objects created by |MojoCreateMessage()|.
 typedef uintptr_t MojoMessageHandle;
 
@@ -33,14 +29,15 @@ typedef uint32_t MojoCreateMessagePipeFlags;
 
 // Options passed to |MojoCreateMessagePipe()|.
 struct MOJO_ALIGNAS(8) MojoCreateMessagePipeOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoCreateMessagePipeFlags|.
-    MojoCreateMessagePipeFlags flags;
+  // See |MojoCreateMessagePipeFlags|.
+  MojoCreateMessagePipeFlags flags;
 };
 MOJO_STATIC_ASSERT(MOJO_ALIGNOF(int64_t) <= 8, "int64_t has weird alignment");
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateMessagePipeOptions) == 8, "MojoCreateMessagePipeOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateMessagePipeOptions) == 8,
+                   "MojoCreateMessagePipeOptions has wrong size");
 
 // Flags passed to |MojoWriteMessage()| via |MojoWriteMessageOptions|. See
 // values defined below.
@@ -51,13 +48,14 @@ typedef uint32_t MojoWriteMessageFlags;
 
 // Options passed to |MojoWriteMessage()|.
 struct MOJO_ALIGNAS(8) MojoWriteMessageOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoWriteMessageFlags|.
-    MojoWriteMessageFlags flags;
+  // See |MojoWriteMessageFlags|.
+  MojoWriteMessageFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoWriteMessageOptions) == 8, "MojoWriteMessageOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoWriteMessageOptions) == 8,
+                   "MojoWriteMessageOptions has wrong size");
 
 // Flags passed to |MojoReadMessage()| via |MojoReadMessageOptions|. See values
 // defined below.
@@ -68,13 +66,14 @@ typedef uint32_t MojoReadMessageFlags;
 
 // Options passed to |MojoReadMessage()|.
 struct MOJO_ALIGNAS(8) MojoReadMessageOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoReadMessageFlags|.
-    MojoReadMessageFlags flags;
+  // See |MojoReadMessageFlags|.
+  MojoReadMessageFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoReadMessageOptions) == 8, "MojoReadMessageOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoReadMessageOptions) == 8,
+                   "MojoReadMessageOptions has wrong size");
 
 // Flags passed to |MojoFuseMessagePipes()| via |MojoFuseMessagePipeOptions|.
 // See values defined below.
@@ -85,13 +84,14 @@ typedef uint32_t MojoFuseMessagePipesFlags;
 
 // Options passed to |MojoFuseMessagePipes()|.
 struct MOJO_ALIGNAS(8) MojoFuseMessagePipesOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoFuseMessagePipesFlags|.
-    MojoFuseMessagePipesFlags flags;
+  // See |MojoFuseMessagePipesFlags|.
+  MojoFuseMessagePipesFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoFuseMessagePipesOptions) == 8, "MojoFuseMessagePipesOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoFuseMessagePipesOptions) == 8,
+                   "MojoFuseMessagePipesOptions has wrong size");
 
 // Flags passed to |MojoCreateMessage()| via |MojoCreateMessageOptions|.
 typedef uint32_t MojoCreateMessageFlags;
@@ -107,13 +107,14 @@ typedef uint32_t MojoCreateMessageFlags;
 
 // Options passed to |MojoCreateMessage()|.
 struct MOJO_ALIGNAS(8) MojoCreateMessageOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoCreateMessageFlags|.
-    MojoCreateMessageFlags flags;
+  // See |MojoCreateMessageFlags|.
+  MojoCreateMessageFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateMessageOptions) == 8, "MojoCreateMessageOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateMessageOptions) == 8,
+                   "MojoCreateMessageOptions has wrong size");
 
 // Flags passed to |MojoSerializeMessage()| via |MojoSerializeMessageOptions|.
 typedef uint32_t MojoSerializeMessageFlags;
@@ -123,13 +124,14 @@ typedef uint32_t MojoSerializeMessageFlags;
 
 // Options passed to |MojoSerializeMessage()|.
 struct MOJO_ALIGNAS(8) MojoSerializeMessageOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoSerializeMessageFlags|.
-    MojoSerializeMessageFlags flags;
+  // See |MojoSerializeMessageFlags|.
+  MojoSerializeMessageFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSerializeMessageOptions) == 8, "MojoSerializeMessageOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSerializeMessageOptions) == 8,
+                   "MojoSerializeMessageOptions has wrong size");
 
 // Flags passed to |MojoAppendMessageData()| via |MojoAppendMessageDataOptions|.
 typedef uint32_t MojoAppendMessageDataFlags;
@@ -139,17 +141,19 @@ typedef uint32_t MojoAppendMessageDataFlags;
 
 // If set, this comments the resulting (post-append) message size as the final
 // size of the message payload, in terms of both bytes and attached handles.
-#define MOJO_APPEND_MESSAGE_DATA_FLAG_COMMIT_SIZE ((MojoAppendMessageDataFlags)1)
+#define MOJO_APPEND_MESSAGE_DATA_FLAG_COMMIT_SIZE \
+  ((MojoAppendMessageDataFlags)1)
 
 // Options passed to |MojoAppendMessageData()|.
 struct MOJO_ALIGNAS(8) MojoAppendMessageDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoAppendMessageDataFlags|.
-    MojoAppendMessageDataFlags flags;
+  // See |MojoAppendMessageDataFlags|.
+  MojoAppendMessageDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoAppendMessageDataOptions) == 8, "MojoAppendMessageDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoAppendMessageDataOptions) == 8,
+                   "MojoAppendMessageDataOptions has wrong size");
 
 // Flags passed to |MojoGetMessageData()| via |MojoGetMessageDataOptions|.
 typedef uint32_t MojoGetMessageDataFlags;
@@ -163,13 +167,14 @@ typedef uint32_t MojoGetMessageDataFlags;
 
 // Options passed to |MojoGetMessageData()|.
 struct MOJO_ALIGNAS(8) MojoGetMessageDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoGetMessageDataFlags|.
-    MojoGetMessageDataFlags flags;
+  // See |MojoGetMessageDataFlags|.
+  MojoGetMessageDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoGetMessageDataOptions) == 8, "MojoGetMessageDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoGetMessageDataOptions) == 8,
+                   "MojoGetMessageDataOptions has wrong size");
 
 // Flags passed to |MojoSetMessageContext()| via |MojoSetMessageContextOptions|.
 typedef uint32_t MojoSetMessageContextFlags;
@@ -179,13 +184,14 @@ typedef uint32_t MojoSetMessageContextFlags;
 
 // Options passed to |MojoSetMessageContext()|.
 struct MOJO_ALIGNAS(8) MojoSetMessageContextOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoSetMessageContextFlags|.
-    MojoSetMessageContextFlags flags;
+  // See |MojoSetMessageContextFlags|.
+  MojoSetMessageContextFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSetMessageContextOptions) == 8, "MojoSetMessageContextOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSetMessageContextOptions) == 8,
+                   "MojoSetMessageContextOptions has wrong size");
 
 // Flags passed to |MojoGetMessageContext()| via |MojoGetMessageContextOptions|.
 typedef uint32_t MojoGetMessageContextFlags;
@@ -195,13 +201,14 @@ typedef uint32_t MojoGetMessageContextFlags;
 
 // Options passed to |MojoGetMessageContext()|.
 struct MOJO_ALIGNAS(8) MojoGetMessageContextOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoGetMessageContextFlags|.
-    MojoGetMessageContextFlags flags;
+  // See |MojoGetMessageContextFlags|.
+  MojoGetMessageContextFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoGetMessageContextOptions) == 8, "MojoGetMessageContextOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoGetMessageContextOptions) == 8,
+                   "MojoGetMessageContextOptions has wrong size");
 
 // Flags passed to |MojoNotifyBadMessage()| via |MojoNotifyBadMessageOptions|.
 typedef uint32_t MojoNotifyBadMessageFlags;
@@ -211,13 +218,14 @@ typedef uint32_t MojoNotifyBadMessageFlags;
 
 // Options passed to |MojoNotifyBadMessage()|.
 struct MOJO_ALIGNAS(8) MojoNotifyBadMessageOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoNotifyBadMessageFlags|.
-    MojoNotifyBadMessageFlags flags;
+  // See |MojoNotifyBadMessageFlags|.
+  MojoNotifyBadMessageFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoNotifyBadMessageOptions) == 8, "MojoNotifyBadMessageOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoNotifyBadMessageOptions) == 8,
+                   "MojoNotifyBadMessageOptions has wrong size");
 
 #ifdef __cplusplus
 extern "C" {
@@ -233,7 +241,8 @@ extern "C" {
 // Note that the context is always detached from the message immediately before
 // this callback is invoked, and that the associated destructor (if any) is also
 // invoked on |context| immediately after the serializer returns.
-typedef void (*MojoMessageContextSerializer)(MojoMessageHandle message, uintptr_t context);
+typedef void (*MojoMessageContextSerializer)(MojoMessageHandle message,
+                                             uintptr_t context);
 
 // A callback which can be used to destroy a message context after serialization
 // or in the event that the message to which it's attached is destroyed without
@@ -258,9 +267,10 @@ typedef void (*MojoMessageContextDestructor)(uintptr_t context);
 //       |*options| is invalid).
 //   |MOJO_RESULT_RESOURCE_EXHAUSTED| if a process/system/quota/etc. limit has
 //       been reached.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateMessagePipe(const struct MojoCreateMessagePipeOptions* options, // Optional.
-    MojoHandle* message_pipe_handle0, // Out.
-    MojoHandle* message_pipe_handle1); // Out.
+MOJO_SYSTEM_EXPORT MojoResult MojoCreateMessagePipe(
+    const struct MojoCreateMessagePipeOptions* options,  // Optional.
+    MojoHandle* message_pipe_handle0,                    // Out.
+    MojoHandle* message_pipe_handle1);                   // Out.
 
 // Writes a message to the message pipe endpoint given by |message_pipe_handle|.
 //
@@ -279,7 +289,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoCreateMessagePipe(const struct MojoCreateMessa
 //       endpoint has been closed (in which case the message would be dropped).
 //   |MOJO_RESULT_NOT_FOUND| if |message| has neither a context nor serialized
 //       buffer attached and therefore has nothing to be written.
-MOJO_SYSTEM_EXPORT MojoResult MojoWriteMessage(MojoHandle message_pipe_handle, MojoMessageHandle message, const struct MojoWriteMessageOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoWriteMessage(MojoHandle message_pipe_handle,
+                 MojoMessageHandle message,
+                 const struct MojoWriteMessageOptions* options);
 
 // Reads the next message from a message pipe and returns a message as an opaque
 // message handle. The returned message must eventually be destroyed using
@@ -297,7 +310,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoWriteMessage(MojoHandle message_pipe_handle, M
 //   |MOJO_RESULT_FAILED_PRECONDITION| if the other endpoint has been closed
 //       and there are no more messages to read.
 //   |MOJO_RESULT_SHOULD_WAIT| if no message was available to be read.
-MOJO_SYSTEM_EXPORT MojoResult MojoReadMessage(MojoHandle message_pipe_handle, const struct MojoReadMessageOptions* options, MojoMessageHandle* message);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoReadMessage(MojoHandle message_pipe_handle,
+                const struct MojoReadMessageOptions* options,
+                MojoMessageHandle* message);
 
 // Fuses two message pipe endpoints together. Given two pipes:
 //
@@ -322,7 +338,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoReadMessage(MojoHandle message_pipe_handle, co
 //       handles but could not be merged (e.g. one of them has been written to).
 //   |MOJO_INVALID_ARGUMENT| if either handle is not a fusable message pipe
 //       handle.
-MOJO_SYSTEM_EXPORT MojoResult MojoFuseMessagePipes(MojoHandle handle0, MojoHandle handle1, const struct MojoFuseMessagePipesOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoFuseMessagePipes(MojoHandle handle0,
+                     MojoHandle handle1,
+                     const struct MojoFuseMessagePipesOptions* options);
 
 // Creates a new message object which may be sent over a message pipe via
 // |MojoWriteMessage()|. Returns a handle to the new message object in
@@ -341,7 +360,9 @@ MOJO_SYSTEM_EXPORT MojoResult MojoFuseMessagePipes(MojoHandle handle0, MojoHandl
 //   |MOJO_RESULT_OK| if a new message was created. |*message| contains a handle
 //       to the new message object upon return.
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |message| is null.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateMessage(const struct MojoCreateMessageOptions* options, MojoMessageHandle* message);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoCreateMessage(const struct MojoCreateMessageOptions* options,
+                  MojoMessageHandle* message);
 
 // Destroys a message object created by |MojoCreateMessage()| or
 // |MojoReadMessage()|.
@@ -376,7 +397,32 @@ MOJO_SYSTEM_EXPORT MojoResult MojoDestroyMessage(MojoMessageHandle message);
 // Note that unserialized messages may be successfully transferred from one
 // message pipe endpoint to another without ever being serialized. This function
 // allows callers to coerce eager serialization.
-MOJO_SYSTEM_EXPORT MojoResult MojoSerializeMessage(MojoMessageHandle message, const struct MojoSerializeMessageOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoSerializeMessage(MojoMessageHandle message,
+                     const struct MojoSerializeMessageOptions* options);
+
+// Reserves capacity within a message object.
+//
+// `message`: The message.
+// `payload_buffer_size`: The number of bytes to preallocate for the payload
+//     of the message.
+//
+// NOTE: Can only be called on a newly-created message, before serialization
+// begins.
+//
+// If this call succeeds, if `buffer_size` was non-null then `*buffer_size`
+// will contain the storage capacity.
+//
+// Returns:
+//   `MOJO_RESULT_OK` upon success. The message's payload capacity is stored
+//       into `*buffer_size`.
+//   `MOJO_RESULT_INVALID_ARGUMENT` if `message` is not a valid message object.
+//   `MOJO_RESULT_FAILED_PRECONDITION` if `message` has a context attached,
+//       or if the `message` is already partly or fully serialized.
+MOJO_SYSTEM_EXPORT MojoResult
+MojoReserveMessageCapacity(MojoMessageHandle message,
+                           uint32_t payload_buffer_size,
+                           uint32_t* buffer_size);
 
 // Appends data to a message object.
 //
@@ -425,8 +471,14 @@ MOJO_SYSTEM_EXPORT MojoResult MojoSerializeMessage(MojoMessageHandle message, co
 //   |MOJO_RESULT_FAILED_PRECONDITION| if |message| has a context attached.
 //   |MOJO_RESULT_BUSY| if one or more handles in |handles| is currently busy
 //       and unable to be serialized.
-MOJO_SYSTEM_EXPORT MojoResult MojoAppendMessageData(MojoMessageHandle message, uint32_t payload_size, const MojoHandle* handles, uint32_t num_handles,
-    const struct MojoAppendMessageDataOptions* options, void** buffer, uint32_t* buffer_size);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoAppendMessageData(MojoMessageHandle message,
+                      uint32_t payload_size,
+                      const MojoHandle* handles,
+                      uint32_t num_handles,
+                      const struct MojoAppendMessageDataOptions* options,
+                      void** buffer,
+                      uint32_t* buffer_size);
 
 // Retrieves data attached to a message object.
 //
@@ -476,8 +528,13 @@ MOJO_SYSTEM_EXPORT MojoResult MojoAppendMessageData(MojoMessageHandle message, u
 //   |MOJO_RESULT_ARBORTED| if the message is in an invalid state and its data
 //       and/or handles are unrecoverable. The message is left in this state but
 //       future calls to this API will yield the same result.
-MOJO_SYSTEM_EXPORT MojoResult MojoGetMessageData(
-    MojoMessageHandle message, const struct MojoGetMessageDataOptions* options, void** buffer, uint32_t* num_bytes, MojoHandle* handles, uint32_t* num_handles);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoGetMessageData(MojoMessageHandle message,
+                   const struct MojoGetMessageDataOptions* options,
+                   void** buffer,
+                   uint32_t* num_bytes,
+                   MojoHandle* handles,
+                   uint32_t* num_handles);
 
 // Sets an opaque context value on a message object. The presence of an opaque
 // context is mutually exclusive to the presence of message data.
@@ -521,8 +578,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoGetMessageData(
 //       non-null.
 //   |MOJO_RESULT_ALREADY_EXISTS| if |message| already has a non-zero context.
 //   |MOJO_RESULT_FAILED_PRECONDITION| if |message| has data attached.
-MOJO_SYSTEM_EXPORT MojoResult MojoSetMessageContext(MojoMessageHandle message, uintptr_t context, MojoMessageContextSerializer serializer,
-    MojoMessageContextDestructor destructor, const struct MojoSetMessageContextOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoSetMessageContext(MojoMessageHandle message,
+                      uintptr_t context,
+                      MojoMessageContextSerializer serializer,
+                      MojoMessageContextDestructor destructor,
+                      const struct MojoSetMessageContextOptions* options);
 
 // Retrieves a message object's opaque context value.
 //
@@ -534,7 +595,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoSetMessageContext(MojoMessageHandle message, u
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |message| is not a valid message object
 //       or |options| is non-null and |*options| contains one or more malformed
 //       fields.
-MOJO_SYSTEM_EXPORT MojoResult MojoGetMessageContext(MojoMessageHandle message, const struct MojoGetMessageContextOptions* options, uintptr_t* context);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoGetMessageContext(MojoMessageHandle message,
+                      const struct MojoGetMessageContextOptions* options,
+                      uintptr_t* context);
 
 // Notifies the system that a bad message was received on a message pipe,
 // according to whatever criteria the caller chooses. This ultimately tries to
@@ -553,23 +617,14 @@ MOJO_SYSTEM_EXPORT MojoResult MojoGetMessageContext(MojoMessageHandle message, c
 // Returns:
 //   |MOJO_RESULT_OK| if successful.
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |message| is not a valid message.
-MOJO_SYSTEM_EXPORT MojoResult MojoNotifyBadMessage(
-    MojoMessageHandle message, const char* error, uint32_t error_num_bytes, const struct MojoNotifyBadMessageOptions* options);
-
-// ---weolar add.
-MOJO_SYSTEM_EXPORT MojoResult MojoSetMessagePipeIsRemoteOrReceiver(MojoHandle handle, bool is_remote);
-
-MOJO_SYSTEM_EXPORT void MojoRecordCall(MojoHandle handle, void* addr, const char* from);
-
-#ifdef _DEBUG
-#define MOJO_RECORD_CALL(handle, from) MojoRecordCall(handle, _ReturnAddress(), from);
-#else
-#define MOJO_RECORD_CALL(handle, from)
-#endif
-//---------
+MOJO_SYSTEM_EXPORT MojoResult
+MojoNotifyBadMessage(MojoMessageHandle message,
+                     const char* error,
+                     uint32_t error_num_bytes,
+                     const struct MojoNotifyBadMessageOptions* options);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_MESSAGE_PIPE_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_MESSAGE_PIPE_H_

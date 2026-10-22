@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 
@@ -523,8 +525,11 @@ void InteractiveDetector::OnTimeToInteractiveDetected()
     network_quiet_windows_.clear();
     LocalFrame* frame = GetSupplementable()->GetFrame();
     DocumentLoader* loader = GetSupplementable()->Loader();
+#if !defined(MINI_UI_QUICKJS)
     probe::LifecycleEvent(frame, loader, "InteractiveTime", interactive_time_.since_origin().InSecondsF());
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_MARK_WITH_TIMESTAMP2("loading,rail", "InteractiveTime", interactive_time_, "frame", GetFrameIdForTracing(GetSupplementable()->GetFrame()),
         "args", [&](perfetto::TracedValue context) {
             // We log the trace event even if there is user input, but annotate the
@@ -536,6 +541,7 @@ void InteractiveDetector::OnTimeToInteractiveDetected()
             dict.Add("had_user_input_before_interactive", had_user_input_before_interactive);
             dict.Add("total_blocking_time_ms", ComputeTotalBlockingTime().InMillisecondsF());
         });
+#endif
 
     long_tasks_.clear();
 

@@ -10,7 +10,9 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_state_observer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/core/scheduler/idle_deadline.h"
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -49,15 +51,19 @@ public:
     }
     ~IdleTask() override;
     virtual void invoke(IdleDeadline*) = 0;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext* async_task_context()
     {
         return &async_task_context_;
     }
+#endif
 
 private:
     friend class ScriptedIdleTaskController;
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
     // Handle to the associated "scheduler timeout task" (only used when the
     // "ScriptedIdleTaskControllerOOMFix" feature is enabled).
     base::DelayedTaskHandle delayed_task_handle_;

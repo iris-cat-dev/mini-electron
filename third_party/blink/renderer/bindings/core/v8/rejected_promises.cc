@@ -13,7 +13,6 @@
 #include <utility>
 
 #include "base/memory/ptr_util.h"
-#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_promise_rejection_event_init.h"
@@ -22,10 +21,9 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/platform/bindings/scoped_persistent.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
-#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
-#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
-#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 
@@ -35,6 +33,19 @@ static const unsigned kMaxReportedHandlersPendingResolution = 1000;
 
 class RejectedPromises::Message final {
 public:
+#if defined(MINI_UI_QUICKJS)
+    Message(
+        ScriptState* script_state, v8::Local<v8::Promise> promise,
+        v8::Local<v8::Value> exception,
+        SanitizeScriptErrors sanitize_script_errors)
+        : script_state_(script_state)
+        , promise_(script_state->GetIsolate(), promise)
+        , exception_(script_state->GetIsolate(), exception)
+        , collected_(false)
+        , sanitize_script_errors_(sanitize_script_errors)
+    {
+    }
+#else
     Message(ScriptState* script_state, v8::Local<v8::Promise> promise, v8::Local<v8::Value> exception, const String& error_message,
         std::unique_ptr<SourceLocation> location, SanitizeScriptErrors sanitize_script_errors)
         : script_state_(script_state)
@@ -48,6 +59,7 @@ public:
         , sanitize_script_errors_(sanitize_script_errors)
     {
     }
+#endif
 
     bool IsCollected()
     {
@@ -85,18 +97,26 @@ public:
             init->setReason(ScriptValue(script_state_->GetIsolate(), reason));
             init->setCancelable(true);
             PromiseRejectionEvent* event = PromiseRejectionEvent::Create(script_state_, event_type_names::kUnhandledrejection, init);
+#if defined(MINI_UI_QUICKJS)
+            target->DispatchEvent(*event);
+#else
             // Log to console if event was not canceled.
             should_log_to_console_ = target->DispatchEvent(*event) == DispatchEventResult::kNotCanceled;
+#endif
         }
 
+#if !defined(MINI_UI_QUICKJS)
         if (should_log_to_console_) {
             ThreadDebugger* debugger = ThreadDebugger::From(script_state_->GetIsolate());
             if (debugger) {
                 promise_rejection_id_ = debugger->PromiseRejected(script_state_->GetContext(), error_message_, reason, std::move(location_));
             }
         }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
         location_.reset();
+#endif
     }
 
     void Revoke()
@@ -126,12 +146,14 @@ public:
             target->DispatchEvent(*event);
         }
 
+#if !defined(MINI_UI_QUICKJS)
         if (should_log_to_console_ && promise_rejection_id_) {
             ThreadDebugger* debugger = ThreadDebugger::From(script_state_->GetIsolate());
             if (debugger) {
                 debugger->PromiseRejectionRevoked(script_state_->GetContext(), promise_rejection_id_);
             }
         }
+#endif
     }
 
     void MakePromiseWeak()
@@ -178,11 +200,15 @@ private:
     Persistent<ScriptState> script_state_;
     ScopedPersistent<v8::Promise> promise_;
     ScopedPersistent<v8::Value> exception_;
+#if !defined(MINI_UI_QUICKJS)
     String error_message_;
     std::unique_ptr<SourceLocation> location_;
     unsigned promise_rejection_id_;
+#endif
     bool collected_;
+#if !defined(MINI_UI_QUICKJS)
     bool should_log_to_console_;
+#endif
     SanitizeScriptErrors sanitize_script_errors_;
 };
 
@@ -190,6 +216,21 @@ RejectedPromises::RejectedPromises() = default;
 
 RejectedPromises::~RejectedPromises() = default;
 
+#if defined(MINI_UI_QUICKJS)
+void RejectedPromises::RejectedWithNoHandler(
+    ScriptState* script_state, v8::Local<v8::Promise> promise,
+    v8::Local<v8::Value> value,
+    SanitizeScriptErrors sanitize_script_errors)
+{
+    queue_.push_back(std::make_unique<Message>(
+        script_state, promise, value, sanitize_script_errors));
+}
+
+void RejectedPromises::HandlerAdded(v8::Local<v8::Promise> promise)
+{
+    HandlerAddedInternal(promise);
+}
+#else
 void RejectedPromises::RejectedWithNoHandler(ScriptState* script_state, v8::PromiseRejectMessage data, const String& error_message,
     std::unique_ptr<SourceLocation> location, SanitizeScriptErrors sanitize_script_errors)
 {
@@ -198,10 +239,16 @@ void RejectedPromises::RejectedWithNoHandler(ScriptState* script_state, v8::Prom
 
 void RejectedPromises::HandlerAdded(v8::PromiseRejectMessage data)
 {
+    HandlerAddedInternal(data.GetPromise());
+}
+#endif
+
+void RejectedPromises::HandlerAddedInternal(v8::Local<v8::Promise> promise)
+{
     // First look it up in the pending messages and fast return, it'll be covered
     // by processQueue().
     for (auto it = queue_.begin(); it != queue_.end(); ++it) {
-        if (!(*it)->IsCollected() && (*it)->HasPromise(data.GetPromise())) {
+        if (!(*it)->IsCollected() && (*it)->HasPromise(promise)) {
             queue_.erase(it);
             return;
         }
@@ -210,7 +257,7 @@ void RejectedPromises::HandlerAdded(v8::PromiseRejectMessage data)
     // Then look it up in the reported errors.
     for (wtf_size_t i = 0; i < reported_as_errors_.size(); ++i) {
         std::unique_ptr<Message>& message = reported_as_errors_.at(i);
-        if (!message->IsCollected() && message->HasPromise(data.GetPromise())) {
+        if (!message->IsCollected() && message->HasPromise(promise)) {
             message->MakePromiseStrong();
             // Since we move out of `message` below, we need to pull `context` out in
             // a separate statement.

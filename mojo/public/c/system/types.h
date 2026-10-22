@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,7 +25,7 @@ typedef int64_t MojoTimeTicks;
 typedef uintptr_t MojoHandle;
 
 #ifdef __cplusplus
-const MojoHandle MOJO_HANDLE_INVALID = 0;
+inline constexpr MojoHandle MOJO_HANDLE_INVALID = 0;
 #else
 #define MOJO_HANDLE_INVALID ((MojoHandle)0)
 #endif
@@ -85,24 +85,24 @@ const MojoHandle MOJO_HANDLE_INVALID = 0;
 typedef uint32_t MojoResult;
 
 #ifdef __cplusplus
-const MojoResult MOJO_RESULT_OK = 0;
-const MojoResult MOJO_RESULT_CANCELLED = 1;
-const MojoResult MOJO_RESULT_UNKNOWN = 2;
-const MojoResult MOJO_RESULT_INVALID_ARGUMENT = 3;
-const MojoResult MOJO_RESULT_DEADLINE_EXCEEDED = 4;
-const MojoResult MOJO_RESULT_NOT_FOUND = 5;
-const MojoResult MOJO_RESULT_ALREADY_EXISTS = 6;
-const MojoResult MOJO_RESULT_PERMISSION_DENIED = 7;
-const MojoResult MOJO_RESULT_RESOURCE_EXHAUSTED = 8;
-const MojoResult MOJO_RESULT_FAILED_PRECONDITION = 9;
-const MojoResult MOJO_RESULT_ABORTED = 10;
-const MojoResult MOJO_RESULT_OUT_OF_RANGE = 11;
-const MojoResult MOJO_RESULT_UNIMPLEMENTED = 12;
-const MojoResult MOJO_RESULT_INTERNAL = 13;
-const MojoResult MOJO_RESULT_UNAVAILABLE = 14;
-const MojoResult MOJO_RESULT_DATA_LOSS = 15;
-const MojoResult MOJO_RESULT_BUSY = 16;
-const MojoResult MOJO_RESULT_SHOULD_WAIT = 17;
+inline constexpr MojoResult MOJO_RESULT_OK = 0;
+inline constexpr MojoResult MOJO_RESULT_CANCELLED = 1;
+inline constexpr MojoResult MOJO_RESULT_UNKNOWN = 2;
+inline constexpr MojoResult MOJO_RESULT_INVALID_ARGUMENT = 3;
+inline constexpr MojoResult MOJO_RESULT_DEADLINE_EXCEEDED = 4;
+inline constexpr MojoResult MOJO_RESULT_NOT_FOUND = 5;
+inline constexpr MojoResult MOJO_RESULT_ALREADY_EXISTS = 6;
+inline constexpr MojoResult MOJO_RESULT_PERMISSION_DENIED = 7;
+inline constexpr MojoResult MOJO_RESULT_RESOURCE_EXHAUSTED = 8;
+inline constexpr MojoResult MOJO_RESULT_FAILED_PRECONDITION = 9;
+inline constexpr MojoResult MOJO_RESULT_ABORTED = 10;
+inline constexpr MojoResult MOJO_RESULT_OUT_OF_RANGE = 11;
+inline constexpr MojoResult MOJO_RESULT_UNIMPLEMENTED = 12;
+inline constexpr MojoResult MOJO_RESULT_INTERNAL = 13;
+inline constexpr MojoResult MOJO_RESULT_UNAVAILABLE = 14;
+inline constexpr MojoResult MOJO_RESULT_DATA_LOSS = 15;
+inline constexpr MojoResult MOJO_RESULT_BUSY = 16;
+inline constexpr MojoResult MOJO_RESULT_SHOULD_WAIT = 17;
 #else
 #define MOJO_RESULT_OK ((MojoResult)0)
 #define MOJO_RESULT_CANCELLED ((MojoResult)1)
@@ -145,7 +145,8 @@ typedef uint32_t MojoInitializeFlags;
 // their own shared memory.
 //
 // This flag is ignored when |MOJO_INITIALIZE_FLAG_LOAD_ONLY| is set.
-#define MOJO_INITIALIZE_FLAG_FORCE_DIRECT_SHARED_MEMORY_ALLOCATION ((MojoInitializeFlags)2)
+#define MOJO_INITIALIZE_FLAG_FORCE_DIRECT_SHARED_MEMORY_ALLOCATION \
+  ((MojoInitializeFlags)2)
 
 // This call to |MojoInitialize()| should NOT fully initialize Mojo's internal
 // IPC support engine. Initialization is essentially a two-phase operation:
@@ -168,32 +169,33 @@ typedef uint32_t MojoInitializeFlags;
 
 // Options passed to |MojoInitialize()|.
 struct MOJO_ALIGNAS(8) MojoInitializeOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoInitializeFlags|.
-    MojoInitializeFlags flags;
+  // See |MojoInitializeFlags|.
+  MojoInitializeFlags flags;
 
-    // Address and length of the UTF8-encoded path of a mojo_core shared library
-    // to load. If the |mojo_core_path| is null then |mojo_core_path_length| is
-    // ignored and Mojo will fall back first onto the |MOJO_CORE_LIBRARY_PATH|
-    // environment variable, and then onto the current working directory.
-    //
-    // NOTE: These fields are only observed during the first successful call to
-    // |MojoInitialize()| in a process.
-    MOJO_POINTER_FIELD(const char*, mojo_core_path);
-    uint32_t mojo_core_path_length;
+  // Address and length of the UTF8-encoded path of a mojo_core shared library
+  // to load. If the |mojo_core_path| is null then |mojo_core_path_length| is
+  // ignored and Mojo will fall back first onto the |MOJO_CORE_LIBRARY_PATH|
+  // environment variable, and then onto the current working directory.
+  //
+  // NOTE: These fields are only observed during the first successful call to
+  // |MojoInitialize()| in a process.
+  MOJO_POINTER_FIELD(const char*, mojo_core_path);
+  uint32_t mojo_core_path_length;
 
-    // For POSIX and Fuchsia systems only, this is the |argc| and |argv| from
-    // the calling process's main() entry point. These fields are ignored on
-    // Windows, but we define them anyway for the sake of ABI consistency.
-    //
-    // NOTE: These fields are only observed during the first successful call to
-    // |MojoInitialize()| within a process.
-    int32_t argc;
-    MOJO_POINTER_FIELD(const char* const*, argv);
+  // For POSIX and Fuchsia systems only, this is the |argc| and |argv| from
+  // the calling process's main() entry point. These fields are ignored on
+  // Windows, but we define them anyway for the sake of ABI consistency.
+  //
+  // NOTE: These fields are only observed during the first successful call to
+  // |MojoInitialize()| within a process.
+  int32_t argc;
+  MOJO_POINTER_FIELD(const char* const*, argv);
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoInitializeOptions) == 32, "MojoInitializeOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoInitializeOptions) == 32,
+                   "MojoInitializeOptions has wrong size");
 
 // Flags passed to |MojoShutdown()| via |MojoShutdownOptions|.
 typedef uint32_t MojoShutdownFlags;
@@ -203,13 +205,14 @@ typedef uint32_t MojoShutdownFlags;
 
 // Options passed to |MojoShutdown()|.
 struct MOJO_ALIGNAS(8) MojoShutdownOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoShutdownFlags|.
-    MojoShutdownFlags flags;
+  // See |MojoShutdownFlags|.
+  MojoShutdownFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoShutdownOptions) == 8, "MojoShutdownOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoShutdownOptions) == 8,
+                   "MojoShutdownOptions has wrong size");
 
 // |MojoHandleSignals|: Used to specify signals that can be watched for on a
 // handle (and which can be triggered), e.g., the ability to read or write to
@@ -234,13 +237,14 @@ MOJO_STATIC_ASSERT(sizeof(struct MojoShutdownOptions) == 8, "MojoShutdownOptions
 typedef uint32_t MojoHandleSignals;
 
 #ifdef __cplusplus
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_NONE = 0;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_READABLE = 1 << 0;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_WRITABLE = 1 << 1;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_PEER_CLOSED = 1 << 2;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_NEW_DATA_READABLE = 1 << 3;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_PEER_REMOTE = 1 << 4;
-const MojoHandleSignals MOJO_HANDLE_SIGNAL_QUOTA_EXCEEDED = 1 << 5;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_NONE = 0;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_READABLE = 1 << 0;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_WRITABLE = 1 << 1;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_PEER_CLOSED = 1 << 2;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_NEW_DATA_READABLE = 1
+                                                                          << 3;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_PEER_REMOTE = 1 << 4;
+inline constexpr MojoHandleSignals MOJO_HANDLE_SIGNAL_QUOTA_EXCEEDED = 1 << 5;
 #else
 #define MOJO_HANDLE_SIGNAL_NONE ((MojoHandleSignals)0)
 #define MOJO_HANDLE_SIGNAL_READABLE ((MojoHandleSignals)1 << 0)
@@ -264,13 +268,15 @@ const MojoHandleSignals MOJO_HANDLE_SIGNAL_QUOTA_EXCEEDED = 1 << 5;
 // 32-bit-aligned.
 MOJO_STATIC_ASSERT(MOJO_ALIGNOF(int32_t) == 4, "int32_t has weird alignment");
 struct MOJO_ALIGNAS(4) MojoHandleSignalsState {
-    MojoHandleSignals satisfied_signals;
-    MojoHandleSignals satisfiable_signals;
+  MojoHandleSignals satisfied_signals;
+  MojoHandleSignals satisfiable_signals;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoHandleSignalsState) == 8, "MojoHandleSignalsState has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoHandleSignalsState) == 8,
+                   "MojoHandleSignalsState has wrong size");
 
-// TODO(https://crbug.com/819046): Remove these aliases.
+// TODO(crbug.com/40565809): Remove these aliases.
 #define MOJO_WATCH_CONDITION_SATISFIED MOJO_TRIGGER_CONDITION_SIGNALS_SATISFIED
-#define MOJO_WATCH_CONDITION_NOT_SATISFIED MOJO_TRIGGER_CONDITION_SIGNALS_UNSATISFIED
+#define MOJO_WATCH_CONDITION_NOT_SATISFIED \
+  MOJO_TRIGGER_CONDITION_SIGNALS_UNSATISFIED
 
-#endif // MOJO_PUBLIC_C_SYSTEM_TYPES_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_TYPES_H_

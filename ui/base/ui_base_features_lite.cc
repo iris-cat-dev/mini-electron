@@ -5,7 +5,6 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "skia/ext/switches.h"
-#include "gpu/command_buffer/service/gpu_switches.h"
 
 #include <stdlib.h>
 
@@ -167,10 +166,4 @@ bool IsSwipeToMoveCursorEnabled()
 #endif
     return enabled;
 }
-
-bool IsTextBasedAudioDescriptionEnabled(void) { return true; }
-
-bool IsUsingRawDraw(void) { return true; }
-
-
 }

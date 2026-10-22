@@ -8,7 +8,9 @@
 #include <optional>
 
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_script_identifier.h"
+#endif
 
 namespace v8 {
 class Isolate;
@@ -22,6 +24,7 @@ namespace blink {
 class ExecutionContext;
 namespace probe {
 
+#if !defined(MINI_UI_QUICKJS)
 // Tracks scheduling and cancelation of a single async task.
 // An async task scheduled via `AsyncTaskContext` is guaranteed to be
 // canceled.
@@ -80,6 +83,7 @@ private:
 
     v8::Isolate* isolate_ = nullptr;
 };
+#endif // !defined(MINI_UI_QUICKJS)
 
 } // namespace probe
 } // namespace blink

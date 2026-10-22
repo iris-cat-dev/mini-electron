@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_LINK_HIGHLIGHT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_LINK_HIGHLIGHT_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
@@ -25,7 +26,9 @@ class LayoutObject;
 class LocalFrame;
 class Node;
 class Page;
+#if !defined(MINI_UI_QUICKJS)
 class PaintArtifactCompositor;
+#endif
 
 class CORE_EXPORT LinkHighlight final : public GarbageCollected<LinkHighlight> {
 public:
@@ -51,7 +54,9 @@ public:
     void UpdateBeforePrePaint();
     void UpdateAfterPrePaint();
     void Paint(GraphicsContext&) const;
+#if !defined(MINI_UI_QUICKJS)
     void UpdateAfterPaint(const PaintArtifactCompositor*);
+#endif
 
 private:
     friend class LinkHighlightImplTest;
@@ -75,5 +80,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_LINK_HIGHLIGHT_H_

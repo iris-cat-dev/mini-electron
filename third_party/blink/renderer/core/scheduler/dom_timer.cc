@@ -39,7 +39,9 @@
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/scheduler/scheduled_action.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -229,7 +231,9 @@ void DOMTimer::clearInterval(ExecutionContext& context, int timeout_id)
 
 void DOMTimer::RemoveByID(ExecutionContext& context, int timeout_id)
 {
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("TimerRemove", inspector_timer_remove_event::Data, &context, timeout_id);
+#endif
     // Eagerly unregister as ExecutionContext observer.
     if (DOMTimer* timer = DOMTimerCoordinator::From(context).RemoveTimeoutByID(timeout_id)) {
         // Eagerly unregister as ExecutionContext observer.
@@ -296,10 +300,14 @@ DOMTimer::DOMTimer(ExecutionContext& context, ScheduledAction* action, base::Tim
         StartRepeating(timeout, FROM_HERE, precise);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("TimerInstall", inspector_timer_install_event::Data, &context, timeout_id_, timeout, single_shot);
+#endif
     const char* name = single_shot ? "setTimeout" : "setInterval";
+#if !defined(MINI_UI_QUICKJS)
     async_task_context_.Schedule(&context, name);
     probe::BreakableLocation(&context, name);
+#endif
 }
 
 DOMTimer::~DOMTimer() = default;
@@ -315,9 +323,11 @@ void DOMTimer::Stop()
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     async_task_context_.Cancel();
     const bool is_interval = !RepeatInterval().is_zero();
     probe::BreakableLocation(GetExecutionContext(), is_interval ? "clearInterval" : "clearTimeout");
+#endif
 
     // Need to release JS objects potentially protected by ScheduledAction
     // because they can form circular references back to the ExecutionContext
@@ -343,13 +353,17 @@ void DOMTimer::Fired()
     // Only the first execution of a multi-shot timer should get an affirmative
     // user gesture indicator.
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("TimerFire", inspector_timer_fire_event::Data, context, timeout_id_);
+#endif
     const bool is_interval = !RepeatInterval().is_zero();
 
     probe::UserCallback probe(context, is_interval ? "setInterval" : "setTimeout", g_null_atom, true);
     probe::InvokeCallback invoke_probe(
         CHECK_DEREF(action_->GetScriptState()), is_interval ? "TimerHandler:setInterval" : "TimerHandler:setTimeout", action_->CallbackFunction());
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTask async_task(context, &async_task_context_, is_interval ? "fired" : nullptr);
+#endif
 
     // Simple case for non-one-shot timers.
     if (IsActive()) {

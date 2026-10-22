@@ -13,8 +13,10 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_box_model_object.h"
 #include "third_party/blink/renderer/core/paint/timing/lcp_objects.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_callback_manager.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_visualizer.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scroll_types.h"
 #include "third_party/blink/renderer/platform/graphics/paint/ignore_paint_timing_scope.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
@@ -53,6 +55,7 @@ class CORE_EXPORT PaintTimingDetector : public GarbageCollected<PaintTimingDetec
 public:
     PaintTimingDetector(LocalFrameView*);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if the image might ultimately be a candidate for largest
     // paint, otherwise false. When this method is called we do not know the
     // largest status for certain, because we need to wait for presentation.
@@ -64,6 +67,7 @@ public:
     static bool NotifyImagePaint(const LayoutObject&, const gfx::Size& intrinsic_size, const MediaTiming& media_timing,
         const PropertyTreeStateOrAlias& current_paint_chunk_properties, const gfx::Rect& image_border);
     inline static void NotifyTextPaint(const gfx::Rect& text_visual_rect);
+#endif
 
     void NotifyImageFinished(const LayoutObject&, const MediaTiming*);
     void LayoutObjectWillBeDestroyed(const LayoutObject&);
@@ -138,10 +142,12 @@ public:
     // opacity layer.
     void ReportIgnoredContent();
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<PaintTimingVisualizer>& Visualizer()
     {
         return visualizer_;
     }
+#endif
     bool IsUnrelatedSoftNavigationPaint(const Node&);
 
     void Trace(Visitor* visitor) const;
@@ -171,9 +177,13 @@ private:
     // nullptr.
     base::TimeTicks first_input_or_scroll_notified_timestamp_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<PaintTimingCallbackManagerImpl> callback_manager_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<PaintTimingVisualizer> visualizer_;
+#endif
 
     // The LCP details reported to metrics (UKM).
     LargestContentfulPaintDetails lcp_details_for_metrics_;
@@ -195,6 +205,7 @@ private:
     bool record_soft_navigation_lcp_for_metrics_ = false;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Largest Text Paint and Text Element Timing aggregate text nodes by these
 // text nodes' ancestors. In order to tell whether a text node is contained by
 // another node efficiently, The aggregation relies on the paint order of the
@@ -262,6 +273,7 @@ inline void PaintTimingDetector::NotifyTextPaint(const gfx::Rect& text_visual_re
     }
     ScopedPaintTimingDetectorBlockPaintHook::AggregateTextPaint(text_visual_rect);
 }
+#endif
 
 } // namespace blink
 

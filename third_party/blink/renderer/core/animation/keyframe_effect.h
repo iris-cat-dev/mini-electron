@@ -117,6 +117,7 @@ public:
 
     void NotifySampledEffectRemovedFromEffectStack();
 
+#if !defined(MINI_UI_QUICKJS)
     CompositorAnimations::FailureReasons CheckCanStartAnimationOnCompositor(
         const PaintArtifactCompositor*, double animation_playback_rate, PropertyHandleSet* unsupported_properties = nullptr) const;
     // Must only be called once.
@@ -129,6 +130,7 @@ public:
     void PauseAnimationForTestingOnCompositor(base::TimeDelta pause_time);
 
     void AttachCompositedLayers();
+#endif
 
     void DowngradeToNormal()
     {
@@ -173,9 +175,11 @@ private:
     AnimationTimeDelta CalculateTimeToEffectChange(
         bool forwards, std::optional<AnimationTimeDelta> inherited_time, AnimationTimeDelta time_to_next_iteration) const override;
     std::optional<AnimationTimeDelta> TimelineDuration() const override;
+#if !defined(MINI_UI_QUICKJS)
     bool HasIncompatibleStyle() const;
     bool AffectsImportantProperty() const;
     void RestartRunningAnimationOnCompositor();
+#endif
 
     Member<Element> effect_target_;
     Member<Element> target_element_;
@@ -185,11 +189,15 @@ private:
 
     Priority priority_;
 
+#if !defined(MINI_UI_QUICKJS)
     Vector<int> compositor_keyframe_model_ids_;
+#endif
 
     bool ignore_css_keyframes_;
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<gfx::SizeF> effect_target_size_;
+#endif
 };
 
 template <> struct DowncastTraits<KeyframeEffect> {

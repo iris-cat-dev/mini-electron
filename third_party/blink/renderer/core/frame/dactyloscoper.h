@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_DACTYLOSCOPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_DACTYLOSCOPER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <optional>
 
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
@@ -80,5 +81,7 @@ public:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_DACTYLOSCOPER_H_

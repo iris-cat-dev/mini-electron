@@ -19,7 +19,11 @@ namespace scheduler {
 // on total cpu time.
 class PLATFORM_EXPORT CPUTimeBudgetPool : public BudgetPool {
 public:
+#if !defined(MINI_UI_QUICKJS)
     CPUTimeBudgetPool(const char* name, TraceableVariableController* tracing_controller, base::TimeTicks now);
+#else
+    CPUTimeBudgetPool(const char* name, base::TimeTicks now);
+#endif
     CPUTimeBudgetPool(const CPUTimeBudgetPool&) = delete;
     CPUTimeBudgetPool& operator=(const CPUTimeBudgetPool&) = delete;
 
@@ -55,7 +59,9 @@ public:
     base::TimeTicks GetTimeTasksCanRunUntil(base::TimeTicks now) const final;
     base::TimeTicks GetNextAllowedRunTime(base::TimeTicks desired_run_time) const final;
     void OnWakeUp(base::TimeTicks now) final;
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks) const final;
+#endif
 
 protected:
     QueueBlockType GetBlockType() const final;

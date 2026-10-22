@@ -44,7 +44,9 @@
 #include "third_party/blink/renderer/core/editing/dom_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+#endif
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
@@ -644,10 +646,12 @@ Element* TreeScope::fullscreenElement()
     return Fullscreen::FullscreenElementForBindingFrom(*this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 Element* TreeScope::pictureInPictureElement()
 {
     return PictureInPictureController::From(GetDocument()).PictureInPictureElement(*this);
 }
+#endif
 
 uint16_t TreeScope::ComparePosition(const TreeScope& other_scope) const
 {

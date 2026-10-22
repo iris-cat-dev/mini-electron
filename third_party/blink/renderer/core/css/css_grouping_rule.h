@@ -107,7 +107,9 @@ template <> struct DowncastTraits<CSSGroupingRule> {
         case CSSRule::kPositionTryRule:
         case CSSRule::kPropertyRule:
         case CSSRule::kStyleRule:
+#if !defined(MINI_UI_QUICKJS)
         case CSSRule::kViewTransitionRule:
+#endif
             return false;
         }
     }

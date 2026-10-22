@@ -7,7 +7,9 @@
 #include <cinttypes>
 
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_display_item.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/paint/foreign_layer_display_item.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/paint_artifact.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scrollbar_display_item.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -29,11 +31,15 @@ void DisplayItem::Destruct()
         return;
     if (auto* drawing = DynamicTo<DrawingDisplayItem>(this)) {
         drawing->~DrawingDisplayItem();
-    } else if (auto* foreign_layer = DynamicTo<ForeignLayerDisplayItem>(this)) {
-        foreign_layer->~ForeignLayerDisplayItem();
-    } else {
-        To<ScrollbarDisplayItem>(this)->~ScrollbarDisplayItem();
+        return;
     }
+#if !defined(MINI_UI_QUICKJS)
+    if (auto* foreign_layer = DynamicTo<ForeignLayerDisplayItem>(this)) {
+        foreign_layer->~ForeignLayerDisplayItem();
+        return;
+    }
+#endif
+    To<ScrollbarDisplayItem>(this)->~ScrollbarDisplayItem();
 }
 
 bool DisplayItem::EqualsForUnderInvalidation(const DisplayItem& other) const
@@ -54,9 +60,11 @@ bool DisplayItem::EqualsForUnderInvalidation(const DisplayItem& other) const
     if (auto* drawing = DynamicTo<DrawingDisplayItem>(this)) {
         return drawing->EqualsForUnderInvalidationImpl(To<DrawingDisplayItem>(other));
     }
+#if !defined(MINI_UI_QUICKJS)
     if (auto* foreign_layer = DynamicTo<ForeignLayerDisplayItem>(this)) {
         return foreign_layer->EqualsForUnderInvalidationImpl(To<ForeignLayerDisplayItem>(other));
     }
+#endif
     return To<ScrollbarDisplayItem>(this)->EqualsForUnderInvalidationImpl(To<ScrollbarDisplayItem>(other));
 }
 
@@ -160,7 +168,9 @@ static String ForeignLayerTypeAsDebugString(DisplayItem::Type type)
         DEBUG_STRING_CASE(ForeignLayerLinkHighlight);
         DEBUG_STRING_CASE(ForeignLayerViewportScroll);
         DEBUG_STRING_CASE(ForeignLayerViewportScrollbar);
+#if !defined(MINI_UI_QUICKJS)
         DEBUG_STRING_CASE(ForeignLayerViewTransitionContent);
+#endif
         DEFAULT_CASE;
     }
 }
@@ -226,11 +236,15 @@ void DisplayItem::PropertiesAsJSON(JSONObject& json, const PaintArtifact& paint_
         return;
     if (auto* drawing = DynamicTo<DrawingDisplayItem>(this)) {
         drawing->PropertiesAsJSONImpl(json);
-    } else if (auto* foreign_layer = DynamicTo<ForeignLayerDisplayItem>(this)) {
-        foreign_layer->PropertiesAsJSONImpl(json);
-    } else {
-        To<ScrollbarDisplayItem>(this)->PropertiesAsJSONImpl(json);
+        return;
     }
+#if !defined(MINI_UI_QUICKJS)
+    if (auto* foreign_layer = DynamicTo<ForeignLayerDisplayItem>(this)) {
+        foreign_layer->PropertiesAsJSONImpl(json);
+        return;
+    }
+#endif
+    To<ScrollbarDisplayItem>(this)->PropertiesAsJSONImpl(json);
 }
 
 #endif // DCHECK_IS_ON()

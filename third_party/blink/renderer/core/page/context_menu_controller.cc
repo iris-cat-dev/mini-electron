@@ -41,7 +41,9 @@
 #include "third_party/blink/public/common/navigation/impression.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom-blink.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
+#endif
 #include "third_party/blink/public/web/web_text_check_client.h"
 #include "third_party/blink/renderer/core/annotation/annotation_agent_container_impl.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -60,12 +62,18 @@
 #include "third_party/blink/renderer/core/editing/spellcheck/spell_checker.h"
 #include "third_party/blink/renderer/core/events/mouse_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/fragment_directive/text_fragment_handler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
@@ -75,18 +83,24 @@
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/input/context_menu_allowed_scope.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/page/context_menu_provider.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
@@ -94,6 +108,9 @@
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/platform/bindings/script_regexp.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_response.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/character_visitor.h"
 
 namespace blink {
@@ -453,7 +470,10 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
         data.title_text = html_element->title().Utf8();
         data.alt_text = html_element->AltText().Utf8();
     }
+    bool handled_media_or_plugin = false;
+#if !defined(MINI_UI_QUICKJS)
     if (!result.AbsoluteMediaURL().IsEmpty() || result.GetMediaStreamDescriptor() || result.GetMediaSourceHandle()) {
+        handled_media_or_plugin = true;
         if (!result.AbsoluteMediaURL().IsEmpty())
             data.src_url = GURL(result.AbsoluteMediaURL());
 
@@ -515,6 +535,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
         if (media_element->ShouldShowAllControls())
             data.media_flags |= ContextMenuData::kMediaControls;
     } else if (IsA<HTMLObjectElement>(*result.InnerNode()) || IsA<HTMLEmbedElement>(*result.InnerNode())) {
+        handled_media_or_plugin = true;
         if (auto* embedded = DynamicTo<LayoutEmbeddedContent>(result.InnerNode()->GetLayoutObject())) {
             WebPluginContainerImpl* plugin_view = embedded->Plugin();
             if (plugin_view) {
@@ -563,7 +584,9 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
                     data.media_flags |= ContextMenuData::kMediaCanRotate;
             }
         }
-    } else {
+    }
+#endif
+    if (!handled_media_or_plugin) {
         // Check image media last to ensure that penetrating image selection
         // does not override a topmost media element.
         // TODO(benwgold): Consider extending penetration to all media types.
@@ -573,8 +596,14 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
 
         if (potential_image_node != nullptr && IsA<HTMLCanvasElement>(potential_image_node)) {
             data.media_type = mojom::blink::ContextMenuDataMediaType::kCanvas;
+#if defined(MINI_UI_QUICKJS)
+            // Match the software canvas image used by CopyImageAt.
+            auto image = To<HTMLCanvasElement>(potential_image_node)->Snapshot(FlushReason::kClipboard, kFrontBuffer);
+            data.has_image_contents = image && !image->IsNull();
+#else
             // TODO(crbug.com/1267243): Support WebGPU canvas.
             data.has_image_contents = !To<HTMLCanvasElement>(potential_image_node)->IsWebGPU();
+#endif
         } else if (potential_image_node != nullptr && !HitTestResult::AbsoluteImageURL(potential_image_node).IsEmpty()) {
             data.src_url = GURL(HitTestResult::AbsoluteImageURL(potential_image_node));
             data.media_type = mojom::blink::ContextMenuDataMediaType::kImage;
@@ -668,7 +697,11 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
     }
 
     if (Document* doc = selected_frame->GetDocument()) {
+#if defined(MINI_UI_QUICKJS)
+        data.is_image_media_plugin_document = doc->IsImageDocument();
+#else
         data.is_image_media_plugin_document = doc->IsImageDocument() || doc->IsMediaDocument() || doc->IsPluginDocument();
+#endif
     }
     data.referrer_policy = selected_frame->DomWindow()->GetReferrerPolicy();
 
@@ -692,6 +725,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
 
         data.link_text = anchor->innerText().Utf8();
 
+#if !defined(MINI_UI_QUICKJS)
         if (const AtomicString& attribution_src_value = anchor->FastGetAttribute(html_names::kAttributionsrcAttr); !attribution_src_value.IsNull()) {
             // TODO(crbug.com/1381123): Support background attributionsrc requests
             // if attribute value is non-empty.
@@ -707,6 +741,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame, const PhysicalOff
                 }
             }
         }
+#endif
     }
 
     data.selection_rect = ComputeSelectionRect(selected_frame);

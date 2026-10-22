@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/core/script/value_wrapper_synthetic_module_script.h"
 
+#include <array>
+
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/public/platform/web_vector.h"
@@ -94,9 +96,11 @@ ValueWrapperSyntheticModuleScript* ValueWrapperSyntheticModuleScript::CreateWith
     const KURL& source_url, const KURL& base_url, const ScriptFetchOptions& fetch_options, const TextPosition& start_position)
 {
     v8::Isolate* isolate = settings_object->GetScriptState()->GetIsolate();
-    auto export_names = v8::to_array<v8::Local<v8::String>>({ V8String(isolate, "default") });
+    const std::array<v8::Local<v8::String>, 1> export_names { V8String(isolate, "default") };
     v8::Local<v8::Module> v8_synthetic_module = v8::Module::CreateSyntheticModule(
-        isolate, V8String(isolate, source_url.GetString()), export_names, ValueWrapperSyntheticModuleScript::EvaluationSteps);
+        isolate, V8String(isolate, source_url.GetString()),
+        v8::MemorySpan<const v8::Local<v8::String>>(export_names.data(), export_names.size()),
+        ValueWrapperSyntheticModuleScript::EvaluationSteps);
     // Step 6. "Set script's record to the result of creating a synthetic module
     // record with a default export of json with settings."
     // [spec text]

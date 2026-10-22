@@ -24,7 +24,11 @@ namespace blink {
 PhysicalRect ScrollableOverflowCalculator::RecalculateScrollableOverflowForFragment(const PhysicalBoxFragment& fragment, bool has_block_fragmentation)
 {
     const BlockNode node(const_cast<LayoutBox*>(To<LayoutBox>(fragment.GetSelfOrContainerLayoutObject())));
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(!node.IsReplaced());
+#else
     DCHECK(!node.IsReplaced() || node.IsMedia());
+#endif
 
     const WritingDirectionMode writing_direction = node.Style().GetWritingDirection();
 

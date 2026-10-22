@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,7 +15,7 @@
 #define MOJO_CPP_SYSTEM_EXPORT __declspec(dllimport)
 #endif
 
-#else // !defined(WIN32)
+#else  // !defined(WIN32)
 
 #if defined(MOJO_CPP_SYSTEM_IMPLEMENTATION)
 #define MOJO_CPP_SYSTEM_EXPORT __attribute((visibility("default")))
@@ -23,14 +23,12 @@
 #define MOJO_CPP_SYSTEM_EXPORT
 #endif
 
-#endif // defined(WIN32)
+#endif  // defined(WIN32)
 
-#else // !defined(COMPONENT_BUILD)
+#else  // !defined(COMPONENT_BUILD)
 
 #define MOJO_CPP_SYSTEM_EXPORT
 
-#endif // defined(COMPONENT_BUILD)
+#endif  // defined(COMPONENT_BUILD)
 
-#define ASSOCIATED_AS_ALIAS 1 // PendingAssociatedRemote -> PendingRemote
-
-#endif // MOJO_PUBLIC_CPP_SYSTEM_SYSTEM_EXPORT_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_SYSTEM_EXPORT_H_

@@ -15,7 +15,7 @@
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "build/build_config.h"
-#if BUILDFLAG(IS_NACL)
+#if BUILDFLAG(IS_NACL) || defined(MINI_UI_QUICKJS)
 #include "base/hash/sha1_nacl.h"
 #else
 #include "base/hash/sha1_boringssl.h"

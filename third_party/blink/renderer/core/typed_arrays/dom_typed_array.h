@@ -135,6 +135,12 @@ private:
     size_t raw_length_;
 };
 
+#if defined(MINI_UI_QUICKJS)
+#define DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V)
+#else
+#define DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V) V(uint16_t, Float16, false)
+#endif
+
 #define DOMTYPEDARRAY_FOREACH_VIEW_TYPE(V)                                                                                                                     \
     V(int8_t, Int8, false)                                                                                                                                     \
     V(int16_t, Int16, false)                                                                                                                                   \
@@ -143,7 +149,7 @@ private:
     V(uint8_t, Uint8Clamped, true)                                                                                                                             \
     V(uint16_t, Uint16, false)                                                                                                                                 \
     V(uint32_t, Uint32, false)                                                                                                                                 \
-    V(uint16_t, Float16, false)                                                                                                                                \
+    DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V)                                                                                                                         \
     V(float, Float32, false)                                                                                                                                   \
     V(double, Float64, false)                                                                                                                                  \
     V(int64_t, BigInt64, false)                                                                                                                                \
@@ -173,6 +179,7 @@ DOMTYPEDARRAY_FOREACH_VIEW_TYPE(DOMTYPEDARRAY_DEFINE_TYPEDEFNAME)
 #undef DOMTYPEDARRAY_DEFINE_TYPEDEFNAME
 
 #undef DOMTYPEDARRAY_FOREACH_VIEW_TYPE
+#undef DOMTYPEDARRAY_FLOAT16_VIEW_TYPE
 
 } // namespace blink
 

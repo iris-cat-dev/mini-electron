@@ -9,6 +9,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/json/json_reader.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -220,6 +221,29 @@ TEST(TraceEventArgumentTest, LongStrings)
     std::string json;
     value->AppendAsTraceFormat(&json);
     EXPECT_EQ("{\"a\":\"short\",\"b\":\"" + kLongString + "\",\"c\":[\"" + kLongString2 + "\",\"\",{\"a\":\"" + kLongString3.data() + "\"}]}", json);
+}
+
+TEST(TraceEventArgumentTest, EmbeddedNullStrings)
+{
+    constexpr char kString[] = "quote\"\\\n\0tail";
+    constexpr std::string_view kStringView(kString, sizeof(kString) - 1);
+
+    TracedValueJSON value;
+    value.SetString("dictionary", kStringView);
+    value.BeginArray("array");
+    value.AppendString(kStringView);
+    value.EndArray();
+
+    const std::string compact_json = value.ToJSON();
+    EXPECT_EQ("{\"dictionary\":\"quote\\\"\\\\\\n\\u0000tail\","
+              "\"array\":[\"quote\\\"\\\\\\n\\u0000tail\"]}",
+        compact_json);
+
+    const auto compact_value = JSONReader::Read(compact_json);
+    const auto formatted_value = JSONReader::Read(value.ToFormattedJSON());
+    ASSERT_TRUE(compact_value);
+    ASSERT_TRUE(formatted_value);
+    EXPECT_EQ(*compact_value, *formatted_value);
 }
 
 TEST(TraceEventArgumentTest, PassTracedValue)

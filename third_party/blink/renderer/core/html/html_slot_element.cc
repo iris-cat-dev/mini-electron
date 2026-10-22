@@ -46,7 +46,9 @@
 #include "third_party/blink/renderer/core/dom/whitespace_attacher.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
@@ -526,7 +528,9 @@ void HTMLSlotElement::NotifySlottedNodesOfFlatTreeChange(const HeapVector<Member
 {
     if (old_slotted == new_slotted)
         return;
+#if !defined(MINI_UI_QUICKJS)
     probe::DidPerformSlotDistribution(this);
+#endif
 
     // It is very important to minimize the number of reattaching nodes in
     // |new_assigned_nodes| here. The following *works*, in terms of the

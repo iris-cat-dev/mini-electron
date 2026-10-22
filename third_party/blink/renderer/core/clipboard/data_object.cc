@@ -70,8 +70,12 @@ DataObject* DataObject::CreateFromClipboard(ExecutionContext* context, SystemCli
                     files->files.clear();
                 } else {
                     for (const mojom::blink::DataTransferFilePtr& file : files->files) {
+#if !defined(MINI_UI_QUICKJS)
                         data_object->AddFilename(context, FilePathToString(file->path), FilePathToString(file->display_name), files->file_system_id,
                             base::MakeRefCounted<FileSystemAccessDropData>(std::move(file->file_system_access_token)));
+#else
+                        data_object->AddFilename(context, FilePathToString(file->path), FilePathToString(file->display_name), files->file_system_id);
+#endif
                     }
                 }
             }
@@ -289,11 +293,20 @@ Vector<String> DataObject::Filenames() const
     return results;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DataObject::AddFilename(ExecutionContext* context, const String& filename, const String& display_name, const String& file_system_id,
     scoped_refptr<FileSystemAccessDropData> file_system_access_entry)
+#else
+void DataObject::AddFilename(ExecutionContext* context, const String& filename, const String& display_name, const String& file_system_id)
+#endif
 {
+#if !defined(MINI_UI_QUICKJS)
     InternalAddFileItem(DataObjectItem::CreateFromFileWithFileSystemId(
         File::CreateForUserProvidedFile(context, filename, display_name), file_system_id, std::move(file_system_access_entry)));
+#else
+    InternalAddFileItem(DataObjectItem::CreateFromFileWithFileSystemId(
+        File::CreateForUserProvidedFile(context, filename, display_name), file_system_id));
+#endif
 }
 
 void DataObject::AddFileSharedBuffer(scoped_refptr<SharedBuffer> buffer, bool is_image_accessible, const KURL& source_url, const String& filename_extension,
@@ -376,7 +389,11 @@ DataObject* DataObject::Create(ExecutionContext* context, const WebDragData& dat
                 },
                 [&](const WebDragData::FilenameItem& item) {
                     has_file_system = true;
+#if !defined(MINI_UI_QUICKJS)
                     data_object->AddFilename(context, item.filename, item.display_name, data.FilesystemId(), item.file_system_access_entry);
+#else
+                    data_object->AddFilename(context, item.filename, item.display_name, data.FilesystemId());
+#endif
                 },
                 [&](const WebDragData::BinaryDataItem& item) {
                     data_object->AddFileSharedBuffer(item.data, item.image_accessible, item.source_url, item.filename_extension, item.content_disposition);

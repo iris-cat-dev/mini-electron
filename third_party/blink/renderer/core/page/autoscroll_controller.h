@@ -99,8 +99,10 @@ private:
 
     // Notify browser process input event router that main frame started drag
     // selection. Any mouse up event in OOF child frames should also dispatch
-    // mouse up event in the main frame when the state is active.
+#if !defined(MINI_UI_QUICKJS)
+    // Updates the browser-side selection autoscroll input state.
     void UpdateCachedAutoscrollForSelectionState(bool autoscroll_selection);
+#endif
     Member<LayoutBox> autoscroll_layout_object_ = nullptr;
     Member<LayoutBox> pressed_layout_object_ = nullptr;
 

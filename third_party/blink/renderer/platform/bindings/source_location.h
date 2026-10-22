@@ -11,15 +11,19 @@
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 #include "v8/include/v8-forward.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 #include "v8/include/v8-inspector.h"
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto::protos::pbzero {
 class BlinkSourceLocation;
 } // namespace perfetto::protos::pbzero
+#endif
 
 namespace blink {
 
@@ -39,7 +43,7 @@ public:
     // Forces full stack trace.
     static std::unique_ptr<SourceLocation> CaptureWithFullStackTrace();
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     // Used only by CaptureSourceLocation.
     static std::unique_ptr<v8_inspector::V8StackTrace> CaptureStackTraceInternal(bool full);
 
@@ -77,7 +81,7 @@ public:
     {
         return script_id_;
     }
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     std::unique_ptr<v8_inspector::V8StackTrace> TakeStackTrace()
     {
         return std::move(stack_trace_);
@@ -86,7 +90,7 @@ public:
 
     bool HasStackTrace() const
     {
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
         return !stack_trace_text_.empty();
 #else
         return stack_trace_ && !stack_trace_->isEmpty();
@@ -96,6 +100,7 @@ public:
     // Safe to pass between threads, drops async chain in stack trace.
     std::unique_ptr<SourceLocation> Clone() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Write a representation of this object into a trace.
     using Proto = perfetto::protos::pbzero::BlinkSourceLocation;
     void WriteIntoTrace(perfetto::TracedProto<Proto> proto) const;
@@ -106,11 +111,12 @@ public:
     // TODO(altimin): Replace all usages of `ToTracedValue` with
     // `WriteIntoTrace` and remove this method.
     void ToTracedValue(TracedValue*, const char* name) const;
+#endif
 
     // Could be null string when stack trace is unknown.
     String ToString() const;
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     // Could be null when stack trace is unknown.
     std::unique_ptr<v8_inspector::protocol::Runtime::API::StackTrace> BuildInspectorObject() const;
 
@@ -122,10 +128,10 @@ private:
     String function_;
     unsigned line_number_;
     unsigned column_number_;
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
     std::unique_ptr<v8_inspector::V8StackTrace> stack_trace_;
 #endif
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_UI_QUICKJS) || (defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32))
     String stack_trace_text_;
 #endif
     int script_id_;

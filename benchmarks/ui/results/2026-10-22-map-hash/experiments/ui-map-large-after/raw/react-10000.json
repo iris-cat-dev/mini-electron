@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "status": "error",
+  "framework_requested": "react",
+  "rows": 10000,
+  "warmups": 2,
+  "iterations": 7,
+  "diagnostic": {
+    "stage": "timeout",
+    "message": "timed out after 120000 ms while polling uiBench.done",
+    "mini_ui_error_code": 0
+  },
+  "application_result": null,
+  "process_execution": {
+    "command": [
+      "D:\\Project\\mini-electron\\out\\ui-map-after\\build\\ui-benchmark.exe",
+      "--framework",
+      "react",
+      "--rows",
+      "10000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--resource-root",
+      "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+      "--output",
+      "D:\\Project\\mini-electron\\out\\ui-map-large-after\\raw\\react-10000.json",
+      "--capture",
+      "D:\\Project\\mini-electron\\out\\ui-map-large-after\\captures\\react-10000.bmp",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1.0",
+      "--timeout-ms",
+      "120000"
+    ],
+    "exit_code": 1,
+    "wall_ms": 131181.7056,
+    "timeout_ms": 390000,
+    "stdout": "",
+    "stderr": "timeout: timed out after 120000 ms while polling uiBench.done\n"
+  }
+}

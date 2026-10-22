@@ -28,7 +28,9 @@ public:
     static CSSValue* ParseAtPropertyDescriptor(AtRuleDescriptorID, CSSParserTokenStream&, const CSSParserContext&);
     static CSSValue* ParseAtCounterStyleDescriptor(AtRuleDescriptorID, CSSParserTokenStream&, const CSSParserContext&);
     static CSSValue* ParseAtFontPaletteValuesDescriptor(AtRuleDescriptorID, CSSParserTokenStream&, const CSSParserContext&);
+#if !defined(MINI_UI_QUICKJS)
     static CSSValue* ParseAtViewTransitionDescriptor(AtRuleDescriptorID, CSSParserTokenStream&, const CSSParserContext&);
+#endif
 };
 
 } // namespace blink

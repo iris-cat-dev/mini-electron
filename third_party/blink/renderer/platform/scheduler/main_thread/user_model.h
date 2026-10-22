@@ -9,7 +9,9 @@
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -78,7 +80,9 @@ public:
     // recent discrete input event.
     base::TimeDelta TimeLeftUntilDiscreteInputResponseDeadline(base::TimeTicks now) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     // Clears input signals.
     void Reset(base::TimeTicks now);

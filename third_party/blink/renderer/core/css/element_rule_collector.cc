@@ -33,7 +33,9 @@
 
 #include "base/containers/span.h"
 #include "base/substring_set_matcher/substring_set_matcher.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/common/trace_event_common.h"
+#endif
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
 #include "third_party/blink/renderer/core/css/cascade_layer_map.h"
 #include "third_party/blink/renderer/core/css/check_pseudo_has_cache_scope.h"
@@ -60,6 +62,7 @@
 #include "third_party/blink/renderer/core/css/style_rule_nested_declarations.h"
 #include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
@@ -692,6 +695,7 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(const M
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (element.IsVTTElement()) {
         for (const auto bundle : match_request.AllRuleSets()) {
             if (CollectMatchingRulesForList<stop_at_first_match>(
@@ -701,6 +705,7 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(const M
             }
         }
     }
+#endif
     // Check whether other types of rules are applicable in the current tree
     // scope. Criteria for this:
     // a) the rules are UA rules.
@@ -1109,6 +1114,7 @@ void ElementRuleCollector::DidMatchRule(const RuleData* rule_data, uint16_t laye
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ElementRuleCollector::DumpAndClearRulesPerfMap()
 {
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("blink.debug"), "SelectorStats", "selector_stats", [&](perfetto::TracedValue context) {
@@ -1129,6 +1135,7 @@ void ElementRuleCollector::DumpAndClearRulesPerfMap()
     });
     GetSelectorStatisticsRuleMap().clear();
 }
+#endif
 
 struct ElementRuleCollector::CompareRules {
     inline bool operator()(const MatchedRule& matched_rule1, const MatchedRule& matched_rule2) const

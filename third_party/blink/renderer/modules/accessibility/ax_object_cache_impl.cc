@@ -1251,7 +1251,11 @@ bool AXObjectCacheImpl::IsRelevantPseudoElement(const Node& node)
     }
 
     // The remaining possible pseudo element types are not relevant.
+#if !defined(MINI_UI_QUICKJS)
     if (node.IsBackdropPseudoElement() || node.IsViewTransitionPseudoElement()) {
+#else
+    if (node.IsBackdropPseudoElement()) {
+#endif
         return false;
     }
 

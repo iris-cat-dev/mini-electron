@@ -31,8 +31,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CLIPBOARD_DATA_OBJECT_ITEM_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CLIPBOARD_DATA_OBJECT_ITEM_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom-blink.h"
+#endif
+#include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/platform/web_drag_data.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/fileapi/file.h"
@@ -53,8 +56,12 @@ public:
     static DataObjectItem* CreateFromFile(File*);
     // File with non-empty filesystem ID can be converted into FileEntry by using
     // webkitGetAsEntry.
+#if !defined(MINI_UI_QUICKJS)
     static DataObjectItem* CreateFromFileWithFileSystemId(
         File*, const String& file_system_id, scoped_refptr<FileSystemAccessDropData> file_system_access_entry = nullptr);
+#else
+    static DataObjectItem* CreateFromFileWithFileSystemId(File*, const String& file_system_id);
+#endif
     static DataObjectItem* CreateFromURL(const String& url, const String& title);
     static DataObjectItem* CreateFromHTML(const String& html, const KURL& base_url);
     static DataObjectItem* CreateFromFileSharedBuffer(
@@ -102,8 +109,10 @@ public:
     bool HasFileSystemId() const;
     String FileSystemId() const;
 
+#if !defined(MINI_UI_QUICKJS)
     bool HasFileSystemAccessEntry() const;
     mojo::PendingRemote<mojom::blink::FileSystemAccessDataTransferToken> CloneFileSystemAccessEntryToken() const;
+#endif
 
     void Trace(Visitor*) const;
 
@@ -113,7 +122,9 @@ private:
         kInternalSource,
     };
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<FileSystemAccessDropData> file_system_access_entry_;
+#endif
     DataSource source_;
     ItemKind kind_;
     String type_;

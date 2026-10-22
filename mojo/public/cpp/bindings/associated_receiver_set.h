@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,15 +12,17 @@
 
 namespace mojo {
 
-#if ASSOCIATED_AS_ALIAS == 0
-template <typename Interface, typename ImplRefTraits> struct ReceiverSetTraits<AssociatedReceiver<Interface, ImplRefTraits>> {
-    using InterfaceType = Interface;
-    using PendingType = PendingAssociatedReceiver<Interface>;
-    using ImplPointerType = typename ImplRefTraits::PointerType;
+template <typename Interface, typename ImplRefTraits>
+struct ReceiverSetTraits<AssociatedReceiver<Interface, ImplRefTraits>> {
+  using InterfaceType = Interface;
+  using PendingType = PendingAssociatedReceiver<Interface>;
+  using ImplPointerType = typename ImplRefTraits::PointerType;
 };
-#endif
-template <typename Interface, typename ContextType = void> using AssociatedReceiverSet = ReceiverSetBase<AssociatedReceiver<Interface>, ContextType>;
 
-} // namespace mojo
+template <typename Interface, typename ContextType = void>
+using AssociatedReceiverSet =
+    ReceiverSetBase<AssociatedReceiver<Interface>, ContextType>;
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_ASSOCIATED_RECEIVER_SET_H_
+}  // namespace mojo
+
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_ASSOCIATED_RECEIVER_SET_H_

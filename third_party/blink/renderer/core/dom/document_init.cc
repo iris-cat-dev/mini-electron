@@ -45,14 +45,18 @@
 #include "third_party/blink/renderer/core/html/html_view_source_document.h"
 #include "third_party/blink/renderer/core/html/image_document.h"
 #include "third_party/blink/renderer/core/html/json_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/media_document.h"
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/html/text_document.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_data.h"
+#endif
 #include "third_party/blink/renderer/platform/network/mime/content_type.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/network/network_utils.h"
@@ -162,6 +166,29 @@ DocumentInit& DocumentInit::ForPrerendering(bool is_prerendering)
     return *this;
 }
 
+#if defined(MINI_UI_QUICKJS)
+// static
+DocumentInit::Type DocumentInit::ComputeDocumentType(LocalFrame* frame, const String& mime_type)
+{
+    if (frame && frame->InViewSourceMode())
+        return Type::kViewSource;
+    if (mime_type == "text/html")
+        return Type::kHTML;
+    if (mime_type == "application/xhtml+xml")
+        return Type::kXHTML;
+    if (MIMETypeRegistry::IsSupportedImageResourceMIMEType(mime_type) || mime_type == "multipart/x-mixed-replace")
+        return Type::kImage;
+    if (MIMETypeRegistry::IsSupportedJavaScriptMIMEType(mime_type) || MIMETypeRegistry::IsJSONMimeType(mime_type)
+        || MIMETypeRegistry::IsPlainTextMIMEType(mime_type)) {
+        return Type::kText;
+    }
+    if (mime_type == "image/svg+xml")
+        return Type::kSVG;
+    if (MIMETypeRegistry::IsXMLMIMEType(mime_type))
+        return Type::kXML;
+    return Type::kHTML;
+}
+#else
 // static
 DocumentInit::Type DocumentInit::ComputeDocumentType(LocalFrame* frame, const String& mime_type, bool* is_for_external_handler)
 {
@@ -172,36 +199,24 @@ DocumentInit::Type DocumentInit::ComputeDocumentType(LocalFrame* frame, const St
     // initialize the plugin database for those.
     if (mime_type == "text/html")
         return Type::kHTML;
-
     if (mime_type == "application/xhtml+xml")
         return Type::kXHTML;
 
     // multipart/x-mixed-replace is only supported for images.
-    if (MIMETypeRegistry::IsSupportedImageResourceMIMEType(mime_type) || mime_type == "multipart/x-mixed-replace") {
+    if (MIMETypeRegistry::IsSupportedImageResourceMIMEType(mime_type) || mime_type == "multipart/x-mixed-replace")
         return Type::kImage;
-    }
 
     if (HTMLMediaElement::GetSupportsType(ContentType(mime_type)))
         return Type::kMedia;
 
     if (frame && frame->GetPage() && frame->Loader().AllowPlugins()) {
         PluginData* plugin_data = GetPluginData(frame);
-
-        // Everything else except text/plain can be overridden by plugins.
-        // Disallowing plugins to use text/plain prevents plugins from hijacking a
-        // fundamental type that the browser is expected to handle, and also serves
-        // as an optimization to prevent loading the plugin database in the common
-        // case.
         if (mime_type != "text/plain" && plugin_data && plugin_data->SupportsMimeType(mime_type)) {
-            // Plugins handled by MimeHandlerView do not create a PluginDocument. They
-            // are rendered inside cross-process frames and the notion of a PluginView
-            // (which is associated with PluginDocument) is irrelevant here.
             if (plugin_data->IsExternalPluginMimeType(mime_type)) {
                 if (is_for_external_handler)
                     *is_for_external_handler = true;
                 return Type::kHTML;
             }
-
             return Type::kPlugin;
         }
     }
@@ -210,26 +225,30 @@ DocumentInit::Type DocumentInit::ComputeDocumentType(LocalFrame* frame, const St
         || MIMETypeRegistry::IsPlainTextMIMEType(mime_type)) {
         return Type::kText;
     }
-
     if (mime_type == "image/svg+xml")
         return Type::kSVG;
-
     if (MIMETypeRegistry::IsXMLMIMEType(mime_type))
         return Type::kXML;
-
     return Type::kHTML;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 PluginData* DocumentInit::GetPluginData(LocalFrame* frame)
 {
     return frame->GetPage()->GetPluginData();
 }
+#endif
 
 DocumentInit& DocumentInit::WithTypeFrom(const String& mime_type)
 {
     mime_type_ = mime_type;
+#if defined(MINI_UI_QUICKJS)
+    type_ = ComputeDocumentType(window_ ? window_->GetFrame() : nullptr, mime_type_);
+#else
     type_ = ComputeDocumentType(window_ ? window_->GetFrame() : nullptr, mime_type_, &is_for_external_handler_);
+#endif
     return *this;
 }
 
@@ -252,6 +271,7 @@ DocumentInit& DocumentInit::WithURL(const KURL& url)
     return *this;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const KURL& DocumentInit::GetCookieUrl() const
 {
     const KURL& cookie_url = owner_document_ ? owner_document_->CookieURL() : url_;
@@ -278,6 +298,7 @@ const KURL& DocumentInit::GetCookieUrl() const
 
     return cookie_url;
 }
+#endif
 
 DocumentInit& DocumentInit::WithSrcdocDocument(bool is_srcdoc_document)
 {
@@ -328,6 +349,7 @@ Document* DocumentInit::CreateDocument() const
         return XMLDocument::CreateXHTML(*this);
     case Type::kImage:
         return MakeGarbageCollected<ImageDocument>(*this);
+#if !defined(MINI_UI_QUICKJS)
     case Type::kPlugin: {
         DCHECK(window_);
         if (window_->IsSandboxed(network::mojom::blink::WebSandboxFlags::kPlugins)) {
@@ -337,6 +359,7 @@ Document* DocumentInit::CreateDocument() const
     }
     case Type::kMedia:
         return MakeGarbageCollected<MediaDocument>(*this);
+#endif
     case Type::kSVG:
         return XMLDocument::CreateSVG(*this);
     case Type::kXML:

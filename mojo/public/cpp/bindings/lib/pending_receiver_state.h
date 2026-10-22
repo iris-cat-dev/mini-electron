@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,31 +14,24 @@ namespace internal {
 
 // Generic state owned by every templated InterfaceRequest or PendingReceiver
 // instance.
-struct /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS_BASE)*/ PendingReceiverState {
-public:
-    PendingReceiverState();
-    explicit PendingReceiverState(ScopedMessagePipeHandle pipe);
-    //explicit PendingReceiverState(scoped_refptr<RawPtrMessagePipe> pipe);
+struct COMPONENT_EXPORT(MOJO_CPP_BINDINGS_BASE) PendingReceiverState {
+ public:
+  PendingReceiverState();
+  explicit PendingReceiverState(ScopedMessagePipeHandle pipe);
+  PendingReceiverState(const PendingReceiverState&) = delete;
+  PendingReceiverState(PendingReceiverState&&) noexcept;
+  ~PendingReceiverState();
 
-    PendingReceiverState(const PendingReceiverState&) = delete;
-    PendingReceiverState(PendingReceiverState&&) noexcept;
-    ~PendingReceiverState();
+  PendingReceiverState& operator=(const PendingReceiverState&) = delete;
+  PendingReceiverState& operator=(PendingReceiverState&&) noexcept;
 
-    PendingReceiverState& operator=(const PendingReceiverState&) = delete;
-    PendingReceiverState& operator=(PendingReceiverState&&) noexcept;
+  void reset();
 
-#if ASSOCIATED_AS_ALIAS == 1 // for PendingAssociatedReceiver --
-    void EnableUnassociatedUsage();
-#endif // end --
-
-    void reset();
-
-    ScopedMessagePipeHandle pipe;
-    //     ConnectionGroup::Ref connection_group;
-    //     scoped_refptr<RawPtrMessagePipe> raw_ptr_pipe;
+  ScopedMessagePipeHandle pipe;
+  ConnectionGroup::Ref connection_group;
 };
 
-} // namespace internal
-} // namespace mojo
+}  // namespace internal
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_LIB_PENDING_RECEIVER_STATE_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_LIB_PENDING_RECEIVER_STATE_H_

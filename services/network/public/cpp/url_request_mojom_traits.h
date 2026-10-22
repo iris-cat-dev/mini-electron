@@ -22,7 +22,9 @@
 #include "net/base/request_priority.h"
 #include "net/storage_access_api/status.h"
 #include "net/url_request/referrer_policy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/cpp/cookie_manager_shared_mojom_traits.h"
+#endif
 #include "services/network/public/cpp/data_element.h"
 #include "services/network/public/cpp/network_isolation_key_mojom_traits.h"
 #include "services/network/public/cpp/resource_request.h"
@@ -30,14 +32,22 @@
 #include "services/network/public/mojom/attribution.mojom-forward.h"
 #include "services/network/public/mojom/chunked_data_pipe_getter.mojom.h"
 #include "services/network/public/mojom/client_security_state.mojom-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cookie_access_observer.mojom-forward.h"
+#endif
 #include "services/network/public/mojom/data_pipe_getter.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/devtools_observer.mojom-forward.h"
+#endif
 #include "services/network/public/mojom/ip_address_space.mojom-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/trust_token_access_observer.mojom-forward.h"
+#endif
 #include "services/network/public/mojom/trust_tokens.mojom-forward.h"
 #include "services/network/public/mojom/url_loader.mojom-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/url_loader_network_service_observer.mojom-forward.h"
+#endif
 #include "services/network/public/mojom/url_request.mojom-forward.h"
 #include "services/network/public/mojom/web_bundle_handle.mojom-forward.h"
 #include "url/mojom/url_gurl_mojom_traits.h"
@@ -70,6 +80,7 @@ template <> struct COMPONENT_EXPORT(NETWORK_CPP_BASE) StructTraits<network::mojo
     {
         return trusted_params.include_request_cookies_with_response;
     }
+#if !defined(MINI_UI_QUICKJS)
     static mojo::PendingRemote<network::mojom::CookieAccessObserver> cookie_observer(const network::ResourceRequest::TrustedParams& trusted_params)
     {
         if (!trusted_params.cookie_observer) {
@@ -99,10 +110,12 @@ template <> struct COMPONENT_EXPORT(NETWORK_CPP_BASE) StructTraits<network::mojo
         }
         return std::move(const_cast<network::ResourceRequest::TrustedParams&>(trusted_params).devtools_observer);
     }
+#endif
     static const network::mojom::ClientSecurityStatePtr& client_security_state(const network::ResourceRequest::TrustedParams& trusted_params)
     {
         return trusted_params.client_security_state;
     }
+#if !defined(MINI_UI_QUICKJS)
     static mojo::PendingRemote<network::mojom::AcceptCHFrameObserver> accept_ch_frame_observer(const network::ResourceRequest::TrustedParams& trusted_params)
     {
         if (!trusted_params.accept_ch_frame_observer) {
@@ -118,6 +131,7 @@ template <> struct COMPONENT_EXPORT(NETWORK_CPP_BASE) StructTraits<network::mojo
         }
         return std::move(const_cast<network::ResourceRequest::TrustedParams&>(trusted_params).shared_dictionary_observer);
     }
+#endif
 
     static bool Read(network::mojom::TrustedUrlRequestParamsDataView data, network::ResourceRequest::TrustedParams* out);
 };

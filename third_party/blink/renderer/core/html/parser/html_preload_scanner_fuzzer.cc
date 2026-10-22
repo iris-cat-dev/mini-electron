@@ -5,7 +5,9 @@
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/parser/background_html_scanner.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/html/parser/resource_preloader.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder_for_fuzzing.h"
@@ -67,7 +69,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     MockResourcePreloader preloader;
 
     std::unique_ptr<HTMLPreloadScanner> scanner = std::make_unique<HTMLPreloadScanner>(std::make_unique<HTMLTokenizer>(options), document_url,
-        std::move(document_parameters), std::move(media_data), TokenPreloadScanner::ScannerType::kMainDocument, nullptr);
+        std::move(document_parameters), std::move(media_data), TokenPreloadScanner::ScannerType::kMainDocument,
+#if !defined(MINI_UI_QUICKJS)
+        nullptr,
+#endif
+        HTMLPreloadScanner::TakePreloadFn());
 
     TextResourceDecoderForFuzzing decoder(fuzzed_data);
     std::string bytes = fuzzed_data.ConsumeRemainingBytes();

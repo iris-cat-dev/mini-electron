@@ -145,7 +145,9 @@ bool MultipartImageResourceParser::ParseHeaders()
     // replacement headers. We only replace the same few headers that gecko does.
     // See netwerk/streamconv/converters/nsMultiMixedConv.cpp.
     ResourceResponse response(original_response_.CurrentRequestUrl());
+#if !defined(MINI_UI_QUICKJS)
     response.SetWasFetchedViaServiceWorker(original_response_.WasFetchedViaServiceWorker());
+#endif
     response.SetType(original_response_.GetType());
     for (const auto& header : original_response_.HttpHeaderFields())
         response.AddHttpHeaderField(header.key, header.value);

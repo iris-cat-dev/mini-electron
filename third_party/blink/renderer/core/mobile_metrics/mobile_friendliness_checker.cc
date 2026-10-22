@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include <cmath>
 #include <optional>
 
@@ -277,3 +278,5 @@ void MobileFriendlinessChecker::Trace(Visitor* visitor) const
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

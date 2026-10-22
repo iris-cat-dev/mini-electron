@@ -81,7 +81,9 @@ WritableStreamDefaultWriter::WritableStreamDefaultWriter(ScriptState* script_sta
     case WritableStream::kErroring: {
         //      a. Set this.[[readyPromise]] to a promise rejected with
         //         stream.[[storedError]].
+#if !defined(MINI_UI_QUICKJS)
         ready_resolver_->Promise().MarkAsSilent();
+#endif
         ready_resolver_->Reject(stream->GetStoredError(isolate));
 
         //      b. Set this.[[readyPromise]].[[PromiseIsHandled]] to true.
@@ -112,7 +114,9 @@ WritableStreamDefaultWriter::WritableStreamDefaultWriter(ScriptState* script_sta
 
         //      c. Set this.[[readyPromise]] to a promise rejected with
         //         storedError.
+#if !defined(MINI_UI_QUICKJS)
         ready_resolver_->Promise().MarkAsSilent();
+#endif
         ready_resolver_->Reject(stored_error);
 
         //      d. Set this.[[readyPromise]].[[PromiseIsHandled]] to true.
@@ -120,7 +124,9 @@ WritableStreamDefaultWriter::WritableStreamDefaultWriter(ScriptState* script_sta
 
         //      e. Set this.[[closedPromise]] to a promise rejected with
         //         storedError.
+#if !defined(MINI_UI_QUICKJS)
         closed_resolver_->Promise().MarkAsSilent();
+#endif
         closed_resolver_->Reject(stored_error);
 
         //      f. Set this.[[closedPromise]].[[PromiseIsHandled]] to true.
@@ -260,7 +266,9 @@ void WritableStreamDefaultWriter::EnsureReadyPromiseRejected(ScriptState* script
         //     error.
         writer->ready_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
     }
+#if !defined(MINI_UI_QUICKJS)
     writer->ready_resolver_->Promise().MarkAsSilent();
+#endif
     writer->ready_resolver_->Reject(error);
 
     //  3. Set writer.[[readyPromise]].[[PromiseIsHandled]] to true.
@@ -482,7 +490,9 @@ void WritableStreamDefaultWriter::EnsureClosedPromiseRejected(ScriptState* scrip
         //     error.
         writer->closed_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
     }
+#if !defined(MINI_UI_QUICKJS)
     writer->closed_resolver_->Promise().MarkAsSilent();
+#endif
     writer->closed_resolver_->Reject(error);
 
     //  3. Set writer.[[closedPromise]].[[PromiseIsHandled]] to true.

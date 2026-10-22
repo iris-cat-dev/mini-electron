@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_IMAGE_TO_BUFFER_COPIER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_IMAGE_TO_BUFFER_COPIER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <memory>
 #include "base/memory/raw_ptr.h"
 #include "gpu/command_buffer/client/gles2_interface.h"
@@ -40,5 +42,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_IMAGE_TO_BUFFER_COPIER_H_

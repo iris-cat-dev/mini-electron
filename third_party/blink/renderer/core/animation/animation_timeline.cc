@@ -88,7 +88,11 @@ wtf_size_t AnimationTimeline::AnimationsNeedingUpdateCount() const
     wtf_size_t count = 0;
     for (const auto& animation : animations_needing_update_) {
         // Exclude animations which are not actively generating frames.
-        if ((!animation->CompositorPending() && !animation->Playing() && !IsProgressBased()) || animation->AnimationHasNoEffect()) {
+#if !defined(MINI_UI_QUICKJS)
+        if (animation->AnimationHasNoEffect())
+            continue;
+#endif
+        if (!animation->CompositorPending() && !animation->Playing() && !IsProgressBased()) {
             continue;
         }
         count++;
@@ -117,9 +121,11 @@ void AnimationTimeline::ServiceAnimations(TimingUpdateReason reason)
 
     auto current_phase_and_time = CurrentPhaseAndTime();
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsProgressBased() && last_current_phase_and_time_ != current_phase_and_time) {
         UpdateCompositorTimeline();
     }
+#endif
 
     last_current_phase_and_time_ = current_phase_and_time;
 
@@ -208,12 +214,14 @@ void AnimationTimeline::MarkAnimationsCompositorPending(bool source_changed)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void AnimationTimeline::MarkPendingIfCompositorPropertyAnimationChanges(const PaintArtifactCompositor* paint_artifact_compositor)
 {
     for (const auto& animation : animations_) {
         animation->MarkPendingIfCompositorPropertyAnimationChanges(paint_artifact_compositor);
     }
 }
+#endif
 
 void AnimationTimeline::Trace(Visitor* visitor) const
 {

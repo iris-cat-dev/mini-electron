@@ -29,37 +29,55 @@
 #include <utility>
 
 #include "base/metrics/histogram_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/expected.h"
 #include "third_party/blink/public/common/features.h"
+#endif
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_code_cache.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_consumer.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_producer.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_memory_allocator_dump.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_process_memory_dump.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/cached_metadata.h"
 #include "third_party/blink/renderer/platform/loader/fetch/data_pipe_bytes_consumer.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/integrity_metadata.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_client_walker.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/response_body_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/script_cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/text_resource_decoder_options.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_response_processor.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/subresource_integrity.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
+#endif
 
 namespace blink {
 
@@ -94,6 +112,17 @@ bool IsRequestContextSupported(mojom::blink::RequestContextType request_context)
 
 } // namespace
 
+#if defined(MINI_UI_QUICKJS)
+ScriptResource* ScriptResource::Fetch(
+    FetchParameters& params, ResourceFetcher* fetcher,
+    ResourceClient* client, v8::Isolate*)
+{
+    DCHECK(IsRequestContextSupported(
+        params.GetResourceRequest().GetRequestContext()));
+    return To<ScriptResource>(fetcher->RequestResource(
+        params, ScriptResourceFactory(params.GetScriptType()), client));
+}
+#else
 ScriptResource* ScriptResource::Fetch(FetchParameters& params, ResourceFetcher* fetcher, ResourceClient* client, v8::Isolate* isolate,
     StreamingAllowed streaming_allowed, v8_compile_hints::V8CrowdsourcedCompileHintsProducer* v8_compile_hints_producer,
     v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* v8_compile_hints_consumer, v8_compile_hints::MagicCommentMode magic_comment_mode)
@@ -104,6 +133,7 @@ ScriptResource* ScriptResource::Fetch(FetchParameters& params, ResourceFetcher* 
         client));
     return resource;
 }
+#endif
 
 ScriptResource* ScriptResource::CreateForTest(v8::Isolate* isolate, const KURL& url, const WTF::TextEncoding& encoding, mojom::blink::ScriptType script_type)
 {
@@ -111,11 +141,29 @@ ScriptResource* ScriptResource::CreateForTest(v8::Isolate* isolate, const KURL& 
     request.SetCredentialsMode(network::mojom::CredentialsMode::kOmit);
     ResourceLoaderOptions options(nullptr /* world */);
     TextResourceDecoderOptions decoder_options(TextResourceDecoderOptions::kPlainTextContent, encoding);
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(isolate);
+    return MakeGarbageCollected<ScriptResource>(
+        request, options, decoder_options, script_type);
+#else
     return MakeGarbageCollected<ScriptResource>(request, options, decoder_options, isolate, kNoStreaming,
         /*v8_compile_hints_producer=*/nullptr,
         /*v8_compile_hints_consumer=*/nullptr, v8_compile_hints::MagicCommentMode::kNever, script_type);
+#endif
 }
 
+#if defined(MINI_UI_QUICKJS)
+ScriptResource::ScriptResource(
+    const ResourceRequest& resource_request,
+    const ResourceLoaderOptions& options,
+    const TextResourceDecoderOptions& decoder_options,
+    mojom::blink::ScriptType initial_request_script_type)
+    : TextResource(
+          resource_request, ResourceType::kScript, options, decoder_options)
+    , initial_request_script_type_(initial_request_script_type)
+{
+}
+#else
 ScriptResource::ScriptResource(const ResourceRequest& resource_request, const ResourceLoaderOptions& options, const TextResourceDecoderOptions& decoder_options,
     v8::Isolate* isolate, StreamingAllowed streaming_allowed, v8_compile_hints::V8CrowdsourcedCompileHintsProducer* v8_compile_hints_producer,
     v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* v8_compile_hints_consumer, v8_compile_hints::MagicCommentMode magic_comment_mode,
@@ -157,17 +205,20 @@ ScriptResource::ScriptResource(const ResourceRequest& resource_request, const Re
         DisableOffThreadConsumeCache();
     }
 }
+#endif
 
 ScriptResource::~ScriptResource() = default;
 
 void ScriptResource::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(streamer_);
     visitor->Trace(cached_metadata_handler_);
     visitor->Trace(cache_consumer_);
     visitor->Trace(v8_compile_hints_producer_);
     visitor->Trace(v8_compile_hints_consumer_);
     visitor->Trace(background_streamer_);
+#endif
     TextResource::Trace(visitor);
 }
 
@@ -178,10 +229,12 @@ void ScriptResource::OnMemoryDump(WebMemoryDumpLevelOfDetail level_of_detail, We
         const String name = GetMemoryDumpName() + "/decoded_script";
         source_text_.OnMemoryDump(memory_dump, name);
     }
+#if !defined(MINI_UI_QUICKJS)
     if (cached_metadata_handler_) {
         const String name = GetMemoryDumpName() + "/code_cache";
         cached_metadata_handler_->OnMemoryDump(memory_dump, name);
     }
+#endif
 }
 
 const ParkableString& ScriptResource::SourceText()
@@ -219,6 +272,7 @@ String ScriptResource::TextForInspector() const
     return "";
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CachedMetadataHandler* ScriptResource::CacheHandler()
 {
     return cached_metadata_handler_.Get();
@@ -270,7 +324,22 @@ void ScriptResource::DestroyDecodedDataIfPossible()
     cache_consumer_ = nullptr;
     DisableOffThreadConsumeCache();
 }
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+void ScriptResource::DestroyDecodedDataForFailedRevalidation()
+{
+    source_text_ = ParkableString();
+    SetDecodedSize(0);
+}
+
+void ScriptResource::SetRevalidatingRequest(
+    const ResourceRequestHead& request)
+{
+    CHECK(IsLoaded());
+    TextResource::SetRevalidatingRequest(request);
+}
+#else
 void ScriptResource::DestroyDecodedDataForFailedRevalidation()
 {
     source_text_ = ParkableString();
@@ -300,6 +369,7 @@ void ScriptResource::SetRevalidatingRequest(const ResourceRequestHead& request)
 
     TextResource::SetRevalidatingRequest(request);
 }
+#endif
 
 bool ScriptResource::CanUseCacheValidator() const
 {
@@ -318,6 +388,7 @@ bool ScriptResource::CanUseCacheValidator() const
     return Resource::CanUseCacheValidator();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 size_t ScriptResource::CodeCacheSize() const
 {
     return cached_metadata_handler_ ? cached_metadata_handler_->GetCodeCacheSize() : 0;
@@ -601,5 +672,7 @@ std::unique_ptr<BackgroundResponseProcessorFactory> ScriptResource::MaybeCreateB
     background_streamer_ = MakeGarbageCollected<BackgroundResourceScriptStreamer>(this);
     return background_streamer_->CreateBackgroundResponseProcessorFactory();
 }
+
+#endif
 
 } // namespace blink

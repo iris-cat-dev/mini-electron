@@ -20,9 +20,15 @@
 #include "base/numerics/ostream_operators.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/stringprintf.h"
+#include "base/trace_event/memory_allocator_dump.h"
+#include "base/trace_event/process_memory_dump.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/memory_dump_manager.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/base/devtools_instrumentation.h"
+#endif
 #include "cc/base/histograms.h"
 #include "cc/raster/tile_task.h"
 #include "cc/tiles/mipmap_util.h"
@@ -77,6 +83,7 @@ public:
     // Overridden from Task:
     void RunOnWorkerThread() override
     {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_EVENT2("cc", "SoftwareImageDecodeTaskImpl::RunOnWorkerThread", "mode", "software", "source_prepare_tiles_id", tracing_info_.prepare_tiles_id);
 
         const auto* image_metadata = paint_image_.GetImageHeaderMetadata();
@@ -84,11 +91,14 @@ public:
         devtools_instrumentation::ScopedImageDecodeTask image_decode_task(paint_image_.GetSwSkImage().get(),
             devtools_instrumentation::ScopedImageDecodeTask::DecodeType::kSoftware, ImageDecodeCache::ToScopedTaskType(task_type_),
             ImageDecodeCache::ToScopedImageType(image_type));
-        SoftwareImageDecodeCache::TaskProcessingResult result = cache_->DecodeImageInTask(image_key_, paint_image_, task_type_);
+#endif
+        [[maybe_unused]] SoftwareImageDecodeCache::TaskProcessingResult result = cache_->DecodeImageInTask(image_key_, paint_image_, task_type_);
 
+#if !defined(MINI_UI_QUICKJS)
         // Do not log timing UMAs if we did not perform a full decode.
         if (result != SoftwareImageDecodeCache::TaskProcessingResult::kFullDecode)
             image_decode_task.SuppressMetrics();
+#endif
     }
 
     // Overridden from TileTask:
@@ -183,7 +193,9 @@ ImageDecodeCache::TaskResult SoftwareImageDecodeCache::GetTaskForImageAndRefInte
     const DrawImage& image, const TracingInfo& tracing_info, TaskType task_type)
 {
     CacheKey key = CacheKey::FromDrawImage(image, GetColorTypeForPaintImage(image.target_color_params(), image.paint_image()));
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::GetTaskForImageAndRefInternal", "key", key.ToString());
+#endif
 
     // If the target size is empty, we can skip this image during draw (and thus
     // we don't need to decode it or ref it).
@@ -259,7 +271,9 @@ ImageDecodeCache::TaskResult SoftwareImageDecodeCache::GetTaskForImageAndRefInte
 
 void SoftwareImageDecodeCache::AddBudgetForImage(const CacheKey& key, CacheEntry* entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::AddBudgetForImage", "key", key.ToString());
+#endif
 
     DCHECK(!entry->is_budgeted);
     DCHECK_GE(locked_images_budget_.AvailableMemoryBytes(), key.locked_bytes());
@@ -269,7 +283,9 @@ void SoftwareImageDecodeCache::AddBudgetForImage(const CacheKey& key, CacheEntry
 
 void SoftwareImageDecodeCache::RemoveBudgetForImage(const CacheKey& key, CacheEntry* entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::RemoveBudgetForImage", "key", key.ToString());
+#endif
 
     DCHECK(entry->is_budgeted);
     locked_images_budget_.SubtractUsage(key.locked_bytes());
@@ -279,7 +295,9 @@ void SoftwareImageDecodeCache::RemoveBudgetForImage(const CacheKey& key, CacheEn
 void SoftwareImageDecodeCache::UnrefImage(const DrawImage& image)
 {
     const CacheKey& key = CacheKey::FromDrawImage(image, GetColorTypeForPaintImage(image.target_color_params(), image.paint_image()));
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::UnrefImage", "key", key.ToString());
+#endif
 
     base::AutoLock lock(lock_);
     UnrefImage(key);
@@ -304,7 +322,9 @@ void SoftwareImageDecodeCache::UnrefImage(const CacheKey& key)
 SoftwareImageDecodeCache::TaskProcessingResult SoftwareImageDecodeCache::DecodeImageInTask(
     const CacheKey& key, const PaintImage& paint_image, TaskType task_type)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1("cc,benchmark", "SoftwareImageDecodeCache::DecodeImageInTask", "key", key.ToString());
+#endif
     base::AutoLock lock(lock_);
 
     auto image_it = decoded_images_.Peek(key);
@@ -324,7 +344,9 @@ SoftwareImageDecodeCache::TaskProcessingResult SoftwareImageDecodeCache::DecodeI
 SoftwareImageDecodeCache::TaskProcessingResult SoftwareImageDecodeCache::DecodeImageIfNecessary(
     const CacheKey& key, const PaintImage& paint_image, CacheEntry* entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::DecodeImageIfNecessary", "key", key.ToString());
+#endif
     DCHECK_GT(entry->ref_count, 0);
 
     if (key.target_size().IsEmpty())
@@ -524,7 +546,9 @@ DecodedDrawImage SoftwareImageDecodeCache::GetDecodedImageForDraw(const DrawImag
 
 DecodedDrawImage SoftwareImageDecodeCache::GetDecodedImageForDrawInternal(const CacheKey& key, const PaintImage& paint_image)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::GetDecodedImageForDrawInternal", "key", key.ToString());
+#endif
 
     auto decoded_it = decoded_images_.Get(key);
     CacheEntry* cache_entry = nullptr;
@@ -550,14 +574,18 @@ DecodedDrawImage SoftwareImageDecodeCache::GetDecodedImageForDrawInternal(const 
 void SoftwareImageDecodeCache::DrawWithImageFinished(const DrawImage& image, const DecodedDrawImage& decoded_image)
 {
     DCHECK(UseCacheForDrawImage(image));
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("cc.debug"), "SoftwareImageDecodeCache::DrawWithImageFinished", "key",
         CacheKey::FromDrawImage(image, GetColorTypeForPaintImage(image.target_color_params(), image.paint_image())).ToString());
+#endif
     UnrefImage(image);
 }
 
 void SoftwareImageDecodeCache::ReduceCacheUsageUntilWithinLimit(size_t limit)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT0("cc", "SoftwareImageDecodeCache::ReduceCacheUsageUntilWithinLimit");
+#endif
     for (auto it = decoded_images_.rbegin(); decoded_images_.size() > limit && it != decoded_images_.rend();) {
         if (it->second->ref_count != 0) {
             ++it;

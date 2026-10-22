@@ -76,6 +76,7 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/nth_index_cache.h"
 #include "third_party/blink/renderer/core/dom/processing_instruction.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/frame/frame_owner.h"
@@ -87,10 +88,14 @@
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html/html_html_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/track/text_track.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/invalidation_set_to_selector_map.h"
+#endif
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/layout/geometry/logical_size.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_size.h"
@@ -104,14 +109,18 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_popup_controller.h"
 #include "third_party/blink/renderer/core/preferences/preference_overrides.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/filter_operations.h"
 #include "third_party/blink/renderer/core/style/style_initial_data.h"
 #include "third_party/blink/renderer/core/svg/svg_resource.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_selector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -144,7 +153,9 @@ enum RuleSetFlags {
     kFontPaletteValuesRules = 1 << 5,
     kPositionTryRules = 1 << 6,
     kFontFeatureValuesRules = 1 << 7,
+#if !defined(MINI_UI_QUICKJS)
     kViewTransitionRules = 1 << 8,
+#endif
     kFunctionRules = 1 << 9,
 };
 
@@ -178,9 +189,11 @@ unsigned GetRuleSetFlags(const HeapHashSet<Member<RuleSet>> rule_sets)
         if (!rule_set->PositionTryRules().empty()) {
             flags |= kPositionTryRules;
         }
+#if !defined(MINI_UI_QUICKJS)
         if (!rule_set->ViewTransitionRules().empty()) {
             flags |= kViewTransitionRules;
         }
+#endif
         if (!rule_set->FunctionRules().empty()) {
             flags |= kFunctionRules;
         }
@@ -487,6 +500,7 @@ void StyleEngine::WatchedSelectorsChanged()
     MarkAllElementsForStyleRecalc(StyleChangeReasonForTracing::Create(style_change_reason::kDeclarativeContent));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleEngine::DocumentRulesSelectorsChanged()
 {
     DCHECK(global_rule_set_);
@@ -511,6 +525,7 @@ void StyleEngine::DocumentRulesSelectorsChanged()
     // updated invalidation sets.
     UpdateActiveStyle();
 }
+#endif
 
 bool StyleEngine::ShouldUpdateDocumentStyleSheetCollection() const
 {
@@ -530,6 +545,7 @@ void StyleEngine::MediaQueryAffectingValueChanged(UnorderedTreeScopeSet& tree_sc
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleEngine::AddTextTrack(TextTrack* text_track)
 {
     text_tracks_.insert(text_track);
@@ -573,6 +589,7 @@ void StyleEngine::MediaQueryAffectingValueChanged(HeapHashSet<Member<TextTrack>>
         }
     }
 }
+#endif
 
 void StyleEngine::MediaQueryAffectingValueChanged(MediaValueChange change)
 {
@@ -581,7 +598,9 @@ void StyleEngine::MediaQueryAffectingValueChanged(MediaValueChange change)
     }
     MediaQueryAffectingValueChanged(GetDocument(), change);
     MediaQueryAffectingValueChanged(active_tree_scopes_, change);
+#if !defined(MINI_UI_QUICKJS)
     MediaQueryAffectingValueChanged(text_tracks_, change);
+#endif
     if (resolver_) {
         resolver_->UpdateMediaType();
     }
@@ -645,7 +664,9 @@ void StyleEngine::UpdateActiveStyleSheets()
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::ActiveStyleSheetsUpdated(document_);
+#endif
 
     dirty_tree_scopes_.clear();
     document_scope_dirty_ = false;
@@ -711,7 +732,9 @@ void StyleEngine::UpdateActiveStyle()
     DCHECK(GetDocument().IsActive());
     DCHECK(IsMainThread());
     TRACE_EVENT0("blink", "Document::updateActiveStyle");
+#if !defined(MINI_UI_QUICKJS)
     InvalidationSetToSelectorMap::StartOrStopTrackingIfNeeded(*this);
+#endif
     UpdateViewport();
     UpdateActiveStyleSheets();
     UpdateGlobalRuleSet();
@@ -1196,7 +1219,9 @@ void StyleEngine::FontsNeedUpdate(FontSelector*, FontInvalidationReason)
     MarkViewportStyleDirty();
     MarkFontsNeedUpdate();
 
+#if !defined(MINI_UI_QUICKJS)
     probe::FontsUpdated(document_->GetExecutionContext(), nullptr, String(), nullptr);
+#endif
 }
 
 void StyleEngine::PlatformColorsChanged()
@@ -2341,6 +2366,7 @@ void StyleEngine::EnsureUAStyleForForcedColors()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 RuleSet* StyleEngine::DefaultViewTransitionStyle() const
 {
     auto* transition = ViewTransitionUtils::GetTransition(GetDocument());
@@ -2368,6 +2394,7 @@ void StyleEngine::UpdateViewTransitionOptIn()
 
     ViewTransitionSupplement::From(GetDocument())->OnViewTransitionsStyleUpdated(cross_document_enabled, types);
 }
+#endif
 
 bool StyleEngine::HasRulesForId(const AtomicString& id) const
 {
@@ -2746,6 +2773,7 @@ void StyleEngine::ApplyRuleSetChanges(TreeScope& tree_scope, const ActiveStyleSh
         MarkPositionTryStylesDirty(changed_rule_sets);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (changed_rule_flags & kViewTransitionRules) {
         // Since a shadow-tree isn't an independent navigable, @view-transition
         // doesn't apply within one.
@@ -2753,6 +2781,7 @@ void StyleEngine::ApplyRuleSetChanges(TreeScope& tree_scope, const ActiveStyleSh
             AddViewTransitionRules(new_style_sheets);
         }
     }
+#endif
 
     if (changed_rule_flags & kFunctionRules) {
         // Changes in function can affect function-using declarations
@@ -3015,6 +3044,7 @@ bool StyleEngine::UserKeyframeStyleShouldOverride(const StyleRuleKeyframes* new_
     return !user_cascade_layer_map_ || user_cascade_layer_map_->CompareLayerOrder(existing_rule->GetCascadeLayer(), new_rule->GetCascadeLayer()) <= 0;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleEngine::AddViewTransitionRules(const ActiveStyleSheetVector& sheets)
 {
     if (!RuntimeEnabledFeatures::ViewTransitionOnNavigationEnabled()) {
@@ -3038,6 +3068,7 @@ void StyleEngine::AddViewTransitionRules(const ActiveStyleSheetVector& sheets)
 
     UpdateViewTransitionOptIn();
 }
+#endif
 
 void StyleEngine::AddFontPaletteValuesRules(const RuleSet& rule_set)
 {
@@ -3434,6 +3465,7 @@ void StyleEngine::RecalcPositionTryStyleForPseudoElement(
     pseudo_element.RecalcStyle(style_recalc_change, style_recalc_context);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleEngine::RecalcTransitionPseudoStyle()
 {
     // TODO(khushalsagar) : This forces a style recalc and layout tree rebuild
@@ -3442,11 +3474,14 @@ void StyleEngine::RecalcTransitionPseudoStyle()
     SelectorFilterRootScope filter_scope(nullptr);
     document_->documentElement()->RecalcTransitionPseudoTreeStyle(view_transition_names_);
 }
+#endif
 
 void StyleEngine::RecalcStyle()
 {
     RecalcStyle({}, StyleRecalcContext::FromAncestors(style_recalc_root_.RootElement()));
+#if !defined(MINI_UI_QUICKJS)
     RecalcTransitionPseudoStyle();
+#endif
 }
 
 void StyleEngine::ClearEnsuredDescendantStyles(Element& root)
@@ -3505,9 +3540,11 @@ void StyleEngine::RebuildLayoutTree(Element* size_container)
 
         Element* container_parent = size_container ? size_container->GetReattachParent() : nullptr;
         RebuildLayoutTreeForTraversalRootAncestors(root_element.GetReattachParent(), container_parent);
+#if !defined(MINI_UI_QUICKJS)
         if (size_container == nullptr) {
             document_->documentElement()->RebuildTransitionPseudoLayoutTree(view_transition_names_);
         }
+#endif
         layout_tree_rebuild_root_.Clear();
         propagate_to_root = IsA<HTMLHtmlElement>(root_element) || IsA<HTMLBodyElement>(root_element);
     }
@@ -4067,10 +4104,14 @@ void StyleEngine::Trace(Visitor* visitor) const
     visitor->Trace(font_selector_);
     visitor->Trace(text_to_sheet_cache_);
     visitor->Trace(tracker_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(text_tracks_);
     visitor->Trace(vtt_originating_element_);
+#endif
     visitor->Trace(parent_for_detached_subtree_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(view_transition_rule_);
+#endif
     visitor->Trace(style_image_cache_);
     visitor->Trace(fill_or_clip_path_uri_value_cache_);
     visitor->Trace(style_containment_scope_tree_);
@@ -4232,6 +4273,7 @@ bool StyleEngine::UpdateLastSuccessfulPositionFallbacks()
     return invalidated;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleEngine::RevisitActiveStyleSheetsForInspector()
 {
     // TODO(crbug.com/337076014): Also revisit other stylesheets such as those in
@@ -4266,5 +4308,6 @@ void StyleEngine::RevisitStyleRulesForInspector(const RuleFeatureSet& features, 
         }
     }
 }
+#endif
 
 } // namespace blink

@@ -18,8 +18,10 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/trace_event/trace_arguments.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event_stub.h"
-#if 0
+#endif
+#if defined(MINI_UI_QUICKJS)
 
 namespace base {
 
@@ -71,9 +73,11 @@ class BASE_EXPORT TracedValue : public ConvertableToTraceFormat {
 
   // ConvertableToTraceFormat implementation.
   void AppendAsTraceFormat(std::string* out) const override;
+#if !defined(MINI_UI_QUICKJS)
   bool AppendToProto(ProtoAppender* appender) const override;
 
   void EstimateTraceMemoryOverhead(TraceEventMemoryOverhead* overhead) override;
+#endif
 
   // Helper to auto-close an array. The call to |ArrayScope::~ArrayScope| closes
   // the array.
@@ -378,17 +382,23 @@ class BASE_EXPORT TracedValue : public ConvertableToTraceFormat {
 
     virtual void AppendAsTraceFormat(std::string* out) const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual bool AppendToProto(ProtoAppender* appender);
 
     virtual void EstimateTraceMemoryOverhead(
         TraceEventMemoryOverhead* overhead) = 0;
+#endif
 
     virtual bool IsPickleWriter() const = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual bool IsProtoWriter() const = 0;
+#endif
   };
 
+#if !defined(MINI_UI_QUICKJS)
   typedef std::unique_ptr<Writer> (*WriterFactoryCallback)(size_t capacity);
   static void SetWriterFactoryCallback(WriterFactoryCallback callback);
+#endif
 
  protected:
   TracedValue(size_t capacity, bool forced_json);
@@ -435,6 +445,6 @@ class BASE_EXPORT TracedValueJSON : public TracedValue {
 }  // namespace trace_event
 }  // namespace base
 
-#endif // if 0
+#endif  // defined(MINI_UI_QUICKJS)
 
 #endif // BASE_TRACE_EVENT_TRACED_VALUE_H_

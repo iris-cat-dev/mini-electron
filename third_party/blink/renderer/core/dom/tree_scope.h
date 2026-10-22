@@ -96,7 +96,9 @@ public:
     }
     Element* pointerLockElement();
     Element* fullscreenElement();
+#if !defined(MINI_UI_QUICKJS)
     Element* pictureInPictureElement();
+#endif
 
     TreeScope* ParentTreeScope() const
     {

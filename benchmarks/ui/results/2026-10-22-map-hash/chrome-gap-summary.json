@@ -1,0 +1,98 @@
+[
+  {
+    "framework": "vue",
+    "rows": 100,
+    "native_commit_ms": 140.2000000178814,
+    "native_wall_ms": 3238.9892,
+    "default_commit_ms": 7.60000005364418,
+    "default_wall_ms": 969.2837999900803,
+    "default_ratio": 18.447368293195716,
+    "software_commit_ms": 7.700000017881393,
+    "software_wall_ms": 876.7168000049423,
+    "software_ratio": 18.207792167831258
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "native_commit_ms": 994.4999999850988,
+    "native_wall_ms": 16171.7454,
+    "default_commit_ms": 41.99999997019768,
+    "default_wall_ms": 1781.290999992052,
+    "default_ratio": 23.67857144501846,
+    "software_commit_ms": 39.80000004172325,
+    "software_wall_ms": 1705.7170000043698,
+    "software_ratio": 24.987437159360343
+  },
+  {
+    "framework": "vue",
+    "rows": 5000,
+    "native_commit_ms": 4908.29999999702,
+    "native_wall_ms": 78298.8985,
+    "default_commit_ms": 218.00000008940697,
+    "default_wall_ms": 7573.336900008144,
+    "default_ratio": 22.515137605431235,
+    "software_commit_ms": 227.5,
+    "software_wall_ms": 8034.045799984597,
+    "software_ratio": 21.574945054931955
+  },
+  {
+    "framework": "vue",
+    "rows": 10000,
+    "native_commit_ms": 9855.700000017881,
+    "native_wall_ms": 158861.6998,
+    "default_commit_ms": 453.5999999344349,
+    "default_wall_ms": 15870.145199995022,
+    "default_ratio": 21.727733689247053,
+    "software_commit_ms": 500.2999999821186,
+    "software_wall_ms": 16275.0103000144,
+    "software_ratio": 19.69958025258872
+  },
+  {
+    "framework": "react",
+    "rows": 100,
+    "native_commit_ms": 85.09999997913837,
+    "native_wall_ms": 2808.1891,
+    "default_commit_ms": 4.600000023841858,
+    "default_wall_ms": 981.9649000128265,
+    "default_ratio": 18.49999989957913,
+    "software_commit_ms": 4.800000041723251,
+    "software_wall_ms": 879.909300012514,
+    "software_ratio": 17.72916650821248
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "native_commit_ms": 590.6000000089407,
+    "native_wall_ms": 10861.0691,
+    "default_commit_ms": 23.69999995827675,
+    "default_wall_ms": 1582.920800021384,
+    "default_ratio": 24.91983126787667,
+    "software_commit_ms": 24.100000023841858,
+    "software_wall_ms": 1543.4212999825832,
+    "software_ratio": 24.506224042517292
+  },
+  {
+    "framework": "react",
+    "rows": 5000,
+    "native_commit_ms": 4402.0999999940395,
+    "native_wall_ms": 67618.2951,
+    "default_commit_ms": 157.59999999403954,
+    "default_wall_ms": 6884.812199976295,
+    "default_ratio": 27.93210660000335,
+    "software_commit_ms": 136.89999997615814,
+    "software_wall_ms": 6921.156099997461,
+    "software_ratio": 32.15558802600941
+  },
+  {
+    "framework": "react",
+    "rows": 10000,
+    "native_commit_ms": 13081.899999976158,
+    "native_wall_ms": 174141.3541,
+    "default_commit_ms": 378.5999999642372,
+    "default_wall_ms": 14671.261599985883,
+    "default_ratio": 34.55335446701501,
+    "software_commit_ms": 421.9999999701977,
+    "software_wall_ms": 15298.859100003028,
+    "software_ratio": 30.99976303530811
+  }
+]

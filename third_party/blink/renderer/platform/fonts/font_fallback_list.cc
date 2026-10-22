@@ -159,14 +159,20 @@ const FontData* FontFallbackList::GetFontData(const FontDescription& font_descri
         // Don't query system fonts for empty font family name.
         if (!result && !curr_family->FamilyName().empty()) {
             result = FontCache::Get().GetFontData(font_description, curr_family->FamilyName());
+#if !defined(MINI_UI_QUICKJS)
             font_selector_->ReportFontLookupByUniqueOrFamilyName(curr_family->FamilyName(), font_description, DynamicTo<SimpleFontData>(result));
+#endif
         }
         if (result) {
+#if !defined(MINI_UI_QUICKJS)
             font_selector_->ReportSuccessfulFontFamilyMatch(curr_family->FamilyName());
+#endif
             return result;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         font_selector_->ReportFailedFontFamilyMatch(curr_family->FamilyName());
+#endif
     }
     family_index_ = kCAllFamiliesScanned;
 
@@ -180,9 +186,11 @@ const FontData* FontFallbackList::GetFontData(const FontDescription& font_descri
 
     // Still no result. Hand back our last resort fallback font.
     auto* last_resort = FontCache::Get().GetLastResortFallbackFont(font_description);
+#if !defined(MINI_UI_QUICKJS)
     if (font_selector_) {
         font_selector_->ReportLastResortFallbackFontLookup(font_description, last_resort);
     }
+#endif
     return last_resort;
 }
 

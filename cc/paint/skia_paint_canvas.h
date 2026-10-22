@@ -44,6 +44,7 @@ class PaintFlags;
 // and then playing back to an SkCanvas.
 class CC_PAINT_EXPORT SkiaPaintCanvas final : public PaintCanvas {
 public:
+#if !defined(MINI_UI_QUICKJS)
     struct CC_PAINT_EXPORT ContextFlushes {
         ContextFlushes();
 
@@ -52,6 +53,9 @@ public:
     };
 
     explicit SkiaPaintCanvas(SkCanvas* canvas, ImageProvider* image_provider = nullptr, ContextFlushes context_flushes = ContextFlushes());
+#else
+    explicit SkiaPaintCanvas(SkCanvas* canvas, ImageProvider* image_provider = nullptr);
+#endif
     explicit SkiaPaintCanvas(const SkBitmap& bitmap, ImageProvider* image_provider = nullptr);
     explicit SkiaPaintCanvas(const SkBitmap& bitmap, const SkSurfaceProps& props);
 
@@ -69,7 +73,9 @@ public:
 
     void* accessTopLayerPixels(SkImageInfo* info, size_t* rowBytes, SkIPoint* origin = nullptr) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void flush() override;
+#endif
 
     int save() override;
     int saveLayer(const PaintFlags& flags) override;
@@ -137,13 +143,17 @@ public:
     // raster callback.
     void drawPicture(PaintRecord record, PlaybackCallbacks::CustomDataRasterCallback custom_raster_callback, bool local_ctm = true);
 
+#if !defined(MINI_UI_QUICKJS)
     int pendingOps() const
     {
         return num_of_ops_;
     }
+#endif
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void FlushAfterDrawIfNeeded();
+#endif
 
     int GetMaxTextureSize() const;
 
@@ -152,8 +162,10 @@ private:
     std::unique_ptr<SkCanvas> owned_;
     raw_ptr<ImageProvider, DanglingUntriaged> image_provider_ = nullptr;
 
+#if !defined(MINI_UI_QUICKJS)
     const ContextFlushes context_flushes_;
     int num_of_ops_ = 0;
+#endif
 };
 
 } // namespace cc

@@ -36,8 +36,10 @@
 #include "third_party/blink/renderer/core/clipboard/data_object_item.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -74,12 +76,18 @@ void DataTransferItem::getAsString(ScriptState* script_state, V8FunctionStringCa
         return;
 
     ExecutionContext* context = ExecutionContext::From(script_state);
+#if !defined(MINI_UI_QUICKJS)
     auto task_context = std::make_unique<probe::AsyncTaskContext>();
     task_context->Schedule(context, "DataTransferItem.getAsString");
     context->GetTaskRunner(TaskType::kUserInteraction)
         ->PostTask(FROM_HERE,
             WTF::BindOnce(&DataTransferItem::RunGetAsStringTask, WrapPersistent(this), WrapPersistent(context), WrapPersistent(callback), item_->GetAsString(),
                 std::move(task_context)));
+#else
+    context->GetTaskRunner(TaskType::kUserInteraction)
+        ->PostTask(FROM_HERE,
+            WTF::BindOnce(&DataTransferItem::RunGetAsStringTask, WrapPersistent(this), WrapPersistent(context), WrapPersistent(callback), item_->GetAsString()));
+#endif
 }
 
 File* DataTransferItem::getAsFile() const
@@ -96,6 +104,7 @@ DataTransferItem::DataTransferItem(DataTransfer* data_transfer, DataObjectItem* 
 {
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DataTransferItem::RunGetAsStringTask(
     ExecutionContext* context, V8FunctionStringCallback* callback, const String& data, std::unique_ptr<probe::AsyncTaskContext> task_context)
 {
@@ -104,6 +113,14 @@ void DataTransferItem::RunGetAsStringTask(
     if (context)
         callback->InvokeAndReportException(nullptr, data);
 }
+#else
+void DataTransferItem::RunGetAsStringTask(ExecutionContext* context, V8FunctionStringCallback* callback, const String& data)
+{
+    DCHECK(callback);
+    if (context)
+        callback->InvokeAndReportException(nullptr, data);
+}
+#endif
 
 void DataTransferItem::Trace(Visitor* visitor) const
 {

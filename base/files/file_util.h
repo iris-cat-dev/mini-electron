@@ -584,10 +584,12 @@ BASE_EXPORT FilePath GetUniquePath(const FilePath& path);
 // " (%d)" as `suffix_format` makes this behave identical to `GetUniquePath()`.
 BASE_EXPORT FilePath GetUniquePathWithSuffixFormat(const FilePath& path, base::cstring_view suffix_format);
 
+#if !defined(MINI_UI_QUICKJS)
 // Sets the given |fd| to non-blocking mode.
 // Returns true if it was able to set it in the non-blocking mode, otherwise
 // false.
 BASE_EXPORT bool SetNonBlocking(int fd);
+#endif
 
 // Hints the OS to prefetch the first |max_bytes| of |file_path| into its cache.
 //

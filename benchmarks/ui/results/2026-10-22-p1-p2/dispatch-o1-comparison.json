@@ -1,0 +1,28 @@
+{
+  "react-1000": {
+    "before_sum_operation_medians_ms": 712.5,
+    "after_sum_operation_medians_ms": 613.1000000089407,
+    "change_percent": -13.950877191727617,
+    "before_workload_ms": 12187.6119,
+    "after_workload_ms": 11443.5794,
+    "workload_change_percent": -6.104825999587327,
+    "before_private_bytes": 217272320,
+    "after_private_bytes": 283815936,
+    "before_iteration_commit_median_ms": 713.8000000268221,
+    "after_iteration_commit_median_ms": 610.2000000327826,
+    "iteration_commit_change_percent": -14.513869429832816
+  },
+  "vue-1000": {
+    "before_sum_operation_medians_ms": 1199.5999999940395,
+    "after_sum_operation_medians_ms": 1198.3999999910593,
+    "change_percent": -0.10003334469708136,
+    "before_workload_ms": 18217.6308,
+    "after_workload_ms": 18148.4092,
+    "workload_change_percent": -0.3799703746329097,
+    "before_private_bytes": 324677632,
+    "after_private_bytes": 400646144,
+    "before_iteration_commit_median_ms": 1195.9000000059605,
+    "after_iteration_commit_median_ms": 1211.0,
+    "iteration_commit_change_percent": 1.2626473780386505
+  }
+}

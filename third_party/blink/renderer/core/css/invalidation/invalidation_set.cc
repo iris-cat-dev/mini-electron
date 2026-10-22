@@ -37,9 +37,15 @@
 #include "third_party/blink/renderer/core/css/invalidation/invalidation_tracing_flag.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/dom/element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/invalidation_set_to_selector_map.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
@@ -62,10 +68,11 @@ bool BackingEqual(const InvalidationSet::BackingFlags& a_flags, const Invalidati
 }
 
 } // namespace
-
+#if !defined(MINI_UI_QUICKJS)
 #define TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, reason, invalidationSet, singleSelectorPart)                                     \
     if (InvalidationTracingFlag::IsEnabled()) [[unlikely]]                                                                                                     \
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART(element, reason, invalidationSet, singleSelectorPart);
+#endif
 
 // static
 void InvalidationSetDeleter::Destruct(const InvalidationSet* obj)
@@ -112,36 +119,48 @@ InvalidationSet::InvalidationSet(InvalidationType type)
 bool InvalidationSet::InvalidatesElement(Element& element) const
 {
     if (invalidation_flags_.WholeSubtreeInvalid()) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetInvalidatesSubtree, *this, g_empty_atom);
+#endif
         return true;
     }
 
     if (HasTagNames() && HasTagName(element.LocalNameForSelectorMatching())) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedTagName, *this, element.LocalNameForSelectorMatching());
+#endif
         return true;
     }
 
     if (element.HasID() && HasIds() && HasId(element.IdForStyleResolution())) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedId, *this, element.IdForStyleResolution());
+#endif
         return true;
     }
 
     if (element.HasClass() && HasClasses()) {
         if (const AtomicString* class_name = FindAnyClass(element)) {
+#if !defined(MINI_UI_QUICKJS)
             TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedClass, *this, *class_name);
+#endif
             return true;
         }
     }
 
     if (element.hasAttributes() && HasAttributes()) {
         if (const AtomicString* attribute = FindAnyAttribute(element)) {
+#if !defined(MINI_UI_QUICKJS)
             TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedAttribute, *this, *attribute);
+#endif
             return true;
         }
     }
 
     if (element.HasPart() && invalidation_flags_.InvalidatesParts()) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedPart, *this, g_empty_atom);
+#endif
         return true;
     }
 
@@ -151,7 +170,9 @@ bool InvalidationSet::InvalidatesElement(Element& element) const
 bool InvalidationSet::InvalidatesTagName(Element& element) const
 {
     if (HasTagNames() && HasTagName(element.LocalNameForSelectorMatching())) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_SELECTORPART_IF_ENABLED(element, kInvalidationSetMatchedTagName, *this, element.LocalNameForSelectorMatching());
+#endif
         return true;
     }
 
@@ -175,7 +196,9 @@ void InvalidationSet::Combine(const InvalidationSet& other)
     }
 
     CHECK_NE(&other, this);
+#if !defined(MINI_UI_QUICKJS)
     InvalidationSetToSelectorMap::CombineScope combine_scope(this, &other);
+#endif
 
     if (auto* invalidation_set = DynamicTo<SiblingInvalidationSet>(this)) {
         SiblingInvalidationSet& siblings = *invalidation_set;
@@ -251,7 +274,9 @@ void InvalidationSet::Combine(const InvalidationSet& other)
 
 void InvalidationSet::Destroy() const
 {
+#if !defined(MINI_UI_QUICKJS)
     InvalidationSetToSelectorMap::RemoveEntriesForInvalidationSet(this);
+#endif
     if (auto* invalidation_set = DynamicTo<DescendantInvalidationSet>(this)) {
         delete invalidation_set;
     } else {
@@ -393,11 +418,14 @@ InvalidationSet* InvalidationSet::PartInvalidationSet()
     return singleton_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void InvalidationSet::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
 
+#if !defined(MINI_UI_QUICKJS)
     dict.Add("id", DescendantInvalidationSetToIdString(*this));
+#endif
 
     if (invalidation_flags_.WholeSubtreeInvalid()) {
         dict.Add("allDescendantsMightBeInvalid", true);
@@ -434,6 +462,7 @@ void InvalidationSet::WriteIntoTrace(perfetto::TracedValue context) const
         dict.Add("attributes", Attributes());
     }
 }
+#endif
 
 String InvalidationSet::ToString() const
 {

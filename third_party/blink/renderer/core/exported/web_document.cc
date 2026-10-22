@@ -65,10 +65,14 @@
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_head_element.h"
 #include "third_party/blink/renderer/core/html/html_link_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -154,11 +158,12 @@ bool WebDocument::IsXHTMLDocument() const
 {
     return ConstUnwrap<Document>()->IsXHTMLDocument();
 }
-
+#if !defined(MINI_UI_QUICKJS)
 bool WebDocument::IsPluginDocument() const
 {
     return IsA<PluginDocument>(ConstUnwrap<Document>());
 }
+#endif
 
 WebURL WebDocument::BaseURL() const
 {
@@ -345,20 +350,25 @@ bool WebDocument::IsPrerendering()
     return ConstUnwrap<Document>()->IsPrerendering();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebDocument::HasDocumentPictureInPictureWindow() const
 {
     return ConstUnwrap<Document>()->HasDocumentPictureInPictureWindow();
 }
+#endif
 
 void WebDocument::AddPostPrerenderingActivationStep(base::OnceClosure callback)
 {
     return Unwrap<Document>()->AddPostPrerenderingActivationStep(std::move(callback));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebDocument::SetCookieManager(CrossVariantMojoRemote<network::mojom::RestrictedCookieManagerInterfaceBase> cookie_manager)
 {
     Unwrap<Document>()->SetCookieManager(std::move(cookie_manager));
 }
+
+#endif
 
 WebDocument::WebDocument(Document* elem)
     : WebNode(elem)
@@ -393,6 +403,7 @@ WebString WebDocument::OutgoingReferrer() const
     return WebString(ConstUnwrap<Document>()->domWindow()->OutgoingReferrer());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebDocument::InitiatePreview(const WebURL& url)
 {
     if (!url.IsValid()) {
@@ -407,5 +418,6 @@ void WebDocument::InitiatePreview(const WebURL& url)
     KURL kurl(url);
     DocumentSpeculationRules::From(*document).InitiatePreview(kurl);
 }
+#endif
 
 } // namespace blink

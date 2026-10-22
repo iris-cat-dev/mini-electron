@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,35 +34,37 @@ typedef uint32_t MojoProcessErrorFlags;
 // process terminated by the system. See |MojoProcessErrorHandler| and
 // |MojoSendInvitation()|.
 struct MOJO_ALIGNAS(8) MojoProcessErrorDetails {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // The length of the string pointed to by |error_message| below.
-    uint32_t error_message_length;
+  // The length of the string pointed to by |error_message| below.
+  uint32_t error_message_length;
 
-    // An error message corresponding to the reason why the connection was
-    // terminated. This is an information message which may be useful to
-    // developers.
-    MOJO_POINTER_FIELD(const char*, error_message);
+  // An error message corresponding to the reason why the connection was
+  // terminated. This is an information message which may be useful to
+  // developers.
+  MOJO_POINTER_FIELD(const char*, error_message);
 
-    // See |MojoProcessErrorFlags|.
-    MojoProcessErrorFlags flags;
+  // See |MojoProcessErrorFlags|.
+  MojoProcessErrorFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoProcessErrorDetails) == 24, "MojoProcessErrorDetails has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoProcessErrorDetails) == 24,
+                   "MojoProcessErrorDetails has wrong size.");
 
 // An opaque process handle value which must be provided when sending an
 // invitation to another process via a platform transport. See
 // |MojoSendInvitation()|.
 struct MOJO_ALIGNAS(8) MojoPlatformProcessHandle {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // The process handle value. For Windows this is a valid process HANDLE value.
-    // For Fuchsia it must be |zx_handle_t| process handle, and for all other
-    // POSIX systems, it's a PID.
-    uint64_t value;
+  // The process handle value. For Windows this is a valid process HANDLE value.
+  // For Fuchsia it must be |zx_handle_t| process handle, and for all other
+  // POSIX systems, it's a PID.
+  uint64_t value;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoPlatformProcessHandle) == 16, "MojoPlatformProcesHandle has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoPlatformProcessHandle) == 16,
+                   "MojoPlatformProcesHandle has wrong size.");
 
 // Enumeration indicating the type of transport over which an invitation will be
 // sent or received.
@@ -83,7 +85,8 @@ typedef uint32_t MojoInvitationTransportType;
 //
 // The remote endpoint should establish a working connection to the server side
 // and wrap the handle to that connection using a CHANNEL transport.
-#define MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL_SERVER ((MojoInvitationTransportType)1)
+#define MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL_SERVER \
+  ((MojoInvitationTransportType)1)
 
 // Similar to CHANNEL transport. Normally with a CHANNEL transport, the inviting
 // client sends a secondary sync channel to the invited client, and the invited
@@ -96,31 +99,33 @@ typedef uint32_t MojoInvitationTransportType;
 // asynchronous.
 //
 // Not supported in all platform sandbox configurations.
-#define MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL_ASYNC ((MojoInvitationTransportType)2)
+#define MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL_ASYNC \
+  ((MojoInvitationTransportType)2)
 
 // A transport endpoint over which an invitation may be sent or received via
 // |MojoSendInvitation()| or |MojoAcceptInvitation()| respectively.
 struct MOJO_ALIGNAS(8) MojoInvitationTransportEndpoint {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // The type of this transport endpoint. See |MojoInvitationTransportType|.
-    MojoInvitationTransportType type;
+  // The type of this transport endpoint. See |MojoInvitationTransportType|.
+  MojoInvitationTransportType type;
 
-    // The number of platform handles in |platform_handles| below.
-    uint32_t num_platform_handles;
+  // The number of platform handles in |platform_handles| below.
+  uint32_t num_platform_handles;
 
-    // Platform handle(s) corresponding to the system object(s) backing this
-    // endpoint. The concrete type of the handle(s) depends on |type|.
-    //
-    // For |MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL| endpoints:
-    //   - On Windows, this is a single named pipe HANDLE
-    //   - On Fuchsua, this is a single channel Fuchsia handle
-    //   - On other POSIX systems, this is a single Unix domain socket file
-    //     descriptor.
-    MOJO_POINTER_FIELD(const struct MojoPlatformHandle*, platform_handles);
+  // Platform handle(s) corresponding to the system object(s) backing this
+  // endpoint. The concrete type of the handle(s) depends on |type|.
+  //
+  // For |MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL| endpoints:
+  //   - On Windows, this is a single named pipe HANDLE
+  //   - On Fuchsua, this is a single channel Fuchsia handle
+  //   - On other POSIX systems, this is a single Unix domain socket file
+  //     descriptor.
+  MOJO_POINTER_FIELD(const struct MojoPlatformHandle*, platform_handles);
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoInvitationTransportEndpoint) == 24, "MojoInvitationTransportEndpoint has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoInvitationTransportEndpoint) == 24,
+                   "MojoInvitationTransportEndpoint has wrong size.");
 
 // Flags passed to |MojoCreateInvitation()| via |MojoCreateInvitationOptions|.
 typedef uint32_t MojoCreateInvitationFlags;
@@ -130,47 +135,53 @@ typedef uint32_t MojoCreateInvitationFlags;
 
 // Options passed to |MojoCreateInvitation()|.
 struct MOJO_ALIGNAS(8) MojoCreateInvitationOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoCreateInvitationFlags|.
-    MojoCreateInvitationFlags flags;
+  // See |MojoCreateInvitationFlags|.
+  MojoCreateInvitationFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateInvitationOptions) == 8, "MojoCreateInvitationOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateInvitationOptions) == 8,
+                   "MojoCreateInvitationOptions has wrong size");
 
 // Flags passed to |MojoAttachMessagePipeToInvitation()| via
 // |MojoAttachMessagePipeToInvitationOptions|.
 typedef uint32_t MojoAttachMessagePipeToInvitationFlags;
 
 // No flags. Default behavior.
-#define MOJO_ATTACH_MESSAGE_PIPE_TO_INVITATION_FLAG_NONE ((MojoAttachMessagePipeToInvitationFlags)0)
+#define MOJO_ATTACH_MESSAGE_PIPE_TO_INVITATION_FLAG_NONE \
+  ((MojoAttachMessagePipeToInvitationFlags)0)
 
 // Options passed to |MojoAttachMessagePipeToInvitation()|.
 struct MOJO_ALIGNAS(8) MojoAttachMessagePipeToInvitationOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoAttachMessagePipeToInvitationFlags|.
-    MojoAttachMessagePipeToInvitationFlags flags;
+  // See |MojoAttachMessagePipeToInvitationFlags|.
+  MojoAttachMessagePipeToInvitationFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoAttachMessagePipeToInvitationOptions) == 8, "MojoAttachMessagePipeToInvitationOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoAttachMessagePipeToInvitationOptions) == 8,
+                   "MojoAttachMessagePipeToInvitationOptions has wrong size");
 
 // Flags passed to |MojoExtractMessagePipeFromInvitation()| via
 // |MojoExtractMessagePipeFromInvitationOptions|.
 typedef uint32_t MojoExtractMessagePipeFromInvitationFlags;
 
 // No flags. Default behavior.
-#define MOJO_EXTRACT_MESSAGE_PIPE_FROM_INVITATION_FLAG_NONE ((MojoExtractMessagePipeFromInvitationFlags)0)
+#define MOJO_EXTRACT_MESSAGE_PIPE_FROM_INVITATION_FLAG_NONE \
+  ((MojoExtractMessagePipeFromInvitationFlags)0)
 
 // Options passed to |MojoExtractMessagePipeFromInvitation()|.
 struct MOJO_ALIGNAS(8) MojoExtractMessagePipeFromInvitationOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoExtractMessagePipeFromInvitationFlags|.
-    MojoExtractMessagePipeFromInvitationFlags flags;
+  // See |MojoExtractMessagePipeFromInvitationFlags|.
+  MojoExtractMessagePipeFromInvitationFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoExtractMessagePipeFromInvitationOptions) == 8, "MojoExtractMessagePipeFromInvitationOptions has wrong size");
+MOJO_STATIC_ASSERT(
+    sizeof(struct MojoExtractMessagePipeFromInvitationOptions) == 8,
+    "MojoExtractMessagePipeFromInvitationOptions has wrong size");
 
 // Flags passed to |MojoSendInvitation()| via |MojoSendInvitationOptions|.
 typedef uint32_t MojoSendInvitationFlags;
@@ -195,23 +206,35 @@ typedef uint32_t MojoSendInvitationFlags;
 // process in question.
 #define MOJO_SEND_INVITATION_FLAG_UNTRUSTED_PROCESS ((MojoSendInvitationFlags)2)
 
+// Indicates that the invitation is being sent to a process which may be running
+// at an elevated privilege level compared to the broker. Such processes are
+// implicitly trusted more than others.
+#define MOJO_SEND_INVITATION_FLAG_ELEVATED ((MojoSendInvitationFlags)4)
+
+// Indicates that the invitation is being sent from a non-broker to another
+// non-broker and that the sender is referring its broker to the recipient.
+// The recipient must except this and accept the invitation with
+// MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER.
+#define MOJO_SEND_INVITATION_FLAG_SHARE_BROKER ((MojoSendInvitationFlags)8)
+
 // Options passed to |MojoSendInvitation()|.
 struct MOJO_ALIGNAS(8) MojoSendInvitationOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoSendInvitationFlags|.
-    MojoSendInvitationFlags flags;
+  // See |MojoSendInvitationFlags|.
+  MojoSendInvitationFlags flags;
 
-    // If |flags| includes |MOJO_SEND_INVITATION_FLAG_ISOLATED| then these fields
-    // specify a name identifying the established isolated connection. There are
-    // no restrictions on the value given. If |isolated_connection_name_length| is
-    // non-zero, the system ensures that only one isolated process connection can
-    // exist for the given name at any time.
-    MOJO_POINTER_FIELD(const char*, isolated_connection_name);
-    uint32_t isolated_connection_name_length;
+  // If |flags| includes |MOJO_SEND_INVITATION_FLAG_ISOLATED| then these fields
+  // specify a name identifying the established isolated connection. There are
+  // no restrictions on the value given. If |isolated_connection_name_length| is
+  // non-zero, the system ensures that only one isolated process connection can
+  // exist for the given name at any time.
+  MOJO_POINTER_FIELD(const char*, isolated_connection_name);
+  uint32_t isolated_connection_name_length;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSendInvitationOptions) == 24, "MojoSendInvitationOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSendInvitationOptions) == 24,
+                   "MojoSendInvitationOptions has wrong size");
 
 // Flags passed to |MojoAcceptInvitation()| via |MojoAcceptInvitationOptions|.
 typedef uint32_t MojoAcceptInvitationFlags;
@@ -231,34 +254,50 @@ typedef uint32_t MojoAcceptInvitationFlags;
 // This flag should generally not be used unless strictly necessary, and it is
 // unsafe to use in any situation where a process may accept multiple
 // invitations over the course of its lifetime.
-#define MOJO_ACCEPT_INVITATION_FLAG_LEAK_TRANSPORT_ENDPOINT ((MojoAcceptInvitationFlags)2)
+#define MOJO_ACCEPT_INVITATION_FLAG_LEAK_TRANSPORT_ENDPOINT \
+  ((MojoAcceptInvitationFlags)2)
+
+// The process accepting this invitation is running at an elevated privilege
+// level relative to the broker. In order for IPC to function properly when this
+// flag is specified, the invitation sender must also specify
+// MOJO_SEND_INVITATION_FLAG_ELEVATED.
+#define MOJO_ACCEPT_INVITATION_FLAG_ELEVATED ((MojoAcceptInvitationFlags)4)
+
+// This invitation is being accepted by a non-broker who expects the sender to
+// refer its own broker to the caller. Invitations accepted with this flag must
+// have been sent with MOJO_SEND_INVITATION_FLAG_SHARE_BROKER.
+#define MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER \
+  ((MojoAcceptInvitationFlags)8)
 
 // Options passed to |MojoAcceptInvitation()|.
 struct MOJO_ALIGNAS(8) MojoAcceptInvitationOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoAcceptInvitationFlags|.
-    MojoAcceptInvitationFlags flags;
+  // See |MojoAcceptInvitationFlags|.
+  MojoAcceptInvitationFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoAcceptInvitationOptions) == 8, "MojoAcceptInvitationOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoAcceptInvitationOptions) == 8,
+                   "MojoAcceptInvitationOptions has wrong size");
 
 // Flags passed to |MojoSetDefaultProcessErrorHandler()| via
 // |MojoSetDefaultProcessErrorHandlerOptions|.
 typedef uint32_t MojoSetDefaultProcessErrorHandlerFlags;
 
 // No flags. Default behavior.
-#define MOJO_SET_DEFAULT_PROCESS_ERROR_HANDLER_FLAG_NONE ((MojoSetDefaultProcessErrorHandlerFlags)0)
+#define MOJO_SET_DEFAULT_PROCESS_ERROR_HANDLER_FLAG_NONE \
+  ((MojoSetDefaultProcessErrorHandlerFlags)0)
 
 // Options passed to |MojoSetDefaultProcessErrorHandler()|.
 struct MOJO_ALIGNAS(8) MojoSetDefaultProcessErrorHandlerOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoSetDefaultProcessErrorHandlerFlags|.
-    MojoSetDefaultProcessErrorHandlerFlags flags;
+  // See |MojoSetDefaultProcessErrorHandlerFlags|.
+  MojoSetDefaultProcessErrorHandlerFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSetDefaultProcessErrorHandlerOptions) == 8, "MojoSetDefaultProcessErrorHandlerOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSetDefaultProcessErrorHandlerOptions) == 8,
+                   "MojoSetDefaultProcessErrorHandlerOptions has wrong size");
 
 #ifdef __cplusplus
 extern "C" {
@@ -271,12 +310,15 @@ extern "C" {
 //
 // |context| is the value of |context| given to |MojoSendInvitation()| when
 // inviting the process for whom this callback is being invoked.
-typedef void (*MojoProcessErrorHandler)(uintptr_t context, const struct MojoProcessErrorDetails* details);
+typedef void (*MojoProcessErrorHandler)(
+    uintptr_t context,
+    const struct MojoProcessErrorDetails* details);
 
 // Similar to above, but registered globally via
 // |MojoSetDefaultProcessErrorHandler()| and invoked only for communication
 // errors regarding processes NOT invited by the calling process.
-typedef void (*MojoDefaultProcessErrorHandler)(const struct MojoProcessErrorDetails* details);
+typedef void (*MojoDefaultProcessErrorHandler)(
+    const struct MojoProcessErrorDetails* details);
 
 // Creates a new invitation to be sent to another process.
 //
@@ -304,7 +346,9 @@ typedef void (*MojoDefaultProcessErrorHandler)(const struct MojoProcessErrorDeta
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |options| was non-null but malformed.
 //   |MOJO_RESULT_RESOURCE_EXHAUSTED| if a handle could not be allocated for the
 //       new invitation.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateInvitation(const struct MojoCreateInvitationOptions* options, MojoHandle* invitation_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoCreateInvitation(const struct MojoCreateInvitationOptions* options,
+                     MojoHandle* invitation_handle);
 
 // Attaches a message pipe endpoint to an invitation.
 //
@@ -343,8 +387,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoCreateInvitation(const struct MojoCreateInvita
 //       invitation.
 //   |MOJO_RESULT_RESOURCE_EXHAUSTED| if a handle could not be allocated for the
 //       new local message pipe endpoint.
-MOJO_SYSTEM_EXPORT MojoResult MojoAttachMessagePipeToInvitation(MojoHandle invitation_handle, const void* name, uint32_t name_num_bytes,
-    const struct MojoAttachMessagePipeToInvitationOptions* options, MojoHandle* message_pipe_handle);
+MOJO_SYSTEM_EXPORT MojoResult MojoAttachMessagePipeToInvitation(
+    MojoHandle invitation_handle,
+    const void* name,
+    uint32_t name_num_bytes,
+    const struct MojoAttachMessagePipeToInvitationOptions* options,
+    MojoHandle* message_pipe_handle);
 
 // Extracts a message pipe endpoint from an invitation.
 //
@@ -380,8 +428,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoAttachMessagePipeToInvitation(MojoHandle invit
 //       named |name| attached to the invitation. This is possible if the
 //       invtation was created within the calling process by
 //       |MojoCreateInvitation()|.
-MOJO_SYSTEM_EXPORT MojoResult MojoExtractMessagePipeFromInvitation(MojoHandle invitation_handle, const void* name, uint32_t name_num_bytes,
-    const struct MojoExtractMessagePipeFromInvitationOptions* options, MojoHandle* message_pipe_handle);
+MOJO_SYSTEM_EXPORT MojoResult MojoExtractMessagePipeFromInvitation(
+    MojoHandle invitation_handle,
+    const void* name,
+    uint32_t name_num_bytes,
+    const struct MojoExtractMessagePipeFromInvitationOptions* options,
+    MojoHandle* message_pipe_handle);
 
 // Sends an invitation on a transport endpoint to bootstrap IPC between the
 // calling process and another process.
@@ -431,8 +483,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoExtractMessagePipeFromInvitation(MojoHandle in
 //       again.
 //   |MOJO_RESULT_UNIMPLEMENTED| if the transport endpoint type is not supported
 //       by the system's version of Mojo.
-MOJO_SYSTEM_EXPORT MojoResult MojoSendInvitation(MojoHandle invitation_handle, const struct MojoPlatformProcessHandle* process_handle,
-    const struct MojoInvitationTransportEndpoint* transport_endpoint, MojoProcessErrorHandler error_handler, uintptr_t error_handler_context,
+MOJO_SYSTEM_EXPORT MojoResult MojoSendInvitation(
+    MojoHandle invitation_handle,
+    const struct MojoPlatformProcessHandle* process_handle,
+    const struct MojoInvitationTransportEndpoint* transport_endpoint,
+    MojoProcessErrorHandler error_handler,
+    uintptr_t error_handler_context,
     const struct MojoSendInvitationOptions* options);
 
 // Accepts an invitation from a transport endpoint to complete IPC bootstrapping
@@ -468,7 +524,9 @@ MOJO_SYSTEM_EXPORT MojoResult MojoSendInvitation(MojoHandle invitation_handle, c
 //   |MOJO_RESULT_UNIMPLEMENTED| if the transport endpoint type is not supported
 //       by the system's version of Mojo.
 MOJO_SYSTEM_EXPORT MojoResult MojoAcceptInvitation(
-    const struct MojoInvitationTransportEndpoint* transport_endpoint, const struct MojoAcceptInvitationOptions* options, MojoHandle* invitation_handle);
+    const struct MojoInvitationTransportEndpoint* transport_endpoint,
+    const struct MojoAcceptInvitationOptions* options,
+    MojoHandle* invitation_handle);
 
 // Registers a process-wide handler to be invoked when an error is raised on a
 // connection to a peer process. Such errors can be raised if the peer process
@@ -492,10 +550,11 @@ MOJO_SYSTEM_EXPORT MojoResult MojoAcceptInvitation(
 //       handler must first call |MojoSetDefaultProcessErrorHandler()| with null
 //       in order to do so.
 MOJO_SYSTEM_EXPORT MojoResult MojoSetDefaultProcessErrorHandler(
-    MojoDefaultProcessErrorHandler handler, const struct MojoSetDefaultProcessErrorHandlerOptions* options);
+    MojoDefaultProcessErrorHandler handler,
+    const struct MojoSetDefaultProcessErrorHandlerOptions* options);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_INVITATION_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_INVITATION_H_

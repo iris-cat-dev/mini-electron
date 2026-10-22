@@ -8,10 +8,14 @@
 #include "mojo/public/cpp/bindings/enum_traits.h"
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "net/base/schemeful_site.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/cookies/cookie_inclusion_status.h"
+#endif
 #include "net/cookies/site_for_cookies.h"
 #include "services/network/public/cpp/schemeful_site_mojom_traits.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cookie_manager.mojom-shared.h"
+#endif
 #include "services/network/public/mojom/site_for_cookies.mojom-shared.h"
 
 namespace mojo {
@@ -30,6 +34,7 @@ template <> struct COMPONENT_EXPORT(NETWORK_CPP_COOKIES) StructTraits<network::m
     static bool Read(network::mojom::SiteForCookiesDataView data, net::SiteForCookies* out);
 };
 
+#if !defined(MINI_UI_QUICKJS)
 template <> struct COMPONENT_EXPORT(NETWORK_CPP_COOKIES) EnumTraits<network::mojom::CookieExemptionReason, net::CookieInclusionStatus::ExemptionReason> {
     static network::mojom::CookieExemptionReason ToMojom(net::CookieInclusionStatus::ExemptionReason input);
 
@@ -51,6 +56,7 @@ template <> struct COMPONENT_EXPORT(NETWORK_CPP_COOKIES) StructTraits<network::m
     }
     static bool Read(network::mojom::CookieInclusionStatusDataView status, net::CookieInclusionStatus* out);
 };
+#endif
 
 } // namespace mojo
 

@@ -40,8 +40,12 @@
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_view_transition_content.h"
+#endif
 #include "third_party/blink/renderer/core/layout/length_utils.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
@@ -136,7 +140,11 @@ void LayoutReplaced::Paint(const PaintInfo& paint_info) const
 static inline bool LayoutObjectHasIntrinsicAspectRatio(const LayoutObject* layout_object)
 {
     DCHECK(layout_object);
+#if defined(MINI_UI_QUICKJS)
+    return layout_object->IsImage() || layout_object->IsCanvas();
+#else
     return layout_object->IsImage() || layout_object->IsCanvas() || IsA<LayoutVideo>(layout_object) || IsA<LayoutViewTransitionContent>(layout_object);
+#endif
 }
 
 void LayoutReplaced::AddVisualEffectOverflow()

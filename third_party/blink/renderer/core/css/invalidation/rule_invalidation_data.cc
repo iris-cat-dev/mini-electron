@@ -7,7 +7,10 @@
 #include "base/memory/values_equivalent.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
+#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
 
@@ -92,12 +95,16 @@ void RuleInvalidationData::CollectInvalidationSetsForClass(InvalidationLists& in
     ExtractInvalidationSets(it->value.get(), descendants, siblings);
 
     if (descendants) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *descendants, ClassChange, class_name);
+#endif
         invalidation_lists.descendants.push_back(descendants);
     }
 
     if (siblings) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *siblings, ClassChange, class_name);
+#endif
         invalidation_lists.siblings.push_back(siblings);
     }
 }
@@ -119,7 +126,9 @@ void RuleInvalidationData::CollectSiblingInvalidationSetForClass(
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_SCHEDULE_STYLE_INVALIDATION(element, *sibling_set, ClassChange, class_name);
+#endif
     invalidation_lists.siblings.push_back(sibling_set);
 }
 
@@ -139,12 +148,16 @@ void RuleInvalidationData::CollectInvalidationSetsForId(InvalidationLists& inval
     ExtractInvalidationSets(it->value.get(), descendants, siblings);
 
     if (descendants) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *descendants, IdChange, id);
+#endif
         invalidation_lists.descendants.push_back(descendants);
     }
 
     if (siblings) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *siblings, IdChange, id);
+#endif
         invalidation_lists.siblings.push_back(siblings);
     }
 }
@@ -166,7 +179,9 @@ void RuleInvalidationData::CollectSiblingInvalidationSetForId(
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_SCHEDULE_STYLE_INVALIDATION(element, *sibling_set, IdChange, id);
+#endif
     invalidation_lists.siblings.push_back(sibling_set);
 }
 
@@ -183,12 +198,16 @@ void RuleInvalidationData::CollectInvalidationSetsForAttribute(
     ExtractInvalidationSets(it->value.get(), descendants, siblings);
 
     if (descendants) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *descendants, AttributeChange, attribute_name);
+#endif
         invalidation_lists.descendants.push_back(descendants);
     }
 
     if (siblings) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *siblings, AttributeChange, attribute_name);
+#endif
         invalidation_lists.siblings.push_back(siblings);
     }
 }
@@ -210,7 +229,9 @@ void RuleInvalidationData::CollectSiblingInvalidationSetForAttribute(
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_SCHEDULE_STYLE_INVALIDATION(element, *sibling_set, AttributeChange, attribute_name);
+#endif
     invalidation_lists.siblings.push_back(sibling_set);
 }
 
@@ -226,12 +247,16 @@ void RuleInvalidationData::CollectInvalidationSetsForPseudoClass(InvalidationLis
     ExtractInvalidationSets(it->value.get(), descendants, siblings);
 
     if (descendants) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *descendants, PseudoChange, pseudo);
+#endif
         invalidation_lists.descendants.push_back(descendants);
     }
 
     if (siblings) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_SCHEDULE_STYLE_INVALIDATION(element, *siblings, PseudoChange, pseudo);
+#endif
         invalidation_lists.siblings.push_back(siblings);
     }
 }

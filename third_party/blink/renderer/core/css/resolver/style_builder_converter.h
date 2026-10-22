@@ -55,8 +55,10 @@
 #include "third_party/blink/renderer/core/style/style_offset_rotation.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/style/style_reflection.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/style/style_view_transition_group.h"
 #include "third_party/blink/renderer/core/style/style_view_transition_name.h"
+#endif
 #include "third_party/blink/renderer/core/style/transform_origin.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
 #include "third_party/blink/renderer/platform/fonts/font_variant_emoji.h"
@@ -243,10 +245,12 @@ public:
 
     static StyleIntrinsicLength ConvertIntrinsicDimension(const StyleResolverState&, const CSSValue&);
 
+#if !defined(MINI_UI_QUICKJS)
     static StyleViewTransitionName* ConvertViewTransitionName(StyleResolverState&, const CSSValue&);
     static ScopedCSSNameList* ConvertViewTransitionClass(StyleResolverState&, const CSSValue&);
     static StyleViewTransitionGroup ConvertViewTransitionGroup(StyleResolverState&, const CSSValue&);
     static StyleViewTransitionCaptureMode ConvertViewTransitionCaptureMode(StyleResolverState&, const CSSValue&);
+#endif
 
     // Take a list value for a specified color-scheme, extract flags for known
     // color-schemes and the 'only' modifier, and push the list items into a

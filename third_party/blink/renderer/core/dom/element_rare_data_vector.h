@@ -152,8 +152,18 @@ public:
     ElementRareDataVector();
     ~ElementRareDataVector() override;
 
-    void SetPseudoElement(PseudoId, PseudoElement*, const AtomicString& document_transition_tag = g_null_atom);
-    PseudoElement* GetPseudoElement(PseudoId, const AtomicString& document_transition_tag = g_null_atom) const;
+#if !defined(MINI_UI_QUICKJS)
+    void SetPseudoElement(
+        PseudoId,
+        PseudoElement*,
+        const AtomicString& document_transition_tag = g_null_atom);
+    PseudoElement* GetPseudoElement(
+        PseudoId,
+        const AtomicString& document_transition_tag = g_null_atom) const;
+#else
+    void SetPseudoElement(PseudoId, PseudoElement*);
+    PseudoElement* GetPseudoElement(PseudoId) const;
+#endif
     PseudoElementData::PseudoElementVector GetPseudoElements() const;
     void AddColumnPseudoElement(ColumnPseudoElement&);
     const ColumnPseudoElementsVector* GetColumnPseudoElements() const;

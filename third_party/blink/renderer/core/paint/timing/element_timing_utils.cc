@@ -4,9 +4,14 @@
 
 #include "third_party/blink/renderer/core/paint/timing/element_timing_utils.h"
 
+#include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_client_impl.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#else
+#include "third_party/blink/renderer/platform/widget/frame_widget.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/property_tree_state.h"
@@ -21,12 +26,19 @@ gfx::RectF ElementTimingUtils::ComputeIntersectionRect(
     FloatClipRect visual_rect((gfx::RectF(int_visual_rect)));
     GeometryMapper::LocalToAncestorVisualRect(
         current_paint_chunk_properties, frame->View()->GetLayoutView()->FirstFragment().LocalBorderBoxProperties(), visual_rect);
+#if defined(MINI_UI_QUICKJS)
+    FrameWidget* widget = frame->GetWidgetForLocalRoot();
+    if (!widget)
+        return gfx::RectF();
+    return widget->BlinkSpaceToDIPs(visual_rect.Rect());
+#else
     if (!frame->Client()->IsLocalFrameClientImpl()) {
         return gfx::RectF();
     }
     WebFrameWidgetImpl* widget = WebLocalFrameImpl::FromFrame(frame)->LocalRootFrameWidget();
     DCHECK(widget);
     return widget->BlinkSpaceToDIPs(visual_rect.Rect());
+#endif
 }
 
 } // namespace blink

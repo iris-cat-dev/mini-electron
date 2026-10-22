@@ -15,9 +15,11 @@ namespace blink {
 
 CSSAtRuleID CssAtRuleID(StringView name)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (RuntimeEnabledFeatures::ViewTransitionOnNavigationEnabled() && EqualIgnoringASCIICase(name, "view-transition")) {
         return CSSAtRuleID::kCSSAtRuleViewTransition;
     }
+#endif
     if (EqualIgnoringASCIICase(name, "charset")) {
         return CSSAtRuleID::kCSSAtRuleCharset;
     }
@@ -160,8 +162,10 @@ CSSAtRuleID CssAtRuleID(StringView name)
 StringView CssAtRuleIDToString(CSSAtRuleID id)
 {
     switch (id) {
+#if !defined(MINI_UI_QUICKJS)
     case CSSAtRuleID::kCSSAtRuleViewTransition:
         return "@view-transition";
+#endif
     case CSSAtRuleID::kCSSAtRuleCharset:
         return "@charset";
     case CSSAtRuleID::kCSSAtRuleFontFace:
@@ -260,8 +264,10 @@ std::optional<WebFeature> AtRuleFeature(CSSAtRuleID rule_id)
     switch (rule_id) {
     case CSSAtRuleID::kCSSAtRuleAnnotation:
         return WebFeature::kCSSAtRuleAnnotation;
+#if !defined(MINI_UI_QUICKJS)
     case CSSAtRuleID::kCSSAtRuleViewTransition:
         return WebFeature::kCSSAtRuleViewTransition;
+#endif
     case CSSAtRuleID::kCSSAtRuleCharset:
         return WebFeature::kCSSAtRuleCharset;
     case CSSAtRuleID::kCSSAtRuleCharacterVariant:

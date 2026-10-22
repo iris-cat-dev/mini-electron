@@ -2240,9 +2240,11 @@ public:
         if (HasNonInitialBackdropFilter()) {
             return true;
         }
+#if !defined(MINI_UI_QUICKJS)
         if (ViewTransitionName() || ElementIsViewTransitionParticipant()) {
             return true;
         }
+#endif
         return false;
     }
 
@@ -2276,9 +2278,11 @@ public:
         return HasFilter() || HasClipPath() || HasMask();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if any property has an <image> value that is a CSS paint
     // function that is using a given custom property.
     bool HasCSSPaintImagesUsingCustomProperty(const AtomicString& custom_property_name, const Document&) const;
+#endif
 
     // FIXME: reflections should belong to this helper function but they are
     // currently handled through their self-painting layers. So the layout code
@@ -2704,10 +2708,14 @@ private:
 
     bool DiffNeedsFullLayoutAndPaintInvalidation(const ComputedStyle& other, uint64_t field_diff) const;
     bool DiffNeedsFullLayout(const Document&, const ComputedStyle& other, uint64_t field_diff) const;
+#if !defined(MINI_UI_QUICKJS)
     bool DiffNeedsFullLayoutForLayoutCustom(const Document&, const ComputedStyle& other) const;
     bool DiffNeedsFullLayoutForLayoutCustomChild(const Document&, const ComputedStyle& other) const;
+#endif
     bool DiffNeedsNormalPaintInvalidation(const Document&, const ComputedStyle& other, uint64_t field_diff) const;
+#if !defined(MINI_UI_QUICKJS)
     bool DiffNeedsPaintInvalidationForPaintImage(const StyleImage&, const ComputedStyle& other, const Document&) const;
+#endif
     bool DiffNeedsRecomputeVisualOverflow(const ComputedStyle& other, uint64_t field_diff) const;
     bool DiffCompositingReasonsChanged(const ComputedStyle& other, uint64_t field_diff) const;
     bool PotentialCompositingReasonsFor3DTransformChanged(const ComputedStyle& other) const;
@@ -3492,6 +3500,7 @@ public:
         SetCustomHighlightNamesInternal(std::make_unique<HashSet<AtomicString>>(custom_highlight_names));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // PaintImage
     void AddPaintImage(StyleImage* image)
     {
@@ -3500,6 +3509,7 @@ public:
         }
         MutablePaintImagesInternal()->Images().push_back(image);
     }
+#endif
 
     // TextAutosizingMultiplier
     CORE_EXPORT void SetTextAutosizingMultiplier(float);

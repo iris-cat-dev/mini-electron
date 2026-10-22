@@ -7,13 +7,17 @@
 #include <utility>
 
 #include "base/check.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -116,28 +120,33 @@ public:
         window_->AddConsoleMessage(console_message);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssue(AuditsIssue issue) override
     {
         window_->AddInspectorIssue(std::move(issue));
     }
+#endif
 
     void DisableEval(const String& error_message) override
     {
         window_->GetScriptController().DisableEvalForIsolatedWorld(world_id_, error_message);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void SetWasmEvalErrorMessage(const String& error_message) override
     {
         window_->GetScriptController().SetWasmEvalErrorMessageForIsolatedWorld(world_id_, error_message);
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     void ReportBlockedScriptExecutionToInspector(const String& directive_text) override
     {
-        // This allows users to set breakpoints in the Devtools for the case when
-        // script execution is blocked by CSP.
+        // This allows users to set breakpoints in Devtools when CSP blocks
+        // script execution.
         probe::ScriptExecutionBlockedByCSP(window_.Get(), directive_text);
     }
-
+#endif
     void DidAddContentSecurityPolicies(WTF::Vector<network::mojom::blink::ContentSecurityPolicyPtr>) override
     {
     }

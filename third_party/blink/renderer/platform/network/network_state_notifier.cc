@@ -57,6 +57,7 @@ const base::TimeDelta kHttpRttEffectiveConnectionTypeThresholds[EFFECTIVE_CONNEC
     base::Milliseconds(0), base::Milliseconds(0), base::Milliseconds(2010), base::Milliseconds(1420), base::Milliseconds(272), base::Milliseconds(0) };
 } // net
 
+#if !defined(MINI_UI_QUICKJS)
 namespace network {
 
 const char kPrefersReducedTransparencyNoPreference[] = "no-preference";
@@ -68,6 +69,7 @@ const char* const kWebEffectiveConnectionTypeMapping[] = {
 
 const size_t kWebEffectiveConnectionTypeMappingCount = std::size(kWebEffectiveConnectionTypeMapping);
 } //network
+#endif
 
 namespace blink {
 

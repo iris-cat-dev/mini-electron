@@ -19,11 +19,15 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/report.h"
 #include "third_party/blink/renderer/core/frame/reporting_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/origin_trials/origin_trial_context.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -105,7 +109,9 @@ void Deprecation::CountDeprecation(ExecutionContext* context, WebFeature feature
     if (auto* window = DynamicTo<LocalDOMWindow>(context)) {
         if (window->GetFrame())
             deprecation = &window->GetFrame()->GetPage()->GetDeprecation();
-    } else if (auto* scope = DynamicTo<WorkerOrWorkletGlobalScope>(context)) {
+    }
+#if !defined(MINI_UI_QUICKJS)
+    else if (auto* scope = DynamicTo<WorkerOrWorkletGlobalScope>(context)) {
         // TODO(crbug.com/1146824): Remove this once PlzDedicatedWorker and
         // PlzServiceWorker ship.
         if (!scope->IsInitialized()) {
@@ -113,6 +119,7 @@ void Deprecation::CountDeprecation(ExecutionContext* context, WebFeature feature
         }
         deprecation = &scope->GetDeprecation();
     }
+#endif
 
     if (!deprecation || deprecation->mute_count_ || deprecation->GetReported(feature)) {
         return;
@@ -122,8 +129,10 @@ void Deprecation::CountDeprecation(ExecutionContext* context, WebFeature feature
     const DeprecationInfo info = GetDeprecationInfo(feature);
 
     String type = info.type_.ToString();
+#if !defined(MINI_UI_QUICKJS)
     // Send the deprecation message as a DevTools issue.
     AuditsIssue::ReportDeprecationIssue(context, type);
+#endif
 
     // Send the deprecation message to browser process for enterprise usage.
     SendToBrowser(context, info);

@@ -11,9 +11,11 @@
 #include "base/strings/strcat.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_id_helper.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/responsiveness_metrics/user_interaction_latency.h"
 #include "third_party/blink/renderer/core/dom/dom_high_res_time_stamp.h"
@@ -26,19 +28,23 @@
 #include "third_party/blink/renderer/core/timing/performance.h"
 #include "third_party/blink/renderer/core/timing/performance_event_timing.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
+#endif
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 //#include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 namespace blink {
 
 namespace {
+#if !defined(MINI_UI_QUICKJS)
 // Minimum potentially generated value for UKM sampling.
 constexpr int kMinValueForSampling = 1;
 // Maximum potentially generated value for UKM sampling.
 constexpr int kMaxValueForSampling = 100;
 // UKM sampling rate. The sampling strategy is 1/N.
 constexpr int kUkmSamplingRate = 10;
+#endif
 // Minimum potential value for the first Interaction ID.
 constexpr uint32_t kMinFirstInteractionID = 100;
 // Maximum potential value for the first Interaction ID.
@@ -58,8 +64,10 @@ const char kHistogramKeyboard[] = ".Keyboard";
 const char kHistogramTapOrClick[] = ".TapOrClick";
 const char kHistogramDrag[] = ".Drag";
 
+#if !defined(MINI_UI_QUICKJS)
 constexpr char kSlowInteractionToNextPaintTraceEventCategory[] = "latency";
 constexpr char kSlowInteractionToNextPaintTraceEventName[] = "SlowInteractionToNextPaint";
+#endif
 
 const char kPageLoadInternalEventTimingClickInteractionEvents[] = "PageLoad.Internal.EventTiming.ClickInteractionEvents";
 
@@ -80,6 +88,7 @@ enum ClickInteractionEvents {
 };
 // LINT.ThenChange(/tools/metrics/histograms/enums.xml:EventTimingClickInteractionEvents)
 
+#if !defined(MINI_UI_QUICKJS)
 void EmitSlowInteractionToNextPaintTraceEvent(const ResponsivenessMetrics::EventTimestamps& event)
 {
     uint64_t trace_id = base::trace_event::GetNextGlobalTraceId();
@@ -88,6 +97,7 @@ void EmitSlowInteractionToNextPaintTraceEvent(const ResponsivenessMetrics::Event
     TRACE_EVENT_NESTABLE_ASYNC_END_WITH_TIMESTAMP0(
         kSlowInteractionToNextPaintTraceEventCategory, kSlowInteractionToNextPaintTraceEventName, trace_id, event.end_time);
 }
+#endif
 
 // Returns the longest event in `timestamps`.
 ResponsivenessMetrics::EventTimestamps LongestEvent(const WTF::Vector<ResponsivenessMetrics::EventTimestamps>& events)
@@ -99,6 +109,7 @@ ResponsivenessMetrics::EventTimestamps LongestEvent(const WTF::Vector<Responsive
         });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 base::TimeDelta TotalEventDuration(
     // timestamps is sorted by the start_time of EventTimestamps.
     const WTF::Vector<ResponsivenessMetrics::EventTimestamps>& timestamps)
@@ -140,6 +151,7 @@ std::unique_ptr<TracedValue> UserInteractionTraceData(base::TimeDelta max_durati
     traced_value->SetString("interactionType", InteractionTypeToString(interaction_type));
     return traced_value;
 }
+#endif
 
 void LogResponsivenessHistogram(base::TimeDelta max_event_duration, const char* suffix)
 {
@@ -183,13 +195,16 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
     base::TimeTicks max_event_queued_main_thread = longest_event.queued_to_main_thread_time;
     base::TimeTicks max_event_commit_finish = longest_event.commit_finish_time;
     base::TimeDelta max_event_duration = longest_event.duration();
+#if !defined(MINI_UI_QUICKJS)
     base::TimeDelta total_event_duration = TotalEventDuration(timestamps);
+#endif
     // We found some negative values in the data. Before figuring out the root
     // cause, we need this check to avoid sending nonsensical data.
     if (max_event_duration.InMilliseconds() >= 0) {
         window->GetFrame()->Client()->DidObserveUserInteraction(
             max_event_start, max_event_queued_main_thread, max_event_commit_finish, max_event_end, interaction_type, interaction_offset);
     }
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT2("devtools.timeline", "Responsiveness.Renderer.UserInteraction", "data",
         UserInteractionTraceData(max_event_duration, total_event_duration, interaction_type), "frame", GetFrameIdForTracing(window->GetFrame()));
 
@@ -200,6 +215,7 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
     if (longest_event.duration() > kSlowInteractionToNextPaintThreshold) {
         EmitSlowInteractionToNextPaintTraceEvent(longest_event);
     }
+#endif
 
     LogResponsivenessHistogram(max_event_duration, kHistogramAllTypes);
     switch (interaction_type) {
@@ -214,6 +230,7 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
         break;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* ukm_recorder = window->UkmRecorder();
     ukm::SourceId source_id = window->UkmSourceID();
     if (source_id != ukm::kInvalidSourceId && (!sampling_ || base::RandInt(kMinValueForSampling, kMaxValueForSampling) <= kUkmSamplingRate)) {
@@ -223,6 +240,7 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
             .SetTotalEventDuration(total_event_duration.InMilliseconds())
             .Record(ukm_recorder);
     }
+#endif
 }
 
 void ResponsivenessMetrics::NotifyPotentialDrag(PointerId pointer_id)
@@ -743,6 +761,7 @@ void ResponsivenessMetrics::Trace(Visitor* visitor) const
 //   return Interaction::INTERACTION_UNSPECIFIED;
 // }
 
+#if !defined(MINI_UI_QUICKJS)
 void ResponsivenessMetrics::EmitInteractionToNextPaintTraceEvent(
     const ResponsivenessMetrics::EventTimestamps& event, UserInteractionType interaction_type, base::TimeDelta total_event_duration)
 {
@@ -762,6 +781,7 @@ void ResponsivenessMetrics::EmitInteractionToNextPaintTraceEvent(
     //
     //   TRACE_EVENT_END("interactions", track, event.end_time);
 }
+#endif
 
 // TODO(crbug.com/355605691): Report simulated clicks to UKM. We assume click
 // is dispatched/simulated during handling of the keydown or keyup. Hence it is

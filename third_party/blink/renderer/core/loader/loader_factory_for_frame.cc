@@ -4,6 +4,12 @@
 
 #include "third_party/blink/renderer/core/loader/loader_factory_for_frame.h"
 
+#if defined(MINI_UI_QUICKJS)
+#include "base/check.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
+#else
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/numerics/safe_conversions.h"
@@ -16,62 +22,34 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
+#endif
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/prefetched_signed_exchange_manager.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/background_code_cache_host.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_url_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_factory.h"
+#endif
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
-
-// scoped_refptr<network::SharedURLLoaderFactory> 
-// network::SharedURLLoaderFactory::Create(std::unique_ptr<network::PendingSharedURLLoaderFactory, std::default_delete<network::PendingSharedURLLoaderFactory>>)
-// {
-//     *(int*)1 = 1;
-//     return nullptr;
-// }
-// 
-// network::SharedURLLoaderFactory::~SharedURLLoaderFactory(void)
-// {
-//     *(int*)1 = 1;
-// }
-
-network::WrapperPendingSharedURLLoaderFactory::WrapperPendingSharedURLLoaderFactory(mojo::PendingRemote<network::mojom::URLLoaderFactory>)
-{
-    *(int*)1 = 1;
-}
-
-network::WrapperPendingSharedURLLoaderFactory::~WrapperPendingSharedURLLoaderFactory(void)
-{
-    *(int*)1 = 1;
-}
-
-scoped_refptr<network::SharedURLLoaderFactory> network::WrapperPendingSharedURLLoaderFactory::CreateFactory(void)
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
-
-// bool network::SharedURLLoaderFactory::BypassRedirectChecks(void) const
-// {
-//     *(int*)1 = 1;
-//     return false;
-// }
 
 namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 // This class is used for loading resources with a custom URLLoaderFactory using
 // a BackgroundURLLoader.
 class BackgroundResourceFetchAssetsWithCustomLoaderFactory : public WebBackgroundResourceFetchAssets {
@@ -117,12 +95,15 @@ private:
     scoped_refptr<WebBackgroundResourceFetchAssets> base_assets_;
 };
 
+#endif
+
 Vector<String>& CorsExemptHeaderList()
 {
     DEFINE_STATIC_LOCAL(ThreadSpecific<Vector<String>>, cors_exempt_header_list, ());
     return *cors_exempt_header_list;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 Vector<std::unique_ptr<URLLoaderThrottle>> CreateThrottlesImpl(
     URLLoaderThrottleProvider* throttle_provider, const LocalFrameToken local_frame_token, const network::ResourceRequest* network_request)
 {
@@ -143,6 +124,8 @@ Vector<std::unique_ptr<URLLoaderThrottle>> CreateThrottlesImpl(
     return throttles;
 }
 
+#endif
+
 } // namespace
 
 // static
@@ -159,31 +142,68 @@ Vector<String> LoaderFactoryForFrame::GetCorsExemptHeaderList()
 LoaderFactoryForFrame::LoaderFactoryForFrame(DocumentLoader& document_loader, LocalDOMWindow& window)
     : document_loader_(document_loader)
     , window_(window)
+#if !defined(MINI_UI_QUICKJS)
     , prefetched_signed_exchange_manager_(document_loader.GetPrefetchedSignedExchangeManager())
     , keep_alive_handle_factory_(&window)
+#endif
 {
+#if !defined(MINI_UI_QUICKJS)
     ::mojo::PendingReceiver<::blink::mojom::blink::KeepAliveHandleFactory> factory = keep_alive_handle_factory_.BindNewPipeAndPassReceiver(window.GetTaskRunner(TaskType::kNetworking));
     LocalFrame* f = window.GetFrame();
     f->GetLocalFrameHostRemote().GetKeepAliveHandleFactory(std::move(factory));
 // 
 //     window.GetFrame()->GetLocalFrameHostRemote().GetKeepAliveHandleFactory(
 //         keep_alive_handle_factory_.BindNewPipeAndPassReceiver(window.GetTaskRunner(TaskType::kNetworking)));
+#endif
 }
 
 void LoaderFactoryForFrame::Trace(Visitor* visitor) const
 {
     visitor->Trace(document_loader_);
     visitor->Trace(window_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(prefetched_signed_exchange_manager_);
     visitor->Trace(keep_alive_handle_factory_);
+#endif
     LoaderFactory::Trace(visitor);
 }
 
+#if defined(MINI_UI_QUICKJS)
+std::unique_ptr<URLLoader> LoaderFactoryForFrame::CreateURLLoader(const network::ResourceRequest& network_request, const ResourceLoaderOptions& options,
+    scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner, scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
+    BackForwardCacheLoaderHelper* back_forward_cache_loader_helper, bool is_from_origin_dirty_style_sheet)
+#else
 std::unique_ptr<URLLoader> LoaderFactoryForFrame::CreateURLLoader(const network::ResourceRequest& network_request, const ResourceLoaderOptions& options,
     scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner, scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
     BackForwardCacheLoaderHelper* back_forward_cache_loader_helper, const std::optional<base::UnguessableToken>& service_worker_race_network_request_token,
     bool is_from_origin_dirty_style_sheet)
+#endif
 {
+#if defined(MINI_UI_QUICKJS)
+    LocalFrame* frame = window_->GetFrame();
+    CHECK(frame);
+    mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
+        blob_factory;
+    if (network_request.url.SchemeIsBlob()) {
+        if (options.url_loader_factory) {
+            blob_factory =
+                std::move(options.url_loader_factory->data);
+        } else {
+            window_->GetPublicURLManager().Resolve(
+                KURL(network_request.url),
+                blob_factory.InitWithNewPipeAndPassReceiver());
+        }
+    }
+    if (blob_factory) {
+        return std::make_unique<URLLoader>(
+            std::move(blob_factory),
+            std::move(freezable_task_runner),
+            std::move(unfreezable_task_runner));
+    }
+    auto loader = frame->CreateURLLoaderForTesting();
+    CHECK(loader);
+    return loader;
+#else
     LocalFrame* frame = window_->GetFrame();
     CHECK(frame);
     if (std::unique_ptr<URLLoader> loader = frame->CreateURLLoaderForTesting()) {
@@ -229,11 +249,13 @@ std::unique_ptr<URLLoader> LoaderFactoryForFrame::CreateURLLoader(const network:
         // TODO(mek): Move the RequestContext check to the worker side's relevant
         // callsite when we make Shared Worker loading off-main-thread.
         window_->GetPublicURLManager().Resolve(KURL(network_request.url), url_loader_factory_remote.InitWithNewPipeAndPassReceiver());
+#if !defined(MINI_UI_QUICKJS)
     } else if (document_loader_->GetServiceWorkerNetworkProvider()) {
         // When the document is controlled by a service worker, use the service
         // worker's network provider.
         shared_url_loader_factory
             = document_loader_->GetServiceWorkerNetworkProvider()->GetSubresourceLoaderFactory(network_request, is_from_origin_dirty_style_sheet);
+#endif
     }
 
     // Try to use BackgroundURLLoader if possible.
@@ -252,8 +274,13 @@ std::unique_ptr<URLLoader> LoaderFactoryForFrame::CreateURLLoader(const network:
                         : shared_url_loader_factory->Clone(),
                     std::move(background_resource_fetch_assets));
             }
+#if defined(MINI_UI_QUICKJS)
+            return std::make_unique<BackgroundURLLoader>(std::move(background_resource_fetch_assets), GetCorsExemptHeaderList(), unfreezable_task_runner,
+                back_forward_cache_loader_helper);
+#else
             return std::make_unique<BackgroundURLLoader>(std::move(background_resource_fetch_assets), GetCorsExemptHeaderList(), unfreezable_task_runner,
                 back_forward_cache_loader_helper, GetBackgroundCodeCacheHost());
+#endif
         }
     }
     // When failed to use BackgroundURLLoader, use the normal URLLoader.
@@ -276,13 +303,17 @@ std::unique_ptr<URLLoader> LoaderFactoryForFrame::CreateURLLoader(const network:
         /*terminate_sync_load_event=*/nullptr)
         ->CreateURLLoader(network_request, freezable_task_runner, unfreezable_task_runner, MaybeIssueKeepAliveHandle(network_request),
             back_forward_cache_loader_helper, CreateThrottles(network_request));
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CodeCacheHost* LoaderFactoryForFrame::GetCodeCacheHost()
 {
     return document_loader_->GetCodeCacheHost();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 mojo::PendingRemote<mojom::blink::KeepAliveHandle> LoaderFactoryForFrame::MaybeIssueKeepAliveHandle(const network::ResourceRequest& network_request)
 {
     mojo::PendingRemote<mojom::blink::KeepAliveHandle> pending_remote;
@@ -302,6 +333,9 @@ mojo::PendingRemote<mojom::blink::KeepAliveHandle> LoaderFactoryForFrame::MaybeI
     return pending_remote;
 }
 
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<BackgroundCodeCacheHost> LoaderFactoryForFrame::GetBackgroundCodeCacheHost()
 {
     if (!background_code_cache_host_) {
@@ -309,7 +343,9 @@ scoped_refptr<BackgroundCodeCacheHost> LoaderFactoryForFrame::GetBackgroundCodeC
     }
     return background_code_cache_host_;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 URLLoaderThrottleProvider* LoaderFactoryForFrame::GetURLLoaderThrottleProvider()
 {
     // LocalFrameClient member may not be valid in some tests.
@@ -323,5 +359,7 @@ Vector<std::unique_ptr<URLLoaderThrottle>> LoaderFactoryForFrame::CreateThrottle
 {
     return CreateThrottlesImpl(GetURLLoaderThrottleProvider(), window_->GetFrame()->GetLocalFrameToken(), &network_request);
 }
+
+#endif
 
 } // namespace blink

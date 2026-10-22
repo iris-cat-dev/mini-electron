@@ -4,20 +4,22 @@
 
 #include "third_party/blink/renderer/core/frame/performance_monitor.h"
 
+#include <algorithm>
+
 #include "base/format_macros.h"
-#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/core/core_probe_sink.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/dom/events/event_listener.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8-metrics.h"
+#endif
 
 namespace blink {
 
@@ -65,7 +67,9 @@ PerformanceMonitor* PerformanceMonitor::InstrumentingMonitorExcludingLongTasks(c
 
 PerformanceMonitor::PerformanceMonitor(LocalFrame* local_root, v8::Isolate* isolate)
     : local_root_(local_root)
+#if !defined(MINI_UI_QUICKJS)
     , isolate_(isolate)
+#endif
 {
     std::fill(std::begin(thresholds_), std::end(thresholds_), base::TimeDelta());
     Thread::Current()->AddTaskTimeObserver(this);
@@ -302,7 +306,9 @@ void PerformanceMonitor::WillProcessTask(base::TimeTicks start_time)
     task_execution_context_ = nullptr;
     task_has_multiple_contexts_ = false;
     task_should_be_reported_ = false;
+#if !defined(MINI_UI_QUICKJS)
     v8::metrics::LongTaskStats::Reset(isolate_);
+#endif
 
     if (!enabled_)
         return;

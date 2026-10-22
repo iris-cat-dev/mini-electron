@@ -18,7 +18,9 @@
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/mojom/data_transfer/data_transfer.mojom-shared.h"
 #include "third_party/blink/public/mojom/drag/drag.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/web_drag_data.h"
 #include "third_party/blink/renderer/platform/blob/serialized_blob_mojom_traits.h"
 #include "third_party/blink/renderer/platform/mojo/kurl_mojom_traits.h"
@@ -44,7 +46,9 @@ template <> struct PLATFORM_EXPORT StructTraits<blink::mojom::DragItemStringData
 template <> struct PLATFORM_EXPORT StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDragData::FilenameItem> {
     static base::FilePath path(const blink::WebDragData::FilenameItem& item);
     static base::FilePath display_name(const blink::WebDragData::FilenameItem& item);
+#if !defined(MINI_UI_QUICKJS)
     static mojo::PendingRemote<blink::mojom::blink::FileSystemAccessDataTransferToken> file_system_access_token(const blink::WebDragData::FilenameItem& item);
+#endif
     static bool Read(blink::mojom::DataTransferFileDataView data, blink::WebDragData::FilenameItem* out);
 };
 

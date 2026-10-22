@@ -84,8 +84,10 @@ public:
     NOINLINE void ThrowRangeError(const String& message);
     NOINLINE void ThrowTypeError(const String& message);
 
+#if !defined(MINI_UI_QUICKJS)
     // Throws WebAssembly Error object.
     NOINLINE void ThrowWasmCompileError(const String& message);
+#endif
 
     // These overloads reduce the binary code size because the call sites do not
     // need the conversion by String::String(const char*) that is inlined at each
@@ -96,7 +98,9 @@ public:
     NOINLINE void ThrowSecurityError(const char* sanitized_message, const char* unsanitized_message = nullptr);
     NOINLINE void ThrowRangeError(const char* message);
     NOINLINE void ThrowTypeError(const char* message);
+#if !defined(MINI_UI_QUICKJS)
     NOINLINE void ThrowWasmCompileError(const char* message);
+#endif
 
     // Report the given value as the exception being thrown, but rethrow it
     // immediately via the v8::TryCatch instead of in the destructor.

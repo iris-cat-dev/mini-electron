@@ -47,7 +47,9 @@ public:
     base::TimeTicks GetTimeTasksCanRunUntil(base::TimeTicks now) const final;
     base::TimeTicks GetNextAllowedRunTime(base::TimeTicks desired_run_time) const final;
     void OnWakeUp(base::TimeTicks now) final;
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const final;
+#endif
 
     std::optional<base::TimeTicks> last_wake_up_for_testing() const
     {

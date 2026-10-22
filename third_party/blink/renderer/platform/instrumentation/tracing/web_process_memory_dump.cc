@@ -10,9 +10,11 @@
 #include "base/memory/discardable_memory.h"
 #include "base/memory/ptr_util.h"
 #include "base/trace_event/process_memory_dump.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event_memory_overhead.h"
 #include "base/trace_event/traced_value.h"
 #include "skia/ext/skia_trace_memory_dump_impl.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_memory_allocator_dump.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
 
@@ -126,6 +128,7 @@ void WebProcessMemoryDump::AddSuballocation(blink::WebMemoryAllocatorDumpGuid so
     process_memory_dump_->AddSuballocation(base::trace_event::MemoryAllocatorDumpGuid(source), target_node_name.Utf8());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 SkTraceMemoryDump* WebProcessMemoryDump::CreateDumpAdapterForSkia(const String& dump_name_prefix)
 {
     *(int*)1 = 1;
@@ -133,6 +136,7 @@ SkTraceMemoryDump* WebProcessMemoryDump::CreateDumpAdapterForSkia(const String& 
 //     sk_trace_dump_list_.push_back(std::make_unique<skia::SkiaTraceMemoryDumpImpl>(dump_name_prefix.Utf8(), level_of_detail_, process_memory_dump_));
 //     return sk_trace_dump_list_.back().get();
 }
+#endif
 
 blink::WebMemoryAllocatorDump* WebProcessMemoryDump::CreateDiscardableMemoryAllocatorDump(const std::string& name, base::DiscardableMemory* discardable)
 {
@@ -140,11 +144,13 @@ blink::WebMemoryAllocatorDump* WebProcessMemoryDump::CreateDiscardableMemoryAllo
     return CreateWebMemoryAllocatorDump(dump);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebProcessMemoryDump::DumpHeapUsage(
     const std::unordered_map<base::trace_event::AllocationContext, base::trace_event::AllocationMetrics>& metrics_by_context,
     base::trace_event::TraceEventMemoryOverhead& overhead, const char* allocator_name)
 {
     process_memory_dump_->DumpHeapUsage(metrics_by_context, overhead, allocator_name);
 }
+#endif
 
 } // namespace content

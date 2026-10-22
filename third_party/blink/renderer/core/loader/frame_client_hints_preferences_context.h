@@ -10,9 +10,11 @@
 #include "third_party/blink/renderer/platform/loader/fetch/client_hints_preferences.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 } // namespace ukm
+#endif
 
 namespace blink {
 
@@ -24,8 +26,10 @@ class FrameClientHintsPreferencesContext final : public ClientHintsPreferences::
 public:
     explicit FrameClientHintsPreferencesContext(LocalFrame*);
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::SourceId GetUkmSourceId() override;
     ukm::UkmRecorder* GetUkmRecorder() override;
+#endif
     void CountClientHints(network::mojom::WebClientHintsType) override;
 
 private:

@@ -19,6 +19,10 @@
 #ifndef COMPAT_ATOMICS_WIN32_STDATOMIC_H
 #define COMPAT_ATOMICS_WIN32_STDATOMIC_H
 
+#if defined(__clang__) && !defined(__cplusplus)
+#include "libdav1d/include/compat/gcc/stdatomic.h"
+#else
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -155,5 +159,7 @@ static inline int atomic_compare_exchange_strong(intptr_t* object, intptr_t* exp
 #define atomic_flag_clear(object) atomic_store(object, 0)
 
 #define atomic_flag_clear_explicit(object, order) atomic_flag_clear(object)
+
+#endif /* Clang C uses the bundled atomic builtins implementation. */
 
 #endif /* COMPAT_ATOMICS_WIN32_STDATOMIC_H */

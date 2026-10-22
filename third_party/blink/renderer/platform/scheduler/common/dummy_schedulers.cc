@@ -149,9 +149,11 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     void TraceUrlChange(const String&) override
     {
     }
+#endif
     void AddTaskTime(base::TimeDelta) override
     {
     }
@@ -196,10 +198,12 @@ public:
     {
         return nullptr;
     }
+#if !defined(MINI_UI_QUICKJS)
     ukm::SourceId GetUkmSourceId() override
     {
         return ukm::kInvalidSourceId;
     }
+#endif
     void OnStartedUsingNonStickyFeature(SchedulingPolicy::Feature feature, const SchedulingPolicy& policy, std::unique_ptr<SourceLocation> source_location,
         SchedulingAffectingFeatureHandle* handle) override
     {

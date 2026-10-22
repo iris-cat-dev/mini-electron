@@ -1,0 +1,1566 @@
+{
+  "schema_version": 1,
+  "limitations": "Twelve deliberately spaced main-thread CDB stop snapshots, not a statistical CPU-time attribution. Linker ICF aliases retained rather than assuming an arbitrary export name.",
+  "samples": [
+    {
+      "sample": 1,
+      "frames": [
+        {
+          "rva": "0x1f4a4",
+          "offset": "0x62",
+          "aliases": [
+            {
+              "symbol": "JS_AtomIsNumericIndex",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x15bcd",
+          "offset": "0x9b",
+          "aliases": [
+            {
+              "symbol": "JS_HasProperty",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x4866d",
+          "offset": "0x7d",
+          "aliases": [
+            {
+              "symbol": "js_operator_in",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x29709",
+          "offset": "0x3290",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1e5a8",
+          "offset": "0x9a",
+          "aliases": [
+            {
+              "symbol": "JS_CallFree",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x57b73",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "js_proxy_get",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x28137",
+          "offset": "0x1cbe",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x7c612",
+          "offset": "0xe9",
+          "aliases": [
+            {
+              "symbol": "js_array_cmp_generic",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xe1b60",
+          "offset": "0x333",
+          "aliases": [
+            {
+              "symbol": "rqsort",
+              "object": "mini-ui:c453ed06310aecd24f91.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x7afbe",
+          "offset": "0x210",
+          "aliases": [
+            {
+              "symbol": "js_array_sort",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-1.log"
+    },
+    {
+      "sample": 2,
+      "frames": [
+        {
+          "rva": "0x646a",
+          "offset": "0x16",
+          "aliases": [
+            {
+              "symbol": "?Exit@Isolate@v8@@QEAAXXZ",
+              "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa03da",
+          "offset": "0x44",
+          "aliases": [
+            {
+              "symbol": "??1CallbackState@detail@v8@@QEAA@XZ",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb08b8",
+          "offset": "0x4ea",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x43d13",
+          "offset": "0x8e",
+          "aliases": [
+            {
+              "symbol": "JS_GetGlobalVar",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26d14",
+          "offset": "0x89b",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1e5a8",
+          "offset": "0x9a",
+          "aliases": [
+            {
+              "symbol": "JS_CallFree",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x57b73",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "js_proxy_get",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x28137",
+          "offset": "0x1cbe",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x780bf",
+          "offset": "0xea",
+          "aliases": [
+            {
+              "symbol": "js_function_call",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13cc5",
+          "offset": "0x469",
+          "aliases": [
+            {
+              "symbol": "js_call_c_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-2.log"
+    },
+    {
+      "sample": 3,
+      "frames": [
+        {
+          "rva": "0x1696253",
+          "offset": "0x73",
+          "aliases": [
+            {
+              "symbol": "_realloc_base",
+              "object": "libucrt:realloc_base.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x3dd91",
+          "offset": "0x42",
+          "aliases": [
+            {
+              "symbol": "js_def_realloc",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13240",
+          "offset": "0x27",
+          "aliases": [
+            {
+              "symbol": "js_realloc",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x4008e",
+          "offset": "0x5c",
+          "aliases": [
+            {
+              "symbol": "resize_properties",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x3ff32",
+          "offset": "0x95",
+          "aliases": [
+            {
+              "symbol": "add_shape_property",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x21650",
+          "offset": "0x146",
+          "aliases": [
+            {
+              "symbol": "add_property",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x229fe",
+          "offset": "0xde",
+          "aliases": [
+            {
+              "symbol": "JS_CreateProperty",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x21f1b",
+          "offset": "0x3e1",
+          "aliases": [
+            {
+              "symbol": "JS_DefineProperty",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x15df4",
+          "offset": "0x81",
+          "aliases": [
+            {
+              "symbol": "JS_DefinePropertyValue",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x2735b",
+          "offset": "0xee2",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-3.log"
+    },
+    {
+      "sample": 4,
+      "frames": [
+        {
+          "rva": "0xa031c",
+          "offset": "0x0",
+          "aliases": [
+            {
+              "symbol": "??0CallbackState@detail@v8@@QEAA@PEAVIsolate@2@PEAUJSContext@@@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb04b5",
+          "offset": "0xe7",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1ea80",
+          "offset": "0x57",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb0893",
+          "offset": "0x4c5",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1ea80",
+          "offset": "0x57",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb0893",
+          "offset": "0x4c5",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x2859e",
+          "offset": "0x2125",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-4.log"
+    },
+    {
+      "sample": 5,
+      "frames": [
+        {
+          "rva": "0x28bb7",
+          "offset": "0x273e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x780bf",
+          "offset": "0xea",
+          "aliases": [
+            {
+              "symbol": "js_function_call",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13cc5",
+          "offset": "0x469",
+          "aliases": [
+            {
+              "symbol": "js_call_c_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26674",
+          "offset": "0x1fb",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ef7",
+          "offset": "0xa7e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ef7",
+          "offset": "0xa7e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13fc5",
+          "offset": "0x15a",
+          "aliases": [
+            {
+              "symbol": "js_call_bound_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26674",
+          "offset": "0x1fb",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ef7",
+          "offset": "0xa7e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-5.log"
+    },
+    {
+      "sample": 6,
+      "frames": [
+        {
+          "rva": "0x13cc5",
+          "offset": "0x469",
+          "aliases": [
+            {
+              "symbol": "js_call_c_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26674",
+          "offset": "0x1fb",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ef7",
+          "offset": "0xa7e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ddb",
+          "offset": "0x962",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1e5a8",
+          "offset": "0x9a",
+          "aliases": [
+            {
+              "symbol": "JS_CallFree",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x57b73",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "js_proxy_get",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x28137",
+          "offset": "0x1cbe",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x780bf",
+          "offset": "0xea",
+          "aliases": [
+            {
+              "symbol": "js_function_call",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13cc5",
+          "offset": "0x469",
+          "aliases": [
+            {
+              "symbol": "js_call_c_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26674",
+          "offset": "0x1fb",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26ef7",
+          "offset": "0xa7e",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-6.log"
+    },
+    {
+      "sample": 7,
+      "frames": [
+        {
+          "rva": "0x520242",
+          "offset": "0x0",
+          "aliases": [
+            {
+              "symbol": "?Add@FreeList@internal@cppgc@@QEAAXUBlock@123@@Z",
+              "object": "mini-ui:57aa4bac72035a2e535a.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x176bb0",
+          "offset": "0x368",
+          "aliases": [
+            {
+              "symbol": "?Traverse@?$HeapVisitor@VMutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@@internal@cppgc@@QEAAXAEAVBasePage@23@@Z",
+              "object": "mini-ui:83a1ebac9c881f354d31.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x176428",
+          "offset": "0x44",
+          "aliases": [
+            {
+              "symbol": "?Sweep@MutatorThreadSweeper@?A0x97E1AA57@internal@cppgc@@QEAAXAEAUSweepingState@?A0x97E1AA57@23@@Z",
+              "object": "mini-ui:83a1ebac9c881f354d31.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x176256",
+          "offset": "0x140",
+          "aliases": [
+            {
+              "symbol": "?Finish@SweeperImpl@Sweeper@internal@cppgc@@QEAAXXZ",
+              "object": "mini-ui:83a1ebac9c881f354d31.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x173b42",
+          "offset": "0xaa",
+          "aliases": [
+            {
+              "symbol": "?FinishIfRunning@SweeperImpl@Sweeper@internal@cppgc@@QEAA_NXZ",
+              "object": "mini-ui:83a1ebac9c881f354d31.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x9ebbe",
+          "offset": "0xe6",
+          "aliases": [
+            {
+              "symbol": "?FinalizeGarbageCollectionImpl@Heap@internal@cppgc@@AEAAXW4EmbedderStackState@3@@Z",
+              "object": "mini-ui:02b60f6dfb596d9475be.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x9f3d2",
+          "offset": "0x2e",
+          "aliases": [
+            {
+              "symbol": "??$SetMarkerAndCallbackImpl@V<lambda_0>@?0??FinalizeGarbageCollection@Heap@internal@cppgc@@AEAAXW4EmbedderStackState@5@@Z@@Stack@base@heap@@CAXPEAV012@PEAXPEBX@Z",
+              "object": "mini-ui:02b60f6dfb596d9475be.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x164f48d",
+          "offset": "0x6d",
+          "aliases": [
+            {
+              "symbol": "PushAllRegistersAndIterateStack",
+              "object": "mini-ui:f8d29ec49998f5ef9828.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x9e850",
+          "offset": "0x58",
+          "aliases": [
+            {
+              "symbol": "?FinalizeGarbageCollection@Heap@internal@cppgc@@AEAAXW4EmbedderStackState@3@@Z",
+              "object": "mini-ui:02b60f6dfb596d9475be.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x172b33",
+          "offset": "0xa3",
+          "aliases": [
+            {
+              "symbol": "?CollectGarbage@GCInvokerImpl@GCInvoker@internal@cppgc@@UEAAXUGCConfig@34@@Z",
+              "object": "mini-ui:0dee41deb8f5741fc28a.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x172f18",
+          "offset": "0x32",
+          "aliases": [
+            {
+              "symbol": "?CollectGarbage@GCInvoker@internal@cppgc@@UEAAXUGCConfig@23@@Z",
+              "object": "mini-ui:0dee41deb8f5741fc28a.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x17335c",
+          "offset": "0x54",
+          "aliases": [
+            {
+              "symbol": "?AllocatedObjectSizeIncreased@HeapGrowingImpl@HeapGrowing@internal@cppgc@@UEAAX_K@Z",
+              "object": "mini-ui:c4ce89ef86f92ecc975f.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-7.log"
+    },
+    {
+      "sample": 8,
+      "frames": [
+        {
+          "rva": "0xb683ee",
+          "offset": "0xb0",
+          "aliases": [
+            {
+              "symbol": "??$PopulateRunInfoParts@VShapeResult@blink@@@ShapeResultView@blink@@AEAAXAEBVShapeResult@1@AEBUSegment@01@@Z",
+              "object": "mini-ui:0c88637e9f364a753884.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb68f2b",
+          "offset": "0xb3",
+          "aliases": [
+            {
+              "symbol": "?Create@ShapeResultView@blink@@SAPEAV12@PEBVShapeResult@2@@Z",
+              "object": "mini-ui:0c88637e9f364a753884.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x10b0e68",
+          "offset": "0x2ec",
+          "aliases": [
+            {
+              "symbol": "?HandleText@LineBreaker@blink@@AEAAXAEBVInlineItem@2@AEBVShapeResult@2@PEAVLineInfo@2@@Z",
+              "object": "mini-ui:1fe8e5f50558a8db08f8.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x10af5ae",
+          "offset": "0x272",
+          "aliases": [
+            {
+              "symbol": "?BreakLine@LineBreaker@blink@@AEAAXPEAVLineInfo@2@@Z",
+              "object": "mini-ui:1fe8e5f50558a8db08f8.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x10ae929",
+          "offset": "0x33",
+          "aliases": [
+            {
+              "symbol": "?NextLine@LineBreaker@blink@@QEAAXPEAVLineInfo@2@@Z",
+              "object": "mini-ui:1fe8e5f50558a8db08f8.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x10ab275",
+          "offset": "0x4c7",
+          "aliases": [
+            {
+              "symbol": "?Layout@InlineLayoutAlgorithm@blink@@QEAAPEBVLayoutResult@2@XZ",
+              "object": "mini-ui:ad1c8f057cf07157f602.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa6b4ab",
+          "offset": "0x7f",
+          "aliases": [
+            {
+              "symbol": "?Layout@InlineNode@blink@@QEBAPEBVLayoutResult@2@AEBVConstraintSpace@2@PEBVBreakToken@2@PEBVColumnSpannerPath@2@PEAVInlineChildLayoutContext@2@@Z",
+              "object": "mini-ui:f82ea64fa505095e02ec.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xfa4e78",
+          "offset": "0x2e0",
+          "aliases": [
+            {
+              "symbol": "?HandleInflow@BlockLayoutAlgorithm@blink@@AEAA?AW4EStatus@LayoutResult@2@VLayoutInputNode@2@PEBVBreakToken@2@PEAUPreviousInflowPosition@2@PEAVInlineChildLayoutContext@2@PEAPEBVInlineBreakToken@2@@Z",
+              "object": "mini-ui:81dcc6843b75e7e83f86.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xf9f2b3",
+          "offset": "0xab5",
+          "aliases": [
+            {
+              "symbol": "?Layout@BlockLayoutAlgorithm@blink@@AEAAPEBVLayoutResult@2@PEAVInlineChildLayoutContext@2@@Z",
+              "object": "mini-ui:81dcc6843b75e7e83f86.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xf9e6f2",
+          "offset": "0x102",
+          "aliases": [
+            {
+              "symbol": "?LayoutInlineChild@BlockLayoutAlgorithm@blink@@AEAAPEBVLayoutResult@2@AEBVInlineNode@2@@Z",
+              "object": "mini-ui:81dcc6843b75e7e83f86.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xf9e5ab",
+          "offset": "0x39",
+          "aliases": [
+            {
+              "symbol": "?Layout@BlockLayoutAlgorithm@blink@@QEAAPEBVLayoutResult@2@XZ",
+              "object": "mini-ui:81dcc6843b75e7e83f86.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x922fc9",
+          "offset": "0x36",
+          "aliases": [
+            {
+              "symbol": "??$CreateAlgorithmAndRun@VBlockLayoutAlgorithm@blink@@V<lambda_1>@?0??LayoutWithAlgorithm@?A0xF64F78E3@2@YAPEBVLayoutResult@2@AEBULayoutAlgorithmParams@2@@Z@@?A0xF64F78E3@blink@@YAXAEBULayoutAlgorithmParams@0@AEBV<lambda_1>@?0??LayoutWithAlgorithm@?A0xF64F78E3@0@YAPEBVLayoutResult@0@0@Z@@Z",
+              "object": "mini-ui:536d8b71f6ac2bf58f96.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-8.log"
+    },
+    {
+      "sample": 9,
+      "frames": [
+        {
+          "rva": "0x18ec0",
+          "offset": "0x4d",
+          "aliases": [
+            {
+              "symbol": "__JS_NewAtom",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x20389",
+          "offset": "0xd6",
+          "aliases": [
+            {
+              "symbol": "JS_ValueToAtom",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa3f3e",
+          "offset": "0x4d",
+          "aliases": [
+            {
+              "symbol": "?FindNative@?A0xEBED13CD@v8@@YAPEAUNativeProperty@?A0xEBED13CD@1@PEAUJSContext@@PEAUNativeState@?A0xEBED13CD@1@I@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb06ad",
+          "offset": "0x2df",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x43d13",
+          "offset": "0x8e",
+          "aliases": [
+            {
+              "symbol": "JS_GetGlobalVar",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26d14",
+          "offset": "0x89b",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1e5a8",
+          "offset": "0x9a",
+          "aliases": [
+            {
+              "symbol": "JS_CallFree",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x57b73",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "js_proxy_get",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x2054b",
+          "offset": "0xf4",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyValue",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x55732",
+          "offset": "0x92",
+          "aliases": [
+            {
+              "symbol": "JS_TryGetPropertyInt64",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-9.log"
+    },
+    {
+      "sample": 10,
+      "frames": [
+        {
+          "rva": "0x1696253",
+          "offset": "0x73",
+          "aliases": [
+            {
+              "symbol": "_realloc_base",
+              "object": "libucrt:realloc_base.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x3dd91",
+          "offset": "0x42",
+          "aliases": [
+            {
+              "symbol": "js_def_realloc",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x132b9",
+          "offset": "0x2c",
+          "aliases": [
+            {
+              "symbol": "js_realloc2",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x228a1",
+          "offset": "0xcf",
+          "aliases": [
+            {
+              "symbol": "add_fast_array_element",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x22bf2",
+          "offset": "0x2d2",
+          "aliases": [
+            {
+              "symbol": "JS_CreateProperty",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x21f1b",
+          "offset": "0x3e1",
+          "aliases": [
+            {
+              "symbol": "JS_DefineProperty",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x15df4",
+          "offset": "0x81",
+          "aliases": [
+            {
+              "symbol": "JS_DefinePropertyValue",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x23b53",
+          "offset": "0x88",
+          "aliases": [
+            {
+              "symbol": "JS_DefinePropertyValueValue",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x55c65",
+          "offset": "0x426",
+          "aliases": [
+            {
+              "symbol": "JS_GetOwnPropertyNames2",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x54e84",
+          "offset": "0x44",
+          "aliases": [
+            {
+              "symbol": "js_object_keys",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x13cc5",
+          "offset": "0x469",
+          "aliases": [
+            {
+              "symbol": "js_call_c_function",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26674",
+          "offset": "0x1fb",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-10.log"
+    },
+    {
+      "sample": 11,
+      "frames": [
+        {
+          "rva": "0x787f",
+          "offset": "0x7",
+          "aliases": [
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAUJSRuntime@@PEAVIsolate@v8@@V?$_Uhash_compare@PEAUJSRuntime@@U?$hash@PEAUJSRuntime@@@std@@U?$equal_to@PEAUJSRuntime@@@3@@std@@V?$allocator@U?$pair@QEAUJSRuntime@@PEAVIsolate@v8@@@std@@@5@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAUJSRuntime@@PEAVIsolate@v8@@@std@@@std@@@std@@@1@AEBQEAUJSRuntime@@@Z",
+              "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAVMemoryPressureListener@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VMemoryPressureListener@base@@$0A@@2@V?$_Uhash_compare@PEAVMemoryPressureListener@base@@U?$hash@PEAVMemoryPressureListener@base@@@std@@U?$equal_to@PEAVMemoryPressureListener@base@@@4@@std@@V?$allocator@U?$pair@QEAVMemoryPressureListener@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VMemoryPressureListener@base@@$0A@@2@@std@@@6@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAVMemoryPressureListener@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VMemoryPressureListener@base@@$0A@@2@@std@@@std@@@std@@@1@AEBQEAVMemoryPressureListener@base@@@Z",
+              "object": "mini-ui:d347c371b2d144d556cf.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAVPowerSuspendObserver@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VPowerSuspendObserver@base@@$0A@@2@V?$_Uhash_compare@PEAVPowerSuspendObserver@base@@U?$hash@PEAVPowerSuspendObserver@base@@@std@@U?$equal_to@PEAVPowerSuspendObserver@base@@@4@@std@@V?$allocator@U?$pair@QEAVPowerSuspendObserver@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VPowerSuspendObserver@base@@$0A@@2@@std@@@6@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAVPowerSuspendObserver@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VPowerSuspendObserver@base@@$0A@@2@@std@@@std@@@std@@@1@AEBQEAVPowerSuspendObserver@base@@@Z",
+              "object": "mini-ui:a775ddb2ee5853b91487.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@3@V?$_Uhash_compare@PEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@U?$hash@PEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@@std@@U?$equal_to@PEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@@5@@std@@V?$allocator@U?$pair@QEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@3@@std@@@7@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@UObserverTaskRunnerInfo@?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@3@@std@@@std@@@std@@@1@AEBQEAVScopedHistogramSampleObserver@StatisticsRecorder@base@@@Z",
+              "object": "mini-ui:2a69ab2d44e001b70f54.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAXV?$unique_ptr@VPlatformSharedMemoryMapping@core@mojo@@U?$default_delete@VPlatformSharedMemoryMapping@core@mojo@@@std@@@std@@V?$_Uhash_compare@PEAXU?$hash@PEAX@std@@U?$equal_to@PEAX@2@@2@V?$allocator@U?$pair@QEAXV?$unique_ptr@VPlatformSharedMemoryMapping@core@mojo@@U?$default_delete@VPlatformSharedMemoryMapping@core@mojo@@@std@@@std@@@std@@@2@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAXV?$unique_ptr@VPlatformSharedMemoryMapping@core@mojo@@U?$default_delete@VPlatformSharedMemoryMapping@core@mojo@@@std@@@std@@@std@@@std@@@std@@@1@AEBQEAX@Z",
+              "object": "mini-ui:d99fbeef167855b444dd.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEAXV?$vector@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@V?$allocator@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@@2@@std@@V?$_Uhash_compare@PEAXU?$hash@PEAX@std@@U?$equal_to@PEAX@2@@2@V?$allocator@U?$pair@QEAXV?$vector@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@V?$allocator@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@@2@@std@@@std@@@2@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEAXV?$vector@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@V?$allocator@V?$weak_ptr@UWeakPersistent@detail@v8@@@std@@@2@@std@@@std@@@std@@@std@@@1@AEBQEAX@Z",
+              "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEBXIV?$_Uhash_compare@PEBXU?$hash@PEBX@std@@U?$equal_to@PEBX@2@@std@@V?$allocator@U?$pair@QEBXI@std@@@2@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEBXI@std@@@std@@@std@@@1@AEBQEBX@Z",
+              "object": "mini-ui:6863b734668d8c06679c.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@PEBXUWrapperRecord@?A0xED9C33EB@mini_ui@@V?$_Uhash_compare@PEBXU?$hash@PEBX@std@@U?$equal_to@PEBX@2@@std@@V?$allocator@U?$pair@QEBXUWrapperRecord@?A0xED9C33EB@mini_ui@@@std@@@4@$0A@@std@@@std@@QEBA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@QEBXUWrapperRecord@?A0xED9C33EB@mini_ui@@@std@@@std@@@std@@@1@AEBQEBX@Z",
+              "object": "mini-ui:ae89c54f711830a24f6d.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@_KPEAVHistogramBase@base@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@std@@V?$allocator@U?$pair@$$CB_KPEAVHistogramBase@base@@@std@@@4@$0A@@std@@@std@@QEBA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@$$CB_KPEAVHistogramBase@base@@@std@@@std@@@std@@@1@AEB_K@Z",
+              "object": "mini-ui:2a69ab2d44e001b70f54.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@_KUEntry@HandleTable@core@mojo@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@std@@V?$allocator@U?$pair@$$CB_KUEntry@HandleTable@core@mojo@@@std@@@6@$0A@@std@@@std@@QEAA?AV?$_List_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@$$CB_KUEntry@HandleTable@core@mojo@@@std@@@std@@@std@@@1@AEB_K@Z",
+              "object": "mini-ui:2b1b00a5330361e8651b.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Umap_traits@_KV?$scoped_refptr@V?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@base@@@@V?$_Uhash_compare@_KU?$hash@_K@std@@U?$equal_to@_K@2@@std@@V?$allocator@U?$pair@$$CB_KV?$scoped_refptr@V?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@base@@@@@std@@@3@$0A@@std@@@std@@QEBA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@U?$pair@$$CB_KV?$scoped_refptr@V?$ObserverListThreadSafe@VScopedHistogramSampleObserver@StatisticsRecorder@base@@$0A@@base@@@@@std@@@std@@@std@@@1@AEB_K@Z",
+              "object": "mini-ui:2a69ab2d44e001b70f54.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Uset_traits@PEAVHeapObjectHeader@internal@cppgc@@V?$_Uhash_compare@PEAVHeapObjectHeader@internal@cppgc@@U?$hash@PEAVHeapObjectHeader@internal@cppgc@@@std@@U?$equal_to@PEAVHeapObjectHeader@internal@cppgc@@@5@@std@@V?$allocator@PEAVHeapObjectHeader@internal@cppgc@@@5@$0A@@std@@@std@@QEAA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@PEAVHeapObjectHeader@internal@cppgc@@@std@@@std@@@1@AEBQEAVHeapObjectHeader@internal@cppgc@@@Z",
+              "object": "mini-ui:fa8740ea88140676a52a.obj"
+            },
+            {
+              "symbol": "??$find@X@?$_Hash@V?$_Uset_traits@PEBXV?$_Uhash_compare@PEBXU?$hash@PEBX@std@@U?$equal_to@PEBX@2@@std@@V?$allocator@PEBX@2@$0A@@std@@@std@@QEBA?AV?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@PEBX@std@@@std@@@1@AEBQEBX@Z",
+              "object": "mini-ui:ae89c54f711830a24f6d.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x85cc",
+          "offset": "0x45",
+          "aliases": [
+            {
+              "symbol": "?IsolateFor@detail@v8@@YAPEAVIsolate@2@PEAUJSContext@@@Z",
+              "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb0408",
+          "offset": "0x3a",
+          "aliases": [
+            {
+              "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+              "object": "mini-ui:791eae3654574fd278fd.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x43d13",
+          "offset": "0x8e",
+          "aliases": [
+            {
+              "symbol": "JS_GetGlobalVar",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x26d14",
+          "offset": "0x89b",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1e5a8",
+          "offset": "0x9a",
+          "aliases": [
+            {
+              "symbol": "JS_CallFree",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x57b73",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "js_proxy_get",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x1f04a",
+          "offset": "0x59f",
+          "aliases": [
+            {
+              "symbol": "JS_GetPropertyImpl",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x28137",
+          "offset": "0x1cbe",
+          "aliases": [
+            {
+              "symbol": "JS_CallInternal",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x7c612",
+          "offset": "0xe9",
+          "aliases": [
+            {
+              "symbol": "js_array_cmp_generic",
+              "object": "mini-ui:05c2888a0f2b380aed57.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xe1b60",
+          "offset": "0x333",
+          "aliases": [
+            {
+              "symbol": "rqsort",
+              "object": "mini-ui:c453ed06310aecd24f91.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-11.log"
+    },
+    {
+      "sample": 12,
+      "frames": [
+        {
+          "rva": "0x2f8151",
+          "offset": "0x31",
+          "aliases": [
+            {
+              "symbol": "??EIterator@PaintOpBuffer@cc@@QEAAAEAV012@XZ",
+              "object": "mini-ui:eb959c9819bc2ab8fd8e.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xda9b1c",
+          "offset": "0xa8",
+          "aliases": [
+            {
+              "symbol": "?BackgroundColor@DrawingDisplayItem@blink@@QEBA?AUBackgroundColorInfo@12@XZ",
+              "object": "mini-ui:fa6c5344ce06005428d4.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb59b43",
+          "offset": "0x5f",
+          "aliases": [
+            {
+              "symbol": "?ProcessBackgroundColorCandidate@PaintChunker@blink@@AEAAXAEBVDisplayItem@2@@Z",
+              "object": "mini-ui:fc6b1f382c94fe17cd82.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xb59986",
+          "offset": "0xc8",
+          "aliases": [
+            {
+              "symbol": "?IncrementDisplayItemIndex@PaintChunker@blink@@QEAA_NAEBVDisplayItemClient@2@AEBVDisplayItem@2@@Z",
+              "object": "mini-ui:fc6b1f382c94fe17cd82.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x4bf483",
+          "offset": "0x51",
+          "aliases": [
+            {
+              "symbol": "?ProcessNewItem@PaintController@blink@@AEAAXAEBVDisplayItemClient@2@AEAVDisplayItem@2@@Z",
+              "object": "mini-ui:ea0daefaeecf461f37e9.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x70aed1",
+          "offset": "0x79",
+          "aliases": [
+            {
+              "symbol": "??$CreateAndAppend@VDrawingDisplayItem@blink@@AEBW4Type@DisplayItem@2@AEAVRect@gfx@@VPaintRecord@cc@@W4RasterEffectOutset@2@W4PaintInvalidationReason@2@@PaintController@blink@@QEAAXAEBVDisplayItemClient@1@AEBW4Type@DisplayItem@1@AEAVRect@gfx@@$$QEAVPaintRecord@cc@@$$QEAW4RasterEffectOutset@1@$$QEAW4PaintInvalidationReason@1@@Z",
+              "object": "mini-ui:835b7bfabf508e5a2d10.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0x70ae22",
+          "offset": "0x94",
+          "aliases": [
+            {
+              "symbol": "??1DrawingRecorder@blink@@QEAA@XZ",
+              "object": "mini-ui:835b7bfabf508e5a2d10.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa3d55e",
+          "offset": "0xb2",
+          "aliases": [
+            {
+              "symbol": "?PaintBoxDecorationBackgroundWithDecorationData@BoxFragmentPainter@blink@@AEAAXAEBUPaintInfo@2@AEBVRect@gfx@@AEBUPhysicalRect@2@AEBVDisplayItemClient@2@W4Type@DisplayItem@2@AEBVBoxDecorationData@2@@Z",
+              "object": "mini-ui:d65e5c11211bfdb6bf22.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa3d1e5",
+          "offset": "0x151",
+          "aliases": [
+            {
+              "symbol": "?PaintBoxDecorationBackgroundWithRect@BoxFragmentPainter@blink@@AEAAXAEBUPaintInfo@2@AEBVRect@gfx@@AEBUPhysicalRect@2@AEBVDisplayItemClient@2@@Z",
+              "object": "mini-ui:d65e5c11211bfdb6bf22.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa39f77",
+          "offset": "0x3e3",
+          "aliases": [
+            {
+              "symbol": "?PaintBoxDecorationBackground@BoxFragmentPainter@blink@@AEAAXAEBUPaintInfo@2@AEBUPhysicalOffset@2@_N@Z",
+              "object": "mini-ui:d65e5c11211bfdb6bf22.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa395b2",
+          "offset": "0x188",
+          "aliases": [
+            {
+              "symbol": "?PaintObject@BoxFragmentPainter@blink@@QEAAXAEBUPaintInfo@2@AEBUPhysicalOffset@2@_N@Z",
+              "object": "mini-ui:d65e5c11211bfdb6bf22.obj"
+            }
+          ]
+        },
+        {
+          "rva": "0xa38f21",
+          "offset": "0x31d",
+          "aliases": [
+            {
+              "symbol": "?PaintInternal@BoxFragmentPainter@blink@@AEAAXAEBUPaintInfo@2@@Z",
+              "object": "mini-ui:d65e5c11211bfdb6bf22.obj"
+            }
+          ]
+        }
+      ],
+      "log": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-12.log"
+    }
+  ]
+}

@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/css_style_sheet_resource.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
@@ -87,11 +89,13 @@ void StyleRuleImport::NotifyFinished(Resource* resource)
     if (parent_style_sheet_) {
         document = parent_style_sheet_->SingleOwnerDocument();
         parent_context = parent_style_sheet_->ParserContext();
+#if !defined(MINI_UI_QUICKJS)
         if (resource->LoadFailedOrCanceled() && document) {
             AuditsIssue::ReportStylesheetLoadingRequestFailedIssue(document, resource->Url(), resource->LastResourceRequest().GetDevToolsId(),
                 parent_style_sheet_->BaseURL(), resource->Options().initiator_info.position.line_, resource->Options().initiator_info.position.column_,
                 resource->GetResourceError().LocalizedDescription());
         }
+#endif
     }
 
     // If either parent or resource is marked as ad, the new CSS will be tagged

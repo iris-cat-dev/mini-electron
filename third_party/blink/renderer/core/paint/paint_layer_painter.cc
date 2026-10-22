@@ -11,7 +11,9 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/layout/fragmentation_utils.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/paint/box_fragment_painter.h"
 #include "third_party/blink/renderer/core/paint/clip_path_clipper.h"
@@ -255,7 +257,11 @@ PaintResult PaintLayerPainter::Paint(GraphicsContext& context, PaintFlags paint_
     // Outline always needs to be painted even if we have no visible content.
     bool should_paint_self_outline = is_self_painting_layer && object.StyleRef().HasOutline();
 
+#if defined(MINI_UI_QUICKJS)
+    bool is_video = false;
+#else
     bool is_video = IsA<LayoutVideo>(object);
+#endif
     if (!is_video && should_paint_self_outline)
         PaintWithPhase(PaintPhase::kSelfOutlineOnly, context, paint_flags);
 

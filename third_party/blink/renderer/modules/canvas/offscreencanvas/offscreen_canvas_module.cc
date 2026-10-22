@@ -30,18 +30,22 @@ V8OffscreenRenderingContext* OffscreenCanvasModule::getContext(ScriptState* scri
     case V8OffscreenRenderingContextType::Enum::k2D:
         rendering_api = CanvasRenderingContext::CanvasRenderingAPI::k2D;
         break;
+#if !defined(MINI_UI_QUICKJS)
     case V8OffscreenRenderingContextType::Enum::kWebGL:
         rendering_api = CanvasRenderingContext::CanvasRenderingAPI::kWebgl;
         break;
     case V8OffscreenRenderingContextType::Enum::kWebGL2:
         rendering_api = CanvasRenderingContext::CanvasRenderingAPI::kWebgl2;
         break;
+#endif
     case V8OffscreenRenderingContextType::Enum::kBitmaprenderer:
         rendering_api = CanvasRenderingContext::CanvasRenderingAPI::kBitmaprenderer;
         break;
+#if !defined(MINI_UI_QUICKJS)
     case V8OffscreenRenderingContextType::Enum::kWebGPU:
         rendering_api = CanvasRenderingContext::CanvasRenderingAPI::kWebgpu;
         break;
+#endif
     default:
         NOTREACHED();
     }

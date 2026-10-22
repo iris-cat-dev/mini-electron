@@ -9,9 +9,13 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_prescient_networking.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_common.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_idle_request_options.h"
 #include "third_party/blink/renderer/core/css/media_list.h"
 #include "third_party/blink/renderer/core/css/media_query_evaluator.h"
@@ -41,10 +45,14 @@
 #include "third_party/blink/renderer/core/loader/resource/font_resource.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource.h"
 #include "third_party/blink/renderer/core/loader/resource/link_dictionary_resource.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/resource/link_prefetch_resource.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/page.h"
+#endif
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/scheduler/scripted_idle_task_controller.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
@@ -122,7 +130,11 @@ bool IsSupportedType(ResourceType resource_type, const String& mime_type)
         return MIMETypeRegistry::IsSupportedFontMIMEType(mime_type);
     case ResourceType::kAudio:
     case ResourceType::kVideo:
+#if defined(MINI_UI_QUICKJS)
+        return false;
+#else
         return MIMETypeRegistry::IsSupportedMediaMIMEType(mime_type, String());
+#endif
     case ResourceType::kTextTrack:
         return MIMETypeRegistry::IsSupportedTextTrackMIMEType(mime_type);
     case ResourceType::kRaw:
@@ -226,6 +238,7 @@ bool IsCompressionDictionaryLoadAllowed(PreloadHelper::LoadLinksFromHeaderMode m
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 void PreloadHelper::DnsPrefetchIfNeeded(const LinkLoadParameters& params, Document* document, LocalFrame* frame, LinkCaller caller)
 {
     if (document && document->Loader() && document->Loader()->Archive()) {
@@ -283,6 +296,7 @@ void PreloadHelper::PreconnectIfNeeded(const LinkLoadParameters& params, Documen
         }
     }
 }
+#endif
 
 // Until the preload cache is defined in terms of range requests and media
 // fetches we can't reliably preload audio/video content and expect it to be
@@ -582,6 +596,7 @@ void PreloadHelper::ModulePreloadIfNeeded(
     // client->NotifyModuleLoadFinished() is called.
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PreloadHelper::PrefetchIfNeeded(const LinkLoadParameters& params, Document& document, PendingLinkPreload* pending_preload)
 {
     if (document.Loader() && document.Loader()->Archive())
@@ -643,6 +658,7 @@ void PreloadHelper::PrefetchIfNeeded(const LinkLoadParameters& params, Document&
     if (pending_preload)
         pending_preload->AddResource(resource);
 }
+#endif
 
 void PreloadHelper::LoadLinksFromHeader(const String& header_value, const KURL& base_url, LocalFrame& frame, Document* document, LoadLinksFromHeaderMode mode,
     const ViewportDescription* viewport_description, std::unique_ptr<AlternateSignedExchangeResourceInfo> alternate_resource_info,
@@ -663,6 +679,7 @@ void PreloadHelper::LoadLinksFromHeader(const String& header_value, const KURL& 
         }
 
         LinkLoadParameters params(header, base_url);
+#if !defined(MINI_UI_QUICKJS)
         bool change_rel_to_prefetch = false;
 
         if (params.rel.IsLinkPreload() && recursive_prefetch_token) {
@@ -716,23 +733,28 @@ void PreloadHelper::LoadLinksFromHeader(const String& header_value, const KURL& 
         if (change_rel_to_prefetch) {
             params.rel = LinkRelAttribute("prefetch");
         }
+#endif
 
         // Sanity check to avoid re-entrancy here.
         if (params.href == base_url) {
             continue;
         }
+#if !defined(MINI_UI_QUICKJS)
         if (is_network_hint_allowed) {
             DnsPrefetchIfNeeded(params, document, &frame, kLinkCalledFromHeader);
 
             PreconnectIfNeeded(params, document, &frame, kLinkCalledFromHeader);
         }
+#endif
         if (is_resource_load_allowed || is_compression_dictionary_load_allowed) {
             DCHECK(document);
             PendingLinkPreload* pending_preload = MakeGarbageCollected<PendingLinkPreload>(*document, nullptr /* LinkLoader */);
             document->AddPendingLinkHeaderPreload(*pending_preload);
             if (is_resource_load_allowed) {
                 PreloadIfNeeded(params, *document, base_url, kLinkCalledFromHeader, viewport_description, kNotParserInserted, pending_preload);
+#if !defined(MINI_UI_QUICKJS)
                 PrefetchIfNeeded(params, *document, pending_preload);
+#endif
                 ModulePreloadIfNeeded(params, *document, viewport_description, pending_preload);
             }
             if (is_compression_dictionary_load_allowed) {
@@ -791,6 +813,7 @@ Resource* PreloadHelper::StartPreload(ResourceType type, FetchParameters& params
         resource = ImageResource::Fetch(params, resource_fetcher);
         break;
     case ResourceType::kScript: {
+#if !defined(MINI_UI_QUICKJS)
         Page* page = document.GetPage();
         v8_compile_hints::V8CrowdsourcedCompileHintsProducer* v8_compile_hints_producer = nullptr;
         v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* v8_compile_hints_consumer = nullptr;
@@ -798,12 +821,17 @@ Resource* PreloadHelper::StartPreload(ResourceType type, FetchParameters& params
             v8_compile_hints_producer = &page->GetV8CrowdsourcedCompileHintsProducer();
             v8_compile_hints_consumer = &page->GetV8CrowdsourcedCompileHintsConsumer();
         }
+#endif
 
         params.SetRequestContext(mojom::blink::RequestContextType::SCRIPT);
         params.SetRequestDestination(network::mojom::RequestDestination::kScript);
 
+#if defined(MINI_UI_QUICKJS)
+        resource = ScriptResource::Fetch(params, resource_fetcher, nullptr, document.GetAgent().isolate());
+#else
         resource = ScriptResource::Fetch(params, resource_fetcher, nullptr, document.GetAgent().isolate(), ScriptResource::kAllowStreaming,
             v8_compile_hints_producer, v8_compile_hints_consumer, v8_compile_hints::GetMagicCommentMode(document.GetExecutionContext()));
+#endif
         break;
     }
     case ResourceType::kCSSStyleSheet:

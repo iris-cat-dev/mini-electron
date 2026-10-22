@@ -4,13 +4,16 @@
 
 #include "third_party/blink/renderer/core/html/link_manifest.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/html/html_link_element.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 LinkManifest::LinkManifest(HTMLLinkElement* owner)
     : LinkResource(owner)
 {
@@ -35,5 +38,6 @@ void LinkManifest::OwnerRemoved()
 {
     Process(LinkLoadParameters::Reason::kDefault);
 }
+#endif
 
 } // namespace blink

@@ -11,7 +11,9 @@
 #include "third_party/blink/public/common/scheduler/task_attribution_id.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
+#endif
 #include "third_party/blink/renderer/core/scheduler/dom_scheduler.h"
 #include "third_party/blink/renderer/core/scheduler/dom_task_signal.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -47,7 +49,9 @@ private:
     TaskHandle task_handle_;
     Member<V8SchedulerPostTaskCallback> callback_;
     Member<ScriptPromiseResolver<IDLAny>> resolver_;
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTaskContext async_task_context_;
+#endif
     Member<AbortSignal> abort_source_;
     Member<DOMTaskSignal> priority_source_;
     Member<AbortSignal::AlgorithmHandle> abort_handle_;

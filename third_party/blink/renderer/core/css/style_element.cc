@@ -33,7 +33,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/blocking_attribute.h"
 #include "third_party/blink/renderer/core/html/html_style_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/svg/svg_style_element.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -97,7 +99,9 @@ StyleElement::ProcessingResult StyleElement::ChildrenChanged(Element& element)
     if (!has_finished_parsing_children_) {
         return kProcessingSuccessful;
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::WillChangeStyleElement(&element);
+#endif
     return Process(element);
 }
 

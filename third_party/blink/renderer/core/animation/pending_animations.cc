@@ -61,28 +61,32 @@ void PendingAnimations::Add(Animation* animation)
 bool PendingAnimations::Update(const PaintArtifactCompositor* paint_artifact_compositor, bool start_on_compositor)
 {
     HeapVector<Member<Animation>> waiting_for_start_time;
+#if !defined(MINI_UI_QUICKJS)
     bool started_synchronized_on_compositor = false;
+#endif
 
     HeapVector<Member<Animation>> animations;
     HeapVector<Member<Animation>> deferred;
     animations.swap(pending_);
+#if !defined(MINI_UI_QUICKJS)
     int compositor_group = NextCompositorGroup();
+#endif
 
     for (auto& animation : animations) {
+        bool has_monotonic_timeline = animation->TimelineInternal() && animation->TimelineInternal()->IsMonotonicallyIncreasing();
+#if defined(MINI_UI_QUICKJS)
+        bool can_commit = animation->StartTimeInternal() || animation->CurrentTimeInternal();
+#else
         bool had_compositor_animation = animation->HasActiveAnimationsOnCompositor();
         // Animations with a start time or non-monotonic timeline do not participate
         // in compositor start-time grouping.
-        bool has_monotonic_timeline = animation->TimelineInternal() && animation->TimelineInternal()->IsMonotonicallyIncreasing();
-        // Note, not setting a compositor group means animation events may be
-        // dropped or mis-routed since they'll all target group 1. This doesn't
-        // cause any issues currently, since blink::Animation only implements
-        // NotifyAnimationStarted, but it would be an issue if Blink ever wanted to
-        // handle the other events in CompositorAnimationDelegate.
         bool use_compositor_group = !animation->StartTimeInternal() && has_monotonic_timeline;
-        if (animation->PreCommit(use_compositor_group ? compositor_group : 1, paint_artifact_compositor, start_on_compositor)) {
-            if (animation->HasActiveAnimationsOnCompositor() && !had_compositor_animation && use_compositor_group) {
-                started_synchronized_on_compositor = true;
-            }
+        bool can_commit = animation->PreCommit(use_compositor_group ? compositor_group : 1, paint_artifact_compositor, start_on_compositor);
+        if (can_commit && animation->HasActiveAnimationsOnCompositor() && !had_compositor_animation && use_compositor_group) {
+            started_synchronized_on_compositor = true;
+        }
+#endif
+        if (can_commit) {
 
             if (!animation->TimelineInternal() || !animation->TimelineInternal()->IsActive()) {
                 continue;
@@ -106,13 +110,16 @@ bool PendingAnimations::Update(const PaintArtifactCompositor* paint_artifact_com
         }
     }
 
-    // If any synchronized animations were started on the compositor, all
-    // remaining synchronized animations need to wait for the synchronized
-    // start time. Otherwise they may start immediately.
+    bool notify_start_time = true;
+#if !defined(MINI_UI_QUICKJS)
+    // Synchronized animations wait for the compositor's common start time.
     if (started_synchronized_on_compositor) {
         FlushWaitingNonCompositedAnimations();
         waiting_for_compositor_animation_start_.AppendVector(waiting_for_start_time);
-    } else {
+        notify_start_time = false;
+    }
+#endif
+    if (notify_start_time) {
         for (auto& animation : waiting_for_start_time) {
             DCHECK(!animation->StartTimeInternal());
             DCHECK(animation->TimelineInternal()->IsActive() && animation->TimelineInternal()->CurrentTime());
@@ -135,6 +142,7 @@ bool PendingAnimations::Update(const PaintArtifactCompositor* paint_artifact_com
     }
     DCHECK_EQ(pending_.size(), deferred.size());
 
+#if !defined(MINI_UI_QUICKJS)
     if (started_synchronized_on_compositor)
         return true;
 
@@ -152,8 +160,12 @@ bool PendingAnimations::Update(const PaintArtifactCompositor* paint_artifact_com
 
     DCHECK_EQ(pending_.size(), deferred.size());
     return false;
+#else
+    return !pending_.empty();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PendingAnimations::NotifyCompositorAnimationStarted(double monotonic_animation_start_time, int compositor_group)
 {
     TRACE_EVENT0("blink", "PendingAnimations::notifyCompositorAnimationStarted");
@@ -215,11 +227,14 @@ void PendingAnimations::FlushWaitingNonCompositedAnimations()
         }
     }
 }
+#endif
 
 void PendingAnimations::Trace(Visitor* visitor) const
 {
     visitor->Trace(pending_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(waiting_for_compositor_animation_start_);
+#endif
     visitor->Trace(timer_);
 }
 

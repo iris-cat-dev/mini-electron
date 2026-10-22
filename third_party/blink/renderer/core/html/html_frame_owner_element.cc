@@ -39,16 +39,22 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/events/current_input_event.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/lazy_load_frame_observer.h"
 #include "third_party/blink/renderer/core/html/loading_attribute.h"
 #include "third_party/blink/renderer/core/html_names.h"
@@ -63,7 +69,9 @@
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/renderer_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_timing_utils.h"
@@ -76,12 +84,14 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 using PluginSet = HeapHashSet<Member<WebPluginContainerImpl>>;
 PluginSet& PluginsPendingDispose()
 {
     DEFINE_STATIC_LOCAL(Persistent<PluginSet>, set, (MakeGarbageCollected<PluginSet>()));
     return *set;
 }
+#endif
 
 bool DoesParentAllowLazyLoadingChildren(Document& document)
 {
@@ -151,6 +161,7 @@ SubframeLoadingDisabler::SubtreeRootSet& SubframeLoadingDisabler::DisabledSubtre
     return nodes;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 int HTMLFrameOwnerElement::PluginDisposeSuspendScope::suspend_count_ = 0;
 
@@ -165,6 +176,7 @@ void HTMLFrameOwnerElement::PluginDisposeSuspendScope::PerformDeferredPluginDisp
         plugin->Dispose();
     }
 }
+#endif
 
 HTMLFrameOwnerElement::HTMLFrameOwnerElement(const QualifiedName& tag_name, Document& document)
     : HTMLElement(tag_name, document)
@@ -262,10 +274,12 @@ void HTMLFrameOwnerElement::SetContentFrame(Frame& frame)
     DCHECK(!lazy_load_frame_observer_ || !lazy_load_frame_observer_->IsLazyLoadPending());
 
     DCHECK_NE(content_frame_, &frame);
+#if !defined(MINI_UI_QUICKJS)
     auto* resource_coordinator = RendererResourceCoordinator::Get();
     if (content_frame_)
         resource_coordinator->OnBeforeContentFrameDetached(*content_frame_, *this);
     resource_coordinator->OnBeforeContentFrameAttached(frame, *this);
+#endif
 
     content_frame_ = &frame;
 
@@ -298,7 +312,9 @@ void HTMLFrameOwnerElement::ClearContentFrame()
     CancelPendingLazyLoad();
 
     DCHECK_EQ(content_frame_->Owner(), this);
+#if !defined(MINI_UI_QUICKJS)
     RendererResourceCoordinator::Get()->OnBeforeContentFrameDetached(*content_frame_, *this);
+#endif
 
     content_frame_ = nullptr;
 
@@ -374,6 +390,7 @@ bool HTMLFrameOwnerElement::IsKeyboardFocusable(UpdateBehavior update_behavior) 
     return content_frame_ && HTMLElement::IsKeyboardFocusable(update_behavior);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void HTMLFrameOwnerElement::DisposePluginSoon(WebPluginContainerImpl* plugin)
 {
     if (PluginDisposeSuspendScope::suspend_count_) {
@@ -382,6 +399,7 @@ void HTMLFrameOwnerElement::DisposePluginSoon(WebPluginContainerImpl* plugin)
     } else
         plugin->Dispose();
 }
+#endif
 
 void HTMLFrameOwnerElement::UpdateContainerPolicy()
 {
@@ -531,10 +549,14 @@ void HTMLFrameOwnerElement::SetEmbeddedContentView(EmbeddedContentView* embedded
     if (old_view) {
         if (old_view->IsAttached()) {
             old_view->DetachFromLayout();
+#if defined(MINI_UI_QUICKJS)
+            old_view->Dispose();
+#else
             if (old_view->IsPluginView())
                 DisposePluginSoon(To<WebPluginContainerImpl>(old_view));
             else
                 old_view->Dispose();
+#endif
         }
     }
 
@@ -702,12 +724,14 @@ bool HTMLFrameOwnerElement::LoadOrRedirectSubframe(const KURL& url, const Atomic
         request.SetCacheMode(mojom::FetchCacheMode::kBypassCache);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Plug-ins should not load via service workers as plug-ins may have their
     // own origin checking logic that may get confused if service workers respond
     // with resources from another origin.
     // https://w3c.github.io/ServiceWorker/#implementer-concerns
     if (IsPlugin())
         request.SetSkipServiceWorker(true);
+#endif
 
     // Check if the newly created child frame is eligible to be lazy-loaded.
     // This method should be called before starting the navigation.

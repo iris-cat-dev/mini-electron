@@ -31,6 +31,12 @@ template <typename T, typename V8TypedArray, bool clamped> v8::Local<v8::Value> 
     return AssociateWithWrapper(script_state->GetIsolate(), wrapper_type_info, wrapper);
 }
 
+#if defined(MINI_UI_QUICKJS)
+#define DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V)
+#else
+#define DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V) V(uint16_t, Float16, false)
+#endif
+
 #define DOMTYPEDARRAY_FOREACH_VIEW_TYPE(V)                                                                                                                     \
     V(int8_t, Int8, false)                                                                                                                                     \
     V(int16_t, Int16, false)                                                                                                                                   \
@@ -39,7 +45,7 @@ template <typename T, typename V8TypedArray, bool clamped> v8::Local<v8::Value> 
     V(uint8_t, Uint8Clamped, true)                                                                                                                             \
     V(uint16_t, Uint16, false)                                                                                                                                 \
     V(uint32_t, Uint32, false)                                                                                                                                 \
-    V(uint16_t, Float16, false)                                                                                                                                \
+    DOMTYPEDARRAY_FLOAT16_VIEW_TYPE(V)                                                                                                                         \
     V(float, Float32, false)                                                                                                                                   \
     V(double, Float64, false)                                                                                                                                  \
     V(int64_t, BigInt64, false)                                                                                                                                \
@@ -71,5 +77,6 @@ DOMTYPEDARRAY_FOREACH_VIEW_TYPE(DOMTYPEDARRAY_EXPLICITLY_INSTANTIATE)
 #undef DOMTYPEDARRAY_EXPLICITLY_INSTANTIATE
 
 #undef DOMTYPEDARRAY_FOREACH_VIEW_TYPE
+#undef DOMTYPEDARRAY_FLOAT16_VIEW_TYPE
 
 } // namespace blink

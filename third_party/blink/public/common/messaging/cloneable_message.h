@@ -14,7 +14,9 @@
 #include "mojo/public/cpp/bindings/struct_ptr.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/mojom/blob/serialized_blob.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_transfer_token.mojom.h"
+#endif
 #include "url/origin.h"
 
 namespace blink {
@@ -76,9 +78,11 @@ struct BLINK_COMMON_EXPORT CloneableMessage {
     // If true, this message is locked to the sender agent cluster ID.
     bool locked_to_sender_agent_cluster = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Tokens required to clone FileSystemFileHandles and/or
     // FileSystemDirectoryHandles.
     std::vector<mojo::PendingRemote<mojom::FileSystemAccessTransferToken>> file_system_access_tokens;
+#endif
 };
 
 } // namespace blink

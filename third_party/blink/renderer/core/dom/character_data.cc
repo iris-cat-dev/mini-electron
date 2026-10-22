@@ -34,7 +34,9 @@
 #include "third_party/blink/renderer/core/dom/text_diff_range.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/events/mutation_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string_manager.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -224,7 +226,9 @@ void CharacterData::DidModifyData(const String& old_data, UpdateSource source)
         }
         DispatchSubtreeModifiedEvent();
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::CharacterDataModified(this);
+#endif
 }
 
 Node* CharacterData::Clone(Document& factory, NodeCloningData& cloning_data, ContainerNode* append_to, ExceptionState& append_exception_state) const

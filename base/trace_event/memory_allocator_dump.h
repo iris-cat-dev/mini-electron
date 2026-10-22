@@ -20,6 +20,7 @@
 #include "base/trace_event/memory_dump_request_args.h"
 #include "base/unguessable_token.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto {
 namespace protos {
 namespace pbzero {
@@ -27,6 +28,7 @@ class MemoryTrackerSnapshot_ProcessSnapshot_MemoryNode;
 }
 } // namespace protos
 } // namespace perfetto
+#endif
 
 namespace base {
 namespace trace_event {
@@ -111,7 +113,9 @@ public:
     // Called at trace generation time to populate the TracedValue.
     void AsValueInto(TracedValue* value) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void AsProtoInto(perfetto::protos::pbzero::MemoryTrackerSnapshot_ProcessSnapshot_MemoryNode* memory_node) const;
+#endif
 
     // Get the size for this dump.
     // The size is the value set with AddScalar(kNameSize, kUnitsBytes, size);

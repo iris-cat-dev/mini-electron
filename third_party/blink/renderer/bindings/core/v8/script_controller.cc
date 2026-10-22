@@ -35,10 +35,8 @@
 #include <memory>
 #include <utility>
 
-#include "base/functional/callback_helpers.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_gc_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_script_runner.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
@@ -49,19 +47,10 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#include "third_party/blink/renderer/core/html/html_plugin_element.h"
-#include "third_party/blink/renderer/core/inspector/console_message.h"
-#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
-#include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
-#include "third_party/blink/renderer/core/loader/progress_tracker.h"
-#include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
-#include "third_party/blink/renderer/platform/instrumentation/histogram.h"
-#include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
-#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -114,11 +103,13 @@ void ScriptController::DisableEval(const String& error_message)
     SetEvalForWorld(DOMWrapperWorld::MainWorld(GetIsolate()), false /* allow_eval */, error_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptController::SetWasmEvalErrorMessage(const String& error_message)
 {
     SetWasmEvalErrorMessageForWorld(DOMWrapperWorld::MainWorld(GetIsolate()),
         /*allow_eval=*/false, error_message);
 }
+#endif
 
 void ScriptController::DisableEvalForIsolatedWorld(int32_t world_id, const String& error_message)
 {
@@ -127,12 +118,14 @@ void ScriptController::DisableEvalForIsolatedWorld(int32_t world_id, const Strin
     SetEvalForWorld(*world, false /* allow_eval */, error_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptController::SetWasmEvalErrorMessageForIsolatedWorld(int32_t world_id, const String& error_message)
 {
     DCHECK(DOMWrapperWorld::IsIsolatedWorldId(world_id));
     DOMWrapperWorld* world = DOMWrapperWorld::EnsureIsolatedWorld(GetIsolate(), world_id);
     SetWasmEvalErrorMessageForWorld(*world, /*allow_eval=*/false, error_message);
 }
+#endif
 
 void ScriptController::SetEvalForWorld(DOMWrapperWorld& world, bool allow_eval, const String& error_message)
 {
@@ -150,6 +143,7 @@ void ScriptController::SetEvalForWorld(DOMWrapperWorld& world, bool allow_eval, 
     v8_context->SetErrorMessageForCodeGenerationFromStrings(V8String(GetIsolate(), error_message));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptController::SetWasmEvalErrorMessageForWorld(DOMWrapperWorld& world, bool allow_eval, const String& error_message)
 {
     // For now we have nothing to do in case we want to enable wasm-eval.
@@ -165,7 +159,9 @@ void ScriptController::SetWasmEvalErrorMessageForWorld(DOMWrapperWorld& world, b
 
     v8_context->SetErrorMessageForWasmCodeGeneration(V8String(GetIsolate(), error_message));
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 Vector<const char*>& RegisteredExtensionNames()
@@ -193,6 +189,7 @@ v8::ExtensionConfiguration ScriptController::ExtensionsFor(const ExecutionContex
     }
     return v8::ExtensionConfiguration();
 }
+#endif  // !defined(MINI_UI_QUICKJS)
 
 void ScriptController::UpdateDocument()
 {
@@ -304,8 +301,13 @@ v8::Local<v8::Value> ScriptController::EvaluateMethodInMainWorld(
     v8::MaybeLocal<v8::Value> resultObj
         = V8ScriptRunner::CallFunction(function, executionContext, receiver, argc, static_cast<v8::Local<v8::Value>*>(argv), ToIsolate(window_->GetFrame()));
 
-    if (resultObj.IsEmpty())
+    if (resultObj.IsEmpty()) {
+#if defined(MINI_UI_QUICKJS)
+        if (try_catch.HasCaught())
+            V8ScriptRunner::ReportException(GetIsolate(), try_catch.Exception());
+#endif
         return v8::Local<v8::Value>();
+    }
 
     return handle_scope.Escape(resultObj.ToLocalChecked());
 }
@@ -326,6 +328,7 @@ v8::Isolate* ScriptController::GetIsolate() const
     return window_proxy_manager_->GetIsolate();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 DOMWrapperWorld* ScriptController::CreateNewInspectorIsolatedWorld(const String& world_name)
 {
     DOMWrapperWorld* world = DOMWrapperWorld::Create(GetIsolate(), DOMWrapperWorld::WorldType::kInspectorIsolated);
@@ -339,5 +342,6 @@ DOMWrapperWorld* ScriptController::CreateNewInspectorIsolatedWorld(const String&
     WindowProxy(*world);
     return world;
 }
+#endif  // !defined(MINI_UI_QUICKJS)
 
 } // namespace blink

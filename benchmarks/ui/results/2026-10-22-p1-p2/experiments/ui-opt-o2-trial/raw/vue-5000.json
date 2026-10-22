@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "status": "error",
+  "framework_requested": "vue",
+  "rows": 5000,
+  "warmups": 2,
+  "iterations": 7,
+  "diagnostic": {
+    "stage": "application",
+    "message": "framework workload ended with status \"error\"",
+    "mini_ui_error_code": 0
+  },
+  "application_result": {
+    "schema_version": 1,
+    "workload_version": 1,
+    "framework": {
+      "name": "vue",
+      "version": "3.5.13",
+      "renderer": "vue-dom",
+      "distribution": "production global"
+    },
+    "config": {
+      "rows": 5000,
+      "warmups": 2,
+      "iterations": 7
+    },
+    "operation_js_commit_ms": null,
+    "correctness_assertions": null,
+    "assertion_failures": [
+      {
+        "name": "TypeError",
+        "message": "cannot read property 'error' of undefined",
+        "stack": "    at <anonymous> (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/vue.global.prod.js:5)\n    at tK (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/vue.global.prod.js:5)\n    at tq (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/vue.global.prod.js:5)\n    at e (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/vue.global.prod.js:5)\n"
+      }
+    ]
+  },
+  "process_execution": {
+    "command": [
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\build\\ui-benchmark.exe",
+      "--framework",
+      "vue",
+      "--rows",
+      "5000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--resource-root",
+      "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+      "--output",
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\raw\\vue-5000.json",
+      "--capture",
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\captures\\vue-5000.bmp",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1.0",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 1,
+    "wall_ms": 21376.82639999548,
+    "timeout_ms": 2730000,
+    "stdout": "",
+    "stderr": "application: framework workload ended with status \"error\"\n"
+  }
+}

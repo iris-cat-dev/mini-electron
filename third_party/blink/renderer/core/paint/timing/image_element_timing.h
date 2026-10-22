@@ -67,6 +67,7 @@ private:
     void NotifyImagePaintedInternal(Node&, const LayoutObject&, const ImageResourceContent& cached_image,
         const PropertyTreeStateOrAlias& current_paint_chunk_properties, base::TimeTicks load_time, const gfx::Rect& image_border);
 
+#if !defined(MINI_UI_QUICKJS)
     // Callback for the presentation promise. Reports paint timestamps.
     void ReportImagePaintPresentationTime(const viz::FrameTimingDetails& presentation_details);
 
@@ -105,6 +106,7 @@ private:
     // Vector containing the element timing infos that will be reported during the
     // next presentation promise callback.
     HeapVector<Member<ElementTimingInfo>> element_timings_;
+#endif
     struct ImageInfo {
         ImageInfo()
         {

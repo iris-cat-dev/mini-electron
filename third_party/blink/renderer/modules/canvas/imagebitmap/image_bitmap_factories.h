@@ -40,7 +40,9 @@
 #include "third_party/blink/renderer/core/fileapi/file_reader_client.h"
 #include "third_party/blink/renderer/core/fileapi/file_reader_loader.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -81,6 +83,7 @@ public:
         return CreateImageBitmap(script_state, bitmap_source, sx, sy, sw, sh, options, exception_state);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // worker.createImageBitmap()
     static ScriptPromise<ImageBitmap> createImageBitmap(ScriptState* script_state, WorkerGlobalScope&, const V8ImageBitmapSource* bitmap_source,
         const ImageBitmapOptions* options, ExceptionState& exception_state)
@@ -92,6 +95,7 @@ public:
     {
         return CreateImageBitmap(script_state, bitmap_source, sx, sy, sw, sh, options, exception_state);
     }
+#endif
 
     ~ImageBitmapFactories() override = default;
 

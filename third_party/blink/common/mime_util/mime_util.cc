@@ -17,19 +17,11 @@
 #include "net/base/mime_util.h"
 #include "third_party/blink/public/common/buildflags.h"
 
-#if !BUILDFLAG(IS_IOS)
-// iOS doesn't use and must not depend on //media
+#if !defined(MINI_UI_QUICKJS) && !BUILDFLAG(IS_IOS)
+// UI has no audio/video media stack; iOS also must not depend on //media.
 #include "media/base/mime_util.h"
 #endif
 
-namespace media {
-
-bool IsSupportedMediaMimeType(std::string_view mime_type)
-{
-    return false;
-}
-
-}
 
 namespace blink {
 
@@ -110,7 +102,7 @@ bool IsSupportedNonImageMimeType(std::string_view mime_type)
 {
     std::string mime_lower = base::ToLowerASCII(mime_type);
     return kSupportedNonImageTypes.contains(mime_lower) || kSupportedJavascriptTypes.contains(mime_lower) ||
-#if !BUILDFLAG(IS_IOS)
+#if !defined(MINI_UI_QUICKJS) && !BUILDFLAG(IS_IOS)
         media::IsSupportedMediaMimeType(mime_lower) ||
 #endif
         (mime_lower.starts_with("text/") && !kUnsupportedTextTypes.contains(mime_lower))

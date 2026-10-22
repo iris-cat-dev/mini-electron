@@ -17,8 +17,6 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/fragment_data_iterator.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 
 #if DCHECK_IS_ON()
 
@@ -88,7 +86,9 @@ class TransformNodeCollector : public NodeCollector {
 public:
     void AddVisualViewportProperties(const VisualViewport& visual_viewport, PropertyTreePrinter& printer) const override
     {
+#if !defined(MINI_UI_QUICKJS)
         printer.AddNode(visual_viewport.GetDeviceEmulationTransformNode());
+#endif
         printer.AddNode(visual_viewport.GetOverscrollElasticityTransformNode());
         printer.AddNode(visual_viewport.GetPageScaleNode());
         printer.AddNode(visual_viewport.GetScrollTranslationNode());
@@ -153,8 +153,10 @@ namespace paint_property_tree_printer {
 
 void UpdateDebugNames(const VisualViewport& viewport)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (auto* device_emulation_node = viewport.GetDeviceEmulationTransformNode())
         SetDebugName(device_emulation_node, "Device Emulation Node");
+#endif
     if (auto* overscroll_node = viewport.GetOverscrollElasticityTransformNode())
         SetDebugName(overscroll_node, "Overscroll Elasticity Node");
     SetDebugName(viewport.GetPageScaleNode(), "VisualViewport Scale Node");

@@ -54,7 +54,9 @@
 #include "third_party/blink/renderer/platform/graphics/touch_action.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_error.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_factory.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "ui/base/cursor/cursor.h"
@@ -147,9 +149,10 @@ public:
     void Show(LocalFrame& frame, LocalFrame& opener_frame, NavigationPolicy navigation_policy, bool consumed_user_gesture) override
     {
     }
-    void SetOverscrollBehavior(LocalFrame& frame, const cc::OverscrollBehavior&) override
-    {
-    }
+#if !defined(MINI_UI_QUICKJS)
+    void SetOverscrollBehavior(LocalFrame& frame, const cc::OverscrollBehavior&) override { }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void BeginLifecycleUpdates(LocalFrame& main_frame) override
     {
     }
@@ -168,6 +171,7 @@ public:
     void StopDeferringCommits(LocalFrame& main_frame, cc::PaintHoldingCommitTrigger) override
     {
     }
+#endif
     void StartDragging(LocalFrame*, const WebDragData&, DragOperationsMask, const SkBitmap& drag_image, const gfx::Vector2d& cursor_offset,
         const gfx::Rect& drag_obj_rect) override
     {
@@ -288,36 +292,18 @@ public:
     {
         return PointerCursor();
     }
+#if !defined(MINI_UI_QUICKJS)
     void AttachRootLayer(scoped_refptr<cc::Layer>, LocalFrame* local_root) override;
-    cc::AnimationHost* GetCompositorAnimationHost(LocalFrame&) const override
-    {
-        return nullptr;
-    }
-    cc::AnimationTimeline* GetScrollAnimationTimeline(LocalFrame&) const override
-    {
-        return nullptr;
-    }
-    void SetEventListenerProperties(LocalFrame*, cc::EventListenerClass, cc::EventListenerProperties) override
-    {
-    }
-    void SetHasScrollEventHandlers(LocalFrame*, bool) override
-    {
-    }
-    void SetNeedsLowLatencyInput(LocalFrame*, bool) override
-    {
-    }
-    void SetNeedsUnbufferedInputForDebugger(LocalFrame*, bool) override
-    {
-    }
-    void RequestUnbufferedInputEvents(LocalFrame*) override
-    {
-    }
-    void SetTouchAction(LocalFrame*, TouchAction) override
-    {
-    }
-    void SetPanAction(LocalFrame*, mojom::blink::PanAction pan_action) override
-    {
-    }
+    cc::AnimationHost* GetCompositorAnimationHost(LocalFrame&) const override { return nullptr; }
+    cc::AnimationTimeline* GetScrollAnimationTimeline(LocalFrame&) const override { return nullptr; }
+    void SetEventListenerProperties(LocalFrame*, cc::EventListenerClass, cc::EventListenerProperties) override { }
+    void SetHasScrollEventHandlers(LocalFrame*, bool) override { }
+    void SetNeedsLowLatencyInput(LocalFrame*, bool) override { }
+    void SetNeedsUnbufferedInputForDebugger(LocalFrame*, bool) override { }
+    void RequestUnbufferedInputEvents(LocalFrame*) override { }
+    void SetTouchAction(LocalFrame*, TouchAction) override { }
+    void SetPanAction(LocalFrame*, mojom::blink::PanAction pan_action) override { }
+#endif
     void DidChangeFormRelatedElementDynamically(LocalFrame*, HTMLElement*, WebFormRelatedChangeType) override
     {
     }
@@ -332,19 +318,20 @@ public:
     {
     }
 
-    void RequestBeginMainFrameNotExpected(LocalFrame& frame, bool request) override
-    {
-    }
-    int GetLayerTreeId(LocalFrame& frame) override
-    {
-        return 0;
-    }
+#if !defined(MINI_UI_QUICKJS)
+    void RequestBeginMainFrameNotExpected(LocalFrame& frame, bool request) override { }
+    int GetLayerTreeId(LocalFrame& frame) override { return 0; }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void SetCursorForPlugin(const ui::Cursor&, LocalFrame*) override
     {
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void InstallSupplements(LocalFrame&) override
     {
     }
+#endif
     void OutermostMainFrameScrollOffsetChanged() const override
     {
     }
@@ -353,6 +340,7 @@ private:
     const display::ScreenInfos empty_screen_infos_ { display::ScreenInfo() };
 };
 
+#if !defined(MINI_UI_QUICKJS)
 class EmptyWebWorkerFetchContext : public WebWorkerFetchContext {
 public:
     void SetTerminateSyncLoadEvent(base::WaitableEvent*) override
@@ -400,6 +388,7 @@ public:
         return true;
     }
 };
+#endif
 
 class CORE_EXPORT EmptyLocalFrameClient : public LocalFrameClient {
 public:
@@ -462,7 +451,10 @@ public:
         // TODO(crbug.com/1315802): Refactor _unfencedTop handling.
         bool, mojom::blink::TriggeringEventInfo, HTMLFormElement*, network::mojom::CSPDisposition, mojo::PendingRemote<mojom::blink::BlobURLToken>,
         base::TimeTicks, const String&, const std::optional<Impression>&, const LocalFrameToken* initiator_frame_token, std::unique_ptr<SourceLocation>,
-        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>, bool is_container_initiated, bool has_rel_opener) override;
+#if !defined(MINI_UI_QUICKJS)
+        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>,
+#endif
+        bool is_container_initiated, bool has_rel_opener) override;
 
     void DispatchWillSendSubmitEvent(HTMLFormElement*) override;
 
@@ -511,11 +503,17 @@ public:
     }
     LocalFrame* CreateFrame(const AtomicString&, HTMLFrameOwnerElement*) override;
 
+#if !defined(MINI_UI_QUICKJS)
     RemoteFrame* CreateFencedFrame(HTMLFencedFrameElement*, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>) override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* CreatePlugin(HTMLPlugInElement&, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<WebMediaPlayer> CreateWebMediaPlayer(HTMLMediaElement&, const WebMediaPlayerSource&, WebMediaPlayerClient*) override;
     RemotePlaybackClient* CreateRemotePlaybackClient(HTMLMediaElement&) override;
+#endif
 
     void DidCommitDocumentReplacementNavigation(DocumentLoader*) override
     {
@@ -554,7 +552,9 @@ public:
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<WebServiceWorkerProvider> CreateServiceWorkerProvider() override;
+#endif
     WebContentSettingsClient* GetContentSettingsClient() override
     {
         return nullptr;
@@ -563,6 +563,7 @@ public:
     void SetTextCheckerClientForTesting(WebTextCheckClient*);
     WebTextCheckClient* GetTextCheckerClient() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override
     {
         // Most consumers of EmptyLocalFrameClient should not make network requests.
@@ -575,28 +576,34 @@ public:
         CHECK(false);
         return nullptr;
     }
+#endif
 
     std::unique_ptr<URLLoader> CreateURLLoaderForTesting() override
     {
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<WebBackgroundResourceFetchAssets> MaybeGetBackgroundResourceFetchAssets() override
     {
         return nullptr;
     }
+#endif
 
     base::UnguessableToken GetDevToolsFrameToken() const override
     {
         return base::UnguessableToken::Create();
     }
+#if !defined(MINI_UI_QUICKJS)
     String evaluateInInspectorOverlayForTesting(const String& script) override
     {
         return g_empty_string;
     }
+#endif
 
     Frame* FindFrame(const AtomicString& name) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<WebWorkerFetchContext> CreateWorkerFetchContext() override
     {
         return base::MakeRefCounted<EmptyWebWorkerFetchContext>();
@@ -606,22 +613,26 @@ public:
     {
         return base::MakeRefCounted<EmptyWebWorkerFetchContext>();
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     blink::ChildURLLoaderFactoryBundle* GetLoaderFactoryBundle() override
     {
         return nullptr;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsDomStorageDisabled() const override
     {
         return false;
     }
+#endif
 
 protected:
     // Not owned
     WebTextCheckClient* text_check_client_;
 
-    std::unique_ptr<AssociatedInterfaceProvider> associated_interface_provider_;
 };
 
 class EmptySpellCheckPanelHostClient : public WebSpellCheckPanelHostClient {

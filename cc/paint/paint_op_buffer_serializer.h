@@ -13,7 +13,9 @@
 #include "cc/paint/paint_op.h"
 #include "cc/paint/paint_op_buffer.h"
 #include "third_party/skia/include/core/SkColor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/private/chromium/SkChromeRemoteGlyphCache.h"
+#endif
 #include "ui/gfx/geometry/rect_f.h"
 
 namespace cc {

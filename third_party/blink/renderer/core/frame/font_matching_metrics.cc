@@ -4,7 +4,10 @@
 
 #include "third_party/blink/renderer/core/frame/font_matching_metrics.h"
 
+#include <cmath>
+
 #include "base/metrics/histogram_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
@@ -16,7 +19,9 @@
 #include "third_party/blink/renderer/platform/fonts/font_global_context.h"
 #include "third_party/blink/renderer/platform/privacy_budget/identifiability_digest_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 template <typename T> HashSet<T> SetIntersection(const HashSet<T>& a, const HashSet<T>& b)
@@ -31,9 +36,11 @@ template <typename T> HashSet<T> SetIntersection(const HashSet<T>& a, const Hash
 }
 
 } // namespace
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 bool IdentifiabilityStudyShouldSampleFonts()
@@ -242,12 +249,14 @@ void FontMatchingMetrics::ReportFontFamilyLookupByGenericFamily(const AtomicStri
     generic_font_lookups_.insert(input_key, IdentifiabilityBenignCaseFoldingStringToken(resulting_font_name));
 }
 
+#endif
 void FontMatchingMetrics::ReportEmojiSegmentGlyphCoverage(unsigned num_clusters, unsigned num_broken_clusters)
 {
     total_emoji_clusters_shaped_ += num_clusters;
     total_broken_emoji_clusters_ += num_broken_clusters;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FontMatchingMetrics::PublishIdentifiabilityMetrics()
 {
     if (!IdentifiabilityStudyShouldSampleFonts()) {
@@ -281,6 +290,7 @@ void FontMatchingMetrics::PublishIdentifiabilityMetrics()
     builder.Record(ukm_recorder_);
 }
 
+#endif
 void FontMatchingMetrics::PublishEmojiGlyphMetrics()
 {
     DCHECK_LE(total_broken_emoji_clusters_, total_emoji_clusters_shaped_);
@@ -290,6 +300,7 @@ void FontMatchingMetrics::PublishEmojiGlyphMetrics()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FontMatchingMetrics::OnFontLookup()
 {
     DCHECK(IdentifiabilityStudyShouldSampleFonts());
@@ -303,12 +314,16 @@ void FontMatchingMetrics::IdentifiabilityMetricsTimerFired(TimerBase*)
     PublishIdentifiabilityMetrics();
 }
 
+#endif
 void FontMatchingMetrics::PublishAllMetrics()
 {
+#if !defined(MINI_UI_QUICKJS)
     PublishIdentifiabilityMetrics();
+#endif
     PublishEmojiGlyphMetrics();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 int64_t FontMatchingMetrics::GetHashForFontData(const SimpleFontData* font_data)
 {
     return font_data ? FontGlobalContext::Get().GetOrComputeTypefaceDigest(font_data->PlatformData()).ToUkmMetricValue() : 0;
@@ -320,4 +335,5 @@ IdentifiableToken FontMatchingMetrics::GetPostScriptNameTokenForFontData(const S
     return FontGlobalContext::Get().GetOrComputePostScriptNameDigest(font_data->PlatformData());
 }
 
+#endif
 } // namespace blink

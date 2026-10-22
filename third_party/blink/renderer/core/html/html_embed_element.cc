@@ -30,11 +30,16 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#endif
+#include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/html_image_loader.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_object.h"
@@ -158,6 +163,7 @@ void HTMLEmbedElement::UpdatePluginInternal()
     if (!GetLayoutObject())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // Overwrites the URL and MIME type of a Flash embed to use an HTML5 embed.
     KURL overriden_url = GetDocument().GetFrame()->Client()->OverrideFlashEmbedWithHTML(GetDocument().CompleteURL(url_));
     if (!overriden_url.IsEmpty()) {
@@ -165,6 +171,7 @@ void HTMLEmbedElement::UpdatePluginInternal()
         url_ = overriden_url.GetString();
         SetServiceType("text/html");
     }
+#endif
 
     RequestObject(plugin_params);
 }

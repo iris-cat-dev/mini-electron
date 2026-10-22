@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/use_counter_callback.h"
 
 #include "third_party/blink/public/common/scheme_registry.h"
@@ -387,3 +388,4 @@ void UseCounterCallback(v8::Isolate* isolate, v8::Isolate::UseCounterFeature fea
 }
 
 } // namespace blink
+#endif

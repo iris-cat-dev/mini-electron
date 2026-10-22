@@ -1,0 +1,1202 @@
+{
+  "schema_version": 2,
+  "generated_utc": "2026-10-22T06:44:07.229801+00:00",
+  "artifact_count": 162,
+  "artifacts": [
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\README.md",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "README.md",
+      "bytes": 17468,
+      "sha256": "e7777b0971d84f1d950203483084332b16536a9ecd898eaad67959c3e47b9f24"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\aggregate.csv",
+      "stored": "chrome-default/aggregate.csv",
+      "bytes": 16226,
+      "sha256": "97bb695f1b5472f3b597ac35885d418e739299696dd5908fdca9862f75c5f75d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\aggregate.json",
+      "stored": "chrome-default/aggregate.json",
+      "bytes": 36382,
+      "sha256": "86a1b03bc398492b14277672e2a0fdf93d45995d0aca399513e6d3184cdbb8be",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\react-100.png",
+      "stored": "chrome-default/captures/react-100.png",
+      "bytes": 52452,
+      "sha256": "9afc31a3576b08a39cc0d923453a2569d033d515c20d562633e08705bef93eb8",
+      "original_sha256": "9afc31a3576b08a39cc0d923453a2569d033d515c20d562633e08705bef93eb8",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\react-1000.png",
+      "stored": "chrome-default/captures/react-1000.png",
+      "bytes": 52554,
+      "sha256": "d0621ac23c2331b65499310f884563a9a133740e3d3c8e868153f137cb75f02d",
+      "original_sha256": "d0621ac23c2331b65499310f884563a9a133740e3d3c8e868153f137cb75f02d",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\react-10000.png",
+      "stored": "chrome-default/captures/react-10000.png",
+      "bytes": 52722,
+      "sha256": "cb85ed538054a6a76975ec0733df1f5d8d6587dab444ed2a601289784d4c977e",
+      "original_sha256": "cb85ed538054a6a76975ec0733df1f5d8d6587dab444ed2a601289784d4c977e",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\react-5000.png",
+      "stored": "chrome-default/captures/react-5000.png",
+      "bytes": 52657,
+      "sha256": "e534e915a88e36c04e801fc810e32e9bf4eaf22267014386784d52935e307c00",
+      "original_sha256": "e534e915a88e36c04e801fc810e32e9bf4eaf22267014386784d52935e307c00",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\vue-100.png",
+      "stored": "chrome-default/captures/vue-100.png",
+      "bytes": 52418,
+      "sha256": "91c110d9579e81756fac46dee95c083e13543eb3ee61c3cf8e49e313f7d0dfd0",
+      "original_sha256": "91c110d9579e81756fac46dee95c083e13543eb3ee61c3cf8e49e313f7d0dfd0",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\vue-1000.png",
+      "stored": "chrome-default/captures/vue-1000.png",
+      "bytes": 52522,
+      "sha256": "0b9e10edc5668ea4e5fec7a4a80ae0f549b0569835dfd3fdcc2fca8b18caf9c7",
+      "original_sha256": "0b9e10edc5668ea4e5fec7a4a80ae0f549b0569835dfd3fdcc2fca8b18caf9c7",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\vue-10000.png",
+      "stored": "chrome-default/captures/vue-10000.png",
+      "bytes": 52692,
+      "sha256": "98ffc036d70fc48e3efc60083ae9dadee0eef1c42df33c146243c0aaaca5ba9f",
+      "original_sha256": "98ffc036d70fc48e3efc60083ae9dadee0eef1c42df33c146243c0aaaca5ba9f",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\captures\\vue-5000.png",
+      "stored": "chrome-default/captures/vue-5000.png",
+      "bytes": 52624,
+      "sha256": "08803aa6f3afff0bb280e32d4034a09f90706f25674230f25b024aa2b3d22930",
+      "original_sha256": "08803aa6f3afff0bb280e32d4034a09f90706f25674230f25b024aa2b3d22930",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\react-100-chrome.log",
+      "stored": "chrome-default/logs/react-100-chrome.log",
+      "bytes": 98,
+      "sha256": "ed518a8bda421744123644ff89e312047f05cf177421142b10b89d42001a741e",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\react-1000-chrome.log",
+      "stored": "chrome-default/logs/react-1000-chrome.log",
+      "bytes": 98,
+      "sha256": "803ec1dd72d2841179346965878a4d727919616af86114eb3d28061be98c4607",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\react-10000-chrome.log",
+      "stored": "chrome-default/logs/react-10000-chrome.log",
+      "bytes": 292,
+      "sha256": "6e6c2a3aa3f32f2a4f499990fdd36738c8829e98a646f44207c93235bedca5e2",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\react-5000-chrome.log",
+      "stored": "chrome-default/logs/react-5000-chrome.log",
+      "bytes": 811,
+      "sha256": "8df7af4eccf3d7cd2e021d2ef3851ecb81293c4e6529020e701f8ffaff00aeda",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\vue-100-chrome.log",
+      "stored": "chrome-default/logs/vue-100-chrome.log",
+      "bytes": 98,
+      "sha256": "e666c7bece9e4a330d3922760713984a393247dd3a95e25db0c062f9801c980e",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\vue-1000-chrome.log",
+      "stored": "chrome-default/logs/vue-1000-chrome.log",
+      "bytes": 98,
+      "sha256": "d4dda3054baaa8d632f9f780c008bbb8a11421d94b468c90de96423036952c50",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\vue-10000-chrome.log",
+      "stored": "chrome-default/logs/vue-10000-chrome.log",
+      "bytes": 292,
+      "sha256": "8edfeeed4afbea4bfafe6d821e8f08e561a3745c7abd105199a254a505c7ccd5",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\vue-5000-chrome.log",
+      "stored": "chrome-default/logs/vue-5000-chrome.log",
+      "bytes": 816,
+      "sha256": "e4f0e9df37cab5ccf9f39884a58fcabc4b11afd6541403366327536aeff15311",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\react-100.json",
+      "stored": "chrome-default/raw/react-100.json",
+      "bytes": 20376,
+      "sha256": "27de5f9a88d506343af96e88794868a5040d482a8f11d58bd8c65b299db5451d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\react-1000.json",
+      "stored": "chrome-default/raw/react-1000.json",
+      "bytes": 20254,
+      "sha256": "91ee34f4ba90a342ec7d5c23cb479913f76371af8e268ff817601e807c327d7b",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\react-10000.json",
+      "stored": "chrome-default/raw/react-10000.json",
+      "bytes": 20041,
+      "sha256": "94b24e185fd224077e60eba817e3a948800db558934307ad2859f661a59871f9",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\react-5000.json",
+      "stored": "chrome-default/raw/react-5000.json",
+      "bytes": 20266,
+      "sha256": "c6e1d92648de1f15382cc6f6fa40c71022b740e001a9cb1c0bb13036b0cf593f",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\vue-100.json",
+      "stored": "chrome-default/raw/vue-100.json",
+      "bytes": 20309,
+      "sha256": "383dfef68c2b6946329c1dde126bd21fe6bcf30353dc9860471f4c2b3996d035",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\vue-1000.json",
+      "stored": "chrome-default/raw/vue-1000.json",
+      "bytes": 20190,
+      "sha256": "b790ec8eb0b784b721a4d8cabb0a6dbba19543de73760ea52eceeafe9900df2d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\vue-10000.json",
+      "stored": "chrome-default/raw/vue-10000.json",
+      "bytes": 19998,
+      "sha256": "fb322c4c80510d7e8bff5b9f73e04adf5280173808a94521bde35f7ffd1f5823",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\raw\\vue-5000.json",
+      "stored": "chrome-default/raw/vue-5000.json",
+      "bytes": 20197,
+      "sha256": "70cc4097c4b5cd32e3c7e3f59345f720c6a2e0007c7cae9dbabbb5975e55e9f0",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-results\\run-metadata.json",
+      "stored": "chrome-default/run-metadata.json",
+      "bytes": 6045,
+      "sha256": "9402f14587c9032079c5f0ef1b9c3c536198e929a31a590a27d368b353a412b1",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-attempt-1-startup-race\\aggregate.json",
+      "stored": "chrome-first-attempt-startup-race/aggregate.json",
+      "bytes": 32213,
+      "sha256": "08d1e7b6c9102e77e6a514da2bb6afe4bce09b9bdb41051c9ee56c30af2aca3e",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\chrome-first-attempt-startup-race\\attempt-status.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "chrome-first-attempt-startup-race/attempt-status.json",
+      "bytes": 739,
+      "sha256": "25e84c45f8e2ee3109919e937a74706f5086b5379a785ec09709956c82e75e87"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-attempt-1-startup-race\\raw\\react-1000.json",
+      "stored": "chrome-first-attempt-startup-race/raw/react-1000.json",
+      "bytes": 1421,
+      "sha256": "03676bc16731c60e8d48abcdf9eeea655d4ba51683dd68dac3dde1a24b2ba484",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-attempt-1-startup-race\\react-1000-chrome.log",
+      "stored": "chrome-first-attempt-startup-race/react-1000-chrome.log",
+      "bytes": 98,
+      "sha256": "45ba1815dfce4b88060d688d5553c4074b79a74d550a4ad76569a6be2aefcfd5",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-attempt-1-startup-race\\run-metadata.json",
+      "stored": "chrome-first-attempt-startup-race/run-metadata.json",
+      "bytes": 6045,
+      "sha256": "55ab4ae278159cb6bc7eccc83790b4630bd595634df94f0dcee5ed1dab954d97",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\aggregate.csv",
+      "stored": "chrome-profiles/aggregate.csv",
+      "bytes": 4138,
+      "sha256": "a1b3cfd77a72d10396bdbd62f2a352e8dc3fc2f54fca10279e85e2a3d8a3a7b6",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\aggregate.json",
+      "stored": "chrome-profiles/aggregate.json",
+      "bytes": 9259,
+      "sha256": "8b823e6c8459f861e849b15b33aae23e055595d73e706cdcb23fa31b83846e96",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\raw\\react-1000.json",
+      "stored": "chrome-profiles/raw/react-1000.json",
+      "bytes": 20311,
+      "sha256": "1f51a760ce69c27a9e7ba830edc42d90583d9a7f2b0f7ed310d46add1db9c900",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\raw\\vue-1000.json",
+      "stored": "chrome-profiles/raw/vue-1000.json",
+      "bytes": 20316,
+      "sha256": "72f901ce8113b57c69224c8cda0df8f05dd4e0c824ef428722fb80440c1b6409",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\react-1000.cpuprofile",
+      "stored": "chrome-profiles/react-1000.cpuprofile",
+      "bytes": 143218,
+      "sha256": "0d8612f5b58e5190c394ab759d882dba79d661889e8cb1d59e7d1365a5c3446c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\run-metadata.json",
+      "stored": "chrome-profiles/run-metadata.json",
+      "bytes": 6008,
+      "sha256": "dc856a81987901f44477063780889b9a90aca8e3e7aa6a0b99830c86d7b70bd7",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-profiles\\vue-1000.cpuprofile",
+      "stored": "chrome-profiles/vue-1000.cpuprofile",
+      "bytes": 206410,
+      "sha256": "58f556edd16eb880e7f822642881ca4c844dac50661258bb56f9990ff9f26f66",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\aggregate.csv",
+      "stored": "chrome-software/aggregate.csv",
+      "bytes": 17124,
+      "sha256": "55a8985659a1ab934c2f0530bbfbeabc5610e7dd4973c935f836452032bd76b3",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\aggregate.json",
+      "stored": "chrome-software/aggregate.json",
+      "bytes": 37289,
+      "sha256": "31a4e7e40eab9be7ba45c892ca55c5140d0cb39f33698c9f74c58511bd6b6439",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\react-100.png",
+      "stored": "chrome-software/captures/react-100.png",
+      "bytes": 52489,
+      "sha256": "ab209062701e2e4d96d31b5ce987010655e3d3d142873d48cb5f6b62ad609ac3",
+      "original_sha256": "ab209062701e2e4d96d31b5ce987010655e3d3d142873d48cb5f6b62ad609ac3",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\react-1000.png",
+      "stored": "chrome-software/captures/react-1000.png",
+      "bytes": 52604,
+      "sha256": "43f9075fb7ad9dad549b8d21d43252ab404237b87b100967242e33892bfe30d7",
+      "original_sha256": "43f9075fb7ad9dad549b8d21d43252ab404237b87b100967242e33892bfe30d7",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\react-10000.png",
+      "stored": "chrome-software/captures/react-10000.png",
+      "bytes": 52772,
+      "sha256": "5387710ab2d9d84e3ac26c9ce81657a4ecbdf938edf609411edf8bea1e6c7c11",
+      "original_sha256": "5387710ab2d9d84e3ac26c9ce81657a4ecbdf938edf609411edf8bea1e6c7c11",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\react-5000.png",
+      "stored": "chrome-software/captures/react-5000.png",
+      "bytes": 52708,
+      "sha256": "f81170a7d320695b849e8eefd6234c8c4ef1b6b87ee3d50013bd02ac206dc6e3",
+      "original_sha256": "f81170a7d320695b849e8eefd6234c8c4ef1b6b87ee3d50013bd02ac206dc6e3",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\vue-100.png",
+      "stored": "chrome-software/captures/vue-100.png",
+      "bytes": 52453,
+      "sha256": "4ab3d496b31e552f62df617d773607353434f57481bbf9b62311f8e7012a2b90",
+      "original_sha256": "4ab3d496b31e552f62df617d773607353434f57481bbf9b62311f8e7012a2b90",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\vue-1000.png",
+      "stored": "chrome-software/captures/vue-1000.png",
+      "bytes": 52570,
+      "sha256": "428f610710c86117d4b45b6214b78f072e30c74da68890d7c36ad341283dfe19",
+      "original_sha256": "428f610710c86117d4b45b6214b78f072e30c74da68890d7c36ad341283dfe19",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\vue-10000.png",
+      "stored": "chrome-software/captures/vue-10000.png",
+      "bytes": 52735,
+      "sha256": "45c01c6ba771d211bef238671f8f57cce4def530ee7405eabb5173ec171f508b",
+      "original_sha256": "45c01c6ba771d211bef238671f8f57cce4def530ee7405eabb5173ec171f508b",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\captures\\vue-5000.png",
+      "stored": "chrome-software/captures/vue-5000.png",
+      "bytes": 52674,
+      "sha256": "d0696b86b99ff40a18700f98801280cc5c8f73557410226238545c25978b5645",
+      "original_sha256": "d0696b86b99ff40a18700f98801280cc5c8f73557410226238545c25978b5645",
+      "representation": "Verbatim actual Google Chrome Page.captureScreenshot PNG"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\react-100-chrome.log",
+      "stored": "chrome-software/logs/react-100-chrome.log",
+      "bytes": 98,
+      "sha256": "cf4384948c2f91a3465394a510a8af166e49df3c831941f135b17d7091080322",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\react-1000-chrome.log",
+      "stored": "chrome-software/logs/react-1000-chrome.log",
+      "bytes": 98,
+      "sha256": "e3e273d43baf6e508ea07ee0c21adac0871983e515d0dfb564cd10e930b9ab58",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\react-10000-chrome.log",
+      "stored": "chrome-software/logs/react-10000-chrome.log",
+      "bytes": 866,
+      "sha256": "b828a89a2c68891067d2959214ec2e746242c701b956d4581ace93b00d55cb04",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\react-5000-chrome.log",
+      "stored": "chrome-software/logs/react-5000-chrome.log",
+      "bytes": 816,
+      "sha256": "2b83e86c0473de8ca95ca7fcbfa8ee5e45b3975340ea9330f7b3789fea9e646e",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\vue-100-chrome.log",
+      "stored": "chrome-software/logs/vue-100-chrome.log",
+      "bytes": 98,
+      "sha256": "6498a42759e2b2b5e09257cd542495008447ec9a5bf7169bbf12f3a506452d8c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\vue-1000-chrome.log",
+      "stored": "chrome-software/logs/vue-1000-chrome.log",
+      "bytes": 98,
+      "sha256": "c59f338f7aede74a347a28deed1ba00befa1ec5893d650d57d8b0f689e0cddc4",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\vue-10000-chrome.log",
+      "stored": "chrome-software/logs/vue-10000-chrome.log",
+      "bytes": 866,
+      "sha256": "1fb346141bfe7e553e6a0ec2ea193af05b3cf1864ceb09dd00a42f072373da6c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\vue-5000-chrome.log",
+      "stored": "chrome-software/logs/vue-5000-chrome.log",
+      "bytes": 816,
+      "sha256": "90e6d9c4f799c755242e1c55eee58a3d8a94528133f3bf1b8462741f10ac8d28",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\react-100.json",
+      "stored": "chrome-software/raw/react-100.json",
+      "bytes": 19523,
+      "sha256": "de44c936ba5a0bf6ac0e7dc209d81561913411fe511168cc5354fe73535e60d3",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\react-1000.json",
+      "stored": "chrome-software/raw/react-1000.json",
+      "bytes": 19423,
+      "sha256": "9ab6c3cb81cb07173ae65c4b63a711651b2b67131a0144a5fc6689dc8982b94e",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\react-10000.json",
+      "stored": "chrome-software/raw/react-10000.json",
+      "bytes": 19208,
+      "sha256": "1536911788685e07c873ec1f600298c313ff64317b603196728841acb07d892d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\react-5000.json",
+      "stored": "chrome-software/raw/react-5000.json",
+      "bytes": 19392,
+      "sha256": "237874b3dce37b1e29287f0292c56af5ed7fd6ea45ad8080897372424303a8ef",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\vue-100.json",
+      "stored": "chrome-software/raw/vue-100.json",
+      "bytes": 19334,
+      "sha256": "009c8e1e9da2d1d08a7e25959498f8a9c17064ee9b59caf3201f67fb2f7e4a1a",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\vue-1000.json",
+      "stored": "chrome-software/raw/vue-1000.json",
+      "bytes": 19393,
+      "sha256": "dcc7c1b9f31d58f10de45a8f5b6ebcaf2da8ec45a7362fe8411c5d4fe2ad097d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\vue-10000.json",
+      "stored": "chrome-software/raw/vue-10000.json",
+      "bytes": 19174,
+      "sha256": "87415cd017eb1b6f4ccc04e90f9d670d7d180f311417a11d0a305df402901f99",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\raw\\vue-5000.json",
+      "stored": "chrome-software/raw/vue-5000.json",
+      "bytes": 19402,
+      "sha256": "a318c1d57141cecd1acc82d3938979f4110ed8cb8f24c3f64d12f2b41bee662b",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-chrome-software-results\\run-metadata.json",
+      "stored": "chrome-software/run-metadata.json",
+      "bytes": 6044,
+      "sha256": "a7aff1ef30b8c85247308face0a9f160dd23d6de0f774830a6a5c842d8cf6b2c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\cleanup-manifest.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "cleanup-manifest.json",
+      "bytes": 300520,
+      "sha256": "f44f80f2acd5c178f4ab02e49b093c347dacae39a4381c2af1110ae434f71848"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\cleanup-post-validation.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "cleanup-post-validation.json",
+      "bytes": 1414,
+      "sha256": "91a3d3028dc02fbed1d79287bee21b8fe279c373137c2312f11b6d8a48c8586e"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-comparison\\comparison.json",
+      "stored": "comparison-before-font-init.json",
+      "bytes": 103452,
+      "sha256": "d427642dca25c04005c8743347020e1e80e75ce707b1a17cafdb51e9af5a13c7",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\comparison-validation.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "comparison-validation.json",
+      "bytes": 1708,
+      "sha256": "fa26de63ee2c2b5479d6f6cb11f5ccaa7093713125c48fc045333019d94092f2"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-comparison\\comparison.json",
+      "stored": "comparison.json",
+      "bytes": 103642,
+      "sha256": "25769a3a1ac240651d187387205ffdf5787b702cbf7989ef5f689716b60c933f",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\diagnostic-cleanup.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "diagnostic-cleanup.json",
+      "bytes": 1879,
+      "sha256": "b84c315f3cf4967b8986bae3c1f418a8158d6852d5561f92413dc923f5d83eb6"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\attempt-status.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/attempt-status.json",
+      "bytes": 1516,
+      "sha256": "e11e70dee3274c2721216e447b82030eef5461c3ecdc6fbe8dd3e563dc2e2616"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\build\\benchmark-build.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/build/benchmark-build.json",
+      "bytes": 5147,
+      "sha256": "6eff329052f1b2d020d3b40e1e5f0cd0dc3087c0fd2eb52c5e227895eb400970"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\raw\\vue-100.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/raw/vue-100.json",
+      "bytes": 21116,
+      "sha256": "82abe842633d59733a836313fe97402f69ab3623c0160c6e64f229cdcf761cfd"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\raw\\vue-1000.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/raw/vue-1000.json",
+      "bytes": 21293,
+      "sha256": "08be005a553954fb36950d690862abdd10d7c7554d2ce69a78c295b9386381a4"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\raw\\vue-10000.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/raw/vue-10000.json",
+      "bytes": 15358,
+      "sha256": "bf9fcbcf84fc809650ce8cb04f96ccd9d06c56c239698dd9953d9ccb7bdccb4f"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\raw\\vue-5000.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/raw/vue-5000.json",
+      "bytes": 776,
+      "sha256": "9d9fee6c3e16cc8707d09cb86b7fc6812811047073a0e2bca7ce1f14cb61e0f9"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\first-attempt-timeout\\run-metadata.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "first-attempt-timeout/run-metadata.json",
+      "bytes": 11371,
+      "sha256": "cb7c7181e481cd45ade16f8acb9d42f8419f8bf3900d1d70185074e5e1ae76f7"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-diagnostics\\font-parameter-before-cdb.log",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-diagnostics/font-parameter-before-cdb.log",
+      "bytes": 7010,
+      "sha256": "791951e6e9804cda4beb4a208dce6d692a732b84ed92cdc9b463621a46fc72c1"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-diagnostics\\index.html",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-diagnostics/index.html",
+      "bytes": 1799,
+      "sha256": "04f9251f394e027df39128e5fdbe456eefbb1a284803896543b893b8642746d3"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-diagnostics\\native-after.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-diagnostics/native-after.json",
+      "bytes": 3577,
+      "sha256": "c07f7c6e69260635fcc6b12f06dfc5d51576b2bd2c87dd6bf0984368fa5e9e6f"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-diagnostics\\native-after.png",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-diagnostics/native-after.png",
+      "bytes": 46724,
+      "sha256": "8bfedf1d86f24afcf67d26f5a6904de6d1e2a214386ae2a41eda30ecd647d539"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-diagnostics\\system-ui-before-cdb.log",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-diagnostics/system-ui-before-cdb.log",
+      "bytes": 15218,
+      "sha256": "7d3aa948c2b676bb24131cea98ef5ee071507699563fd2fadee5bd73adcfd049"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\font-regression.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "font-regression.json",
+      "bytes": 2291,
+      "sha256": "ba9e7dac109648dad91c3545b4837675f6e2961206ff5cb36d9bd2f6d7abee34"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\gc-diagnostic-cdb.log",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "gc-diagnostic-cdb.log",
+      "bytes": 10862,
+      "sha256": "51ef220cc82ca3d9b86c57863a9464f21d4c1e476caf7a74fd2381f79f6d5812"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\gc-fixed-comparison-raw.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "gc-fixed-comparison-raw.json",
+      "bytes": 15463,
+      "sha256": "ab99fbee530e357c41b266951cd48918b5f6a97ec83e1c076335c83087158891"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\gc-fixed-comparison-runtime.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "gc-fixed-comparison-runtime.json",
+      "bytes": 1014,
+      "sha256": "3eb899de2885dc0ac0fe250a6bb666d204ad0f0aa7fa2ae627417b3df5fcf3fe"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\gc-profiled-diagnostic-runtime.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "gc-profiled-diagnostic-runtime.json",
+      "bytes": 1049,
+      "sha256": "f60cd3bca0054b09554a73324701279810e6fa867cdc27c94d43e672eb5727a4"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\gc-regression.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "gc-regression.json",
+      "bytes": 2771,
+      "sha256": "288cee19553e36768cea3913e2ca9c069732d2bc5f1843e77141c6481efc8f85"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\aggregate.csv",
+      "stored": "mini-ui-before-font-init/aggregate.csv",
+      "bytes": 22522,
+      "sha256": "df99ab70e8816961e19f0d3c14764f831f0201074943abab5867e338bab42fd2",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\aggregate.json",
+      "stored": "mini-ui-before-font-init/aggregate.json",
+      "bytes": 52459,
+      "sha256": "e36c4383ec4bf6ebaab83af2d135d1eaeac0d64c8be0b3c393f8908942e54b08",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\benchmark-fixed198\\benchmark-build.json",
+      "stored": "mini-ui-before-font-init/build/benchmark-build.json",
+      "bytes": 5177,
+      "sha256": "97f39e3f4cbe5eafd1b8a1316195eff152c6996f902d6087ace1d00a627c0d65",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-100.bmp",
+      "stored": "mini-ui-before-font-init/captures/react-100.png",
+      "bytes": 9263,
+      "sha256": "1c2d09462d2fa57c7e3d611eed6ef05ce6e51067c6903aabc7ae872c09d838c0",
+      "original_sha256": "bc7bde456e558b0e53e363958494c906155a6d85b7d032e8380614fe63500c27",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-1000.bmp",
+      "stored": "mini-ui-before-font-init/captures/react-1000.png",
+      "bytes": 9262,
+      "sha256": "31090f4480d2e0970c83995f6607019126a62cb59d980cb9f86acf6fcdd44c25",
+      "original_sha256": "1cb9460784c207b97539f1874649db8d2a250e9a8345f1236ae295bf07ddb2f3",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-10000.bmp",
+      "stored": "mini-ui-before-font-init/captures/react-10000.png",
+      "bytes": 9289,
+      "sha256": "5066175b73a4fa4a8daecc3bb4334e4b658e93b26827cc6209d1823c8f24ecbb",
+      "original_sha256": "b6544161f02e13c6d8bba763d550e70eb70bb8f6688eb9a28cd33dd21dc019b0",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-5000.bmp",
+      "stored": "mini-ui-before-font-init/captures/react-5000.png",
+      "bytes": 9278,
+      "sha256": "9f71d7e4c36559ca06a3523c911457cff6ef159eed7a782571e8d1e6c6a37288",
+      "original_sha256": "3b4585f7b1c8071bb0f947498254ab73b5e37a554d12120459886dad4729c5a6",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-100.bmp",
+      "stored": "mini-ui-before-font-init/captures/vue-100.png",
+      "bytes": 9229,
+      "sha256": "e80bd4710bfd7fe96d82c22b619b50a9506a32a265b38c7d2f713ef544815811",
+      "original_sha256": "3206180cc4cb68b4afed8bab5754793d8ecaf716b9a51a625bf6062af9f96df7",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-1000.bmp",
+      "stored": "mini-ui-before-font-init/captures/vue-1000.png",
+      "bytes": 9228,
+      "sha256": "c45207d62af8768ece95dfd6a44c3871b5f485aa4b0f1d812d69e64e505f2fee",
+      "original_sha256": "002b94da8db91e1fd2d9ec0ee31bc803d4f7e29297855b5a69904b85cf0878b6",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-10000.bmp",
+      "stored": "mini-ui-before-font-init/captures/vue-10000.png",
+      "bytes": 9254,
+      "sha256": "fd89f5a32808e7f6664286056ce0121dd6a39fec03e0c3a22ad6ee0ef94f9875",
+      "original_sha256": "5b4cbc8e60b0f31f3968f1adfa54edd96fc5bb843b972bcffffede30b05edccf",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-5000.bmp",
+      "stored": "mini-ui-before-font-init/captures/vue-5000.png",
+      "bytes": 9244,
+      "sha256": "8c8e7e6db067b41a0b129680067b3c9d89094b94f994542cb46465ec2d68f364",
+      "original_sha256": "941835bc3e5fca28341a01497988474f1db2c9c755438d1f4e2ddc6762c0cb65",
+      "representation": "Lossless PNG encoding of actual opaque native BGRA/BMP capture; no generated UI or rescaling",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-100.json",
+      "stored": "mini-ui-before-font-init/raw/react-100.json",
+      "bytes": 21254,
+      "sha256": "c8c404f98de1d97d405a5b5a1fb84aba1208ec4506bcda5291645a88d5889e47",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-1000.json",
+      "stored": "mini-ui-before-font-init/raw/react-1000.json",
+      "bytes": 21351,
+      "sha256": "d7850ee00c4ccf0956093ab04268b0fc3a878b83a56c4c924a094069eb1ed386",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-10000.json",
+      "stored": "mini-ui-before-font-init/raw/react-10000.json",
+      "bytes": 21666,
+      "sha256": "04fc4d8557f1957d2e7fd93e01db400f941ae243761b65266881b561f83b2660",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-5000.json",
+      "stored": "mini-ui-before-font-init/raw/react-5000.json",
+      "bytes": 21652,
+      "sha256": "32a3a1902ced8e442fd0f9a1ed8399e5f3efd9801075fc1dd8e943ffb13f95c5",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-100.json",
+      "stored": "mini-ui-before-font-init/raw/vue-100.json",
+      "bytes": 21251,
+      "sha256": "dbdd7e6f6e2477c2065f488284a30351cc2790684e73fbdbcb4cef5a5ee6f6a5",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-1000.json",
+      "stored": "mini-ui-before-font-init/raw/vue-1000.json",
+      "bytes": 21365,
+      "sha256": "5667a140bc60eb839d91e9fd4476fd2d7c6aa290a9eda171207b6a175f982e35",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-10000.json",
+      "stored": "mini-ui-before-font-init/raw/vue-10000.json",
+      "bytes": 21654,
+      "sha256": "a21eb877d6997f5ca44c0e4424d95a35eb8637d4d92319160ebbc819c71f57b9",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-5000.json",
+      "stored": "mini-ui-before-font-init/raw/vue-5000.json",
+      "bytes": 21581,
+      "sha256": "3db1af61fd906077d6d9f20f14cfcf6ebb02245496ebc1ca6c13d69b58919f32",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\run-metadata.json",
+      "stored": "mini-ui-before-font-init/run-metadata.json",
+      "bytes": 11593,
+      "sha256": "f4676f456ad85c4c6de7dba960898b28819f79f40ee42e7f81603e43a256e804",
+      "representation": "verbatim UTF-8 measurement record",
+      "baseline_note": "Before canonical default/system font initialization; DOM timing assertions passed but visual inherited text was collapsed. Not the final comparison."
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\aggregate.csv",
+      "stored": "mini-ui/aggregate.csv",
+      "bytes": 22632,
+      "sha256": "b41655b53e6cd163ec65c624daedbeddb0693ed3d8bc46ec69e76d5fae6aa15b",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\aggregate.json",
+      "stored": "mini-ui/aggregate.json",
+      "bytes": 52569,
+      "sha256": "8a362480ebee77cfd9155d400b300636dec896f7a3c04a12b8a8763d4108db26",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-final-font-smoke\\build\\benchmark-build.json",
+      "stored": "mini-ui/build/benchmark-build.json",
+      "bytes": 5144,
+      "sha256": "f720b69be1103a7e2d6bf5ba01eb61a44d5a190a36f32f321d711b092abdd597",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-100.bmp",
+      "stored": "mini-ui/captures/react-100.png",
+      "bytes": 59700,
+      "sha256": "948eefd2759869165ed6725b13ee66434ce5f886475722fcd3206ac3672d34c4",
+      "source_sha256": "fdd674f55017a8b4078337b8b313451ad828f3331d234d9ad7a2a5d77a8b2e79",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-1000.bmp",
+      "stored": "mini-ui/captures/react-1000.png",
+      "bytes": 59994,
+      "sha256": "114a608961e68a7e77b4182cf292ea3079eb592d91c12b633e3a7482f7c15959",
+      "source_sha256": "dd60253f09559dff73be4eaaa98edad9869fe6e42b28c14a85c5e045566fc2fe",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-10000.bmp",
+      "stored": "mini-ui/captures/react-10000.png",
+      "bytes": 60208,
+      "sha256": "032e7d8cd796a368c58b36b5a5c0e815a3a6a25f3546af796854c4c1a13b07ba",
+      "source_sha256": "6d27eda67f9345db5e4d2a1aca058a4ec1233b77cec63c66e9f0018ff2cb69ca",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\react-5000.bmp",
+      "stored": "mini-ui/captures/react-5000.png",
+      "bytes": 60281,
+      "sha256": "97fd71745a54840665347e4d3eb273d97432f561eb859ba9ab43aaeaeefa11c3",
+      "source_sha256": "dfc7ed1aa9522cb5e100b4e9421e4e7f0bb17fc5f8e54181653251f29f4bc80b",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-100.bmp",
+      "stored": "mini-ui/captures/vue-100.png",
+      "bytes": 59701,
+      "sha256": "8568869e6b1bf5cde257b5838253d20c2c8d960a489ea10b2c596a566debd4c8",
+      "source_sha256": "90da1c43392650a1f0552bc8c66dbb7bd6361e921cb990391f9c0947eee8b09f",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-1000.bmp",
+      "stored": "mini-ui/captures/vue-1000.png",
+      "bytes": 59990,
+      "sha256": "5736d567f3ba5af5610176fc523248b849eb2b52605b524021501359fc5b58a9",
+      "source_sha256": "1ca7cfac20fcdf1d5358d4c546f2fc7e7a8daaa55cca41195b4d0d60f261921a",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-10000.bmp",
+      "stored": "mini-ui/captures/vue-10000.png",
+      "bytes": 60204,
+      "sha256": "01dee1ee460a7432ed68eb8054bc11d9e1dcff7a0d721a462bd7a8d258a8c323",
+      "source_sha256": "8ad4bd40e3542c38b2fbfcfad7bfe19d15f656d5a1596939b36893a2d502783d",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-5000.bmp",
+      "stored": "mini-ui/captures/vue-5000.png",
+      "bytes": 60279,
+      "sha256": "a4521aaa0be38fef886136fbc6634c51efb9fc27a3d4244a95fbd46493f0c470",
+      "source_sha256": "e174984a749046bf931aad64055d50597e8be895090683a55cac65b0b1d6e162",
+      "representation": "actual native BMP converted losslessly to RGB PNG, no rescaling; source BMP retained in out/"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-100.json",
+      "stored": "mini-ui/raw/react-100.json",
+      "bytes": 21292,
+      "sha256": "9fc695f50efd560564b5e4a4b9638fa92ef9e6bc31e24a34d1a91a23b4d0d3c0",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-1000.json",
+      "stored": "mini-ui/raw/react-1000.json",
+      "bytes": 21420,
+      "sha256": "d0a655fe6b964c4d939bdfcb21695b1e98453f993b70d7205af531b1bf444394",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-10000.json",
+      "stored": "mini-ui/raw/react-10000.json",
+      "bytes": 21685,
+      "sha256": "ff94e671bf1141ca2f9f9dd9e8d637006cf717b802f8a0bb61f3b39003c90145",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\react-5000.json",
+      "stored": "mini-ui/raw/react-5000.json",
+      "bytes": 21675,
+      "sha256": "d1eee5ebc170b943e48ed789b6ee3f7cffabb1ef0702c059ca4f2005dfa09094",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-100.json",
+      "stored": "mini-ui/raw/vue-100.json",
+      "bytes": 21275,
+      "sha256": "9441e1704ec6d10f3e0ca4fe0f82a7cdd9834534503364fa5fee6666cc69b218",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-1000.json",
+      "stored": "mini-ui/raw/vue-1000.json",
+      "bytes": 21324,
+      "sha256": "228bb44c6a328a2155600f6b26537aea19ead8bb48e91076c5ebb611cd67a416",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-10000.json",
+      "stored": "mini-ui/raw/vue-10000.json",
+      "bytes": 21637,
+      "sha256": "fc74c42475548bf5dc102aee75c57532d835276a9a659eeef6e1a0945ce49d07",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-5000.json",
+      "stored": "mini-ui/raw/vue-5000.json",
+      "bytes": 21642,
+      "sha256": "507a954931df94cb255a00462ea5fc3ec6b9fc877b1c9a2036dded4461c31896",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\run-metadata.json",
+      "stored": "mini-ui/run-metadata.json",
+      "bytes": 11549,
+      "sha256": "e590b615ccceab33608a78590b9e42560e21661e530a1a7d9d9cb6c09cb38369",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-diagnostics-final\\build.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-diagnostics-final/build.json",
+      "bytes": 5718,
+      "sha256": "8991099d8467d10a0594da6ba402a58392c369ecc48530ed888e62a7ca0a57ef"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-diagnostics-final\\native-heap-diagnostic.cc",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-diagnostics-final/native-heap-diagnostic.cc",
+      "bytes": 6053,
+      "sha256": "264a07e2ae1703037c4d479c4e9791d46489b93d1c9a920a41d1aaf1dbcb11ae"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-diagnostics-final\\react-1000-memory.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-diagnostics-final/react-1000-memory.json",
+      "bytes": 8758,
+      "sha256": "6b7112d7f4723069d02808e03592708bc7286b1b436db7b64fe18a5ee7824578"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-diagnostics-final\\vue-1000-memory.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-diagnostics-final/vue-1000-memory.json",
+      "bytes": 8704,
+      "sha256": "22ee890bad77a5ed542ecb9cc96227634d4c3a9f30706650d57d0f26a5ff1fb4"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-diagnostics\\final-memory-diagnostic-build.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-diagnostics/final-memory-diagnostic-build.json",
+      "bytes": 6395,
+      "sha256": "50e8acb31abc5b000fe26f4ba249e8f366fafde7fdb47cdcd463fe854dea9d53"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-1.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-1.log",
+      "bytes": 8507,
+      "sha256": "1bb15fcdd365b51e4e3c29efea3dedfc8a25b232283bfa6d9e18bf40ddf9fdaf",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-10.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-10.log",
+      "bytes": 8543,
+      "sha256": "ea6c1b9a07eea60358359c9a7523c1635fbacc50069d86e660b56c5f901c6042",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-11.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-11.log",
+      "bytes": 8351,
+      "sha256": "807b4e34a8b92c13ddfe90c3ef42ab43e02eb8ed6fdfd265fe0ab0f45e628c4d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-12.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-12.log",
+      "bytes": 7726,
+      "sha256": "f724ea6e1b5814a462d3f26b692090cde8ce2e9ebba0fcd9b41fe3b14f9f887c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-2.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-2.log",
+      "bytes": 8482,
+      "sha256": "317899ef0adf7cb12d151e519da6a046fce08ae9c63ce5e9ae1b41c76d1faadc",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-3.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-3.log",
+      "bytes": 8277,
+      "sha256": "cefe51df2eb7ee644b926cc4994f38711fd8aa5683f0563a4cf2844f3d55fb91",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-4.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-4.log",
+      "bytes": 8526,
+      "sha256": "ffd5f2fbcbddd323767a10950995e6a04dae8d54386a0aaff15f080557163a2c",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-5.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-5.log",
+      "bytes": 8728,
+      "sha256": "30b565d5f12daeb490a9a41a4970da57044eac7f22e25cf8bf40c472dbb5d8f0",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-6.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-6.log",
+      "bytes": 8627,
+      "sha256": "8ff9c4f4d55d476e47bb21e955dffaf877d8af20dbd56900e2b35ae8385acd3a",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-7.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-7.log",
+      "bytes": 8525,
+      "sha256": "4ae49f43af4393cc7c0fe6b60c8f4b719f250286c706d85690970f02c5d3a23d",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-8.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-8.log",
+      "bytes": 7680,
+      "sha256": "824d435d3ce7a7312c25b8a520c9aec5aa9814f6260e7d51a23ecf9103e0e15f",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-cdb-9.log",
+      "stored": "native-diagnostics/logs/vue-1000-native-profile209-cdb-9.log",
+      "bytes": 8544,
+      "sha256": "6bc1f4077e7874fcc39f0bf61ffd6dc6743e98a0f557a70cd111972a566e81d8",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\framework-memory-profile.cc",
+      "stored": "native-diagnostics/native-heap-diagnostic.cc",
+      "bytes": 6053,
+      "sha256": "264a07e2ae1703037c4d479c4e9791d46489b93d1c9a920a41d1aaf1dbcb11ae",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\framework-memory-original209-provenance.json",
+      "stored": "native-diagnostics/original-profile-build.json",
+      "bytes": 6383,
+      "sha256": "af412b37469de8dc6e7e35c29eb976c61e4404485c22d563a6fac6a08ee4d2fa",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\react-1000-memory-idle212.json",
+      "stored": "native-diagnostics/react-1000-memory.json",
+      "bytes": 8727,
+      "sha256": "ef973e3fa3cf8d0254f5fa44f0093283c7886926040e2fcb315a978ac16e8428",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-memory-idle212.json",
+      "stored": "native-diagnostics/vue-1000-memory.json",
+      "bytes": 8665,
+      "sha256": "1ddff550259daee7bab7f91d06b19dc6ce4bc4e2f8df8a9808e74d990e1d8148",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-memory-and-cpu-profile209.json",
+      "stored": "native-diagnostics/vue-profiled-memory-and-stacks.json",
+      "bytes": 11869,
+      "sha256": "5dc3795da1f3d306e79999bea54a0889b1b570ec35287cd4b6b990b36b482bf6",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\.build-tools\\ui-smoke\\vue-1000-native-profile209-resolved.json",
+      "stored": "native-diagnostics/vue-resolved-stack-samples.json",
+      "bytes": 48709,
+      "sha256": "396389e223411e73163d0287f9229d672cd1a90958e14fc33e16592983a4043f",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-final-build.log",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-final-build.log",
+      "bytes": 184,
+      "sha256": "2b4cd9a3403f704f4b9c50e6645cbacf2d415d3ab60d669cd6062adba051bad6"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-final-pe-imports.log",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-final-pe-imports.log",
+      "bytes": 13099,
+      "sha256": "7351e76231f56324fa6c8f360e0d15b7cb607318a086ce02ea9989c081522fe4"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-validation-before-gc-and-font.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-validation-before-gc-and-font.json",
+      "bytes": 101906,
+      "sha256": "6f204c7ef6cb88464b2124690ca191b4a960953f2f1593c773e1dececf35df77"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\native-validation.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "native-validation.json",
+      "bytes": 103403,
+      "sha256": "210447c4d3852cb8bdc5efba5f51bbd1327b47519ecf325fe4017ac839ffbd40"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-comparison\\operations.csv",
+      "stored": "operations-before-font-init.csv",
+      "bytes": 13151,
+      "sha256": "426aca44c8191ccdbbb4b62c8077585b6658809174b2accaa707e3590ff0cdc8",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\out\\ui-comparison\\operations.csv",
+      "stored": "operations.csv",
+      "bytes": 13352,
+      "sha256": "51c21570480c4989e6acc55a5652f1b15debf062e4907b1a426492509c501177",
+      "representation": "verbatim UTF-8 measurement record"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\optimization-source-evidence.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "optimization-source-evidence.json",
+      "bytes": 2728,
+      "sha256": "1fe048fdcf245c50381d8a2c7742e79a9a4065938e31afadd2a437516409c921"
+    },
+    {
+      "source": "D:\\Project\\mini-electron\\benchmarks\\ui\\results\\2026-10-22\\publication-validation.json",
+      "representation": "recorded evidence, provenance, diagnostic or report; see individual scope notes",
+      "stored": "publication-validation.json",
+      "bytes": 768,
+      "sha256": "fb032b0326427eb1591fd8ab86ff5aab6667d25c027d0fb3d6a548c122dc2158"
+    }
+  ],
+  "notes": [
+    "Index intentionally excludes itself; every listed saved artifact has actual byte size and SHA-256.",
+    "Source paths are historical original locations, not a promise that an output path still has the same content after later reruns; stored relative path and SHA-256 identify the authoritative preserved file.",
+    "Final unprofiled mini-ui is mini-ui/; old pre-font mini-ui is mini-ui-before-font-init/. The old comparison is explicitly comparison-before-font-init.json.",
+    "Actual native BMP images are converted losslessly to RGB PNG without resizing; original source-image hashes are retained where available. Chrome PNG captures are original outputs.",
+    "Profiler/forced-GC/debugger diagnostic samples and failed attempts are never pooled into final unprofiled timings.",
+    "Final production native library SHA-256: ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a",
+    "The user canceled shutdown; none issued."
+  ]
+}

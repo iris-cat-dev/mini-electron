@@ -20,9 +20,11 @@ class SequenceManager;
 }
 } // namespace base
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 }
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -115,8 +117,10 @@ protected:
 
     HashSet<WorkerSchedulerImpl*>& GetWorkerSchedulersForTesting();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetUkmTaskSamplingRateForTest(double rate);
     void SetUkmRecorderForTest(std::unique_ptr<ukm::UkmRecorder> ukm_recorder);
+#endif
 
     virtual void PerformMicrotaskCheckpoint();
 
@@ -129,10 +133,12 @@ private:
 
     void MaybeStartLongIdlePeriod();
 
+#if !defined(MINI_UI_QUICKJS)
     void RecordTaskUkm(
         NonMainThreadTaskQueue* worker_task_queue, const base::sequence_manager::Task& task, const base::sequence_manager::TaskQueue::TaskTiming& task_timing);
 
     const ThreadType thread_type_;
+#endif
     scoped_refptr<NonMainThreadTaskQueue> idle_helper_queue_;
     IdleHelper idle_helper_;
     bool initialized_ = false;
@@ -140,9 +146,11 @@ private:
     scoped_refptr<base::SingleThreadTaskRunner> compositor_task_runner_;
     SchedulingLifecycleState lifecycle_state_;
 
+#if !defined(MINI_UI_QUICKJS)
     // This controller should be initialized before any TraceableVariables
     // because they require one to initialize themselves.
     TraceableVariableController traceable_variable_controller_;
+#endif
 
     // Worker schedulers associated with this thread.
     HashSet<WorkerSchedulerImpl*> worker_schedulers_;
@@ -150,11 +158,13 @@ private:
     std::unique_ptr<WakeUpBudgetPool> wake_up_budget_pool_;
     std::unique_ptr<CPUTimeBudgetPool> cpu_time_budget_pool_;
 
+#if !defined(MINI_UI_QUICKJS)
     // The status of the parent frame when the worker was created.
     const FrameStatus initial_frame_status_;
 
     const ukm::SourceId ukm_source_id_;
     std::unique_ptr<ukm::UkmRecorder> ukm_recorder_;
+#endif
 };
 
 } // namespace scheduler

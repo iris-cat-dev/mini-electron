@@ -18,7 +18,6 @@
 
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/pickle.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/escape.h"
@@ -31,14 +30,18 @@
 #include "base/values.h"
 #include "net/base/features.h"
 #include "net/base/parse_number.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/base/tracing.h"
+#endif
 #include "net/http/http_byte_range.h"
+#if !defined(MINI_UI_IMPLEMENTATION)
 #include "net/http/http_log_util.h"
-#include "net/http/http_status_code.h"
-#include "net/http/http_util.h"
-#include "net/http/structured_headers.h"
 #include "net/log/net_log_capture_mode.h"
 #include "net/log/net_log_values.h"
+#include "net/http/structured_headers.h"
+#endif
+#include "net/http/http_status_code.h"
+#include "net/http/http_util.h"
 
 using base::Time;
 
@@ -100,7 +103,9 @@ const char* const kNonUpdatedHeaders[] = {
 // this list:
 const char* const kNonUpdatedHeaderPrefixes[] = { "x-content-", "x-webkit-" };
 
+#if !defined(MINI_UI_IMPLEMENTATION)
 constexpr char kActivateStorageAccessHeader[] = "activate-storage-access";
+#endif
 
 bool ShouldUpdateHeader(std::string_view name)
 {
@@ -201,6 +206,7 @@ struct HttpResponseHeaders::ParsedHeader {
     std::string::const_iterator value_begin;
     std::string::const_iterator value_end;
 
+#if !defined(MINI_UI_QUICKJS)
     // Write a representation of this object into a tracing proto.
     void WriteIntoTrace(perfetto::TracedValue context) const
     {
@@ -208,6 +214,7 @@ struct HttpResponseHeaders::ParsedHeader {
         dict.Add("name", base::MakeStringPiece(name_begin, name_end));
         dict.Add("value", base::MakeStringPiece(value_begin, value_end));
     }
+#endif
 };
 
 //-----------------------------------------------------------------------------
@@ -1100,30 +1107,29 @@ bool HttpResponseHeaders::IsRedirect(std::string* location) const
     return true;
 }
 
+#if !defined(MINI_UI_IMPLEMENTATION)
 bool HttpResponseHeaders::HasStorageAccessRetryHeader(const std::string* expected_origin) const
 {
-    *(int*)1 = 1;
-    return false;
-
-//     std::optional<std::string> header_value = GetNormalizedHeader(kActivateStorageAccessHeader);
-//     if (!header_value) {
-//         return false;
-//     }
-//     const std::optional<structured_headers::ParameterizedItem> item = structured_headers::ParseItem(*header_value);
-//     if (!item || !item->item.is_token() || item->item.GetString() != "retry") {
-//         return false;
-//     }
-//     return base::ranges::any_of(item->params, [&](const auto& key_and_value) -> bool {
-//         const auto [key, value] = key_and_value;
-//         if (key != "allowed-origin") {
-//             return false;
-//         }
-//         if (value.is_token() && value.GetString() == "*") {
-//             return true;
-//         }
-//         return expected_origin && value.is_string() && value.GetString() == *expected_origin;
-//     });
+    std::optional<std::string> header_value = GetNormalizedHeader(kActivateStorageAccessHeader);
+    if (!header_value) {
+        return false;
+    }
+    const std::optional<structured_headers::ParameterizedItem> item = structured_headers::ParseItem(*header_value);
+    if (!item || !item->item.is_token() || item->item.GetString() != "retry") {
+        return false;
+    }
+    return base::ranges::any_of(item->params, [&](const auto& key_and_value) -> bool {
+        const auto [key, value] = key_and_value;
+        if (key != "allowed-origin") {
+            return false;
+        }
+        if (value.is_token() && value.GetString() == "*") {
+            return true;
+        }
+        return expected_origin && value.is_string() && value.GetString() == *expected_origin;
+    });
 }
+#endif
 
 // static
 bool HttpResponseHeaders::IsRedirectResponseCode(int response_code)
@@ -1509,23 +1515,23 @@ bool HttpResponseHeaders::GetContentRangeFor206(int64_t* first_byte_position, in
 
     return HttpUtil::ParseContentRangeHeaderFor206(*content_range, first_byte_position, last_byte_position, instance_length);
 }
-
+#if !defined(MINI_UI_IMPLEMENTATION)
 base::Value::Dict HttpResponseHeaders::NetLogParams(NetLogCaptureMode capture_mode) const
 {
-    *(int*)1 = 1;
     base::Value::Dict dict;
-//     base::Value::List headers;
-//     headers.Append(NetLogStringValue(GetStatusLine()));
-//     size_t iterator = 0;
-//     std::string name;
-//     std::string value;
-//     while (EnumerateHeaderLines(&iterator, &name, &value)) {
-//         std::string log_value = ElideHeaderValueForNetLog(capture_mode, name, value);
-//         headers.Append(NetLogStringValue(base::StrCat({ name, ": ", log_value })));
-//     }
-//     dict.Set("headers", std::move(headers));
+    base::Value::List headers;
+    headers.Append(NetLogStringValue(GetStatusLine()));
+    size_t iterator = 0;
+    std::string name;
+    std::string value;
+    while (EnumerateHeaderLines(&iterator, &name, &value)) {
+        std::string log_value = ElideHeaderValueForNetLog(capture_mode, name, value);
+        headers.Append(NetLogStringValue(base::StrCat({ name, ": ", log_value })));
+    }
+    dict.Set("headers", std::move(headers));
     return dict;
 }
+#endif
 
 bool HttpResponseHeaders::IsChunkEncoded() const
 {
@@ -1542,12 +1548,14 @@ bool HttpResponseHeaders::IsCookieResponseHeader(std::string_view name)
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void HttpResponseHeaders::WriteIntoTrace(perfetto::TracedValue context) const
 {
     perfetto::TracedDictionary dict = std::move(context).WriteDictionary();
     dict.Add("response_code", response_code_);
     dict.Add("headers", parsed_);
 }
+#endif
 
 bool HttpResponseHeaders::StrictlyEquals(const HttpResponseHeaders& other) const
 {

@@ -13,7 +13,9 @@
 #include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/timer/elapsed_timer.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/base_tracing.h"
+#endif
 #include "build/build_config.h"
 
 #if BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
@@ -276,6 +278,7 @@ std::string File::ErrorToString(Error error)
     NOTREACHED();
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void File::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -284,5 +287,7 @@ void File::WriteIntoTrace(perfetto::TracedValue context) const
     dict.Add("async", async_);
     dict.Add("error_details", ErrorToString(error_details_));
 }
+
+#endif
 
 } // namespace base

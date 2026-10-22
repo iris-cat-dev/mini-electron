@@ -103,7 +103,9 @@ public:
 
     bool KnownToBeOpaque(const Document&, const ComputedStyle&) const;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsUsingCustomProperty(const AtomicString& custom_property_name, const Document&) const;
+#endif
     bool IsUsingCurrentColor() const;
     bool IsUsingContainerRelativeUnits() const;
 

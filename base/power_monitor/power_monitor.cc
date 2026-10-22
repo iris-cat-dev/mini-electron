@@ -171,9 +171,11 @@ void PowerMonitor::NotifyPowerStateChange(PowerStateObserver::BatteryPowerStatus
         DVLOG(1) << "PowerStateChange: with unknown value";
     } else {
         DVLOG(1) << "PowerStateChange: " << (battery_power_status == PowerStateObserver::BatteryPowerStatus::kBatteryPower ? "On" : "Off") << " battery";
+#if !defined(MINI_UI_QUICKJS)
         TRACE_EVENT_INSTANT("power",
             battery_power_status == PowerStateObserver::BatteryPowerStatus::kBatteryPower ? perfetto::StaticString("PowerMonitor::BatteryPower")
                                                                                           : perfetto::StaticString("PowerMonitor::ExternalPower"));
+#endif
     }
 
     AutoLock auto_lock(battery_power_status_lock_);

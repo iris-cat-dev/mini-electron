@@ -1,0 +1,85 @@
+{
+  "scope": "P1/P2 optimization and reviewed correctness boundaries; not a manifest of earlier source-closure work",
+  "sources": [
+    {
+      "path": "runtime/ui/quickjs_v8_objects.cc",
+      "sha256": "e3883c3cb044fe04b1f5ae8937763bef8f9498e458cb72869eceebaddd0da8c3",
+      "bytes": 145658
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_core.cc",
+      "sha256": "501292ffc14b23951a590f7af3ade62ba6d54c54488afa812df0e203189d8fa2",
+      "bytes": 61232
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_internal.h",
+      "sha256": "b4ef7f640f10e072c0e724d4fa73ef94aabf0f1846cb354a6527ae19871c380d",
+      "bytes": 2192
+    },
+    {
+      "path": "runtime/ui/native_heap.h",
+      "sha256": "1c61087a4e96d6c4dafc985e07c731d52d7fb923569438df78753f2b4c5cb444",
+      "bytes": 1570
+    },
+    {
+      "path": "runtime/ui/native_heap.cc",
+      "sha256": "ce17c91a690d9573c97f48b267a8e761b316635bad04b62ed99a5f2f514901fe",
+      "bytes": 4153
+    },
+    {
+      "path": "runtime/ui/quickjs_bindings.h",
+      "sha256": "cddd539c5078196f1ab5ab7c72c17a869360cadb3a8a8b9f9dc0f550547126bf",
+      "bytes": 3836
+    },
+    {
+      "path": "runtime/ui/quickjs_bindings.cc",
+      "sha256": "3e397b4752aa8543358de7fa2e51be2b74c60a89f780068c74236527b10e93f2",
+      "bytes": 24540
+    },
+    {
+      "path": "runtime/ui/blink_backend.cc",
+      "sha256": "101d95cd370570d764042d4472b6e3ce8c60bbe37bc0c963a1510bbe69a0470d",
+      "bytes": 97231
+    },
+    {
+      "path": "runtime/ui/bindings_initializer.cc",
+      "sha256": "5c403b107e89f3f2e892468ec324d90ec757150c517d49b8b5407d234656f3a2",
+      "bytes": 10896
+    },
+    {
+      "path": "third_party/quickjs/quickjs.h",
+      "sha256": "af8f0e64d22daa8745b9e1e944fd1d36790699a575a3a195758d2cde54575ff9",
+      "bytes": 64066
+    },
+    {
+      "path": "third_party/quickjs/quickjs.c",
+      "sha256": "3a37e32e3787bd629aae6c7e67a55d444aff7db688344d449fd29a8e6cdb7494",
+      "bytes": 1887860
+    },
+    {
+      "path": "build/mini_ui/windows.py",
+      "sha256": "8c651227a39be2583b91e9843842fd2bd8ad41ea7506e087666f0ef2263d1168",
+      "bytes": 29913
+    },
+    {
+      "path": "benchmarks/ui/runtime_checks.cc",
+      "sha256": "b1bf26ff294df0e536d9732fa3f98fdc1b8a1f15a5c42976742908f95d5cc2a9",
+      "bytes": 61408
+    },
+    {
+      "path": "benchmarks/ui/check_runtime.py",
+      "sha256": "74e22d5a3b061be47b742fdcc715102235ed180645b95d6c26c0453add70312d",
+      "bytes": 2422
+    },
+    {
+      "path": "benchmarks/ui/run.py",
+      "sha256": "e1c542a879fc3b1df1430b3855eb67adb99e537407f1ac15d44bb14547146689",
+      "bytes": 30378
+    },
+    {
+      "path": "benchmarks/ui/before_after.py",
+      "sha256": "2c8f1a75da09efd17c28647f1fedcedfd3bb421d995560d9a142019f30f12cce",
+      "bytes": 7200
+    }
+  ]
+}

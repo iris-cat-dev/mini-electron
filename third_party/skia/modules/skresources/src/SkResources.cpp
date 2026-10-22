@@ -249,10 +249,12 @@ sk_sp<SkData> ResourceProviderProxyBase::loadFont(const char name[], const char 
     return fProxy ? fProxy->loadFont(name, url) : nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 sk_sp<ExternalTrackAsset> ResourceProviderProxyBase::loadAudioAsset(const char path[], const char name[], const char id[])
 {
     return fProxy ? fProxy->loadAudioAsset(path, name, id) : nullptr;
 }
+#endif
 
 CachingResourceProvider::CachingResourceProvider(sk_sp<ResourceProvider> rp)
     : INHERITED(std::move(rp))

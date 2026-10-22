@@ -65,7 +65,9 @@ public:
     {
         return sampled_effects_.empty();
     }
+#if !defined(MINI_UI_QUICKJS)
     bool HasActiveAnimationsOnCompositor(const PropertyHandle&) const;
+#endif
 
     using PropertyHandleFilter = bool (*)(const PropertyHandle&);
     bool AffectsProperties(PropertyHandleFilter) const;

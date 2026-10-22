@@ -1,0 +1,2171 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "product_files_modified": false,
+  "benchmark_driver_and_fixtures_modified": false,
+  "build_manifest": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\phase-attribution-build.json",
+  "run_record": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\benchmark-run.json",
+  "benchmark_aggregate": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\aggregate.json",
+  "measurement_contract": {
+    "host_workload_wall_ms": "The unchanged benchmark host's steady-clock workload boundary from its raw JSON.",
+    "total_observed": "QPC wall time from the first instrumented phase entry until the recorder's atexit report. It includes startup and idle gaps and is not a pure workload measure.",
+    "host_api_inclusive": "Outermost public BlinkBackend LoadFile/Evaluate/Resize/Tick calls, including scheduling and every nested category.",
+    "js_execution_boundaries_inclusive_native_callbacks": "Outermost actual JS_CallInternal execution (C cleanup runs on every return), ScriptRealm evaluation, pending-job drain, or facade ExecutionScope lifetime. Includes native callbacks and nested/reentrant execution, source/result conversion where applicable. Not pure-JS CPU time.",
+    "native_callback_inclusive_reentrant_js": "Outermost existing CallbackState boundary, including bridge setup/teardown and JS synchronously reentered by a native callback. Nested callback scopes are merged by category depth. Callsite RVAs are constructor return addresses; optimization/inlining can coarsen them, so they are call hot spots rather than exact callback identities.",
+    "native_callback_targets": "Actual function/access-check/property-handler/getter/setter/enumerator callback pointer invocations. Per-target elapsed time is inclusive of nested callbacks and synchronously reentrant JS; target totals overlap the aggregate callback category and can overlap one another.",
+    "layout_lifecycle_inclusive": "UpdateAllLifecyclePhases plus native input-state and popup lifecycle updates and their synchronous work.",
+    "software_paint_inclusive": "CPU surface wrapping, clear, main/popup PaintContent raster work, and generation update.",
+    "paint_total_inclusive": "Whole backend Paint method; overlaps layout_lifecycle and software_paint.",
+    "joint_gc_host_cycle_inclusive": "One automatic host GC cycle: QuickJS bridge pass, native cppgc pass, second QuickJS bridge pass, arena trim, and retained-size rebudgeting.",
+    "quickjs_gc_inclusive": "Each actual JS_RunGC body, including external joint tracing. It overlaps bridge and host-cycle metrics.",
+    "cppgc_native_gc_inclusive": "Each NativeHeap::Collect body. It overlaps host-cycle metrics when automatically collected.",
+    "quickjs_bridge_gc_pass_inclusive": "CollectQuickJSGarbage including JS_RunGC and weak-persistent processing; overlaps quickjs_gc and host-cycle metrics.",
+    "overlap_rule": "Only same-category nested scopes are merged. Different categories intentionally overlap and MUST NOT be summed or treated as disjoint percentages.",
+    "pure_js_cpu": "Not reported. Subtracting callbacks, GC, layout, or paint from inclusive JS/host clocks would not produce a defensible pure-JS value.",
+    "clock_overhead": "Each outermost category scope uses one QPC read at entry and exit; nested same-category scopes avoid QPC reads. Every category scope updates counters; callback-boundary entry also probes a fixed-capacity lock-free callsite table. Every actual callback-target invocation uses two QPC reads plus a fixed-capacity lock-free target-table probe. The measured back-to-back QPC lower bound is recorded but not subtracted."
+  },
+  "cells": [
+    {
+      "framework": "react",
+      "rows": 1000,
+      "benchmark_raw_file": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\raw\\react-1000.json",
+      "benchmark_raw_sha256": "8b0fa924dfc46f16d8c44e7db022c903aa018362ecdc1b742158fef66c31cc5a",
+      "host_measurements": {
+        "workload_wall_ms": 11462.1195,
+        "full_process_wall_ms": 12142.261899993173,
+        "process_cpu": {
+          "source": "GetProcessTimes",
+          "interval": "before View::Create through populated capture; excludes View and process teardown",
+          "kernel_100ns_delta": 2031250,
+          "user_100ns_delta": 108593750,
+          "total_seconds_delta": 11.0625
+        },
+        "view_teardown_wall_ms": 139.8136
+      },
+      "phase_sidecar_file": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\sidecars\\phase-2884.json",
+      "phase_sidecar_sha256": "64dea7f336441ecebdca7a70d164fa532e1cd8329ed7215faabf7869b54840cc",
+      "phase_measurements": {
+        "schema_version": 1,
+        "process_id": 2884,
+        "command_line": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\build\\ui-benchmark.exe --framework react --rows 1000 --warmups 2 --iterations 7 --resource-root D:\\Project\\mini-electron\\benchmarks\\ui\\assets --output D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\raw\\react-1000.json --capture D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\captures\\react-1000.bmp --width 1280 --height 720 --device-scale 1.0 --timeout-ms 900000",
+        "clock": {
+          "name": "QueryPerformanceCounter",
+          "frequency_hz": 10000000,
+          "qpc_pair_lower_bound_ticks": 0,
+          "timing_overhead_subtracted": false
+        },
+        "total_observed": {
+          "boundary": "first instrumented phase entry through process atexit report",
+          "ticks": 120136988,
+          "milliseconds": 12013.6988
+        },
+        "categories": [
+          {
+            "name": "host_api_inclusive",
+            "scope_calls": 270,
+            "outermost_calls": 270,
+            "outermost_ticks": 110242979,
+            "outermost_milliseconds": 11024.2979
+          },
+          {
+            "name": "js_execution_boundaries_inclusive_native_callbacks",
+            "scope_calls": 14229533,
+            "outermost_calls": 890,
+            "outermost_ticks": 63151195,
+            "outermost_milliseconds": 6315.1195
+          },
+          {
+            "name": "native_callback_inclusive_reentrant_js",
+            "scope_calls": 1023376,
+            "outermost_calls": 1023358,
+            "outermost_ticks": 9221692,
+            "outermost_milliseconds": 922.1692
+          },
+          {
+            "name": "layout_lifecycle_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 33170580,
+            "outermost_milliseconds": 3317.058
+          },
+          {
+            "name": "software_paint_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 8337369,
+            "outermost_milliseconds": 833.7369
+          },
+          {
+            "name": "paint_total_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 41508544,
+            "outermost_milliseconds": 4150.8544
+          },
+          {
+            "name": "joint_gc_host_cycle_inclusive",
+            "scope_calls": 2,
+            "outermost_calls": 2,
+            "outermost_ticks": 4185823,
+            "outermost_milliseconds": 418.5823
+          },
+          {
+            "name": "quickjs_gc_inclusive",
+            "scope_calls": 5,
+            "outermost_calls": 5,
+            "outermost_ticks": 5180286,
+            "outermost_milliseconds": 518.0286
+          },
+          {
+            "name": "cppgc_native_gc_inclusive",
+            "scope_calls": 2,
+            "outermost_calls": 2,
+            "outermost_ticks": 369988,
+            "outermost_milliseconds": 36.9988
+          },
+          {
+            "name": "quickjs_bridge_gc_pass_inclusive",
+            "scope_calls": 4,
+            "outermost_calls": 4,
+            "outermost_ticks": 3814808,
+            "outermost_milliseconds": 381.4808
+          }
+        ],
+        "native_callback_callsites": [
+          {
+            "rva": "0x1685e6",
+            "calls": 97755
+          },
+          {
+            "rva": "0x16a57f",
+            "calls": 925611
+          },
+          {
+            "rva": "0x16b231",
+            "calls": 8
+          },
+          {
+            "rva": "0x16bc7a",
+            "calls": 2
+          }
+        ],
+        "native_callback_targets": [
+          {
+            "target_rva": "0x8e044a",
+            "calls": 4,
+            "inclusive_ticks": 118,
+            "inclusive_milliseconds": 0.0118
+          },
+          {
+            "target_rva": "0xdb07a8",
+            "calls": 1,
+            "inclusive_ticks": 241,
+            "inclusive_milliseconds": 0.0241
+          },
+          {
+            "target_rva": "0x6c0993",
+            "calls": 130,
+            "inclusive_ticks": 12359,
+            "inclusive_milliseconds": 1.2359
+          },
+          {
+            "target_rva": "0xdb0a32",
+            "calls": 18,
+            "inclusive_ticks": 5298,
+            "inclusive_milliseconds": 0.5298
+          },
+          {
+            "target_rva": "0x6d1ad3",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x6c1b40",
+            "calls": 101291,
+            "inclusive_ticks": 1661437,
+            "inclusive_milliseconds": 166.1437
+          },
+          {
+            "target_rva": "0xe52002",
+            "calls": 65,
+            "inclusive_ticks": 1993,
+            "inclusive_milliseconds": 0.1993
+          },
+          {
+            "target_rva": "0x11b204b",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0xe52315",
+            "calls": 128,
+            "inclusive_ticks": 9406,
+            "inclusive_milliseconds": 0.9406
+          },
+          {
+            "target_rva": "0xdb26aa",
+            "calls": 1,
+            "inclusive_ticks": 2,
+            "inclusive_milliseconds": 0.0002
+          },
+          {
+            "target_rva": "0x6d2dfb",
+            "calls": 65,
+            "inclusive_ticks": 1003,
+            "inclusive_milliseconds": 0.1003
+          },
+          {
+            "target_rva": "0x6c2e78",
+            "calls": 40,
+            "inclusive_ticks": 4316,
+            "inclusive_milliseconds": 0.4316
+          },
+          {
+            "target_rva": "0x10b3319",
+            "calls": 1,
+            "inclusive_ticks": 0,
+            "inclusive_milliseconds": 0
+          },
+          {
+            "target_rva": "0x7b363a",
+            "calls": 132,
+            "inclusive_ticks": 1260,
+            "inclusive_milliseconds": 0.126
+          },
+          {
+            "target_rva": "0x7b3a6c",
+            "calls": 1,
+            "inclusive_ticks": 42,
+            "inclusive_milliseconds": 0.0042
+          },
+          {
+            "target_rva": "0x6c4022",
+            "calls": 69,
+            "inclusive_ticks": 1875,
+            "inclusive_milliseconds": 0.1875
+          },
+          {
+            "target_rva": "0xe3433e",
+            "calls": 334,
+            "inclusive_ticks": 1567,
+            "inclusive_milliseconds": 0.1567
+          },
+          {
+            "target_rva": "0x6d4ae9",
+            "calls": 10,
+            "inclusive_ticks": 212,
+            "inclusive_milliseconds": 0.0212
+          },
+          {
+            "target_rva": "0x6d4b8f",
+            "calls": 19851,
+            "inclusive_ticks": 122851,
+            "inclusive_milliseconds": 12.2851
+          },
+          {
+            "target_rva": "0xe15ff0",
+            "calls": 14,
+            "inclusive_ticks": 147,
+            "inclusive_milliseconds": 0.0147
+          },
+          {
+            "target_rva": "0xe46032",
+            "calls": 1,
+            "inclusive_ticks": 8905,
+            "inclusive_milliseconds": 0.8905
+          },
+          {
+            "target_rva": "0xe36094",
+            "calls": 5,
+            "inclusive_ticks": 2770,
+            "inclusive_milliseconds": 0.277
+          },
+          {
+            "target_rva": "0xe1622c",
+            "calls": 4,
+            "inclusive_ticks": 168,
+            "inclusive_milliseconds": 0.0168
+          },
+          {
+            "target_rva": "0x8d63e2",
+            "calls": 101536,
+            "inclusive_ticks": 39269,
+            "inclusive_milliseconds": 3.9269
+          },
+          {
+            "target_rva": "0x8d6454",
+            "calls": 130,
+            "inclusive_ticks": 1213,
+            "inclusive_milliseconds": 0.1213
+          },
+          {
+            "target_rva": "0x8d663b",
+            "calls": 101331,
+            "inclusive_ticks": 173472,
+            "inclusive_milliseconds": 17.3472
+          },
+          {
+            "target_rva": "0x8d68e7",
+            "calls": 80461,
+            "inclusive_ticks": 31403,
+            "inclusive_milliseconds": 3.1403
+          },
+          {
+            "target_rva": "0x8d6987",
+            "calls": 91,
+            "inclusive_ticks": 153,
+            "inclusive_milliseconds": 0.0153
+          },
+          {
+            "target_rva": "0x8d6ba8",
+            "calls": 91,
+            "inclusive_ticks": 6625,
+            "inclusive_milliseconds": 0.6625
+          },
+          {
+            "target_rva": "0x8d6d2b",
+            "calls": 330,
+            "inclusive_ticks": 3269,
+            "inclusive_milliseconds": 0.3269
+          },
+          {
+            "target_rva": "0x8d6dcc",
+            "calls": 80384,
+            "inclusive_ticks": 342560,
+            "inclusive_milliseconds": 34.256
+          },
+          {
+            "target_rva": "0x446eec",
+            "calls": 65,
+            "inclusive_ticks": 1200,
+            "inclusive_milliseconds": 0.12
+          },
+          {
+            "target_rva": "0x8d6f0f",
+            "calls": 100493,
+            "inclusive_ticks": 1096560,
+            "inclusive_milliseconds": 109.656
+          },
+          {
+            "target_rva": "0x446fa3",
+            "calls": 65,
+            "inclusive_ticks": 680,
+            "inclusive_milliseconds": 0.068
+          },
+          {
+            "target_rva": "0x447214",
+            "calls": 48790,
+            "inclusive_ticks": 354746,
+            "inclusive_milliseconds": 35.4746
+          },
+          {
+            "target_rva": "0x8d790b",
+            "calls": 10719,
+            "inclusive_ticks": 100094,
+            "inclusive_milliseconds": 10.0094
+          },
+          {
+            "target_rva": "0x7582cb",
+            "calls": 329,
+            "inclusive_ticks": 1857,
+            "inclusive_milliseconds": 0.1857
+          },
+          {
+            "target_rva": "0xe48300",
+            "calls": 1,
+            "inclusive_ticks": 398,
+            "inclusive_milliseconds": 0.0398
+          },
+          {
+            "target_rva": "0x8d854b",
+            "calls": 8919,
+            "inclusive_ticks": 1009992,
+            "inclusive_milliseconds": 100.9992
+          },
+          {
+            "target_rva": "0x12d881e",
+            "calls": 1,
+            "inclusive_ticks": 238,
+            "inclusive_milliseconds": 0.0238
+          },
+          {
+            "target_rva": "0xe389bb",
+            "calls": 129,
+            "inclusive_ticks": 3914,
+            "inclusive_milliseconds": 0.3914
+          },
+          {
+            "target_rva": "0x12d8a17",
+            "calls": 1,
+            "inclusive_ticks": 10,
+            "inclusive_milliseconds": 0.001
+          },
+          {
+            "target_rva": "0x12d8a53",
+            "calls": 1,
+            "inclusive_ticks": 907,
+            "inclusive_milliseconds": 0.0907
+          },
+          {
+            "target_rva": "0x10f8e5e",
+            "calls": 9,
+            "inclusive_ticks": 27,
+            "inclusive_milliseconds": 0.0027
+          },
+          {
+            "target_rva": "0x8d92f4",
+            "calls": 97745,
+            "inclusive_ticks": 188561,
+            "inclusive_milliseconds": 18.8561
+          },
+          {
+            "target_rva": "0xa893d3",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x8d96ce",
+            "calls": 49010,
+            "inclusive_ticks": 15569,
+            "inclusive_milliseconds": 1.5569
+          },
+          {
+            "target_rva": "0xe0a1d5",
+            "calls": 4,
+            "inclusive_ticks": 425,
+            "inclusive_milliseconds": 0.0425
+          },
+          {
+            "target_rva": "0x11ba4c7",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x6db73f",
+            "calls": 1,
+            "inclusive_ticks": 2092,
+            "inclusive_milliseconds": 0.2092
+          },
+          {
+            "target_rva": "0xcfb7fb",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44b8d7",
+            "calls": 9,
+            "inclusive_ticks": 171,
+            "inclusive_milliseconds": 0.0171
+          },
+          {
+            "target_rva": "0x11bbbb3",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0xdcc19b",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44c56b",
+            "calls": 49120,
+            "inclusive_ticks": 183960,
+            "inclusive_milliseconds": 18.396
+          },
+          {
+            "target_rva": "0x11bc8ab",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0xdfdd4f",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44e688",
+            "calls": 385,
+            "inclusive_ticks": 4123,
+            "inclusive_milliseconds": 0.4123
+          },
+          {
+            "target_rva": "0x44e7fa",
+            "calls": 165,
+            "inclusive_ticks": 130445,
+            "inclusive_milliseconds": 13.0445
+          },
+          {
+            "target_rva": "0x118ee37",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x46f436",
+            "calls": 48790,
+            "inclusive_ticks": 53495,
+            "inclusive_milliseconds": 5.3495
+          },
+          {
+            "target_rva": "0x44fbb5",
+            "calls": 122100,
+            "inclusive_ticks": 728472,
+            "inclusive_milliseconds": 72.8472
+          }
+        ],
+        "dropped_callback_callsite_events": 0,
+        "dropped_callback_target_events": 0,
+        "dropped_callback_target_timings": 0
+      },
+      "native_callback_callsites_symbolized": [
+        {
+          "rva": "0x16a57f",
+          "calls": 925611,
+          "symbol": "?NativeCall@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@1HPEAU2@H@Z",
+          "symbol_rva": "0x16a006",
+          "displacement": 1401,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x1685e6",
+          "calls": 97755,
+          "symbol": "?HostGet@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+          "symbol_rva": "0x1684b6",
+          "displacement": 304,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x16b231",
+          "calls": 8,
+          "symbol": "?InterceptOwn@?A0x18E3314D@v8@@YAHPEAUJSContext@@PEAUJSPropertyDescriptor@@UJSValue@@IAEAUHandler@?A0x18E3314D@1@@Z",
+          "symbol_rva": "0x16b194",
+          "displacement": 157,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x16bc7a",
+          "calls": 2,
+          "symbol": "?NativeGet@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@1IAEBUNativeProperty@?A0x18E3314D@1@@Z",
+          "symbol_rva": "0x16bbc5",
+          "displacement": 181,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        }
+      ],
+      "native_callback_targets_symbolized": [
+        {
+          "target_rva": "0x6c1b40",
+          "calls": 101291,
+          "inclusive_ticks": 1661437,
+          "inclusive_milliseconds": 166.1437,
+          "symbol": "?CreateElementOperationCallbackForMainWorld@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c1b40",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x8d6f0f",
+          "calls": 100493,
+          "inclusive_ticks": 1096560,
+          "inclusive_milliseconds": 109.656,
+          "symbol": "?AppendChildOperationCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6f0f",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d854b",
+          "calls": 8919,
+          "inclusive_ticks": 1009992,
+          "inclusive_milliseconds": 100.9992,
+          "symbol": "?RemoveChildOperationCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d854b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x44fbb5",
+          "calls": 122100,
+          "inclusive_ticks": 728472,
+          "inclusive_milliseconds": 72.8472,
+          "symbol": "?SetAttributeOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44fbb5",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x447214",
+          "calls": 48790,
+          "inclusive_ticks": 354746,
+          "inclusive_milliseconds": 35.4746,
+          "symbol": "?ClassListAttributeGetCallbackForMainWorld@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x447214",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x8d6dcc",
+          "calls": 80384,
+          "inclusive_ticks": 342560,
+          "inclusive_milliseconds": 34.256,
+          "symbol": "?TextContentAttributeSetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6dcc",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d92f4",
+          "calls": 97745,
+          "inclusive_ticks": 188561,
+          "inclusive_milliseconds": 18.8561,
+          "symbol": "?IndexedPropertyGetterCallback@V8NodeList@blink@@SA?AW4Intercepted@v8@@IAEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0x8d92f4",
+          "displacement": 0,
+          "object": "mini-ui:b3262b5c5afc509cd871.obj"
+        },
+        {
+          "target_rva": "0x44c56b",
+          "calls": 49120,
+          "inclusive_ticks": 183960,
+          "inclusive_milliseconds": 18.396,
+          "symbol": "?GetAttributeOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44c56b",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x8d663b",
+          "calls": 101331,
+          "inclusive_ticks": 173472,
+          "inclusive_milliseconds": 17.3472,
+          "symbol": "?OwnerDocumentAttributeGetCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d663b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x44e7fa",
+          "calls": 165,
+          "inclusive_ticks": 130445,
+          "inclusive_milliseconds": 13.0445,
+          "symbol": "?QuerySelectorAllOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44e7fa",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x6d4b8f",
+          "calls": 19851,
+          "inclusive_ticks": 122851,
+          "inclusive_milliseconds": 12.2851,
+          "symbol": "?OnclickAttributeSetCallback@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6d4b8f",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0x8d790b",
+          "calls": 10719,
+          "inclusive_ticks": 100094,
+          "inclusive_milliseconds": 10.0094,
+          "symbol": "?InsertBeforeOperationCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d790b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x46f436",
+          "calls": 48790,
+          "inclusive_ticks": 53495,
+          "inclusive_milliseconds": 5.3495,
+          "symbol": "?ContainsOperationCallback@v8_dom_token_list@?A0x85061764@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x46f436",
+          "displacement": 0,
+          "object": "mini-ui:f593ca29f76181481a01.obj"
+        },
+        {
+          "target_rva": "0x8d63e2",
+          "calls": 101536,
+          "inclusive_ticks": 39269,
+          "inclusive_milliseconds": 3.9269,
+          "symbol": "?NodeTypeAttributeGetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d63e2",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d68e7",
+          "calls": 80461,
+          "inclusive_ticks": 31403,
+          "inclusive_milliseconds": 3.1403,
+          "symbol": "?FirstChildAttributeGetCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d68e7",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d96ce",
+          "calls": 49010,
+          "inclusive_ticks": 15569,
+          "inclusive_milliseconds": 1.5569,
+          "symbol": "?LengthAttributeGetCallback@v8_node_list@?A0x4B84A5C1@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d96ce",
+          "displacement": 0,
+          "object": "mini-ui:b3262b5c5afc509cd871.obj"
+        },
+        {
+          "target_rva": "0x6c0993",
+          "calls": 130,
+          "inclusive_ticks": 12359,
+          "inclusive_milliseconds": 1.2359,
+          "symbol": "?ActiveElementAttributeGetCallback@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c0993",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0xe52315",
+          "calls": 128,
+          "inclusive_ticks": 9406,
+          "inclusive_milliseconds": 0.9406,
+          "symbol": "?RequestAnimationFrameOperationCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe52315",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0xe46032",
+          "calls": 1,
+          "inclusive_ticks": 8905,
+          "inclusive_milliseconds": 0.8905,
+          "symbol": "?HTMLIFrameElementExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe46032",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x8d6ba8",
+          "calls": 91,
+          "inclusive_ticks": 6625,
+          "inclusive_milliseconds": 0.6625,
+          "symbol": "?NodeValueAttributeSetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6ba8",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0xdb0a32",
+          "calls": 18,
+          "inclusive_ticks": 5298,
+          "inclusive_milliseconds": 0.5298,
+          "symbol": "?PostMessageOperationCallback@v8_message_port@?A0xBE7D35A3@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdb0a32",
+          "displacement": 0,
+          "object": "mini-ui:57d57409e308b5776c13.obj"
+        },
+        {
+          "target_rva": "0x6c2e78",
+          "calls": 40,
+          "inclusive_ticks": 4316,
+          "inclusive_milliseconds": 0.4316,
+          "symbol": "?CreateTextNodeOperationCallback@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c2e78",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x44e688",
+          "calls": 385,
+          "inclusive_ticks": 4123,
+          "inclusive_milliseconds": 0.4123,
+          "symbol": "?QuerySelectorOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44e688",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe389bb",
+          "calls": 129,
+          "inclusive_ticks": 3914,
+          "inclusive_milliseconds": 0.3914,
+          "symbol": "?PerformanceAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe389bb",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x8d6d2b",
+          "calls": 330,
+          "inclusive_ticks": 3269,
+          "inclusive_milliseconds": 0.3269,
+          "symbol": "?TextContentAttributeGetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6d2b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0xe36094",
+          "calls": 5,
+          "inclusive_ticks": 2770,
+          "inclusive_milliseconds": 0.277,
+          "symbol": "?NavigatorAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe36094",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x6db73f",
+          "calls": 1,
+          "inclusive_ticks": 2092,
+          "inclusive_milliseconds": 0.2092,
+          "symbol": "?StyleAttributeGetCallbackForMainWorld@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6db73f",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0xe52002",
+          "calls": 65,
+          "inclusive_ticks": 1993,
+          "inclusive_milliseconds": 0.1993,
+          "symbol": "?QueueMicrotaskOperationCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe52002",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x6c4022",
+          "calls": 69,
+          "inclusive_ticks": 1875,
+          "inclusive_milliseconds": 0.1875,
+          "symbol": "?GetElementByIdOperationCallbackForMainWorld@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c4022",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x7582cb",
+          "calls": 329,
+          "inclusive_ticks": 1857,
+          "inclusive_milliseconds": 0.1857,
+          "symbol": "?NowOperationCallback@v8_performance@?A0xA4D00CD4@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x7582cb",
+          "displacement": 0,
+          "object": "mini-ui:01334e8cc61d1110a5b4.obj"
+        },
+        {
+          "target_rva": "0xe3433e",
+          "calls": 334,
+          "inclusive_ticks": 1567,
+          "inclusive_milliseconds": 0.1567,
+          "symbol": "?DocumentAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe3433e",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x7b363a",
+          "calls": 132,
+          "inclusive_ticks": 1260,
+          "inclusive_milliseconds": 0.126,
+          "symbol": "?AddEventListenerOperationCallback@v8_event_target@?A0xFE47DA13@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x7b363a",
+          "displacement": 0,
+          "object": "mini-ui:32472c5713c44f7f0f8b.obj"
+        },
+        {
+          "target_rva": "0x8d6454",
+          "calls": 130,
+          "inclusive_ticks": 1213,
+          "inclusive_milliseconds": 0.1213,
+          "symbol": "?NodeNameAttributeGetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6454",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x446eec",
+          "calls": 65,
+          "inclusive_ticks": 1200,
+          "inclusive_milliseconds": 0.12,
+          "symbol": "?NamespaceURIAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x446eec",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x6d2dfb",
+          "calls": 65,
+          "inclusive_ticks": 1003,
+          "inclusive_milliseconds": 0.1003,
+          "symbol": "?ContentEditableAttributeGetCallback@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6d2dfb",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0x12d8a53",
+          "calls": 1,
+          "inclusive_ticks": 907,
+          "inclusive_milliseconds": 0.0907,
+          "symbol": "?Port2AttributeGetCallback@v8_message_channel@?A0x1262D8C5@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x12d8a53",
+          "displacement": 0,
+          "object": "mini-ui:f4a592082a8b18ca9e4c.obj"
+        },
+        {
+          "target_rva": "0x446fa3",
+          "calls": 65,
+          "inclusive_ticks": 680,
+          "inclusive_milliseconds": 0.068,
+          "symbol": "?TagNameAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x446fa3",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe0a1d5",
+          "calls": 4,
+          "inclusive_ticks": 425,
+          "inclusive_milliseconds": 0.0425,
+          "symbol": "?SchedulingAttributeGetCallback@v8_navigator@?A0x75F407AC@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe0a1d5",
+          "displacement": 0,
+          "object": "mini-ui:00b10611c43a84b11609.obj"
+        },
+        {
+          "target_rva": "0xe48300",
+          "calls": 1,
+          "inclusive_ticks": 398,
+          "inclusive_milliseconds": 0.0398,
+          "symbol": "?MessageChannelExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe48300",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0xdb07a8",
+          "calls": 1,
+          "inclusive_ticks": 241,
+          "inclusive_milliseconds": 0.0241,
+          "symbol": "?OnmessageAttributeSetCallback@v8_message_port@?A0xBE7D35A3@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdb07a8",
+          "displacement": 0,
+          "object": "mini-ui:57d57409e308b5776c13.obj"
+        },
+        {
+          "target_rva": "0x12d881e",
+          "calls": 1,
+          "inclusive_ticks": 238,
+          "inclusive_milliseconds": 0.0238,
+          "symbol": "?ConstructorCallback@v8_message_channel@?A0x1262D8C5@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x12d881e",
+          "displacement": 0,
+          "object": "mini-ui:f4a592082a8b18ca9e4c.obj"
+        },
+        {
+          "target_rva": "0x6d4ae9",
+          "calls": 10,
+          "inclusive_ticks": 212,
+          "inclusive_milliseconds": 0.0212,
+          "symbol": "?OnclickAttributeGetCallback@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6d4ae9",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0x44b8d7",
+          "calls": 9,
+          "inclusive_ticks": 171,
+          "inclusive_milliseconds": 0.0171,
+          "symbol": "?ChildElementCountAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44b8d7",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe1622c",
+          "calls": 4,
+          "inclusive_ticks": 168,
+          "inclusive_milliseconds": 0.0168,
+          "symbol": "?NamedPropertyDescriptorCallback@V8WindowProperties@blink@@SA?AW4Intercepted@v8@@V?$Local@VName@v8@@@4@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe1622c",
+          "displacement": 0,
+          "object": "mini-ui:e055cf1af83de365f694.obj"
+        },
+        {
+          "target_rva": "0x8d6987",
+          "calls": 91,
+          "inclusive_ticks": 153,
+          "inclusive_milliseconds": 0.0153,
+          "symbol": "?LastChildAttributeGetCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6987",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0xe15ff0",
+          "calls": 14,
+          "inclusive_ticks": 147,
+          "inclusive_milliseconds": 0.0147,
+          "symbol": "?NamedPropertyGetterCallback@V8WindowProperties@blink@@SA?AW4Intercepted@v8@@V?$Local@VName@v8@@@4@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe15ff0",
+          "displacement": 0,
+          "object": "mini-ui:e055cf1af83de365f694.obj"
+        },
+        {
+          "target_rva": "0x8e044a",
+          "calls": 4,
+          "inclusive_ticks": 118,
+          "inclusive_milliseconds": 0.0118,
+          "symbol": "?NamedPropertyQueryCallback@V8CSSStyleDeclaration@blink@@SA?AW4Intercepted@v8@@V?$Local@VName@v8@@@4@AEBV?$PropertyCallbackInfo@VInteger@v8@@@4@@Z",
+          "symbol_rva": "0x8e044a",
+          "displacement": 0,
+          "object": "mini-ui:7e6527b28f36787aaaab.obj"
+        },
+        {
+          "target_rva": "0x7b3a6c",
+          "calls": 1,
+          "inclusive_ticks": 42,
+          "inclusive_milliseconds": 0.0042,
+          "symbol": "?RemoveEventListenerOperationCallback@v8_event_target@?A0xFE47DA13@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x7b3a6c",
+          "displacement": 0,
+          "object": "mini-ui:32472c5713c44f7f0f8b.obj"
+        },
+        {
+          "target_rva": "0x10f8e5e",
+          "calls": 9,
+          "inclusive_ticks": 27,
+          "inclusive_milliseconds": 0.0027,
+          "symbol": "?IsValidConstructorMode@V8ObjectConstructor@blink@@SAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x10f8e5e",
+          "displacement": 0,
+          "object": "mini-ui:9f2f5da8a0802427ea63.obj"
+        },
+        {
+          "target_rva": "0x12d8a17",
+          "calls": 1,
+          "inclusive_ticks": 10,
+          "inclusive_milliseconds": 0.001,
+          "symbol": "?Port1AttributeGetCallback@v8_message_channel@?A0x1262D8C5@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x12d8a17",
+          "displacement": 0,
+          "object": "mini-ui:f4a592082a8b18ca9e4c.obj"
+        },
+        {
+          "target_rva": "0xdb26aa",
+          "calls": 1,
+          "inclusive_ticks": 2,
+          "inclusive_milliseconds": 0.0002,
+          "symbol": "?ConstructorCallback@v8_message_event@?A0x7EDFDFFA@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdb26aa",
+          "displacement": 0,
+          "object": "mini-ui:7adb478bbe4639469fb8.obj"
+        },
+        {
+          "target_rva": "0x6d1ad3",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6d1ad3",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0x11b204b",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_heading_element@?A0x396CDB3A@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11b204b",
+          "displacement": 0,
+          "object": "mini-ui:a159f82cc9742cb8b68c.obj"
+        },
+        {
+          "target_rva": "0xa893d3",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_body_element@?A0x74DF1441@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xa893d3",
+          "displacement": 0,
+          "object": "mini-ui:68b306aa9a45b9290b09.obj"
+        },
+        {
+          "target_rva": "0x11ba4c7",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_element@?A0xD810C35@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11ba4c7",
+          "displacement": 0,
+          "object": "mini-ui:2ad224920b5e64fd4f8e.obj"
+        },
+        {
+          "target_rva": "0xcfb7fb",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_text@?A0xE30B2C07@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xcfb7fb",
+          "displacement": 0,
+          "object": "mini-ui:c3c0dbceee3a55713841.obj"
+        },
+        {
+          "target_rva": "0x11bbbb3",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_section_element@?A0x5C66EABA@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11bbbb3",
+          "displacement": 0,
+          "object": "mini-ui:f95bcf99cab151399215.obj"
+        },
+        {
+          "target_rva": "0xdcc19b",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_div_element@?A0xA9374AD2@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdcc19b",
+          "displacement": 0,
+          "object": "mini-ui:e6355e3a85e6f9ed3200.obj"
+        },
+        {
+          "target_rva": "0x11bc8ab",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_row_element@?A0x977492F0@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11bc8ab",
+          "displacement": 0,
+          "object": "mini-ui:1d1b5623277c416d81db.obj"
+        },
+        {
+          "target_rva": "0xdfdd4f",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_button_element@?A0x23DAC80@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdfdd4f",
+          "displacement": 0,
+          "object": "mini-ui:f1a033b6f1e255cd690d.obj"
+        },
+        {
+          "target_rva": "0x118ee37",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_cell_element@?A0x593D640E@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x118ee37",
+          "displacement": 0,
+          "object": "mini-ui:2a790672493671c229a5.obj"
+        },
+        {
+          "target_rva": "0x10b3319",
+          "calls": 1,
+          "inclusive_ticks": 0,
+          "inclusive_milliseconds": 0,
+          "symbol": "?ConstructorCallback@v8_html_span_element@?A0xA7C44DF4@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x10b3319",
+          "displacement": 0,
+          "object": "mini-ui:42c7ca66ac6b59f11e25.obj"
+        }
+      ]
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "benchmark_raw_file": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\raw\\vue-1000.json",
+      "benchmark_raw_sha256": "eccea0db9499bd74a7e975b013ee49495dd8c03c13f9d63ce6fd50baad1bd777",
+      "host_measurements": {
+        "workload_wall_ms": 17999.7815,
+        "full_process_wall_ms": 19767.94580000569,
+        "process_cpu": {
+          "source": "GetProcessTimes",
+          "interval": "before View::Create through populated capture; excludes View and process teardown",
+          "kernel_100ns_delta": 1718750,
+          "user_100ns_delta": 171406250,
+          "total_seconds_delta": 17.3125
+        },
+        "view_teardown_wall_ms": 208.5446
+      },
+      "phase_sidecar_file": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\sidecars\\phase-28808.json",
+      "phase_sidecar_sha256": "89bdc502ce8f6c300f4cf5f5305f8c7d435371e072ed671df6156d905eaad474",
+      "phase_measurements": {
+        "schema_version": 1,
+        "process_id": 28808,
+        "command_line": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\build\\ui-benchmark.exe --framework vue --rows 1000 --warmups 2 --iterations 7 --resource-root D:\\Project\\mini-electron\\benchmarks\\ui\\assets --output D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\raw\\vue-1000.json --capture D:\\Project\\mini-electron\\.build-tools\\ui-opt\\phase-complete-after-dispatch\\results\\captures\\vue-1000.bmp --width 1280 --height 720 --device-scale 1.0 --timeout-ms 900000",
+        "clock": {
+          "name": "QueryPerformanceCounter",
+          "frequency_hz": 10000000,
+          "qpc_pair_lower_bound_ticks": 0,
+          "timing_overhead_subtracted": false
+        },
+        "total_observed": {
+          "boundary": "first instrumented phase entry through process atexit report",
+          "ticks": 187467011,
+          "milliseconds": 18746.7011
+        },
+        "categories": [
+          {
+            "name": "host_api_inclusive",
+            "scope_calls": 270,
+            "outermost_calls": 270,
+            "outermost_ticks": 176348859,
+            "outermost_milliseconds": 17634.8859
+          },
+          {
+            "name": "js_execution_boundaries_inclusive_native_callbacks",
+            "scope_calls": 40407319,
+            "outermost_calls": 1032,
+            "outermost_ticks": 113297489,
+            "outermost_milliseconds": 11329.7489
+          },
+          {
+            "name": "native_callback_inclusive_reentrant_js",
+            "scope_calls": 1016905,
+            "outermost_calls": 1016888,
+            "outermost_ticks": 11246635,
+            "outermost_milliseconds": 1124.6635
+          },
+          {
+            "name": "layout_lifecycle_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 30974315,
+            "outermost_milliseconds": 3097.4315
+          },
+          {
+            "name": "software_paint_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 7592925,
+            "outermost_milliseconds": 759.2925
+          },
+          {
+            "name": "paint_total_inclusive",
+            "scope_calls": 271,
+            "outermost_calls": 271,
+            "outermost_ticks": 38567756,
+            "outermost_milliseconds": 3856.7756
+          },
+          {
+            "name": "joint_gc_host_cycle_inclusive",
+            "scope_calls": 7,
+            "outermost_calls": 7,
+            "outermost_ticks": 23064926,
+            "outermost_milliseconds": 2306.4926
+          },
+          {
+            "name": "quickjs_gc_inclusive",
+            "scope_calls": 15,
+            "outermost_calls": 15,
+            "outermost_ticks": 23937437,
+            "outermost_milliseconds": 2393.7437
+          },
+          {
+            "name": "cppgc_native_gc_inclusive",
+            "scope_calls": 7,
+            "outermost_calls": 7,
+            "outermost_ticks": 1190156,
+            "outermost_milliseconds": 119.0156
+          },
+          {
+            "name": "quickjs_bridge_gc_pass_inclusive",
+            "scope_calls": 14,
+            "outermost_calls": 14,
+            "outermost_ticks": 21873546,
+            "outermost_milliseconds": 2187.3546
+          }
+        ],
+        "native_callback_callsites": [
+          {
+            "rva": "0x1685e6",
+            "calls": 97748
+          },
+          {
+            "rva": "0x16a57f",
+            "calls": 919150
+          },
+          {
+            "rva": "0x16b231",
+            "calls": 3
+          },
+          {
+            "rva": "0x16bc7a",
+            "calls": 4
+          }
+        ],
+        "native_callback_targets": [
+          {
+            "target_rva": "0x6c18e0",
+            "calls": 19810,
+            "inclusive_ticks": 287292,
+            "inclusive_milliseconds": 28.7292
+          },
+          {
+            "target_rva": "0x6d1ad3",
+            "calls": 1,
+            "inclusive_ticks": 2,
+            "inclusive_milliseconds": 0.0002
+          },
+          {
+            "target_rva": "0x6c1b40",
+            "calls": 101291,
+            "inclusive_ticks": 1874269,
+            "inclusive_milliseconds": 187.4269
+          },
+          {
+            "target_rva": "0x11b204b",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0xe52315",
+            "calls": 128,
+            "inclusive_ticks": 9866,
+            "inclusive_milliseconds": 0.9866
+          },
+          {
+            "target_rva": "0x6c2e78",
+            "calls": 39660,
+            "inclusive_ticks": 686702,
+            "inclusive_milliseconds": 68.6702
+          },
+          {
+            "target_rva": "0x10b3319",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x7b363a",
+            "calls": 19850,
+            "inclusive_ticks": 130758,
+            "inclusive_milliseconds": 13.0758
+          },
+          {
+            "target_rva": "0x6c4022",
+            "calls": 69,
+            "inclusive_ticks": 2540,
+            "inclusive_milliseconds": 0.254
+          },
+          {
+            "target_rva": "0xe3433e",
+            "calls": 71,
+            "inclusive_ticks": 403,
+            "inclusive_milliseconds": 0.0403
+          },
+          {
+            "target_rva": "0xe44877",
+            "calls": 1,
+            "inclusive_ticks": 65,
+            "inclusive_milliseconds": 0.0065
+          },
+          {
+            "target_rva": "0xe049a4",
+            "calls": 1,
+            "inclusive_ticks": 838,
+            "inclusive_milliseconds": 0.0838
+          },
+          {
+            "target_rva": "0xe459de",
+            "calls": 1,
+            "inclusive_ticks": 39,
+            "inclusive_milliseconds": 0.0039
+          },
+          {
+            "target_rva": "0xe15ff0",
+            "calls": 6,
+            "inclusive_ticks": 82,
+            "inclusive_milliseconds": 0.0082
+          },
+          {
+            "target_rva": "0xe1622c",
+            "calls": 3,
+            "inclusive_ticks": 179,
+            "inclusive_milliseconds": 0.0179
+          },
+          {
+            "target_rva": "0x8d63e2",
+            "calls": 10,
+            "inclusive_ticks": 14,
+            "inclusive_milliseconds": 0.0014
+          },
+          {
+            "target_rva": "0x8d66b9",
+            "calls": 57605,
+            "inclusive_ticks": 100095,
+            "inclusive_milliseconds": 10.0095
+          },
+          {
+            "target_rva": "0x8d6a9f",
+            "calls": 47686,
+            "inclusive_ticks": 124238,
+            "inclusive_milliseconds": 12.4238
+          },
+          {
+            "target_rva": "0x8d6d2b",
+            "calls": 330,
+            "inclusive_ticks": 3151,
+            "inclusive_milliseconds": 0.3151
+          },
+          {
+            "target_rva": "0x8d6dcc",
+            "calls": 80475,
+            "inclusive_ticks": 390495,
+            "inclusive_milliseconds": 39.0495
+          },
+          {
+            "target_rva": "0x446fa3",
+            "calls": 120,
+            "inclusive_ticks": 552,
+            "inclusive_milliseconds": 0.0552
+          },
+          {
+            "target_rva": "0x4471fa",
+            "calls": 101170,
+            "inclusive_ticks": 400038,
+            "inclusive_milliseconds": 40.0038
+          },
+          {
+            "target_rva": "0x447214",
+            "calls": 48790,
+            "inclusive_ticks": 477894,
+            "inclusive_milliseconds": 47.7894
+          },
+          {
+            "target_rva": "0xa876a7",
+            "calls": 1,
+            "inclusive_ticks": 2,
+            "inclusive_milliseconds": 0.0002
+          },
+          {
+            "target_rva": "0x44787e",
+            "calls": 10,
+            "inclusive_ticks": 417,
+            "inclusive_milliseconds": 0.0417
+          },
+          {
+            "target_rva": "0x8d790b",
+            "calls": 196724,
+            "inclusive_ticks": 1698214,
+            "inclusive_milliseconds": 169.8214
+          },
+          {
+            "target_rva": "0xe480e4",
+            "calls": 1,
+            "inclusive_ticks": 40709,
+            "inclusive_milliseconds": 4.0709
+          },
+          {
+            "target_rva": "0x7582cb",
+            "calls": 126,
+            "inclusive_ticks": 1468,
+            "inclusive_milliseconds": 0.1468
+          },
+          {
+            "target_rva": "0x8d854b",
+            "calls": 36649,
+            "inclusive_ticks": 1211933,
+            "inclusive_milliseconds": 121.1933
+          },
+          {
+            "target_rva": "0xe38958",
+            "calls": 1,
+            "inclusive_ticks": 1529,
+            "inclusive_milliseconds": 0.1529
+          },
+          {
+            "target_rva": "0xe389bb",
+            "calls": 126,
+            "inclusive_ticks": 4949,
+            "inclusive_milliseconds": 0.4949
+          },
+          {
+            "target_rva": "0x10f8e5e",
+            "calls": 7,
+            "inclusive_ticks": 29,
+            "inclusive_milliseconds": 0.0029
+          },
+          {
+            "target_rva": "0x8d92f4",
+            "calls": 97745,
+            "inclusive_ticks": 218737,
+            "inclusive_milliseconds": 21.8737
+          },
+          {
+            "target_rva": "0x8d96ce",
+            "calls": 49010,
+            "inclusive_ticks": 15842,
+            "inclusive_milliseconds": 1.5842
+          },
+          {
+            "target_rva": "0x11ba4c7",
+            "calls": 1,
+            "inclusive_ticks": 2,
+            "inclusive_milliseconds": 0.0002
+          },
+          {
+            "target_rva": "0xe4ad30",
+            "calls": 1,
+            "inclusive_ticks": 36217,
+            "inclusive_milliseconds": 3.6217
+          },
+          {
+            "target_rva": "0xcfb7fb",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44b8d7",
+            "calls": 9,
+            "inclusive_ticks": 153,
+            "inclusive_milliseconds": 0.0153
+          },
+          {
+            "target_rva": "0x11bbbb3",
+            "calls": 1,
+            "inclusive_ticks": 3,
+            "inclusive_milliseconds": 0.0003
+          },
+          {
+            "target_rva": "0xdcc19b",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44c56b",
+            "calls": 49120,
+            "inclusive_ticks": 174112,
+            "inclusive_milliseconds": 17.4112
+          },
+          {
+            "target_rva": "0x11bc8ab",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0xcfda3d",
+            "calls": 1,
+            "inclusive_ticks": 0,
+            "inclusive_milliseconds": 0
+          },
+          {
+            "target_rva": "0xdfdd4f",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x44e688",
+            "calls": 385,
+            "inclusive_ticks": 13962,
+            "inclusive_milliseconds": 1.3962
+          },
+          {
+            "target_rva": "0x44e7fa",
+            "calls": 165,
+            "inclusive_ticks": 167593,
+            "inclusive_milliseconds": 16.7593
+          },
+          {
+            "target_rva": "0xdfe9f1",
+            "calls": 40,
+            "inclusive_ticks": 804,
+            "inclusive_milliseconds": 0.0804
+          },
+          {
+            "target_rva": "0x44eb1a",
+            "calls": 10,
+            "inclusive_ticks": 217,
+            "inclusive_milliseconds": 0.0217
+          },
+          {
+            "target_rva": "0x118ee37",
+            "calls": 1,
+            "inclusive_ticks": 1,
+            "inclusive_milliseconds": 0.0001
+          },
+          {
+            "target_rva": "0x46f436",
+            "calls": 48790,
+            "inclusive_ticks": 51981,
+            "inclusive_milliseconds": 5.1981
+          },
+          {
+            "target_rva": "0x44fbb5",
+            "calls": 20900,
+            "inclusive_ticks": 167356,
+            "inclusive_milliseconds": 16.7356
+          }
+        ],
+        "dropped_callback_callsite_events": 0,
+        "dropped_callback_target_events": 0,
+        "dropped_callback_target_timings": 0
+      },
+      "native_callback_callsites_symbolized": [
+        {
+          "rva": "0x16a57f",
+          "calls": 919150,
+          "symbol": "?NativeCall@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@1HPEAU2@H@Z",
+          "symbol_rva": "0x16a006",
+          "displacement": 1401,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x1685e6",
+          "calls": 97748,
+          "symbol": "?HostGet@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+          "symbol_rva": "0x1684b6",
+          "displacement": 304,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x16bc7a",
+          "calls": 4,
+          "symbol": "?NativeGet@?A0x18E3314D@v8@@YA?AUJSValue@@PEAUJSContext@@U2@1IAEBUNativeProperty@?A0x18E3314D@1@@Z",
+          "symbol_rva": "0x16bbc5",
+          "displacement": 181,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        },
+        {
+          "rva": "0x16b231",
+          "calls": 3,
+          "symbol": "?InterceptOwn@?A0x18E3314D@v8@@YAHPEAUJSContext@@PEAUJSPropertyDescriptor@@UJSValue@@IAEAUHandler@?A0x18E3314D@1@@Z",
+          "symbol_rva": "0x16b194",
+          "displacement": 157,
+          "object": "mini-ui:791eae3654574fd278fd.obj"
+        }
+      ],
+      "native_callback_targets_symbolized": [
+        {
+          "target_rva": "0x6c1b40",
+          "calls": 101291,
+          "inclusive_ticks": 1874269,
+          "inclusive_milliseconds": 187.4269,
+          "symbol": "?CreateElementOperationCallbackForMainWorld@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c1b40",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x8d790b",
+          "calls": 196724,
+          "inclusive_ticks": 1698214,
+          "inclusive_milliseconds": 169.8214,
+          "symbol": "?InsertBeforeOperationCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d790b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d854b",
+          "calls": 36649,
+          "inclusive_ticks": 1211933,
+          "inclusive_milliseconds": 121.1933,
+          "symbol": "?RemoveChildOperationCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d854b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x6c2e78",
+          "calls": 39660,
+          "inclusive_ticks": 686702,
+          "inclusive_milliseconds": 68.6702,
+          "symbol": "?CreateTextNodeOperationCallback@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c2e78",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x447214",
+          "calls": 48790,
+          "inclusive_ticks": 477894,
+          "inclusive_milliseconds": 47.7894,
+          "symbol": "?ClassListAttributeGetCallbackForMainWorld@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x447214",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x4471fa",
+          "calls": 101170,
+          "inclusive_ticks": 400038,
+          "inclusive_milliseconds": 40.0038,
+          "symbol": "?ClassNameAttributeSetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x4471fa",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x8d6dcc",
+          "calls": 80475,
+          "inclusive_ticks": 390495,
+          "inclusive_milliseconds": 39.0495,
+          "symbol": "?TextContentAttributeSetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6dcc",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x6c18e0",
+          "calls": 19810,
+          "inclusive_ticks": 287292,
+          "inclusive_milliseconds": 28.7292,
+          "symbol": "?CreateCommentOperationCallback@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c18e0",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0x8d92f4",
+          "calls": 97745,
+          "inclusive_ticks": 218737,
+          "inclusive_milliseconds": 21.8737,
+          "symbol": "?IndexedPropertyGetterCallback@V8NodeList@blink@@SA?AW4Intercepted@v8@@IAEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0x8d92f4",
+          "displacement": 0,
+          "object": "mini-ui:b3262b5c5afc509cd871.obj"
+        },
+        {
+          "target_rva": "0x44c56b",
+          "calls": 49120,
+          "inclusive_ticks": 174112,
+          "inclusive_milliseconds": 17.4112,
+          "symbol": "?GetAttributeOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44c56b",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x44e7fa",
+          "calls": 165,
+          "inclusive_ticks": 167593,
+          "inclusive_milliseconds": 16.7593,
+          "symbol": "?QuerySelectorAllOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44e7fa",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x44fbb5",
+          "calls": 20900,
+          "inclusive_ticks": 167356,
+          "inclusive_milliseconds": 16.7356,
+          "symbol": "?SetAttributeOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44fbb5",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x7b363a",
+          "calls": 19850,
+          "inclusive_ticks": 130758,
+          "inclusive_milliseconds": 13.0758,
+          "symbol": "?AddEventListenerOperationCallback@v8_event_target@?A0xFE47DA13@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x7b363a",
+          "displacement": 0,
+          "object": "mini-ui:32472c5713c44f7f0f8b.obj"
+        },
+        {
+          "target_rva": "0x8d6a9f",
+          "calls": 47686,
+          "inclusive_ticks": 124238,
+          "inclusive_milliseconds": 12.4238,
+          "symbol": "?NextSiblingAttributeGetCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6a9f",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x8d66b9",
+          "calls": 57605,
+          "inclusive_ticks": 100095,
+          "inclusive_milliseconds": 10.0095,
+          "symbol": "?ParentNodeAttributeGetCallbackForMainWorld@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d66b9",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x46f436",
+          "calls": 48790,
+          "inclusive_ticks": 51981,
+          "inclusive_milliseconds": 5.1981,
+          "symbol": "?ContainsOperationCallback@v8_dom_token_list@?A0x85061764@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x46f436",
+          "displacement": 0,
+          "object": "mini-ui:f593ca29f76181481a01.obj"
+        },
+        {
+          "target_rva": "0xe480e4",
+          "calls": 1,
+          "inclusive_ticks": 40709,
+          "inclusive_milliseconds": 4.0709,
+          "symbol": "?MathMLElementExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe480e4",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0xe4ad30",
+          "calls": 1,
+          "inclusive_ticks": 36217,
+          "inclusive_milliseconds": 3.6217,
+          "symbol": "?SVGElementExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe4ad30",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x8d96ce",
+          "calls": 49010,
+          "inclusive_ticks": 15842,
+          "inclusive_milliseconds": 1.5842,
+          "symbol": "?LengthAttributeGetCallback@v8_node_list@?A0x4B84A5C1@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d96ce",
+          "displacement": 0,
+          "object": "mini-ui:b3262b5c5afc509cd871.obj"
+        },
+        {
+          "target_rva": "0x44e688",
+          "calls": 385,
+          "inclusive_ticks": 13962,
+          "inclusive_milliseconds": 1.3962,
+          "symbol": "?QuerySelectorOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44e688",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe52315",
+          "calls": 128,
+          "inclusive_ticks": 9866,
+          "inclusive_milliseconds": 0.9866,
+          "symbol": "?RequestAnimationFrameOperationCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe52315",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0xe389bb",
+          "calls": 126,
+          "inclusive_ticks": 4949,
+          "inclusive_milliseconds": 0.4949,
+          "symbol": "?PerformanceAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe389bb",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x8d6d2b",
+          "calls": 330,
+          "inclusive_ticks": 3151,
+          "inclusive_milliseconds": 0.3151,
+          "symbol": "?TextContentAttributeGetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d6d2b",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x6c4022",
+          "calls": 69,
+          "inclusive_ticks": 2540,
+          "inclusive_milliseconds": 0.254,
+          "symbol": "?GetElementByIdOperationCallbackForMainWorld@v8_document@?A0xA7078E40@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6c4022",
+          "displacement": 0,
+          "object": "mini-ui:ea4c0c42225f948a8136.obj"
+        },
+        {
+          "target_rva": "0xe38958",
+          "calls": 1,
+          "inclusive_ticks": 1529,
+          "inclusive_milliseconds": 0.1529,
+          "symbol": "?TrustedTypesAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe38958",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x7582cb",
+          "calls": 126,
+          "inclusive_ticks": 1468,
+          "inclusive_milliseconds": 0.1468,
+          "symbol": "?NowOperationCallback@v8_performance@?A0xA4D00CD4@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x7582cb",
+          "displacement": 0,
+          "object": "mini-ui:01334e8cc61d1110a5b4.obj"
+        },
+        {
+          "target_rva": "0xe049a4",
+          "calls": 1,
+          "inclusive_ticks": 838,
+          "inclusive_milliseconds": 0.0838,
+          "symbol": "?CreatePolicyOperationCallback@v8_trusted_type_policy_factory@?A0x111DC8F1@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe049a4",
+          "displacement": 0,
+          "object": "mini-ui:6a499e28ed20a2a8fb90.obj"
+        },
+        {
+          "target_rva": "0xdfe9f1",
+          "calls": 40,
+          "inclusive_ticks": 804,
+          "inclusive_milliseconds": 0.0804,
+          "symbol": "?TypeAttributeSetCallback@v8_html_button_element@?A0x23DAC80@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdfe9f1",
+          "displacement": 0,
+          "object": "mini-ui:f1a033b6f1e255cd690d.obj"
+        },
+        {
+          "target_rva": "0x446fa3",
+          "calls": 120,
+          "inclusive_ticks": 552,
+          "inclusive_milliseconds": 0.0552,
+          "symbol": "?TagNameAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x446fa3",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0x44787e",
+          "calls": 10,
+          "inclusive_ticks": 417,
+          "inclusive_milliseconds": 0.0417,
+          "symbol": "?InnerHTMLAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44787e",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe3433e",
+          "calls": 71,
+          "inclusive_ticks": 403,
+          "inclusive_milliseconds": 0.0403,
+          "symbol": "?DocumentAttributeGetCallback@v8_window@?A0x1AC04BA7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xe3433e",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x44eb1a",
+          "calls": 10,
+          "inclusive_ticks": 217,
+          "inclusive_milliseconds": 0.0217,
+          "symbol": "?RemoveAttributeOperationCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44eb1a",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe1622c",
+          "calls": 3,
+          "inclusive_ticks": 179,
+          "inclusive_milliseconds": 0.0179,
+          "symbol": "?NamedPropertyDescriptorCallback@V8WindowProperties@blink@@SA?AW4Intercepted@v8@@V?$Local@VName@v8@@@4@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe1622c",
+          "displacement": 0,
+          "object": "mini-ui:e055cf1af83de365f694.obj"
+        },
+        {
+          "target_rva": "0x44b8d7",
+          "calls": 9,
+          "inclusive_ticks": 153,
+          "inclusive_milliseconds": 0.0153,
+          "symbol": "?ChildElementCountAttributeGetCallback@v8_element@?A0xE7886385@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x44b8d7",
+          "displacement": 0,
+          "object": "mini-ui:2e0443dbe3b17d092789.obj"
+        },
+        {
+          "target_rva": "0xe15ff0",
+          "calls": 6,
+          "inclusive_ticks": 82,
+          "inclusive_milliseconds": 0.0082,
+          "symbol": "?NamedPropertyGetterCallback@V8WindowProperties@blink@@SA?AW4Intercepted@v8@@V?$Local@VName@v8@@@4@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe15ff0",
+          "displacement": 0,
+          "object": "mini-ui:e055cf1af83de365f694.obj"
+        },
+        {
+          "target_rva": "0xe44877",
+          "calls": 1,
+          "inclusive_ticks": 65,
+          "inclusive_milliseconds": 0.0065,
+          "symbol": "?ElementExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe44877",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0xe459de",
+          "calls": 1,
+          "inclusive_ticks": 39,
+          "inclusive_milliseconds": 0.0039,
+          "symbol": "?HTMLElementExposedConstructCallback@v8_window@?A0x1AC04BA7@blink@@YAXV?$Local@VName@v8@@@v8@@AEBV?$PropertyCallbackInfo@VValue@v8@@@4@@Z",
+          "symbol_rva": "0xe459de",
+          "displacement": 0,
+          "object": "mini-ui:651265527eb6325ef002.obj"
+        },
+        {
+          "target_rva": "0x10f8e5e",
+          "calls": 7,
+          "inclusive_ticks": 29,
+          "inclusive_milliseconds": 0.0029,
+          "symbol": "?IsValidConstructorMode@V8ObjectConstructor@blink@@SAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x10f8e5e",
+          "displacement": 0,
+          "object": "mini-ui:9f2f5da8a0802427ea63.obj"
+        },
+        {
+          "target_rva": "0x8d63e2",
+          "calls": 10,
+          "inclusive_ticks": 14,
+          "inclusive_milliseconds": 0.0014,
+          "symbol": "?NodeTypeAttributeGetCallback@v8_node@?A0x6B1BB3E7@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x8d63e2",
+          "displacement": 0,
+          "object": "mini-ui:ac03563fece5d845f0ba.obj"
+        },
+        {
+          "target_rva": "0x11bbbb3",
+          "calls": 1,
+          "inclusive_ticks": 3,
+          "inclusive_milliseconds": 0.0003,
+          "symbol": "?ConstructorCallback@v8_html_table_section_element@?A0x5C66EABA@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11bbbb3",
+          "displacement": 0,
+          "object": "mini-ui:f95bcf99cab151399215.obj"
+        },
+        {
+          "target_rva": "0x6d1ad3",
+          "calls": 1,
+          "inclusive_ticks": 2,
+          "inclusive_milliseconds": 0.0002,
+          "symbol": "?ConstructorCallback@v8_html_element@?A0x974AB585@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x6d1ad3",
+          "displacement": 0,
+          "object": "mini-ui:c87b71318838e1f78180.obj"
+        },
+        {
+          "target_rva": "0xa876a7",
+          "calls": 1,
+          "inclusive_ticks": 2,
+          "inclusive_milliseconds": 0.0002,
+          "symbol": "?ConstructorCallback@v8_html_template_element@?A0xF4145B14@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xa876a7",
+          "displacement": 0,
+          "object": "mini-ui:a02818a559a23e9e2a5a.obj"
+        },
+        {
+          "target_rva": "0x11ba4c7",
+          "calls": 1,
+          "inclusive_ticks": 2,
+          "inclusive_milliseconds": 0.0002,
+          "symbol": "?ConstructorCallback@v8_html_table_element@?A0xD810C35@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11ba4c7",
+          "displacement": 0,
+          "object": "mini-ui:2ad224920b5e64fd4f8e.obj"
+        },
+        {
+          "target_rva": "0x11b204b",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_heading_element@?A0x396CDB3A@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11b204b",
+          "displacement": 0,
+          "object": "mini-ui:a159f82cc9742cb8b68c.obj"
+        },
+        {
+          "target_rva": "0x10b3319",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_span_element@?A0xA7C44DF4@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x10b3319",
+          "displacement": 0,
+          "object": "mini-ui:42c7ca66ac6b59f11e25.obj"
+        },
+        {
+          "target_rva": "0xcfb7fb",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_text@?A0xE30B2C07@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xcfb7fb",
+          "displacement": 0,
+          "object": "mini-ui:c3c0dbceee3a55713841.obj"
+        },
+        {
+          "target_rva": "0xdcc19b",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_div_element@?A0xA9374AD2@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdcc19b",
+          "displacement": 0,
+          "object": "mini-ui:e6355e3a85e6f9ed3200.obj"
+        },
+        {
+          "target_rva": "0x11bc8ab",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_row_element@?A0x977492F0@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x11bc8ab",
+          "displacement": 0,
+          "object": "mini-ui:1d1b5623277c416d81db.obj"
+        },
+        {
+          "target_rva": "0xdfdd4f",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_button_element@?A0x23DAC80@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xdfdd4f",
+          "displacement": 0,
+          "object": "mini-ui:f1a033b6f1e255cd690d.obj"
+        },
+        {
+          "target_rva": "0x118ee37",
+          "calls": 1,
+          "inclusive_ticks": 1,
+          "inclusive_milliseconds": 0.0001,
+          "symbol": "?ConstructorCallback@v8_html_table_cell_element@?A0x593D640E@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0x118ee37",
+          "displacement": 0,
+          "object": "mini-ui:2a790672493671c229a5.obj"
+        },
+        {
+          "target_rva": "0xcfda3d",
+          "calls": 1,
+          "inclusive_ticks": 0,
+          "inclusive_milliseconds": 0,
+          "symbol": "?ConstructorCallback@v8_comment@?A0x6AB680C9@blink@@YAXAEBV?$FunctionCallbackInfo@VValue@v8@@@v8@@@Z",
+          "symbol_rva": "0xcfda3d",
+          "displacement": 0,
+          "object": "mini-ui:9cc9e73a069f887910fd.obj"
+        }
+      ]
+    }
+  ]
+}

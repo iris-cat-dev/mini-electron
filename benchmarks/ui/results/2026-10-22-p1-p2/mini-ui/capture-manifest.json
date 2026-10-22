@@ -1,0 +1,50 @@
+[
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\react-100.bmp",
+    "original_sha256": "fdd674f55017a8b4078337b8b313451ad828f3331d234d9ad7a2a5d77a8b2e79",
+    "lossless_png": "mini-ui/captures/react-100.png",
+    "png_sha256": "948eefd2759869165ed6725b13ee66434ce5f886475722fcd3206ac3672d34c4"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\react-1000.bmp",
+    "original_sha256": "dd60253f09559dff73be4eaaa98edad9869fe6e42b28c14a85c5e045566fc2fe",
+    "lossless_png": "mini-ui/captures/react-1000.png",
+    "png_sha256": "114a608961e68a7e77b4182cf292ea3079eb592d91c12b633e3a7482f7c15959"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\react-10000.bmp",
+    "original_sha256": "6d27eda67f9345db5e4d2a1aca058a4ec1233b77cec63c66e9f0018ff2cb69ca",
+    "lossless_png": "mini-ui/captures/react-10000.png",
+    "png_sha256": "032e7d8cd796a368c58b36b5a5c0e815a3a6a25f3546af796854c4c1a13b07ba"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\react-5000.bmp",
+    "original_sha256": "dfc7ed1aa9522cb5e100b4e9421e4e7f0bb17fc5f8e54181653251f29f4bc80b",
+    "lossless_png": "mini-ui/captures/react-5000.png",
+    "png_sha256": "97fd71745a54840665347e4d3eb273d97432f561eb859ba9ab43aaeaeefa11c3"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\vue-100.bmp",
+    "original_sha256": "90da1c43392650a1f0552bc8c66dbb7bd6361e921cb990391f9c0947eee8b09f",
+    "lossless_png": "mini-ui/captures/vue-100.png",
+    "png_sha256": "8568869e6b1bf5cde257b5838253d20c2c8d960a489ea10b2c596a566debd4c8"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\vue-1000.bmp",
+    "original_sha256": "1ca7cfac20fcdf1d5358d4c546f2fc7e7a8daaa55cca41195b4d0d60f261921a",
+    "lossless_png": "mini-ui/captures/vue-1000.png",
+    "png_sha256": "5736d567f3ba5af5610176fc523248b849eb2b52605b524021501359fc5b58a9"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\vue-10000.bmp",
+    "original_sha256": "8ad4bd40e3542c38b2fbfcfad7bfe19d15f656d5a1596939b36893a2d502783d",
+    "lossless_png": "mini-ui/captures/vue-10000.png",
+    "png_sha256": "01dee1ee460a7432ed68eb8054bc11d9e1dcff7a0d721a462bd7a8d258a8c323"
+  },
+  {
+    "original_file": "D:\\Project\\mini-electron\\out\\ui-opt-final-native\\captures\\vue-5000.bmp",
+    "original_sha256": "e174984a749046bf931aad64055d50597e8be895090683a55cac65b0b1d6e162",
+    "lossless_png": "mini-ui/captures/vue-5000.png",
+    "png_sha256": "a4521aaa0be38fef886136fbc6634c51efb9fc27a3d4244a95fbd46493f0c470"
+  }
+]

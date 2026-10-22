@@ -80,9 +80,15 @@ FetchResponseData* CreateFetchResponseDataFromFetchAPIResponse(ScriptState* scri
     FetchResponseData* response = Response::CreateUnfilteredFetchResponseDataWithoutBody(script_state, fetch_api_response);
 
     if (fetch_api_response.blob) {
+#if defined(MINI_UI_QUICKJS)
+        response->ReplaceBodyStreamBuffer(
+            BodyStreamBuffer::Create(script_state, MakeGarbageCollected<BlobBytesConsumer>(ExecutionContext::From(script_state), fetch_api_response.blob),
+                nullptr /* AbortSignal */, fetch_api_response.side_data_blob));
+#else
         response->ReplaceBodyStreamBuffer(
             BodyStreamBuffer::Create(script_state, MakeGarbageCollected<BlobBytesConsumer>(ExecutionContext::From(script_state), fetch_api_response.blob),
                 nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr, fetch_api_response.side_data_blob));
+#endif
     }
 
     // Filter the response according to |fetch_api_response|'s ResponseType.
@@ -138,7 +144,7 @@ Response* Response::Create(ScriptState* script_state, ScriptValue body_value, co
         // https://crbug.com/335871.
     } else if (Blob* blob = V8Blob::ToWrappable(isolate, body)) {
         body_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<BlobBytesConsumer>(execution_context, blob->GetBlobDataHandle()),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
         content_type = blob->type();
     } else if (body->IsArrayBuffer()) {
         // Avoid calling into V8 from the following constructor parameters, which
@@ -151,7 +157,7 @@ Response* Response::Create(ScriptState* script_state, ScriptValue body_value, co
             return nullptr;
         } else {
             body_buffer = BodyStreamBuffer::Create(
-                script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+                script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer), nullptr /* AbortSignal */, nullptr);
         }
     } else if (body->IsArrayBufferView()) {
         // Avoid calling into V8 from the following constructor parameters, which
@@ -164,7 +170,7 @@ Response* Response::Create(ScriptState* script_state, ScriptValue body_value, co
             return nullptr;
         } else {
             body_buffer = BodyStreamBuffer::Create(
-                script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer_view), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+                script_state, MakeGarbageCollected<FormDataBytesConsumer>(array_buffer_view), nullptr /* AbortSignal */, nullptr);
         }
     } else if (FormData* form = V8FormData::ToWrappable(isolate, body)) {
         scoped_refptr<EncodedFormData> form_data = form->EncodeMultiPartFormData();
@@ -172,21 +178,21 @@ Response* Response::Create(ScriptState* script_state, ScriptValue body_value, co
         // FormDataEncoder::generateUniqueBoundaryString.
         content_type = AtomicString("multipart/form-data; boundary=") + form_data->Boundary().data();
         body_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<FormDataBytesConsumer>(execution_context, std::move(form_data)),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
     } else if (URLSearchParams* url_search_params = V8URLSearchParams::ToWrappable(isolate, body)) {
         scoped_refptr<EncodedFormData> form_data = url_search_params->ToEncodedFormData();
         body_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<FormDataBytesConsumer>(execution_context, std::move(form_data)),
-            nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            nullptr /* AbortSignal */, nullptr);
         content_type = "application/x-www-form-urlencoded;charset=UTF-8";
     } else if (ReadableStream* stream = V8ReadableStream::ToWrappable(isolate, body)) {
         UseCounter::Count(execution_context, WebFeature::kFetchResponseConstructionWithStream);
-        body_buffer = MakeGarbageCollected<BodyStreamBuffer>(script_state, stream, /*cached_metadata_handler=*/nullptr);
+        body_buffer = MakeGarbageCollected<BodyStreamBuffer>(script_state, stream, nullptr);
     } else {
         String string = NativeValueTraits<IDLUSVString>::NativeValue(isolate, body, exception_state);
         if (exception_state.HadException())
             return nullptr;
         body_buffer = BodyStreamBuffer::Create(
-            script_state, MakeGarbageCollected<FormDataBytesConsumer>(string), nullptr /* AbortSignal */, /*cached_metadata_handler=*/nullptr);
+            script_state, MakeGarbageCollected<FormDataBytesConsumer>(string), nullptr /* AbortSignal */, nullptr);
         content_type = "text/plain;charset=UTF-8";
     }
     return Create(script_state, body_buffer, content_type, init, exception_state);
@@ -343,7 +349,7 @@ Response* Response::staticJson(ScriptState* script_state, ScriptValue data, cons
     }
 
     BodyStreamBuffer* body_buffer = BodyStreamBuffer::Create(script_state, MakeGarbageCollected<FormDataBytesConsumer>(string),
-        /*abort_signal=*/nullptr, /*cached_metadata_handler=*/nullptr);
+        /*abort_signal=*/nullptr, nullptr);
     String content_type = "application/json";
 
     return Create(script_state, body_buffer, content_type, init, exception_state);
@@ -357,14 +363,18 @@ FetchResponseData* Response::CreateUnfilteredFetchResponseDataWithoutBody(Script
     else
         response = FetchResponseData::CreateNetworkErrorResponse();
 
+#if !defined(MINI_UI_QUICKJS)
     response->SetPadding(fetch_api_response.padding);
+#endif
     response->SetResponseSource(fetch_api_response.response_source);
     response->SetURLList(fetch_api_response.url_list);
     response->SetStatus(fetch_api_response.status_code);
     response->SetStatusMessage(WTF::AtomicString(fetch_api_response.status_text));
     response->SetRequestMethod(WTF::AtomicString(fetch_api_response.request_method));
     response->SetResponseTime(fetch_api_response.response_time);
+#if !defined(MINI_UI_QUICKJS)
     response->SetCacheStorageCacheName(fetch_api_response.cache_storage_cache_name);
+#endif
     response->SetConnectionInfo(fetch_api_response.connection_info);
     response->SetAlpnNegotiatedProtocol(WTF::AtomicString(fetch_api_response.alpn_negotiated_protocol));
     response->SetWasFetchedViaSpdy(fetch_api_response.was_fetched_via_spdy);

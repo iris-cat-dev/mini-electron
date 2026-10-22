@@ -231,6 +231,7 @@ bool ScrollSnapshotTimeline::ValidateSnapshot()
     return is_valid;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::AnimationTimeline* ScrollSnapshotTimeline::EnsureCompositorTimeline()
 {
     if (compositor_timeline_) {
@@ -250,5 +251,6 @@ void ScrollSnapshotTimeline::UpdateCompositorTimeline()
     ToScrollTimeline(compositor_timeline_.get())
         ->UpdateScrollerIdAndScrollOffsets(scroll_timeline_util::GetCompositorScrollElementId(ResolvedSource()), GetResolvedScrollOffsets());
 }
+#endif
 
 } // namespace blink

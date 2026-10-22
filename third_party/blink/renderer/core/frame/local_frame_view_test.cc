@@ -411,6 +411,7 @@ TEST_F(LocalFrameViewTest, TogglePaintEligibility)
     EXPECT_TRUE(child_timing.FirstEligibleToPaint().is_null());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 TEST_F(LocalFrameViewTest, WillNotBlockCommitsForNonMainFrames)
 {
     SetBodyInnerHTML("<iframe><p>Hello</p></iframe>");
@@ -420,6 +421,8 @@ TEST_F(LocalFrameViewTest, WillNotBlockCommitsForNonMainFrames)
     EXPECT_TRUE(GetDocument().View()->WillDoPaintHoldingForFCP());
     EXPECT_FALSE(ChildDocument().View()->WillDoPaintHoldingForFCP());
 }
+
+#endif
 
 TEST_F(LocalFrameViewTest, IsUpdatingLifecycle)
 {
@@ -727,12 +730,15 @@ private:
     base::test::ScopedFeatureList scoped_feature_list_;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 TEST_F(FencedFrameLocalFrameViewTest, DoNotDeferCommitsInFencedFrames)
 {
     InitializeFencedFrameRoot(blink::FencedFrame::DeprecatedFencedFrameMode::kDefault);
     GetDocument().SetDeferredCompositorCommitIsAllowed(true);
     EXPECT_FALSE(GetDocument().View()->WillDoPaintHoldingForFCP());
 }
+
+#endif
 
 class ResizableLocalFrameViewTest : public testing::Test {
 public:

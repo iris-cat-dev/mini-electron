@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/core/html/cross_origin_attribute.h"
 #include "third_party/blink/renderer/core/script/pending_script.h"
 #include "third_party/blink/renderer/core/script/script_scheduling_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rule_set.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_finish_observer.h"
 #include "third_party/blink/renderer/platform/loader/fetch/script_fetch_options.h"
@@ -62,7 +64,13 @@ public:
     // Script type at the time of #prepare-the-script-element. Import maps are
     // included here but not in `mojom::blink::ScriptType` because import maps are
     // handled differently from ordinal scripts after PrepareScript().
-    enum class ScriptTypeAtPrepare : uint8_t { kClassic, kModule, kImportMap, kSpeculationRules, kWebBundle, kInvalid };
+    enum class ScriptTypeAtPrepare : uint8_t {
+        kClassic, kModule, kImportMap,
+#if !defined(MINI_UI_QUICKJS)
+        kSpeculationRules,
+#endif
+        kWebBundle, kInvalid
+    };
 
     static ScriptTypeAtPrepare GetScriptTypeAtPrepare(const String& type_attribute_value, const String& language_attribute_value);
 
@@ -111,7 +119,9 @@ public:
     void HandleSourceAttribute(const String& source_url);
     void HandleAsyncAttribute();
     void Removed();
+#if !defined(MINI_UI_QUICKJS)
     void DocumentBaseURLChanged();
+#endif
 
 private:
     // ResourceFinishObserver. This should be used only for managing
@@ -129,10 +139,12 @@ private:
     // Calculate ScriptSchedulingType per spec (#prepare-the-script-element Steps
     // 31-32), before any intervention applied.
     ScriptSchedulingType GetScriptSchedulingTypePerSpec(Document& element_document, ParserBlockingInlineOption) const;
+#if !defined(MINI_UI_QUICKJS)
     // Methods to add/remove a SpeculationRuleSet in DocumentSpeculationRules.
     // Only used for <script type="speculationrules">.
     void AddSpeculationRuleSet(SpeculationRuleSet::Source* source);
     SpeculationRuleSet* RemoveSpeculationRuleSet();
+#endif
 
     Member<ScriptElementBase> element_;
 
@@ -160,8 +172,10 @@ private:
     // mapping rule and its loader.
     Member<ScriptWebBundle> script_web_bundle_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Speculation rule set registered by this script, if applicable.
     Member<SpeculationRuleSet> speculation_rule_set_;
+#endif
 
     // https://html.spec.whatwg.org/C/#script-processing-model
     // "A script element has several associated pieces of state.":

@@ -140,14 +140,18 @@ private:
     v8::Maybe<bool> WriteHostObject(v8::Isolate*, v8::Local<v8::Object> message) override;
     v8::Maybe<uint32_t> GetSharedArrayBufferId(v8::Isolate*, v8::Local<v8::SharedArrayBuffer>) override;
 
+#if !defined(MINI_UI_QUICKJS)
     v8::Maybe<uint32_t> GetWasmModuleTransferId(v8::Isolate*, v8::Local<v8::WasmModuleObject>) override;
+#endif
     // Reallocates memory at |ptr| to the new size and returns the new pointer or
     // nullptr on failure. |actual_size| will hold the actual size of allocation
     // requested.
     void* ReallocateBufferMemory(void* old_buffer, size_t, size_t* actual_size) override;
     void FreeBufferMemory(void* buffer) override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool AdoptSharedValueConveyor(v8::Isolate* isolate, v8::SharedValueConveyor&& conveyor) override;
+#endif
 
     ScriptState* script_state_;
     scoped_refptr<SerializedScriptValue> serialized_script_value_;

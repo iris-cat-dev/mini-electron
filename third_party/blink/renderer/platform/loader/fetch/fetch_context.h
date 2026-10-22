@@ -201,12 +201,14 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true iff we have LCP element locator hint data for the fetch
     // context.
     virtual bool DoesLCPPHaveLcpElementLocatorHintData()
     {
         return false;
     }
+#endif
 
     // Returns the origin of the top frame in the document or the dedicated
     // worker. This returns nullptr for Shared Workers and Service Workers.
@@ -223,10 +225,12 @@ public:
         return empty_unused_preloads_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void AddLcpPredictedCallback(base::OnceClosure callback)
     {
         NOTIMPLEMENTED();
     }
+#endif
 
 protected:
     const Vector<KURL> empty_unused_preloads_;

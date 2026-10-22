@@ -31,7 +31,9 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/css_style_sheet_resource.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -460,8 +462,10 @@ const AtomicString& StyleSheetContents::NamespaceURIFromPrefix(const AtomicStrin
 
 void StyleSheetContents::ParseAuthorStyleSheet(const CSSStyleSheetResource* cached_style_sheet)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT1("blink,devtools.timeline", "ParseAuthorStyleSheet", "data",
         [&](perfetto::TracedValue context) { inspector_parse_author_style_sheet_event::Data(std::move(context), cached_style_sheet); });
+#endif
 
     const ResourceResponse& response = cached_style_sheet->GetResponse();
     CSSStyleSheetResource::MIMETypeCheck mime_type_check = (IsQuirksModeBehavior(parser_context_->Mode()) && response.IsCorsSameOrigin())
@@ -655,7 +659,9 @@ static bool ChildRulesHaveFailedOrCanceledSubresources(const HeapVector<Member<S
         case StyleRuleBase::kFontPaletteValues:
         case StyleRuleBase::kFontFeatureValues:
         case StyleRuleBase::kFontFeature:
+#if !defined(MINI_UI_QUICKJS)
         case StyleRuleBase::kViewTransition:
+#endif
         case StyleRuleBase::kFunction:
         case StyleRuleBase::kPositionTry:
             break;

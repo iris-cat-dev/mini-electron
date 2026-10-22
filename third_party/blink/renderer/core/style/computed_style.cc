@@ -37,7 +37,9 @@
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink.h"
 #include "third_party/blink/renderer/core/animation/css/css_animation_data.h"
 #include "third_party/blink/renderer/core/animation/css/css_transition_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_property_equality.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
@@ -47,6 +49,7 @@
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/forms/html_legend_element.h"
@@ -54,7 +57,9 @@
 #include "third_party/blink/renderer/core/html/html_html_element.h"
 #include "third_party/blink/renderer/core/html/html_li_element.h"
 #include "third_party/blink/renderer/core/html/html_progress_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/custom/layout_worklet.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_block.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
@@ -949,6 +954,7 @@ bool ComputedStyle::DiffNeedsFullLayout(const Document& document, const Computed
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsDisplayLayoutCustomBox() && DiffNeedsFullLayoutForLayoutCustom(document, other)) {
         return true;
     }
@@ -956,10 +962,12 @@ bool ComputedStyle::DiffNeedsFullLayout(const Document& document, const Computed
     if (DisplayLayoutCustomParentName() && DiffNeedsFullLayoutForLayoutCustomChild(document, other)) {
         return true;
     }
+#endif
 
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ComputedStyle::DiffNeedsFullLayoutForLayoutCustom(const Document& document, const ComputedStyle& other) const
 {
     DCHECK(IsDisplayLayoutCustomBox());
@@ -1011,6 +1019,7 @@ bool ComputedStyle::DiffNeedsFullLayoutForLayoutCustomChild(const Document& docu
 
     return false;
 }
+#endif
 
 bool ComputedStyle::DiffNeedsNormalPaintInvalidation(const Document& document, const ComputedStyle& other, uint64_t field_diff) const
 {
@@ -1051,6 +1060,7 @@ bool ComputedStyle::DiffNeedsNormalPaintInvalidation(const Document& document, c
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (PaintImagesInternal()) {
         for (const auto& image : PaintImagesInternal()->Images()) {
             DCHECK(image);
@@ -1059,10 +1069,12 @@ bool ComputedStyle::DiffNeedsNormalPaintInvalidation(const Document& document, c
             }
         }
     }
+#endif
 
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ComputedStyle::DiffNeedsPaintInvalidationForPaintImage(const StyleImage& image, const ComputedStyle& other, const Document& document) const
 {
     // https://crbug.com/835589: early exit when paint target is associated with
@@ -1090,6 +1102,7 @@ bool ComputedStyle::DiffNeedsPaintInvalidationForPaintImage(const StyleImage& im
 
     return false;
 }
+#endif
 
 bool ComputedStyle::PropertiesEqual(const Vector<CSSPropertyID>& properties, const ComputedStyle& other) const
 {
@@ -1179,6 +1192,7 @@ bool ComputedStyle::DiffCompositingReasonsChanged(const ComputedStyle& other, ui
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ComputedStyle::HasCSSPaintImagesUsingCustomProperty(const AtomicString& custom_property_name, const Document& document) const
 {
     if (PaintImagesInternal()) {
@@ -1193,6 +1207,7 @@ bool ComputedStyle::HasCSSPaintImagesUsingCustomProperty(const AtomicString& cus
     }
     return false;
 }
+#endif
 
 static bool HasPropertyThatCreatesStackingContext(const Vector<CSSPropertyID>& properties)
 {
@@ -1218,7 +1233,9 @@ static bool HasPropertyThatCreatesStackingContext(const Vector<CSSPropertyID>& p
         case CSSPropertyID::kMixBlendMode:
         case CSSPropertyID::kIsolation:
         case CSSPropertyID::kContain:
+#if !defined(MINI_UI_QUICKJS)
         case CSSPropertyID::kViewTransitionName:
+#endif
             return true;
         default:
             break;

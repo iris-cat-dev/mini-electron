@@ -1220,7 +1220,9 @@ function main(metadata) {
         case CSSRule::kKeyframeRule:
         case CSSRule::kNamespaceRule:
         case CSSRule::kLayerStatementRule:
+#if !defined(MINI_UI_QUICKJS)
         case CSSRule::kViewTransitionRule:
+#endif
         case CSSRule::kPositionTryRule:
             break;
         }

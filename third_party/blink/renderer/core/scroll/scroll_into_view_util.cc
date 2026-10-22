@@ -172,6 +172,7 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(const LayoutBox& box, 
     while (current_box) {
         AdjustRectToNotEmpty(absolute_rect_to_scroll);
 
+#if !defined(MINI_UI_QUICKJS)
         // If we've reached the main frame's layout viewport (which is always set to
         // the global root scroller, see ViewportScrollCallback::SetScroller), if
         // this scroll-into-view is for focusing an editable. We do this so
@@ -184,6 +185,7 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(const LayoutBox& box, 
             break;
         }
 
+#endif
         ScrollableArea* area_to_scroll = GetScrollableAreaForLayoutBox(*current_box, params);
         if (area_to_scroll) {
             ScrollOffset scroll_before = area_to_scroll->GetScrollOffset();
@@ -328,7 +330,9 @@ void ScrollRectToVisible(
         if (AllowedToPropagateToParent(local_root, params)) {
             local_root_view->ScrollRectToVisibleInRemoteParent(*updated_absolute_rect, std::move(params));
         }
-    } else if (params->for_focused_editable) {
+    }
+#if !defined(MINI_UI_QUICKJS)
+    else if (params->for_focused_editable) {
         // If we're scrolling a focused editable into view, once we reach the main
         // frame we need to perform an animated scroll and zoom to bring the
         // editable into a legible size.
@@ -336,6 +340,7 @@ void ScrollRectToVisible(
         DCHECK(!caret_rect_in_root_frame.IsEmpty());
         local_root.GetPage()->GetChromeClient().FinishScrollFocusedEditableIntoView(caret_rect_in_root_frame, std::move(params));
     }
+#endif
 }
 
 gfx::RectF FocusedEditableBoundsFromParams(const gfx::RectF& caret_rect, const mojom::blink::ScrollIntoViewParamsPtr& params)

@@ -1,0 +1,153 @@
+{
+  "removed_owned_temporary_directories": [
+    {
+      "path": "out/ui-atom-candidate",
+      "bytes": 468715570
+    },
+    {
+      "path": "out/ui-view-candidate",
+      "bytes": 468720068
+    },
+    {
+      "path": "out/ui-get-candidate",
+      "bytes": 468716507
+    },
+    {
+      "path": "out/ui-map-candidate",
+      "bytes": 468714684
+    },
+    {
+      "path": "out/ui-atom-before",
+      "bytes": 93905125
+    },
+    {
+      "path": "out/ui-atom-before-repeat",
+      "bytes": 7447154
+    },
+    {
+      "path": "out/ui-atom-after",
+      "bytes": 93905066
+    },
+    {
+      "path": "out/ui-atom-after-repeat",
+      "bytes": 7447004
+    },
+    {
+      "path": "out/ui-view-after",
+      "bytes": 93905755
+    },
+    {
+      "path": "out/ui-get-after",
+      "bytes": 93905016
+    },
+    {
+      "path": "out/ui-map-after",
+      "bytes": 93904928
+    },
+    {
+      "path": "out/ui-map-large-after",
+      "bytes": 7450335
+    },
+    {
+      "path": "out/ui-map-control",
+      "bytes": 29747741
+    },
+    {
+      "path": "out/ui-map-full-after",
+      "bytes": 29749130
+    },
+    {
+      "path": "out/ui-map-comparison",
+      "bytes": 372112
+    },
+    {
+      "path": "out/ui-atom-boundaries-before",
+      "bytes": 91073893
+    },
+    {
+      "path": "out/ui-atom-boundaries-after",
+      "bytes": 91073879
+    },
+    {
+      "path": "out/ui-view-boundaries-before",
+      "bytes": 91092793
+    },
+    {
+      "path": "out/ui-view-boundaries-after",
+      "bytes": 91093495
+    },
+    {
+      "path": "out/ui-get-boundaries-after",
+      "bytes": 91092790
+    },
+    {
+      "path": "out/ui-map-boundaries-before",
+      "bytes": 91098426
+    },
+    {
+      "path": "out/ui-map-boundaries-after",
+      "bytes": 91098430
+    },
+    {
+      "path": "out/ui-bridge-cpu-profile",
+      "bytes": 409
+    },
+    {
+      "path": "out/ui-thread-profile-vue",
+      "bytes": 4164723
+    },
+    {
+      "path": "out/ui-thread-profile-react",
+      "bytes": 4097906
+    },
+    {
+      "path": "out/ui-thread-profile-symbols",
+      "bytes": 5637
+    },
+    {
+      "path": "out/ui-map-thread-profile-vue",
+      "bytes": 4160783
+    },
+    {
+      "path": "out/ui-map-thread-profile-react",
+      "bytes": 4114167
+    },
+    {
+      "path": "out/ui-map-large-thread-profile-react",
+      "bytes": 5165384
+    },
+    {
+      "path": "out/ui-map-react-chrome-profile",
+      "bytes": 495801
+    },
+    {
+      "path": "out/ui-map-chrome-default",
+      "bytes": 645403
+    },
+    {
+      "path": "out/ui-map-chrome-software",
+      "bytes": 639024
+    },
+    {
+      "path": "out/ui-map-chrome-comparison",
+      "bytes": 117123
+    },
+    {
+      "path": "out/ui-map-final-validation",
+      "bytes": 36173816
+    },
+    {
+      "path": ".build-tools/ui-atom",
+      "bytes": 17499
+    }
+  ],
+  "total_bytes": 3124027576,
+  "retained_production_paths": [
+    "out/ui-windows-x64",
+    "out/ui-map-final-smoke",
+    "out/ui-map-final-checks"
+  ],
+  "retained_evidence_directory": "benchmarks/ui/results/2026-10-22-map-hash",
+  "previous_baselines_untouched": true,
+  "shutdown_requested": false
+}

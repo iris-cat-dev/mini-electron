@@ -30,13 +30,17 @@
 
 #include "third_party/blink/public/web/web_script_controller.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 void WebScriptController::RegisterExtension(std::unique_ptr<v8::Extension> extension)
 {
     ScriptController::RegisterExtensionIfNeeded(std::move(extension));
 }
+#endif
 
 } // namespace blink

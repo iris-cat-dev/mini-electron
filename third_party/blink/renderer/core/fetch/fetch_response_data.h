@@ -95,10 +95,12 @@ public:
     {
         return response_time_;
     }
+#if !defined(MINI_UI_QUICKJS)
     String CacheStorageCacheName() const
     {
         return cache_storage_cache_name_;
     }
+#endif
     const HTTPHeaderSet& CorsExposedHeaderNames() const
     {
         return cors_exposed_header_names_;
@@ -109,6 +111,7 @@ public:
     }
     bool RequestIncludeCredentials() const;
 
+#if !defined(MINI_UI_QUICKJS)
     int64_t GetPadding() const
     {
         return padding_;
@@ -117,6 +120,7 @@ public:
     {
         padding_ = padding;
     }
+#endif
     void SetResponseSource(network::mojom::FetchResponseSource response_source)
     {
         response_source_ = response_source;
@@ -148,10 +152,12 @@ public:
     {
         response_time_ = response_time;
     }
+#if !defined(MINI_UI_QUICKJS)
     void SetCacheStorageCacheName(const String& cache_storage_cache_name)
     {
         cache_storage_cache_name_ = cache_storage_cache_name;
     }
+#endif
     void SetCorsExposedHeaderNames(const HTTPHeaderSet& header_names)
     {
         cors_exposed_header_names_ = header_names;
@@ -185,14 +191,21 @@ public:
     mojom::blink::FetchAPIResponsePtr PopulateFetchAPIResponse(const KURL& request_url);
 
     // Initialize non-body data from the given |response|.
+#if defined(MINI_UI_QUICKJS)
+    void InitFromResourceResponse(network::mojom::FetchResponseType response_type, const Vector<KURL>& request_url_list,
+        const AtomicString& request_method, network::mojom::CredentialsMode request_credentials, const ResourceResponse& response);
+#else
     void InitFromResourceResponse(ExecutionContext* context, network::mojom::FetchResponseType response_type, const Vector<KURL>& request_url_list,
         const AtomicString& request_method, network::mojom::CredentialsMode request_credentials, const ResourceResponse& response);
+#endif
 
     void Trace(Visitor*) const;
 
 private:
     network::mojom::FetchResponseType type_;
+#if !defined(MINI_UI_QUICKJS)
     int64_t padding_;
+#endif
     network::mojom::FetchResponseSource response_source_;
     std::unique_ptr<TerminationReason> termination_reason_;
     Vector<KURL> url_list_;
@@ -204,7 +217,9 @@ private:
     String mime_type_;
     AtomicString request_method_;
     base::Time response_time_;
+#if !defined(MINI_UI_QUICKJS)
     String cache_storage_cache_name_;
+#endif
     HTTPHeaderSet cors_exposed_header_names_;
     net::HttpConnectionInfo connection_info_ = net::HttpConnectionInfo::kUNKNOWN;
     AtomicString alpn_negotiated_protocol_;

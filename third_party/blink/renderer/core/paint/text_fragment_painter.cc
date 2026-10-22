@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
 #include "third_party/blink/renderer/core/layout/text_decoration_offset.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/paint/box_model_object_painter.h"
 #include "third_party/blink/renderer/core/paint/highlight_painter.h"
 #include "third_party/blink/renderer/core/paint/inline_paint_context.h"
@@ -342,6 +344,7 @@ void TextFragmentPainter::Paint(const PaintInfo& paint_info, const PhysicalOffse
     TextDecorationPainter decoration_painter(text_painter, inline_context_, paint_info, style, text_style, rotated_box, selection);
     HighlightPainter highlight_painter(
         fragment_paint_info, text_painter, decoration_painter, paint_info, cursor_, text_item, physical_box.offset, style, text_style, selection);
+#if !defined(MINI_UI_QUICKJS)
     if (paint_info.phase == PaintPhase::kForeground) {
         if (auto* mf_checker = MobileFriendlinessChecker::From(document)) {
             if (auto* text = DynamicTo<LayoutText>(*layout_object)) {
@@ -352,6 +355,7 @@ void TextFragmentPainter::Paint(const PaintInfo& paint_info, const PhysicalOffse
             }
         }
     }
+#endif
 
     if (svg_inline_text) {
         TextPainter::SvgTextPaintState& svg_state = text_painter.SetSvgState(*svg_inline_text, style, text_item.GetStyleVariant(), paint_info.GetPaintFlags());

@@ -89,7 +89,9 @@ MODULES_EXPORT BASE_DECLARE_FEATURE(kDisableCanvasOverdrawOptimization);
 class BeginLayerOptions;
 class CanvasGradient;
 class CanvasImageSource;
+#if !defined(MINI_UI_QUICKJS)
 class Canvas2dGPUTransferOption;
+#endif
 class CanvasPattern;
 class CanvasRenderingContextHost;
 class CanvasResourceProvider;
@@ -99,7 +101,9 @@ class ExceptionState;
 class ExecutionContext;
 class Font;
 class FontSelector;
+#if !defined(MINI_UI_QUICKJS)
 class GPUTexture;
+#endif
 class HTMLCanvasElement;
 class Image;
 class ImageData;
@@ -115,7 +119,9 @@ class ScriptState;
 class SimpleFontData;
 class TextCluster;
 class TextMetrics;
+#if !defined(MINI_UI_QUICKJS)
 class V8GPUTextureFormat;
+#endif
 class V8UnionCanvasFilterOrString;
 struct V8CanvasStyle;
 enum class CanvasOps;
@@ -273,6 +279,7 @@ public:
     V8ImageSmoothingQuality imageSmoothingQuality() const;
     void setImageSmoothingQuality(const V8ImageSmoothingQuality&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Transfers a canvas' existing back-buffer to a GPUTexture for use in a
     // WebGPU pipeline. The canvas' image can be used as a texture, or the texture
     // can be bound as a color attachment and modified. After its texture is
@@ -290,6 +297,7 @@ public:
     // return. This is useful if you need to create the WebGPU render pipeline
     // before `transferToGPUTexture` is first called.
     V8GPUTextureFormat getTextureFormat() const;
+#endif
 
     virtual bool OriginClean() const = 0;
     virtual void SetOriginTainted() = 0;
@@ -584,6 +592,7 @@ protected:
     static const char kOptimizeSpeedRendering[];
     static const char kOptimizeLegibilityRendering[];
     static const char kGeometricPrecisionRendering[];
+#if !defined(MINI_UI_QUICKJS)
     virtual void DisableAcceleration()
     {
     }
@@ -596,6 +605,7 @@ protected:
     {
         return false;
     }
+#endif
 
     virtual bool IsPaint2D() const
     {
@@ -745,8 +755,10 @@ private:
     mojom::blink::ColorScheme color_scheme_ = mojom::blink::ColorScheme::kLight;
     // Cache of recently used colors. Maintains LRU semantics.
     HeapLinkedHashSet<Member<CachedColor>, CachedColorTraits> color_cache_;
+#if !defined(MINI_UI_QUICKJS)
     Member<GPUTexture> webgpu_access_texture_ = nullptr;
     std::unique_ptr<CanvasResourceProvider> resource_provider_from_webgpu_access_;
+#endif
 };
 
 namespace {

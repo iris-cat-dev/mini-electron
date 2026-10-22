@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,11 +8,11 @@
 #include <map>
 #include <memory>
 
-#include "base/bind.h"
-#include "base/callback.h"
 #include "base/component_export.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/unique_ptr_adapters.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "mojo/public/cpp/bindings/generic_pending_receiver.h"
 #include "mojo/public/cpp/system/message_pipe.h"
@@ -21,7 +21,8 @@
 namespace mojo {
 
 namespace internal {
-template <typename Func> struct ServiceFactoryTraits;
+template <typename Func>
+struct ServiceFactoryTraits;
 }
 
 // ServiceFactory is a helper that Mojo consumers can use to conveniently handle
@@ -66,104 +67,119 @@ template <typename Func> struct ServiceFactoryTraits;
 //       LOG(ERROR) << "Unknown service: " << *receiver.interface_name();
 //     }
 //
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ ServiceFactory {
-public:
-    ServiceFactory();
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) ServiceFactory {
+ public:
+  ServiceFactory();
 
-    ServiceFactory(const ServiceFactory&) = delete;
-    ServiceFactory& operator=(const ServiceFactory&) = delete;
+  ServiceFactory(const ServiceFactory&) = delete;
+  ServiceFactory& operator=(const ServiceFactory&) = delete;
 
-    ~ServiceFactory();
+  ~ServiceFactory();
 
-    // Adds a new service to the factory. The argument may be any function that
-    // accepts a single PendingReceiver<T> and returns a unique_ptr<T>, where T is
-    // a service interface (that is, a generated mojom interface class
-    // corresponding to some service's main interface.)
-    template <typename Func> void Add(Func func)
-    {
-        using Interface = typename internal::ServiceFactoryTraits<Func>::Interface;
-        constructors_[Interface::Name_] = base::BindRepeating(&RunConstructor<Func>, func);
+  // Adds a new service to the factory. The argument may be any function that
+  // accepts a single PendingReceiver<T> and returns a unique_ptr<T>, where T is
+  // a service interface (that is, a generated mojom interface class
+  // corresponding to some service's main interface.) Safely drops registration
+  // if Interface is RuntimeFeature disabled. CanRunService() will return false
+  // for these ignored Interfaces.
+  template <typename Func>
+  void Add(Func func) {
+    using Interface = typename internal::ServiceFactoryTraits<Func>::Interface;
+    if (internal::GetRuntimeFeature_IsEnabled<Interface>()) {
+      constructors_[Interface::Name_] =
+          base::BindRepeating(&RunConstructor<Func>, func);
     }
+  }
 
-    // If `receiver` is references an interface matching a service known to this
-    // factory, this returns true. Otherwise it returns false. `receiver` MUST be
-    // valid.
-    bool CanRunService(const GenericPendingReceiver& receiver) const;
+  // If `receiver` is references an interface matching a service known to this
+  // factory, this returns true. Otherwise it returns false. `receiver` MUST be
+  // valid.
+  bool CanRunService(const GenericPendingReceiver& receiver) const;
 
-    // Consumes `receiver` and binds it to a new instance of the corresponding
-    // service, constructed using the service's registered function within this
-    // factory.
-    //
-    // `termination_callback`, if not null, will be invoked on the calling
-    // TaskRunner whenever the new service instance is eventually destroyed.
-    //
-    // If the service represented by `receiver` is not known to this factory, it
-    // is discarded and `termination_callback` is never run.
-    bool RunService(GenericPendingReceiver receiver, base::OnceClosure termination_callback);
+  // Consumes `receiver` and binds it to a new instance of the corresponding
+  // service, constructed using the service's registered function within this
+  // factory.
+  //
+  // `termination_callback`, if not null, will be invoked on the calling
+  // TaskRunner whenever the new service instance is eventually destroyed.
+  //
+  // If the service represented by `receiver` is not known to this factory, it
+  // is discarded and `termination_callback` is never run.
+  bool RunService(GenericPendingReceiver receiver,
+                  base::OnceClosure termination_callback);
 
-private:
-    class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ InstanceHolderBase {
-    public:
-        InstanceHolderBase();
+ private:
+  class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) InstanceHolderBase {
+   public:
+    InstanceHolderBase();
 
-        InstanceHolderBase(const InstanceHolderBase&) = delete;
-        InstanceHolderBase& operator=(const InstanceHolderBase&) = delete;
+    InstanceHolderBase(const InstanceHolderBase&) = delete;
+    InstanceHolderBase& operator=(const InstanceHolderBase&) = delete;
 
-        virtual ~InstanceHolderBase();
+    virtual ~InstanceHolderBase();
 
-        void WatchPipe(MessagePipeHandle pipe, base::OnceClosure disconnect_callback);
+    void WatchPipe(MessagePipeHandle pipe,
+                   base::OnceClosure disconnect_callback);
 
-    private:
-        void OnPipeSignaled(MojoResult result, const HandleSignalsState& state);
+   private:
+    void OnPipeSignaled(MojoResult result, const HandleSignalsState& state);
 
-        SimpleWatcher watcher_;
-        base::OnceClosure disconnect_callback_;
-    };
+    SimpleWatcher watcher_;
+    base::OnceClosure disconnect_callback_;
+  };
 
-    template <typename Interface> class InstanceHolder : public InstanceHolderBase {
-    public:
-        explicit InstanceHolder(std::unique_ptr<Interface> instance)
-            : instance_(std::move(instance))
-        {
-        }
+  template <typename Impl>
+  class InstanceHolder : public InstanceHolderBase {
+   public:
+    explicit InstanceHolder(std::unique_ptr<Impl> instance)
+        : instance_(std::move(instance)) {}
 
-        InstanceHolder(const InstanceHolder&) = delete;
-        InstanceHolder& operator=(const InstanceHolder&) = delete;
+    InstanceHolder(const InstanceHolder&) = delete;
+    InstanceHolder& operator=(const InstanceHolder&) = delete;
 
-        ~InstanceHolder() override = default;
+    ~InstanceHolder() override = default;
 
-    private:
-        const std::unique_ptr<Interface> instance_;
-    };
+   private:
+    const std::unique_ptr<Impl> instance_;
+  };
 
-    template <typename Func> static std::unique_ptr<InstanceHolderBase> RunConstructor(Func fn, GenericPendingReceiver receiver)
-    {
-        using Interface = typename internal::ServiceFactoryTraits<Func>::Interface;
-        auto impl = fn(receiver.As<Interface>());
-        if (!impl)
-            return nullptr;
+  template <typename Func>
+  static std::unique_ptr<InstanceHolderBase> RunConstructor(
+      Func fn,
+      GenericPendingReceiver receiver) {
+    using Interface = typename internal::ServiceFactoryTraits<Func>::Interface;
+    using Impl = typename internal::ServiceFactoryTraits<Func>::Impl;
+    auto impl = fn(receiver.As<Interface>());
+    if (!impl)
+      return nullptr;
 
-        return std::make_unique<InstanceHolder<Interface>>(std::move(impl));
-    }
+    return std::make_unique<InstanceHolder<Impl>>(std::move(impl));
+  }
 
-    void OnInstanceDisconnected(InstanceHolderBase* instance);
+  void OnInstanceDisconnected(InstanceHolderBase* instance);
 
-    using Constructor = base::RepeatingCallback<std::unique_ptr<InstanceHolderBase>(GenericPendingReceiver)>;
-    std::map<std::string, Constructor> constructors_;
+  using Constructor =
+      base::RepeatingCallback<std::unique_ptr<InstanceHolderBase>(
+          GenericPendingReceiver)>;
+  std::map<std::string, Constructor> constructors_;
 
-    base::flat_set<std::unique_ptr<InstanceHolderBase>, base::UniquePtrComparator> instances_;
+  base::flat_set<std::unique_ptr<InstanceHolderBase>, base::UniquePtrComparator>
+      instances_;
 
-    base::WeakPtrFactory<ServiceFactory> weak_ptr_factory_ { this };
+  base::WeakPtrFactory<ServiceFactory> weak_ptr_factory_{this};
 };
 
 namespace internal {
 
-template <typename Impl, typename InterfaceType> struct ServiceFactoryTraits<std::unique_ptr<Impl> (*)(PendingReceiver<InterfaceType>)> {
-    using Interface = InterfaceType;
+template <typename ImplType, typename InterfaceType>
+struct ServiceFactoryTraits<std::unique_ptr<ImplType> (*)(
+    PendingReceiver<InterfaceType>)> {
+  using Interface = InterfaceType;
+  using Impl = ImplType;
 };
 
-} // namespace internal
+}  // namespace internal
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_SERVICE_FACTORY_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_SERVICE_FACTORY_H_

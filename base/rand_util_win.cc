@@ -19,8 +19,10 @@
 #include <limits>
 
 #include "base/check.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/feature_list.h"
 #include "third_party/boringssl/src/include/openssl/rand.h"
+#endif
 
 // Prototype for ProcessPrng.
 // See: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
@@ -30,6 +32,7 @@ BOOL WINAPI ProcessPrng(PBYTE pbData, SIZE_T cbData);
 
 namespace base {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace internal {
 
 namespace {
@@ -53,6 +56,7 @@ bool UseBoringSSLForRandBytes()
 }
 
 } // namespace internal
+#endif
 
 namespace {
 
@@ -72,17 +76,23 @@ decltype(&ProcessPrng) GetProcessPrng()
 
 void RandBytesInternal(span<uint8_t> output, bool avoid_allocation)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (!avoid_allocation && internal::UseBoringSSLForRandBytes()) {
         // BoringSSL's RAND_bytes always returns 1. Any error aborts the program.
         (void)RAND_bytes(output.data(), output.size());
         return;
     }
+#endif
 
     static decltype(&ProcessPrng) process_prng_fn = GetProcessPrng();
+#if defined(MINI_UI_QUICKJS)
+    CHECK(process_prng_fn);
+#else
     if (!process_prng_fn) {
         (void)RAND_bytes(output.data(), output.size());
         return;
     }
+#endif
     BOOL success = process_prng_fn(static_cast<BYTE*>(output.data()), output.size());
     // ProcessPrng is documented to always return TRUE.
     CHECK(success);

@@ -40,7 +40,9 @@
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/trace_id_helper.h"
 #include "components/viz/common/frame_timing_details.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "services/network/public/mojom/load_timing_info.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
@@ -258,12 +260,14 @@ MemoryInfo* WindowPerformance::memory(ScriptState* script_state) const
     // and the relevant bug is https://crbug.com/807651.
     const bool is_locked_to_site = Platform::Current()->IsLockedToSite();
     auto* memory_info = MakeGarbageCollected<MemoryInfo>(is_locked_to_site ? MemoryInfo::Precision::kPrecise : MemoryInfo::Precision::kBucketized);
+    auto* execution_context = ExecutionContext::From(script_state);
+#if !defined(MINI_UI_QUICKJS)
     // Record Web Memory UKM.
     const uint64_t kBytesInKB = 1024;
-    auto* execution_context = ExecutionContext::From(script_state);
     ukm::builders::PerformanceAPI_Memory_Legacy(execution_context->UkmSourceID())
         .SetJavaScript(memory_info->usedJSHeapSize() / kBytesInKB)
         .Record(execution_context->UkmRecorder());
+#endif
     if (!is_locked_to_site) {
         UseCounter::Count(execution_context, WebFeature::kV8Performance_Memory_AttributeGetter_NotLockedToSite);
     }
@@ -493,8 +497,10 @@ void WindowPerformance::RegisterEventTiming(
     eventCounts()->Add(event_type);
 
     if (need_new_promise_for_event_presentation_time_) {
+#if !defined(MINI_UI_QUICKJS)
         DomWindow()->GetFrame()->GetChromeClient().NotifyPresentationTime(*DomWindow()->GetFrame(),
             CrossThreadBindOnce(&WindowPerformance::OnPresentationPromiseResolved, WrapCrossThreadWeakPersistent(this), ++event_presentation_promise_count_));
+#endif
         need_new_promise_for_event_presentation_time_ = false;
     }
 

@@ -34,9 +34,13 @@ struct SkRect;
 struct SkIRect;
 class SkM44;
 class SkRRect;
+#if defined(MINI_UI_QUICKJS)
+class SkTextBlob;
+#else
 namespace sktext::gpu {
 class Slug;
 }
+#endif
 
 namespace gfx {
 struct HDRMetadata;
@@ -249,7 +253,11 @@ public:
     void Write(const SkColorSpace* data);
     void Write(const SkGainmapInfo& gainmap_info);
     void Write(const SkSamplingOptions&);
+#if defined(MINI_UI_QUICKJS)
+    void Write(const sk_sp<SkTextBlob>& blob);
+#else
     void Write(const sk_sp<sktext::gpu::Slug>& slug);
+#endif
     void Write(SkYUVColorSpace yuv_color_space);
     void Write(SkYUVAInfo::PlaneConfig plane_config);
     void Write(SkYUVAInfo::Subsampling subsampling);

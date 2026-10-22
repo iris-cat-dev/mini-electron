@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_CHILD_FRAME_COMPOSITING_HELPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_CHILD_FRAME_COMPOSITING_HELPER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <stdint.h>
 
 #include "base/timer/timer.h"
@@ -57,5 +59,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_CHILD_FRAME_COMPOSITING_HELPER_H_

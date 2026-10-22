@@ -34,10 +34,16 @@ public:
         const Vector<String>& report_endpoints, bool use_reporting_api) override;
     void Count(WebFeature) override;
     void AddConsoleMessage(ConsoleMessage*) override;
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssue(AuditsIssue) override;
+#endif
     void DisableEval(const String& error_message) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetWasmEvalErrorMessage(const String& error_message) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void ReportBlockedScriptExecutionToInspector(const String& directive_text) override;
+#endif
     void DidAddContentSecurityPolicies(WTF::Vector<network::mojom::blink::ContentSecurityPolicyPtr>) override;
 
 private:

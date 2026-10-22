@@ -31,21 +31,27 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_SCRIPT_CONTROLLER_H_
 #define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_SCRIPT_CONTROLLER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <memory>
+#endif
 
 #include "third_party/blink/public/platform/web_common.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace v8 {
 class Extension;
 }
+#endif
 
 namespace blink {
 
 class BLINK_EXPORT WebScriptController {
 public:
+#if !defined(MINI_UI_QUICKJS)
     // Registers a v8 extension to be available on webpages. Will only affect
     // v8 contexts initialized after this call.
     static void RegisterExtension(std::unique_ptr<v8::Extension>);
+#endif
 
 private:
     WebScriptController() = delete;

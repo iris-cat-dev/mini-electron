@@ -18,10 +18,13 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#endif
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_custom_platform_data.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
@@ -234,7 +237,9 @@ void RemoteFontFaceSource::NotifyFinished(Resource* resource)
     if (face_->FontLoaded(this)) {
         font_selector_->FontFaceInvalidated(FontInvalidationReason::kFontFaceLoaded);
         if (custom_font_data_) {
+#if !defined(MINI_UI_QUICKJS)
             probe::FontsUpdated(execution_context, face_->GetFontFace(), resource->Url().GetString(), custom_font_data_.Get());
+#endif
         }
     }
 }
@@ -376,6 +381,7 @@ void RemoteFontFaceSource::BeginLoadIfNeeded()
         }
         if (execution_context->Fetcher()->StartLoad(font)) {
             histograms_.LoadStarted();
+#if !defined(MINI_UI_QUICKJS)
             if (LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(execution_context)) {
                 if (LocalFrame* frame = window->GetFrame()) {
                     if (frame->IsOutermostMainFrame()) {
@@ -385,6 +391,7 @@ void RemoteFontFaceSource::BeginLoadIfNeeded()
                     }
                 }
             }
+#endif
         }
     }
 

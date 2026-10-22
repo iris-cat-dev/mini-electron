@@ -261,11 +261,13 @@ base::TimeTicks TaskQueueThrottler::GetTimeTasksCanRunUntil(base::TimeTicks now)
     return result;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void TaskQueueThrottler::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
     dict.Add("throttling_ref_count", throttling_ref_count_);
 }
+#endif
 
 } // namespace scheduler
 } // namespace blink

@@ -112,11 +112,13 @@ void ScriptPromiseResolverBase::RejectWithRangeError(const String& message)
     Reject(V8ThrowException::CreateRangeError(script_state_->GetIsolate(), AddContext(exception_context_, message)));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptPromiseResolverBase::RejectWithWasmCompileError(const String& message)
 {
     ScriptState::Scope scope(script_state_.Get());
     Reject(V8ThrowException::CreateWasmCompileError(script_state_->GetIsolate(), AddContext(exception_context_, message)));
 }
+#endif
 
 void ScriptPromiseResolverBase::Detach()
 {

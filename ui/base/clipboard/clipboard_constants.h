@@ -5,6 +5,8 @@
 #ifndef UI_BASE_CLIPBOARD_CLIPBOARD_CONSTANTS_H_
 #define UI_BASE_CLIPBOARD_CLIPBOARD_CONSTANTS_H_
 
+#include <stddef.h>
+
 #include "base/component_export.h"
 #include "build/build_config.h"
 
@@ -144,6 +146,15 @@ extern const char kMimeTypeImageURI[];
 // registering too many formats.
 COMPONENT_EXPORT(UI_BASE_CLIPBOARD_TYPES)
 extern const int kMaxRegisteredClipboardFormats;
+
+// Maximum size, including the terminator, of a web custom format name.
+// This matches the ClipboardHost wire contract.
+inline constexpr size_t kMaxWebCustomFormatSize = 1024;
+
+// Maximum serialized size of a valid web custom format map. This allows every
+// registered entry to contain two maximum-sized names plus JSON punctuation.
+COMPONENT_EXPORT(UI_BASE_CLIPBOARD_TYPES)
+extern const size_t kMaxWebCustomFormatMapSize;
 
 // Web prefix for web custom format types.
 COMPONENT_EXPORT(UI_BASE_CLIPBOARD_TYPES)

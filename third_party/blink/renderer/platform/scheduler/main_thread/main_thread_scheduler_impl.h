@@ -25,7 +25,9 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_log.h"
+#endif
 #include "build/build_config.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/scheduler/web_thread_scheduler.h"
@@ -56,7 +58,9 @@
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 class LazyNow;
@@ -87,8 +91,11 @@ class PLATFORM_EXPORT MainThreadSchedulerImpl : public ThreadSchedulerBase,
                                                 public MainThreadScheduler,
                                                 public WebThreadScheduler,
                                                 public IdleHelper::Delegate,
-                                                public RenderWidgetSignals::Observer,
-                                                public base::trace_event::TraceLog::AsyncEnabledStateObserver {
+                                                public RenderWidgetSignals::Observer
+#if !defined(MINI_UI_QUICKJS)
+    , public base::trace_event::TraceLog::AsyncEnabledStateObserver
+#endif
+{
 public:
     // Duration before rendering is considered starved by render-blocking tasks,
     // which is a safeguard against pathological cases for render-blocking image
@@ -258,8 +265,10 @@ public:
     void AddTaskTimeObserver(base::sequence_manager::TaskTimeObserver*);
     void RemoveTaskTimeObserver(base::sequence_manager::TaskTimeObserver*);
 
+#if !defined(MINI_UI_QUICKJS)
     // Snapshots this MainThreadSchedulerImpl for tracing.
     void CreateTraceEventObjectSnapshot() const;
+#endif
 
     // Called when one of associated page schedulers has changed audio state.
     void OnAudioStateChanged();
@@ -308,9 +317,11 @@ public:
 
     bool IsAudioPlaying() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // base::trace_event::TraceLog::EnabledStateObserver implementation:
     void OnTraceLogEnabled() override;
     void OnTraceLogDisabled() override;
+#endif
 
     UseCase current_use_case() const;
 
@@ -429,7 +440,9 @@ private:
         bool operator==(const Policy& other) const = default;
 
         bool IsQueueEnabled(MainThreadTaskQueue*, const SchedulingSettings&) const;
+#if !defined(MINI_UI_QUICKJS)
         void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
     };
 
     class TaskDurationMetricTracker;
@@ -460,9 +473,11 @@ private:
     // an input event.
     void UpdatePrioritizeCompositingAfterInputAfterTaskCompleted(MainThreadTaskQueue* queue);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the serialized scheduler state for tracing.
     void WriteIntoTraceLocked(perfetto::TracedValue context, base::TimeTicks optional_now) const;
     void CreateTraceEventObjectSnapshotLocked() const;
+#endif
 
     // Shuts down empty detached task queues, which are being kept alive to run
     // pending tasks.
@@ -558,6 +573,7 @@ private:
 
     static void RunIdleTask(Thread::IdleTask, base::TimeTicks deadline);
 
+#if !defined(MINI_UI_QUICKJS)
     // Probabilistically record all task metadata for the current task.
     // If task belongs to a per-frame queue, this task is attributed to
     // a particular Page, otherwise it's attributed to all Pages in the process.
@@ -565,6 +581,7 @@ private:
 
     UkmRecordingStatus RecordTaskUkmImpl(MainThreadTaskQueue* queue, const base::sequence_manager::Task& task,
         const base::sequence_manager::TaskQueue::TaskTiming& task_timing, FrameSchedulerImpl* frame_scheduler, bool precise_attribution);
+#endif
 
     void ShutdownAllQueues();
 
@@ -579,9 +596,11 @@ private:
     bool has_ipc_callback_set_ = false;
     bool IsIpcTrackingEnabledForAllPages();
 
+#if !defined(MINI_UI_QUICKJS)
     // This controller should be initialized before any TraceableVariables
     // because they require one to initialize themselves.
     TraceableVariableController tracing_controller_;
+#endif
 
     // Used for experiments on finch. On main thread instantiation, we cache
     // the values of base::Feature flags using this struct, since calling
@@ -644,12 +663,20 @@ private:
         base::TimeDelta compositor_frame_interval;
         TraceableCounter<int, TracingCategory::kInfo> renderer_pause_count; // Renderer is paused if non-zero.
 
+#if !defined(MINI_UI_QUICKJS)
         TraceableObjectState<RAILMode,
             TracingCategory::kTopLevel> rail_mode_for_tracing; // Don't use except for tracing.
 
         TraceableObjectState<bool, TracingCategory::kTopLevel> renderer_hidden;
+#else
+        TraceableState<bool, TracingCategory::kTopLevel> renderer_hidden;
+#endif
         std::optional<base::ScopedSampleMetadata> renderer_hidden_metadata;
+#if !defined(MINI_UI_QUICKJS)
         TraceableObjectState<bool, TracingCategory::kTopLevel> renderer_backgrounded;
+#else
+        TraceableState<bool, TracingCategory::kTopLevel> renderer_backgrounded;
+#endif
         TraceableState<bool, TracingCategory::kDefault> blocking_input_expected_soon;
         TraceableState<bool, TracingCategory::kDebug> in_idle_period_for_testing;
         TraceableState<bool, TracingCategory::kTopLevel> is_audio_playing;
@@ -661,10 +688,12 @@ private:
         base::ObserverList<RAILModeObserver>::Unchecked rail_mode_observers; // Not owned.
         MainThreadMetricsHelper metrics_helper;
         TraceableState<WebRendererProcessType, TracingCategory::kTopLevel> process_type;
+#if !defined(MINI_UI_QUICKJS)
         TraceableState<std::optional<TaskDescriptionForTracing>,
             TracingCategory::kInfo> task_description_for_tracing; // Don't use except for tracing.
         TraceableState<std::optional<TaskPriority>,
             TracingCategory::kInfo> task_priority_for_tracing; // Only used for tracing.
+#endif
 
         // Holds task queues that are currently running.
         // The queue for the inmost task is at the top of stack when there are

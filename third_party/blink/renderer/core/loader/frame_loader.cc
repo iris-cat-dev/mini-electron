@@ -40,12 +40,17 @@
 #include <utility>
 
 #include "base/auto_reset.h"
+#include "base/metrics/histogram_functions.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
@@ -55,7 +60,9 @@
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_url_request.h"
@@ -69,7 +76,9 @@
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/ignore_opens_during_unload_count_incrementer.h"
 #include "third_party/blink/renderer/core/events/page_transition_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/fragment_directive/text_fragment_anchor.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/csp/csp_source.h"
@@ -102,13 +111,19 @@
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/frame_tree.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_data.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_script_forbidden_scope.h"
+#endif
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
 #include "third_party/blink/renderer/core/page/scrolling/scrolling_coordinator.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scroll_animator_base.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"
@@ -203,7 +218,9 @@ ResourceRequest FrameLoader::ResourceRequestForReload(WebFrameLoadType frame_loa
         request.SetReferrerPolicy(referrer.referrer_policy);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     request.SetSkipServiceWorker(frame_load_type == WebFrameLoadType::kReloadBypassingCache);
+#endif
     return request;
 }
 
@@ -233,7 +250,8 @@ void FrameLoader::Trace(Visitor* visitor) const
 }
 
 void FrameLoader::Init(const DocumentToken& document_token, std::unique_ptr<PolicyContainer> policy_container, const StorageKey& storage_key,
-    ukm::SourceId document_ukm_source_id, const KURL& creator_base_url)
+    ukm::SourceId document_ukm_source_id,
+    const KURL& creator_base_url)
 {
     DCHECK(policy_container);
     ScriptForbiddenScope forbid_scripts;
@@ -387,7 +405,9 @@ void FrameLoader::DispatchUnloadEventAndFillOldDocumentInfoIfNeeded(bool will_co
 
 void FrameLoader::DidExplicitOpen()
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::DidOpenDocument(frame_.Get(), GetDocumentLoader());
+#endif
     if (initial_empty_document_status_ == InitialEmptyDocumentStatus::kInitialOrSynchronousAboutBlank) {
         initial_empty_document_status_ = InitialEmptyDocumentStatus::kInitialOrSynchronousAboutBlankButExplicitlyOpened;
     }
@@ -783,7 +803,9 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request, WebFrameLoadType fr
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::FrameRequestedNavigation(frame_.Get(), frame_.Get(), url, request.GetClientNavigationReason(), request.GetNavigationPolicy());
+#endif
 
     // TODO(crbug.com/896041): Instead of just bypassing the CSP for navigations
     // from isolated world, ideally we should enforce the isolated world CSP by
@@ -812,7 +834,10 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request, WebFrameLoadType fr
             == ClientRedirectPolicy::kClientRedirect,
         request.IsUnfencedTopNavigation(), request.GetTriggeringEventInfo(), request.Form(), should_check_main_world_csp, request.GetBlobURLToken(),
         request.GetInputStartTime(), request.HrefTranslate().GetString(), request.Impression(), request.GetInitiatorFrameToken(), request.TakeSourceLocation(),
-        request.TakeInitiatorNavigationStateKeepAliveHandle(), request.IsContainerInitiated(), request.GetWindowFeatures().explicit_opener);
+#if !defined(MINI_UI_QUICKJS)
+        request.TakeInitiatorNavigationStateKeepAliveHandle(),
+#endif
+        request.IsContainerInitiated(), request.GetWindowFeatures().explicit_opener);
 }
 
 static void FillStaticResponseIfNeeded(WebNavigationParams* params, LocalFrame* frame)
@@ -873,10 +898,12 @@ static void FillStaticResponseIfNeeded(WebNavigationParams* params, LocalFrame* 
     if (MIMETypeRegistry::IsSupportedMIMEType(mime_type))
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     PluginData* plugin_data = frame->GetPluginData();
     if (!mime_type.empty() && plugin_data && plugin_data->SupportsMimeType(mime_type)) {
         return;
     }
+#endif
 
     // Typically, PlzNavigate checks that the MIME type can be handled on the
     // browser side before sending it to the renderer. However, there are rare
@@ -947,6 +974,7 @@ void FrameLoader::CommitNavigation(
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The encoding may be inherited from the parent frame if the security context
     // allows it, but we don't have the frame's security context set up yet. In
     // this case avoid starting the body load since it requires the correct
@@ -956,6 +984,7 @@ void FrameLoader::CommitNavigation(
     if (!response.TextEncodingName().empty() || !IsA<LocalFrame>(frame_->Tree().Parent())) {
         DocumentLoader::MaybeStartLoadingBodyInBackground(navigation_params->body_loader.get(), frame_.Get(), navigation_params->url, response);
     }
+#endif
 
     // TODO(dgozman): figure out the better place for this check
     // to cancel lazy load both on start and commit. Perhaps
@@ -1008,7 +1037,9 @@ void FrameLoader::CommitNavigation(
         // start/commit message pairs.
         if (commit_reason == CommitReason::kRegular) {
             frame_->GetFrameScheduler()->DidStartProvisionalLoad();
+#if !defined(MINI_UI_QUICKJS)
             probe::DidStartProvisionalLoad(frame_.Get());
+#endif
         }
 
         DCHECK(Client()->HasWebView());
@@ -1098,7 +1129,9 @@ bool FrameLoader::WillStartNavigation(const WebNavigationInfo& info)
     client_navigation_ = std::make_unique<ClientNavigationState>();
     client_navigation_->url = info.url_request.Url();
     frame_->GetFrameScheduler()->DidStartProvisionalLoad();
+#if !defined(MINI_UI_QUICKJS)
     probe::DidStartProvisionalLoad(frame_.Get());
+#endif
     virtual_time_pauser_.PauseVirtualTime();
     TakeObjectSnapshot();
     return true;
@@ -1161,7 +1194,9 @@ bool FrameLoader::DetachDocument()
     DCHECK(frame_->GetDocument());
     DCHECK(document_loader_);
 
+#if !defined(MINI_UI_QUICKJS)
     PluginScriptForbiddenScope forbid_plugin_destructor_scripting;
+#endif
     ClientNavigationState* client_navigation = client_navigation_.get();
 
     // Don't allow this frame to navigate anymore. This line is needed for
@@ -1290,7 +1325,9 @@ void FrameLoader::RestoreScrollPositionAndViewState(WebFrameLoadType load_type, 
 String FrameLoader::ApplyUserAgentOverride(const String& user_agent) const
 {
     String user_agent_override;
+#if !defined(MINI_UI_QUICKJS)
     probe::ApplyUserAgentOverride(probe::ToCoreProbeSink(frame_->GetDocument()), &user_agent_override);
+#endif
 
     if (Client()->UserAgentOverride().empty() && user_agent_override.empty()) {
         return user_agent;
@@ -1508,7 +1545,9 @@ void FrameLoader::ClearClientNavigation()
     if (!client_navigation_)
         return;
     client_navigation_.reset();
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFailProvisionalLoad(frame_.Get());
+#endif
     virtual_time_pauser_.UnpauseVirtualTime();
 }
 
@@ -1521,8 +1560,10 @@ void FrameLoader::CancelClientNavigation(CancelNavigationReason reason)
 
     ResourceError error = ResourceError::CancelledError(client_navigation_->url);
     ClearClientNavigation();
+#if !defined(MINI_UI_QUICKJS)
     if (WebPluginContainerImpl* plugin = frame_->GetWebPluginContainer())
         plugin->DidFailLoading(error);
+#endif
     Client()->AbortClientNavigation(reason == CancelNavigationReason::kNewNavigation);
 }
 
@@ -1530,6 +1571,7 @@ void FrameLoader::DispatchDocumentElementAvailable()
 {
     ScriptForbiddenScope forbid_scripts;
 
+#if !defined(MINI_UI_QUICKJS)
     // Notify the browser about documents loading in the top frame.
     if (frame_->GetDocument()->Url().IsValid() && frame_->IsMainFrame()) {
         // For now, don't remember plugin zoom values.  We don't want to mix them
@@ -1537,6 +1579,7 @@ void FrameLoader::DispatchDocumentElementAvailable()
         // them different).
         frame_->GetLocalFrameHostRemote().MainDocumentElementAvailable(frame_->GetDocument()->IsPluginDocument());
     }
+#endif
 
     Client()->DocumentElementAvailable();
 }
@@ -1558,7 +1601,9 @@ void FrameLoader::DispatchDidClearDocumentOfWindowObject()
         // Forcibly instantiate WindowProxy, even if script is disabled.
         window->GetScriptController().WindowProxy(DOMWrapperWorld::MainWorld(window->GetIsolate()));
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::DidClearDocumentOfWindowObject(frame_.Get());
+#endif
     if (!window->CanExecuteScripts(kNotAboutToExecuteScript))
         return;
 
@@ -1610,6 +1655,7 @@ void FrameLoader::ModifyRequestForCSP(ResourceRequest& resource_request, const F
         resource_request, fetch_client_settings_object, window_for_logging, frame_type, frame_->GetContentSettingsClient());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FrameLoader::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -1621,6 +1667,7 @@ void FrameLoader::WriteIntoTrace(perfetto::TracedValue context) const
     dict.Add("isOutermostMainFrame", frame_->IsOutermostMainFrame());
     dict.Add("documentLoaderURL", document_loader_ ? document_loader_->Url().GetString() : String());
 }
+#endif
 
 inline void FrameLoader::TakeObjectSnapshot() const
 {
@@ -1631,11 +1678,13 @@ inline void FrameLoader::TakeObjectSnapshot() const
     TRACE_EVENT_OBJECT_SNAPSHOT_WITH_ID("loading", "FrameLoader", this, this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojo::PendingRemote<mojom::blink::CodeCacheHost> FrameLoader::CreateWorkerCodeCacheHost()
 {
     if (!document_loader_)
         return mojo::NullRemote();
     return document_loader_->CreateWorkerCodeCacheHost();
 }
+#endif
 
 } // namespace blink

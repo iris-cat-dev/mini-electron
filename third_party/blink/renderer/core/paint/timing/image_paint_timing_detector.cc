@@ -4,8 +4,10 @@
 #include "third_party/blink/renderer/core/paint/timing/image_paint_timing_detector.h"
 
 #include "base/feature_list.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -86,6 +88,7 @@ void ImageRecord::Trace(Visitor* visitor) const
     visitor->Trace(media_timing);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ImagePaintTimingDetector::ImagePaintTimingDetector(LocalFrameView* frame_view, PaintTimingCallbackManager* callback_manager)
     : uses_page_viewport_(base::FeatureList::IsEnabled(features::kUsePageViewportInLCP))
     , records_manager_(frame_view)
@@ -93,6 +96,14 @@ ImagePaintTimingDetector::ImagePaintTimingDetector(LocalFrameView* frame_view, P
     , callback_manager_(callback_manager)
 {
 }
+#else
+ImagePaintTimingDetector::ImagePaintTimingDetector(LocalFrameView* frame_view)
+    : uses_page_viewport_(base::FeatureList::IsEnabled(features::kUsePageViewportInLCP))
+    , records_manager_(frame_view)
+    , frame_view_(frame_view)
+{
+}
+#endif
 
 ImageRecord* ImageRecordsManager::LargestImage() const
 {
@@ -112,9 +123,11 @@ void ImagePaintTimingDetector::PopulateTraceValue(TracedValue& value, const Imag
     value.SetBoolean("isMainFrame", frame_view_->GetFrame().IsMainFrame());
     value.SetBoolean("isOutermostMainFrame", frame_view_->GetFrame().IsOutermostMainFrame());
     value.SetBoolean("isEmbeddedFrame", !frame_view_->GetFrame().LocalFrameRoot().IsMainFrame() || frame_view_->GetFrame().IsInFencedFrameTree());
+#if !defined(MINI_UI_QUICKJS)
     if (first_image_paint.lcp_rect_info_) {
         first_image_paint.lcp_rect_info_->OutputToTraceValue(value);
     }
+#endif
 }
 
 void ImagePaintTimingDetector::ReportCandidateToTrace(ImageRecord& largest_image_record, base::TimeTicks time)
@@ -174,6 +187,7 @@ std::pair<ImageRecord*, bool> ImagePaintTimingDetector::UpdateMetricsCandidate()
     return { largest_image_record, changed };
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ImagePaintTimingDetector::OnPaintFinished()
 {
     viewport_size_ = std::nullopt;
@@ -185,6 +199,7 @@ void ImagePaintTimingDetector::OnPaintFinished()
     last_registered_frame_index_ = frame_index_++;
     RegisterNotifyPresentationTime();
 }
+#endif
 
 void ImagePaintTimingDetector::NotifyImageRemoved(const LayoutObject& object, const MediaTiming* media_timing)
 {
@@ -196,14 +211,17 @@ void ImagePaintTimingDetector::StopRecordEntries()
     // Clear the records queued for presentation callback to ensure no new updates
     // occur.
     records_manager_.ClearImagesQueuedForPaintTime();
+#if !defined(MINI_UI_QUICKJS)
     if (frame_view_->GetFrame().IsOutermostMainFrame()) {
         auto* document = frame_view_->GetFrame().GetDocument();
         ukm::builders::Blink_PaintTiming(document->UkmSourceID())
             .SetLCPDebugging_HasViewportImage(contains_full_viewport_image_)
             .Record(document->UkmRecorder());
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ImagePaintTimingDetector::RegisterNotifyPresentationTime()
 {
     auto callback = WTF::BindOnce(&ImagePaintTimingDetector::ReportPresentationTime, WrapWeakPersistent(this), last_registered_frame_index_);
@@ -216,6 +234,7 @@ void ImagePaintTimingDetector::ReportPresentationTime(unsigned last_queued_frame
     DCHECK(ThreadState::Current()->IsMainThread());
     records_manager_.AssignPaintTimeToRegisteredQueuedRecords(timestamp, last_queued_frame_index);
 }
+#endif
 
 void ImageRecordsManager::AssignPaintTimeToRegisteredQueuedRecords(const base::TimeTicks& timestamp, unsigned last_queued_frame_index)
 {
@@ -289,10 +308,12 @@ bool ImagePaintTimingDetector::RecordImage(const LayoutObject& object, const gfx
         if (!record->loaded && media_timing.IsSufficientContentLoadedForPaint()) {
             records_manager_.OnImageLoaded(record_id_hash, frame_index_, style_image);
             added_entry_in_latest_frame_ = true;
+#if !defined(MINI_UI_QUICKJS)
             if (std::optional<PaintTimingVisualizer>& visualizer = frame_view_->GetPaintTimingDetector().Visualizer()) {
                 gfx::RectF mapped_visual_rect = frame_view_->GetPaintTimingDetector().CalculateVisualRect(image_border, current_paint_chunk_properties);
                 visualizer->DumpImageDebuggingRect(object, mapped_visual_rect, media_timing.IsSufficientContentLoadedForPaint(), media_timing.Url());
             }
+#endif
             return true;
         }
         return false;
@@ -323,9 +344,11 @@ bool ImagePaintTimingDetector::RecordImage(const LayoutObject& object, const gfx
 uint64_t ImagePaintTimingDetector::ComputeImageRectSize(const gfx::Rect& image_border, const gfx::RectF& mapped_visual_rect, const gfx::Size& intrinsic_size,
     const PropertyTreeStateOrAlias& current_paint_chunk_properties, const LayoutObject& object, const MediaTiming& media_timing)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (std::optional<PaintTimingVisualizer>& visualizer = frame_view_->GetPaintTimingDetector().Visualizer()) {
         visualizer->DumpImageDebuggingRect(object, mapped_visual_rect, media_timing.IsSufficientContentLoadedForPaint(), media_timing.Url());
     }
+#endif
     uint64_t rect_size = mapped_visual_rect.size().GetArea();
     // Transform visual rect to window before calling downscale.
     gfx::RectF float_visual_rect = frame_view_->GetPaintTimingDetector().BlinkSpaceToDIPs(gfx::RectF(image_border));
@@ -344,7 +367,9 @@ uint64_t ImagePaintTimingDetector::ComputeImageRectSize(const gfx::Rect& image_b
     // the rect occupies the whole viewport, disregard this candidate by saying
     // the size is 0.
     if (rect_size >= *viewport_size_) {
+#if !defined(MINI_UI_QUICKJS)
         contains_full_viewport_image_ = true;
+#endif
         return 0;
     }
 
@@ -515,6 +540,8 @@ void ImagePaintTimingDetector::Trace(Visitor* visitor) const
 {
     visitor->Trace(records_manager_);
     visitor->Trace(frame_view_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(callback_manager_);
+#endif
 }
 } // namespace blink

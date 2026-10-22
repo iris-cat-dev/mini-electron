@@ -52,7 +52,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
@@ -1143,6 +1145,7 @@ void FocusController::SetFocusedFrame(Frame* frame, bool notify_embedder)
 
     is_changing_focused_frame_ = true;
 
+#if !defined(MINI_UI_QUICKJS)
     // Fenced frames will try to pass focus to a dummy frame that represents the
     // inner frame tree. We instead want to give focus to the outer
     // HTMLFencedFrameElement. This will allow methods like document.activeElement
@@ -1157,6 +1160,7 @@ void FocusController::SetFocusedFrame(Frame* frame, bool notify_embedder)
             SetFocusedElement(fenced_frame, frame);
         }
     }
+#endif
 
     auto* old_frame = DynamicTo<LocalFrame>(focused_frame_.Get());
     auto* new_frame = DynamicTo<LocalFrame>(frame);
@@ -1267,12 +1271,14 @@ bool FocusController::IsDocumentFocused(const Document& document) const
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsA<HTMLFrameOwnerElement>(focused_frame_->Owner())) {
         auto* fenced_frame = DynamicTo<HTMLFencedFrameElement>(To<HTMLFrameOwnerElement>(focused_frame_->Owner()));
         if (fenced_frame && fenced_frame == document.ActiveElement()) {
             return fenced_frame->GetDocument().GetFrame()->Tree().IsDescendantOf(document.GetFrame());
         }
     }
+#endif
 
     if (!IsFocused()) {
         return false;

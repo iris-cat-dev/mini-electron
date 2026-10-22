@@ -32,11 +32,17 @@ public:
 
     // Do not call this constructor. Use Create() instead. This is public only for
     // MakeGarbageCollected.
+#if defined(MINI_UI_QUICKJS)
+    JSModuleScript(
+        Modulator* settings_object, v8::Local<v8::Module>,
+        const KURL& source_url, const KURL& base_url,
+        const ScriptFetchOptions&, const TextPosition& start_position);
+#else
     JSModuleScript(Modulator* settings_object, v8::Local<v8::Module> record, const KURL& source_url, const KURL& base_url, const ScriptFetchOptions&,
         size_t source_text_length, const TextPosition& start_position, ModuleRecordProduceCacheData*);
-    ~JSModuleScript() override = default;
-
     void ProduceCache() override;
+#endif
+    ~JSModuleScript() override = default;
 
     void Trace(Visitor*) const override;
     const char* NameInHeapSnapshot() const override
@@ -47,24 +53,22 @@ public:
 private:
     friend class ModuleScriptTest;
 
+#if defined(MINI_UI_QUICKJS)
+    static JSModuleScript* CreateInternal(
+        Modulator*, v8::Local<v8::Module>, const KURL& source_url,
+        const KURL& base_url, const ScriptFetchOptions&,
+        const TextPosition&);
+#else
     static JSModuleScript* CreateInternal(size_t source_text_length, Modulator*, v8::Local<v8::Module>, const KURL& source_url, const KURL& base_url,
         const ScriptFetchOptions&, const TextPosition&, ModuleRecordProduceCacheData* produce_cache_data);
 
     // For V8CodeCache statistics.
     const size_t source_text_length_;
 
-    // Only for ProduceCache(). JSModuleScript keeps |produce_cache_data_|
-    // because:
-    // - CompileModule() and ProduceCache() should be called at different
-    //   timings, and
-    // - There are no persistent object that can hold this in
-    //   bindings/core/v8 side. ModuleRecord should be short-lived and is
-    //   constructed every time in JSModuleScript::Record().
-    //
-    // Cleared once ProduceCache() is called, to avoid
-    // calling V8CodeCache::ProduceCache() multiple times, as a JSModuleScript
-    // can appear multiple times in multiple module graphs.
+    // Cleared once ProduceCache() is called, so a module shared by multiple
+    // module graphs produces its V8 cache only once.
     Member<ModuleRecordProduceCacheData> produce_cache_data_;
+#endif
 };
 
 } // namespace blink

@@ -113,9 +113,13 @@ private:
 
     // v8::ValueDeserializer::Delegate
     v8::MaybeLocal<v8::Object> ReadHostObject(v8::Isolate*) override;
+#if !defined(MINI_UI_QUICKJS)
     v8::MaybeLocal<v8::WasmModuleObject> GetWasmModuleFromId(v8::Isolate*, uint32_t) override;
+#endif
     v8::MaybeLocal<v8::SharedArrayBuffer> GetSharedArrayBufferFromId(v8::Isolate*, uint32_t) override;
+#if !defined(MINI_UI_QUICKJS)
     const v8::SharedValueConveyor* GetSharedValueConveyor(v8::Isolate*) override;
+#endif
 
     ScriptState* script_state_;
     UnpackedSerializedScriptValue* unpacked_value_;

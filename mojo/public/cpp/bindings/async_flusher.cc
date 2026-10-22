@@ -1,4 +1,4 @@
-﻿// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,14 +16,12 @@ AsyncFlusher& AsyncFlusher::operator=(AsyncFlusher&&) = default;
 
 AsyncFlusher::~AsyncFlusher() = default;
 
-void AsyncFlusher::SetPipe(ScopedMessagePipeHandle pipe)
-{
-    pipe_ = std::move(pipe);
+void AsyncFlusher::SetPipe(ScopedMessagePipeHandle pipe) {
+  pipe_ = std::move(pipe);
 }
 
-ScopedMessagePipeHandle AsyncFlusher::PassPipe()
-{
-    return std::move(pipe_);
+ScopedMessagePipeHandle AsyncFlusher::PassPipe() {
+  return std::move(pipe_);
 }
 
-} // namespace mojo
+}  // namespace mojo

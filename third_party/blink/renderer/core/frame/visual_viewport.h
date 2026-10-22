@@ -111,7 +111,9 @@ public:
 
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     void InitializeScrollbars();
+#endif
 
     // Sets the location of the visual viewport relative to the outer viewport.
     // The coordinates are in partial CSS pixels.
@@ -248,16 +250,24 @@ public:
     {
     }
     void UpdateScrollOffset(const ScrollOffset&, mojom::blink::ScrollType) override;
+#if !defined(MINI_UI_QUICKJS)
     cc::Layer* LayerForScrolling() const;
     cc::Layer* LayerForHorizontalScrollbar() const override;
     cc::Layer* LayerForVerticalScrollbar() const override;
+#endif
     bool ScheduleAnimation() override;
     bool UsesCompositedScrolling() const override
     {
+#if defined(MINI_UI_QUICKJS)
+        return false;
+#else
         return true;
+#endif
     }
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationHost* GetCompositorAnimationHost() const override;
     cc::AnimationTimeline* GetCompositorAnimationTimeline() const override;
+#endif
     gfx::Rect VisibleContentRect(IncludeScrollbarsInRect = kExcludeScrollbars) const override;
     scoped_refptr<base::SingleThreadTaskRunner> GetTimerTaskRunner() const override;
     mojom::blink::ColorScheme UsedColorSchemeScrollbars() const override;
@@ -289,7 +299,9 @@ public:
     // for viewing websites that are not optimized for mobile devices.
     bool ShouldDisableDesktopWorkarounds() const;
 
+#if !defined(MINI_UI_QUICKJS)
     const TransformPaintPropertyNode* GetDeviceEmulationTransformNode() const;
+#endif
     const TransformPaintPropertyNode* GetOverscrollElasticityTransformNode() const;
     const TransformPaintPropertyNode* GetPageScaleNode() const;
     const TransformPaintPropertyNode* GetScrollTranslationNode() const;
@@ -315,10 +327,14 @@ public:
 
     void DisposeImpl() override;
 
+#if !defined(MINI_UI_QUICKJS)
     void Paint(GraphicsContext&) const;
+#endif
 
     void UsedColorSchemeChanged();
+#if !defined(MINI_UI_QUICKJS)
     void ScrollbarColorChanged();
+#endif
 
     // Returns whether this VisualViewport is "active", that is, whether it'll
     // affect paint property trees. If false, this renderer cannot be
@@ -340,20 +356,26 @@ public:
     }
     std::optional<blink::Color> CSSScrollbarThumbColor() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void DropCompositorScrollDeltaNextCommit() override;
+#endif
 
 private:
     bool DidSetScaleOrLocation(float scale, bool is_pinch_gesture_active, const gfx::PointF& location);
 
+#if !defined(MINI_UI_QUICKJS)
     void CreateLayers();
+#endif
 
     void EnqueueScrollEvent();
     void EnqueueResizeEvent();
 
     EScrollbarWidth CSSScrollbarWidth() const;
     int ScrollbarThickness() const;
+#if !defined(MINI_UI_QUICKJS)
     void UpdateScrollbarLayer(ScrollbarOrientation);
     void UpdateScrollbarColor(cc::SolidColorScrollbarLayer&);
+#endif
 
     void NotifyRootFrameViewport() const;
 
@@ -369,7 +391,9 @@ private:
         return *page_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     PaintArtifactCompositor* GetPaintArtifactCompositor() const;
+#endif
 
     std::unique_ptr<TracedValue> ViewportToTracedValue() const;
 
@@ -381,12 +405,16 @@ private:
 
     Member<Page> page_;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<cc::Layer> scroll_layer_;
     scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_horizontal_;
     scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_vertical_;
+#endif
 
     TraceablePropertyTreeStateOrAlias parent_property_tree_state_ { TraceablePropertyTreeStateOrAlias::kUninitialized };
+#if !defined(MINI_UI_QUICKJS)
     Member<TransformPaintPropertyNode> device_emulation_transform_node_;
+#endif
     Member<TransformPaintPropertyNode> overscroll_elasticity_transform_node_;
     Member<TransformPaintPropertyNode> page_scale_node_;
     Member<TransformPaintPropertyNode> scroll_translation_node_;

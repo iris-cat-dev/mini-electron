@@ -1,4 +1,4 @@
-﻿// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,40 +22,38 @@ namespace mojo::core::ipcz_driver {
 //
 // Note that this is never used on Windows, where handles are inlined as message
 // data during serialization.
-class MOJO_SYSTEM_IMPL_EXPORT TransmissiblePlatformHandle : public Object<TransmissiblePlatformHandle> {
-public:
-    TransmissiblePlatformHandle();
-    explicit TransmissiblePlatformHandle(PlatformHandle handle);
+class MOJO_SYSTEM_IMPL_EXPORT TransmissiblePlatformHandle
+    : public Object<TransmissiblePlatformHandle> {
+ public:
+  TransmissiblePlatformHandle();
+  explicit TransmissiblePlatformHandle(PlatformHandle handle);
 
-    PlatformHandle& handle()
-    {
-        return handle_;
-    }
+  PlatformHandle& handle() { return handle_; }
 
-    PlatformHandle TakeHandle()
-    {
-        return std::move(handle_);
-    }
+  PlatformHandle TakeHandle() { return std::move(handle_); }
 
-    static constexpr Type object_type()
-    {
-        return kTransmissiblePlatformHandle;
-    }
+  static constexpr Type object_type() { return kTransmissiblePlatformHandle; }
 
-    // Object:
-    void Close() override;
-    bool IsSerializable() const override;
-    bool GetSerializedDimensions(Transport& transmitter, size_t& num_bytes, size_t& num_handles) override;
-    bool Serialize(Transport& transmitter, base::span<uint8_t> data, base::span<PlatformHandle> handles) override;
+  // Object:
+  void Close() override;
+  bool IsSerializable() const override;
+  bool GetSerializedDimensions(Transport& transmitter,
+                               size_t& num_bytes,
+                               size_t& num_handles) override;
+  bool Serialize(Transport& transmitter,
+                 base::span<uint8_t> data,
+                 base::span<PlatformHandle> handles) override;
 
-    static scoped_refptr<TransmissiblePlatformHandle> Deserialize(base::span<const uint8_t> data, base::span<PlatformHandle> handles);
+  static scoped_refptr<TransmissiblePlatformHandle> Deserialize(
+      base::span<const uint8_t> data,
+      base::span<PlatformHandle> handles);
 
-private:
-    ~TransmissiblePlatformHandle() override;
+ private:
+  ~TransmissiblePlatformHandle() override;
 
-    PlatformHandle handle_;
+  PlatformHandle handle_;
 };
 
-} // namespace mojo::core::ipcz_driver
+}  // namespace mojo::core::ipcz_driver
 
-#endif // MOJO_CORE_IPCZ_DRIVER_TRANSMISSIBLE_PLATFORM_HANDLE_H_
+#endif  // MOJO_CORE_IPCZ_DRIVER_TRANSMISSIBLE_PLATFORM_HANDLE_H_

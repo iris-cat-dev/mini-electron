@@ -40,7 +40,9 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/default_tick_clock.h"
 #include "base/trace_event/trace_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gin/public/v8_idle_task_runner.h"
+#endif
 #include "partition_alloc/oom.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/web/blink.h"
@@ -49,9 +51,13 @@
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/bindings/script_regexp.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/v8_histogram_accumulator.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/v8_object_constructor.h"
 #include "third_party/blink/renderer/platform/bindings/v8_private_property.h"
 #include "third_party/blink/renderer/platform/bindings/v8_value_cache.h"
@@ -67,6 +73,7 @@ BASE_FEATURE(kTaskAttributionInfrastructureDisabledForTesting, "TaskAttributionI
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 void AddCrashKey(v8::CrashKeyId id, const std::string& value)
 {
     using base::debug::AllocateCrashKeyString;
@@ -101,10 +108,13 @@ void AddCrashKey(v8::CrashKeyId id, const std::string& value)
     }
 }
 
+#endif
+
 V8PerIsolateData::TaskAttributionTrackerFactoryPtr task_attribution_tracker_factory = nullptr;
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 static void BeforeCallEnteredCallback(v8::Isolate* isolate)
 {
     CHECK(!ScriptForbiddenScope::IsScriptForbidden());
@@ -151,8 +161,38 @@ V8PerIsolateData::V8PerIsolateData(scoped_refptr<base::SingleThreadTaskRunner> t
     }
 }
 
+#else
+V8PerIsolateData::V8PerIsolateData(v8::Isolate* isolate)
+    : isolate_(isolate)
+    , string_cache_(std::make_unique<StringCache>(isolate))
+    , private_property_(std::make_unique<V8PrivateProperty>())
+    , constructor_mode_(ConstructorMode::kCreateNewObject)
+    , runtime_call_stats_(base::DefaultTickClock::GetInstance())
+{
+    CHECK(IsMainThread());
+    {
+        v8::Isolate::Scope scope(isolate_);
+        main_world_ = DOMWrapperWorld::Create(isolate_, DOMWrapperWorld::WorldType::kMain,
+            /*is_default_world_of_isolate=*/true);
+        CHECK(task_attribution_tracker_factory);
+        task_attribution_tracker_ = task_attribution_tracker_factory(isolate_);
+    }
+    // Publish the lifetime entry only after allocation-dependent setup succeeds.
+    isolate_->Enter();
+}
+
+void V8PerIsolateData::InitializeForQuickJS(v8::Isolate* isolate)
+{
+    CHECK(isolate);
+    CHECK(!isolate->GetData(gin::kEmbedderBlink));
+    auto* data = new V8PerIsolateData(isolate);
+    isolate->SetData(gin::kEmbedderBlink, data);
+}
+#endif
+
 V8PerIsolateData::~V8PerIsolateData() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 v8::Isolate* V8PerIsolateData::Initialize(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> user_visible_task_runner, scoped_refptr<base::SingleThreadTaskRunner> best_effort_task_runner,
     V8ContextSnapshotMode context_mode, v8::CreateHistogramCallback create_histogram_callback, v8::AddHistogramSampleCallback add_histogram_sample_callback)
@@ -172,13 +212,17 @@ void V8PerIsolateData::EnableIdleTasks(v8::Isolate* isolate, std::unique_ptr<gin
     From(isolate)->isolate_holder_.EnableIdleTasks(std::move(task_runner));
 }
 
+#endif
+
 // willBeDestroyed() clear things that should be cleared before
 // ThreadState::detach() gets called.
 void V8PerIsolateData::WillBeDestroyed(v8::Isolate* isolate)
 {
     V8PerIsolateData* data = From(isolate);
 
+#if !defined(MINI_UI_QUICKJS)
     data->thread_debugger_.reset();
+#endif
 
     for (auto& item : data->user_data_) {
         if (item) {
@@ -188,16 +232,25 @@ void V8PerIsolateData::WillBeDestroyed(v8::Isolate* isolate)
 
     data->ClearScriptRegexpContext();
 
+#if !defined(MINI_UI_QUICKJS)
     ThreadState::Current()->DetachFromIsolate();
-
     data->active_script_wrappable_manager_.Clear();
+#endif
+
+#if defined(MINI_UI_QUICKJS)
+    // Release cached contexts/roots, but keep the data sentinel and active
+    // manager published until terminal native destruction has completed.
+    data->ClearCaches();
+#else
     // Callbacks can be removed as they only cover single events (e.g. atomic
     // pause) and they cannot get out of sync.
     DCHECK_EQ(0u, data->gc_callback_depth_);
     isolate->RemoveGCPrologueCallback(data->prologue_callback_);
     isolate->RemoveGCEpilogueCallback(data->epilogue_callback_);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void V8PerIsolateData::SetGCCallbacks(v8::Isolate* isolate, v8::Isolate::GCCallback prologue_callback, v8::Isolate::GCCallback epilogue_callback)
 {
     prologue_callback_ = prologue_callback;
@@ -206,22 +259,38 @@ void V8PerIsolateData::SetGCCallbacks(v8::Isolate* isolate, v8::Isolate::GCCallb
     isolate->AddGCEpilogueCallback(epilogue_callback_);
 }
 
-// destroy() clear things that should be cleared after ThreadState::detach()
-// gets called but before the Isolate exits.
+#endif
+
+void V8PerIsolateData::ClearCaches()
+{
+    if (script_regexp_script_state_)
+        script_regexp_script_state_->DisposePerContextData();
+    private_property_.reset();
+    string_cache_->Dispose();
+    string_cache_.reset();
+    v8_template_map_for_main_world_.clear();
+    v8_template_map_for_non_main_worlds_.clear();
+    v8_dict_template_map_.clear();
+    eternal_name_cache_.clear();
+    password_regexp_.Clear();
+    for (auto& item : user_data_)
+        item.Clear();
+    main_world_.Clear();
+    task_attribution_tracker_.reset();
+}
+
 void V8PerIsolateData::Destroy(v8::Isolate* isolate)
 {
-    isolate->RemoveBeforeCallEnteredCallback(&BeforeCallEnteredCallback);
     V8PerIsolateData* data = From(isolate);
-
-    // Clear everything before exiting the Isolate.
-    if (data->script_regexp_script_state_) {
-        data->script_regexp_script_state_->DisposePerContextData();
-    }
-    data->private_property_.reset();
-    data->string_cache_->Dispose();
-    data->string_cache_.reset();
-    data->v8_template_map_for_main_world_.clear();
-    data->v8_template_map_for_non_main_worlds_.clear();
+#if defined(MINI_UI_QUICKJS)
+    // WillBeDestroyed cleared every heap-owned cache before heap termination.
+    DCHECK(!data->string_cache_);
+    data->active_script_wrappable_manager_.Clear();
+#else
+    isolate->RemoveBeforeCallEnteredCallback(&BeforeCallEnteredCallback);
+    data->ClearCaches();
+#endif
+    isolate->SetData(gin::kEmbedderBlink, nullptr);
 
     // FIXME: Remove once all v8::Isolate::GetCurrent() calls are gone.
     isolate->Exit();
@@ -297,6 +366,7 @@ V8PerIsolateData::V8TemplateMap& V8PerIsolateData::SelectV8TemplateMap(const DOM
     return world.IsMainWorld() ? v8_template_map_for_main_world_ : v8_template_map_for_non_main_worlds_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void V8PerIsolateData::ClearPersistentsForV8ContextSnapshot()
 {
     v8_template_map_for_main_world_.clear();
@@ -304,6 +374,8 @@ void V8PerIsolateData::ClearPersistentsForV8ContextSnapshot()
     eternal_name_cache_.clear();
     private_property_.reset();
 }
+
+#endif
 
 const base::span<const v8::Eternal<v8::Name>> V8PerIsolateData::FindOrCreateEternalNameCache(const void* lookup_key, base::span<const std::string_view> names)
 {
@@ -343,11 +415,14 @@ void V8PerIsolateData::ClearScriptRegexpContext()
     script_regexp_script_state_ = nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void V8PerIsolateData::SetThreadDebugger(std::unique_ptr<ThreadDebugger> thread_debugger)
 {
     DCHECK(!thread_debugger_);
     thread_debugger_ = std::move(thread_debugger);
 }
+
+#endif
 
 void V8PerIsolateData::SetPasswordRegexp(ScriptRegexp* password_regexp)
 {
@@ -366,6 +441,7 @@ void V8PerIsolateData::SetTaskAttributionTrackerFactory(TaskAttributionTrackerFa
     task_attribution_tracker_factory = factory;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void* CreateHistogram(const char* name, int min, int max, size_t buckets)
 {
     // Each histogram has an implicit '0' bucket (for underflow), so we can always
@@ -390,5 +466,7 @@ void AddHistogramSample(void* hist, int sample)
 {
     V8HistogramAccumulator::GetInstance()->AddSample(hist, sample);
 }
+
+#endif
 
 } // namespace blink

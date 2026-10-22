@@ -1,0 +1,15 @@
+framework,rows,metric,unit,sample_count,median,p95_nearest_rank,raw_file
+react,10000,operation_js_commit.mount,ms,7,42.099999994039536,46.29999998211861,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.update_selected,ms,7,6.0,11.0,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.keyed_reorder,ms,7,226.09999999403954,319.69999998807907,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.prepend,ms,7,16.80000001192093,18.5,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.filter,ms,7,47.099999994039536,56.900000005960464,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.restore,ms,7,39.599999994039536,42.400000005960464,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,operation_js_commit.unmount,ms,7,42.900000005960464,46.69999998807907,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,cold_startup.browser_launch_to_protocol_ready,ms,1,360.0909000087995,360.0909000087995,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,cold_startup.document_navigation_to_protocol_ready,ms,1,23.807200021110475,23.807200021110475,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,workload.wall,ms,1,15694.147799978964,15694.147799978964,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,browser_shutdown.wall,ms,1,134.64709999971092,134.64709999971092,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,chrome_job.cpu_startup_through_capture,seconds,1,25.796875,25.796875,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,chrome_job.cpu_workload,seconds,1,23.234375,23.234375,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json
+react,10000,chrome_job.current_private_bytes,bytes,1,1727541248.0,1727541248.0,D:\Project\mini-electron\out\ui-map-react-chrome-profile\raw\react-10000.json

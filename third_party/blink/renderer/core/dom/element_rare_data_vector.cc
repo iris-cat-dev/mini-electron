@@ -74,9 +74,14 @@ void ElementRareDataVector::ClearPseudoElements()
         SetField(FieldId::kPseudoElementData, nullptr);
     }
 }
-void ElementRareDataVector::SetPseudoElement(PseudoId pseudo_id, PseudoElement* element, const AtomicString& document_transition_tag)
+#if !defined(MINI_UI_QUICKJS)
+void ElementRareDataVector::SetPseudoElement(
+    PseudoId pseudo_id,
+    PseudoElement* element,
+    const AtomicString& document_transition_tag)
 {
-    PseudoElementData* data = static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
+    PseudoElementData* data =
+        static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
     if (!data) {
         if (!element)
             return;
@@ -85,13 +90,43 @@ void ElementRareDataVector::SetPseudoElement(PseudoId pseudo_id, PseudoElement* 
     }
     data->SetPseudoElement(pseudo_id, element, document_transition_tag);
 }
-PseudoElement* ElementRareDataVector::GetPseudoElement(PseudoId pseudo_id, const AtomicString& document_transition_tag) const
+
+PseudoElement* ElementRareDataVector::GetPseudoElement(
+    PseudoId pseudo_id,
+    const AtomicString& document_transition_tag) const
 {
-    PseudoElementData* data = static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
+    PseudoElementData* data =
+        static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
     if (!data)
         return nullptr;
     return data->GetPseudoElement(pseudo_id, document_transition_tag);
 }
+#else
+void ElementRareDataVector::SetPseudoElement(
+    PseudoId pseudo_id,
+    PseudoElement* element)
+{
+    PseudoElementData* data =
+        static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
+    if (!data) {
+        if (!element)
+            return;
+        data = MakeGarbageCollected<PseudoElementData>();
+        SetField(FieldId::kPseudoElementData, data);
+    }
+    data->SetPseudoElement(pseudo_id, element);
+}
+
+PseudoElement* ElementRareDataVector::GetPseudoElement(
+    PseudoId pseudo_id) const
+{
+    PseudoElementData* data =
+        static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));
+    if (!data)
+        return nullptr;
+    return data->GetPseudoElement(pseudo_id);
+}
+#endif
 PseudoElementData::PseudoElementVector ElementRareDataVector::GetPseudoElements() const
 {
     PseudoElementData* data = static_cast<PseudoElementData*>(GetField(FieldId::kPseudoElementData));

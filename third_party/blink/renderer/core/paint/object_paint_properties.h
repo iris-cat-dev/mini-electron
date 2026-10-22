@@ -145,8 +145,10 @@ public:                                                                         
 
         // Effects
         kElementCaptureEffect = 13,
+#if !defined(MINI_UI_QUICKJS)
         kViewTransitionSubframeRootEffect = 14,
         kViewTransitionEffect = 15,
+#endif
         kEffect = 16,
         kFilter = 17,
         kMask = 18,
@@ -276,6 +278,7 @@ public:                                                                         
     // follows:
     // [ ElementCaptureEffect ]
     // |     Isolated group to force an element to be painted separately.
+#if !defined(MINI_UI_QUICKJS)
     // +-[ ViewTransitionSubframeRoot ]
     //   |   Provides the root stacking context for a local subframe with an
     //   |   active ViewTransition. This is used to implement the view transition
@@ -286,6 +289,7 @@ public:                                                                         
     //   |   including top layer elements, into an image used for ViewTransition.
     //  /    This implements the capturing the image for the document element at:
     // |     https://drafts.csswg.org/css-view-transitions-1/#capture-the-image-algorithm
+#endif
     // +-[ Effect ]
     //   |   Isolated group to apply various CSS effects, including opacity,
     //  /    mix-blend-mode, backdrop-filter, and for isolation if a mask needs
@@ -318,8 +322,10 @@ public:                                                                         
     }
 
     ADD_EFFECT(ElementCaptureEffect, NodeId::kElementCaptureEffect)
+#if !defined(MINI_UI_QUICKJS)
     ADD_EFFECT(ViewTransitionSubframeRootEffect, NodeId::kViewTransitionSubframeRootEffect)
     ADD_EFFECT(ViewTransitionEffect, NodeId::kViewTransitionEffect)
+#endif
     ADD_EFFECT(Effect, NodeId::kEffect)
     ADD_EFFECT(Filter, NodeId::kFilter)
     ADD_EFFECT(Mask, NodeId::kMask)
@@ -331,13 +337,16 @@ public:                                                                         
 
     // Clip node declarations.
     //
-    // The hierarchy of the clip subtree created by a LayoutObject is as follows:
+#if !defined(MINI_UI_QUICKJS)
     // [ ViewTransitionClip ]
     // |   Clip created only when there is an active ViewTransition. This is used
     // |   to clip the element's painting to a subset close to the viewport.
     // |   See https://drafts.csswg.org/css-view-transitions-1/
     // |       #compute-the-interest-rectangle-algorithm for details.
     // +-[ ClipPathClip ]
+#else
+    // [ ClipPathClip ]
+#endif
     //   |  Clip created by path-based CSS clip-path. Only exists if the
     //  /   clip-path is "simple" that can be applied geometrically. This and
     // |    the ClipPathMask effect node are mutually exclusive.

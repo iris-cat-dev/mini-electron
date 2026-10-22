@@ -110,8 +110,10 @@ public:
 
     void ResolveTimelineOffsets() const;
 
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationTimeline* EnsureCompositorTimeline() override;
     void UpdateCompositorTimeline() override;
+#endif
 
     virtual ScrollAxis GetAxis() const = 0;
 

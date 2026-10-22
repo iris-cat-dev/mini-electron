@@ -45,9 +45,13 @@ JSModuleScript* JSModuleScript::Create(
     v8::Isolate* isolate = script_state->GetIsolate();
     v8::TryCatch try_catch(isolate);
 
+#if defined(MINI_UI_QUICKJS)
+    v8::Local<v8::Module> result =
+        ModuleRecord::Compile(script_state, params, options, start_position);
+#else
     ModuleRecordProduceCacheData* produce_cache_data = nullptr;
-
     v8::Local<v8::Module> result = ModuleRecord::Compile(script_state, params, options, start_position, modulator->GetV8CacheOptions(), &produce_cache_data);
+#endif
 
     // CreateInternal processes Steps 4 and 8-10.
     //
@@ -55,8 +59,14 @@ JSModuleScript* JSModuleScript::Create(
     // Steps 8-13 before Step 6. In a case that compile failed, we will
     // immediately turn the script into errored state. Thus the members will not
     // be used for the speced algorithms, but may be used from inspector.
+#if defined(MINI_UI_QUICKJS)
+    JSModuleScript* script = CreateInternal(
+        modulator, result, params.SourceURL(), params.BaseURL(), options,
+        start_position);
+#else
     JSModuleScript* script
         = CreateInternal(params.GetSourceText().length(), modulator, result, params.SourceURL(), params.BaseURL(), options, start_position, produce_cache_data);
+#endif
 
     // <spec step="8">If result is a list of errors, then:</spec>
     if (try_catch.HasCaught()) {
@@ -112,9 +122,40 @@ JSModuleScript* JSModuleScript::Create(
 JSModuleScript* JSModuleScript::CreateForTest(Modulator* modulator, v8::Local<v8::Module> record, const KURL& base_url, const ScriptFetchOptions& options)
 {
     KURL dummy_source_url;
+#if defined(MINI_UI_QUICKJS)
+    return CreateInternal(
+        modulator, record, dummy_source_url, base_url, options,
+        TextPosition::MinimumPosition());
+#else
     return CreateInternal(0, modulator, record, dummy_source_url, base_url, options, TextPosition::MinimumPosition(), nullptr);
+#endif
 }
 
+// <specdef
+// href="https://html.spec.whatwg.org/C/#creating-a-javascript-module-script">
+#if defined(MINI_UI_QUICKJS)
+JSModuleScript* JSModuleScript::CreateInternal(
+    Modulator* modulator, v8::Local<v8::Module> result,
+    const KURL& source_url, const KURL& base_url,
+    const ScriptFetchOptions& options, const TextPosition& start_position)
+{
+    JSModuleScript* module_script = MakeGarbageCollected<JSModuleScript>(
+        modulator, result, source_url, base_url, options, start_position);
+    modulator->GetModuleRecordResolver()->RegisterModuleScript(module_script);
+    return module_script;
+}
+
+JSModuleScript::JSModuleScript(
+    Modulator* settings_object, v8::Local<v8::Module> record,
+    const KURL& source_url, const KURL& base_url,
+    const ScriptFetchOptions& fetch_options,
+    const TextPosition& start_position)
+    : ModuleScript(
+          settings_object, record, source_url, base_url, fetch_options,
+          start_position)
+{
+}
+#else
 // <specdef
 // href="https://html.spec.whatwg.org/C/#creating-a-javascript-module-script">
 JSModuleScript* JSModuleScript::CreateInternal(size_t source_text_length, Modulator* modulator, v8::Local<v8::Module> result, const KURL& source_url,
@@ -161,10 +202,13 @@ void JSModuleScript::ProduceCache()
 
     produce_cache_data_ = nullptr;
 }
+#endif
 
 void JSModuleScript::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(produce_cache_data_);
+#endif
     ModuleScript::Trace(visitor);
 }
 

@@ -15,12 +15,16 @@ bool ToCanvasContextCreationAttributes(
     const CanvasContextCreationAttributesModule* attrs, CanvasContextCreationAttributesCore& result, ExceptionState& exception_state)
 {
     result.alpha = attrs->alpha();
+#if !defined(MINI_UI_QUICKJS)
     result.antialias = attrs->antialias();
+#endif
     if (!ValidateAndConvertColorSpace(attrs->colorSpace(), result.color_space, exception_state)) {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     result.depth = attrs->depth();
     result.fail_if_major_performance_caveat = attrs->failIfMajorPerformanceCaveat();
+#endif
 #if BUILDFLAG(IS_MAC)
     // TODO(crbug.com/945835): enable desynchronized on Mac.
     result.desynchronized = false;
@@ -35,6 +39,7 @@ bool ToCanvasContextCreationAttributes(
         result.pixel_format = CanvasPixelFormat::kF16;
         break;
     }
+#if !defined(MINI_UI_QUICKJS)
     result.premultiplied_alpha = attrs->premultipliedAlpha();
     result.preserve_drawing_buffer = attrs->preserveDrawingBuffer();
     switch (attrs->powerPreference().AsEnum()) {
@@ -49,6 +54,7 @@ bool ToCanvasContextCreationAttributes(
         break;
     }
     result.stencil = attrs->stencil();
+#endif
     switch (attrs->willReadFrequently().AsEnum()) {
     case V8CanvasWillReadFrequently::Enum::kTrue:
         result.will_read_frequently = CanvasContextCreationAttributesCore::WillReadFrequently::kTrue;
@@ -59,7 +65,9 @@ bool ToCanvasContextCreationAttributes(
     default:
         result.will_read_frequently = CanvasContextCreationAttributesCore::WillReadFrequently::kUndefined;
     }
+#if !defined(MINI_UI_QUICKJS)
     result.xr_compatible = attrs->xrCompatible();
+#endif
     return true;
 }
 

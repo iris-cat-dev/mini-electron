@@ -52,7 +52,9 @@ protected:
 private:
     const SimpleFontData* CreateFontData(const FontDescription&, const FontSelectionCapabilities&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void ReportFontLookup(const FontDescription& font_description, const SimpleFontData* font_data, bool is_loading_fallback = false) override;
+#endif
 
     class LocalFontHistograms {
         DISALLOW_NEW();

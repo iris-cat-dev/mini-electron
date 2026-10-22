@@ -50,8 +50,18 @@
 #include "third_party/skia/include/core/SkScalar.h"
 #include "third_party/skia/include/effects/SkHighContrastFilter.h"
 #include "third_party/skia/include/private/SkGainmapInfo.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/private/chromium/SkChromeRemoteGlyphCache.h"
+#endif
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/skia/include/core/SkFontMgr.h"
+#include "third_party/skia/include/core/SkSerialProcs.h"
+#include "third_party/skia/include/core/SkStream.h"
+#include "third_party/skia/include/core/SkTextBlob.h"
+#include "third_party/skia/include/core/SkTypeface.h"
+#else
 #include "third_party/skia/include/private/chromium/Slug.h"
+#endif
 #include "ui/gfx/hdr_metadata.h"
 #include "ui/gfx/mojom/hdr_metadata.mojom.h"
 #include "ui/gfx/mojom/hdr_metadata_mojom_traits.h"
@@ -498,9 +508,11 @@ void PaintOpReader::Read(PaintImage* image, PaintFlags::DynamicRangeLimitMixture
 
     // The transfer cache entry for an image may not exist if the upload fails.
     if (auto* entry = options_.transfer_cache->GetEntryAs<ServiceImageTransferCacheEntry>(transfer_cache_entry_id)) {
+#if !defined(MINI_UI_QUICKJS)
         if (needs_mips) {
             entry->EnsureMips();
         }
+#endif
 
         PaintImageBuilder builder = PaintImageBuilder::WithDefault()
                                         .set_id(PaintImage::GetNextId())
@@ -583,6 +595,34 @@ void PaintOpReader::Read(SkGainmapInfo* gainmap_info)
     Read(&gainmap_info->fGainmapMathColorSpace);
 }
 
+#if defined(MINI_UI_QUICKJS)
+void PaintOpReader::Read(sk_sp<SkTextBlob>* blob)
+{
+    size_t bytes = 0;
+    ReadSize(&bytes);
+    if (!valid_)
+        return;
+    if (!bytes || bytes > remaining_bytes_) {
+        SetInvalid(DeserializationError::kInsufficientRemainingBytes_Read_SkData);
+        return;
+    }
+    // Deserialize from a private snapshot, as with other Skia flattenables.
+    auto* scratch = CopyScratchSpace(bytes);
+    bool typeface_decode_failed = false;
+    SkDeserialProcs procs;
+    procs.fTypefaceCtx = &typeface_decode_failed;
+    procs.fTypefaceProc = [](const void* data, size_t size, void* context) {
+        SkMemoryStream stream(data, size);
+        auto typeface = SkTypeface::MakeDeserialize(&stream, nullptr);
+        *static_cast<bool*>(context) |= !typeface || !typeface->countGlyphs();
+        return typeface;
+    };
+    *blob = SkTextBlob::Deserialize(scratch, bytes, procs);
+    DidRead(bytes);
+    if (!*blob || typeface_decode_failed)
+        SetInvalid(DeserializationError::kInvalidTypeface);
+}
+#else
 void PaintOpReader::Read(sk_sp<sktext::gpu::Slug>* slug)
 {
     AssertFieldAlignment();
@@ -607,6 +647,7 @@ void PaintOpReader::Read(sk_sp<sktext::gpu::Slug>* slug)
         return;
     }
 }
+#endif
 
 void PaintOpReader::Read(sk_sp<DrawLooper>* looper)
 {

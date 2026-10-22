@@ -1,4 +1,4 @@
-﻿// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,16 +7,16 @@
 
 #include <stdint.h>
 
-#include <algorithm> // For |std::swap()|.
+#include <algorithm>  // For |std::swap()|.
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "base/bind.h"
-#include "base/callback_forward.h"
 #include "base/component_export.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "mojo/public/cpp/bindings/associated_group.h"
 #include "mojo/public/cpp/bindings/associated_interface_ptr_info.h"
@@ -29,147 +29,127 @@
 namespace mojo {
 namespace internal {
 
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ AssociatedInterfacePtrStateBase {
-public:
-    AssociatedInterfacePtrStateBase();
-    ~AssociatedInterfacePtrStateBase();
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) AssociatedInterfacePtrStateBase {
+ public:
+  AssociatedInterfacePtrStateBase();
+  ~AssociatedInterfacePtrStateBase();
 
-    void* GetInstanceImpl();
-    void** GetInstanceAddrImpl();
+  uint32_t version() const { return version_; }
 
-    uint32_t version() const
-    {
-        return version_;
-    }
+  void QueryVersion(base::OnceCallback<void(uint32_t)> callback);
+  void RequireVersion(uint32_t version);
+  void FlushForTesting();
+  void CloseWithReason(uint32_t custom_reason, const std::string& description);
 
-    void QueryVersion(base::OnceCallback<void(uint32_t)> callback);
-    void RequireVersion(uint32_t version);
-    void FlushForTesting();
-    void CloseWithReason(uint32_t custom_reason, const std::string& description);
+  bool is_bound() const { return !!endpoint_client_; }
 
-    bool is_bound() const
-    {
-        //return !!endpoint_client_;
-        return handle_.is_valid();
-    }
+  bool encountered_error() const {
+    return endpoint_client_ ? endpoint_client_->encountered_error() : false;
+  }
 
-    //     bool encountered_error() const
-    //     {
-    //         return endpoint_client_ ? endpoint_client_->encountered_error() : false;
-    //     }
+  void set_connection_error_handler(base::OnceClosure error_handler) {
+    DCHECK(endpoint_client_);
+    endpoint_client_->set_connection_error_handler(std::move(error_handler));
+  }
 
-    void set_connection_error_handler(base::OnceClosure error_handler)
-    {
-        //         DCHECK(endpoint_client_);
-        //         endpoint_client_->set_connection_error_handler(std::move(error_handler));
-    }
+  void set_connection_error_with_reason_handler(
+      ConnectionErrorWithReasonCallback error_handler) {
+    DCHECK(endpoint_client_);
+    endpoint_client_->set_connection_error_with_reason_handler(
+        std::move(error_handler));
+  }
 
-    void set_connection_error_with_reason_handler(ConnectionErrorWithReasonCallback error_handler)
-    {
-        //         DCHECK(endpoint_client_);
-        //         endpoint_client_->set_connection_error_with_reason_handler(std::move(error_handler));
-    }
+  // Returns true if bound and awaiting a response to a message.
+  bool has_pending_callbacks() const {
+    return endpoint_client_ && endpoint_client_->has_pending_responders();
+  }
 
-    //     // Returns true if bound and awaiting a response to a message.
-    //     bool has_pending_callbacks() const
-    //     {
-    //         return endpoint_client_ && endpoint_client_->has_pending_responders();
-    //     }
-    //
-    //     AssociatedGroup* associated_group() { return endpoint_client_ ? endpoint_client_->associated_group() : nullptr; }
-    //
-    //     void ForwardMessage(Message message) { endpoint_client_->Accept(&message); }
-    //
-    //     void ForwardMessageWithResponder(Message message, std::unique_ptr<MessageReceiver> responder)
-    //     {
-    //         endpoint_client_->AcceptWithResponder(&message, std::move(responder));
-    //     }
-    //
-    //     scoped_refptr<ThreadSafeProxy> CreateThreadSafeProxy(scoped_refptr<ThreadSafeProxy::Target> target)
-    //     {
-    //         return endpoint_client_->CreateThreadSafeProxy(std::move(target));
-    //     }
+  AssociatedGroup* associated_group() {
+    return endpoint_client_ ? endpoint_client_->associated_group() : nullptr;
+  }
 
-    void Swap(AssociatedInterfacePtrStateBase* other);
-    void Bind(ScopedInterfaceEndpointHandle handle, uint32_t version, std::unique_ptr<MessageReceiver> validator,
-        scoped_refptr<base::SequencedTaskRunner> runner, const char* interface_name, MessageToMethodInfoCallback method_info_callback,
-        MessageToMethodNameCallback method_name_callback);
+  void ForwardMessage(Message message) { endpoint_client_->Accept(&message); }
 
-    void Bind2(ScopedInterfaceEndpointHandle handle, uint32_t version, scoped_refptr<base::SequencedTaskRunner> runner, const char* interface_name);
+  void ForwardMessageWithResponder(Message message,
+                                   std::unique_ptr<MessageReceiver> responder) {
+    endpoint_client_->AcceptWithResponder(&message, std::move(responder));
+  }
 
-    ScopedInterfaceEndpointHandle PassHandle();
+  scoped_refptr<ThreadSafeProxy> CreateThreadSafeProxy(
+      scoped_refptr<ThreadSafeProxy::Target> target) {
+    return endpoint_client_->CreateThreadSafeProxy(std::move(target));
+  }
 
-    //InterfaceEndpointClient* endpoint_client() { return endpoint_client_.get(); }
+ protected:
+  void Swap(AssociatedInterfacePtrStateBase* other);
+  void Bind(ScopedInterfaceEndpointHandle handle,
+            uint32_t version,
+            std::unique_ptr<MessageReceiver> validator,
+            scoped_refptr<base::SequencedTaskRunner> runner,
+            const char* interface_name,
+            MessageToMethodInfoCallback method_info_callback,
+            MessageToMethodNameCallback method_name_callback);
+  ScopedInterfaceEndpointHandle PassHandle();
 
-private:
-    void OnQueryVersion(base::OnceCallback<void(uint32_t)> callback, uint32_t version);
+  InterfaceEndpointClient* endpoint_client() { return endpoint_client_.get(); }
 
-    //std::unique_ptr<InterfaceEndpointClient> endpoint_client_;
-    ScopedInterfaceEndpointHandle handle_;
-    uint32_t version_ = 0;
+ private:
+  void OnQueryVersion(base::OnceCallback<void(uint32_t)> callback,
+                      uint32_t version);
 
-protected:
-    void** interface_addr_ = nullptr;
+  std::unique_ptr<InterfaceEndpointClient> endpoint_client_;
+  uint32_t version_ = 0;
 };
 
-template <typename Interface> class AssociatedInterfacePtrState : public AssociatedInterfacePtrStateBase {
-public:
-    // using Proxy = typename Interface::Proxy_;
+template <typename Interface>
+class AssociatedInterfacePtrState : public AssociatedInterfacePtrStateBase {
+ public:
+  using Proxy = typename Interface::Proxy_;
 
-    AssociatedInterfacePtrState() = default;
-    AssociatedInterfacePtrState(const AssociatedInterfacePtrState&) = delete;
-    AssociatedInterfacePtrState& operator=(const AssociatedInterfacePtrState&) = delete;
-    ~AssociatedInterfacePtrState() = default;
+  AssociatedInterfacePtrState() = default;
+  AssociatedInterfacePtrState(const AssociatedInterfacePtrState&) = delete;
+  AssociatedInterfacePtrState& operator=(const AssociatedInterfacePtrState&) =
+      delete;
+  ~AssociatedInterfacePtrState() = default;
 
-    //   Proxy* instance() {
-    //     // This will be null if the object is not bound.
-    //     return proxy_.get();
-    //   }
-    Interface* instance()
-    {
-        return (Interface*)GetInstanceImpl();
-    }
+  Proxy* instance() {
+    // This will be null if the object is not bound.
+    return proxy_.get();
+  }
 
-    //Interface** instance_addr() { return (Interface**)GetInstanceAddrImpl(); }
+  void Swap(AssociatedInterfacePtrState* other) {
+    AssociatedInterfacePtrStateBase::Swap(other);
+    std::swap(other->proxy_, proxy_);
+  }
 
-    void Swap(AssociatedInterfacePtrState* other)
-    {
-        AssociatedInterfacePtrStateBase::Swap(other);
-        // std::swap(other->proxy_, proxy_);
-    }
+  void Bind(AssociatedInterfacePtrInfo<Interface> info,
+            scoped_refptr<base::SequencedTaskRunner> runner) {
+    DCHECK(!proxy_);
+    AssociatedInterfacePtrStateBase::Bind(
+        info.PassHandle(), info.version(),
+        std::make_unique<typename Interface::ResponseValidator_>(),
+        std::move(runner), Interface::Name_, Interface::MessageToMethodInfo_,
+        Interface::MessageToMethodName_);
+    proxy_ = std::make_unique<Proxy>(endpoint_client());
+  }
 
-    void Bind(AssociatedInterfacePtrInfo<Interface> info, scoped_refptr<base::SequencedTaskRunner> runner)
-    {
-        //     DCHECK(!proxy_);
-        //     AssociatedInterfacePtrStateBase::Bind(
-        //         info.PassHandle(), info.version(),
-        //         std::make_unique<typename Interface::ResponseValidator_>(),
-        //         std::move(runner), Interface::Name_, Interface::MessageToMethodInfo_,
-        //         Interface::MessageToMethodName_);
-        //     proxy_ = std::make_unique<Proxy>(endpoint_client());
+  // After this method is called, the object is in an invalid state and
+  // shouldn't be reused.
+  AssociatedInterfacePtrInfo<Interface> PassInterface() {
+    AssociatedInterfacePtrInfo<Interface> info(PassHandle(), version());
+    proxy_.reset();
+    return info;
+  }
 
-        AssociatedInterfacePtrStateBase::Bind2(info.PassHandle(), info.version(), std::move(runner), Interface::Name_);
-    }
+  InterfaceEndpointClient* endpoint_client_for_test() {
+    return endpoint_client();
+  }
 
-    // After this method is called, the object is in an invalid state and
-    // shouldn't be reused.
-    AssociatedInterfacePtrInfo<Interface> PassInterface()
-    {
-        //     AssociatedInterfacePtrInfo<Interface> info(PassHandle(), version());
-        //     proxy_.reset();
-        //     return info;
-
-        AssociatedInterfacePtrInfo<Interface> info(PassHandle(), version());
-        return info;
-    }
-
-    //InterfaceEndpointClient* endpoint_client_for_test() { return endpoint_client(); }
-
-private:
-    // std::unique_ptr<Proxy> proxy_;
+ private:
+  std::unique_ptr<Proxy> proxy_;
 };
 
-} // namespace internal
-} // namespace mojo
+}  // namespace internal
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_LIB_ASSOCIATED_INTERFACE_PTR_STATE_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_LIB_ASSOCIATED_INTERFACE_PTR_STATE_H_

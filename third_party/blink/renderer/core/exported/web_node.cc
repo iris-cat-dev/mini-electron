@@ -53,7 +53,9 @@
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/serializers/serialization.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_collection.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
@@ -295,11 +297,12 @@ cc::ElementId WebNode::ScrollingElementIdForTesting() const
 {
     return private_->GetLayoutBox()->GetScrollableArea()->GetScrollElementId();
 }
-
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainer* WebNode::PluginContainer() const
 {
     return private_->GetWebPluginContainer();
 }
+#endif
 
 WebNode::WebNode(Node* node)
     : private_(node)

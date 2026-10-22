@@ -14,7 +14,9 @@
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/scheduler/common/tracing_helper.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 class LazyNow;
@@ -76,7 +78,9 @@ public:
     // Accounts for given task for cpu-based throttling needs.
     void OnTaskRunTimeReported(base::TimeTicks start_time, base::TimeTicks end_time);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 private:
     friend class BudgetPool;

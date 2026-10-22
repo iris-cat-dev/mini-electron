@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "status": "error",
+  "framework_requested": "react",
+  "rows": 5000,
+  "warmups": 2,
+  "iterations": 7,
+  "diagnostic": {
+    "stage": "application",
+    "message": "framework workload ended with status \"error\"",
+    "mini_ui_error_code": 0
+  },
+  "application_result": {
+    "schema_version": 1,
+    "workload_version": 1,
+    "framework": {
+      "name": "react",
+      "version": "18.3.1",
+      "renderer": "react-dom 18.3.1-next-f1338f8080-20240426",
+      "distribution": "production UMD"
+    },
+    "config": {
+      "rows": 5000,
+      "warmups": 2,
+      "iterations": 7
+    },
+    "operation_js_commit_ms": null,
+    "correctness_assertions": null,
+    "assertion_failures": [
+      {
+        "name": "TypeError",
+        "message": "Native function realm has been detached",
+        "stack": "    at Fc (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:220)\n    at xk (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:152)\n    at Qi (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:195)\n    at Ri (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:195)\n    at Ok (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:195)\n    at Nd (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:194)\n    at Qf (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:187)\n    at Li (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:189)\n    at db (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:79)\n    at yb (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:190)\n    at <anonymous> (file:///D:/Project/mini-electron/benchmarks/ui/assets/vendor/react-dom.production.min.js:264)\n    at setFiltered (file:///D:/Project/mini-electron/benchmarks/ui/assets/react-app.js:172)\n    at <anonymous> (file:///D:/Project/mini-electron/benchmarks/ui/assets/common.js:230)\n    at operation (file:///D:/Project/mini-electron/benchmarks/ui/assets/common.js:200)\n"
+      }
+    ]
+  },
+  "process_execution": {
+    "command": [
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\build\\ui-benchmark.exe",
+      "--framework",
+      "react",
+      "--rows",
+      "5000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--resource-root",
+      "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+      "--output",
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\raw\\react-5000.json",
+      "--capture",
+      "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\captures\\react-5000.bmp",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1.0",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 1,
+    "wall_ms": 18214.356900003622,
+    "timeout_ms": 2730000,
+    "stdout": "",
+    "stderr": "application: framework workload ended with status \"error\"\n"
+  }
+}

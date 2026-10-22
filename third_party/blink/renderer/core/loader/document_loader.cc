@@ -47,7 +47,9 @@
 #include "base/uuid.h"
 #include "build/chromeos_buildflags.h"
 #include "net/storage_access_api/status.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "services/network/public/cpp/client_hints.h"
 #include "services/network/public/cpp/header_util.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
@@ -67,16 +69,15 @@
 #include "third_party/blink/public/mojom/loader/same_document_navigation_type.mojom-shared.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
 #include "third_party/blink/public/mojom/page/page.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/service_worker/service_worker_fetch_handler_bypass_option.mojom-blink.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_fetch_handler_type.mojom-blink.h"
-#include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
-#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_content_security_policy_struct.h"
 #include "third_party/blink/public/platform/web_navigation_body_loader.h"
 #include "third_party/blink/public/platform/web_url_request.h"
-#include "third_party/blink/public/web/blink.h"
 #include "third_party/blink/public/web/web_navigation_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -112,8 +113,12 @@
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder_builder.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
 #include "third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.h"
 #include "third_party/blink/renderer/core/loader/frame_client_hints_preferences_context.h"
@@ -122,7 +127,9 @@
 #include "third_party/blink/renderer/core/loader/idleness_detector.h"
 #include "third_party/blink/renderer/core/loader/interactive_detector.h"
 #include "third_party/blink/renderer/core/loader/old_document_info_for_commit.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/prefetched_signed_exchange_manager.h"
+#endif
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
 #include "third_party/blink/renderer/core/loader/progress_tracker.h"
 #include "third_party/blink/renderer/core/loader/subresource_filter.h"
@@ -135,32 +142,40 @@
 #include "third_party/blink/renderer/core/performance_entry_names.h"
 #include "third_party/blink/renderer/core/permissions_policy/document_policy_parser.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/auto_speculation_rules_config.h"
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rule_set.h"
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rules_header.h"
+#endif
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/profiler_group.h"
+#endif
 #include "third_party/blink/renderer/core/timing/soft_navigation_heuristics.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
+#endif
 #include "third_party/blink/renderer/core/xml/document_xslt.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
-#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/fonts/font_performance.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/cors/cors.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/background_code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
-#include "third_party/blink/renderer/platform/loader/fetch/memory_cache.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_timing_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/unique_identifier.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/navigation_body_loader.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/static_data_navigation_body_loader.h"
 #include "third_party/blink/renderer/platform/mhtml/archive_resource.h"
 #include "third_party/blink/renderer/platform/mhtml/mhtml_archive.h"
@@ -176,7 +191,9 @@
 #include "third_party/blink/renderer/platform/scheduler/public/task_attribution_info.h"
 #include "third_party/blink/renderer/platform/scheduler/public/task_attribution_tracker.h"
 #include "third_party/blink/renderer/platform/storage/blink_storage_key.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/web_test_support.h"
+#endif
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
@@ -234,10 +251,12 @@ WebVector<WebString> CopyForceEnabledOriginTrials(const Vector<String>& force_en
     return result;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool IsPagePopupRunningInWebTest(LocalFrame* frame)
 {
     return frame && frame->GetPage()->GetChromeClient().IsPopup() && WebTestSupport::IsRunningWebTest();
 }
+#endif
 
 struct SameSizeAsDocumentLoader : public GarbageCollected<SameSizeAsDocumentLoader>,
                                   public WebDocumentLoader,
@@ -281,8 +300,10 @@ struct SameSizeAsDocumentLoader : public GarbageCollected<SameSizeAsDocumentLoad
     WebNavigationType navigation_type;
     DocumentLoadTiming document_load_timing;
     base::TimeTicks time_of_last_data_received;
+#if !defined(MINI_UI_QUICKJS)
     mojom::blink::ControllerServiceWorkerMode service_worker_initial_controller_mode;
     std::unique_ptr<WebServiceWorkerNetworkProvider> service_worker_network_provider;
+#endif
     DocumentPolicy::ParsedDocumentPolicy document_policy;
     bool was_blocked_by_document_policy;
     Vector<PolicyParserMessageBuffer::Message> document_policy_parsing_messages;
@@ -313,7 +334,9 @@ struct SameSizeAsDocumentLoader : public GarbageCollected<SameSizeAsDocumentLoad
     uint64_t main_resource_identifier;
     mojom::blink::ResourceTimingInfoPtr resource_timing_info_for_parent;
     WebScopedVirtualTimePauser virtual_time_pauser;
+#if !defined(MINI_UI_QUICKJS)
     Member<PrefetchedSignedExchangeManager> prefetched_signed_exchange_manager;
+#endif
     ukm::SourceId ukm_source_id;
     UseCounterImpl use_counter;
     const base::TickClock* clock;
@@ -327,14 +350,18 @@ struct SameSizeAsDocumentLoader : public GarbageCollected<SameSizeAsDocumentLoad
     WebVector<WebHistoryItem> navigation_api_back_entries;
     WebVector<WebHistoryItem> navigation_api_forward_entries;
     Member<HistoryItem> navigation_api_previous_entry;
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<CodeCacheHost> code_cache_host;
     mojo::PendingRemote<mojom::blink::CodeCacheHost> pending_code_cache_host_for_background;
+#endif
     HashMap<KURL, EarlyHintsPreloadEntry> early_hints_preloaded_resources;
     std::optional<Vector<KURL>> ad_auction_components;
     std::unique_ptr<ExtraData> extra_data;
     AtomicString reduced_accept_language;
     network::mojom::NavigationDeliveryType navigation_delivery_type;
+#if !defined(MINI_UI_QUICKJS)
     std::optional<ViewTransitionState> view_transition_state;
+#endif
     std::optional<FencedFrame::RedactedFencedFrameProperties> fenced_frame_properties;
     net::StorageAccessApiStatus storage_access_api_status;
     mojom::blink::ParentResourceTimingAccess parent_resource_timing_access;
@@ -342,7 +369,9 @@ struct SameSizeAsDocumentLoader : public GarbageCollected<SameSizeAsDocumentLoad
     const base::flat_map<mojom::blink::RuntimeFeature, bool> modified_runtime_features;
     AtomicString cookie_deprecation_label;
     mojom::RendererContentSettingsPtr content_settings;
+#if !defined(MINI_UI_QUICKJS)
     int64_t body_size_from_service_worker;
+#endif
     const std::optional<HashMap<mojom::blink::PermissionName, mojom::blink::PermissionStatus>> initial_permission_statuses;
 };
 
@@ -543,7 +572,9 @@ DocumentLoader::DocumentLoader(LocalFrame* frame, WebNavigationType navigation_t
     , storage_key_(std::move(params_->storage_key))
     , navigation_type_(navigation_type)
     , document_load_timing_(*this)
+#if !defined(MINI_UI_QUICKJS)
     , service_worker_network_provider_(std::move(params_->service_worker_network_provider))
+#endif
     , was_blocked_by_document_policy_(false)
     , state_(kNotStarted)
     , in_commit_data_(false)
@@ -572,7 +603,9 @@ DocumentLoader::DocumentLoader(LocalFrame* frame, WebNavigationType navigation_t
     , extra_data_(std::move(extra_data))
     , reduced_accept_language_(params_->reduced_accept_language)
     , navigation_delivery_type_(params_->navigation_delivery_type)
+#if !defined(MINI_UI_QUICKJS)
     , view_transition_state_(std::move(params_->view_transition_state))
+#endif
     , storage_access_api_status_(params_->load_with_storage_access)
     , browsing_context_group_info_(params_->browsing_context_group_info)
     , modified_runtime_features_(std::move(params_->modified_runtime_features))
@@ -637,9 +670,11 @@ DocumentLoader::DocumentLoader(LocalFrame* frame, WebNavigationType navigation_t
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (service_worker_network_provider_) {
         service_worker_initial_controller_mode_ = service_worker_network_provider_->GetControllerServiceWorkerMode();
     }
+#endif
 
     if (params_->fenced_frame_properties) {
         fenced_frame_properties_ = std::move(params_->fenced_frame_properties);
@@ -693,7 +728,9 @@ std::unique_ptr<WebNavigationParams> DocumentLoader::CreateWebNavigationParamsTo
     params->http_body = http_body_;
     params->pre_redirect_url_for_failed_navigations = pre_redirect_url_for_failed_navigations_;
     params->force_fetch_cache_mode = force_fetch_cache_mode_;
+#if !defined(MINI_UI_QUICKJS)
     params->service_worker_network_provider = std::move(service_worker_network_provider_);
+#endif
     params->devtools_navigation_token = devtools_navigation_token_;
     params->base_auction_nonce = base_auction_nonce_;
     params->is_user_activated = had_sticky_activation_;
@@ -773,7 +810,9 @@ void DocumentLoader::Trace(Visitor* visitor) const
     visitor->Trace(subresource_filter_);
     visitor->Trace(content_security_notifier_);
     visitor->Trace(document_load_timing_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(prefetched_signed_exchange_manager_);
+#endif
     visitor->Trace(use_counter_);
     visitor->Trace(navigation_api_previous_entry_);
 }
@@ -808,10 +847,12 @@ const SecurityOrigin* DocumentLoader::GetRequestorOrigin() const
     return requestor_origin_.get();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoader::SetServiceWorkerNetworkProvider(std::unique_ptr<WebServiceWorkerNetworkProvider> provider)
 {
     service_worker_network_provider_ = std::move(provider);
 }
+#endif
 
 void DocumentLoader::DispatchLinkHeaderPreloads(const ViewportDescription* viewport, PreloadHelper::LoadLinksFromHeaderMode mode)
 {
@@ -862,10 +903,13 @@ void DocumentLoader::DidObserveJavaScriptFrameworks(const JavaScriptFrameworkDet
     if (frame_) {
         DCHECK_GE(state_, kCommitted);
         GetLocalFrameClient().DidObserveJavaScriptFrameworks(result);
+#if !defined(MINI_UI_QUICKJS)
         InjectAutoSpeculationRules(result);
+#endif
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoader::InjectAutoSpeculationRules(const JavaScriptFrameworkDetectionResult& result)
 {
     if (!base::FeatureList::IsEnabled(features::kAutoSpeculationRules)) {
@@ -901,6 +945,8 @@ void DocumentLoader::InjectSpeculationRulesFromString(const String& string, Brow
 
     DocumentSpeculationRules::From(*frame_->GetDocument()).AddRuleSet(rule_set);
 }
+
+#endif
 
 // static
 WebHistoryCommitType LoadTypeToCommitType(WebFrameLoadType type)
@@ -1000,7 +1046,9 @@ void DocumentLoader::UpdateForSameDocumentNavigation(const KURL& new_url, Histor
 
     GetLocalFrameClient().DidFinishSameDocumentNavigation(
         commit_type, is_synchronously_committed, same_document_navigation_type, is_client_redirect_, is_browser_initiated);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidNavigateWithinDocument(frame_, same_document_navigation_type);
+#endif
 
     // If intercept() was called during this same-document navigation's
     // NavigateEvent, the navigation will finish asynchronously, so
@@ -1192,11 +1240,14 @@ void DocumentLoader::BodyDataReceivedImpl(BodyData& data)
     TRACE_EVENT_WITH_FLOW0("loading", "DocumentLoader::BodyDataReceivedImpl", TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT);
     base::SpanOrSize<const char> encoded_data = data.EncodedData();
     if (encoded_data.size()) {
-        if (response_.WasFetchedViaServiceWorker()) {
+#if !defined(MINI_UI_QUICKJS)
+        if (response_.WasFetchedViaServiceWorker())
             total_body_size_from_service_worker_ += encoded_data.size();
-        }
+#endif
         GetFrameLoader().Progress().IncrementProgress(main_resource_identifier_, encoded_data.size());
+#if !defined(MINI_UI_QUICKJS)
         probe::DidReceiveData(probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, encoded_data);
+#endif
     }
 
     TRACE_EVENT_WITH_FLOW1(
@@ -1225,16 +1276,18 @@ void DocumentLoader::BodyLoadingFinished(base::TimeTicks completion_time, int64_
     DCHECK(frame_);
     if (!error) {
         GetFrameLoader().Progress().CompleteProgress(main_resource_identifier_);
+#if !defined(MINI_UI_QUICKJS)
         probe::DidFinishLoading(
             probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, completion_time, total_encoded_data_length, total_decoded_body_length);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
         if (response_.WasFetchedViaServiceWorker()) {
-            // See https://w3c.github.io/ServiceWorker/#dom-fetchevent-respondwith
-            // in "chunk steps": there is no difference between encoded/decoded body
-            // size, as encoding is handled inside the service worker.
+            // Service worker response bodies have identical encoded/decoded size.
             total_encoded_body_length = total_body_size_from_service_worker_;
             total_decoded_body_length = total_body_size_from_service_worker_;
         }
+#endif
 
         DOMWindowPerformance::performance(*frame_->DomWindow())->OnBodyLoadFinished(total_encoded_body_length, total_decoded_body_length);
 
@@ -1264,7 +1317,9 @@ void DocumentLoader::BodyLoadingFinished(base::TimeTicks completion_time, int64_
         CountUse(WebFeature::kCertificateTransparencyRequiredErrorOnResourceLoad);
     }
     GetFrameLoader().Progress().CompleteProgress(main_resource_identifier_);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFailLoading(probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, resource_error, frame_->GetDevToolsFrameToken());
+#endif
     GetFrame()->Console().DidFailLoading(this, main_resource_identifier_, resource_error);
     LoadFailed(resource_error);
 }
@@ -1305,8 +1360,12 @@ void DocumentLoader::FinishedLoading(base::TimeTicks finish_time)
     body_loader_.reset();
     virtual_time_pauser_.UnpauseVirtualTime();
 
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(commit_reason_ == CommitReason::kInitialization || !frame_->GetPage()->Paused()
         || MainThreadDebugger::Instance(frame_->DomWindow()->GetIsolate())->IsPaused());
+#else
+    DCHECK(commit_reason_ == CommitReason::kInitialization || !frame_->GetPage()->Paused());
+#endif
 
     if (loading_main_document_from_mhtml_archive_ && state_ < kCommitted) {
         // The browser process should block any navigation to an MHTML archive
@@ -1361,7 +1420,9 @@ void DocumentLoader::HandleRedirect(WebNavigationParams::RedirectInfo& redirect)
 
     referrer_ = redirect.new_referrer;
 
+#if !defined(MINI_UI_QUICKJS)
     probe::WillSendNavigationRequest(probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, url_after_redirect, http_method_, http_body_.get());
+#endif
 
     DCHECK(!GetTiming().FetchStart().is_null());
     GetTiming().AddRedirect(url_before_redirect, url_after_redirect);
@@ -1710,7 +1771,9 @@ void DocumentLoader::DetachFromFrame(bool flush_microtask_queue)
         return;
 
     extra_data_.reset();
+#if !defined(MINI_UI_QUICKJS)
     service_worker_network_provider_ = nullptr;
+#endif
     WeakIdentifierMap<DocumentLoader>::NotifyObjectDestroyed(this);
     frame_ = nullptr;
 }
@@ -1752,7 +1815,9 @@ void DocumentLoader::InitializeEmptyResponse()
 
 void DocumentLoader::StartLoading()
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::LifecycleEvent(frame_, this, "init", base::TimeTicks::Now().since_origin().InSecondsF());
+#endif
     StartLoadingInternal();
     params_ = nullptr;
 }
@@ -1787,7 +1852,9 @@ void DocumentLoader::StartLoadingInternal()
     // them through various DispatchXXX methods on FrameFetchContext.
 
     GetFrameLoader().Progress().WillStartLoading(main_resource_identifier_, ResourceLoadPriority::kVeryHigh);
+#if !defined(MINI_UI_QUICKJS)
     probe::WillSendNavigationRequest(probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, url_, http_method_, http_body_.get());
+#endif
 
     for (WebNavigationParams::RedirectInfo& redirect : params_->redirects) {
         HandleRedirect(redirect);
@@ -1798,7 +1865,9 @@ void DocumentLoader::StartLoadingInternal()
         PreloadHelper::LoadLinksFromHeaderMode::kDocumentBeforeCommit, nullptr /* viewport_description */, nullptr /* alternate_resource_info */,
         nullptr /* recursive_prefetch_token */);
     GetFrameLoader().Progress().IncrementProgress(main_resource_identifier_, response_);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveResourceResponse(probe::ToCoreProbeSink(GetFrame()), main_resource_identifier_, this, response_, nullptr /* resource */);
+#endif
 
     HandleResponse();
 
@@ -1817,7 +1886,9 @@ void DocumentLoader::StartLoadingInternal()
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     InitializePrefetchedSignedExchangeManager();
+#endif
 
     body_loader_->SetDefersLoading(freeze_mode_);
 }
@@ -1885,6 +1956,7 @@ void DocumentLoader::StartLoadingResponse()
     // discarded, while the media element created inside the MediaDocument then
     // makes *another new* request for the same media resource.
     //
+#if !defined(MINI_UI_QUICKJS)
     // TODO(dcheng): Barring something really strange and unusual, there should
     // always be a frame here.
     if (frame_ && frame_->GetDocument()->IsMediaDocument()) {
@@ -1892,6 +1964,7 @@ void DocumentLoader::StartLoadingResponse()
         StopLoading();
         return;
     }
+#endif
 
     // Committing can run unload handlers, which can detach this frame or
     // stop this loader.
@@ -1956,23 +2029,25 @@ void DocumentLoader::DidInstallNewDocument(Document* document)
 
     WarnIfSandboxIneffective(document->domWindow());
 
+#if !defined(MINI_UI_QUICKJS)
     StartViewTransitionIfNeeded(*document);
 
     // This also enqueues the event for a Document that's loading while
-    // prerendered; however, the event still fires at the correct time (first
-    // render opportunity after activation) since the event is fired as part of
-    // updating the rendering which is suppressed until the prerender is
-    // activated.
+    // prerendered; however, the event fires at the first render opportunity
+    // after activation because rendering is suppressed until then.
     if (RuntimeEnabledFeatures::PageRevealEventEnabled()) {
         document->EnqueuePageRevealEvent();
     }
+#endif
 }
 
 void DocumentLoader::WillCommitNavigation()
 {
     if (commit_reason_ != CommitReason::kRegular)
         return;
+#if !defined(MINI_UI_QUICKJS)
     probe::WillCommitLoad(frame_, this);
+#endif
     frame_->GetIdlenessDetector()->WillCommitLoad();
 }
 
@@ -2009,19 +2084,25 @@ void DocumentLoader::DidCommitNavigation()
     if (GetFrame()->IsMainFrame() && GetFrame()->GetDocument()->ShouldMarkFontPerformance())
         FontPerformance::Reset();
 
+#if !defined(MINI_UI_QUICKJS)
     // When a new navigation commits in the frame, subresource loading should be
     // resumed.
     frame_->ResumeSubresourceLoading();
+#endif
 
     Document* document = frame_->GetDocument();
     InteractiveDetector* interactive_detector = InteractiveDetector::From(*document);
     if (interactive_detector)
         interactive_detector->SetNavigationStartTime(GetTiming().NavigationStart());
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("CommitLoad", inspector_commit_load_event::Data, frame_);
+#endif
 
     // Needs to run before dispatching preloads, as it may evict the memory cache.
+#if !defined(MINI_UI_QUICKJS)
     probe::DidCommitLoad(frame_, this);
+#endif
 
     frame_->GetPage()->DidCommitLoad(frame_);
 }
@@ -2081,6 +2162,7 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(Document* owner_do
     // true, we won't try to compare the nonce of this origin (if it's opaque) to
     // the browser-calculated origin later on.
     bool origin_is_newly_created = false;
+#if !defined(MINI_UI_QUICKJS)
     if (IsPagePopupRunningInWebTest(frame_)) {
         // If we are a page popup in LayoutTests ensure we use the popup
         // owner's security origin so the tests can possibly access the
@@ -2088,7 +2170,9 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(Document* owner_do
         auto* owner_context = frame_->PagePopupOwner()->GetExecutionContext();
         origin = owner_context->GetSecurityOrigin()->IsolatedCopy();
         debug_info_builder.Append("use_popup_owner_origin");
-    } else if (owner_document && owner_document->domWindow()) {
+    } else
+#endif
+    if (owner_document && owner_document->domWindow()) {
         // Prefer taking `origin` from `owner_document` if one is available - this
         // will correctly inherit/alias `SecurityOrigin::domain_` from the
         // `owner_document` (note that the
@@ -2564,7 +2648,9 @@ void DocumentLoader::CommitNavigation()
         tracker->ResetSameDocumentNavigationTasks();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     MaybeStartLoadingBodyInBackground(body_loader_.get(), frame_, url_, response_);
+#endif
 
     // Record if we have navigated to a non-secure page served from a IP address
     // in the private address space.
@@ -2750,15 +2836,17 @@ void DocumentLoader::CommitNavigation()
     // history navigations, including those initiated from `window.history`
     // API).
     last_navigation_had_trusted_initiator_ = !requestor_origin_ || is_same_origin_initiator;
-
-    // The PaintHolding feature defers compositor commits until content has been
-    // painted or 500ms have passed, whichever comes first. We require that this
-    // be an html document served via http.
-    if (base::FeatureList::IsEnabled(blink::features::kPaintHolding) && IsA<HTMLDocument>(document) && Url().ProtocolIsInHTTPFamily()) {
+#if !defined(MINI_UI_QUICKJS)
+    // Paint holding defers compositor commits until content has been painted or
+    // 500ms have passed. Require an HTML document served via HTTP.
+    if (base::FeatureList::IsEnabled(blink::features::kPaintHolding) &&
+        IsA<HTMLDocument>(document) && Url().ProtocolIsInHTTPFamily()) {
         document->SetDeferredCompositorCommitIsAllowed(true);
     } else {
         document->SetDeferredCompositorCommitIsAllowed(false);
     }
+#endif
+
 
     // We only report resource timing info to the parent if:
     // 1. The navigation is container-initiated (e.g. iframe changed src)
@@ -2815,9 +2903,11 @@ void DocumentLoader::CommitNavigation()
             page->HistoryNavigationVirtualTimePauser().UnpauseVirtualTime();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // If profiling is enabled by document policy, ensure that profiling metadata
     // is available by tracking the execution context's lifetime.
     ProfilerGroup::InitializeIfEnabled(frame_->DomWindow());
+#endif
 
     if (Url().ProtocolIsInHTTPFamily() && frame_->IsOutermostMainFrame() && ShouldEmitNewNavigationHistogram(navigation_type_)) {
         base::UmaHistogramTimes("Blink.DocumentLoader.CommitNavigationToStartLoadingResponse.Time"
@@ -2833,12 +2923,15 @@ void DocumentLoader::CreateParserPostCommit()
 {
     TRACE_EVENT_WITH_FLOW0("loading", "DocumentLoader::CreateParserPostCommit", TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT);
     base::ElapsedTimer timer;
+#if !defined(MINI_UI_QUICKJS)
     SpeculationRulesHeader::ProcessHeadersForDocumentResponse(response_, *frame_->DomWindow());
+#endif
 
     if (navigation_delivery_type_ == network::mojom::NavigationDeliveryType::kNavigationalPrefetch) {
         CountUse(WebFeature::kDocumentLoaderDeliveryTypeNavigationalPrefetch);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // DidObserveLoadingBehavior() must be called after DispatchDidCommitLoad() is
     // called for the metrics tracking logic to handle it properly.
     if (service_worker_network_provider_
@@ -2859,6 +2952,7 @@ void DocumentLoader::CreateParserPostCommit()
         }
         GetLocalFrameClient().DidObserveLoadingBehavior(loading_behavior);
     }
+#endif
 
     // Links with media values need more information (like viewport information).
     // This happens after the first chunk is parsed in HTMLDocumentParser.
@@ -3045,8 +3139,10 @@ void DocumentLoader::RecordUseCountersForCommit()
     TRACE_EVENT_WITH_FLOW0("loading", "DocumentLoader::RecordUseCountersForCommit", TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT);
     // Pre-commit state, count usage the use counter associated with "this"
     // (provisional document loader) instead of frame_'s document loader.
+#if !defined(MINI_UI_QUICKJS)
     if (response_.DidServiceWorkerNavigationPreload())
         CountUse(WebFeature::kServiceWorkerNavigationPreload);
+#endif
     if (frame_->DomWindow()->IsFeatureEnabled(mojom::blink::DocumentPolicyFeature::kForceLoadAtTop)) {
         CountUse(WebFeature::kForceLoadAtTop);
     }
@@ -3056,9 +3152,11 @@ void DocumentLoader::RecordUseCountersForCommit()
         CountUse(WebFeature::kZstdContentEncodingForNavigation);
         if (frame_->IsOutermostMainFrame()) {
             CountUse(WebFeature::kZstdContentEncodingForMainFrameNavigation);
+#if !defined(MINI_UI_QUICKJS)
             ukm::builders::MainFrameNavigation_ZstdContentEncoding builder(ukm_source_id_);
             builder.SetUsedZstd(true);
             builder.Record(frame_->GetDocument()->UkmRecorder());
+#endif
         } else {
             CountUse(WebFeature::kZstdContentEncodingForSubFrameNavigation);
         }
@@ -3144,6 +3242,7 @@ void DocumentLoader::ApplyClientHintsConfig(const WebVector<network::mojom::WebC
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoader::InitializePrefetchedSignedExchangeManager()
 {
     if (params_->prefetched_signed_exchanges.empty())
@@ -3164,6 +3263,7 @@ PrefetchedSignedExchangeManager* DocumentLoader::GetPrefetchedSignedExchangeMana
 {
     return prefetched_signed_exchange_manager_.Get();
 }
+#endif
 
 base::TimeDelta DocumentLoader::RemainingTimeToLCPLimit() const
 {
@@ -3235,11 +3335,13 @@ void DocumentLoader::NotifyPrerenderingDocumentActivated(const mojom::blink::Pre
 
     GetTiming().SetActivationStart(params.activation_start);
 
+#if !defined(MINI_UI_QUICKJS)
     if (params.view_transition_state) {
         CHECK(!view_transition_state_);
         view_transition_state_ = std::move(params.view_transition_state);
     }
     StartViewTransitionIfNeeded(*frame_->GetDocument());
+#endif
 }
 
 HashMap<KURL, EarlyHintsPreloadEntry> DocumentLoader::GetEarlyHintsPreloadedResources()
@@ -3260,6 +3362,7 @@ bool DocumentLoader::IsReloadedOrFormSubmitted() const
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoader::MaybeRecordServiceWorkerFallbackMainResource(bool was_subresource_fetched_via_service_worker)
 {
     if (was_subresource_fetched_via_service_worker && !response_.WasFetchedViaServiceWorker()
@@ -3267,7 +3370,9 @@ void DocumentLoader::MaybeRecordServiceWorkerFallbackMainResource(bool was_subre
         CountUse(WebFeature::kSerivceWorkerFallbackMainResource);
     }
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 void DocumentLoader::MaybeStartLoadingBodyInBackground(
     WebNavigationBodyLoader* body_loader, LocalFrame* frame, const KURL& url, const ResourceResponse& response)
@@ -3281,10 +3386,13 @@ void DocumentLoader::MaybeStartLoadingBodyInBackground(
         return;
 
     auto decoder = BuildTextResourceDecoder(frame, url, response.MimeType(), response.TextEncodingName());
-    navigation_body_loader->StartLoadingBodyInBackground(std::move(decoder),
-        // The network inspector needs the raw data.
-        probe::ToCoreProbeSink(frame)->HasInspectorNetworkAgents());
+    bool keep_raw_data_for_inspector = false;
+#if !defined(MINI_UI_QUICKJS)
+    keep_raw_data_for_inspector = probe::ToCoreProbeSink(frame)->HasInspectorNetworkAgents();
+#endif
+    navigation_body_loader->StartLoadingBodyInBackground(std::move(decoder), keep_raw_data_for_inspector);
 }
+#endif
 
 ContentSecurityPolicy* DocumentLoader::CreateCSP()
 {
@@ -3316,12 +3424,15 @@ ContentSecurityPolicy* DocumentLoader::CreateCSP()
     return csp;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool& GetDisableCodeCacheForTesting()
 {
     static bool disable_code_cache_for_testing = false;
     return disable_code_cache_for_testing;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 CodeCacheHost* DocumentLoader::GetCodeCacheHost()
 {
     if (!code_cache_host_) {
@@ -3369,6 +3480,7 @@ void DocumentLoader::SetCodeCacheHost(CrossVariantMojoRemote<mojom::blink::CodeC
 
     pending_code_cache_host_for_background_ = mojo::PendingRemote<mojom::blink::CodeCacheHost>(std::move(code_cache_host_for_background));
 }
+#endif
 
 void DocumentLoader::SetSubresourceFilter(WebDocumentSubresourceFilter* subresource_filter)
 {
@@ -3411,24 +3523,30 @@ WebArchiveInfo DocumentLoader::GetArchiveInfo() const
     };
 }
 
+
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoader::StartViewTransitionIfNeeded(Document& document)
 {
     if (view_transition_state_) {
-        ViewTransitionSupplement::CreateFromSnapshotForNavigation(document, std::move(*view_transition_state_));
+        ViewTransitionSupplement::CreateFromSnapshotForNavigation(
+            document, std::move(*view_transition_state_));
         view_transition_state_.reset();
     }
 }
+#endif
 
 bool DocumentLoader::HasLoadedNonInitialEmptyDocument() const
 {
     return GetFrameLoader().HasLoadedNonInitialEmptyDocument();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 void DocumentLoader::DisableCodeCacheForTesting()
 {
     GetDisableCodeCacheForTesting() = true;
 }
+#endif
 
 void DocumentLoader::UpdateSubresourceLoadMetrics(const SubresourceLoadMetrics& subresource_load_metrics)
 {

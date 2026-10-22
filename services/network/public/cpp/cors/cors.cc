@@ -9,13 +9,12 @@
 
 #include "services/network/public/cpp/cors/cors.h"
 
-#include <set>
+#include <algorithm>
 #include <string_view>
 #include <vector>
 
 #include "base/containers/contains.h"
 #include "base/containers/fixed_flat_set.h"
-#include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
@@ -29,8 +28,6 @@
 #include "third_party/abseil-cpp/absl/strings/ascii.h"
 #include "url/gurl.h"
 #include "url/origin.h"
-#include "url/url_constants.h"
-#include "url/url_util.h"
 
 // String conversion from blink::String to std::string for header name/value
 // should be latin-1, not utf-8, as per HTTP. Note that as we use ByteString

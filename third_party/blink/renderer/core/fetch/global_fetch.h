@@ -19,7 +19,9 @@ class RequestInit;
 class DeferredRequestInit;
 class Response;
 class ScriptState;
+#if !defined(MINI_UI_QUICKJS)
 class WorkerGlobalScope;
+#endif
 class FetchLaterResult;
 
 class CORE_EXPORT GlobalFetch {
@@ -39,7 +41,9 @@ public:
         virtual uint32_t FetchCount() const = 0;
 
         static ScopedFetcher* From(LocalDOMWindow&);
+#if !defined(MINI_UI_QUICKJS)
         static ScopedFetcher* From(WorkerGlobalScope&);
+#endif
         static ScopedFetcher* From(NavigatorBase& navigator);
 
         void Trace(Visitor*) const override;
@@ -47,8 +51,10 @@ public:
 
     static ScriptPromise<Response> fetch(
         ScriptState* script_state, LocalDOMWindow& window, const V8RequestInfo* input, const RequestInit* init, ExceptionState& exception_state);
+#if !defined(MINI_UI_QUICKJS)
     static ScriptPromise<Response> fetch(
         ScriptState* script_state, WorkerGlobalScope& worker, const V8RequestInfo* input, const RequestInit* init, ExceptionState& exception_state);
+#endif
 
     static FetchLaterResult* fetchLater(
         ScriptState* script_state, LocalDOMWindow& window, const V8RequestInfo* input, const DeferredRequestInit* init, ExceptionState& exception_state);

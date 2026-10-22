@@ -21,7 +21,9 @@
 
 namespace net {
 class HttpResponseHeaders;
+#if !defined(MINI_UI_QUICKJS)
 class URLRequest;
+#endif
 } // namespace net
 
 namespace blink {
@@ -118,9 +120,11 @@ public:
     //                          validation flows instead of a stand-alone.
     bool TrialEnablesFeaturesForOS(std::string_view trial_name);
 
+#if !defined(MINI_UI_QUICKJS)
     // `request` must not be nullptr.
     // NOTE: This is not currently used, but remains here for future trials.
     bool RequestEnablesFeature(const net::URLRequest* request, std::string_view feature_name, base::Time current_time) const;
+#endif
 
     // Returns whether the given response for the given URL enables the named
     // Origin or Deprecation Trial at the given time.

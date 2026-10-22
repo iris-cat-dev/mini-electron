@@ -46,8 +46,13 @@ template <typename T> struct VectorTraits<blink::TraceWrapperV8Reference<T>> : V
     // impact on crashers. Move should always be followed by a clear (non-dtor).
     static constexpr bool kCanMoveWithMemcpy = false;
 
+#if defined(MINI_UI_QUICKJS)
+    // QuickJS and standalone cppgc run same-thread, stop-the-world tracing.
+    static constexpr bool kCanTraceConcurrently = false;
+#else
     // TraceWrapperV8Reference supports concurrent tracing.
     static constexpr bool kCanTraceConcurrently = true;
+#endif
 
     // Wanted behavior that should not break for performance reasons.
     static_assert(!kNeedsDestruction, "TraceWrapperV8Reference should be trivially destructible.");
@@ -55,7 +60,12 @@ template <typename T> struct VectorTraits<blink::TraceWrapperV8Reference<T>> : V
 
 template <typename T> struct HashTraits<blink::TraceWrapperV8Reference<T>> : GenericHashTraits<blink::TraceWrapperV8Reference<T>> {
     STATIC_ONLY(HashTraits);
+#if defined(MINI_UI_QUICKJS)
+    // The UI profile's atomic collector never visits wrapper slots concurrently.
+    static constexpr bool kCanTraceConcurrently = false;
+#else
     static constexpr bool kCanTraceConcurrently = true;
+#endif
 };
 
 } // namespace WTF

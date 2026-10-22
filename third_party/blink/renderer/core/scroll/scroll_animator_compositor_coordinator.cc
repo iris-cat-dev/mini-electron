@@ -6,32 +6,34 @@
 
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_host.h"
 #include "cc/animation/animation_timeline.h"
 #include "cc/animation/scroll_offset_animation_curve.h"
 #include "cc/layers/picture_layer.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/animation/compositor_animation.h"
+#endif
 
 namespace blink {
 
 ScrollAnimatorCompositorCoordinator::ScrollAnimatorCompositorCoordinator()
-    : element_id_()
-    , run_state_(RunState::kIdle)
-    , impl_only_animation_takeover_(false)
-    , compositor_animation_id_(0)
-    , compositor_animation_group_id_(0)
 {
+#if !defined(MINI_UI_QUICKJS)
     compositor_animation_ = CompositorAnimation::Create();
     DCHECK(compositor_animation_);
     compositor_animation_->SetAnimationDelegate(this);
+#endif
 }
 
 // TODO(dbaron): This should probably DCHECK(element_detached_), but too
 // many unittests would fail such a DCHECK().
 ScrollAnimatorCompositorCoordinator::~ScrollAnimatorCompositorCoordinator() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 void ScrollAnimatorCompositorCoordinator::Dispose()
 {
     compositor_animation_->SetAnimationDelegate(nullptr);
@@ -45,16 +47,21 @@ void ScrollAnimatorCompositorCoordinator::DetachElement()
     ReattachCompositorAnimationIfNeeded(GetScrollableArea()->GetCompositorAnimationTimeline());
 }
 
+#endif
 void ScrollAnimatorCompositorCoordinator::ResetAnimationState()
 {
     run_state_ = RunState::kIdle;
+#if !defined(MINI_UI_QUICKJS)
     RemoveAnimation();
+#endif
 }
 
 bool ScrollAnimatorCompositorCoordinator::HasAnimationThatRequiresService() const
 {
+#if !defined(MINI_UI_QUICKJS)
     if (HasImplOnlyAnimationUpdate())
         return true;
+#endif
 
     switch (run_state_) {
     case RunState::kIdle:
@@ -73,6 +80,7 @@ bool ScrollAnimatorCompositorCoordinator::HasAnimationThatRequiresService() cons
     NOTREACHED();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ScrollAnimatorCompositorCoordinator::AddAnimation(std::unique_ptr<cc::KeyframeModel> keyframe_model)
 {
     RemoveAnimation();
@@ -103,8 +111,15 @@ void ScrollAnimatorCompositorCoordinator::AbortAnimation()
     }
 }
 
+#endif
 void ScrollAnimatorCompositorCoordinator::CancelAnimation()
 {
+#if defined(MINI_UI_QUICKJS)
+    if (run_state_ == RunState::kWaitingToSendToCompositor)
+        ResetAnimationState();
+    else if (run_state_ == RunState::kRunningOnMainThread)
+        run_state_ = RunState::kPostAnimationCleanup;
+#else
     switch (run_state_) {
     case RunState::kIdle:
     case RunState::kWaitingToCancelOnCompositor:
@@ -131,8 +146,10 @@ void ScrollAnimatorCompositorCoordinator::CancelAnimation()
         // Get serviced the next time compositor updates are allowed.
         GetScrollableArea()->RegisterForAnimation();
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScrollAnimatorCompositorCoordinator::TakeOverCompositorAnimation()
 {
     switch (run_state_) {
@@ -245,6 +262,7 @@ CompositorAnimation* ScrollAnimatorCompositorCoordinator::GetCompositorAnimation
     return compositor_animation_.get();
 }
 
+#endif
 gfx::PointF ScrollAnimatorCompositorCoordinator::CompositorOffsetFromBlinkOffset(ScrollOffset offset)
 {
     return GetScrollableArea()->ScrollOffsetToPosition(offset);
@@ -255,6 +273,7 @@ ScrollOffset ScrollAnimatorCompositorCoordinator::BlinkOffsetFromCompositorOffse
     return GetScrollableArea()->ScrollPositionToOffset(position);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ScrollAnimatorCompositorCoordinator::HasImplOnlyAnimationUpdate() const
 {
     return !impl_only_animation_adjustment_.IsZero() || impl_only_animation_takeover_;
@@ -291,12 +310,14 @@ void ScrollAnimatorCompositorCoordinator::UpdateCompositorAnimations()
     UpdateImplOnlyCompositorAnimations();
 }
 
+#endif
 void ScrollAnimatorCompositorCoordinator::ScrollOffsetChanged(const ScrollOffset& offset, mojom::blink::ScrollType scroll_type)
 {
     ScrollOffset clamped_offset = GetScrollableArea()->ClampScrollOffset(offset);
     GetScrollableArea()->ScrollOffsetChanged(clamped_offset, scroll_type);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScrollAnimatorCompositorCoordinator::AdjustImplOnlyScrollOffsetAnimation(const gfx::Vector2d& adjustment)
 {
     if (!GetScrollableArea()->ScrollAnimatorEnabled())
@@ -321,6 +342,7 @@ void ScrollAnimatorCompositorCoordinator::TakeOverImplOnlyScrollOffsetAnimation(
     GetScrollableArea()->RegisterForAnimation();
 }
 
+#endif
 String ScrollAnimatorCompositorCoordinator::RunStateAsText() const
 {
     switch (run_state_) {

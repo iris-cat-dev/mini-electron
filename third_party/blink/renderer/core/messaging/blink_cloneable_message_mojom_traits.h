@@ -10,7 +10,9 @@
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/base/unguessable_token_mojom_traits.h"
 #include "mojo/public/cpp/bindings/string_traits_wtf.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_transfer_token.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/messaging/cloneable_message.mojom-shared.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -35,22 +37,38 @@ template <> struct CORE_EXPORT StructTraits<blink::mojom::CloneableMessageDataVi
 
     static uint64_t stack_trace_id(const blink::BlinkCloneableMessage& input)
     {
+#if defined(MINI_UI_QUICKJS)
+        return input.stack_trace_id;
+#else
         return static_cast<uint64_t>(input.sender_stack_trace_id.id);
+#endif
     }
 
     static int64_t stack_trace_debugger_id_first(const blink::BlinkCloneableMessage& input)
     {
+#if defined(MINI_UI_QUICKJS)
+        return input.stack_trace_debugger_id_first;
+#else
         return input.sender_stack_trace_id.debugger_id.first;
+#endif
     }
 
     static int64_t stack_trace_debugger_id_second(const blink::BlinkCloneableMessage& input)
     {
+#if defined(MINI_UI_QUICKJS)
+        return input.stack_trace_debugger_id_second;
+#else
         return input.sender_stack_trace_id.debugger_id.second;
+#endif
     }
 
     static bool stack_trace_should_pause(const blink::BlinkCloneableMessage& input)
     {
+#if defined(MINI_UI_QUICKJS)
+        return input.stack_trace_should_pause;
+#else
         return input.sender_stack_trace_id.should_pause;
+#endif
     }
 
     static const base::UnguessableToken& sender_agent_cluster_id(const blink::BlinkCloneableMessage& input)
@@ -63,10 +81,12 @@ template <> struct CORE_EXPORT StructTraits<blink::mojom::CloneableMessageDataVi
         return input.locked_to_sender_agent_cluster;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     static Vector<mojo::PendingRemote<blink::mojom::blink::FileSystemAccessTransferToken>> file_system_access_tokens(blink::BlinkCloneableMessage& input)
     {
         return std::move(input.message->FileSystemAccessTokens());
     }
+#endif
 
     static bool Read(blink::mojom::CloneableMessageDataView, blink::BlinkCloneableMessage* out);
 };

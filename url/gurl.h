@@ -15,7 +15,9 @@
 #include "base/component_export.h"
 #include "base/debug/alias.h"
 #include "base/debug/crash_logging.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing_forward.h"
+#endif
 #include "url/third_party/mozilla/url_parse.h"
 #include "url/url_canon.h"
 #include "url/url_canon_stdstring.h"
@@ -502,7 +504,9 @@ public:
     // Helper used by GURL::IsAboutUrl and KURL::IsAboutURL.
     static bool IsAboutPath(std::string_view actual_path, std::string_view allowed_path);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 private:
     // Variant of the string parsing constructor that allows the caller to elect

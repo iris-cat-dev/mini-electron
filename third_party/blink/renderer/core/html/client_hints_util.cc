@@ -9,7 +9,9 @@
 #include "third_party/blink/public/common/client_hints/client_hints.h"
 #include "third_party/blink/public/common/permissions_policy/origin_with_possible_wildcards.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/permissions_policy/permissions_policy_parser.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "url/gurl.h"
@@ -22,9 +24,11 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(ClientHint
 {
     // If it's not http-equiv="accept-ch" and it's not a preload-or-sync-parser
     // visible meta tag, then we need to warn the dev that js injected the tag.
+#if !defined(MINI_UI_QUICKJS)
     if (type != network::MetaCHType::HttpEquivAcceptCH && !is_doc_preloader && !is_sync_parser && local_dom_window) {
         AuditsIssue::ReportClientHintIssue(local_dom_window, ClientHintIssueReason::kMetaTagModifiedHTML);
     }
+#endif
 
     // If no hints were set, this is a http-equiv="accept-ch" tag, this tag was
     // added by js, the `local_dom_window` is missing, or the feature is disabled,
@@ -38,9 +42,11 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(ClientHint
     network::ClientHintToDelegatedThirdPartiesHeader parsed_ch = network::ParseClientHintToDelegatedThirdPartiesHeader(header_value.Latin1(), type);
 
     // If invalid origins were seen in the allow list we need to warn the dev.
+#if !defined(MINI_UI_QUICKJS)
     if (parsed_ch.had_invalid_origins) {
         AuditsIssue::ReportClientHintIssue(local_dom_window, ClientHintIssueReason::kMetaTagAllowListInvalidOrigin);
     }
+#endif
 
     // Build vector of client hint permission policies to update.
     auto* const current_policy = local_dom_window->GetSecurityContext().GetPermissionsPolicy();

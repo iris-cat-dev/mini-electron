@@ -5,6 +5,10 @@
 #ifndef BASE_TRACE_EVENT_TRACE_EVENT_H_
 #define BASE_TRACE_EVENT_TRACE_EVENT_H_
 
+#if defined(MINI_UI_QUICKJS)
+#include "base/trace_event/trace_event_stub.h"
+#else
+
 // This header file defines implementation details of how the trace macros in
 // trace_event_common.h collect and store trace events. Anything not
 // implementation-specific should go in trace_event_common.h instead of here.
@@ -406,5 +410,7 @@ private:
 
 } // namespace trace_event
 } // namespace base
+
+#endif // defined(MINI_UI_QUICKJS)
 
 #endif // BASE_TRACE_EVENT_TRACE_EVENT_H_

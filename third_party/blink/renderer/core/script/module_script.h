@@ -56,10 +56,11 @@ public:
 
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void ProduceCache()
     {
     }
-
+#endif
     [[nodiscard]] ScriptEvaluationResult RunScriptOnScriptStateAndReturnValue(ScriptState*,
         ExecuteScriptPolicy = ExecuteScriptPolicy::kDoNotExecuteScriptWhenScriptsDisabled,
         V8ScriptRunner::RethrowErrorsOption = V8ScriptRunner::RethrowErrorsOption::DoNotRethrow()) override;

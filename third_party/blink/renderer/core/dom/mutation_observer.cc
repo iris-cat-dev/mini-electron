@@ -43,7 +43,9 @@
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
 
@@ -324,7 +326,9 @@ void MutationObserver::EnqueueMutationRecord(MutationRecord* mutation)
     DCHECK(IsMainThread());
     records_.push_back(mutation);
     ActivateObserver(this);
+#if !defined(MINI_UI_QUICKJS)
     mutation->async_task_context()->Schedule(delegate_->GetExecutionContext(), mutation->type());
+#endif
 }
 
 void MutationObserver::SetHasTransientRegistration()
@@ -359,9 +363,11 @@ void MutationObserver::ContextDestroyed()
 
 void MutationObserver::CancelInspectorAsyncTasks()
 {
+#if !defined(MINI_UI_QUICKJS)
     for (auto& record : records_) {
         record->async_task_context()->Cancel();
     }
+#endif
 }
 
 void MutationObserver::Deliver()
@@ -386,8 +392,10 @@ void MutationObserver::Deliver()
     MutationRecordVector records;
     swap(records_, records);
 
+#if !defined(MINI_UI_QUICKJS)
     // Report the first (earliest) stack as the async cause.
     probe::AsyncTask async_task(delegate_->GetExecutionContext(), records.front()->async_task_context());
+#endif
     delegate_->Deliver(records, *this);
 }
 

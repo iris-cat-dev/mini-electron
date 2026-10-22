@@ -18,13 +18,17 @@
 #include "base/functional/callback.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing_forward.h"
+#endif
 #include "base/types/pass_key.h"
+#if !defined(MINI_UI_IMPLEMENTATION)
 #include "base/values.h"
+#include "net/log/net_log_capture_mode.h"
+#endif
 #include "net/base/net_export.h"
 #include "net/http/http_util.h"
 #include "net/http/http_version.h"
-#include "net/log/net_log_capture_mode.h"
 #include "third_party/abseil-cpp/absl/container/inlined_vector.h"
 
 namespace base {
@@ -310,10 +314,12 @@ public:
     // location of the redirect is optionally returned if location is non-null.
     bool IsRedirect(std::string* location) const;
 
+#if !defined(MINI_UI_IMPLEMENTATION)
     // Returns true if this response included the `Activate-Storage-Access: retry;
     // allowed-origin=...` header and the "allowed-origin" parameter matched the
     // `expected_origin`.
     bool HasStorageAccessRetryHeader(const std::string* expected_origin) const;
+#endif
 
     // Returns true if the HTTP response code passed in corresponds to a
     // redirect.
@@ -386,9 +392,10 @@ public:
 
     // Returns true if the response is chunk-encoded.
     bool IsChunkEncoded() const;
-
+#if !defined(MINI_UI_IMPLEMENTATION)
     // Creates a Value for use with the NetLog containing the response headers.
     base::Value::Dict NetLogParams(NetLogCaptureMode capture_mode) const;
+#endif
 
     // Returns the HTTP response code.  This is 0 if the response code text seems
     // to exist but could not be parsed.  Otherwise, it defaults to 200 if the
@@ -408,8 +415,10 @@ public:
     // with |PERSIST_SANS_COOKIES|.
     static bool IsCookieResponseHeader(std::string_view name);
 
+#if !defined(MINI_UI_QUICKJS)
     // Write a representation of this object into tracing proto.
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     // Returns true if this instance precises matches another. This is stronger
     // than semantic equality as it is intended for verification that the new

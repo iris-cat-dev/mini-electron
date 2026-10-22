@@ -18,7 +18,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/frame_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -106,7 +108,9 @@ MainThreadTaskQueue::MainThreadTaskQueue(base::sequence_manager::SequenceManager
         // MainThreadScheduler's constructor.
         task_queue_->SetOnTaskStartedHandler(base::BindRepeating(&MainThreadTaskQueue::OnTaskStarted, base::Unretained(this)));
         task_queue_->SetOnTaskCompletedHandler(base::BindRepeating(&MainThreadTaskQueue::OnTaskCompleted, base::Unretained(this)));
+#if !defined(MINI_UI_QUICKJS)
         task_queue_->SetTaskExecutionTraceLogger(base::BindRepeating(&MainThreadTaskQueue::LogTaskExecution, base::Unretained(this)));
+#endif
     }
 }
 
@@ -129,6 +133,7 @@ void MainThreadTaskQueue::OnTaskCompleted(const base::sequence_manager::Task& ta
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadTaskQueue::LogTaskExecution(perfetto::EventContext& ctx, const base::sequence_manager::Task& task)
 {
     *(int*)1 = 1;
@@ -141,6 +146,7 @@ void MainThreadTaskQueue::LogTaskExecution(perfetto::EventContext& ctx, const ba
 //         frame_scheduler_->WriteIntoTrace(ctx.Wrap(execution));
 //     }
 }
+#endif
 
 void MainThreadTaskQueue::OnTaskRunTimeReported(TaskQueue::TaskTiming* task_timing)
 {
@@ -278,6 +284,7 @@ void MainThreadTaskQueue::SetWakeUpBudgetPool(WakeUpBudgetPool* wake_up_budget_p
     wake_up_budget_pool_ = wake_up_budget_pool;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadTaskQueue::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -299,6 +306,7 @@ void MainThreadTaskQueue::QueueTraits::WriteIntoTrace(perfetto::TracedValue cont
     dict.Add("can_be_paused_for_android_webview", can_be_paused_for_android_webview);
     dict.Add("prioritisation_type", prioritisation_type);
 }
+#endif
 
 scoped_refptr<base::SingleThreadTaskRunner> MainThreadTaskQueue::CreateTaskRunner(TaskType task_type)
 {

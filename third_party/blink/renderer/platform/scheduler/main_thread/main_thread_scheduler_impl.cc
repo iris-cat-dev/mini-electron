@@ -31,7 +31,9 @@
 #include "base/trace_event/traced_value.h"
 #include "build/build_config.h"
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_input_event_attribution.h"
@@ -44,7 +46,9 @@
 #include "third_party/blink/renderer/platform/bindings/parkable_string_manager.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/renderer_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/common/auto_advancing_virtual_time_domain.h"
 #include "third_party/blink/renderer/platform/scheduler/common/features.h"
 #include "third_party/blink/renderer/platform/scheduler/common/process_state.h"
@@ -82,10 +86,13 @@ const double kShortIdlePeriodDurationPercentile = 50;
 // Amount of idle time left in a frame (as a ratio of the vsync interval) above
 // which main thread compositing can be considered fast.
 const double kFastCompositingIdleTimeThreshold = .2;
+#if !defined(MINI_UI_QUICKJS)
 const int64_t kSecondsPerMinute = 60;
+#endif
 
 constexpr int kDefaultPrioritizeCompositingAfterDelayMs = 100;
 
+#if !defined(MINI_UI_QUICKJS)
 void AddRAILModeToProto(/*perfetto::protos::pbzero::TrackEvent*/void* event, RAILMode mode)
 {
 //     using perfetto::protos::pbzero::ChromeRAILMode;
@@ -112,6 +119,7 @@ void AddHiddenToProto(/*perfetto::protos::pbzero::TrackEvent*/void* event, bool 
     NOTREACHED();
     //event->set_chrome_renderer_scheduler_state()->set_is_hidden(is_hidden);
 }
+#endif
 
 const char* AudioPlayingStateToString(bool is_audio_playing)
 {
@@ -254,11 +262,13 @@ MainThreadSchedulerImpl::MainThreadSchedulerImpl(base::sequence_manager::Sequenc
 
     helper_.SetObserver(this);
 
+#if !defined(MINI_UI_QUICKJS)
     // Register a tracing state observer unless we're running in a test without a
     // task runner. Note that it's safe to remove a non-existent observer.
     if (base::SingleThreadTaskRunner::HasCurrentDefault()) {
         base::trace_event::TraceLog::GetInstance()->AddAsyncEnabledStateObserver(weak_factory_.GetWeakPtr());
     }
+#endif
 
     internal::ProcessState::Get()->is_process_backgrounded = main_thread_only().renderer_backgrounded.get();
 
@@ -282,7 +292,9 @@ MainThreadSchedulerImpl::~MainThreadSchedulerImpl()
     CHECK(main_thread_only().detached_task_queues.empty());
     CHECK(!virtual_time_control_task_queue_);
 
+#if !defined(MINI_UI_QUICKJS)
     base::trace_event::TraceLog::GetInstance()->RemoveAsyncEnabledStateObserver(this);
+#endif
 }
 
 // static
@@ -302,6 +314,7 @@ WebThreadScheduler& WebThreadScheduler::MainThreadScheduler()
 MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
     MainThreadSchedulerImpl* main_thread_scheduler_impl, const base::TickClock* time_source, base::TimeTicks now)
     : idle_time_estimator(time_source, kShortIdlePeriodDurationSampleCount, kShortIdlePeriodDurationPercentile)
+#if !defined(MINI_UI_QUICKJS)
     , current_use_case(UseCase::kNone, "Scheduler.UseCase", &main_thread_scheduler_impl->tracing_controller_, UseCaseToString)
     , renderer_pause_count(0, "Scheduler.PauseCount", &main_thread_scheduler_impl->tracing_controller_)
     , rail_mode_for_tracing(current_policy.rail_mode, "Scheduler.RAILMode", &main_thread_scheduler_impl->tracing_controller_, &AddRAILModeToProto)
@@ -323,6 +336,24 @@ MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
     , compositor_priority(TaskPriority::kNormalPriority, "Scheduler.CompositorPriority", &main_thread_scheduler_impl->tracing_controller_, TaskPriorityToString)
     , main_frame_prioritization_state(RenderingPrioritizationState::kNone, "RenderingPrioritizationState", &main_thread_scheduler_impl->tracing_controller_,
           RenderingPrioritizationStateToString)
+#else
+    , current_use_case(UseCase::kNone)
+    , renderer_pause_count(0)
+    , renderer_hidden(false)
+    , renderer_backgrounded(kLaunchingProcessIsBackgrounded)
+    , blocking_input_expected_soon(false)
+    , in_idle_period_for_testing(false)
+    , is_audio_playing(false)
+    , compositor_will_send_main_frame_not_expected(false)
+    , has_navigated(false)
+    , pause_timers_for_webview(false)
+    , background_status_changed_at(now)
+    , metrics_helper(main_thread_scheduler_impl, main_thread_scheduler_impl->helper_.HasCPUTimingForEachTask(), now, renderer_backgrounded.get())
+    , process_type(WebRendererProcessType::kRenderer)
+    , main_thread_compositing_is_fast(false)
+    , compositor_priority(TaskPriority::kNormalPriority)
+    , main_frame_prioritization_state(RenderingPrioritizationState::kNone)
+#endif
     , last_frame_time(now)
     , agent_group_schedulers(MakeGarbageCollected<HeapHashSet<WeakMember<AgentGroupSchedulerImpl>>>())
 {
@@ -331,6 +362,7 @@ MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
 MainThreadSchedulerImpl::MainThreadOnly::~MainThreadOnly() = default;
 
 MainThreadSchedulerImpl::AnyThread::AnyThread(MainThreadSchedulerImpl* main_thread_scheduler_impl)
+#if !defined(MINI_UI_QUICKJS)
     : awaiting_touch_start_response(false, "Scheduler.AwaitingTouchstartResponse", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
     , awaiting_discrete_input_response(false, "Scheduler.AwaitingDiscreteInputResponse", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
     , in_idle_period(false, "Scheduler.InIdlePeriod", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
@@ -345,6 +377,19 @@ MainThreadSchedulerImpl::AnyThread::AnyThread(MainThreadSchedulerImpl* main_thre
           false, "Scheduler.WaitingForMeaningfulPaint", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
     , is_any_main_frame_loading(false, "Scheduler.IsAnyMainFrameLoading", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
     , have_seen_input_since_navigation(false, "Scheduler.HaveSeenInputSinceNavigation", &main_thread_scheduler_impl->tracing_controller_, YesNoStateToString)
+#else
+    : awaiting_touch_start_response(false)
+    , awaiting_discrete_input_response(false)
+    , in_idle_period(false)
+    , begin_main_frame_on_critical_path(false)
+    , last_gesture_was_compositor_driven(false)
+    , default_gesture_prevented(true)
+    , have_seen_a_blocking_gesture(false)
+    , waiting_for_any_main_frame_contentful_paint(false)
+    , waiting_for_any_main_frame_meaningful_paint(false)
+    , is_any_main_frame_loading(false)
+    , have_seen_input_since_navigation(false)
+#endif
 {
 }
 
@@ -769,8 +814,10 @@ void MainThreadSchedulerImpl::SetAllRenderWidgetsHidden(bool hidden)
         EndIdlePeriod();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(alexclarke): Should we update policy here?
     CreateTraceEventObjectSnapshot();
+#endif
 }
 
 void MainThreadSchedulerImpl::SetRendererHidden(bool hidden)
@@ -896,6 +943,12 @@ bool MainThreadSchedulerImpl::PolicyNeedsUpdateForTesting()
 void MainThreadSchedulerImpl::PerformMicrotaskCheckpoint()
 {
     TRACE_EVENT("toplevel", "BlinkScheduler_PerformMicrotaskCheckpoint");
+#if defined(MINI_UI_QUICKJS)
+    // Native completion queues outlive the detached isolate and its GC heap.
+    // Once detached, they must not visit GC-owned agent-group state.
+    if (!isolate())
+        return;
+#endif
 
     // This will fallback to execute the microtask checkpoint for the
     // default EventLoop for the isolate.
@@ -1241,9 +1294,11 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type)
 
     new_policy.should_freeze_compositor_task_queue = AllPagesFrozen();
 
+#if !defined(MINI_UI_QUICKJS)
     // Tracing is done before the early out check, because it's quite possible we
     // will otherwise miss this information in traces.
     CreateTraceEventObjectSnapshotLocked();
+#endif
 
     // Update the compositor priority before the early out check because the
     // priority computation relies on state outside of the policy
@@ -1257,11 +1312,15 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     main_thread_only().rail_mode_for_tracing = new_policy.rail_mode;
+#endif
     if (new_policy.rail_mode != main_thread_only().current_policy.rail_mode) {
+#if !defined(MINI_UI_QUICKJS)
         if (isolate()) {
             isolate()->SetIsLoading(new_policy.rail_mode == RAILMode::kLoad);
         }
+#endif
         for (auto& observer : main_thread_only().rail_mode_observers) {
             observer.OnRAILModeChanged(new_policy.rail_mode);
         }
@@ -1488,6 +1547,7 @@ void MainThreadSchedulerImpl::OnVirtualTimeResumed()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadSchedulerImpl::CreateTraceEventObjectSnapshot() const
 {
     TRACE_EVENT_OBJECT_SNAPSHOT_WITH_ID(TRACE_DISABLED_BY_DEFAULT("renderer.scheduler.debug"), "MainThreadScheduler", this, [&](perfetto::TracedValue context) {
@@ -1546,6 +1606,7 @@ void MainThreadSchedulerImpl::WriteIntoTraceLocked(perfetto::TracedValue context
     dict.Add("render_widget_scheduler_signals", render_widget_scheduler_signals_);
     WriteVirtualTimeInfoIntoTrace(dict);
 }
+#endif
 
 bool MainThreadSchedulerImpl::Policy::IsQueueEnabled(MainThreadTaskQueue* task_queue, const SchedulingSettings& settings) const
 {
@@ -1593,6 +1654,7 @@ bool MainThreadSchedulerImpl::Policy::IsQueueEnabled(MainThreadTaskQueue* task_q
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadSchedulerImpl::Policy::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -1603,6 +1665,7 @@ void MainThreadSchedulerImpl::Policy::WriteIntoTrace(perfetto::TracedValue conte
     dict.Add("should_freeze_compositor_task_queue", should_freeze_compositor_task_queue);
     dict.Add("should_prioritize_ipc_tasks", should_prioritize_ipc_tasks);
 }
+#endif
 
 void MainThreadSchedulerImpl::OnIdlePeriodStarted()
 {
@@ -1663,19 +1726,27 @@ void MainThreadSchedulerImpl::DidCommitProvisionalLoad(bool is_web_history_inert
     // If this either isn't a history inert commit or it's a reload then we must
     // reset the task cost estimators.
     if (is_outermost_main_frame && (!is_web_history_inert_commit || is_reload)) {
+#if !defined(MINI_UI_QUICKJS)
         RAILMode old_rail_mode;
         RAILMode new_rail_mode;
+#endif
         {
             base::AutoLock lock(any_thread_lock_);
+#if !defined(MINI_UI_QUICKJS)
             old_rail_mode = main_thread_only().current_policy.rail_mode;
+#endif
             ResetForNavigationLocked();
+#if !defined(MINI_UI_QUICKJS)
             new_rail_mode = main_thread_only().current_policy.rail_mode;
+#endif
         }
+#if !defined(MINI_UI_QUICKJS)
         if (old_rail_mode == RAILMode::kLoad && new_rail_mode == RAILMode::kLoad && isolate()) {
             // V8 was already informed that the load started, but now that the load is
             // committed, update the start timestamp.
             isolate()->SetIsLoading(true);
         }
+#endif
     }
 }
 
@@ -1979,10 +2050,12 @@ void MainThreadSchedulerImpl::OnTaskStarted(MainThreadTaskQueue* queue, const ba
         return;
 
     main_thread_only().current_task_start_time = task_timing.start_time();
+#if !defined(MINI_UI_QUICKJS)
     main_thread_only().task_description_for_tracing = TaskDescriptionForTracing { static_cast<TaskType>(task.task_type),
         queue ? std::optional<MainThreadTaskQueue::QueueType>(queue->queue_type()) : std::nullopt };
 
     main_thread_only().task_priority_for_tracing = queue ? std::optional<TaskPriority>(queue->GetQueuePriority()) : std::nullopt;
+#endif
 }
 
 void MainThreadSchedulerImpl::OnTaskCompleted(
@@ -2021,12 +2094,16 @@ void MainThreadSchedulerImpl::OnTaskCompleted(
 
     // TODO(altimin): Per-page metrics should also be considered.
     main_thread_only().metrics_helper.RecordTaskMetrics(queue.get(), task, *task_timing);
+#if !defined(MINI_UI_QUICKJS)
     main_thread_only().task_description_for_tracing = std::nullopt;
 
     // Unset the state of |task_priority_for_tracing|.
     main_thread_only().task_priority_for_tracing = std::nullopt;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     RecordTaskUkm(queue.get(), task, *task_timing);
+#endif
 
     MaybeUpdatePolicyOnTaskCompleted(queue.get(), *task_timing);
 
@@ -2034,6 +2111,7 @@ void MainThreadSchedulerImpl::OnTaskCompleted(
     ShutdownEmptyDetachedTaskQueues();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadSchedulerImpl::RecordTaskUkm(MainThreadTaskQueue* queue, const base::sequence_manager::Task& task, const TaskQueue::TaskTiming& task_timing)
 {
     if (!helper_.ShouldRecordTaskUkm(task_timing.has_thread_time()))
@@ -2097,6 +2175,7 @@ UkmRecordingStatus MainThreadSchedulerImpl::RecordTaskUkmImpl(MainThreadTaskQueu
 
     return UkmRecordingStatus::kSuccess;
 }
+#endif
 
 TaskPriority MainThreadSchedulerImpl::ComputePriority(MainThreadTaskQueue* task_queue) const
 {
@@ -2142,9 +2221,14 @@ void MainThreadSchedulerImpl::RemoveTaskTimeObserver(TaskTimeObserver* task_time
 
 std::unique_ptr<CPUTimeBudgetPool> MainThreadSchedulerImpl::CreateCPUTimeBudgetPoolForTesting(const char* name)
 {
+#if !defined(MINI_UI_QUICKJS)
     return std::make_unique<CPUTimeBudgetPool>(name, &tracing_controller_, NowTicks());
+#else
+    return std::make_unique<CPUTimeBudgetPool>(name, NowTicks());
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MainThreadSchedulerImpl::OnTraceLogEnabled()
 {
     CreateTraceEventObjectSnapshot();
@@ -2157,6 +2241,7 @@ void MainThreadSchedulerImpl::OnTraceLogEnabled()
 void MainThreadSchedulerImpl::OnTraceLogDisabled()
 {
 }
+#endif
 
 base::WeakPtr<MainThreadSchedulerImpl> MainThreadSchedulerImpl::GetWeakPtr()
 {

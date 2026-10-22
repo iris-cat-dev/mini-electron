@@ -7,31 +7,40 @@
 #include "base/debug/stack_trace.h"
 #include "base/feature_list.h"
 #include "base/memory/ref_counted.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/numerics/safe_conversions.h"
+#endif
 #include "base/synchronization/lock.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
 #include "base/trace_event/trace_event.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/parkable_image_manager.h"
 #include "third_party/blink/renderer/platform/image-decoders/segment_reader.h"
-#include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/worker_pool.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/sanitizers.h"
+#include "third_party/blink/renderer/platform/wtf/threading.h"
 #include "third_party/skia/include/core/SkData.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 BASE_FEATURE(kDelayParkingImages, "DelayParkingImages", base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 void RecordReadStatistics(size_t size, base::TimeDelta duration, base::TimeDelta time_since_freeze)
 {
     int throughput_mb_s = duration.is_zero() ? INT_MAX : base::saturated_cast<int>(size / duration.InSecondsF() / (1024 * 1024));
@@ -54,7 +63,9 @@ void RecordWriteStatistics(size_t size, base::TimeDelta duration)
     // ranges.
     base::UmaHistogramCustomMicrosecondsTimes("Memory.ParkableImage.Write.Latency", duration, base::Microseconds(500), base::Seconds(1), 100);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void AsanPoisonBuffer(RWBuffer* rw_buffer)
 {
 #if defined(ADDRESS_SANITIZER)
@@ -68,6 +79,7 @@ void AsanPoisonBuffer(RWBuffer* rw_buffer)
     } while (iter.Next());
 #endif
 }
+#endif
 
 void AsanUnpoisonBuffer(RWBuffer* rw_buffer)
 {
@@ -83,6 +95,7 @@ void AsanUnpoisonBuffer(RWBuffer* rw_buffer)
 #endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // This should be used to make sure that the last reference to the |this| is
 // decremented on the main thread (since that's where the destructor must
 // run), for example by posting a task with this to the main thread.
@@ -90,6 +103,7 @@ void NotifyWriteToDiskFinished(scoped_refptr<ParkableImageImpl>)
 {
     DCHECK(IsMainThread());
 }
+#endif
 
 } // namespace
 
@@ -191,14 +205,18 @@ void ParkableImageSegmentReader::UnlockData()
 
 BASE_FEATURE(kUseParkableImageSegmentReader, "UseParkableImageSegmentReader", base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if !defined(MINI_UI_QUICKJS)
 constexpr base::TimeDelta ParkableImageImpl::kParkingDelay;
+#endif
 
 void ParkableImageImpl::Append(WTF::SharedBuffer* buffer, size_t offset)
 {
     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
     base::AutoLock lock(lock_);
     DCHECK(!is_frozen());
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(!is_on_disk());
+#endif
     DCHECK(rw_buffer_);
 
     for (auto it = buffer->GetIteratorAt(offset); it != buffer->cend(); ++it) {
@@ -239,11 +257,13 @@ scoped_refptr<SegmentReader> ParkableImageImpl::GetROBufferSegmentReader()
     return segment_reader;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ParkableImageImpl::CanParkNow() const
 {
     DCHECK(!is_on_disk());
     return !TransientlyUnableToPark() && !is_locked() && rw_buffer_->HasNoSnapshots();
 }
+#endif
 
 ParkableImageImpl::ParkableImageImpl(size_t initial_capacity)
     : rw_buffer_(std::make_unique<RWBuffer>(initial_capacity))
@@ -258,8 +278,10 @@ ParkableImageImpl::~ParkableImageImpl()
     if (!is_below_min_parking_size() || !is_frozen())
         manager.Remove(this);
     DCHECK(!manager.IsRegistered(this));
+#if !defined(MINI_UI_QUICKJS)
     if (on_disk_metadata_)
         manager.data_allocator().Discard(std::move(on_disk_metadata_));
+#endif
     AsanUnpoisonBuffer(rw_buffer_.get());
 }
 
@@ -281,6 +303,7 @@ void ParkableImageImpl::Freeze()
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // If we don't have any snapshots of the current data, that means it could be
     // parked at any time.
     //
@@ -288,6 +311,7 @@ void ParkableImageImpl::Freeze()
     // snapshot is allowed to access the buffer's data freely.
     if (CanParkNow())
         AsanPoisonBuffer(rw_buffer_.get());
+#endif
 }
 
 void ParkableImageImpl::LockData()
@@ -304,18 +328,23 @@ void ParkableImageImpl::UnlockData()
 {
     // Check that we've locked it already.
     DCHECK_GT(lock_depth_, 0u);
+#if !defined(MINI_UI_QUICKJS)
     // While locked, we can never write the data to disk.
     DCHECK(!is_on_disk());
+#endif
 
     lock_depth_--;
 
+#if !defined(MINI_UI_QUICKJS)
     // We only poison the buffer if we're able to park after unlocking.
     // This is to avoid issues when creating a ROBufferSegmentReader from the
     // ParkableImageImpl.
     if (CanParkNow())
         AsanPoisonBuffer(rw_buffer_.get());
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 void ParkableImageImpl::WriteToDiskInBackground(
     scoped_refptr<ParkableImageImpl> parkable_image, scoped_refptr<base::SingleThreadTaskRunner> callback_task_runner)
@@ -457,11 +486,14 @@ size_t ParkableImageImpl::ReadFromDiskIntoBuffer(DiskDataMetadata* on_disk_metad
     ParkableImageManager::Instance().data_allocator().Read(*on_disk_metadata, buffer);
     return size;
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 void ParkableImageImpl::Unpark()
 {
-    // We mark the ParkableImage as having been read here, since any access to
-    // its data must first make sure it's not on disk.
+#if defined(MINI_UI_QUICKJS)
+    AsanUnpoisonBuffer(rw_buffer_.get());
+#else
+    // Any access to disk-backed data marks the image as used.
     used_ = true;
 
     if (!is_on_disk()) {
@@ -487,6 +519,7 @@ void ParkableImageImpl::Unpark()
 
     ParkableImageManager::Instance().RecordDiskReadTime(elapsed);
     ParkableImageManager::Instance().OnReadFromDisk(this);
+#endif
 
     DCHECK(rw_buffer_);
 }
@@ -529,11 +562,13 @@ size_t ParkableImage::size() const
     return impl_->size();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ParkableImage::is_on_disk() const
 {
     DCHECK(impl_);
     return impl_->is_on_disk();
 }
+#endif
 
 scoped_refptr<SegmentReader> ParkableImage::MakeROSnapshot()
 {

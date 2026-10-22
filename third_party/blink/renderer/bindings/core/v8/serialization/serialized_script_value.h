@@ -36,17 +36,23 @@
 #include "base/containers/heap_array.h"
 #include "base/containers/span.h"
 #include "base/dcheck_is_on.h"
-#include "base/functional/callback_forward.h"
+#include "base/functional/callback.h"
 #include "base/ranges/algorithm.h"
 #include "base/types/optional_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/pending_remote.h"
+#endif
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/common/messaging/message_port_descriptor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_transfer_token.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/native_value_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/transferables.h"
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mojo/mojo_handle.h"
+#endif
 #include "third_party/blink/renderer/core/streams/readable_stream_transferring_optimizer.h"
 #include "third_party/blink/renderer/core/streams/writable_stream_transferring_optimizer.h"
 #include "third_party/blink/renderer/core/typed_arrays/array_buffer/array_buffer_contents.h"
@@ -73,7 +79,9 @@ class UnpackedSerializedScriptValue;
 class WebBlobInfo;
 
 typedef HashMap<String, scoped_refptr<BlobDataHandle>> BlobDataHandleMap;
+#if !defined(MINI_UI_QUICKJS)
 typedef Vector<mojo::ScopedHandle> MojoScopedHandleArray;
+#endif
 typedef Vector<WebBlobInfo> WebBlobInfoArray;
 typedef HeapVector<Member<DOMSharedArrayBuffer>> SharedArrayBufferArray;
 
@@ -108,10 +116,14 @@ public:
     using ArrayBufferContentsArray = Vector<ArrayBufferContents, 1>;
     using SharedArrayBufferContentsArray = Vector<ArrayBufferContents, 1>;
     using ImageBitmapContentsArray = Vector<scoped_refptr<StaticBitmapImage>, 1>;
+#if !defined(MINI_UI_QUICKJS)
     using TransferredWasmModulesArray = WTF::Vector<v8::CompiledWasmModule>;
+#endif
     using MessagePortChannelArray = Vector<MessagePortChannel>;
     using StreamArray = Vector<Stream>;
+#if !defined(MINI_UI_QUICKJS)
     using FileSystemAccessTokensArray = Vector<mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken>>;
+#endif
 
     // Increment this for each incompatible change to the wire format.
     // Version 2: Added StringUCharTag for UChar v8 strings.
@@ -271,10 +283,12 @@ public:
         return data_buffer_.size();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     TransferredWasmModulesArray& WasmModules()
     {
         return wasm_modules_;
     }
+#endif
     SharedArrayBufferContentsArray& SharedArrayBuffersContents()
     {
         return shared_array_buffers_contents_;
@@ -283,14 +297,18 @@ public:
     {
         return blob_data_handles_;
     }
+#if !defined(MINI_UI_QUICKJS)
     FileSystemAccessTokensArray& FileSystemAccessTokens()
     {
         return file_system_access_tokens_;
     }
+#endif
+#if !defined(MINI_UI_QUICKJS)
     MojoScopedHandleArray& MojoHandles()
     {
         return mojo_handles_;
     }
+#endif
     ArrayBufferContentsArray& GetArrayBufferContentsArray()
     {
         return array_buffer_contents_array_;
@@ -310,10 +328,12 @@ public:
         return streams_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const v8::SharedValueConveyor* MaybeGetSharedValueConveyor() const
     {
         return base::OptionalToPtr(shared_value_conveyor_);
     }
+#endif
 
     bool IsLockedToAgentCluster() const;
 
@@ -416,14 +436,22 @@ private:
     StreamArray streams_;
 
     // These do not have one-use transferred contents, like the above.
+#if !defined(MINI_UI_QUICKJS)
     TransferredWasmModulesArray wasm_modules_;
+#endif
     BlobDataHandleMap blob_data_handles_;
+#if !defined(MINI_UI_QUICKJS)
     MojoScopedHandleArray mojo_handles_;
+#endif
     SharedArrayBufferContentsArray shared_array_buffers_contents_;
+#if !defined(MINI_UI_QUICKJS)
     FileSystemAccessTokensArray file_system_access_tokens_;
+#endif
     HashMap<const void* const*, std::unique_ptr<Attachment>> attachments_;
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<v8::SharedValueConveyor> shared_value_conveyor_;
+#endif
     raw_ptr<v8::Isolate> isolate_;
     bool has_registered_external_allocation_;
 #if DCHECK_IS_ON()

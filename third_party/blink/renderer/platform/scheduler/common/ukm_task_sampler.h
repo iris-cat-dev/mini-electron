@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_COMMON_UKM_TASK_SAMPLER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_COMMON_UKM_TASK_SAMPLER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/gtest_prod_util.h"
 #include "base/rand_util.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
@@ -47,5 +49,7 @@ private:
 
 } // namespace scheduler
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_COMMON_UKM_TASK_SAMPLER_H_

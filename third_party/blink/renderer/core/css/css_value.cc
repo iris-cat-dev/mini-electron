@@ -66,7 +66,9 @@
 #include "third_party/blink/renderer/core/css/css_light_dark_value_pair.h"
 #include "third_party/blink/renderer/core/css/css_math_function_value.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_palette_mix_value.h"
 #include "third_party/blink/renderer/core/css/css_path_value.h"
 #include "third_party/blink/renderer/core/css/css_pending_substitution_value.h"
@@ -237,8 +239,10 @@ bool CSSValue::operator==(const CSSValue& other) const
             return CompareCSSValues<cssvalue::CSSCrossfadeValue>(*this, other);
         case kConstantGradientClass:
             return CompareCSSValues<cssvalue::CSSConstantGradientValue>(*this, other);
+#if !defined(MINI_UI_QUICKJS)
         case kPaintClass:
             return CompareCSSValues<CSSPaintValue>(*this, other);
+#endif
         case kCustomIdentClass:
             return CompareCSSValues<CSSCustomIdentValue>(*this, other);
         case kImageClass:
@@ -396,8 +400,10 @@ String CSSValue::CssText() const
         return To<cssvalue::CSSConstantGradientValue>(this)->CustomCSSText();
     case kCrossfadeClass:
         return To<cssvalue::CSSCrossfadeValue>(this)->CustomCSSText();
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
         return To<CSSPaintValue>(this)->CustomCSSText();
+#endif
     case kCustomIdentClass:
         return To<CSSCustomIdentValue>(this)->CustomCSSText();
     case kImageClass:
@@ -548,7 +554,9 @@ unsigned CSSValue::Hash() const
     case kImageClass:
     case kCursorImageClass:
     case kCrossfadeClass:
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
+#endif
     case kLinearGradientClass:
     case kRadialGradientClass:
     case kConicGradientClass:
@@ -706,9 +714,11 @@ void CSSValue::Trace(Visitor* visitor) const
     case kCrossfadeClass:
         To<cssvalue::CSSCrossfadeValue>(this)->TraceAfterDispatch(visitor);
         return;
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
         To<CSSPaintValue>(this)->TraceAfterDispatch(visitor);
         return;
+#endif
     case kCustomIdentClass:
         To<CSSCustomIdentValue>(this)->TraceAfterDispatch(visitor);
         return;
@@ -911,8 +921,10 @@ String CSSValue::ClassTypeToString() const
         return "CursorImageClass";
     case kCrossfadeClass:
         return "CrossfadeClass";
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
         return "PaintClass";
+#endif
     case kLinearGradientClass:
         return "LinearGradientClass";
     case kRadialGradientClass:

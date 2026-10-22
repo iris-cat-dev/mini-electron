@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/frame/sticky_ad_detector.h"
 
+#include "base/trace_event/base_tracing.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"

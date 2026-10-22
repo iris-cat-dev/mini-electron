@@ -56,6 +56,9 @@ private:
     void ReadFilenames(ClipboardBuffer buffer, const DataTransferEndpoint* data_dst, std::vector<ui::FileInfo>* result) const override;
     void ReadBookmark(const DataTransferEndpoint* data_dst, std::u16string* title, std::string* url) const override;
     void ReadData(const ClipboardFormatType& format, const DataTransferEndpoint* data_dst, std::string* result) const override;
+    bool ReadDataWithMaxSize(const ClipboardFormatType& format,
+        const DataTransferEndpoint* data_dst, size_t max_size,
+        std::string* result) const override;
     void WritePortableAndPlatformRepresentations(ClipboardBuffer buffer, const ObjectMap& objects,
         std::vector<Clipboard::PlatformRepresentation> platform_representations, std::unique_ptr<DataTransferEndpoint> data_src,
         uint32_t privacy_types) override;

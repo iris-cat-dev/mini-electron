@@ -7,7 +7,9 @@
 #include <algorithm>
 
 #include "base/no_destructor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "services/network/public/cpp/client_hints.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -70,6 +72,7 @@ FrameClientHintsPreferencesContext::FrameClientHintsPreferencesContext(LocalFram
 {
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ukm::SourceId FrameClientHintsPreferencesContext::GetUkmSourceId()
 {
     return frame_->GetDocument()->UkmSourceID();
@@ -79,6 +82,7 @@ ukm::UkmRecorder* FrameClientHintsPreferencesContext::GetUkmRecorder()
 {
     return frame_->GetDocument()->UkmRecorder();
 }
+#endif
 
 void FrameClientHintsPreferencesContext::CountClientHints(network::mojom::WebClientHintsType type)
 {

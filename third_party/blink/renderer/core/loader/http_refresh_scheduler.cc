@@ -35,13 +35,16 @@
 #include <memory>
 
 #include "base/trace_event/trace_event.h"
+#include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/events/current_input_event.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 
 static constexpr base::TimeDelta kMaxScheduledDelay = base::Seconds(INT32_MAX / 1000);
@@ -118,7 +121,9 @@ void HttpRefreshScheduler::NavigateTask()
     }
 
     document_->GetFrame()->Loader().StartNavigation(request, load_type);
+#if !defined(MINI_UI_QUICKJS)
     probe::FrameClearedScheduledNavigation(document_->GetFrame());
+#endif
 }
 
 void HttpRefreshScheduler::MaybeStartTimer()
@@ -135,13 +140,17 @@ void HttpRefreshScheduler::MaybeStartTimer()
     navigate_task_handle_ = PostDelayedCancellableTask(*document_->GetTaskRunner(TaskType::kInternalLoading), FROM_HERE,
         WTF::BindOnce(&HttpRefreshScheduler::NavigateTask, WrapWeakPersistent(this)), refresh_->delay);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::FrameScheduledNavigation(document_->GetFrame(), refresh_->url, refresh_->delay, refresh_->reason);
+#endif
 }
 
 void HttpRefreshScheduler::Cancel()
 {
     if (navigate_task_handle_.IsActive()) {
+#if !defined(MINI_UI_QUICKJS)
         probe::FrameClearedScheduledNavigation(document_->GetFrame());
+#endif
     }
     navigate_task_handle_.Cancel();
     refresh_.reset();

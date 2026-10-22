@@ -188,11 +188,16 @@ void PossiblyFetchBlockedDocWriteScript(
     params.SetRenderBlockingBehavior(RenderBlockingBehavior::kNonBlocking);
     AddHeader(&params);
 
+#if defined(MINI_UI_QUICKJS)
+    ScriptResource::Fetch(
+        params, element_document.Fetcher(), nullptr, context->GetIsolate());
+#else
     // If streaming is not allowed, no compile hints are needed either.
     constexpr v8_compile_hints::V8CrowdsourcedCompileHintsProducer* kNoCompileHintsProducer = nullptr;
     constexpr v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* kNoCompileHintsConsumer = nullptr;
     ScriptResource::Fetch(params, element_document.Fetcher(), nullptr, context->GetIsolate(), ScriptResource::kNoStreaming, kNoCompileHintsProducer,
         kNoCompileHintsConsumer, v8_compile_hints::MagicCommentMode::kNever);
+#endif
 }
 
 } // namespace blink

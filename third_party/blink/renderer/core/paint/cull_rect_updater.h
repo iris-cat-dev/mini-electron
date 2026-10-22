@@ -13,7 +13,9 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class ViewTransitionSupplement;
+#endif
 class FragmentData;
 class LayoutObject;
 class PaintLayer;
@@ -76,7 +78,9 @@ private:
 
     PaintLayer& starting_layer_;
     PropertyTreeState root_state_ { PropertyTreeState::kUninitialized };
+#if !defined(MINI_UI_QUICKJS)
     ViewTransitionSupplement* view_transition_supplement_;
+#endif
     float expansion_ratio_;
 };
 

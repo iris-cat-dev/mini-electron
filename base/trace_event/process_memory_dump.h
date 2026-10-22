@@ -9,13 +9,17 @@
 
 #include <map>
 #include <optional>
+#if !defined(MINI_UI_QUICKJS)
 #include <unordered_map>
+#endif
 #include <vector>
 
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/heap_profiler_allocation_context.h"
+#endif
 #include "base/trace_event/memory_allocator_dump.h"
 #include "base/trace_event/memory_allocator_dump_guid.h"
 #include "base/trace_event/memory_dump_request_args.h"
@@ -27,6 +31,7 @@
 #define COUNT_RESIDENT_BYTES_SUPPORTED
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto {
 namespace protos {
 namespace pbzero {
@@ -34,6 +39,7 @@ class MemoryTrackerSnapshot;
 }
 } // namespace protos
 } // namespace perfetto
+#endif
 
 namespace base {
 
@@ -155,9 +161,11 @@ public:
     std::vector<MemoryAllocatorDumpEdge> GetAllEdgesForSerialization() const;
     void SetAllEdgesForSerialization(const std::vector<MemoryAllocatorDumpEdge>&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Dumps heap usage with |allocator_name|.
     void DumpHeapUsage(const std::unordered_map<base::trace_event::AllocationContext, base::trace_event::AllocationMetrics>& metrics_by_context,
         base::trace_event::TraceEventMemoryOverhead& overhead, const char* allocator_name);
+#endif
 
     // Adds an ownership relationship between two MemoryAllocatorDump(s) with the
     // semantics: |source| owns |target|, and has the effect of attributing
@@ -216,7 +224,9 @@ public:
     // dumps.
     void SerializeAllocatorDumpsInto(TracedValue* value) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void SerializeAllocatorDumpsInto(perfetto::protos::pbzero::MemoryTrackerSnapshot* memory_snapshot, const base::ProcessId pid) const;
+#endif
 
     const MemoryDumpArgs& dump_args() const LIFETIME_BOUND
     {

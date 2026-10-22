@@ -32,7 +32,9 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
@@ -104,6 +106,7 @@ void HTMLScriptElement::ParseAttribute(const AttributeModificationParams& params
         if (GetDocument().GetRenderBlockingResourceManager() && !IsPotentiallyRenderBlocking()) {
             GetDocument().GetRenderBlockingResourceManager()->RemovePendingScript(*this);
         }
+#if !defined(MINI_UI_QUICKJS)
     } else if (params.name == html_names::kAttributionsrcAttr) {
         if (GetDocument().GetFrame()) {
             // Copied from `ScriptLoader::PrepareScript()`.
@@ -115,6 +118,7 @@ void HTMLScriptElement::ParseAttribute(const AttributeModificationParams& params
 
             GetDocument().GetFrame()->GetAttributionSrcLoader()->Register(params.new_value, /*element=*/this, referrer_policy);
         }
+#endif
     } else {
         HTMLElement::ParseAttribute(params);
     }
@@ -287,10 +291,12 @@ bool HTMLScriptElement::HasSourceAttribute() const
     return FastHasAttribute(html_names::kSrcAttr);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool HTMLScriptElement::HasAttributionsrcAttribute() const
 {
     return FastHasAttribute(html_names::kAttributionsrcAttr);
 }
+#endif
 
 bool HTMLScriptElement::IsConnected() const
 {
@@ -309,12 +315,14 @@ const AtomicString& HTMLScriptElement::GetNonceForElement() const
 
 bool HTMLScriptElement::AllowInlineScriptForCSP(const AtomicString& nonce, const WTF::OrdinalNumber& context_line, const String& script_content)
 {
+    DCHECK(loader_);
+    ContentSecurityPolicy::InlineType inline_type = ContentSecurityPolicy::InlineType::kScript;
+#if !defined(MINI_UI_QUICKJS)
     // Support 'inline-speculation-rules' source.
     // https://wicg.github.io/nav-speculation/speculation-rules.html#content-security-policy
-    DCHECK(loader_);
-    ContentSecurityPolicy::InlineType inline_type = loader_->GetScriptType() == ScriptLoader::ScriptTypeAtPrepare::kSpeculationRules
-        ? ContentSecurityPolicy::InlineType::kScriptSpeculationRules
-        : ContentSecurityPolicy::InlineType::kScript;
+    if (loader_->GetScriptType() == ScriptLoader::ScriptTypeAtPrepare::kSpeculationRules)
+        inline_type = ContentSecurityPolicy::InlineType::kScriptSpeculationRules;
+#endif
     return GetExecutionContext()->GetContentSecurityPolicyForCurrentWorld()->AllowInline(
         inline_type, this, script_content, nonce, GetDocument().Url(), context_line);
 }
@@ -390,9 +398,11 @@ bool HTMLScriptElement::supports(const AtomicString& type)
     if (type == script_type_names::kImportmap)
         return true;
 
+#if !defined(MINI_UI_QUICKJS)
     if (type == script_type_names::kSpeculationrules) {
         return true;
     }
+#endif
     if (type == script_type_names::kWebbundle)
         return true;
 

@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <memory>
 #include <utility>
 
@@ -385,3 +387,5 @@ gpu::SharedImageUsageSet AcceleratedStaticBitmapImage::GetUsage() const
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

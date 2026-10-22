@@ -7,9 +7,10 @@
 
 #include "base/memory/stack_allocated.h"
 #include "third_party/blink/renderer/bindings/core/v8/local_window_proxy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/remote_window_proxy.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "v8/include/v8.h"
@@ -70,7 +71,11 @@ public:
 
 protected:
     using IsolatedWorldMap = HeapHashMap<int, Member<WindowProxy>>;
+#if defined(MINI_UI_QUICKJS)
+    enum class FrameType { kLocal };
+#else
     enum class FrameType { kLocal, kRemote };
+#endif
 
     WindowProxyManager(v8::Isolate*, Frame&, FrameType);
 
@@ -124,9 +129,12 @@ public:
     // the security origin of the context for each isolated world.
     void UpdateSecurityOrigin(const SecurityOrigin*);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetAbortScriptExecution(v8::Context::AbortScriptExecutionCallback callback);
+#endif
 };
 
+#if !defined(MINI_UI_QUICKJS)
 class RemoteWindowProxyManager : public WindowProxyManagerImplHelper<RemoteFrame, RemoteWindowProxy> {
 public:
     explicit RemoteWindowProxyManager(v8::Isolate* isolate, RemoteFrame& frame)
@@ -134,6 +142,7 @@ public:
     {
     }
 };
+#endif
 
 } // namespace blink
 

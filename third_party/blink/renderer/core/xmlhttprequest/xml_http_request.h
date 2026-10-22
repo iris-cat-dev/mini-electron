@@ -29,7 +29,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/attribution.mojom-blink.h"
+#endif
 #include "services/network/public/mojom/trust_tokens.mojom-blink.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
@@ -62,7 +64,9 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class AttributionReportingRequestOptions;
+#endif
 class Blob;
 class BlobDataHandle;
 class DOMArrayBuffer;
@@ -128,7 +132,9 @@ public:
     void Dispose();
     void setRequestHeader(const AtomicString& name, const AtomicString& value, ExceptionState&);
     void setPrivateToken(const PrivateToken*, ExceptionState&);
+#if !defined(MINI_UI_QUICKJS)
     void setAttributionReporting(const AttributionReportingRequestOptions*, ExceptionState&);
+#endif
     void overrideMimeType(const AtomicString& override, ExceptionState&);
     String getAllResponseHeaders() const;
     const AtomicString& getResponseHeader(const AtomicString&) const;
@@ -359,7 +365,9 @@ private:
 
     bool with_credentials_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     network::mojom::AttributionReportingEligibility attribution_reporting_eligibility_ = network::mojom::AttributionReportingEligibility::kUnset;
+#endif
 
     // Used to skip m_responseDocument creation if it's done previously. We need
     // this separate flag since m_responseDocument can be 0 for some cases.

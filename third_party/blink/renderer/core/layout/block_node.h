@@ -193,9 +193,11 @@ public:
         return (IsDocumentElement() || IsBody());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if the custom layout node is in its loaded state (all script
     // for the web-developer defined layout is ready).
     bool IsCustomLayoutLoaded() const;
+#endif
 
     // Return the ::scroll-marker-group associated with this node, if any.
     BlockNode GetScrollMarkerGroup() const

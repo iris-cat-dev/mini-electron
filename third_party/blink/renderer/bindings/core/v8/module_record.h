@@ -8,11 +8,15 @@
 #include "third_party/blink/renderer/bindings/core/v8/module_request.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_source_location_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_code_cache.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/trace_wrapper_v8_reference.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -27,6 +31,7 @@ class ScriptFetchOptions;
 class ScriptState;
 class ScriptValue;
 
+#if !defined(MINI_UI_QUICKJS)
 // ModuleRecordProduceCacheData is a parameter object for
 // ModuleRecord::ProduceCache().
 class CORE_EXPORT ModuleRecordProduceCacheData final : public GarbageCollected<ModuleRecordProduceCacheData> {
@@ -53,14 +58,21 @@ private:
     V8CodeCache::ProduceCacheOptions produce_cache_options_;
     TraceWrapperV8Reference<v8::UnboundModuleScript> unbound_script_;
 };
+#endif
 
 // TODO(rikaf): Add a class level comment
 class CORE_EXPORT ModuleRecord final {
     STATIC_ONLY(ModuleRecord);
 
 public:
+#if defined(MINI_UI_QUICKJS)
+    static v8::Local<v8::Module> Compile(
+        ScriptState*, const ModuleScriptCreationParams&,
+        const ScriptFetchOptions&, const TextPosition&);
+#else
     static v8::Local<v8::Module> Compile(ScriptState*, const ModuleScriptCreationParams& params, const ScriptFetchOptions&, const TextPosition&,
         mojom::blink::V8CacheOptions = mojom::blink::V8CacheOptions::kDefault, ModuleRecordProduceCacheData** out_produce_cache_data = nullptr);
+#endif
 
     // Returns exception, if any.
     static ScriptValue Instantiate(ScriptState*, v8::Local<v8::Module> record, const KURL& source_url);

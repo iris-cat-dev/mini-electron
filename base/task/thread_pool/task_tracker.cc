@@ -331,7 +331,11 @@ bool TaskTracker::WillPostTask(Task* task, TaskShutdownBehavior shutdown_behavio
     }
 
     // TODO(scheduler-dev): Record the task traits here.
-    task_annotator_.WillQueueTask("ThreadPool_PostTask", task);
+    task_annotator_.WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+        "ThreadPool_PostTask",
+#endif
+        task);
 
     return true;
 }
@@ -648,8 +652,12 @@ NOINLINE void TaskTracker::RunBlockShutdown(Task& task, const TaskTraits& traits
 
 void TaskTracker::RunTaskImpl(Task& task, const TaskTraits& traits, TaskSource* task_source, const SequenceToken& token)
 {
+#if defined(MINI_UI_QUICKJS)
+    task_annotator_.RunTask(task);
+#else
     task_annotator_.RunTask(
         "ThreadPool_RunTask", task, [&](perfetto::EventContext& ctx) { EmitThreadPoolTraceEventMetadata(ctx, traits, task_source, token); });
+#endif
 }
 
 void TaskTracker::RunTaskWithShutdownBehavior(Task& task, const TaskTraits& traits, TaskSource* task_source, const SequenceToken& token)

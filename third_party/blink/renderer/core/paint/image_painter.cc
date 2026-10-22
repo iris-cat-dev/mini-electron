@@ -11,8 +11,12 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/html_area_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
@@ -44,8 +48,12 @@ ImagePaintTimingInfo ComputeImagePaintTimingInfo(const LayoutImage& layout_image
         return ImagePaintTimingInfo(/* image_may_be_lcp_candidate */ false,
             /* report_paint_timing */ false);
     }
+#if !defined(MINI_UI_QUICKJS)
     return ImagePaintTimingInfo(PaintTimingDetector::NotifyImagePaint(
         layout_image, image.Size(), *image_content, context.GetPaintController().CurrentPaintChunkProperties(), image_border));
+#else
+    return ImagePaintTimingInfo(/* image_may_be_lcp_candidate */ false);
+#endif
 }
 
 } // namespace
@@ -213,8 +221,10 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context, const PhysicalRect& d
         src_rect = image->CorrectSrcRectForImageOrientation(image->SizeAsFloat(respect_orientation), src_rect);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(
         TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage", inspector_paint_image_event::Data, layout_image_, src_rect, gfx::RectF(dest_rect));
+#endif
 
     ScopedImageRenderingSettings image_rendering_settings_scope(
         context, layout_image_.StyleRef().GetInterpolationQuality(), layout_image_.StyleRef().GetDynamicRangeLimit());
@@ -230,7 +240,11 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context, const PhysicalRect& d
     // timing data. Do so now in order to mark the resulting PaintImage as
     // an LCP candidate.
     ImageResourceContent* image_content = image_resource.CachedImage();
-    if (image_content && (IsA<HTMLImageElement>(node) || IsA<HTMLVideoElement>(node)) && image_content->IsLoaded()) {
+    bool records_element_timing = IsA<HTMLImageElement>(node);
+#if !defined(MINI_UI_QUICKJS)
+    records_element_timing |= IsA<HTMLVideoElement>(node);
+#endif
+    if (image_content && records_element_timing && image_content->IsLoaded()) {
         LocalDOMWindow* window = layout_image_.GetDocument().domWindow();
         DCHECK(window);
         ImageElementTiming::From(*window).NotifyImagePainted(

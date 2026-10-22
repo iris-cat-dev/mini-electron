@@ -1,4 +1,4 @@
-﻿// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,21 +22,18 @@ const uint32_t kInterfaceIdNamespaceMask = 0x80000000;
 const InterfaceId kPrimaryInterfaceId = 0x00000000;
 const InterfaceId kInvalidInterfaceId = 0xFFFFFFFF;
 
-inline bool IsPrimaryInterfaceId(InterfaceId id)
-{
-    return id == kPrimaryInterfaceId;
+inline bool IsPrimaryInterfaceId(InterfaceId id) {
+  return id == kPrimaryInterfaceId;
 }
 
-inline bool IsValidInterfaceId(InterfaceId id)
-{
-    return id != kInvalidInterfaceId;
+inline bool IsValidInterfaceId(InterfaceId id) {
+  return id != kInvalidInterfaceId;
 }
 
-inline bool HasInterfaceIdNamespaceBitSet(InterfaceId id)
-{
-    return (id & kInterfaceIdNamespaceMask) != 0;
+inline bool HasInterfaceIdNamespaceBitSet(InterfaceId id) {
+  return (id & kInterfaceIdNamespaceMask) != 0;
 }
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_INTERFACE_ID_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_INTERFACE_ID_H_

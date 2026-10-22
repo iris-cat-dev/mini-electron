@@ -264,6 +264,7 @@ public:
         return programmatic_scroll_animator_.Get();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual cc::AnimationHost* GetCompositorAnimationHost() const
     {
         return nullptr;
@@ -273,6 +274,7 @@ public:
         return nullptr;
     }
 
+#endif
     // This is used to determine whether the incoming fractional scroll offset
     // should be truncated to integer. Current rule is that if
     // preferCompositingToLCDTextEnabled() is disabled (which is true on low-dpi
@@ -495,6 +497,7 @@ public:
         return ClampTo(offset, MinimumScrollOffset(orientation), MaximumScrollOffset(orientation));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // These methods always return nullptr except for VisualViewport.
     virtual cc::Layer* LayerForHorizontalScrollbar() const
     {
@@ -508,6 +511,7 @@ public:
     {
         return nullptr;
     }
+#endif
     bool HasLayerForHorizontalScrollbar() const;
     bool HasLayerForVerticalScrollbar() const;
     bool HasLayerForScrollCorner() const;
@@ -695,10 +699,12 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void DropCompositorScrollDeltaNextCommit()
     {
     }
 
+#endif
     virtual void SetSnappedQueryTargetIds(std::optional<cc::TargetSnapAreaElementIds>)
     {
     }

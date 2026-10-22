@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/platform/graphics/mailbox_texture_backing.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/mailbox_ref.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
@@ -114,3 +116,5 @@ void MailboxTextureBacking::FlushPendingSkiaOps()
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

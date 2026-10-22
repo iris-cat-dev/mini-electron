@@ -21,16 +21,15 @@
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/bindings/core/v8/window_proxy.h"
-#include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/origin_trial_features.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/runtime_feature_state/runtime_feature_state_override_context.h"
@@ -384,6 +383,12 @@ void OriginTrialContext::InitializePendingFeatures()
         return;
     ScriptState::Scope scope(script_state);
 
+#if defined(MINI_UI_QUICKJS)
+    // The registered native installer installs context-dependent properties per
+    // feature; there are no additional V8 engine features to install.
+    InstallFeatures(enabled_features_, *window->document(), script_state);
+    InstallFeatures(navigation_activated_features_, *window->document(), script_state);
+#else
     bool added_binding_feature = InstallFeatures(enabled_features_, *window->document(), script_state);
     added_binding_feature |= InstallFeatures(navigation_activated_features_, *window->document(), script_state);
 
@@ -391,6 +396,7 @@ void OriginTrialContext::InitializePendingFeatures()
         // Also allow V8 to install conditional features now.
         script_state->GetIsolate()->InstallConditionalFeatures(script_state->GetContext());
     }
+#endif
 }
 
 bool OriginTrialContext::InstallFeatures(const HashSet<mojom::blink::OriginTrialFeature>& features, Document& document, ScriptState* script_state)
@@ -488,8 +494,14 @@ bool OriginTrialContext::CanEnableTrialFromName(const StringView& trial_name)
     if (trial_name == "AdInterestGroupAPI")
         return base::FeatureList::IsEnabled(features::kInterestGroupStorage);
 
-    if (trial_name == "TrustTokens")
+    if (trial_name == "TrustTokens") {
+#if defined(MINI_UI_QUICKJS)
+        // The local-only profile has no private-state-token backend.
+        return false;
+#else
         return base::FeatureList::IsEnabled(network::features::kFledgePst);
+#endif
+    }
 
     if (trial_name == "SpeculationRulesPrefetchFuture") {
         return base::FeatureList::IsEnabled(features::kSpeculationRulesPrefetchFuture);
@@ -500,7 +512,12 @@ bool OriginTrialContext::CanEnableTrialFromName(const StringView& trial_name)
     }
 
     if (trial_name == "CompressionDictionaryTransport") {
+#if defined(MINI_UI_QUICKJS)
+        // No HTTP transport or shared compression-dictionary backend is built.
+        return false;
+#else
         return base::FeatureList::IsEnabled(network::features::kCompressionDictionaryTransportBackend);
+#endif
     }
 
     if (trial_name == "SoftNavigationHeuristics") {
@@ -624,10 +641,11 @@ bool OriginTrialContext::EnableTrialFromToken(const String& token, const OriginI
             }
         }
 
-        // The browser will make its own decision on whether to enable any features
-        // based on this token, so now that it's been confirmed that it is valid,
-        // we should send it even if it didn't enable any features in Blink.
-        SendTokenToBrowser(origin_info, *token_result.ParsedToken(), token, script_origins);
+#if !defined(MINI_UI_QUICKJS)
+        // The browser independently evaluates persistent trial activation.
+        SendTokenToBrowser(origin_info, *token_result.ParsedToken(), token,
+            script_origins);
+#endif
     }
 
     CacheToken(token, token_result, trial_status);
@@ -664,6 +682,7 @@ const SecurityOrigin* OriginTrialContext::GetSecurityOrigin()
 {
     const SecurityOrigin* origin;
     CHECK(context_);
+#if !defined(MINI_UI_QUICKJS)
     // Determines the origin to be validated against tokens:
     //  - For the purpose of origin trials, we consider worklets as running in the
     //    same context as the originating document. Thus, the special logic here
@@ -671,6 +690,7 @@ const SecurityOrigin* OriginTrialContext::GetSecurityOrigin()
     if (auto* scope = DynamicTo<WorkletGlobalScope>(context_.Get()))
         origin = scope->DocumentSecurityOrigin();
     else
+#endif
         origin = context_->GetSecurityOrigin();
     return origin;
 }
@@ -679,6 +699,7 @@ bool OriginTrialContext::IsSecureContext()
 {
     bool is_secure = false;
     CHECK(context_);
+#if !defined(MINI_UI_QUICKJS)
     // Determines if this is a secure context:
     //  - For worklets, they are currently spec'd to not be secure, given their
     //    scope has unique origin:
@@ -688,7 +709,9 @@ bool OriginTrialContext::IsSecureContext()
     //    to check the secure status of the document context.
     if (auto* scope = DynamicTo<WorkletGlobalScope>(context_.Get())) {
         is_secure = scope->DocumentSecureContext();
-    } else {
+    } else
+#endif
+    {
         is_secure = context_->IsSecureContext();
     }
     return is_secure;
@@ -699,15 +722,16 @@ OriginTrialContext::OriginInfo OriginTrialContext::GetCurrentOriginInfo()
     return { .origin = GetSecurityOrigin(), .is_secure = IsSecureContext() };
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void OriginTrialContext::SendTokenToBrowser(
-    const OriginInfo& origin_info, const TrialToken& parsed_token, const String& raw_token, const Vector<OriginInfo>* script_origin_info)
+    const OriginInfo& origin_info, const TrialToken& parsed_token,
+    const String& raw_token, const Vector<OriginInfo>* script_origin_info)
 {
-    // Passing activated origin trial tokens is only supported for windows.
     if (!context_->IsWindow()) {
         return;
     }
-
-    if (!origin_trials::IsTrialPersistentToNextResponse(parsed_token.feature_name())) {
+    if (!origin_trials::IsTrialPersistentToNextResponse(
+            parsed_token.feature_name())) {
         return;
     }
 
@@ -717,7 +741,9 @@ void OriginTrialContext::SendTokenToBrowser(
             script_origins.push_back(script_origin.origin);
         }
     }
-    context_->GetRuntimeFeatureStateOverrideContext()->EnablePersistentTrial(raw_token, std::move(script_origins));
+    context_->GetRuntimeFeatureStateOverrideContext()->EnablePersistentTrial(
+        raw_token, std::move(script_origins));
 }
+#endif
 
 } // namespace blink

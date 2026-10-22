@@ -73,8 +73,10 @@ void LayoutHTMLCanvas::CanvasSizeChanged()
 bool LayoutHTMLCanvas::DrawsBackgroundOntoContentLayer() const
 {
     auto* canvas = To<HTMLCanvasElement>(GetNode());
+#if !defined(MINI_UI_QUICKJS)
     if (canvas->SurfaceLayerBridge())
         return false;
+#endif
     CanvasRenderingContext* context = canvas->RenderingContext();
     if (!context || !context->IsComposited() || !context->CcLayer())
         return false;

@@ -35,7 +35,9 @@
 
 #include "base/containers/span.h"
 #include "gin/public/gin_embedders.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gin/public/isolate_holder.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/active_script_wrappable_manager.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
@@ -76,11 +78,13 @@ class PLATFORM_EXPORT V8PerIsolateData final {
     USING_FAST_MALLOC(V8PerIsolateData);
 
 public:
+#if !defined(MINI_UI_QUICKJS)
     enum class V8ContextSnapshotMode {
         kTakeSnapshot,
         kDontUseSnapshot,
         kUseSnapshot,
     };
+#endif
 
     // Disables the UseCounter.
     // UseCounter depends on the current context, but it's not available during
@@ -108,8 +112,12 @@ public:
         const bool original_use_counter_disabled_;
     };
 
+#if defined(MINI_UI_QUICKJS)
+    static void InitializeForQuickJS(v8::Isolate*);
+#else
     static v8::Isolate* Initialize(scoped_refptr<base::SingleThreadTaskRunner>, scoped_refptr<base::SingleThreadTaskRunner>,
         scoped_refptr<base::SingleThreadTaskRunner>, V8ContextSnapshotMode, v8::CreateHistogramCallback, v8::AddHistogramSampleCallback);
+#endif
 
     static V8PerIsolateData* From(v8::Isolate* isolate)
     {
@@ -124,7 +132,9 @@ public:
     static void WillBeDestroyed(v8::Isolate*);
     static void Destroy(v8::Isolate*);
 
+#if !defined(MINI_UI_QUICKJS)
     static void EnableIdleTasks(v8::Isolate*, std::unique_ptr<gin::V8IdleTaskRunner>);
+#endif
 
     // No hash-map / tree-map look-up when it's the main world.
     DOMWrapperWorld& GetMainWorld()
@@ -134,7 +144,11 @@ public:
 
     v8::Isolate* GetIsolate()
     {
+#if defined(MINI_UI_QUICKJS)
+        return isolate_;
+#else
         return isolate_holder_.isolate();
+#endif
     }
 
     StringCache* GetStringCache()
@@ -176,6 +190,7 @@ public:
     bool HasInstance(const WrapperTypeInfo* wrapper_type_info, v8::Local<v8::Value> untrusted_value);
     bool HasInstanceOfUntrustedType(const WrapperTypeInfo* untrusted_wrapper_type_info, v8::Local<v8::Value> untrusted_value);
 
+#if !defined(MINI_UI_QUICKJS)
     // When v8::SnapshotCreator::CreateBlob() is called, we must not have
     // persistent handles in Blink. This method clears them.
     void ClearPersistentsForV8ContextSnapshot();
@@ -188,6 +203,7 @@ public:
     {
         return v8_context_snapshot_mode_;
     }
+#endif
 
     // Obtains a pointer to an array of names, given a lookup key. If it does not
     // yet exist, it is created from the given array of strings. Once created,
@@ -198,11 +214,13 @@ public:
     v8::Local<v8::Context> EnsureScriptRegexpContext();
     void ClearScriptRegexpContext();
 
+#if !defined(MINI_UI_QUICKJS)
     ThreadDebugger* GetThreadDebugger() const
     {
         return thread_debugger_.get();
     }
     void SetThreadDebugger(std::unique_ptr<ThreadDebugger> thread_debugger);
+#endif
 
     void SetPasswordRegexp(ScriptRegexp*);
     ScriptRegexp* GetPasswordRegexp();
@@ -218,6 +236,7 @@ public:
         active_script_wrappable_manager_ = manager;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void SetGCCallbacks(v8::Isolate* isolate, v8::Isolate::GCCallback prologue_callback, v8::Isolate::GCCallback epilogue_callback);
 
     void EnterGC()
@@ -229,6 +248,7 @@ public:
     {
         gc_callback_depth_--;
     }
+#endif
 
     // Set the factory function used to initialize task attribution for the
     // isolate upon creating main thread `V8PerIsolateData`. This should be set
@@ -280,9 +300,14 @@ public:
     }
 
 private:
+#if defined(MINI_UI_QUICKJS)
+    explicit V8PerIsolateData(v8::Isolate*);
+#else
     V8PerIsolateData(scoped_refptr<base::SingleThreadTaskRunner>, scoped_refptr<base::SingleThreadTaskRunner>, scoped_refptr<base::SingleThreadTaskRunner>,
         V8ContextSnapshotMode, v8::CreateHistogramCallback, v8::AddHistogramSampleCallback);
+#endif
     ~V8PerIsolateData();
+    void ClearCaches();
 
     // A really simple hash function, which makes lookups faster. The set of
     // possible keys for this is relatively small and fixed at compile time, so
@@ -299,11 +324,16 @@ private:
     bool HasInstance(const WrapperTypeInfo* wrapper_type_info, v8::Local<v8::Value> untrusted_value, const V8TemplateMap& map);
     bool HasInstanceOfUntrustedType(const WrapperTypeInfo* untrusted_wrapper_type_info, v8::Local<v8::Value> untrusted_value, const V8TemplateMap& map);
 
+#if defined(MINI_UI_QUICKJS)
+    // Borrowed: the backend destroys the facade only after Destroy().
+    v8::Isolate* const isolate_;
+#else
     V8ContextSnapshotMode v8_context_snapshot_mode_;
 
     // This isolate_holder_ must be initialized before initializing some other
     // members below.
     gin::IsolateHolder isolate_holder_;
+#endif
 
     // v8::Template cache of interface objects, namespace objects, etc.
     V8TemplateMap v8_template_map_for_main_world_;
@@ -328,7 +358,9 @@ private:
 
     bool is_handling_recursion_level_error_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<ThreadDebugger> thread_debugger_;
+#endif
     Persistent<ScriptRegexp> password_regexp_;
     Persistent<UserData> user_data_[static_cast<size_t>(UserData::Key::kNumberOfKeys)];
 
@@ -336,9 +368,11 @@ private:
 
     RuntimeCallStats runtime_call_stats_;
 
+#if !defined(MINI_UI_QUICKJS)
     v8::Isolate::GCCallback prologue_callback_;
     v8::Isolate::GCCallback epilogue_callback_;
     size_t gc_callback_depth_ = 0;
+#endif
 
     Persistent<DOMWrapperWorld> main_world_;
 
@@ -347,6 +381,7 @@ private:
     raw_ptr<DictionaryConversionContext> top_of_dictionary_stack_ = nullptr;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Creates a histogram for V8. The returned value is a base::Histogram, but
 // typed to void* for v8.
 PLATFORM_EXPORT void* CreateHistogram(const char* name, int min, int max, size_t buckets);
@@ -354,6 +389,8 @@ PLATFORM_EXPORT void* CreateHistogram(const char* name, int min, int max, size_t
 // Adds an entry to the supplied histogram. `hist` was previously returned from
 // CreateHistogram().
 PLATFORM_EXPORT void AddHistogramSample(void* hist, int sample);
+
+#endif
 
 } // namespace blink
 

@@ -17,7 +17,7 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "third_party/blink/public/common/origin_trials/origin_trials.h"
-//#include "third_party/boringssl/src/include/openssl/curve25519.h"
+#include "third_party/blink/common/origin_trials/monocypher/monocypher-ed25519.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -290,10 +290,9 @@ bool TrialToken::ValidateSignature(std::string_view signature, const std::string
         return false;
     }
 
-//     int result = ED25519_verify(reinterpret_cast<const uint8_t*>(data.data()), data.length(), reinterpret_cast<const uint8_t*>(signature.data()), public_key.data());
-//     return (result != 0);
-    *(int*)1 = 1;
-    return false;
+    return crypto_ed25519_check(reinterpret_cast<const uint8_t*>(signature.data()), public_key.data(),
+               reinterpret_cast<const uint8_t*>(data.data()), data.length())
+        == 0;
 }
 
 TrialToken::TrialToken(const url::Origin& origin, bool match_subdomains, const std::string& feature_name, base::Time expiry_time, bool is_third_party,

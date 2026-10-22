@@ -10,21 +10,29 @@
 #include "third_party/blink/public/mojom/script/script_type.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/referrer_script_info.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_common.h"
+#endif
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
+#endif
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
 #include "third_party/blink/renderer/core/loader/url_matcher.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/page.h"
+#endif
 #include "third_party/blink/renderer/core/script/document_write_intervention.h"
 #include "third_party/blink/renderer/core/script/script_loader.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
@@ -42,6 +50,7 @@
 namespace blink {
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 InlineScriptStreamer* GetInlineScriptStreamer(const String& source, Document& document)
 {
     ScriptableDocumentParser* scriptable_parser = document.GetScriptableDocumentParser();
@@ -54,6 +63,7 @@ InlineScriptStreamer* GetInlineScriptStreamer(const String& source, Document& do
     // script we want to compile here.
     return scriptable_parser->TakeInlineScriptStreamer(source);
 }
+#endif
 
 } // namespace
 
@@ -80,10 +90,13 @@ ClassicPendingScript* ClassicPendingScript::Fetch(const KURL& url, Document& ele
     //
     // Note: |element_document| corresponds to the settings object.
     //
+#if defined(MINI_UI_QUICKJS)
+    ScriptResource::Fetch(
+        params, element_document.Fetcher(), pending_script,
+        context->GetIsolate());
+#else
     // We allow streaming, as WatchForLoad() is always called when the script
-    // needs to execute and the ScriptResource is not finished, so
-    // SetClientIsWaitingForFinished is always set on the resource.
-
+    // needs to execute and the ScriptResource is not finished.
     Page* page = element_document.GetPage();
     v8_compile_hints::V8CrowdsourcedCompileHintsProducer* compile_hints_producer = nullptr;
     v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* compile_hints_consumer = nullptr;
@@ -94,6 +107,7 @@ ClassicPendingScript* ClassicPendingScript::Fetch(const KURL& url, Document& ele
 
     ScriptResource::Fetch(params, element_document.Fetcher(), pending_script, context->GetIsolate(), ScriptResource::kAllowStreaming, compile_hints_producer,
         compile_hints_consumer, v8_compile_hints::GetMagicCommentMode(element_document.GetExecutionContext()));
+#endif
     pending_script->CheckState();
     return pending_script;
 }
@@ -142,11 +156,13 @@ NOINLINE void ClassicPendingScript::CheckState() const
         DCHECK(is_external_);
         DCHECK(!classic_script_);
         break;
+#if !defined(MINI_UI_QUICKJS)
     case kWaitingForCacheConsumer:
         DCHECK(is_external_);
         DCHECK(classic_script_);
         DCHECK(classic_script_->CacheConsumer());
         break;
+#endif
     case kReady:
         DCHECK(!is_external_ || classic_script_);
         break;
@@ -399,8 +415,10 @@ void ClassicPendingScript::NotifyFinished(Resource* resource)
     const bool mime_type_failure = !AllowedByNosniff::MimeTypeAsScript(
         fetcher->GetUseCounter(), &fetcher->GetConsoleLogger(), resource->GetResponse(), AllowedByNosniff::MimeTypeCheck::kLaxForElement);
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_WITH_FLOW1(TRACE_DISABLED_BY_DEFAULT("v8.compile"), "ClassicPendingScript::NotifyFinished", this, TRACE_EVENT_FLAG_FLOW_OUT, "data",
         [&](perfetto::TracedValue context) { inspector_parse_script_event::Data(std::move(context), resource->InspectorId(), resource->Url().GetString()); });
+#endif
 
     // Ordinal ErrorOccurred(), SRI, and MIME check are all considered as network
     // errors in the Fetch spec.
@@ -413,6 +431,9 @@ void ClassicPendingScript::NotifyFinished(Resource* resource)
     // At this point, the load is successful, and ClassicScript is created.
     classic_script_ = ClassicScript::CreateFromResource(To<ScriptResource>(resource), options_);
 
+#if defined(MINI_UI_QUICKJS)
+    AdvanceReadyState(kReady);
+#else
     // We'll still wait for ScriptCacheConsumer before marking this PendingScript
     // ready.
     if (classic_script_->CacheConsumer()) {
@@ -424,8 +445,10 @@ void ClassicPendingScript::NotifyFinished(Resource* resource)
         // are ready.
         AdvanceReadyState(kReady);
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ClassicPendingScript::NotifyCacheConsumeFinished()
 {
     CHECK_EQ(ready_state_, kWaitingForCacheConsumer);
@@ -436,6 +459,7 @@ void ClassicPendingScript::NotifyCacheConsumeFinished()
     }
     AdvanceReadyState(kReady);
 }
+#endif
 
 void ClassicPendingScript::Trace(Visitor* visitor) const
 {
@@ -455,15 +479,17 @@ ClassicScript* ClassicPendingScript::GetSource() const
 
     TRACE_EVENT0("blink", "ClassicPendingScript::GetSource");
     if (!is_external_) {
+#if defined(MINI_UI_QUICKJS)
+        DCHECK(!GetResource());
+        return ClassicScript::Create(
+            source_text_for_inline_script_,
+            ClassicScript::StripFragmentIdentifier(
+                source_url_for_inline_script_),
+            base_url_for_inline_script_, options_, source_location_type_,
+            SanitizeScriptErrors::kDoNotSanitize, StartingPosition());
+#else
         InlineScriptStreamer* streamer = nullptr;
-        // We only create an inline cache handler for html-embedded scripts, not
-        // for scripts produced by document.write, or not parser-inserted. This is
-        // because we expect those to be too dynamic to benefit from caching.
-        // TODO(leszeks): ScriptSourceLocationType was previously only used for UMA,
-        // so it's a bit of a layer violation to use it for affecting cache
-        // behaviour. We should decide whether it is ok for this parameter to be
-        // used for behavioural changes (and if yes, update its documentation), or
-        // otherwise trigger this behaviour differently.
+        // We only create an inline cache handler for html-embedded scripts.
         Document* element_document = OriginalElementDocument();
         if (source_location_type_ == ScriptSourceLocationType::kInline && element_document && element_document->IsActive()) {
             streamer = GetInlineScriptStreamer(source_text_for_inline_script_, *element_document);
@@ -475,10 +501,12 @@ ClassicScript* ClassicPendingScript::GetSource() const
         return ClassicScript::Create(source_text_for_inline_script_, ClassicScript::StripFragmentIdentifier(source_url_for_inline_script_),
             base_url_for_inline_script_, options_, source_location_type_, SanitizeScriptErrors::kDoNotSanitize, nullptr, StartingPosition(),
             streamer ? ScriptStreamer::NotStreamingReason::kInvalid : ScriptStreamer::NotStreamingReason::kInlineScript, streamer);
+#endif
     }
 
     DCHECK(classic_script_);
 
+#if !defined(MINI_UI_QUICKJS)
     // Record histograms here, because these uses `GetSchedulingType()` but it
     // might be unavailable yet at the time of `NotifyFinished()`.
     DCHECK(GetResource()->IsLoaded());
@@ -488,6 +516,10 @@ ClassicScript* ClassicPendingScript::GetSource() const
 
     TRACE_EVENT_WITH_FLOW1(TRACE_DISABLED_BY_DEFAULT("v8.compile"), "ClassicPendingScript::GetSource", this, TRACE_EVENT_FLAG_FLOW_IN, "not_streamed_reason",
         classic_script_->NotStreamingReason());
+#else
+    DCHECK(GetResource()->IsLoaded());
+    RecordThirdPartyRequestWithCookieIfNeeded(GetResource()->GetResponse());
+#endif
 
     return classic_script_.Get();
 }
@@ -506,6 +538,16 @@ bool ClassicPendingScript::IsReady() const
 
 void ClassicPendingScript::AdvanceReadyState(ReadyState new_ready_state)
 {
+#if defined(MINI_UI_QUICKJS)
+    switch (ready_state_) {
+    case kWaitingForResource:
+        CHECK(new_ready_state == kReady || new_ready_state == kErrorOccurred);
+        break;
+    case kReady:
+    case kErrorOccurred:
+        NOTREACHED();
+    }
+#else
     // We will allow exactly these state transitions:
     //
     // kWaitingForResource -> kWaitingForCacheConsumer -> [kReady, kErrorOccurred]
@@ -523,6 +565,7 @@ void ClassicPendingScript::AdvanceReadyState(ReadyState new_ready_state)
     case kErrorOccurred:
         NOTREACHED();
     }
+#endif
 
     // All the ready states are marked not reachable above, so we can't have been
     // ready beforehand.

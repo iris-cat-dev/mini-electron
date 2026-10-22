@@ -33,6 +33,13 @@
 
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/web/web_widget.h"
+#if defined(MINI_UI_QUICKJS)
+#include "ui/gfx/geometry/rect.h"
+
+namespace cc {
+class PaintCanvas;
+}
+#endif
 
 namespace blink {
 
@@ -44,6 +51,10 @@ public:
     // accessibility tree. Access to the popup document is needed to ensure the
     // popup's layout is clean before serializing the combined tree.
     virtual WebDocument GetDocument() = 0;
+#if defined(MINI_UI_QUICKJS)
+    // UpdateLifecycle(kAll) precedes painting; rect is native Blink space.
+    virtual void PaintContent(cc::PaintCanvas*, const gfx::Rect&) = 0;
+#endif
 };
 
 } // namespace blink

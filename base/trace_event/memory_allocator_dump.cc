@@ -10,13 +10,17 @@
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/strings/stringprintf.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/memory_dump_provider.h"
+#endif
 #include "base/trace_event/process_memory_dump.h"
 #include "base/trace_event/traced_value.h"
 #include "base/values.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/protos/perfetto/trace/memory_graph.pbzero.h"
 #include "third_party/perfetto/protos/perfetto/trace/trace_packet.pbzero.h"
+#endif
 
 namespace base {
 namespace trace_event {
@@ -86,6 +90,7 @@ void MemoryAllocatorDump::AsValueInto(TracedValue* value) const
     value->EndDictionary(); // "allocator_name/heap_subheap": { ... }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void MemoryAllocatorDump::AsProtoInto(perfetto::protos::pbzero::MemoryTrackerSnapshot::ProcessSnapshot::MemoryNode* memory_node) const
 {
     memory_node->set_id(guid_.ToUint64());
@@ -122,6 +127,7 @@ void MemoryAllocatorDump::AsProtoInto(perfetto::protos::pbzero::MemoryTrackerSna
         }
     }
 }
+#endif
 
 uint64_t MemoryAllocatorDump::GetSizeInternal() const
 {

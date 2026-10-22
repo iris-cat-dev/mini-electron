@@ -36,7 +36,9 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "cc/input/main_thread_scrolling_reason.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/solid_color_scrollbar_layer.h"
+#endif
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
@@ -60,22 +62,29 @@
 #include "third_party/blink/renderer/core/page/scrolling/snap_coordinator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/paint/paint_property_tree_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scroll_alignment.h"
 #include "third_party/blink/renderer/core/scroll/scroll_animator_base.h"
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme_overlay_mobile.h"
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/paint/foreign_layer_display_item.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/transform_paint_property_node.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/geometry/point_conversions.h"
+#include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/geometry/size_f.h"
 
@@ -107,10 +116,12 @@ VisualViewport::VisualViewport(Page& owner)
     Reset();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const TransformPaintPropertyNode* VisualViewport::GetDeviceEmulationTransformNode() const
 {
     return device_emulation_transform_node_.Get();
 }
+#endif
 
 const TransformPaintPropertyNode* VisualViewport::GetOverscrollElasticityTransformNode() const
 {
@@ -148,8 +159,10 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
     DCHECK(IsActiveViewport());
     PaintPropertyChangeType change = PaintPropertyChangeType::kUnchanged;
 
+#if !defined(MINI_UI_QUICKJS)
     if (!scroll_layer_)
         CreateLayers();
+#endif
 
     if (!needs_paint_property_update_)
         return change;
@@ -166,6 +179,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
     DCHECK(clip_parent);
     DCHECK(effect_parent);
 
+#if !defined(MINI_UI_QUICKJS)
     {
         const auto& device_emulation_transform = GetChromeClient()->GetDeviceEmulationTransform();
         if (!device_emulation_transform.IsIdentity()) {
@@ -183,6 +197,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
             change = PaintPropertyChangeType::kNodeAddedOrRemoved;
         }
     }
+#endif
 
     if (overscroll_type_ == OverscrollType::kTransform) {
         DCHECK(!transform_parent->Unalias().IsInSubtreeOfPageScale());
@@ -217,6 +232,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
             change = PaintPropertyChangeType::kNodeAddedOrRemoved;
         } else {
             auto effective_change_type = page_scale_node_->Update(*parent, std::move(state));
+#if !defined(MINI_UI_QUICKJS)
             // As an optimization, attempt to directly update the compositor
             // scale translation node and return kChangedOnlyCompositedValues which
             // avoids an expensive PaintArtifactCompositor update.
@@ -229,6 +245,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
                     }
                 }
             }
+#endif
             change = std::max(change, effective_change_type);
         }
     }
@@ -279,6 +296,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
             change = PaintPropertyChangeType::kNodeAddedOrRemoved;
         } else {
             auto effective_change_type = scroll_translation_node_->Update(*page_scale_node_, std::move(state));
+#if !defined(MINI_UI_QUICKJS)
             // As an optimization, attempt to directly update the compositor
             // translation node and return kChangedOnlyCompositedValues which avoids
             // an expensive PaintArtifactCompositor update.
@@ -291,9 +309,14 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
                     }
                 }
             }
+#endif
+#if defined(MINI_UI_QUICKJS)
+            change = std::max(change, effective_change_type);
+#endif
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (scrollbar_layer_horizontal_) {
         EffectPaintPropertyNode::State state;
         state.local_transform_space = transform_parent;
@@ -320,6 +343,7 @@ PaintPropertyChangeType VisualViewport::UpdatePaintPropertyNodesIfNeeded(PaintPr
         }
     }
 
+#endif
     parent_property_tree_state_ = TraceablePropertyTreeStateOrAlias(*transform_parent, *clip_parent, *effect_parent);
 
     if (change == PaintPropertyChangeType::kNodeAddedOrRemoved && IsActiveViewport()) {
@@ -336,7 +360,9 @@ void VisualViewport::Trace(Visitor* visitor) const
 {
     visitor->Trace(page_);
     visitor->Trace(parent_property_tree_state_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(device_emulation_transform_node_);
+#endif
     visitor->Trace(overscroll_elasticity_transform_node_);
     visitor->Trace(page_scale_node_);
     visitor->Trace(scroll_translation_node_);
@@ -375,6 +401,7 @@ void VisualViewport::SetSize(const gfx::Size& size)
 
     needs_paint_property_update_ = true;
 
+#if !defined(MINI_UI_QUICKJS)
     // Need to re-compute sizes for the overlay scrollbars.
     if (scrollbar_layer_horizontal_ && LocalMainFrame().View()) {
         DCHECK(scrollbar_layer_vertical_);
@@ -382,6 +409,7 @@ void VisualViewport::SetSize(const gfx::Size& size)
         UpdateScrollbarLayer(kVerticalScrollbar);
         LocalMainFrame().View()->SetVisualViewportOrOverlayNeedsRepaint();
     }
+#endif
 
     EnqueueResizeEvent();
 }
@@ -398,9 +426,11 @@ void VisualViewport::MainFrameDidChangeSize()
 
     TRACE_EVENT0("blink", "VisualViewport::mainFrameDidChangeSize");
 
+#if !defined(MINI_UI_QUICKJS)
     // In unit tests we may not have initialized the layer tree.
     if (scroll_layer_)
         scroll_layer_->SetBounds(ContentsSize());
+#endif
 
     needs_paint_property_update_ = true;
     ClampToBoundaries();
@@ -561,12 +591,14 @@ bool VisualViewport::DidSetScaleOrLocation(float scale, bool is_pinch_gesture_ac
         offset_ = clamped_offset;
         GetScrollAnimator().SetCurrentOffset(offset_);
 
+#if !defined(MINI_UI_QUICKJS)
         // SVG runs with accelerated compositing disabled so no
         // ScrollingCoordinator.
         if (auto* coordinator = GetPage().GetScrollingCoordinator()) {
             if (scroll_layer_)
                 coordinator->UpdateCompositorScrollOffset(LocalMainFrame(), *this);
         }
+#endif
 
         EnqueueScrollEvent();
 
@@ -577,7 +609,9 @@ bool VisualViewport::DidSetScaleOrLocation(float scale, bool is_pinch_gesture_ac
     if (!values_changed)
         return false;
 
+#if !defined(MINI_UI_QUICKJS)
     probe::DidChangeViewport(&LocalMainFrame());
+#endif
     LocalMainFrame().Loader().SaveScrollState();
 
     ClampToBoundaries();
@@ -589,6 +623,7 @@ bool VisualViewport::DidSetScaleOrLocation(float scale, bool is_pinch_gesture_ac
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void VisualViewport::CreateLayers()
 {
     DCHECK(IsActiveViewport());
@@ -642,6 +677,7 @@ void VisualViewport::InitializeScrollbars()
     }
 }
 
+#endif
 EScrollbarWidth VisualViewport::CSSScrollbarWidth() const
 {
     DCHECK(IsActiveViewport());
@@ -661,12 +697,14 @@ std::optional<blink::Color> VisualViewport::CSSScrollbarThumbColor() const
     return std::nullopt;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void VisualViewport::DropCompositorScrollDeltaNextCommit()
 {
     if (auto* paint_artifact_compositor = GetPaintArtifactCompositor()) {
         paint_artifact_compositor->DropCompositorScrollDeltaNextCommit(scroll_element_id_);
     }
 }
+#endif
 
 int VisualViewport::ScrollbarThickness() const
 {
@@ -674,6 +712,7 @@ int VisualViewport::ScrollbarThickness() const
     return ScrollbarThemeOverlayMobile::GetInstance().ScrollbarThickness(ScaleFromDIP(), CSSScrollbarWidth());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void VisualViewport::UpdateScrollbarLayer(ScrollbarOrientation orientation)
 {
     DCHECK(IsActiveViewport());
@@ -699,9 +738,14 @@ void VisualViewport::UpdateScrollbarLayer(ScrollbarOrientation orientation)
     UpdateScrollbarColor(*scrollbar_layer);
 }
 
+#endif
 bool VisualViewport::VisualViewportSuppliesScrollbars() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return IsActiveViewport() && GetPage().GetSettings().GetViewportEnabled();
+#endif
 }
 
 const Document* VisualViewport::GetDocument() const
@@ -898,7 +942,7 @@ gfx::Size VisualViewport::ContentsSize() const
 
 gfx::Rect VisualViewport::VisibleContentRect(IncludeScrollbarsInRect scrollbar_inclusion) const
 {
-    return ToEnclosingRect(VisibleRect(scrollbar_inclusion));
+    return gfx::ToEnclosingRect(VisibleRect(scrollbar_inclusion));
 }
 
 scoped_refptr<base::SingleThreadTaskRunner> VisualViewport::GetTimerTaskRunner() const
@@ -925,6 +969,7 @@ void VisualViewport::UpdateScrollOffset(const ScrollOffset& position, mojom::bli
         NotifyRootFrameViewport();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::Layer* VisualViewport::LayerForScrolling() const
 {
     DCHECK(!scroll_layer_ || IsActiveViewport());
@@ -943,6 +988,7 @@ cc::Layer* VisualViewport::LayerForVerticalScrollbar() const
     return scrollbar_layer_vertical_.get();
 }
 
+#endif
 RootFrameViewport* VisualViewport::GetRootFrameViewport() const
 {
     if (!IsActiveViewport())
@@ -1014,7 +1060,7 @@ gfx::RectF VisualViewport::ViewportToRootFrame(const gfx::RectF& rect_in_viewpor
 gfx::Rect VisualViewport::ViewportToRootFrame(const gfx::Rect& rect_in_viewport) const
 {
     // FIXME: How to snap to pixels?
-    return ToEnclosingRect(ViewportToRootFrame(gfx::RectF(rect_in_viewport)));
+    return gfx::ToEnclosingRect(ViewportToRootFrame(gfx::RectF(rect_in_viewport)));
 }
 
 gfx::RectF VisualViewport::RootFrameToViewport(const gfx::RectF& rect_in_root_frame) const
@@ -1028,7 +1074,7 @@ gfx::RectF VisualViewport::RootFrameToViewport(const gfx::RectF& rect_in_root_fr
 gfx::Rect VisualViewport::RootFrameToViewport(const gfx::Rect& rect_in_root_frame) const
 {
     // FIXME: How to snap to pixels?
-    return ToEnclosingRect(RootFrameToViewport(gfx::RectF(rect_in_root_frame)));
+    return gfx::ToEnclosingRect(RootFrameToViewport(gfx::RectF(rect_in_root_frame)));
 }
 
 gfx::PointF VisualViewport::ViewportToRootFrame(const gfx::PointF& point_in_viewport) const
@@ -1079,6 +1125,7 @@ bool VisualViewport::ShouldDisableDesktopWorkarounds() const
     return frame_view->GetLayoutSize().width() == size_.width() || (constraints.minimum_scale == constraints.maximum_scale && constraints.minimum_scale != -1);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::AnimationHost* VisualViewport::GetCompositorAnimationHost() const
 {
     DCHECK(IsActiveViewport());
@@ -1092,6 +1139,7 @@ cc::AnimationTimeline* VisualViewport::GetCompositorAnimationTimeline() const
     DCHECK(GetChromeClient());
     return GetChromeClient()->GetScrollAnimationTimeline(LocalMainFrame());
 }
+#endif
 
 void VisualViewport::NotifyRootFrameViewport() const
 {
@@ -1108,6 +1156,7 @@ ScrollbarTheme& VisualViewport::GetPageScrollbarTheme() const
     return GetPage().GetScrollbarTheme();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PaintArtifactCompositor* VisualViewport::GetPaintArtifactCompositor() const
 {
     DCHECK(IsActiveViewport());
@@ -1118,6 +1167,7 @@ PaintArtifactCompositor* VisualViewport::GetPaintArtifactCompositor() const
 
     return frame_view->GetPaintArtifactCompositor();
 }
+#endif
 
 std::unique_ptr<TracedValue> VisualViewport::ViewportToTracedValue() const
 {
@@ -1134,10 +1184,14 @@ std::unique_ptr<TracedValue> VisualViewport::ViewportToTracedValue() const
 
 void VisualViewport::DisposeImpl()
 {
+#if !defined(MINI_UI_QUICKJS)
     scroll_layer_.reset();
     scrollbar_layer_horizontal_.reset();
     scrollbar_layer_vertical_.reset();
+#endif
+#if !defined(MINI_UI_QUICKJS)
     device_emulation_transform_node_ = nullptr;
+#endif
     overscroll_elasticity_transform_node_ = nullptr;
     page_scale_node_ = nullptr;
     scroll_translation_node_ = nullptr;
@@ -1146,6 +1200,7 @@ void VisualViewport::DisposeImpl()
     vertical_scrollbar_effect_node_ = nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void VisualViewport::Paint(GraphicsContext& context) const
 {
     if (!IsActiveViewport())
@@ -1176,6 +1231,7 @@ void VisualViewport::Paint(GraphicsContext& context) const
     }
 }
 
+#endif
 void VisualViewport::UsedColorSchemeChanged()
 {
     DCHECK(IsActiveViewport());
@@ -1183,6 +1239,7 @@ void VisualViewport::UsedColorSchemeChanged()
     RecalculateOverlayScrollbarColorScheme();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void VisualViewport::ScrollbarColorChanged()
 {
     DCHECK(IsActiveViewport());
@@ -1199,4 +1256,5 @@ void VisualViewport::UpdateScrollbarColor(cc::SolidColorScrollbarLayer& layer)
     layer.SetColor(CSSScrollbarThumbColor().value_or(theme.DefaultColor()).toSkColor4f());
 }
 
+#endif
 } // namespace blink

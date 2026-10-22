@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "error",
+  "diagnostic": {
+    "stage": "runner_timeout",
+    "message": "host exceeded 2730000 ms process timeout"
+  },
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\build\\ui-benchmark.exe",
+    "--framework",
+    "vue",
+    "--rows",
+    "5000",
+    "--warmups",
+    "2",
+    "--iterations",
+    "7",
+    "--resource-root",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "--output",
+    "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\raw\\vue-5000.json",
+    "--capture",
+    "D:\\Project\\mini-electron\\out\\ui-benchmark-results\\captures\\vue-5000.bmp",
+    "--width",
+    "1280",
+    "--height",
+    "720",
+    "--device-scale",
+    "1.0",
+    "--timeout-ms",
+    "900000"
+  ]
+}

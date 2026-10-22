@@ -5,12 +5,15 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_LINK_MANIFEST_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_LINK_MANIFEST_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/html/link_resource.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class HTMLLinkElement;
 
 class LinkManifest final : public LinkResource {
@@ -27,6 +30,7 @@ public:
     bool HasLoaded() const override;
     void OwnerRemoved() override;
 };
+#endif
 
 } // namespace blink
 

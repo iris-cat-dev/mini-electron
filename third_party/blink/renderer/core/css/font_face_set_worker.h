@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_FONT_FACE_SET_WORKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_FONT_FACE_SET_WORKER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/bindings/core/v8/iterable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -68,5 +70,7 @@ private:
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_FONT_FACE_SET_WORKER_H_

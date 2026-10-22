@@ -238,7 +238,11 @@ LayoutCacheStatus CalculateSizeBasedLayoutCacheStatusWithGeometry(const BlockNod
 
     if (!is_block_size_equal) {
         // Only block-flow supports changing the block-size for simplified layout.
+#if defined(MINI_UI_QUICKJS)
+        if (!node.IsBlockFlow()) {
+#else
         if (!node.IsBlockFlow() || node.IsCustom()) {
+#endif
             return LayoutCacheStatus::kNeedsLayout;
         }
 

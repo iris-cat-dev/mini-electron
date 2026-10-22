@@ -9,8 +9,11 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_font_stretch.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_text_rendering.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/modules/v8/v8_union_imagebitmaprenderingcontext_offscreencanvasrenderingcontext2d.h"
+#else
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_gpucanvascontext_imagebitmaprenderingcontext_offscreencanvasrenderingcontext2d_webgl2renderingcontext_webglrenderingcontext.h"
-#include "third_party/blink/renderer/core/css/offscreen_font_selector.h"
+#endif
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
 #include "third_party/blink/renderer/core/css/resolver/font_style_resolver.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -19,8 +22,10 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/canvas/text_metrics.h"
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_settings.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/fonts/text_run_paint_info.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
@@ -105,15 +110,20 @@ OffscreenCanvasRenderingContext2D::OffscreenCanvasRenderingContext2D(OffscreenCa
         DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
 
     ExecutionContext* execution_context = canvas->GetTopExecutionContext();
+#if defined(MINI_UI_QUICKJS)
+    CHECK(IsA<LocalDOMWindow>(execution_context));
+#endif
     if (auto* window = DynamicTo<LocalDOMWindow>(execution_context)) {
         if (window->GetFrame() && window->GetFrame()->GetSettings() && window->GetFrame()->GetSettings()->GetDisableReadingFromCanvas())
             canvas->SetDisableReadingFromCanvasTrue();
         return;
     }
     dirty_rect_for_commit_.setEmpty();
+#if !defined(MINI_UI_QUICKJS)
     WorkerSettings* worker_settings = To<WorkerGlobalScope>(execution_context)->GetWorkerSettings();
     if (worker_settings && worker_settings->DisableReadingFromCanvas())
         canvas->SetDisableReadingFromCanvasTrue();
+#endif
 }
 
 void OffscreenCanvasRenderingContext2D::Trace(Visitor* visitor) const
@@ -170,7 +180,9 @@ CanvasResourceProvider* OffscreenCanvasRenderingContext2D::GetOrCreateCanvasReso
     if (host == nullptr) [[unlikely]] {
         return nullptr;
     }
+#if !defined(MINI_UI_QUICKJS)
     host->CheckForGpuContextLost();
+#endif
     return host->GetOrCreateResourceProvider();
 }
 
@@ -261,10 +273,12 @@ scoped_refptr<StaticBitmapImage> OffscreenCanvasRenderingContext2D::GetImage(Flu
     return image;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 V8RenderingContext* OffscreenCanvasRenderingContext2D::AsV8RenderingContext()
 {
     return nullptr;
 }
+#endif
 
 V8OffscreenRenderingContext* OffscreenCanvasRenderingContext2D::AsV8OffscreenRenderingContext()
 {
@@ -311,7 +325,9 @@ void OffscreenCanvasRenderingContext2D::WillDraw(const SkIRect& dirty_rect, Canv
     // this.
     DCHECK(GetPaintCanvas());
     dirty_rect_for_commit_.join(dirty_rect);
+#if !defined(MINI_UI_QUICKJS)
     GetCanvasPerformanceMonitor().DidDraw(draw_type);
+#endif
     if (GetState().ShouldAntialias()) {
         SkIRect inflated_dirty_rect = dirty_rect_for_commit_.makeOutset(1, 1);
         Host()->DidDraw(inflated_dirty_rect);
@@ -404,7 +420,9 @@ void OffscreenCanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(context_lost_mode_ != kWebGLLoseContextLostContext);
+#endif
 
     if (context_lost_mode_ == kSyntheticLostContext) {
         // If lost mode is |kSyntheticLostContext| and |context_restorable_| is set
@@ -416,14 +434,10 @@ void OffscreenCanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
             DispatchContextRestoredEvent(nullptr);
             return;
         }
+#if !defined(MINI_UI_QUICKJS)
     } else if (context_lost_mode_ == kRealLostContext) {
-        // If lost mode is |kRealLostContext|, it means the context was not lost due
-        // to surface failure but rather due to a an eviction, which means image
-        // buffer exists.
         OffscreenCanvas* const canvas = HostAsOffscreenCanvas();
         CHECK(canvas != nullptr);
-        // Let the OffscreenCanvas know that it should attempt to recreate the
-        // resource dispatcher in order to restore the context.
         canvas->SetRestoringGpuContext(true);
         CanvasResourceProvider* provider = GetOrCreateCanvasResourceProvider();
         canvas->SetRestoringGpuContext(false);
@@ -432,6 +446,7 @@ void OffscreenCanvasRenderingContext2D::TryRestoreContextEvent(TimerBase* timer)
             DispatchContextRestoredEvent(nullptr);
             return;
         }
+#endif
     }
 
     // It gets here if lost mode is |kRealLostContext| and it fails to create a

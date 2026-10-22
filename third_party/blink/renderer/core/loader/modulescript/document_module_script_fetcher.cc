@@ -4,11 +4,15 @@
 
 #include "third_party/blink/renderer/core/loader/modulescript/document_module_script_fetcher.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event.h"
+#endif
 #include "third_party/blink/public/mojom/script/script_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/script/script_type.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_compile_hints_common.h"
+#endif
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
@@ -34,14 +38,19 @@ void DocumentModuleScriptFetcher::Fetch(FetchParameters& fetch_params, ModuleTyp
     DCHECK(!client_);
     client_ = client;
     expected_module_type_ = expected_module_type;
-    // Streaming can currently only be triggered from the main thread. This
-    // currently happens only for dynamic imports in worker modules.
+#if defined(MINI_UI_QUICKJS)
+    ScriptResource::Fetch(
+        fetch_params, fetch_client_settings_object_fetcher, this,
+        GetExecutionContext()->GetIsolate());
+#else
+    // Streaming can currently only be triggered from the main thread.
     ScriptResource::StreamingAllowed streaming_allowed = IsMainThread() ? ScriptResource::kAllowStreaming : ScriptResource::kNoStreaming;
     // TODO(chromium:1406506): Compile hints for modules.
     constexpr v8_compile_hints::V8CrowdsourcedCompileHintsProducer* kNoCompileHintsProducer = nullptr;
     constexpr v8_compile_hints::V8CrowdsourcedCompileHintsConsumer* kNoCompileHintsConsumer = nullptr;
     ScriptResource::Fetch(fetch_params, fetch_client_settings_object_fetcher, this, GetExecutionContext()->GetIsolate(), streaming_allowed,
         kNoCompileHintsProducer, kNoCompileHintsConsumer, v8_compile_hints::GetMagicCommentMode(GetExecutionContext()));
+#endif
 }
 
 void DocumentModuleScriptFetcher::NotifyFinished(Resource* resource)
@@ -57,6 +66,7 @@ void DocumentModuleScriptFetcher::NotifyFinished(Resource* resource)
             return;
         }
     }
+#if !defined(MINI_UI_QUICKJS)
     // Check if we can use the script streamer.
     ScriptStreamer* streamer;
     ScriptStreamer::NotStreamingReason not_streamed_reason;
@@ -66,7 +76,7 @@ void DocumentModuleScriptFetcher::NotifyFinished(Resource* resource)
 
     TRACE_EVENT_WITH_FLOW1(TRACE_DISABLED_BY_DEFAULT("v8.compile"), "DocumentModuleScriptFetcher::NotifyFinished", this, TRACE_EVENT_FLAG_FLOW_IN,
         "not_streamed_reason", not_streamed_reason);
-    // TODO(crbug.com/1061857): Pass ScriptStreamer to the client here.
+#endif
     const KURL& url = script_resource->GetResponse().ResponseUrl();
     // Create an external module script where base_url == source_url.
     // https://html.spec.whatwg.org/multipage/webappapis.html#concept-script-base-url
@@ -80,9 +90,16 @@ void DocumentModuleScriptFetcher::NotifyFinished(Resource* resource)
         SecurityPolicy::ReferrerPolicyFromHeaderValue(response_referrer_policy_header, kDoNotSupportReferrerPolicyLegacyKeywords, &response_referrer_policy);
     }
 
+#if defined(MINI_UI_QUICKJS)
+    client_->NotifyFetchFinishedSuccess(ModuleScriptCreationParams(
+        /*source_url=*/url, /*base_url=*/url,
+        ScriptSourceLocationType::kExternalFile, expected_module_type_,
+        script_resource->SourceText(), response_referrer_policy));
+#else
     client_->NotifyFetchFinishedSuccess(ModuleScriptCreationParams(
         /*source_url=*/url, /*base_url=*/url, ScriptSourceLocationType::kExternalFile, expected_module_type_, script_resource->SourceText(),
         script_resource->CacheHandler(), response_referrer_policy, streamer, not_streamed_reason));
+#endif
 }
 
 void DocumentModuleScriptFetcher::Trace(Visitor* visitor) const

@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,43 +11,39 @@
 namespace mojo {
 
 // A PlatformHandle with a little extra type information to convey that it's
-// a channel server endpoint, i.e. a handle that can be used to send invitations
-// as |MOJO_INVITATION_TRANSPORT_TYPE_CHANNEL_SERVER| to a remote
-// PlatformChannelEndpoint.
+// a channel server endpoint, i.e. a handle that should be used with
+// PlatformChannelServer to wait for a new connection and ultimately provide
+// a connected PlatformChannelEndpoint suitable for use with the Mojo
+// invitations API.
 class COMPONENT_EXPORT(MOJO_CPP_PLATFORM) PlatformChannelServerEndpoint {
-public:
-    PlatformChannelServerEndpoint();
-    PlatformChannelServerEndpoint(PlatformChannelServerEndpoint&& other);
-    explicit PlatformChannelServerEndpoint(PlatformHandle handle);
+ public:
+  PlatformChannelServerEndpoint();
+  PlatformChannelServerEndpoint(PlatformChannelServerEndpoint&& other);
+  explicit PlatformChannelServerEndpoint(PlatformHandle handle);
 
-    PlatformChannelServerEndpoint(const PlatformChannelServerEndpoint&) = delete;
-    PlatformChannelServerEndpoint& operator=(const PlatformChannelServerEndpoint&) = delete;
+  PlatformChannelServerEndpoint(const PlatformChannelServerEndpoint&) = delete;
+  PlatformChannelServerEndpoint& operator=(
+      const PlatformChannelServerEndpoint&) = delete;
 
-    ~PlatformChannelServerEndpoint();
+  ~PlatformChannelServerEndpoint();
 
-    PlatformChannelServerEndpoint& operator=(PlatformChannelServerEndpoint&& other);
+  PlatformChannelServerEndpoint& operator=(
+      PlatformChannelServerEndpoint&& other);
 
-    bool is_valid() const
-    {
-        return handle_.is_valid();
-    }
-    void reset();
-    PlatformChannelServerEndpoint Clone() const;
+  bool is_valid() const { return handle_.is_valid(); }
+  void reset();
+  PlatformChannelServerEndpoint Clone() const;
 
-    const PlatformHandle& platform_handle() const
-    {
-        return handle_;
-    }
+  const PlatformHandle& platform_handle() const { return handle_; }
 
-    [[nodiscard]] PlatformHandle TakePlatformHandle()
-    {
-        return std::move(handle_);
-    }
+  [[nodiscard]] PlatformHandle TakePlatformHandle() {
+    return std::move(handle_);
+  }
 
-private:
-    PlatformHandle handle_;
+ private:
+  PlatformHandle handle_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_PLATFORM_PLATFORM_CHANNEL_SERVER_ENDPOINT_H_
+#endif  // MOJO_PUBLIC_CPP_PLATFORM_PLATFORM_CHANNEL_SERVER_ENDPOINT_H_

@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "base/component_export.h"
+#include "base/feature_list.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 
 class GURL;

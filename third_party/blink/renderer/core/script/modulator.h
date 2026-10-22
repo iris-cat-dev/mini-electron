@@ -14,9 +14,10 @@
 #include "third_party/blink/renderer/bindings/core/v8/module_request.h"
 #include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_code_cache.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/script/import_map_error.h"
 #include "third_party/blink/renderer/core/script/module_import_meta.h"
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
@@ -124,7 +125,9 @@ public:
 
     virtual ScriptState* GetScriptState() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual mojom::blink::V8CacheOptions GetV8CacheOptions() const = 0;
+#endif
 
     // https://html.spec.whatwg.org/C/#concept-bc-noscript
     // "scripting is disabled for settings's responsible browsing context"
@@ -218,8 +221,10 @@ public:
 
     virtual ModuleScriptFetcher* CreateModuleScriptFetcher(ModuleScriptCustomFetchType, base::PassKey<ModuleScriptLoader> pass_key) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Produce V8 code cache for the given ModuleScript and its submodules.
     virtual void ProduceCacheModuleTreeTopLevel(ModuleScript*) = 0;
+#endif
 
     // https://html.spec.whatwg.org/C#add-module-to-resolved-module-set
     virtual void AddModuleToResolvedModuleSet(std::optional<AtomicString>, AtomicString)

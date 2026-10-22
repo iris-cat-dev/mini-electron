@@ -22,13 +22,17 @@
 #include "third_party/blink/renderer/core/loader/progress_tracker.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/performance_timing_for_reporting.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/platform/graphics/paint/ignore_paint_timing_scope.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
@@ -39,6 +43,7 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 WindowPerformance* GetPerformanceInstance(LocalFrame* frame)
 {
     WindowPerformance* performance = nullptr;
@@ -47,9 +52,11 @@ WindowPerformance* GetPerformanceInstance(LocalFrame* frame)
     }
     return performance;
 }
+#endif
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 class RecodingTimeAfterBackForwardCacheRestoreFrameCallback : public FrameCallback {
 public:
     RecodingTimeAfterBackForwardCacheRestoreFrameCallback(PaintTiming* paint_timing, wtf_size_t record_index)
@@ -89,6 +96,7 @@ private:
     const wtf_size_t record_index_;
     size_t count_ = 0;
 };
+#endif
 
 // static
 const char PaintTiming::kSupplementName[] = "PaintTiming";
@@ -148,7 +156,9 @@ void PaintTiming::MarkFirstImagePaint()
     DCHECK_EQ(IgnorePaintTimingScope::IgnoreDepth(), 0);
     relevant_paint_details.first_image_paint_ = clock_->NowTicks();
     SetFirstContentfulPaint(relevant_paint_details.first_image_paint_);
+#if !defined(MINI_UI_QUICKJS)
     RegisterNotifyPresentationTime(PaintEvent::kFirstImagePaint);
+#endif
 }
 
 void PaintTiming::MarkFirstEligibleToPaint()
@@ -175,6 +185,7 @@ void PaintTiming::MarkIneligibleToPaint()
     NotifyPaintTimingChanged();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PaintTiming::SetFirstMeaningfulPaintCandidate(base::TimeTicks timestamp)
 {
     if (!first_meaningful_paint_candidate_.is_null())
@@ -200,6 +211,7 @@ void PaintTiming::SetFirstMeaningfulPaint(base::TimeTicks presentation_time, Fir
         NotifyPaintTimingChanged();
     }
 }
+#endif
 
 void PaintTiming::NotifyPaint(bool is_first_paint, bool text_painted, bool image_painted)
 {
@@ -211,7 +223,9 @@ void PaintTiming::NotifyPaint(bool is_first_paint, bool text_painted, bool image
         MarkFirstContentfulPaint();
     if (image_painted)
         MarkFirstImagePaint();
+#if !defined(MINI_UI_QUICKJS)
     fmp_detector_->NotifyPaint();
+#endif
 
     if (is_first_paint)
         GetFrame()->OnFirstPaint(text_painted, image_painted);
@@ -224,13 +238,17 @@ void PaintTiming::SetTickClockForTesting(const base::TickClock* clock)
 
 void PaintTiming::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(fmp_detector_);
+#endif
     Supplement<Document>::Trace(visitor);
 }
 
 PaintTiming::PaintTiming(Document& document)
     : Supplement<Document>(document)
+#if !defined(MINI_UI_QUICKJS)
     , fmp_detector_(MakeGarbageCollected<FirstMeaningfulPaintDetector>(this))
+#endif
     , clock_(base::DefaultTickClock::GetInstance())
 {
 }
@@ -256,7 +274,9 @@ void PaintTiming::SetFirstPaint(base::TimeTicks stamp)
     DCHECK_EQ(IgnorePaintTimingScope::IgnoreDepth(), 0);
 
     relevant_paint_details.first_paint_ = stamp;
+#if !defined(MINI_UI_QUICKJS)
     RegisterNotifyPresentationTime(PaintEvent::kFirstPaint);
+#endif
 
     if (!first_paints_reset_) {
         LocalFrame* frame = GetFrame();
@@ -289,13 +309,16 @@ void PaintTiming::SetFirstContentfulPaint(base::TimeTicks stamp)
         }
     }
     SetFirstPaint(stamp);
+#if !defined(MINI_UI_QUICKJS)
     RegisterNotifyPresentationTime(PaintEvent::kFirstContentfulPaint);
+#endif
 
     if (!first_paints_reset_ || soft_navigation_detected_) {
         NotifyPaintTimingChanged();
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PaintTiming::RegisterNotifyPresentationTime(PaintEvent event)
 {
     RegisterNotifyPresentationTime(CrossThreadBindOnce(&PaintTiming::ReportPresentationTime, MakeUnwrappingCrossThreadWeakHandle(this), event));
@@ -382,7 +405,9 @@ void PaintTiming::SetFirstPaintPresentation(base::TimeTicks stamp)
     if (first_paint_presentation_for_ukm_.is_null()) {
         first_paint_presentation_for_ukm_ = stamp;
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::PaintTiming(GetSupplementable(), "firstPaint", relevant_paint_details.first_paint_presentation_.since_origin().InSecondsF());
+#endif
     WindowPerformance* performance = GetPerformanceInstance(GetFrame());
     if (performance) {
         performance->AddFirstPaintTiming(relevant_paint_details.first_paint_presentation_,
@@ -417,7 +442,9 @@ void PaintTiming::SetFirstContentfulPaintPresentation(base::TimeTicks stamp)
     } else {
         is_soft_navigation_fcp = true;
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::PaintTiming(GetSupplementable(), "firstContentfulPaint", relevant_paint_details.first_contentful_paint_presentation_.since_origin().InSecondsF());
+#endif
     WindowPerformance* performance = GetPerformanceInstance(GetFrame());
     if (performance) {
         performance->AddFirstContentfulPaintTiming(relevant_paint_details.first_contentful_paint_presentation_,
@@ -439,12 +466,14 @@ void PaintTiming::SetFirstContentfulPaintPresentation(base::TimeTicks stamp)
     if (interactive_detector) {
         interactive_detector->OnFirstContentfulPaint(paint_details_.first_contentful_paint_presentation_);
     }
+#if !defined(MINI_UI_QUICKJS)
     auto* coordinator = GetSupplementable()->GetResourceCoordinator();
     if (coordinator && GetFrame() && GetFrame()->IsOutermostMainFrame()) {
         PerformanceTimingForReporting* timing_for_reporting = performance->timingForReporting();
         base::TimeDelta fcp = stamp - timing_for_reporting->NavigationStartAsMonotonicTime();
         coordinator->OnFirstContentfulPaint(fcp);
     }
+#endif
 }
 
 void PaintTiming::SetFirstImagePaintPresentation(base::TimeTicks stamp)
@@ -452,7 +481,9 @@ void PaintTiming::SetFirstImagePaintPresentation(base::TimeTicks stamp)
     PaintDetails& relevant_paint_details = GetRelevantPaintDetails();
     DCHECK(relevant_paint_details.first_image_paint_presentation_.is_null());
     relevant_paint_details.first_image_paint_presentation_ = stamp;
+#if !defined(MINI_UI_QUICKJS)
     probe::PaintTiming(GetSupplementable(), "firstImagePaint", relevant_paint_details.first_image_paint_presentation_.since_origin().InSecondsF());
+#endif
     NotifyPaintTimingChanged();
 }
 
@@ -476,7 +507,9 @@ void PaintTiming::SetRequestAnimationFrameAfterBackForwardCacheRestore(wtf_size_
     DCHECK_EQ(current_rafs[count], base::TimeTicks());
     current_rafs[count] = now;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void PaintTiming::OnRestoredFromBackForwardCache()
 {
     // Allocate the last element with 0, which indicates that the first paint
@@ -506,16 +539,19 @@ void PaintTiming::OnRestoredFromBackForwardCache()
     raf_after_bfcache_restore_measurement_callback_id_
         = document->RequestAnimationFrame(MakeGarbageCollected<RecodingTimeAfterBackForwardCacheRestoreFrameCallback>(this, index));
 }
+#endif
 
 void PaintTiming::SoftNavigationDetected()
 {
     soft_navigation_detected_ = true;
+#if !defined(MINI_UI_QUICKJS)
     if (!soft_navigation_pending_first_paint_presentation_.is_null()) {
         SetFirstPaintPresentation(soft_navigation_pending_first_paint_presentation_);
     }
     if (!soft_navigation_pending_first_contentful_paint_presentation_.is_null()) {
         SetFirstContentfulPaintPresentation(soft_navigation_pending_first_contentful_paint_presentation_);
     }
+#endif
 }
 
 } // namespace blink

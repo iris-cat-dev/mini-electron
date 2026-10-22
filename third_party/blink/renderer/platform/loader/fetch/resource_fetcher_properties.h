@@ -5,7 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_RESOURCE_FETCHER_PROPERTIES_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_RESOURCE_FETCHER_PROPERTIES_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/service_worker/controller_service_worker_mode.mojom-blink.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
@@ -39,7 +41,9 @@ class FetchClientSettingsObject;
 // Otherwise, put it to this class.
 class PLATFORM_EXPORT ResourceFetcherProperties : public GarbageCollected<ResourceFetcherProperties> {
 public:
+#if !defined(MINI_UI_QUICKJS)
     using ControllerServiceWorkerMode = mojom::ControllerServiceWorkerMode;
+#endif
 
     ResourceFetcherProperties() = default;
     virtual ~ResourceFetcherProperties() = default;
@@ -53,6 +57,7 @@ public:
     // Returns whether this global context is the outermost main frame.
     virtual bool IsOutermostMainFrame() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns whether a controller service worker exists and if it has a fetch
     // handler.
     virtual ControllerServiceWorkerMode GetControllerServiceWorkerMode() const = 0;
@@ -61,6 +66,7 @@ public:
     // context. This function cannot be called when
     // GetControllerServiceWorkerMode returns kNoController.
     virtual int64_t ServiceWorkerId() const = 0;
+#endif
 
     // Returns whether this global context is suspended, which means we should
     // defer making a new request.
@@ -117,6 +123,7 @@ public:
     {
         return properties_ ? properties_->IsOutermostMainFrame() : is_outermost_main_frame_;
     }
+#if !defined(MINI_UI_QUICKJS)
     ControllerServiceWorkerMode GetControllerServiceWorkerMode() const override
     {
         return properties_ ? properties_->GetControllerServiceWorkerMode() : ControllerServiceWorkerMode::kNoController;
@@ -128,6 +135,7 @@ public:
         DCHECK(properties_);
         return properties_->ServiceWorkerId();
     }
+#endif
     bool IsPaused() const override
     {
         return properties_ ? properties_->IsPaused() : paused_;

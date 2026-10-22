@@ -16,15 +16,19 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/traced_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/metrics/public/cpp/mojo_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/common/auto_advancing_virtual_time_domain.h"
 #include "third_party/blink/renderer/platform/scheduler/common/features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/scheduler/common/metrics_helper.h"
 #include "third_party/blink/renderer/platform/scheduler/common/process_state.h"
+#endif
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/cpu_time_budget_pool.h"
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/task_queue_throttler.h"
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/wake_up_budget_pool.h"
@@ -92,12 +96,16 @@ std::optional<base::TimeDelta> GetMaxThrottlingDelay()
 
 WorkerThreadScheduler::WorkerThreadScheduler(ThreadType thread_type, base::sequence_manager::SequenceManager* sequence_manager, WorkerSchedulerProxy* proxy)
     : NonMainThreadSchedulerBase(sequence_manager, TaskType::kWorkerThreadTaskQueueDefault)
+#if !defined(MINI_UI_QUICKJS)
     , thread_type_(thread_type)
+#endif
     , idle_helper_queue_(GetHelper().NewTaskQueue(TaskQueue::Spec(base::sequence_manager::QueueName::WORKER_IDLE_TQ)))
     , idle_helper_(&GetHelper(), this, "WorkerSchedulerIdlePeriod", base::Milliseconds(300), idle_helper_queue_->GetTaskQueue())
     , lifecycle_state_(proxy ? proxy->lifecycle_state() : SchedulingLifecycleState::kNotThrottled)
+#if !defined(MINI_UI_QUICKJS)
     , initial_frame_status_(proxy ? proxy->initial_frame_status() : FrameStatus::kNone)
     , ukm_source_id_(proxy ? proxy->ukm_source_id() : ukm::kInvalidSourceId)
+#endif
 {
     if (thread_type == ThreadType::kDedicatedWorkerThread && base::FeatureList::IsEnabled(kDedicatedWorkerThrottling)) {
         CreateBudgetPools();
@@ -191,7 +199,9 @@ void WorkerThreadScheduler::OnTaskCompleted(
     if (task_queue != nullptr)
         task_queue->OnTaskRunTimeReported(task_timing);
 
+#if !defined(MINI_UI_QUICKJS)
     RecordTaskUkm(task_queue, task, *task_timing);
+#endif
 }
 
 SchedulerHelper* WorkerThreadScheduler::GetSchedulerHelperForTesting()
@@ -242,13 +252,18 @@ void WorkerThreadScheduler::CreateBudgetPools()
         return;
     base::TimeTicks now = GetTickClock()->NowTicks();
     wake_up_budget_pool_ = std::make_unique<WakeUpBudgetPool>("worker_wake_up_pool");
+#if !defined(MINI_UI_QUICKJS)
     cpu_time_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("worker_cpu_time_pool", &traceable_variable_controller_, now);
+#else
+    cpu_time_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("worker_cpu_time_pool", now);
+#endif
 
     cpu_time_budget_pool_->SetMaxBudgetLevel(now, GetMaxBudgetLevel());
     cpu_time_budget_pool_->SetTimeBudgetRecoveryRate(now, GetBudgetRecoveryRate());
     cpu_time_budget_pool_->SetMaxThrottlingDelay(now, GetMaxThrottlingDelay());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WorkerThreadScheduler::RecordTaskUkm(
     NonMainThreadTaskQueue* worker_task_queue, const base::sequence_manager::Task& task, const base::sequence_manager::TaskQueue::TaskTiming& task_timing)
 {
@@ -283,6 +298,7 @@ void WorkerThreadScheduler::SetUkmTaskSamplingRateForTest(double rate)
 {
     GetHelper().SetUkmTaskSamplingRateForTest(rate);
 }
+#endif
 
 void WorkerThreadScheduler::SetCPUTimeBudgetPoolForTesting(std::unique_ptr<CPUTimeBudgetPool> cpu_time_budget_pool)
 {

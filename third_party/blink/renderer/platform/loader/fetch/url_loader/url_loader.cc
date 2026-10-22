@@ -4,7 +4,10 @@
 
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
 
+
 #include <stdint.h>
+
+#include <algorithm>
 
 #include <memory>
 #include <optional>
@@ -17,23 +20,53 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/struct_ptr.h"
 #include "mojo/public/cpp/system/data_pipe.h"
-#include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/base/request_priority.h"
 #include "net/http/http_response_headers.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
-#include "net/url_request/redirect_info.h"
 #include "services/network/public/cpp/resource_request.h"
-#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/url_loader_completion_status.h"
+#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
+#include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
+#include "third_party/blink/public/platform/web_string.h"
+#include "third_party/blink/public/platform/web_url.h"
+#include "third_party/blink/public/platform/web_url_error.h"
+#include "third_party/blink/public/platform/web_url_request.h"
+#include "third_party/blink/public/platform/web_url_response.h"
+#include "third_party/blink/renderer/platform/blob/blob_data.h"
+#include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
+#include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
+#include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
+
+#if defined(MINI_UI_QUICKJS)
+#include "base/run_loop.h"
+#include "base/synchronization/waitable_event.h"
+#include "base/task/thread_pool.h"
+#include "base/task/task_traits.h"
+#include "base/timer/timer.h"
+#include "mojo/public/cpp/bindings/receiver.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/data_pipe_drainer.h"
+#include "services/network/public/mojom/early_hints.mojom-blink.h"
+#include "services/network/public/mojom/encoded_body_length.mojom-blink.h"
+#include "services/network/public/mojom/url_loader.mojom-blink.h"
+#include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
+#include "services/network/public/mojom/url_response_head.mojom-blink.h"
+#include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
+#include "third_party/blink/renderer/platform/wtf/ref_counted.h"
+#else
+#include "base/task/sequenced_task_runner.h"
+#include "mojo/public/cpp/bindings/struct_ptr.h"
+#include "net/base/load_flags.h"
+#include "net/url_request/redirect_info.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/mojom/encoded_body_length.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-forward.h"
 #include "services/network/public/mojom/url_response_head.mojom-forward.h"
@@ -43,31 +76,530 @@
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
-#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
 #include "third_party/blink/public/platform/web_loader_freeze_mode.h"
-#include "third_party/blink/public/platform/web_string.h"
-#include "third_party/blink/public/platform/web_url.h"
-#include "third_party/blink/public/platform/web_url_error.h"
-#include "third_party/blink/public/platform/web_url_request.h"
-#include "third_party/blink/public/platform/web_url_response.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/loader/fetch/back_forward_cache_loader_helper.h"
-#include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_response_processor.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/resource_request_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/resource_request_sender.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/sync_load_response.h"
-#include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
-#include "third_party/blink/renderer/platform/weborigin/kurl.h"
-#include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
+#endif
 
 using base::Time;
 using base::TimeTicks;
 
 namespace blink {
 
+#if defined(MINI_UI_QUICKJS)
+
+namespace {
+
+WebURLResponse CreateNativeWebURLResponse(
+    const KURL& url,
+    const network::mojom::blink::URLResponseHead& head,
+    int request_id)
+{
+    WebURLResponse response(url);
+    response.SetRequestId(request_id);
+    response.SetResponseTime(head.response_time);
+    response.SetMimeType(head.mime_type);
+    response.SetTextEncodingName(head.charset);
+    response.SetExpectedContentLength(head.content_length);
+    response.SetEncodedDataLength(head.encoded_data_length);
+    if (head.encoded_body_length)
+        response.SetEncodedBodyLength(head.encoded_body_length->value);
+    response.SetHasRangeRequested(head.has_range_requested);
+    response.SetNetworkAccessed(head.network_accessed);
+    if (head.headers) {
+        response.SetHttpStatusCode(head.headers->response_code());
+        response.SetHttpStatusText(
+            WebString::FromLatin1(head.headers->GetStatusText()));
+        size_t iterator = 0;
+        std::string name;
+        std::string value;
+        while (head.headers->EnumerateHeaderLines(
+            &iterator, &name, &value)) {
+            response.AddHttpHeaderField(
+                WebString::FromLatin1(name),
+                WebString::FromLatin1(value));
+        }
+    }
+    return response;
+}
+
+struct NativeSyncLoadResult {
+    explicit NativeSyncLoadResult(const GURL& request_url)
+        : url(request_url), completion(net::ERR_FAILED) {}
+
+    GURL url;
+    network::mojom::blink::URLResponseHeadPtr head;
+    scoped_refptr<SharedBuffer> data;
+    scoped_refptr<BlobDataHandle> downloaded_blob;
+    network::URLLoaderCompletionStatus completion;
+};
+
+class NativeSyncLoadClient final
+    : public network::mojom::blink::URLLoaderClient,
+      public mojo::DataPipeDrainer::Client {
+public:
+    NativeSyncLoadClient(NativeSyncLoadResult* result, bool download_to_blob)
+        : result_(result),
+          download_to_blob_(download_to_blob),
+          receiver_(this) {}
+
+    void Start(
+        mojo::PendingRemote<network::mojom::blink::URLLoaderFactory> factory,
+        std::unique_ptr<network::ResourceRequest> request,
+        base::TimeDelta timeout)
+    {
+        factory_.Bind(std::move(factory));
+        factory_.set_disconnect_handler(base::BindOnce(
+            &NativeSyncLoadClient::OnConnectionError,
+            base::Unretained(this)));
+        auto loader_receiver =
+            loader_.BindNewPipeAndPassReceiver();
+        loader_.set_disconnect_handler(base::BindOnce(
+            &NativeSyncLoadClient::OnConnectionError,
+            base::Unretained(this)));
+        const net::MutableNetworkTrafficAnnotationTag annotation(
+            FetchUtils::GetTrafficAnnotationTag(*request));
+        factory_->CreateLoaderAndStart(
+            std::move(loader_receiver), 1,
+            network::mojom::blink::kURLLoadOptionSynchronous, *request,
+            receiver_.BindNewPipeAndPassRemote(), annotation);
+        loader_->SetPriority(request->priority, 0);
+        if (timeout.is_positive()) {
+            timeout_timer_.Start(
+                FROM_HERE, timeout,
+                base::BindOnce(&NativeSyncLoadClient::OnTimeout,
+                    base::Unretained(this)));
+        }
+        if (!finished_)
+            run_loop_.Run();
+    }
+
+    void OnReceiveEarlyHints(
+        network::mojom::blink::EarlyHintsPtr) override {}
+
+    void OnReceiveResponse(
+        network::mojom::blink::URLResponseHeadPtr head,
+        mojo::ScopedDataPipeConsumerHandle body,
+        std::optional<mojo_base::BigBuffer>) override
+    {
+        if (finished_)
+            return;
+        if (!head) {
+            CompleteWithError(net::ERR_FAILED);
+            return;
+        }
+        response_received_ = true;
+        result_->head = std::move(head);
+        if (!body) {
+            body_finished_ = true;
+            MaybeFinish();
+            return;
+        }
+        if (download_to_blob_) {
+            blob_registry_.Bind(
+                BlobDataHandle::GetNativeBlobRegistryRemote());
+            blob_registry_->RegisterFromStream(
+                result_->head->mime_type, "",
+                std::max<int64_t>(
+                    0, result_->head->content_length),
+                std::move(body), mojo::NullAssociatedRemote(),
+                base::BindOnce(
+                    &NativeSyncLoadClient::OnBlobRegistered,
+                    base::Unretained(this)));
+            return;
+        }
+        body_drainer_ = std::make_unique<mojo::DataPipeDrainer>(
+            this, std::move(body));
+    }
+
+    void OnReceiveRedirect(
+        network::mojom::blink::URLRequestRedirectInfoPtr,
+        network::mojom::blink::URLResponseHeadPtr) override
+    {
+        CompleteWithError(net::ERR_UNSAFE_REDIRECT);
+    }
+
+    void OnUploadProgress(
+        int64_t,
+        int64_t,
+        OnUploadProgressCallback callback) override
+    {
+        std::move(callback).Run();
+    }
+
+    void OnTransferSizeUpdated(int32_t) override {}
+
+    void OnComplete(
+        const network::URLLoaderCompletionStatus& status) override
+    {
+        if (finished_)
+            return;
+        result_->completion = status;
+        request_completed_ = true;
+        if (status.error_code != net::OK) {
+            Finish();
+            return;
+        }
+        if (!response_received_) {
+            CompleteWithError(net::ERR_FAILED);
+            return;
+        }
+        MaybeFinish();
+    }
+
+    void OnDataAvailable(base::span<const uint8_t> data) override
+    {
+        if (!result_->data)
+            result_->data = SharedBuffer::Create();
+        result_->data->Append(data);
+    }
+
+    void OnDataComplete() override
+    {
+        body_finished_ = true;
+        MaybeFinish();
+    }
+
+private:
+    void OnBlobRegistered(
+        const scoped_refptr<BlobDataHandle>& blob)
+    {
+        if (finished_)
+            return;
+        if (!blob) {
+            CompleteWithError(net::ERR_FAILED);
+            return;
+        }
+        result_->downloaded_blob = blob;
+        body_finished_ = true;
+        MaybeFinish();
+    }
+
+    void OnConnectionError()
+    {
+        if (!finished_)
+            CompleteWithError(net::ERR_FAILED);
+    }
+
+    void OnTimeout()
+    {
+        CompleteWithError(net::ERR_TIMED_OUT);
+    }
+
+    void CompleteWithError(int error)
+    {
+        if (finished_)
+            return;
+        result_->completion =
+            network::URLLoaderCompletionStatus(error);
+        request_completed_ = true;
+        Finish();
+    }
+
+    void MaybeFinish()
+    {
+        if (request_completed_ && body_finished_)
+            Finish();
+    }
+
+    void Finish()
+    {
+        if (finished_)
+            return;
+        finished_ = true;
+        timeout_timer_.Stop();
+        receiver_.reset();
+        loader_.reset();
+        factory_.reset();
+        blob_registry_.reset();
+        run_loop_.Quit();
+    }
+
+    raw_ptr<NativeSyncLoadResult> result_;
+    const bool download_to_blob_;
+    mojo::Remote<network::mojom::blink::URLLoaderFactory> factory_;
+    mojo::Remote<network::mojom::blink::URLLoader> loader_;
+    mojo::Receiver<network::mojom::blink::URLLoaderClient> receiver_;
+    mojo::Remote<mojom::blink::BlobRegistry> blob_registry_;
+    std::unique_ptr<mojo::DataPipeDrainer> body_drainer_;
+    base::OneShotTimer timeout_timer_;
+    base::RunLoop run_loop_;
+    bool response_received_ = false;
+    bool request_completed_ = false;
+    bool body_finished_ = false;
+    bool finished_ = false;
+};
+
+scoped_refptr<base::SingleThreadTaskRunner>
+NativeSyncLoaderTaskRunner()
+{
+    static const scoped_refptr<base::SingleThreadTaskRunner> runner =
+        base::ThreadPool::CreateSingleThreadTaskRunner(
+            {base::MayBlock(),
+             base::TaskShutdownBehavior::BLOCK_SHUTDOWN});
+    return runner;
+}
+
+} // namespace
+
+class URLLoader::Context final
+    : public WTF::RefCounted<URLLoader::Context>,
+      public network::mojom::blink::URLLoaderClient {
+public:
+    Context(
+        URLLoader* loader,
+        mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
+            factory,
+        scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner,
+        scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner)
+        : loader_(loader),
+          freezable_task_runner_(std::move(freezable_task_runner)),
+          unfreezable_task_runner_(std::move(unfreezable_task_runner)),
+          factory_pending_(std::move(factory)),
+          client_receiver_(this)
+    {
+        CHECK(factory_pending_);
+        CHECK(freezable_task_runner_);
+        CHECK(unfreezable_task_runner_);
+    }
+
+    int request_id() const { return request_id_; }
+    blink::URLLoaderClient* client() const { return client_; }
+    void set_client(blink::URLLoaderClient* client) { client_ = client; }
+
+    scoped_refptr<base::SingleThreadTaskRunner>
+    GetMaybeUnfreezableTaskRunner()
+    {
+        return unfreezable_task_runner_;
+    }
+
+    void Cancel()
+    {
+        completed_ = true;
+        request_id_ = -1;
+        client_receiver_.reset();
+        native_loader_.reset();
+        factory_.reset();
+        factory_pending_.reset();
+        client_ = nullptr;
+        loader_ = nullptr;
+    }
+
+    void Freeze(LoaderFreezeMode mode)
+    {
+        const bool was_frozen =
+            freeze_mode_ != LoaderFreezeMode::kNone;
+        freeze_mode_ = mode;
+        if (!native_loader_)
+            return;
+        if (mode == LoaderFreezeMode::kNone) {
+            if (was_frozen)
+                native_loader_->ResumeReadingBodyFromNet();
+        } else if (!was_frozen) {
+            native_loader_->PauseReadingBodyFromNet();
+        }
+    }
+
+    void DidChangePriority(
+        WebURLRequest::Priority priority,
+        int intra_priority_value)
+    {
+        if (native_loader_) {
+            native_loader_->SetPriority(
+                WebURLRequest::ConvertToNetPriority(priority),
+                intra_priority_value);
+        }
+    }
+
+    void StartAsync(std::unique_ptr<network::ResourceRequest> request)
+    {
+        CHECK_EQ(request_id_, -1);
+        CHECK(factory_pending_);
+        CHECK(request->url.SchemeIsBlob());
+        url_ = KURL(request->url);
+        request_id_ = 1;
+        factory_.Bind(
+            std::move(factory_pending_),
+            unfreezable_task_runner_);
+        factory_.set_disconnect_handler(base::BindOnce(
+            &Context::OnConnectionError,
+            base::WrapRefCounted(this)));
+        auto loader_receiver =
+            native_loader_.BindNewPipeAndPassReceiver(
+                unfreezable_task_runner_);
+        native_loader_.set_disconnect_handler(base::BindOnce(
+            &Context::OnConnectionError,
+            base::WrapRefCounted(this)));
+        const net::MutableNetworkTrafficAnnotationTag annotation(
+            FetchUtils::GetTrafficAnnotationTag(*request));
+        factory_->CreateLoaderAndStart(
+            std::move(loader_receiver), request_id_,
+            network::mojom::blink::kURLLoadOptionNone, *request,
+            client_receiver_.BindNewPipeAndPassRemote(
+                unfreezable_task_runner_),
+            annotation);
+        native_loader_->SetPriority(request->priority, 0);
+        if (freeze_mode_ != LoaderFreezeMode::kNone)
+            native_loader_->PauseReadingBodyFromNet();
+    }
+
+    void StartSync(
+        std::unique_ptr<network::ResourceRequest> request,
+        bool download_to_blob,
+        base::TimeDelta timeout,
+        NativeSyncLoadResult* result)
+    {
+        CHECK_EQ(request_id_, -1);
+        CHECK(factory_pending_);
+        CHECK(request->url.SchemeIsBlob());
+        request_id_ = 1;
+        base::WaitableEvent completed;
+        NativeSyncLoaderTaskRunner()->PostTask(
+            FROM_HERE,
+            base::BindOnce(
+                [](mojo::PendingRemote<
+                       network::mojom::blink::URLLoaderFactory> factory,
+                   std::unique_ptr<network::ResourceRequest> request,
+                   bool download_to_blob,
+                   base::TimeDelta timeout,
+                   NativeSyncLoadResult* result,
+                   base::WaitableEvent* completed) {
+                    NativeSyncLoadClient client(
+                        result, download_to_blob);
+                    client.Start(
+                        std::move(factory), std::move(request),
+                        timeout);
+                    completed->Signal();
+                },
+                std::move(factory_pending_), std::move(request),
+                download_to_blob, timeout, result, &completed));
+        completed.Wait();
+        request_id_ = -1;
+    }
+
+    void OnReceiveEarlyHints(
+        network::mojom::blink::EarlyHintsPtr) override {}
+
+    void OnReceiveResponse(
+        network::mojom::blink::URLResponseHeadPtr head,
+        mojo::ScopedDataPipeConsumerHandle body,
+        std::optional<mojo_base::BigBuffer> cached_metadata) override
+    {
+        scoped_refptr<Context> protect(this);
+        if (!client_ || completed_)
+            return;
+        if (!head) {
+            CompleteWithError(net::ERR_FAILED);
+            return;
+        }
+        WebURLResponse response = CreateNativeWebURLResponse(
+            url_, *head, request_id_);
+        client_->DidReceiveResponse(
+            response, std::move(body),
+            std::move(cached_metadata));
+    }
+
+    void OnReceiveRedirect(
+        network::mojom::blink::URLRequestRedirectInfoPtr,
+        network::mojom::blink::URLResponseHeadPtr) override
+    {
+        CompleteWithError(net::ERR_UNSAFE_REDIRECT);
+    }
+
+    void OnUploadProgress(
+        int64_t current_position,
+        int64_t total_size,
+        OnUploadProgressCallback callback) override
+    {
+        scoped_refptr<Context> protect(this);
+        if (client_ && !completed_)
+            client_->DidSendData(current_position, total_size);
+        std::move(callback).Run();
+    }
+
+    void OnTransferSizeUpdated(
+        int32_t transfer_size_diff) override
+    {
+        scoped_refptr<Context> protect(this);
+        if (client_ && !completed_)
+            client_->DidReceiveTransferSizeUpdate(transfer_size_diff);
+    }
+
+    void OnComplete(
+        const network::URLLoaderCompletionStatus& status) override
+    {
+        Complete(status);
+    }
+
+private:
+    friend class WTF::RefCounted<Context>;
+    ~Context() = default;
+
+    void OnConnectionError()
+    {
+        CompleteWithError(net::ERR_FAILED);
+    }
+
+    void CompleteWithError(int error)
+    {
+        Complete(network::URLLoaderCompletionStatus(error));
+    }
+
+    void Complete(
+        const network::URLLoaderCompletionStatus& status)
+    {
+        scoped_refptr<Context> protect(this);
+        if (completed_)
+            return;
+        completed_ = true;
+        request_id_ = -1;
+        client_receiver_.reset();
+        native_loader_.reset();
+        factory_.reset();
+        blink::URLLoaderClient* client = client_;
+        client_ = nullptr;
+        if (!client)
+            return;
+        if (status.error_code == net::OK) {
+            client->DidFinishLoading(
+                status.completion_time,
+                status.encoded_data_length,
+                status.encoded_body_length,
+                status.decoded_body_length);
+        } else {
+            client->DidFail(
+                WebURLError::Create(status, url_),
+                status.completion_time,
+                status.encoded_data_length,
+                status.encoded_body_length,
+                status.decoded_body_length);
+        }
+    }
+
+    raw_ptr<URLLoader> loader_;
+    raw_ptr<blink::URLLoaderClient> client_ = nullptr;
+    scoped_refptr<base::SingleThreadTaskRunner>
+        freezable_task_runner_;
+    scoped_refptr<base::SingleThreadTaskRunner>
+        unfreezable_task_runner_;
+    mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
+        factory_pending_;
+    mojo::Remote<network::mojom::blink::URLLoaderFactory> factory_;
+    mojo::Remote<network::mojom::blink::URLLoader> native_loader_;
+    mojo::Receiver<network::mojom::blink::URLLoaderClient>
+        client_receiver_;
+    KURL url_;
+    LoaderFreezeMode freeze_mode_ = LoaderFreezeMode::kNone;
+    int request_id_ = -1;
+    bool completed_ = false;
+};
+
+#else
 // Utilities -------------------------------------------------------------------
 
 // This inner class exists since the URLLoader may be deleted while inside a
@@ -102,9 +634,15 @@ public:
     void Cancel();
     void Freeze(LoaderFreezeMode mode);
     void DidChangePriority(WebURLRequest::Priority new_priority, int intra_priority_value);
+#if defined(MINI_UI_QUICKJS)
+    void Start(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool download_to_blob,
+        bool no_mime_sniffing, base::TimeDelta timeout_interval, SyncLoadResponse* sync_load_response,
+        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper);
+#else
     void Start(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool download_to_blob,
         bool no_mime_sniffing, base::TimeDelta timeout_interval, SyncLoadResponse* sync_load_response,
         std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host);
+#endif
 
     // ResourceRequestClient overrides:
     void OnUploadProgress(uint64_t position, uint64_t size) override;
@@ -115,8 +653,10 @@ public:
     void OnTransferSizeUpdated(int transfer_size_diff) override;
     void OnCompletedRequest(const network::URLLoaderCompletionStatus& status) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetResourceRequestSenderForTesting( // IN-TEST
         std::unique_ptr<ResourceRequestSender> resource_request_sender);
+#endif
 
 private:
     ~Context() override;
@@ -216,9 +756,15 @@ void URLLoader::Context::DidChangePriority(WebURLRequest::Priority new_priority,
     }
 }
 
+#if defined(MINI_UI_QUICKJS)
+void URLLoader::Context::Start(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool download_to_blob,
+    bool no_mime_sniffing, base::TimeDelta timeout_interval, SyncLoadResponse* sync_load_response,
+    std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper)
+#else
 void URLLoader::Context::Start(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool download_to_blob,
     bool no_mime_sniffing, base::TimeDelta timeout_interval, SyncLoadResponse* sync_load_response,
     std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host)
+#endif
 {
     DCHECK_EQ(request_id_, -1);
 
@@ -230,8 +776,10 @@ void URLLoader::Context::Start(std::unique_ptr<network::ResourceRequest> request
         throttles.push_back(std::move(throttle));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The top frame origin of shared and service workers is null.
     Platform::Current()->AppendVariationsThrottles(top_frame_origin ? top_frame_origin->ToUrlOrigin() : url::Origin(), &throttles);
+#endif
 
     uint32_t loader_options = network::mojom::kURLLoadOptionNone;
     if (!no_mime_sniffing) {
@@ -241,14 +789,20 @@ void URLLoader::Context::Start(std::unique_ptr<network::ResourceRequest> request
 
     if (sync_load_response) {
         DCHECK_EQ(freeze_mode_, LoaderFreezeMode::kNone);
+#if !defined(MINI_UI_QUICKJS)
         CHECK(!code_cache_host);
+#endif
 
         loader_options |= network::mojom::kURLLoadOptionSynchronous;
         request->load_flags |= net::LOAD_IGNORE_LIMITS;
 
         mojo::PendingRemote<mojom::blink::BlobRegistry> download_to_blob_registry;
         if (download_to_blob) {
+#if defined(MINI_UI_QUICKJS)
+            download_to_blob_registry = BlobDataHandle::GetNativeBlobRegistryRemote();
+#else
             Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(download_to_blob_registry.InitWithNewPipeAndPassReceiver());
+#endif
         }
         net::NetworkTrafficAnnotationTag tag = FetchUtils::GetTrafficAnnotationTag(*request);
         resource_request_sender_->SendSync(std::move(request), tag, loader_options, sync_load_response, url_loader_factory_, std::move(throttles),
@@ -259,11 +813,19 @@ void URLLoader::Context::Start(std::unique_ptr<network::ResourceRequest> request
 
     TRACE_EVENT_WITH_FLOW0("loading", "URLLoader::Context::Start", this, TRACE_EVENT_FLAG_FLOW_OUT);
     net::NetworkTrafficAnnotationTag tag = FetchUtils::GetTrafficAnnotationTag(*request);
+#if defined(MINI_UI_QUICKJS)
+    request_id_ = resource_request_sender_->SendAsync(std::move(request), GetMaybeUnfreezableTaskRunner(), tag, loader_options, cors_exempt_header_list_,
+        base::WrapRefCounted(this), url_loader_factory_, std::move(throttles), std::move(resource_load_info_notifier_wrapper),
+        base::BindOnce(&BackForwardCacheLoaderHelper::EvictFromBackForwardCache, back_forward_cache_loader_helper_),
+        base::BindRepeating(&BackForwardCacheLoaderHelper::DidBufferLoadWhileInBackForwardCache, back_forward_cache_loader_helper_,
+            /*update_process_wide_count=*/true));
+#else
     request_id_ = resource_request_sender_->SendAsync(std::move(request), GetMaybeUnfreezableTaskRunner(), tag, loader_options, cors_exempt_header_list_,
         base::WrapRefCounted(this), url_loader_factory_, std::move(throttles), std::move(resource_load_info_notifier_wrapper), code_cache_host,
         base::BindOnce(&BackForwardCacheLoaderHelper::EvictFromBackForwardCache, back_forward_cache_loader_helper_),
         base::BindRepeating(&BackForwardCacheLoaderHelper::DidBufferLoadWhileInBackForwardCache, back_forward_cache_loader_helper_,
             /*update_process_wide_count=*/true));
+#endif
 
     if (freeze_mode_ != LoaderFreezeMode::kNone) {
         resource_request_sender_->Freeze(LoaderFreezeMode::kStrict);
@@ -344,6 +906,122 @@ URLLoader::Context::~Context()
     DCHECK_LT(request_id_, 0);
 }
 
+#endif // defined(MINI_UI_QUICKJS)
+
+#if defined(MINI_UI_QUICKJS)
+
+// URLLoader ----------------------------------------------------------------
+
+URLLoader::URLLoader(
+    mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
+        factory,
+    scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner,
+    scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner)
+    : context_(base::MakeRefCounted<Context>(
+          this, std::move(factory),
+          std::move(freezable_task_runner),
+          std::move(unfreezable_task_runner)))
+{
+}
+
+URLLoader::URLLoader() = default;
+
+URLLoader::~URLLoader()
+{
+    Cancel();
+}
+
+void URLLoader::LoadSynchronously(
+    std::unique_ptr<network::ResourceRequest> request,
+    scoped_refptr<const SecurityOrigin>,
+    bool download_to_blob,
+    bool,
+    base::TimeDelta timeout_interval,
+    URLLoaderClient* client,
+    WebURLResponse& response,
+    std::optional<WebURLError>& error,
+    scoped_refptr<SharedBuffer>& data,
+    int64_t& encoded_data_length,
+    uint64_t& encoded_body_length,
+    scoped_refptr<BlobDataHandle>& downloaded_blob,
+    std::unique_ptr<ResourceLoadInfoNotifierWrapper>)
+{
+    CHECK(context_);
+    DCHECK(!context_->client());
+    context_->set_client(client);
+
+    NativeSyncLoadResult result(request->url);
+    context_->StartSync(
+        std::move(request), download_to_blob,
+        timeout_interval, &result);
+    context_->set_client(nullptr);
+
+    if (result.completion.error_code != net::OK) {
+        error = WebURLError::Create(
+            result.completion, KURL(result.url));
+        return;
+    }
+    if (!result.head) {
+        error = WebURLError(
+            net::ERR_FAILED, KURL(result.url));
+        return;
+    }
+
+    response = CreateNativeWebURLResponse(
+        KURL(result.url), *result.head,
+        context_->request_id());
+    encoded_data_length =
+        result.head->encoded_data_length;
+    encoded_body_length =
+        result.head->encoded_body_length
+        ? result.head->encoded_body_length->value
+        : 0;
+    data = std::move(result.data);
+    downloaded_blob = std::move(result.downloaded_blob);
+}
+
+void URLLoader::LoadAsynchronously(
+    std::unique_ptr<network::ResourceRequest> request,
+    scoped_refptr<const SecurityOrigin>,
+    bool,
+    std::unique_ptr<ResourceLoadInfoNotifierWrapper>,
+    URLLoaderClient* client)
+{
+    CHECK(context_);
+    DCHECK(!context_->client());
+    context_->set_client(client);
+    context_->StartAsync(std::move(request));
+}
+
+void URLLoader::Cancel()
+{
+    if (context_)
+        context_->Cancel();
+}
+
+void URLLoader::Freeze(LoaderFreezeMode mode)
+{
+    CHECK(context_);
+    context_->Freeze(mode);
+}
+
+void URLLoader::DidChangePriority(
+    WebURLRequest::Priority new_priority,
+    int intra_priority_value)
+{
+    CHECK(context_);
+    context_->DidChangePriority(
+        new_priority, intra_priority_value);
+}
+
+scoped_refptr<base::SingleThreadTaskRunner>
+URLLoader::GetTaskRunnerForBodyLoader()
+{
+    CHECK(context_);
+    return context_->GetMaybeUnfreezableTaskRunner();
+}
+
+#else
 // URLLoader ----------------------------------------------------------------
 
 URLLoader::URLLoader(const Vector<String>& cors_exempt_header_list, base::WaitableEvent* terminate_sync_load_event,
@@ -368,9 +1046,13 @@ void URLLoader::LoadSynchronously(std::unique_ptr<network::ResourceRequest> requ
     std::optional<WebURLError>& error, scoped_refptr<SharedBuffer>& data, int64_t& encoded_data_length, uint64_t& encoded_body_length,
     scoped_refptr<BlobDataHandle>& downloaded_blob, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper)
 {
+#if defined(MINI_UI_QUICKJS)
+    CHECK(context_);
+#else
     if (!context_) {
         return;
     }
+#endif
 
     TRACE_EVENT0("loading", "URLLoader::loadSynchronously");
     SyncLoadResponse sync_load_response;
@@ -379,9 +1061,14 @@ void URLLoader::LoadSynchronously(std::unique_ptr<network::ResourceRequest> requ
     context_->set_client(client);
 
     const bool has_devtools_request_id = request->devtools_request_id.has_value();
+#if defined(MINI_UI_QUICKJS)
+    context_->Start(std::move(request), std::move(top_frame_origin), download_to_blob, no_mime_sniffing, timeout_interval, &sync_load_response,
+        std::move(resource_load_info_notifier_wrapper));
+#else
     context_->Start(std::move(request), std::move(top_frame_origin), download_to_blob, no_mime_sniffing, timeout_interval, &sync_load_response,
         std::move(resource_load_info_notifier_wrapper),
         /*code_cache_host=*/nullptr);
+#endif
 
     const KURL final_url(sync_load_response.url);
 
@@ -417,6 +1104,20 @@ void URLLoader::LoadSynchronously(std::unique_ptr<network::ResourceRequest> requ
     data = sync_load_response.data;
 }
 
+#if defined(MINI_UI_QUICKJS)
+void URLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin,
+    bool no_mime_sniffing, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, URLLoaderClient* client)
+{
+    CHECK(context_);
+
+    TRACE_EVENT_WITH_FLOW0("loading", "URLLoader::loadAsynchronously", this, TRACE_EVENT_FLAG_FLOW_OUT);
+    DCHECK(!context_->client());
+
+    context_->set_client(client);
+    context_->Start(std::move(request), std::move(top_frame_origin),
+        /*download_to_blob=*/false, no_mime_sniffing, base::TimeDelta(), /*sync_load_response=*/nullptr, std::move(resource_load_info_notifier_wrapper));
+}
+#else
 void URLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin,
     bool no_mime_sniffing, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host,
     URLLoaderClient* client)
@@ -433,6 +1134,7 @@ void URLLoader::LoadAsynchronously(std::unique_ptr<network::ResourceRequest> req
         /*download_to_blob=*/false, no_mime_sniffing, base::TimeDelta(), /*sync_load_response=*/nullptr, std::move(resource_load_info_notifier_wrapper),
         code_cache_host);
 }
+#endif
 
 void URLLoader::Cancel()
 {
@@ -443,6 +1145,9 @@ void URLLoader::Cancel()
 
 void URLLoader::Freeze(LoaderFreezeMode mode)
 {
+#if defined(MINI_UI_QUICKJS)
+    CHECK(context_);
+#endif
     if (context_) {
         context_->Freeze(mode);
     }
@@ -450,6 +1155,9 @@ void URLLoader::Freeze(LoaderFreezeMode mode)
 
 void URLLoader::DidChangePriority(WebURLRequest::Priority new_priority, int intra_priority_value)
 {
+#if defined(MINI_UI_QUICKJS)
+    CHECK(context_);
+#endif
     if (context_) {
         context_->DidChangePriority(new_priority, intra_priority_value);
     }
@@ -457,12 +1165,17 @@ void URLLoader::DidChangePriority(WebURLRequest::Priority new_priority, int intr
 
 scoped_refptr<base::SingleThreadTaskRunner> URLLoader::GetTaskRunnerForBodyLoader()
 {
+#if defined(MINI_UI_QUICKJS)
+    CHECK(context_);
+#else
     if (!context_) {
         return nullptr;
     }
+#endif
     return context_->GetMaybeUnfreezableTaskRunner();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void URLLoader::SetResourceRequestSenderForTesting(std::unique_ptr<ResourceRequestSender> resource_request_sender)
 {
     context_->SetResourceRequestSenderForTesting( // IN-TEST
@@ -479,4 +1192,9 @@ void URLLoader::SetBackgroundResponseProcessorFactory(std::unique_ptr<Background
     NOTREACHED();
 }
 
+#endif
+
+#endif // defined(MINI_UI_QUICKJS)
+
 } // namespace blink
+

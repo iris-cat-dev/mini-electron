@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "third_party/quickjs/quickjs.c",
+      "lines": [
+        1388,
+        1405
+      ],
+      "observation": "The allocator GC trigger body is disabled; collection is externally driven, not an automatic allocation-threshold policy.",
+      "sha256": "b056151fdb4e5038600ecd56c637a0302a5522fc392e141a5ecd441d56e03e54"
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_objects.cc",
+      "lines": [
+        168,
+        175
+      ],
+      "observation": "FindNative linearly scans native_properties, creates an atom for each stored key and frees it for every lookup.",
+      "sha256": "d3b7a0df41f376b9c0e74182f0272e5142b96ecf408b4e2c02bb325d1b97a582"
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_objects.cc",
+      "lines": [
+        598,
+        625
+      ],
+      "observation": "HostGet constructs a scoped handle and CallbackState before native-property and ordinary property/prototype lookup. Any optimization must retain interception, security and receiver semantics.",
+      "sha256": "d3b7a0df41f376b9c0e74182f0272e5142b96ecf408b4e2c02bb325d1b97a582"
+    },
+    {
+      "path": "runtime/ui/quickjs_v8_core.cc",
+      "lines": [
+        109,
+        147
+      ],
+      "observation": "Handle-cell/API-view block ownership is stored on Isolate; released entries are recycled through free lists. This does not quantify their contribution to OS private bytes.",
+      "sha256": "9a1215dda8b3aecacd67620d0de6a02cfeee780cba57126e34f9e8a3f6294bb3"
+    },
+    {
+      "path": "runtime/ui/quickjs_bindings.cc",
+      "lines": [
+        574,
+        589
+      ],
+      "observation": "The corrected joint visitor preserves one worklist cursor across drains in an epoch and resolves ephemerons after newly queued work, instead of replaying the entire prefix per wrapper.",
+      "sha256": "2d21a1f8aa26972a0cb5da9c133cf53061e633af58b17b1cdcb8f8ea6f29898e"
+    }
+  ],
+  "measurement_scope": "Existing forced-GC and debugger diagnostic records are explicitly separate from unprofiled comparison matrices. No numerical speedup is inferred solely from source inspection.",
+  "memory_caveat": "JS used bytes, native allocated bytes, process private commit and process working set are distinct. A decrease in live objects does not imply equal private-commit reclamation.",
+  "retention_caveat": "Final same-library diagnostics repeat React6240wrappers/6239edges through epoch17 after View release, explicit GC and main idle drain; Vue reaches0/0. Scheduler/MessagePort/realm candidates are not a proven root or a proven leak.",
+  "final_diagnostics": "native-diagnostics-final/",
+  "final_library_sha256": "ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a"
+}

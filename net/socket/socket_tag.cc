@@ -6,7 +6,6 @@
 
 #include <tuple>
 
-#include "base/check.h"
 #include "build/build_config.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -49,13 +48,11 @@ bool SocketTag::operator==(const SocketTag& other) const
 #endif // BUILDFLAG(IS_ANDROID)
 }
 
+#if BUILDFLAG(IS_ANDROID)
 void SocketTag::Apply(SocketDescriptor socket) const
 {
-#if BUILDFLAG(IS_ANDROID)
     net::android::TagSocket(socket, uid_, traffic_stats_tag_);
-#else
-    CHECK(false);
-#endif // BUILDFLAG(IS_ANDROID)
 }
+#endif // BUILDFLAG(IS_ANDROID)
 
 } // namespace net

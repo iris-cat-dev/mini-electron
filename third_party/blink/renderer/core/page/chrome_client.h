@@ -192,6 +192,7 @@ public:
     // browser.
     virtual void DraggableRegionsChanged() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Allow document lifecycle updates to be run in order to produce composited
     // outputs. Updates are blocked from occurring during loading navigation in
     // order to prevent contention and allow Blink to proceed more quickly. This
@@ -232,6 +233,8 @@ public:
     // |frame| must be a local frame.
     virtual std::optional<int> GetMaxRenderBufferBounds(LocalFrame& frame) const = 0;
 
+#endif
+
     // Start a system drag and drop operation.
     //
     // The `cursor_offset` is the offset of the drag-point from the top-left of
@@ -259,22 +262,14 @@ public:
     // browser will discard the unnecessary show request.
     virtual void Show(LocalFrame& frame, LocalFrame& opener_frame, NavigationPolicy navigation_policy, bool consumed_user_gesture) = 0;
 
-    // For a scrollbar scroll action, injects a gesture event of |injected_type|
-    // to be dispatched at a later point in time. |injected_type| is required to
-    // be one of GestureScroll{Begin,Update,End}. If the main thread is currently
-    // handling an input event, the gesture will be dispatched immediately after
-    // the current event is finished being processed.
-    // If there is no input event being handled, the gesture is queued up
-    // on the main thread's input event queue.
-    // The dispatched gesture will scroll the ScrollableArea identified by
-    // |scrollable_area_element_id| by the given delta+granularity.
-    // See also InputHandlerProxy::InjectScrollbarGestureScroll() which may
-    // shortcut callers of this function for composited scrollbars.
+#if !defined(MINI_UI_QUICKJS)
     virtual void InjectScrollbarGestureScroll(LocalFrame& local_frame, const gfx::Vector2dF& delta, ui::ScrollGranularity granularity,
         CompositorElementId scrollable_area_element_id, WebInputEvent::Type injected_type)
     {
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Finishes a ScrollIntoView for a focused editable element by performing a
     // view-level reveal. That is, when an embedder requests to reveal a focused
     // editable, the editable is first ScrollIntoView'ed in the layout tree to
@@ -287,12 +282,10 @@ public:
     {
     }
 
-    // Set the browser's behavior when overscroll happens, e.g. whether to glow
-    // or navigate. This may only be called for the main frame, and takes it as
-    // reference to make it clear that callers may only call this while a local
-    // main frame is present and the values do not persist between instances of
-    // local main frames.
+#endif
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetOverscrollBehavior(LocalFrame& main_frame, const cc::OverscrollBehavior&) = 0;
+#endif
 
     virtual bool ShouldReportDetailedMessageForSourceAndSeverity(LocalFrame&, mojom::blink::ConsoleMessageLevel log_level, const String& source) = 0;
     virtual void AddMessageToConsole(LocalFrame*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const String& message, unsigned line_number,
@@ -314,16 +307,11 @@ public:
 
     virtual void SetCursor(const ui::Cursor&, LocalFrame* local_root) = 0;
     virtual void SetCursorOverridden(bool) = 0;
-
-    virtual void AutoscrollStart(const gfx::PointF& position, LocalFrame*)
-    {
-    }
-    virtual void AutoscrollFling(const gfx::Vector2dF& velocity, LocalFrame*)
-    {
-    }
-    virtual void AutoscrollEnd(LocalFrame*)
-    {
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual void AutoscrollStart(const gfx::PointF& position, LocalFrame*) { }
+    virtual void AutoscrollFling(const gfx::Vector2dF& velocity, LocalFrame*) { }
+    virtual void AutoscrollEnd(LocalFrame*) { }
+#endif
 
     virtual ui::Cursor LastSetCursorForTesting() const = 0;
     Node* LastSetTooltipNodeForTesting() const
@@ -331,14 +319,19 @@ public:
         return last_mouse_over_node_.Get();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetCursorForPlugin(const ui::Cursor&, LocalFrame*) = 0;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the scale used to convert incoming input events while emulating
     // device metics.
     virtual float InputEventsScaleForEmulation() const
     {
         return 1;
     }
+
+#endif
 
     virtual void DispatchViewportPropertiesDidChange(const ViewportDescription&) const
     {
@@ -353,10 +346,12 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void ZoomToFindInPageRect(const gfx::Rect&)
     {
     }
 
+#endif
     virtual void ContentsSizeChanged(LocalFrame*, const gfx::Size&) const = 0;
     // Call during pinch gestures, or when page-scale changes on main-frame load.
     virtual void PageScaleFactorChanged() const
@@ -412,14 +407,11 @@ public:
 
     virtual void OpenFileChooser(LocalFrame*, scoped_refptr<FileChooser>) = 0;
 
-    // Pass nullptr as the cc::Layer to detach the root layer.
-    // This sets the cc::Layer for the LocalFrame's WebWidget, if it has
-    // one. Otherwise it sets it for the WebViewImpl.
+#if !defined(MINI_UI_QUICKJS)
     virtual void AttachRootLayer(scoped_refptr<cc::Layer>, LocalFrame* local_root) = 0;
-
     virtual cc::AnimationHost* GetCompositorAnimationHost(LocalFrame&) const = 0;
-
     virtual cc::AnimationTimeline* GetScrollAnimationTimeline(LocalFrame&) const = 0;
+#endif
 
     virtual void EnterFullscreen(LocalFrame&, const FullscreenOptions*, FullscreenRequestType)
     {
@@ -431,22 +423,21 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void AnimateDoubleTapZoom(const gfx::Point& point, const gfx::Rect& rect)
     {
     }
 
-    // The client keeps track of which touch/mousewheel event types have handlers,
-    // and if they do, whether the handlers are passive and/or blocking. This
-    // allows the client to know which optimizations can be used for the
-    // associated event classes.
+#endif
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetEventListenerProperties(LocalFrame*, cc::EventListenerClass, cc::EventListenerProperties) = 0;
-
     virtual void SetHasScrollEventHandlers(LocalFrame*, bool) = 0;
     virtual void SetNeedsLowLatencyInput(LocalFrame*, bool) = 0;
     virtual void SetNeedsUnbufferedInputForDebugger(LocalFrame*, bool) = 0;
     virtual void RequestUnbufferedInputEvents(LocalFrame*) = 0;
     virtual void SetTouchAction(LocalFrame*, TouchAction) = 0;
     virtual void SetPanAction(LocalFrame*, mojom::blink::PanAction pan_action) = 0;
+#endif
 
     // Checks if there is an opened popup, called by LayoutMenuList::showPopUp().
     virtual bool HasOpenedPopup() const = 0;
@@ -534,10 +525,9 @@ public:
     {
     }
 
-    virtual gfx::Transform GetDeviceEmulationTransform() const
-    {
-        return gfx::Transform();
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual gfx::Transform GetDeviceEmulationTransform() const { return gfx::Transform(); }
+#endif
 
     virtual void OnMouseDown(Node&)
     {
@@ -556,35 +546,21 @@ public:
         return gfx::Vector2dF();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void InstallSupplements(LocalFrame&);
+#endif
 
-    virtual viz::FrameSinkId GetFrameSinkId(LocalFrame*)
-    {
-        return viz::FrameSinkId();
-    }
-
+#if !defined(MINI_UI_QUICKJS)
+    virtual viz::FrameSinkId GetFrameSinkId(LocalFrame*) { return viz::FrameSinkId(); }
     virtual void RequestDecode(LocalFrame*, const cc::PaintImage& image, base::OnceCallback<void(bool)> callback)
     {
         std::move(callback).Run(false);
     }
-
-    // The `callback` will be fired when the corresponding renderer frame for the
-    // `frame` is presented in the display compositor. If there is no update in
-    // the frame to be presented, the `callback` will run with the time of the
-    // failure.
     using ReportTimeCallback = WTF::CrossThreadOnceFunction<void(const viz::FrameTimingDetails&)>;
-    virtual void NotifyPresentationTime(LocalFrame& frame, ReportTimeCallback callback)
-    {
-    }
-
-    // Enable or disable BeginMainFrameNotExpected signals from the compositor of
-    // the local root of |frame|. These signals would be consumed by the blink
-    // scheduler.
+    virtual void NotifyPresentationTime(LocalFrame& frame, ReportTimeCallback callback) { }
     virtual void RequestBeginMainFrameNotExpected(LocalFrame& frame, bool request) = 0;
-
-    // A stable numeric Id for |frame|'s local root's compositor. For
-    // tracing/debugging purposes.
     virtual int GetLayerTreeId(LocalFrame& frame) = 0;
+#endif
 
     virtual void Trace(Visitor*) const;
 
@@ -605,9 +581,9 @@ public:
         return 1;
     }
 
-    virtual void SetDelegatedInkMetadata(LocalFrame* frame, std::unique_ptr<gfx::DelegatedInkMetadata> metadata)
-    {
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual void SetDelegatedInkMetadata(LocalFrame* frame, std::unique_ptr<gfx::DelegatedInkMetadata> metadata) { }
+#endif
 
     virtual void FormElementReset(HTMLFormElement& element)
     {

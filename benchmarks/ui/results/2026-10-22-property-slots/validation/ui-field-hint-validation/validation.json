@@ -1,0 +1,72 @@
+[
+  {
+    "name": "baseline-regression",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--out-dir",
+      "out/ui-field-hint-checks-before"
+    ],
+    "exit_code": 0,
+    "seconds": 5.999551999993855,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-hint-validation\\baseline-regression.log"
+  },
+  {
+    "name": "candidate-build",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      ".build-tools/ui-field/build-candidate.py",
+      "out/ui-field-hint-candidate"
+    ],
+    "exit_code": 0,
+    "seconds": 8.859557099989615,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-hint-validation\\candidate-build.log"
+  },
+  {
+    "name": "candidate-regression",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-field-hint-candidate",
+      "--out-dir",
+      "out/ui-field-hint-checks-after"
+    ],
+    "exit_code": 0,
+    "seconds": 5.2615050000022165,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-hint-validation\\candidate-regression.log"
+  },
+  {
+    "name": "candidate-matrix",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--ui-out",
+      "out/ui-field-hint-candidate",
+      "--out-dir",
+      "out/ui-field-hint-after",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 532.5623787999793,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-hint-validation\\candidate-matrix.log"
+  },
+  {
+    "name": "compare",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/before_after.py",
+      "--before",
+      "out/ui-field-before",
+      "--after",
+      "out/ui-field-hint-after",
+      "--out-dir",
+      "out/ui-field-hint-comparison"
+    ],
+    "exit_code": 0,
+    "seconds": 0.08720670000184327,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-hint-validation\\compare.log"
+  }
+]

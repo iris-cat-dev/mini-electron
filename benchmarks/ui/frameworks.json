@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "downloaded_utc": "2026-10-22",
+  "distributions": [
+    {
+      "package": "vue",
+      "version": "3.5.13",
+      "distribution": "dist/vue.global.prod.js",
+      "file": "assets/vendor/vue.global.prod.js",
+      "download_url": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.global.prod.js",
+      "sha256": "c459ba7cc8db65c982589fa5d64c7ff478877e8e5b0fd75683207cec6a4e89e8",
+      "bytes": 157924,
+      "license": "MIT",
+      "license_file": "assets/vendor/LICENSE.vue.txt",
+      "license_url": "https://cdn.jsdelivr.net/npm/vue@3.5.13/LICENSE",
+      "license_sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+    },
+    {
+      "package": "react",
+      "version": "18.3.1",
+      "distribution": "umd/react.production.min.js",
+      "file": "assets/vendor/react.production.min.js",
+      "download_url": "https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js",
+      "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+      "bytes": 10751,
+      "license": "MIT",
+      "license_file": "assets/vendor/LICENSE.react.txt",
+      "license_url": "https://cdn.jsdelivr.net/npm/react@18.3.1/LICENSE",
+      "license_sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+    },
+    {
+      "package": "react-dom",
+      "version": "18.3.1",
+      "distribution": "umd/react-dom.production.min.js",
+      "file": "assets/vendor/react-dom.production.min.js",
+      "download_url": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js",
+      "sha256": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+      "bytes": 131835,
+      "license": "MIT",
+      "license_file": "assets/vendor/LICENSE.react-dom.txt",
+      "license_url": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/LICENSE",
+      "license_sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+    }
+  ]
+}

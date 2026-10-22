@@ -39,9 +39,10 @@ class ScriptState;
 
 class CORE_EXPORT FetchRequestData final : public GarbageCollected<FetchRequestData> {
 public:
+#if !defined(MINI_UI_QUICKJS)
     enum class ForServiceWorkerFetchEvent { kFalse, kTrue };
-
     static FetchRequestData* Create(ScriptState*, mojom::blink::FetchAPIRequestPtr, ForServiceWorkerFetchEvent);
+#endif
     FetchRequestData* Clone(ScriptState*, ExceptionState&);
     FetchRequestData* Pass(ScriptState*, ExceptionState&);
 
@@ -289,6 +290,7 @@ public:
         trust_token_params_ = std::move(trust_token_params);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     network::mojom::AttributionReportingEligibility AttributionReportingEligibility() const
     {
         return attribution_reporting_eligibility_;
@@ -306,7 +308,9 @@ public:
     {
         attribution_reporting_support_ = support;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     base::UnguessableToken ServiceWorkerRaceNetworkRequestToken() const
     {
         return service_worker_race_network_request_token_;
@@ -315,6 +319,7 @@ public:
     {
         service_worker_race_network_request_token_ = token;
     }
+#endif
 
     void Trace(Visitor*) const;
 
@@ -357,8 +362,10 @@ private:
     bool ad_auction_headers_ = false;
     bool shared_storage_writable_ = false;
     bool is_history_navigation_ = false;
+#if !defined(MINI_UI_QUICKJS)
     network::mojom::AttributionReportingEligibility attribution_reporting_eligibility_ = network::mojom::AttributionReportingEligibility::kUnset;
     network::mojom::AttributionSupport attribution_reporting_support_ = network::mojom::AttributionSupport::kUnset;
+#endif
     // A specific factory that should be used for this request instead of whatever
     // the system would otherwise decide to use to load this request.
     // Currently used for blob: URLs, to ensure they can still be loaded even if
@@ -367,10 +374,10 @@ private:
     base::UnguessableToken window_id_;
     Member<ExecutionContext> execution_context_;
 
-    // A token set only when the fetch request is initiated with ServiceWorker
-    // RaceNetworkRequest(crbug.com/1420517). When the request is cloned, this
-    // member shouldn't be copied to the new request.
+#if !defined(MINI_UI_QUICKJS)
+    // Token used only for ServiceWorker RaceNetworkRequest.
     base::UnguessableToken service_worker_race_network_request_token_;
+#endif
 };
 
 } // namespace blink

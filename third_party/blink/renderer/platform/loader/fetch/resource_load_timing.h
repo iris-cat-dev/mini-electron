@@ -47,12 +47,14 @@ public:
     void SetDomainLookupEnd(base::TimeTicks);
     void SetConnectStart(base::TimeTicks);
     void SetConnectEnd(base::TimeTicks);
+#if !defined(MINI_UI_QUICKJS)
     void SetWorkerStart(base::TimeTicks);
     void SetWorkerReady(base::TimeTicks);
     void SetWorkerFetchStart(base::TimeTicks);
     void SetWorkerRespondWithSettled(base::TimeTicks);
     void SetWorkerRouterEvaluationStart(base::TimeTicks);
     void SetWorkerCacheLookupStart(base::TimeTicks);
+#endif
     void SetSendStart(base::TimeTicks);
     void SetSendEnd(base::TimeTicks);
     void SetReceiveHeadersStart(base::TimeTicks);
@@ -94,6 +96,7 @@ public:
     {
         return connect_end_;
     }
+#if !defined(MINI_UI_QUICKJS)
     base::TimeTicks WorkerStart() const
     {
         return worker_start_;
@@ -118,6 +121,7 @@ public:
     {
         return worker_respond_with_settled_;
     }
+#endif
     base::TimeTicks SendStart() const
     {
         return send_start_;
@@ -190,12 +194,14 @@ private:
     base::TimeTicks domain_lookup_end_;
     base::TimeTicks connect_start_;
     base::TimeTicks connect_end_;
+#if !defined(MINI_UI_QUICKJS)
     base::TimeTicks worker_start_;
     base::TimeTicks worker_ready_;
     base::TimeTicks worker_fetch_start_;
     base::TimeTicks worker_respond_with_settled_;
     base::TimeTicks worker_router_evaluation_start_;
     base::TimeTicks worker_cache_lookup_start_;
+#endif
     base::TimeTicks send_start_;
     base::TimeTicks send_end_;
     base::TimeTicks receive_headers_start_;

@@ -33,7 +33,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#endif
 #include "third_party/blink/renderer/core/input/input_device_capabilities.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
@@ -474,9 +476,13 @@ void MouseEvent::RecordLayerXYMetrics()
     // of https://crrev.com/370604#c57. The heuristic will be accurate for canvas
     // elements which do not have children, but will undercount the impact on
     // child elements (e.g., descendants of frames).
+#if !defined(MINI_UI_QUICKJS)
     if (IsA<HTMLMediaElement>(node)) {
         UseCounter::Count(node->GetDocument(), WebFeature::kLayerXYWithMediaTarget);
-    } else if (IsA<HTMLCanvasElement>(node)) {
+        return;
+    }
+#endif
+    if (IsA<HTMLCanvasElement>(node)) {
         UseCounter::Count(node->GetDocument(), WebFeature::kLayerXYWithCanvasTarget);
     } else if (IsA<HTMLFrameElementBase>(node)) {
         UseCounter::Count(node->GetDocument(), WebFeature::kLayerXYWithFrameTarget);

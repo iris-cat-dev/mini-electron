@@ -1,0 +1,28 @@
+from pathlib import Path
+import json
+import subprocess
+import sys
+import time
+
+root = Path(__file__).resolve().parents[2]
+output = root / 'out/ui-field-hint-validation'
+output.mkdir(parents=True, exist_ok=True)
+records = []
+steps = [
+    ('baseline-regression', [sys.executable, 'benchmarks/ui/check_runtime.py', '--out-dir', 'out/ui-field-hint-checks-before']),
+    ('candidate-build', [sys.executable, '.build-tools/ui-field/build-candidate.py', 'out/ui-field-hint-candidate']),
+    ('candidate-regression', [sys.executable, 'benchmarks/ui/check_runtime.py', '--ui-out', 'out/ui-field-hint-candidate', '--out-dir', 'out/ui-field-hint-checks-after']),
+    ('candidate-matrix', [sys.executable, 'benchmarks/ui/run.py', '--build', '--ui-out', 'out/ui-field-hint-candidate', '--out-dir', 'out/ui-field-hint-after', '--timeout-ms', '900000']),
+    ('compare', [sys.executable, 'benchmarks/ui/before_after.py', '--before', 'out/ui-field-before', '--after', 'out/ui-field-hint-after', '--out-dir', 'out/ui-field-hint-comparison']),
+]
+for name, command in steps:
+    start = time.perf_counter()
+    log = output / (name + '.log')
+    with log.open('wb') as stream:
+        process = subprocess.run(command, cwd=root, stdout=stream, stderr=subprocess.STDOUT)
+    record = {'name':name, 'command':command, 'exit_code':process.returncode, 'seconds':time.perf_counter()-start, 'log':str(log)}
+    records.append(record)
+    (output/'validation.json').write_text(json.dumps(records, indent=2), encoding='utf-8')
+    print(json.dumps(record), flush=True)
+    if process.returncode:
+        raise SystemExit(process.returncode)

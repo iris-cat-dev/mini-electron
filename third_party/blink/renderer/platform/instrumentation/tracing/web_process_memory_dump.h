@@ -6,11 +6,15 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_INSTRUMENTATION_TRACING_WEB_PROCESS_MEMORY_DUMP_H_
 
 #include <memory>
+#if !defined(MINI_UI_QUICKJS)
 #include <unordered_map>
+#endif
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/heap_profiler_allocation_context.h"
+#endif
 #include "base/trace_event/memory_dump_request_args.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_memory_allocator_dump.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
@@ -18,7 +22,9 @@
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
+#if !defined(MINI_UI_QUICKJS)
 class SkTraceMemoryDump;
+#endif
 
 namespace base {
 class DiscardableMemory;
@@ -29,9 +35,11 @@ class TraceEventMemoryOverhead;
 } // namespace base
 } // namespace trace_event
 
+#if !defined(MINI_UI_QUICKJS)
 namespace skia {
 class SkiaTraceMemoryDumpImpl;
 } // namespace skia
+#endif
 
 namespace blink {
 
@@ -100,6 +108,7 @@ public:
     // not account the memory of |source| in the target node.
     void AddSuballocation(blink::WebMemoryAllocatorDumpGuid source, const String& target_node_name);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the SkTraceMemoryDump proxy interface that can be passed to Skia
     // to dump into this WebProcessMemoryDump. Multiple SkTraceMemoryDump
     // objects can be created using this method. The created dumpers are owned
@@ -108,6 +117,7 @@ public:
     // created by the SkTraceMemoryDump implementation, if the dump should be
     // placed under different namespace and not "skia".
     SkTraceMemoryDump* CreateDumpAdapterForSkia(const String& dump_name_prefix);
+#endif
 
     const base::trace_event::ProcessMemoryDump* process_memory_dump() const
     {
@@ -116,10 +126,12 @@ public:
 
     blink::WebMemoryAllocatorDump* CreateDiscardableMemoryAllocatorDump(const std::string& name, base::DiscardableMemory* discardable);
 
+#if !defined(MINI_UI_QUICKJS)
     // Dumps heap memory usage. |allocatorName| is used as an absolute name for
     // base::trace_event::ProcessMemoryDump::DumpHeapUsage().
     void DumpHeapUsage(const std::unordered_map<base::trace_event::AllocationContext, base::trace_event::AllocationMetrics>& metrics_by_context,
         base::trace_event::TraceEventMemoryOverhead& overhead, const char* allocator_name);
+#endif
 
 private:
     FRIEND_TEST_ALL_PREFIXES(WebProcessMemoryDumpTest, IntegrationTest);
@@ -143,8 +155,10 @@ private:
     // safely torn down once the WebProcessMemoryDump itself is destroyed.
     HashMap<base::trace_event::MemoryAllocatorDump*, std::unique_ptr<WebMemoryAllocatorDump>> memory_allocator_dumps_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Stores SkTraceMemoryDump for the current ProcessMemoryDump.
     Vector<std::unique_ptr<skia::SkiaTraceMemoryDumpImpl>> sk_trace_dump_list_;
+#endif
 };
 
 } // namespace blink

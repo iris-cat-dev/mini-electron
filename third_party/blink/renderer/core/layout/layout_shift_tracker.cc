@@ -4,9 +4,11 @@
 
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/heads_up_display_layer.h"
 #include "cc/layers/picture_layer.h"
 #include "cc/trees/layer_tree_host.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_pointer_event.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
@@ -27,6 +29,7 @@
 #include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/property_tree_state.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 
@@ -726,6 +729,7 @@ void LayoutShiftTracker::AttributionsToTracedValue(TracedValue& value) const
 
 void LayoutShiftTracker::SendLayoutShiftRectsToHud(const Vector<gfx::Rect>& int_rects)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Store the layout shift rects in the HUD layer.
     auto* cc_layer = frame_view_->RootCcLayer();
     if (cc_layer && cc_layer->layer_tree_host()) {
@@ -742,6 +746,9 @@ void LayoutShiftTracker::SendLayoutShiftRectsToHud(const Vector<gfx::Rect>& int_
             cc_layer->layer_tree_host()->hud_layer()->SetNeedsPushProperties();
         }
     }
+#else
+    static_cast<void>(int_rects);
+#endif
 }
 
 void LayoutShiftTracker::Dispose()

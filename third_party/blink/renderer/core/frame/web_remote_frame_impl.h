@@ -4,6 +4,7 @@
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_WEB_REMOTE_FRAME_IMPL_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_WEB_REMOTE_FRAME_IMPL_H_
+#if !defined(MINI_UI_QUICKJS)
 
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink.h"
@@ -111,5 +112,7 @@ template <> struct DowncastTraits<WebRemoteFrameImpl> {
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_WEB_REMOTE_FRAME_IMPL_H_

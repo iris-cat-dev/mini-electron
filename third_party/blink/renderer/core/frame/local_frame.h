@@ -52,21 +52,27 @@
 #include "third_party/blink/public/mojom/frame/back_forward_cache_controller.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/frame/reporting_observer.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/lcp_critical_path_predictor/lcp_critical_path_predictor.mojom-blink.h"
 #include "third_party/blink/public/mojom/link_to_text/link_to_text.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/pause_subresource_loading_handle.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/navigation/renderer_content_settings.mojom.h"
 #include "third_party/blink/public/mojom/navigation/renderer_eviction_reason.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/reporting/reporting.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/script/script_evaluation_params.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/task_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
+#endif
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/public/web/web_print_params.h"
@@ -76,7 +82,9 @@
 #include "third_party/blink/renderer/core/dom/weak_identifier_map.h"
 #include "third_party/blink/renderer/core/editing/forward.h"
 #include "third_party/blink/renderer/core/editing/iterators/text_iterator_behavior.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_script_identifier.h"
+#endif
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/frame_types.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -91,11 +99,15 @@
 #include "third_party/blink/renderer/platform/mojo/browser_interface_broker_proxy_impl.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_unique_receiver_set.h"
+#endif
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_wrapper_mode.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/image/image_skia.h"
 
@@ -109,16 +121,24 @@ class Range;
 class Size;
 } // namespace gfx
 
+#if !defined(MINI_UI_QUICKJS)
 namespace network {
 class SharedURLLoaderFactory;
 } // namespace network
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class AdTracker;
+#endif
 class AssociatedInterfaceProvider;
+#if !defined(MINI_UI_QUICKJS)
 class AttributionSrcLoader;
+#endif
+#if !defined(MINI_UI_QUICKJS)
 class AuditsIssue;
+#endif
 class BackgroundColorPaintImageGenerator;
 class BoxShadowPaintImageGenerator;
 class ClipPathPaintImageGenerator;
@@ -136,9 +156,11 @@ class FrameSelection;
 class FrameWidget;
 class IdlenessDetector;
 class InputMethodController;
+#if !defined(MINI_UI_QUICKJS)
 class InspectorIssueReporter;
 class InspectorTaskRunner;
 class InspectorTraceEvents;
+#endif
 class InterfaceRegistry;
 class LCPCriticalPathPredictor;
 class LCPScriptObserver;
@@ -151,7 +173,9 @@ class Node;
 class NodeTraversal;
 class PerformanceMonitor;
 class WebLinkPreviewTriggerer;
+#if !defined(MINI_UI_QUICKJS)
 class PluginData;
+#endif
 class PolicyContainer;
 class ScrollSnapshotClient;
 class SmoothScrollSequencer;
@@ -163,15 +187,19 @@ class TextSuggestionController;
 class VirtualKeyboardOverlayChangedObserver;
 class WebContentSettingsClient;
 class WebInputEventAttribution;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
 class WebPrescientNetworking;
 class URLLoader;
 struct BlinkTransferableMessage;
 struct WebScriptSource;
 
+#if !defined(MINI_UI_QUICKJS)
 namespace v8_compile_hints {
 class V8LocalCompileHintsProducer;
 } // namespace v8_compile_hints
+#endif
 
 enum class BackForwardCacheAware;
 
@@ -225,7 +253,8 @@ public:
     // response to the creation of a RenderFrameHost) or by blink if this is a
     // synchronously created LocalFrame child.
     void Init(Frame* opener, const DocumentToken& document_token, std::unique_ptr<PolicyContainer> policy_container, const StorageKey& storage_key,
-        ukm::SourceId document_ukm_source_id, const KURL& creator_base_url);
+        ukm::SourceId document_ukm_source_id,
+        const KURL& creator_base_url);
     void SetView(LocalFrameView*);
     void CreateView(const gfx::Size&, const Color&);
 
@@ -240,8 +269,10 @@ public:
     bool DetachDocument() override;
     void CheckCompleted() override;
     void DidChangeVisibilityState() override;
+#if !defined(MINI_UI_QUICKJS)
     void HookBackForwardCacheEviction() override;
     void RemoveBackForwardCacheEviction() override;
+#endif
     void SetTextDirection(base::i18n::TextDirection direction) override;
     // This sets the is_inert_ flag and also recurses through this frame's
     // subtree, updating the inert bit on all descendant frames.
@@ -314,7 +345,9 @@ public:
     {
         return probe_sink_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<InspectorTaskRunner> GetInspectorTaskRunner();
+#endif
 
     // Returns ContentCaptureManager in LocalFrameRoot, create or destroy it as
     // needed.
@@ -380,8 +413,10 @@ public:
     // All public functions below this point are candidates to move out of
     // LocalFrame into another class.
 
+#if !defined(MINI_UI_QUICKJS)
     // See layers_as_json.h for accepted flags.
     String GetLayerTreeAsTextForTesting(unsigned flags = 0) const;
+#endif
 
     // Begin printing.
     // If too large (in the inline direction), the frame content will fit to the
@@ -429,9 +464,10 @@ public:
     void ViewportSegmentsChanged(const WebVector<gfx::Rect>& viewport_segments);
     void UpdateViewportSegmentCSSEnvironmentVariables(const WebVector<gfx::Rect>& viewport_segments);
     void UpdateViewportSegmentCSSEnvironmentVariables(StyleEnvironmentVariables& vars, const WebVector<gfx::Rect>& viewport_segments);
-
+#if !defined(MINI_UI_QUICKJS)
     void OverrideDevicePostureForEmulation(mojom::blink::DevicePostureType device_posture_param);
     void DisableDevicePostureOverrideForEmulation();
+#endif
     mojom::blink::DevicePostureType GetDevicePosture();
 
     String SelectedText() const;
@@ -503,7 +539,9 @@ public:
 
     WebContentSettingsClient* GetContentSettingsClient();
 
+#if !defined(MINI_UI_QUICKJS)
     PluginData* GetPluginData() const;
+#endif
 
     PerformanceMonitor* GetPerformanceMonitor()
     {
@@ -513,37 +551,45 @@ public:
     {
         return idleness_detector_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     AdTracker* GetAdTracker()
     {
         return ad_tracker_.Get();
     }
     void SetAdTrackerForTesting(AdTracker* ad_tracker);
+#endif
     LCPScriptObserver* GetScriptObserver()
     {
         return script_observer_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     AttributionSrcLoader* GetAttributionSrcLoader()
     {
         return attribution_src_loader_.Get();
     }
+#endif
 
     enum class LazyLoadImageSetting { kDisabled, kEnabledExplicit };
     // Returns the enabled state of lazyloading of images.
     LazyLoadImageSetting GetLazyLoadImageSetting() const;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory();
+#endif
 
-    // For some tests, we use this method to create a URLLoader instead of using
-    // GetURLLoaderFactory().
+    // For Mini UI this is the embedder-backed local file loader.
     std::unique_ptr<URLLoader> CreateURLLoaderForTesting();
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<WebBackgroundResourceFetchAssets> MaybeGetBackgroundResourceFetchAssets();
+#endif
 
     bool IsInert() const
     {
         return is_inert_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // If the frame hosts a PluginDocument, this method returns the
     // WebPluginContainerImpl that hosts the plugin. If the provided node is a
     // plugin, then it returns its WebPluginContainerImpl. Otherwise, uses the
@@ -551,6 +597,7 @@ public:
     // TODO(slangley): Refactor this method to extract the logic of looking up
     // focused element or passed node into explicit methods.
     WebPluginContainerImpl* GetWebPluginContainer(Node* = nullptr) const;
+#endif
 
     // Called on a view for a LocalFrame with a RemoteFrame parent. This makes
     // viewport intersection and occlusion/obscuration available that accounts for
@@ -617,7 +664,9 @@ public:
 
     // This is used to check if a script tagged as an ad is currently on the v8
     // stack.
+#if !defined(MINI_UI_QUICKJS)
     bool IsAdScriptInStack() const;
+#endif
 
     // The evidence for or against a frame being an ad. `std::nullopt` if not yet
     // set or if the frame is a subfiltering root frame (outermost main frame) as
@@ -635,11 +684,13 @@ public:
     // Updates the frame color overlay to match the highlight ad setting.
     void UpdateAdHighlight();
 
+#if !defined(MINI_UI_QUICKJS)
     // Binds |receiver| and prevents resource loading until either the frame is
     // navigated or the receiver pipe is closed.
     void PauseSubresourceLoading(mojo::PendingReceiver<blink::mojom::blink::PauseSubresourceLoadingHandle> receiver);
 
     void ResumeSubresourceLoading();
+#endif
 
     ClientHintsPreferences& GetClientHintsPreferences()
     {
@@ -731,9 +782,11 @@ public:
     void SetPrescientNetworkingForTesting(std::unique_ptr<WebPrescientNetworking> prescient_networking);
 
     void CopyImageAtViewportPoint(const gfx::Point& viewport_point);
+#if !defined(MINI_UI_QUICKJS)
     void MediaPlayerActionAtViewportPoint(const gfx::Point& viewport_position, const blink::mojom::blink::MediaPlayerActionType type, bool enable);
     void RequestVideoFrameAtWithBoundsHint(
         const gfx::Point& viewport_position, const gfx::Size& max_size, int max_area, base::OnceCallback<void(const SkBitmap&, const gfx::Rect&)> callback);
+#endif
 
     // Handle the request as a download. If the request is for a blob: URL,
     // a BlobURLToken should be provided as |blob_url_token| to ensure the
@@ -743,14 +796,18 @@ public:
         mojo::PendingRemote<mojom::blink::BlobURLToken> blob_url_token);
 
     void NotifyUserActivation(mojom::blink::UserActivationNotificationType notification_type);
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssue(AuditsIssue issue);
+#endif
     void SaveImageAt(const gfx::Point& window_point);
     void AdvanceFocusForIME(mojom::blink::FocusType focus_type);
     void PostMessageEvent(
         const std::optional<RemoteFrameToken>& source_frame_token, const String& source_origin, const String& target_origin, BlinkTransferableMessage message);
 
     void SetScaleFactor(float scale);
+#if !defined(MINI_UI_QUICKJS)
     void ClosePageForTesting();
+#endif
     void SetInitialFocus(bool reverse);
 
 #if BUILDFLAG(IS_MAC) && !defined(MINI_ELECTRON_IMPLEMENTATION)
@@ -775,8 +832,10 @@ public:
 
     SystemClipboard* GetSystemClipboard();
 
+#if !defined(MINI_UI_QUICKJS)
     // Indicate that this frame was attached as a MainFrame.
     void WasAttachedAsLocalMainFrame();
+#endif
 
     // Return true if the frame is able to access an event with the given
     // attribution (i.e. the event is targeted for an origin that the frame may
@@ -798,10 +857,15 @@ public:
 
     void LoadJavaScriptURL(const KURL& url);
     void RequestExecuteScript(int32_t world_id, base::span<const WebScriptSource> sources, mojom::blink::UserActivationOption, mojom::blink::EvaluationTiming,
-        mojom::blink::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware back_forward_cache_aware, mojom::blink::WantResultOption,
+        mojom::blink::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware back_forward_cache_aware,
+#if !defined(MINI_UI_QUICKJS)
+        mojom::blink::WantResultOption,
+#endif
         mojom::blink::PromiseResultOption);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetEvictCachedSessionStorageOnFreezeOrUnload();
+#endif
 
     // Whether to maintain a trivial session history.
     //
@@ -831,7 +895,9 @@ public:
     void RebindTextInputHostForTesting();
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue ctx) const;
+#endif
 
     bool AncestorOrSelfHasCSPEE() const
     {
@@ -893,10 +959,12 @@ public:
 
     bool IsSameOrigin();
 
+#if !defined(MINI_UI_QUICKJS)
     v8_compile_hints::V8LocalCompileHintsProducer& GetV8LocalCompileHintsProducer()
     {
         return *v8_local_compile_hints_producer_;
     }
+#endif
 
     // Returns whether images are allowed to load for the current frame. This is a
     // convenience method that checks both renderer content settings and frame
@@ -916,11 +984,13 @@ public:
     // called on a provisional frame.
     Frame* GetProvisionalOwnerFrame();
 
+#if !defined(MINI_UI_QUICKJS)
     // Return a keep alive handle for the browser side NavigationStateKeepAlive.
     // The NavigationStateKeepAlive is created by a RenderFrameHost. Holding the
     // pending receiver of this remote means the keep alive handle can still exist
     // beyond the lifetime of the RenderFrameHost that created it.
     mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> IssueKeepAliveHandle();
+#endif
 
     WebLinkPreviewTriggerer* GetOrCreateLinkPreviewTriggerer();
     void SetLinkPreviewTriggererForTesting(std::unique_ptr<WebLinkPreviewTriggerer> trigger);
@@ -974,15 +1044,19 @@ private:
     void SetPrinting(bool printing, float maximum_shrink_ratio);
 
     // FrameScheduler::Delegate overrides:
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* GetUkmRecorder() override;
     ukm::SourceId GetUkmSourceId() override;
+#endif
     void UpdateTaskTime(base::TimeDelta time) override;
     void UpdateBackForwardCacheDisablingFeatures(BlockingDetails details) override;
     const base::UnguessableToken& GetAgentClusterId() const override;
     void OnTaskCompleted(base::TimeTicks start_time, base::TimeTicks end_time) override;
+#if !defined(MINI_UI_QUICKJS)
     void MainFrameInteractive() override;
     void MainFrameFirstMeaningfulPaint() override;
     DocumentResourceCoordinator* GetDocumentResourceCoordinator() override;
+#endif
 
     // Activates the user activation states of this frame and all its ancestors.
     //
@@ -1017,11 +1091,13 @@ private:
 
     std::unique_ptr<FrameScheduler> frame_scheduler_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Holds all PauseSubresourceLoadingHandles allowing either |this| to delete
     // them explicitly or the pipe closing to delete them.
     //
     // LocalFrame can be reused by multiple ExecutionContext.
     HeapMojoUniqueReceiverSet<blink::mojom::blink::PauseSubresourceLoadingHandle> pause_handle_receivers_ { nullptr };
+#endif
 
     // Keeps track of all the registered VK observers.
     HeapHashSet<WeakMember<VirtualKeyboardOverlayChangedObserver>> virtual_keyboard_overlay_changed_observers_;
@@ -1065,13 +1141,19 @@ private:
     float text_zoom_factor_;
 
     Member<CoreProbeSink> probe_sink_;
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<InspectorTaskRunner> inspector_task_runner_;
+#endif
     Member<PerformanceMonitor> performance_monitor_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<AdTracker> ad_tracker_;
+#endif
     Member<IdlenessDetector> idleness_detector_;
+#if !defined(MINI_UI_QUICKJS)
     Member<AttributionSrcLoader> attribution_src_loader_;
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#endif
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     Member<InspectorIssueReporter> inspector_issue_reporter_;
     Member<InspectorTraceEvents> inspector_trace_events_;
 #endif
@@ -1170,11 +1252,15 @@ private:
     // SubresourceFilterAgent::Initialize.
     bool is_frame_created_by_ad_script_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // The identifier of the ad script at the time of frame creation. Kept to
     // defer instrumentation probe call till the frame is committed.
     std::optional<AdScriptIdentifier> ad_script_from_frame_creation_stack_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     bool evict_cached_session_storage_on_freeze_or_unload_ = false;
+#endif
 
     // Indicate if the current document's color scheme was notified.
     bool notified_color_scheme_ = false;
@@ -1187,7 +1273,9 @@ private:
     // Reduced accept language for top-level frame.
     AtomicString reduced_accept_language_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<v8_compile_hints::V8LocalCompileHintsProducer> v8_local_compile_hints_producer_;
+#endif
 
     // This handle notifies the scheduler of whether the unload handler is used or
     // not so it can block BFCache.

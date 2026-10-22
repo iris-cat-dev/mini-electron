@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/client_hints_preferences.h"
 
 #include "base/command_line.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "services/network/public/cpp/client_hints.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/client_hints/client_hints.h"
@@ -64,11 +66,13 @@ bool ClientHintsPreferences::UpdateFromMetaCH(
         // Update first-party permissions for each client hint.
         for (network::mojom::WebClientHintsType newly_enabled : parsed_ch.value()) {
             enabled_hints_.SetIsEnabled(newly_enabled, true);
+#if !defined(MINI_UI_QUICKJS)
             if (context && !is_doc_preloader) {
                 ukm::builders::ClientHints_AcceptCHMetaUsage(context->GetUkmSourceId())
                     .SetType(static_cast<int64_t>(newly_enabled))
                     .Record(context->GetUkmRecorder());
             }
+#endif
         }
         break;
     }
@@ -86,11 +90,13 @@ bool ClientHintsPreferences::UpdateFromMetaCH(
         // Update first-party permissions for each client hint.
         for (const auto& pair : parsed_ch.map) {
             enabled_hints_.SetIsEnabled(pair.first, true);
+#if !defined(MINI_UI_QUICKJS)
             if (context && !is_doc_preloader) {
                 ukm::builders::ClientHints_DelegateCHMetaUsage(context->GetUkmSourceId())
                     .SetType(static_cast<int64_t>(pair.first))
                     .Record(context->GetUkmRecorder());
             }
+#endif
         }
         break;
     }

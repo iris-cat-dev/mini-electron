@@ -335,9 +335,11 @@ void TextPainter::Paint(const TextFragmentPaintInfo& fragment_paint_info, const 
         graphics_context_.GetPaintController().SetTextPainted();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (!font_.ShouldSkipDrawing()) {
         PaintTimingDetector::NotifyTextPaint(visual_rect_);
     }
+#endif
 }
 
 // This function paints text twice with different styles in order to:

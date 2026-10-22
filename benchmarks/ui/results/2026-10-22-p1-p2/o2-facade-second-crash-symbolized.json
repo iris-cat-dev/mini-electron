@@ -1,0 +1,132 @@
+{
+  "requested_adopt_breakpoint_reached": false,
+  "actual_stop": "FAST_FAIL_FATAL_APP_EXIT at a different invariant",
+  "stack": [
+    {
+      "rva": "0x2f5bc",
+      "symbol": "??0HandleScope@v8@@QEAA@PEAVIsolate@1@@Z",
+      "displacement": 76,
+      "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+    },
+    {
+      "rva": "0x174d05",
+      "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+      "displacement": 85,
+      "object": "mini-ui:791eae3654574fd278fd.obj"
+    },
+    {
+      "rva": "0x6a4ec",
+      "symbol": "JS_GetPropertyImpl",
+      "displacement": 1439,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x69f22",
+      "symbol": "JS_GetPropertyInternal",
+      "displacement": 87,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x1754bc",
+      "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+      "displacement": 2060,
+      "object": "mini-ui:791eae3654574fd278fd.obj"
+    },
+    {
+      "rva": "0x6a4ec",
+      "symbol": "JS_GetPropertyImpl",
+      "displacement": 1439,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x69f22",
+      "symbol": "JS_GetPropertyInternal",
+      "displacement": 87,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x1754bc",
+      "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+      "displacement": 2060,
+      "object": "mini-ui:791eae3654574fd278fd.obj"
+    },
+    {
+      "rva": "0x6a4ec",
+      "symbol": "JS_GetPropertyImpl",
+      "displacement": 1439,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x73a40",
+      "symbol": "JS_CallInternal",
+      "displacement": 8485,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x5f3d5",
+      "symbol": "js_call_bound_function",
+      "displacement": 346,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x71b16",
+      "symbol": "JS_CallInternal",
+      "displacement": 507,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x72399",
+      "symbol": "JS_CallInternal",
+      "displacement": 2686,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    }
+  ]
+}

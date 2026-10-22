@@ -291,9 +291,11 @@ public:
         kPseudoOptional,
         kPseudoParent, // Written as & (in nested rules).
         kPseudoPart,
+#if !defined(MINI_UI_QUICKJS)
         kPseudoPermissionElementInvalidStyle,
         kPseudoPermissionElementOccluded,
         kPseudoPermissionGranted,
+#endif
         kPseudoPlaceholder,
         kPseudoPlaceholderShown,
         kPseudoReadOnly,

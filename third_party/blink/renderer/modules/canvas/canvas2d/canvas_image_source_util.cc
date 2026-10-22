@@ -8,16 +8,24 @@
 #include "base/memory/scoped_refptr.h" // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2052)
 #include "base/notreached.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/core/v8/v8_union_cssimagevalue_htmlcanvaselement_htmlimageelement_imagebitmap_offscreencanvas_svgimageelement.h"
+#else
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_cssimagevalue_htmlcanvaselement_htmlimageelement_htmlvideoelement_imagebitmap_offscreencanvas_svgimageelement_videoframe.h"
+#endif
 #include "third_party/blink/renderer/core/css/cssom/css_style_image_value.h" // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2044)
 #include "third_party/blink/renderer/core/html/canvas/canvas_image_source.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/svg/svg_image_element.h" // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2044)
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -44,11 +52,13 @@ CanvasImageSource* ToCanvasImageSource(const V8CanvasImageSource* value, Excepti
     }
     case V8CanvasImageSource::ContentType::kHTMLImageElement:
         return value->GetAsHTMLImageElement();
+#if !defined(MINI_UI_QUICKJS)
     case V8CanvasImageSource::ContentType::kHTMLVideoElement: {
         HTMLVideoElement* video = value->GetAsHTMLVideoElement();
         video->VideoWillBeDrawnToCanvas();
         return video;
     }
+#endif
     case V8CanvasImageSource::ContentType::kImageBitmap:
         if (value->GetAsImageBitmap()->IsNeutered()) {
             exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "The image source is detached");
@@ -69,6 +79,7 @@ CanvasImageSource* ToCanvasImageSource(const V8CanvasImageSource* value, Excepti
         return value->GetAsOffscreenCanvas();
     case V8CanvasImageSource::ContentType::kSVGImageElement:
         return value->GetAsSVGImageElement();
+#if !defined(MINI_UI_QUICKJS)
     case V8CanvasImageSource::ContentType::kVideoFrame: {
         VideoFrame* video_frame = value->GetAsVideoFrame();
         if (!video_frame->frame()) {
@@ -77,6 +88,7 @@ CanvasImageSource* ToCanvasImageSource(const V8CanvasImageSource* value, Excepti
         }
         return video_frame;
     }
+#endif
     }
 
     NOTREACHED();

@@ -42,10 +42,10 @@
 #include "base/fuchsia/fuchsia_logging.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
 #include "base/trace_event/memory_allocator_dump.h" // no-presubmit-check
 #include "base/trace_event/process_memory_dump.h" // no-presubmit-check
-#endif // BUILDFLAG(ENABLE_BASE_TRACING)
+#endif
 
 namespace base {
 namespace {
@@ -463,8 +463,8 @@ void DiscardableSharedMemory::Close()
 void DiscardableSharedMemory::CreateSharedMemoryOwnershipEdge(
     trace_event::MemoryAllocatorDump* local_segment_dump, trace_event::ProcessMemoryDump* pmd, bool is_owned) const
 {
-// Memory dumps are only supported when tracing support is enabled,.
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+    // CPU accounting does not require trace emission or a dump manager.
+#if BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
     auto* shared_memory_dump = SharedMemoryTracker::GetOrCreateSharedMemoryDump(shared_memory_mapping_, pmd);
     // TODO(ssid): Clean this by a new api to inherit size of parent dump once the
     // we send the full PMD and calculate sizes inside chrome, crbug.com/704203.
@@ -489,7 +489,7 @@ void DiscardableSharedMemory::CreateSharedMemoryOwnershipEdge(
     } else {
         pmd->CreateSharedMemoryOwnershipEdge(local_segment_dump->guid(), shared_memory_guid, kImportance);
     }
-#endif // BUILDFLAG(ENABLE_BASE_TRACING)
+#endif
 }
 
 // static

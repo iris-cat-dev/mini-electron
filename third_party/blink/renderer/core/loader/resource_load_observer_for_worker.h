@@ -13,15 +13,21 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class CoreProbeSink;
+#endif
 class ResourceFetcherProperties;
 class WorkerFetchContext;
 
 // ResourceLoadObserver implementation associated with a worker or worklet.
 class ResourceLoadObserverForWorker final : public ResourceLoadObserver {
 public:
+#if !defined(MINI_UI_QUICKJS)
     ResourceLoadObserverForWorker(CoreProbeSink& probe, const ResourceFetcherProperties& properties, WorkerFetchContext& worker_fetch_context,
         const base::UnguessableToken& devtools_worker_token);
+#else
+    ResourceLoadObserverForWorker(const ResourceFetcherProperties& properties, WorkerFetchContext& worker_fetch_context);
+#endif
     ~ResourceLoadObserverForWorker() override;
 
     // ResourceLoadObserver implementation.
@@ -43,10 +49,14 @@ public:
     void Trace(Visitor*) const override;
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     const Member<CoreProbeSink> probe_;
+#endif
     const Member<const ResourceFetcherProperties> fetcher_properties_;
     const Member<WorkerFetchContext> worker_fetch_context_;
+#if !defined(MINI_UI_QUICKJS)
     const base::UnguessableToken devtools_worker_token_;
+#endif
 };
 
 } // namespace blink

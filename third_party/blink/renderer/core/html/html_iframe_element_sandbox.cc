@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/core/html/html_iframe_element_sandbox.h"
 
 #include "base/containers/contains.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
 
@@ -30,7 +32,11 @@ bool IsTokenSupported(const AtomicString& token)
 HTMLIFrameElementSandbox::HTMLIFrameElementSandbox(HTMLFrameOwnerElement* element)
     : DOMTokenList(*element, html_names::kSandboxAttr)
 {
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(IsA<HTMLIFrameElement>(element));
+#else
     DCHECK(IsA<HTMLIFrameElement>(element) || IsA<HTMLFencedFrameElement>(element));
+#endif
 }
 
 bool HTMLIFrameElementSandbox::ValidateTokenValue(const AtomicString& token_value, ExceptionState&) const

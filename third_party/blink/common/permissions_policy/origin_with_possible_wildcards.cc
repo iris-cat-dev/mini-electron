@@ -7,7 +7,6 @@
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "services/network/public/cpp/content_security_policy/content_security_policy.h"
 #include "services/network/public/cpp/content_security_policy/csp_source.h"
-#include "services/network/public/cpp/cors/origin_access_entry.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 

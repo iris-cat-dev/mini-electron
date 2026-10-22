@@ -1,0 +1,88 @@
+from pathlib import Path
+import ctypes as C
+from ctypes import wintypes as W
+import collections
+import json
+import random
+import subprocess
+import sys
+import time
+
+root = Path(__file__).resolve().parents[2]
+framework = sys.argv[1] if len(sys.argv) > 1 else 'vue'
+executable = root / (sys.argv[2] if len(sys.argv) > 2 else 'out/ui-atom-before/build/ui-benchmark.exe')
+prefix = sys.argv[3] if len(sys.argv) > 3 else 'out/ui-thread-profile'
+rows = int(sys.argv[4]) if len(sys.argv) > 4 else 1000
+folder = root / (prefix + '-' + framework)
+folder.mkdir(parents=True, exist_ok=True)
+k = C.WinDLL('kernel32', use_last_error=True)
+p = C.WinDLL('psapi', use_last_error=True)
+class ThreadEntry(C.Structure):
+    _fields_ = [('size',W.DWORD),('usage',W.DWORD),('tid',W.DWORD),('pid',W.DWORD),('base_priority',W.LONG),('delta_priority',W.LONG),('flags',W.DWORD)]
+class ModuleInfo(C.Structure):
+    _fields_ = [('base',C.c_void_p),('size',W.DWORD),('entry',C.c_void_p)]
+k.CreateToolhelp32Snapshot.argtypes=[W.DWORD,W.DWORD]; k.CreateToolhelp32Snapshot.restype=W.HANDLE
+k.Thread32First.argtypes=[W.HANDLE,C.POINTER(ThreadEntry)];k.Thread32First.restype=W.BOOL
+k.Thread32Next.argtypes=k.Thread32First.argtypes;k.Thread32Next.restype=W.BOOL
+k.OpenThread.argtypes=[W.DWORD,W.BOOL,W.DWORD];k.OpenThread.restype=W.HANDLE
+k.SuspendThread.argtypes=[W.HANDLE];k.SuspendThread.restype=W.DWORD
+k.ResumeThread.argtypes=[W.HANDLE];k.ResumeThread.restype=W.DWORD
+k.GetThreadContext.argtypes=[W.HANDLE,C.c_void_p];k.GetThreadContext.restype=W.BOOL
+k.QueryThreadCycleTime.argtypes=[W.HANDLE,C.POINTER(C.c_ulonglong)];k.QueryThreadCycleTime.restype=W.BOOL
+k.CloseHandle.argtypes=[W.HANDLE];k.CloseHandle.restype=W.BOOL
+p.EnumProcessModules.argtypes=[W.HANDLE,C.c_void_p,W.DWORD,C.POINTER(W.DWORD)];p.EnumProcessModules.restype=W.BOOL
+p.GetModuleInformation.argtypes=[W.HANDLE,W.HMODULE,C.POINTER(ModuleInfo),W.DWORD];p.GetModuleInformation.restype=W.BOOL
+p.GetModuleFileNameExW.argtypes=[W.HANDLE,W.HMODULE,W.LPWSTR,W.DWORD];p.GetModuleFileNameExW.restype=W.DWORD
+command=[str(executable),'--framework',framework,'--rows',str(rows),'--warmups','2','--iterations','7','--resource-root',str(root/'benchmarks/ui/assets'),'--output',str(folder/'workload.json'),'--capture',str(folder/'capture.bmp'),'--width','1280','--height','720','--device-scale','1','--timeout-ms','900000']
+modules={}
+def collect_modules(handle):
+    items=(W.HMODULE*1024)();needed=W.DWORD()
+    if not p.EnumProcessModules(handle,items,C.sizeof(items),C.byref(needed)):return
+    for module in items[:needed.value//C.sizeof(W.HMODULE)]:
+        info=ModuleInfo();name=C.create_unicode_buffer(32768)
+        if p.GetModuleInformation(handle,module,C.byref(info),C.sizeof(info)) and p.GetModuleFileNameExW(handle,module,name,len(name)):
+            modules[info.base]={'base':info.base,'size':info.size,'path':name.value}
+
+samples=collections.Counter();weighted=collections.Counter();errors=[]
+thread=None;process=None
+with (folder/'workload.log').open('wb') as stream:
+    try:
+        process=subprocess.Popen(command,cwd=root,stdout=stream,stderr=subprocess.STDOUT,creationflags=0x4)
+        snapshot=k.CreateToolhelp32Snapshot(4,0)
+        entry=ThreadEntry();entry.size=C.sizeof(entry)
+        found=k.Thread32First(snapshot,C.byref(entry));tid=None
+        while found:
+            if entry.pid==process.pid:tid=entry.tid;break
+            found=k.Thread32Next(snapshot,C.byref(entry))
+        k.CloseHandle(snapshot)
+        if tid is None:raise RuntimeError('primary child thread not found')
+        thread=k.OpenThread(0x0002|0x0008|0x0040,False,tid)
+        if not thread:raise C.WinError(C.get_last_error())
+        buffer=C.create_string_buffer(1232+15)
+        context=(C.addressof(buffer)+15)&~15
+        cycles=C.c_ulonglong();previous=0
+        k.QueryThreadCycleTime(thread,C.byref(cycles));previous=cycles.value
+        if k.ResumeThread(thread)==0xffffffff:raise C.WinError(C.get_last_error())
+        begin=time.perf_counter();next_modules=begin;rng=random.Random(1)
+        while process.poll() is None:
+            now=time.perf_counter()
+            if now-begin>900:raise TimeoutError('bounded sampling deadline')
+            if now>=next_modules:
+                collect_modules(int(process._handle));next_modules=now+0.5
+            if k.SuspendThread(thread)==0xffffffff:break
+            try:
+                C.c_uint32.from_address(context+48).value=0x100001
+                if k.GetThreadContext(thread,context) and k.QueryThreadCycleTime(thread,C.byref(cycles)):
+                    pc=C.c_uint64.from_address(context+248).value
+                    samples[pc]+=1;weighted[pc]+=max(0,cycles.value-previous);previous=cycles.value
+                else:errors.append(C.get_last_error())
+            finally:
+                k.ResumeThread(thread)
+            time.sleep(rng.uniform(0.003,0.007))
+        exit_code=process.wait(timeout=10)
+    finally:
+        if thread:k.CloseHandle(thread)
+        if process and process.poll() is None:process.kill();process.wait()
+record={'profiled_diagnostic':True,'method':'process-local main-thread suspension/context sampling with randomized 3-7ms intervals; sample counts and inter-sample CPU cycles are approximate, not ETW exclusive CPU durations','pid':process.pid,'thread_id':tid,'command':command,'exit_code':exit_code,'wall_seconds':time.perf_counter()-begin,'errors':errors,'modules':list(modules.values()),'samples':[{'pc':pc,'count':count,'cycles_since_prior_sample':weighted[pc]} for pc,count in samples.items()]}
+(folder/'samples.json').write_text(json.dumps(record,indent=2),encoding='utf-8')
+print(json.dumps({'framework':framework,'exit_code':exit_code,'samples':sum(samples.values()),'unique_pc':len(samples),'errors':errors,'wall_seconds':record['wall_seconds']}),flush=True)

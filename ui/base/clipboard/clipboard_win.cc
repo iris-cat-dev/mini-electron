@@ -17,6 +17,7 @@
 #include <shlobj.h>
 
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -602,25 +603,41 @@ void ClipboardWin::ReadFilenames(ClipboardBuffer buffer, const DataTransferEndpo
 
     data = ::GetClipboardData(ClipboardFormatType::FilenameType().ToFormatEtc().cfFormat);
     if (data) {
-        {
-            // filename using Unicode
-            base::win::ScopedHGlobal<wchar_t*> filename(data);
-            if (filename.data() && filename.data()[0]) {
-                base::FilePath path(filename.data());
-                result->push_back(ui::FileInfo(path, base::FilePath()));
-            }
+        // Filename using Unicode. The allocation is untrusted and may not contain
+        // even one complete wchar_t or a terminator.
+        const SIZE_T byte_size = ::GlobalSize(data);
+        if (byte_size < sizeof(wchar_t) || byte_size % sizeof(wchar_t) != 0)
+            return;
+        base::win::ScopedHGlobal<const wchar_t*> filename(data);
+        if (!filename.data())
+            return;
+        const std::wstring_view value(filename.data(),
+            byte_size / sizeof(wchar_t));
+        const size_t terminator = value.find(L'\0');
+        if (terminator != std::wstring_view::npos && terminator != 0) {
+            base::FilePath path(value.substr(0, terminator));
+            result->push_back(ui::FileInfo(path, base::FilePath()));
         }
         return;
     }
 
     data = ::GetClipboardData(ClipboardFormatType::FilenameAType().ToFormatEtc().cfFormat);
     if (data) {
-        {
-            // filename using ASCII
-            base::win::ScopedHGlobal<char*> filename(data);
-            if (filename.data() && filename.data()[0]) {
-                base::FilePath path(base::SysNativeMBToWide(filename.data()));
-                result->push_back(ui::FileInfo(path, base::FilePath()));
+        // Filename using the system ANSI code page.
+        const SIZE_T byte_size = ::GlobalSize(data);
+        if (byte_size == 0)
+            return;
+        base::win::ScopedHGlobal<const char*> filename(data);
+        if (!filename.data())
+            return;
+        const std::string_view value(filename.data(), byte_size);
+        const size_t terminator = value.find('\0');
+        if (terminator != std::string_view::npos && terminator != 0) {
+            std::wstring wide_path
+                = base::SysNativeMBToWide(value.substr(0, terminator));
+            if (!wide_path.empty()) {
+                result->push_back(ui::FileInfo(
+                    base::FilePath(wide_path), base::FilePath()));
             }
         }
     }
@@ -655,21 +672,40 @@ void ClipboardWin::ReadBookmark(const DataTransferEndpoint* data_dst, std::u16st
 
 // |data_dst| is not used. It's only passed to be consistent with other
 // platforms.
-void ClipboardWin::ReadData(const ClipboardFormatType& format, const DataTransferEndpoint* data_dst, std::string* result) const
+void ClipboardWin::ReadData(const ClipboardFormatType& format,
+    const DataTransferEndpoint* data_dst, std::string* result) const
+{
+    ReadDataWithMaxSize(format, data_dst,
+        (std::numeric_limits<size_t>::max)(), result);
+}
+
+bool ClipboardWin::ReadDataWithMaxSize(const ClipboardFormatType& format,
+    const DataTransferEndpoint* data_dst, size_t max_size,
+    std::string* result) const
 {
     RecordRead(ClipboardFormatMetric::kData);
     CHECK(result);
+    result->clear();
 
     ScopedClipboard clipboard;
     if (!clipboard.Acquire(GetClipboardWindow()))
-        return;
+        return true;
 
     HANDLE data = ::GetClipboardData(format.ToFormatEtc().cfFormat);
     if (!data)
-        return;
+        return true;
 
-    result->assign(static_cast<const char*>(::GlobalLock(data)), ::GlobalSize(data));
-    ::GlobalUnlock(data);
+    const SIZE_T size = ::GlobalSize(data);
+    if (size >= max_size)
+        return false;
+    if (size == 0)
+        return true;
+
+    base::win::ScopedHGlobal<const char*> locked_data(data);
+    if (!locked_data.data())
+        return true;
+    result->assign(locked_data.data(), size);
+    return true;
 }
 
 void ClipboardWin::WritePortableAndPlatformRepresentations(ClipboardBuffer buffer, const ObjectMap& objects,

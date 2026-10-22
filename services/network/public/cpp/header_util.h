@@ -8,7 +8,7 @@
 #include <string_view>
 
 #include "base/component_export.h"
-#include "services/network/public/mojom/referrer_policy.mojom.h"
+#include "services/network/public/mojom/referrer_policy.mojom-shared.h"
 
 class GURL;
 namespace net {

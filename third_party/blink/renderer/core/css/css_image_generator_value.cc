@@ -27,7 +27,9 @@
 
 #include "base/containers/contains.h"
 #include "third_party/blink/renderer/core/css/css_gradient_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/image_resource_observer.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 
@@ -154,8 +156,10 @@ scoped_refptr<Image> CSSImageGeneratorValue::GetImage(const ImageResourceObserve
     switch (GetClassType()) {
     case kLinearGradientClass:
         return To<CSSLinearGradientValue>(this)->GetImage(client, document, style, container_sizes, target_size);
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
         return To<CSSPaintValue>(this)->GetImage(client, document, style, target_size);
+#endif
     case kRadialGradientClass:
         return To<CSSRadialGradientValue>(this)->GetImage(client, document, style, container_sizes, target_size);
     case kConicGradientClass:
@@ -167,6 +171,7 @@ scoped_refptr<Image> CSSImageGeneratorValue::GetImage(const ImageResourceObserve
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool CSSImageGeneratorValue::IsUsingCustomProperty(const AtomicString& custom_property_name, const Document& document) const
 {
     if (GetClassType() == kPaintClass) {
@@ -174,6 +179,7 @@ bool CSSImageGeneratorValue::IsUsingCustomProperty(const AtomicString& custom_pr
     }
     return false;
 }
+#endif
 
 bool CSSImageGeneratorValue::IsUsingCurrentColor() const
 {
@@ -210,8 +216,10 @@ bool CSSImageGeneratorValue::KnownToBeOpaque(const Document& document, const Com
     switch (GetClassType()) {
     case kLinearGradientClass:
         return To<CSSLinearGradientValue>(this)->KnownToBeOpaque(document, style);
+#if !defined(MINI_UI_QUICKJS)
     case kPaintClass:
         return To<CSSPaintValue>(this)->KnownToBeOpaque(document, style);
+#endif
     case kRadialGradientClass:
         return To<CSSRadialGradientValue>(this)->KnownToBeOpaque(document, style);
     case kConicGradientClass:

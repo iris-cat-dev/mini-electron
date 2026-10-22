@@ -218,6 +218,12 @@ public:
     virtual void ReadBookmark(const DataTransferEndpoint* data_dst, std::u16string* title, std::string* url) const = 0;
     virtual void ReadData(const ClipboardFormatType& format, const DataTransferEndpoint* data_dst, std::string* result) const = 0;
 
+    // Reads data only when its native payload is smaller than `max_size`.
+    // Platforms should reject oversized data before copying it when possible.
+    virtual bool ReadDataWithMaxSize(const ClipboardFormatType& format,
+        const DataTransferEndpoint* data_dst, size_t max_size,
+        std::string* result) const;
+
     // Returns an estimate of the time the clipboard was last updated.  If the
     // time is unknown, returns Time::Time().
     virtual base::Time GetLastModifiedTime() const;

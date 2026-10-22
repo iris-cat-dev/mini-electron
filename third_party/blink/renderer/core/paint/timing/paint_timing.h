@@ -14,7 +14,9 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/paint/paint_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -30,10 +32,12 @@ class LocalFrame;
 // PaintTiming is responsible for tracking paint-related timings for a given
 // document.
 class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>, public Supplement<Document> {
+#if !defined(MINI_UI_QUICKJS)
     friend class FirstMeaningfulPaintDetector;
     using ReportTimeCallback = WTF::CrossThreadOnceFunction<void(const viz::FrameTimingDetails&)>;
     using RequestAnimationFrameTimesAfterBackForwardCacheRestore
         = std::array<base::TimeTicks, WebPerformanceMetricsForReporting::kRequestAnimationFramesToRecordAfterBackForwardCacheRestore>;
+#endif
 
 public:
     static const char kSupplementName[];
@@ -46,10 +50,9 @@ public:
     static PaintTiming& From(Document&);
     static const PaintTiming* From(const Document&);
 
-    // Mark*() methods record the time for the given paint event and queue a
-    // presentation promise to record the |first_*_presentation_| timestamp. These
-    // methods do nothing (early return) if a time has already been recorded for
-    // the given paint event.
+    // Mark*() methods record the rendered time for the given paint event. Full
+    // builds also queue a presentation promise for the corresponding
+    // |first_*_presentation_| timestamp.
     void MarkFirstPaint();
 
     // MarkFirstImagePaint, and MarkFirstContentfulPaint
@@ -69,8 +72,10 @@ public:
     // contentful paint has already been recorded.
     void MarkIneligibleToPaint();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetFirstMeaningfulPaintCandidate(base::TimeTicks timestamp);
     void SetFirstMeaningfulPaint(base::TimeTicks presentation_time, FirstMeaningfulPaintDetector::HadUserInput had_input);
+#endif
     void NotifyPaint(bool is_first_paint, bool text_painted, bool image_painted);
 
     // The getters below return monotonically-increasing seconds, or zero if the
@@ -85,6 +90,7 @@ public:
         return first_paint_presentation_for_ukm_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Times when the first paint happens after the page is restored from the
     // back-forward cache. If the element value is zero time tick, the first paint
     // event did not happen for that navigation.
@@ -97,6 +103,7 @@ public:
     {
         return request_animation_frames_after_back_forward_cache_restore_;
     }
+#endif
 
     // Returns the first time that 'contentful' content was painted in the current
     // document after a hard navigation (and ignoring soft navigations). For
@@ -141,6 +148,11 @@ public:
         return first_meaningful_paint_presentation_;
     }
 
+    base::TimeTicks FirstContentfulPaintPresentation() const
+    {
+        return paint_details_.first_contentful_paint_presentation_;
+    }
+#if !defined(MINI_UI_QUICKJS)
     // FirstMeaningfulPaintCandidate indicates the first time we considered a
     // paint to qualify as the potentially first meaningful paint. Unlike
     // firstMeaningfulPaint, this signal is available in real time, but it may be
@@ -150,10 +162,6 @@ public:
         return first_meaningful_paint_candidate_;
     }
 
-    base::TimeTicks FirstContentfulPaintPresentation() const
-    {
-        return paint_details_.first_contentful_paint_presentation_;
-    }
 
     FirstMeaningfulPaintDetector& GetFirstMeaningfulPaintDetector()
     {
@@ -164,34 +172,39 @@ public:
     void ReportPresentationTime(PaintEvent, const viz::FrameTimingDetails&);
     void RecordFirstContentfulPaintTimingMetrics(const viz::FrameTimingDetails&);
     void ReportFirstPaintAfterBackForwardCacheRestorePresentationTime(wtf_size_t index, const viz::FrameTimingDetails&);
+#endif
 
     // The caller owns the |clock| which must outlive the PaintTiming.
     void SetTickClockForTesting(const base::TickClock* clock);
 
+#if !defined(MINI_UI_QUICKJS)
     void OnRestoredFromBackForwardCache();
+#endif
 
     void SoftNavigationDetected();
 
     void Trace(Visitor*) const override;
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     friend class RecodingTimeAfterBackForwardCacheRestoreFrameCallback;
+#endif
 
     LocalFrame* GetFrame() const;
     void NotifyPaintTimingChanged();
 
-    // Set*() set the timing for the given paint event to the given timestamp if
-    // the value is currently zero, and queue a presentation promise to record the
-    // |first_*_presentation_| timestamp. These methods can be invoked from other
-    // Mark*() or Set*() methods to make sure that first paint is marked as part
-    // of marking first contentful paint, or that first contentful paint is marked
-    // as part of marking first text/image paint, for example.
+    // Set*() set the rendered time for the given paint event if the value is
+    // currently zero. Full builds also queue the corresponding presentation
+    // timestamp. These methods can be invoked from other Mark*() or Set*()
+    // methods so first paint accompanies first contentful paint, and first
+    // contentful paint accompanies first text/image paint.
     void SetFirstPaint(base::TimeTicks stamp);
 
     // setFirstContentfulPaint will also set first paint time if first paint
     // time has not yet been recorded.
     void SetFirstContentfulPaint(base::TimeTicks stamp);
 
+#if !defined(MINI_UI_QUICKJS)
     // Set*Presentation() are called when the presentation promise is fulfilled
     // and the presentation timestamp is available. These methods will record
     // trace events, update Web Perf API (FP and FCP only), and notify that paint
@@ -209,14 +222,17 @@ private:
 
     void RegisterNotifyPresentationTime(PaintEvent);
     void RegisterNotifyFirstPaintAfterBackForwardCacheRestorePresentationTime(wtf_size_t index);
+#endif
 
     base::TimeTicks FirstPaintRendered() const
     {
         return paint_details_.first_paint_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     WTF::Vector<base::TimeTicks> first_paints_after_back_forward_cache_restore_presentation_;
     WTF::Vector<RequestAnimationFrameTimesAfterBackForwardCacheRestore> request_animation_frames_after_back_forward_cache_restore_;
+#endif
     struct PaintDetails {
         // TODO(crbug/738235): Non first_*_presentation_ variables are only being
         // tracked to compute deltas for reporting histograms and should be removed
@@ -253,15 +269,19 @@ private:
 
     base::TimeTicks lcp_mouse_over_dispatch_time_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<FirstMeaningfulPaintDetector> fmp_detector_;
 
     // The callback ID for requestAnimationFrame to record its time after the page
     // is restored from the back-forward cache.
     int raf_after_bfcache_restore_measurement_callback_id_ = 0;
+#endif
 
     const base::TickClock* clock_;
 
+#if !defined(MINI_UI_QUICKJS)
     FRIEND_TEST_ALL_PREFIXES(FirstMeaningfulPaintDetectorTest, TwoLayoutsSignificantFirst);
+#endif
 };
 
 } // namespace blink

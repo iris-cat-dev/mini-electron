@@ -139,7 +139,9 @@ private:
     void DataSent(Resource*, uint64_t bytes_sent, uint64_t total_bytes_to_be_sent) override;
     void ResponseReceived(Resource*, const ResourceResponse&) override;
     void ResponseBodyReceived(Resource*, BytesConsumer& body) override;
+#if !defined(MINI_UI_QUICKJS)
     void CachedMetadataReceived(Resource*, mojo_base::BigBuffer) override;
+#endif
     void DataReceived(Resource*, base::span<const char> data) override;
     bool RedirectReceived(Resource*, const ResourceRequest&, const ResourceResponse&) override;
     void RedirectBlocked() override;

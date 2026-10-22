@@ -30,9 +30,11 @@
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class ViewTransitionRequest;
 }
+#endif
 
 namespace blink {
 
@@ -208,8 +210,10 @@ public:
     // nodes for noncomposited scrollers to complete the compositor's scroll
     // property tree.
     using StackScrollTranslationVector = HeapVector<Member<const TransformPaintPropertyNode>, 32>;
+#if !defined(MINI_UI_QUICKJS)
     void Update(const PaintArtifact& artifact, const ViewportProperties& viewport_properties, const StackScrollTranslationVector& scroll_translation_nodes,
         Vector<std::unique_ptr<cc::ViewTransitionRequest>> requests);
+#endif
 
     bool DirectlyUpdateCompositedOpacityValue(const EffectPaintPropertyNode&);
     bool DirectlyUpdateScrollOffsetTransform(const TransformPaintPropertyNode&);

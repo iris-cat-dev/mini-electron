@@ -5,20 +5,29 @@
 #include "third_party/blink/renderer/core/frame/remote_frame_owner.h"
 
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#endif
 #include "third_party/blink/renderer/core/timing/performance.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 RemoteFrameOwner::RemoteFrameOwner(const FramePolicy& frame_policy, const WebFrameOwnerProperties& frame_owner_properties)
     : frame_policy_(frame_policy)
     , browsing_context_container_name_(static_cast<String>(frame_owner_properties.name))
@@ -33,6 +42,7 @@ RemoteFrameOwner::RemoteFrameOwner(const FramePolicy& frame_policy, const WebFra
     , needs_occlusion_tracking_(false)
 {
 }
+#endif
 
 void RemoteFrameOwner::Trace(Visitor* visitor) const
 {
@@ -72,6 +82,7 @@ void RemoteFrameOwner::DispatchLoad()
     local_frame_host.DispatchLoad();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrameOwner::IntrinsicSizingInfoChanged()
 {
     LocalFrame& local_frame = To<LocalFrame>(*frame_);
@@ -85,6 +96,7 @@ void RemoteFrameOwner::IntrinsicSizingInfoChanged()
         intrinsic_sizing_info.size, intrinsic_sizing_info.aspect_ratio, intrinsic_sizing_info.has_width, intrinsic_sizing_info.has_height);
     WebLocalFrameImpl::FromFrame(local_frame)->FrameWidgetImpl()->IntrinsicSizingInfoChanged(std::move(sizing_info));
 }
+#endif
 
 void RemoteFrameOwner::SetNeedsOcclusionTracking(bool needs_tracking)
 {

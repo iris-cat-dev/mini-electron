@@ -18,7 +18,9 @@ class Layer;
 namespace blink {
 
 class ImageBitmap;
+#if !defined(MINI_UI_QUICKJS)
 class ImageLayerBridge;
+#endif
 class V8UnionHTMLCanvasElementOrOffscreenCanvas;
 
 class MODULES_EXPORT ImageBitmapRenderingContextBase : public CanvasRenderingContext {
@@ -43,16 +45,24 @@ public:
     void SetImage(ImageBitmap*);
     scoped_refptr<StaticBitmapImage> GetImage(FlushReason) final;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetUV(const gfx::PointF& left_top, const gfx::PointF& right_bottom);
+#endif
     bool IsComposited() const final
     {
+#if defined(MINI_UI_QUICKJS)
+        return false;
+#else
         return true;
+#endif
     }
     bool PushFrame() override;
     bool IsOriginTopLeft() const override;
     void SetFilterQuality(cc::PaintFlags::FilterQuality) override;
 
+#if !defined(MINI_UI_QUICKJS)
     cc::Layer* CcLayer() const final;
+#endif
     // TODO(junov): handle lost contexts when content is GPU-backed
     void LoseContext(LostContextMode) override
     {
@@ -67,7 +77,11 @@ public:
 protected:
     void Dispose() override;
 
+#if defined(MINI_UI_QUICKJS)
+    scoped_refptr<StaticBitmapImage> image_;
+#else
     Member<ImageLayerBridge> image_layer_bridge_;
+#endif
 
     // This function resets the internal image resource to a image of the same
     // size than the original, with the same properties, but completely black.

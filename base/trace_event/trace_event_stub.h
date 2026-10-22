@@ -17,6 +17,13 @@
 #include "base/trace_event/memory_allocator_dump_guid.h"
 #include "base/values.h"
 
+#if defined(MINI_UI_QUICKJS)
+#include "base/trace_event/memory_dump_provider.h"
+#include "base/trace_event/trace_arguments.h"
+#include "base/trace_event/trace_id_helper.h"
+#include "base/trace_event/traced_value.h"
+#endif
+
 #define TRACE_STR_COPY(str) str
 #define TRACE_ID_WITH_SCOPE(scope, ...) 0
 #define TRACE_ID_GLOBAL(id) 0
@@ -215,16 +222,6 @@ struct IgnoredValue {
 #define TRACE_EVENT_FLAG_JAVA_STRING_LITERALS (static_cast<unsigned int>(1 << 16))
 #define TRACE_EVENT_FLAG_SCOPE_MASK (static_cast<unsigned int>(TRACE_EVENT_FLAG_SCOPE_OFFSET | TRACE_EVENT_FLAG_SCOPE_EXTRA))
 
-#define TRACE_VALUE_TYPE_BOOL (static_cast<unsigned char>(1))
-#define TRACE_VALUE_TYPE_UINT (static_cast<unsigned char>(2))
-#define TRACE_VALUE_TYPE_INT (static_cast<unsigned char>(3))
-#define TRACE_VALUE_TYPE_DOUBLE (static_cast<unsigned char>(4))
-#define TRACE_VALUE_TYPE_POINTER (static_cast<unsigned char>(5))
-#define TRACE_VALUE_TYPE_STRING (static_cast<unsigned char>(6))
-#define TRACE_VALUE_TYPE_COPY_STRING (static_cast<unsigned char>(7))
-#define TRACE_VALUE_TYPE_CONVERTABLE (static_cast<unsigned char>(8))
-#define TRACE_VALUE_TYPE_PROTO (static_cast<unsigned char>(9))
-
 #define TRACE_EVENT_SCOPE_GLOBAL (static_cast<unsigned char>(0 << 2))
 #define TRACE_EVENT_SCOPE_PROCESS (static_cast<unsigned char>(1 << 2))
 #define TRACE_EVENT_SCOPE_THREAD (static_cast<unsigned char>(2 << 2))
@@ -242,6 +239,7 @@ struct IgnoredValue {
 #define TRACE_EVENT(category, name, ...) INTERNAL_TRACE_IGNORE(category, name)
 #define TRACE_EVENT_INSTANT(category, name, ...) INTERNAL_TRACE_IGNORE(category, name)
 
+#if !defined(MINI_UI_QUICKJS)
 namespace base {
 namespace trace_event {
 
@@ -566,6 +564,7 @@ private:
 
 } // namespace trace_event
 } // namespace base
+#endif
 
 // Stub implementation for
 // perfetto::StaticString/ThreadTrack/TracedValue/TracedDictionary/TracedArray/
@@ -576,6 +575,13 @@ class TracedArray;
 class TracedDictionary;
 class EventContext;
 
+#if defined(MINI_UI_QUICKJS)
+class TracedValue;
+class StaticString;
+class DynamicString;
+struct Track;
+struct NamedTrack;
+#else
 class StaticString {
 public:
     template <typename T> StaticString(T)
@@ -675,6 +681,7 @@ struct NamedTrack {
     {
     }
 };
+#endif
 
 namespace protos::pbzero {
 namespace SequenceManagerTask {

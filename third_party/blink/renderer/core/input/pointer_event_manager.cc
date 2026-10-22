@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/core/input/mouse_event_manager.h"
 #include "third_party/blink/renderer/core/input/touch_action_util.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/anchor_element_interaction_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
@@ -162,12 +164,14 @@ WebInputEventResult PointerEventManager::DispatchPointerEvent(EventTarget* targe
         event_timing = EventTiming::Create(frame_->DomWindow(), *pointer_event, target);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (event_type == event_type_names::kPointerdown || event_type == event_type_names::kPointerover || event_type == event_type_names::kPointerout) {
         AnchorElementInteractionTracker* tracker = frame_->GetDocument()->GetAnchorElementInteractionTracker();
         if (tracker) {
             tracker->OnPointerEvent(*target, *pointer_event);
         }
     }
+#endif
 
     if (Node* target_node = target->ToNode()) {
         if (event_type == event_type_names::kPointerdown || event_type == event_type_names::kPointerup) {
@@ -179,12 +183,14 @@ WebInputEventResult PointerEventManager::DispatchPointerEvent(EventTarget* targe
     if (should_filter && !HasPointerEventListener(frame_->GetEventHandlerRegistry()))
         return WebInputEventResult::kNotHandled;
 
+#if !defined(MINI_UI_QUICKJS)
     if (event_type == event_type_names::kPointerdown) {
         auto* html_canvas_element = DynamicTo<HTMLCanvasElement>(target->ToNode());
         if (html_canvas_element && html_canvas_element->NeedsUnbufferedInputEvents()) {
             frame_->GetChromeClient().RequestUnbufferedInputEvents(frame_);
         }
     }
+#endif
 
     bool listeners_exist = !check_for_listener || target->HasEventListeners(event_type);
     if (listeners_exist) {
@@ -664,7 +670,9 @@ bool PointerEventManager::HandleScrollbarTouchDrag(const WebPointerEvent& event,
 
     if (event.GetType() == WebInputEvent::Type::kPointerDown) {
         captured_scrollbar_ = scrollbar;
+#if !defined(MINI_UI_QUICKJS)
         frame_->GetPage()->GetChromeClient().SetTouchAction(frame_, TouchAction::kNone);
+#endif
     }
 
     if (!captured_scrollbar_)
@@ -693,7 +701,9 @@ bool PointerEventManager::HandleResizerDrag(const WebPointerEvent& event, const 
         if (layer->GetScrollableArea()->IsAbsolutePointInResizeControl(p, kResizerForTouch)) {
             resize_scrollable_area_ = layer->GetScrollableArea();
             resize_scrollable_area_->SetInResizeMode(true);
+#if !defined(MINI_UI_QUICKJS)
             frame_->GetPage()->GetChromeClient().SetTouchAction(frame_, TouchAction::kNone);
+#endif
             offset_from_resize_corner_ = resize_scrollable_area_->OffsetFromResizeCorner(p);
             return true;
         }
@@ -813,7 +823,9 @@ void PointerEventManager::SendEffectivePanActionAtPointer(const WebPointerEvent&
         effective_pan_action = mojom::blink::PanAction::kScroll;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     frame_->GetChromeClient().SetPanAction(frame_, effective_pan_action);
+#endif
 }
 
 namespace {

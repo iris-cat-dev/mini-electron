@@ -34,13 +34,19 @@
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/html_area_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/paint/image_painter.h"
@@ -81,12 +87,14 @@ void LayoutImage::WillBeDestroyed()
     LayoutReplaced::WillBeDestroyed();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void GetImageSizeChangeTracingData(perfetto::TracedValue context, Node* node, LocalFrame* frame)
 {
     auto dict = std::move(context).WriteDictionary();
     dict.Add("nodeId", IdentifiersFactory::IntIdForNode(node));
     dict.Add("frameId", IdentifiersFactory::FrameId(frame));
 }
+#endif
 
 void LayoutImage::StyleDidChange(StyleDifference diff, const ComputedStyle* old_style)
 {
@@ -98,6 +106,7 @@ void LayoutImage::StyleDidChange(StyleDifference diff, const ComputedStyle* old_
         IntrinsicSizeChanged();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool tracing_enabled;
     TRACE_EVENT_CATEGORY_GROUP_ENABLED(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), &tracing_enabled);
 
@@ -109,6 +118,7 @@ void LayoutImage::StyleDidChange(StyleDifference diff, const ComputedStyle* old_
                 [&](perfetto::TracedValue ctx) { GetImageSizeChangeTracingData(std::move(ctx), node, GetFrame()); });
         }
     }
+#endif
 }
 
 void LayoutImage::SetImageResource(LayoutImageResource* image_resource)
@@ -280,8 +290,10 @@ bool LayoutImage::ForegroundIsKnownToBeOpaqueInRect(const PhysicalRect& local_re
     if (object_fit != EObjectFit::kFill && object_fit != EObjectFit::kCover)
         return false;
     // Check for image with alpha.
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(
         TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage", inspector_paint_image_event::Data, this, *image_content);
+#endif
     return image_content->GetImage()->CurrentFrameKnownToBeOpaque();
 }
 
@@ -352,7 +364,11 @@ void LayoutImage::ComputeIntrinsicSizingInfo(IntrinsicSizingInfo& intrinsic_sizi
     // we're painting alt text and/or a broken image.
     // Video is excluded from this behavior because video elements have a default
     // aspect ratio that a failed poster image load should not override.
-    if (image_resource_ && image_resource_->ErrorOccurred() && !IsA<LayoutVideo>(this)) {
+    bool use_failed_image_aspect_ratio = image_resource_ && image_resource_->ErrorOccurred();
+#if !defined(MINI_UI_QUICKJS)
+    use_failed_image_aspect_ratio &= !IsA<LayoutVideo>(this);
+#endif
+    if (use_failed_image_aspect_ratio) {
         intrinsic_sizing_info.aspect_ratio = gfx::SizeF(1, 1);
         return;
     }

@@ -8,7 +8,9 @@
 #include "build/build_config.h"
 #include "third_party/blink/renderer/core/css/css_custom_font_data.h"
 #include "third_party/blink/renderer/core/css/css_font_face.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_custom_platform_data.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
@@ -46,11 +48,13 @@ bool LocalFontFaceSource::IsLocalFontAvailable(const FontDescription& font_descr
     // TODO(crbug.com/1027158): Remove metrics code after metrics collected.
     // TODO(crbug.com/1025945): Properly handle Windows prior to 10 and Android.
     bool font_available = FontCache::Get().IsPlatformFontUniqueNameMatchAvailable(font_description, font_name_);
+#if !defined(MINI_UI_QUICKJS)
     if (font_available) {
         font_selector_->ReportSuccessfulLocalFontMatch(font_name_);
     } else {
         font_selector_->ReportFailedLocalFontMatch(font_name_);
     }
+#endif
     return font_available;
 }
 
@@ -68,12 +72,16 @@ const SimpleFontData* LocalFontFaceSource::CreateLoadingFallbackFontData(const F
 const SimpleFontData* LocalFontFaceSource::CreateFontData(const FontDescription& font_description, const FontSelectionCapabilities& font_selection_capabilities)
 {
     if (!IsValid()) {
+#if !defined(MINI_UI_QUICKJS)
         ReportFontLookup(font_description, nullptr);
+#endif
         return nullptr;
     }
 
     bool local_fonts_enabled = true;
+#if !defined(MINI_UI_QUICKJS)
     probe::LocalFontsEnabled(font_selector_->GetExecutionContext(), &local_fonts_enabled);
+#endif
 
     if (!local_fonts_enabled) {
         return nullptr;
@@ -81,7 +89,9 @@ const SimpleFontData* LocalFontFaceSource::CreateFontData(const FontDescription&
 
     if (IsValid() && IsLoading()) {
         const SimpleFontData* fallback_font_data = CreateLoadingFallbackFontData(font_description);
+#if !defined(MINI_UI_QUICKJS)
         ReportFontLookup(font_description, fallback_font_data, true /* is_loading_fallback */);
+#endif
         return fallback_font_data;
     }
 
@@ -130,7 +140,9 @@ const SimpleFontData* LocalFontFaceSource::CreateFontData(const FontDescription&
             font_description.Orientation(), font_description.VariationSettings(), font_description.GetFontPalette()));
 
     histograms_.Record(font_data_variations_palette_applied);
+#if !defined(MINI_UI_QUICKJS)
     ReportFontLookup(unstyled_description, font_data_variations_palette_applied);
+#endif
     return font_data_variations_palette_applied;
 }
 
@@ -186,9 +198,11 @@ void LocalFontFaceSource::Trace(Visitor* visitor) const
     CSSFontFaceSource::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFontFaceSource::ReportFontLookup(const FontDescription& font_description, const SimpleFontData* font_data, bool is_loading_fallback)
 {
     font_selector_->ReportFontLookupByUniqueNameOnly(font_name_, font_description, font_data, is_loading_fallback);
 }
+#endif
 
 } // namespace blink

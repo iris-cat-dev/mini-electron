@@ -31,8 +31,10 @@ public:
         return *fetch_client_settings_object_;
     }
     bool IsOutermostMainFrame() const override;
+#if !defined(MINI_UI_QUICKJS)
     ControllerServiceWorkerMode GetControllerServiceWorkerMode() const override;
     int64_t ServiceWorkerId() const override;
+#endif
     bool IsPaused() const override;
     LoaderFreezeMode FreezeMode() const override;
     bool IsDetached() const override

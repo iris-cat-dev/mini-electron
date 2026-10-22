@@ -20,7 +20,9 @@ namespace blink {
 class InputMethodController;
 class LocalFrame;
 class WebLocalFrameImpl;
+#if !defined(MINI_UI_QUICKJS)
 class WebPlugin;
+#endif
 class WebRange;
 class WebString;
 
@@ -57,7 +59,9 @@ public:
 private:
     LocalFrame* GetFrame() const;
     InputMethodController& GetInputMethodController() const;
+#if !defined(MINI_UI_QUICKJS)
     WebPlugin* FocusedPluginIfInputMethodSupported() const;
+#endif
 
     const Member<WebLocalFrameImpl> web_frame_;
 };

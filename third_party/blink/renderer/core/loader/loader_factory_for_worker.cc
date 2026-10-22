@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/core/loader/loader_factory_for_worker.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/task/single_thread_task_runner.h"
@@ -18,7 +20,9 @@
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_request.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
@@ -134,3 +138,5 @@ CodeCacheHost* LoaderFactoryForWorker::GetCodeCacheHost()
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

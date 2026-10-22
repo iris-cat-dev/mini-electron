@@ -9,7 +9,9 @@
 
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scoped_paint_chunk_properties.h"
 
@@ -133,7 +135,9 @@ public:
 
 private:
     void AdjustForBoxContents(const LayoutBox&);
+#if !defined(MINI_UI_QUICKJS)
     std::optional<MobileFriendlinessChecker::IgnoreBeyondViewportScope> mf_ignore_scope_;
+#endif
 };
 
 } // namespace blink

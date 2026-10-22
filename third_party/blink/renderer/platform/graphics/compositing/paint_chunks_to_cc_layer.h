@@ -5,7 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_COMPOSITING_PAINT_CHUNKS_TO_CC_LAYER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_COMPOSITING_PAINT_CHUNKS_TO_CC_LAYER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/input/layer_selection_bound.h"
+#endif
 #include "cc/paint/display_item_list.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_record.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
@@ -63,8 +65,10 @@ public:
     // Similar to ConvertInto(), but returns a PaintRecord.
     static PaintRecord Convert(const PaintChunkSubset&, const PropertyTreeState& layer_state, const gfx::Rect* cull_rect = nullptr);
 
+#if !defined(MINI_UI_QUICKJS)
     static void UpdateLayerProperties(
         cc::Layer& layer, const PropertyTreeState& layer_state, const PaintChunkSubset&, cc::LayerSelection& layer_selection, bool selection_only);
+#endif
 };
 
 } // namespace blink

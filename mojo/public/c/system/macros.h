@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #if !defined(__cplusplus)
-#include <assert.h> // Defines static_assert() in C11.
-#include <stdalign.h> // Defines alignof() in C11.
+#include <assert.h>    // Defines static_assert() in C11.
+#include <stdalign.h>  // Defines alignof() in C11.
 #endif
 
 // Assert things at compile time. (|msg| should be a valid identifier name.)
@@ -21,11 +21,10 @@
 // Defines a pointer-sized struct field of the given type. This ensures that the
 // field has an 8-byte footprint on both 32-bit and 64-bit systems, using an
 // anonymous bitfield of either 32 or 0 bits, depending on pointer size.
-// clang-format on
-#define MOJO_POINTER_FIELD(type, name)                                                                                                                         \
-    type name;                                                                                                                                                 \
-    uint32_t:                                                                                                                                                  \
-    (sizeof(void*) == 4 ? 32 : 0)
+// clang-format off
+#define MOJO_POINTER_FIELD(type, name) \
+  type name;                           \
+  uint32_t : (sizeof(void*) == 4 ? 32 : 0)
 // clang-format on
 
 // Like the C++11 |alignof| operator.
@@ -37,9 +36,11 @@
 // offset and size of the field in this version of the ABI. Because fields are
 // never reordered or removed, this is a sufficient test for the field's
 // presence within whatever version of the ABI the client is programmed against.
-#define MOJO_IS_STRUCT_FIELD_PRESENT(struct_pointer, field)                                                                                                    \
-    ((size_t)(uintptr_t)((const char*)&(struct_pointer)->field - (const char*)(struct_pointer)) + sizeof((struct_pointer)->field)                              \
-        <= (struct_pointer)->struct_size)
+#define MOJO_IS_STRUCT_FIELD_PRESENT(struct_pointer, field)    \
+  ((size_t)(uintptr_t)((const char*)&(struct_pointer)->field - \
+                       (const char*)(struct_pointer)) +        \
+       sizeof((struct_pointer)->field) <=                      \
+   (struct_pointer)->struct_size)
 
 // Specify the alignment of a |struct|, etc.
 // Use like:
@@ -59,4 +60,4 @@
 #error "Please define MOJO_ALIGNAS() for your compiler."
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_MACROS_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_MACROS_H_

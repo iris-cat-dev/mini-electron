@@ -1,0 +1,2611 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "generated_utc": "2026-10-22T14:35:12.595178+00:00",
+  "mini_ui_metadata_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\run-metadata.json",
+  "mini_ui_library_sha256": "893fa6f28961e60ef4ccfc1e6699ca1b19ba6cef588f6a23693a12d8bfa6df42",
+  "matrix": {
+    "frameworks": [
+      "vue",
+      "react"
+    ],
+    "row_counts": [
+      100,
+      1000,
+      5000,
+      10000
+    ],
+    "warmups": 2,
+    "measured_iterations": 7,
+    "width": 1280,
+    "height": 720,
+    "device_scale": 1.0,
+    "timeout_ms": 900000,
+    "process_timeout_ms": 2730000
+  },
+  "controls": [
+    {
+      "label": "chrome_default",
+      "chrome_metadata_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\run-metadata.json",
+      "chrome_executable_sha256": "de999bce6a1c954df71a8f15bf751b336172f55ac1a0325bb0580cbc2121268c",
+      "cases": [
+        {
+          "framework": "vue",
+          "rows": 100,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-100.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\vue-100.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 21.900000005960464,
+                "p95_nearest_rank_ms": 22.899999976158142
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1,
+                "p95_nearest_rank_ms": 1.199999988079071
+              },
+              "mini_ui_over_chrome_median": 21.900000005960464
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 4.5,
+                "p95_nearest_rank_ms": 6.199999988079071
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.4000000059604645,
+                "p95_nearest_rank_ms": 0.5999999940395355
+              },
+              "mini_ui_over_chrome_median": 11.249999832361938
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 17.599999994039536,
+                "p95_nearest_rank_ms": 18.099999994039536
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1,
+                "p95_nearest_rank_ms": 1.2000000178813934
+              },
+              "mini_ui_over_chrome_median": 17.599999994039536
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 38.29999998211861,
+                "p95_nearest_rank_ms": 39.80000001192093
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1.4000000059604645,
+                "p95_nearest_rank_ms": 1.800000011920929
+              },
+              "mini_ui_over_chrome_median": 27.357142727898093
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 8.599999994039536,
+                "p95_nearest_rank_ms": 9
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.9000000059604645,
+                "p95_nearest_rank_ms": 1.300000011920929
+              },
+              "mini_ui_over_chrome_median": 9.555555485648874
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 39.30000001192093,
+                "p95_nearest_rank_ms": 40.5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1.5,
+                "p95_nearest_rank_ms": 1.600000023841858
+              },
+              "mini_ui_over_chrome_median": 26.200000007947285
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.9000000059604645,
+                "p95_nearest_rank_ms": 4.199999988079071
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.800000011920929,
+                "p95_nearest_rank_ms": 1.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 4.874999934807421
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 134.99999997019768,
+              "p95_nearest_rank_ms": 137.40000000596046
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 7.300000041723251,
+              "p95_nearest_rank_ms": 7.999999970197678
+            },
+            "mini_ui_over_chrome_median": 18.493150575151137
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 132816896,
+            "chrome_whole_owned_job_bytes": 427282432,
+            "mini_ui_over_chrome": 0.31084099427705936,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 2.171875,
+            "chrome_owned_job_seconds": 2.578125,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 2950.3864,
+            "chrome_workload_with_vsync_waits": 977.7579999936279,
+            "mini_ui_view_teardown": 54.525,
+            "chrome_whole_browser_shutdown": 95.20939999492839
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.0013349999999999998,
+            "LayoutDuration": 0.06969,
+            "RecalcStyleDuration": 0.036646,
+            "TaskDuration": 0.314468
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 1000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-1000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\vue-1000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 218.2999999821186,
+                "p95_nearest_rank_ms": 230.7999999821186
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 8.199999988079071,
+                "p95_nearest_rank_ms": 8.700000017881393
+              },
+              "mini_ui_over_chrome_median": 26.62195125603378
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 40.29999998211861,
+                "p95_nearest_rank_ms": 42.599999994039536
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1.9000000059604645,
+                "p95_nearest_rank_ms": 2.199999988079071
+              },
+              "mini_ui_over_chrome_median": 21.210526239838956
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 182.80000001192093,
+                "p95_nearest_rank_ms": 188.30000001192093
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 8.699999988079071,
+                "p95_nearest_rank_ms": 10.099999994039536
+              },
+              "mini_ui_over_chrome_median": 21.011494283034192
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 196.39999997615814,
+                "p95_nearest_rank_ms": 198.90000000596046
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 5.899999976158142,
+                "p95_nearest_rank_ms": 7.199999988079071
+              },
+              "mini_ui_over_chrome_median": 33.28813572369646
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 48.70000001788139,
+                "p95_nearest_rank_ms": 49.70000001788139
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 4.600000023841858,
+                "p95_nearest_rank_ms": 6.100000023841858
+              },
+              "mini_ui_over_chrome_median": 10.58695647075406
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 223.59999999403954,
+                "p95_nearest_rank_ms": 237.30000001192093
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 7.5999999940395355,
+                "p95_nearest_rank_ms": 11.699999988079071
+              },
+              "mini_ui_over_chrome_median": 29.421052653868774
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 22.799999982118607,
+                "p95_nearest_rank_ms": 24.30000001192093
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 3.699999988079071,
+                "p95_nearest_rank_ms": 4.199999988079071
+              },
+              "mini_ui_over_chrome_median": 6.162162177183055
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 935.4000000357628,
+              "p95_nearest_rank_ms": 957.4000000357628
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 41.09999996423721,
+              "p95_nearest_rank_ms": 48.099999994039536
+            },
+            "mini_ui_over_chrome_median": 22.759124108265024
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 359989248,
+            "chrome_whole_owned_job_bytes": 654962688,
+            "mini_ui_over_chrome": 0.5496332151366766,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 14.984375,
+            "chrome_owned_job_seconds": 3.9375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 15041.8892,
+            "chrome_workload_with_vsync_waits": 1739.7946999990381,
+            "mini_ui_view_teardown": 156.9551,
+            "chrome_whole_browser_shutdown": 97.31029998511076
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.00575,
+            "LayoutDuration": 0.40713900000000003,
+            "RecalcStyleDuration": 0.221458,
+            "TaskDuration": 1.514573
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 5000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-5000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\vue-5000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1141.5,
+                "p95_nearest_rank_ms": 1167.9000000059605
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 41,
+                "p95_nearest_rank_ms": 45.60000002384186
+              },
+              "mini_ui_over_chrome_median": 27.841463414634145
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 201.80000001192093,
+                "p95_nearest_rank_ms": 206.09999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 8.800000011920929,
+                "p95_nearest_rank_ms": 20.099999994039536
+              },
+              "mini_ui_over_chrome_median": 22.93181815210822
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 964.5,
+                "p95_nearest_rank_ms": 972.1999999880791
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 56.900000005960464,
+                "p95_nearest_rank_ms": 80.59999999403954
+              },
+              "mini_ui_over_chrome_median": 16.950790859384277
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 936.4000000059605,
+                "p95_nearest_rank_ms": 955.5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 29.099999994039536,
+                "p95_nearest_rank_ms": 44.099999994039536
+              },
+              "mini_ui_over_chrome_median": 32.178694164871494
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 238.80000001192093,
+                "p95_nearest_rank_ms": 246.69999998807907
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 24.19999998807907,
+                "p95_nearest_rank_ms": 41.30000001192093
+              },
+              "mini_ui_over_chrome_median": 9.86776860039479
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1058.2999999821186,
+                "p95_nearest_rank_ms": 1290.800000011921
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 37.39999997615814,
+                "p95_nearest_rank_ms": 43.79999998211861
+              },
+              "mini_ui_over_chrome_median": 28.296791461410873
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 112.30000001192093,
+                "p95_nearest_rank_ms": 113.40000000596046
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 18.599999994039536,
+                "p95_nearest_rank_ms": 25.30000001192093
+              },
+              "mini_ui_over_chrome_median": 6.0376344111778515
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 4673.300000041723,
+              "p95_nearest_rank_ms": 4888.0999999940395
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 231.30000004172325,
+              "p95_nearest_rank_ms": 246.0
+            },
+            "mini_ui_over_chrome_median": 20.204496321654673
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 1867542528,
+            "chrome_whole_owned_job_bytes": 1259098112,
+            "mini_ui_over_chrome": 1.483238287946857,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 76.578125,
+            "chrome_owned_job_seconds": 16.359375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 75678.4883,
+            "chrome_workload_with_vsync_waits": 8373.36879997747,
+            "mini_ui_view_teardown": 926.7637,
+            "chrome_whole_browser_shutdown": 142.54910001181997
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.116818,
+            "LayoutDuration": 2.3192150000000002,
+            "RecalcStyleDuration": 1.10473,
+            "TaskDuration": 7.920776
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 10000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-10000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\vue-10000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2305.5,
+                "p95_nearest_rank_ms": 2453.800000011921
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 86.59999999403954,
+                "p95_nearest_rank_ms": 124.10000002384186
+              },
+              "mini_ui_over_chrome_median": 26.622401849407414
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 414.59999999403954,
+                "p95_nearest_rank_ms": 462.5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 22.399999976158142,
+                "p95_nearest_rank_ms": 38
+              },
+              "mini_ui_over_chrome_median": 18.5089285908628
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2057.300000011921,
+                "p95_nearest_rank_ms": 2211.7999999821186
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 101.69999998807907,
+                "p95_nearest_rank_ms": 224.90000000596046
+              },
+              "mini_ui_over_chrome_median": 20.2291052138945
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1918.3999999761581,
+                "p95_nearest_rank_ms": 2191.7999999821186
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 59.5,
+                "p95_nearest_rank_ms": 66.60000002384186
+              },
+              "mini_ui_over_chrome_median": 32.242016806321985
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 479.39999997615814,
+                "p95_nearest_rank_ms": 496.09999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 52.69999998807907,
+                "p95_nearest_rank_ms": 65
+              },
+              "mini_ui_over_chrome_median": 9.096774195153703
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2239.699999988079,
+                "p95_nearest_rank_ms": 2432.0999999940395
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 84.69999998807907,
+                "p95_nearest_rank_ms": 144.5
+              },
+              "mini_ui_over_chrome_median": 26.4427390826836
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 222.80000001192093,
+                "p95_nearest_rank_ms": 227.2000000178814
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 39.19999998807907,
+                "p95_nearest_rank_ms": 49.29999998211861
+              },
+              "mini_ui_over_chrome_median": 5.683673471420295
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 9829.200000017881,
+              "p95_nearest_rank_ms": 10083.999999970198
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 469.19999995827675,
+              "p95_nearest_rank_ms": 565.0999999940395
+            },
+            "mini_ui_over_chrome_median": 20.948849106760306
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 4530503680,
+            "chrome_whole_owned_job_bytes": 2097975296,
+            "mini_ui_over_chrome": 2.159464741380825,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 160.34375,
+            "chrome_owned_job_seconds": 26.109375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 157348.8571,
+            "chrome_workload_with_vsync_waits": 15825.849899993045,
+            "mini_ui_view_teardown": 3476.7934,
+            "chrome_whole_browser_shutdown": 206.7049000179395
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.180056,
+            "LayoutDuration": 4.536964,
+            "RecalcStyleDuration": 2.3455459999999997,
+            "TaskDuration": 15.681616
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 100,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-100.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\react-100.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 14.800000011920929,
+                "p95_nearest_rank_ms": 16.400000005960464
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.699999988079071,
+                "p95_nearest_rank_ms": 0.7000000178813934
+              },
+              "mini_ui_over_chrome_median": 21.14285751994776
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.199999988079071,
+                "p95_nearest_rank_ms": 3.800000011920929
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.19999998807907104,
+                "p95_nearest_rank_ms": 0.30000001192092896
+              },
+              "mini_ui_over_chrome_median": 16.000000894069725
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 9.799999982118607,
+                "p95_nearest_rank_ms": 12.299999982118607
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.5999999940395355,
+                "p95_nearest_rank_ms": 0.699999988079071
+              },
+              "mini_ui_over_chrome_median": 16.3333334657881
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 21.299999982118607,
+                "p95_nearest_rank_ms": 21.900000005960464
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.7000000178813934,
+                "p95_nearest_rank_ms": 0.800000011920929
+              },
+              "mini_ui_over_chrome_median": 30.428570625733375
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 4.9000000059604645,
+                "p95_nearest_rank_ms": 5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.7999999821186066,
+                "p95_nearest_rank_ms": 0.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 6.125000144355003
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 26.200000017881393,
+                "p95_nearest_rank_ms": 28.700000017881393
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.9000000059604645,
+                "p95_nearest_rank_ms": 1.199999988079071
+              },
+              "mini_ui_over_chrome_median": 29.111110938184055
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.800000011920929,
+                "p95_nearest_rank_ms": 6.899999976158142
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.7000000178813934,
+                "p95_nearest_rank_ms": 1
+              },
+              "mini_ui_over_chrome_median": 5.4285713069293
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 84.7999999821186,
+              "p95_nearest_rank_ms": 88.80000001192093
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 4.5999999940395355,
+              "p95_nearest_rank_ms": 5.299999982118607
+            },
+            "mini_ui_over_chrome_median": 18.43478262869532
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 98099200,
+            "chrome_whole_owned_job_bytes": 453242880,
+            "mini_ui_over_chrome": 0.21643847996023677,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 1.59375,
+            "chrome_owned_job_seconds": 3.03125,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 2596.6293,
+            "chrome_workload_with_vsync_waits": 985.8633000112604,
+            "mini_ui_view_teardown": 26.3605,
+            "chrome_whole_browser_shutdown": 87.26499998010695
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.001395,
+            "LayoutDuration": 0.07048,
+            "RecalcStyleDuration": 0.036687,
+            "TaskDuration": 0.280466
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 1000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-1000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\react-1000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 127.60000002384186,
+                "p95_nearest_rank_ms": 142.5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 3.7000000178813934,
+                "p95_nearest_rank_ms": 4.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 34.48648632626363
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 22.19999998807907,
+                "p95_nearest_rank_ms": 23.599999994039536
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 0.7000000178813934,
+                "p95_nearest_rank_ms": 0.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 31.714284887119238
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 129.60000002384186,
+                "p95_nearest_rank_ms": 132.09999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 6,
+                "p95_nearest_rank_ms": 6.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 21.600000003973644
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 75.69999998807907,
+                "p95_nearest_rank_ms": 78.19999998807907
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 1.9000000059604645,
+                "p95_nearest_rank_ms": 2.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 39.842105131895586
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 27.100000023841858,
+                "p95_nearest_rank_ms": 29.099999994039536
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 4,
+                "p95_nearest_rank_ms": 5.200000017881393
+              },
+              "mini_ui_over_chrome_median": 6.7750000059604645
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 129.69999998807907,
+                "p95_nearest_rank_ms": 146.40000000596046
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 3.899999976158142,
+                "p95_nearest_rank_ms": 3.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 33.25641045665992
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 19.400000005960464,
+                "p95_nearest_rank_ms": 31
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 3.7000000178813934,
+                "p95_nearest_rank_ms": 3.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 5.243243219514587
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 539.6999999880791,
+              "p95_nearest_rank_ms": 553.1999999880791
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 23.899999976158142,
+              "p95_nearest_rank_ms": 25.0
+            },
+            "mini_ui_over_chrome_median": 22.581589980186866
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 289660928,
+            "chrome_whole_owned_job_bytes": 613961728,
+            "mini_ui_over_chrome": 0.4717898767787689,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 9.71875,
+            "chrome_owned_job_seconds": 4.328125,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 10568.8919,
+            "chrome_workload_with_vsync_waits": 1566.1553999816533,
+            "mini_ui_view_teardown": 114.9203,
+            "chrome_whole_browser_shutdown": 104.73859999910928
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.003786,
+            "LayoutDuration": 0.404865,
+            "RecalcStyleDuration": 0.216727,
+            "TaskDuration": 1.30516
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 5000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-5000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\react-5000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 659.9000000059605,
+                "p95_nearest_rank_ms": 720.4000000059605
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 19.400000005960464,
+                "p95_nearest_rank_ms": 22.299999982118607
+              },
+              "mini_ui_over_chrome_median": 34.015463907382085
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 118,
+                "p95_nearest_rank_ms": 128.10000002384186
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 3.5,
+                "p95_nearest_rank_ms": 4
+              },
+              "mini_ui_over_chrome_median": 33.714285714285715
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1767.800000011921,
+                "p95_nearest_rank_ms": 1838.5999999940395
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 47.599999994039536,
+                "p95_nearest_rank_ms": 74.90000000596046
+              },
+              "mini_ui_over_chrome_median": 37.13865546708581
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 329.59999999403954,
+                "p95_nearest_rank_ms": 344.09999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 7.4000000059604645,
+                "p95_nearest_rank_ms": 10.799999982118607
+              },
+              "mini_ui_over_chrome_median": 44.540540503859084
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 125.69999998807907,
+                "p95_nearest_rank_ms": 132
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 17.299999982118607,
+                "p95_nearest_rank_ms": 19.299999982118607
+              },
+              "mini_ui_over_chrome_median": 7.2658959605782325
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 616.7000000178814,
+                "p95_nearest_rank_ms": 646.8000000119209
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 17.700000017881393,
+                "p95_nearest_rank_ms": 20.80000001192093
+              },
+              "mini_ui_over_chrome_median": 34.841807875415896
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 89.90000000596046,
+                "p95_nearest_rank_ms": 96.7000000178814
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 16.5,
+                "p95_nearest_rank_ms": 18
+              },
+              "mini_ui_over_chrome_median": 5.448484848846089
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 3740.400000065565,
+              "p95_nearest_rank_ms": 3822.4000000059605
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 131.69999995827675,
+              "p95_nearest_rank_ms": 160.0999999642372
+            },
+            "mini_ui_over_chrome_median": 28.400911171226603
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 717520896,
+            "chrome_whole_owned_job_bytes": 1336066048,
+            "mini_ui_over_chrome": 0.5370399892086772,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 61.96875,
+            "chrome_owned_job_seconds": 11.96875,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 61542.6327,
+            "chrome_workload_with_vsync_waits": 6764.339499990456,
+            "mini_ui_view_teardown": 287.4637,
+            "chrome_whole_browser_shutdown": 122.94309999560937
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.044753,
+            "LayoutDuration": 2.194946,
+            "RecalcStyleDuration": 1.0489709999999999,
+            "TaskDuration": 6.676173
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 10000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-10000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-default\\raw\\react-10000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1308.0999999940395,
+                "p95_nearest_rank_ms": 1345.3999999761581
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 37,
+                "p95_nearest_rank_ms": 73.5
+              },
+              "mini_ui_over_chrome_median": 35.35405405389296
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 227.5,
+                "p95_nearest_rank_ms": 238.5
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 6.9000000059604645,
+                "p95_nearest_rank_ms": 7.100000023841858
+              },
+              "mini_ui_over_chrome_median": 32.971014464272095
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 6173.300000011921,
+                "p95_nearest_rank_ms": 6224.199999988079
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 199.5,
+                "p95_nearest_rank_ms": 237
+              },
+              "mini_ui_over_chrome_median": 30.94385964918256
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 650.0999999940395,
+                "p95_nearest_rank_ms": 667.9000000059605
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 15,
+                "p95_nearest_rank_ms": 18.099999994039536
+              },
+              "mini_ui_over_chrome_median": 43.33999999960263
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 251.09999999403954,
+                "p95_nearest_rank_ms": 260.59999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 38.29999998211861,
+                "p95_nearest_rank_ms": 39.400000005960464
+              },
+              "mini_ui_over_chrome_median": 6.556135773140271
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1183.9000000059605,
+                "p95_nearest_rank_ms": 1215.7999999821186
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 34.70000001788139,
+                "p95_nearest_rank_ms": 40.599999994039536
+              },
+              "mini_ui_over_chrome_median": 34.118155602186754
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 181.2000000178814,
+                "p95_nearest_rank_ms": 186.09999999403954
+              },
+              "chrome_default": {
+                "sample_count": 7,
+                "median_ms": 38.69999998807907,
+                "p95_nearest_rank_ms": 43.70000001788139
+              },
+              "mini_ui_over_chrome_median": 4.6821705445399795
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 10010.199999988079,
+              "p95_nearest_rank_ms": 10072.799999982119
+            },
+            "chrome_default": {
+              "sample_count": 7,
+              "median_ms": 373.80000004172325,
+              "p95_nearest_rank_ms": 405.99999991059303
+            },
+            "mini_ui_over_chrome_median": 26.779561259686325
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 1637486592,
+            "chrome_whole_owned_job_bytes": 2162892800,
+            "mini_ui_over_chrome": 0.7570817157466149,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 149.578125,
+            "chrome_owned_job_seconds": 24.734375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 148243.1025,
+            "chrome_workload_with_vsync_waits": 14717.491400020663,
+            "mini_ui_view_teardown": 1210.3027,
+            "chrome_whole_browser_shutdown": 172.89429999073036
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.148993,
+            "LayoutDuration": 4.629622,
+            "RecalcStyleDuration": 2.155922,
+            "TaskDuration": 14.587465
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "enabled",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webnn": "disabled_off"
+          }
+        }
+      ]
+    },
+    {
+      "label": "chrome_software",
+      "chrome_metadata_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\run-metadata.json",
+      "chrome_executable_sha256": "de999bce6a1c954df71a8f15bf751b336172f55ac1a0325bb0580cbc2121268c",
+      "cases": [
+        {
+          "framework": "vue",
+          "rows": 100,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-100.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\vue-100.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 21.900000005960464,
+                "p95_nearest_rank_ms": 22.899999976158142
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.9000000059604645,
+                "p95_nearest_rank_ms": 1.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 24.333333178802775
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 4.5,
+                "p95_nearest_rank_ms": 6.199999988079071
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.30000001192092896,
+                "p95_nearest_rank_ms": 0.5
+              },
+              "mini_ui_over_chrome_median": 14.999999403953575
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 17.599999994039536,
+                "p95_nearest_rank_ms": 18.099999994039536
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1.0999999940395355,
+                "p95_nearest_rank_ms": 1.2000000178813934
+              },
+              "mini_ui_over_chrome_median": 16.00000008127906
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 38.29999998211861,
+                "p95_nearest_rank_ms": 39.80000001192093
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1.5999999940395355,
+                "p95_nearest_rank_ms": 1.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 23.937500077998266
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 8.599999994039536,
+                "p95_nearest_rank_ms": 9
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.9000000059604645,
+                "p95_nearest_rank_ms": 1.0999999940395355
+              },
+              "mini_ui_over_chrome_median": 9.555555485648874
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 39.30000001192093,
+                "p95_nearest_rank_ms": 40.5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1.5999999940395355,
+                "p95_nearest_rank_ms": 1.800000011920929
+              },
+              "mini_ui_over_chrome_median": 24.562500098953024
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.9000000059604645,
+                "p95_nearest_rank_ms": 4.199999988079071
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.5999999940395355,
+                "p95_nearest_rank_ms": 0.7999999821186066
+              },
+              "mini_ui_over_chrome_median": 6.500000074505807
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 134.99999997019768,
+              "p95_nearest_rank_ms": 137.40000000596046
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 7.0999999940395355,
+              "p95_nearest_rank_ms": 7.700000047683716
+            },
+            "mini_ui_over_chrome_median": 19.014084518807106
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 132816896,
+            "chrome_whole_owned_job_bytes": 309305344,
+            "mini_ui_over_chrome": 0.42940381915936116,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 2.171875,
+            "chrome_owned_job_seconds": 2.1875,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 2950.3864,
+            "chrome_workload_with_vsync_waits": 924.7731000068597,
+            "mini_ui_view_teardown": 54.525,
+            "chrome_whole_browser_shutdown": 71.8637999962084
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.0013319999999999999,
+            "LayoutDuration": 0.06724300000000001,
+            "RecalcStyleDuration": 0.036371,
+            "TaskDuration": 0.308033
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 1000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-1000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\vue-1000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 218.2999999821186,
+                "p95_nearest_rank_ms": 230.7999999821186
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 7.299999982118607,
+                "p95_nearest_rank_ms": 8
+              },
+              "mini_ui_over_chrome_median": 29.904109659841886
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 40.29999998211861,
+                "p95_nearest_rank_ms": 42.599999994039536
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1.9000000059604645,
+                "p95_nearest_rank_ms": 3
+              },
+              "mini_ui_over_chrome_median": 21.210526239838956
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 182.80000001192093,
+                "p95_nearest_rank_ms": 188.30000001192093
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 9.300000011920929,
+                "p95_nearest_rank_ms": 13.900000005960464
+              },
+              "mini_ui_over_chrome_median": 19.655913954581095
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 196.39999997615814,
+                "p95_nearest_rank_ms": 198.90000000596046
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 5.9000000059604645,
+                "p95_nearest_rank_ms": 6.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 33.28813555555006
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 48.70000001788139,
+                "p95_nearest_rank_ms": 49.70000001788139
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 4.800000011920929,
+                "p95_nearest_rank_ms": 5.799999982118607
+              },
+              "mini_ui_over_chrome_median": 10.145833311861175
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 223.59999999403954,
+                "p95_nearest_rank_ms": 237.30000001192093
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 7.600000023841858,
+                "p95_nearest_rank_ms": 8.200000017881393
+              },
+              "mini_ui_over_chrome_median": 29.421052538498287
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 22.799999982118607,
+                "p95_nearest_rank_ms": 24.30000001192093
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 3.800000011920929,
+                "p95_nearest_rank_ms": 4.5
+              },
+              "mini_ui_over_chrome_median": 5.999999976471851
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 935.4000000357628,
+              "p95_nearest_rank_ms": 957.4000000357628
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 40.700000047683716,
+              "p95_nearest_rank_ms": 46.50000002980232
+            },
+            "mini_ui_over_chrome_median": 22.982800956753255
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 359989248,
+            "chrome_whole_owned_job_bytes": 522723328,
+            "mini_ui_over_chrome": 0.6886802802112555,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 14.984375,
+            "chrome_owned_job_seconds": 4.5,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 15041.8892,
+            "chrome_workload_with_vsync_waits": 1720.955699973274,
+            "mini_ui_view_teardown": 156.9551,
+            "chrome_whole_browser_shutdown": 74.04969999333844
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.005187,
+            "LayoutDuration": 0.41985100000000003,
+            "RecalcStyleDuration": 0.22906100000000001,
+            "TaskDuration": 1.555169
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 5000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-5000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\vue-5000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1141.5,
+                "p95_nearest_rank_ms": 1167.9000000059605
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 43.30000001192093,
+                "p95_nearest_rank_ms": 50.69999998807907
+              },
+              "mini_ui_over_chrome_median": 26.362586597822943
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 201.80000001192093,
+                "p95_nearest_rank_ms": 206.09999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 9.900000005960464,
+                "p95_nearest_rank_ms": 13.5
+              },
+              "mini_ui_over_chrome_median": 20.38383837277008
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 964.5,
+                "p95_nearest_rank_ms": 972.1999999880791
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 51.69999998807907,
+                "p95_nearest_rank_ms": 58
+              },
+              "mini_ui_over_chrome_median": 18.655706000433142
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 936.4000000059605,
+                "p95_nearest_rank_ms": 955.5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 28.30000001192093,
+                "p95_nearest_rank_ms": 40.20000001788139
+              },
+              "mini_ui_over_chrome_median": 33.08833920888752
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 238.80000001192093,
+                "p95_nearest_rank_ms": 246.69999998807907
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 25.69999998807907,
+                "p95_nearest_rank_ms": 48.900000005960464
+              },
+              "mini_ui_over_chrome_median": 9.291828798548178
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1058.2999999821186,
+                "p95_nearest_rank_ms": 1290.800000011921
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 38,
+                "p95_nearest_rank_ms": 44.099999994039536
+              },
+              "mini_ui_over_chrome_median": 27.849999999529437
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 112.30000001192093,
+                "p95_nearest_rank_ms": 113.40000000596046
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 18.600000023841858,
+                "p95_nearest_rank_ms": 23.099999994039536
+              },
+              "mini_ui_over_chrome_median": 6.037634401503898
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 4673.300000041723,
+              "p95_nearest_rank_ms": 4888.0999999940395
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 227.2000000178814,
+              "p95_nearest_rank_ms": 238.1000000834465
+            },
+            "mini_ui_over_chrome_median": 20.56910211124084
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 1867542528,
+            "chrome_whole_owned_job_bytes": 1183576064,
+            "mini_ui_over_chrome": 1.577881291117425,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 76.578125,
+            "chrome_owned_job_seconds": 14.34375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 75678.4883,
+            "chrome_workload_with_vsync_waits": 7783.091899997089,
+            "mini_ui_view_teardown": 926.7637,
+            "chrome_whole_browser_shutdown": 101.53130002436228
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.130157,
+            "LayoutDuration": 2.1792949999999998,
+            "RecalcStyleDuration": 1.111977,
+            "TaskDuration": 7.702611
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "vue",
+          "rows": 10000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\vue-10000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\vue-10000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2305.5,
+                "p95_nearest_rank_ms": 2453.800000011921
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 99.5,
+                "p95_nearest_rank_ms": 172.90000000596046
+              },
+              "mini_ui_over_chrome_median": 23.170854271356784
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 414.59999999403954,
+                "p95_nearest_rank_ms": 462.5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 24.099999994039536,
+                "p95_nearest_rank_ms": 28.19999998807907
+              },
+              "mini_ui_over_chrome_median": 17.203319506082128
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2057.300000011921,
+                "p95_nearest_rank_ms": 2211.7999999821186
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 117.7999999821186,
+                "p95_nearest_rank_ms": 236.2999999821186
+              },
+              "mini_ui_over_chrome_median": 17.464346352497518
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1918.3999999761581,
+                "p95_nearest_rank_ms": 2191.7999999821186
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 67,
+                "p95_nearest_rank_ms": 100.09999999403954
+              },
+              "mini_ui_over_chrome_median": 28.632835820539675
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 479.39999997615814,
+                "p95_nearest_rank_ms": 496.09999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 61.400000005960464,
+                "p95_nearest_rank_ms": 72.90000000596046
+              },
+              "mini_ui_over_chrome_median": 7.807817588430292
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 2239.699999988079,
+                "p95_nearest_rank_ms": 2432.0999999940395
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 91.5,
+                "p95_nearest_rank_ms": 169.5
+              },
+              "mini_ui_over_chrome_median": 24.477595628285016
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 222.80000001192093,
+                "p95_nearest_rank_ms": 227.2000000178814
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 44.70000001788139,
+                "p95_nearest_rank_ms": 51.400000005960464
+              },
+              "mini_ui_over_chrome_median": 4.984340043015526
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 9829.200000017881,
+              "p95_nearest_rank_ms": 10083.999999970198
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 537.0,
+              "p95_nearest_rank_ms": 631.5999999642372
+            },
+            "mini_ui_over_chrome_median": 18.30391061455844
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 4530503680,
+            "chrome_whole_owned_job_bytes": 1780428800,
+            "mini_ui_over_chrome": 2.544613791913499,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 160.34375,
+            "chrome_owned_job_seconds": 29.984375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 157348.8571,
+            "chrome_workload_with_vsync_waits": 17048.385700007202,
+            "mini_ui_view_teardown": 3476.7934,
+            "chrome_whole_browser_shutdown": 153.14379998017102
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.16350299999999998,
+            "LayoutDuration": 5.003468,
+            "RecalcStyleDuration": 2.476358,
+            "TaskDuration": 16.913117
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 100,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-100.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\react-100.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 14.800000011920929,
+                "p95_nearest_rank_ms": 16.400000005960464
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.5999999940395355,
+                "p95_nearest_rank_ms": 1.2999999821186066
+              },
+              "mini_ui_over_chrome_median": 24.666666931576202
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.199999988079071,
+                "p95_nearest_rank_ms": 3.800000011920929
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.19999998807907104,
+                "p95_nearest_rank_ms": 0.30000001192092896
+              },
+              "mini_ui_over_chrome_median": 16.000000894069725
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 9.799999982118607,
+                "p95_nearest_rank_ms": 12.299999982118607
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.6000000238418579,
+                "p95_nearest_rank_ms": 0.699999988079071
+              },
+              "mini_ui_over_chrome_median": 16.333332654502684
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 21.299999982118607,
+                "p95_nearest_rank_ms": 21.900000005960464
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.7999999821186066,
+                "p95_nearest_rank_ms": 0.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 26.625000572763398
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 4.9000000059604645,
+                "p95_nearest_rank_ms": 5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.800000011920929,
+                "p95_nearest_rank_ms": 1.300000011920929
+              },
+              "mini_ui_over_chrome_median": 6.124999916180969
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 26.200000017881393,
+                "p95_nearest_rank_ms": 28.700000017881393
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1,
+                "p95_nearest_rank_ms": 1.5
+              },
+              "mini_ui_over_chrome_median": 26.200000017881393
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 3.800000011920929,
+                "p95_nearest_rank_ms": 6.899999976158142
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.699999988079071,
+                "p95_nearest_rank_ms": 0.800000011920929
+              },
+              "mini_ui_over_chrome_median": 5.42857153804935
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 84.7999999821186,
+              "p95_nearest_rank_ms": 88.80000001192093
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 4.800000041723251,
+              "p95_nearest_rank_ms": 5.799999952316284
+            },
+            "mini_ui_over_chrome_median": 17.666666509376633
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 98099200,
+            "chrome_whole_owned_job_bytes": 306040832,
+            "mini_ui_over_chrome": 0.3205428483477656,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 1.59375,
+            "chrome_owned_job_seconds": 1.875,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 2596.6293,
+            "chrome_workload_with_vsync_waits": 876.1366999824531,
+            "mini_ui_view_teardown": 26.3605,
+            "chrome_whole_browser_shutdown": 74.18130000587553
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.001238,
+            "LayoutDuration": 0.068836,
+            "RecalcStyleDuration": 0.037404,
+            "TaskDuration": 0.2854
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 1000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-1000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\react-1000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 127.60000002384186,
+                "p95_nearest_rank_ms": 142.5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 3.7000000178813934,
+                "p95_nearest_rank_ms": 7.4000000059604645
+              },
+              "mini_ui_over_chrome_median": 34.48648632626363
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 22.19999998807907,
+                "p95_nearest_rank_ms": 23.599999994039536
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 0.7000000178813934,
+                "p95_nearest_rank_ms": 1.199999988079071
+              },
+              "mini_ui_over_chrome_median": 31.714284887119238
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 129.60000002384186,
+                "p95_nearest_rank_ms": 132.09999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 6,
+                "p95_nearest_rank_ms": 9
+              },
+              "mini_ui_over_chrome_median": 21.600000003973644
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 75.69999998807907,
+                "p95_nearest_rank_ms": 78.19999998807907
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 1.9000000059604645,
+                "p95_nearest_rank_ms": 2
+              },
+              "mini_ui_over_chrome_median": 39.842105131895586
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 27.100000023841858,
+                "p95_nearest_rank_ms": 29.099999994039536
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 4.199999988079071,
+                "p95_nearest_rank_ms": 5.800000011920929
+              },
+              "mini_ui_over_chrome_median": 6.452380976371484
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 129.69999998807907,
+                "p95_nearest_rank_ms": 146.40000000596046
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 3.5999999940395355,
+                "p95_nearest_rank_ms": 4.199999988079071
+              },
+              "mini_ui_over_chrome_median": 36.027777834117046
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 19.400000005960464,
+                "p95_nearest_rank_ms": 31
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 4,
+                "p95_nearest_rank_ms": 4.700000017881393
+              },
+              "mini_ui_over_chrome_median": 4.850000001490116
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 539.6999999880791,
+              "p95_nearest_rank_ms": 553.1999999880791
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 25.30000001192093,
+              "p95_nearest_rank_ms": 29.30000001192093
+            },
+            "mini_ui_over_chrome_median": 21.332015799754213
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 289660928,
+            "chrome_whole_owned_job_bytes": 395808768,
+            "mini_ui_over_chrome": 0.7318203926194985,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 9.71875,
+            "chrome_owned_job_seconds": 3.5625,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 10568.8919,
+            "chrome_workload_with_vsync_waits": 1542.961600003764,
+            "mini_ui_view_teardown": 114.9203,
+            "chrome_whole_browser_shutdown": 735.5847000144422
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.0016769999999999997,
+            "LayoutDuration": 0.405098,
+            "RecalcStyleDuration": 0.21733899999999998,
+            "TaskDuration": 1.364883
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 5000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-5000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\react-5000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 659.9000000059605,
+                "p95_nearest_rank_ms": 720.4000000059605
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 18.19999998807907,
+                "p95_nearest_rank_ms": 19.799999982118607
+              },
+              "mini_ui_over_chrome_median": 36.258241782318265
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 118,
+                "p95_nearest_rank_ms": 128.10000002384186
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 3.100000023841858,
+                "p95_nearest_rank_ms": 3.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 38.06451583628104
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1767.800000011921,
+                "p95_nearest_rank_ms": 1838.5999999940395
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 77.5,
+                "p95_nearest_rank_ms": 87.19999998807907
+              },
+              "mini_ui_over_chrome_median": 22.810322580798978
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 329.59999999403954,
+                "p95_nearest_rank_ms": 344.09999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 7.9000000059604645,
+                "p95_nearest_rank_ms": 9.400000005960464
+              },
+              "mini_ui_over_chrome_median": 41.72151895510885
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 125.69999998807907,
+                "p95_nearest_rank_ms": 132
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 21.200000017881393,
+                "p95_nearest_rank_ms": 22.400000005960464
+              },
+              "mini_ui_over_chrome_median": 5.929245277455467
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 616.7000000178814,
+                "p95_nearest_rank_ms": 646.8000000119209
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 18.099999994039536,
+                "p95_nearest_rank_ms": 30.299999982118607
+              },
+              "mini_ui_over_chrome_median": 34.07182321662792
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 89.90000000596046,
+                "p95_nearest_rank_ms": 96.7000000178814
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 18.80000001192093,
+                "p95_nearest_rank_ms": 29.599999994039536
+              },
+              "mini_ui_over_chrome_median": 4.781914890901893
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 3740.400000065565,
+              "p95_nearest_rank_ms": 3822.4000000059605
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 165.09999999403954,
+              "p95_nearest_rank_ms": 179.49999997019768
+            },
+            "mini_ui_over_chrome_median": 22.655360388858885
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 717520896,
+            "chrome_whole_owned_job_bytes": 1109573632,
+            "mini_ui_over_chrome": 0.646663615020008,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 61.96875,
+            "chrome_owned_job_seconds": 13.015625,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 61542.6327,
+            "chrome_workload_with_vsync_waits": 7168.849800014868,
+            "mini_ui_view_teardown": 287.4637,
+            "chrome_whole_browser_shutdown": 97.59580000536516
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.069624,
+            "LayoutDuration": 2.274524,
+            "RecalcStyleDuration": 1.0756999999999999,
+            "TaskDuration": 7.0977689999999996
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        },
+        {
+          "framework": "react",
+          "rows": 10000,
+          "mini_ui_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\raw\\react-10000.json",
+          "chrome_raw_file": "D:\\Project\\mini-electron\\out\\ui-field-chrome-software\\raw\\react-10000.json",
+          "operations": [
+            {
+              "operation": "mount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1308.0999999940395,
+                "p95_nearest_rank_ms": 1345.3999999761581
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 38.099999994039536,
+                "p95_nearest_rank_ms": 41.20000001788139
+              },
+              "mini_ui_over_chrome_median": 34.33333333854809
+            },
+            {
+              "operation": "update_selected",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 227.5,
+                "p95_nearest_rank_ms": 238.5
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 6.5999999940395355,
+                "p95_nearest_rank_ms": 7.9000000059604645
+              },
+              "mini_ui_over_chrome_median": 34.46969700082658
+            },
+            {
+              "operation": "keyed_reorder",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 6173.300000011921,
+                "p95_nearest_rank_ms": 6224.199999988079
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 231.80000001192093,
+                "p95_nearest_rank_ms": 327.69999998807907
+              },
+              "mini_ui_over_chrome_median": 26.632010352435042
+            },
+            {
+              "operation": "prepend",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 650.0999999940395,
+                "p95_nearest_rank_ms": 667.9000000059605
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 15.699999988079071,
+                "p95_nearest_rank_ms": 17.5
+              },
+              "mini_ui_over_chrome_median": 41.407643343162874
+            },
+            {
+              "operation": "filter",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 251.09999999403954,
+                "p95_nearest_rank_ms": 260.59999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 57.30000001192093,
+                "p95_nearest_rank_ms": 61.10000002384186
+              },
+              "mini_ui_over_chrome_median": 4.382198951863868
+            },
+            {
+              "operation": "restore",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 1183.9000000059605,
+                "p95_nearest_rank_ms": 1215.7999999821186
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 35.69999998807907,
+                "p95_nearest_rank_ms": 59
+              },
+              "mini_ui_over_chrome_median": 33.162464997234956
+            },
+            {
+              "operation": "unmount",
+              "mini_ui": {
+                "sample_count": 7,
+                "median_ms": 181.2000000178814,
+                "p95_nearest_rank_ms": 186.09999999403954
+              },
+              "chrome_software": {
+                "sample_count": 7,
+                "median_ms": 50.30000001192093,
+                "p95_nearest_rank_ms": 64.69999998807907
+              },
+              "mini_ui_over_chrome_median": 3.6023856853864338
+            }
+          ],
+          "iteration_js_commit_sum": {
+            "definition": "Per measured iteration, sum the seven aligned operation samples, then compute median/p95 over iterations; excludes shared validation and paint.",
+            "mini_ui": {
+              "sample_count": 7,
+              "median_ms": 10010.199999988079,
+              "p95_nearest_rank_ms": 10072.799999982119
+            },
+            "chrome_software": {
+              "sample_count": 7,
+              "median_ms": 439.9000000655651,
+              "p95_nearest_rank_ms": 525.7999999821186
+            },
+            "mini_ui_over_chrome_median": 22.75562627528098
+          },
+          "private_memory_after_populated_capture": {
+            "mini_ui_single_process_bytes": 1637486592,
+            "chrome_whole_owned_job_bytes": 1660735488,
+            "mini_ui_over_chrome": 0.986000843500973,
+            "chrome_snapshot_complete": true
+          },
+          "cpu_startup_through_capture": {
+            "mini_ui_single_process_seconds": 149.578125,
+            "chrome_owned_job_seconds": 26.359375,
+            "scope_note": "Mini-ui includes its C++ controller; Chrome job includes all browser descendants but not its Python controller. Neither includes teardown."
+          },
+          "separately_scoped_wall_ms": {
+            "mini_ui_workload": 148243.1025,
+            "chrome_workload_with_vsync_waits": 15440.791500004707,
+            "mini_ui_view_teardown": 1210.3027,
+            "chrome_whole_browser_shutdown": 145.89139999588951
+          },
+          "chrome_workload_performance_duration_deltas_seconds": {
+            "ScriptDuration": 0.11566,
+            "LayoutDuration": 4.818250000000001,
+            "RecalcStyleDuration": 2.209256,
+            "TaskDuration": 15.333182
+          },
+          "chrome_observed_timer_resolution_ms": 0.09999999403953552,
+          "chrome_gpu_features": {
+            "2d_canvas": "unavailable_software",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "disabled_software",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "disabled_off",
+            "rasterization": "disabled_software",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "disabled_software",
+            "video_encode": "disabled_software",
+            "webgl": "unavailable_software",
+            "webgpu": "unavailable_software",
+            "webnn": "unavailable_software"
+          }
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Same machine, viewport, pinned assets and operations do not imply the same Blink revision, JS engine, GC policy or rendering architecture.",
+    "The primary comparison is the exact same JS/DOM commit interval; it includes framework asynchronous commit scheduling, not just interpreter instruction time.",
+    "A ratio above one means mini-ui's median is slower/larger. A zero Chrome median has a null ratio, not infinity; Chrome timer quantization limits tiny intervals.",
+    "Seven samples in one process per cell are not seven independent cold processes. Nearest-rank p95 at N=7 equals the maximum; no confidence interval or production SLA is claimed.",
+    "Whole-workload wall contains Chrome vsync waits and different host scheduling. CPU offscreen throughput is not display FPS.",
+    "Private-memory snapshots include actual allocator/GC retention at that point; a large snapshot alone does not prove a leak.",
+    "Startup and teardown scopes differ and are retained separately, not presented as engine-only speedup ratios."
+  ]
+}

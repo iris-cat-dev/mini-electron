@@ -1,0 +1,518 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "engine": "installed Google Chrome",
+  "framework": "vue",
+  "rows": 5000,
+  "command": [
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "--user-data-dir=C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-chrome-leqfoxl3",
+    "--remote-debugging-port=0",
+    "--remote-debugging-address=127.0.0.1",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-sync",
+    "--disable-extensions",
+    "--disable-default-apps",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "--force-device-scale-factor=1",
+    "--window-size=1280,720",
+    "about:blank"
+  ],
+  "profile_directory": "C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-chrome-leqfoxl3",
+  "profile_is_private": true,
+  "browser_version": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/155.0.8059.85",
+    "revision": "@0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "jsVersion": "15.5.35.25"
+  },
+  "gpu_info": {
+    "gpu": {
+      "devices": [
+        {
+          "vendorId": 4318,
+          "deviceId": 8708,
+          "subSysId": 948048994,
+          "revision": 161,
+          "vendorString": "",
+          "deviceString": "NVIDIA GeForce RTX 3090",
+          "driverVendor": "NVIDIA",
+          "driverVersion": "32.0.15.7216"
+        },
+        {
+          "vendorId": 4318,
+          "deviceId": 8708,
+          "subSysId": 948048994,
+          "revision": 161,
+          "vendorString": "",
+          "deviceString": "NVIDIA GeForce RTX 3090",
+          "driverVendor": "",
+          "driverVersion": "32.0.15.7216"
+        },
+        {
+          "vendorId": 5140,
+          "deviceId": 140,
+          "subSysId": 0,
+          "revision": 0,
+          "vendorString": "",
+          "deviceString": "Microsoft Basic Render Driver",
+          "driverVendor": "",
+          "driverVersion": "10.0.19041.5794"
+        }
+      ],
+      "auxAttributes": {
+        "amdSwitchable": false,
+        "bgra8OverlaySupport": "SOFTWARE",
+        "canSupportThreadedTextureMailbox": false,
+        "directComposition": true,
+        "directMLFeatureLevel": "Not supported",
+        "directRenderingVersion": "",
+        "displayType": "ANGLE_D3D11",
+        "dx12FeatureLevel": "Not supported",
+        "glExtensions": "GL_AMD_performance_monitor GL_ANGLE_base_vertex_base_instance_shader_builtin GL_ANGLE_blob_cache GL_ANGLE_client_arrays GL_ANGLE_clip_cull_distance GL_ANGLE_copy_texture_3d GL_ANGLE_depth_texture GL_ANGLE_framebuffer_blit GL_ANGLE_framebuffer_multisample GL_ANGLE_get_serialized_context_string GL_ANGLE_get_tex_level_parameter GL_ANGLE_instanced_arrays GL_ANGLE_memory_size GL_ANGLE_multiview_multisample GL_ANGLE_pack_reverse_row_order GL_ANGLE_polygon_mode GL_ANGLE_program_binary_readiness_query GL_ANGLE_program_cache_control GL_ANGLE_provoking_vertex GL_ANGLE_renderability_validation GL_ANGLE_request_extension GL_ANGLE_robust_client_memory GL_ANGLE_shader_pixel_local_storage GL_ANGLE_shader_pixel_local_storage_coherent GL_ANGLE_stencil_texturing GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ANGLE_texture_multisample GL_ANGLE_texture_usage GL_ANGLE_translated_shader_source GL_APPLE_clip_distance GL_ARM_rgba8 GL_CHROMIUM_bind_generates_resource GL_CHROMIUM_bind_uniform_location GL_CHROMIUM_copy_compressed_texture GL_CHROMIUM_copy_texture GL_CHROMIUM_lose_context GL_EXT_EGL_image_external_wrap_modes GL_EXT_base_instance GL_EXT_blend_func_extended GL_EXT_blend_minmax GL_EXT_clip_control GL_EXT_clip_cull_distance GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_conservative_depth GL_EXT_debug_label GL_EXT_debug_marker GL_EXT_depth_clamp GL_EXT_discard_framebuffer GL_EXT_disjoint_timer_query GL_EXT_draw_buffers GL_EXT_draw_buffers_indexed GL_EXT_draw_elements_base_vertex GL_EXT_float_blend GL_EXT_frag_depth GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_EXT_occlusion_query_boolean GL_EXT_polygon_offset_clamp GL_EXT_read_format_bgra GL_EXT_render_snorm GL_EXT_robustness GL_EXT_sRGB GL_EXT_shader_texture_lod GL_EXT_texture_border_clamp GL_EXT_texture_compression_bptc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc_srgb GL_EXT_texture_filter_anisotropic GL_EXT_texture_format_BGRA8888 GL_EXT_texture_mirror_clamp_to_edge GL_EXT_texture_norm16 GL_EXT_texture_rg GL_EXT_texture_storage GL_EXT_texture_type_2_10_10_10_REV GL_EXT_unpack_subimage GL_KHR_debug GL_KHR_parallel_shader_compile GL_KHR_robustness GL_NV_EGL_stream_consumer_external GL_NV_fence GL_NV_framebuffer_blit GL_NV_pack_subimage GL_NV_pixel_buffer_object GL_NV_shader_noperspective_interpolation GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_EGL_image_external_essl3 GL_OES_depth24 GL_OES_depth32 GL_OES_draw_buffers_indexed GL_OES_draw_elements_base_vertex GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_get_program_binary GL_OES_mapbuffer GL_OES_packed_depth_stencil GL_OES_required_internalformat GL_OES_rgb8_rgba8 GL_OES_sample_variables GL_OES_shader_multisample_interpolation GL_OES_standard_derivatives GL_OES_surfaceless_context GL_OES_texture_border_clamp GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_texture_stencil8 GL_OES_texture_storage_multisample_2d_array GL_OES_vertex_array_object GL_OVR_multiview GL_OVR_multiview2 ",
+        "glImplementationParts": "(gl=egl-angle,angle=d3d11)",
+        "glRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.15.7216)",
+        "glResetNotificationStrategy": 33362,
+        "glVendor": "Google Inc. (NVIDIA)",
+        "glVersion": "OpenGL ES 3.0 (ANGLE 2.1.28854 git hash: cccf60cde32c)",
+        "glWsExtensions": "EGL_EXT_create_context_robustness EGL_ANGLE_d3d_share_handle_client_buffer EGL_ANGLE_d3d_texture_client_buffer EGL_ANGLE_surface_d3d_texture_2d_share_handle EGL_ANGLE_query_surface_pointer EGL_ANGLE_window_fixed_size EGL_ANGLE_keyed_mutex EGL_ANGLE_surface_orientation EGL_ANGLE_direct_composition EGL_NV_post_sub_buffer EGL_KHR_create_context EGL_KHR_image EGL_KHR_image_base EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_gl_renderbuffer_image EGL_KHR_get_all_proc_addresses EGL_KHR_stream EGL_KHR_stream_consumer_gltexture EGL_NV_stream_consumer_gltexture_yuv EGL_ANGLE_stream_producer_d3d_texture EGL_ANGLE_create_context_webgl_compatibility EGL_CHROMIUM_create_context_bind_generates_resource EGL_CHROMIUM_sync_control EGL_EXT_pixel_format_float EGL_KHR_surfaceless_context EGL_ANGLE_display_texture_share_group EGL_ANGLE_display_semaphore_share_group EGL_ANGLE_create_context_client_arrays EGL_ANGLE_program_cache_control EGL_ANGLE_robust_resource_initialization EGL_ANGLE_create_context_extensions_enabled EGL_ANDROID_blob_cache EGL_ANDROID_recordable EGL_ANGLE_image_d3d11_texture EGL_ANGLE_create_context_backwards_compatible EGL_KHR_no_config_context EGL_KHR_create_context_no_error EGL_KHR_reusable_sync EGL_ANGLE_memory_usage_report ",
+        "glWsVendor": "Google Inc. (NVIDIA)",
+        "glWsVersion": "1.5 (ANGLE 2.1.28854 git hash: cccf60cde32c)",
+        "inProcessGpu": false,
+        "initializationTime": 0.138281,
+        "isAsan": false,
+        "isClangCoverage": false,
+        "jpegDecodeAcceleratorSupported": false,
+        "maxMsaaSamples": "8",
+        "nv12OverlaySupport": "SOFTWARE",
+        "optimus": false,
+        "p010OverlaySupport": "SOFTWARE",
+        "passthroughCmdDecoder": true,
+        "pixelShaderVersion": "5.0",
+        "processCrashCount": 0,
+        "rgb10a2OverlaySupport": "SOFTWARE",
+        "sandboxed": true,
+        "skiaBackendType": "GaneshGL",
+        "subpixelFontRendering": true,
+        "supportsD3dSharedImages": false,
+        "supportsDirectML": false,
+        "supportsDx12": false,
+        "supportsOverlays": true,
+        "supportsVulkan": false,
+        "targetCpuBits": 64,
+        "vertexShaderVersion": "5.0",
+        "visibilityCallbackCallCount": 0,
+        "vulkanVersion": "Not supported",
+        "yuy2OverlaySupport": "SOFTWARE"
+      },
+      "featureStatus": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      },
+      "driverBugWorkarounds": [
+        "disable_d3d11_vp9_ksvc_decoding",
+        "disable_d3d12_av1_encoding",
+        "disable_d3d12_h264_encoding",
+        "disable_d3d12_video_encoder",
+        "disable_dcomp_texture",
+        "disable_nv12_upload",
+        "enable_webgl_timer_query_extensions",
+        "exit_on_context_lost",
+        "unpack_overlapping_rows_separately_unpack_buffer",
+        "disabled_extension_GL_KHR_blend_equation_advanced",
+        "disabled_extension_GL_KHR_blend_equation_advanced_coherent"
+      ],
+      "videoDecoding": [],
+      "videoEncoding": []
+    },
+    "modelName": "",
+    "modelVersion": "",
+    "commandLine": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --user-data-dir=\"C:\\Users\\11297\\AppData\\Local\\Temp\\mini-ui-chrome-leqfoxl3\" --remote-debugging-port=0 --remote-debugging-address=127.0.0.1 --no-first-run --no-default-browser-check --disable-background-networking --disable-component-update --disable-sync --disable-extensions --disable-default-apps --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --force-device-scale-factor=1 --window-size=1280,720 --flag-switches-begin --flag-switches-end about:blank"
+  },
+  "cold_startup_wall_ms": {
+    "browser_launch_to_protocol_ready": 334.6677999943495,
+    "document_navigation_to_protocol_ready": 22.08019999670796
+  },
+  "page_environment": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "inner_width": 1280,
+    "inner_height": 720,
+    "device_pixel_ratio": 1,
+    "cross_origin_isolated": false,
+    "secure_context": true,
+    "url": "file:///D:/Project/mini-electron/benchmarks/ui/assets/vue.html",
+    "minimum_observed_positive_performance_now_delta_ms": 0.09999999403953552
+  },
+  "metrics_before_workload": {
+    "Timestamp": 135899.218854,
+    "AudioHandlers": 0,
+    "AudioWorkletProcessors": 0,
+    "Documents": 4,
+    "Frames": 4,
+    "JSEventListeners": 0,
+    "LayoutObjects": 11,
+    "MediaKeySessions": 0,
+    "MediaKeys": 0,
+    "Nodes": 44,
+    "Resources": 4,
+    "ContextLifecycleStateObservers": 9,
+    "V8PerContextDatas": 2,
+    "WorkerGlobalScopes": 0,
+    "UACSSResources": 0,
+    "RTCPeerConnections": 0,
+    "ResourceFetchers": 4,
+    "AdSubframes": 0,
+    "DetachedScriptStates": 1,
+    "ArrayBufferContents": 0,
+    "LayoutCount": 1,
+    "RecalcStyleCount": 2,
+    "LayoutDuration": 0.002705,
+    "RecalcStyleDuration": 0.000236,
+    "DevToolsCommandDuration": 0.001691,
+    "ScriptDuration": 0.002363,
+    "V8CompileDuration": 4.4e-05,
+    "TaskDuration": 0.010893,
+    "TaskOtherDuration": 0.003854,
+    "ThreadTime": 0.010621,
+    "ProcessTime": 0.053005,
+    "JSHeapUsedSize": 1266920,
+    "JSHeapTotalSize": 2621440,
+    "FirstMeaningfulPaint": 0,
+    "DomContentLoaded": 135899.21298,
+    "NavigationStart": 135899.196984
+  },
+  "job_before_workload": {
+    "source": "QueryInformationJobObject; includes exited job processes",
+    "kernel_100ns": 7968750,
+    "user_100ns": 5937500,
+    "total_cpu_seconds": 1.390625,
+    "total_processes": 11,
+    "active_processes": 10,
+    "peak_job_private_commit_bytes": 290021376
+  },
+  "workload_wall_ms": 7573.336900008144,
+  "metrics_after_workload": {
+    "Timestamp": 135906.797313,
+    "AudioHandlers": 0,
+    "AudioWorkletProcessors": 0,
+    "Documents": 1,
+    "Frames": 1,
+    "JSEventListeners": 32086,
+    "LayoutObjects": 400275,
+    "MediaKeySessions": 0,
+    "MediaKeys": 0,
+    "Nodes": 415287,
+    "Resources": 4,
+    "ContextLifecycleStateObservers": 4,
+    "V8PerContextDatas": 1,
+    "WorkerGlobalScopes": 0,
+    "UACSSResources": 0,
+    "RTCPeerConnections": 0,
+    "ResourceFetchers": 1,
+    "AdSubframes": 0,
+    "DetachedScriptStates": 0,
+    "ArrayBufferContents": 0,
+    "LayoutCount": 65,
+    "RecalcStyleCount": 57,
+    "LayoutDuration": 2.149803,
+    "RecalcStyleDuration": 1.078669,
+    "DevToolsCommandDuration": 0.003133,
+    "ScriptDuration": 0.113391,
+    "V8CompileDuration": 4.4e-05,
+    "TaskDuration": 7.502602,
+    "TaskOtherDuration": 4.157562,
+    "ThreadTime": 7.45423,
+    "ProcessTime": 10.26707,
+    "JSHeapUsedSize": 102561264,
+    "JSHeapTotalSize": 185085952,
+    "FirstMeaningfulPaint": 0,
+    "DomContentLoaded": 135899.21298,
+    "NavigationStart": 135899.196984
+  },
+  "job_after_workload": {
+    "source": "QueryInformationJobObject; includes exited job processes",
+    "kernel_100ns": 20000000,
+    "user_100ns": 106875000,
+    "total_cpu_seconds": 12.6875,
+    "total_processes": 14,
+    "active_processes": 10,
+    "peak_job_private_commit_bytes": 1774178304
+  },
+  "application_result": {
+    "schema_version": 1,
+    "workload_version": 1,
+    "framework": {
+      "name": "vue",
+      "version": "3.5.13",
+      "renderer": "vue-dom",
+      "distribution": "production global"
+    },
+    "config": {
+      "rows": 5000,
+      "warmups": 2,
+      "iterations": 7,
+      "prepend_rows": 100,
+      "selected_stride": 10,
+      "filter_divisor": 10,
+      "final_capture_state": "mounted full row count with every tenth row selected"
+    },
+    "operation_js_commit_ms": {
+      "mount": [
+        40.400000005960464,
+        36.099999994039536,
+        41.20000001788139,
+        32.900000005960464,
+        45.400000005960464,
+        33.19999998807907,
+        41.30000001192093
+      ],
+      "update_selected": [
+        9.200000017881393,
+        17.700000017881393,
+        7.899999976158142,
+        16.5,
+        8.900000005960464,
+        17.19999998807907,
+        10
+      ],
+      "keyed_reorder": [
+        48,
+        47.70000001788139,
+        54.70000001788139,
+        46.19999998807907,
+        64.30000001192093,
+        47,
+        116.39999997615814
+      ],
+      "prepend": [
+        27,
+        28.30000001192093,
+        42.599999994039536,
+        25.700000017881393,
+        41.79999998211861,
+        27.299999982118607,
+        44.099999994039536
+      ],
+      "filter": [
+        22.299999982118607,
+        29.200000017881393,
+        23.80000001192093,
+        29.299999982118607,
+        28,
+        30.299999982118607,
+        21.599999994039536
+      ],
+      "restore": [
+        33.79999998211861,
+        40.20000001788139,
+        33,
+        33.39999997615814,
+        33.900000005960464,
+        33.599999994039536,
+        40
+      ],
+      "unmount": [
+        20.600000023841858,
+        18.80000001192093,
+        18.399999976158142,
+        18,
+        18,
+        18.299999982118607,
+        18.799999982118607
+      ]
+    },
+    "correctness_assertions": 64,
+    "capture_verification_assertions": 1,
+    "assertion_failures": []
+  },
+  "capture_png": "D:\\Project\\mini-electron\\out\\ui-map-chrome-default\\captures\\vue-5000.png",
+  "metrics_after_capture": {
+    "Timestamp": 135907.072867,
+    "AudioHandlers": 0,
+    "AudioWorkletProcessors": 0,
+    "Documents": 1,
+    "Frames": 1,
+    "JSEventListeners": 24908,
+    "LayoutObjects": 181810,
+    "MediaKeySessions": 0,
+    "MediaKeys": 0,
+    "Nodes": 303409,
+    "Resources": 4,
+    "ContextLifecycleStateObservers": 5,
+    "V8PerContextDatas": 1,
+    "WorkerGlobalScopes": 0,
+    "UACSSResources": 0,
+    "RTCPeerConnections": 0,
+    "ResourceFetchers": 1,
+    "AdSubframes": 0,
+    "DetachedScriptStates": 0,
+    "ArrayBufferContents": 0,
+    "LayoutCount": 67,
+    "RecalcStyleCount": 59,
+    "LayoutDuration": 2.228745,
+    "RecalcStyleDuration": 1.108654,
+    "DevToolsCommandDuration": 0.055256,
+    "ScriptDuration": 0.113419,
+    "V8CompileDuration": 4.4e-05,
+    "TaskDuration": 7.749249,
+    "TaskOtherDuration": 4.243131,
+    "ThreadTime": 7.696482,
+    "ProcessTime": 10.564251,
+    "JSHeapUsedSize": 122817160,
+    "JSHeapTotalSize": 195047424,
+    "FirstMeaningfulPaint": 0,
+    "DomContentLoaded": 135899.21298,
+    "NavigationStart": 135899.196984
+  },
+  "job_after_capture": {
+    "source": "QueryInformationJobObject; includes exited job processes",
+    "kernel_100ns": 20312500,
+    "user_100ns": 109218750,
+    "total_cpu_seconds": 12.953125,
+    "total_processes": 14,
+    "active_processes": 10,
+    "peak_job_private_commit_bytes": 1774178304
+  },
+  "process_memory_after_capture": {
+    "source": "GetProcessMemoryInfo over actual owned-job PID list",
+    "processes": [
+      {
+        "pid": 31728,
+        "current_private_bytes": 68907008,
+        "current_working_set_bytes": 161923072
+      },
+      {
+        "pid": 26376,
+        "current_private_bytes": 7577600,
+        "current_working_set_bytes": 10592256
+      },
+      {
+        "pid": 26656,
+        "current_private_bytes": 131227648,
+        "current_working_set_bytes": 108437504
+      },
+      {
+        "pid": 28188,
+        "current_private_bytes": 17473536,
+        "current_working_set_bytes": 39354368
+      },
+      {
+        "pid": 41088,
+        "current_private_bytes": 8142848,
+        "current_working_set_bytes": 17846272
+      },
+      {
+        "pid": 27772,
+        "current_private_bytes": 44965888,
+        "current_working_set_bytes": 84783104
+      },
+      {
+        "pid": 37916,
+        "current_private_bytes": 1306800128,
+        "current_working_set_bytes": 1346719744
+      },
+      {
+        "pid": 40804,
+        "current_private_bytes": 20594688,
+        "current_working_set_bytes": 32747520
+      },
+      {
+        "pid": 17144,
+        "current_private_bytes": 17817600,
+        "current_working_set_bytes": 44179456
+      },
+      {
+        "pid": 6296,
+        "current_private_bytes": 20340736,
+        "current_working_set_bytes": 40730624
+      }
+    ],
+    "unavailable": [],
+    "complete_snapshot": true,
+    "current_private_bytes_sum": 1643847680,
+    "current_working_set_bytes_sum": 1887313920,
+    "working_set_note": "Summed process working sets double-count shared pages; not unique physical RSS."
+  },
+  "reported_processes": [
+    {
+      "type": "browser",
+      "id": 31728,
+      "cpuTime": 1.212301
+    },
+    {
+      "type": "renderer",
+      "id": 17144,
+      "cpuTime": 0.031967
+    },
+    {
+      "type": "renderer",
+      "id": 40804,
+      "cpuTime": 0.031308
+    },
+    {
+      "type": "renderer",
+      "id": 37916,
+      "cpuTime": 10.564342
+    },
+    {
+      "type": "renderer",
+      "id": 6296,
+      "cpuTime": 0.028129
+    },
+    {
+      "type": "renderer",
+      "id": 27772,
+      "cpuTime": 0.21896
+    },
+    {
+      "type": "GPU",
+      "id": 26656,
+      "cpuTime": 0.985434
+    },
+    {
+      "type": "network.mojom.NetworkService",
+      "id": 28188,
+      "cpuTime": 0.101799
+    },
+    {
+      "type": "storage.mojom.StorageService",
+      "id": 41088,
+      "cpuTime": 0.019846
+    }
+  ],
+  "uncaught_page_exceptions": [],
+  "normal_browser_exit_code": 0,
+  "browser_shutdown_wall_ms": 139.79630000540055,
+  "job_after_browser_exit": {
+    "source": "QueryInformationJobObject; includes exited job processes",
+    "kernel_100ns": 22500000,
+    "user_100ns": 109375000,
+    "total_cpu_seconds": 13.1875,
+    "total_processes": 14,
+    "active_processes": 1,
+    "peak_job_private_commit_bytes": 1774178304
+  },
+  "owned_job_cleanup": {
+    "remaining_owned_processes_terminated": 1
+  },
+  "profile_removed": true,
+  "full_control_wall_ms": 8371.480499976315
+}

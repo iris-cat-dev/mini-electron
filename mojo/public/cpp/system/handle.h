@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -68,111 +68,83 @@ namespace mojo {
 
 // Scoper for the actual handle types defined further below. It's move-only,
 // like the C++11 |unique_ptr|.
-template <class HandleType> class ScopedHandleBase {
-public:
-    using RawHandleType = HandleType;
+template <class HandleType>
+class ScopedHandleBase {
+ public:
+  using RawHandleType = HandleType;
 
-    ScopedHandleBase()
-    {
-    }
-    explicit ScopedHandleBase(HandleType handle)
-        : handle_(handle)
-    {
-    }
+  ScopedHandleBase() {}
+  explicit ScopedHandleBase(HandleType handle) : handle_(handle) {}
 
-    ScopedHandleBase(const ScopedHandleBase&) = delete;
-    ScopedHandleBase& operator=(const ScopedHandleBase&) = delete;
+  ScopedHandleBase(const ScopedHandleBase&) = delete;
+  ScopedHandleBase& operator=(const ScopedHandleBase&) = delete;
 
-    ~ScopedHandleBase()
-    {
-        CloseIfNecessary();
-    }
+  ~ScopedHandleBase() { CloseIfNecessary(); }
 
-    template <class CompatibleHandleType>
-    explicit ScopedHandleBase(ScopedHandleBase<CompatibleHandleType> other)
-        : handle_(other.release())
-    {
-    }
+  template <class CompatibleHandleType>
+  explicit ScopedHandleBase(ScopedHandleBase<CompatibleHandleType> other)
+      : handle_(other.release()) {}
 
-    // Move-only constructor and operator=.
-    ScopedHandleBase(ScopedHandleBase&& other) noexcept
-        : handle_(other.release())
-    {
+  // Move-only constructor and operator=.
+  ScopedHandleBase(ScopedHandleBase&& other) noexcept
+      : handle_(other.release()) {}
+  ScopedHandleBase& operator=(ScopedHandleBase&& other) noexcept {
+    if (&other != this) {
+      CloseIfNecessary();
+      handle_ = other.release();
     }
-    ScopedHandleBase& operator=(ScopedHandleBase&& other) noexcept
-    {
-        if (&other != this) {
-            CloseIfNecessary();
-            handle_ = other.release();
-        }
-        return *this;
-    }
+    return *this;
+  }
 
-    const HandleType& get() const
-    {
-        return handle_;
-    }
-    const HandleType* operator->() const
-    {
-        DCHECK(handle_.is_valid());
-        return &handle_;
-    }
+  const HandleType& get() const { return handle_; }
+  const HandleType* operator->() const {
+    DCHECK(handle_.is_valid());
+    return &handle_;
+  }
 
-    template <typename PassedHandleType> static ScopedHandleBase<HandleType> From(ScopedHandleBase<PassedHandleType> other)
-    {
-        static_assert(sizeof(static_cast<PassedHandleType*>(static_cast<HandleType*>(0))), "HandleType is not a subtype of PassedHandleType");
-        return ScopedHandleBase<HandleType>(static_cast<HandleType>(other.release().value()));
-    }
+  template <typename PassedHandleType>
+  static ScopedHandleBase<HandleType> From(
+      ScopedHandleBase<PassedHandleType> other) {
+    static_assert(
+        sizeof(static_cast<PassedHandleType*>(static_cast<HandleType*>(0))),
+        "HandleType is not a subtype of PassedHandleType");
+    return ScopedHandleBase<HandleType>(
+        static_cast<HandleType>(other.release().value()));
+  }
 
-    void swap(ScopedHandleBase& other)
-    {
-        handle_.swap(other.handle_);
-    }
+  void swap(ScopedHandleBase& other) { handle_.swap(other.handle_); }
 
-    [[nodiscard]] HandleType release()
-    {
-        HandleType rv;
-        rv.swap(handle_);
-        return rv;
-    }
+  [[nodiscard]] HandleType release() {
+    HandleType rv;
+    rv.swap(handle_);
+    return rv;
+  }
 
-    void reset(HandleType handle = HandleType())
-    {
-        CloseIfNecessary();
-        handle_ = handle;
-    }
+  void reset(HandleType handle = HandleType()) {
+    CloseIfNecessary();
+    handle_ = handle;
+  }
 
-    bool is_valid() const
-    {
-        return handle_.is_valid();
-    }
+  bool is_valid() const { return handle_.is_valid(); }
 
-    explicit operator bool() const
-    {
-        return handle_.is_valid();
-    }
+  explicit operator bool() const { return handle_.is_valid(); }
 
-    bool operator==(const ScopedHandleBase& other) const
-    {
-        return handle_.value() == other.get().value();
-    }
+  bool operator==(const ScopedHandleBase& other) const {
+    return handle_.value() == other.get().value();
+  }
 
-    // Returns true if the interface hasn't associated with a message pipe.
-    bool pending_association() const; // weolar: for ScopedInterfaceEndpointHandle
+ private:
+  void CloseIfNecessary() {
+    if (handle_.is_valid())
+      handle_.Close();
+  }
 
-private:
-    void CloseIfNecessary()
-    {
-        if (handle_.is_valid())
-            handle_.Close();
-    }
-
-    HandleType handle_;
+  HandleType handle_;
 };
 
-template <typename HandleType> inline ScopedHandleBase<HandleType> MakeScopedHandle(HandleType handle)
-{
-    return ScopedHandleBase<HandleType>(handle);
+template <typename HandleType>
+inline ScopedHandleBase<HandleType> MakeScopedHandle(HandleType handle) {
+  return ScopedHandleBase<HandleType>(handle);
 }
 
 // Handle ----------------------------------------------------------------------
@@ -181,68 +153,43 @@ const MojoHandle kInvalidHandleValue = MOJO_HANDLE_INVALID;
 
 // Wrapper base class for |MojoHandle|.
 class Handle {
-public:
-    Handle()
-        : value_(kInvalidHandleValue)
-    {
-    }
-    explicit Handle(MojoHandle value)
-        : value_(value)
-    {
-    }
-    ~Handle()
-    {
-    }
+ public:
+  Handle() : value_(kInvalidHandleValue) {}
+  explicit Handle(MojoHandle value) : value_(value) {}
+  ~Handle() {}
 
-    void swap(Handle& other)
-    {
-        MojoHandle temp = value_;
-        value_ = other.value_;
-        other.value_ = temp;
-    }
+  void swap(Handle& other) {
+    MojoHandle temp = value_;
+    value_ = other.value_;
+    other.value_ = temp;
+  }
 
-    bool is_valid() const
-    {
-        return value_ != kInvalidHandleValue;
-    }
+  bool is_valid() const { return value_ != kInvalidHandleValue; }
 
-    explicit operator bool() const
-    {
-        return value_ != kInvalidHandleValue;
-    }
+  explicit operator bool() const { return value_ != kInvalidHandleValue; }
 
-    const MojoHandle& value() const
-    {
-        return value_;
-    }
-    MojoHandle* mutable_value()
-    {
-        return &value_;
-    }
-    void set_value(MojoHandle value)
-    {
-        value_ = value;
-    }
+  const MojoHandle& value() const { return value_; }
+  MojoHandle* mutable_value() { return &value_; }
+  void set_value(MojoHandle value) { value_ = value; }
 
-    void Close()
-    {
-        DCHECK(is_valid());
-        [[maybe_unused]] MojoResult result = MojoClose(value_);
-        DCHECK_EQ(MOJO_RESULT_OK, result);
-    }
+  void Close() {
+    DCHECK(is_valid());
+    [[maybe_unused]] MojoResult result = MojoClose(value_);
+    DCHECK_EQ(MOJO_RESULT_OK, result);
+  }
 
-    HandleSignalsState QuerySignalsState() const
-    {
-        HandleSignalsState signals_state;
-        MojoResult result = MojoQueryHandleSignalsState(value_, static_cast<MojoHandleSignalsState*>(&signals_state));
-        DCHECK_EQ(MOJO_RESULT_OK, result);
-        return signals_state;
-    }
+  HandleSignalsState QuerySignalsState() const {
+    HandleSignalsState signals_state;
+    [[maybe_unused]] MojoResult result = MojoQueryHandleSignalsState(
+        value_, static_cast<MojoHandleSignalsState*>(&signals_state));
+    DCHECK_EQ(MOJO_RESULT_OK, result);
+    return signals_state;
+  }
 
-private:
-    MojoHandle value_;
+ private:
+  MojoHandle value_;
 
-    // Copying and assignment allowed.
+  // Copying and assignment allowed.
 };
 
 // Should have zero overhead.
@@ -250,33 +197,31 @@ static_assert(sizeof(Handle) == sizeof(MojoHandle), "Bad size for C++ Handle");
 
 // The scoper should also impose no more overhead.
 typedef ScopedHandleBase<Handle> ScopedHandle;
-static_assert(sizeof(ScopedHandle) == sizeof(Handle), "Bad size for C++ ScopedHandle");
+static_assert(sizeof(ScopedHandle) == sizeof(Handle),
+              "Bad size for C++ ScopedHandle");
 
 // |Close()| takes ownership of the handle, since it'll invalidate it.
 // Note: There's nothing to do, since the argument will be destroyed when it
 // goes out of scope.
-template <class HandleType> inline void Close(ScopedHandleBase<HandleType> /*handle*/)
-{
+template <class HandleType>
+inline void Close(ScopedHandleBase<HandleType> /*handle*/) {
 }
 
 // Most users should typically use |Close()| (above) instead.
-inline MojoResult CloseRaw(Handle handle)
-{
-    return MojoClose(handle.value());
+inline MojoResult CloseRaw(Handle handle) {
+  return MojoClose(handle.value());
 }
 
 // Strict weak ordering, so that |Handle|s can be used as keys in |std::map|s,
-inline bool operator<(const Handle a, const Handle b)
-{
-    return a.value() < b.value();
+inline bool operator<(const Handle a, const Handle b) {
+  return a.value() < b.value();
 }
 
 // Comparison, so that |Handle|s can be used as keys in hash maps.
-inline bool operator==(const Handle a, const Handle b)
-{
-    return a.value() == b.value();
+inline bool operator==(const Handle a, const Handle b) {
+  return a.value() == b.value();
 }
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_HANDLE_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_HANDLE_H_

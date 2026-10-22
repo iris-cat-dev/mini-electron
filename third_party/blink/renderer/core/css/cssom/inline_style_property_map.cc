@@ -32,7 +32,9 @@ void InlineStylePropertyMap::SetProperty(CSSPropertyID property_id, const CSSVal
 {
     DCHECK_NE(property_id, CSSPropertyID::kVariable);
     owner_element_->SetInlineStyleProperty(property_id, value);
+#if !defined(MINI_UI_QUICKJS)
     owner_element_->NotifyInlineStyleMutation();
+#endif
 }
 
 bool InlineStylePropertyMap::SetShorthandProperty(CSSPropertyID property_id, const String& value, SecureContextMode secure_context_mode)
@@ -49,7 +51,9 @@ void InlineStylePropertyMap::SetCustomProperty(const AtomicString& property_name
     CSSVariableData* variable_data = variable_value.VariableDataValue();
     owner_element_->SetInlineStyleProperty(
         CSSPropertyName(property_name), *MakeGarbageCollected<CSSUnparsedDeclarationValue>(variable_data, variable_value.ParserContext()));
+#if !defined(MINI_UI_QUICKJS)
     owner_element_->NotifyInlineStyleMutation();
+#endif
 }
 
 void InlineStylePropertyMap::RemoveProperty(CSSPropertyID property_id)

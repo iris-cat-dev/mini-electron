@@ -50,7 +50,9 @@
 #include "third_party/blink/renderer/core/css/media_values.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
 #include "third_party/blink/renderer/core/css/media_values_dynamic.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/offscreen_font_selector.h"
+#endif
 #include "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
 #include "third_party/blink/renderer/core/css/remote_font_face_source.h"
@@ -67,7 +69,9 @@
 #include "third_party/blink/renderer/core/loader/render_blocking_resource_manager.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/font_family_names.h"
@@ -739,8 +743,10 @@ void FontFace::InitCSSFontFace(ExecutionContext* context, const CSSValue& src)
         FontSelector* font_selector = nullptr;
         if (auto* window = DynamicTo<LocalDOMWindow>(context)) {
             font_selector = window->document()->GetStyleEngine().GetFontSelector();
+#if !defined(MINI_UI_QUICKJS)
         } else if (auto* scope = DynamicTo<WorkerGlobalScope>(context)) {
             font_selector = scope->GetFontSelector();
+#endif
         } else {
             NOTREACHED();
         }

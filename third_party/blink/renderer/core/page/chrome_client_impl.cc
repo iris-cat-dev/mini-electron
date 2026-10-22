@@ -39,7 +39,9 @@
 #include "build/build_config.h"
 #include "cc/animation/animation_host.h"
 #include "cc/animation/animation_timeline.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
+#endif
 #include "cc/trees/paint_holding_reason.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "third_party/blink/public/common/widget/constants.h"
@@ -64,8 +66,10 @@
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/exported/web_settings_impl.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/frame/browser_controls.h"
@@ -75,7 +79,9 @@
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/forms/color_chooser.h"
 #include "third_party/blink/renderer/core/html/forms/color_chooser_client.h"
@@ -90,11 +96,17 @@
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/internal_popup_menu.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/dev_tools_emulator.h"
+#endif
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/navigation_policy.h"
@@ -107,7 +119,9 @@
 #include "third_party/blink/renderer/platform/graphics/touch_action.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/text/text_direction.h"
@@ -202,7 +216,9 @@ void ChromeClientImpl::Trace(Visitor* visitor) const
 {
     visitor->Trace(popup_opening_observers_);
     visitor->Trace(external_date_time_chooser_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(commit_observers_);
+#endif
     ChromeClient::Trace(visitor);
 }
 
@@ -296,13 +312,18 @@ void ChromeClientImpl::DidFocusPage()
         web_view_->Client()->DidFocus();
 }
 
-bool ChromeClientImpl::CanTakeFocus(mojom::blink::FocusType)
+bool ChromeClientImpl::CanTakeFocus(mojom::blink::FocusType type)
 {
+#if defined(MINI_UI_QUICKJS)
+    return web_view_->Client()
+        && web_view_->Client()->CanTakeFocus(type == mojom::blink::FocusType::kBackward);
+#else
     // For now the browser can always take focus if we're not running layout
     // tests.
     if (!WebTestSupport::IsRunningWebTest())
         return true;
     return g_can_browser_handle_focus;
+#endif
 }
 
 void ChromeClientImpl::TakeFocus(mojom::blink::FocusType type)
@@ -363,12 +384,15 @@ Page* ChromeClientImpl::CreateWindowDelegate(LocalFrame* frame, const FrameLoadR
     return new_view->GetPage();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::InjectScrollbarGestureScroll(LocalFrame& local_frame, const gfx::Vector2dF& delta, ui::ScrollGranularity granularity,
     CompositorElementId scrollable_area_element_id, WebInputEvent::Type injected_type)
 {
     local_frame.GetWidgetForLocalRoot()->InjectScrollbarGestureScroll(delta, granularity, scrollable_area_element_id, injected_type);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::FinishScrollFocusedEditableIntoView(const gfx::RectF& caret_rect_in_root_frame, mojom::blink::ScrollIntoViewParamsPtr params)
 {
     DCHECK(web_view_);
@@ -377,11 +401,14 @@ void ChromeClientImpl::FinishScrollFocusedEditableIntoView(const gfx::RectF& car
     web_view_->FinishScrollFocusedEditableIntoView(caret_rect_in_root_frame, std::move(params));
 }
 
+#endif
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::SetOverscrollBehavior(LocalFrame& main_frame, const cc::OverscrollBehavior& overscroll_behavior)
 {
     DCHECK(main_frame.IsOutermostMainFrame());
     main_frame.GetWidgetForLocalRoot()->SetOverscrollBehavior(overscroll_behavior);
 }
+#endif
 
 void ChromeClientImpl::Show(LocalFrame& frame, LocalFrame& opener_frame, NavigationPolicy navigation_policy, bool user_gesture)
 {
@@ -578,11 +605,14 @@ const display::ScreenInfos& ChromeClientImpl::GetScreenInfos(LocalFrame& frame) 
     return frame.GetWidgetForLocalRoot()->GetScreenInfos();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 float ChromeClientImpl::InputEventsScaleForEmulation() const
 {
     DCHECK(web_view_);
     return web_view_->GetDevToolsEmulator()->InputEventsScaleForEmulation();
 }
+
+#endif
 
 void ChromeClientImpl::ContentsSizeChanged(LocalFrame* frame, const gfx::Size& size) const
 {
@@ -605,12 +635,14 @@ void ChromeClientImpl::EnablePreferredSizeChangedMode()
     web_view_->EnablePreferredSizeChangedMode();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::ZoomToFindInPageRect(const gfx::Rect& rect_in_root_frame)
 {
     DCHECK(web_view_);
     web_view_->ZoomToFindInPageRect(rect_in_root_frame);
 }
 
+#endif
 void ChromeClientImpl::PageScaleFactorChanged() const
 {
     DCHECK(web_view_);
@@ -652,15 +684,16 @@ void ChromeClientImpl::ShowMouseOverURL(const HitTestResult& result)
     // scrollbar and an element in the case of overlay scrollbars.
     if (!result.GetScrollbar()) {
         // Find out if the mouse is over a link, and if so, let our UI know...
-        if (result.IsLiveLink() && !result.AbsoluteLinkURL().GetString().empty()) {
+        if (result.IsLiveLink() && !result.AbsoluteLinkURL().GetString().empty())
             url = result.AbsoluteLinkURL();
-        } else if (result.InnerNode() && (IsA<HTMLObjectElement>(*result.InnerNode()) || IsA<HTMLEmbedElement>(*result.InnerNode()))) {
+#if !defined(MINI_UI_QUICKJS)
+        if (url.IsEmpty() && result.InnerNode() && (IsA<HTMLObjectElement>(*result.InnerNode()) || IsA<HTMLEmbedElement>(*result.InnerNode()))) {
             if (auto* embedded = DynamicTo<LayoutEmbeddedContent>(result.InnerNode()->GetLayoutObject())) {
-                if (WebPluginContainerImpl* plugin_view = embedded->Plugin()) {
+                if (WebPluginContainerImpl* plugin_view = embedded->Plugin())
                     url = plugin_view->Plugin()->LinkAtPosition(result.RoundedPointInInnerNodeFrame());
-                }
             }
         }
+#endif
     }
 
     web_view_->SetMouseOverURL(url);
@@ -821,16 +854,19 @@ void ChromeClientImpl::SetCursorInternal(const ui::Cursor& cursor, LocalFrame* l
         widget->DidChangeCursor(cursor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::SetCursorForPlugin(const ui::Cursor& cursor, LocalFrame* local_frame)
 {
     SetCursorInternal(cursor, local_frame);
 }
+#endif
 
 void ChromeClientImpl::SetCursorOverridden(bool overridden)
 {
     cursor_overridden_ = overridden;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::AutoscrollStart(const gfx::PointF& viewport_point, LocalFrame* local_frame)
 {
     // TODO(dcheng): Why is this null check necessary?
@@ -851,6 +887,7 @@ void ChromeClientImpl::AutoscrollEnd(LocalFrame* local_frame)
     if (WebFrameWidgetImpl* widget = WebLocalFrameImpl::FromFrame(local_frame)->LocalRootFrameWidget())
         widget->AutoscrollEnd();
 }
+#endif
 
 String ChromeClientImpl::AcceptLanguages()
 {
@@ -858,6 +895,7 @@ String ChromeClientImpl::AcceptLanguages()
     return String::FromUTF8(web_view_->GetRendererPreferences().accept_languages);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::AttachRootLayer(scoped_refptr<cc::Layer> root_layer, LocalFrame* local_frame)
 {
     DCHECK(local_frame->IsLocalRoot());
@@ -888,6 +926,7 @@ cc::AnimationTimeline* ChromeClientImpl::GetScrollAnimationTimeline(LocalFrame& 
     DCHECK(widget);
     return widget->ScrollAnimationTimeline();
 }
+#endif
 
 void ChromeClientImpl::EnterFullscreen(LocalFrame& frame, const FullscreenOptions* options, FullscreenRequestType request_type)
 {
@@ -908,12 +947,14 @@ void ChromeClientImpl::FullscreenElementChanged(
     web_view_->FullscreenElementChanged(old_element, new_element, options, request_type);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::AnimateDoubleTapZoom(const gfx::Point& point, const gfx::Rect& rect)
 {
     DCHECK(web_view_);
     web_view_->AnimateDoubleTapZoom(point, rect);
 }
 
+#endif
 bool ChromeClientImpl::HasOpenedPopup() const
 {
     DCHECK(web_view_);
@@ -987,6 +1028,7 @@ bool ChromeClientImpl::ShouldOpenUIElementDuringPageDismissal(
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 viz::FrameSinkId ChromeClientImpl::GetFrameSinkId(LocalFrame* frame)
 {
     return frame->GetWidgetForLocalRoot()->GetFrameSinkId();
@@ -1046,7 +1088,9 @@ void ChromeClientImpl::SetEventListenerProperties(LocalFrame* frame, cc::EventLi
 
     widget->SetEventListenerProperties(event_class, properties);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::BeginLifecycleUpdates(LocalFrame& main_frame)
 {
     DCHECK(main_frame.IsMainFrame());
@@ -1098,6 +1142,9 @@ void ChromeClientImpl::StopDeferringCommits(LocalFrame& main_frame, cc::PaintHol
     WebLocalFrameImpl::FromFrame(main_frame)->FrameWidgetImpl()->StopDeferringCommits(trigger);
 }
 
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::SetHasScrollEventHandlers(LocalFrame* frame, bool has_event_handlers)
 {
     // |frame| might be null if called via
@@ -1164,6 +1211,7 @@ void ChromeClientImpl::SetPanAction(LocalFrame* frame, mojom::blink::PanAction p
 
     widget->SetPanAction(pan_action);
 }
+#endif
 
 void ChromeClientImpl::DidChangeFormRelatedElementDynamically(LocalFrame* frame, HTMLElement* element, WebFormRelatedChangeType form_related_change)
 {
@@ -1201,9 +1249,11 @@ void ChromeClientImpl::DidChangeValueInTextField(HTMLFormControlElement& element
     // interpreted as a user action. See https://crbug.com/764760.
     if (!doc.IsRunningExecCommand()) {
         UseCounter::Count(doc, doc.GetExecutionContext()->IsSecureContext() ? WebFeature::kFieldEditInSecureContext : WebFeature::kFieldEditInNonSecureContext);
+#if !defined(MINI_UI_QUICKJS)
         // The resource coordinator is not available in some tests.
         if (auto* rc = doc.GetResourceCoordinator())
             rc->SetHadFormInteraction();
+#endif
     }
 }
 
@@ -1284,11 +1334,13 @@ void ChromeClientImpl::JavaScriptChangedValue(HTMLFormControlElement& element, c
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 gfx::Transform ChromeClientImpl::GetDeviceEmulationTransform() const
 {
     DCHECK(web_view_);
     return web_view_->GetDeviceEmulationTransform();
 }
+#endif
 
 void ChromeClientImpl::DidUpdateBrowserControls() const
 {
@@ -1352,10 +1404,12 @@ double ChromeClientImpl::UserZoomFactor(LocalFrame* frame) const
     return ZoomLevelToZoomFactor(WebLocalFrameImpl::FromFrame(frame->LocalFrameRoot())->FrameWidgetImpl()->GetZoomLevel());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClientImpl::SetDelegatedInkMetadata(LocalFrame* frame, std::unique_ptr<gfx::DelegatedInkMetadata> metadata)
 {
     frame->GetWidgetForLocalRoot()->SetDelegatedInkMetadata(std::move(metadata));
 }
+#endif
 
 void ChromeClientImpl::FormElementReset(HTMLFormElement& element)
 {

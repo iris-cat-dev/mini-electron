@@ -214,9 +214,11 @@ bool CSSSupportsParser::ConsumeAtRuleFn(CSSParserTokenStream& stream)
     switch (at_rule_id) {
     case CSSAtRuleID::kCSSAtRuleInvalid:
         NOTREACHED();
+#if !defined(MINI_UI_QUICKJS)
     case CSSAtRuleID::kCSSAtRuleViewTransition:
         rule_type = StyleRule::kViewTransition;
         break;
+#endif
     case CSSAtRuleID::kCSSAtRuleContainer:
         rule_type = StyleRule::kContainer;
         break;

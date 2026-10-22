@@ -13,8 +13,10 @@
 #include "third_party/blink/renderer/core/performance_entry_names.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/performance.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/worker_global_scope_performance.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 namespace blink {
@@ -35,10 +37,13 @@ PerformanceMark* PerformanceMark::Create(
     bool is_worker_global_scope = false;
     if (LocalDOMWindow* window = LocalDOMWindow::From(script_state)) {
         performance = DOMWindowPerformance::performance(*window);
-    } else if (auto* scope = DynamicTo<WorkerGlobalScope>(ExecutionContext::From(script_state))) {
+    }
+#if !defined(MINI_UI_QUICKJS)
+    else if (auto* scope = DynamicTo<WorkerGlobalScope>(ExecutionContext::From(script_state))) {
         performance = WorkerGlobalScopePerformance::performance(*scope);
         is_worker_global_scope = true;
     }
+#endif
     DCHECK(performance);
 
     DOMHighResTimeStamp start = 0.0;

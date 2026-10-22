@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,9 +21,13 @@ namespace mojo {
 // UniqueAssociatedReceiverSet, destroying an instance whenever its receiver is
 // disconnected because the remote endpoint intentionally hung up, crashed, or
 // sent malformed message.
-template <typename Interface, typename ContextType = void, typename Deleter = std::default_delete<Interface>>
-using UniqueAssociatedReceiverSet = ReceiverSetBase<AssociatedReceiver<Interface, UniquePtrImplRefTraits<Interface, Deleter>>, ContextType>;
+template <typename Interface,
+          typename ContextType = void,
+          typename Deleter = std::default_delete<Interface>>
+using UniqueAssociatedReceiverSet = ReceiverSetBase<
+    AssociatedReceiver<Interface, UniquePtrImplRefTraits<Interface, Deleter>>,
+    ContextType>;
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_UNIQUE_ASSOCIATED_RECEIVER_SET_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_UNIQUE_ASSOCIATED_RECEIVER_SET_H_

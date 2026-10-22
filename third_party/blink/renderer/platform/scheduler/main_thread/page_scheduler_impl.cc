@@ -34,7 +34,9 @@
 #include "third_party/blink/renderer/platform/scheduler/main_thread/policy_updater.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/use_case.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -235,7 +237,9 @@ void PageSchedulerImpl::SetPageFrozenImpl(bool frozen, PolicyUpdater& policy_upd
         return;
     is_frozen_ = frozen;
     for (FrameSchedulerImpl* frame_scheduler : frame_schedulers_) {
+#if !defined(MINI_UI_QUICKJS)
         frame_scheduler->SetPageFrozenForTracing(frozen);
+#endif
         frame_scheduler->SetShouldReportPostedTasksWhenDisabled(frozen);
     }
     policy_updater.UpdatePagePolicy(this);
@@ -454,6 +458,7 @@ void PageSchedulerImpl::OnVirtualTimeEnabled()
     UpdatePolicyOnVisibilityChange(policy_updater);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PageSchedulerImpl::OnTraceLogEnabled()
 {
     tracing_controller_.OnTraceLogEnabled();
@@ -461,6 +466,7 @@ void PageSchedulerImpl::OnTraceLogEnabled()
         frame_scheduler->OnTraceLogEnabled();
     }
 }
+#endif
 
 bool PageSchedulerImpl::IsWaitingForMainFrameContentfulPaint() const
 {
@@ -483,6 +489,7 @@ bool PageSchedulerImpl::IsMainFrameLoading() const
     });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PageSchedulerImpl::WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -512,6 +519,7 @@ void PageSchedulerImpl::WriteIntoTrace(perfetto::TracedValue context, base::Time
 
     dict.Add("frame_schedulers", frame_schedulers_);
 }
+#endif
 
 void PageSchedulerImpl::AddQueueToWakeUpBudgetPool(MainThreadTaskQueue* task_queue, WakeUpBudgetPool* wake_up_budget_pool, base::LazyNow* lazy_now)
 {
@@ -567,7 +575,11 @@ void PageSchedulerImpl::MaybeInitializeBackgroundCPUTimeBudgetPool(base::LazyNow
     if (cpu_time_budget_pool_)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     cpu_time_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("background", &tracing_controller_, lazy_now->Now());
+#else
+    cpu_time_budget_pool_ = std::make_unique<CPUTimeBudgetPool>("background", lazy_now->Now());
+#endif
 
     BackgroundThrottlingSettings settings = GetBackgroundThrottlingSettings();
 
@@ -753,6 +765,7 @@ bool PageSchedulerImpl::IsBackgrounded() const
     return !IsPageVisible() && !IsAudioPlaying() && !main_thread_scheduler_->IsVirtualTimeEnabled();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 FrameSchedulerImpl* PageSchedulerImpl::SelectFrameForUkmAttribution()
 {
     for (FrameSchedulerImpl* frame_scheduler : frame_schedulers_) {
@@ -761,6 +774,7 @@ FrameSchedulerImpl* PageSchedulerImpl::SelectFrameForUkmAttribution()
     }
     return nullptr;
 }
+#endif
 
 bool PageSchedulerImpl::HasWakeUpBudgetPools() const
 {

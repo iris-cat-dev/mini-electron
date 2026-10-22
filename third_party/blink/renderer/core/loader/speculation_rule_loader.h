@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_SPECULATION_RULE_LOADER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_SPECULATION_RULE_LOADER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
@@ -43,5 +44,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_SPECULATION_RULE_LOADER_H_

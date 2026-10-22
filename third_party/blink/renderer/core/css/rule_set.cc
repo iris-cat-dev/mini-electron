@@ -55,9 +55,13 @@
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_utils.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/track/text_track_cue.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/invalidation_set_to_selector_map.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
@@ -74,9 +78,11 @@ static void UnmarkAsCoveredByBucketing(CSSSelector& selector);
 static inline ValidPropertyFilter DetermineValidPropertyFilter(const AddRuleFlags add_rule_flags, const CSSSelector& selector)
 {
     for (const CSSSelector* component = &selector; component; component = component->NextSimpleSelector()) {
+#if !defined(MINI_UI_QUICKJS)
         if (component->Match() == CSSSelector::kPseudoElement && component->Value() == TextTrackCue::CueShadowPseudoId()) {
             return ValidPropertyFilter::kCue;
         }
+#endif
         switch (component->GetPseudoType()) {
         case CSSSelector::kPseudoCue:
             return ValidPropertyFilter::kCue;
@@ -598,12 +604,18 @@ void RuleSet::AddRule(StyleRule* rule, unsigned selector_index, AddRuleFlags add
     }
     RuleData rule_data(rule, selector_index, rule_count_, style_scope, add_rule_flags, bloom_hash_backing_);
     ++rule_count_;
+#if !defined(MINI_UI_QUICKJS)
     {
         InvalidationSetToSelectorMap::SelectorScope selector_scope(rule, selector_index);
         if (features_.CollectFeaturesFromSelector(rule_data.Selector(), style_scope) == SelectorPreMatch::kNeverMatches) {
             return;
         }
     }
+#else
+    if (features_.CollectFeaturesFromSelector(rule_data.Selector(), style_scope) == SelectorPreMatch::kNeverMatches) {
+        return;
+    }
+#endif
 
     FindBestRuleSetAndAdd<BucketCoverage::kCompute>(rule_data.MutableSelector(), rule_data);
 
@@ -709,11 +721,13 @@ void RuleSet::AddFunctionRule(StyleRuleFunction* rule)
     function_rules_.push_back(rule);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RuleSet::AddViewTransitionRule(StyleRuleViewTransition* rule)
 {
     need_compaction_ = true;
     view_transition_rules_.push_back(rule);
 }
+#endif
 
 void RuleSet::AddChildRules(StyleRule* parent_rule, const HeapVector<Member<StyleRuleBase>>& rules, const MediaQueryEvaluator& medium,
     AddRuleFlags add_rule_flags, const ContainerQuery* container_query, CascadeLayer* cascade_layer, const StyleScope* style_scope, bool within_mixin)
@@ -747,9 +761,11 @@ void RuleSet::AddChildRules(StyleRule* parent_rule, const HeapVector<Member<Styl
         } else if (auto* counter_style_rule = DynamicTo<StyleRuleCounterStyle>(rule)) {
             counter_style_rule->SetCascadeLayer(cascade_layer);
             AddCounterStyleRule(counter_style_rule);
+#if !defined(MINI_UI_QUICKJS)
         } else if (auto* view_transition_rule = DynamicTo<StyleRuleViewTransition>(rule)) {
             view_transition_rule->SetCascadeLayer(cascade_layer);
             AddViewTransitionRule(view_transition_rule);
+#endif
         } else if (auto* position_try_rule = DynamicTo<StyleRulePositionTry>(rule)) {
             position_try_rule->SetCascadeLayer(cascade_layer);
             AddPositionTryRule(position_try_rule);
@@ -1242,7 +1258,9 @@ void RuleSet::CompactRules()
     counter_style_rules_.shrink_to_fit();
     position_try_rules_.shrink_to_fit();
     layer_intervals_.shrink_to_fit();
+#if !defined(MINI_UI_QUICKJS)
     view_transition_rules_.shrink_to_fit();
+#endif
     bloom_hash_backing_.shrink_to_fit();
 
 #if EXPENSIVE_DCHECKS_ARE_ON()
@@ -1359,7 +1377,9 @@ void RuleSet::Trace(Visitor* visitor) const
     visitor->Trace(font_face_rules_);
     visitor->Trace(font_palette_values_rules_);
     visitor->Trace(font_feature_values_rules_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(view_transition_rules_);
+#endif
     visitor->Trace(keyframes_rules_);
     visitor->Trace(property_rules_);
     visitor->Trace(counter_style_rules_);

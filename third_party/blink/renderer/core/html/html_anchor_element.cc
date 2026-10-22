@@ -41,21 +41,26 @@
 #include "third_party/blink/renderer/core/events/mouse_event.h"
 #include "third_party/blink/renderer/core/events/pointer_event.h"
 #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
-#include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/anchor_element_metrics_sender.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/anchor_element_interaction_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/navigation_policy.h"
 #include "third_party/blink/renderer/core/loader/ping_loader.h"
@@ -63,7 +68,9 @@
 #include "third_party/blink/renderer/core/navigation_api/navigation_api.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
@@ -295,11 +302,13 @@ void HTMLAnchorElementBase::ParseAttribute(const AttributeModificationParams& pa
                 PseudoStateChanged(CSSSelector::kPseudoAnyLink);
             }
         }
+#if !defined(MINI_UI_QUICKJS)
         if (isConnected() && params.old_value != params.new_value) {
             if (auto* document_rules = DocumentSpeculationRules::FromIfExists(GetDocument())) {
                 document_rules->HrefAttributeChanged(this, params.old_value, params.new_value);
             }
         }
+#endif
         InvalidateCachedVisitedLinkHash();
         LogUpdateAttributeIfIsolatedWorldAndInDocument("a", params);
     } else if (params.name == html_names::kNameAttr) {
@@ -312,6 +321,7 @@ void HTMLAnchorElementBase::ParseAttribute(const AttributeModificationParams& pa
     } else if (params.name == html_names::kRelAttr) {
         SetRel(params.new_value);
         rel_list_->DidUpdateAttributeValue(params.old_value, params.new_value);
+#if !defined(MINI_UI_QUICKJS)
         if (isConnected() && IsLink() && params.old_value != params.new_value) {
             if (auto* document_rules = DocumentSpeculationRules::FromIfExists(GetDocument())) {
                 document_rules->RelAttributeChanged(this);
@@ -329,6 +339,7 @@ void HTMLAnchorElementBase::ParseAttribute(const AttributeModificationParams& pa
                 document_rules->TargetAttributeChanged(this);
             }
         }
+#endif
     } else {
         HTMLElement::ParseAttribute(params);
     }
@@ -503,6 +514,7 @@ void HTMLAnchorElementBase::NavigateToHyperlink(
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (navigation_policy == kNavigationPolicyLinkPreview) {
         // Ensured by third_party/blink/renderer/core/loader/navigation_policy.cc.
         CHECK(base::FeatureList::IsEnabled(features::kLinkPreview));
@@ -510,6 +522,7 @@ void HTMLAnchorElementBase::NavigateToHyperlink(
         DocumentSpeculationRules::From(GetDocument()).InitiatePreview(Url());
         return;
     }
+#endif
 
     request.SetRequestContext(mojom::blink::RequestContextType::HYPERLINK);
     FrameLoadRequest frame_request(window, request);
@@ -535,6 +548,7 @@ void HTMLAnchorElementBase::NavigateToHyperlink(
         is_trusted ? mojom::blink::TriggeringEventInfo::kFromTrustedEvent : mojom::blink::TriggeringEventInfo::kFromUntrustedEvent);
     frame_request.SetInputStartTime(platform_time_stamp);
 
+#if !defined(MINI_UI_QUICKJS)
     if (const AtomicString& attribution_src = FastGetAttribute(html_names::kAttributionsrcAttr); !attribution_src.IsNull()) {
         // An impression must be attached prior to the
         // `FindOrCreateFrameForNavigation()` call, as that call may result in
@@ -550,6 +564,7 @@ void HTMLAnchorElementBase::NavigateToHyperlink(
             /*navigation_url=*/completed_url, attribution_src,
             /*element=*/this, request.HasUserGesture(), request.GetReferrerPolicy()));
     }
+#endif
 
     Frame* target_frame = frame->Tree().FindOrCreateFrameForNavigation(frame_request, target).frame;
 
@@ -612,9 +627,11 @@ void HTMLAnchorElementBase::HandleClick(MouseEvent& event)
         UseCounter::Count(GetDocument(), WebFeature::kAnchorClickDispatchForNonConnectedNode);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* tracker = GetDocument().GetAnchorElementInteractionTracker()) {
         tracker->OnClickEvent(*this, event);
     }
+#endif
 
     StringBuilder url;
     url.Append(StripLeadingAndTrailingHTMLSpaces(FastGetAttribute(html_names::kHrefAttr)));
@@ -727,17 +744,21 @@ Node::InsertionNotificationRequest HTMLAnchorElementBase::InsertedInto(Container
     InsertionNotificationRequest request = HTMLElement::InsertedInto(insertion_point);
     LogAddElementIfIsolatedWorldAndInDocument("a", html_names::kHrefAttr);
 
+#if !defined(MINI_UI_QUICKJS)
     if (isConnected()) {
         if (auto* sender = AnchorElementMetricsSender::GetForFrame(GetDocument().GetFrame())) {
             sender->AddAnchorElement(*this);
         }
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (isConnected() && IsLink()) {
         if (auto* document_rules = DocumentSpeculationRules::FromIfExists(GetDocument())) {
             document_rules->LinkInserted(this);
         }
     }
+#endif
 
     return request;
 }
@@ -746,17 +767,21 @@ void HTMLAnchorElementBase::RemovedFrom(ContainerNode& insertion_point)
 {
     HTMLElement::RemovedFrom(insertion_point);
 
+#if !defined(MINI_UI_QUICKJS)
     if (insertion_point.isConnected()) {
         if (auto* sender = AnchorElementMetricsSender::GetForFrame(GetDocument().GetFrame())) {
             sender->RemoveAnchorElement(*this);
         }
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (insertion_point.isConnected() && IsLink()) {
         if (auto* document_rules = DocumentSpeculationRules::FromIfExists(GetDocument())) {
             document_rules->LinkRemoved(this);
         }
     }
+#endif
 }
 
 void HTMLAnchorElementBase::Trace(Visitor* visitor) const

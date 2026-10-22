@@ -47,13 +47,17 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_quote.h"
 #include "third_party/blink/renderer/core/layout/list/list_marker.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/content_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
 namespace blink {
@@ -80,7 +84,14 @@ PseudoId ResolvePseudoIdAlias(PseudoId pseudo_id)
 
 } // namespace
 
-PseudoElement* PseudoElement::Create(Element* parent, PseudoId pseudo_id, const AtomicString& view_transition_name)
+#if !defined(MINI_UI_QUICKJS)
+PseudoElement* PseudoElement::Create(
+    Element* parent,
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name)
+#else
+PseudoElement* PseudoElement::Create(Element* parent, PseudoId pseudo_id)
+#endif
 {
     if (pseudo_id == kPseudoIdCheck) {
         CHECK(RuntimeEnabledFeatures::CustomizableSelectEnabled());
@@ -104,10 +115,14 @@ PseudoElement* PseudoElement::Create(Element* parent, PseudoId pseudo_id, const 
 
     if (pseudo_id == kPseudoIdFirstLetter) {
         return MakeGarbageCollected<FirstLetterPseudoElement>(parent);
+#if !defined(MINI_UI_QUICKJS)
     } else if (IsTransitionPseudoElement(pseudo_id)) {
-        auto* transition = ViewTransitionUtils::GetTransition(parent->GetDocument());
+        auto* transition =
+            ViewTransitionUtils::GetTransition(parent->GetDocument());
         DCHECK(transition);
-        return transition->CreatePseudoElement(parent, pseudo_id, view_transition_name);
+        return transition->CreatePseudoElement(
+            parent, pseudo_id, view_transition_name);
+#endif
     } else if (ResolvePseudoIdAlias(pseudo_id) == kPseudoIdScrollMarkerGroup) {
         return MakeGarbageCollected<ScrollMarkerGroupPseudoElement>(parent, pseudo_id);
     } else if (pseudo_id == kPseudoIdScrollMarker) {
@@ -117,7 +132,12 @@ PseudoElement* PseudoElement::Create(Element* parent, PseudoId pseudo_id, const 
     }
     DCHECK(pseudo_id == kPseudoIdAfter || pseudo_id == kPseudoIdBefore || pseudo_id == kPseudoIdCheck || pseudo_id == kPseudoIdSelectArrow
         || pseudo_id == kPseudoIdBackdrop || pseudo_id == kPseudoIdMarker || pseudo_id == kPseudoIdColumn);
-    return MakeGarbageCollected<PseudoElement>(parent, pseudo_id, view_transition_name);
+#if !defined(MINI_UI_QUICKJS)
+    return MakeGarbageCollected<PseudoElement>(
+        parent, pseudo_id, view_transition_name);
+#else
+    return MakeGarbageCollected<PseudoElement>(parent, pseudo_id);
+#endif
 }
 
 const QualifiedName& PseudoElementTagName(PseudoId pseudo_id)
@@ -171,28 +191,37 @@ const QualifiedName& PseudoElementTagName(PseudoId pseudo_id)
         DEFINE_STATIC_LOCAL(QualifiedName, scroll_marker, (AtomicString("::scroll-marker")));
         return scroll_marker;
     }
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransition: {
-        DEFINE_STATIC_LOCAL(QualifiedName, transition, (AtomicString("::view-transition")));
+        DEFINE_STATIC_LOCAL(
+            QualifiedName, transition, (AtomicString("::view-transition")));
         return transition;
     }
     case kPseudoIdViewTransitionGroup: {
-        // TODO(khushalsagar) : Update these tag names to include the additional
-        // ID.
-        DEFINE_STATIC_LOCAL(QualifiedName, transition_container, (AtomicString("::view-transition-group")));
+        DEFINE_STATIC_LOCAL(QualifiedName,
+            transition_container,
+            (AtomicString("::view-transition-group")));
         return transition_container;
     }
     case kPseudoIdViewTransitionImagePair: {
-        DEFINE_STATIC_LOCAL(QualifiedName, transition_image_wrapper, (AtomicString("::view-transition-image-pair")));
+        DEFINE_STATIC_LOCAL(QualifiedName,
+            transition_image_wrapper,
+            (AtomicString("::view-transition-image-pair")));
         return transition_image_wrapper;
     }
     case kPseudoIdViewTransitionNew: {
-        DEFINE_STATIC_LOCAL(QualifiedName, transition_incoming_image, (AtomicString("::view-transition-new")));
+        DEFINE_STATIC_LOCAL(QualifiedName,
+            transition_incoming_image,
+            (AtomicString("::view-transition-new")));
         return transition_incoming_image;
     }
     case kPseudoIdViewTransitionOld: {
-        DEFINE_STATIC_LOCAL(QualifiedName, transition_outgoing_image, (AtomicString("::view-transition-old")));
+        DEFINE_STATIC_LOCAL(QualifiedName,
+            transition_outgoing_image,
+            (AtomicString("::view-transition-old")));
         return transition_outgoing_image;
     }
+#endif
     default:
         NOTREACHED();
     }
@@ -207,6 +236,7 @@ AtomicString PseudoElement::PseudoElementNameForEvents(Element* element)
     switch (pseudo_id) {
     case kPseudoIdNone:
         return g_null_atom;
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransitionGroup:
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionNew:
@@ -220,6 +250,7 @@ AtomicString PseudoElement::PseudoElementNameForEvents(Element* element)
         builder.Append(")");
         return AtomicString(builder.ReleaseString());
     }
+#endif
     default:
         break;
     }
@@ -243,10 +274,21 @@ bool PseudoElement::IsWebExposed(PseudoId pseudo_id, const Node* parent)
     }
 }
 
-PseudoElement::PseudoElement(Element* parent, PseudoId pseudo_id, const AtomicString& view_transition_name)
-    : Element(PseudoElementTagName(ResolvePseudoIdAlias(pseudo_id)), &parent->GetDocument(), kCreateElement)
+#if !defined(MINI_UI_QUICKJS)
+PseudoElement::PseudoElement(
+    Element* parent,
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name)
+#else
+PseudoElement::PseudoElement(Element* parent, PseudoId pseudo_id)
+#endif
+    : Element(PseudoElementTagName(ResolvePseudoIdAlias(pseudo_id)),
+          &parent->GetDocument(),
+          kCreateElement)
     , pseudo_id_(pseudo_id)
+#if !defined(MINI_UI_QUICKJS)
     , view_transition_name_(view_transition_name)
+#endif
 {
     DCHECK_NE(pseudo_id, kPseudoIdNone);
     parent->GetTreeScope().AdoptIfNeeded(*this);
@@ -270,14 +312,19 @@ const ComputedStyle* PseudoElement::CustomStyleForLayoutObject(const StyleRecalc
     // originating element.
     DCHECK(!IsHighlightPseudoElement(pseudo_id_));
     Element* parent = ParentOrShadowHostElement();
+#if !defined(MINI_UI_QUICKJS)
+    const AtomicString& pseudo_argument = view_transition_name_;
+#else
+    const AtomicString& pseudo_argument = g_null_atom;
+#endif
     if (!RuntimeEnabledFeatures::CSSNestedPseudoElementsEnabled()) {
         return parent->StyleForPseudoElement(style_recalc_context,
             StyleRequest(GetPseudoIdForStyling(), parent->GetComputedStyle(),
-                /* originating_element_style */ nullptr, view_transition_name_));
+                /* originating_element_style */ nullptr, pseudo_argument));
     }
     return StyleForPseudoElement(style_recalc_context,
         StyleRequest(kPseudoIdNone, parent->GetComputedStyle(),
-            /* originating_element_style */ nullptr, view_transition_name_));
+            /* originating_element_style */ nullptr, pseudo_argument));
 }
 
 const ComputedStyle* PseudoElement::LayoutStyleForDisplayContents(const ComputedStyle& style)
@@ -296,7 +343,9 @@ void PseudoElement::Dispose()
 {
     DCHECK(ParentOrShadowHostElement());
 
+#if !defined(MINI_UI_QUICKJS)
     probe::PseudoElementDestroyed(this);
+#endif
 
     DCHECK(!nextSibling());
     DCHECK(!previousSibling());
@@ -515,11 +564,13 @@ bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id, const DisplayStyle& p
     case kPseudoIdScrollMarkerGroupBefore:
     case kPseudoIdScrollMarkerGroupAfter:
     case kPseudoIdBackdrop:
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransition:
     case kPseudoIdViewTransitionGroup:
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionNew:
     case kPseudoIdViewTransitionOld:
+#endif
     case kPseudoIdColumn:
         return true;
     case kPseudoIdCheck:

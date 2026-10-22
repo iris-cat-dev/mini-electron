@@ -30,7 +30,9 @@
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
@@ -60,7 +62,9 @@ bool EventQueue::EnqueueEvent(const base::Location& from_here, Event& event)
     DCHECK(event.target());
     DCHECK(GetExecutionContext());
 
+#if !defined(MINI_UI_QUICKJS)
     event.async_task_context()->Schedule(GetExecutionContext(), event.type());
+#endif
 
     bool was_added = queued_events_.insert(&event).is_new_entry;
     DCHECK(was_added); // It should not have already been in the list.
@@ -99,7 +103,9 @@ void EventQueue::DispatchEvent(Event* event)
 
     DCHECK(GetExecutionContext());
 
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTask async_task(GetExecutionContext(), event->async_task_context());
+#endif
     EventTarget* target = event->target();
     if (LocalDOMWindow* window = target->ToLocalDOMWindow())
         window->DispatchEvent(*event, nullptr);
@@ -120,8 +126,10 @@ void EventQueue::Close(ExecutionContext* context)
 
 void EventQueue::DoCancelAllEvents(ExecutionContext* context)
 {
+#if !defined(MINI_UI_QUICKJS)
     for (const auto& queued_event : queued_events_)
         queued_event->async_task_context()->Cancel();
+#endif
     queued_events_.clear();
 }
 

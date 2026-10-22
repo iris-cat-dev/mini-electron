@@ -1,0 +1,72 @@
+[
+  {
+    "name": "baseline-regression",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--out-dir",
+      "out/ui-field-checks-before"
+    ],
+    "exit_code": 0,
+    "seconds": 6.550933799997438,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-validation\\baseline-regression.log"
+  },
+  {
+    "name": "candidate-build",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      ".build-tools/ui-field/build-candidate.py",
+      "out/ui-field-candidate"
+    ],
+    "exit_code": 0,
+    "seconds": 10.367140599992126,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-validation\\candidate-build.log"
+  },
+  {
+    "name": "candidate-regression",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-field-candidate",
+      "--out-dir",
+      "out/ui-field-checks-after"
+    ],
+    "exit_code": 0,
+    "seconds": 5.68652160000056,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-validation\\candidate-regression.log"
+  },
+  {
+    "name": "candidate-matrix",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--ui-out",
+      "out/ui-field-candidate",
+      "--out-dir",
+      "out/ui-field-after",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 547.2717655999877,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-validation\\candidate-matrix.log"
+  },
+  {
+    "name": "compare",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/before_after.py",
+      "--before",
+      "out/ui-field-before",
+      "--after",
+      "out/ui-field-after",
+      "--out-dir",
+      "out/ui-field-comparison"
+    ],
+    "exit_code": 0,
+    "seconds": 0.09272849999251775,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-validation\\compare.log"
+  }
+]

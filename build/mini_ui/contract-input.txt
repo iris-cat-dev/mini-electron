@@ -1,0 +1,45 @@
+# Goal
+Implement a real C++ embeddable local-only QuickJS + current Blink UI library on branch feature/quickjs-blink-ui. User explicitly selected standard DOM/Web frontend compatibility (not a small UI DSL). Retain actual Blink HTML/CSS/DOM/events/Canvas2D semantics; remove V8 JS runtime, Node/libuv, network transports, OpenSSL, media/audio/WebAudio, Service Worker, persistent complex storage, WebGL/ANGLE and WebGPU/Dawn/Tint from the new library's build/link closure. Source names or necessary API types named v8 are not themselves forbidden; linking/running V8 JS runtime or emulating its private object ABI is forbidden. No stub/no-op/fake symbol implementations. No V8 fallback.
+
+# Shared conventions
+- C++20, namespace mini_ui. Public header include/mini_ui/ui.h is parent-owned.
+- Private sources runtime/ui/. New Windows target out/ui-windows-x64. Do not modify old release outputs.
+- Parent owns exported View implementation, cppgc/platform integration and final build/smoke/docs. Shared changes coordinated by messages. No build/lint/tests/formatters during child work; parent runs integration once the wave is complete.
+- Build must use a dedicated source/link graph; do not link existing monolithic Electron libs as an alleged cutdown UI library. Existing XML manifests may supply source/include/define lists.
+- No README/docs files during this wave; parent updates existing README after actual smoke. This contract-input file is temporary cross-agent coordination input, not a product document.
+
+# Local resource contract
+runtime/ui/local_resources.h/.cc owned by LocalOnlyResources.
+struct Resource { std::vector<std::uint8_t> bytes; std::string mime_type; std::string url; };
+class LocalResources { public: static std::unique_ptr<LocalResources> Open(const std::filesystem::path& root, Error* error); bool Read(std::string_view url, std::string_view base_url, Resource* out, Error* error) const; const std::filesystem::path& root() const; };
+Only resources underneath configured root. Resolve relative URLs/base and file URLs without networking. Reject HTTP(S), WS(S), FTP, UNC/device paths, encoded traversal/out-of-root symlinks; no silent empty success. Return canonical file URL and bytes/MIME. Script module loader uses the same resolver. Error is public ui.h type.
+
+# QuickJS ownership/runtime contract
+runtime/ui/script_runtime.h/.cc owned by QuickJSRuntime.
+class ScriptRuntime { public: static std::unique_ptr<ScriptRuntime> Create(LocalResources&, Error*); ~ScriptRuntime(); JSRuntime* get() const; bool DrainJobs(Error*); };
+class ScriptRealm { public: static std::unique_ptr<ScriptRealm> Create(ScriptRuntime&, Error*); ~ScriptRealm(); JSContext* get() const; bool Evaluate(std::string_view source, std::string_view source_url, std::string* json_result, Error*); };
+Actual QuickJS, no fake DOM globals. Expose JSRuntime/JSContext only privately; read current fork API signatures. Enable actual BigInt; local ES modules, errors with source/stack, Promise jobs. No qjs-libc shell, OS/network module, legacy MiniV8Api/EmptyCFun. Engine/backend may extend this API by coordinating with owner.
+
+# Blink backend contract
+runtime/ui/blink_backend.h/.cc and engine-binding integration owned by BlinkQuickJSBackend. Parent public View wrapper delegates to this backend.
+class BlinkBackend { public: static std::unique_ptr<BlinkBackend> Create(const ViewOptions&, LocalResources&, ScriptRuntime&, Error*); ~BlinkBackend(); bool LoadFile(std::string_view, Error*); bool Evaluate(std::string_view, std::string_view, std::string*, Error*); bool Resize(int width,int height,float scale,Error*); bool Tick(double monotonic_seconds,Error*); FrameView frame() const; void Pointer(const PointerEvent&); void Key(const KeyEvent&); };
+May add internal helpers/files, but no partial fake DOM/renderer. Route actual Blink classic/local module evaluation, DOM generated/native binding execution and events to QuickJS. Reuse semantic algorithms of old QuickJS bridge only, not real V8 private ABI or EmptyCFun stubs. Standard DOM means full binding coverage of retained interfaces; disallowed features must be absent rather than empty implementations. Coordinate standalone cppgc bridge with parent before GC layout changes.
+
+# Public types (already in include/mini_ui/ui.h)
+ErrorCode { none, invalid_argument, resource_denied, not_found, io, script, render, internal };
+struct Error { ErrorCode code=ErrorCode::none; std::string message; explicit operator bool() const noexcept; };
+struct ViewOptions { std::filesystem::path resource_root; int width=800; int height=600; float device_scale=1.0f; };
+struct FrameView { const std::uint8_t* pixels=nullptr; int width=0,height=0; std::size_t stride=0; std::uint64_t generation=0; }; // BGRA premultiplied; valid until next mutation/render/destroy.
+PointerEvent { enum Type {move,down,up,wheel,leave}; Type type; double x,y; int button; unsigned modifiers; double delta_x,delta_y; };
+KeyEvent { enum Type {down,up,text}; Type type; unsigned virtual_key,scan_code,modifiers; bool repeat; std::u16string text; };
+All operations thread-affine to creation thread. CPU raster first; host owns window/event loop and calls Tick with monotonic seconds. Paint pixels belong to view; no compulsory copy API.
+
+# GC integration (parent-owned, refined during implementation)
+runtime/ui/cppgc_platform.h/.cc provides:
+void InitializeCppgcProcess();
+std::shared_ptr<cppgc::Platform> GetCppgcPlatform();
+void RunCppgcTasks();
+GC scheduling uses its own monotonic clock (RunCppgcTasks has no time argument). Independent cppgc, not gin/V8 platform. Parent owns heap/thread_state.*, heap/process_heap.* and platform/exported/platform.cc. Backend must provide real script/native cross-heap tracing; attaching runtime as no-op is not allowed.
+
+# Build and feature graph contract
+Build owner owns build/mini_ui/* and build.py. Dedicated QuickJS core C + libbf, selected Blink core/platform and generated retained bindings through the actual QuickJS backend, standalone cppgc/base/platform support (no V8 JS runtime), CPU Skia, ICU data/code, HarfBuzz, image decoders. UI output mini-ui.lib (or DLL + import lib), explicit dependency inventory. No Node, curl, TLS, media, audio, SW, storage backends, ANGLE/Dawn bootstrap/import. Source registration aggregators must be cut consistently, not only filenames. Do not define away link errors or add no-op symbols. Parent owns examples/ui/main.cc and final forbidden-dependency audit.

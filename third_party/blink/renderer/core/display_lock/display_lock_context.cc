@@ -28,7 +28,9 @@
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html_element_type_helpers.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_result.h"
 #include "third_party/blink/renderer/core/layout/oof_positioned_node.h"
@@ -37,9 +39,15 @@
 #include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/pre_paint_tree_walk.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -74,7 +82,9 @@ DisplayLockContext::DisplayLockContext(Element* element)
     DetermineIfSubtreeHasFocus();
     DetermineIfSubtreeHasSelection();
     DetermineIfSubtreeHasTopLayerElement();
+#if !defined(MINI_UI_QUICKJS)
     DetermineIfDescendantIsViewTransitionElement();
+#endif
 }
 
 void DisplayLockContext::SetRequestedState(EContentVisibility state)
@@ -377,8 +387,10 @@ void DisplayLockContext::CommitForActivation(DisplayLockActivationReason reason)
         SetKeepUnlockedUntilLifecycleCount(2);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (reason == DisplayLockActivationReason::kFindInPage)
         document_->MarkHasFindInPageContentVisibilityActiveMatch();
+#endif
 }
 
 void DisplayLockContext::SetKeepUnlockedUntilLifecycleCount(int count)
@@ -710,7 +722,9 @@ bool DisplayLockContext::MarkNeedsRepaintAndPaintArtifactCompositorUpdate()
     DCHECK(ConnectedToView());
     if (auto* layout_object = element_->GetLayoutObject()) {
         layout_object->PaintingLayer()->SetNeedsRepaint();
+#if !defined(MINI_UI_QUICKJS)
         document_->View()->SetPaintArtifactCompositorNeedsUpdate();
+#endif
         return true;
     }
     return false;
@@ -813,7 +827,9 @@ void DisplayLockContext::DidMoveToNewDocument(Document& old_document)
     DetermineIfSubtreeHasFocus();
     DetermineIfSubtreeHasSelection();
     DetermineIfSubtreeHasTopLayerElement();
+#if !defined(MINI_UI_QUICKJS)
     DetermineIfDescendantIsViewTransitionElement();
+#endif
 }
 
 void DisplayLockContext::WillStartLifecycleUpdate(const LocalFrameView& view)
@@ -913,9 +929,11 @@ void DisplayLockContext::ElementDisconnected()
     DCHECK(!element_->GetComputedStyle());
     SetRequestedState(EContentVisibility::kVisible);
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* document_rules = DocumentSpeculationRules::FromIfExists(*document_)) {
         document_rules->DisplayLockedElementDisconnected(element_);
     }
+#endif
 
     // blocked_child_recalc_change_ must be cleared because things can be in an
     // inconsistent state when we add the element back (e.g. crbug.com/1262742).
@@ -995,9 +1013,15 @@ const char* DisplayLockContext::ShouldForceUnlock() const
     if (const auto* object_element = DynamicTo<HTMLObjectElement>(*element_)) {
         if (!object_element->UseFallbackContent())
             return nullptr;
-    } else if (IsA<HTMLImageElement>(*element_) || IsA<HTMLCanvasElement>(*element_) || (element_->IsFormControlElement() && !element_->IsOutputElement())
-        || element_->IsMediaElement() || element_->IsFrameOwnerElement() || element_->IsSVGElement()) {
-        return nullptr;
+    } else {
+        bool is_supported_replaced_element = IsA<HTMLImageElement>(*element_) || IsA<HTMLCanvasElement>(*element_)
+            || (element_->IsFormControlElement() && !element_->IsOutputElement())
+            || element_->IsFrameOwnerElement() || element_->IsSVGElement();
+#if !defined(MINI_UI_QUICKJS)
+        is_supported_replaced_element |= element_->IsMediaElement();
+#endif
+        if (is_supported_replaced_element)
+            return nullptr;
     }
 
     // From https://www.w3.org/TR/css-contain-1/#containment-layout
@@ -1093,6 +1117,7 @@ void DisplayLockContext::DetermineIfSubtreeHasTopLayerElement()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DisplayLockContext::DetermineIfDescendantIsViewTransitionElement()
 {
     ResetDescendantIsViewTransitionElement();
@@ -1110,6 +1135,8 @@ void DisplayLockContext::SetDescendantIsViewTransitionElement()
 {
     SetRenderAffectingState(RenderAffectingState::kDescendantIsViewTransitionElement, true);
 }
+
+#endif
 
 void DisplayLockContext::ClearHasTopLayerElement()
 {
@@ -1230,12 +1257,21 @@ void DisplayLockContext::NotifyRenderAffectingStateChanged()
     // - We are in 'auto' mode and nothing blocks locking: viewport is
     //   not intersecting, subtree doesn't have focus, and subtree doesn't have
     //   selection, etc. See the condition for the full list.
+#if defined(MINI_UI_QUICKJS)
+    bool should_be_locked = state(RenderAffectingState::kLockRequested)
+        && (state_ != EContentVisibility::kAuto
+            || (!state(RenderAffectingState::kIntersectsViewport) && !state(RenderAffectingState::kSubtreeHasFocus)
+                && !state(RenderAffectingState::kSubtreeHasSelection) && !state(RenderAffectingState::kAutoStateUnlockedUntilLifecycle)
+                && !state(RenderAffectingState::kAutoUnlockedForPrint) && !state(RenderAffectingState::kSubtreeHasTopLayerElement)
+                && !state(RenderAffectingState::kDescendantIsAnchorTarget)));
+#else
     bool should_be_locked = state(RenderAffectingState::kLockRequested)
         && (state_ != EContentVisibility::kAuto
             || (!state(RenderAffectingState::kIntersectsViewport) && !state(RenderAffectingState::kSubtreeHasFocus)
                 && !state(RenderAffectingState::kSubtreeHasSelection) && !state(RenderAffectingState::kAutoStateUnlockedUntilLifecycle)
                 && !state(RenderAffectingState::kAutoUnlockedForPrint) && !state(RenderAffectingState::kSubtreeHasTopLayerElement)
                 && !state(RenderAffectingState::kDescendantIsViewTransitionElement) && !state(RenderAffectingState::kDescendantIsAnchorTarget)));
+#endif
 
     if (should_be_locked && !IsLocked())
         Lock();
@@ -1306,8 +1342,10 @@ const char* DisplayLockContext::RenderAffectingStateName(int state) const
         return "AutoUnlockedForPrint";
     case RenderAffectingState::kSubtreeHasTopLayerElement:
         return "SubtreeHasTopLayerElement";
+#if !defined(MINI_UI_QUICKJS)
     case RenderAffectingState::kDescendantIsViewTransitionElement:
         return "DescendantIsViewTransitionElement";
+#endif
     case RenderAffectingState::kDescendantIsAnchorTarget:
         return "kDescendantIsAnchorTarget";
     case RenderAffectingState::kNumRenderAffectingStates:

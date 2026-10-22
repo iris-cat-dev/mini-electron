@@ -105,11 +105,13 @@ public:
         return MakeGarbageCollected<File>(url, metadata, user_visibility, std::move(blob_data_handle));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Calls RegisterBlob through the relevant FileSystemManager, then constructs
     // a File with the resulting BlobDataHandle.
     static File* CreateForFileSystemFile(ExecutionContext& context, const KURL& url, const FileMetadata& metadata,
         UserVisibility user_visibility, const String& relative_path = String());
 
+#endif
     File(ExecutionContext* context, const String& path, ContentTypeLookupPolicy = kWellKnownContentTypes, UserVisibility = File::kIsUserVisible);
     File(ExecutionContext* context, const String& path, const String& name, ContentTypeLookupPolicy, UserVisibility);
     File(const String& path, const String& name, const String& relative_path, UserVisibility, bool has_snapshot_data, uint64_t size,

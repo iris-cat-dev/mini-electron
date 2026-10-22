@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/core/css/css_grid_template_areas_value.h"
 #include "third_party/blink/renderer/core/css/css_identifier_value.h"
 #include "third_party/blink/renderer/core/css/css_initial_color_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_layout_function_value.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_light_dark_value_pair.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
@@ -74,7 +76,9 @@
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_style_tracker.h"
+#endif
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
 #include "third_party/blink/renderer/platform/geometry/length.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
@@ -2798,6 +2802,9 @@ const CSSValue* Display::ParseSingleValue(CSSParserTokenStream& stream, const CS
         }
     }
 
+#if defined(MINI_UI_QUICKJS)
+    return nullptr;
+#else
     if (!RuntimeEnabledFeatures::CSSLayoutAPIEnabled()) {
         return nullptr;
     }
@@ -2829,15 +2836,18 @@ const CSSValue* Display::ParseSingleValue(CSSParserTokenStream& stream, const CS
     }
     stream.ConsumeWhitespace();
     return MakeGarbageCollected<cssvalue::CSSLayoutFunctionValue>(name, /* is_inline */ function == CSSValueID::kInlineLayout);
+#endif
 }
 
 const CSSValue* Display::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style, const LayoutObject*, bool allow_visited_style, CSSValuePhase value_phase) const
 {
+#if !defined(MINI_UI_QUICKJS)
     if (style.IsDisplayLayoutCustomBox()) {
         return MakeGarbageCollected<cssvalue::CSSLayoutFunctionValue>(
             MakeGarbageCollected<CSSCustomIdentValue>(style.DisplayLayoutCustomName()), style.IsDisplayInlineType());
     }
+#endif
 
     if (style.Display() == EDisplay::kBlockMath) {
         CSSValueList* values = CSSValueList::CreateSpaceSeparated();
@@ -2878,14 +2888,18 @@ void Display::ApplyInitial(StyleResolverState& state) const
 {
     ComputedStyleBuilder& builder = state.StyleBuilder();
     builder.SetDisplay(ComputedStyleInitialValues::InitialDisplay());
+#if !defined(MINI_UI_QUICKJS)
     builder.SetDisplayLayoutCustomName(ComputedStyleInitialValues::InitialDisplayLayoutCustomName());
+#endif
 }
 
 void Display::ApplyInherit(StyleResolverState& state) const
 {
     ComputedStyleBuilder& builder = state.StyleBuilder();
     builder.SetDisplay(state.ParentStyle()->Display());
+#if !defined(MINI_UI_QUICKJS)
     builder.SetDisplayLayoutCustomName(state.ParentStyle()->DisplayLayoutCustomName());
+#endif
 }
 
 void Display::ApplyValue(StyleResolverState& state, const CSSValue& value, ValueMode) const
@@ -2893,12 +2907,16 @@ void Display::ApplyValue(StyleResolverState& state, const CSSValue& value, Value
     ComputedStyleBuilder& builder = state.StyleBuilder();
     if (auto* identifier_value = DynamicTo<CSSIdentifierValue>(value)) {
         builder.SetDisplay(identifier_value->ConvertTo<EDisplay>());
+#if !defined(MINI_UI_QUICKJS)
         builder.SetDisplayLayoutCustomName(ComputedStyleInitialValues::InitialDisplayLayoutCustomName());
+#endif
         return;
     }
 
     if (value.IsValueList()) {
+#if !defined(MINI_UI_QUICKJS)
         builder.SetDisplayLayoutCustomName(ComputedStyleInitialValues::InitialDisplayLayoutCustomName());
+#endif
         const CSSValueList& list = To<CSSValueList>(value);
         DCHECK(list.length() == 2u || (list.length() == 3u && list.Item(2).IsIdentifierValue()));
         DCHECK(list.Item(0).IsIdentifierValue());
@@ -2939,11 +2957,13 @@ void Display::ApplyValue(StyleResolverState& state, const CSSValue& value, Value
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const auto& layout_function_value = To<cssvalue::CSSLayoutFunctionValue>(value);
 
     EDisplay display = layout_function_value.IsInline() ? EDisplay::kInlineLayoutCustom : EDisplay::kLayoutCustom;
     builder.SetDisplay(display);
     builder.SetDisplayLayoutCustomName(layout_function_value.GetName());
+#endif
 }
 
 const CSSValue* DominantBaseline::CSSValueFromComputedStyleInternal(
@@ -5795,6 +5815,7 @@ const CSSValue* Page::CSSValueFromComputedStyleInternal(
     return MakeGarbageCollected<CSSCustomIdentValue>(style.Page());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const CSSValue* ViewTransitionName::ParseSingleValue(CSSParserTokenStream& stream, const CSSParserContext& context, const CSSParserLocalContext&) const
 {
     if (stream.Peek().Id() == CSSValueID::kNone) {
@@ -5889,6 +5910,7 @@ const CSSValue* ViewTransitionCaptureMode::CSSValueFromComputedStyleInternal(
         return CSSIdentifierValue::Create(CSSValueID::kLayered);
     }
 }
+#endif
 
 const CSSValue* PaintOrder::ParseSingleValue(CSSParserTokenStream& stream, const CSSParserContext& context, const CSSParserLocalContext&) const
 {

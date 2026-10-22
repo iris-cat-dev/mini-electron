@@ -22,8 +22,10 @@
 #include "third_party/blink/renderer/core/layout/column_layout_algorithm.h"
 #include "third_party/blink/renderer/core/layout/constraint_space.h"
 #include "third_party/blink/renderer/core/layout/constraint_space_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/custom/custom_layout_algorithm.h"
 #include "third_party/blink/renderer/core/layout/custom/layout_custom.h"
+#endif
 #include "third_party/blink/renderer/core/layout/disable_layout_side_effects_scope.h"
 #include "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.h"
 #include "third_party/blink/renderer/core/layout/forms/fieldset_layout_algorithm.h"
@@ -45,7 +47,9 @@
 #include "third_party/blink/renderer/core/layout/layout_multi_column_spanner_placeholder.h"
 #include "third_party/blink/renderer/core/layout/layout_result.h"
 #include "third_party/blink/renderer/core/layout/layout_utils.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/legacy_layout_tree_walking.h"
 #include "third_party/blink/renderer/core/layout/length_utils.h"
@@ -172,8 +176,10 @@ template <typename Callback> NOINLINE void DetermineAlgorithmAndRun(const Layout
         CreateAlgorithmAndRun<TableRowLayoutAlgorithm>(params, callback);
     } else if (box.IsTableSection()) {
         CreateAlgorithmAndRun<TableSectionLayoutAlgorithm>(params, callback);
+#if !defined(MINI_UI_QUICKJS)
     } else if (box.IsLayoutCustom()) {
         CreateAlgorithmAndRun<CustomLayoutAlgorithm>(params, callback);
+#endif
     } else if (box.IsMathML()) {
         DetermineMathMLAlgorithmAndRun(box, params, callback);
     } else if (box.IsLayoutGrid()) {
@@ -1370,7 +1376,11 @@ bool BlockNode::HasAspectRatio() const
         return true;
     }
     LayoutBox* layout_object = GetLayoutBox();
+#if defined(MINI_UI_QUICKJS)
+    if (!layout_object->IsImage() && !layout_object->IsCanvas() && !layout_object->IsSVGRoot()) {
+#else
     if (!layout_object->IsImage() && !IsA<LayoutVideo>(layout_object) && !layout_object->IsCanvas() && !layout_object->IsSVGRoot()) {
+#endif
         return false;
     }
 
@@ -1435,10 +1445,12 @@ bool BlockNode::HasNonVisibleBlockOverflow() const
     return clip_axes & kOverflowClipX;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool BlockNode::IsCustomLayoutLoaded() const
 {
     return To<LayoutCustom>(box_.Get())->IsLoaded();
 }
+#endif
 
 void BlockNode::HandleScrollMarkerGroup() const
 {

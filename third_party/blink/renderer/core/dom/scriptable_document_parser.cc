@@ -25,7 +25,9 @@
 
 #include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
+#endif
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 
@@ -43,6 +45,7 @@ bool ScriptableDocumentParser::IsParsingAtLineNumber() const
     return IsParsing() && !IsWaitingForScripts() && !IsExecutingScript();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ScriptableDocumentParser::AddInlineScriptStreamer(const String& source, scoped_refptr<BackgroundInlineScriptStreamer> streamer)
 {
     base::AutoLock lock(streamers_lock_);
@@ -72,5 +75,6 @@ bool ScriptableDocumentParser::HasInlineScriptStreamerForTesting(const String& s
     base::AutoLock lock(streamers_lock_);
     return inline_script_streamers_.Contains(source);
 }
+#endif
 
 } // namespace blink

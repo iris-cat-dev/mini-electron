@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "fixed_and_exercised",
+  "cause": {
+    "source": "runtime/ui/quickjs_bindings.cc",
+    "symbol": "JointVisitor::Drain",
+    "failure": "The local queue index restarted at zero for every native-root drain within one VM GC epoch. Enqueue deduplicated queue entries, but did not prevent repeated execution of their trace callbacks. Repeated wrapper marking therefore replayed growing queue prefixes.",
+    "observed_stack": [
+      "BlinkBackend::Impl::~Impl",
+      "JS_RunGC",
+      "mark_children",
+      "MarkQuickJSWrapper",
+      "CrossHeapState::MarkWrapper",
+      "JointVisitor::Drain",
+      "blink::Node::Trace",
+      "blink::EventTarget::Trace"
+    ]
+  },
+  "changes": [
+    {
+      "source": "runtime/ui/quickjs_bindings.cc",
+      "change": "Retain the worklist cursor for the whole collection epoch, reset it with the epoch worklist, and perform ephemeron fixed-point resolution after each drained batch instead of after every native callback."
+    },
+    {
+      "source": "runtime/ui/quickjs_v8_core.cc",
+      "change": "Compact expired weak-handle slots stably in linear passes, preserving dead-callback snapshots and second-pass ordering instead of erasing vector elements individually."
+    }
+  ],
+  "comparison": {
+    "framework": "vue",
+    "rows": 1000,
+    "warmups": 2,
+    "measured_iterations": 7,
+    "before": {
+      "process_wall_seconds": 193.73031159999664,
+      "workload_wall_ms": 35025.0203,
+      "library_sha256": "1c801ff751e42f960afd4acd5ccdb7b12912e62c9edce1723f375897487bc0cc",
+      "raw_file": "first-attempt-timeout/raw/vue-1000.json"
+    },
+    "after": {
+      "process_wall_seconds": 30.295124699987355,
+      "workload_wall_ms": 27540.4249,
+      "view_teardown_wall_ms": 560.7991,
+      "normal_process_exit_code": 0,
+      "library_sha256": "ec71add7b58bbb22e65014f975359bffb0a685e5f8bf1511d50fb67ad0d7f4fb",
+      "raw_file": "gc-fixed-comparison-raw.json",
+      "execution_file": "gc-fixed-comparison-runtime.json"
+    },
+    "limitations": "One process before and one process after; this is diagnostic before/after evidence, not a statistically controlled cross-build speedup estimate. The separate CDB-profiled run is excluded from benchmark statistics. Both runs precede native font-preference initialization; neither is pooled into the final Chrome comparison."
+  },
+  "native_regressions_after_fix": {
+    "count": 15,
+    "normal_exits_zero": true,
+    "details": "The final native validation record retains exact observed outputs and compile/link provenance."
+  },
+  "framework_harness": "The host now measures actual View destruction separately and writes its success report afterward. The runner still requires normal process exit, covering process-global teardown."
+}

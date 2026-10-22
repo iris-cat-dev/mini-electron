@@ -12,7 +12,9 @@
 #include "third_party/blink/renderer/core/css/css_image_set_value.h"
 #include "third_party/blink/renderer/core/css/css_image_value.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 
 namespace blink {
 
@@ -64,9 +66,11 @@ CSSValue* StyleImageComputedCSSValueBuilder::Build(CSSValue* value) const
         }
         return MakeGarbageCollected<cssvalue::CSSCrossfadeValue>(image_crossfade->IsPrefixedVariant(), std::move(images_and_percentages));
     }
+#if !defined(MINI_UI_QUICKJS)
     if (IsA<CSSPaintValue>(value)) {
         return value;
     }
+#endif
     if (auto* image_gradient_value = DynamicTo<cssvalue::CSSGradientValue>(value)) {
         return image_gradient_value->ComputedCSSValue(style_, allow_visited_style_, value_phase_);
     }

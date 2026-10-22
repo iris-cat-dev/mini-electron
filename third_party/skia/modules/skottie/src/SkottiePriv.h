@@ -236,7 +236,9 @@ private:
     sk_sp<sksg::RenderNode> attachShapeLayer(const skjson::ObjectValue&, LayerInfo*) const;
     sk_sp<sksg::RenderNode> attachSolidLayer(const skjson::ObjectValue&, LayerInfo*) const;
     sk_sp<sksg::RenderNode> attachTextLayer(const skjson::ObjectValue&, LayerInfo*) const;
+#if !defined(MINI_UI_QUICKJS)
     sk_sp<sksg::RenderNode> attachAudioLayer(const skjson::ObjectValue&, LayerInfo*) const;
+#endif
 
     sk_sp<ResourceProvider> fResourceProvider;
     sk_sp<SkFontMgr> fFontMgr;

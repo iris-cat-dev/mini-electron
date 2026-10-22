@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
 
 #include <utility>
@@ -411,3 +413,5 @@ void WebRemoteFrameImpl::SetReplicatedState(mojom::blink::FrameReplicationStateP
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

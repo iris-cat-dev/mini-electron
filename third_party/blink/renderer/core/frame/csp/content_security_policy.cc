@@ -60,7 +60,9 @@
 #include "third_party/blink/renderer/core/frame/location.h"
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/securitypolicyviolation_disposition_names.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -286,8 +288,10 @@ void ContentSecurityPolicy::ApplyPolicySideEffectsToDelegate()
     if (!disable_eval_error_message_.IsNull())
         delegate_->DisableEval(disable_eval_error_message_);
 
+#if !defined(MINI_UI_QUICKJS)
     if (!disable_wasm_eval_error_message_.IsNull())
         delegate_->SetWasmEvalErrorMessage(disable_wasm_eval_error_message_);
+#endif
 }
 
 void ContentSecurityPolicy::ReportUseCounters(const Vector<network::mojom::blink::ContentSecurityPolicyPtr>& policies)
@@ -1104,6 +1108,7 @@ void ContentSecurityPolicy::ReportViolation(const String& directive_text, CSPDir
     if (delegate_ && !context_frame)
         delegate_->DispatchViolationEvent(*violation_data, element);
 
+#if !defined(MINI_UI_QUICKJS)
     AuditsIssue audits_issue = AuditsIssue::CreateContentSecurityPolicyIssue(
         *violation_data, header_type == ContentSecurityPolicyType::kReport, violation_type, context_frame, element, source_location.get(), issue_id);
 
@@ -1112,6 +1117,7 @@ void ContentSecurityPolicy::ReportViolation(const String& directive_text, CSPDir
     } else if (delegate_) {
         delegate_->AddInspectorIssue(std::move(audits_issue));
     }
+#endif
 }
 
 void ContentSecurityPolicy::PostViolationReport(
@@ -1230,11 +1236,13 @@ void ContentSecurityPolicy::LogToConsole(ConsoleMessage* console_message, LocalF
         console_messages_.push_back(console_message);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ContentSecurityPolicy::ReportBlockedScriptExecutionToInspector(const String& directive_text) const
 {
     if (delegate_)
         delegate_->ReportBlockedScriptExecutionToInspector(directive_text);
 }
+#endif
 
 bool ContentSecurityPolicy::ExperimentalFeaturesEnabled() const
 {

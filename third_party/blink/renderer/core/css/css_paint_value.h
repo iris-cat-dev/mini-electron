@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_VALUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_VALUE_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
 #include "third_party/blink/renderer/core/css/css_image_generator_value.h"
@@ -120,4 +121,5 @@ template <> struct DowncastTraits<CSSPaintValue> {
 
 } // namespace blink
 
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_VALUE_H_

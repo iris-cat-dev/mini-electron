@@ -113,6 +113,7 @@ void WakeUpBudgetPool::OnWakeUp(base::TimeTicks now)
     last_wake_up_ = now;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WakeUpBudgetPool::WriteIntoTrace(perfetto::TracedValue context, base::TimeTicks now) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -127,6 +128,7 @@ void WakeUpBudgetPool::WriteIntoTrace(perfetto::TracedValue context, base::TimeT
     dict.Add("is_enabled", is_enabled_);
     dict.Add("throttlers", associated_throttlers_);
 }
+#endif
 
 } // namespace scheduler
 } // namespace blink

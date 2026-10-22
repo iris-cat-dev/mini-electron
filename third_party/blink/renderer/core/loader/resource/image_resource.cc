@@ -599,7 +599,9 @@ void ImageResource::OnePartInMultipartReceived(const ResourceResponse& response)
     DCHECK(multipart_parser_);
 
     if (!GetResponse().IsNull()) {
+#if !defined(MINI_UI_QUICKJS)
         CHECK_EQ(GetResponse().WasFetchedViaServiceWorker(), response.WasFetchedViaServiceWorker());
+#endif
         CHECK_EQ(GetResponse().GetType(), response.GetType());
     }
 

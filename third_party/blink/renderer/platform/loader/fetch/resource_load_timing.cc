@@ -17,13 +17,18 @@ scoped_refptr<ResourceLoadTiming> ResourceLoadTiming::Create()
 
 network::mojom::blink::LoadTimingInfoPtr ResourceLoadTiming::ToMojo() const
 {
-    network::mojom::blink::LoadTimingInfoPtr timing = network::mojom::blink::LoadTimingInfo::New(false, 0, base::Time(), request_time_, proxy_start_,
-        proxy_end_,
+#if defined(MINI_UI_QUICKJS)
+    return network::mojom::blink::LoadTimingInfo::New(false, 0, base::Time(), request_time_, proxy_start_, proxy_end_,
+        network::mojom::blink::LoadTimingInfoConnectTiming::New(domain_lookup_start_, domain_lookup_end_, connect_start_, connect_end_, ssl_start_, ssl_end_),
+        send_start_, send_end_, receive_headers_start_, receive_headers_end_, receive_non_informational_headers_start_, receive_early_hints_start_, push_start_,
+        push_end_, base::TimeTicks(), base::TimeTicks(), base::TimeTicks(), base::TimeTicks(), base::TimeTicks(), base::TimeTicks());
+#else
+    return network::mojom::blink::LoadTimingInfo::New(false, 0, base::Time(), request_time_, proxy_start_, proxy_end_,
         network::mojom::blink::LoadTimingInfoConnectTiming::New(domain_lookup_start_, domain_lookup_end_, connect_start_, connect_end_, ssl_start_, ssl_end_),
         send_start_, send_end_, receive_headers_start_, receive_headers_end_, receive_non_informational_headers_start_, receive_early_hints_start_, push_start_,
         push_end_, worker_start_, worker_ready_, worker_fetch_start_, worker_respond_with_settled_, worker_router_evaluation_start_,
         worker_cache_lookup_start_);
-    return timing;
+#endif
 }
 
 void ResourceLoadTiming::SetDomainLookupStart(base::TimeTicks domain_lookup_start)
@@ -61,6 +66,7 @@ void ResourceLoadTiming::SetConnectEnd(base::TimeTicks connect_end)
     connect_end_ = connect_end;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ResourceLoadTiming::SetWorkerStart(base::TimeTicks worker_start)
 {
     worker_start_ = worker_start;
@@ -90,6 +96,7 @@ void ResourceLoadTiming::SetWorkerCacheLookupStart(base::TimeTicks worker_cache_
 {
     worker_cache_lookup_start_ = worker_cache_lookup_start;
 }
+#endif
 
 void ResourceLoadTiming::SetSendStart(base::TimeTicks send_start)
 {

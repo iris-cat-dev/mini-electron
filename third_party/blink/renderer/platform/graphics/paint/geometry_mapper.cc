@@ -522,9 +522,11 @@ bool GeometryMapper::LocalToAncestorVisualRectInternalForCompositingOverlapForTe
 
 std::optional<gfx::RectF> GeometryMapper::VisibilityLimit(const PropertyTreeState& state)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (state.Effect().SelfOrAncestorParticipatesInViewTransition()) {
         return std::nullopt;
     }
+#endif
 
     if (&state.Clip().LocalTransformSpace() == &state.Transform()) {
         return state.Clip().PaintClipRect().Rect();

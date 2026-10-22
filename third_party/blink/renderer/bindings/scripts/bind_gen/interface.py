@@ -1512,7 +1512,9 @@ def make_report_coop_access(cg_context):
     elif (cg_context.attribute_set and not ("Setter" in values)):
         return None
 
-    return TextNode("${blink_receiver}->ReportCoopAccess(${property_name});")
+    return TextNode("#if !defined(MINI_UI_QUICKJS)\n"
+                    "${blink_receiver}->ReportCoopAccess(${property_name});\n"
+                    "#endif")
 
 
 def make_report_deprecate_as(cg_context):
@@ -7573,8 +7575,8 @@ for (const auto* wrapper_type_info : wrapper_type_info_list) {
 """))
 
     # Write down to the files.
-    write_code_node_to_file(header_node, path_manager.gen_path_to(header_path))
-    write_code_node_to_file(source_node, path_manager.gen_path_to(source_path))
+    write_code_node_to_file(header_node, PathManager.gen_path_to(header_path))
+    write_code_node_to_file(source_node, PathManager.gen_path_to(source_path))
 
 
 def generate_init_idl_interfaces(function_name,
@@ -7659,8 +7661,8 @@ def generate_init_idl_interfaces(function_name,
         func_def.body.append(TextNode(init_call))
 
     # Write down to the files.
-    write_code_node_to_file(header_node, path_manager.gen_path_to(header_path))
-    write_code_node_to_file(source_node, path_manager.gen_path_to(source_path))
+    write_code_node_to_file(header_node, PathManager.gen_path_to(header_path))
+    write_code_node_to_file(source_node, PathManager.gen_path_to(source_path))
 
 
 def generate_interfaces(task_queue):

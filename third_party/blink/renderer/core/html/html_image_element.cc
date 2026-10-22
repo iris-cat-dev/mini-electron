@@ -36,7 +36,9 @@
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_forbidden_scope.h"
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
@@ -57,14 +59,19 @@
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/element_locator.h"
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#endif
+#include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_script_observer.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/media_type_names.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_entry.h"
 #include "third_party/blink/renderer/core/style/content_data.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
@@ -373,6 +380,7 @@ void HTMLImageElement::ParseAttribute(const AttributeModificationParams& params)
             // Update the current state so we can detect future state changes.
             GetImageLoader().UpdateFromElement(ImageLoader::kUpdateIgnorePreviousError);
         }
+#if !defined(MINI_UI_QUICKJS)
     } else if (name == html_names::kAttributionsrcAttr) {
         LocalDOMWindow* window = GetDocument().domWindow();
         if (window && window->GetFrame()) {
@@ -385,6 +393,7 @@ void HTMLImageElement::ParseAttribute(const AttributeModificationParams& params)
             window->GetFrame()->GetAttributionSrcLoader()->Register(params.new_value,
                 /*element=*/this, referrer_policy);
         }
+#endif
     } else if (name == html_names::kSharedstoragewritableAttr && RuntimeEnabledFeatures::SharedStorageAPIM118Enabled(GetExecutionContext())) {
         if (!GetExecutionContext()->IsSecureContext()) {
             GetDocument().AddConsoleMessage(
@@ -448,7 +457,9 @@ ImageCandidate HTMLImageElement::FindBestFitImageFromPictureParent()
     if (!picture_parent)
         return ImageCandidate();
     HashSet<String> disabled_image_types;
+#if !defined(MINI_UI_QUICKJS)
     probe::GetDisabledImageTypes(GetExecutionContext(), &disabled_image_types);
+#endif
     for (Node* child = picture_parent->firstChild(); child; child = child->nextSibling()) {
         if (child == this)
             return ImageCandidate();
@@ -547,6 +558,7 @@ Node::InsertionNotificationRequest HTMLImageElement::InsertedInto(ContainerNode&
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     static const bool is_image_lcpp_enabled = base::FeatureList::IsEnabled(features::kLCPCriticalPathPredictor)
         && features::kLCPCriticalPathPredictorImageLoadPriorityEnabledForHTMLImageElement.Get();
     if (is_image_lcpp_enabled) {
@@ -558,6 +570,7 @@ Node::InsertionNotificationRequest HTMLImageElement::InsertedInto(ContainerNode&
             }
         }
     }
+#endif
 
     return HTMLElement::InsertedInto(insertion_point);
 }

@@ -26,7 +26,9 @@
 #include "base/debug/crash_logging.h"
 #include "base/pickle.h"
 #include "base/strings/strcat.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing.h"
+#endif
 #include "base/trace_event/memory_usage_estimator.h"
 #include "base/unguessable_token.h"
 #include "url/gurl.h"
@@ -411,10 +413,12 @@ std::optional<Origin> Origin::Deserialize(std::string_view value)
     return origin;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Origin::WriteIntoTrace(perfetto::TracedValue context) const
 {
     std::move(context).WriteString(GetDebugString());
 }
+#endif
 
 size_t Origin::EstimateMemoryUsage() const
 {

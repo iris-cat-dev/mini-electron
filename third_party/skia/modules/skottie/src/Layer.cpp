@@ -433,7 +433,9 @@ sk_sp<sksg::RenderNode> LayerBuilder::buildRenderTree(const AnimationBuilder& ab
     // the latter.
     enum : uint32_t {
         kTransformEffects = 0x01, // The layer transform also applies to its effects.
+#if !defined(MINI_UI_QUICKJS)
         kForceSeek = 0x02, // Dispatch all seek() events even when the layer is inactive.
+#endif
     };
 
     static constexpr struct {
@@ -446,10 +448,18 @@ sk_sp<sksg::RenderNode> LayerBuilder::buildRenderTree(const AnimationBuilder& ab
         { &AnimationBuilder::attachNullLayer, 0 }, // 'ty':  3 -> null
         { &AnimationBuilder::attachShapeLayer, 0 }, // 'ty':  4 -> shape
         { &AnimationBuilder::attachTextLayer, 0 }, // 'ty':  5 -> text
+#if !defined(MINI_UI_QUICKJS)
         { &AnimationBuilder::attachAudioLayer, kForceSeek }, // 'ty':  6 -> audio
+#else
+        { nullptr, 0 }, // 'ty':  6 -> unsupported audio
+#endif
         { nullptr, 0 }, // 'ty':  7 -> pholderVideo
         { nullptr, 0 }, // 'ty':  8 -> imageSeq
+#if !defined(MINI_UI_QUICKJS)
         { &AnimationBuilder::attachFootageLayer, kTransformEffects }, // 'ty':  9 -> video
+#else
+        { nullptr, 0 }, // 'ty':  9 -> unsupported video
+#endif
         { nullptr, 0 }, // 'ty': 10 -> pholderStill
         { nullptr, 0 }, // 'ty': 11 -> guide
         { nullptr, 0 }, // 'ty': 12 -> adjustment
@@ -525,7 +535,11 @@ sk_sp<sksg::RenderNode> LayerBuilder::buildRenderTree(const AnimationBuilder& ab
     }
 
     const auto has_animators = !abuilder.fCurrentAnimatorScope->empty();
+#if !defined(MINI_UI_QUICKJS)
     const auto force_seek_count = build_info.fFlags & kForceSeek ? abuilder.fCurrentAnimatorScope->size() : fTransformAnimatorCount;
+#else
+    const auto force_seek_count = fTransformAnimatorCount;
+#endif
 
     sk_sp<Animator> controller = sk_make_sp<LayerController>(ascope.release(), layer, force_seek_count, fInfo.fInPoint, fInfo.fOutPoint);
 

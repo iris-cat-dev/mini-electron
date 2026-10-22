@@ -34,8 +34,10 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 class Clock;
@@ -225,7 +227,9 @@ private:
     void NotifyDocumentTimingChanged();
     void EnsureReferenceTimesSet();
     LocalFrame* GetFrame() const;
+#if !defined(MINI_UI_QUICKJS)
     void WriteNavigationStartDataIntoTracedValue(perfetto::TracedValue context) const;
+#endif
 
     base::TimeTicks reference_monotonic_time_;
     base::TimeDelta reference_wall_time_;

@@ -4,17 +4,23 @@
 
 #include "third_party/blink/renderer/core/fetch/global_fetch.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/feature_list.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_deferred_request_init.h"
+#include "third_party/blink/renderer/core/fetch/fetch_later_result.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_request_init.h"
 #include "third_party/blink/renderer/core/execution_context/navigator_base.h"
-#include "third_party/blink/renderer/core/fetch/fetch_later_result.h"
 #include "third_party/blink/renderer/core/fetch/fetch_manager.h"
 #include "third_party/blink/renderer/core/fetch/request.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -54,11 +60,13 @@ public:
     explicit GlobalFetchImpl(T& supplementable, ExecutionContext* execution_context)
         : Supplement<T>(supplementable)
         , fetch_manager_(MakeGarbageCollected<FetchManager>(execution_context))
+#if !defined(MINI_UI_QUICKJS)
         ,
         // TODO(crbug.com/1356128): FetchLater is only supported in Document.
         fetch_later_manager_(base::FeatureList::IsEnabled(blink::features::kFetchLaterAPI) && execution_context->IsWindow()
                 ? MakeGarbageCollected<FetchLaterManager>(execution_context)
                 : nullptr)
+#endif
     {
     }
 
@@ -80,7 +88,9 @@ public:
         if (exception_state.HadException())
             return EmptyPromise();
 
+#if !defined(MINI_UI_QUICKJS)
         probe::WillSendXMLHttpOrFetchNetworkRequest(execution_context, r->url());
+#endif
         FetchRequestData* request_data = r->PassRequestData(script_state, exception_state);
         MeasureFetchProperties(execution_context, request_data);
 
@@ -101,6 +111,10 @@ public:
     FetchLaterResult* FetchLater(
         ScriptState* script_state, const V8RequestInfo* input, const DeferredRequestInit* init, ExceptionState& exception_state) override
     {
+#if defined(MINI_UI_QUICKJS)
+        exception_state.ThrowTypeError("FetchLater is not supported in this scope.");
+        return nullptr;
+#else
         if (!base::FeatureList::IsEnabled(blink::features::kFetchLaterAPI) || !fetch_later_manager_) {
             exception_state.ThrowTypeError("FetchLater is not supported in this scope.");
             return nullptr;
@@ -122,7 +136,9 @@ public:
             return nullptr;
         }
 
+#if !defined(MINI_UI_QUICKJS)
         probe::WillSendXMLHttpOrFetchNetworkRequest(ec, r->url());
+#endif
         FetchRequestData* request_data = r->PassRequestData(script_state, exception_state);
         MeasureFetchProperties(ec, request_data);
         // 5. If init is given and init ["activateAfter"] exists, then set
@@ -134,6 +150,7 @@ public:
         }
 
         return result;
+#endif
     }
 
     uint32_t FetchCount() const override
@@ -144,14 +161,18 @@ public:
     void Trace(Visitor* visitor) const override
     {
         visitor->Trace(fetch_manager_);
+#if !defined(MINI_UI_QUICKJS)
         visitor->Trace(fetch_later_manager_);
+#endif
         ScopedFetcher::Trace(visitor);
         Supplement<T>::Trace(visitor);
     }
 
 private:
     Member<FetchManager> fetch_manager_;
+#if !defined(MINI_UI_QUICKJS)
     Member<FetchLaterManager> fetch_later_manager_;
+#endif
     uint32_t fetch_count_ = 0;
 };
 
@@ -175,10 +196,12 @@ GlobalFetch::ScopedFetcher* GlobalFetch::ScopedFetcher::From(LocalDOMWindow& win
     return GlobalFetchImpl<LocalDOMWindow>::From(window, window.GetExecutionContext());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 GlobalFetch::ScopedFetcher* GlobalFetch::ScopedFetcher::From(WorkerGlobalScope& worker)
 {
     return GlobalFetchImpl<WorkerGlobalScope>::From(worker, worker.GetExecutionContext());
 }
+#endif
 
 GlobalFetch::ScopedFetcher* GlobalFetch::ScopedFetcher::From(NavigatorBase& navigator)
 {
@@ -200,12 +223,14 @@ ScriptPromise<Response> GlobalFetch::fetch(
     return ScopedFetcher::From(window)->Fetch(script_state, input, init, exception_state);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ScriptPromise<Response> GlobalFetch::fetch(
     ScriptState* script_state, WorkerGlobalScope& worker, const V8RequestInfo* input, const RequestInit* init, ExceptionState& exception_state)
 {
     UseCounter::Count(worker.GetExecutionContext(), WebFeature::kFetch);
     return ScopedFetcher::From(worker)->Fetch(script_state, input, init, exception_state);
 }
+#endif
 
 FetchLaterResult* GlobalFetch::fetchLater(
     ScriptState* script_state, LocalDOMWindow& window, const V8RequestInfo* input, const DeferredRequestInit* init, ExceptionState& exception_state)

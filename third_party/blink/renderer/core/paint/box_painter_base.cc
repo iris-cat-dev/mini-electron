@@ -12,7 +12,9 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_progress.h"
 #include "third_party/blink/renderer/core/paint/background_image_geometry.h"
 #include "third_party/blink/renderer/core/paint/box_background_paint_context.h"
@@ -92,6 +94,7 @@ BackgroundColorPaintImageGenerator* GetBackgroundColorPaintImageGenerator(const 
     return document.GetFrame()->GetBackgroundColorPaintImageGenerator();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void SetHasNativeBackgroundPainter(Node* node, bool state)
 {
     Element* element = DynamicTo<Element>(node);
@@ -122,6 +125,7 @@ bool CanCompositeBackgroundColorAnimation(Node* node)
 
     return animation->CheckCanStartAnimationOnCompositor(nullptr) == CompositorAnimations::kNoFailure;
 }
+#endif
 
 CompositedPaintStatus CompositedBackgroundColorStatus(Node* node)
 {
@@ -640,12 +644,15 @@ bool PaintBGColorWithPaintWorklet(const Document& document, const BoxPainterBase
 
     case CompositedPaintStatus::kNeedsRepaint:
     case CompositedPaintStatus::kComposited:
+#if !defined(MINI_UI_QUICKJS)
         if (CanCompositeBackgroundColorAnimation(node)) {
             SetHasNativeBackgroundPainter(node, true);
         } else {
             SetHasNativeBackgroundPainter(node, false);
             return false;
         }
+#endif
+        break;
     }
 
     scoped_refptr<Image> paint_worklet_image = GetBGColorPaintWorkletImage(document, node, dest_rect.Rect().size());
@@ -673,8 +680,11 @@ bool WillDrawImage(
 
     const gfx::Rect enclosing_rect = gfx::ToEnclosingRect(image_rect);
 
-    bool image_may_be_lcp_candidate
+    bool image_may_be_lcp_candidate = false;
+#if !defined(MINI_UI_QUICKJS)
+    image_may_be_lcp_candidate
         = PaintTimingDetector::NotifyBackgroundImagePaint(*generating_node, image, style_image, current_paint_chunk_properties, enclosing_rect);
+#endif
 
     LocalDOMWindow* window = node->GetDocument().domWindow();
     DCHECK(window);
@@ -793,8 +803,10 @@ inline bool PaintFastBottomLayer(const Document& document, Node* node, const Com
     if (!info.should_paint_image || src_rect.IsEmpty())
         return true;
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage", inspector_paint_image_event::Data, node,
         *info.image, gfx::RectF(image->Rect()), gfx::RectF(image_border.Rect()));
+#endif
 
     auto image_auto_dark_mode = ImageClassifierHelper::GetImageAutoDarkMode(*document.GetFrame(), style, image_border.Rect(), src_rect);
 
@@ -900,8 +912,10 @@ void PaintFillLayerBackground(const Document& document, GraphicsContext& context
     // NOTE: This method can be called with no image in situations when a bad
     // resource locator is given such as "//:0", so still check for image.
     if (info.should_paint_image && !geometry.SnappedDestRect().IsEmpty() && !geometry.TileSize().IsEmpty() && image) {
+#if !defined(MINI_UI_QUICKJS)
         DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage", inspector_paint_image_event::Data, node,
             *info.image, gfx::RectF(image->Rect()), gfx::RectF(scrolled_paint_rect));
+#endif
         DrawTiledBackground(document.GetFrame(), context, style, *image, geometry, composite_op, info.respect_image_orientation,
             ComputeImagePaintTimingInfo(node, *image, *info.image, context, gfx::RectF(geometry.SnappedDestRect())));
     }

@@ -14,6 +14,7 @@
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
+#include "third_party/blink/renderer/core/fetch/renderer_cors_issue_code.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy_violation_type.h"
 #include "third_party/blink/renderer/core/inspector/protocol/audits.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_info.h"
@@ -40,12 +41,6 @@ namespace Audits {
 class InspectorIssue;
 }
 } // namespace protocol
-
-enum class RendererCorsIssueCode {
-    kDisallowedByMode,
-    kCorsDisabledScheme,
-    kNoCorsRedirectModeNotFollow,
-};
 
 enum class SharedArrayBufferIssueType {
     kTransferIssue,

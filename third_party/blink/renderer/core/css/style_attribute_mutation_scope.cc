@@ -27,7 +27,9 @@
 #include "third_party/blink/renderer/core/dom/mutation_record.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element_definition.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 
 namespace blink {
 
@@ -107,7 +109,9 @@ StyleAttributeMutationScope::~StyleAttributeMutationScope()
 
     should_notify_inspector_ = false;
     if (local_copy_style_decl->ParentElement()) {
+#if !defined(MINI_UI_QUICKJS)
         probe::DidInvalidateStyleAttr(local_copy_style_decl->ParentElement());
+#endif
     }
 }
 

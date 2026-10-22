@@ -11,7 +11,9 @@
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/boringssl/src/include/openssl/digest.h"
+#endif
 
 namespace blink {
 
@@ -28,9 +30,15 @@ class PLATFORM_EXPORT Digestor {
 public:
     explicit Digestor(HashAlgorithm);
     ~Digestor();
+#if defined(MINI_UI_QUICKJS)
+    Digestor(Digestor&& other) noexcept;
+    Digestor& operator=(Digestor&& other) noexcept;
+#else
     Digestor(Digestor&& other) = default;
     Digestor& operator=(Digestor&& other) = default;
+#endif
 
+    // Starts a new digest, discarding prior input and clearing any failure.
     void Reset(HashAlgorithm);
 
     bool has_failed() const
@@ -39,13 +47,23 @@ public:
     }
 
     // Return false on failure. These do nothing once the |has_failed_| flag is
-    // set. This object cannot be reused; do not update it after Finish.
+    // set. Call Reset before reusing this object after Finish or a failure.
     bool Update(base::span<const uint8_t>);
     bool UpdateUtf8(const String&, WTF::UTF8ConversionMode = WTF::kLenientUTF8Conversion);
     bool Finish(DigestValue&);
 
 private:
+#if defined(MINI_UI_QUICKJS)
+    void ReleaseHandles();
+
+    // Opaque CNG handles keep Windows and OpenSSL headers out of UI consumers.
+    // The hash must be destroyed before its algorithm provider is closed.
+    void* algorithm_handle_ = nullptr;
+    void* hash_handle_ = nullptr;
+    size_t digest_size_ = 0;
+#else
     bssl::ScopedEVP_MD_CTX digest_context_;
+#endif
     bool has_failed_ = false;
 };
 

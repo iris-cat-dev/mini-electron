@@ -80,6 +80,7 @@ public:
     void SetKeyboardFocusURL(Element* new_focus_element) override;
     bool SupportsDraggableRegions() override;
     void DraggableRegionsChanged() override;
+#if !defined(MINI_UI_QUICKJS)
     void BeginLifecycleUpdates(LocalFrame& main_frame) override;
     void RegisterForCommitObservation(CommitObserver*) override;
     void UnregisterFromCommitObservation(CommitObserver*) override;
@@ -88,16 +89,21 @@ public:
     void StopDeferringCommits(LocalFrame& main_frame, cc::PaintHoldingCommitTrigger) override;
     std::unique_ptr<cc::ScopedPauseRendering> PauseRendering(LocalFrame&) override;
     std::optional<int> GetMaxRenderBufferBounds(LocalFrame&) const override;
+#endif
     void StartDragging(LocalFrame*, const WebDragData&, DragOperationsMask, const SkBitmap& drag_image, const gfx::Vector2d& cursor_offset,
         const gfx::Rect& drag_obj_rect) override;
     bool AcceptsLoadDrops() const override;
     Page* CreateWindowDelegate(LocalFrame*, const FrameLoadRequest&, const AtomicString& name, const WebWindowFeatures&, network::mojom::blink::WebSandboxFlags,
         const SessionStorageNamespaceId&, bool& consumed_user_gesture) override;
     void Show(LocalFrame& frame, LocalFrame& opener_frame, NavigationPolicy navigation_policy, bool user_gesture) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetOverscrollBehavior(LocalFrame& main_frame, const cc::OverscrollBehavior&) override;
     void InjectScrollbarGestureScroll(LocalFrame& local_frame, const gfx::Vector2dF& delta, ui::ScrollGranularity granularity,
         CompositorElementId scrollable_area_element_id, WebInputEvent::Type injected_type) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void FinishScrollFocusedEditableIntoView(const gfx::RectF& caret_rect_in_root_frame, mojom::blink::ScrollIntoViewParamsPtr params) override;
+#endif
     bool ShouldReportDetailedMessageForSourceAndSeverity(LocalFrame&, mojom::blink::ConsoleMessageLevel log_level, const String&) override;
     void AddMessageToConsole(LocalFrame*, mojom::ConsoleMessageSource, mojom::ConsoleMessageLevel, const String& message, unsigned line_number,
         const String& source_id, const String& stack_trace) override;
@@ -118,11 +124,15 @@ public:
     float WindowToViewportScalar(LocalFrame*, const float) const override;
     const display::ScreenInfo& GetScreenInfo(LocalFrame&) const override;
     const display::ScreenInfos& GetScreenInfos(LocalFrame&) const override;
+#if !defined(MINI_UI_QUICKJS)
     float InputEventsScaleForEmulation() const override;
+#endif
     void ContentsSizeChanged(LocalFrame*, const gfx::Size&) const override;
     bool DoubleTapToZoomEnabled() const override;
     void EnablePreferredSizeChangedMode() override;
+#if !defined(MINI_UI_QUICKJS)
     void ZoomToFindInPageRect(const gfx::Rect& rect_in_root_frame) override;
+#endif
     void PageScaleFactorChanged() const override;
     float ClampPageScaleFactorToLimits(float scale) const override;
     void OutermostMainFrameScrollOffsetChanged() const override;
@@ -141,31 +151,35 @@ public:
     void SetCursor(const ui::Cursor&, LocalFrame*) override;
     void SetCursorOverridden(bool) override;
     ui::Cursor LastSetCursorForTesting() const override;
+#if !defined(MINI_UI_QUICKJS)
     void SetEventListenerProperties(LocalFrame*, cc::EventListenerClass, cc::EventListenerProperties) override;
-    // Informs client about the existence of handlers for scroll events so
-    // appropriate scroll optimizations can be chosen.
     void SetHasScrollEventHandlers(LocalFrame*, bool has_event_handlers) override;
     void SetNeedsLowLatencyInput(LocalFrame*, bool needs_low_latency) override;
     void SetNeedsUnbufferedInputForDebugger(LocalFrame*, bool immediate) override;
     void RequestUnbufferedInputEvents(LocalFrame*) override;
     void SetTouchAction(LocalFrame*, TouchAction) override;
     void SetPanAction(LocalFrame*, mojom::blink::PanAction pan_action) override;
-
     void AttachRootLayer(scoped_refptr<cc::Layer>, LocalFrame* local_root) override;
-
     cc::AnimationHost* GetCompositorAnimationHost(LocalFrame&) const override;
     cc::AnimationTimeline* GetScrollAnimationTimeline(LocalFrame&) const override;
+#endif
 
     void EnterFullscreen(LocalFrame&, const FullscreenOptions*, FullscreenRequestType) override;
     void ExitFullscreen(LocalFrame&) override;
     void FullscreenElementChanged(Element* old_element, Element* new_element, const FullscreenOptions*, FullscreenRequestType) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void AnimateDoubleTapZoom(const gfx::Point& point, const gfx::Rect& rect) override;
 
+#endif
     // ChromeClient methods:
     String AcceptLanguages() override;
+#if !defined(MINI_UI_QUICKJS)
     void SetCursorForPlugin(const ui::Cursor&, LocalFrame*) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void SetDelegatedInkMetadata(LocalFrame* frame, std::unique_ptr<gfx::DelegatedInkMetadata> metadata) override;
+#endif
 
     // ChromeClientImpl:
     void SetNewWindowNavigationPolicy(WebNavigationPolicy);
@@ -173,10 +187,11 @@ public:
     // FileChooser calls this function to kick pending file chooser
     // requests.
     void DidCompleteFileChooser(FileChooser& file_chooser);
-
+#if !defined(MINI_UI_QUICKJS)
     void AutoscrollStart(const gfx::PointF& viewport_point, LocalFrame*) override;
     void AutoscrollFling(const gfx::Vector2dF& velocity, LocalFrame*) override;
     void AutoscrollEnd(LocalFrame*) override;
+#endif
 
     bool HasOpenedPopup() const override;
     PopupMenu* OpenPopupMenu(LocalFrame&, HTMLSelectElement&) override;
@@ -204,8 +219,9 @@ public:
     void JavaScriptChangedValue(HTMLFormControlElement&, const String& old_value, bool was_autofilled) override;
 
     void ShowVirtualKeyboardOnElementFocus(LocalFrame&) override;
-
+#if !defined(MINI_UI_QUICKJS)
     gfx::Transform GetDeviceEmulationTransform() const override;
+#endif
 
     void OnMouseDown(Node&) override;
     void DidUpdateBrowserControls() const override;
@@ -215,18 +231,18 @@ public:
     void RegisterPopupOpeningObserver(PopupOpeningObserver*) override;
     void UnregisterPopupOpeningObserver(PopupOpeningObserver*) override;
     void NotifyPopupOpeningObservers() const override;
-
+#if !defined(MINI_UI_QUICKJS)
     viz::FrameSinkId GetFrameSinkId(LocalFrame*) override;
-
     void RequestDecode(LocalFrame*, const cc::PaintImage&, base::OnceCallback<void(bool)>) override;
-
     void NotifyPresentationTime(LocalFrame& frame, ReportTimeCallback callback) override;
-
     void RequestBeginMainFrameNotExpected(LocalFrame& frame, bool request) override;
+#endif
 
     void DidUpdateTextAutosizerPageInfo(const mojom::blink::TextAutosizerPageInfo& page_info) override;
 
+#if !defined(MINI_UI_QUICKJS)
     int GetLayerTreeId(LocalFrame& frame) override;
+#endif
 
     void DocumentDetached(Document&) override;
 
@@ -273,7 +289,9 @@ private:
     Member<ExternalDateTimeChooser> external_date_time_chooser_;
     bool did_request_non_empty_tool_tip_;
     std::optional<bool> before_unload_confirm_panel_result_for_testing_;
+#if !defined(MINI_UI_QUICKJS)
     HeapHashSet<WeakMember<CommitObserver>> commit_observers_;
+#endif
 
     FRIEND_TEST_ALL_PREFIXES(FileChooserQueueTest, DerefQueuedChooser);
 };

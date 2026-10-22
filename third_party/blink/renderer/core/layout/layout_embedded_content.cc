@@ -26,13 +26,13 @@
 
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
-#include "third_party/blink/renderer/core/frame/embedded_content_view.h"
-#include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_offset.h"
@@ -82,6 +82,7 @@ LayoutView* LayoutEmbeddedContent::ChildLayoutView() const
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainerImpl* LayoutEmbeddedContent::Plugin() const
 {
     NOT_DESTROYED();
@@ -90,6 +91,7 @@ WebPluginContainerImpl* LayoutEmbeddedContent::Plugin() const
         return To<WebPluginContainerImpl>(embedded_content_view);
     return nullptr;
 }
+#endif
 
 EmbeddedContentView* LayoutEmbeddedContent::GetEmbeddedContentView() const
 {
@@ -99,6 +101,7 @@ EmbeddedContentView* LayoutEmbeddedContent::GetEmbeddedContentView() const
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const std::optional<PhysicalSize> LayoutEmbeddedContent::FrozenFrameSize() const
 {
     // The `<fencedframe>` element can freeze the child frame size when navigated.
@@ -107,20 +110,22 @@ const std::optional<PhysicalSize> LayoutEmbeddedContent::FrozenFrameSize() const
 
     return std::nullopt;
 }
+#endif
 
 AffineTransform LayoutEmbeddedContent::EmbeddedContentTransform() const
 {
-    auto frozen_size = FrozenFrameSize();
-    if (!frozen_size || frozen_size->IsEmpty()) {
-        const PhysicalOffset content_box_offset = PhysicalContentBoxOffset();
-        return AffineTransform().Translate(content_box_offset.left, content_box_offset.top);
+#if !defined(MINI_UI_QUICKJS)
+    if (const auto frozen_size = FrozenFrameSize(); frozen_size && !frozen_size->IsEmpty()) {
+        AffineTransform translate_and_scale;
+        auto replaced_rect = ReplacedContentRect();
+        translate_and_scale.Translate(replaced_rect.X(), replaced_rect.Y());
+        translate_and_scale.Scale(replaced_rect.Width() / frozen_size->width, replaced_rect.Height() / frozen_size->height);
+        return translate_and_scale;
     }
+#endif
 
-    AffineTransform translate_and_scale;
-    auto replaced_rect = ReplacedContentRect();
-    translate_and_scale.Translate(replaced_rect.X(), replaced_rect.Y());
-    translate_and_scale.Scale(replaced_rect.Width() / frozen_size->width, replaced_rect.Height() / frozen_size->height);
-    return translate_and_scale;
+    const PhysicalOffset content_box_offset = PhysicalContentBoxOffset();
+    return AffineTransform().Translate(content_box_offset.left, content_box_offset.top);
 }
 
 PhysicalOffset LayoutEmbeddedContent::EmbeddedContentFromBorderBox(const PhysicalOffset& offset) const
@@ -167,14 +172,16 @@ bool LayoutEmbeddedContent::PointOverResizer(const HitTestResult& result, const 
 
 void LayoutEmbeddedContent::PropagateZoomFactor(double zoom_factor)
 {
-    if (GetDocument().StandardizedBrowserZoomEnabled()) {
-        const auto* fenced_frame = DynamicTo<HTMLFencedFrameElement>(GetNode());
-        if (!fenced_frame) {
-            if (auto* embedded_content_view = GetEmbeddedContentView()) {
-                embedded_content_view->ZoomFactorChanged(zoom_factor);
-            }
-        }
-    }
+    if (!GetDocument().StandardizedBrowserZoomEnabled())
+        return;
+
+#if !defined(MINI_UI_QUICKJS)
+    if (IsA<HTMLFencedFrameElement>(GetNode()))
+        return;
+#endif
+
+    if (auto* embedded_content_view = GetEmbeddedContentView())
+        embedded_content_view->ZoomFactorChanged(zoom_factor);
 }
 
 bool LayoutEmbeddedContent::NodeAtPointOverEmbeddedContentView(
@@ -310,11 +317,13 @@ void LayoutEmbeddedContent::PaintReplaced(const PaintInfo& paint_info, const Phy
 CursorDirective LayoutEmbeddedContent::GetCursor(const PhysicalOffset& point, ui::Cursor& cursor) const
 {
     NOT_DESTROYED();
+#if !defined(MINI_UI_QUICKJS)
     if (Plugin()) {
         // A plugin is responsible for setting the cursor when the pointer is over
         // it.
         return kDoNotSetCursor;
     }
+#endif
     return LayoutReplaced::GetCursor(point, cursor);
 }
 
@@ -333,6 +342,7 @@ PhysicalRect LayoutEmbeddedContent::ReplacedContentRectFrom(const PhysicalRect& 
         content_rect.size = View()->ViewRect().size;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (const std::optional<PhysicalSize> frozen_size = FrozenFrameSize()) {
         // TODO(kojii): Setting the `offset` to non-zero values breaks
         // hit-testing/inputs. Even different size is suspicious, as the input
@@ -342,6 +352,7 @@ PhysicalRect LayoutEmbeddedContent::ReplacedContentRectFrom(const PhysicalRect& 
         PhysicalSize frozen_layout_size = *frozen_size;
         content_rect = ComputeReplacedContentRect(base_content_rect, &frozen_layout_size);
     }
+#endif
 
     // We don't propagate sub-pixel into sub-frame layout, in other words, the
     // rect is snapped at the document boundary, and sub-pixel movement could

@@ -122,6 +122,7 @@ private:
     using INHERITED = ImageAsset;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 /**
  * External track (e.g. audio playback) interface.
  *
@@ -139,6 +140,7 @@ public:
      */
     virtual void seek(float t) = 0;
 };
+#endif
 
 /**
  * ResourceProvider is an interface that lets rich-content modules defer loading of external
@@ -164,6 +166,7 @@ public:
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     /**
      * Load an external audio track specified by |path|/|name|/|id|.
      */
@@ -171,6 +174,7 @@ public:
     {
         return nullptr;
     }
+#endif
 
     /**
      * DEPRECATED: implement loadTypeface() instead.
@@ -230,7 +234,9 @@ protected:
     sk_sp<ImageAsset> loadImageAsset(const char[], const char[], const char[]) const override;
     sk_sp<SkTypeface> loadTypeface(const char[], const char[]) const override;
     sk_sp<SkData> loadFont(const char[], const char[]) const override;
+#if !defined(MINI_UI_QUICKJS)
     sk_sp<ExternalTrackAsset> loadAudioAsset(const char[], const char[], const char[]) override;
+#endif
 
 protected:
     const sk_sp<ResourceProvider> fProxy;

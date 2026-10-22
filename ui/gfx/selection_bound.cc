@@ -10,12 +10,6 @@
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/selection_bound.h"
 
-bool absl::str_format_internal::ConvertBoolArg(bool, absl::str_format_internal::FormatSinkImpl*)
-{
-    *(int*)1 = 1;
-    return false;
-}
-
 namespace gfx {
 
 SelectionBound::SelectionBound()

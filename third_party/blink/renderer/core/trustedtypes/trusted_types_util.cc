@@ -13,12 +13,17 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_string_trustedscript.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_stringlegacynulltoemptystring_trustedscript.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_trustedhtml_trustedscript_trustedscripturl.h"
+#include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/exception_metadata.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/script/script_element_base.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_html.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_script.h"
@@ -27,6 +32,7 @@
 #include "third_party/blink/renderer/core/trustedtypes/trusted_type_policy_factory.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -192,13 +198,17 @@ bool TrustedTypeFail(TrustedTypeViolationKind kind, const ExecutionContext* exec
         execution_context->GetContentSecurityPolicy()->LogToConsole(MakeGarbageCollected<ConsoleMessage>(
             mojom::blink::ConsoleMessageSource::kRecommendation, mojom::blink::ConsoleMessageLevel::kInfo, kFunctionConstructorFailureConsoleMessage));
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::OnContentSecurityPolicyViolation(const_cast<ExecutionContext*>(execution_context), ContentSecurityPolicyViolationType::kTrustedTypesSinkViolation);
+#endif
 
     if (!allow) {
         v8::Isolate* isolate = execution_context->GetIsolate();
         TryRethrowScope rethrow_scope(isolate, exception_state);
         auto exception = V8ThrowException::CreateTypeError(isolate, GetMessage(kind));
+#if !defined(MINI_UI_QUICKJS)
         MaybeAssociateExceptionMetaData(exception, "issueId", IdentifiersFactory::IdFromToken(issue_id));
+#endif
         V8ThrowException::ThrowException(isolate, exception);
     }
     return !allow;

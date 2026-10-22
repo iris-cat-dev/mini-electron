@@ -7,11 +7,11 @@
 
 #include "build/build_config.h"
 #include "net/base/net_export.h"
-#include "net/socket/socket_descriptor.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include <stdint.h>
 #include <sys/types.h>
+#include "net/socket/socket_descriptor.h"
 #endif
 
 namespace net {
@@ -49,9 +49,6 @@ public:
         return !(*this == other);
     }
 
-    // Apply this tag to |socket|.
-    void Apply(SocketDescriptor socket) const;
-
 #if BUILDFLAG(IS_ANDROID)
     // Values to indicate no UID or tag should be set. These values match those in
     // Android:
@@ -68,6 +65,9 @@ public:
     {
         return traffic_stats_tag_;
     }
+
+    // Applies this tag to `socket`.
+    void Apply(SocketDescriptor socket) const;
 
 private:
     // UID to tag with.

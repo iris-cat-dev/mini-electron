@@ -11,6 +11,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/resources/release_callback.h"
 #include "components/viz/common/resources/shared_bitmap.h"
 #include "components/viz/common/resources/shared_image_format.h"
@@ -23,8 +24,9 @@
 #include "gpu/command_buffer/common/sync_token.h"
 #include "skia/buildflags.h"
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
+#endif
+#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/wtf/thread_safe_ref_counted.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
@@ -62,7 +64,9 @@ class StaticBitmapImage;
 // using it on a different thread.
 class PLATFORM_EXPORT CanvasResource : public WTF::ThreadSafeRefCounted<CanvasResource> {
 public:
+#if !defined(MINI_UI_QUICKJS)
     using ReleaseCallback = base::OnceCallback<void(scoped_refptr<blink::CanvasResource>&& canvas_resource, const gpu::SyncToken& sync_token, bool is_lost)>;
+#endif
 
     using LastUnrefCallback = base::OnceCallback<void(scoped_refptr<blink::CanvasResource> canvas_resource)>;
 
@@ -97,6 +101,7 @@ public:
     // Returns true if the resource can be used with accelerated compositing.
     virtual bool SupportsAcceleratedCompositing() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Transfers ownership of the resource's vix::ReleaseCallback.  This is useful
     // prior to transferring a resource to another thread, to retain the release
     // callback on the current thread since the callback may not be thread safe.
@@ -114,6 +119,7 @@ public:
     {
         CHECK(cb.is_null());
     }
+#endif
 
     // Returns true if the resource is still usable. It maybe not be valid in the
     // case of a context loss or if we fail to initialize the memory backing for
@@ -129,6 +135,7 @@ public:
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Whether this resource uses ClientSharedImage.
     // TODO(crbug.com/351275962): Remove this method once
     // CanvasResourceSharedBitmap holds ClientSharedImage and
@@ -145,16 +152,22 @@ public:
     {
         NOTREACHED();
     }
+#endif
 
     // A CanvasResource is not thread-safe and does not allow concurrent usage
     // from multiple threads. But it maybe used from any thread. It remains bound
     // to the current thread until Transfer is called. Note that while the
     // resource maybe used for reads on any thread, it can be written to only on
     // the thread where it was created.
+#if defined(MINI_UI_QUICKJS)
+    virtual void Transfer() = 0;
+#else
     virtual void Transfer()
     {
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the sync token to indicate when all writes to the current resource
     // are finished on the GPU thread. Note that the token is not guaranteed to be
     // verified at the time of calling this method.
@@ -170,6 +183,7 @@ public:
     // Issues a wait for this sync token on the context used by this resource for
     // rendering.
     void WaitSyncToken(const gpu::SyncToken&);
+#endif
 
     virtual bool OriginClean() const = 0;
     virtual void SetOriginClean(bool) = 0;
@@ -178,6 +192,7 @@ public:
     // snapshots not used in compositing (for instance to draw to another canvas).
     virtual scoped_refptr<StaticBitmapImage> Bitmap() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Called when the resource is marked lost. Losing a resource does not mean
     // that the backing memory has been destroyed, since the resource itself keeps
     // a ref on that memory.
@@ -186,6 +201,7 @@ public:
     // inconsistent with when the resource was given to the compositor. So it
     // should not be recycled for writing again but can be safely read from.
     virtual void NotifyResourceLost() = 0;
+#endif
 
     void SetFilterQuality(cc::PaintFlags::FilterQuality filter)
     {
@@ -196,10 +212,13 @@ public:
     {
         return filter_quality_;
     }
+#if !defined(MINI_UI_QUICKJS)
     // Returns the texture format used by this resource.
     viz::SharedImageFormat GetSharedImageFormat() const;
+#endif
 
     SkImageInfo CreateSkImageInfo() const;
+    gfx::ColorSpace GetColorSpace() const;
 
     bool is_cross_thread() const
     {
@@ -214,30 +233,29 @@ public:
 protected:
     CanvasResource(base::WeakPtr<CanvasResourceProvider>, cc::PaintFlags::FilterQuality, const SkColorInfo&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if the resource is backed by memory such that it can be used
     // for direct scanout by the display.
     virtual bool IsOverlayCandidate() const
     {
         return false;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     gpu::InterfaceBase* InterfaceBase() const;
     gpu::gles2::GLES2Interface* ContextGL() const;
     gpu::raster::RasterInterface* RasterInterface() const;
     gpu::webgpu::WebGPUInterface* WebGPUInterface() const;
-    gfx::ColorSpace GetColorSpace() const;
-    virtual base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper() const = 0;
+    virtual base::WeakPtr<WebGraphicsContext3DProviderWrapper>
+    ContextProviderWrapper() const = 0;
 
     // Prepares GPU TransferableResource from the resource's ClientSharedImage.
-    // Invoked if the resource is accelerated and UsesClientSharedImage() returns
-    // true.
-    bool PrepareAcceleratedTransferableResourceFromClientSI(viz::TransferableResource* out_resource, bool needs_verified_synctoken);
-
-    // Prepares GPU TransferableResource for resources for which
-    // SupportsAcceleratedCompositing() is true but UsesClientSharedImage()
-    // returns false. Subclasses that match these conditions *must* override this
-    // method.
-    virtual bool PrepareAcceleratedTransferableResourceWithoutClientSI(viz::TransferableResource* out_resource)
+    bool PrepareAcceleratedTransferableResourceFromClientSI(
+        viz::TransferableResource* out_resource,
+        bool needs_verified_synctoken);
+    virtual bool PrepareAcceleratedTransferableResourceWithoutClientSI(
+        viz::TransferableResource* out_resource)
     {
         NOTREACHED();
     }
@@ -250,6 +268,7 @@ protected:
     {
         NOTREACHED();
     }
+#endif
     const SkColorInfo& GetSkColorInfo() const
     {
         return info_;
@@ -268,6 +287,7 @@ protected:
     const scoped_refptr<base::SingleThreadTaskRunner> owning_thread_task_runner_;
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if the resource is rastered via the GPU.
     virtual bool UsesAcceleratedRaster() const = 0;
 
@@ -280,6 +300,7 @@ private:
     {
         NOTREACHED();
     }
+#endif
 
     base::WeakPtr<CanvasResourceProvider> provider_;
     SkColorInfo info_;
@@ -287,6 +308,7 @@ private:
     LastUnrefCallback last_unref_callback_;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Resource type for SharedBitmaps
 class PLATFORM_EXPORT CanvasResourceSharedBitmap final : public CanvasResource {
 public:
@@ -644,6 +666,7 @@ private:
 
     bool is_origin_clean_ = true;
 };
+#endif
 
 } // namespace blink
 

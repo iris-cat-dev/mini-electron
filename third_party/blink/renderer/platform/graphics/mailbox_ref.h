@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_REF_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_REF_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread_checker.h"
@@ -47,5 +49,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_REF_H_

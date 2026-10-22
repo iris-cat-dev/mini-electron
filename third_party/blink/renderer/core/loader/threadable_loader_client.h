@@ -64,9 +64,11 @@ public:
     virtual void DidReceiveData(base::span<const char>)
     {
     }
+#if !defined(MINI_UI_QUICKJS)
     virtual void DidReceiveCachedMetadata(mojo_base::BigBuffer)
     {
     }
+#endif
     virtual void DidFinishLoading(uint64_t /*identifier*/)
     {
     }

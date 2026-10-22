@@ -6,19 +6,19 @@
 
 #include <utility>
 
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasrenderingcontext2d_imagebitmaprenderingcontext.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_union_imagebitmaprenderingcontext_offscreencanvasrenderingcontext2d.h"
+#else
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasrenderingcontext2d_gpucanvascontext_imagebitmaprenderingcontext_webgl2renderingcontext_webglrenderingcontext.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_gpucanvascontext_imagebitmaprenderingcontext_offscreencanvasrenderingcontext2d_webgl2renderingcontext_webglrenderingcontext.h"
+#endif
 #include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 
 namespace blink {
 
-// void V8UnionGPUCanvasContextOrImageBitmapRenderingContextOrOffscreenCanvasRenderingContext2DOrWebGL2RenderingContextOrWebGLRenderingContext::Trace(class cppgc::Visitor*) const
-// {
-//     *(int*)1 = 1;
-// }
 
 ImageBitmapRenderingContext::ImageBitmapRenderingContext(CanvasRenderingContextHost* host, const CanvasContextCreationAttributesCore& attrs)
     : ImageBitmapRenderingContextBase(host, attrs)

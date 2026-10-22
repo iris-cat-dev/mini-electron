@@ -5,9 +5,10 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_SCRIPT_CLASSIC_PENDING_SCRIPT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_SCRIPT_CLASSIC_PENDING_SCRIPT_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/script_cache_consumer_client.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_source_location_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
@@ -25,7 +26,13 @@ namespace blink {
 // A RefPtr alone does not prevent the underlying Resource from purging its data
 // buffer. This class holds a dummy client open for its lifetime in order to
 // guarantee that the data buffer will not be purged.
-class CORE_EXPORT ClassicPendingScript final : public PendingScript, public ResourceClient, public ScriptCacheConsumerClient {
+class CORE_EXPORT ClassicPendingScript final
+    : public PendingScript
+    , public ResourceClient
+#if !defined(MINI_UI_QUICKJS)
+    , public ScriptCacheConsumerClient
+#endif
+{
 public:
     // https://html.spec.whatwg.org/C/#fetch-a-classic-script
     //
@@ -60,8 +67,10 @@ public:
     KURL UrlForTracing() const override;
     void DisposeInternal() override;
 
+#if !defined(MINI_UI_QUICKJS)
     // ScriptCacheConsumerClient:
     void NotifyCacheConsumeFinished() override;
+#endif
 
     // Check if this script is eligible for kLowPriorityAsyncScriptExecution
     // feature (see crbug/1348467).
@@ -72,7 +81,9 @@ private:
     enum ReadyState : uint8_t {
         // These states are considered "not ready".
         kWaitingForResource,
+#if !defined(MINI_UI_QUICKJS)
         kWaitingForCacheConsumer,
+#endif
         // These states are considered "ready".
         kReady,
         kErrorOccurred,

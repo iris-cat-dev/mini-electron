@@ -30,8 +30,10 @@
 class SkCanvas;
 class SkColorSpace;
 class SkImage;
+#if !defined(MINI_UI_QUICKJS)
 class SkStrikeClient;
 class SkStrikeServer;
+#endif
 
 namespace gpu {
 struct Mailbox;
@@ -85,7 +87,9 @@ public:
     PlaybackCallbacks callbacks;
     std::optional<bool> save_layer_alpha_should_preserve_lcd_text;
     const ScrollOffsetMap* raster_inducing_scroll_offsets = nullptr;
+#if !defined(MINI_UI_QUICKJS)
     bool is_analyzing = false;
+#endif
 };
 
 class CC_PAINT_EXPORT SharedImageProvider {
@@ -113,9 +117,11 @@ public:
 
     public:
         SerializeOptions();
+#if !defined(MINI_UI_QUICKJS)
         SerializeOptions(ImageProvider* image_provider, TransferCacheSerializeHelper* transfer_cache, ClientPaintCache* paint_cache,
             SkStrikeServer* strike_server, sk_sp<SkColorSpace> color_space, SkottieSerializationHistory* skottie_serialization_history, bool can_use_lcd_text,
             bool context_supports_distance_field_text, int max_texture_size, const ScrollOffsetMap* raster_inducing_scroll_offsets = nullptr);
+#endif
         SerializeOptions(const SerializeOptions&);
         SerializeOptions& operator=(const SerializeOptions&);
         ~SerializeOptions();
@@ -124,11 +130,15 @@ public:
         ImageProvider* image_provider = nullptr;
         TransferCacheSerializeHelper* transfer_cache = nullptr;
         ClientPaintCache* paint_cache = nullptr;
+#if !defined(MINI_UI_QUICKJS)
         SkStrikeServer* strike_server = nullptr;
+#endif
         sk_sp<SkColorSpace> color_space;
         SkottieSerializationHistory* skottie_serialization_history = nullptr;
         bool can_use_lcd_text = false;
+#if !defined(MINI_UI_QUICKJS)
         bool context_supports_distance_field_text = true;
+#endif
         int max_texture_size = 0;
         const ScrollOffsetMap* raster_inducing_scroll_offsets = nullptr;
 
@@ -146,7 +156,9 @@ public:
     public:
         TransferCacheDeserializeHelper* transfer_cache = nullptr;
         ServicePaintCache* paint_cache = nullptr;
+#if !defined(MINI_UI_QUICKJS)
         SkStrikeClient* strike_client = nullptr;
+#endif
         // Used to memcpy Skia flattenables into to avoid TOCTOU issues.
         std::vector<uint8_t>& scratch_buffer;
         // Do a DumpWithoutCrashing when serialization fails.

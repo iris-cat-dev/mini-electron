@@ -301,9 +301,11 @@ WebInputEventResult GestureManager::HandleGestureTap(const GestureEventWithHitTe
             fake_mouse_up.pointer_type = gesture_event.primary_pointer_type;
             click_event_result = mouse_event_manager_->SetElementUnderMouseAndDispatchMouseEvent(click_target_element, event_type_names::kClick, fake_mouse_up);
 
+#if !defined(MINI_UI_QUICKJS)
             // Dispatching a JS event could have detached the frame.
             if (frame_->View())
                 frame_->View()->RegisterTapEvent(tapped_element);
+#endif
         }
         mouse_event_manager_->SetMouseDownElement(nullptr);
     }
@@ -371,8 +373,10 @@ WebInputEventResult GestureManager::HandleGestureLongPress(const GestureEventWit
             drag_in_progress_ = mouse_event_manager_->HandleDragDropIfPossible(targeted_event);
         }
     } else if (frame_->GetSettings() && frame_->GetSettings()->GetTouchDragDropEnabled() && frame_->View()) {
-        bool hit_test_contains_links
-            = hit_test_result.URLElement() || !hit_test_result.AbsoluteImageURL().IsNull() || !hit_test_result.AbsoluteMediaURL().IsNull();
+        bool hit_test_contains_links = hit_test_result.URLElement() || !hit_test_result.AbsoluteImageURL().IsNull();
+#if !defined(MINI_UI_QUICKJS)
+        hit_test_contains_links |= !hit_test_result.AbsoluteMediaURL().IsNull();
+#endif
         if (!hit_test_contains_links && mouse_event_manager_->HandleDragDropIfPossible(targeted_event)) {
             gesture_context_menu_deferred_ = true;
             return WebInputEventResult::kHandledSystem;

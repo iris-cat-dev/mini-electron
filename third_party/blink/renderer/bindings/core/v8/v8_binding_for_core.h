@@ -79,6 +79,7 @@ enum class UnionTypeConversionMode {
     kNotNullable,
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Embedder enum set in v8 to let the V8 Profiler surface back in samples the
 // type of work performed by the embedder during a trace.
 // Explainer: https://github.com/WICG/js-self-profiling/blob/main/markers.md
@@ -94,6 +95,7 @@ enum class BlinkState : uint8_t {
     v8::HandleScope scope(isolate);                                                                                                                            \
     v8::Local<v8::Context> v8_context = ToV8ContextMaybeEmpty(frame, DOMWrapperWorld::MainWorld(isolate));                                                     \
     v8::EmbedderStateScope embedder_state(isolate, v8_context, static_cast<v8::EmbedderStateTag>(state));
+#endif
 
 template <typename CallbackInfo, typename T> inline void V8SetReturnValue(const CallbackInfo& callbackInfo, NotShared<T> notShared)
 {

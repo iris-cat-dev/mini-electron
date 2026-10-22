@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_METRICS_SENDER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_METRICS_SENDER_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <compare>
 
 #include "third_party/blink/public/mojom/loader/navigation_predictor.mojom-blink.h"
@@ -207,5 +209,7 @@ private:
 };
 
 } // namespace blink
+
+#endif  // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_METRICS_SENDER_H_

@@ -22,6 +22,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_PLUGIN_DATA_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -147,5 +148,6 @@ private:
 };
 
 } // namespace blink
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_PLUGIN_DATA_H_

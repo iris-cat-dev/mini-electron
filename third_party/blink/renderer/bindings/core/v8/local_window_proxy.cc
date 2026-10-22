@@ -40,10 +40,14 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_gc_for_context_dispose.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_initializer.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_page_popup_controller_binding.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
@@ -54,13 +58,16 @@
 #include "third_party/blink/renderer/core/html/document_name_collection.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_task_runner.h"
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/core/script/modulator.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/extensions_registry.h"
 #include "third_party/blink/renderer/platform/bindings/origin_trial_features.h"
@@ -68,6 +75,7 @@
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_activity_logger.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
+#include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/bindings/v8_private_property.h"
 #include "third_party/blink/renderer/platform/bindings/v8_set_return_value.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -111,7 +119,9 @@ void LocalWindowProxy::DisposeContext(Lifecycle next_status, FrameReuseStatus fr
     // it returns.
     GetFrame()->Client()->WillReleaseScriptContext(context, world_->GetWorldId());
     CHECK_EQ(GetIsolate(), script_state_->GetIsolate());
+#if !defined(MINI_UI_QUICKJS)
     MainThreadDebugger::Instance(GetIsolate())->ContextWillBeDestroyed(script_state_);
+#endif
     if (next_status == Lifecycle::kV8MemoryIsForciblyPurged || next_status == Lifecycle::kGlobalObjectIsDetached) {
         // Clean up state on the global proxy, which will be reused.
         v8::Local<v8::Object> global = context->Global();
@@ -136,10 +146,12 @@ void LocalWindowProxy::DisposeContext(Lifecycle next_status, FrameReuseStatus fr
     }
 
     script_state_->DisposePerContextData();
+#if !defined(MINI_UI_QUICKJS)
     // It's likely that disposing the context has created a lot of
     // garbage. Notify V8 about this so it'll have a chance of cleaning
     // it up when idle.
     V8GCForContextDispose::Instance().NotifyContextDisposed(script_state_->GetIsolate(), GetFrame()->IsMainFrame(), frame_reuse_status);
+#endif
 
     DCHECK_EQ(lifecycle_, Lifecycle::kContextIsInitialized);
     lifecycle_ = next_status;
@@ -176,7 +188,9 @@ void LocalWindowProxy::Initialize()
         ContentSecurityPolicy* csp = GetFrame()->DomWindow()->GetContentSecurityPolicyForCurrentWorld();
         context->AllowCodeGenerationFromStrings(!csp->ShouldCheckEval());
         context->SetErrorMessageForCodeGenerationFromStrings(V8String(GetIsolate(), csp->EvalDisabledErrorMessage()));
+#if !defined(MINI_UI_QUICKJS)
         context->SetErrorMessageForWasmCodeGeneration(V8String(GetIsolate(), csp->WasmEvalDisabledErrorMessage()));
+#endif
     }
 
     scoped_refptr<const SecurityOrigin> origin;
@@ -192,14 +206,18 @@ void LocalWindowProxy::Initialize()
 
     {
         TRACE_EVENT2("v8", "ContextCreatedNotification", "IsMainFrame", GetFrame()->IsMainFrame(), "IsOutermostMainFrame", GetFrame()->IsOutermostMainFrame());
+#if !defined(MINI_UI_QUICKJS)
         MainThreadDebugger::Instance(script_state_->GetIsolate())->ContextCreated(script_state_, GetFrame(), origin.get());
+#endif
         GetFrame()->Client()->DidCreateScriptContext(context, world_->GetWorldId());
     }
 
     InstallConditionalFeatures();
 
     if (World().IsMainWorld()) {
+#if !defined(MINI_UI_QUICKJS)
         probe::DidCreateMainWorldContext(GetFrame());
+#endif
         GetFrame()->Loader().DispatchDidClearWindowObjectInMainWorld();
     }
     base::UmaHistogramTimes("V8.LocalWindowProxy.InitializeTime", timer.Elapsed());
@@ -210,16 +228,28 @@ void LocalWindowProxy::CreateContext()
     TRACE_EVENT2("v8", "LocalWindowProxy::CreateContext", "IsMainFrame", GetFrame()->IsMainFrame(), "IsOutermostMainFrame", GetFrame()->IsOutermostMainFrame());
     base::ElapsedTimer timer;
 
+#if !defined(MINI_UI_QUICKJS)
     v8::ExtensionConfiguration extension_configuration = ScriptController::ExtensionsFor(GetFrame()->DomWindow());
+#endif
 
     DCHECK(GetFrame()->DomWindow());
     v8::Local<v8::Context> context;
     {
         v8::Isolate* isolate = GetIsolate();
         V8PerIsolateData::UseCounterDisabledScope use_counter_disabled(V8PerIsolateData::From(isolate));
+#if !defined(MINI_UI_QUICKJS)
         Document* document = GetFrame()->GetDocument();
+#endif
 
         v8::Local<v8::Object> global_proxy = global_proxy_.Get(isolate);
+#if defined(MINI_UI_QUICKJS)
+        v8::Local<v8::ObjectTemplate> global_template
+            = V8Window::GetWrapperTypeInfo()->GetV8ClassTemplate(isolate, World()).As<v8::FunctionTemplate>()->InstanceTemplate();
+        CHECK(!global_template.IsEmpty());
+        context = v8::Context::New(isolate, nullptr, global_template, global_proxy);
+        if (!context.IsEmpty())
+            context->SetMicrotaskQueue(GetFrame()->DomWindow()->GetMicrotaskQueue());
+#else
         context = V8ContextSnapshot::CreateContextFromSnapshot(isolate, World(), &extension_configuration, global_proxy, document);
         context_was_created_from_snapshot_ = !context.IsEmpty();
 
@@ -233,6 +263,7 @@ void LocalWindowProxy::CreateContext()
                 GetFrame()->DomWindow()->GetMicrotaskQueue());
             VLOG(1) << "A context is created NOT from snapshot";
         }
+#endif
     }
     CHECK(!context.IsEmpty());
 
@@ -252,15 +283,19 @@ void LocalWindowProxy::InstallConditionalFeatures()
 {
     TRACE_EVENT2("v8", "InstallConditionalFeatures", "IsMainFrame", GetFrame()->IsMainFrame(), "IsOutermostMainFrame", GetFrame()->IsOutermostMainFrame());
 
+#if !defined(MINI_UI_QUICKJS)
     if (context_was_created_from_snapshot_) {
         V8ContextSnapshot::InstallContextIndependentProps(script_state_);
     }
+#endif
 
     V8PerContextData* per_context_data = script_state_->PerContextData();
     std::ignore = per_context_data->ConstructorForType(V8Window::GetWrapperTypeInfo());
+#if !defined(MINI_UI_QUICKJS)
     // Inform V8 that origin trial information is now connected with the context,
     // and V8 can extend the context with origin trial features.
     script_state_->GetIsolate()->InstallConditionalFeatures(script_state_->GetContext());
+#endif
     ExtensionsRegistry::GetInstance().InstallExtensions(script_state_);
 }
 
@@ -394,6 +429,13 @@ void LocalWindowProxy::UpdateDocument()
     // For a navigated-away window proxy, reinitialize it as a new window with new
     // context and document.
     if (lifecycle_ == Lifecycle::kGlobalObjectIsDetached) {
+#if defined(MINI_UI_QUICKJS)
+        // The backend supplies a new resource-capability realm in the
+        // pre-parser commit callback. Do not create an unowned realm here,
+        // before that callback can designate the pending external context.
+        if (world_->IsMainWorld())
+            return;
+#endif
         Initialize();
         DCHECK_EQ(Lifecycle::kContextIsInitialized, lifecycle_);
         // Initialization internally updates the document properties, so just
@@ -541,11 +583,14 @@ void LocalWindowProxy::UpdateSecurityOrigin(const SecurityOrigin* origin)
     SetSecurityToken(origin);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalWindowProxy::SetAbortScriptExecution(v8::Context::AbortScriptExecutionCallback callback)
 {
     InitializeIfNeeded();
     script_state_->GetContext()->SetAbortScriptExecution(callback);
 }
+
+#endif
 
 LocalWindowProxy::LocalWindowProxy(v8::Isolate* isolate, LocalFrame& frame, DOMWrapperWorld* world)
     : WindowProxy(isolate, frame, world)

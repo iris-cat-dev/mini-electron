@@ -12,9 +12,11 @@
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class AnimationHost;
 }
+#endif
 
 namespace blink {
 
@@ -58,6 +60,7 @@ public:
         return animation_clock_;
     }
     HeapVector<Member<Animation>> GetAnimations(const TreeScope&);
+#if !defined(MINI_UI_QUICKJS)
     void SetHasCanvasInvalidation();
     bool has_canvas_invalidation_for_test() const
     {
@@ -70,9 +73,12 @@ public:
     }
     void SetHasSmilAnimation();
     void SetCurrentFrameHadRaf();
+#endif
     void SetNextFrameHasPendingRaf();
+#if !defined(MINI_UI_QUICKJS)
     void SetHasViewTransition(bool);
     void ReportFrameAnimations(cc::AnimationHost* animation_host);
+#endif
 
 private:
     Member<Page> page_;
@@ -81,6 +87,7 @@ private:
     bool suppress_frame_requests_workaround_for704763_only_ = false;
     AnimationClock animation_clock_;
 
+#if !defined(MINI_UI_QUICKJS)
     // True if there is inline style mutation in the current frame.
     bool has_inline_style_mutation_ = false;
     // True if the current main frame has canvas invalidation.
@@ -89,10 +96,13 @@ private:
     bool has_smil_animation_ = false;
     // True if there is a raf scheduled in this frame.
     bool current_frame_had_raf_ = false;
+#endif
     // True if there is a raf scheduled for the next frame.
     bool next_frame_has_pending_raf_ = false;
+#if !defined(MINI_UI_QUICKJS)
     // True if there is an ongoing view transition.
     bool has_view_transition_ = false;
+#endif
 };
 
 } // namespace blink

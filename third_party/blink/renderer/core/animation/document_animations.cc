@@ -39,7 +39,9 @@
 #include "third_party/blink/renderer/core/animation/animation_timeline.h"
 #include "third_party/blink/renderer/core/animation/keyframe_effect.h"
 #include "third_party/blink/renderer/core/animation/pending_animations.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/animation/worklet_animation_controller.h"
+#endif
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
@@ -63,7 +65,9 @@ void UpdateAnimationTiming(Document& document, HeapHashSet<WeakMember<AnimationT
 {
     for (auto& timeline : timelines)
         timeline->ServiceAnimations(reason);
+#if !defined(MINI_UI_QUICKJS)
     document.GetWorkletAnimationController().UpdateAnimationTimings(reason);
+#endif
 }
 
 bool CompareAnimations(const Member<Animation>& left, const Member<Animation>& right)
@@ -123,15 +127,19 @@ void DocumentAnimations::UpdateAnimations(
 {
     DCHECK(document_->Lifecycle().GetState() >= required_lifecycle_state);
 
+#if !defined(MINI_UI_QUICKJS)
     if (compositor_properties_updated)
         MarkPendingIfCompositorPropertyAnimationChanges(paint_artifact_compositor);
+#endif
 
     if (document_->GetPendingAnimations().Update(paint_artifact_compositor)) {
         DCHECK(document_->View());
         document_->View()->ScheduleAnimation();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     document_->GetWorkletAnimationController().UpdateAnimationStates();
+#endif
     document_->GetFrame()->ScheduleNextServiceForScrollSnapshotClients();
     for (auto& timeline : timelines_) {
         // ScrollSnapshotTimelines are already handled as ScrollSnapshotClients
@@ -142,13 +150,16 @@ void DocumentAnimations::UpdateAnimations(
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentAnimations::MarkPendingIfCompositorPropertyAnimationChanges(const PaintArtifactCompositor* paint_artifact_compositor)
 {
     for (auto& timeline : timelines_) {
         timeline->MarkPendingIfCompositorPropertyAnimationChanges(paint_artifact_compositor);
     }
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 size_t DocumentAnimations::GetAnimationsCount()
 {
     wtf_size_t total_animations_count = 0;
@@ -162,6 +173,7 @@ size_t DocumentAnimations::GetAnimationsCount()
     }
     return total_animations_count;
 }
+#endif
 
 void DocumentAnimations::MarkAnimationsCompositorPending()
 {
@@ -185,6 +197,7 @@ HeapVector<Member<Animation>> DocumentAnimations::getAnimations(const TreeScope&
     return animations;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentAnimations::DetachCompositorTimelines()
 {
     if (!Platform::Current()->IsThreadedAnimationEnabled() || !document_->GetSettings()->GetAcceleratedCompositingEnabled() || !document_->GetPage())
@@ -200,6 +213,7 @@ void DocumentAnimations::DetachCompositorTimelines()
         }
     }
 }
+#endif
 
 void DocumentAnimations::Trace(Visitor* visitor) const
 {

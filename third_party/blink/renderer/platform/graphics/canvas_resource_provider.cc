@@ -17,13 +17,14 @@
 #include "base/strings/stringprintf.h"
 #include "base/task/bind_post_task.h"
 #include "base/time/time.h"
+#include "base/trace_event/base_tracing.h"
 #include "base/trace_event/memory_allocator_dump.h"
-#include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/process_memory_dump.h"
 #include "build/build_config.h"
 #include "cc/paint/decode_stashing_image_provider.h"
 #include "cc/paint/display_item_list.h"
 #include "cc/tiles/software_image_decode_cache.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "gpu/GLES2/gl2extchromium.h"
 #include "gpu/command_buffer/client/context_support.h"
@@ -36,21 +37,27 @@
 #include "gpu/config/gpu_driver_bug_workaround_type.h"
 #include "gpu/config/gpu_feature_info.h"
 #include "gpu/config/gpu_feature_type.h"
+#endif
 #include "skia/buildflags.h"
 #include "skia/ext/legacy_display_globals.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/skia/include/core/SkSurface.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/GpuTypes.h"
 #include "third_party/skia/include/gpu/ganesh/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
@@ -58,6 +65,7 @@
 #include "third_party/skia/include/gpu/ganesh/SkSurfaceGanesh.h"
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLTypes.h"
+#endif
 #include <inttypes.h>
 
 
@@ -103,6 +111,7 @@ static FlushForImageListener* GetFlushForImageListener()
     return flush_for_image_listener;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 bool IsGMBAllowed(const SkImageInfo& info, const gpu::Capabilities& caps)
@@ -113,6 +122,7 @@ bool IsGMBAllowed(const SkImageInfo& info, const gpu::Capabilities& caps)
 }
 
 } // namespace
+#endif
 
 class CanvasResourceProvider::CanvasImageProvider : public cc::ImageProvider {
 public:
@@ -125,12 +135,15 @@ public:
     // cc::ImageProvider implementation.
     cc::ImageProvider::ScopedResult GetRasterContent(const cc::DrawImage&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void ReleaseLockedImages()
     {
         locked_images_.clear();
     }
+#endif
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void CanUnlockImage(ScopedResult);
     void CleanupLockedImages();
     bool IsHardwareDecodeCache() const;
@@ -138,11 +151,61 @@ private:
     cc::PlaybackImageProvider::RasterMode raster_mode_;
     bool cleanup_task_pending_ = false;
     Vector<ScopedResult> locked_images_;
+#endif
     std::optional<cc::PlaybackImageProvider> playback_image_provider_n32_;
     std::optional<cc::PlaybackImageProvider> playback_image_provider_f16_;
 
+#if !defined(MINI_UI_QUICKJS)
     base::WeakPtrFactory<CanvasImageProvider> weak_factory_ { this };
+#endif
 };
+#if defined(MINI_UI_QUICKJS)
+class CanvasResourceBitmapImage final : public CanvasResource {
+public:
+    static scoped_refptr<CanvasResourceBitmapImage> Create(
+        scoped_refptr<StaticBitmapImage> image,
+        base::WeakPtr<CanvasResourceProvider> provider,
+        cc::PaintFlags::FilterQuality filter_quality,
+        const SkColorInfo& color_info)
+    {
+        if (!image)
+            return nullptr;
+        return base::AdoptRef(new CanvasResourceBitmapImage(
+            std::move(image), std::move(provider), filter_quality, color_info));
+    }
+
+    ~CanvasResourceBitmapImage() override = default;
+    bool IsRecycleable() const override { return false; }
+    bool SupportsAcceleratedCompositing() const override { return false; }
+    bool IsValid() const override { return image_ != nullptr; }
+    gfx::Size Size() const override { return image_ ? image_->Size() : gfx::Size(); }
+    bool OriginClean() const override { return image_->OriginClean(); }
+    void SetOriginClean(bool origin_clean) override
+    {
+        if (image_)
+            image_->SetOriginClean(origin_clean);
+    }
+    scoped_refptr<StaticBitmapImage> Bitmap() override { return image_; }
+    void Transfer() override
+    {
+        if (image_)
+            image_->Transfer();
+    }
+
+private:
+    CanvasResourceBitmapImage(
+        scoped_refptr<StaticBitmapImage> image,
+        base::WeakPtr<CanvasResourceProvider> provider,
+        cc::PaintFlags::FilterQuality filter_quality,
+        const SkColorInfo& color_info)
+        : CanvasResource(std::move(provider), filter_quality, color_info)
+        , image_(std::move(image))
+    {
+    }
+
+    scoped_refptr<StaticBitmapImage> image_;
+};
+#endif
 
 // * Renders to a Skia RAM-backed bitmap.
 // * Mailboxing is not supported : cannot be directly composited.
@@ -152,7 +215,10 @@ public:
         base::WeakPtr<CanvasResourceDispatcher> resource_dispatcher, CanvasResourceHost* resource_host)
         : CanvasResourceProvider(kBitmap, info, filter_quality,
             /*is_origin_top_left=*/true,
-            /*context_provider_wrapper=*/nullptr, std::move(resource_dispatcher), resource_host)
+#if !defined(MINI_UI_QUICKJS)
+            /*context_provider_wrapper=*/nullptr,
+#endif
+            std::move(resource_dispatcher), resource_host)
     {
     }
 
@@ -166,15 +232,24 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool SupportsDirectCompositing() const override
     {
         return false;
     }
+#endif
 
 private:
-    scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason) override
+    scoped_refptr<CanvasResource> ProduceCanvasResource(
+        FlushReason reason) override
     {
+#if defined(MINI_UI_QUICKJS)
+        return CanvasResourceBitmapImage::Create(
+            SnapshotInternal(ImageOrientationEnum::kDefault, reason),
+            CreateWeakPtr(), FilterQuality(), GetSkImageInfo().colorInfo());
+#else
         return nullptr; // Does not support direct compositing
+#endif
     }
 
     scoped_refptr<StaticBitmapImage> Snapshot(FlushReason reason, ImageOrientation orientation) override
@@ -193,6 +268,7 @@ private:
     }
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // * Renders to a shared memory bitmap.
 // * Uses SharedBitmaps to pass frames directly to the compositor.
 class CanvasResourceProviderSharedBitmap : public CanvasResourceProviderBitmap, public BitmapGpuChannelLostObserver {
@@ -1018,6 +1094,7 @@ private:
     bool initial_needs_clear_ = true;
     scoped_refptr<CanvasResourceSwapChain> resource_;
 };
+#endif
 
 std::unique_ptr<CanvasResourceProvider> CanvasResourceProvider::CreateBitmapProvider(
     const SkImageInfo& info, cc::PaintFlags::FilterQuality filter_quality, ShouldInitialize should_initialize, CanvasResourceHost* resource_host)
@@ -1031,6 +1108,7 @@ std::unique_ptr<CanvasResourceProvider> CanvasResourceProvider::CreateBitmapProv
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<CanvasResourceProvider> CanvasResourceProvider::CreateSharedBitmapProvider(const SkImageInfo& info,
     cc::PaintFlags::FilterQuality filter_quality, ShouldInitialize should_initialize, base::WeakPtr<CanvasResourceDispatcher> resource_dispatcher,
     WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider, CanvasResourceHost* resource_host)
@@ -1094,9 +1172,11 @@ std::unique_ptr<CanvasResourceProvider> CanvasResourceProvider::CreateSharedImag
         shared_image_usage_flags.RemoveAll(gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE | gpu::SHARED_IMAGE_USAGE_SCANOUT);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (resource_host && resource_host->TransferToGPUTextureWasInvoked()) {
         shared_image_usage_flags.PutAll(gpu::SHARED_IMAGE_USAGE_WEBGPU_READ | gpu::SHARED_IMAGE_USAGE_WEBGPU_WRITE);
     }
+#endif
 
 #if BUILDFLAG(IS_MAC)
     if ((shared_image_usage_flags & gpu::SHARED_IMAGE_USAGE_SCANOUT) && is_accelerated && adjusted_info.colorType() == kRGBA_8888_SkColorType) {
@@ -1192,13 +1272,16 @@ std::unique_ptr<CanvasResourceProvider> CanvasResourceProvider::CreateSwapChainP
 
     return nullptr;
 }
+#endif
 
 CanvasResourceProvider::CanvasImageProvider::CanvasImageProvider(cc::ImageDecodeCache* cache_n32, cc::ImageDecodeCache* cache_f16,
     const gfx::ColorSpace& target_color_space, SkColorType canvas_color_type, cc::PlaybackImageProvider::RasterMode raster_mode)
+#if !defined(MINI_UI_QUICKJS)
     : raster_mode_(raster_mode)
+#endif
 {
     std::optional<cc::PlaybackImageProvider::Settings> settings = cc::PlaybackImageProvider::Settings();
-    settings->raster_mode = raster_mode_;
+    settings->raster_mode = raster_mode;
 
     cc::TargetColorParams target_color_params;
     target_color_params.color_space = target_color_space;
@@ -1208,7 +1291,7 @@ CanvasResourceProvider::CanvasImageProvider::CanvasImageProvider(cc::ImageDecode
     if (canvas_color_type == kRGBA_F16_SkColorType) {
         DCHECK(cache_f16);
         settings = cc::PlaybackImageProvider::Settings();
-        settings->raster_mode = raster_mode_;
+        settings->raster_mode = raster_mode;
         playback_image_provider_f16_.emplace(cache_f16, target_color_params, std::move(settings));
     }
 }
@@ -1235,6 +1318,9 @@ cc::ImageProvider::ScopedResult CanvasResourceProvider::CanvasImageProvider::Get
         scoped_decoded_image = playback_image_provider_n32_->GetRasterContent(draw_image);
     }
 
+#if defined(MINI_UI_QUICKJS)
+    return scoped_decoded_image;
+#else
     // Holding onto locked images here is a performance optimization for the
     // gpu image decode cache.  For that cache, it is expensive to lock and
     // unlock gpu discardable, and so it is worth it to hold the lock on
@@ -1256,8 +1342,10 @@ cc::ImageProvider::ScopedResult CanvasResourceProvider::CanvasImageProvider::Get
 
     auto decoded_draw_image = scoped_decoded_image.decoded_image();
     return ScopedResult(decoded_draw_image, base::BindOnce(&CanvasImageProvider::CanUnlockImage, weak_factory_.GetWeakPtr(), std::move(scoped_decoded_image)));
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceProvider::CanvasImageProvider::CanUnlockImage(ScopedResult image)
 {
     // We should early out and avoid calling this function for software decodes.
@@ -1285,6 +1373,7 @@ bool CanvasResourceProvider::CanvasImageProvider::IsHardwareDecodeCache() const
 {
     return raster_mode_ != cc::PlaybackImageProvider::RasterMode::kSoftware;
 }
+#endif
 
 BASE_FEATURE(kCanvas2DAutoFlushParams, "Canvas2DAutoFlushParams", base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1315,10 +1404,15 @@ const base::FeatureParam<int> kMaxPinnedImageKB(&kCanvas2DAutoFlushParams, "max_
 const base::FeatureParam<int> kMaxRecordedOpGraphiteKB(&kCanvas2DAutoFlushParams, "max_recorded_op_graphite_kb", 6 * 1024);
 
 CanvasResourceProvider::CanvasResourceProvider(const ResourceProviderType& type, const SkImageInfo& info, cc::PaintFlags::FilterQuality filter_quality,
-    bool is_origin_top_left, base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
+    bool is_origin_top_left,
+#if !defined(MINI_UI_QUICKJS)
+    base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
+#endif
     base::WeakPtr<CanvasResourceDispatcher> resource_dispatcher, CanvasResourceHost* resource_host)
     : type_(type)
+#if !defined(MINI_UI_QUICKJS)
     , context_provider_wrapper_(std::move(context_provider_wrapper))
+#endif
     , resource_dispatcher_(resource_dispatcher)
     , info_(info)
     , filter_quality_(filter_quality)
@@ -1329,6 +1423,7 @@ CanvasResourceProvider::CanvasResourceProvider(const ResourceProviderType& type,
 {
     max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpKB.Get()) * 1024;
     max_pinned_image_bytes_ = static_cast<size_t>(kMaxPinnedImageKB.Get()) * 1024;
+#if !defined(MINI_UI_QUICKJS)
     if (context_provider_wrapper_) {
 //         context_provider_wrapper_->AddObserver(this);
 //         const auto& caps = context_provider_wrapper_->ContextProvider()->GetCapabilities();
@@ -1339,23 +1434,26 @@ CanvasResourceProvider::CanvasResourceProvider(const ResourceProviderType& type,
         //       recorder_->DisableLineDrawingAsPaths();
         //     }
     }
+#endif
 
     CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 }
 
 CanvasResourceProvider::~CanvasResourceProvider()
 {
-    UMA_HISTOGRAM_EXACT_LINEAR("Blink.Canvas.MaximumInflightResources", max_inflight_resources_, 20);
+    UMA_HISTOGRAM_EXACT_LINEAR(
+        "Blink.Canvas.MaximumInflightResources", max_inflight_resources_, 20);
+#if !defined(MINI_UI_QUICKJS)
     if (context_provider_wrapper_) {
         *(int*)1 = 1;
-        //context_provider_wrapper_->RemoveObserver(this);
+        // context_provider_wrapper_->RemoveObserver(this);
     }
+#endif
     CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
-
-    // Last chance for outstanding GPU timers to record metrics.
-    if (RasterInterface()) {
+#if !defined(MINI_UI_QUICKJS)
+    if (RasterInterface())
         CheckGpuTimers(RasterInterface());
-    }
+#endif
 }
 
 std::unique_ptr<MemoryManagedPaintRecorder> CanvasResourceProvider::ReleaseRecorder()
@@ -1365,7 +1463,9 @@ std::unique_ptr<MemoryManagedPaintRecorder> CanvasResourceProvider::ReleaseRecor
     auto recorder = std::make_unique<MemoryManagedPaintRecorder>(Size(), this);
     recorder_->SetClient(nullptr);
     recorder_.swap(recorder);
+#if !defined(MINI_UI_QUICKJS)
     DisableLineDrawingAsPathsIfNecessary();
+#endif
     return recorder;
 }
 
@@ -1373,7 +1473,9 @@ void CanvasResourceProvider::SetRecorder(std::unique_ptr<MemoryManagedPaintRecor
 {
     recorder->SetClient(this);
     recorder_ = std::move(recorder);
+#if !defined(MINI_UI_QUICKJS)
     DisableLineDrawingAsPathsIfNecessary();
+#endif
 }
 
 void CanvasResourceProvider::FlushIfRecordingLimitExceeded()
@@ -1403,6 +1505,7 @@ void CanvasResourceProvider::NotifyWillTransfer(cc::PaintImage::ContentId conten
     GetFlushForImageListener()->NotifyFlushForImage(content_id);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool CanvasResourceProvider::OverwriteImage(
     const gpu::Mailbox& shared_image_mailbox, const gfx::Rect& copy_rect, const gpu::SyncToken& ready_sync_token, gpu::SyncToken& completion_sync_token)
 {
@@ -1422,6 +1525,7 @@ bool CanvasResourceProvider::OverwriteImage(
     raster->GenUnverifiedSyncTokenCHROMIUM(completion_sync_token.GetData());
     return true;
 }
+#endif
 
 void CanvasResourceProvider::EnsureSkiaCanvas()
 {
@@ -1430,6 +1534,9 @@ void CanvasResourceProvider::EnsureSkiaCanvas()
     if (skia_canvas_)
         return;
 
+#if defined(MINI_UI_QUICKJS)
+    skia_canvas_ = std::make_unique<cc::SkiaPaintCanvas>(GetSkSurface()->getCanvas(), GetOrCreateCanvasImageProvider());
+#else
     cc::SkiaPaintCanvas::ContextFlushes context_flushes;
     if (IsAccelerated() && ContextProviderWrapper()
         && !ContextProviderWrapper()->ContextProvider()->GetGpuFeatureInfo().IsWorkaroundEnabled(gpu::DISABLE_2D_CANVAS_AUTO_FLUSH)) {
@@ -1437,6 +1544,7 @@ void CanvasResourceProvider::EnsureSkiaCanvas()
         context_flushes.max_draws_before_flush = kMaxDrawsBeforeContextFlush;
     }
     skia_canvas_ = std::make_unique<cc::SkiaPaintCanvas>(GetSkSurface()->getCanvas(), GetOrCreateCanvasImageProvider(), context_flushes);
+#endif
 }
 
 CanvasResourceProvider::CanvasImageProvider* CanvasResourceProvider::GetOrCreateCanvasImageProvider()
@@ -1449,9 +1557,13 @@ CanvasResourceProvider::CanvasImageProvider* CanvasResourceProvider::GetOrCreate
             cache_f16 = ImageDecodeCacheF16();
 
         auto raster_mode = cc::PlaybackImageProvider::RasterMode::kSoftware;
+#if !defined(MINI_UI_QUICKJS)
         if (UseHardwareDecodeCache()) {
-            raster_mode = UseOopRasterization() ? cc::PlaybackImageProvider::RasterMode::kOop : cc::PlaybackImageProvider::RasterMode::kGpu;
+            raster_mode = UseOopRasterization()
+                ? cc::PlaybackImageProvider::RasterMode::kOop
+                : cc::PlaybackImageProvider::RasterMode::kGpu;
         }
+#endif
         canvas_image_provider_ = std::make_unique<CanvasImageProvider>(ImageDecodeCacheRGBA8(), cache_f16, GetColorSpace(), info_.colorType(), raster_mode);
     }
     return canvas_image_provider_.get();
@@ -1485,12 +1597,14 @@ MemoryManagedPaintCanvas& CanvasResourceProvider::Canvas(bool needs_will_draw)
     return recorder_->getRecordingCanvas();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceProvider::OnContextDestroyed()
 {
     if (skia_canvas_)
         skia_canvas_->reset_image_provider();
     canvas_image_provider_.reset();
 }
+#endif
 
 void CanvasResourceProvider::OnFlushForImage(PaintImage::ContentId content_id)
 {
@@ -1499,11 +1613,13 @@ void CanvasResourceProvider::OnFlushForImage(PaintImage::ContentId content_id)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceProvider::ReleaseLockedImages()
 {
     if (canvas_image_provider_)
         canvas_image_provider_->ReleaseLockedImages();
 }
+#endif
 
 scoped_refptr<StaticBitmapImage> CanvasResourceProvider::SnapshotInternal(ImageOrientation orientation, FlushReason reason)
 {
@@ -1535,6 +1651,7 @@ cc::PaintImage CanvasResourceProvider::MakeImageSnapshot(FlushReason reason)
     return PaintImageBuilder::WithDefault().set_id(snapshot_paint_image_id_).set_image(std::move(sk_image), snapshot_paint_image_content_id_).TakePaintImage();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 gpu::gles2::GLES2Interface* CanvasResourceProvider::ContextGL() const
 {
     *(int*)1 = 1;
@@ -1560,6 +1677,7 @@ GrDirectContext* CanvasResourceProvider::GetGrContext() const
 //         return nullptr;
 //     return context_provider_wrapper_->ContextProvider()->GetGrContext();
 }
+#endif
 
 gfx::Size CanvasResourceProvider::Size() const
 {
@@ -1583,7 +1701,9 @@ std::optional<cc::PaintRecord> CanvasResourceProvider::FlushCanvas(FlushReason r
     if (!recorder_->HasReleasableDrawOps()) {
         return std::nullopt;
     }
+#if !defined(MINI_UI_QUICKJS)
     ScopedRasterTimer timer(IsAccelerated() ? RasterInterface() : nullptr, *this, always_enable_raster_timers_for_testing_);
+#endif
     DCHECK(reason != FlushReason::kNone);
     bool want_to_print
         = (IsPrinting() && reason != FlushReason::kClear) || reason == FlushReason::kPrinting || reason == FlushReason::kCanvasPushFrameWhilePrinting;
@@ -1603,9 +1723,11 @@ std::optional<cc::PaintRecord> CanvasResourceProvider::FlushCanvas(FlushReason r
     }
     cc::PaintRecord recording = recorder_->ReleaseMainRecording();
     RasterRecord(recording);
+#if !defined(MINI_UI_QUICKJS)
     // Images are locked for the duration of the rasterization, in case they get
     // used multiple times. We can unlock them once the rasterization is complete.
     ReleaseLockedImages();
+#endif
     last_recording_ = preserve_recording ? std::optional(recording) : std::nullopt;
     return recording;
 }
@@ -1614,9 +1736,12 @@ void CanvasResourceProvider::RasterRecord(cc::PaintRecord last_recording)
 {
     EnsureSkiaCanvas();
     skia_canvas_->drawPicture(std::move(last_recording));
+#if !defined(MINI_UI_QUICKJS)
     skgpu::ganesh::FlushAndSubmit(GetSkSurface());
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceProvider::RasterRecordOOP(cc::PaintRecord last_recording, bool needs_clear, gpu::Mailbox mailbox)
 {
     if (IsGpuContextLost())
@@ -1660,6 +1785,7 @@ bool CanvasResourceProvider::IsSharedBitmapGpuChannelLost() const
 {
     return false;
 }
+#endif
 
 bool CanvasResourceProvider::WritePixels(const SkImageInfo& orig_info, const void* pixels, size_t row_bytes, int x, int y)
 {
@@ -1711,22 +1837,26 @@ scoped_refptr<CanvasResource> CanvasResourceProvider::CreateResource()
 
 cc::ImageDecodeCache* CanvasResourceProvider::ImageDecodeCacheRGBA8()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (UseHardwareDecodeCache()) {
-        //return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kN32_SkColorType);
+        // return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kN32_SkColorType);
         *(int*)1 = 1;
         return nullptr;
     }
+#endif
 
     return &Image::SharedCCDecodeCache(kN32_SkColorType);
 }
 
 cc::ImageDecodeCache* CanvasResourceProvider::ImageDecodeCacheF16()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (UseHardwareDecodeCache()) {
-        //return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kRGBA_F16_SkColorType);
+        // return context_provider_wrapper_->ContextProvider()->ImageDecodeCache(kRGBA_F16_SkColorType);
         *(int*)1 = 1;
         return nullptr;
     }
+#endif
     return &Image::SharedCCDecodeCache(kRGBA_F16_SkColorType);
 }
 
@@ -1784,8 +1914,13 @@ void CanvasResourceProvider::MaybePostUnusedResourcesReclaimTask()
 
 void CanvasResourceProvider::ClearOldUnusedResources()
 {
-    bool cleared_resources = WTF::EraseIf(
-        canvas_resources_, [](const UnusedResource& resource) { return base::TimeTicks::Now() - resource.last_use >= kUnusedResourceExpirationTime; });
+#if !defined(MINI_UI_QUICKJS)
+    bool cleared_resources =
+#endif
+        WTF::EraseIf(canvas_resources_, [](const UnusedResource& resource) {
+            return base::TimeTicks::Now() - resource.last_use >= kUnusedResourceExpirationTime;
+        });
+#if !defined(MINI_UI_QUICKJS)
     // May have destroyed resources above, make sure that it gets to the other
     // side. SharedImage destruction (which may be triggered by the removal of
     // canvas resources above) is a deferred message, we need to flush pending
@@ -1796,6 +1931,7 @@ void CanvasResourceProvider::ClearOldUnusedResources()
             context_support->FlushPendingWork();
         }
     }
+#endif
 
     MaybePostUnusedResourcesReclaimTask();
 }
@@ -1881,30 +2017,24 @@ size_t CanvasResourceProvider::ComputeSurfaceSize() const
     return info.computeByteSize(info.minRowBytes());
 }
 
-void CanvasResourceProvider::OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd)
+void CanvasResourceProvider::OnMemoryDump(
+    base::trace_event::ProcessMemoryDump* pmd)
 {
+#if defined(MINI_UI_QUICKJS)
+    if (!surface_)
+        return;
+    std::string dump_name = base::StringPrintf(
+        "canvas/ResourceProvider/SkSurface/0x%" PRIXPTR,
+        reinterpret_cast<uintptr_t>(surface_.get()));
+    auto* dump = pmd->CreateAllocatorDump(dump_name);
+    dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize,
+        base::trace_event::MemoryAllocatorDump::kUnitsBytes,
+        ComputeSurfaceSize());
+    dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameObjectCount,
+        base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
+#else
     *(int*)1 = 1;
-//     if (!surface_)
-//         return;
-// 
-//     for (const auto& resource : canvas_resources_) {
-//         // Don't report, to avoid double-counting.
-//         if (resource.resource->HasDetailedMemoryDumpProvider()) {
-//             return;
-//         }
-//     }
-// 
-//     std::string dump_name = base::StringPrintf("canvas/ResourceProvider/SkSurface/0x%" PRIXPTR, reinterpret_cast<uintptr_t>(surface_.get()));
-//     auto* dump = pmd->CreateAllocatorDump(dump_name);
-// 
-//     dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize, base::trace_event::MemoryAllocatorDump::kUnitsBytes, ComputeSurfaceSize());
-//     dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameObjectCount, base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
-// 
-//     // SkiaMemoryDumpProvider reports only sk_glyph_cache and sk_resource_cache.
-//     // So the SkSurface is suballocation of malloc, not SkiaDumpProvider.
-//     if (const char* system_allocator_name = base::trace_event::MemoryDumpManager::GetInstance()->system_allocator_pool_name()) {
-//         pmd->AddSuballocation(dump->guid(), system_allocator_name);
-//     }
+#endif
 }
 
 size_t CanvasResourceProvider::GetSize() const
@@ -1912,16 +2042,11 @@ size_t CanvasResourceProvider::GetSize() const
     return ComputeSurfaceSize();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceProvider::DisableLineDrawingAsPathsIfNecessary()
 {
     *(int*)1 = 1;
-    //   if (context_provider_wrapper_ &&
-    //       context_provider_wrapper_->ContextProvider()
-    //               ->GetGpuFeatureInfo()
-    //               .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
-    //           gpu::kGpuFeatureStatusEnabled) {
-    //     recorder_->DisableLineDrawingAsPaths();
-    //   }
 }
+#endif
 
 } // namespace blink

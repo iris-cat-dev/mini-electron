@@ -21,7 +21,9 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing.h"
+#endif
 #include "base/trace_event/memory_usage_estimator.h"
 #include "url/url_canon_stdstring.h"
 #include "url/url_util.h"
@@ -551,10 +553,12 @@ bool GURL::IsAboutPath(std::string_view actual_path, std::string_view allowed_pa
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void GURL::WriteIntoTrace(perfetto::TracedValue context) const
 {
     std::move(context).WriteString(possibly_invalid_spec());
 }
+#endif
 
 std::ostream& operator<<(std::ostream& out, const GURL& url)
 {

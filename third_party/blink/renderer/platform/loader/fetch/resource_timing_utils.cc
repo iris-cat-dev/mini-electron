@@ -13,7 +13,9 @@
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink.h"
 #include "third_party/blink/renderer/platform/loader/fetch/delivery_type_names.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/service_worker_router_info.h"
+#endif
 #include "third_party/blink/renderer/platform/network/http_names.h"
 #include "third_party/blink/renderer/platform/network/http_parsers.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -64,6 +66,7 @@ mojom::blink::ResourceTimingInfoPtr CreateResourceTimingInfo(base::TimeTicks sta
         // Service worker timing for subresources is always same-origin
         // TODO: This doesn't match the spec, but probably the spec needs to be
         // changed. Opened https://github.com/whatwg/fetch/issues/1597
+#if !defined(MINI_UI_QUICKJS)
         if (response->GetResourceLoadTiming()) {
             ResourceLoadTiming* timing = response->GetResourceLoadTiming();
             info->timing = network::mojom::blink::LoadTimingInfo::New();
@@ -71,9 +74,12 @@ mojom::blink::ResourceTimingInfoPtr CreateResourceTimingInfo(base::TimeTicks sta
             info->timing->service_worker_ready_time = timing->WorkerReady();
             info->timing->service_worker_fetch_start = timing->WorkerFetchStart();
         }
+#endif
     }
 
+#if !defined(MINI_UI_QUICKJS)
     info->service_worker_router_info = response->GetServiceWorkerRouterInfo() ? response->GetServiceWorkerRouterInfo()->ToMojo() : nullptr;
+#endif
 
     bool allow_response_details = response->IsCorsSameOrigin();
 
@@ -91,7 +97,9 @@ mojom::blink::ResourceTimingInfoPtr CreateResourceTimingInfo(base::TimeTicks sta
     if (expose_body_sizes && response) {
         info->encoded_body_size = response->EncodedBodyLength();
         info->decoded_body_size = response->DecodedBodyLength();
+#if !defined(MINI_UI_QUICKJS)
         info->service_worker_response_source = response->GetServiceWorkerResponseSource();
+#endif
     }
 
     return info;

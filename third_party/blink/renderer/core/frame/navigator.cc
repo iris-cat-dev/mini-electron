@@ -33,7 +33,9 @@
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/memory_pressure_listener.h"
 #include "third_party/blink/renderer/platform/language.h"
 
@@ -76,15 +78,16 @@ String Navigator::platform() const
 
 bool Navigator::cookieEnabled() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     if (!DomWindow())
         return false;
-
-    if (DomWindow()->GetStorageKey().IsThirdPartyContext()) {
+    if (DomWindow()->GetStorageKey().IsThirdPartyContext())
         DomWindow()->CountUse(WebFeature::kNavigatorCookieEnabledThirdParty);
-    }
-
     Settings* settings = DomWindow()->GetFrame()->GetSettings();
     return settings && settings->GetCookieEnabled();
+#endif
 }
 
 bool Navigator::webdriver() const
@@ -93,7 +96,9 @@ bool Navigator::webdriver() const
         return true;
 
     bool automation_enabled = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ApplyAutomationOverride(GetExecutionContext(), automation_enabled);
+#endif
     return automation_enabled;
 }
 

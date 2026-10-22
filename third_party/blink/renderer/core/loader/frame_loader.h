@@ -37,10 +37,13 @@
 #include <optional>
 
 #include "base/functional/callback_helpers.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
@@ -87,7 +90,8 @@ public:
     ~FrameLoader();
 
     void Init(const DocumentToken& document_token, std::unique_ptr<PolicyContainer> policy_container, const StorageKey& storage_key,
-        ukm::SourceId document_ukm_source_id, const KURL& creator_base_url);
+        ukm::SourceId document_ukm_source_id,
+        const KURL& creator_base_url);
 
     ResourceRequest ResourceRequestForReload(WebFrameLoadType, ClientRedirectPolicy = ClientRedirectPolicy::kNotClientRedirect);
 
@@ -250,11 +254,15 @@ public:
 
     static bool NeedsHistoryItemRestore(WebFrameLoadType type);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
     bool AllowRequestForThisFrame(const FrameLoadRequest&);
 
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<mojom::blink::CodeCacheHost> CreateWorkerCodeCacheHost();
+#endif
 
 private:
     bool ShouldPerformFragmentNavigation(bool is_form_submission, const String& http_method, WebFrameLoadType, const KURL&);

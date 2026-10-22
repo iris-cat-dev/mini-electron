@@ -9,7 +9,9 @@
 
 #include "base/check.h"
 #include "base/notreached.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_id_helper.h"
+#endif
 
 namespace cc {
 
@@ -114,10 +116,12 @@ TaskGraph::Node::Node(scoped_refptr<Task> new_task, uint16_t category, uint16_t 
     , dependencies(dependencies)
     , has_external_dependency(has_external_dependency)
 {
+#if !defined(MINI_UI_QUICKJS)
     // Set a trace task id to use for connecting from where the task was posted.
     if (task) {
         task->set_trace_task_id(base::trace_event::GetNextGlobalTraceId());
     }
+#endif
 }
 
 TaskGraph::Node::Node(Node&& other) = default;

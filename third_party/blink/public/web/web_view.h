@@ -82,7 +82,9 @@ class WebSettings;
 class WebString;
 class WebViewClient;
 class WebWidget;
+#if !defined(MINI_UI_QUICKJS)
 struct DeviceEmulationParams;
+#endif
 struct WebWindowFeatures;
 
 class BLINK_EXPORT WebView {
@@ -96,14 +98,21 @@ public:
     // Initialization ------------------------------------------------------
 
     // Creates a WebView that is NOT yet initialized. To complete initialization,
+#if defined(MINI_UI_QUICKJS)
+    // call WebLocalFrame::CreateMainFrame(). It is legal to modify settings
+    // before completing initialization.
+#else
     // call WebLocalFrame::CreateMainFrame() or WebRemoteFrame::CreateMainFrame()
     // as appropriate. It is legal to modify settings before completing
     // initialization.
+#endif
     //
+#if !defined(MINI_UI_QUICKJS)
     // The WebView is kept alive as long as the `page_handle` mojo interface
     // is alive. The WebView will be destroyed when that interface closes, if
     // a client wishes to close the WebView synchronously it can call `Close`
     // directly.
+#endif
     //
     // clients may be null, but should both be null or not together.
     // |is_hidden| defines the initial visibility of the page.
@@ -116,8 +125,10 @@ public:
     // LayerTreeView will not be set for the WebWidget.
     // TODO(danakj): This field should go away as WebWidgets always composite
     // their output.
+#if !defined(MINI_UI_QUICKJS)
     // |page_handle| is only set for views that are part of a WebContents' frame
     // tree.
+#endif
     // |widgets_never_composited| is an indication that all WebWidgets associated
     // with this WebView will never be user-visible and thus never need to produce
     // pixels for display. This is separate from page visibility, as background
@@ -138,7 +149,10 @@ public:
     // See https://explainers-by-googlers.github.io/partitioned-popins/
     static WebView* Create(WebViewClient*, bool is_hidden, blink::mojom::PrerenderParamPtr prerender_param,
         std::optional<blink::FencedFrame::DeprecatedFencedFrameMode> fenced_frame_mode, bool compositing_enabled, bool widgets_never_composited,
-        WebView* opener, CrossVariantMojoAssociatedReceiver<mojom::PageBroadcastInterfaceBase> page_handle,
+        WebView* opener,
+#if !defined(MINI_UI_QUICKJS)
+        CrossVariantMojoAssociatedReceiver<mojom::PageBroadcastInterfaceBase> page_handle,
+#endif
         scheduler::WebAgentGroupScheduler& agent_group_scheduler, const SessionStorageNamespaceId& session_storage_namespace_id,
         std::optional<SkColor> page_base_background_color, const BrowsingContextGroupInfo& browsing_context_group_info,
         const ColorProviderColorMaps* color_provider_colors, blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params);
@@ -155,6 +169,7 @@ public:
     // still valid until after this method is called.
     virtual void DidDetachLocalMainFrame() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Called to inform WebViewImpl that a remote main frame has been attached.
     // Associated channels should be passed and bound.
     virtual void DidAttachRemoteMainFrame(CrossVariantMojoAssociatedRemote<mojom::RemoteMainFrameHostInterfaceBase> main_frame_host,
@@ -163,6 +178,7 @@ public:
 
     // Called to inform WebViewImpl that a remote main frame has been detached.
     virtual void DidDetachRemoteMainFrame() = 0;
+#endif
 
     virtual void SetNoStatePrefetchClient(WebNoStatePrefetchClient*) = 0;
 
@@ -206,11 +222,13 @@ public:
     virtual WebLocalFrame* FocusedFrame() = 0;
     virtual void SetFocusedFrame(WebFrame*) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Smooth scroll the root layer to |targetX|, |targetY| in |duration|.
     virtual void SmoothScroll(int target_x, int target_y, base::TimeDelta duration)
     {
     }
 
+#endif
     // Advance the focus of the WebView forward to the next element or to the
     // previous element in the tab sequence (if reverse is true).
     virtual void AdvanceFocus(bool reverse)
@@ -309,11 +327,11 @@ public:
 
     // Developer tools -----------------------------------------------------
 
-    // Enables device emulation as specified in params.
+#if !defined(MINI_UI_QUICKJS)
+    // DevTools device emulation.
     virtual void EnableDeviceEmulation(const DeviceEmulationParams&) = 0;
-
-    // Cancel emulation started via |enableDeviceEmulation| call.
     virtual void DisableDeviceEmulation() = 0;
+#endif
 
     // Context menu --------------------------------------------------------
 
@@ -345,10 +363,12 @@ public:
     // hashes need to be recalculated.
     static void ResetVisitedLinkState(bool invalidate_visited_link_hashes);
 
+#if !defined(MINI_UI_QUICKJS)
     // Custom colors -------------------------------------------------------
 
     virtual void SetDeviceColorSpaceForTesting(const gfx::ColorSpace& color_space) = 0;
 
+#endif
     // Scheduling -----------------------------------------------------------
 
     virtual PageScheduler* Scheduler() const = 0;
@@ -452,9 +472,11 @@ public:
     // Returns the number of live WebView instances in this process.
     static size_t GetWebViewCount();
 
+#if !defined(MINI_UI_QUICKJS)
     // Sets whether web or OS-level Attribution Reporting is supported. See
     // https://github.com/WICG/attribution-reporting-api/blob/main/app_to_web.md
     virtual void SetPageAttributionSupport(network::mojom::AttributionSupport support) = 0;
+#endif
 
 protected:
     ~WebView() = default;

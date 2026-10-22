@@ -30,15 +30,21 @@
 #include <memory>
 
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/layer.h"
 #include "cc/trees/layer_tree_host.h"
+#endif
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider.h"
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider_client.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_media_player.h"
+#endif
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/html/forms/color_chooser.h"
 #include "third_party/blink/renderer/core/html/forms/date_time_chooser.h"
@@ -84,6 +90,7 @@ DateTimeChooser* EmptyChromeClient::OpenDateTimeChooser(LocalFrame* frame, DateT
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<cc::ScopedPauseRendering> EmptyChromeClient::PauseRendering(LocalFrame&)
 {
     return nullptr;
@@ -94,6 +101,8 @@ std::optional<int> EmptyChromeClient::GetMaxRenderBufferBounds(LocalFrame& frame
     return std::nullopt;
 }
 
+#endif
+
 void EmptyChromeClient::OpenTextDataListChooser(HTMLInputElement&)
 {
 }
@@ -102,26 +111,34 @@ void EmptyChromeClient::OpenFileChooser(LocalFrame*, scoped_refptr<FileChooser>)
 {
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void EmptyChromeClient::AttachRootLayer(scoped_refptr<cc::Layer>, LocalFrame*)
 {
 }
+#endif
 
 String EmptyChromeClient::AcceptLanguages()
 {
     return String();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool EmptyChromeClient::StartDeferringCommits(LocalFrame& main_frame, base::TimeDelta timeout, cc::PaintHoldingReason reason)
 {
     return false;
 }
+
+#endif
 
 void EmptyLocalFrameClient::BeginNavigation(const ResourceRequest&, const KURL& requestor_base_url, mojom::RequestContextFrameType, LocalDOMWindow*,
     DocumentLoader*, WebNavigationType, NavigationPolicy, WebFrameLoadType, mojom::blink::ForceHistoryPush, bool,
     // TODO(crbug.com/1315802): Refactor _unfencedTop handling.
     bool, mojom::blink::TriggeringEventInfo, HTMLFormElement*, network::mojom::CSPDisposition, mojo::PendingRemote<mojom::blink::BlobURLToken>, base::TimeTicks,
     const String&, const std::optional<Impression>&, const LocalFrameToken* initiator_frame_token, std::unique_ptr<SourceLocation>,
-    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>, bool is_container_initiated, bool has_rel_opener)
+#if !defined(MINI_UI_QUICKJS)
+    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>,
+#endif
+    bool is_container_initiated, bool has_rel_opener)
 {
 }
 
@@ -134,16 +151,21 @@ LocalFrame* EmptyLocalFrameClient::CreateFrame(const AtomicString&, HTMLFrameOwn
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 RemoteFrame* EmptyLocalFrameClient::CreateFencedFrame(HTMLFencedFrameElement*, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>)
 {
     return nullptr;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainerImpl* EmptyLocalFrameClient::CreatePlugin(HTMLPlugInElement&, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool)
 {
     return nullptr;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<WebMediaPlayer> EmptyLocalFrameClient::CreateWebMediaPlayer(HTMLMediaElement&, const WebMediaPlayerSource&, WebMediaPlayerClient*)
 {
     return nullptr;
@@ -153,6 +175,7 @@ RemotePlaybackClient* EmptyLocalFrameClient::CreateRemotePlaybackClient(HTMLMedi
 {
     return nullptr;
 }
+#endif
 
 WebTextCheckClient* EmptyLocalFrameClient::GetTextCheckerClient() const
 {
@@ -172,15 +195,13 @@ Frame* EmptyLocalFrameClient::FindFrame(const AtomicString& name) const
 AssociatedInterfaceProvider* EmptyLocalFrameClient::GetRemoteNavigationAssociatedInterfaces()
 {
     return AssociatedInterfaceProvider::GetEmptyAssociatedInterfaceProvider();
-//     if (!associated_interface_provider_) {
-//         associated_interface_provider_ = std::make_unique<AssociatedInterfaceProvider>(base::SingleThreadTaskRunner::GetCurrentDefault());
-//     }
-//     return associated_interface_provider_.get();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<WebServiceWorkerProvider> EmptyLocalFrameClient::CreateServiceWorkerProvider()
 {
     return nullptr;
 }
+#endif
 
 } // namespace blink

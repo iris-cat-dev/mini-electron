@@ -9,8 +9,10 @@
 #include "base/process/process_handle.h"
 #include "base/trace_event/memory_dump_request_args.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event_stub.h"
-#if 0
+#endif
+#if defined(MINI_UI_QUICKJS)
 
 namespace base {
 namespace trace_event {
@@ -51,6 +53,6 @@ class BASE_EXPORT MemoryDumpProvider {
 }  // namespace trace_event
 }  // namespace base
 
-#endif // #if 0
+#endif  // defined(MINI_UI_QUICKJS)
 
 #endif // BASE_TRACE_EVENT_MEMORY_DUMP_PROVIDER_H_

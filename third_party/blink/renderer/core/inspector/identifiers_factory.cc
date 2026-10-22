@@ -33,11 +33,13 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 #include "third_party/blink/renderer/core/inspector/inspected_frames.h"
 #endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
@@ -56,10 +58,12 @@ String IdentifiersFactory::RequestId(ExecutionContext* execution_context, uint64
 {
     if (!identifier)
         return String();
+#if !defined(MINI_UI_QUICKJS)
     auto* worker_global_scope = DynamicTo<WorkerGlobalScope>(execution_context);
     if (worker_global_scope && worker_global_scope->MainResourceIdentifier() == identifier) {
         return String(worker_global_scope->GetDevToolsToken().ToString());
     }
+#endif
     auto* window = DynamicTo<LocalDOMWindow>(execution_context);
     if (window && window->document())
         return RequestId(window->document()->Loader(), identifier);
@@ -89,7 +93,7 @@ const String& IdentifiersFactory::FrameId(Frame* frame)
     return GetFrameIdForTracing(frame);
 }
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32)
+#if !defined(MINI_UI_QUICKJS) && (!defined(MINI_ELECTRON_DISABLE_DEVTOOLS) || !defined(_WIN32))
 // static
 LocalFrame* IdentifiersFactory::FrameById(InspectedFrames* inspected_frames, const String& frame_id)
 {

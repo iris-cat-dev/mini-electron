@@ -39,16 +39,20 @@
 #include "base/i18n/rtl.h"
 #include "base/notreached.h"
 #include "base/unguessable_token.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "media/base/audio_processing.h"
 #include "media/base/output_device_info.h"
 #include "media/base/speech_recognition_client.h"
 #include "media/mojo/mojom/audio_processing.mojom-shared.h"
+#endif
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-shared.h"
 #include "third_party/blink/public/common/dom_storage/session_storage_namespace_id.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/loader/url_loader_factory_bundle.h"
+#endif
 #include "third_party/blink/public/common/performance/performance_timeline_constants.h"
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
 #include "third_party/blink/public/common/responsiveness_metrics/user_interaction_latency.h"
@@ -64,25 +68,39 @@
 #include "third_party/blink/public/mojom/frame/triggering_event_info.mojom-shared.h"
 #include "third_party/blink/public/mojom/frame/user_activation_update_types.mojom-shared.h"
 #include "third_party/blink/public/mojom/loader/same_document_navigation_type.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/media/renderer_audio_input_stream_factory.mojom-shared.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/child_url_loader_factory_bundle.h"
+#endif
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider.h"
+#endif
 #include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/url_loader_throttle_provider.h"
 #include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
+#endif
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/platform/web_content_security_policy_struct.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
 #include "third_party/blink/public/platform/web_file_system_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_media_player.h"
+#endif
 #include "third_party/blink/public/platform/web_prescient_networking.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_set_sink_id_callbacks.h"
+#endif
 #include "third_party/blink/public/platform/web_source_location.h"
 #include "third_party/blink/public/platform/web_url_error.h"
 #include "third_party/blink/public/platform/web_url_request.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
+#endif
 #include "third_party/blink/public/web/web_ax_object.h"
 #include "third_party/blink/public/web/web_document_loader.h"
 #include "third_party/blink/public/web/web_frame.h"
@@ -91,7 +109,9 @@
 #include "third_party/blink/public/web/web_history_commit_type.h"
 #include "third_party/blink/public/web/web_history_item.h"
 #include "third_party/blink/public/web/web_meaningful_layout.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_media_inspector.h"
+#endif
 #include "third_party/blink/public/web/web_navigation_params.h"
 #include "third_party/blink/public/web/web_navigation_policy.h"
 #include "third_party/blink/public/web/web_navigation_type.h"
@@ -114,9 +134,11 @@ namespace net {
 class SiteForCookies;
 } // namespace net
 
+#if !defined(MINI_UI_QUICKJS)
 namespace network {
 class SharedURLLoaderFactory;
 } // namespace network
+#endif
 
 namespace blink {
 namespace mojom {
@@ -124,22 +146,34 @@ enum class TreeScopeType;
 } // namespace mojom
 
 class AssociatedInterfaceProvider;
+#if !defined(MINI_UI_QUICKJS)
 class WebBackgroundResourceFetchAssets;
-class WebContentDecryptionModule;
 class WebDedicatedWorkerHostFactoryClient;
+#endif
+#if !defined(MINI_UI_QUICKJS)
+class WebContentDecryptionModule;
+#endif
 class WebDocumentLoader;
+#if !defined(MINI_UI_QUICKJS)
 class WebEncryptedMediaClient;
+#endif
 class WebLocalFrame;
+#if !defined(MINI_UI_QUICKJS)
 class WebMediaPlayer;
 class WebMediaPlayerClient;
 class WebMediaPlayerEncryptedMediaClient;
 class WebMediaPlayerSource;
 class WebMediaStreamDeviceObserver;
+#endif
 class WebNavigationControl;
+#if !defined(MINI_UI_QUICKJS)
 class WebPlugin;
+#endif
 class WebPrescientNetworking;
 class WebRelatedAppsFetcher;
+#if !defined(MINI_UI_QUICKJS)
 class WebServiceWorkerProvider;
+#endif
 class WebSocketHandshakeThrottle;
 class WebString;
 class WebURL;
@@ -154,7 +188,9 @@ struct JavaScriptFrameworkDetectionResult;
 struct WebConsoleMessage;
 struct ContextMenuData;
 struct WebPictureInPictureWindowOptions;
+#if !defined(MINI_UI_QUICKJS)
 struct WebPluginParams;
+#endif
 struct WebWindowFeatures;
 
 enum class SyncCondition {
@@ -189,12 +225,15 @@ public:
 
     // Factory methods -----------------------------------------------------
 
+#if !defined(MINI_UI_QUICKJS)
     // May return null.
     virtual WebPlugin* CreatePlugin(const WebPluginParams&)
     {
         return nullptr;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // May return null.
     // WebContentDecryptionModule* may be null if one has not yet been set.
     virtual std::unique_ptr<WebMediaPlayer> CreateMediaPlayer(const WebMediaPlayerSource&, WebMediaPlayerClient*, blink::MediaInspectorContext*,
@@ -203,12 +242,15 @@ public:
     {
         return nullptr;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // May return null.
     virtual std::unique_ptr<WebServiceWorkerProvider> CreateServiceWorkerProvider()
     {
         return nullptr;
     }
+#endif
 
     // May return null.
     virtual std::unique_ptr<WebContentSettingsClient> CreateWorkerContentSettingsClient()
@@ -216,12 +258,15 @@ public:
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // May return null if speech recognition is not supported.
     virtual std::unique_ptr<media::SpeechRecognitionClient> CreateSpeechRecognitionClient()
     {
         return nullptr;
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns a new WebWorkerFetchContext for a dedicated worker (in the
     // non-PlzDedicatedWorker case) or worklet.
     virtual scoped_refptr<WebWorkerFetchContext> CreateWorkerFetchContext()
@@ -235,6 +280,7 @@ public:
     {
         return nullptr;
     }
+#endif
 
     // May return null.
     virtual std::unique_ptr<WebPrescientNetworking> CreatePrescientNetworking()
@@ -486,10 +532,16 @@ public:
     // |is_synchronously_committed| is true if the navigation is synchronously
     // committed from within Blink, as opposed to being driven by the browser's
     // navigation stack.
+#if !defined(MINI_UI_QUICKJS)
     // `screenshot_destination`, if non-empty, tags the destination of the
     // viewport screenshot.
+#endif
     virtual void DidFinishSameDocumentNavigation(WebHistoryCommitType, bool is_synchronously_committed, mojom::SameDocumentNavigationType,
-        bool is_client_redirect, const std::optional<blink::SameDocNavigationScreenshotDestinationToken>& screenshot_destination)
+        bool is_client_redirect
+#if !defined(MINI_UI_QUICKJS)
+        , const std::optional<blink::SameDocNavigationScreenshotDestinationToken>& screenshot_destination
+#endif
+    )
     {
     }
 
@@ -751,6 +803,7 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // MediaStream -----------------------------------------------------
 
     virtual WebMediaStreamDeviceObserver* MediaStreamDeviceObserver()
@@ -764,6 +817,7 @@ public:
     {
         return nullptr;
     }
+#endif
 
     // User agent ------------------------------------------------------
 
@@ -805,6 +859,7 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Audio Output Devices API --------------------------------------------
 
     // Checks that the given audio sink exists and is authorized. This is mainly
@@ -814,6 +869,7 @@ public:
     {
         return std::nullopt;
     }
+#endif
 
     // Visibility ----------------------------------------------------------
 
@@ -826,6 +882,7 @@ public:
 
     // Loading --------------------------------------------------------------
 
+#if !defined(MINI_UI_QUICKJS)
     virtual scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory()
     {
         NOTREACHED();
@@ -845,6 +902,7 @@ public:
     {
         return nullptr;
     }
+#endif
 
     virtual std::unique_ptr<URLLoader> CreateURLLoaderForTesting();
 
@@ -860,17 +918,11 @@ public:
 
     // Misc ----------------------------------------------------------------
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true when the contents of plugin are handled externally. This means
     // the plugin element will own a content frame but the frame is than used
     // externally to load the required handlers.
     virtual bool IsPluginHandledExternally(const WebElement& plugin_element, const WebURL& url, const WebString& suggested_mime_type)
-    {
-        return false;
-    }
-
-    // Specifies whether to disable DOM storage interfaces such as localStorage
-    // and sessionStorage.
-    virtual bool IsDomStorageDisabled() const
     {
         return false;
     }
@@ -882,6 +934,7 @@ public:
     {
         return v8::Local<v8::Object>();
     }
+#endif
 
     // Returns true if it has a focused plugin. |rect| is an output parameter to
     // get a caret bounds from the focused plugin.
@@ -899,6 +952,7 @@ public:
     {
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(https://crbug.com/787252): Remove the methods below and use the
     // Supplement mechanism.
     virtual void CreateAudioInputStream(CrossVariantMojoRemote<blink::mojom::RendererAudioInputStreamFactoryClientInterfaceBase> client,
@@ -909,6 +963,7 @@ public:
     virtual void AssociateInputAndOutputForAec(const base::UnguessableToken& input_stream_id, const std::string& output_device_id)
     {
     }
+#endif
 
     // Called immediately following the first compositor-driven (frame-generating)
     // layout that happened after an interesting document lifecycle change (see

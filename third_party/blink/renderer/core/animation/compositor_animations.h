@@ -35,7 +35,9 @@
 #include <optional>
 
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/keyframe_model.h"
+#endif
 #include "third_party/blink/renderer/core/animation/effect_model.h"
 #include "third_party/blink/renderer/core/animation/keyframe.h"
 #include "third_party/blink/renderer/core/animation/timing.h"
@@ -131,6 +133,7 @@ public:
         kFailureReasonCount = 20,
     };
 
+#if !defined(MINI_UI_QUICKJS)
     static FailureReasons CheckCanStartAnimationOnCompositor(const Timing&, const Timing::NormalizedTiming&, const Element&, const Animation*,
         const EffectModel&, const PaintArtifactCompositor*, double animation_playback_rate, PropertyHandleSet* unsupported_properties = nullptr);
     static bool CompositorPropertyAnimationsHaveNoEffect(const Element& target_element, const EffectModel& effect, const PaintArtifactCompositor*);
@@ -159,19 +162,24 @@ public:
     static void GetAnimationOnCompositor(const Element&, const Timing&, const Timing::NormalizedTiming&, int group, std::optional<double> start_time,
         base::TimeDelta time_offset, const KeyframeEffectModelBase&, Vector<std::unique_ptr<cc::KeyframeModel>>& animations, double animation_playback_rate,
         bool is_monotonic_timeline, bool is_boundary_aligned);
+#endif
 
     static CompositorElementIdNamespace CompositorElementNamespaceForProperty(CSSPropertyID property);
 
+#if !defined(MINI_UI_QUICKJS)
     static bool CanStartScrollTimelineOnCompositor(Node* target);
+#endif
 
     static bool CanStartTransformAnimationOnCompositorForSVG(const SVGElement&);
 
     static bool CompositedPropertyRequiresSnapshot(const PropertyHandle& property);
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     static FailureReasons CheckCanStartEffectOnCompositor(const Timing&, const Timing::NormalizedTiming&, const Element&, const Animation*, const EffectModel&,
         const PaintArtifactCompositor*, double animation_playback_rate, PropertyHandleSet* unsupported_properties = nullptr);
     static FailureReasons CheckCanStartElementOnCompositor(const Element& element, const EffectModel& model);
+#endif
     static FailureReasons CheckCanStartSVGElementOnCompositor(const SVGElement&);
     // This doesn't include the reasons returned from the above function.
     static FailureReasons CheckCanStartTransformAnimationOnCompositorForSVG(const SVGElement&);

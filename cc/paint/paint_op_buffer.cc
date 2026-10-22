@@ -25,10 +25,13 @@
 #include "cc/paint/paint_record.h"
 #include "cc/paint/scoped_raster_flags.h"
 #include "cc/paint/skottie_serialization_history.h"
+#include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkTextBlob.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/skia/include/gpu/ganesh/GrRecordingContext.h"
 #include "third_party/skia/include/gpu/graphite/Recorder.h"
 #include "third_party/skia/include/private/chromium/Slug.h"
+#endif
 
 namespace cc {
 
@@ -46,6 +49,7 @@ PlaybackParams::PlaybackParams(ImageProvider* image_provider, const SkM44& origi
 
 PlaybackParams::~PlaybackParams() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 PaintOpBuffer::SerializeOptions::SerializeOptions(ImageProvider* image_provider, TransferCacheSerializeHelper* transfer_cache, ClientPaintCache* paint_cache,
     SkStrikeServer* strike_server, sk_sp<SkColorSpace> color_space, SkottieSerializationHistory* skottie_serialization_history, bool can_use_lcd_text,
     bool context_supports_distance_field_text, int max_texture_size, const ScrollOffsetMap* raster_inducing_scroll_offsets)
@@ -61,6 +65,7 @@ PaintOpBuffer::SerializeOptions::SerializeOptions(ImageProvider* image_provider,
     , raster_inducing_scroll_offsets(raster_inducing_scroll_offsets)
 {
 }
+#endif
 
 PaintOpBuffer::SerializeOptions::SerializeOptions() = default;
 PaintOpBuffer::SerializeOptions::SerializeOptions(const SerializeOptions&) = default;
@@ -171,10 +176,12 @@ PaintRecord PaintOpBuffer::DeepCopyAsRecord()
             const auto& o = static_cast<const DrawSkottieOp&>(op);
             result->push<DrawSkottieOp>(o.skottie, o.dst, o.t, o.images, o.color_map, o.text_map);
         } break;
+#if !defined(MINI_UI_QUICKJS)
         case PaintOpType::kDrawSlug: {
             const auto& o = static_cast<const DrawSlugOp&>(op);
             result->push<DrawSlugOp>(o.slug, o.flags);
         } break;
+#endif
         case PaintOpType::kDrawTextBlob: {
             const auto& o = static_cast<const DrawTextBlobOp&>(op);
             result->push<DrawTextBlobOp>(o.blob, o.x, o.y, o.node_id, o.flags);

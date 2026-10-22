@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "fixed_and_exercised",
+  "source_changes": [
+    {
+      "path": "runtime/ui/blink_backend.cc",
+      "snapshot": "2274",
+      "changes": [
+        "Initialize genuine WebPreferences font-size values16/13/0/6 before CreateMainFrame; bare Settings defaults are zero.",
+        "Query actual Win32 NONCLIENTMETRICS at96DPI once and call all three existing native system-font metrics setters.",
+        "Use genuine Windows font render preferences to initialize antialias and LCD flags."
+      ]
+    },
+    {
+      "path": "ui/gfx/font_util_win.cc",
+      "snapshot": "CA51",
+      "change": "Replace the existing write-to-address1 crash sentinel with once-initialized real Skia defaults plus configured primary-display DirectWrite gamma/contrast, clamped through existing canonical helpers."
+    },
+    {
+      "path": "examples/ui/main.cc",
+      "snapshot": "F8E8",
+      "change": "Permanent consumer regression exercises inherited medium system-ui text geometry and real Canvas system-ui ascender/descender metrics."
+    }
+  ],
+  "evidence": {
+    "before_native_capture": "mini-ui-before-font-init/captures/vue-1000.png",
+    "system_ui_failure_exit_code": 3221225477,
+    "system_ui_crash": "FontCache::SystemFontPlatformData -> SystemFontFamily -> uninitialized MenuFontFamily",
+    "font_preference_failure": "Enabling the real render-preference provider exposed an existing FontUtilWin::GetTextParameters crash sentinel; it was implemented, not suppressed or assigned a fabricated value.",
+    "after_font_geometry_exit_code": 0,
+    "after_native_scenarios": {
+      "count": 15,
+      "normal_exits_zero": true
+    },
+    "final_library_sha256": "ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a",
+    "final_comparison": "comparison.json"
+  },
+  "scope_notes": [
+    "No text, CSS, canvas, callback, Clipboard or security behavior was replaced with a no-op.",
+    "Actual benchmark workload assets were not changed. Old native data are retained as pre-font records and excluded from the final comparison.",
+    "The corrected unprofiled native matrix completed all8cells with64DOM assertions and normal exit0 per cell; final comparison uses only library ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a."
+  ]
+}

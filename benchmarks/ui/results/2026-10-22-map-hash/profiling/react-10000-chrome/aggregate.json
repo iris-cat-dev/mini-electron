@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "metadata_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\run-metadata.json",
+  "summaries": [
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.mount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 42.099999994039536,
+      "p95_nearest_rank": 46.29999998211861,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.update_selected",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 6.0,
+      "p95_nearest_rank": 11.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.keyed_reorder",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 226.09999999403954,
+      "p95_nearest_rank": 319.69999998807907,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.prepend",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 16.80000001192093,
+      "p95_nearest_rank": 18.5,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.filter",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 47.099999994039536,
+      "p95_nearest_rank": 56.900000005960464,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.restore",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 39.599999994039536,
+      "p95_nearest_rank": 42.400000005960464,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "operation_js_commit.unmount",
+      "unit": "ms",
+      "sample_count": 7,
+      "median": 42.900000005960464,
+      "p95_nearest_rank": 46.69999998807907,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.browser_launch_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 360.0909000087995,
+      "p95_nearest_rank": 360.0909000087995,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "cold_startup.document_navigation_to_protocol_ready",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 23.807200021110475,
+      "p95_nearest_rank": 23.807200021110475,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "workload.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 15694.147799978964,
+      "p95_nearest_rank": 15694.147799978964,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "browser_shutdown.wall",
+      "unit": "ms",
+      "sample_count": 1,
+      "median": 134.64709999971092,
+      "p95_nearest_rank": 134.64709999971092,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "chrome_job.cpu_startup_through_capture",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 25.796875,
+      "p95_nearest_rank": 25.796875,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "chrome_job.cpu_workload",
+      "unit": "seconds",
+      "sample_count": 1,
+      "median": 23.234375,
+      "p95_nearest_rank": 23.234375,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    },
+    {
+      "framework": "react",
+      "rows": 10000,
+      "metric": "chrome_job.current_private_bytes",
+      "unit": "bytes",
+      "sample_count": 1,
+      "median": 1727541248.0,
+      "p95_nearest_rank": 1727541248.0,
+      "raw_file": "D:\\Project\\mini-electron\\out\\ui-map-react-chrome-profile\\raw\\react-10000.json"
+    }
+  ],
+  "failures": []
+}

@@ -493,9 +493,11 @@ void Scrollbar::MouseEntered()
 {
     if (scrollable_area_)
         scrollable_area_->MouseEnteredScrollbar(*this);
+#if !defined(MINI_UI_QUICKJS)
     if (theme_.UsesFluentOverlayScrollbars() && scrollable_area_) {
         scrollable_area_->GetLayoutBox()->GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
     }
+#endif
 }
 
 void Scrollbar::MouseExited()
@@ -509,7 +511,9 @@ void Scrollbar::MouseExited()
         // track. Overlay Fluent scrollbars always need to invalidate the thumb to
         // change between solid/transparent colors.
         SetNeedsPaintInvalidation(kThumbPart);
+#if !defined(MINI_UI_QUICKJS)
         scrollable_area_->GetLayoutBox()->GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+#endif
     }
 }
 

@@ -4,44 +4,35 @@
 
 #include "mojo/public/cpp/bindings/string_traits_wtf.h"
 
+#include <string_view>
+
 #include "base/strings/string_util.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
 namespace mojo {
 
 // static
-void StringTraits<WTF::String>::SetToNull(WTF::String* output)
-{
-    if (output->IsNull())
-        return;
+void StringTraits<WTF::String>::SetToNull(WTF::String* output) {
+  if (output->IsNull())
+    return;
 
-    WTF::String result;
-    output->swap(result);
+  WTF::String result;
+  output->swap(result);
 }
 
 // static
-WTF::StringUTF8Adaptor StringTraits<WTF::String>::GetUTF8(const WTF::String& input)
-{
-    return WTF::StringUTF8Adaptor(input);
+WTF::StringUTF8Adaptor StringTraits<WTF::String>::GetUTF8(
+    const WTF::String& input) {
+  return WTF::StringUTF8Adaptor(input);
 }
 
 // static
-bool StringTraits<WTF::String>::Read(StringDataView input, WTF::String* output)
-{
-    WTF::String result = WTF::String::FromUTF8(input.storage(), input.size());
-    output->swap(result);
-    return true;
-}
-
-// static
-bool StringTraits<WTF::String>::IsValidUTF8(const WTF::String& value)
-{
-    if (value.IsNull())
-        return true;
-    if (!value.Is8Bit())
-        return false;
-    base::span<const LChar> data = value.Span8();
-    return base::IsStringUTF8(base::StringPiece(reinterpret_cast<const char*>(data.data()), data.size()));
+bool StringTraits<WTF::String>::Read(StringDataView input,
+                                     WTF::String* output) {
+  WTF::String result =
+      WTF::String::FromUTF8(std::string_view(input.storage(), input.size()));
+  output->swap(result);
+  return true;
 }
 
 } // namespace mojo

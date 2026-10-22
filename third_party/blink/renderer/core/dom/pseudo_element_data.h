@@ -9,7 +9,9 @@
 #include "build/build_config.h"
 #include "third_party/blink/renderer/core/dom/column_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/element_rare_data_field.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/dom/transition_pseudo_element_data.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
@@ -20,8 +22,18 @@ public:
     PseudoElementData(const PseudoElementData&) = delete;
     PseudoElementData& operator=(const PseudoElementData&) = delete;
 
-    void SetPseudoElement(PseudoId, PseudoElement*, const AtomicString& view_transition_name = g_null_atom);
-    PseudoElement* GetPseudoElement(PseudoId, const AtomicString& view_transition_name = g_null_atom) const;
+#if !defined(MINI_UI_QUICKJS)
+    void SetPseudoElement(
+        PseudoId,
+        PseudoElement*,
+        const AtomicString& view_transition_name = g_null_atom);
+    PseudoElement* GetPseudoElement(
+        PseudoId,
+        const AtomicString& view_transition_name = g_null_atom) const;
+#else
+    void SetPseudoElement(PseudoId, PseudoElement*);
+    PseudoElement* GetPseudoElement(PseudoId) const;
+#endif
 
     using PseudoElementVector = HeapVector<Member<PseudoElement>, 2>;
     PseudoElementVector GetPseudoElements() const;
@@ -62,7 +74,9 @@ public:
         visitor->Trace(generated_scroll_next_button_);
         visitor->Trace(generated_scroll_prev_button_);
         visitor->Trace(backdrop_);
+#if !defined(MINI_UI_QUICKJS)
         visitor->Trace(transition_data_);
+#endif
         visitor->Trace(column_pseudo_elements_);
         ElementRareDataField::Trace(visitor);
     }
@@ -80,8 +94,10 @@ private:
     Member<PseudoElement> generated_scroll_next_button_;
     Member<PseudoElement> generated_scroll_prev_button_;
     Member<PseudoElement> backdrop_;
-
+#if !defined(MINI_UI_QUICKJS)
     Member<TransitionPseudoElementData> transition_data_;
+#endif
+
 
     // Column pseudo elements are created once per column (fragmentainer)
     // with style specified with ::column. They live here as array, since there is
@@ -92,9 +108,19 @@ private:
 
 inline bool PseudoElementData::HasPseudoElements() const
 {
-    return generated_check_ || generated_before_ || generated_after_ || generated_select_arrow_ || generated_marker_ || backdrop_ || generated_first_letter_
-        || transition_data_ || generated_scroll_marker_group_before_ || generated_scroll_marker_group_after_ || generated_scroll_marker_
-        || generated_scroll_next_button_ || generated_scroll_prev_button_ || (column_pseudo_elements_ && !column_pseudo_elements_->empty());
+    if (generated_check_ || generated_before_ || generated_after_ ||
+        generated_select_arrow_ || generated_marker_ || backdrop_ ||
+        generated_first_letter_ || generated_scroll_marker_group_before_ ||
+        generated_scroll_marker_group_after_ || generated_scroll_marker_ ||
+        generated_scroll_next_button_ || generated_scroll_prev_button_ ||
+        (column_pseudo_elements_ && !column_pseudo_elements_->empty())) {
+        return true;
+    }
+#if !defined(MINI_UI_QUICKJS)
+    return transition_data_;
+#else
+    return false;
+#endif
 }
 
 inline void PseudoElementData::ClearPseudoElements()
@@ -114,13 +140,24 @@ inline void PseudoElementData::ClearPseudoElements()
     if (column_pseudo_elements_) {
         column_pseudo_elements_->clear();
     }
+#if !defined(MINI_UI_QUICKJS)
     if (transition_data_) {
         transition_data_->ClearPseudoElements();
         transition_data_ = nullptr;
     }
+#endif
 }
 
-inline void PseudoElementData::SetPseudoElement(PseudoId pseudo_id, PseudoElement* element, const AtomicString& view_transition_name)
+#if !defined(MINI_UI_QUICKJS)
+inline void PseudoElementData::SetPseudoElement(
+    PseudoId pseudo_id,
+    PseudoElement* element,
+    const AtomicString& view_transition_name)
+#else
+inline void PseudoElementData::SetPseudoElement(
+    PseudoId pseudo_id,
+    PseudoElement* element)
+#endif
 {
     PseudoElement* previous_element = nullptr;
     switch (pseudo_id) {
@@ -172,19 +209,25 @@ inline void PseudoElementData::SetPseudoElement(PseudoId pseudo_id, PseudoElemen
         previous_element = generated_first_letter_;
         generated_first_letter_ = element;
         break;
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransition:
     case kPseudoIdViewTransitionGroup:
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionNew:
     case kPseudoIdViewTransitionOld:
-        if (element && !transition_data_)
-            transition_data_ = MakeGarbageCollected<TransitionPseudoElementData>();
+        if (element && !transition_data_) {
+            transition_data_ =
+                MakeGarbageCollected<TransitionPseudoElementData>();
+        }
         if (transition_data_) {
-            transition_data_->SetPseudoElement(pseudo_id, element, view_transition_name);
-            if (!transition_data_->HasPseudoElements())
+            transition_data_->SetPseudoElement(
+                pseudo_id, element, view_transition_name);
+            if (!transition_data_->HasPseudoElements()) {
                 transition_data_ = nullptr;
+            }
         }
         break;
+#endif
     default:
         NOTREACHED();
     }
@@ -193,7 +236,14 @@ inline void PseudoElementData::SetPseudoElement(PseudoId pseudo_id, PseudoElemen
         previous_element->Dispose();
 }
 
-inline PseudoElement* PseudoElementData::GetPseudoElement(PseudoId pseudo_id, const AtomicString& view_transition_name) const
+#if !defined(MINI_UI_QUICKJS)
+inline PseudoElement* PseudoElementData::GetPseudoElement(
+    PseudoId pseudo_id,
+    const AtomicString& view_transition_name) const
+#else
+inline PseudoElement* PseudoElementData::GetPseudoElement(
+    PseudoId pseudo_id) const
+#endif
 {
     if (kPseudoIdCheck == pseudo_id) {
         return generated_check_.Get();
@@ -231,9 +281,14 @@ inline PseudoElement* PseudoElementData::GetPseudoElement(PseudoId pseudo_id, co
         return backdrop_.Get();
     if (kPseudoIdFirstLetter == pseudo_id)
         return generated_first_letter_.Get();
+#if !defined(MINI_UI_QUICKJS)
     if (IsTransitionPseudoElement(pseudo_id)) {
-        return transition_data_ ? transition_data_->GetPseudoElement(pseudo_id, view_transition_name) : nullptr;
+        return transition_data_
+            ? transition_data_->GetPseudoElement(
+                  pseudo_id, view_transition_name)
+            : nullptr;
     }
+#endif
     return nullptr;
 }
 
@@ -256,8 +311,11 @@ inline PseudoElementData::PseudoElementVector PseudoElementData::GetPseudoElemen
         result.push_back(generated_first_letter_);
     if (backdrop_)
         result.push_back(backdrop_);
-    if (transition_data_)
+#if !defined(MINI_UI_QUICKJS)
+    if (transition_data_) {
         transition_data_->AddPseudoElements(&result);
+    }
+#endif
     if (generated_scroll_marker_group_before_) {
         result.push_back(generated_scroll_marker_group_before_);
     }

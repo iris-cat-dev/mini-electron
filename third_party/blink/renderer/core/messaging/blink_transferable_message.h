@@ -7,9 +7,13 @@
 
 #include <optional>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/messaging/accelerated_image_info.h"
+#endif
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/messaging/transferable_message.h"
+#endif
 #include "third_party/blink/public/common/scheduler/task_attribution_id.h"
 #include "third_party/blink/public/mojom/messaging/delegated_capability.mojom-blink.h"
 #include "third_party/blink/public/mojom/messaging/static_bitmap_image.mojom-blink.h"
@@ -27,7 +31,9 @@ namespace blink {
 // This is the renderer-side equivalent of blink::TransferableMessage, where
 // this struct uses blink types, while the other struct uses std:: types.
 struct CORE_EXPORT BlinkTransferableMessage : BlinkCloneableMessage {
+#if !defined(MINI_UI_QUICKJS)
     static BlinkTransferableMessage FromTransferableMessage(TransferableMessage);
+#endif
 
     BlinkTransferableMessage();
     BlinkTransferableMessage(BlinkTransferableMessage&&);
@@ -45,7 +51,9 @@ struct CORE_EXPORT BlinkTransferableMessage : BlinkCloneableMessage {
 
 CORE_EXPORT scoped_refptr<blink::StaticBitmapImage> ToStaticBitmapImage(const SkBitmap& sk_bitmap);
 
+#if !defined(MINI_UI_QUICKJS)
 CORE_EXPORT scoped_refptr<blink::StaticBitmapImage> WrapAcceleratedBitmapImage(AcceleratedImageInfo image);
+#endif
 
 } // namespace blink
 

@@ -44,7 +44,9 @@
 #include "net/base/schemeful_site.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/mojom/referrer_policy.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink-forward.h"
+#endif
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
@@ -97,7 +99,9 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 class SingleThreadTaskRunner;
@@ -139,7 +143,9 @@ namespace blink {
 class AXContext;
 class AXObjectCache;
 class Agent;
+#if !defined(MINI_UI_QUICKJS)
 class AnchorElementInteractionTracker;
+#endif
 class AnimationClock;
 class AriaNotificationOptions;
 class Attr;
@@ -153,7 +159,9 @@ class CheckPseudoHasCacheScope;
 class ChromeClient;
 class Comment;
 class ConsoleMessage;
+#if !defined(MINI_UI_QUICKJS)
 class CookieJar;
+#endif
 class DOMFeaturePolicy;
 class DOMImplementation;
 class DOMWindow;
@@ -167,7 +175,9 @@ class DocumentLoader;
 class DocumentMarkerController;
 class DocumentNameCollection;
 class DocumentParser;
+#if !defined(MINI_UI_QUICKJS)
 class DocumentResourceCoordinator;
+#endif
 class DocumentState;
 class DocumentTimeline;
 class DocumentType;
@@ -255,7 +265,9 @@ class V8UnionStringOrTrustedHTML;
 class ViewportData;
 class VisitedLinkState;
 class WebMouseEvent;
+#if !defined(MINI_UI_QUICKJS)
 class WorkletAnimationController;
+#endif
 class V8VisibilityState;
 
 template <typename EventType> class EventWithHitTestResults;
@@ -378,10 +390,12 @@ public:
 
     void MediaQueryAffectingValueChanged(MediaValueChange change);
 
+#if !defined(MINI_UI_QUICKJS)
     // SetMediaFeatureEvaluated and WasMediaFeatureEvaluated are used to prevent
     // UKM sampling of CSS media features more than once per document.
     void SetMediaFeatureEvaluated(int feature);
     bool WasMediaFeatureEvaluated(int feature);
+#endif
 
     using TreeScope::getElementById;
 
@@ -404,7 +418,9 @@ public:
         return is_prerendering_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     bool HasDocumentPictureInPictureWindow() const;
+#endif
 
     void SetIsTrackingSoftNavigationHeuristics(bool value)
     {
@@ -643,6 +659,7 @@ public:
     {
         return document_classes_.Has(DocumentClass::kSVG);
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsPluginDocument() const
     {
         return document_classes_.Has(DocumentClass::kPlugin);
@@ -651,6 +668,7 @@ public:
     {
         return document_classes_.Has(DocumentClass::kMedia);
     }
+#endif
     bool IsTextDocument() const
     {
         return document_classes_.Has(DocumentClass::kText);
@@ -707,11 +725,12 @@ public:
     {
         return HaveScriptBlockingStylesheetsLoaded();
     }
-
+#if !defined(MINI_UI_QUICKJS)
     bool IsForExternalHandler() const
     {
         return is_for_external_handler_;
     }
+#endif
 
     StyleEngine& GetStyleEngine() const
     {
@@ -1335,11 +1354,13 @@ public:
     const AtomicString& dir();
     void setDir(const AtomicString&);
 
+#if !defined(MINI_UI_QUICKJS)
     String cookie(ExceptionState&) const;
     void setCookie(const String&, ExceptionState&);
     bool CookiesEnabled() const;
 
     void SetCookieManager(mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager> cookie_manager);
+#endif
 
     const base::Uuid& base_auction_nonce();
 
@@ -1355,6 +1376,7 @@ public:
     std::optional<base::Time> lastModifiedTime() const;
     String lastModified() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // The cookieURL is used to query the cookie database for this document's
     // cookies. For example, if the cookie URL is http://example.com, we'll
     // use the non-Secure cookies for example.com when computing
@@ -1369,6 +1391,7 @@ public:
     {
         return cookie_url_;
     }
+#endif
 
     // Returns null if the document is not attached to a frame.
     scoped_refptr<const SecurityOrigin> TopFrameOrigin() const;
@@ -1515,9 +1538,10 @@ public:
     void UpdateThemeColorCache();
     std::optional<Color> ThemeColor();
 
-    // Returns the HTMLLinkElement currently in use for the Web Manifest.
-    // Returns null if there is no such element.
+#if !defined(MINI_UI_QUICKJS)
+    // Returns the HTMLLinkElement currently in use for the Web Manifest, or null.
     HTMLLinkElement* LinkManifest() const;
+#endif
 
     // Returns the HTMLLinkElement holding the canonical URL. Returns null if
     // there is no such element.
@@ -1751,12 +1775,15 @@ public:
     {
         return *pending_animations_;
     }
+#if !defined(MINI_UI_QUICKJS)
     WorkletAnimationController& GetWorkletAnimationController()
     {
         return *worklet_animation_controller_;
     }
-
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void AttachCompositorTimeline(cc::AnimationTimeline*) const;
+#endif
 
     enum class TopLayerReason {
         kFullscreen,
@@ -1958,10 +1985,12 @@ public:
         return *root_scroller_controller_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     AnchorElementInteractionTracker* GetAnchorElementInteractionTracker() const
     {
         return anchor_element_interaction_tracker_.Get();
     }
+#endif
 
     // Returns true if this document has a frame and it is a main frame.
     // See `Frame::IsMainFrame`.
@@ -1977,9 +2006,11 @@ public:
     }
     PropertyRegistry& EnsurePropertyRegistry();
 
+#if !defined(MINI_UI_QUICKJS)
     // May return nullptr when PerformanceManager instrumentation is disabled or
     // when the Document is inactive.
     DocumentResourceCoordinator* GetResourceCoordinator();
+#endif
 
     const AtomicString& bgColor() const;
     void setBgColor(const AtomicString&);
@@ -2005,7 +2036,9 @@ public:
 
     FontFaceSet* fonts();
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* UkmRecorder();
+#endif
     ukm::SourceId UkmSourceID() const;
 
     // Tracks and reports UKM metrics of the number of attempted font family match
@@ -2090,13 +2123,15 @@ public:
 
     DisplayLockDocumentState& GetDisplayLockDocumentState() const;
 
-    // Deferred compositor commits are disallowed by default, and are only allowed
-    // for same-origin navigations to an html document fetched with http.
+#if !defined(MINI_UI_QUICKJS)
+    // Deferred compositor commits are disallowed by default, and are only
+    // allowed for same-origin navigations to an HTML document fetched with HTTP.
     bool DeferredCompositorCommitIsAllowed() const;
     void SetDeferredCompositorCommitIsAllowed(bool new_value)
     {
         deferred_compositor_commit_is_allowed_ = new_value;
     }
+#endif
 
     // Returns whether the document is inside the scope specified in the Web App
     // Manifest. If the document doesn't run in a context of a Web App or has no
@@ -2185,9 +2220,11 @@ public:
 
     void ApplyScrollRestorationLogic();
 
+#if !defined(MINI_UI_QUICKJS)
     void MarkHasFindInPageRequest();
     void MarkHasFindInPageContentVisibilityActiveMatch();
     void MarkHasFindInPageBeforematchExpandedHiddenMatchable();
+#endif
 
     void CancelPendingJavaScriptUrls();
 
@@ -2292,7 +2329,9 @@ public:
     // Has no effect if the preload is not initiated by link header.
     void RemovePendingLinkHeaderPreloadIfNeeded(const PendingLinkPreload&);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue ctx) const;
+#endif
 
     void IncrementIgnoreDestructiveWriteModuleScriptCount()
     {
@@ -2340,8 +2379,10 @@ public:
 
     bool SupportsLegacyDOMMutations();
 
-    void EnqueuePageRevealEvent();
 
+#if !defined(MINI_UI_QUICKJS)
+    void EnqueuePageRevealEvent();
+#endif
     // https://github.com/whatwg/html/pull/9538
     static Document* parseHTMLUnsafe(ExecutionContext* context, const String& html, ExceptionState& exception_state);
 
@@ -2359,8 +2400,11 @@ public:
     void ResumeAsyncScriptExecution();
 
     // This method should only be called when the document is top-level and it is
+#if !defined(MINI_UI_QUICKJS)
+    // MediaDocuments can override the top-level site for cookies when
     // rendering static media like video or images.
     void SetOverrideSiteForCookiesForCSPMedia(bool value);
+#endif
 
     // Flags to determine if LCPP ElementLocator matched during
     // HTML preload scanning.
@@ -2640,9 +2684,11 @@ private:
     // explicitly set.
     mutable std::optional<DocumentToken> token_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Bitfield used for tracking UKM sampling of media features such that each
     // media feature is sampled only once per document.
     uint64_t evaluated_media_features_ = 0;
+#endif
 
     DocumentLifecycle lifecycle_;
 
@@ -2713,7 +2759,9 @@ private:
     KURL fallback_base_url_;
 
     KURL base_element_url_; // The URL set by the <base> element.
+#if !defined(MINI_UI_QUICKJS)
     KURL cookie_url_; // The URL to use for cookie access.
+#endif
 
     AtomicString base_target_;
 
@@ -2762,7 +2810,9 @@ private:
     Member<Element> document_element_;
     UserActionElementSet user_action_elements_;
     Member<RootScrollerController> root_scroller_controller_;
+#if !defined(MINI_UI_QUICKJS)
     Member<AnchorElementInteractionTracker> anchor_element_interaction_tracker_;
+#endif
 
     HeapHashSet<Member<FocusedElementChangeObserver>> focused_element_change_observers_;
 
@@ -2991,7 +3041,9 @@ private:
     Member<DocumentAnimations> document_animations_;
     Member<DocumentTimeline> timeline_;
     Member<PendingAnimations> pending_animations_;
+#if !defined(MINI_UI_QUICKJS)
     Member<WorkletAnimationController> worklet_animation_controller_;
+#endif
     AnimationClock animation_clock_;
 
     Member<Document> template_document_;
@@ -3020,9 +3072,11 @@ private:
 
     TopLevelFormsList top_level_forms_;
 
+#if !defined(MINI_UI_QUICKJS)
     // |ukm_recorder_| and |source_id_| will allow objects that are part of
     // the document to record UKM.
     std::unique_ptr<ukm::UkmRecorder> ukm_recorder_;
+#endif
     const int64_t ukm_source_id_;
 
     // Tracks and reports metrics of attempted font match attempts (both
@@ -3049,13 +3103,17 @@ private:
     // The number of canvas elements on the document
     unsigned num_canvases_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     bool deferred_compositor_commit_is_allowed_ = false;
+#endif
 
     // True when the document was created (in DomImplementation) for specific MIME
+#if !defined(MINI_UI_QUICKJS)
     // types that are handled externally. The document in this case is the
     // counterpart to a PluginDocument except that it contains a FrameView as
     // opposed to a PluginView.
     bool is_for_external_handler_;
+#endif
 
     Member<LazyLoadImageObserver> lazy_load_image_observer_;
 
@@ -3071,12 +3129,16 @@ private:
     // necessary.
     Member<BeforeUnloadEventListener> mime_handler_view_before_unload_event_listener_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Used to communicate state associated with resource management to the
     // embedder.
     std::unique_ptr<DocumentResourceCoordinator> resource_coordinator_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Used for document.cookie. May be null.
     Member<CookieJar> cookie_jar_;
+#endif
 
     // Seed for all PAAPI Auction Nonces generated for this document.
     base::Uuid base_auction_nonce_;
@@ -3098,10 +3160,12 @@ private:
 
     bool applying_scroll_restoration_logic_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Records find-in-page metrics, which are sent to UKM on shutdown.
     bool had_find_in_page_request_ = false;
     bool had_find_in_page_render_subtree_active_match_ = false;
     bool had_find_in_page_beforematch_expanded_hidden_matchable_ = false;
+#endif
 
     bool has_dir_attribute_ = false;
 
@@ -3161,8 +3225,10 @@ private:
     // For rendering media URLs in a top-level context that use the
     // Content-Security-Policy header to sandbox their content. This causes
     // access-controlled media to not load when it is the top-level URL when
+#if !defined(MINI_UI_QUICKJS)
     // third-party cookie blocking is enabled.
     bool override_site_for_cookies_for_csp_media_ = false;
+#endif
 
     // See description in ScheduleShadowTreeCreation().
     HeapHashSet<Member<HTMLInputElement>> elements_needing_shadow_tree_;

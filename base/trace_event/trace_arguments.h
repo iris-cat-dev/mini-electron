@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "base/base_export.h"
@@ -23,8 +24,10 @@
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/tracing_buildflags.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event_stub.h"
-#if 0
+#endif
+#if defined(MINI_UI_QUICKJS)
 //#include "third_party/perfetto/include/perfetto/protozero/scattered_heap_buffer.h"
 //#include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
 //#include "third_party/perfetto/protos/perfetto/trace/track_event/debug_annotation.pbzero.h"
@@ -143,7 +146,9 @@ class ThreadTicks;
 
 namespace trace_event {
 
+#if !defined(MINI_UI_QUICKJS)
 class TraceEventMemoryOverhead;
+#endif
 
 // For any argument of type TRACE_VALUE_TYPE_CONVERTABLE the provided
 // class must implement this interface. Note that unlike other values,
@@ -158,7 +163,11 @@ class BASE_EXPORT ConvertableToTraceFormat
   ConvertableToTraceFormat() = default;
   ConvertableToTraceFormat(const ConvertableToTraceFormat&) = delete;
   ConvertableToTraceFormat& operator=(const ConvertableToTraceFormat&) = delete;
+#if defined(MINI_UI_QUICKJS)
+  virtual ~ConvertableToTraceFormat() = default;
+#else
   ~ConvertableToTraceFormat() /*override*/ = default;
+#endif
 
   // Append the class info to the provided |out| string. The appended
   // data must be a valid JSON object. Strings must be properly quoted, and
@@ -166,6 +175,7 @@ class BASE_EXPORT ConvertableToTraceFormat
   // appended.
   virtual void AppendAsTraceFormat(std::string* out) const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
   // Append the class info directly into the Perfetto-defined proto
   // format; this is attempted first and if this returns true,
   // AppendAsTraceFormat is not called. The ProtoAppender interface
@@ -186,6 +196,7 @@ class BASE_EXPORT ConvertableToTraceFormat
 #if 0 // BUILDFLAG(USE_PERFETTO_CLIENT_LIBRARY)
   // DebugAnnotation implementation.
   void Add(perfetto::protos::pbzero::DebugAnnotation*) const override;
+#endif
 #endif
 };
 
@@ -327,6 +338,13 @@ union BASE_EXPORT TraceValue {
     using ValueType = std::decay_t<T>;
     static const unsigned char value = Helper<ValueType>::kType;
   };
+
+#if defined(MINI_UI_QUICKJS)
+  template <typename T, class = std::enable_if_t<HasHelperSupport<T>>>
+  struct TypeCheck {
+    static const bool value = true;
+  };
+#endif
 
 #if 0 // BUILDFLAG(USE_PERFETTO_CLIENT_LIBRARY)
   template <typename T>
@@ -673,8 +691,10 @@ class BASE_EXPORT TraceArguments {
     for (size_t n = 0; n < size_; ++n) {
       if (types_[n] == TRACE_VALUE_TYPE_CONVERTABLE)
         delete values_[n].as_convertable;
+#if !defined(MINI_UI_QUICKJS)
       if (types_[n] == TRACE_VALUE_TYPE_PROTO)
         delete values_[n].as_proto;
+#endif
     }
   }
 
@@ -725,6 +745,6 @@ class BASE_EXPORT TraceArguments {
 }  // namespace trace_event
 }  // namespace base
 
-#endif // if 0
+#endif  // defined(MINI_UI_QUICKJS)
 
 #endif // BASE_TRACE_EVENT_TRACE_ARGUMENTS_H_

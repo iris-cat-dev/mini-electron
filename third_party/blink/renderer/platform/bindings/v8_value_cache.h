@@ -26,17 +26,28 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_V8_VALUE_CACHE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_V8_VALUE_CACHE_H_
 
+#if defined(MINI_UI_QUICKJS)
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#endif
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/v8_global_value_map.h"
+#else
+#include "third_party/blink/renderer/platform/wtf/hash_map.h"
+#endif
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "v8/include/v8.h"
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class StringCacheMapTraits : public V8GlobalValueMapTraits<StringImpl*, v8::String, v8::kWeakWithParameter> {
     STATIC_ONLY(StringCacheMapTraits);
 
@@ -96,21 +107,28 @@ public:
     static void Dispose(v8::Isolate*, v8::Global<v8::String> value, ParkableStringImpl* key);
     static void DisposeWeak(const v8::WeakCallbackInfo<WeakCallbackDataType>&);
 };
+#endif
 
-// String cache helps convert WTF strings (StringImpl*) into v8 strings by
-// only creating a v8::String for a particular StringImpl* once and caching it
-// for future use. It is held by and can be retrieved from V8PerIsolateData, and
-// is cleared when the isolate is destroyed. Entries are removed from the
-// backing global value map when weak references to the values are collected.
+// String cache helps convert WTF strings into JavaScript strings without
+// repeatedly creating the same engine string. It is owned by
+// V8PerIsolateData and is cleared while the JavaScript runtime is still alive.
 class PLATFORM_EXPORT StringCache {
     USING_FAST_MALLOC(StringCache);
 
 public:
+#if defined(MINI_UI_QUICKJS)
+    explicit StringCache(v8::Isolate* isolate)
+        : runtime_(isolate->GetQuickJSRuntime())
+    {
+    }
+    ~StringCache();
+#else
     explicit StringCache(v8::Isolate* isolate)
         : string_cache_(isolate)
         , parkable_string_cache_(isolate)
     {
     }
+#endif
     StringCache(const StringCache&) = delete;
     StringCache& operator=(const StringCache&) = delete;
 
@@ -121,15 +139,51 @@ public:
 
     void Dispose();
 
+#if !defined(MINI_UI_QUICKJS)
     friend class StringCacheMapTraits;
     friend class ParkableStringCacheMapTraits;
+#endif
 
 private:
     v8::Local<v8::String> CreateStringAndInsertIntoCache(v8::Isolate*, StringImpl*);
     v8::Local<v8::String> CreateStringAndInsertIntoCache(v8::Isolate*, ParkableString);
 
+#if defined(MINI_UI_QUICKJS)
+    enum class CacheKind : uint8_t {
+        kEmpty,
+        kString,
+        kParkableString,
+    };
+
+    struct CacheEntry {
+        JSValue value = JS_UNDEFINED;
+        size_t payload_bytes = 0;
+    };
+
+    struct FifoSlot {
+        void* key = nullptr;
+        CacheKind kind = CacheKind::kEmpty;
+    };
+
+    static constexpr size_t kMaxPayloadBytes = 256 * 1024;
+    static constexpr size_t kMaxEntries = 1024;
+
+    v8::Local<v8::String> NewLocal(v8::Isolate*, JSValueConst) const;
+    void MakeRoom(size_t);
+    void EvictOldest();
+
+    // The runtime outlives V8PerIsolateData and this cache.
+    JSRuntime* const runtime_;
+    WTF::HashMap<StringImpl*, CacheEntry> string_cache_;
+    WTF::HashMap<ParkableStringImpl*, CacheEntry> parkable_string_cache_;
+    std::array<FifoSlot, kMaxEntries> fifo_ {};
+    size_t fifo_head_ = 0;
+    size_t fifo_size_ = 0;
+    size_t total_payload_bytes_ = 0;
+#else
     StringCacheMapTraits::MapType string_cache_;
     ParkableStringCacheMapTraits::MapType parkable_string_cache_;
+#endif
 };
 
 } // namespace blink

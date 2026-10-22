@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_VIEWPORT_POSITION_TRACKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_VIEWPORT_POSITION_TRACKER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/navigation_predictor.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -156,5 +157,6 @@ private:
     HeapHashSet<WeakMember<Observer>> observers_;
 };
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_HTML_ANCHOR_ELEMENT_VIEWPORT_POSITION_TRACKER_H_

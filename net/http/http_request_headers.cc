@@ -8,19 +8,19 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
-#include "base/strings/escape.h"
-#include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/values.h"
 #include "net/base/url_util.h"
+#if !defined(MINI_UI_IMPLEMENTATION)
+#include "base/strings/strcat.h"
+#include "base/values.h"
 #include "net/http/http_log_util.h"
-#include "net/http/http_util.h"
 #include "net/log/net_log_capture_mode.h"
 #include "net/log/net_log_values.h"
+#endif
+#include "net/http/http_util.h"
 
 namespace net {
 
@@ -226,20 +226,20 @@ std::string HttpRequestHeaders::ToString() const
     output.append("\r\n");
     return output;
 }
-
+#if !defined(MINI_UI_IMPLEMENTATION)
 base::Value::Dict HttpRequestHeaders::NetLogParams(const std::string& request_line, NetLogCaptureMode capture_mode) const
 {
-    *(int*)1 = 1;
     base::Value::Dict dict;
-//     dict.Set("line", NetLogStringValue(request_line));
-//     base::Value::List headers;
-//     for (const auto& header : headers_) {
-//         std::string log_value = ElideHeaderValueForNetLog(capture_mode, header.key, header.value);
-//         headers.Append(NetLogStringValue(base::StrCat({ header.key, ": ", log_value })));
-//     }
-//     dict.Set("headers", std::move(headers));
+    dict.Set("line", NetLogStringValue(request_line));
+    base::Value::List headers;
+    for (const auto& header : headers_) {
+        std::string log_value = ElideHeaderValueForNetLog(capture_mode, header.key, header.value);
+        headers.Append(NetLogStringValue(base::StrCat({ header.key, ": ", log_value })));
+    }
+    dict.Set("headers", std::move(headers));
     return dict;
 }
+#endif
 
 void HttpRequestHeaders::SetAcceptEncodingIfMissing(
     const GURL& url, const std::optional<base::flat_set<SourceStream::SourceType>>& accepted_stream_types, bool enable_brotli, bool enable_zstd)

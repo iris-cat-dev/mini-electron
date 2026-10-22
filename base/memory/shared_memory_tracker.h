@@ -11,7 +11,11 @@
 #include "base/base_export.h"
 #include "base/memory/shared_memory_mapping.h"
 #include "base/synchronization/lock.h"
+#if defined(MINI_UI_QUICKJS)
+#include "base/trace_event/memory_dump_provider.h"
+#else
 #include "base/trace_event/base_tracing.h"
+#endif
 
 namespace base {
 

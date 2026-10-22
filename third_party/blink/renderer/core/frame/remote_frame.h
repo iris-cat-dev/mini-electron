@@ -6,9 +6,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_REMOTE_FRAME_H_
 
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
+#endif
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/frame/frame_visual_properties.h"
+#endif
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
@@ -16,14 +20,19 @@
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/remote_security_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/child_frame_compositing_helper.h"
 #include "third_party/blink/renderer/core/frame/child_frame_compositor.h"
+#endif
 #include "third_party/blink/renderer/core/frame/frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
+#endif
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace cc {
 class Layer;
 }
@@ -31,29 +40,41 @@ class Layer;
 namespace viz {
 class FrameSinkId;
 }
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class ChildFrameCompositingHelper;
+#endif
 class LocalFrame;
 class RemoteFrameClient;
+#if !defined(MINI_UI_QUICKJS)
 class WebFrameWidget;
+#endif
 
 struct BlinkTransferableMessage;
 struct FrameLoadRequest;
 
 // A RemoteFrame is a frame that is possibly hosted outside this process.
-class CORE_EXPORT RemoteFrame final : public Frame, public ChildFrameCompositor, public mojom::blink::RemoteMainFrame, public mojom::blink::RemoteFrame {
+class CORE_EXPORT RemoteFrame final : public Frame,
+#if !defined(MINI_UI_QUICKJS)
+                                     public ChildFrameCompositor,
+#endif
+                                     public mojom::blink::RemoteMainFrame,
+                                     public mojom::blink::RemoteFrame {
 public:
     // Returns the RemoteFrame for the given |frame_token|.
     static RemoteFrame* FromFrameToken(const RemoteFrameToken& frame_token);
 
+#if !defined(MINI_UI_QUICKJS)
     // For a description of |inheriting_agent_factory| go see the comment on the
     // Frame constructor.
     RemoteFrame(RemoteFrameClient*, Page&, FrameOwner*, Frame* parent, Frame* previous_sibling, FrameInsertType insert_type,
         const RemoteFrameToken& frame_token, WindowAgentFactory* inheriting_agent_factory, WebFrameWidget* ancestor_widget,
         const base::UnguessableToken& devtools_frame_token, mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> remote_frame_host,
         mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame> receiver);
+#endif
     ~RemoteFrame() override;
 
     // Frame overrides:
@@ -63,12 +84,14 @@ public:
     bool DetachDocument() override;
     void CheckCompleted() override;
     bool ShouldClose() override;
+#if !defined(MINI_UI_QUICKJS)
     void HookBackForwardCacheEviction() override
     {
     }
     void RemoveBackForwardCacheEviction() override
     {
     }
+#endif
     void SetTextDirection(base::i18n::TextDirection) override
     {
     }
@@ -78,13 +101,17 @@ public:
     void AddResourceTimingFromChild(mojom::blink::ResourceTimingInfoPtr timing) override;
     bool IsAdFrame() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     // ChildFrameCompositor:
     const scoped_refptr<cc::Layer>& GetCcLayer() override;
+#endif
 
     void AdvanceFocus(mojom::blink::FocusType, LocalFrame* source);
 
+#if !defined(MINI_UI_QUICKJS)
     void SetView(RemoteFrameView*);
     void CreateView();
+#endif
 
     void ForwardPostMessage(BlinkTransferableMessage, LocalFrame* source_frame, scoped_refptr<const SecurityOrigin> source_security_origin,
         scoped_refptr<const SecurityOrigin> target_security_origin);
@@ -101,18 +128,23 @@ public:
     bool IsRemoteFrameHostRemoteBound();
     mojom::blink::RemoteFrameHost& GetRemoteFrameHostRemote();
 
+#if !defined(MINI_UI_QUICKJS)
     RemoteFrameView* View() const override;
+#endif
 
     RemoteFrameClient* Client() const;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsIgnoredForHitTest() const;
 
     void DidChangeVisibleToHitTesting() override;
+#endif
 
     void SetReplicatedPermissionsPolicyHeader(const ParsedPermissionsPolicy& parsed_header);
 
     void SetReplicatedSandboxFlags(network::mojom::blink::WebSandboxFlags);
     void SetInsecureRequestPolicy(mojom::blink::InsecureRequestPolicy);
+#if !defined(MINI_UI_QUICKJS)
     void FrameRectsChanged(const gfx::Size& local_frame_size, const gfx::Rect& screen_space_rect);
     void InitializeFrameVisualProperties(const FrameVisualProperties& properties);
     // If 'propagate' is true, updated properties will be sent to the browser.
@@ -141,15 +173,18 @@ public:
     void UpdateCaptureSequenceNumber(uint32_t sequence_number);
     // Called when the cursor accessibility scale factor changed.
     void CursorAccessibilityScaleFactorChanged(float scale_factor);
+#endif
 
     const String& UniqueName() const
     {
         return unique_name_;
     }
+#if !defined(MINI_UI_QUICKJS)
     const FrameVisualProperties& GetPendingVisualPropertiesForTesting() const
     {
         return pending_visual_properties_;
     }
+#endif
 
     // blink::mojom::RemoteFrame overrides:
     void WillEnterFullscreen(mojom::blink::FullscreenOptionsPtr) override;
@@ -163,7 +198,9 @@ public:
     void Collapse(bool collapsed) final;
     void Focus() override;
     void SetHadStickyUserActivationBeforeNavigation(bool value) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetNeedsOcclusionTracking(bool needs_tracking) override;
+#endif
     void BubbleLogicalScroll(mojom::blink::ScrollDirection direction, ui::ScrollGranularity granularity) override;
     void UpdateUserActivationState(mojom::blink::UserActivationUpdateType update_type, mojom::blink::UserActivationNotificationType notification_type) override;
     void SetEmbeddingToken(const base::UnguessableToken& embedding_token) override;
@@ -172,7 +209,9 @@ public:
     void ScrollRectToVisible(const gfx::RectF& rect_to_scroll, mojom::blink::ScrollIntoViewParamsPtr params) override;
     void DidStartLoading() override;
     void DidStopLoading() override;
+#if !defined(MINI_UI_QUICKJS)
     void IntrinsicSizingInfoOfChildChanged(mojom::blink::IntrinsicSizingInfoPtr sizing_info) override;
+#endif
     void DidSetFramePolicyHeaders(network::mojom::blink::WebSandboxFlags, const WTF::Vector<ParsedPermissionsPolicyDeclaration>&) override;
     // Updates the snapshotted policy attributes (sandbox flags and permissions
     // policy container policy) in the frame's FrameOwner. This is used when this
@@ -182,16 +221,20 @@ public:
     void DidUpdateFramePolicy(const FramePolicy& frame_policy) override;
     void UpdateOpener(const std::optional<blink::FrameToken>& opener_frame_token) override;
     void DetachAndDispose() override;
+#if !defined(MINI_UI_QUICKJS)
     void EnableAutoResize(const gfx::Size& min_size, const gfx::Size& max_size) override;
     void DisableAutoResize() override;
     void DidUpdateVisualProperties(const cc::RenderFrameMetadata& metadata) override;
     void SetFrameSinkId(const viz::FrameSinkId& frame_sink_id, bool allow_paint_holding) override;
     void ChildProcessGone() override;
+#endif
     void CreateRemoteChild(const RemoteFrameToken& token, const std::optional<FrameToken>& opener_frame_token, mojom::blink::TreeScopeType tree_scope_type,
         mojom::blink::FrameReplicationStatePtr replication_state, mojom::blink::FrameOwnerPropertiesPtr owner_properties, bool is_loading,
         const base::UnguessableToken& devtools_frame_token, mojom::blink::RemoteFrameInterfacesFromBrowserPtr remote_frame_interfaces) override;
     void CreateRemoteChildren(Vector<mojom::blink::CreateRemoteChildParamsPtr> params) override;
+#if !defined(MINI_UI_QUICKJS)
     void ForwardFencedFrameEventToEmbedder(const WTF::String& event_type) override;
+#endif
 
     // Called only when this frame has a local frame owner.
     gfx::Size GetOutermostMainFrameSize() const override;
@@ -213,11 +256,13 @@ public:
         return GetFrameToken().GetAs<RemoteFrameToken>();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const viz::LocalSurfaceId& GetLocalSurfaceId() const;
 
     viz::FrameSinkId GetFrameSinkId();
 
     void SetCcLayerForTesting(scoped_refptr<cc::Layer>, bool is_surface_layer);
+#endif
 
     // Whether a navigation should replace the current history entry or not.
     bool NavigationShouldReplaceCurrentHistoryEntry(WebFrameLoadType frame_load_type) const;
@@ -226,9 +271,11 @@ private:
     // Frame protected overrides:
     bool DetachImpl(FrameDetachType type) override;
 
+#if !defined(MINI_UI_QUICKJS)
     // ChildFrameCompositor:
     void SetCcLayer(scoped_refptr<cc::Layer> layer, bool is_surface_layer) override;
     SkBitmap* GetSadPageBitmap() override;
+#endif
 
     // Intentionally private to prevent redundant checks when the type is
     // already RemoteFrame.
@@ -244,19 +291,26 @@ private:
     // Returns false if detaching child frames reentrantly detached `this`.
     bool DetachChildren();
     void ApplyReplicatedPermissionsPolicyHeader();
+#if !defined(MINI_UI_QUICKJS)
     void RecordSentVisualProperties();
 
     void ResendVisualPropertiesInternal(ChildFrameCompositingHelper::AllowPaintHolding allow_paint_holding);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     Member<RemoteFrameView> view_;
+#endif
     RemoteSecurityContext security_context_;
+#if !defined(MINI_UI_QUICKJS)
     std::optional<blink::FrameVisualProperties> sent_visual_properties_;
     blink::FrameVisualProperties pending_visual_properties_;
     scoped_refptr<cc::Layer> cc_layer_;
     bool is_surface_layer_ = false;
+#endif
     ParsedPermissionsPolicy permissions_policy_header_;
     String unique_name_;
 
+#if !defined(MINI_UI_QUICKJS)
     viz::FrameSinkId frame_sink_id_;
     std::unique_ptr<viz::ParentLocalSurfaceIdAllocator> parent_local_surface_id_allocator_;
 
@@ -271,6 +325,7 @@ private:
 
     // Will be nullptr when this RemoteFrame's parent is not a LocalFrame.
     std::unique_ptr<ChildFrameCompositingHelper> compositing_helper_;
+#endif
 
     // Whether the frame is considered to be an ad frame by Ad Tagging.
     bool is_ad_frame_;
@@ -281,10 +336,12 @@ private:
     scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 inline RemoteFrameView* RemoteFrame::View() const
 {
     return view_.Get();
 }
+#endif
 
 template <> struct DowncastTraits<RemoteFrame> {
     static bool AllowFrom(const Frame& frame)

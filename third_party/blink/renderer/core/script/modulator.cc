@@ -10,10 +10,12 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/script/document_modulator_impl.h"
 #include "third_party/blink/renderer/core/script/import_map.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/script/worker_modulator_impl.h"
 #include "third_party/blink/renderer/core/script/worklet_modulator_impl.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/loader/fetch/script_fetch_options.h"
@@ -37,6 +39,11 @@ Modulator* Modulator::From(ScriptState* script_state)
     if (modulator)
         return modulator;
     ExecutionContext* execution_context = ExecutionContext::From(script_state);
+#if defined(MINI_UI_QUICKJS)
+    CHECK(IsA<LocalDOMWindow>(execution_context));
+    modulator = MakeGarbageCollected<DocumentModulatorImpl>(script_state);
+    Modulator::SetModulator(script_state, modulator);
+#else
     if (IsA<LocalDOMWindow>(execution_context)) {
         modulator = MakeGarbageCollected<DocumentModulatorImpl>(script_state);
         Modulator::SetModulator(script_state, modulator);
@@ -49,6 +56,7 @@ Modulator* Modulator::From(ScriptState* script_state)
     } else {
         NOTREACHED();
     }
+#endif
     return modulator;
 }
 

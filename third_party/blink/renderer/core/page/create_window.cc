@@ -36,10 +36,14 @@
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/web/web_view_client.h"
 #include "third_party/blink/public/web/web_window_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_initializer.h"
+#endif
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/frame_client.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -49,7 +53,9 @@
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -241,6 +247,7 @@ WebWindowFeatures GetWindowFeaturesFromString(const String& feature_string, Loca
     return window_features;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 static void MaybeLogWindowOpen(LocalFrame& opener_frame)
 {
     AdTracker* ad_tracker = opener_frame.GetAdTracker();
@@ -260,6 +267,7 @@ static void MaybeLogWindowOpen(LocalFrame& opener_frame)
             .Record(ukm_recorder);
     }
 }
+#endif
 
 Frame* CreateNewWindow(LocalFrame& opener_frame, FrameLoadRequest& request, const AtomicString& frame_name)
 {
@@ -292,7 +300,9 @@ Frame* CreateNewWindow(LocalFrame& opener_frame, FrameLoadRequest& request, cons
         request.SetNavigationPolicy(kNavigationPolicyPictureInPicture);
     } else {
         request.SetNavigationPolicy(NavigationPolicyForCreateWindow(features));
+#if !defined(MINI_UI_QUICKJS)
         probe::WindowOpen(&opener_window, url, frame_name, features, LocalFrame::HasTransientUserActivation(&opener_frame));
+#endif
     }
 
     // Sandboxed frames cannot open new auxiliary browsing contexts.
@@ -315,9 +325,11 @@ Frame* CreateNewWindow(LocalFrame& opener_frame, FrameLoadRequest& request, cons
     SessionStorageNamespaceId new_namespace_id = AllocateSessionStorageNamespaceId();
 
     Page* old_page = opener_frame.GetPage();
+#if !defined(MINI_UI_QUICKJS)
     if (!features.noopener) {
         CoreInitializer::GetInstance().CloneSessionStorage(old_page, new_namespace_id);
     }
+#endif
 
     bool consumed_user_gesture = false;
     Page* page = old_page->GetChromeClient().CreateWindow(&opener_frame, request, frame_name, features, sandbox_flags, new_namespace_id, consumed_user_gesture);
@@ -341,7 +353,9 @@ Frame* CreateNewWindow(LocalFrame& opener_frame, FrameLoadRequest& request, cons
     frame.View()->SetCanHaveScrollbars(!features.is_popup);
 
     page->GetChromeClient().Show(frame, opener_frame, request.GetNavigationPolicy(), consumed_user_gesture);
+#if !defined(MINI_UI_QUICKJS)
     MaybeLogWindowOpen(opener_frame);
+#endif
     return &frame;
 }
 

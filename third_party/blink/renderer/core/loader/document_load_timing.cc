@@ -33,7 +33,9 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif
 
 namespace blink {
 
@@ -121,11 +123,14 @@ void DocumentLoadTiming::MarkNavigationStart()
     DCHECK(reference_wall_time_.is_zero());
     EnsureReferenceTimesSet();
     navigation_start_ = reference_monotonic_time_;
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_MARK_WITH_TIMESTAMP2("blink.user_timing", "navigationStart", navigation_start_, "frame", GetFrameIdForTracing(GetFrame()), "data",
         [&](perfetto::TracedValue ctx) { WriteNavigationStartDataIntoTracedValue(std::move(ctx)); });
+#endif
     NotifyDocumentTimingChanged();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DocumentLoadTiming::WriteNavigationStartDataIntoTracedValue(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -134,6 +139,7 @@ void DocumentLoadTiming::WriteNavigationStartDataIntoTracedValue(perfetto::Trace
     dict.Add("isOutermostMainFrame", GetFrame() ? GetFrame()->IsOutermostMainFrame() : false);
     dict.Add("navigationId", IdentifiersFactory::LoaderId(document_loader_));
 }
+#endif
 
 void DocumentLoadTiming::SetNavigationStart(base::TimeTicks navigation_start)
 {
@@ -142,8 +148,10 @@ void DocumentLoadTiming::SetNavigationStart(base::TimeTicks navigation_start)
     // been set yet in order to have a valid reference time in both units.
     EnsureReferenceTimesSet();
     navigation_start_ = navigation_start;
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_MARK_WITH_TIMESTAMP2("blink.user_timing", "navigationStart", navigation_start_, "frame", GetFrameIdForTracing(GetFrame()), "data",
         [&](perfetto::TracedValue context) { WriteNavigationStartDataIntoTracedValue(std::move(context)); });
+#endif
 
     // The reference times are adjusted based on the embedder's navigationStart.
     DCHECK(!reference_monotonic_time_.is_null());

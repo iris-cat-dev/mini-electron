@@ -48,10 +48,14 @@
 
 #include "base/numerics/checked_math.h"
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_timeline.h"
+#endif
 #include "cc/input/main_thread_scrolling_reason.h"
 #include "cc/input/snap_selection_strategy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/picture_layer.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
@@ -85,7 +89,9 @@
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/custom_scrollbar.h"
 #include "third_party/blink/renderer/core/layout/layout_custom_scrollbar_part.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
@@ -117,9 +123,12 @@
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/event_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
+#include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "ui/base/ui_base_features.h"
@@ -199,7 +208,9 @@ void PaintLayerScrollableArea::DisposeImpl()
             frame_view->RemoveUserScrollableArea(this);
             frame_view->RemoveAnimatingScrollableArea(this);
             frame_view->RemovePendingSnapUpdate(this);
+#if !defined(MINI_UI_QUICKJS)
             probe::UpdateScrollableFlag(GetLayoutBox()->GetNode(), false);
+#endif
         }
     }
 
@@ -431,7 +442,9 @@ void PaintLayerScrollableArea::UpdateScrollOffset(const ScrollOffset& new_offset
 
     bool is_root_layer = Layer()->IsRootLayer();
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("ScrollLayer", inspector_scroll_layer_event::Data, GetLayoutBox());
+#endif
 
     // Update the positions of our child layers (if needed as only fixed layers
     // should be impacted by a scroll).
@@ -448,11 +461,13 @@ void PaintLayerScrollableArea::UpdateScrollOffset(const ScrollOffset& new_offset
             frame_view->SetNeedsUpdateGeometries();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* scrolling_coordinator = GetScrollingCoordinator()) {
         if (!scrolling_coordinator->UpdateCompositorScrollOffset(*frame, *this)) {
             GetLayoutBox()->GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
         }
     }
+#endif
 
     if (scroll_type == mojom::blink::ScrollType::kUser || scroll_type == mojom::blink::ScrollType::kCompositor) {
         Page* page = frame->GetPage();
@@ -521,11 +536,13 @@ void PaintLayerScrollableArea::InvalidatePaintForScrollOffsetChange()
         box->SetBackgroundNeedsFullPaintInvalidation();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* compositor = frame_view->GetPaintArtifactCompositor()) {
         if (compositor->ShouldAlwaysUpdateOnScroll()) {
             compositor->SetNeedsUpdate();
         }
     }
+#endif
 }
 
 // See the comment in .h about background-attachment:fixed.
@@ -669,6 +686,7 @@ gfx::Size PaintLayerScrollableArea::PixelSnappedContentsSize(const PhysicalOffse
 {
     PhysicalSize size = overflow_rect_.size;
 
+#if !defined(MINI_UI_QUICKJS)
     // If we're capturing a transition snapshot, ensure the content size is
     // considered at least as large as the container. Otherwise, the snapshot
     // will be clipped by PendingLayer to the content size.
@@ -679,6 +697,7 @@ gfx::Size PaintLayerScrollableArea::PixelSnappedContentsSize(const PhysicalOffse
             size.height = std::max(container_size.height, size.height);
         }
     }
+#endif
 
     return ToPixelSnappedRect(PhysicalRect(paint_offset, size)).size();
 }
@@ -2349,7 +2368,9 @@ void PaintLayerScrollableArea::UpdateScrollableAreaSet()
     } else {
         frame_view->RemoveUserScrollableArea(this);
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::UpdateScrollableFlag(GetLayoutBox()->GetNode(), std::nullopt);
+#endif
 
     layer_->DidUpdateScrollsOverflow();
 
@@ -2384,6 +2405,7 @@ bool PaintLayerScrollableArea::ShouldScrollOnMainThread() const
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (const auto* paint_artifact_compositor = GetLayoutBox()->GetFrameView()->GetPaintArtifactCompositor()) {
         if (const auto* properties = GetLayoutBox()->FirstFragment().PaintProperties()) {
             if (const auto* scroll = properties->Scroll()) {
@@ -2391,6 +2413,7 @@ bool PaintLayerScrollableArea::ShouldScrollOnMainThread() const
             }
         }
     }
+#endif
     return true;
 }
 
@@ -2418,8 +2441,12 @@ bool PaintLayerScrollableArea::UsesCompositedScrolling() const
     if (!properties || !properties->Scroll()) {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     const auto* paint_artifact_compositor = GetLayoutBox()->GetFrameView()->GetPaintArtifactCompositor();
     return paint_artifact_compositor && paint_artifact_compositor->UsesCompositedScrolling(*properties->Scroll());
+#else
+    return false;
+#endif
 }
 
 bool PaintLayerScrollableArea::VisualViewportSuppliesScrollbars() const
@@ -2445,6 +2472,7 @@ bool PaintLayerScrollableArea::ScheduleAnimation()
     return false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::AnimationHost* PaintLayerScrollableArea::GetCompositorAnimationHost() const
 {
     return layer_->GetLayoutObject().GetFrameView()->GetCompositorAnimationHost();
@@ -2454,6 +2482,7 @@ cc::AnimationTimeline* PaintLayerScrollableArea::GetCompositorAnimationTimeline(
 {
     return layer_->GetLayoutObject().GetFrameView()->GetScrollAnimationTimeline();
 }
+#endif
 
 bool PaintLayerScrollableArea::HasTickmarks() const
 {
@@ -2857,6 +2886,7 @@ gfx::Size PaintLayerScrollableArea::PixelSnappedBorderBoxSize() const
     return PhysicalRect(GetLayoutBox()->FirstFragment().PaintOffset(), GetLayoutBox()->Size()).PixelSnappedSize();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void PaintLayerScrollableArea::DropCompositorScrollDeltaNextCommit()
 {
     auto* frame_view = GetLayoutBox()->GetFrameView();
@@ -2865,6 +2895,7 @@ void PaintLayerScrollableArea::DropCompositorScrollDeltaNextCommit()
         paint_artifact_compositor->DropCompositorScrollDeltaNextCommit(GetScrollElementId());
     }
 }
+#endif
 
 gfx::Rect PaintLayerScrollableArea::ScrollingBackgroundVisualRect(const PhysicalOffset& paint_offset) const
 {

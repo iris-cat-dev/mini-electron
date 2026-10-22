@@ -6,9 +6,11 @@
 #define COMPONENTS_SHARED_HIGHLIGHTING_CORE_COMMON_SHARED_HIGHLIGHTING_METRICS_H_
 
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "url/gurl.h"
+#endif
 
 namespace shared_highlighting {
 
@@ -116,19 +118,31 @@ void LogLinkRequestedStatus(LinkGenerationStatus status);
 
 // Records metrics when successfully generated link to text was available for
 // the user.
+#if defined(MINI_UI_QUICKJS)
+void LogRequestedSuccessMetrics();
+#else
 void LogRequestedSuccessMetrics(ukm::SourceId source_id);
+#endif
 
 // Records metrics when link to text was not available for the user.
+#if defined(MINI_UI_QUICKJS)
+void LogRequestedFailureMetrics(LinkGenerationError error);
+#else
 void LogRequestedFailureMetrics(ukm::SourceId source_id, LinkGenerationError error);
+#endif
 
 // Records whether an individual text fragment could not be scrolled to because
 // there was an |ambiguous_match| (generally because more than one matching
 // passage was found).
 void LogTextFragmentAmbiguousMatch(bool ambiguous_match);
 
-// Records the source of the text fragment based on its |referrer|. E.g. a
-// search engine.
+#if defined(MINI_UI_QUICKJS)
+// Records the source already classified by the text-fragment anchor.
+void LogTextFragmentLinkOpenSource(TextFragmentLinkOpenSource source);
+#else
+// Records the source of the text fragment based on its |referrer|.
 void LogTextFragmentLinkOpenSource(const GURL& referrer);
+#endif
 
 // Records the success rate, which is the number of |matches| over number of
 // |text_fragments| in the url param.
@@ -146,6 +160,7 @@ void LogGenerateErrorLatency(base::TimeDelta latency);
 // Records the outcome of link to text reshare attempt.
 void LogLinkToTextReshareStatus(LinkToTextReshareStatus status);
 
+#if !defined(MINI_UI_QUICKJS)
 // Records a UKM event for opening a link with text fragments. |source_id|
 // refers to the navigation action's ID, |referrer| will be used to record the
 // source and |success| should be true only if fragments highlighting was a
@@ -200,6 +215,7 @@ void LogLinkGeneratedRequestedSuccessUkmEvent(ukm::SourceId source_id);
 // This API can only be used when calling from the browser process, otherwise no
 // event will be recorded.
 void LogLinkGeneratedRequestedErrorUkmEvent(ukm::SourceId source_id, LinkGenerationError reason);
+#endif
 
 // Records whether link to text was requested before or after link generation
 // was complete with corresponding success status.

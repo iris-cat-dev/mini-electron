@@ -11,7 +11,9 @@
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -25,12 +27,15 @@ ConsoleMessage::ConsoleMessage(mojom::blink::ConsoleMessageSource source, mojom:
     request_identifier_ = IdentifiersFactory::RequestId(loader, request_identifier);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ConsoleMessage::ConsoleMessage(
     mojom::blink::ConsoleMessageLevel level, const String& message, std::unique_ptr<SourceLocation> location, WorkerThread* worker_thread)
     : ConsoleMessage(mojom::blink::ConsoleMessageSource::kWorker, level, message, std::move(location))
 {
     worker_id_ = IdentifiersFactory::IdFromToken(worker_thread->GetDevToolsWorkerToken());
 }
+
+#endif
 
 ConsoleMessage::ConsoleMessage(const WebConsoleMessage& message, LocalFrame* local_frame)
     : ConsoleMessage(message.nodes.empty() ? mojom::blink::ConsoleMessageSource::kOther : mojom::blink::ConsoleMessageSource::kRecommendation, message.level,
@@ -88,10 +93,13 @@ const String& ConsoleMessage::Message() const
     return message_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const String& ConsoleMessage::WorkerId() const
 {
     return worker_id_;
 }
+
+#endif
 
 LocalFrame* ConsoleMessage::Frame() const
 {

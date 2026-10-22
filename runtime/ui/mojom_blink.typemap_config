@@ -1,0 +1,30 @@
+[
+  {
+    "traits_headers": [
+      "third_party/blink/renderer/platform/blob/serialized_blob_mojom_traits.h"
+    ],
+    "types": [
+      {
+        "cpp": "::scoped_refptr<::blink::BlobDataHandle>",
+        "mojom": "blink.mojom.SerializedBlob",
+        "nullable_is_same_type": true
+      }
+    ]
+  },
+  {
+    "public_headers": [
+      "net/http/http_response_headers.h"
+    ],
+    "traits_headers": [
+      "services/network/public/cpp/net_ipc_param_traits.h",
+      "services/network/public/cpp/network_param_mojom_traits.h"
+    ],
+    "types": [
+      {
+        "cpp": "::scoped_refptr<::net::HttpResponseHeaders>",
+        "mojom": "network.mojom.HttpResponseHeaders",
+        "nullable_is_same_type": true
+      }
+    ]
+  }
+]

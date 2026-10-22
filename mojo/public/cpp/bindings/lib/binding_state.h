@@ -1,4 +1,4 @@
-﻿// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,17 +8,16 @@
 #include <stdint.h>
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
-#include "base/bind.h"
-#include "base/callback.h"
 #include "base/check.h"
 #include "base/component_export.h"
-#include "base/sequence_checker.h"
 #include "base/containers/span.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/ref_counted.h"
-#include "base/strings/string_piece.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "mojo/public/cpp/bindings/async_flusher.h"
 #include "mojo/public/cpp/bindings/connection_error_callback.h"
@@ -37,147 +36,117 @@ namespace mojo {
 
 namespace internal {
 
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ ReceiverImplBase {
-public:
-    ReceiverImplBase();
-    ~ReceiverImplBase();
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) BindingStateBase {
+ public:
+  BindingStateBase();
+  ~BindingStateBase();
 
-    void SetFilter(std::unique_ptr<MessageFilter> filter);
+  void SetFilter(std::unique_ptr<MessageFilter> filter);
 
-    bool HasAssociatedInterfaces() const;
+  bool HasAssociatedInterfaces() const;
 
-    void PauseIncomingMethodCallProcessing();
-    void ResumeIncomingMethodCallProcessing();
+  void PauseIncomingMethodCallProcessing();
+  void ResumeIncomingMethodCallProcessing();
 
-    bool WaitForIncomingMethodCall();
+  bool WaitForIncomingMethodCall();
 
-    void PauseRemoteCallbacksUntilFlushCompletes(PendingFlush flush);
-    void FlushAsync(AsyncFlusher flusher);
+  void PauseRemoteCallbacksUntilFlushCompletes(PendingFlush flush);
+  void FlushAsync(AsyncFlusher flusher);
 
-    void Close();
-    void CloseWithReason(uint32_t custom_reason, base::StringPiece description);
-    static void OnRemoteImplBaseClose(int64_t id, MojoHandle handle, base::OnceClosure cb);
+  void Close();
+  void CloseWithReason(uint32_t custom_reason, std::string_view description);
 
-    void RaiseError();
+  void RaiseError() { endpoint_client_->RaiseError(); }
 
-    //void set_reset_handler(base::OnceClosure handler);
+  void set_connection_error_handler(base::OnceClosure error_handler) {
+    DCHECK(is_bound());
+    endpoint_client_->set_connection_error_handler(std::move(error_handler));
+  }
 
-    void set_connection_error_handler(base::OnceClosure error_handler);
-    void set_connection_error_with_reason_handler(ConnectionErrorWithReasonCallback error_handler);
+  void set_connection_error_with_reason_handler(
+      ConnectionErrorWithReasonCallback error_handler) {
+    DCHECK(is_bound());
+    endpoint_client_->set_connection_error_with_reason_handler(
+        std::move(error_handler));
+  }
 
-    void set_connection_error_handler_is_sync(); // weolar
+  bool is_bound() const { return !!router_; }
 
-    bool is_bound() const;
+  MessagePipeHandle handle() const {
+    DCHECK(is_bound());
+    return router_->handle();
+  }
 
-    MessagePipeHandle handle() const;
+  ReportBadMessageCallback GetBadMessageCallback();
 
-    ReportBadMessageCallback GetBadMessageCallback();
-    void FlushForTesting();
-    void EnableBatchDispatch();
-    void EnableTestingMode();
-    scoped_refptr<internal::MultiplexRouter> RouterForTesting();
+  void FlushForTesting();
 
-    int64_t GetId() const
-    {
-        return id_;
-    }
+  void EnableBatchDispatch();
 
-protected:
-    void BindInternal(PendingReceiverState* receiver_state, scoped_refptr<base::SequencedTaskRunner> runner, const char* interface_name,
-        std::unique_ptr<MessageReceiver> request_validator, bool passes_associated_kinds, base::span<const uint32_t> sync_method_ordinals,
-        MessageReceiverWithResponderStatus* stub, uint32_t interface_version, MessageToMethodInfoCallback method_info_callback,
-        MessageToMethodNameCallback method_name_callback);
+  void EnableTestingMode();
 
-    void BindInternal2(
-        PendingReceiverState* receiver_state, scoped_refptr<base::SequencedTaskRunner> runner, const char* interface_name, uint32_t interface_version);
+  scoped_refptr<internal::MultiplexRouter> RouterForTesting();
 
-    //     scoped_refptr<internal::MultiplexRouter> router_;
-    //     std::unique_ptr<InterfaceEndpointClient> endpoint_client_;
+ protected:
+  void BindInternal(PendingReceiverState* receiver_state,
+                    scoped_refptr<base::SequencedTaskRunner> runner,
+                    const char* interface_name,
+                    std::unique_ptr<MessageReceiver> request_validator,
+                    bool passes_associated_kinds,
+                    base::span<const uint32_t> sync_method_ordinals,
+                    MessageReceiverWithResponderStatus* stub,
+                    uint32_t interface_version,
+                    MessageToMethodInfoCallback method_info_callback,
+                    MessageToMethodNameCallback method_name_callback);
 
-    void OnDisconnectError(MojoHandle handle, base::OnceClosure cb);
+  scoped_refptr<internal::MultiplexRouter> router_;
+  std::unique_ptr<InterfaceEndpointClient> endpoint_client_;
 
-    base::OnceClosure error_handler_;
-    bool error_handler_is_sync_ = false;
-    //base::OnceClosure reset_handler_;
-    ConnectionErrorWithReasonCallback error_with_reason_handler_;
-    scoped_refptr<base::SequencedTaskRunner> runner_;
-    bool encountered_error_ = false;
-
-    ScopedMessagePipeHandle handle_;
-    void* impl_ = nullptr;
-    void* last_impl_ = nullptr;
-    int64_t id_ = 0;
-
-    // We use SequenceCheckerImpl directly, to assert some sequence checks even in
-    // release builds. See https://crbug.com/1325096.
-    SEQUENCE_CHECKER(sequence_checker_);
-
-    //base::WeakPtrFactory<ReceiverImplBase> weak_ptr_factory_ { this };
+  base::WeakPtrFactory<BindingStateBase> weak_ptr_factory_{this};
 };
 
-template <typename Interface, typename ImplRefTraits> class ReceiverImpl : public ReceiverImplBase {
-public:
-    using ImplPointerType = typename ImplRefTraits::PointerType; // ImplPointerType=device::mojom::blink::TimeZoneMonitorClient = blink::TimeZoneController
+template <typename Interface, typename ImplRefTraits>
+class BindingState : public BindingStateBase {
+ public:
+  using ImplPointerType = typename ImplRefTraits::PointerType;
 
-    explicit ReceiverImpl(ImplPointerType impl)
-    {
-        // stub_.set_sink(std::move(impl));
-        impl_ = (void*)ImplRefTraits::GetRawPointer(&impl);
-    }
+  explicit BindingState(ImplPointerType impl) {
+    stub_.set_sink(std::move(impl));
+  }
 
-    ReceiverImpl(const ReceiverImpl&) = delete;
-    ReceiverImpl& operator=(const ReceiverImpl&) = delete;
+  BindingState(const BindingState&) = delete;
+  BindingState& operator=(const BindingState&) = delete;
 
-    ~ReceiverImpl()
-    {
-        Close();
-    }
+  ~BindingState() { Close(); }
 
-    void Bind(PendingReceiverState* receiver_state, scoped_refptr<base::SequencedTaskRunner> runner)
-    {
-        //         ReceiverImplBase::BindInternal(
-        //             std::move(receiver_state), runner, Interface::Name_,
-        //             Interface::PassesAssociatedKinds_,
-        //             SyncMethodTraits<Interface>::GetOrdinals(), &stub_, Interface::Version_,
-        //             Interface::MessageToMethodInfo_, Interface::MessageToMethodName_);
+  void Bind(PendingReceiverState* receiver_state,
+            scoped_refptr<base::SequencedTaskRunner> runner) {
+    BindingStateBase::BindInternal(
+        std::move(receiver_state), runner, Interface::Name_,
+        std::make_unique<typename Interface::RequestValidator_>(),
+        Interface::PassesAssociatedKinds_,
+        SyncMethodTraits<Interface>::GetOrdinals(), &stub_, Interface::Version_,
+        Interface::MessageToMethodInfo_, Interface::MessageToMethodName_);
+  }
 
-        ReceiverImplBase::BindInternal2(std::move(receiver_state), runner, Interface::Name_, Interface::Version_);
-    }
+  PendingReceiver<Interface> Unbind() {
+    weak_ptr_factory_.InvalidateWeakPtrs();
+    endpoint_client_.reset();
+    PendingReceiver<Interface> request(router_->PassMessagePipe());
+    router_ = nullptr;
+    return request;
+  }
 
-    PendingReceiver<Interface> Unbind()
-    {
-        //weak_ptr_factory_.InvalidateWeakPtrs();
-        //endpoint_client_.reset();
-        //PendingReceiver<Interface> request(router_->PassMessagePipe());
-        //PendingReceiver<Interface> request((Interface**)(&impl_));
+  Interface* impl() { return ImplRefTraits::GetRawPointer(&stub_.sink()); }
+  ImplPointerType SwapImplForTesting(ImplPointerType new_impl) {
+    return std::exchange(stub_.sink(), std::move(new_impl));
+  }
 
-        //ScopedMessagePipeHandle message_pipe(handle_.release());
-        PendingReceiver<Interface> request(std::move(handle_));
-        handle_.reset();
-
-        //router_ = nullptr;
-        impl_ = nullptr;
-        return request;
-    }
-
-    Interface* impl()
-    {
-        // return ImplRefTraits::GetRawPointer(&stub_.sink());
-        return (Interface*)impl_;
-    }
-
-    ImplPointerType SwapImplForTesting(ImplPointerType new_impl)
-    {
-        *(int*)1 = 1;
-        // return std::exchange(stub_.sink(), std::move(new_impl));
-        return nullptr;
-    }
-
-private:
-    // typename Interface::template Stub_<ImplRefTraits> stub_;
+ private:
+  typename Interface::template Stub_<ImplRefTraits> stub_;
 };
 
-} // namespace internal
-} // namespace mojo
+}  // namespace internal
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_LIB_BINDING_STATE_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_LIB_BINDING_STATE_H_

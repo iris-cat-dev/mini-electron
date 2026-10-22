@@ -33,7 +33,9 @@
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/clipboard/clipboard_mime_types.h"
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
@@ -61,13 +63,19 @@ DataObjectItem* DataObjectItem::CreateFromFile(File* file)
 }
 
 // static
+#if !defined(MINI_UI_QUICKJS)
 DataObjectItem* DataObjectItem::CreateFromFileWithFileSystemId(
     File* file, const String& file_system_id, scoped_refptr<FileSystemAccessDropData> file_system_access_entry)
+#else
+DataObjectItem* DataObjectItem::CreateFromFileWithFileSystemId(File* file, const String& file_system_id)
+#endif
 {
     DataObjectItem* item = MakeGarbageCollected<DataObjectItem>(kFileKind, file->type());
     item->file_ = file;
     item->file_system_id_ = file_system_id;
+#if !defined(MINI_UI_QUICKJS)
     item->file_system_access_entry_ = file_system_access_entry;
+#endif
     return item;
 }
 
@@ -214,6 +222,7 @@ String DataObjectItem::FileSystemId() const
     return file_system_id_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool DataObjectItem::HasFileSystemAccessEntry() const
 {
     return static_cast<bool>(file_system_access_entry_);
@@ -228,6 +237,7 @@ mojo::PendingRemote<mojom::blink::FileSystemAccessDataTransferToken> DataObjectI
     file_system_access_entry_->data = token_cloner.Unbind();
     return token_clone;
 }
+#endif
 
 void DataObjectItem::Trace(Visitor* visitor) const
 {

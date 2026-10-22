@@ -32,6 +32,7 @@ size_t {{struct.name}}::Hash(size_t seed) const {
 }
 {%- endif %}
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void {{struct.name}}::WriteIntoTrace(
     perfetto::TracedValue traced_context) const {
   [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -47,6 +48,7 @@ void {{struct.name}}::WriteIntoTrace(
     );
 {%-  endfor %}
 }
+#endif
 
 bool {{struct.name}}::Validate(
     const void* data,

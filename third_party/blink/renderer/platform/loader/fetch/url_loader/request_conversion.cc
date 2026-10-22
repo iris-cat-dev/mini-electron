@@ -294,7 +294,9 @@ void PopulateResourceRequest(const ResourceRequestHead& src, ResourceRequestBody
     dest->priority = WebURLRequest::ConvertToNetPriority(src.Priority());
     dest->priority_incremental = src.PriorityIncremental();
     dest->cors_preflight_policy = src.CorsPreflightPolicy();
+#if !defined(MINI_UI_QUICKJS)
     dest->skip_service_worker = src.GetSkipServiceWorker();
+#endif
     dest->mode = src.GetMode();
     dest->destination = src.GetRequestDestination();
     dest->credentials_mode = src.GetCredentialsMode();

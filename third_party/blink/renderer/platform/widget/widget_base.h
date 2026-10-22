@@ -8,16 +8,24 @@
 #include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_timeline.h"
 #include "cc/mojo_embedder/async_layer_tree_frame_sink.h"
 #include "cc/paint/element_id.h"
 #include "cc/trees/browser_controls_params.h"
 #include "cc/trees/paint_holding_reason.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/surfaces/local_surface_id.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/associated_receiver.h"
+#endif
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/page/content_to_visible_time_reporter.h"
+#endif
 #include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 #include "third_party/blink/public/mojom/widget/platform_widget.mojom-blink.h"
 #include "third_party/blink/public/mojom/widget/record_content_to_visible_time_request.mojom-blink-forward.h"
@@ -28,12 +36,15 @@
 #include "third_party/blink/renderer/platform/text/text_direction.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/widget/compositing/layer_tree_view_delegate.h"
 #include "third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl.h"
+#endif
 #include "third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h"
 #include "ui/base/ime/text_input_mode.h"
 #include "ui/base/ime/text_input_type.h"
 #include "ui/base/mojom/menu_source_type.mojom-blink-forward.h"
+#include "ui/display/screen_infos.h"
 #include "ui/gfx/ca_layer_result.h"
 
 namespace cc {
@@ -43,9 +54,11 @@ class LayerTreeHost;
 class LayerTreeSettings;
 } // namespace cc
 
+#if !defined(MINI_UI_QUICKJS)
 namespace gpu {
 class GpuChannelHost;
 }
+#endif
 
 namespace ui {
 class Cursor;
@@ -57,11 +70,15 @@ struct ScreenInfos;
 
 namespace blink {
 class ImeEventGuard;
+#if !defined(MINI_UI_QUICKJS)
 class LayerTreeView;
+#endif
 class PageScheduler;
 class WidgetBaseClient;
+#if !defined(MINI_UI_QUICKJS)
 class WidgetInputHandlerManager;
 class WidgetCompositor;
+#endif
 
 namespace scheduler {
 class WidgetScheduler;
@@ -73,13 +90,33 @@ class WidgetScheduler;
 //
 // Co-orindates handled in this class can be in the "blink coordinate space"
 // which is scaled DSF baked in.
-class PLATFORM_EXPORT WidgetBase : public mojom::blink::Widget, public LayerTreeViewDelegate, public mojom::blink::RenderInputRouterClient {
+class PLATFORM_EXPORT WidgetBase
+#if !defined(MINI_UI_QUICKJS)
+    : public mojom::blink::Widget
+    , public LayerTreeViewDelegate
+    , public mojom::blink::RenderInputRouterClient
+#endif
+{
 public:
-    WidgetBase(WidgetBaseClient* client, CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
-        CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget, scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
+#if defined(MINI_UI_QUICKJS)
+    WidgetBase(
+        WidgetBaseClient* client,
+        CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase>
+            widget_host,
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
+        bool never_composited, bool is_embedded, bool is_for_scalable_page);
+    ~WidgetBase();
+#else
+    WidgetBase(WidgetBaseClient* client,
+        CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase>
+            widget_host,
+        CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget,
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
         bool never_composited, bool is_embedded, bool is_for_scalable_page);
     ~WidgetBase() override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Initialize the compositor. |settings| is typically null. When |settings| is
     // null the default settings will be used, tests may provide a |settings|
     // object to override the defaults.
@@ -92,16 +129,18 @@ public:
     // destroyed/invalidated.
     void InitializeCompositing(PageScheduler& page_scheduler, const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings,
         base::WeakPtr<mojom::blink::FrameWidgetInputHandler> frame_widget_input_handler, WidgetBase* previous_widget);
+#endif
 
     // Similar to `InitializeCompositing()` but for non-compositing widgets.
     // Exactly one of either `InitializeCompositing()` or this method must
     // be called before using the widget.
     void InitializeNonCompositing();
 
-    // Shutdown the compositor. When `delay_release` is true, this detaches
-    // `layer_tree_view_` but delays its actual deletion, so that calling this
-    // function won't block on doing the release in the compositor thread.
+    // Ends the widget lifecycle. The UI profile has no compositor resources,
+    // but still marks the software widget as destroyed.
     void Shutdown(bool delay_release);
+
+#if !defined(MINI_UI_QUICKJS)
 
     void DidFirstVisuallyNonEmptyPaint(base::TimeTicks&);
 
@@ -117,7 +156,9 @@ public:
 #if BUILDFLAG(IS_APPLE)
     void AddCoreAnimationErrorCodeCallback(uint32_t frame_token, base::OnceCallback<void(gfx::CALayerResult)> callback);
 #endif
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // mojom::blink::RenderInputRouterClient overrides;
     void GetWidgetInputHandler(
         mojo::PendingReceiver<mojom::blink::WidgetInputHandler> request, mojo::PendingRemote<mojom::blink::WidgetInputHandlerHost> host) override;
@@ -134,7 +175,9 @@ public:
     void CancelSuccessfulPresentationTimeRequest() override;
     void SetupRenderInputRouterConnections(mojo::PendingReceiver<mojom::blink::RenderInputRouterClient> browser_request,
         mojo::PendingReceiver<mojom::blink::RenderInputRouterClient> viz_request) override;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // LayerTreeViewDelegate overrides:
     // Applies viewport related properties during a commit from the compositor
     // thread.
@@ -170,6 +213,7 @@ public:
     // Returns if we should gather begin main frame metrics. If there is no
     // compositor thread this returns false.
     static bool ShouldRecordBeginMainFrameMetrics();
+#endif
 
     // Set the current cursor relay to browser if necessary.
     void SetCursor(const ui::Cursor& cursor);
@@ -185,10 +229,12 @@ public:
         return input_handler_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     WidgetInputHandlerManager* widget_input_handler_manager()
     {
         return widget_input_handler_manager_.get();
     }
+#endif
 
     gfx::Rect CompositorViewportRect() const;
 
@@ -229,10 +275,14 @@ public:
     void ImeCommitText(const String& text, const Vector<ui::ImeTextSpan>& ime_text_spans, const gfx::Range& replacement_range, int relative_cursor_pos);
     void ImeFinishComposingText(bool keep_selection);
     bool IsForProvisionalFrame();
+#if !defined(MINI_UI_QUICKJS)
     void FlushInputProcessedCallback();
+#endif
     void CancelCompositionForPepper();
 
+#if !defined(MINI_UI_QUICKJS)
     void RequestPresentationAfterScrollAnimationEnd(mojom::blink::Widget::ForceRedrawCallback callback);
+#endif
 
     void OnImeEventGuardStart(ImeEventGuard* guard);
     void OnImeEventGuardFinish(ImeEventGuard* guard);
@@ -260,10 +310,12 @@ public:
 
     LCDTextPreference ComputeLCDTextPreference() const;
 
+#if !defined(MINI_UI_QUICKJS)
     const viz::LocalSurfaceId& local_surface_id_from_parent() const
     {
         return local_surface_id_from_parent_;
     }
+#endif
 
     // Called to get the position of the widget's window in screen
     // coordinates. Note, the window includes any decorations such as borders,
@@ -332,19 +384,23 @@ public:
     gfx::Rect BlinkSpaceToEnclosedDIPs(const gfx::Rect& rect);
     gfx::RectF BlinkSpaceToDIPs(const gfx::RectF& rectF);
 
+#if !defined(MINI_UI_QUICKJS)
     void BindWidgetCompositor(mojo::PendingReceiver<mojom::blink::WidgetCompositor> receiver);
+#endif
 
     base::WeakPtr<WidgetBase> GetWeakPtr()
     {
         return weak_ptr_factory_.GetWeakPtr();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Update the surface allocation information, compositor viewport rect and
     // screen info on the widget.
     void UpdateSurfaceAndScreenInfo(
         const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect, const display::ScreenInfos& new_screen_infos);
     // Similar to UpdateSurfaceAndScreenInfo but the screen info remains the same.
     void UpdateSurfaceAndCompositorRect(const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect);
+#endif
     // Similar to UpdateSurfaceAndScreenInfo but the surface allocation
     // and compositor viewport rect remains the same.
     void UpdateScreenInfo(const display::ScreenInfos& new_screen_infos);
@@ -367,10 +423,12 @@ public:
         return is_embedded_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the maximum bounds for buffers allocated for rasterization and
     // compositing.
     // Returns null if the compositing stack has not been initialized yet.
     std::optional<int> GetMaxRenderBufferBounds() const;
+#endif
 
     bool WillBeDestroyed() const
     {
@@ -378,7 +436,13 @@ public:
     }
 
 private:
+    void UpdateViewportAndScreenInfo(
+        const gfx::Rect& viewport_pixel_rect,
+        const display::ScreenInfos& new_screen_infos);
+
+#if !defined(MINI_UI_QUICKJS)
     static void AssertAreCompatible(const WidgetBase& a, const WidgetBase& b);
+#endif
 
     bool CanComposeInline();
     void UpdateTextInputStateInternal(bool show_virtual_keyboard, bool immediate_request);
@@ -404,6 +468,7 @@ private:
     // Helper to get the non-emulated device scale factor.
     float GetOriginalDeviceScaleFactor() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Finishes the call to RequestNewLayerTreeFrameSink() once the
     // |gpu_channel_host| is available.
     // TODO(crbug.com/1278147): Clean up these parameters using either a struct or
@@ -424,6 +489,7 @@ private:
     // - Disconnects and releases the LayerTreeView's resources synchronously,
     //   if `delay_release` is false
     void DisconnectLayerTreeView(WidgetBase* new_widget, bool delay_release);
+#endif
 
     // Indicates that we are never visible, so never produce graphical output.
     const bool never_composited_;
@@ -439,17 +505,23 @@ private:
     const raw_ptr<WidgetBaseClient> client_;
 
     mojo::AssociatedRemote<mojom::blink::WidgetHost> widget_host_;
+#if !defined(MINI_UI_QUICKJS)
     mojo::AssociatedReceiver<mojom::blink::Widget> receiver_;
 
     mojo::Receiver<mojom::blink::RenderInputRouterClient> browser_input_receiver_ { this };
     mojo::Receiver<mojom::blink::RenderInputRouterClient> viz_input_receiver_ { this };
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<LayerTreeView> layer_tree_view_;
     scoped_refptr<WidgetInputHandlerManager> widget_input_handler_manager_;
     scoped_refptr<scheduler::WidgetScheduler> widget_scheduler_;
+#endif
     bool has_focus_ = false;
     WidgetBaseInputHandler input_handler_ { this };
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<WidgetCompositor> widget_compositor_;
+#endif
 
     // Stores the current selection bounds.
     gfx::Rect selection_focus_rect_;
@@ -503,15 +575,19 @@ private:
     // Whether or not this RenderWidget is currently pasting.
     bool is_pasting_ = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Object to record tab switch time into this RenderWidget
     ContentToVisibleTimeReporter tab_switch_time_recorder_;
+#endif
 
     // Info about available screens and which is currently showing the WidgetBase.
     // Rects in these structures do not include any scaling by device scale
     // factor, so are in DIPs, not blink coordinate space.
     display::ScreenInfos screen_infos_;
 
+#if !defined(MINI_UI_QUICKJS)
     viz::LocalSurfaceId local_surface_id_from_parent_;
+#endif
 
     // It is possible that one ImeEventGuard is nested inside another
     // ImeEventGuard. We keep track of the outermost one, and update it as needed.
@@ -536,9 +612,14 @@ private:
     // TODO(dtapuska): Figure out if we can change this to Blink Space.
     // See https://crbug.com/1131389
     gfx::Size visible_viewport_size_in_dips_;
+#if defined(MINI_UI_QUICKJS)
+    gfx::Rect software_viewport_rect_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // The AnimationTimeline for smooth scrolls in this widget.
     scoped_refptr<cc::AnimationTimeline> scroll_animation_timeline_;
+#endif
 
     // Indicates that we shouldn't bother generated paint events.
     bool is_hidden_;
@@ -550,6 +631,7 @@ private:
     // call going at a time.
     TaskRunnerTimer<WidgetBase> request_animation_after_delay_timer_;
 
+#if !defined(MINI_UI_QUICKJS)
     // The task runner on the main thread used for compositor tasks.
     scoped_refptr<base::SingleThreadTaskRunner> main_thread_compositor_task_runner_;
     base::PlatformThreadId main_thread_id_ = base::kInvalidThreadId;
@@ -558,6 +640,7 @@ private:
     // Set when the compositor is initialized.
     std::optional<int> max_render_buffer_bounds_gpu_;
     std::optional<int> max_render_buffer_bounds_sw_;
+#endif
 
     // Tracks when the compositing setup for this widget has been torn down or
     // disconnected in preparation to destroy this widget.

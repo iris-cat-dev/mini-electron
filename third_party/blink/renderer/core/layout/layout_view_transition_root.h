@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIEW_TRANSITION_ROOT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIEW_TRANSITION_ROOT_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 
@@ -53,5 +55,7 @@ template <> struct DowncastTraits<LayoutViewTransitionRoot> {
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIEW_TRANSITION_ROOT_H_

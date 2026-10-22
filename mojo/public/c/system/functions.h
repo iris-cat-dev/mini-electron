@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,7 +40,8 @@ extern "C" {
 //       specified for this call but the library has already been successfully
 //       loaded and partially initialized by a previous call with the same flag.
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |options| was non-null and invalid.
-MOJO_SYSTEM_EXPORT MojoResult MojoInitialize(const struct MojoInitializeOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoInitialize(const struct MojoInitializeOptions* options);
 
 // Shuts down Mojo in the calling application.
 //
@@ -59,7 +60,8 @@ MOJO_SYSTEM_EXPORT MojoResult MojoInitialize(const struct MojoInitializeOptions*
 //   |MOJO_RESULT_FAILED_PRECONDITION| if |MojoInitialize()| was never called.
 //   |MOJO_RESULT_UNIMPLEMENTED| if the caller is a Mojo Core embedder and is
 //       therefore not loading Mojo Core as a shared library.
-MOJO_SYSTEM_EXPORT MojoResult MojoShutdown(const struct MojoShutdownOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoShutdown(const struct MojoShutdownOptions* options);
 
 // Returns the time, in microseconds, since some undefined point in the past.
 // The values are only meaningful relative to other values that were obtained
@@ -92,10 +94,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoClose(MojoHandle handle);
 //       last known signals state of |handle|.
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |handle| is not a valid handle or
 //       |signals_state| is null.
-MOJO_SYSTEM_EXPORT MojoResult MojoQueryHandleSignalsState(MojoHandle handle, struct MojoHandleSignalsState* signals_state);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoQueryHandleSignalsState(MojoHandle handle,
+                            struct MojoHandleSignalsState* signals_state);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_FUNCTIONS_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_FUNCTIONS_H_

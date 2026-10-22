@@ -25,13 +25,13 @@
 
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/renderer/core/animation_frame/worker_animation_frame_provider.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_context_creation_attributes_core.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_image_source.h"
-#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
 namespace blink {
@@ -82,12 +82,16 @@ void CanvasRenderingContext::DidDraw(const SkIRect& dirty_rect, CanvasPerformanc
     CanvasRenderingContextHost* const host = Host();
     host->DidDraw(dirty_rect);
 
+#if !defined(MINI_UI_QUICKJS)
     auto& monitor = GetCanvasPerformanceMonitor();
     monitor.DidDraw(draw_type);
+#endif
     if (did_draw_in_current_task_)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     monitor.CurrentTaskDrawsToContext(this);
+#endif
     did_draw_in_current_task_ = true;
     // We need to store whether the document is being printed because the
     // document may exit printing state by the time DidProcessTask is called.
@@ -123,18 +127,22 @@ void CanvasRenderingContext::RecordUMACanvasRenderingAPI()
             case CanvasRenderingContext::CanvasRenderingAPI::k2D:
                 feature = WebFeature::kOffscreenCanvas_2D;
                 break;
+#if !defined(MINI_UI_QUICKJS)
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgl:
                 feature = WebFeature::kOffscreenCanvas_WebGL;
                 break;
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgl2:
                 feature = WebFeature::kOffscreenCanvas_WebGL2;
                 break;
+#endif
             case CanvasRenderingContext::CanvasRenderingAPI::kBitmaprenderer:
                 feature = WebFeature::kOffscreenCanvas_BitmapRenderer;
                 break;
+#if !defined(MINI_UI_QUICKJS)
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgpu:
                 feature = WebFeature::kOffscreenCanvas_WebGPU;
                 break;
+#endif
             default:
                 NOTREACHED();
             }
@@ -143,18 +151,22 @@ void CanvasRenderingContext::RecordUMACanvasRenderingAPI()
             case CanvasRenderingContext::CanvasRenderingAPI::k2D:
                 feature = WebFeature::kHTMLCanvasElement_2D;
                 break;
+#if !defined(MINI_UI_QUICKJS)
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgl:
                 feature = WebFeature::kHTMLCanvasElement_WebGL;
                 break;
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgl2:
                 feature = WebFeature::kHTMLCanvasElement_WebGL2;
                 break;
+#endif
             case CanvasRenderingContext::CanvasRenderingAPI::kBitmaprenderer:
                 feature = WebFeature::kHTMLCanvasElement_BitmapRenderer;
                 break;
+#if !defined(MINI_UI_QUICKJS)
             case CanvasRenderingContext::CanvasRenderingAPI::kWebgpu:
                 feature = WebFeature::kHTMLCanvasElement_WebGPU;
                 break;
+#endif
             default:
                 NOTREACHED();
             }
@@ -163,6 +175,7 @@ void CanvasRenderingContext::RecordUMACanvasRenderingAPI()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasRenderingContext::RecordUKMCanvasRenderingAPI()
 {
     CanvasRenderingContextHost* const host = Host();
@@ -194,12 +207,14 @@ void CanvasRenderingContext::RecordUKMCanvasDrawnToRenderingAPI()
             .Record(ukm_params.ukm_recorder);
     }
 }
+#endif
 
 CanvasRenderingContext::CanvasRenderingAPI CanvasRenderingContext::RenderingAPIFromId(const String& id)
 {
     if (id == "2d") {
         return CanvasRenderingAPI::k2D;
     }
+#if !defined(MINI_UI_QUICKJS)
     if (id == "experimental-webgl") {
         return CanvasRenderingAPI::kWebgl;
     }
@@ -209,12 +224,15 @@ CanvasRenderingContext::CanvasRenderingAPI CanvasRenderingContext::RenderingAPIF
     if (id == "webgl2") {
         return CanvasRenderingAPI::kWebgl2;
     }
+#endif
     if (id == "bitmaprenderer") {
         return CanvasRenderingAPI::kBitmaprenderer;
     }
+#if !defined(MINI_UI_QUICKJS)
     if (id == "webgpu") {
         return CanvasRenderingAPI::kWebgpu;
     }
+#endif
     return CanvasRenderingAPI::kUnknown;
 }
 
@@ -234,10 +252,12 @@ void CanvasRenderingContext::RenderTaskEnded()
     did_draw_in_current_task_ = false;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CanvasPerformanceMonitor& CanvasRenderingContext::GetCanvasPerformanceMonitor()
 {
     DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<CanvasPerformanceMonitor>, monitor, ());
     return *monitor;
 }
+#endif
 
 } // namespace blink

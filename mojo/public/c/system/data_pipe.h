@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,24 +24,25 @@ typedef uint32_t MojoCreateDataPipeFlags;
 
 // Options passed to |MojoCreateDataPipe()|.
 struct MOJO_ALIGNAS(8) MojoCreateDataPipeOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoCreateDataPipeFlags|.
-    MojoCreateDataPipeFlags flags;
+  // See |MojoCreateDataPipeFlags|.
+  MojoCreateDataPipeFlags flags;
 
-    // The size of an element in bytes. All transactions and buffer sizes must
-    // consist of an integral number of elements. Must be non-zero.
-    uint32_t element_num_bytes;
+  // The size of an element in bytes. All transactions and buffer sizes must
+  // consist of an integral number of elements. Must be non-zero.
+  uint32_t element_num_bytes;
 
-    // The capacity of the data pipe in bytes. Must be a multiple of
-    // |element_num_bytes|. If successfully created, the pipe will always be able
-    // to queue at least this much data. If zero, the pipe buffer will be of a
-    // system-dependent capacity of at least one element in size.
-    uint32_t capacity_num_bytes;
+  // The capacity of the data pipe in bytes. Must be a multiple of
+  // |element_num_bytes|. If successfully created, the pipe will always be able
+  // to queue at least this much data. If zero, the pipe buffer will be of a
+  // system-dependent capacity of at least one element in size.
+  uint32_t capacity_num_bytes;
 };
 MOJO_STATIC_ASSERT(MOJO_ALIGNOF(int64_t) <= 8, "int64_t has weird alignment");
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateDataPipeOptions) == 16, "MojoCreateDataPipeOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateDataPipeOptions) == 16,
+                   "MojoCreateDataPipeOptions has wrong size");
 
 // Flags passed to |MojoWriteData()| via |MojoWriteDataOptions|. See values
 // defined below.
@@ -57,13 +58,14 @@ typedef uint32_t MojoWriteDataFlags;
 
 // Options passed to |MojoWriteData()|.
 struct MOJO_ALIGNAS(8) MojoWriteDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoWriteDataFlags|.
-    MojoWriteDataFlags flags;
+  // See |MojoWriteDataFlags|.
+  MojoWriteDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoWriteDataOptions) == 8, "MojoWriteDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoWriteDataOptions) == 8,
+                   "MojoWriteDataOptions has wrong size");
 
 // Flags passed to |MojoBeginWriteData()| via |MojoBeginWriteDataOptions|. See
 // values defined below.
@@ -79,13 +81,14 @@ typedef uint32_t MojoBeginWriteDataFlags;
 
 // Options passed to |MojoBeginWriteData()|.
 struct MOJO_ALIGNAS(8) MojoBeginWriteDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoBeginWriteDataFlags|.
-    MojoBeginWriteDataFlags flags;
+  // See |MojoBeginWriteDataFlags|.
+  MojoBeginWriteDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoBeginWriteDataOptions) == 8, "MojoBeginWriteDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoBeginWriteDataOptions) == 8,
+                   "MojoBeginWriteDataOptions has wrong size");
 
 // Flags passed to |MojoEndWriteData()| via |MojoEndWriteDataOptions|. See
 // values defined below.
@@ -96,13 +99,14 @@ typedef uint32_t MojoEndWriteDataFlags;
 
 // Options passed to |MojoEndWriteData()|.
 struct MOJO_ALIGNAS(8) MojoEndWriteDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoEndWriteDataFlags|.
-    MojoEndWriteDataFlags flags;
+  // See |MojoEndWriteDataFlags|.
+  MojoEndWriteDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoEndWriteDataOptions) == 8, "MojoEndWriteDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoEndWriteDataOptions) == 8,
+                   "MojoEndWriteDataOptions has wrong size");
 
 // Flags passed to |MojoReadData()| via |MojoReadDataOptions|.
 typedef uint32_t MojoReadDataFlags;
@@ -134,13 +138,14 @@ typedef uint32_t MojoReadDataFlags;
 
 // Options passed to |MojoReadData()|.
 struct MOJO_ALIGNAS(8) MojoReadDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoReadDataFlags|.
-    MojoReadDataFlags flags;
+  // See |MojoReadDataFlags|.
+  MojoReadDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoReadDataOptions) == 8, "MojoReadDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoReadDataOptions) == 8,
+                   "MojoReadDataOptions has wrong size");
 
 // Flags passed to |MojoBeginReadData()| via |MojoBeginReadDataOptions|. See
 // values defined below.
@@ -151,13 +156,14 @@ typedef uint32_t MojoBeginReadDataFlags;
 
 // Options passed to |MojoBeginReadData()|.
 struct MOJO_ALIGNAS(8) MojoBeginReadDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoBeginReadDataFlags|.
-    MojoBeginReadDataFlags flags;
+  // See |MojoBeginReadDataFlags|.
+  MojoBeginReadDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoBeginReadDataOptions) == 8, "MojoBeginReadDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoBeginReadDataOptions) == 8,
+                   "MojoBeginReadDataOptions has wrong size");
 
 // Flags passed to |MojoEndReadData()| via |MojoEndReadDataOptions|. See
 // values defined below.
@@ -168,13 +174,14 @@ typedef uint32_t MojoEndReadDataFlags;
 
 // Options passed to |MojoEndReadData()|.
 struct MOJO_ALIGNAS(8) MojoEndReadDataOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoEndReadDataFlags|.
-    MojoEndReadDataFlags flags;
+  // See |MojoEndReadDataFlags|.
+  MojoEndReadDataFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoEndReadDataOptions) == 8, "MojoEndReadDataOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoEndReadDataOptions) == 8,
+                   "MojoEndReadDataOptions has wrong size");
 
 #ifdef __cplusplus
 extern "C" {
@@ -204,8 +211,10 @@ extern "C" {
 //       been reached (e.g., if the requested capacity was too large, or if the
 //       maximum number of handles was exceeded).
 //   |MOJO_RESULT_UNIMPLEMENTED| if an unsupported flag was set in |*options|.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateDataPipe(
-    const struct MojoCreateDataPipeOptions* options, MojoHandle* data_pipe_producer_handle, MojoHandle* data_pipe_consumer_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoCreateDataPipe(const struct MojoCreateDataPipeOptions* options,
+                   MojoHandle* data_pipe_producer_handle,
+                   MojoHandle* data_pipe_consumer_handle);
 
 // Writes the data pipe producer given by |data_pipe_producer_handle|.
 //
@@ -235,8 +244,11 @@ MOJO_SYSTEM_EXPORT MojoResult MojoCreateDataPipe(
 //   |MOJO_RESULT_SHOULD_WAIT| if no data can currently be written (and the
 //       consumer is still open) and |options->flags| does *not* have
 //       |MOJO_WRITE_DATA_FLAG_ALL_OR_NONE| set.
-MOJO_SYSTEM_EXPORT MojoResult MojoWriteData(
-    MojoHandle data_pipe_producer_handle, const void* elements, uint32_t* num_bytes, const struct MojoWriteDataOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoWriteData(MojoHandle data_pipe_producer_handle,
+              const void* elements,
+              uint32_t* num_bytes,
+              const struct MojoWriteDataOptions* options);
 
 // Begins a two-phase write to the data pipe producer given by
 // |data_pipe_producer_handle|. On success |*buffer| will be a pointer to which
@@ -276,8 +288,11 @@ MOJO_SYSTEM_EXPORT MojoResult MojoWriteData(
 //       called, but not yet the matching |MojoEndWriteData()|).
 //   |MOJO_RESULT_SHOULD_WAIT| if no data can currently be written (and the
 //       consumer is still open).
-MOJO_SYSTEM_EXPORT MojoResult MojoBeginWriteData(
-    MojoHandle data_pipe_producer_handle, const struct MojoBeginWriteDataOptions* options, void** buffer, uint32_t* buffer_num_bytes);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoBeginWriteData(MojoHandle data_pipe_producer_handle,
+                   const struct MojoBeginWriteDataOptions* options,
+                   void** buffer,
+                   uint32_t* buffer_num_bytes);
 
 // Ends a two-phase write that was previously initiated by
 // |MojoBeginWriteData()| for the same |data_pipe_producer_handle|.
@@ -302,7 +317,10 @@ MOJO_SYSTEM_EXPORT MojoResult MojoBeginWriteData(
 //   |MOJO_RESULT_FAILED_PRECONDITION| if the data pipe producer is not in a
 //       two-phase write (e.g., |MojoBeginWriteData()| was not called or
 //       |MojoEndWriteData()| has already been called).
-MOJO_SYSTEM_EXPORT MojoResult MojoEndWriteData(MojoHandle data_pipe_producer_handle, uint32_t num_bytes_written, const struct MojoEndWriteDataOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoEndWriteData(MojoHandle data_pipe_producer_handle,
+                 uint32_t num_bytes_written,
+                 const struct MojoEndWriteDataOptions* options);
 
 // Reads data from the data pipe consumer given by |data_pipe_consumer_handle|.
 // May also be used to discard data or query the amount of data available.
@@ -351,8 +369,11 @@ MOJO_SYSTEM_EXPORT MojoResult MojoEndWriteData(MojoHandle data_pipe_producer_han
 //   |MOJO_RESULT_SHOULD_WAIT| if there is no data to be read or discarded (and
 //       the producer is still open) and |options->flags| does *not* have
 //       |MOJO_READ_DATA_FLAG_ALL_OR_NONE| set.
-MOJO_SYSTEM_EXPORT MojoResult MojoReadData(
-    MojoHandle data_pipe_consumer_handle, const struct MojoReadDataOptions* options, void* elements, uint32_t* num_bytes);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoReadData(MojoHandle data_pipe_consumer_handle,
+             const struct MojoReadDataOptions* options,
+             void* elements,
+             uint32_t* num_bytes);
 
 // Begins a two-phase read from the data pipe consumer given by
 // |data_pipe_consumer_handle|. On success, |*buffer| will be a pointer from
@@ -380,8 +401,11 @@ MOJO_SYSTEM_EXPORT MojoResult MojoReadData(
 //       called, but not yet the matching |MojoEndReadData()|).
 //   |MOJO_RESULT_SHOULD_WAIT| if no data can currently be read (and the
 //       producer is still open).
-MOJO_SYSTEM_EXPORT MojoResult MojoBeginReadData(
-    MojoHandle data_pipe_consumer_handle, const struct MojoBeginReadDataOptions* options, const void** buffer, uint32_t* buffer_num_bytes);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoBeginReadData(MojoHandle data_pipe_consumer_handle,
+                  const struct MojoBeginReadDataOptions* options,
+                  const void** buffer,
+                  uint32_t* buffer_num_bytes);
 
 // Ends a two-phase read from the data pipe consumer given by
 // |data_pipe_consumer_handle| that was begun by a call to |MojoBeginReadData()|
@@ -404,10 +428,13 @@ MOJO_SYSTEM_EXPORT MojoResult MojoBeginReadData(
 //   |MOJO_RESULT_FAILED_PRECONDITION| if the data pipe consumer is not in a
 //       two-phase read (e.g., |MojoBeginReadData()| was not called or
 //       |MojoEndReadData()| has already been called).
-MOJO_SYSTEM_EXPORT MojoResult MojoEndReadData(MojoHandle data_pipe_consumer_handle, uint32_t num_bytes_read, const struct MojoEndReadDataOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoEndReadData(MojoHandle data_pipe_consumer_handle,
+                uint32_t num_bytes_read,
+                const struct MojoEndReadDataOptions* options);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_DATA_PIPE_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_DATA_PIPE_H_

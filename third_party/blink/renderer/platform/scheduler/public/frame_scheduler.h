@@ -10,18 +10,24 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/unguessable_token.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#endif
 #include "third_party/blink/public/mojom/loader/pause_subresource_loading_handle.mojom-blink.h"
 #include "third_party/blink/public/platform/task_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_or_worker_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 }
+#endif
 
 namespace blink {
 
@@ -34,8 +40,10 @@ public:
     public:
         ~Delegate() override = default;
 
+#if !defined(MINI_UI_QUICKJS)
         virtual ukm::UkmRecorder* GetUkmRecorder() = 0;
         virtual ukm::SourceId GetUkmSourceId() = 0;
+#endif
 
         // Called when a frame has exceeded a total task time threshold (100ms).
         virtual void UpdateTaskTime(base::TimeDelta time) = 0;
@@ -50,10 +58,12 @@ public:
         {
         }
 
+#if !defined(MINI_UI_QUICKJS)
         // Returns a `DocumentResourceCoordinator` to inform of feature usage by the
         // frame. May be nullptr when the PerformanceManagerInstrumentation feature
         // is disabled or in tests.
         virtual DocumentResourceCoordinator* GetDocumentResourceCoordinator() = 0;
+#endif
     };
 
     ~FrameScheduler() override = default;
@@ -114,7 +124,9 @@ public:
     // tree.
     virtual bool IsInEmbeddedFrameTree() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     virtual void TraceUrlChange(const String&) = 0;
+#endif
 
     // Keep track of the amount of time spent running tasks for the frame.
     // Forwards this tally to PageLoadMetrics and resets it each time it reaches
@@ -181,8 +193,10 @@ public:
     // of the page.
     virtual bool IsExemptFromBudgetBasedThrottling() const = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns UKM source id for recording metrics associated with this frame.
     virtual ukm::SourceId GetUkmSourceId() = 0;
+#endif
 
     FrameScheduler* ToFrameScheduler() override
     {

@@ -109,7 +109,9 @@ static void AutoExpandSearchableHiddenElementsUpFrameTree(Range* range)
     if (DisplayLockUtilities::RevealHiddenUntilFoundAncestors(first_node)) {
         needs_layout_shift_allowance = true;
         UseCounter::Count(first_node.GetDocument(), WebFeature::kBeforematchRevealedHiddenMatchable);
+#if !defined(MINI_UI_QUICKJS)
         first_node.GetDocument().MarkHasFindInPageBeforematchExpandedHiddenMatchable();
+#endif
     }
 
     if (needs_layout_shift_allowance) {
@@ -748,9 +750,11 @@ int TextFinder::SelectFindMatch(unsigned index, gfx::Rect* selection_rect)
             active_match_bounding_box = ComputeTextRect(EphemeralRange(active_match_.Get()));
         }
 
-        // Zoom to the active match.
         active_match_rect = OwnerFrame().GetFrameView()->ConvertToRootFrame(active_match_bounding_box);
+#if !defined(MINI_UI_QUICKJS)
+        // Zoom to the active match.
         OwnerFrame().LocalRoot()->FrameWidgetImpl()->ZoomToFindInPageRect(active_match_rect);
+#endif
     }
 
     if (selection_rect)
@@ -861,6 +865,7 @@ void TextFinder::Scroll(std::unique_ptr<AsyncScrollContext> context)
 
     ScrollToVisible(context->range);
 
+#if !defined(MINI_UI_QUICKJS)
     // If the user is browsing a page with autosizing, adjust the zoom to the
     // column where the next hit has been found. Doing this when autosizing is
     // not set will result in a zoom reset on small devices.
@@ -868,6 +873,7 @@ void TextFinder::Scroll(std::unique_ptr<AsyncScrollContext> context)
         OwnerFrame().LocalRoot()->FrameWidgetImpl()->ZoomToFindInPageRect(
             OwnerFrame().GetFrameView()->ConvertToRootFrame(ComputeTextRect(EphemeralRange(context->range))));
     }
+#endif
 
     // DidFindMatch will race against this to add a text match marker to this
     // range. In the case where the match is hidden and the beforematch event (or

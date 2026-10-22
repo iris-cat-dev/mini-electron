@@ -13,12 +13,11 @@ namespace mojo::internal {
 // be private while the bindings layer can still easily use it. Code outside the
 // mojo namespace should not be reaching into mojo::internal after all...
 struct DefaultConstructTag {
-    constexpr operator mojo::DefaultConstruct::Tag() const
-    {
-        return mojo::DefaultConstruct::Tag();
-    }
+  constexpr operator mojo::DefaultConstruct::Tag() const {
+    return mojo::DefaultConstruct::Tag();
+  }
 };
 
-} // namespace mojo::internal
+}  // namespace mojo::internal
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_LIB_DEFAULT_CONSTRUCT_TAG_INTERNAL_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_LIB_DEFAULT_CONSTRUCT_TAG_INTERNAL_H_

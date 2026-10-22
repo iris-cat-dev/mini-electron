@@ -5,8 +5,10 @@
 #include "third_party/blink/renderer/core/loader/resource_load_observer_for_worker.h"
 
 #include "services/network/public/cpp/ip_address_space_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_probe_sink.h"
 #include "third_party/blink/renderer/core/core_probes_inl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/loader/mixed_content_checker.h"
 #include "third_party/blink/renderer/core/loader/worker_fetch_context.h"
@@ -39,6 +41,7 @@ bool network::IsLessPublicAddressSpace(network::mojom::IPAddressSpace lhs, netwo
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 ResourceLoadObserverForWorker::ResourceLoadObserverForWorker(CoreProbeSink& probe, const ResourceFetcherProperties& properties,
     WorkerFetchContext& worker_fetch_context, const base::UnguessableToken& devtools_worker_token)
     : probe_(probe)
@@ -47,6 +50,13 @@ ResourceLoadObserverForWorker::ResourceLoadObserverForWorker(CoreProbeSink& prob
     , devtools_worker_token_(devtools_worker_token)
 {
 }
+#else
+ResourceLoadObserverForWorker::ResourceLoadObserverForWorker(const ResourceFetcherProperties& properties, WorkerFetchContext& worker_fetch_context)
+    : fetcher_properties_(properties)
+    , worker_fetch_context_(worker_fetch_context)
+{
+}
+#endif
 
 ResourceLoadObserverForWorker::~ResourceLoadObserverForWorker() = default;
 
@@ -57,8 +67,10 @@ void ResourceLoadObserverForWorker::DidStartRequest(const FetchParameters&, Reso
 void ResourceLoadObserverForWorker::WillSendRequest(const ResourceRequest& request, const ResourceResponse& redirect_response, ResourceType resource_type,
     const ResourceLoaderOptions& options, RenderBlockingBehavior render_blocking_behavior, const Resource* resource)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::WillSendRequest(worker_fetch_context_->GetExecutionContext(), nullptr, fetcher_properties_->GetFetchClientSettingsObject().GlobalObjectUrl(),
         request, redirect_response, options, resource_type, render_blocking_behavior, base::TimeTicks::Now());
+#endif
 }
 
 void ResourceLoadObserverForWorker::DidChangePriority(uint64_t identifier, ResourceLoadPriority priority, int intra_priority_value)
@@ -94,18 +106,24 @@ void ResourceLoadObserverForWorker::DidReceiveResponse(
         MixedContentChecker::HandleCertificateError(
             response, request.GetRequestContext(), MixedContent::CheckModeForPlugin::kLax, worker_fetch_context_->GetContentSecurityNotifier());
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveResourceResponse(probe_, identifier, nullptr, response, resource);
+#endif
 }
 
 void ResourceLoadObserverForWorker::DidReceiveData(uint64_t identifier, base::SpanOrSize<const char> chunk)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveData(probe_, identifier, nullptr, chunk);
+#endif
 }
 
 void ResourceLoadObserverForWorker::DidReceiveTransferSizeUpdate(uint64_t identifier, int transfer_size_diff)
 {
     DCHECK_GT(transfer_size_diff, 0);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidReceiveEncodedDataLength(probe_, nullptr, identifier, transfer_size_diff);
+#endif
 }
 
 void ResourceLoadObserverForWorker::DidDownloadToBlob(uint64_t identifier, BlobDataHandle* blob)
@@ -114,25 +132,33 @@ void ResourceLoadObserverForWorker::DidDownloadToBlob(uint64_t identifier, BlobD
 
 void ResourceLoadObserverForWorker::DidFinishLoading(uint64_t identifier, base::TimeTicks finish_time, int64_t encoded_data_length, int64_t decoded_body_length)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFinishLoading(probe_, identifier, nullptr, finish_time, encoded_data_length, decoded_body_length);
+#endif
 }
 
 void ResourceLoadObserverForWorker::DidFailLoading(const KURL&, uint64_t identifier, const ResourceError& error, int64_t, IsInternalRequest)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::DidFailLoading(probe_, identifier, nullptr, error, devtools_worker_token_);
+#endif
 }
 
 bool ResourceLoadObserverForWorker::InterestedInAllRequests()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (probe_) {
         return probe_->HasInspectorNetworkAgents();
     }
+#endif
     return false;
 }
 
 void ResourceLoadObserverForWorker::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(probe_);
+#endif
     visitor->Trace(fetcher_properties_);
     visitor->Trace(worker_fetch_context_);
     ResourceLoadObserver::Trace(visitor);

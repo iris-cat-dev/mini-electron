@@ -49,8 +49,11 @@ public:
     // to blink.
     base::TimeTicks NavigationStartAsMonotonicTime() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // The timings after the page is restored from back-forward cache.
     BackForwardCacheRestoreTimings BackForwardCacheRestore() const;
+
+#endif
 
     // The time the first paint operation was performed.
     uint64_t FirstPaintForMetrics() const;
@@ -77,6 +80,7 @@ public:
     // where the page's primary content is visible.
     uint64_t FirstMeaningfulPaint() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // The time of the candidate of first 'meaningful' paint, A meaningful paint
     // candidate indicates the first time we considered a paint to qualify as the
     // potential first meaningful paint. But, be careful that it may be an
@@ -84,6 +88,7 @@ public:
     // TODO(crbug.com/848639): This function is exposed as an experiment, and if
     // not useful, this function can be removed.
     uint64_t FirstMeaningfulPaintCandidate() const;
+#endif
 
     LargestContentfulPaintDetailsForReporting LargestContentfulPaintDetailsForMetrics() const;
 

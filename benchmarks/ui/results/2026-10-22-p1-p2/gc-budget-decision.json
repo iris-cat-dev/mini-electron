@@ -1,0 +1,42 @@
+{
+  "status": "selected 64 MiB minimum growth and 100% retained-heap headroom after actual 5000-row Vue/React trial",
+  "before_policy": {
+    "minimum_growth_bytes": 33554432,
+    "retained_growth_ratio": 0.5
+  },
+  "selected_policy": {
+    "minimum_growth_bytes": 67108864,
+    "retained_growth_ratio": 1.0
+  },
+  "atomic_gc_not_hard_latency_budget": true,
+  "measurements": [
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "warmups": 2,
+      "iterations": 7,
+      "before_workload_wall_ms": 104916.2081,
+      "after_workload_wall_ms": 92874.9161,
+      "before_cpu_seconds": 106.515625,
+      "after_cpu_seconds": 94.0625,
+      "before_private_bytes": 1906098176,
+      "after_private_bytes": 2075176960,
+      "status": "complete",
+      "exit_code": 0
+    },
+    {
+      "framework": "react",
+      "rows": 5000,
+      "warmups": 2,
+      "iterations": 7,
+      "before_workload_wall_ms": 89173.3866,
+      "after_workload_wall_ms": 71777.6723,
+      "before_cpu_seconds": 89.875,
+      "after_cpu_seconds": 72.3125,
+      "before_private_bytes": 1053470720,
+      "after_private_bytes": 1100427264,
+      "status": "complete",
+      "exit_code": 0
+    }
+  ]
+}

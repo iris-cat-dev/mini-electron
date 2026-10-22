@@ -30,7 +30,9 @@
 
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_id_provider.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_document_timeline_options.h"
 #include "third_party/blink/renderer/core/animation/animation.h"
@@ -85,8 +87,10 @@ DocumentTimeline::DocumentTimeline(Document* document, base::TimeDelta origin_ti
         timing_ = MakeGarbageCollected<DocumentTimelineTiming>(this);
     else
         timing_ = timing;
+#if !defined(MINI_UI_QUICKJS)
     if (Platform::Current()->IsThreadedAnimationEnabled())
         EnsureCompositorTimeline();
+#endif
 
     DCHECK(document);
 }
@@ -209,6 +213,7 @@ void DocumentTimeline::InvalidateKeyframeEffects(const TreeScope& tree_scope, co
         animation->InvalidateKeyframeEffect(tree_scope, reason);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::AnimationTimeline* DocumentTimeline::EnsureCompositorTimeline()
 {
     if (compositor_timeline_)
@@ -217,6 +222,7 @@ cc::AnimationTimeline* DocumentTimeline::EnsureCompositorTimeline()
     compositor_timeline_ = cc::AnimationTimeline::Create(cc::AnimationIdProvider::NextTimelineId());
     return compositor_timeline_.get();
 }
+#endif
 
 void DocumentTimeline::Trace(Visitor* visitor) const
 {

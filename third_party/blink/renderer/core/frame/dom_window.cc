@@ -17,7 +17,9 @@
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/serialization/post_message_helper.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
@@ -29,7 +31,9 @@
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/coop_access_violation_report_body.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/frame_client.h"
@@ -37,9 +41,13 @@
 #include "third_party/blink/renderer/core/frame/frame_owner.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/location.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/report.h"
 #include "third_party/blink/renderer/core/frame/reporting_context.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/user_activation.h"
 #include "third_party/blink/renderer/core/input/input_device_capabilities.h"
@@ -47,8 +55,12 @@
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -57,6 +69,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 String CoopReportOnlyErrorMessage(const String& property_name)
@@ -73,6 +86,7 @@ String CoopReportOnlyErrorMessage(const String& property_name)
 }
 
 } // namespace
+#endif
 
 DOMWindow::DOMWindow(Frame& frame)
     : frame_(frame)
@@ -219,7 +233,9 @@ DOMWindow* DOMWindow::opener() const
 
 void DOMWindow::setOpenerForBindings(v8::Isolate* isolate, ScriptValue opener, ExceptionState& exception_state)
 {
+#if !defined(MINI_UI_QUICKJS)
     ReportCoopAccess("opener");
+#endif
     if (!GetFrame()) {
         return;
     }
@@ -309,7 +325,9 @@ DOMWindow* DOMWindow::AnonymousIndexedGetter(uint32_t index)
 {
     RecordWindowProxyAccessMetrics(WebFeature::kWindowProxyCrossOriginAccessIndexedGetter, WebFeature::kWindowProxyCrossOriginAccessFromOtherPageIndexedGetter,
         mojom::blink::WindowProxyAccessType::kAnonymousIndexedGetter);
+#if !defined(MINI_UI_QUICKJS)
     ReportCoopAccess("indexed");
+#endif
 
     if (!GetFrame())
         return nullptr;
@@ -480,7 +498,9 @@ void DOMWindow::Close(LocalDOMWindow* incumbent_window)
     if (auto* local_dom_window = DynamicTo<LocalDOMWindow>(this)) {
         execution_context = local_dom_window->GetExecutionContext();
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::BreakableLocation(execution_context, "DOMWindow.close");
+#endif
 
     page->CloseSoon();
 
@@ -535,6 +555,7 @@ void DOMWindow::focus(v8::Isolate* isolate)
         // Allow focus if the request is coming from our opener window.
         allow_focus = opener() && opener() != this && incumbent_window == opener();
 
+#if !defined(MINI_UI_QUICKJS)
         // Also allow focus from a user activation on a document picture-in-picture
         // window opened by this window. In this case, we determine the originating
         // frame to be the picture-in-picture window regardless of whether or not
@@ -551,6 +572,7 @@ void DOMWindow::focus(v8::Isolate* isolate)
                 originating_frame = pip_window->GetFrame();
             }
         }
+#endif
     }
 
     // If we're a top level window, bring the window to the front.
@@ -604,6 +626,7 @@ void DOMWindow::PostMessageForTesting(scoped_refptr<SerializedScriptValue> messa
     DoPostMessage(std::move(message), ports, options, source, exception_state);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DOMWindow::InstallCoopAccessMonitor(LocalFrame* accessing_frame, network::mojom::blink::CrossOriginOpenerPolicyReporterParamsPtr coop_reporter_params,
     bool is_in_same_virtual_coop_related_group)
 {
@@ -741,6 +764,7 @@ void DOMWindow::ReportCoopAccess(const char* property_name)
         it = coop_access_monitor_.erase(it);
     }
 }
+#endif
 
 void DOMWindow::DoPostMessage(scoped_refptr<SerializedScriptValue> message, const MessagePortArray& ports, const WindowPostMessageOptions* options,
     LocalDOMWindow* source, ExceptionState& exception_state)
@@ -988,10 +1012,13 @@ void DOMWindow::Trace(Visitor* visitor) const
     visitor->Trace(window_proxy_manager_);
     visitor->Trace(input_capabilities_);
     visitor->Trace(location_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(coop_access_monitor_);
+#endif
     EventTarget::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void DOMWindow::DisconnectCoopAccessMonitor(const LocalFrameToken& accessing_main_frame)
 {
     auto it = coop_access_monitor_.begin();
@@ -1003,5 +1030,6 @@ void DOMWindow::DisconnectCoopAccessMonitor(const LocalFrameToken& accessing_mai
         }
     }
 }
+#endif
 
 } // namespace blink

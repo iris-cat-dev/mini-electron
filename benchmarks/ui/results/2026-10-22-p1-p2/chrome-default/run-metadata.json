@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "generated_utc": "2026-10-22T09:03:07.389960+00:00",
+  "engine": "installed Google Chrome",
+  "chrome_executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "chrome_executable_sha256": "de999bce6a1c954df71a8f15bf751b336172f55ac1a0325bb0580cbc2121268c",
+  "control_source_sha256": "edbb1752ec00c5e86d3ff0c72a3b55cadb82782f9d7fd316abbd013483dde33d",
+  "runner": {
+    "python_version": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+    "operating_system": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_processors": 32,
+    "perf_counter_resolution_seconds": 1e-07,
+    "processor_name": "13th Gen Intel(R) Core(TM) i9-13900K",
+    "installed_physical_memory_bytes": 34359738368,
+    "query_performance_frequency_hz": 10000000,
+    "active_power_scheme": "电源方案 GUID: e3e0144b-5e60-4b11-a19c-c62b63356f04  (卓越性能)",
+    "active_power_scheme_query_exit": 0
+  },
+  "cdp_transport": {
+    "package": "websocket-client",
+    "version": "1.9.2"
+  },
+  "matrix": {
+    "frameworks": [
+      "vue",
+      "react"
+    ],
+    "row_counts": [
+      100,
+      1000,
+      5000,
+      10000
+    ],
+    "warmups": 2,
+    "measured_iterations": 7,
+    "width": 1280,
+    "height": 720,
+    "device_scale": 1.0,
+    "timeout_ms": 900000
+  },
+  "headed": true,
+  "disable_gpu_requested": false,
+  "profiled_diagnostic": false,
+  "frameworks": {
+    "schema_version": 1,
+    "downloaded_utc": "2026-10-22",
+    "distributions": [
+      {
+        "package": "vue",
+        "version": "3.5.13",
+        "distribution": "dist/vue.global.prod.js",
+        "file": "assets/vendor/vue.global.prod.js",
+        "download_url": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.global.prod.js",
+        "sha256": "c459ba7cc8db65c982589fa5d64c7ff478877e8e5b0fd75683207cec6a4e89e8",
+        "bytes": 157924,
+        "license": "MIT",
+        "license_file": "assets/vendor/LICENSE.vue.txt",
+        "license_url": "https://cdn.jsdelivr.net/npm/vue@3.5.13/LICENSE",
+        "license_sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      },
+      {
+        "package": "react",
+        "version": "18.3.1",
+        "distribution": "umd/react.production.min.js",
+        "file": "assets/vendor/react.production.min.js",
+        "download_url": "https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js",
+        "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+        "bytes": 10751,
+        "license": "MIT",
+        "license_file": "assets/vendor/LICENSE.react.txt",
+        "license_url": "https://cdn.jsdelivr.net/npm/react@18.3.1/LICENSE",
+        "license_sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+      },
+      {
+        "package": "react-dom",
+        "version": "18.3.1",
+        "distribution": "umd/react-dom.production.min.js",
+        "file": "assets/vendor/react-dom.production.min.js",
+        "download_url": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js",
+        "sha256": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+        "bytes": 131835,
+        "license": "MIT",
+        "license_file": "assets/vendor/LICENSE.react-dom.txt",
+        "license_url": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/LICENSE",
+        "license_sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+      }
+    ]
+  },
+  "assets_sha256": {
+    "assets/app.css": "0c642db7268d426446237ec87452508ef530d36ffd6094eb70cea5480a894a0d",
+    "assets/common.js": "f459db48c87541bdfe94f2fe1fec7f0fe774a2edce2023d46ab8b554a4943928",
+    "assets/react-app.js": "1d85cb35a06c2ab19d1e6734ac372682f830f131bc9735a1a1add8e7f3e014b8",
+    "assets/react.html": "2e6dbf48bc765f48d79904ec77b04934ea339717de2420ff5e4f153f6400c940",
+    "assets/vendor/LICENSE.react-dom.txt": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+    "assets/vendor/LICENSE.react.txt": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+    "assets/vendor/LICENSE.vue.txt": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175",
+    "assets/vendor/react-dom.production.min.js": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+    "assets/vendor/react.production.min.js": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+    "assets/vendor/vue.global.prod.js": "c459ba7cc8db65c982589fa5d64c7ff478877e8e5b0fd75683207cec6a4e89e8",
+    "assets/vue-app.js": "2bcf32ba68d316e79697198fdd740a04401bdd8496b235608fe81b200b953add",
+    "assets/vue.html": "b981d66405cb3bf9092f0c999cfcd5c4cb0a508cc673a73d4cc338ea03d77856"
+  },
+  "definitions": {
+    "operation_js_commit_ms": "Identical pinned assets/common.js interval around the framework DOM commit; excludes its later DOM assertion and paint.",
+    "workload_wall_ms": "Chrome wall interval includes genuine vsync-driven requestAnimationFrame waits; do not compare this to mini-ui CPU-offscreen throughput as display FPS.",
+    "cold_startup": "Fresh browser process and private profile for each cell; whole-browser startup includes CDP/viewport setup. Windows filesystem caches are not flushed.",
+    "cpu": "Real Windows job user+kernel accounting includes the Chrome browser and every owned descendant, including exited processes; Python CDP driver is outside the job.",
+    "memory": "Private bytes are summed over active owned-job processes after populated capture. Working-set sums double-count shared pages. Peak job memory is private commit, not peak physical RSS.",
+    "profile": "Profiler is disabled in comparison runs. --profile creates separately labeled diagnostic data.",
+    "normal_exit": "Success requires actual Google Chrome, checked DOM transitions, populated capture and browser process exit code zero. Only this suspended-at-launch owned process tree is assigned to the cleanup job."
+  }
+}

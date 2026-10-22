@@ -5,6 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_FONT_MATCHING_METRICS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_FONT_MATCHING_METRICS_H_
 
+#include <cstdint>
+
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/single_thread_task_runner.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
@@ -17,9 +20,11 @@
 #include "third_party/blink/renderer/platform/wtf/hash_functions.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 // A (generic) wrapper around IdentifiableToken to enable its use as a HashMap
 // key. The |token| represents the parameters by which a font was looked up.
 // However, if |is_deleted_value| or |is_empty_value|, this key represents an
@@ -72,6 +77,7 @@ struct IdentifiableTokenKeyHashTraits : WTF::SimpleClassHashTraits<IdentifiableT
     }
 };
 
+#endif
 // Tracks and reports UKM metrics of attempted font family match attempts (both
 // successful and not successful) by the current frame.
 //
@@ -84,6 +90,9 @@ struct IdentifiableTokenKeyHashTraits : WTF::SimpleClassHashTraits<IdentifiableT
 // regularly.
 class FontMatchingMetrics {
 public:
+#if defined(MINI_UI_QUICKJS)
+    FontMatchingMetrics() = default;
+#else
     enum FontLoadContext { kTopLevelFrame = 0, kSubframe, kWorker };
 
     // Create a FontMatchingMetrics objects for a document or a worker. The
@@ -130,6 +139,7 @@ public:
     void ReportFontFamilyLookupByGenericFamily(const AtomicString& generic_font_family_name, UScriptCode script,
         FontDescription::GenericFamilyType generic_family_type, const AtomicString& resulting_font_name);
 
+#endif
     // Reports for each shaped emoji segment the number of total clusters and the
     // number of clusters that either contain a .notdef/tofu glyph or that is
     // shaped as multiple glyphs, which means the emoji displays incorrectly.
@@ -138,6 +148,7 @@ public:
     // Called on page unload and forces metrics to be flushed.
     void PublishAllMetrics();
 
+#if !defined(MINI_UI_QUICKJS)
     // Called whenever a font lookup event that will be saved in |font_tracker| or
     // |user_font_preference_mapping| occurs.
     void OnFontLookup();
@@ -146,12 +157,14 @@ public:
     // destruction and every minute, as long as additional lookups are occurring.
     void PublishIdentifiabilityMetrics();
 
+#endif
     // Publishes the ratio of correctly shaped to incorrectly shaped emoji
     // segments during the lifetime of this metrics recorder, which usually is
     // coupled to the lifetime of a document or WorkerGlobalContext.
     void PublishEmojiGlyphMetrics();
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void IdentifiabilityMetricsTimerFired(TimerBase*);
 
     // This HashMap generically stores details of font lookups, i.e. what was used
@@ -200,15 +213,18 @@ private:
     TokenToTokenHashMap local_font_existence_by_unique_or_family_name_;
     TokenToTokenHashMap local_font_existence_by_unique_name_only_;
 
+#endif
     uint64_t total_emoji_clusters_shaped_ = 0;
     uint64_t total_broken_emoji_clusters_ = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* const ukm_recorder_;
     const ukm::SourceId source_id_;
 
     WeakPersistent<ExecutionContext> execution_context_;
 
     TaskRunnerTimer<FontMatchingMetrics> identifiability_metrics_timer_;
+#endif
 };
 
 } // namespace blink

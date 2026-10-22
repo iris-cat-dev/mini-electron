@@ -1,0 +1,95 @@
+{
+  "candidate": {
+    "path": "D:\\Project\\mini-electron\\out\\ui-field-inline-after\\build\\ui-benchmark.exe",
+    "coff_timestamp": 1792678197,
+    "sections": {
+      ".text": {
+        "bytes": 23970816,
+        "sha256": "806573e6a9a9cdb236990da1e95216f39b033365a4cfbe508924356336430984"
+      },
+      ".rdata": {
+        "bytes": 14545920,
+        "sha256": "1a9e5bd393b05f0b6eca343657678470237f39202a8bc0049c253bcca0dc3887"
+      },
+      ".data": {
+        "bytes": 257536,
+        "sha256": "e0aec567b701c09ab2e6fb2494b1ac969f9bf92d524d1e51c73104c2f3fb07fb"
+      },
+      ".pdata": {
+        "bytes": 1085952,
+        "sha256": "e0c7f490f7829b59dc8b9554496f8ecf36d885c2365ec23a8f22746d6c6e04f7"
+      },
+      ".fptable": {
+        "bytes": 512,
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+      },
+      ".tls": {
+        "bytes": 1024,
+        "sha256": "3607cfb50a77002d9143f19e42cc0b6f220a4924ece30a132f68f28a404a5e4f"
+      },
+      "_RDATA": {
+        "bytes": 512,
+        "sha256": "b2b0bbe7f033f436e29cc505b521eff81835d3a7b3d7a118d2c4e3ad6f643adc"
+      },
+      "malloc_h": {
+        "bytes": 512,
+        "sha256": "48595efa2f96eb486dee4ef5feaba5eb919c594df381e82523cf4cb4f10586fc"
+      },
+      "prot": {
+        "bytes": 512,
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+      },
+      ".reloc": {
+        "bytes": 288768,
+        "sha256": "99a80425eec124965c65c4916ea945091f0fd3ed46f4212d1c457e4de8c11987"
+      }
+    }
+  },
+  "production": {
+    "path": "D:\\Project\\mini-electron\\out\\ui-field-final-smoke\\build\\ui-benchmark.exe",
+    "coff_timestamp": 1792679564,
+    "sections": {
+      ".text": {
+        "bytes": 23970816,
+        "sha256": "806573e6a9a9cdb236990da1e95216f39b033365a4cfbe508924356336430984"
+      },
+      ".rdata": {
+        "bytes": 14545920,
+        "sha256": "1a9e5bd393b05f0b6eca343657678470237f39202a8bc0049c253bcca0dc3887"
+      },
+      ".data": {
+        "bytes": 257536,
+        "sha256": "e0aec567b701c09ab2e6fb2494b1ac969f9bf92d524d1e51c73104c2f3fb07fb"
+      },
+      ".pdata": {
+        "bytes": 1085952,
+        "sha256": "e0c7f490f7829b59dc8b9554496f8ecf36d885c2365ec23a8f22746d6c6e04f7"
+      },
+      ".fptable": {
+        "bytes": 512,
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+      },
+      ".tls": {
+        "bytes": 1024,
+        "sha256": "3607cfb50a77002d9143f19e42cc0b6f220a4924ece30a132f68f28a404a5e4f"
+      },
+      "_RDATA": {
+        "bytes": 512,
+        "sha256": "b2b0bbe7f033f436e29cc505b521eff81835d3a7b3d7a118d2c4e3ad6f643adc"
+      },
+      "malloc_h": {
+        "bytes": 512,
+        "sha256": "48595efa2f96eb486dee4ef5feaba5eb919c594df381e82523cf4cb4f10586fc"
+      },
+      "prot": {
+        "bytes": 512,
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+      },
+      ".reloc": {
+        "bytes": 288768,
+        "sha256": "99a80425eec124965c65c4916ea945091f0fd3ed46f4212d1c457e4de8c11987"
+      }
+    }
+  },
+  "all_sections_identical": true
+}

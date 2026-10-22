@@ -5,20 +5,27 @@
 #include "third_party/blink/renderer/core/paint/timing/image_element_timing.h"
 
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/frame_timing_details.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/chrome_client.h"
+#endif
 #include "third_party/blink/renderer/core/paint/timing/element_timing_utils.h"
 #include "third_party/blink/renderer/core/style/style_fetched_image.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/platform/graphics/paint/property_tree_state.h"
+#include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
@@ -160,15 +167,22 @@ void ImageElementTiming::NotifyImagePaintedInternal(Node& node, const LayoutObje
     // consistent with Resource Timing.
     const String& image_string = url.GetString();
     const String& image_url = url.ProtocolIsData() ? image_string.Left(kInlineImageMaxChars) : image_string;
+#if defined(MINI_UI_QUICKJS)
+    // The Mini UI renderer paints synchronously on the local CPU and has no
+    // compositor presentation promise. Record the time at which this image is
+    // encountered in the real Blink paint pass as its render time.
+    if (WindowPerformance* performance = DOMWindowPerformance::performance(*GetSupplementable())) {
+        performance->AddElementTiming(ImagePaintString(), image_url, intersection_rect, base::TimeTicks::Now(), load_time, attr,
+            cached_image.IntrinsicSize(respect_orientation), id, element);
+    }
+#else
     element_timings_.emplace_back(
         MakeGarbageCollected<ElementTimingInfo>(image_url, intersection_rect, load_time, attr, cached_image.IntrinsicSize(respect_orientation), id, element));
-    // Only queue a presentation promise when |element_timings_| was empty. All of
-    // the records in |element_timings_| will be processed when the promise
-    // succeeds or fails, and at that time the vector is cleared.
     if (element_timings_.size() == 1) {
         frame->GetChromeClient().NotifyPresentationTime(
             *frame, CrossThreadBindOnce(&ImageElementTiming::ReportImagePaintPresentationTime, WrapCrossThreadWeakPersistent(this)));
     }
+#endif
 }
 
 void ImageElementTiming::NotifyBackgroundImagePainted(
@@ -200,6 +214,7 @@ void ImageElementTiming::NotifyBackgroundImagePainted(
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ImageElementTiming::ReportImagePaintPresentationTime(const viz::FrameTimingDetails& presentation_details)
 {
     base::TimeTicks timestamp = presentation_details.presentation_feedback.timestamp;
@@ -212,6 +227,7 @@ void ImageElementTiming::ReportImagePaintPresentationTime(const viz::FrameTiming
     }
     element_timings_.clear();
 }
+#endif
 
 void ImageElementTiming::NotifyImageRemoved(const LayoutObject* layout_object, const ImageResourceContent* image)
 {
@@ -220,7 +236,9 @@ void ImageElementTiming::NotifyImageRemoved(const LayoutObject* layout_object, c
 
 void ImageElementTiming::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(element_timings_);
+#endif
     visitor->Trace(background_image_timestamps_);
     Supplement<LocalDOMWindow>::Trace(visitor);
 }

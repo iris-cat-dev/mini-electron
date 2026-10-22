@@ -216,6 +216,7 @@ void EventHandlerRegistry::NotifyHandlersChanged(EventTarget* target, EventHandl
     if (!GetPage())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     switch (handler_class) {
     case kScrollEvent:
         GetPage()->GetChromeClient().SetHasScrollEventHandlers(frame, has_active_handlers);
@@ -253,6 +254,7 @@ void EventHandlerRegistry::NotifyHandlersChanged(EventTarget* target, EventHandl
     default:
         NOTREACHED();
     }
+#endif
 
     if (handler_class == kTouchStartOrMoveEventBlocking || handler_class == kTouchStartOrMoveEventBlockingLowLatency) {
         if (auto* node = target->ToNode()) {

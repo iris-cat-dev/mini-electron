@@ -34,8 +34,10 @@
 #include <cmath>
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_id_provider.h"
 #include "cc/animation/filter_animation_curve.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/animation/animation_effect.h"
 #include "third_party/blink/renderer/core/animation/css/compositor_keyframe_color.h"
@@ -45,9 +47,11 @@
 #include "third_party/blink/renderer/core/animation/css/compositor_keyframe_value.h"
 #include "third_party/blink/renderer/core/animation/element_animations.h"
 #include "third_party/blink/renderer/core/animation/keyframe_effect_model.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/background_color_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/box_shadow_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/clip_path_paint_image_generator.h"
+#endif
 #include "third_party/blink/renderer/core/css/properties/computed_style_utils.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
@@ -59,12 +63,19 @@
 #include "third_party/blink/renderer/core/layout/layout_box_model_object.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_transformable_container.h"
+#include "third_party/blink/renderer/core/svg/svg_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/paint/filter_effect_builder.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"
 #include "third_party/blink/renderer/platform/animation/animation_translation_util.h"
 #include "third_party/blink/renderer/platform/animation/compositor_animation.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/platform_paint_worklet_layer_painter.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "ui/gfx/animation/keyframe/animation_curve.h"
@@ -72,6 +83,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 constexpr auto kCompositableProperties = std::to_array<CSSPropertyID>({
@@ -200,6 +212,7 @@ bool CompositedAnimationRequiresProperties(const PropertyHandle& property, Layou
 }
 
 } // namespace
+#endif
 
 CompositorElementIdNamespace CompositorAnimations::CompositorElementNamespaceForProperty(CSSPropertyID property)
 {
@@ -232,6 +245,7 @@ CompositorElementIdNamespace CompositorAnimations::CompositorElementNamespaceFor
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 CompositorAnimations::FailureReasons CompositorAnimations::CheckCanStartEffectOnCompositor(const Timing& timing,
     const Timing::NormalizedTiming& normalized_timing, const Element& target_element, const Animation* animation_to_add, const EffectModel& effect,
     const PaintArtifactCompositor* paint_artifact_compositor, double animation_playback_rate, PropertyHandleSet* unsupported_properties)
@@ -798,6 +812,7 @@ void AddKeyframesForPaintWorkletAnimation(gfx::KeyframedFloatAnimationCurve& cur
 }
 
 } // namespace
+#endif
 
 bool CompositorAnimations::CompositedPropertyRequiresSnapshot(const PropertyHandle& property)
 {
@@ -810,6 +825,7 @@ bool CompositorAnimations::CompositedPropertyRequiresSnapshot(const PropertyHand
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CompositorAnimations::GetAnimationOnCompositor(const Element& target_element, const Timing& timing, const Timing::NormalizedTiming& normalized_timing,
     int group, std::optional<double> start_time, base::TimeDelta time_offset, const KeyframeEffectModelBase& effect,
     Vector<std::unique_ptr<cc::KeyframeModel>>& keyframe_models, double animation_playback_rate, bool is_monotonic_timeline, bool is_boundary_aligned)
@@ -966,6 +982,7 @@ bool CompositorAnimations::CanStartScrollTimelineOnCompositor(Node* target)
     }
     return false;
 }
+#endif
 
 CompositorAnimations::FailureReasons CompositorAnimations::CheckCanStartSVGElementOnCompositor(const SVGElement& svg_element)
 {

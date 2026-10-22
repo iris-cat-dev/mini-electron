@@ -16,6 +16,12 @@
 #include <sddl.h>
 #include <stdint.h>
 #include <stdlib.h>
+#if defined(MINI_UI_QUICKJS)
+#include <bcrypt.h>
+#include "base/numerics/safe_conversions.h"
+#else
+#include "third_party/openssl/openssl/include/openssl/sha.h"
+#endif
 
 #include <iterator>
 #include <map>
@@ -29,8 +35,6 @@
 #include "base/win/scoped_handle.h"
 #include "base/win/scoped_localalloc.h"
 #include "base/win/windows_version.h"
-//#include "third_party/boringssl/src/include/openssl/sha.h"
-#include "third_party/openssl/openssl/include/openssl/sha.h"
 
 namespace base::win {
 
@@ -120,12 +124,20 @@ Sid Sid::FromNamedCapability(const std::wstring& capability_name)
     if (known_cap != known_capabilities->end()) {
         return FromKnownCapability(known_cap->second);
     }
-    static_assert((SHA256_DIGEST_LENGTH / sizeof(DWORD)) == SECURITY_APP_PACKAGE_RID_COUNT);
-    DWORD rids[(SHA256_DIGEST_LENGTH / sizeof(DWORD)) + 2];
+    constexpr size_t kDigestSize = 32;
+    static_assert((kDigestSize / sizeof(DWORD)) == SECURITY_APP_PACKAGE_RID_COUNT);
+    DWORD rids[(kDigestSize / sizeof(DWORD)) + 2];
     rids[0] = SECURITY_CAPABILITY_BASE_RID;
     rids[1] = SECURITY_CAPABILITY_APP_RID;
 
+#if defined(MINI_UI_QUICKJS)
+    const ULONG input_size = base::checked_cast<ULONG>(cap_upper.size() * sizeof(wchar_t));
+    CHECK(BCryptHash(BCRYPT_SHA256_ALG_HANDLE, nullptr, 0,
+              reinterpret_cast<PUCHAR>(cap_upper.data()), input_size,
+              reinterpret_cast<PUCHAR>(&rids[2]), kDigestSize) >= 0);
+#else
     SHA256(reinterpret_cast<const uint8_t*>(cap_upper.c_str()), cap_upper.size() * sizeof(wchar_t), reinterpret_cast<uint8_t*>(&rids[2]));
+#endif
     return FromSubAuthorities(SECURITY_APP_PACKAGE_AUTHORITY, std::size(rids), rids);
 }
 

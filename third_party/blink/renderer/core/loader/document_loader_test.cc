@@ -554,61 +554,85 @@ TEST_F(DocumentLoaderSimTest, FramePolicyIntegrityOnNavigationCommit)
     EXPECT_TRUE(child_window->IsFeatureEnabled(mojom::blink::PermissionsPolicyFeature::kPayment));
 }
 
+
+#if !defined(MINI_UI_QUICKJS)
 TEST_P(DocumentLoaderTest, CommitsDeferredOnSameOriginNavigation)
 {
-    const KURL& requestor_url = KURL(NullURL(), "https://www.example.com/foo.html");
-    WebViewImpl* web_view_impl = web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
-
-    const KURL& same_origin_url = KURL(NullURL(), "https://www.example.com/bar.html");
-    std::unique_ptr<WebNavigationParams> params = WebNavigationParams::CreateWithEmptyHTMLForTesting(same_origin_url);
-    params->requestor_origin = WebSecurityOrigin::Create(WebURL(requestor_url));
-    LocalFrame* local_frame = To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
+    const KURL& requestor_url =
+        KURL(NullURL(), "https://www.example.com/foo.html");
+    WebViewImpl* web_view_impl =
+        web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
+    const KURL& same_origin_url =
+        KURL(NullURL(), "https://www.example.com/bar.html");
+    std::unique_ptr<WebNavigationParams> params =
+        WebNavigationParams::CreateWithEmptyHTMLForTesting(same_origin_url);
+    params->requestor_origin =
+        WebSecurityOrigin::Create(WebURL(requestor_url));
+    LocalFrame* local_frame =
+        To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
     local_frame->Loader().CommitNavigation(std::move(params), nullptr);
-
-    EXPECT_TRUE(local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
+    EXPECT_TRUE(
+        local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
 }
 
 TEST_P(DocumentLoaderTest, CommitsDeferredOnDifferentOriginNavigation)
 {
-    const KURL& requestor_url = KURL(NullURL(), "https://www.example.com/foo.html");
-    WebViewImpl* web_view_impl = web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
-
-    const KURL& other_origin_url = KURL(NullURL(), "https://www.another.com/bar.html");
-    std::unique_ptr<WebNavigationParams> params = WebNavigationParams::CreateWithEmptyHTMLForTesting(other_origin_url);
-    params->requestor_origin = WebSecurityOrigin::Create(WebURL(requestor_url));
-    LocalFrame* local_frame = To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
+    const KURL& requestor_url =
+        KURL(NullURL(), "https://www.example.com/foo.html");
+    WebViewImpl* web_view_impl =
+        web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
+    const KURL& other_origin_url =
+        KURL(NullURL(), "https://www.another.com/bar.html");
+    std::unique_ptr<WebNavigationParams> params =
+        WebNavigationParams::CreateWithEmptyHTMLForTesting(other_origin_url);
+    params->requestor_origin =
+        WebSecurityOrigin::Create(WebURL(requestor_url));
+    LocalFrame* local_frame =
+        To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
     local_frame->Loader().CommitNavigation(std::move(params), nullptr);
-
-    EXPECT_TRUE(local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
+    EXPECT_TRUE(
+        local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
 }
 
 TEST_P(DocumentLoaderTest, CommitsDeferredOnDifferentPortNavigation)
 {
-    const KURL& requestor_url = KURL(NullURL(), "https://www.example.com:8000/foo.html");
-    WebViewImpl* web_view_impl = web_view_helper_.InitializeAndLoad("https://example.com:8000/foo.html");
-
-    const KURL& different_port_url = KURL(NullURL(), "https://www.example.com:8080/bar.html");
-    std::unique_ptr<WebNavigationParams> params = WebNavigationParams::CreateWithEmptyHTMLForTesting(different_port_url);
-    params->requestor_origin = WebSecurityOrigin::Create(WebURL(requestor_url));
-    LocalFrame* local_frame = To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
+    const KURL& requestor_url =
+        KURL(NullURL(), "https://www.example.com:8000/foo.html");
+    WebViewImpl* web_view_impl =
+        web_view_helper_.InitializeAndLoad(
+            "https://example.com:8000/foo.html");
+    const KURL& different_port_url =
+        KURL(NullURL(), "https://www.example.com:8080/bar.html");
+    std::unique_ptr<WebNavigationParams> params =
+        WebNavigationParams::CreateWithEmptyHTMLForTesting(different_port_url);
+    params->requestor_origin =
+        WebSecurityOrigin::Create(WebURL(requestor_url));
+    LocalFrame* local_frame =
+        To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
     local_frame->Loader().CommitNavigation(std::move(params), nullptr);
-
-    EXPECT_TRUE(local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
+    EXPECT_TRUE(
+        local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
 }
 
 TEST_P(DocumentLoaderTest, CommitsNotDeferredOnDataURLNavigation)
 {
-    const KURL& requestor_url = KURL(NullURL(), "https://www.example.com/foo.html");
-    WebViewImpl* web_view_impl = web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
-
-    const KURL& data_url = KURL(NullURL(), "data:,Hello%2C%20World!");
-    std::unique_ptr<WebNavigationParams> params = WebNavigationParams::CreateWithEmptyHTMLForTesting(data_url);
-    params->requestor_origin = WebSecurityOrigin::Create(WebURL(requestor_url));
-    LocalFrame* local_frame = To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
+    const KURL& requestor_url =
+        KURL(NullURL(), "https://www.example.com/foo.html");
+    WebViewImpl* web_view_impl =
+        web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
+    const KURL& data_url =
+        KURL(NullURL(), "data:,Hello%2C%20World!");
+    std::unique_ptr<WebNavigationParams> params =
+        WebNavigationParams::CreateWithEmptyHTMLForTesting(data_url);
+    params->requestor_origin =
+        WebSecurityOrigin::Create(WebURL(requestor_url));
+    LocalFrame* local_frame =
+        To<LocalFrame>(web_view_impl->GetPage()->MainFrame());
     local_frame->Loader().CommitNavigation(std::move(params), nullptr);
-
-    EXPECT_FALSE(local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
+    EXPECT_FALSE(
+        local_frame->GetDocument()->DeferredCompositorCommitIsAllowed());
 }
+#endif
 
 TEST_P(DocumentLoaderTest, NavigationToAboutBlank)
 {

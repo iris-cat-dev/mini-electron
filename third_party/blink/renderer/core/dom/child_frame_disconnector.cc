@@ -6,7 +6,9 @@
 
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 
 namespace blink {
 
@@ -62,7 +64,9 @@ void ChildFrameDisconnector::DisconnectCollectedFrameOwners()
             if (disconnect_reason_ == kDisconnectSelf) {
                 // Emit `FrameSubtreeWillBeDetached` only for the top of subtree before
                 // disconnecting the subtree.
+#if !defined(MINI_UI_QUICKJS)
                 probe::FrameSubtreeWillBeDetached(owner->GetDocument().GetFrame(), owner->ContentFrame());
+#endif
             }
             owner->DisconnectContentFrame();
         }

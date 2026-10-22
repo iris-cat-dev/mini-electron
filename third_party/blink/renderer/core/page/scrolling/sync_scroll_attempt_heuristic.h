@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_SCROLLING_SYNC_SCROLL_ATTEMPT_HEURISTIC_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_SCROLLING_SYNC_SCROLL_ATTEMPT_HEURISTIC_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/stack_allocated.h"
 #include "third_party/blink/renderer/core/core_export.h"
 
@@ -88,5 +89,7 @@ private:
 };
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_SCROLLING_SYNC_SCROLL_ATTEMPT_HEURISTIC_H_

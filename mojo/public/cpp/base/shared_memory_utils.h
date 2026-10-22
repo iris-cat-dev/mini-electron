@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,10 +10,10 @@
 namespace mojo {
 
 class SharedMemoryUtils {
-public:
-    COMPONENT_EXPORT(MOJO_BASE) static void InstallBaseHooks();
+ public:
+  COMPONENT_EXPORT(MOJO_BASE) static void InstallBaseHooks();
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BASE_SHARED_MEMORY_UTILS_H_
+#endif  // MOJO_PUBLIC_CPP_BASE_SHARED_MEMORY_UTILS_H_

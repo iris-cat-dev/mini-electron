@@ -923,10 +923,6 @@ bool IsTimeLimitedInsecureCookiesEnabled()
     return IsSchemeBoundCookiesEnabled() && base::FeatureList::IsEnabled(features::kTimeLimitedInsecureCookies);
 }
 
-bool IsSchemefulSameSiteEnabled()
-{
-    return base::FeatureList::IsEnabled(features::kSchemefulSameSite);
-}
 
 // std::optional<std::pair<FirstPartySetMetadata, FirstPartySetsCacheFilter::MatchInfo>> ComputeFirstPartySetMetadataMaybeAsync(const SchemefulSite& request_site,
 //     const IsolationInfo& isolation_info, const CookieAccessDelegate* cookie_access_delegate,

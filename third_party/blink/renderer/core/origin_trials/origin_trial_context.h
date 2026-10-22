@@ -10,7 +10,6 @@
 #include "base/time/time.h"
 #include "third_party/blink/public/common/origin_trials/trial_token.h"
 #include "third_party/blink/public/common/origin_trials/trial_token_validator.h"
-#include "third_party/blink/public/mojom/origin_trials/origin_trial_state_host.mojom-blink.h"
 #include "third_party/blink/public/mojom/runtime_feature_state/runtime_feature.mojom-shared.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -222,12 +221,13 @@ private:
     const SecurityOrigin* GetSecurityOrigin();
     bool IsSecureContext();
     OriginInfo GetCurrentOriginInfo();
-
-    // Send the token to the browser process to update persistent origin trial
-    // tokens. Will check if |parsed_token| is persistable before sending to the
-    // browser, and |parsed_token| should be the parsed version of |raw_token|.
+#if !defined(MINI_UI_QUICKJS)
     void SendTokenToBrowser(
-        const OriginInfo& origin_info, const TrialToken& parsed_token, const String& raw_token, const Vector<OriginInfo>* script_origin_info);
+        const OriginInfo& origin_info, const TrialToken& parsed_token,
+        const String& raw_token,
+        const Vector<OriginInfo>* script_origin_info);
+#endif
+
 
     HashSet<mojom::blink::OriginTrialFeature> enabled_features_;
     HashSet<mojom::blink::OriginTrialFeature> installed_features_;

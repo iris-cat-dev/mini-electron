@@ -42,7 +42,9 @@ class Document;
 class LinkLoaderClient;
 class PendingLinkPreload;
 class ModuleScript;
+#if !defined(MINI_UI_QUICKJS)
 class PrerenderHandle;
+#endif
 class Resource;
 class ResourceClient;
 
@@ -68,7 +70,9 @@ private:
     Member<LinkLoaderClient> client_;
     Member<PendingLinkPreload> pending_preload_;
 
+#if !defined(MINI_UI_QUICKJS)
     Member<PrerenderHandle> prerender_;
+#endif
 };
 
 } // namespace blink

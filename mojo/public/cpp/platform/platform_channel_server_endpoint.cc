@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,25 +8,24 @@ namespace mojo {
 
 PlatformChannelServerEndpoint::PlatformChannelServerEndpoint() = default;
 
-PlatformChannelServerEndpoint::PlatformChannelServerEndpoint(PlatformChannelServerEndpoint&& other) = default;
+PlatformChannelServerEndpoint::PlatformChannelServerEndpoint(
+    PlatformChannelServerEndpoint&& other) = default;
 
-PlatformChannelServerEndpoint::PlatformChannelServerEndpoint(PlatformHandle handle)
-    : handle_(std::move(handle))
-{
-}
+PlatformChannelServerEndpoint::PlatformChannelServerEndpoint(
+    PlatformHandle handle)
+    : handle_(std::move(handle)) {}
 
 PlatformChannelServerEndpoint::~PlatformChannelServerEndpoint() = default;
 
-PlatformChannelServerEndpoint& PlatformChannelServerEndpoint::operator=(PlatformChannelServerEndpoint&& other) = default;
+PlatformChannelServerEndpoint& PlatformChannelServerEndpoint::operator=(
+    PlatformChannelServerEndpoint&& other) = default;
 
-void PlatformChannelServerEndpoint::reset()
-{
-    handle_.reset();
+void PlatformChannelServerEndpoint::reset() {
+  handle_.reset();
 }
 
-PlatformChannelServerEndpoint PlatformChannelServerEndpoint::Clone() const
-{
-    return PlatformChannelServerEndpoint(handle_.Clone());
+PlatformChannelServerEndpoint PlatformChannelServerEndpoint::Clone() const {
+  return PlatformChannelServerEndpoint(handle_.Clone());
 }
 
-} // namespace mojo
+}  // namespace mojo

@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/core/css/binary_data_font_face_source.h"
 
 #include "third_party/blink/renderer/core/css/css_font_face.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/fonts/font_custom_platform_data.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
 #include "third_party/blink/renderer/platform/fonts/simple_font_data.h"
@@ -24,7 +26,9 @@ BinaryDataFontFaceSource::BinaryDataFontFaceSource(CSSFontFace* css_font_face, S
     if (!context) {
         return;
     }
+#if !defined(MINI_UI_QUICKJS)
     probe::FontsUpdated(context, font_face, String(), custom_platform_data_.Get());
+#endif
 }
 
 void BinaryDataFontFaceSource::Trace(Visitor* visitor) const

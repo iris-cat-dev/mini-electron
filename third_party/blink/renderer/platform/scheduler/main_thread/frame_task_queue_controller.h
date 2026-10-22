@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 namespace sequence_manager {
@@ -79,7 +81,9 @@ public:
     // if one doesn't exist.
     base::sequence_manager::TaskQueue::QueueEnabledVoter* GetQueueEnabledVoter(const scoped_refptr<MainThreadTaskQueue>&);
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 private:
     friend class FrameTaskQueueControllerTest;

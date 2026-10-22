@@ -6,7 +6,9 @@
 
 #include <optional>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/view_transition_content_layer.h"
+#endif
 #include "third_party/blink/renderer/core/frame/embedded_content_view.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_offset.h"
@@ -17,13 +19,18 @@
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/replaced_painter.h"
 #include "third_party/blink/renderer/core/paint/scrollable_area_painter.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_cache_skipper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/paint/foreign_layer_display_item.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 scoped_refptr<cc::ViewTransitionContentLayer> GetSubframeSnapshotLayer(const EmbeddedContentView& embedded_content_view, PaintPhase phase)
 {
@@ -45,6 +52,7 @@ scoped_refptr<cc::ViewTransitionContentLayer> GetSubframeSnapshotLayer(const Emb
 }
 
 } // namespace
+#endif
 
 void EmbeddedContentPainter::PaintReplaced(const PaintInfo& paint_info, const PhysicalOffset& paint_offset)
 {
@@ -55,16 +63,21 @@ void EmbeddedContentPainter::PaintReplaced(const PaintInfo& paint_info, const Ph
     // Apply the translation to offset the content within the object's border-box
     // only if we're not using a transform node for this. If the frame size is
     // frozen then |ReplacedContentTransform| is used instead.
+#if defined(MINI_UI_QUICKJS)
+    gfx::Point paint_location
+        = ToRoundedPoint(paint_offset + layout_embedded_content_.ReplacedContentRect().offset);
+#else
     gfx::Point paint_location;
-    if (!layout_embedded_content_.FrozenFrameSize().has_value()) {
+    if (!layout_embedded_content_.FrozenFrameSize().has_value())
         paint_location = ToRoundedPoint(paint_offset + layout_embedded_content_.ReplacedContentRect().offset);
-    }
+#endif
 
     gfx::Vector2d view_paint_offset = paint_location - embedded_content_view->FrameRect().origin();
     CullRect adjusted_cull_rect = paint_info.GetCullRect();
     adjusted_cull_rect.Move(-view_paint_offset);
     embedded_content_view->Paint(paint_info.context, paint_info.GetPaintFlags(), adjusted_cull_rect, view_paint_offset);
 
+#if !defined(MINI_UI_QUICKJS)
     // During a ViewTransition in a LocalFrame sub-frame, we need to keep painting
     // the old Document's last frame until the new Document is ready to start
     // rendering.
@@ -83,6 +96,7 @@ void EmbeddedContentPainter::PaintReplaced(const PaintInfo& paint_info, const Ph
         layer->SetIsDrawable(true);
         RecordForeignLayer(context, layout_embedded_content_, DisplayItem::kForeignLayerViewTransitionContent, std::move(layer), paint_location);
     }
+#endif
 }
 
 } // namespace blink

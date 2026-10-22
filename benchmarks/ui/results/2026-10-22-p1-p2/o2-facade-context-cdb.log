@@ -1,0 +1,108 @@
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Project\mini-electron\out\ui-opt-o2-facade-matrix\build\ui-benchmark.exe --framework react --rows 5000 --warmups 2 --iterations 7 --resource-root D:\Project\mini-electron\benchmarks\ui\assets --output d:\Project\mini-electron\.build-tools\ui-opt\o2-facade-context-result.json --capture d:\Project\mini-electron\.build-tools\ui-opt\o2-facade-context.bmp --width 1280 --height 720 --device-scale 1.0 --timeout-ms 900000
+Symbol search path is: *** Invalid ***
+****************************************************************************
+* Symbol loading may be unreliable without a symbol search path.           *
+* Use .symfix to have the debugger choose a symbol path.                   *
+* After setting your symbol path, use .reload to refresh symbol locations. *
+****************************************************************************
+Executable search path is: 
+ModLoad: 00007ff6`af320000 00007ff6`b1982000   ui-benchmark.exe
+ModLoad: 00007ffd`55250000 00007ffd`55448000   ntdll.dll
+ModLoad: 00007ffd`534d0000 00007ffd`53592000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffd`529e0000 00007ffd`52cd6000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffd`536f0000 00007ffd`53e60000   C:\Windows\System32\SHELL32.dll
+ModLoad: 00007ffd`52f00000 00007ffd`52f9d000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffd`528e0000 00007ffd`529e0000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffd`54e70000 00007ffd`55011000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffd`531c0000 00007ffd`531e2000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffd`55020000 00007ffd`5504b000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffd`53050000 00007ffd`53169000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffd`55080000 00007ffd`55131000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffd`535a0000 00007ffd`5363e000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffd`54530000 00007ffd`545cf000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffd`44be0000 00007ffd`44c07000   C:\Windows\SYSTEM32\WINMM.dll
+ModLoad: 00007ffd`500c0000 00007ffd`5033f000   C:\Windows\SYSTEM32\DWrite.dll
+ModLoad: 00007ffd`54c60000 00007ffd`54d80000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 000001b8`b7000000 000001b8`b7120000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffd`52ce0000 00007ffd`52d07000   C:\Windows\System32\bcrypt.dll
+ModLoad: 00007ffd`54400000 00007ffd`5452b000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffd`54030000 00007ffd`54384000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffd`50c10000 00007ffd`50e11000   C:\Windows\SYSTEM32\dbghelp.dll
+ModLoad: 00007ffd`46f40000 00007ffd`46f59000   C:\Windows\SYSTEM32\USP10.dll
+(7ed0.8038): Break instruction exception - code 80000003 (first chance)
+ntdll!LdrInitShimEngineDynamic+0x360:
+00007ffd`55320860 cc              int     3
+0:000> cdb: Reading initial command 'sxe av; sxe 0xc0000409; bp ui_benchmark+0x3180a; g; .echo ADOPT_MISSING_ISOLATE_CONTEXT; r; dq @rdi L20; kv 15; lm m ui*; q'
+ModLoad: 00007ffd`55050000 00007ffd`5507f000   C:\Windows\System32\IMM32.DLL
+ModLoad: 00007ffd`52d10000 00007ffd`52d92000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffd`53270000 00007ffd`5331d000   C:\Windows\System32\shcore.dll
+ModLoad: 00007ffd`4f410000 00007ffd`4f4ae000   C:\Windows\system32\uxtheme.dll
+ModLoad: 00007ffd`510d0000 00007ffd`510e2000   C:\Windows\SYSTEM32\kernel.appcore.dll
+(7ed0.8038): Security check failure or stack buffer overrun - code c0000409 (!!! second chance !!!)
+*** WARNING: Unable to verify checksum for ui-benchmark.exe
+ADOPT_MISSING_ISOLATE_CONTEXT
+rax=0000000000000001 rbx=000000441e9f9540 rcx=0000000000000007
+rdx=000000441e9f91d0 rsi=000000441e9f9980 rdi=000001b8b9b3a080
+rip=00007ff6b09acff5 rsp=000000441e9f91c0 rbp=000000441e9f92b0
+ r8=000000441e9f91c0  r9=000000441e9f91c8 r10=0000eea8724ba782
+r11=000000441e9f91b8 r12=ffffffffffffffff r13=000000441e9f9620
+r14=000001b8ba11de60 r15=000000441e9f9550
+iopl=0         nv up ei pl nz na pe nc
+cs=0033  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000202
+ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0xe1786f:
+00007ff6`b09acff5 cd29            int     29h
+000001b8`b9b3a080  00000005`00053da4 000001b8`ba068cb8
+000001b8`b9b3a090  000001b8`ba1c0668 000001b8`b6f8b9e0
+000001b8`b9b3a0a0  000001b8`b6f90f10 000001b8`b6f8ba70
+000001b8`b9b3a0b0  00000000`00000000 000001b8`b6ffe0c0
+000001b8`b9b3a0c0  000001b8`b9c0df00 000001b8`ba06b120
+000001b8`b9b3a0d0  ffffffff`ffffffff 000001b8`ba06eb90
+000001b8`b9b3a0e0  ffffffff`ffffffff 000001b8`ba06f950
+000001b8`b9b3a0f0  ffffffff`ffffffff 000001b8`ba06e820
+000001b8`b9b3a100  ffffffff`ffffffff 000001b8`ba074860
+000001b8`b9b3a110  ffffffff`ffffffff 000001b8`ba06b3e0
+000001b8`b9b3a120  ffffffff`ffffffff 000001b8`ba06b490
+000001b8`b9b3a130  ffffffff`ffffffff 000001b8`ba06c5c0
+000001b8`b9b3a140  ffffffff`ffffffff 000001b8`ba06c720
+000001b8`b9b3a150  ffffffff`ffffffff 000001b8`ba06ea30
+000001b8`b9b3a160  ffffffff`ffffffff 000001b8`ba06eae0
+000001b8`b9b3a170  ffffffff`ffffffff 000001b8`ba06e980
+Child-SP          RetAddr           : Args to Child                                                           : Call Site
+00000044`1e9f91c0 00007ff6`af34f5bc : 00000044`1e9f92b0 00007ff6`af3515be 000001b8`ba65e110 00000000`00000000 : ui_benchmark!cppgc::internal::AgeTable::ResetForTesting+0xe1786f
+00000044`1e9f91f0 00007ff6`af494d05 : 000001b8`bcc8ddc0 ffffffff`ffffffff 000001b8`d43d6130 00000044`1e9f9510 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::SameThreadEnabledCheckingPolicyBase+0x5b8c
+00000044`1e9f9230 00007ff6`af38a4ec : 000001b8`b9d66f60 ffffffff`fffffff9 000001b8`d43d6130 00000000`0000000d : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x865e5
+00000044`1e9f94e0 00007ff6`af389f22 : 0000eea8`724ba732 00007ff6`af4987e7 00000044`1e9f9760 00000044`1e9f96e0 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1544c
+00000044`1e9f95e0 00007ff6`af4954bc : 00000044`1e9f9d50 00000044`1e9f9a60 00000044`1e9f9a50 00000044`1e9f9a40 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x14e82
+00000044`1e9f9660 00007ff6`af38a4ec : 000001b8`b9d66f60 ffffffff`fffffff9 ffffffff`ffffffff 00000000`0000000d : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x86d9c
+00000044`1e9f9910 00007ff6`af389f22 : 000001b8`ba2e6510 00007ff6`af4987e7 00000000`00000000 00000000`00000002 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1544c
+00000044`1e9f9a10 00007ff6`af4954bc : 00000000`00000000 00000000`00000003 000001b8`ba366b80 ffffffff`fffffff9 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x14e82
+00000044`1e9f9a90 00007ff6`af38a4ec : 00000001`00000001 00000000`00000000 00000000`00000000 00000000`00000003 : ui_benchmark!cppgc::internal::SameThreadEnabledCheckingPolicyBase::operator=+0x86d9c
+00000044`1e9f9d40 00007ff6`af393a40 : 0000eea8`724bac62 00007ff6`b09ebc74 000001b8`ba2873e7 00007ff6`af394eb2 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1544c
+00000044`1e9f9e40 00007ff6`af39227d : 000001b8`ba2c8540 00007ff6`af3935d9 00000000`00000000 00000000`00000003 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1e9a0
+00000044`1e9fa2c0 00007ff6`af39227d : 00000000`00000000 00000000`00000002 0000eea8`724b94c2 00007ff6`b09ebc74 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9fa6d0 00007ff6`af39227d : 00000000`00000000 00000000`00000002 0000eea8`724b98c2 00007ff6`b09ebc74 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9faad0 00007ff6`af39227d : 00000000`00000000 00000000`00000002 0000eea8`724b9c12 00007ff6`b09ebc74 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9faea0 00007ff6`af39227d : 000001b8`c04c7a50 ffffffff`ffffffff 00000000`00000000 00000000`00000003 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9fb2c0 00007ff6`af37f3d5 : 000001b8`ba19c4e0 ffffffff`ffffffff 00000000`00000001 00000000`00000000 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9fb6f0 00007ff6`af391b16 : 00000044`1e9fd3dc 00000000`00000003 000001b8`c04c91b0 ffffffff`ffffffff : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0xa335
+00000044`1e9fb7f0 00007ff6`af39227d : 00000044`1e9fbd00 00007ff6`b09ebc74 00000044`1e9fbf30 00000044`1e9fbc50 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1ca76
+00000044`1e9fbb90 00007ff6`af39227d : 000001b8`b9b3a080 00007ff6`af392b45 0000eea8`724b8dd2 0000eea8`724b8da2 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9fbfe0 00007ff6`af39227d : 000001b8`b6f00000 00007ffd`5527382c 000001b8`b6f00000 000001b8`00000002 : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+00000044`1e9fc410 00007ff6`af392399 : 00000044`1e9fc850 00000044`1e9fc860 000001b8`ba460030 00007ff6`af393d5c : ui_benchmark!cppgc::Visitor::VisitMultipleCompressedMember+0x1d1dd
+start             end                 module name
+00007ff6`af320000 00007ff6`b1982000   ui_benchmark C (export symbols)       D:\Project\mini-electron\out\ui-opt-o2-facade-matrix\build\ui-benchmark.exe
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

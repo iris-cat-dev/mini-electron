@@ -53,21 +53,27 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/mojom/base/text_direction.mojom-blink.h"
 #include "net/base/schemeful_site.h"
+#if !defined(MINI_UI_QUICKJS)
 //#include "services/metrics/public/cpp/delegating_ukm_recorder.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/mojo_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#endif
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/delegating_ukm_recorder.h"
+#endif
 #include "services/network/public/cpp/web_sandbox_flags.h"
 #include "services/network/public/mojom/trust_tokens.mojom-blink.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
 #include "components/content_settings/core/common/content_settings.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiability_sample_collector.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
+#endif
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
@@ -103,7 +109,9 @@
 #include "third_party/blink/renderer/core/animation/document_animations.h"
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
 #include "third_party/blink/renderer/core/animation/pending_animations.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/animation/worklet_animation_controller.h"
+#endif
 #include "third_party/blink/renderer/core/annotation/annotation_agent_container_impl.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
@@ -147,6 +155,7 @@
 #include "third_party/blink/renderer/core/dom/document_type.h"
 #include "third_party/blink/renderer/core/dom/dom_implementation.h"
 #include "third_party/blink/renderer/core/dom/element.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/element_data_cache.h"
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
@@ -216,11 +225,15 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
 #include "third_party/blink/renderer/core/frame/performance_monitor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/viewport_data.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/anchor_element_metrics_sender.h"
+#endif
 #include "third_party/blink/renderer/core/html/canvas/canvas_font_cache.h"
 #include "third_party/blink/renderer/core/html/collection_type.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element.h"
@@ -260,7 +273,9 @@
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder_builder.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/html/window_name_collection.h"
 #include "third_party/blink/renderer/core/html_element_factory.h"
 #include "third_party/blink/renderer/core/html_element_type_helpers.h"
@@ -268,7 +283,9 @@
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input/touch_list.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/intersection_observer/element_intersection_observer_data.h"
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observer_controller.h"
 #include "third_party/blink/renderer/core/intersection_observer/intersection_observer_entry.h"
@@ -280,8 +297,12 @@
 #include "third_party/blink/renderer/core/layout/pagination_utils.h"
 #include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/anchor_element_interaction_tracker.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/cookie_jar.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_fetch_context.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
@@ -298,7 +319,9 @@
 #include "third_party/blink/renderer/core/mathml/mathml_row_element.h"
 #include "third_party/blink/renderer/core/mathml_element_factory.h"
 #include "third_party/blink/renderer/core/mathml_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/mobile_metrics/mobile_friendliness_checker.h"
+#endif
 #include "third_party/blink/renderer/core/origin_trials/origin_trial_context.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/event_with_hit_test_results.h"
@@ -306,7 +329,9 @@
 #include "third_party/blink/renderer/core/page/frame_tree.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_animator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_script_forbidden_scope.h"
+#endif
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
 #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
@@ -316,7 +341,6 @@
 #include "third_party/blink/renderer/core/page/validation_message_client.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
-#include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/permissions_policy/dom_feature_policy.h"
 #include "third_party/blink/renderer/core/permissions_policy/permissions_policy_parser.h"
@@ -330,7 +354,9 @@
 #include "third_party/blink/renderer/core/script/script_runner.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
 #include "third_party/blink/renderer/core/scroll/snap_event.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
 #include "third_party/blink/renderer/core/svg/svg_document_extensions.h"
 #include "third_party/blink/renderer/core/svg/svg_script_element.h"
 #include "third_party/blink/renderer/core/svg/svg_svg_element.h"
@@ -342,9 +368,11 @@
 #include "third_party/blink/renderer/core/timing/render_blocking_metrics_reporter.h"
 #include "third_party/blink/renderer/core/timing/soft_navigation_heuristics.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_html.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/page_reveal_event.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/core/xmlns_names.h"
@@ -363,7 +391,9 @@
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/instrumentation/instance_counters.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/language.h"
@@ -453,8 +483,10 @@ bool DefaultFaviconAllowedByCSP(const Document* document, const IconURL& icon)
         ReportingDisposition::kSuppressReporting, ContentSecurityPolicy::CheckHeaderType::kCheckAll);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // The sampling rate for UKM.
 constexpr double kUkmSamplingRate = 0.001;
+#endif
 
 } // namespace
 
@@ -770,7 +802,9 @@ Document::Document(const DocumentInit& initializer, DocumentClassFlags document_
     , agent_(initializer.GetAgent())
     , http_refresh_scheduler_(MakeGarbageCollected<HttpRefreshScheduler>(this))
     , fallback_base_url_(initializer.FallbackBaseURL())
+#if !defined(MINI_UI_QUICKJS)
     , cookie_url_(dom_window_ ? initializer.GetCookieUrl() : KURL(g_empty_string))
+#endif
     , last_focus_type_(mojom::blink::FocusType::kNone)
     , clear_focused_element_timer_(GetTaskRunner(TaskType::kInternalUserInteraction), this, &Document::ClearFocusedElementTimerFired)
     , dom_tree_version_(++global_tree_version_)
@@ -804,7 +838,9 @@ Document::Document(const DocumentInit& initializer, DocumentClassFlags document_
     , document_animations_(MakeGarbageCollected<DocumentAnimations>(this))
     , timeline_(MakeGarbageCollected<DocumentTimeline>(this))
     , pending_animations_(MakeGarbageCollected<PendingAnimations>(*this))
+#if !defined(MINI_UI_QUICKJS)
     , worklet_animation_controller_(MakeGarbageCollected<WorkletAnimationController>(this))
+#endif
     ,
     // Use the source id from the document initializer if it is available.
     // Otherwise, generate a new source id to cover any cases that don't
@@ -812,9 +848,11 @@ Document::Document(const DocumentInit& initializer, DocumentClassFlags document_
     // to SVGImage which does not have an associated RenderFrameHost. No URLs
     // will be associated to this source id. No DocumentCreated events will be
     // created either.
-    ukm_source_id_(ukm::kInvalidSourceId/*initializer.UkmSourceId() == ukm::kInvalidSourceId ? ukm::UkmRecorder::GetNewSourceID() : initializer.UkmSourceId()*/)
+    ukm_source_id_(initializer.UkmSourceId() == ukm::kInvalidSourceId ? ukm::AssignNewSourceId() : initializer.UkmSourceId())
     , viewport_data_(MakeGarbageCollected<ViewportData>(*this))
+#if !defined(MINI_UI_QUICKJS)
     , is_for_external_handler_(initializer.IsForExternalHandler())
+#endif
     , base_auction_nonce_(initializer.BaseAuctionNonce())
     , fragment_directive_(MakeGarbageCollected<FragmentDirective>(*this))
     , display_lock_document_state_(MakeGarbageCollected<DisplayLockDocumentState>(this))
@@ -831,7 +869,9 @@ Document::Document(const DocumentInit& initializer, DocumentClassFlags document_
     if (LocalFrame* frame = GetFrame()) {
         DCHECK(frame->GetPage());
         fetcher_ = FrameFetchContext::CreateFetcherForCommittedDocument(*frame->Loader().GetDocumentLoader(), *this);
+#if !defined(MINI_UI_QUICKJS)
         cookie_jar_ = MakeGarbageCollected<CookieJar>(this);
+#endif
         if (IsInMainFrame() && GetPage()->IsPartitionedPopin()) {
             CountUse(WebFeature::kPartitionedPopin_Opened);
         }
@@ -949,7 +989,9 @@ void Document::MediaQueryAffectingValueChanged(MediaValueChange change)
         evaluate_media_queries_on_style_recalc_ = true;
     else
         EvaluateMediaQueryList();
+#if !defined(MINI_UI_QUICKJS)
     probe::MediaQueryResultChanged(this);
+#endif
 }
 
 void Document::SetCompatibilityMode(CompatibilityMode mode)
@@ -1909,6 +1951,7 @@ void Document::DidChangeVisibilityState()
         interactive_detector->OnPageHiddenChanged(hidden());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Don't create a |ukm_recorder_| and |ukm_source_id_| unless necessary.
     if (hidden() && IdentifiabilityStudySettings::Get()->IsActive()) {
         // Flush UKM data here in addition to Document::Shutdown(). We want to flush
@@ -1917,8 +1960,11 @@ void Document::DidChangeVisibilityState()
         // renderer process is killed.
         IdentifiabilitySampleCollector::Get()->FlushSource(UkmRecorder(), UkmSourceID());
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     ViewTransitionSupplement::From(*this)->DidChangeVisibilityState();
+#endif
 }
 
 String Document::nodeName() const
@@ -2068,8 +2114,10 @@ void Document::ScheduleLayoutTreeUpdate()
 
     lifecycle_.EnsureStateAtMost(DocumentLifecycle::kVisualUpdatePending);
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(
         TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "ScheduleStyleRecalculation", inspector_recalculate_styles_event::Data, GetFrame());
+#endif
     ++style_version_;
 }
 
@@ -2164,7 +2212,9 @@ void Document::UpdateStyleAndLayoutTree(LayoutUpgrade& upgrade)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
     ScriptForbiddenScope forbid_script;
 
     if (HTMLFrameOwnerElement* owner = LocalOwner()) {
@@ -2244,9 +2294,13 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument()
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     SCOPED_UMA_AND_UKM_TIMER(View()->GetUkmAggregator(), LocalFrameUkmAggregator::kStyle);
+#endif
     FontPerformance::StyleScope font_performance_scope;
+#if !defined(MINI_UI_QUICKJS)
     ENTER_EMBEDDER_STATE(GetAgent().isolate(), GetFrame(), BlinkState::STYLE);
+#endif
 
     if (needs_slot_assignment) {
         // RecalcSlotAssignments should be done before checking
@@ -2289,8 +2343,10 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument()
     // style-recalc and layout tree detach (Node::DetachLayoutTree).
     DCHECK(svg_resources_needing_invalidation_.empty());
 
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_BEGIN1("blink,devtools.timeline", "UpdateLayoutTree", "beginData",
         [&](perfetto::TracedValue context) { inspector_recalculate_styles_event::Data(std::move(context), GetFrame()); });
+#endif
 
     StyleEngine& style_engine = GetStyleEngine();
     unsigned start_element_count = style_engine.StyleForElementCount();
@@ -2325,13 +2381,17 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument()
 
     UnblockLoadEventAfterLayoutTreeUpdate();
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* document_rules = DocumentSpeculationRules::FromIfExists(*this)) {
         document_rules->DocumentStyleUpdated();
     }
+#endif
 
     TRACE_EVENT_END1("blink,devtools.timeline", "UpdateLayoutTree", "elementCount", element_count);
 
+#if !defined(MINI_UI_QUICKJS)
     ElementRuleCollector::DumpAndClearRulesPerfMap();
+#endif
 
 #if DCHECK_IS_ON()
     AssertLayoutTreeUpdated(*this, true /* allow_dirty_container_subtrees */);
@@ -2580,6 +2640,7 @@ void Document::ApplyScrollRestorationLogic()
     document_loader->GetInitialScrollState().did_restore_from_history = true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Document::MarkHasFindInPageRequest()
 {
     // Only record the event once in a document.
@@ -2619,6 +2680,7 @@ void Document::MarkHasFindInPageBeforematchExpandedHiddenMatchable()
     ukm::builders::Blink_FindInPage(UkmSourceID()).SetBeforematchExpandedHiddenMatchable(true).Record(recorder);
     had_find_in_page_beforematch_expanded_hidden_matchable_ = true;
 }
+#endif
 
 void Document::UpdateStyleAndLayout(DocumentUpdateReason reason)
 {
@@ -2632,10 +2694,14 @@ void Document::UpdateStyleAndLayout(DocumentUpdateReason reason)
     TRACE_EVENT("blink", "Document::UpdateStyleAndLayout");
     LocalFrameView* frame_view = View();
 
+#if !defined(MINI_UI_QUICKJS)
     if (reason != DocumentUpdateReason::kBeginMainFrame && frame_view)
         frame_view->WillStartForcedLayout(reason);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
     ScriptForbiddenScope forbid_script;
 
     DCHECK(!frame_view || !frame_view->IsInPerformLayout()) << "View layout should not be re-entrant";
@@ -2645,8 +2711,10 @@ void Document::UpdateStyleAndLayout(DocumentUpdateReason reason)
     }
 
     if (!IsActive()) {
+#if !defined(MINI_UI_QUICKJS)
         if (reason != DocumentUpdateReason::kBeginMainFrame && frame_view)
             frame_view->DidFinishForcedLayout();
+#endif
         return;
     }
 
@@ -2666,8 +2734,10 @@ void Document::UpdateStyleAndLayout(DocumentUpdateReason reason)
         frame_view->ExecutePendingSnapUpdates();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (reason != DocumentUpdateReason::kBeginMainFrame && frame_view)
         frame_view->DidFinishForcedLayout();
+#endif
 
     if (should_update_selection_after_layout_)
         UpdateSelectionAfterLayout();
@@ -2689,6 +2759,7 @@ void Document::LayoutUpdated()
     Markers().InvalidateRectsForAllTextMatchMarkers();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Document::AttachCompositorTimeline(cc::AnimationTimeline* timeline) const
 {
     if (!Platform::Current()->IsThreadedAnimationEnabled() || !GetSettings()->GetAcceleratedCompositingEnabled())
@@ -2702,6 +2773,7 @@ void Document::AttachCompositorTimeline(cc::AnimationTimeline* timeline) const
         host->AddAnimationTimeline(timeline);
     }
 }
+#endif
 
 void Document::ClearFocusedElementIfNeeded()
 {
@@ -2842,6 +2914,7 @@ void Document::Shutdown()
     // since that will cause a situation where LocalFrame still has a Document
     // attached after this finishes!  Normally, it shouldn't actually be possible
     // to trigger navigation here.  However, plugins (see below) can cause lots of
+#if !defined(MINI_UI_QUICKJS)
     // crazy things to happen, since plugin detach involves nested run loops.
     FrameNavigationDisabler navigation_disabler(*GetFrame());
     // Defer plugin dispose to avoid plugins trying to run script inside
@@ -2850,6 +2923,7 @@ void Document::Shutdown()
     // TODO(dcheng): This is a temporary workaround, Document::Shutdown() should
     // not be running script at all.
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
     // Don't allow script to run in the middle of DetachLayoutTree() because a
     // detaching Document is not in a consistent state.
     ScriptForbiddenScope forbid_script;
@@ -2895,11 +2969,15 @@ void Document::Shutdown()
 
     GetPage()->DocumentDetached(this);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::DocumentDetached(this);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (AnchorElementMetricsSender* sender = AnchorElementMetricsSender::GetForFrame(GetFrame())) {
         sender->DocumentDetached(*this);
     }
+#endif
 
     if (SvgExtensions())
         AccessSVGExtensions().PauseAnimations();
@@ -2907,10 +2985,11 @@ void Document::Shutdown()
     CancelPendingJavaScriptUrls();
     http_refresh_scheduler_->Cancel();
 
+#if !defined(MINI_UI_QUICKJS)
     GetDocumentAnimations().DetachCompositorTimelines();
-
     if (GetFrame()->IsLocalRoot())
         GetPage()->GetChromeClient().AttachRootLayer(nullptr, GetFrame());
+#endif
 
     MutationObserver::CleanSlotChangeList(*this);
 
@@ -2955,7 +3034,9 @@ void Document::Shutdown()
     });
     synchronous_mutation_observer_set_.Clear();
 
+#if !defined(MINI_UI_QUICKJS)
     cookie_jar_ = nullptr; // Not accessible after navigated away.
+#endif
     fetcher_->ClearContext();
 
     if (media_query_matcher_)
@@ -2964,21 +3045,26 @@ void Document::Shutdown()
     lifecycle_.AdvanceTo(DocumentLifecycle::kStopped);
     DCHECK(!View()->IsAttached());
 
+#if !defined(MINI_UI_QUICKJS)
     // Don't create a |ukm_recorder_| and |ukm_source_id_| unless necessary.
     if (IdentifiabilityStudySettings::Get()->IsActive()) {
         IdentifiabilitySampleCollector::Get()->FlushSource(UkmRecorder(), UkmSourceID());
     }
+#endif
 
     mime_handler_view_before_unload_event_listener_ = nullptr;
 
+#if !defined(MINI_UI_QUICKJS)
     resource_coordinator_.reset();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Because the document view transition supplement can get destroyed before
-    // the execution context notification, we should clean up the transition
-    // object here.
+    // the execution context notification, clean up the transition object here.
     if (auto* transition = ViewTransitionUtils::GetTransition(*this)) {
         transition->SkipTransition();
     }
+#endif
 
     // This is required, as our LocalFrame might delete itself as soon as it
     // detaches us. However, this violates Node::detachLayoutTree() semantics, as
@@ -3291,12 +3377,12 @@ void Document::open(LocalDOMWindow* entered_window, ExceptionState& exception_st
     if (ignore_opens_and_writes_for_abort_)
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     if (cookie_jar_) {
-        // open() can affect security context which can change cookie values. Make
-        // sure cached values are thrown out. see
-        // third_party/blink/web_tests/http/tests/security/aboutBlank/.
+        // document.open() can change the security context and cookie values.
         cookie_jar_->InvalidateCache();
     }
+#endif
 
     // If this document is fully active, then update the URL
     // for this document with the entered window's url.
@@ -3394,7 +3480,9 @@ void Document::open(LocalDOMWindow* entered_window, ExceptionState& exception_st
             // cookie URLs are extremely particular pieces of state that resemble the
             // origin more than they do actual URLs. The less we inherit via
             // document.open, the better.
+#if !defined(MINI_UI_QUICKJS)
             cookie_url_ = entered_window->document()->CookieURL();
+#endif
         }
     }
 
@@ -3500,9 +3588,11 @@ DocumentParser* Document::OpenForNavigation(ParserSynchronizationPolicy parser_s
     if (parser->NeedsDecoder()) {
         parser->SetDecoder(BuildTextResourceDecoder(GetFrame(), Url(), mime_type, encoding));
     }
+#if !defined(MINI_UI_QUICKJS)
     if (!GetFrame()->IsProvisional()) {
         anchor_element_interaction_tracker_ = MakeGarbageCollected<AnchorElementInteractionTracker>(*this);
     }
+#endif
     return parser;
 }
 
@@ -3514,8 +3604,10 @@ DocumentParser* Document::ImplicitOpen(ParserSynchronizationPolicy parser_sync_p
     SetCompatibilityMode(kNoQuirksMode);
 
     bool force_sync_policy = false;
+#if !defined(MINI_UI_QUICKJS)
     // Give inspector a chance to force sync parsing when virtual time is on.
     probe::WillCreateDocumentParser(this, force_sync_policy);
+#endif
     // Prefetch must be synchronous.
     force_sync_policy |= ForceSynchronousParsingForTesting() || IsPrefetchOnly();
     if (force_sync_policy)
@@ -3605,9 +3697,11 @@ void Document::WillInsertBody()
     if (Loader())
         fetcher_->LoosenLoadThrottlingPolicy();
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* supplement = ViewTransitionSupplement::FromIfExists(*this)) {
         supplement->WillInsertBody();
     }
+#endif
 
     if (render_blocking_resource_manager_) {
         render_blocking_resource_manager_->WillInsertDocumentBody();
@@ -3911,8 +4005,10 @@ bool Document::CheckCompletedInternal()
     }
 
     if (load_event_needed) {
-        if (LCPCriticalPathPredictor* lcpp = GetFrame()->GetLCPP()) {
-            lcpp->OnOutermostMainFrameDocumentLoad();
+        if (GetFrame()->GetLCPP()) {
+#if !defined(MINI_UI_QUICKJS)
+            GetFrame()->GetLCPP()->OnOutermostMainFrameDocumentLoad();
+#endif
             fetcher_->MaybeRecordLCPPSubresourceMetrics(Url());
         }
     }
@@ -4034,7 +4130,9 @@ void Document::DispatchUnloadEvents(UnloadEventTimingInfo* unload_timing_info)
 {
     TRACE_EVENT_WITH_FLOW0("blink", "Document::DispatchUnloadEvents", TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT);
     base::ScopedUmaHistogramTimer histogram_timer("Navigation.Document.DispatchUnloadEvents");
+#if !defined(MINI_UI_QUICKJS)
     PluginScriptForbiddenScope forbid_plugin_destructor_scripting;
+#endif
     PageDismissalScope in_page_dismissal;
     if (parser_) {
         parser_->StopParsing();
@@ -4239,7 +4337,9 @@ void Document::write(const String& text, LocalDOMWindow* entered_window, Excepti
         "https://developers.google.com/web/updates/2016/08/"
         "removing-document-write",
         base::TimeDelta(), nullptr);
+#if !defined(MINI_UI_QUICKJS)
     probe::BreakableLocation(domWindow(), "Document.write");
+#endif
     parser_->insert(text);
 }
 
@@ -4309,10 +4409,12 @@ void Document::SetURL(const KURL& url)
     url_ = new_url;
     UpdateBaseURL();
 
+#if !defined(MINI_UI_QUICKJS)
     if (GetFrame()) {
         if (FrameScheduler* frame_scheduler = GetFrame()->GetFrameScheduler())
             frame_scheduler->TraceUrlChange(url_.GetString());
     }
+#endif
 }
 
 KURL Document::ValidBaseElementURL() const
@@ -4360,6 +4462,7 @@ void Document::UpdateBaseURL()
             anchor.InvalidateCachedVisitedLinkHash();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     for (Element* element : *scripts()) {
         auto* script = To<HTMLScriptElement>(element);
         script->Loader()->DocumentBaseURLChanged();
@@ -4368,6 +4471,7 @@ void Document::UpdateBaseURL()
     if (auto* document_rules = DocumentSpeculationRules::FromIfExists(*this)) {
         document_rules->DocumentBaseURLChanged();
     }
+#endif
 }
 
 // [spec] https://html.spec.whatwg.org/C/#fallback-base-url
@@ -4498,7 +4602,9 @@ void Document::ProcessBaseElement()
         UpdateBaseURL();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     AtomicString old_base_target = base_target_;
+#endif
     if (target) {
         if (target->Contains('\n') || target->Contains('\r'))
             UseCounter::Count(*this, WebFeature::kBaseWithNewlinesInTarget);
@@ -4508,11 +4614,13 @@ void Document::ProcessBaseElement()
     } else {
         base_target_ = g_null_atom;
     }
+#if !defined(MINI_UI_QUICKJS)
     if (old_base_target != base_target_) {
         if (auto* document_rules = DocumentSpeculationRules::FromIfExists(*this)) {
             document_rules->DocumentBaseTargetChanged();
         }
     }
+#endif
 }
 
 void Document::DidAddPendingParserBlockingStylesheet()
@@ -4610,10 +4718,12 @@ bool Document::IsHttpRefreshScheduledWithin(base::TimeDelta interval)
     return http_refresh_scheduler_->IsScheduledWithin(interval);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool Document::HasDocumentPictureInPictureWindow() const
 {
     return PictureInPictureController::GetDocumentPictureInPictureWindow(*this);
 }
+#endif
 
 network::mojom::ReferrerPolicy Document::GetReferrerPolicy() const
 {
@@ -4939,8 +5049,11 @@ void Document::LayoutViewportWasResized()
     if ((View() && View()->DidFirstLayout()) || load_event_progress_ == kLoadEventInProgress || IsLoadCompleted()) {
         EnqueueResizeEvent();
         EnqueueVisualViewportResizeEvent();
-        if (GetFrame()->IsMainFrame() && !Printing())
+        if (GetFrame()->IsMainFrame() && !Printing()) {
+#if !defined(MINI_UI_QUICKJS)
             probe::DidResizeMainFrame(GetFrame());
+#endif
+        }
     }
 
     MarkViewportUnitsDirty();
@@ -5850,6 +5963,7 @@ void Document::WillChangeFrameOwnerProperties(int margin_width, int margin_heigh
     GetStyleEngine().SetOwnerColorScheme(color_scheme, preferred_color_scheme);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 String Document::cookie(ExceptionState& exception_state) const
 {
     if (!dom_window_ || !GetSettings()->GetCookieEnabled())
@@ -5910,6 +6024,7 @@ void Document::SetCookieManager(mojo::PendingRemote<network::mojom::blink::Restr
 {
     cookie_jar_->SetCookieManager(std::move(cookie_manager));
 }
+#endif
 
 const base::Uuid& Document::base_auction_nonce()
 {
@@ -6095,11 +6210,11 @@ net::SiteForCookies Document::SiteForCookies() const
     // enabled, access-controlled media cannot be rendered. We only make this
     // exception in this special case to minimize security/privacy risk.
     url::Origin url_origin = origin->ToUrlOrigin();
-
+#if !defined(MINI_UI_QUICKJS)
     if (override_site_for_cookies_for_csp_media_ && url_origin.opaque() && !url_origin.GetTupleOrPrecursorTupleIfOpaque().host().empty()) {
         return net::SiteForCookies::FromOrigin(url::Origin::Create(url_origin.GetTupleOrPrecursorTupleIfOpaque().GetURL()));
     }
-
+#endif
     net::SiteForCookies candidate = net::SiteForCookies::FromOrigin(url_origin);
 
     // If true, CompareWithFrameTreeOriginAndRevise() is skipped if the
@@ -6907,8 +7022,10 @@ void Document::FinishedParsing()
 
         if (LocalFrame* frame = GetFrame()) {
             if (frame->IsAttached()) {
+#if !defined(MINI_UI_QUICKJS)
                 DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("MarkDOMContent", inspector_mark_load_event::Data, frame);
                 probe::DomContentLoadedEventFired(frame);
+#endif
             }
         }
     }
@@ -6989,6 +7106,7 @@ void Document::FinishedParsing()
         base::UmaHistogramCounts100("Blink.Layout.SVGImage.Count.InOutermostMainFrame", data_->svg_image_processed_count_);
         base::UmaHistogramMicrosecondsTimes("Blink.Layout.SVGImage.TotalTime.InOutermostMainFrame", data_->accumulated_svg_image_elapsed_time_);
 
+#if !defined(MINI_UI_QUICKJS)
         // UKM data is sampled at a frequency of `kUkmSamplingRate`.
         if (base::RandDouble() < kUkmSamplingRate) {
             ukm::builders::Blink_ShapeText(UkmSourceID())
@@ -7000,6 +7118,7 @@ void Document::FinishedParsing()
                 .SetTotalTime(data_->accumulated_svg_image_elapsed_time_.InMicroseconds())
                 .Record(UkmRecorder());
         }
+#endif
     }
 }
 
@@ -7206,16 +7325,19 @@ static HTMLLinkElement* GetLinkElement(const Document* doc, bool (*match_fn)(HTM
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 HTMLLinkElement* Document::LinkManifest() const
 {
     return GetLinkElement(this, [](HTMLLinkElement& link_element) { return link_element.RelAttribute().IsManifest(); });
 }
+#endif
 
 HTMLLinkElement* Document::LinkCanonical() const
 {
     return GetLinkElement(this, [](HTMLLinkElement& link_element) { return link_element.RelAttribute().IsCanonical(); });
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ukm::UkmRecorder* Document::UkmRecorder()
 {
 //     if (!ukm_recorder_) {
@@ -7235,6 +7357,7 @@ ukm::UkmRecorder* Document::UkmRecorder()
 //     }
     return ukm::DelegatingUkmRecorder::Get();
 }
+#endif
 
 ukm::SourceId Document::UkmSourceID() const
 {
@@ -7248,7 +7371,11 @@ FontMatchingMetrics* Document::GetFontMatchingMetrics()
     }
     if (font_matching_metrics_)
         return font_matching_metrics_.get();
+#if defined(MINI_UI_QUICKJS)
+    font_matching_metrics_ = std::make_unique<FontMatchingMetrics>();
+#else
     font_matching_metrics_ = std::make_unique<FontMatchingMetrics>(dom_window_, GetTaskRunner(TaskType::kInternalDefault));
+#endif
     return font_matching_metrics_.get();
 }
 
@@ -7375,6 +7502,7 @@ const ScriptRegexp& Document::EnsureEmailRegexp() const
     return *data_->email_regexp_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Document::SetMediaFeatureEvaluated(int feature)
 {
     evaluated_media_features_ |= (1 << feature);
@@ -7384,6 +7512,7 @@ bool Document::WasMediaFeatureEvaluated(int feature)
 {
     return (evaluated_media_features_ >> feature) & 1;
 }
+#endif
 
 void Document::AddConsoleMessage(ConsoleMessage* message, bool discard_duplicates) const
 {
@@ -7426,13 +7555,15 @@ void Document::AddToTopLayer(Element* element, const Element* before)
     element->SetIsInTopLayer(true);
     display_lock_document_state_->ElementAddedToTopLayer(element);
 
+#if !defined(MINI_UI_QUICKJS)
     probe::TopLayerElementsChanged(this);
+#endif
 
     // In case a top layer element is being synchronously removed and re-added,
     // we need to do the same to the backdrop in order to keep it next to this
     // element in the top layer list.
-    if (PseudoElement* backdrop = element->GetPseudoElement(PseudoId::kPseudoIdBackdrop,
-            /*view_transition_name=*/g_null_atom)) {
+    if (PseudoElement* backdrop =
+            element->GetPseudoElement(PseudoId::kPseudoIdBackdrop)) {
         CHECK(!backdrop->IsInTopLayer());
         AddToTopLayer(backdrop, element);
     }
@@ -7502,13 +7633,15 @@ void Document::RemoveFromTopLayerImmediately(Element* element)
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::TopLayerElementsChanged(this);
+#endif
 
     // In case a top layer element is being synchronously removed and re-added,
     // we need to do the same to the backdrop in order to keep it next to this
     // element in the top layer list.
-    if (PseudoElement* backdrop = element->GetPseudoElement(PseudoId::kPseudoIdBackdrop,
-            /*view_transition_name=*/g_null_atom)) {
+    if (PseudoElement* backdrop =
+            element->GetPseudoElement(PseudoId::kPseudoIdBackdrop)) {
         CHECK(backdrop->IsInTopLayer());
         RemoveFromTopLayerImmediately(backdrop);
     }
@@ -7665,10 +7798,12 @@ Node* EventTargetNodeForDocument(Document* doc)
     if (!doc)
         return nullptr;
     Node* node = doc->FocusedElement();
+#if !defined(MINI_UI_QUICKJS)
     auto* plugin_document = DynamicTo<PluginDocument>(doc);
     if (plugin_document && !node) {
         node = plugin_document->PluginNode();
     }
+#endif
     if (!node && IsA<HTMLDocument>(doc))
         node = doc->body();
     if (!node)
@@ -8200,6 +8335,7 @@ PropertyRegistry& Document::EnsurePropertyRegistry()
     return *property_registry_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 DocumentResourceCoordinator* Document::GetResourceCoordinator()
 {
     // `resource_coordinator_` is cleared in Shutdown() and must not be recreated
@@ -8212,6 +8348,7 @@ DocumentResourceCoordinator* Document::GetResourceCoordinator()
     }
     return resource_coordinator_.get();
 }
+#endif
 
 scoped_refptr<base::SingleThreadTaskRunner> Document::GetTaskRunner(TaskType type)
 {
@@ -8321,7 +8458,9 @@ void Document::Trace(Visitor* visitor) const
     visitor->Trace(document_animations_);
     visitor->Trace(timeline_);
     visitor->Trace(pending_animations_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(worklet_animation_controller_);
+#endif
     visitor->Trace(execution_context_);
     visitor->Trace(agent_);
     visitor->Trace(canvas_font_cache_);
@@ -8332,7 +8471,9 @@ void Document::Trace(Visitor* visitor) const
     visitor->Trace(viewport_data_);
     visitor->Trace(lazy_load_image_observer_);
     visitor->Trace(mime_handler_view_before_unload_event_listener_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(cookie_jar_);
+#endif
     visitor->Trace(synchronous_mutation_observer_set_);
     visitor->Trace(fragment_directive_);
     visitor->Trace(element_explicitly_set_attr_elements_map_);
@@ -8346,7 +8487,9 @@ void Document::Trace(Visitor* visitor) const
     visitor->Trace(top_level_forms_);
     visitor->Trace(intrinsic_size_observer_);
     visitor->Trace(lazy_loaded_auto_sized_img_observer_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(anchor_element_interaction_tracker_);
+#endif
     visitor->Trace(focused_element_change_observers_);
     visitor->Trace(pending_link_header_preloads_);
     visitor->Trace(elements_needing_shadow_tree_);
@@ -8721,23 +8864,27 @@ void Document::RemoveFocusedElementChangeObserver(FocusedElementChangeObserver* 
     focused_element_change_observers_.erase(observer);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Document::WriteIntoTrace(perfetto::TracedValue ctx) const
 {
     perfetto::TracedDictionary dict = std::move(ctx).WriteDictionary();
     dict.Add("url", Url());
 }
+#endif
 
+
+#if !defined(MINI_UI_QUICKJS)
 bool Document::DeferredCompositorCommitIsAllowed() const
 {
-    // Don't defer commits if a transition is in progress. It requires commits to
-    // send directives to the compositor and uses a separate mechanism to pause
-    // all rendering when needed.
+    // Don't defer commits if a transition is in progress. It requires commits
+    // to send directives to the compositor and uses a separate mechanism to
+    // pause all rendering when needed.
     if (ViewTransitionUtils::GetTransition(*this)) {
         return false;
     }
     return deferred_compositor_commit_is_allowed_;
 }
-
+#endif
 Document::PaintPreviewScope::PaintPreviewScope(Document& document, PaintPreviewState state)
     : document_(document)
 {
@@ -8790,6 +8937,8 @@ bool Document::SupportsLegacyDOMMutations()
     return legacy_dom_mutations_supported_.value();
 }
 
+
+#if !defined(MINI_UI_QUICKJS)
 void Document::EnqueuePageRevealEvent()
 {
     CHECK(RuntimeEnabledFeatures::PageRevealEventEnabled());
@@ -8801,6 +8950,7 @@ void Document::EnqueuePageRevealEvent()
     page_reveal_event->SetCurrentTarget(dom_window_);
     EnqueueAnimationFrameEvent(page_reveal_event);
 }
+#endif
 
 Resource* Document::GetPendingLinkPreloadForTesting(const KURL& url)
 {
@@ -8915,6 +9065,7 @@ Document* Document::parseHTML(ExecutionContext* context, const String& html, Set
     return parseHTMLInternal(context, html, options, /*safe=*/true, exception_state);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Document::SetOverrideSiteForCookiesForCSPMedia(bool value)
 {
     CHECK(IsMediaDocument());
@@ -8924,6 +9075,7 @@ void Document::SetOverrideSiteForCookiesForCSPMedia(bool value)
     }
     override_site_for_cookies_for_csp_media_ = value;
 }
+#endif
 
 void Document::OnWarnUnusedPreloads(Vector<KURL> unused_preloads)
 {
@@ -8931,9 +9083,11 @@ void Document::OnWarnUnusedPreloads(Vector<KURL> unused_preloads)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (LCPCriticalPathPredictor* lcpp = GetFrame()->GetLCPP()) {
         lcpp->OnWarnedUnusedPreloads(unused_preloads);
     }
+#endif
 }
 
 VisitedLinkState& Document::GetVisitedLinkState()

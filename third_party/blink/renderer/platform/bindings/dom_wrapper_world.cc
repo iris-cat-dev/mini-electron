@@ -115,11 +115,16 @@ DOMWrapperWorld::DOMWrapperWorld(PassKey, v8::Isolate* isolate, WorldType world_
         // The main world is managed separately from worldMap(). See worldMap().
         break;
     case WorldType::kIsolated:
+#if !defined(MINI_UI_QUICKJS)
     case WorldType::kInspectorIsolated:
+#endif
     case WorldType::kRegExp:
+#if !defined(MINI_UI_QUICKJS)
     case WorldType::kForV8ContextSnapshotNonMain:
     case WorldType::kWorkerOrWorklet:
-    case WorldType::kShadowRealm: {
+    case WorldType::kShadowRealm:
+#endif
+    {
         WorldMap& map = GetWorldMap();
         DCHECK(!map.Contains(world_id_));
         map.insert(world_id_, this);
@@ -258,6 +263,7 @@ std::optional<int> DOMWrapperWorld::GenerateWorldIdForType(WorldType world_type)
         // This function should not be called for IsolatedWorld because an
         // identifier for the world is given from out of DOMWrapperWorld.
         NOTREACHED();
+#if !defined(MINI_UI_QUICKJS)
     case WorldType::kInspectorIsolated: {
         DCHECK(IsMainThread());
         static int next_devtools_isolated_world_id = IsolatedWorldId::kDevToolsFirstIsolatedWorldId;
@@ -266,10 +272,14 @@ std::optional<int> DOMWrapperWorld::GenerateWorldIdForType(WorldType world_type)
         }
         return next_devtools_isolated_world_id++;
     }
+#endif
     case WorldType::kRegExp:
+#if !defined(MINI_UI_QUICKJS)
     case WorldType::kForV8ContextSnapshotNonMain:
     case WorldType::kWorkerOrWorklet:
-    case WorldType::kShadowRealm: {
+    case WorldType::kShadowRealm:
+#endif
+    {
         CHECK_GE(next_world_id, kUnspecifiedWorldIdStart);
         return next_world_id++;
     }

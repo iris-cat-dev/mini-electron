@@ -1,0 +1,7 @@
+
+DevTools listening on ws://127.0.0.1:54602/devtools/browser/b94f5062-8b9d-4668-a27e-779ac2b52084
+[37748:27736:1022/134427.290:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[37748:27736:1022/134427.290:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[37748:27736:1022/134427.295:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+[37748:27736:1022/134428.045:ERROR:google_apis\gcm\engine\mcs_client.cc:702]   Error code: 401  Error message: Authentication Failed: wrong_secret
+[37748:27736:1022/134428.045:ERROR:google_apis\gcm\engine\mcs_client.cc:704] Failed to log in to GCM, resetting connection.

@@ -25,7 +25,9 @@ const char kDialog[] = "Dialog";
 const char kDisplayLock[] = "DisplayLock";
 const char kEditContext[] = "EditContext";
 const char kEnvironmentVariableChanged[] = "EnvironmentVariableChanged";
+#if !defined(MINI_UI_QUICKJS)
 const char kViewTransition[] = "ViewTransition";
+#endif
 const char kFlatTreeChange[] = "FlatTreeChange";
 const char kFonts[] = "Fonts";
 const char kFrame[] = "Frame";
@@ -63,8 +65,10 @@ const char kZoom[] = "Zoom";
 
 namespace style_change_extra_data {
 DEFINE_GLOBAL(AtomicString, g_active);
+#if !defined(MINI_UI_QUICKJS)
 DEFINE_GLOBAL(AtomicString, g_active_view_transition);
 DEFINE_GLOBAL(AtomicString, g_active_view_transition_type);
+#endif
 DEFINE_GLOBAL(AtomicString, g_disabled);
 DEFINE_GLOBAL(AtomicString, g_drag);
 DEFINE_GLOBAL(AtomicString, g_focus);
@@ -79,8 +83,10 @@ void Init()
     DCHECK(IsMainThread());
 
     new (WTF::NotNullTag::kNotNull, (void*)&g_active) AtomicString(":active");
+#if !defined(MINI_UI_QUICKJS)
     new (WTF::NotNullTag::kNotNull, (void*)&g_active_view_transition) AtomicString(":active_view_transition");
     new (WTF::NotNullTag::kNotNull, (void*)&g_active_view_transition_type) AtomicString(":active_view_transition_type");
+#endif
     new (WTF::NotNullTag::kNotNull, (void*)&g_disabled) AtomicString(":disabled");
     new (WTF::NotNullTag::kNotNull, (void*)&g_drag) AtomicString(":-webkit-drag");
     new (WTF::NotNullTag::kNotNull, (void*)&g_focus) AtomicString(":focus");

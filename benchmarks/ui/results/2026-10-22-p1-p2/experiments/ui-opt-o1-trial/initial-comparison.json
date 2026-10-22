@@ -1,0 +1,90 @@
+[
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "status": "completed preliminary O1 trial, not final full matrix",
+    "commit_iteration_median_ms": {
+      "before": 2327.5999999940395,
+      "after": 1213.9000000059605,
+      "reduction_percent": 47.84756831031668
+    },
+    "workload_wall_ms": {
+      "before": 26916.1983,
+      "after": 20414.4655,
+      "reduction_percent": 24.155464778248426
+    },
+    "private_bytes": {
+      "before": 927576064,
+      "after": 394215424,
+      "reduction_percent": 57.5004746996145
+    },
+    "process_cpu_before": {
+      "source": "GetProcessTimes",
+      "interval": "before View::Create through populated capture; excludes View and process teardown",
+      "kernel_100ns_delta": 2343750,
+      "user_100ns_delta": 262343750,
+      "total_seconds_delta": 26.46875
+    },
+    "process_cpu_after": {
+      "source": "GetProcessTimes",
+      "interval": "before View::Create through populated capture; excludes View and process teardown",
+      "kernel_100ns_delta": 2343750,
+      "user_100ns_delta": 200156250,
+      "total_seconds_delta": 20.25
+    },
+    "dom_assertions_before": {
+      "correctness_assertions": 64,
+      "capture_verification_assertions": 1,
+      "assertion_failures": []
+    },
+    "dom_assertions_after": {
+      "correctness_assertions": 64,
+      "capture_verification_assertions": 1,
+      "assertion_failures": []
+    }
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "status": "completed preliminary O1 trial, not final full matrix",
+    "commit_iteration_median_ms": {
+      "before": 940.5,
+      "after": 702.0000000298023,
+      "reduction_percent": 25.358851671472372
+    },
+    "workload_wall_ms": {
+      "before": 14434.4689,
+      "after": 13663.1934,
+      "reduction_percent": 5.343289769393592
+    },
+    "private_bytes": {
+      "before": 372314112,
+      "after": 195338240,
+      "reduction_percent": 47.534022024929314
+    },
+    "process_cpu_before": {
+      "source": "GetProcessTimes",
+      "interval": "before View::Create through populated capture; excludes View and process teardown",
+      "kernel_100ns_delta": 781250,
+      "user_100ns_delta": 137812500,
+      "total_seconds_delta": 13.859375
+    },
+    "process_cpu_after": {
+      "source": "GetProcessTimes",
+      "interval": "before View::Create through populated capture; excludes View and process teardown",
+      "kernel_100ns_delta": 2343750,
+      "user_100ns_delta": 128750000,
+      "total_seconds_delta": 13.109375
+    },
+    "dom_assertions_before": {
+      "correctness_assertions": 64,
+      "capture_verification_assertions": 1,
+      "assertion_failures": []
+    },
+    "dom_assertions_after": {
+      "correctness_assertions": 64,
+      "capture_verification_assertions": 1,
+      "assertion_failures": []
+    }
+  }
+]

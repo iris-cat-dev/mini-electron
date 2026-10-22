@@ -32,9 +32,10 @@
 #include "third_party/blink/renderer/core/timing/performance_resource_timing.h"
 
 #include "base/notreached.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/service_worker_router_info.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/common/features_generated.h"
-#include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/performance_mark_or_measure.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
 #include "third_party/blink/renderer/bindings/core/v8/idl_types.h"
@@ -56,7 +57,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_timing_utils.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/service_worker_router_info.h"
+#endif
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
@@ -64,7 +67,7 @@
 
 namespace blink {
 
-using network::mojom::blink::NavigationDeliveryType;
+using network::mojom::NavigationDeliveryType;
 
 PerformanceResourceTiming::PerformanceResourceTiming(mojom::blink::ResourceTimingInfoPtr info, const AtomicString& initiator_type, base::TimeTicks time_origin,
     bool cross_origin_isolated_capability, ExecutionContext* context)
@@ -171,6 +174,7 @@ DOMHighResTimeStamp PerformanceResourceTiming::workerStart() const
         TimeOrigin(), info_->timing->service_worker_start_time, info_->allow_negative_values, CrossOriginIsolatedCapability());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 DOMHighResTimeStamp PerformanceResourceTiming::workerRouterEvaluationStart() const
 {
     if (!info_->timing || info_->timing->service_worker_router_evaluation_start.is_null()) {
@@ -208,6 +212,7 @@ AtomicString PerformanceResourceTiming::workerFinalSourceType() const
 
     return AtomicString(ServiceWorkerRouterInfo::GetRouterSourceTypeString(*info_->service_worker_router_info->actual_source_type));
 }
+#endif
 
 DOMHighResTimeStamp PerformanceResourceTiming::WorkerReady() const
 {
@@ -255,6 +260,7 @@ DOMHighResTimeStamp PerformanceResourceTiming::fetchStart() const
     if (DOMHighResTimeStamp worker_ready_time = WorkerReady())
         return worker_ready_time;
 
+#if !defined(MINI_UI_QUICKJS)
     // If the fetch came from service worker static routing API and the actual
     // source type is cache, we will not have a fetch start. For compatibility,
     // we set this to responseStart (as written in explainer
@@ -264,6 +270,7 @@ DOMHighResTimeStamp PerformanceResourceTiming::fetchStart() const
         && info_->service_worker_router_info->actual_source_type == network::mojom::ServiceWorkerRouterSourceType::kCache) {
         return responseStart();
     }
+#endif
 
     return PerformanceEntry::startTime();
 }
@@ -465,12 +472,14 @@ void PerformanceResourceTiming::BuildJSONValue(V8ObjectBuilder& builder) const
         builder.AddString("contentType", contentType());
     }
     builder.AddNumber("workerStart", workerStart());
+#if !defined(MINI_UI_QUICKJS)
     if (RuntimeEnabledFeatures::ServiceWorkerStaticRouterTimingInfoEnabled(ExecutionContext::From(builder.GetScriptState()))) {
         builder.AddNumber("workerRouterEvaluationStart", workerRouterEvaluationStart());
         builder.AddNumber("workerCacheLookupStart", workerCacheLookupStart());
         builder.AddString("matchedSourceType", workerMatchedSourceType());
         builder.AddString("finalSourceType", workerFinalSourceType());
     }
+#endif
     builder.AddNumber("redirectStart", redirectStart());
     builder.AddNumber("redirectEnd", redirectEnd());
     builder.AddNumber("fetchStart", fetchStart());

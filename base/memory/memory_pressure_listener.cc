@@ -12,7 +12,7 @@
 #include "base/trace_event/base_tracing.h"
 #include "base/tracing_buildflags.h"
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/memory_pressure_level_proto.h" // no-presubmit-check
 #endif
 
@@ -117,11 +117,13 @@ void MemoryPressureListener::SyncNotify(MemoryPressureLevel memory_pressure_leve
 void MemoryPressureListener::NotifyMemoryPressure(MemoryPressureLevel memory_pressure_level)
 {
     DCHECK_NE(memory_pressure_level, MEMORY_PRESSURE_LEVEL_NONE);
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_INSTANT(trace_event::MemoryDumpManager::kTraceCategory, "MemoryPressureListener::NotifyMemoryPressure", [&](perfetto::EventContext ctx) {
         auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
         auto* data = event->set_chrome_memory_pressure_notification();
         data->set_level(trace_event::MemoryPressureLevelToTraceEnum(memory_pressure_level));
     });
+#endif
     if (AreNotificationsSuppressed())
         return;
     DoNotifyMemoryPressure(memory_pressure_level);

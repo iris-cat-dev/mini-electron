@@ -9,7 +9,9 @@
 #include "third_party/blink/renderer/core/css/rule_set.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/document_speculation_rules.h"
+#endif
 
 namespace blink {
 
@@ -32,6 +34,7 @@ void CSSGlobalRuleSet::InitWatchedSelectorsRuleSet(Document& document)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CSSGlobalRuleSet::UpdateDocumentRulesSelectorsRuleSet(Document& document)
 {
     MarkDirty();
@@ -47,6 +50,7 @@ void CSSGlobalRuleSet::UpdateDocumentRulesSelectorsRuleSet(Document& document)
             /*within_mixin=*/false);
     }
 }
+#endif
 
 void CSSGlobalRuleSet::Update(Document& document)
 {
@@ -67,9 +71,11 @@ void CSSGlobalRuleSet::Update(Document& document)
         features_.Merge(watched_selectors_rule_set_->Features());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (document_rules_selectors_rule_set_) {
         features_.Merge(document_rules_selectors_rule_set_->Features());
     }
+#endif
 
     document.GetStyleEngine().CollectFeaturesTo(features_);
 }
@@ -78,7 +84,9 @@ void CSSGlobalRuleSet::Dispose()
 {
     features_.Clear();
     watched_selectors_rule_set_ = nullptr;
+#if !defined(MINI_UI_QUICKJS)
     document_rules_selectors_rule_set_ = nullptr;
+#endif
     has_fullscreen_ua_style_ = false;
     is_dirty_ = true;
 }
@@ -86,7 +94,9 @@ void CSSGlobalRuleSet::Dispose()
 void CSSGlobalRuleSet::Trace(Visitor* visitor) const
 {
     visitor->Trace(watched_selectors_rule_set_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(document_rules_selectors_rule_set_);
+#endif
 }
 
 } // namespace blink

@@ -47,7 +47,9 @@
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
+#endif
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -55,14 +57,20 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_fetch_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/worker_fetch_context.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
-#include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/worker_settings.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher_properties.h"
@@ -194,6 +202,7 @@ bool IsWebSocketAllowedInFrame(const BaseFetchContext& fetch_context, const Secu
     return settings && settings->GetAllowRunningOfInsecureContent();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool IsWebSocketAllowedInWorker(const WorkerFetchContext& fetch_context, WorkerSettings* settings, const KURL& url)
 {
     fetch_context.CountUsage(WebFeature::kMixedContentPresent);
@@ -213,6 +222,7 @@ bool IsWebSocketAllowedInWorker(const WorkerFetchContext& fetch_context, WorkerS
         return false;
     return settings && settings->GetAllowRunningOfInsecureContent();
 }
+#endif
 
 bool IsUrlPotentiallyTrustworthy(const KURL& url)
 {
@@ -484,6 +494,7 @@ bool MixedContentChecker::ShouldBlockFetch(LocalFrame* frame, mojom::blink::Requ
         NOTREACHED();
     };
 
+#if !defined(MINI_UI_QUICKJS)
     // Skip mixed content check for private and local targets.
     // `target_address_space` here is private/local only when resource request
     // has explicitly set `targetAddressSpace` fetch option.
@@ -491,27 +502,30 @@ bool MixedContentChecker::ShouldBlockFetch(LocalFrame* frame, mojom::blink::Requ
     // initiator is more public.
     if (base::FeatureList::IsEnabled(network::features::kPrivateNetworkAccessPermissionPrompt)
         && RuntimeEnabledFeatures::PrivateNetworkAccessPermissionPromptEnabled(frame->DomWindow())) {
-        // TODO(crbug.com/323583084): Re-enable PNA permission prompt for documents
-        // fetched via service worker.
-        if (!frame->Loader().GetDocumentLoader()->GetResponse().WasFetchedViaServiceWorker()
+        const bool was_fetched_via_service_worker = frame->Loader().GetDocumentLoader()->GetResponse().WasFetchedViaServiceWorker();
+        if (!was_fetched_via_service_worker
             && (target_address_space == network::mojom::blink::IPAddressSpace::kPrivate
                 || target_address_space == network::mojom::blink::IPAddressSpace::kLocal)) {
             UseCounter::Count(frame->GetDocument(), WebFeature::kPrivateNetworkAccessPermissionPrompt);
             allowed = true;
         }
     }
+#endif
 
     if (reporting_disposition == ReportingDisposition::kReport) {
         frame->GetDocument()->AddConsoleMessage(CreateConsoleMessageAboutFetch(MainResourceUrlForFrame(mixed_frame), url, request_context, allowed, nullptr));
     }
     // Issue is created even when reporting disposition is false i.e. for
     // speculative prefetches. Otherwise the DevTools frontend would not
+#if !defined(MINI_UI_QUICKJS)
     // receive an issue with a devtools_id which it can match to a request.
     AuditsIssue::ReportMixedContentIssue(MainResourceUrlForFrame(mixed_frame), url, request_context, frame,
         allowed ? MixedContentResolutionStatus::kMixedContentWarning : MixedContentResolutionStatus::kMixedContentBlocked, devtools_id);
+#endif
     return !allowed;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 bool MixedContentChecker::ShouldBlockFetchOnWorker(WorkerFetchContext& worker_fetch_context, mojom::blink::RequestContextType request_context,
     const KURL& url_before_redirects, ResourceRequest::RedirectStatus redirect_status, const KURL& url, ReportingDisposition reporting_disposition,
@@ -558,6 +572,7 @@ bool MixedContentChecker::ShouldBlockFetchOnWorker(WorkerFetchContext& worker_fe
     }
     return !allowed;
 }
+#endif
 
 // static
 ConsoleMessage* MixedContentChecker::CreateConsoleMessageAboutWebSocket(const KURL& main_resource_url, const KURL& url, bool allowed)
@@ -600,13 +615,16 @@ bool MixedContentChecker::IsWebSocketAllowed(const FrameFetchContext& frame_fetc
     }
 
     frame->GetDocument()->AddConsoleMessage(CreateConsoleMessageAboutWebSocket(MainResourceUrlForFrame(mixed_frame), url, allowed));
+#if !defined(MINI_UI_QUICKJS)
     AuditsIssue::ReportMixedContentIssue(MainResourceUrlForFrame(mixed_frame), url,
 
         mojom::blink::RequestContextType::FETCH, frame,
         allowed ? MixedContentResolutionStatus::kMixedContentWarning : MixedContentResolutionStatus::kMixedContentBlocked, String());
+#endif
     return allowed;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 bool MixedContentChecker::IsWebSocketAllowed(WorkerFetchContext& worker_fetch_context, const KURL& url)
 {
@@ -629,6 +647,7 @@ bool MixedContentChecker::IsWebSocketAllowed(WorkerFetchContext& worker_fetch_co
 
     return allowed;
 }
+#endif
 
 bool MixedContentChecker::IsMixedFormAction(LocalFrame* frame, const KURL& url, ReportingDisposition reporting_disposition)
 {
@@ -659,10 +678,12 @@ bool MixedContentChecker::IsMixedFormAction(LocalFrame* frame, const KURL& url, 
     }
     // Issue is created even when reporting disposition is false i.e. for
     // speculative prefetches. Otherwise the DevTools frontend would not
+#if !defined(MINI_UI_QUICKJS)
     // receive an issue with a devtools_id which it can match to a request.
     AuditsIssue::ReportMixedContentIssue(MainResourceUrlForFrame(mixed_frame), url,
 
         mojom::blink::RequestContextType::FORM, frame, MixedContentResolutionStatus::kMixedContentWarning, String());
+#endif
 
     return true;
 }
@@ -691,9 +712,11 @@ bool MixedContentChecker::ShouldAutoupgrade(const FetchClientSettingsObject* fet
             if (auto* window = DynamicTo<LocalDOMWindow>(execution_context_for_logging)) {
                 window->AddConsoleMessage(
                     MixedContentChecker::CreateConsoleMessageAboutFetchIPAddressNoAutoupgrade(fetch_client_settings_object->GlobalObjectUrl(), request_url));
+#if !defined(MINI_UI_QUICKJS)
                 AuditsIssue::ReportMixedContentIssue(fetch_client_settings_object->GlobalObjectUrl(), resource_request.Url(),
                     resource_request.GetRequestContext(), window->document()->GetFrame(), MixedContentResolutionStatus::kMixedContentWarning,
                     resource_request.GetDevToolsId());
+#endif
             }
         }
         return false;
@@ -724,8 +747,10 @@ void MixedContentChecker::MixedContentFound(LocalFrame* frame, const KURL& main_
     frame->GetDocument()->AddConsoleMessage(
         CreateConsoleMessageAboutFetch(main_resource_url, mixed_content_url, request_context, was_allowed, std::move(source_location)));
 
+#if !defined(MINI_UI_QUICKJS)
     AuditsIssue::ReportMixedContentIssue(main_resource_url, mixed_content_url, request_context, frame,
         was_allowed ? MixedContentResolutionStatus::kMixedContentWarning : MixedContentResolutionStatus::kMixedContentBlocked, String());
+#endif
     // Reports to the CSP policy.
     ContentSecurityPolicy* policy = frame->DomWindow()->GetContentSecurityPolicy();
     if (policy) {
@@ -800,8 +825,10 @@ void MixedContentChecker::UpgradeInsecureRequest(ResourceRequest& resource_reque
                 window->AddConsoleMessage(
                     MixedContentChecker::CreateConsoleMessageAboutFetchAutoupgrade(fetch_client_settings_object->GlobalObjectUrl(), resource_request.Url()));
                 resource_request.SetUkmSourceId(window->document()->UkmSourceID());
+#if !defined(MINI_UI_QUICKJS)
                 AuditsIssue::ReportMixedContentIssue(fetch_client_settings_object->GlobalObjectUrl(), resource_request.Url(), context,
                     window->document()->GetFrame(), MixedContentResolutionStatus::kMixedContentAutomaticallyUpgraded, resource_request.GetDevToolsId());
+#endif
             }
             resource_request.SetIsAutomaticUpgrade(true);
         } else {

@@ -37,20 +37,24 @@ public:
     // ScrollAnimatorCompositorCoordinator implementation.
     void ResetAnimationState() override;
     void CancelAnimation() override;
+#if !defined(MINI_UI_QUICKJS)
     void TakeOverCompositorAnimation() override
     {
     }
+#endif
     ScrollableArea* GetScrollableArea() const override
     {
         return scrollable_area_.Get();
     }
     void TickAnimation(base::TimeTicks monotonic_time) override;
     void UpdateCompositorAnimations() override;
+#if !defined(MINI_UI_QUICKJS)
     void NotifyCompositorAnimationFinished(int group_id) override;
     void NotifyCompositorAnimationAborted(int group_id) override
     {
     }
 
+#endif
     void Trace(Visitor*) const override;
 
 private:

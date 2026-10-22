@@ -1,0 +1,30 @@
+from pathlib import Path
+import json
+import subprocess
+import sys
+import time
+root=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(root/'build'))
+from mini_ui.windows import visual_studio_environment
+env=visual_studio_environment()
+py=str(root/'.build-tools/ui-benchmark-venv/Scripts/python.exe')
+ninja=r'C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe'
+out=root/'out/ui-field-final-validation'
+out.mkdir(parents=True,exist_ok=True)
+steps=[
+ ('production-build',[ninja,'-f','out/ui-windows-x64/build.ninja','-j4','host']),
+ ('production-regression',[py,'benchmarks/ui/check_runtime.py','--out-dir','out/ui-field-final-checks']),
+ ('production-smoke',[py,'benchmarks/ui/run.py','--build','--out-dir','out/ui-field-final-smoke','--counts','1000','--timeout-ms','900000']),
+ ('chrome-default',[py,'benchmarks/ui/chrome.py','--out-dir','out/ui-field-chrome-default']),
+ ('chrome-software',[py,'benchmarks/ui/chrome.py','--disable-gpu','--out-dir','out/ui-field-chrome-software']),
+ ('chrome-comparison',[py,'benchmarks/ui/compare.py','--mini-out','out/ui-field-inline-after','--chrome-out','out/ui-field-chrome-default','--chrome-software-out','out/ui-field-chrome-software','--out-dir','out/ui-field-chrome-comparison']),
+]
+records=[]
+for name,command in steps:
+ start=time.perf_counter();log=out/(name+'.log')
+ with log.open('wb') as stream:
+  process=subprocess.run(command,cwd=root,env=env,stdout=stream,stderr=subprocess.STDOUT)
+ records.append({'name':name,'command':command,'exit_code':process.returncode,'seconds':time.perf_counter()-start,'log':str(log)})
+ (out/'validation.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
+ print(json.dumps(records[-1]),flush=True)
+ if process.returncode:raise SystemExit(process.returncode)

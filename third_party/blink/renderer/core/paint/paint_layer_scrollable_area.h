@@ -363,8 +363,10 @@ public:
     int PageStep(ScrollbarOrientation) const override;
     mojom::blink::ScrollBehavior ScrollBehaviorStyle() const override;
     mojom::blink::ColorScheme UsedColorSchemeScrollbars() const override;
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationHost* GetCompositorAnimationHost() const override;
     cc::AnimationTimeline* GetCompositorAnimationTimeline() const override;
+#endif
     bool HasTickmarks() const override;
     Vector<gfx::Rect> GetTickmarks() const override;
 
@@ -686,7 +688,9 @@ public:
         EnsureRareData().targeted_snap_area_id_ = id;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void DropCompositorScrollDeltaNextCommit() override;
+#endif
 
     SnappedQueryScrollSnapshot& EnsureSnappedQueryScrollSnapshot();
     SnappedQueryScrollSnapshot* GetSnappedQueryScrollSnapshot();

@@ -88,8 +88,10 @@ public:
     virtual const WebRemoteFrame* ToWebRemoteFrame() const = 0;
 
     bool Swap(WebLocalFrame* new_frame);
+#if !defined(MINI_UI_QUICKJS)
     bool Swap(WebRemoteFrame* new_frame, CrossVariantMojoAssociatedRemote<mojom::RemoteFrameHostInterfaceBase> remote_frame_host,
         CrossVariantMojoAssociatedReceiver<mojom::RemoteFrameInterfaceBase> receiver, mojom::FrameReplicationStatePtr replicated_state);
+#endif
 
     // This method closes and deletes the WebFrame. This is typically called by
     // the embedder in response to a frame detached callback to the WebFrame

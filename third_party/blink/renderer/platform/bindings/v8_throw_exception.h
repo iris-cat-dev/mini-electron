@@ -50,18 +50,22 @@ public:
     static v8::Local<v8::Value> CreateReferenceError(v8::Isolate*, const String& message);
     static v8::Local<v8::Value> CreateSyntaxError(v8::Isolate*, const String& message);
     static v8::Local<v8::Value> CreateTypeError(v8::Isolate*, const String& message);
+#if !defined(MINI_UI_QUICKJS)
     static v8::Local<v8::Value> CreateWasmCompileError(v8::Isolate*, const String& message);
     static v8::Local<v8::Value> CreateWasmLinkError(v8::Isolate*, const String& message);
     static v8::Local<v8::Value> CreateWasmRuntimeError(v8::Isolate*, const String& message);
+#endif
 
     static void ThrowError(v8::Isolate*, const String& message);
     static void ThrowRangeError(v8::Isolate*, const String& message);
     static void ThrowReferenceError(v8::Isolate*, const String& message);
     static void ThrowSyntaxError(v8::Isolate*, const String& message);
     static void ThrowTypeError(v8::Isolate*, const String& message);
+#if !defined(MINI_UI_QUICKJS)
     static void ThrowWasmCompileError(v8::Isolate*, const String& message);
     static void ThrowWasmLinkError(v8::Isolate*, const String& message);
     static void ThrowWasmRuntimeError(v8::Isolate*, const String& message);
+#endif
 };
 
 } // namespace blink

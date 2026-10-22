@@ -94,7 +94,9 @@ class StyleChangeReasonForTracing;
 class TextVisitor;
 class V8UnionNodeOrStringOrTrustedScript;
 class V8UnionStringOrTrustedScript;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
 
 struct PhysicalRect;
 
@@ -140,6 +142,7 @@ enum class SlotChangeType {
     kSuppressSlotChangeEvent,
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // LinkHighlight determines the largest enclosing node with hand cursor set.
 enum class LinkHighlightCandidate {
     // This node is with hand cursor set.
@@ -149,6 +152,7 @@ enum class LinkHighlightCandidate {
     // |kYes| if its ancestor is |kYes|.
     kMayBe
 };
+#endif
 
 // A Node is a base class for all objects in the DOM tree.
 // The spec governing this interface can be found here:
@@ -397,10 +401,12 @@ public:
     {
         return GetPseudoId() == kPseudoIdBackdrop;
     }
+#if !defined(MINI_UI_QUICKJS)
     DISABLE_CFI_PERF bool IsViewTransitionPseudoElement() const
     {
         return IsTransitionPseudoElement(GetPseudoId());
     }
+#endif
     virtual PseudoId GetPseudoId() const
     {
         return kPseudoIdNone;
@@ -440,26 +446,13 @@ public:
     {
         return false;
     }
-    virtual bool IsMediaControlElement() const
-    {
-        return false;
-    }
-    virtual bool IsMediaControls() const
-    {
-        return false;
-    }
-    virtual bool IsMediaElement() const
-    {
-        return false;
-    }
-    virtual bool IsTextTrackContainer() const
-    {
-        return false;
-    }
-    virtual bool IsVTTElement() const
-    {
-        return false;
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual bool IsMediaControlElement() const { return false; }
+    virtual bool IsMediaControls() const { return false; }
+    virtual bool IsMediaElement() const { return false; }
+    virtual bool IsTextTrackContainer() const { return false; }
+    virtual bool IsVTTElement() const { return false; }
+#endif
     virtual bool IsAttributeNode() const
     {
         return false;
@@ -472,14 +465,10 @@ public:
     {
         return false;
     }
-    virtual bool IsMediaRemotingInterstitial() const
-    {
-        return false;
-    }
-    virtual bool IsPictureInPictureInterstitial() const
-    {
-        return false;
-    }
+#if !defined(MINI_UI_QUICKJS)
+    virtual bool IsMediaRemotingInterstitial() const { return false; }
+    virtual bool IsPictureInPictureInterstitial() const { return false; }
+#endif
 
     // Either ::scroll-marker or ::scroll-*-button pseudo element.
     bool IsScrollControlPseudoElement() const
@@ -487,9 +476,10 @@ public:
         return IsScrollMarkerPseudoElement() || IsScrollButtonPseudoElement();
     }
 
-    // Traverses the ancestors of this node and returns true if any of them are
-    // either a MediaControlElement or MediaControls.
+#if !defined(MINI_UI_QUICKJS)
+    // Traverses ancestors and detects internal media controls.
     bool HasMediaControlAncestor() const;
+#endif
 
     // StyledElements allow inline style (style="border: 1px"), presentational
     // attributes (ex. color), class names (ex. class="foo bar") and other
@@ -792,8 +782,10 @@ public:
 
     void FocusabilityLost();
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns how |this| participates to the nodes with hand cursor set.
     LinkHighlightCandidate IsLinkHighlightCandidate() const;
+#endif
 
     virtual PhysicalRect BoundingBox() const;
     gfx::Rect PixelSnappedBoundingBox() const;
@@ -1153,8 +1145,10 @@ public:
     virtual LayoutBox* AutoscrollBox();
     virtual void StopAutoscroll();
 
+#if !defined(MINI_UI_QUICKJS)
     // If the node is a plugin, then this returns its WebPluginContainer.
     WebPluginContainerImpl* GetWebPluginContainer() const;
+#endif
 
     void RegisterScrollTimeline(ScrollTimeline*);
     void UnregisterScrollTimeline(ScrollTimeline*);

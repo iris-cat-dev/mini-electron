@@ -31,11 +31,13 @@ public:
     // called, will fail otherwise.
     static bool HasCompositeClipPathAnimation(const LayoutObject& layout_object);
 
+#if !defined(MINI_UI_QUICKJS)
     // Resolves the composited clip path status for a layout object, running all
     // the required checks to ensure an animation can definitely be painted on
     // main and started on cc. This must be called prior to checking
     // HasCompositeClipPathAnimation.
     static void ResolveClipPathStatus(const LayoutObject& layout_object, bool is_in_block_fragmentation);
+#endif
 
     static void PaintClipPathAsMaskImage(GraphicsContext&, const LayoutObject&, const DisplayItemClient&);
 

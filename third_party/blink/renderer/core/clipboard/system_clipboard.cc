@@ -34,12 +34,6 @@
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
-std::ostream& blink::mojom::operator<<(std::ostream& a, ::blink::mojom::ClipboardBuffer b)
-{
-    *(int*)1 = 1;
-    return a << (int)(b);
-}
-
 namespace blink {
 
 namespace {
@@ -49,6 +43,7 @@ String NonNullString(const String& string)
     return string.IsNull() ? g_empty_string16_bit : string;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // This function is needed to clone a PendingRemote because normally they are
 // not clonable.  The input PendingRemote is "cloned" twice, so one of those
 // copies is intended to replace the original PendingRemote passed in by the
@@ -64,6 +59,7 @@ CloneFsaToken(mojo::PendingRemote<mojom::blink::FileSystemAccessDataTransferToke
     remote->Clone(copy.InitWithNewPipeAndPassReceiver());
     return { remote.Unbind(), std::move(copy) };
 }
+#endif
 
 } // namespace
 
@@ -622,9 +618,13 @@ mojom::blink::ClipboardFilesPtr SystemClipboard::Snapshot::CloneFiles(mojom::bli
 
     WTF::Vector<mojom::blink::DataTransferFilePtr> vec;
     for (auto& dtf : files->files) {
+#if !defined(MINI_UI_QUICKJS)
         auto clones = CloneFsaToken(std::move(dtf->file_system_access_token));
         dtf->file_system_access_token = std::move(clones.first);
         vec.emplace_back(mojom::blink::DataTransferFile::New(dtf->path, dtf->display_name, std::move(clones.second)));
+#else
+        vec.emplace_back(mojom::blink::DataTransferFile::New(dtf->path, dtf->display_name));
+#endif
     }
 
     return mojom::blink::ClipboardFiles::New(std::move(vec), files->file_system_id);

@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_USE_COUNTER_CALLBACK_H_
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_USE_COUNTER_CALLBACK_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_export.h"
 #include "v8/include/v8.h"
 
@@ -14,5 +15,7 @@ namespace blink {
 CORE_EXPORT void UseCounterCallback(v8::Isolate*, v8::Isolate::UseCounterFeature);
 
 } // namespace blink
+
+#endif
 
 #endif // THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_USE_COUNTER_CALLBACK_H_

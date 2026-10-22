@@ -25,7 +25,9 @@
 
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_prescient_networking.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_initializer.h"
+#endif
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
@@ -51,10 +53,12 @@ void ChromeClient::Trace(Visitor* visitor) const
     visitor->Trace(last_mouse_over_node_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ChromeClient::InstallSupplements(LocalFrame& frame)
 {
     CoreInitializer::GetInstance().InstallSupplements(frame);
 }
+#endif
 
 bool ChromeClient::CanOpenUIElementIfDuringPageDismissal(Frame& main_frame, UIElementType ui_element_type, const String& message)
 {
@@ -87,7 +91,9 @@ template <typename Delegate> static bool OpenJavaScriptDialog(LocalFrame* frame,
     // otherwise cause the load to continue while we're in the middle of
     // executing JavaScript.
     ScopedPagePauser pauser;
+#if !defined(MINI_UI_QUICKJS)
     probe::WillRunJavaScriptDialog(frame);
+#endif
     bool result = delegate();
     probe::DidRunJavaScriptDialog(frame);
     return result;

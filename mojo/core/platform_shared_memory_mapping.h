@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,24 +25,30 @@ namespace core {
 // |base::WritableSharedMemoryMapping|, and it supports non-page-aligned base
 // offsets for convenience.
 class MOJO_SYSTEM_IMPL_EXPORT PlatformSharedMemoryMapping {
-public:
-    PlatformSharedMemoryMapping(base::subtle::PlatformSharedMemoryRegion* region, size_t offset, size_t length);
+ public:
+  PlatformSharedMemoryMapping(base::subtle::PlatformSharedMemoryRegion* region,
+                              size_t offset,
+                              size_t length);
 
-    PlatformSharedMemoryMapping(const PlatformSharedMemoryMapping&) = delete;
-    PlatformSharedMemoryMapping& operator=(const PlatformSharedMemoryMapping&) = delete;
+  PlatformSharedMemoryMapping(const PlatformSharedMemoryMapping&) = delete;
+  PlatformSharedMemoryMapping& operator=(const PlatformSharedMemoryMapping&) =
+      delete;
 
-    ~PlatformSharedMemoryMapping();
+  ~PlatformSharedMemoryMapping();
 
-    bool IsValid() const;
+  bool IsValid() const;
 
-    void* GetBase() const;
-    size_t GetLength() const;
+  void* GetBase() const;
+  size_t GetLength() const;
 
-private:
-    absl::variant<absl::monostate, base::ReadOnlySharedMemoryMapping, base::WritableSharedMemoryMapping> mapping_;
+ private:
+  absl::variant<absl::monostate,
+                base::ReadOnlySharedMemoryMapping,
+                base::WritableSharedMemoryMapping>
+      mapping_;
 };
 
-} // namespace core
-} // namespace mojo
+}  // namespace core
+}  // namespace mojo
 
-#endif // MOJO_CORE_PLATFORM_SHARED_MEMORY_MAPPING_H_
+#endif  // MOJO_CORE_PLATFORM_SHARED_MEMORY_MAPPING_H_

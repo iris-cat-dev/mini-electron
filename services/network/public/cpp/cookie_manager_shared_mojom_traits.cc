@@ -4,9 +4,13 @@
 
 #include "services/network/public/cpp/cookie_manager_shared_mojom_traits.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "net/cookies/cookie_inclusion_status.h"
+#endif
 #include "services/network/public/cpp/crash_keys.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cookie_manager.mojom-shared.h"
+#endif
 
 namespace mojo {
 
@@ -24,6 +28,7 @@ bool StructTraits<network::mojom::SiteForCookiesDataView, net::SiteForCookies>::
     return result;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 network::mojom::CookieExemptionReason EnumTraits<network::mojom::CookieExemptionReason, net::CookieInclusionStatus::ExemptionReason>::ToMojom(
     net::CookieInclusionStatus::ExemptionReason input)
 {
@@ -102,5 +107,6 @@ bool StructTraits<network::mojom::CookieInclusionStatusDataView, net::CookieIncl
 
     return net::CookieInclusionStatus::ValidateExclusionAndWarningFromWire(status.exclusion_reasons(), status.warning_reasons());
 }
+#endif
 
 } // namespace mojo

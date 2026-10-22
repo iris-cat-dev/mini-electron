@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,7 @@
 
 #include <string>
 
-#include "base/callback_forward.h"
+#include "base/functional/callback_forward.h"
 #include "mojo/public/c/system/functions.h"
 #include "mojo/public/cpp/system/system_export.h"
 
@@ -21,9 +21,8 @@ namespace mojo {
 
 // Returns the current |MojoTimeTicks| value. See |MojoGetTimeTicksNow()| for
 // complete documentation.
-inline MojoTimeTicks GetTimeTicksNow()
-{
-    return MojoGetTimeTicksNow();
+inline MojoTimeTicks GetTimeTicksNow() {
+  return MojoGetTimeTicksNow();
 }
 
 // Sets a callback to handle communication errors regarding peer processes whose
@@ -32,9 +31,11 @@ inline MojoTimeTicks GetTimeTicksNow()
 // process.
 //
 // This can be used to globally listen for reports of bad incoming IPCs.
-using DefaultProcessErrorHandler = base::RepeatingCallback<void(const std::string& error)>;
-void MOJO_CPP_SYSTEM_EXPORT SetDefaultProcessErrorHandler(DefaultProcessErrorHandler handler);
+using DefaultProcessErrorHandler =
+    base::RepeatingCallback<void(const std::string& error)>;
+void MOJO_CPP_SYSTEM_EXPORT
+SetDefaultProcessErrorHandler(DefaultProcessErrorHandler handler);
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_FUNCTIONS_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_FUNCTIONS_H_

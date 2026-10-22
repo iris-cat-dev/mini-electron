@@ -57,10 +57,12 @@ bool ModulatorImplBase::IsScriptingDisabled() const
     return !GetExecutionContext()->CanExecuteScripts(kAboutToExecuteScript);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 mojom::blink::V8CacheOptions ModulatorImplBase::GetV8CacheOptions() const
 {
     return GetExecutionContext()->GetV8CacheOptions();
 }
+#endif
 
 // <specdef label="fetch-a-module-script-tree"
 // href="https://html.spec.whatwg.org/C/#fetch-a-module-script-tree">
@@ -241,6 +243,7 @@ ModuleType ModulatorImplBase::ModuleTypeFromRequest(const ModuleRequest& module_
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ModulatorImplBase::ProduceCacheModuleTreeTopLevel(ModuleScript* module_script)
 {
     DCHECK(module_script);
@@ -286,6 +289,7 @@ void ModulatorImplBase::ProduceCacheModuleTree(ModuleScript* module_script, Heap
         ProduceCacheModuleTree(child_module, discovered_set);
     }
 }
+#endif
 
 void ModulatorImplBase::Trace(Visitor* visitor) const
 {

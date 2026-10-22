@@ -8,9 +8,12 @@
 #include <stdint.h>
 
 #include <atomic>
+#include <cmath>
 #include <string_view>
 #include <utility>
 
+#include "base/check.h"
+#include "base/check_op.h"
 #include "base/bits.h"
 #include "base/containers/circular_deque.h"
 #include "base/containers/span.h"
@@ -20,10 +23,12 @@
 #include "base/notreached.h"
 #include "base/pickle.h"
 #include "base/strings/stringprintf.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/trace_event_impl.h"
 #include "base/trace_event/trace_event_memory_overhead.h"
 #include "base/trace_event/trace_log.h"
+#endif
 #include "base/values.h"
 
 namespace base::trace_event {
@@ -39,7 +44,9 @@ constexpr char kTypeDouble = 'd';
 constexpr char kTypeString = 's';
 constexpr char kTypeCStr = '*'; // only used for key names
 
+#if !defined(MINI_UI_QUICKJS)
 std::atomic<TracedValue::WriterFactoryCallback> g_writer_factory_callback;
+#endif
 
 #ifndef NDEBUG
 constexpr bool kStackTypeDict = false;
@@ -104,10 +111,12 @@ public:
     {
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsProtoWriter() const override
     {
         return false;
     }
+#endif
 
     void SetInteger(const char* name, int value) override
     {
@@ -308,7 +317,7 @@ public:
             }
 
             case kTypeBool: {
-                TraceEvent::TraceValue json_value;
+                TraceValue json_value;
                 CHECK(it.ReadBool(&json_value.as_bool));
                 maybe_append_key_name(state_stack[current_state_index], &it, out);
                 json_value.AppendAsJSON(TRACE_VALUE_TYPE_BOOL, out);
@@ -319,14 +328,14 @@ public:
                 int value;
                 CHECK(it.ReadInt(&value));
                 maybe_append_key_name(state_stack[current_state_index], &it, out);
-                TraceEvent::TraceValue json_value;
+                TraceValue json_value;
                 json_value.as_int = value;
                 json_value.AppendAsJSON(TRACE_VALUE_TYPE_INT, out);
                 break;
             }
 
             case kTypeDouble: {
-                TraceEvent::TraceValue json_value;
+                TraceValue json_value;
                 CHECK(it.ReadDouble(&json_value.as_double));
                 maybe_append_key_name(state_stack[current_state_index], &it, out);
                 json_value.AppendAsJSON(TRACE_VALUE_TYPE_DOUBLE, out);
@@ -337,9 +346,7 @@ public:
                 std::string value;
                 CHECK(it.ReadString(&value));
                 maybe_append_key_name(state_stack[current_state_index], &it, out);
-                TraceEvent::TraceValue json_value;
-                json_value.as_string = value.c_str();
-                json_value.AppendAsJSON(TRACE_VALUE_TYPE_STRING, out);
+                EscapeJSONString(value, true, out);
                 break;
             }
 
@@ -356,6 +363,7 @@ public:
         DCHECK(state_stack.empty());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void EstimateTraceMemoryOverhead(TraceEventMemoryOverhead* overhead) override
     {
         overhead->Add(TraceEventMemoryOverhead::kTracedValue,
@@ -364,6 +372,7 @@ public:
             /* resident size */
             pickle_.size());
     }
+#endif
 
     std::unique_ptr<base::Value> ToBaseValue() const
     {
@@ -438,7 +447,7 @@ public:
             } break;
 
             case kTypeDouble: {
-                TraceEvent::TraceValue trace_value;
+                TraceValue trace_value;
                 CHECK(it.ReadDouble(&trace_value.as_double));
                 Value base_value;
                 if (!std::isfinite(trace_value.as_double)) {
@@ -482,16 +491,19 @@ private:
 
 std::unique_ptr<TracedValue::Writer> CreateWriter(size_t capacity)
 {
+#if !defined(MINI_UI_QUICKJS)
     TracedValue::WriterFactoryCallback callback = g_writer_factory_callback.load(std::memory_order_relaxed);
     if (callback) {
         return callback(capacity);
     }
+#endif
 
     return std::make_unique<PickleWriter>(capacity);
 }
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 bool TracedValue::Writer::AppendToProto(ProtoAppender* appender)
 {
     return false;
@@ -502,6 +514,7 @@ void TracedValue::SetWriterFactoryCallback(WriterFactoryCallback callback)
 {
     g_writer_factory_callback.store(callback);
 }
+#endif
 
 TracedValue::TracedValue(size_t capacity)
     : TracedValue(capacity, /*forced_json*/ false)
@@ -512,7 +525,11 @@ TracedValue::TracedValue(size_t capacity, bool forced_json)
 {
     DEBUG_PUSH_CONTAINER(kStackTypeDict);
 
+#if defined(MINI_UI_QUICKJS)
+    writer_ = CreateWriter(capacity);
+#else
     writer_ = forced_json ? std::make_unique<PickleWriter>(capacity) : CreateWriter(capacity);
+#endif
 }
 
 TracedValue::~TracedValue()
@@ -705,6 +722,7 @@ void TracedValue::AppendAsTraceFormat(std::string* out) const
     writer_->AppendAsTraceFormat(out);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool TracedValue::AppendToProto(ProtoAppender* appender) const
 {
     return writer_->AppendToProto(appender);
@@ -714,6 +732,7 @@ void TracedValue::EstimateTraceMemoryOverhead(TraceEventMemoryOverhead* overhead
 {
     writer_->EstimateTraceMemoryOverhead(overhead);
 }
+#endif
 
 TracedValue::Array::Array(const std::initializer_list<ArrayItem> items)
 {

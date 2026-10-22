@@ -4,6 +4,8 @@
 
 #include "cc/base/devtools_instrumentation.h"
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <string>
 
 namespace cc {
@@ -117,3 +119,5 @@ ScopedImageDecodeTask::~ScopedImageDecodeTask()
 
 } // namespace devtools_instrumentation
 } // namespace cc
+
+#endif // !defined(MINI_UI_QUICKJS)

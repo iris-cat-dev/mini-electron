@@ -43,7 +43,9 @@
 #include "third_party/blink/public/common/loader/referrer_utils.h"
 #include "third_party/blink/public/common/loader/resource_type_util.h"
 #include "third_party/blink/public/common/loader/throttling_url_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
 #include "third_party/blink/public/mojom/navigation/renderer_eviction_reason.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -51,9 +53,11 @@
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_request_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
-#include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/code_cache_fetcher.h"
+#endif
+#include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/mojo_url_loader_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/resource_request_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/sync_load_context.h"
@@ -207,12 +211,21 @@ void ResourceRequestSender::SendSync(std::unique_ptr<network::ResourceRequest> r
     }
 }
 
+#if defined(MINI_UI_QUICKJS)
+int ResourceRequestSender::SendAsync(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<base::SequencedTaskRunner> loading_task_runner,
+    const net::NetworkTrafficAnnotationTag& traffic_annotation, uint32_t loader_options, const Vector<String>& cors_exempt_header_list,
+    scoped_refptr<ResourceRequestClient> client, scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+    WebVector<std::unique_ptr<URLLoaderThrottle>> throttles, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
+    base::OnceCallback<void(mojom::blink::RendererEvictionReason)> evict_from_bfcache_callback,
+    base::RepeatingCallback<void(size_t)> did_buffer_load_while_in_bfcache_callback)
+#else
 int ResourceRequestSender::SendAsync(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<base::SequencedTaskRunner> loading_task_runner,
     const net::NetworkTrafficAnnotationTag& traffic_annotation, uint32_t loader_options, const Vector<String>& cors_exempt_header_list,
     scoped_refptr<ResourceRequestClient> client, scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     WebVector<std::unique_ptr<URLLoaderThrottle>> throttles, std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper,
     CodeCacheHost* code_cache_host, base::OnceCallback<void(mojom::blink::RendererEvictionReason)> evict_from_bfcache_callback,
     base::RepeatingCallback<void(size_t)> did_buffer_load_while_in_bfcache_callback)
+#endif
 {
     loading_task_runner_ = loading_task_runner;
     CheckSchemeForReferrerPolicy(*request);
@@ -231,11 +244,13 @@ int ResourceRequestSender::SendAsync(std::unique_ptr<network::ResourceRequest> r
         }
     }
 #endif
+#if !defined(MINI_UI_QUICKJS)
     if (code_cache_host) {
         used_code_cache_fetcher_ = true;
         code_cache_fetcher_ = CodeCacheFetcher::TryCreateAndStart(
             *request, *code_cache_host, WTF::BindOnce(&ResourceRequestSender::DidReceiveCachedCode, weak_factory_.GetWeakPtr()));
     }
+#endif
 
     // Compute a unique request_id for this renderer process.
     int request_id = GenerateRequestId();
@@ -288,7 +303,9 @@ void ResourceRequestSender::Freeze(LoaderFreezeMode mode)
     } else if (request_info_->freeze_mode != LoaderFreezeMode::kNone) {
         request_info_->freeze_mode = LoaderFreezeMode::kNone;
         request_info_->url_loader_client->Freeze(LoaderFreezeMode::kNone);
+#if !defined(MINI_UI_QUICKJS)
         loading_task_runner_->PostTask(FROM_HERE, base::BindOnce(&ResourceRequestSender::MaybeRunPendingTasks, weak_factory_.GetWeakPtr()));
+#endif
         FollowPendingRedirect(request_info_.get());
     }
 }
@@ -363,10 +380,12 @@ void ResourceRequestSender::FollowPendingRedirect(PendingRequestInfo* request_in
 
 void ResourceRequestSender::OnTransferSizeUpdated(int32_t transfer_size_diff)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDeferTask()) {
         pending_tasks_.emplace_back(WTF::BindOnce(&ResourceRequestSender::OnTransferSizeUpdated, weak_factory_.GetWeakPtr(), transfer_size_diff));
         return;
     }
+#endif
 
     DCHECK_GT(transfer_size_diff, 0);
     if (!request_info_) {
@@ -384,10 +403,12 @@ void ResourceRequestSender::OnTransferSizeUpdated(int32_t transfer_size_diff)
 
 void ResourceRequestSender::OnUploadProgress(int64_t position, int64_t size)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDeferTask()) {
         pending_tasks_.emplace_back(WTF::BindOnce(&ResourceRequestSender::OnUploadProgress, weak_factory_.GetWeakPtr(), position, size));
         return;
     }
+#endif
     if (!request_info_) {
         return;
     }
@@ -398,18 +419,22 @@ void ResourceRequestSender::OnUploadProgress(int64_t position, int64_t size)
 void ResourceRequestSender::OnReceivedResponse(network::mojom::URLResponseHeadPtr response_head, mojo::ScopedDataPipeConsumerHandle body,
     std::optional<mojo_base::BigBuffer> cached_metadata, base::TimeTicks response_ipc_arrival_time)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (code_cache_fetcher_ && cached_metadata) {
         code_cache_fetcher_->DidReceiveCachedMetadataFromUrlLoader();
         code_cache_fetcher_.reset();
         MaybeRunPendingTasks();
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDeferTask()) {
         latency_critical_operation_deferred_ = true;
         pending_tasks_.push_back(WTF::BindOnce(&ResourceRequestSender::OnReceivedResponse, weak_factory_.GetWeakPtr(), std::move(response_head),
             std::move(body), std::move(cached_metadata), response_ipc_arrival_time));
         return;
     }
+#endif
     TRACE_EVENT0("loading", "ResourceRequestSender::OnReceivedResponse");
     if (!request_info_) {
         return;
@@ -424,10 +449,12 @@ void ResourceRequestSender::OnReceivedResponse(network::mojom::URLResponseHeadPt
     }
     request_info_->load_timing_info = response_head->load_timing;
 
+#if !defined(MINI_UI_QUICKJS)
     if (code_cache_fetcher_) {
         CHECK(!cached_metadata);
         cached_metadata = code_cache_fetcher_->TakeCodeCacheForResponse(*response_head);
     }
+#endif
 
     request_info_->client->OnReceivedResponse(response_head.Clone(), std::move(body), std::move(cached_metadata));
     if (!request_info_) {
@@ -440,21 +467,25 @@ void ResourceRequestSender::OnReceivedResponse(network::mojom::URLResponseHeadPt
 void ResourceRequestSender::OnReceivedRedirect(
     const net::RedirectInfo& redirect_info, network::mojom::URLResponseHeadPtr response_head, base::TimeTicks redirect_ipc_arrival_time)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDeferTask()) {
         latency_critical_operation_deferred_ = true;
         pending_tasks_.emplace_back(WTF::BindOnce(
             &ResourceRequestSender::OnReceivedRedirect, weak_factory_.GetWeakPtr(), redirect_info, std::move(response_head), redirect_ipc_arrival_time));
         return;
     }
+#endif
     TRACE_EVENT0("loading", "ResourceRequestSender::OnReceivedRedirect");
     if (!request_info_) {
         return;
     }
     CHECK(request_info_->url_loader);
 
+#if !defined(MINI_UI_QUICKJS)
     if (code_cache_fetcher_) {
         code_cache_fetcher_->SetCurrentUrl(KURL(redirect_info.new_url));
     }
+#endif
 
     request_info_->local_response_start = redirect_ipc_arrival_time;
     request_info_->remote_request_start = response_head->load_timing.request_start;
@@ -498,11 +529,13 @@ void ResourceRequestSender::OnFollowRedirectCallback(const net::RedirectInfo& re
 
 void ResourceRequestSender::OnRequestComplete(const network::URLLoaderCompletionStatus& status, base::TimeTicks complete_ipc_arrival_time)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDeferTask()) {
         latency_critical_operation_deferred_ = true;
         pending_tasks_.emplace_back(WTF::BindOnce(&ResourceRequestSender::OnRequestComplete, weak_factory_.GetWeakPtr(), status, complete_ipc_arrival_time));
         return;
     }
+#endif
     TRACE_EVENT0("loading", "ResourceRequestSender::OnRequestComplete");
 
     if (!request_info_) {
@@ -544,9 +577,11 @@ void ResourceRequestSender::OnRequestComplete(const network::URLLoaderCompletion
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (used_code_cache_fetcher_) {
         base::UmaHistogramBoolean("Blink.ResourceRequest.DeferedRequestWaitingOnCodeCache", latency_critical_operation_deferred_);
     }
+#endif
     // The request ID will be removed from our pending list in the destructor.
     // Normally, dispatching this message causes the reference-counted request to
     // die immediately.
@@ -597,11 +632,14 @@ base::TimeTicks ResourceRequestSender::ToLocalURLResponseHead(const PendingReque
     return remote_response_start;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ResourceRequestSender::DidReceiveCachedCode()
 {
     MaybeRunPendingTasks();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool ResourceRequestSender::ShouldDeferTask() const
 {
     return (code_cache_fetcher_ && code_cache_fetcher_->is_waiting()) || !pending_tasks_.empty();
@@ -618,5 +656,6 @@ void ResourceRequestSender::MaybeRunPendingTasks()
         std::move(task).Run();
     }
 }
+#endif
 
 } // namespace blink

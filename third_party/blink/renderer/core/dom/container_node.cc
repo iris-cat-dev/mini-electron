@@ -68,6 +68,7 @@
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html/html_tag_collection.h"
+#include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/html_template_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
@@ -75,7 +76,9 @@
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
 #include "third_party/blink/renderer/core/layout/layout_text.h"
 #include "third_party/blink/renderer/core/layout/layout_text_combine.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/timing/soft_navigation_heuristics.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
@@ -341,7 +344,9 @@ bool ContainerNode::RecheckNodeInsertionStructuralPrereq(const NodeVector& new_c
 template <typename Functor>
 void ContainerNode::InsertNodeVector(const NodeVector& targets, Node* next, const Functor& mutator, NodeVector& post_insertion_notification_targets)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::WillInsertDOMNode(this);
+#endif
     {
         EventDispatchForbiddenScope assert_no_event_dispatch;
         ScriptForbiddenScope forbid_script;
@@ -353,7 +358,9 @@ void ContainerNode::InsertNodeVector(const NodeVector& targets, Node* next, cons
             ChildListMutationScope(*this).ChildAdded(child);
             if (GetDocument().MayContainShadowRoots())
                 child.CheckSlotChangeAfterInserted();
+#if !defined(MINI_UI_QUICKJS)
             probe::DidInsertDOMNode(&child);
+#endif
             NotifyNodeInsertedInternal(child, post_insertion_notification_targets);
         }
     }
@@ -924,7 +931,9 @@ Node* ContainerNode::RemoveChild(Node* old_child, ExceptionState& exception_stat
     }
 
     {
+#if !defined(MINI_UI_QUICKJS)
         HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
         TreeOrderedMap::RemoveScope tree_remove_scope;
         StyleEngine& engine = GetDocument().GetStyleEngine();
         StyleEngine::DetachLayoutTreeScope detach_scope(engine);
@@ -989,7 +998,9 @@ void ContainerNode::ParserRemoveChild(Node& old_child)
     ChildListMutationScope(*this).WillRemoveChild(old_child);
     old_child.NotifyMutationObserversNodeWillDetach();
 
+#if !defined(MINI_UI_QUICKJS)
     HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
     TreeOrderedMap::RemoveScope tree_remove_scope;
     StyleEngine& engine = GetDocument().GetStyleEngine();
     StyleEngine::DetachLayoutTreeScope detach_scope(engine);
@@ -1033,7 +1044,9 @@ void ContainerNode::RemoveChildren(SubtreeModificationAction action)
     HeapVector<Member<Node>> removed_nodes;
     const bool children_changed = ChildrenChangedAllChildrenRemovedNeedsList();
     {
+#if !defined(MINI_UI_QUICKJS)
         HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
+#endif
         TreeOrderedMap::RemoveScope tree_remove_scope;
         StyleEngine& engine = GetDocument().GetStyleEngine();
         StyleEngine::DetachLayoutTreeScope detach_scope(engine);
@@ -1177,7 +1190,9 @@ void ContainerNode::ParserAppendChildInDocumentFragment(Node* new_child)
     // TODO(sky): This has to happen for every add. It seems like it should be
     // better factored.
     ChildListMutationScope(*this).ChildAdded(*new_child);
+#if !defined(MINI_UI_QUICKJS)
     probe::DidInsertDOMNode(this);
+#endif
 }
 
 void ContainerNode::ParserFinishedBuildingDocumentFragment()
@@ -1245,7 +1260,9 @@ void ContainerNode::NotifyNodeInserted(Node& root, ChildrenChangeSource source)
     if (GetDocument().MayContainShadowRoots())
         root.CheckSlotChangeAfterInserted();
 
+#if !defined(MINI_UI_QUICKJS)
     probe::DidInsertDOMNode(&root);
+#endif
 
     NodeVector post_insertion_notification_targets;
     NotifyNodeInsertedInternal(root, post_insertion_notification_targets);
@@ -1506,7 +1523,9 @@ static void DispatchChildInsertionEvents(Node& child)
 
 static void DispatchChildRemovalEvents(Node& child)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::WillRemoveDOMNode(&child);
+#endif
 
     Document& document = child.GetDocument();
     if (child.IsInShadowTree() || document.ShouldSuppressMutationEvents()) {

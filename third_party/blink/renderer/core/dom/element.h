@@ -941,8 +941,10 @@ public:
     void FocusStateChanged();
     void FocusVisibleStateChanged();
     void FocusWithinStateChanged();
+#if !defined(MINI_UI_QUICKJS)
     void ActiveViewTransitionStateChanged();
     void ActiveViewTransitionTypeStateChanged();
+#endif
     void SetDragged(bool) override;
 
     void UpdateSelectionOnFocus(SelectionBehaviorOnFocus);
@@ -1095,14 +1097,12 @@ public:
     }
 
     // Returns the pseudo element for the given PseudoId type.
-    // |view_transition_name| is used to uniquely identify a pseudo element
-    // from a set of pseudo elements which share the same |pseudo_id|. The current
-    // usage of this ID is limited to pseudo elements generated for a
-    // ViewTransition. See
-    // third_party/blink/renderer/core/view_transition/README.md
-    //
-    // Also see GetStyledPseudoElement() below.
-    PseudoElement* GetPseudoElement(PseudoId, const AtomicString& view_transition_name = g_null_atom) const;
+#if !defined(MINI_UI_QUICKJS)
+    PseudoElement* GetPseudoElement(
+        PseudoId, const AtomicString& view_transition_name = g_null_atom) const;
+#else
+    PseudoElement* GetPseudoElement(PseudoId) const;
+#endif
     LayoutObject* PseudoElementLayoutObject(PseudoId) const;
 
     bool PseudoElementStylesAffectCounters() const;
@@ -1416,7 +1416,9 @@ public:
         return false;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void NotifyInlineStyleMutation();
+#endif
 
     // For undo stack cleanup
     bool HasUndoStack() const;
@@ -1476,21 +1478,19 @@ public:
     std::optional<LayoutUnit> LastRememberedInlineSize() const;
     std::optional<LayoutUnit> LastRememberedBlockSize() const;
 
-    // Returns the element that represents the given |pseudo_id| and
-    // |view_transition_name| originating from this DOM element.  The
-    // returned element may be a PseudoElement, or (for element-backed
-    // pseudo-elements) an Element.
-    //
-    // The returned pseudo element may be directly associated with this
-    // element or (as with view transition pseudo-elements) nested inside
-    // a hierarchy of pseudo elements.
-    //
-    // Callers that need to deal with all CSS pseudo-elements should use
-    // this rather than GetPseudoElement().
-    Element* GetStyledPseudoElement(PseudoId pseudo_id, const AtomicString& view_transition_name) const;
-
-    void RecalcTransitionPseudoTreeStyle(const Vector<AtomicString>& view_transition_names);
-    void RebuildTransitionPseudoLayoutTree(const Vector<AtomicString>& view_transition_names);
+#if !defined(MINI_UI_QUICKJS)
+    // Returns the element representing |pseudo_id| and
+    // |view_transition_name| originating from this element.
+    Element* GetStyledPseudoElement(
+        PseudoId pseudo_id, const AtomicString& view_transition_name) const;
+    void RecalcTransitionPseudoTreeStyle(
+        const Vector<AtomicString>& view_transition_names);
+    void RebuildTransitionPseudoLayoutTree(
+        const Vector<AtomicString>& view_transition_names);
+#else
+    // Returns a direct or element-backed pseudo-element for |pseudo_id|.
+    Element* GetStyledPseudoElement(PseudoId pseudo_id) const;
+#endif
 
     // Returns true if the element has the 'inert' attribute, forcing itself and
     // all its subtree to be inert.
@@ -1579,7 +1579,9 @@ protected:
     UniqueElementData& EnsureUniqueElementData();
 
     bool IsViewportScrollElement();
+#if !defined(MINI_UI_QUICKJS)
     void RecordScrollbarSizeForStudy(int measurement, bool is_width, bool is_offset);
+#endif
 
     void AddPropertyToPresentationAttributeStyle(MutableCSSPropertyValueSet*, CSSPropertyID, CSSValueID identifier);
     void AddPropertyToPresentationAttributeStyle(MutableCSSPropertyValueSet*, CSSPropertyID, double value, CSSPrimitiveValue::UnitType);
@@ -1671,7 +1673,12 @@ private:
     void SetElementFlag(ElementFlags, bool value = true);
     void ClearElementFlag(ElementFlags);
 
-    void ClearPseudoElement(PseudoId, const AtomicString& view_transition_name = g_null_atom);
+#if !defined(MINI_UI_QUICKJS)
+    void ClearPseudoElement(
+        PseudoId, const AtomicString& view_transition_name = g_null_atom);
+#else
+    void ClearPseudoElement(PseudoId);
+#endif
 
     bool IsElementNode() const = delete; // This will catch anyone doing an unnecessary check.
     bool IsDocumentFragment() const = delete; // This will catch anyone doing an unnecessary check.
@@ -1739,7 +1746,16 @@ private:
     inline void CheckForEmptyStyleChange(const Node* node_before_change, const Node* node_after_change);
 
     void UpdateColumnPseudoElements(const StyleRecalcChange, const StyleRecalcContext&);
-    PseudoElement* UpdatePseudoElement(PseudoId, const StyleRecalcChange, const StyleRecalcContext&, const AtomicString& view_transition_name = g_null_atom);
+#if !defined(MINI_UI_QUICKJS)
+    PseudoElement* UpdatePseudoElement(
+        PseudoId,
+        const StyleRecalcChange&,
+        const StyleRecalcContext&,
+        const AtomicString& view_transition_name = g_null_atom);
+#else
+    PseudoElement* UpdatePseudoElement(
+        PseudoId, const StyleRecalcChange&, const StyleRecalcContext&);
+#endif
     enum class StyleUpdatePhase {
         kRecalc,
         kRebuildLayoutTree,
@@ -1756,7 +1772,15 @@ private:
     // when there is no StyleRecalcContext available.
     void UpdateFirstLetterPseudoElement(StyleUpdatePhase);
 
-    inline PseudoElement* CreatePseudoElementIfNeeded(PseudoId, const StyleRecalcContext&, const AtomicString& view_transition_name = g_null_atom);
+#if !defined(MINI_UI_QUICKJS)
+    inline PseudoElement* CreatePseudoElementIfNeeded(
+        PseudoId,
+        const StyleRecalcContext&,
+        const AtomicString& view_transition_name = g_null_atom);
+#else
+    inline PseudoElement* CreatePseudoElementIfNeeded(
+        PseudoId, const StyleRecalcContext&);
+#endif
     void AttachPseudoElement(PseudoId, AttachContext&);
     void DetachPseudoElement(PseudoId, bool performing_reattach);
 
@@ -1869,7 +1893,9 @@ private:
     virtual int DefaultTabIndex() const;
 
     inline void UpdateCallbackSelectors(const ComputedStyle* old_style, const ComputedStyle* new_style);
+#if !defined(MINI_UI_QUICKJS)
     inline void NotifyIfMatchedDocumentRulesSelectorsChanged(const ComputedStyle* old_style, const ComputedStyle* new_style);
+#endif
 
     // Clone is private so that non-virtual CloneElementWithChildren and
     // CloneElementWithoutChildren are used instead.

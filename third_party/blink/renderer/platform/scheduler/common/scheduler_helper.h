@@ -15,7 +15,9 @@
 #include "base/time/tick_clock.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/scheduler/common/ukm_task_sampler.h"
+#endif
 
 namespace base {
 class TaskObserver;
@@ -112,10 +114,12 @@ public:
     bool GetAndClearSystemIsQuiescentBit();
     bool HasCPUTimingForEachTask() const;
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldRecordTaskUkm(bool task_has_thread_time)
     {
         return ukm_task_sampler_.ShouldRecordTaskUkm(task_has_thread_time);
     }
+#endif
     bool IsInNestedRunloop() const
     {
         CheckOnValidThread();
@@ -124,10 +128,12 @@ public:
 
     // Test helpers.
     void SetWorkBatchSizeForTesting(int work_batch_size);
+#if !defined(MINI_UI_QUICKJS)
     void SetUkmTaskSamplingRateForTest(double rate)
     {
         ukm_task_sampler_.SetUkmTaskSamplingRate(rate);
     }
+#endif
 
 protected:
     virtual void ShutdownAllQueues()
@@ -144,7 +150,9 @@ private:
 
     raw_ptr<Observer> observer_; // NOT OWNED
 
+#if !defined(MINI_UI_QUICKJS)
     UkmTaskSampler ukm_task_sampler_;
+#endif
     // Depth of nested_runloop.
     int nested_runloop_depth_ = 0;
 };

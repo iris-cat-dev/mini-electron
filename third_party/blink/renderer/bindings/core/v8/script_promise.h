@@ -240,12 +240,14 @@ public:
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void MarkAsSilent()
     {
         if (!IsEmpty()) {
             V8Promise()->MarkAsSilent();
         }
     }
+#endif
 
     bool operator==(const ScriptPromise<IDLResolvedType>& value) const
     {

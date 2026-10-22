@@ -13,7 +13,9 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/xml/xsl_style_sheet.h"
 #include "third_party/blink/renderer/core/xml/xslt_processor.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
@@ -96,7 +98,9 @@ void DocumentXSLT::ApplyXSLTransform(Document& document, ProcessingInstruction* 
     // Mozilla does).
     LocalFrame* owner_frame = document.GetFrame();
     processor->CreateDocumentFromSource(new_source, result_encoding, result_mime_type, &document, owner_frame);
+#if !defined(MINI_UI_QUICKJS)
     probe::FrameDocumentUpdated(owner_frame);
+#endif
     document.SetParsingState(Document::kFinishedParsing);
 }
 

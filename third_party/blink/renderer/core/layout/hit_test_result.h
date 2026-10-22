@@ -46,13 +46,17 @@ namespace blink {
 
 class Element;
 class HTMLAreaElement;
+#if !defined(MINI_UI_QUICKJS)
 class HTMLMediaElement;
+#endif
 class HitTestLocation;
 class Image;
 class KURL;
 class LocalFrame;
+#if !defined(MINI_UI_QUICKJS)
 class MediaSourceHandle;
 class MediaStreamDescriptor;
+#endif
 class Node;
 class PhysicalBoxFragment;
 class Scrollbar;
@@ -194,9 +198,11 @@ public:
     gfx::Rect ImageRect() const;
     static KURL AbsoluteImageURL(const Node* node);
     KURL AbsoluteImageURL() const;
+#if !defined(MINI_UI_QUICKJS)
     KURL AbsoluteMediaURL() const;
     MediaStreamDescriptor* GetMediaStreamDescriptor() const;
     MediaSourceHandle* GetMediaSourceHandle() const;
+#endif
     KURL AbsoluteLinkURL() const;
     String TextContent() const;
     bool IsLiveLink() const;
@@ -241,7 +247,9 @@ public:
 
 private:
     NodeSet& MutableListBasedTestResult(); // See above.
+#if !defined(MINI_UI_QUICKJS)
     HTMLMediaElement* MediaElement() const;
+#endif
     std::tuple<bool, ListBasedHitTestBehavior> AddNodeToListBasedTestResultInternal(Node* node, const HitTestLocation& location);
 
     HitTestRequest hit_test_request_;

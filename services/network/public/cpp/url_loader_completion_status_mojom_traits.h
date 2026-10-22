@@ -10,9 +10,11 @@
 #include "base/component_export.h"
 #include "base/time/time.h"
 #include "mojo/public/cpp/bindings/struct_traits.h"
-#include "net/ssl/ssl_info.h"
 #include "services/network/public/cpp/cors/cors_mojom_traits.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "net/ssl/ssl_info.h"
 #include "services/network/public/cpp/net_ipc_param_traits.h"
+#endif
 #include "services/network/public/cpp/url_loader_completion_status.h"
 #include "services/network/public/mojom/blocked_by_response_reason.mojom-shared.h"
 #include "services/network/public/mojom/cors.mojom-shared.h"
@@ -89,10 +91,12 @@ public:
         return status.trust_token_operation_status;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     static const std::optional<net::SSLInfo>& ssl_info(const network::URLLoaderCompletionStatus& status)
     {
         return status.ssl_info;
     }
+#endif
 
     static const std::optional<network::mojom::BlockedByResponseReason>& blocked_by_response_reason(const network::URLLoaderCompletionStatus& status)
     {

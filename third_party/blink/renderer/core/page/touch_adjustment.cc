@@ -160,8 +160,10 @@ bool ProvidesContextMenuItems(Node* node)
         return true;
     if (node->GetLayoutObject()->IsImage())
         return true;
+#if !defined(MINI_UI_QUICKJS)
     if (node->GetLayoutObject()->IsMedia())
         return true;
+#endif
     if (node->GetLayoutObject()->IsSVGImage()) {
         return true;
     }

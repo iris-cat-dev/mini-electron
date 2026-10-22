@@ -11,7 +11,10 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
+#endif
+#include "third_party/blink/renderer/platform/wtf/hash_map.h"
 
 namespace blink {
 
@@ -65,7 +68,9 @@ public:
 
     uint64_t MonotonicTimeToIntegerMilliseconds(base::TimeTicks) const;
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteInto(perfetto::TracedDictionary&) const;
+#endif
 
 private:
     const DocumentTiming* GetDocumentTiming() const;

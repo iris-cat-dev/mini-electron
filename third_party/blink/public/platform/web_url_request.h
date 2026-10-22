@@ -187,9 +187,11 @@ public:
     bool GetKeepalive() const;
     void SetKeepalive(bool);
 
+#if !defined(MINI_UI_QUICKJS)
     // True if the service workers should not get events for the request.
     bool GetSkipServiceWorker() const;
     void SetSkipServiceWorker(bool);
+#endif
 
     // True if corresponding AppCache group should be resetted.
     bool ShouldResetAppCache() const;

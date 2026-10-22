@@ -7,15 +7,19 @@
 #include "base/check.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing.h"
+#endif
 #include "base/tracing_buildflags.h"
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
 #include <optional>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/memory_dump_manager.h" // no-presubmit-check
+#endif
 #include "base/trace_event/process_memory_dump.h" // no-presubmit-check
-#endif // BUILDFLAG(ENABLE_BASE_TRACING)
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
 
 namespace base {
 
@@ -68,9 +72,9 @@ void SharedMemoryTracker::DecrementMemoryUsage(const SharedMemoryMapping& mappin
 
 SharedMemoryTracker::SharedMemoryTracker()
 {
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
     trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(this, "SharedMemoryTracker", nullptr);
-#endif // BUILDFLAG(ENABLE_BASE_TRACING)
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
 }
 
 SharedMemoryTracker::~SharedMemoryTracker() = default;
@@ -89,7 +93,7 @@ bool SharedMemoryTracker::OnMemoryDump(const trace_event::MemoryDumpArgs& args, 
 const trace_event::MemoryAllocatorDump* SharedMemoryTracker::GetOrCreateSharedMemoryDumpInternal(
     void* mapped_memory, size_t mapped_size, const UnguessableToken& mapped_id, trace_event::ProcessMemoryDump* pmd)
 {
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
     const std::string dump_name = GetDumpNameForTracing(mapped_id);
     trace_event::MemoryAllocatorDump* local_dump = pmd->GetAllocatorDump(dump_name);
     if (local_dump)
@@ -114,9 +118,9 @@ const trace_event::MemoryAllocatorDump* SharedMemoryTracker::GetOrCreateSharedMe
     // The edges will be overriden by the clients with correct importance.
     pmd->AddOverridableOwnershipEdge(local_dump->guid(), global_dump->guid(), 0 /* importance */);
     return local_dump;
-#else // BUILDFLAG(ENABLE_BASE_TRACING)
+#else  // BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
     NOTREACHED();
-#endif // BUILDFLAG(ENABLE_BASE_TRACING)
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING) || defined(MINI_UI_QUICKJS)
 }
 
 } // namespace

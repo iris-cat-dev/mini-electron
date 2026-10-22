@@ -143,12 +143,12 @@ int ContentSettingTypeToHistogramValue(ContentSettingsType content_setting, size
 }
 
 ContentSettingPatternSource::ContentSettingPatternSource(const ContentSettingsPattern& primary_pattern, const ContentSettingsPattern& secondary_pattern,
-    base::Value setting_value, const std::string& source, bool incognito, content_settings::RuleMetaData metadata)
+    base::Value setting_value, content_settings::mojom::ProviderType provider, bool incognito, content_settings::RuleMetaData metadata)
     : primary_pattern(primary_pattern)
     , secondary_pattern(secondary_pattern)
     , setting_value(std::move(setting_value))
-    , metadata(metadata)
-    , source(source)
+    , metadata(std::move(metadata))
+    , source(provider)
     , incognito(incognito)
 {
 }
@@ -183,7 +183,7 @@ ContentSetting ContentSettingPatternSource::GetContentSetting() const
 
 bool ContentSettingPatternSource::IsExpired() const
 {
-    return !metadata.expiration.is_null() && metadata.expiration < base::Time::Now();
+    return !metadata.expiration().is_null() && metadata.expiration() < base::Time::Now();
 }
 
 // static

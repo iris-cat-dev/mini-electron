@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,13 +19,14 @@ typedef uint32_t MojoSetQuotaFlags;
 
 // Options passed to |MojoSetQuota()|.
 struct MOJO_ALIGNAS(8) MojoSetQuotaOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoSetQuotaFlags| above.
-    MojoSetQuotaFlags flags;
+  // See |MojoSetQuotaFlags| above.
+  MojoSetQuotaFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSetQuotaOptions) == 8, "MojoSetQuotaOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSetQuotaOptions) == 8,
+                   "MojoSetQuotaOptions has wrong size.");
 
 // Flags passed to |MojoQueryQuota| via |MojoQueryQuotaOptions|.
 typedef uint32_t MojoQueryQuotaFlags;
@@ -35,13 +36,14 @@ typedef uint32_t MojoQueryQuotaFlags;
 
 // Options passed to |MojoQueryQuota()|.
 struct MOJO_ALIGNAS(8) MojoQueryQuotaOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoQueryQuotaFlags| above.
-    MojoQueryQuotaFlags flags;
+  // See |MojoQueryQuotaFlags| above.
+  MojoQueryQuotaFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoQueryQuotaOptions) == 8, "MojoQueryQuotaOptions has wrong size.");
+MOJO_STATIC_ASSERT(sizeof(struct MojoQueryQuotaOptions) == 8,
+                   "MojoQueryQuotaOptions has wrong size.");
 
 // The maximum value any quota can be set to. Effectively means "no quota".
 #define MOJO_QUOTA_LIMIT_NONE ((uint64_t)0xffffffffffffffff)
@@ -93,7 +95,11 @@ extern "C" {
 //        |type| is not a known quota type, |options| is non-null but
 //        |*options| is malformed, or the quota |type| cannot be set on |handle|
 //        because the quota does not apply to that type of handle.
-MOJO_SYSTEM_EXPORT MojoResult MojoSetQuota(MojoHandle handle, MojoQuotaType type, uint64_t limit, const struct MojoSetQuotaOptions* options);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoSetQuota(MojoHandle handle,
+             MojoQuotaType type,
+             uint64_t limit,
+             const struct MojoSetQuotaOptions* options);
 
 // Queries a handle for information about a specific quota.
 //
@@ -111,11 +117,15 @@ MOJO_SYSTEM_EXPORT MojoResult MojoSetQuota(MojoHandle handle, MojoQuotaType type
 //   |MOJO_RESULT_INVALID_ARGUMENT| if |handle| is not a valid handle value or
 //       quota |type| does not apply to the type of object referenced by
 //       |handle|.
-MOJO_SYSTEM_EXPORT MojoResult MojoQueryQuota(
-    MojoHandle handle, MojoQuotaType type, const struct MojoQueryQuotaOptions* options, uint64_t* limit, uint64_t* usage);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoQueryQuota(MojoHandle handle,
+               MojoQuotaType type,
+               const struct MojoQueryQuotaOptions* options,
+               uint64_t* limit,
+               uint64_t* usage);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_QUOTA_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_QUOTA_H_

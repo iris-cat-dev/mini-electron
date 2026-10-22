@@ -17,13 +17,17 @@
 #include "base/numerics/clamped_math.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/config/gpu_feature_info.h"
+#endif
 #include "skia/ext/legacy_display_globals.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/web_media_player.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
@@ -31,20 +35,29 @@
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/canvas/image_data.h"
 #include "third_party/blink/renderer/core/html/canvas/image_element_base.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
+#include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
 #include "third_party/blink/renderer/platform/bindings/enumeration_base.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image_transform.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/video_frame_image_util.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/image-decoders/image_decoder.h"
@@ -318,6 +331,7 @@ ImageBitmap::ImageBitmap(ImageElementBase* image, std::optional<gfx::Rect> crop_
     UpdateImageBitmapMemoryUsage();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ImageBitmap::ImageBitmap(HTMLVideoElement* video, std::optional<gfx::Rect> crop_rect, const ImageBitmapOptions* options)
 {
     // TODO(crbug.com/1181329): ImageBitmap resize test case failed when
@@ -341,6 +355,7 @@ ImageBitmap::ImageBitmap(HTMLVideoElement* video, std::optional<gfx::Rect> crop_
     image_->SetOriginClean(!video->WouldTaintOrigin());
     UpdateImageBitmapMemoryUsage();
 }
+#endif
 
 ImageBitmap::ImageBitmap(HTMLCanvasElement* canvas, std::optional<gfx::Rect> crop_rect, const ImageBitmapOptions* options)
 {
@@ -652,7 +667,11 @@ unsigned ImageBitmap::height() const
 
 bool ImageBitmap::IsAccelerated() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return image_ && image_->IsTextureBacked();
+#endif
 }
 
 gfx::Size ImageBitmap::Size() const

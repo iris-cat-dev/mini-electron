@@ -12,6 +12,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/animation/animation_host.h"
 #include "cc/animation/animation_id_provider.h"
 #include "cc/mojo_embedder/async_layer_tree_frame_sink.h"
@@ -29,17 +30,26 @@
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
 #include "services/viz/public/cpp/gpu/context_provider_command_buffer.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom-blink.h"
+#endif
 #include "third_party/blink/public/common/features.h"
+#include "cc/metrics/event_metrics.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/input/web_input_event_attribution.h"
+#endif
 #include "third_party/blink/public/common/switches.h"
-#include "third_party/blink/public/mojom/input/pointer_lock_context.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/widget/record_content_to_visible_time_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/widget/visual_properties.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/cross_variant_mojo_util.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/web/blink.h"
+#if defined(MINI_UI_QUICKJS)
+#include "third_party/blink/public/web/web_view_client.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/raster_dark_mode_filter_impl.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/scheduler/public/agent_group_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/compositor_thread_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/page_scheduler.h"
@@ -50,18 +60,24 @@
 #include "third_party/blink/renderer/platform/widget/compositing/layer_tree_view.h"
 #include "third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl.h"
 #include "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
 #include "third_party/blink/renderer/platform/widget/input/ime_event_guard.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h"
 #include "third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h"
+#endif
 #include "third_party/blink/renderer/platform/widget/widget_base_client.h"
 #include "ui/base/ime/mojom/text_input_state.mojom-blink.h"
 #include "ui/base/mojom/menu_source_type.mojom-blink-forward.h"
 #include "ui/display/display.h"
 #include "ui/display/screen_info.h"
 #include "ui/gfx/geometry/dip_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "ui/gfx/presentation_feedback.h"
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 #if BUILDFLAG(IS_ANDROID)
 #include "third_party/blink/renderer/platform/widget/compositing/android_webview/synchronous_layer_tree_frame_sink.h"
 #endif
@@ -70,11 +86,13 @@ gpu::ContextCreationAttribs::ContextCreationAttribs(void)
 {
     *(int*)1 = 1;
 }
+#endif
 
 namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 #if BUILDFLAG(IS_ANDROID)
 // Unique identifier for each output surface created.
 uint32_t g_next_layer_tree_frame_sink_id = 1;
@@ -85,13 +103,16 @@ uint32_t g_next_layer_tree_frame_sink_id = 1;
 const gpu::SchedulingPriority kGpuStreamPriorityDefault = gpu::SchedulingPriority::kNormal;
 
 const uint32_t kGpuStreamIdDefault = 0;
+#endif
 
 static const int kInvalidNextPreviousFlagsValue = -1;
 
+#if !defined(MINI_UI_QUICKJS)
 void OnDidPresentForceDrawFrame(mojom::blink::Widget::ForceRedrawCallback callback, const gfx::PresentationFeedback& feedback)
 {
     std::move(callback).Run();
 }
+#endif
 
 bool IsDateTimeInput(ui::TextInputType type)
 {
@@ -135,6 +156,7 @@ unsigned OrientationTypeToAngle(display::mojom::blink::ScreenOrientation type)
     return angle;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<viz::SyntheticBeginFrameSource> CreateSyntheticBeginFrameSource()
 {
     base::SingleThreadTaskRunner* compositor_impl_side_task_runner = Platform::Current()->CompositorThreadTaskRunner()
@@ -142,11 +164,35 @@ std::unique_ptr<viz::SyntheticBeginFrameSource> CreateSyntheticBeginFrameSource(
         : base::SingleThreadTaskRunner::GetCurrentDefault().get();
     return std::make_unique<viz::BackToBackBeginFrameSource>(std::make_unique<viz::DelayBasedTimeSource>(compositor_impl_side_task_runner));
 }
+#endif
 
 } // namespace
 
-WidgetBase::WidgetBase(WidgetBaseClient* client, CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
-    CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget, scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
+#if defined(MINI_UI_QUICKJS)
+WidgetBase::WidgetBase(
+    WidgetBaseClient* client,
+    CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
+    bool never_composited, bool is_embedded, bool is_for_scalable_page)
+    : never_composited_(never_composited)
+    , is_embedded_(is_embedded)
+    , is_for_scalable_page_(is_for_scalable_page)
+    , client_(client)
+    , widget_host_(std::move(widget_host), task_runner)
+    , next_previous_flags_(kInvalidNextPreviousFlagsValue)
+    , is_hidden_(hidden)
+    , task_runner_(task_runner)
+    , request_animation_after_delay_timer_(
+          std::move(task_runner), this,
+          &WidgetBase::RequestAnimationAfterDelayTimerFired)
+{
+}
+#else
+WidgetBase::WidgetBase(
+    WidgetBaseClient* client,
+    CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
+    CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner, bool hidden,
     bool never_composited, bool is_embedded, bool is_for_scalable_page)
     : never_composited_(never_composited)
     , is_embedded_(is_embedded)
@@ -157,16 +203,22 @@ WidgetBase::WidgetBase(WidgetBaseClient* client, CrossVariantMojoAssociatedRemot
     , next_previous_flags_(kInvalidNextPreviousFlagsValue)
     , is_hidden_(hidden)
     , task_runner_(task_runner)
-    , request_animation_after_delay_timer_(std::move(task_runner), this, &WidgetBase::RequestAnimationAfterDelayTimerFired)
+    , request_animation_after_delay_timer_(
+          std::move(task_runner), this,
+          &WidgetBase::RequestAnimationAfterDelayTimerFired)
 {
 }
+#endif
 
 WidgetBase::~WidgetBase()
 {
+#if !defined(MINI_UI_QUICKJS)
     // Ensure Shutdown was called.
     DCHECK(!layer_tree_view_);
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::InitializeCompositing(PageScheduler& page_scheduler, const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings,
     base::WeakPtr<mojom::blink::FrameWidgetInputHandler> frame_widget_input_handler, WidgetBase* previous_widget)
 {
@@ -243,6 +295,7 @@ void WidgetBase::InitializeCompositing(PageScheduler& page_scheduler, const disp
 
     initialized_ = true;
 }
+#endif
 
 void WidgetBase::InitializeNonCompositing()
 {
@@ -252,15 +305,21 @@ void WidgetBase::InitializeNonCompositing()
     initialized_ = true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::DidFirstVisuallyNonEmptyPaint(base::TimeTicks& first_paint_time)
 {
     if (widget_input_handler_manager_) {
         widget_input_handler_manager_->DidFirstVisuallyNonEmptyPaint(first_paint_time);
     }
 }
+#endif
 
 void WidgetBase::Shutdown(bool delay_release)
 {
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(delay_release);
+    will_be_destroyed_ = true;
+#else
     // The |input_event_queue_| is refcounted and will live while an event is
     // being handled. This drops the connection back to this WidgetBase which
     // is being destroyed.
@@ -298,8 +357,10 @@ void WidgetBase::Shutdown(bool delay_release)
         widget_compositor_->Shutdown();
         widget_compositor_ = nullptr;
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::DisconnectLayerTreeView(WidgetBase* new_widget, bool delay_release)
 {
     will_be_destroyed_ = true;
@@ -358,24 +419,27 @@ scheduler::WidgetScheduler* WidgetBase::WidgetScheduler()
 {
     return widget_scheduler_.get();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::ForceRedraw(mojom::blink::Widget::ForceRedrawCallback callback)
 {
     TRACE_EVENT0("renderer", "WidgetBase::ForceRedraw");
-    LayerTreeHost()->RequestPresentationTimeForNextFrame(base::BindOnce(&OnDidPresentForceDrawFrame, std::move(callback)));
+    LayerTreeHost()->RequestPresentationTimeForNextFrame(
+        base::BindOnce(&OnDidPresentForceDrawFrame, std::move(callback)));
     LayerTreeHost()->SetNeedsCommitWithForcedRedraw();
 
     // ScheduleAnimationForWebTests() which is implemented by
     // WebTestWebFrameWidgetImpl, providing the additional control over the
-    // lifecycle of compositing required by web tests. This will be a no-op on
-    // production.
+    // lifecycle of compositing required by web tests.
     client_->ScheduleAnimationForWebTests();
 }
 
 void WidgetBase::GetWidgetInputHandler(
     mojo::PendingReceiver<mojom::blink::WidgetInputHandler> request, mojo::PendingRemote<mojom::blink::WidgetInputHandlerHost> host)
 {
-    widget_input_handler_manager_->AddInterface(std::move(request), std::move(host));
+    widget_input_handler_manager_->AddInterface(
+        std::move(request), std::move(host));
 }
 
 void WidgetBase::ShowContextMenu(ui::mojom::blink::MenuSourceType source_type, const gfx::Point& location)
@@ -461,9 +525,11 @@ void WidgetBase::UpdateVisualProperties(const VisualProperties& visual_propertie
     // https://chromium-review.googlesource.com/c/chromium/src/+/852912/15#message-68bbd3e25c3b421a79cd028b2533629527d21fee
     Platform::Current()->SetRenderingColorSpace(screen_info.display_color_spaces.GetScreenInfoColorSpace());
 
+#if !defined(MINI_UI_QUICKJS)
     LayerTreeHost()->SetBrowserControlsParams(visual_properties.browser_controls_params);
 
     LayerTreeHost()->SetVisualDeviceViewportSize(gfx::ScaleToCeiledSize(visual_properties.visible_viewport_size, screen_info.device_scale_factor));
+#endif
 
     client_->UpdateVisualProperties(visual_properties);
 }
@@ -504,11 +570,16 @@ void WidgetBase::WasShown(bool was_evicted, mojom::blink::RecordContentToVisible
 
     SetHidden(false);
 
+#if !defined(MINI_UI_QUICKJS)
     if (record_tab_switch_time_request) {
         LayerTreeHost()->RequestSuccessfulPresentationTimeForNextFrame(tab_switch_time_recorder_.TabWasShown(false /* has_saved_frames */,
             record_tab_switch_time_request->event_start_time, record_tab_switch_time_request->destination_is_loaded,
             record_tab_switch_time_request->show_reason_tab_switching, record_tab_switch_time_request->show_reason_bfcache_restore));
     }
+#else
+    if (record_tab_switch_time_request)
+        client_->ScheduleAnimation();
+#endif
 
     client_->WasShown(was_evicted);
 }
@@ -559,6 +630,8 @@ void WidgetBase::SetupRenderInputRouterConnections(
     }
 }
 
+#endif
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::ApplyViewportChanges(const cc::ApplyViewportChangesArgs& args)
 {
     client_->ApplyViewportChanges(args);
@@ -952,26 +1025,47 @@ void WidgetBase::AddCoreAnimationErrorCodeCallback(uint32_t frame_token, base::O
 }
 #endif
 
+#endif
 void WidgetBase::SetCursor(const ui::Cursor& cursor)
 {
     if (input_handler_.DidChangeCursor(cursor)) {
+#if defined(MINI_UI_QUICKJS)
+        if (auto* host = client_->NativeViewClient())
+            host->RequestSetCursor(cursor);
+#else
         widget_host_->SetCursor(cursor);
+#endif
     }
 }
 
 void WidgetBase::UpdateTooltipUnderCursor(const String& tooltip_text, TextDirection dir)
 {
+#if defined(MINI_UI_QUICKJS)
+    if (auto* host = client_->NativeViewClient())
+        host->RequestTooltip(WebString(tooltip_text), gfx::Rect(), false, dir == TextDirection::kRtl);
+#else
     widget_host_->UpdateTooltipUnderCursor(tooltip_text.empty() ? "" : tooltip_text, ToBaseTextDirection(dir));
+#endif
 }
 
 void WidgetBase::UpdateTooltipFromKeyboard(const String& tooltip_text, TextDirection dir, const gfx::Rect& bounds)
 {
+#if defined(MINI_UI_QUICKJS)
+    if (auto* host = client_->NativeViewClient())
+        host->RequestTooltip(WebString(tooltip_text), BlinkSpaceToEnclosedDIPs(bounds), true, dir == TextDirection::kRtl);
+#else
     widget_host_->UpdateTooltipFromKeyboard(tooltip_text.empty() ? "" : tooltip_text, ToBaseTextDirection(dir), BlinkSpaceToEnclosedDIPs(bounds));
+#endif
 }
 
 void WidgetBase::ClearKeyboardTriggeredTooltip()
 {
+#if defined(MINI_UI_QUICKJS)
+    if (auto* host = client_->NativeViewClient())
+        host->RequestClearKeyboardTooltip();
+#else
     widget_host_->ClearKeyboardTriggeredTooltip();
+#endif
 }
 
 void WidgetBase::ShowVirtualKeyboard()
@@ -984,6 +1078,7 @@ void WidgetBase::UpdateTextInputState()
     UpdateTextInputStateInternal(false, false);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 void WidgetBase::AssertAreCompatible(const WidgetBase& a, const WidgetBase& b)
 {
@@ -991,6 +1086,7 @@ void WidgetBase::AssertAreCompatible(const WidgetBase& a, const WidgetBase& b)
     CHECK_EQ(a.is_for_scalable_page_, b.is_for_scalable_page_);
     CHECK_EQ(a.main_thread_compositor_task_runner_, b.main_thread_compositor_task_runner_);
 }
+#endif
 
 bool WidgetBase::CanComposeInline()
 {
@@ -1042,6 +1138,11 @@ void WidgetBase::UpdateTextInputStateInternal(bool show_virtual_keyboard, bool r
         || vk_policy_ != new_vk_policy
         || (new_vk_policy == ui::mojom::VirtualKeyboardPolicy::MANUAL && (last_vk_visibility_request != ui::mojom::VirtualKeyboardVisibilityRequest::NONE))
         || (control_bounds && frame_control_bounds_ != control_bounds) || (selection_bounds && frame_selection_bounds_ != selection_bounds)) {
+#if defined(MINI_UI_QUICKJS)
+        if (auto* host = client_->NativeViewClient())
+            host->RequestTextInputState(new_type, new_mode,
+                selection_bounds.value_or(selection_focus_rect_));
+#else
         ui::mojom::blink::TextInputStatePtr params = ui::mojom::blink::TextInputState::New();
         params->node_id = new_info.node_id;
         params->type = new_type;
@@ -1104,6 +1205,7 @@ void WidgetBase::UpdateTextInputStateInternal(bool show_virtual_keyboard, bool r
         params->always_hide_ime = always_hide_ime;
         params->reply_to_request = reply_to_request;
         widget_host_->TextInputStateChanged(std::move(params));
+#endif
 
         text_input_info_ = new_info;
         text_input_type_ = new_type;
@@ -1169,7 +1271,9 @@ void WidgetBase::ProcessTouchAction(cc::TouchAction touch_action)
 {
     if (!input_handler_.ProcessTouchAction(touch_action))
         return;
+#if !defined(MINI_UI_QUICKJS)
     widget_input_handler_manager_->ProcessTouchAction(touch_action);
+#endif
 }
 
 void WidgetBase::SetFocus(mojom::blink::FocusState focus_state)
@@ -1178,6 +1282,7 @@ void WidgetBase::SetFocus(mojom::blink::FocusState focus_state)
     client_->FocusChanged(focus_state);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::BindWidgetCompositor(mojo::PendingReceiver<mojom::blink::WidgetCompositor> receiver)
 {
     if (widget_compositor_)
@@ -1186,6 +1291,7 @@ void WidgetBase::BindWidgetCompositor(mojo::PendingReceiver<mojom::blink::Widget
     widget_compositor_ = WidgetCompositor::Create(weak_ptr_factory_.GetWeakPtr(), LayerTreeHost()->GetTaskRunnerProvider()->MainThreadTaskRunner(),
         LayerTreeHost()->GetTaskRunnerProvider()->ImplThreadTaskRunner(), std::move(receiver));
 }
+#endif
 
 void WidgetBase::UpdateCompositionInfo(bool immediate_request)
 {
@@ -1215,6 +1321,7 @@ void WidgetBase::UpdateCompositionInfo(bool immediate_request)
     composition_character_bounds_ = character_bounds;
     composition_range_ = range;
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<Vector<gfx::Rect>> line_bounds;
 
     // If using the new pipeline for CursorAnchorInfo data, send data from the
@@ -1229,6 +1336,7 @@ void WidgetBase::UpdateCompositionInfo(bool immediate_request)
     if (mojom::blink::WidgetInputHandlerHost* host = widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
         host->ImeCompositionRangeChanged(composition_range_, composition_character_bounds_, line_bounds);
     }
+#endif
 }
 
 void WidgetBase::ForceTextInputStateUpdate()
@@ -1296,6 +1404,7 @@ void WidgetBase::SetHidden(bool hidden)
     // throttled acks are released in case frame production ceases.
     is_hidden_ = hidden;
 
+#if !defined(MINI_UI_QUICKJS)
     if (widget_scheduler_)
         widget_scheduler_->SetHidden(hidden);
 
@@ -1305,6 +1414,7 @@ void WidgetBase::SetHidden(bool hidden)
         FlushInputProcessedCallback();
 
     SetCompositorVisible(!is_hidden_);
+#endif
 }
 
 ui::TextInputType WidgetBase::GetTextInputType()
@@ -1317,19 +1427,21 @@ void WidgetBase::UpdateSelectionBounds()
     TRACE_EVENT0("renderer", "WidgetBase::UpdateSelectionBounds");
     if (ime_event_guard_)
         return;
-#if defined(USE_AURA)
+#if defined(MINI_UI_QUICKJS)
+    bool send_explicit_update = true;
+#elif defined(USE_AURA)
     // TODO(mohsen): For now, always send explicit selection IPC notifications for
     // Aura beucause composited selection updates are not working for webview tags
     // which regresses IME inside webview. Remove this when composited selection
     // updates are fixed for webviews. See, http://crbug.com/510568.
-    bool send_ipc = true;
+    bool send_explicit_update = true;
 #else
     // With composited selection updates, the selection bounds will be reported
     // directly by the compositor, in which case explicit IPC selection
     // notifications should be suppressed.
-    bool send_ipc = !RuntimeEnabledFeatures::CompositedSelectionUpdateEnabled();
+    bool send_explicit_update = !RuntimeEnabledFeatures::CompositedSelectionUpdateEnabled();
 #endif
-    if (send_ipc) {
+    if (send_explicit_update) {
         bool is_anchor_first = false;
         base::i18n::TextDirection focus_dir = base::i18n::TextDirection::UNKNOWN_DIRECTION;
         base::i18n::TextDirection anchor_dir = base::i18n::TextDirection::UNKNOWN_DIRECTION;
@@ -1339,8 +1451,13 @@ void WidgetBase::UpdateSelectionBounds()
             return;
         if (frame_widget->GetSelectionBoundsInWindow(
                 &selection_focus_rect_, &selection_anchor_rect_, &selection_bounding_box_, &focus_dir, &anchor_dir, &is_anchor_first)) {
+#if defined(MINI_UI_QUICKJS)
+            if (auto* host = client_->NativeViewClient())
+                host->RequestTextInputState(text_input_type_, text_input_mode_, selection_focus_rect_);
+#else
             widget_host_->SelectionBoundsChanged(
                 selection_anchor_rect_, anchor_dir, selection_focus_rect_, focus_dir, selection_bounding_box_, is_anchor_first);
+#endif
         }
     }
     UpdateCompositionInfo(false /* not an immediate request */);
@@ -1376,19 +1493,23 @@ void WidgetBase::ImeSetComposition(
     FrameWidget* frame_widget = client_->FrameWidget();
     if (!frame_widget)
         return;
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget->ShouldDispatchImeEventsToPlugin()) {
         frame_widget->ImeSetCompositionForPlugin(text, ime_text_spans, replacement_range, selection_start, selection_end);
         return;
     }
+#endif
 
     ImeEventGuard guard(weak_ptr_factory_.GetWeakPtr());
     if (!frame_widget->SetComposition(text, ime_text_spans, replacement_range, selection_start, selection_end)) {
         // If we failed to set the composition text, then we need to let the browser
         // process to cancel the input method's ongoing composition session, to make
         // sure we are in a consistent state.
+#if !defined(MINI_UI_QUICKJS)
         if (mojom::blink::WidgetInputHandlerHost* host = widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
             host->ImeCancelComposition();
         }
+#endif
     }
     UpdateCompositionInfo(false /* not an immediate request */);
 }
@@ -1401,10 +1522,12 @@ void WidgetBase::ImeCommitText(const String& text, const Vector<ui::ImeTextSpan>
     FrameWidget* frame_widget = client_->FrameWidget();
     if (!frame_widget)
         return;
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget->ShouldDispatchImeEventsToPlugin()) {
         frame_widget->ImeCommitTextForPlugin(text, ime_text_spans, replacement_range, relative_cursor_pos);
         return;
     }
+#endif
 
     ImeEventGuard guard(weak_ptr_factory_.GetWeakPtr());
     input_handler_.set_handling_input_event(true);
@@ -1421,10 +1544,12 @@ void WidgetBase::ImeFinishComposingText(bool keep_selection)
     FrameWidget* frame_widget = client_->FrameWidget();
     if (!frame_widget)
         return;
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget->ShouldDispatchImeEventsToPlugin()) {
         frame_widget->ImeFinishComposingTextForPlugin(keep_selection);
         return;
     }
+#endif
 
     ImeEventGuard guard(weak_ptr_factory_.GetWeakPtr());
     input_handler_.set_handling_input_event(true);
@@ -1437,6 +1562,10 @@ void WidgetBase::QueueSyntheticEvent(std::unique_ptr<WebCoalescedInputEvent> eve
 {
     client_->WillQueueSyntheticEvent(*event);
 
+#if defined(MINI_UI_QUICKJS)
+    input_handler_.HandleInputEvent(
+        *event, nullptr, WidgetBaseInputHandler::HandledEventCallback());
+#else
     // Popups, which don't have a threaded input handler, are allowed to queue up
     // main thread gesture scroll events.
     bool uses_input_handler = client_->FrameWidget();
@@ -1446,6 +1575,7 @@ void WidgetBase::QueueSyntheticEvent(std::unique_ptr<WebCoalescedInputEvent> eve
     WebInputEventAttribution attribution;
     widget_input_handler_manager_->input_event_queue()->HandleEvent(std::move(event), MainThreadEventQueue::DispatchType::kNonBlocking,
         mojom::blink::InputEventResultState::kNotConsumed, attribution, nullptr, HandledEventCallback(), !uses_input_handler);
+#endif
 }
 
 bool WidgetBase::IsForProvisionalFrame()
@@ -1464,6 +1594,7 @@ bool WidgetBase::ShouldHandleImeEvents()
     return frame_widget->ShouldHandleImeEvents();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::RequestPresentationAfterScrollAnimationEnd(mojom::blink::Widget::ForceRedrawCallback callback)
 {
     LayerTreeHost()->RequestScrollAnimationEndNotification(base::BindOnce(&WidgetBase::ForceRedraw, weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
@@ -1473,12 +1604,15 @@ void WidgetBase::FlushInputProcessedCallback()
 {
     widget_input_handler_manager_->InvokeInputProcessedCallback();
 }
+#endif
 
 void WidgetBase::CancelCompositionForPepper()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (mojom::blink::WidgetInputHandlerHost* host = widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
         host->ImeCancelComposition();
     }
+#endif
 #if BUILDFLAG(IS_MAC) || defined(USE_AURA)
     UpdateCompositionInfo(false /* not an immediate request */);
 #endif
@@ -1535,8 +1669,20 @@ float WidgetBase::GetOriginalDeviceScaleFactor() const
     return client_->GetOriginalScreenInfos().current().device_scale_factor;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WidgetBase::UpdateSurfaceAndScreenInfo(
-    const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect, const display::ScreenInfos& screen_infos)
+    const viz::LocalSurfaceId& new_local_surface_id,
+    const gfx::Rect& compositor_viewport_pixel_rect,
+    const display::ScreenInfos& screen_infos)
+{
+    local_surface_id_from_parent_ = new_local_surface_id;
+    UpdateViewportAndScreenInfo(compositor_viewport_pixel_rect, screen_infos);
+}
+#endif
+
+void WidgetBase::UpdateViewportAndScreenInfo(
+    const gfx::Rect& compositor_viewport_pixel_rect,
+    const display::ScreenInfos& screen_infos)
 {
     display::ScreenInfos new_screen_infos = screen_infos;
     display::ScreenInfo& new_screen_info = new_screen_infos.mutable_current();
@@ -1554,9 +1700,10 @@ void WidgetBase::UpdateSurfaceAndScreenInfo(
         || previous_screen_info.orientation_type != new_screen_info.orientation_type;
     display::ScreenInfos previous_original_screen_infos = client_->GetOriginalScreenInfos();
 
-    local_surface_id_from_parent_ = new_local_surface_id;
     screen_infos_ = new_screen_infos;
-
+#if defined(MINI_UI_QUICKJS)
+    software_viewport_rect_ = compositor_viewport_pixel_rect;
+#else
     // Note carefully that the DSF specified in |new_screen_info| is not the
     // DSF used by the compositor during device emulation!
     LayerTreeHost()->SetViewportRectAndScale(compositor_viewport_pixel_rect, GetOriginalDeviceScaleFactor(), local_surface_id_from_parent_);
@@ -1569,31 +1716,42 @@ void WidgetBase::UpdateSurfaceAndScreenInfo(
         LayerTreeHost()->SetDisplayColorSpaces(screen_infos_.current().display_color_spaces);
     }
 
+#endif
     if (orientation_changed)
         client_->OrientationChanged();
 
     client_->DidUpdateSurfaceAndScreen(previous_original_screen_infos);
 }
 
-void WidgetBase::UpdateScreenInfo(const display::ScreenInfos& new_screen_infos)
+void WidgetBase::UpdateScreenInfo(
+    const display::ScreenInfos& new_screen_infos)
 {
-    UpdateSurfaceAndScreenInfo(local_surface_id_from_parent_, CompositorViewportRect(), new_screen_infos);
+    UpdateViewportAndScreenInfo(CompositorViewportRect(), new_screen_infos);
 }
 
-void WidgetBase::UpdateCompositorViewportAndScreenInfo(const gfx::Rect& compositor_viewport_pixel_rect, const display::ScreenInfos& new_screen_infos)
+void WidgetBase::UpdateCompositorViewportAndScreenInfo(
+    const gfx::Rect& compositor_viewport_pixel_rect,
+    const display::ScreenInfos& new_screen_infos)
 {
-    UpdateSurfaceAndScreenInfo(local_surface_id_from_parent_, compositor_viewport_pixel_rect, new_screen_infos);
+    UpdateViewportAndScreenInfo(compositor_viewport_pixel_rect,
+                                new_screen_infos);
 }
 
-void WidgetBase::UpdateCompositorViewportRect(const gfx::Rect& compositor_viewport_pixel_rect)
+void WidgetBase::UpdateCompositorViewportRect(
+    const gfx::Rect& compositor_viewport_pixel_rect)
 {
-    UpdateSurfaceAndScreenInfo(local_surface_id_from_parent_, compositor_viewport_pixel_rect, screen_infos_);
+    UpdateViewportAndScreenInfo(compositor_viewport_pixel_rect, screen_infos_);
 }
 
-void WidgetBase::UpdateSurfaceAndCompositorRect(const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect)
+#if !defined(MINI_UI_QUICKJS)
+void WidgetBase::UpdateSurfaceAndCompositorRect(
+    const viz::LocalSurfaceId& new_local_surface_id,
+    const gfx::Rect& compositor_viewport_pixel_rect)
 {
-    UpdateSurfaceAndScreenInfo(new_local_surface_id, compositor_viewport_pixel_rect, screen_infos_);
+    UpdateSurfaceAndScreenInfo(new_local_surface_id,
+                               compositor_viewport_pixel_rect, screen_infos_);
 }
+#endif
 
 const display::ScreenInfo& WidgetBase::GetScreenInfo()
 {
@@ -1639,20 +1797,28 @@ gfx::Rect WidgetBase::WindowRect()
         rect = window_screen_rect_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     client_->ScreenRectToEmulated(rect);
+#endif
     return rect;
 }
 
 gfx::Rect WidgetBase::ViewRect()
 {
     gfx::Rect rect = widget_screen_rect_;
+#if !defined(MINI_UI_QUICKJS)
     client_->ScreenRectToEmulated(rect);
+#endif
     return rect;
 }
 
 gfx::Rect WidgetBase::CompositorViewportRect() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return software_viewport_rect_;
+#else
     return LayerTreeHost()->device_viewport_rect();
+#endif
 }
 
 LCDTextPreference WidgetBase::ComputeLCDTextPreference() const
@@ -1748,9 +1914,13 @@ gfx::RectF WidgetBase::BlinkSpaceToDIPs(const gfx::RectF& rect)
     return gfx::ScaleRect(rect, reverse);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::optional<int> WidgetBase::GetMaxRenderBufferBounds() const
 {
-    return Platform::Current()->IsGpuCompositingDisabled() ? max_render_buffer_bounds_sw_ : max_render_buffer_bounds_gpu_;
+    return Platform::Current()->IsGpuCompositingDisabled()
+        ? max_render_buffer_bounds_sw_
+        : max_render_buffer_bounds_gpu_;
 }
+#endif
 
 } // namespace blink

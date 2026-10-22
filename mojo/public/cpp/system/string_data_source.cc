@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,41 +10,40 @@
 
 namespace mojo {
 
-StringDataSource::StringDataSource(base::span<const char> data, AsyncWritingMode mode)
-{
-    switch (mode) {
+StringDataSource::StringDataSource(base::span<const char> data,
+                                   AsyncWritingMode mode) {
+  switch (mode) {
     case AsyncWritingMode::STRING_MAY_BE_INVALIDATED_BEFORE_COMPLETION:
-        data_ = std::string(data.data(), data.size());
-        data_view_ = base::make_span(data_);
-        break;
+      data_ = std::string(data.data(), data.size());
+      data_view_ = base::make_span(data_);
+      break;
     case AsyncWritingMode::STRING_STAYS_VALID_UNTIL_COMPLETION:
-        data_view_ = data;
-        break;
-    }
+      data_view_ = data;
+      break;
+  }
 }
 
 StringDataSource::~StringDataSource() = default;
 
-uint64_t StringDataSource::GetLength() const
-{
-    return data_view_.size();
+uint64_t StringDataSource::GetLength() const {
+  return data_view_.size();
 }
 
-DataPipeProducer::DataSource::ReadResult StringDataSource::Read(uint64_t offset, base::span<char> buffer)
-{
-    ReadResult result;
-    if (offset <= data_view_.size()) {
-        size_t readable_size = data_view_.size() - offset;
-        size_t writable_size = buffer.size();
-        size_t copyable_size = std::min(readable_size, writable_size);
-        for (size_t copied_size = 0; copied_size < copyable_size; ++copied_size)
-            buffer[copied_size] = data_view_[offset + copied_size];
-        result.bytes_read = copyable_size;
-    } else {
-        NOTREACHED();
-        result.result = MOJO_RESULT_OUT_OF_RANGE;
-    }
-    return result;
+DataPipeProducer::DataSource::ReadResult StringDataSource::Read(
+    uint64_t offset,
+    base::span<char> buffer) {
+  ReadResult result;
+  if (offset <= data_view_.size()) {
+    size_t readable_size = data_view_.size() - offset;
+    size_t writable_size = buffer.size();
+    size_t copyable_size = std::min(readable_size, writable_size);
+    for (size_t copied_size = 0; copied_size < copyable_size; ++copied_size)
+      buffer[copied_size] = data_view_[offset + copied_size];
+    result.bytes_read = copyable_size;
+  } else {
+    NOTREACHED();
+  }
+  return result;
 }
 
-} // namespace mojo
+}  // namespace mojo

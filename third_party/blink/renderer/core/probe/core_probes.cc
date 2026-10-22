@@ -33,10 +33,11 @@
 #include "base/trace_event/typed_macros.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/core_probes_inl.h"
-#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/async_task_context.h"
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 namespace blink {
@@ -62,6 +63,7 @@ base::TimeDelta ProbeBase::Duration() const
     return CaptureEndTime() - start_time_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 AsyncTask::AsyncTask(ExecutionContext* context, AsyncTaskContext* task_context, const char* step, bool enabled, AdTrackingType ad_tracking_type)
     : debugger_(enabled && context ? ThreadDebugger::From(context->GetIsolate()) : nullptr)
     , task_context_(task_context)
@@ -93,12 +95,14 @@ AsyncTask::~AsyncTask()
 
     TRACE_EVENT_END("blink"); // "AsyncTask Run"
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 CoreProbeSink* ToCoreProbeSink(OffscreenCanvas* offscreen_canvas)
 {
     return offscreen_canvas ? ToCoreProbeSink(offscreen_canvas->GetExecutionContext()) : nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void AllAsyncTasksCanceled(ExecutionContext* context)
 {
     if (context) {
@@ -106,6 +110,7 @@ void AllAsyncTasksCanceled(ExecutionContext* context)
             debugger->AllAsyncTasksCanceled();
     }
 }
+#endif // !defined(MINI_UI_QUICKJS)
 
 } // namespace probe
 } // namespace blink

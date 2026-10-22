@@ -33,8 +33,9 @@
 #include "third_party/blink/public/common/scheme_registry.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/fetch_later.mojom-blink.h"
-#include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/public/platform/web_url_request_util.h"
@@ -47,11 +48,14 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fetch/body.h"
 #include "third_party/blink/renderer/core/fetch/body_stream_buffer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/fetch/fetch_later_result.h"
+#endif
 #include "third_party/blink/renderer/core/fetch/fetch_request_data.h"
 #include "third_party/blink/renderer/core/fetch/form_data_bytes_consumer.h"
 #include "third_party/blink/renderer/core/fetch/place_holder_bytes_consumer.h"
 #include "third_party/blink/renderer/core/fetch/response.h"
+#include "third_party/blink/renderer/core/fetch/renderer_cors_issue_code.h"
 #include "third_party/blink/renderer/core/fetch/trust_token_to_mojom.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
@@ -60,19 +64,25 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader_client.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/workers/shared_worker_global_scope.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #endif
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
@@ -83,7 +93,9 @@
 #include "third_party/blink/renderer/platform/loader/cors/cors_error_string.h"
 #include "third_party/blink/renderer/platform/loader/fetch/buffering_bytes_consumer.h"
 #include "third_party/blink/renderer/platform/loader/fetch/bytes_consumer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/cached_metadata.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_utils.h"
@@ -96,7 +108,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request_utils.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/script_cached_metadata_handler.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/unique_identifier.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/request_conversion.h"
 #include "third_party/blink/renderer/platform/loader/subresource_integrity.h"
@@ -123,6 +137,7 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 // 64 kilobytes.
 constexpr uint64_t kMaxScheduledDeferredBytesPerOrigin = 64 * 1024;
 
@@ -204,6 +219,7 @@ bool IsFetchLaterUsePermissionsPolicyEnabled()
 {
     return base::GetFieldTrialParamByFeatureAsBool(features::kFetchLaterAPI, "use_permissions_policy", false);
 }
+#endif
 
 bool HasNonEmptyLocationHeader(const FetchHeaderList* headers)
 {
@@ -234,6 +250,7 @@ void HistogramNetErrorForTrustTokensOperation(network::mojom::blink::TrustTokenO
     base::UmaHistogramSparse(base::StrCat({ "Net.TrustTokens.NetErrorForFetchFailure", ".", SerializeTrustTokenOperationType(operation_type) }), net_error);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ResourceLoadPriority ComputeFetchLaterLoadPriority(const FetchParameters& params)
 {
     // FetchLater's ResourceType is ResourceType::kRaw, which should default to
@@ -261,6 +278,7 @@ public:
     {
     }
 };
+#endif
 
 // Stores a resolver for Response objects, and a TypeError exception to reject
 // them with. The default exception is created at construction time so it has an
@@ -353,12 +371,12 @@ void ResponseResolver::RejectBecauseFailed(
     CHECK(resolver_);
     auto* script_state = resolver_->GetScriptState();
     auto* isolate = script_state->GetIsolate();
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && !defined(MINI_UI_QUICKJS)
     auto context = script_state->GetContext();
 #endif
     v8::Local<v8::Value> value = exception_.Get(isolate);
     exception_.Reset();
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && !defined(MINI_UI_QUICKJS)
     if (devtools_request_id || issue_id || issue_summary) {
         ThreadDebugger* debugger = ThreadDebugger::From(isolate);
         v8_inspector::V8Inspector* inspector = debugger ? debugger->GetV8Inspector() : nullptr;
@@ -383,7 +401,11 @@ void ResponseResolver::RejectBecauseFailed(
 void ResponseResolver::Clear()
 {
     resolver_.Clear();
+#if defined(MINI_UI_QUICKJS)
+    exception_.Reset();
+#else
     exception_.Clear();
+#endif
 }
 
 } // namespace
@@ -488,7 +510,9 @@ public:
     // ThreadableLoaderClient implementation.
     bool WillFollowRedirect(uint64_t, const KURL&, const ResourceResponse&) override;
     void DidReceiveResponse(uint64_t, const ResourceResponse&) override;
+#if !defined(MINI_UI_QUICKJS)
     void DidReceiveCachedMetadata(mojo_base::BigBuffer) override;
+#endif
     void DidStartLoadingResponseBody(BytesConsumer&) override;
     void DidFinishLoading(uint64_t) override;
     void DidFail(uint64_t, const ResourceError&) override;
@@ -617,7 +641,9 @@ private:
     bool response_has_no_store_header_ = false;
     Member<SRIVerifier> integrity_verifier_;
     Vector<KURL> url_list_;
+#if !defined(MINI_UI_QUICKJS)
     Member<ScriptCachedMetadataHandler> cached_metadata_handler_;
+#endif
     base::TimeTicks request_started_time_;
 };
 
@@ -648,7 +674,9 @@ void FetchManager::Loader::Trace(Visitor* visitor) const
     visitor->Trace(threadable_loader_);
     visitor->Trace(place_holder_body_);
     visitor->Trace(integrity_verifier_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(cached_metadata_handler_);
+#endif
     FetchLoaderBase::Trace(visitor);
     ThreadableLoaderClient::Trace(visitor);
 }
@@ -703,6 +731,7 @@ void FetchManager::Loader::DidReceiveResponse(uint64_t, const ResourceResponse& 
 
     response_http_status_code_ = response.HttpStatusCode();
 
+#if !defined(MINI_UI_QUICKJS)
     if (response.MimeType() == "application/wasm"
         && (response.CurrentRequestUrl().ProtocolIsInHTTPFamily()
             || CommonSchemeRegistry::IsExtensionScheme(response.CurrentRequestUrl().Protocol().Ascii()))) {
@@ -710,10 +739,16 @@ void FetchManager::Loader::DidReceiveResponse(uint64_t, const ResourceResponse& 
         cached_metadata_handler_ = MakeGarbageCollected<ScriptCachedMetadataHandler>(
             WTF::TextEncoding(), CachedMetadataSender::Create(response, mojom::blink::CodeCacheType::kWebAssembly, GetExecutionContext()->GetSecurityOrigin()));
     }
+#endif
 
     place_holder_body_ = MakeGarbageCollected<PlaceHolderBytesConsumer>();
+#if defined(MINI_UI_QUICKJS)
+    FetchResponseData* response_data = FetchResponseData::CreateWithBuffer(
+        BodyStreamBuffer::Create(GetScriptState(), place_holder_body_, Signal()));
+#else
     FetchResponseData* response_data
         = FetchResponseData::CreateWithBuffer(BodyStreamBuffer::Create(GetScriptState(), place_holder_body_, Signal(), cached_metadata_handler_));
+#endif
     if (!GetExecutionContext() || GetExecutionContext()->IsContextDestroyed() || response.GetType() == FetchResponseType::kError) {
         // BodyStreamBuffer::Create() may run scripts and cancel this request.
         // Do nothing in such a case.
@@ -729,8 +764,13 @@ void FetchManager::Loader::DidReceiveResponse(uint64_t, const ResourceResponse& 
         response_type = network::mojom::FetchResponseType::kOpaqueRedirect;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    response_data->InitFromResourceResponse(
+        response_type, url_list_, GetFetchRequestData()->Method(), GetFetchRequestData()->Credentials(), response);
+#else
     response_data->InitFromResourceResponse(
         GetExecutionContext(), response_type, url_list_, GetFetchRequestData()->Method(), GetFetchRequestData()->Credentials(), response);
+#endif
 
     FetchResponseData* tainted_response = nullptr;
     switch (response_type) {
@@ -774,12 +814,15 @@ void FetchManager::Loader::DidReceiveResponse(uint64_t, const ResourceResponse& 
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FetchManager::Loader::DidReceiveCachedMetadata(mojo_base::BigBuffer data)
 {
     if (cached_metadata_handler_) {
         cached_metadata_handler_->SetSerializedCachedMetadata(std::move(data));
     }
 }
+
+#endif
 
 void FetchManager::Loader::DidStartLoadingResponseBody(BytesConsumer& body)
 {
@@ -1002,16 +1045,20 @@ void FetchLoaderBase::FileIssueAndPerformNetworkError(RendererCorsIssueCode netw
     auto issue_id = base::UnguessableToken::Create();
     switch (network_error) {
     case RendererCorsIssueCode::kCorsDisabledScheme: {
+#if !defined(MINI_UI_QUICKJS)
         AuditsIssue::ReportCorsIssue(execution_context_, identifier, network_error, fetch_request_data_->Url().GetString(),
             fetch_request_data_->Origin()->ToString(), fetch_request_data_->Url().Protocol(), issue_id);
+#endif
         PerformNetworkError("Fetch API cannot load " + fetch_request_data_->Url().GetString() + ". URL scheme \"" + fetch_request_data_->Url().Protocol()
                 + "\" is not supported.",
             issue_id);
         break;
     }
     case RendererCorsIssueCode::kDisallowedByMode: {
+#if !defined(MINI_UI_QUICKJS)
         AuditsIssue::ReportCorsIssue(execution_context_, identifier, network_error, fetch_request_data_->Url().GetString(),
             fetch_request_data_->Origin()->ToString(), WTF::g_empty_string, issue_id);
+#endif
         PerformNetworkError("Fetch API cannot load " + fetch_request_data_->Url().GetString()
                 + ". Request mode is \"same-origin\" but the URL\'s "
                   "origin is not same as the request origin "
@@ -1021,8 +1068,10 @@ void FetchLoaderBase::FileIssueAndPerformNetworkError(RendererCorsIssueCode netw
         break;
     }
     case RendererCorsIssueCode::kNoCorsRedirectModeNotFollow: {
+#if !defined(MINI_UI_QUICKJS)
         AuditsIssue::ReportCorsIssue(execution_context_, identifier, network_error, fetch_request_data_->Url().GetString(),
             fetch_request_data_->Origin()->ToString(), WTF::g_empty_string, issue_id);
+#endif
         PerformNetworkError("Fetch API cannot load " + fetch_request_data_->Url().GetString()
                 + ". Request mode is \"no-cors\" but the redirect mode "
                   "is not \"follow\".",
@@ -1086,14 +1135,14 @@ void FetchLoaderBase::PerformHTTPFetch(ExceptionState& exception_state)
     request.SetReferrerString(fetch_request_data_->ReferrerString());
     request.SetReferrerPolicy(fetch_request_data_->GetReferrerPolicy());
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsDeferred()) {
-        // https://whatpr.org/fetch/1647/9ca4bda...9994c1d.html#request-a-deferred-fetch
-        // "Deferred fetching"
-        // 4. Set request’s service-workers mode to "none".
+        // Deferred fetches set request service-workers mode to "none".
         request.SetSkipServiceWorker(true);
     } else {
         request.SetSkipServiceWorker(world_->IsIsolatedWorld());
     }
+#endif
 
     if (fetch_request_data_->Keepalive()) {
         request.SetKeepalive(true);
@@ -1102,20 +1151,25 @@ void FetchLoaderBase::PerformHTTPFetch(ExceptionState& exception_state)
 
     request.SetBrowsingTopics(fetch_request_data_->BrowsingTopics());
     request.SetAdAuctionHeaders(fetch_request_data_->AdAuctionHeaders());
+#if !defined(MINI_UI_QUICKJS)
     request.SetAttributionReportingEligibility(fetch_request_data_->AttributionReportingEligibility());
     request.SetAttributionReportingSupport(fetch_request_data_->AttributionSupport());
+#endif
     request.SetSharedStorageWritableOptedIn(fetch_request_data_->SharedStorageWritable());
 
     request.SetOriginalDestination(fetch_request_data_->OriginalDestination());
 
+#if !defined(MINI_UI_QUICKJS)
     request.SetServiceWorkerRaceNetworkRequestToken(fetch_request_data_->ServiceWorkerRaceNetworkRequestToken());
+#endif
 
     request.SetFetchLaterAPI(IsDeferred());
 
+#if !defined(MINI_UI_QUICKJS)
     if (execution_context_->IsSharedWorkerGlobalScope() && DynamicTo<SharedWorkerGlobalScope>(*execution_context_)->DoesRequireCrossSiteRequestForCookies()) {
         request.SetSiteForCookies(net::SiteForCookies());
     }
-
+#endif
     // "3. Append `Host`, ..."
     // FIXME: Implement this when the spec is fixed.
 
@@ -1243,6 +1297,7 @@ void FetchManager::Loader::LogIfKeepalive(std::string_view request_state) const
     base::UmaHistogramMediumTimes(base::StrCat({ "FetchKeepAlive.RequestDuration.", request_state }), duration);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // A subtype of FetchLoader to handle the deferred fetching algorithm [1].
 //
 // This loader and FetchManager::Loader are similar that they both runs the
@@ -1471,6 +1526,8 @@ private:
     HeapMojoAssociatedRemote<mojom::blink::FetchLaterLoader> loader_;
 };
 
+#endif
+
 FetchManager::FetchManager(ExecutionContext* execution_context)
     : ExecutionContextLifecycleObserver(execution_context)
 {
@@ -1495,6 +1552,7 @@ ScriptPromise<Response> FetchManager::Fetch(ScriptState* script_state, FetchRequ
     return promise;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 FetchLaterResult* FetchLaterManager::FetchLater(ScriptState* script_state, FetchRequestData* request, AbortSignal* signal,
     std::optional<DOMHighResTimeStamp> activate_after_ms, ExceptionState& exception_state)
 {
@@ -1619,6 +1677,7 @@ FetchLaterResult* FetchLaterManager::FetchLater(ScriptState* script_state, Fetch
     deferred_loader->Start(exception_state);
     return deferred_loader->fetch_later_result();
 }
+#endif
 
 void FetchManager::ContextDestroyed()
 {
@@ -1644,6 +1703,7 @@ void FetchManager::Trace(Visitor* visitor) const
     ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 FetchLaterManager::FetchLaterManager(ExecutionContext* ec)
     : ExecutionContextLifecycleObserver(ec)
     , permission_observer_receiver_(this, ec)
@@ -1793,4 +1853,5 @@ void FetchLaterManager::Trace(Visitor* visitor) const
     ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
+#endif
 } // namespace blink

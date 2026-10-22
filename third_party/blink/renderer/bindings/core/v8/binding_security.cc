@@ -46,7 +46,9 @@
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/image_document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/media_document.h"
+#endif
 #include "third_party/blink/renderer/core/html/text_document.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -129,8 +131,13 @@ bool CanAccessWindowInternal(
 
     if (accessing_window != local_target_window) {
         Document* doc = local_target_window->document();
+#if defined(MINI_UI_QUICKJS)
+        if (doc->IsImageDocument() || doc->IsTextDocument()
+            || (doc->IsXMLDocument() && !doc->IsXHTMLDocument() && !doc->IsSVGDocument())) {
+#else
         if (doc->IsImageDocument() || doc->IsMediaDocument() || doc->IsTextDocument()
             || (doc->IsXMLDocument() && !doc->IsXHTMLDocument() && !doc->IsSVGDocument())) {
+#endif
             UseCounter::Count(accessing_window->document(), WebFeature::kCrossWindowAccessToBrowserGeneratedDocument);
         }
     }

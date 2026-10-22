@@ -24,7 +24,9 @@
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_ostream_operators.h"
 #include "base/strings/utf_string_conversions.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing.h"
+#endif
 
 #if BUILDFLAG(IS_APPLE)
 #include "base/apple/scoped_cftyperef.h"
@@ -3863,10 +3865,12 @@ FilePath FilePath::NormalizePathSeparators() const
     return NormalizePathSeparatorsTo(kSeparators[0]);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FilePath::WriteIntoTrace(perfetto::TracedValue context) const
 {
     perfetto::WriteIntoTracedValue(std::move(context), value());
 }
+#endif
 
 FilePath FilePath::NormalizePathSeparatorsTo(CharType separator) const
 {

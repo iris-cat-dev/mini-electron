@@ -45,14 +45,16 @@
 #include "net/http/http_response_headers.h"
 #include "net/http/http_util.h"
 #include "services/network/public/cpp/content_security_policy/content_security_policy.h"
-#include "services/network/public/cpp/no_vary_search_header_parser.h"
 #include "services/network/public/cpp/parsed_headers.h"
 #include "services/network/public/cpp/timing_allow_origin_parser.h"
+#include "services/network/public/mojom/parsed_headers.mojom-blink.h"
+#include "services/network/public/mojom/timing_allow_origin.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
+#include "services/network/public/cpp/no_vary_search_header_parser.h"
 #include "services/network/public/mojom/no_vary_search.mojom-blink-forward.h"
 #include "services/network/public/mojom/no_vary_search.mojom-blink.h"
-#include "services/network/public/mojom/parsed_headers.mojom-blink.h"
 #include "services/network/public/mojom/supports_loading_mode.mojom-blink.h"
-#include "services/network/public/mojom/timing_allow_origin.mojom-blink.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/mime_util/mime_util.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
@@ -82,10 +84,6 @@
 // types below.
 namespace network {
 
-DocumentIsolationPolicy::DocumentIsolationPolicy(DocumentIsolationPolicy const&)
-{
-    *(int*)1 = 1;
-}
 
 namespace mojom {
 
@@ -109,6 +107,7 @@ blink::CSPDirectiveName ConvertToBlink(CSPDirectiveName name)
     return static_cast<blink::CSPDirectiveName>(name);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // `in` is a Mojo enum type, which is type aliased to the same underlying type
 // by both the non-Blink Mojo variant and the Blink Mojo variant.
 blink::WebClientHintsType ConvertToBlink(WebClientHintsType in)
@@ -120,6 +119,7 @@ blink::LoadingMode ConvertToBlink(LoadingMode in)
 {
     return static_cast<blink::LoadingMode>(in);
 }
+#endif
 
 // ===== Converters for other basic Blink types =====
 String ConvertToBlink(const std::string& in)
@@ -252,6 +252,7 @@ blink::TimingAllowOriginPtr ConvertToBlink(const TimingAllowOriginPtr& in)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 blink::NoVarySearchWithParseErrorPtr ConvertToBlink(const NoVarySearchWithParseErrorPtr& in)
 {
     if (!in)
@@ -274,10 +275,20 @@ blink::NoVarySearchWithParseErrorPtr ConvertToBlink(const NoVarySearchWithParseE
     return blink::NoVarySearchWithParseError::NewNoVarySearch(blink::NoVarySearch::New(
         blink::SearchParamsVariance::NewVaryParams(ConvertToBlink(no_vary_search->search_variance->get_vary_params())), no_vary_search->vary_on_key_order));
 }
+#endif
 
 blink::ParsedHeadersPtr ConvertToBlink(const ParsedHeadersPtr& in)
 {
     DCHECK(in);
+#if defined(MINI_UI_QUICKJS)
+    // The MINI Mojo profile removes browser-service-only fields. Keep this
+    // argument list in the retained ParsedHeaders schema order.
+    return blink::ParsedHeaders::New(ConvertToBlink(in->content_security_policy), ConvertToBlink(in->allow_csp_from),
+        in->cross_origin_embedder_policy, in->cross_origin_opener_policy, in->document_isolation_policy, in->origin_agent_cluster, in->xfo,
+        ConvertToBlink(in->link_headers), ConvertToBlink(in->timing_allow_origin),
+        in->avail_language.has_value() ? std::make_optional(ConvertToBlink(in->avail_language.value())) : std::nullopt,
+        in->content_language.has_value() ? std::make_optional(ConvertToBlink(in->content_language.value())) : std::nullopt);
+#else
     return blink::ParsedHeaders::New(ConvertToBlink(in->content_security_policy), ConvertToBlink(in->allow_csp_from), in->cross_origin_embedder_policy,
         in->cross_origin_opener_policy, in->document_isolation_policy, in->origin_agent_cluster,
         in->accept_ch.has_value() ? std::make_optional(ConvertToBlink(in->accept_ch.value())) : std::nullopt,
@@ -289,6 +300,7 @@ blink::ParsedHeadersPtr ConvertToBlink(const ParsedHeadersPtr& in)
         in->avail_language.has_value() ? std::make_optional(ConvertToBlink(in->avail_language.value())) : std::nullopt,
         in->content_language.has_value() ? std::make_optional(ConvertToBlink(in->content_language.value())) : std::nullopt,
         ConvertToBlink(in->no_vary_search_with_parse_error), in->observe_browsing_topics, in->allow_cross_origin_event_reporting);
+#endif
 }
 
 } // namespace mojom
@@ -929,26 +941,23 @@ network::mojom::blink::TimingAllowOriginPtr ParseTimingAllowOrigin(const String&
     return network::mojom::ConvertToBlink(network::ParseTimingAllowOrigin(header_value.Latin1()));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 network::mojom::blink::NoVarySearchWithParseErrorPtr ParseNoVarySearch(const String& header_value)
 {
-    *(int*)1 = 1;
-    return nullptr;
-//     // Parse the No-Vary-Search hint value by making a header in order to
-//     // reuse existing code.
-//     auto headers = base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK\n");
-//     headers->AddHeader("No-Vary-Search", header_value.Utf8());
-// 
-//     auto parsed_nvs_with_error = ConvertToBlink(network::ParseNoVarySearch(*headers));
-//     // `parsed_nvs_with_error` cannot be null here. Because we know the header is
-//     // available, we will get a parse error or a No-Vary-Search.
-//     CHECK(parsed_nvs_with_error);
-//     return parsed_nvs_with_error;
+    // Parse the No-Vary-Search hint value by making a header in order to reuse
+    // the response-header parser.
+    auto headers = base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK\n");
+    headers->AddHeader("No-Vary-Search", header_value.Utf8());
+
+    auto parsed_nvs_with_error = network::mojom::ConvertToBlink(network::ParseNoVarySearch(*headers));
+    // The header is present, so parsing produces either a value or an error.
+    CHECK(parsed_nvs_with_error);
+    return parsed_nvs_with_error;
 }
 
 String GetNoVarySearchHintConsoleMessage(const network::mojom::NoVarySearchParseError& error)
 {
-    //return network::mojom::ConvertToBlink(network::GetNoVarySearchHintConsoleMessage(error));
-    *(int*)1 = 1;
-    return "";
+    return network::mojom::ConvertToBlink(network::GetNoVarySearchHintConsoleMessage(error));
 }
+#endif
 } // namespace blink

@@ -9,11 +9,14 @@
 #include "base/pickle.h"
 #include "ipc/ipc_param_traits.h"
 #include "ipc/param_traits_macros.h"
+#include "net/http/http_connection_info.h"
+#include "services/network/public/cpp/net_ipc_param_traits.h"
+
+#if !defined(MINI_UI_QUICKJS)
 #include "net/base/auth.h"
 #include "net/base/ip_endpoint.h"
 #include "net/base/proxy_server.h"
 #include "net/base/request_priority.h"
-#if 0
 #include "net/cert/ct_policy_status.h"
 #include "net/cert/signed_certificate_timestamp.h"
 #include "net/cert/signed_certificate_timestamp_and_status.h"
@@ -23,11 +26,11 @@
 #include "net/nqe/effective_connection_type.h"
 #include "net/ssl/ssl_cert_request_info.h"
 #include "net/ssl/ssl_info.h"
-#include "services/network/public/cpp/net_ipc_param_traits.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/public/mojom/trust_tokens.mojom-shared.h"
 #include "url/ipc/url_param_traits.h"
 #include "url/origin.h"
+#endif
 
 #undef IPC_MESSAGE_EXPORT
 #define IPC_MESSAGE_EXPORT COMPONENT_EXPORT(NETWORK_CPP_BASE)
@@ -35,6 +38,7 @@
 // This file defines IPC::ParamTraits for network:: classes / structs.
 // For IPC::ParamTraits for net:: class / structs, see net_ipc_param_traits.h.
 
+#if !defined(MINI_UI_QUICKJS)
 IPC_ENUM_TRAITS_MAX_VALUE(network::mojom::CredentialsMode,
                           network::mojom::CredentialsMode::kMaxValue)
 
@@ -49,6 +53,6 @@ IPC_ENUM_TRAITS_MAX_VALUE(network::mojom::FetchResponseType,
 
 IPC_ENUM_TRAITS_MAX_VALUE(network::mojom::TrustTokenOperationStatus,
                           network::mojom::TrustTokenOperationStatus::kMaxValue)
-#endif // if 0
+#endif
 
 #endif // SERVICES_NETWORK_PUBLIC_CPP_NETWORK_IPC_PARAM_TRAITS_H_

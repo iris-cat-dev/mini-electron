@@ -51,7 +51,9 @@
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
+#endif
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
@@ -64,8 +66,12 @@
 #include "third_party/blink/renderer/core/css/media_values.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
@@ -77,8 +83,12 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
 #include "third_party/blink/renderer/core/loader/back_forward_cache_loader_helper_impl.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
@@ -92,7 +102,6 @@
 #include "third_party/blink/renderer/core/loader/resource_load_observer_for_frame.h"
 #include "third_party/blink/renderer/core/loader/subresource_filter.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_chrome_client.h"
@@ -313,6 +322,7 @@ const Vector<KURL>& FrameFetchContext::GetPotentiallyUnusedPreloads() const
     return empty_unused_preloads_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FrameFetchContext::AddLcpPredictedCallback(base::OnceClosure callback)
 {
     if (LocalFrame* frame = FrameFetchContext::GetFrame()) {
@@ -321,6 +331,7 @@ void FrameFetchContext::AddLcpPredictedCallback(base::OnceClosure callback)
         }
     }
 }
+#endif
 
 SubresourceFilter* FrameFetchContext::GetSubresourceFilter() const
 {
@@ -383,16 +394,19 @@ void FrameFetchContext::PrepareRequest(
     if (GetResourceFetcherProperties().IsDetached())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     request.SetUkmSourceId(document_->UkmSourceID());
+#endif
     request.SetStorageAccessApiStatus(document_->GetExecutionContext()->GetStorageAccessApiStatus());
 
     if (!minimal_prep) {
         if (document_loader_->ForceFetchCacheMode()) {
             request.SetCacheMode(*document_loader_->ForceFetchCacheMode());
         }
-        if (const AttributionSrcLoader* attribution_src_loader = GetFrame()->GetAttributionSrcLoader()) {
+#if !defined(MINI_UI_QUICKJS)
+        if (const AttributionSrcLoader* attribution_src_loader = GetFrame()->GetAttributionSrcLoader())
             request.SetAttributionReportingSupport(attribution_src_loader->GetSupport());
-        }
+#endif
     }
 
     // If the original request included the attribute to opt-in to shared storage,
@@ -419,13 +433,17 @@ void FrameFetchContext::PrepareRequest(
             = frame_scheduler->CreateWebScopedVirtualTimePauser(request.Url().GetString(), WebScopedVirtualTimePauser::VirtualTaskDuration::kNonInstant);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     probe::PrepareRequest(Probe(), document_loader_, request, options, resource_type);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // ServiceWorker hook ups.
     if (document_loader_->GetServiceWorkerNetworkProvider()) {
         WrappedResourceRequest webreq(request);
         document_loader_->GetServiceWorkerNetworkProvider()->WillSendRequest(webreq);
     }
+#endif
 }
 
 void FrameFetchContext::AddResourceTiming(mojom::blink::ResourceTimingInfoPtr info, const AtomicString& initiator_type)
@@ -685,7 +703,9 @@ void FrameFetchContext::PopulateResourceRequestBeforeCacheAccess(const ResourceL
 {
     DCHECK(RuntimeEnabledFeatures::MinimimalResourceRequestPrepBeforeCacheLookupEnabled());
     if (!GetResourceFetcherProperties().IsDetached()) {
+#if !defined(MINI_UI_QUICKJS)
         probe::SetDevToolsIds(Probe(), request, options.initiator_info);
+#endif
     }
 
     // CSP may change the url.
@@ -694,17 +714,19 @@ void FrameFetchContext::PopulateResourceRequestBeforeCacheAccess(const ResourceL
         return;
     }
     SetFirstPartyCookie(request);
+#if !defined(MINI_UI_QUICKJS)
     if (CoreProbeSink::HasAgentsGlobal(CoreProbeSink::kInspectorEmulationAgent | CoreProbeSink::kInspectorNetworkAgent)) {
         request.SetRequiresUpgradeForLoader();
     }
+#endif
     if (document_loader_->ForceFetchCacheMode()) {
         request.SetCacheMode(*document_loader_->ForceFetchCacheMode());
     }
-    // ResourceFetcher::DidLoadResourceFromMemoryCache() may call out in such a
-    // way that the AttributionSupport is needed.
-    if (const AttributionSrcLoader* attribution_src_loader = GetFrame()->GetAttributionSrcLoader()) {
+#if !defined(MINI_UI_QUICKJS)
+    // ResourceFetcher::DidLoadResourceFromMemoryCache() may need attribution support.
+    if (const AttributionSrcLoader* attribution_src_loader = GetFrame()->GetAttributionSrcLoader())
         request.SetAttributionReportingSupport(attribution_src_loader->GetSupport());
-    }
+#endif
 }
 
 void FrameFetchContext::UpgradeResourceRequestForLoader(
@@ -712,7 +734,9 @@ void FrameFetchContext::UpgradeResourceRequestForLoader(
 {
     if (!RuntimeEnabledFeatures::MinimimalResourceRequestPrepBeforeCacheLookupEnabled()) {
         if (!GetResourceFetcherProperties().IsDetached()) {
+#if !defined(MINI_UI_QUICKJS)
             probe::SetDevToolsIds(Probe(), request, options.initiator_info);
+#endif
         }
         ModifyRequestForCSP(request);
     }
@@ -733,8 +757,13 @@ void FrameFetchContext::StartSpeculativeImageDecode(Resource* resource, base::On
         std::move(callback).Run();
         return;
     }
+#if defined(MINI_UI_QUICKJS)
+    image->PaintImageForCurrentFrame().GetSwSkImage();
+    std::move(callback).Run();
+#else
     document_->GetFrame()->GetChromeClient().RequestDecode(
         document_->GetFrame(), image->PaintImageForCurrentFrame(), WTF::BindOnce([](base::OnceClosure cb, bool) { std::move(cb).Run(); }, std::move(callback)));
+#endif
 }
 
 bool FrameFetchContext::IsPrerendering() const
@@ -757,6 +786,7 @@ bool FrameFetchContext::DoesLCPPHaveAnyHintData()
     return lcpp->HasAnyHintData();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool FrameFetchContext::DoesLCPPHaveLcpElementLocatorHintData()
 {
     if (GetResourceFetcherProperties().IsDetached()) {
@@ -769,6 +799,7 @@ bool FrameFetchContext::DoesLCPPHaveLcpElementLocatorHintData()
     }
     return !lcpp->lcp_element_locators().empty();
 }
+#endif
 
 void FrameFetchContext::SetFirstPartyCookie(ResourceRequest& request)
 {
@@ -804,7 +835,9 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const
     if (GetResourceFetcherProperties().IsDetached())
         return false;
     bool should_block_request = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ShouldBlockRequest(Probe(), url, &should_block_request);
+#endif
     return should_block_request;
 }
 
@@ -813,7 +846,9 @@ void FrameFetchContext::DispatchDidBlockRequest(const ResourceRequest& resource_
 {
     if (GetResourceFetcherProperties().IsDetached())
         return;
+#if !defined(MINI_UI_QUICKJS)
     probe::DidBlockRequest(Probe(), resource_request, document_loader_, Url(), options, blocked_reason, resource_type);
+#endif
 }
 
 ContentSecurityPolicy* FrameFetchContext::GetContentSecurityPolicyForWorld(const DOMWrapperWorld* world) const
@@ -970,7 +1005,9 @@ String FrameFetchContext::GetReducedAcceptLanguage() const
     // If accept language override from inspector emulation, set Accept-Language
     // header as the overridden value.
     String override_accept_language;
+#if !defined(MINI_UI_QUICKJS)
     probe::ApplyAcceptLanguageOverride(Probe(), &override_accept_language);
+#endif
     if (override_accept_language.empty()) {
         String expanded_language = network_utils::ExpandLanguageList(frame->GetReducedAcceptLanguage().GetString());
         return network_utils::GenerateAcceptLanguageHeader(expanded_language);
@@ -1014,6 +1051,7 @@ bool FrameFetchContext::CalculateIfAdSubresource(
 {
     // Mark the resource as an Ad if the BaseFetchContext thinks it's an ad.
     bool known_ad = BaseFetchContext::CalculateIfAdSubresource(resource_request, alias_url, type, initiator_info);
+#if !defined(MINI_UI_QUICKJS)
     if (GetResourceFetcherProperties().IsDetached() || !GetFrame()->GetAdTracker()) {
         return known_ad;
     }
@@ -1022,6 +1060,9 @@ bool FrameFetchContext::CalculateIfAdSubresource(
     // as an ad.
     const KURL& url = alias_url.has_value() ? alias_url.value() : resource_request.Url();
     return GetFrame()->GetAdTracker()->CalculateIfAdSubresource(document_->domWindow(), url, type, initiator_info, known_ad);
+#else
+    return known_ad;
+#endif
 }
 
 void FrameFetchContext::DidObserveLoadingBehavior(LoadingBehaviorFlag behavior)

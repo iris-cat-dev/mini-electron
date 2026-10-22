@@ -59,8 +59,10 @@ void TextFragmentAnchorMetrics::ReportMetrics()
         UseCounter::Count(document_, WebFeature::kTextFragmentAnchorMatchFound);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     shared_highlighting::LogLinkOpenedUkmEvent(document_->UkmRecorder(), document_->UkmSourceID(), GURL(document_->referrer().Utf8()),
         /*success=*/matches_count_ == selector_count_);
+#endif
 
     std::string uma_prefix = GetPrefixForHistograms();
 
@@ -80,8 +82,14 @@ void TextFragmentAnchorMetrics::ReportMetrics()
             time_to_scroll_into_view.InMilliseconds());
     }
 
+#if defined(MINI_UI_QUICKJS)
+    shared_highlighting::LogTextFragmentLinkOpenSource(
+        has_search_engine_source_ ? shared_highlighting::TextFragmentLinkOpenSource::kSearchEngine
+                                  : shared_highlighting::TextFragmentLinkOpenSource::kUnknown);
+#else
     base::UmaHistogramEnumeration(
         "TextFragmentAnchor.LinkOpenSource", has_search_engine_source_ ? TextFragmentLinkOpenSource::kSearchEngine : TextFragmentLinkOpenSource::kUnknown);
+#endif
 #ifndef NDEBUG
     metrics_reported_ = true;
 #endif

@@ -33,10 +33,12 @@
 
 #include <memory>
 
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "third_party/blink/public/common/dom_storage/session_storage_namespace_id.h"
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
@@ -87,6 +89,7 @@ public:
     // Should be called by clients before trying to create Frames.
     virtual void Initialize();
 
+#if !defined(MINI_UI_QUICKJS)
     // Called on startup to register Mojo interfaces that for control messages,
     // e.g. messages that are not routed to a specific frame.
     virtual void RegisterInterfaces(mojo::BinderMap&) = 0;
@@ -138,6 +141,7 @@ public:
     virtual void SetSessionStorageArea(LocalFrame& frame, mojo::PendingRemote<mojom::blink::StorageArea> session_storage_area) = 0;
 
     virtual mojom::blink::FileSystemManager& GetFileSystemManager(ExecutionContext* context) = 0;
+#endif
 
 protected:
     // CoreInitializer is only instantiated by subclass ModulesInitializer.

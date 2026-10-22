@@ -45,7 +45,9 @@ v8::MaybeLocal<v8::Object> V8ObjectConstructor::NewInstance(v8::Isolate* isolate
     // cases. Allowed methods can correctly set return values without invoking
     // Blink's internal constructors.
     v8::MaybeLocal<v8::Object> result = function->NewInstanceWithSideEffectType(isolate->GetCurrentContext(), argc, argv, v8::SideEffectType::kHasNoSideEffect);
+#if !defined(MINI_UI_QUICKJS)
     CHECK(!isolate->IsDead());
+#endif
     return result;
 }
 

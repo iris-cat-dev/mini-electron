@@ -5,16 +5,20 @@
 #include "third_party/blink/renderer/core/html/parser/html_parser_metrics.h"
 
 #include "base/metrics/histogram_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 HTMLParserMetrics::HTMLParserMetrics(int64_t source_id, ukm::UkmRecorder* recorder)
     : source_id_(source_id)
     , recorder_(recorder)
 {
 }
+#endif
 
 void HTMLParserMetrics::AddChunk(base::TimeDelta elapsed_time, unsigned tokens_parsed)
 {
@@ -53,6 +57,7 @@ void HTMLParserMetrics::AddInput(unsigned length)
     input_character_count_ += length;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void HTMLParserMetrics::AddFetchQueuedPreloadsTime(int64_t elapsed_time)
 {
     fetch_queued_preloads_time_ += elapsed_time;
@@ -82,6 +87,7 @@ void HTMLParserMetrics::AddScanTime(int64_t elapsed_time)
 {
     scan_time_ += elapsed_time;
 }
+#endif
 
 void HTMLParserMetrics::ReportUMAs()
 {
@@ -113,6 +119,7 @@ void HTMLParserMetrics::ReportMetricsAtParseEnd()
 
     ReportUMAs();
 
+#if !defined(MINI_UI_QUICKJS)
     // Build and report UKM
     ukm::builders::Blink_HTMLParsing builder(source_id_);
     builder.SetChunkCount(chunk_count_);
@@ -138,6 +145,7 @@ void HTMLParserMetrics::ReportMetricsAtParseEnd()
         builder.SetScanTime(ukm::GetExponentialBucketMinForUserTiming(scan_time_));
     }
     builder.Record(recorder_);
+#endif
 }
 
 } // namespace blink

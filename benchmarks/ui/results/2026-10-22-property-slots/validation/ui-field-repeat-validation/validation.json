@@ -1,0 +1,42 @@
+[
+  {
+    "name": "candidate-repeat",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/run.py",
+      "--exe",
+      "out/ui-field-inline-after/build/ui-benchmark.exe",
+      "--ui-out",
+      "out/ui-field-inline-candidate",
+      "--out-dir",
+      "out/ui-field-inline-repeat",
+      "--counts",
+      "100,10000",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 325.89398110000184,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-repeat-validation\\candidate-repeat.log"
+  },
+  {
+    "name": "baseline-repeat",
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/run.py",
+      "--exe",
+      "out/ui-map-final-smoke/build/ui-benchmark.exe",
+      "--ui-out",
+      "out/ui-windows-x64",
+      "--out-dir",
+      "out/ui-field-before-repeat",
+      "--counts",
+      "100,10000",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "seconds": 352.2543510000105,
+    "log": "D:\\Project\\mini-electron\\out\\ui-field-repeat-validation\\baseline-repeat.log"
+  }
+]

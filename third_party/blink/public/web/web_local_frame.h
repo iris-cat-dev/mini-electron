@@ -28,13 +28,21 @@
 #include "third_party/blink/public/mojom/browser_interface_broker.mojom-shared.h"
 #include "third_party/blink/public/mojom/commit_result/commit_result.mojom-shared.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/devtools_agent.mojom-shared.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-shared.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-shared.h"
+#endif
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-shared.h"
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom-shared.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/lcp_critical_path_predictor/lcp_critical_path_predictor.mojom-forward.h"
+#endif
 #include "third_party/blink/public/mojom/page/widget.mojom-shared.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-shared.h"
 #include "third_party/blink/public/mojom/script/script_evaluation_params.mojom-shared.h"
@@ -95,7 +103,9 @@ class WebHitTestResult;
 class WebInputMethodController;
 class WebPerformanceMetricsForReporting;
 class WebPerformanceMetricsForNestedContexts;
+#if !defined(MINI_UI_QUICKJS)
 class WebPlugin;
+#endif
 class WebPrintClient;
 class WebRange;
 class WebSpellCheckPanelHostClient;
@@ -216,10 +226,12 @@ public:
     // Sets BackForwardCache NotRestoredReasons for the current frame.
     virtual void SetNotRestoredReasons(const mojom::BackForwardCacheNotRestoredReasonsPtr&) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Sets LCP Critical Path Detector hint for the current frame that was
     // available at the navigation commit timing.
     virtual void SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigationTimeHintPtr&) = 0;
 
+#endif
     // Tests whether the policy-controlled feature is enabled in this frame.
     virtual bool IsFeatureEnabled(const mojom::PermissionsPolicyFeature&) const = 0;
 
@@ -241,12 +253,19 @@ public:
     virtual WebFrameWidget* FrameWidget() const = 0;
 
     // Creates and returns an associated FrameWidget for this frame. The frame
-    // must be a LocalRoot. The WebLocalFrame maintins ownership of the
+    // must be a LocalRoot. The WebLocalFrame maintains ownership of the
     // WebFrameWidget that was created.
+#if defined(MINI_UI_QUICKJS)
+    WebFrameWidget* InitializeFrameWidget(
+        CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
+        const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame = false,
+        bool is_for_scalable_page = true, bool hidden = false);
+#else
     WebFrameWidget* InitializeFrameWidget(CrossVariantMojoAssociatedRemote<mojom::FrameWidgetHostInterfaceBase> frame_widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::FrameWidgetInterfaceBase> frame_widget,
         CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host, CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget,
         const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame = false, bool is_for_scalable_page = true, bool hidden = false);
+#endif
 
     // Returns the frame identified by the given name.  This method supports
     // pseudo-names like _self, _top, and _blank and otherwise performs the same
@@ -398,12 +417,18 @@ public:
     // Use kMainDOMWorldId to execute in the main world; otherwise,
     // `world_id` must be a positive integer and less than kEmbedderWorldIdLimit.
     virtual void RequestExecuteScript(int32_t world_id, base::span<const WebScriptSource> sources, mojom::UserActivationOption, mojom::EvaluationTiming,
-        mojom::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware, mojom::WantResultOption, mojom::PromiseResultOption)
+        mojom::LoadEventBlockingOption, WebScriptExecutionCallback, BackForwardCacheAware,
+#if !defined(MINI_UI_QUICKJS)
+        mojom::WantResultOption,
+#endif
+        mojom::PromiseResultOption)
         = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns if devtools is connected to the frame.
     virtual bool IsInspectorConnected() = 0;
 
+#endif
     // Logs to the console associated with this frame. If |discard_duplicates| is
     // set, the message will only be added if it is unique (i.e. has not been
     // added to the console previously from this page).
@@ -412,6 +437,7 @@ public:
         AddMessageToConsoleImpl(message, discard_duplicates);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void AddInspectorIssue(mojom::InspectorIssueCode code)
     {
         AddInspectorIssueImpl(code);
@@ -426,6 +452,7 @@ public:
     {
         AddGenericIssueImpl(error_type, violating_node_id);
     }
+#endif
 
     // Expose modal dialog methods to avoid having to go through JavaScript.
     virtual void Alert(const WebString& message) = 0;
@@ -685,9 +712,11 @@ public:
     // |print_client| is an optional weak pointer to the caller.
     virtual void DispatchBeforePrintEvent(base::WeakPtr<WebPrintClient> print_client) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Get the plugin to print, if any. The |constrain_to_node| parameter is the
     // same as the one for PrintBegin() below.
     virtual WebPlugin* GetPluginToPrint(const WebNode& constrain_to_node) = 0;
+#endif
 
     // Reformats the WebFrame for printing. WebPrintParams specifies the printable
     // content size, paper size, printable area size, printer DPI and print
@@ -713,9 +742,11 @@ public:
     // This function should be called after pairs of PrintBegin() and PrintEnd().
     virtual void DispatchAfterPrintEvent() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true on success and sets the out parameter to the print preset
     // options for the document.
     virtual bool GetPrintPresetOptionsForPlugin(const WebNode&, WebPrintPresetOptions*) = 0;
+#endif
 
     // Paint Preview ------------------------------------------------------------
 
@@ -750,10 +781,12 @@ public:
     // See blink::LocalFrame::AdEvidence()
     virtual const std::optional<blink::FrameAdEvidence>& AdEvidence() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // This is used to check if a script tagged as an ad is currently on the v8
     // stack. This is the same method used to compute the below bit which will
     // persist.
     virtual bool IsAdScriptInStack() const = 0;
+#endif
 
     // True iff a script tagged as an ad was on the v8 stack when the frame was
     // created. This is not currently propagated when a frame navigates
@@ -822,6 +855,7 @@ public:
     // Reset TextFinder state for the web test runner in between two tests.
     virtual void ClearActiveFindMatchForTesting() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Sets a local storage area which can be used for this frame. This storage
     // area is ignored if a cached storage area already exists for the storage
     // key.
@@ -831,6 +865,7 @@ public:
     // area is ignored if a cached storage area already exists for the storage
     // key and namespace.
     virtual void SetSessionStorageArea(CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase> session_storage_area) = 0;
+#endif
 
     // Android WebView requires notification of hit tests from blink. It requires
     // hit tests on touchstart. So this method installs a passive event listener
@@ -849,10 +884,10 @@ public:
     // Processes all pending input in the widget associated with this frame.
     // This is an asynchronous operation since it processes the compositor queue
     // as well. The passed closure is invoked when queues of both threads have
-    // been processed.
-    virtual void FlushInputForTesting(base::OnceClosure)
-    {
-    }
+#if !defined(MINI_UI_QUICKJS)
+    // Flushes pending compositor input events in tests.
+    virtual void FlushInputForTesting(base::OnceClosure) { }
+#endif
 
     virtual bool AllowStorageAccessSyncAndNotify(WebContentSettingsClient::StorageType storage_type) = 0;
 
@@ -870,15 +905,25 @@ protected:
     WebRemoteFrame* ToWebRemoteFrame() override = 0;
 
     virtual void AddMessageToConsoleImpl(const WebConsoleMessage&, bool discard_duplicates) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void AddInspectorIssueImpl(blink::mojom::InspectorIssueCode code) = 0;
     virtual void AddGenericIssueImpl(blink::mojom::GenericIssueErrorType error_type, int violating_node_id) = 0;
     virtual void AddGenericIssueImpl(blink::mojom::GenericIssueErrorType error_type, int violating_node_id, const WebString& violating_node_attribute) = 0;
+#endif
+#if defined(MINI_UI_QUICKJS)
+    virtual void CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
+        CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
+        const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
+        bool is_for_scalable_page, bool hidden)
+        = 0;
+#else
     virtual void CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
         CrossVariantMojoAssociatedRemote<mojom::FrameWidgetHostInterfaceBase> frame_widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::FrameWidgetInterfaceBase> frame_widget,
         CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host, CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget,
         const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame, bool is_for_scalable_page, bool hidden)
         = 0;
+#endif
 };
 
 } // namespace blink

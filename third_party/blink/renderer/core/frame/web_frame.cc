@@ -12,18 +12,23 @@
 #include "third_party/blink/public/web/web_element.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
 #include "third_party/blink/renderer/core/dom/increment_load_event_delay_count.h"
+#include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/opened_frame_tracker.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
+#include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/remote_frame_owner.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
-#include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 namespace blink {
@@ -33,6 +38,7 @@ bool WebFrame::Swap(WebLocalFrame* frame)
     return ToCoreFrame(*this)->Swap(frame);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebFrame::Swap(WebRemoteFrame* frame, CrossVariantMojoAssociatedRemote<mojom::blink::RemoteFrameHostInterfaceBase> remote_frame_host,
     CrossVariantMojoAssociatedReceiver<mojom::blink::RemoteFrameInterfaceBase> remote_frame_receiver, blink::mojom::FrameReplicationStatePtr replicated_state)
 {
@@ -43,6 +49,7 @@ bool WebFrame::Swap(WebRemoteFrame* frame, CrossVariantMojoAssociatedRemote<mojo
     To<WebRemoteFrameImpl>(frame)->SetReplicatedState(std::move(replicated_state));
     return true;
 }
+#endif
 
 void WebFrame::Detach()
 {
@@ -152,9 +159,15 @@ WebFrame* WebFrame::FromCoreFrame(Frame* frame)
     if (!frame)
         return nullptr;
 
+#if defined(MINI_UI_QUICKJS)
+    auto* local_frame = DynamicTo<LocalFrame>(frame);
+    CHECK(local_frame);
+    return WebLocalFrameImpl::FromFrame(*local_frame);
+#else
     if (auto* local_frame = DynamicTo<LocalFrame>(frame))
         return WebLocalFrameImpl::FromFrame(*local_frame);
     return WebRemoteFrameImpl::FromFrame(To<RemoteFrame>(*frame));
+#endif
 }
 
 WebFrame::WebFrame(mojom::blink::TreeScopeType scope, const FrameToken& frame_token)
@@ -170,11 +183,17 @@ void WebFrame::Close(DetachReason detach_reason)
 
 Frame* WebFrame::ToCoreFrame(const WebFrame& frame)
 {
+#if defined(MINI_UI_QUICKJS)
+    auto* web_local_frame = DynamicTo<WebLocalFrameImpl>(&frame);
+    CHECK(web_local_frame);
+    return web_local_frame->GetFrame();
+#else
     if (auto* web_local_frame = DynamicTo<WebLocalFrameImpl>(&frame))
         return web_local_frame->GetFrame();
     if (frame.IsWebRemoteFrame())
         return To<WebRemoteFrameImpl>(frame).GetFrame();
     NOTREACHED();
+#endif
 }
 
 } // namespace blink

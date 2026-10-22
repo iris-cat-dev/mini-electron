@@ -61,7 +61,9 @@
 #include "third_party/blink/renderer/core/paint/url_metadata_utils.h"
 #include "third_party/blink/renderer/core/paint/view_painter.h"
 #include "third_party/blink/renderer/core/scroll/scroll_types.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context_state_saver.h"
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_cache_skipper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
@@ -365,6 +367,7 @@ void PaintFragment(const PhysicalBoxFragment& fragment, const PaintInfo& paint_i
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool ShouldDelegatePaintingToViewTransition(const PhysicalBoxFragment& fragment, PaintPhase paint_phase)
 {
     if (!fragment.GetLayoutObject()) {
@@ -389,6 +392,7 @@ bool ShouldDelegatePaintingToViewTransition(const PhysicalBoxFragment& fragment,
         return false;
     }
 }
+#endif
 
 } // anonymous namespace
 
@@ -460,11 +464,13 @@ void BoxFragmentPainter::PaintInternal(const PaintInfo& paint_info)
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     ScopedPaintTimingDetectorBlockPaintHook scoped_paint_timing_detector_block_paint_hook;
     if (original_phase == PaintPhase::kForeground && box_fragment_.GetLayoutObject()->IsBox()) {
         scoped_paint_timing_detector_block_paint_hook.EmplaceIfNeeded(
             To<LayoutBox>(*box_fragment_.GetLayoutObject()), paint_info.context.GetPaintController().CurrentPaintChunkProperties());
     }
+#endif
 
     if (original_phase == PaintPhase::kOutline) {
         info.phase = PaintPhase::kDescendantOutlinesOnly;
@@ -579,9 +585,11 @@ void BoxFragmentPainter::PaintObject(const PaintInfo& paint_info, const Physical
     const PaintPhase paint_phase = paint_info.phase;
     const PhysicalBoxFragment& fragment = GetPhysicalFragment();
 
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldDelegatePaintingToViewTransition(fragment, paint_phase)) {
         return;
     }
+#endif
 
     if (fragment.IsFrameSet()) {
         FrameSetPainter(fragment, display_item_client_).PaintObject(paint_info, paint_offset);

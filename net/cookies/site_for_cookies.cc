@@ -6,8 +6,10 @@
 
 #include <utility>
 
+#include "base/feature_list.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
+#include "net/base/features.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "net/cookies/cookie_util.h"
 
@@ -224,5 +226,16 @@ bool operator<(const SiteForCookies& lhs, const SiteForCookies& rhs)
     // Otherwise neither are null and we need to compare the `site_`s.
     return lhs.site_ < rhs.site_;
 }
+
+namespace cookie_util {
+
+// Schemeful site classification is a value-only dependency, independent of
+// the cookie store and its access delegates.
+bool IsSchemefulSameSiteEnabled()
+{
+    return base::FeatureList::IsEnabled(features::kSchemefulSameSite);
+}
+
+} // namespace cookie_util
 
 } // namespace net

@@ -39,10 +39,10 @@ WebBundleLoader::WebBundleLoader(
 
     request.SetRequestDestination(network::mojom::RequestDestination::kWebBundle);
     request.SetPriority(ResourceLoadPriority::kHigh);
-    // Skip the service worker for a short term solution.
-    // TODO(crbug.com/1240424): Figure out the ideal design of the service
-    // worker integration.
+#if !defined(MINI_UI_QUICKJS)
+    // Bundle subresources do not participate in service worker interception.
     request.SetSkipServiceWorker(true);
+#endif
 
     mojo::PendingRemote<network::mojom::blink::WebBundleHandle> web_bundle_handle;
     receivers_.Add(web_bundle_handle.InitWithNewPipeAndPassReceiver(), task_runner_);

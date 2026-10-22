@@ -28,6 +28,7 @@ public:
     void WillUseFontData(const FontDescription&, const FontFamily& family, const String& text) override;
     void WillUseRange(const FontDescription&, const AtomicString& family_name, const FontDataForRangeSet&) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void ReportSuccessfulFontFamilyMatch(const AtomicString& font_family_name) override;
 
     void ReportFailedFontFamilyMatch(const AtomicString& font_family_name) override;
@@ -49,6 +50,7 @@ public:
 
     void ReportFontFamilyLookupByGenericFamily(const AtomicString& generic_font_family_name, UScriptCode script,
         FontDescription::GenericFamilyType generic_family_type, const AtomicString& resulting_font_name);
+#endif
 
     void ReportNotDefGlyph() const override;
 

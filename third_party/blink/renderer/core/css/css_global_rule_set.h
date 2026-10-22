@@ -29,7 +29,9 @@ public:
 
     void Dispose();
     void InitWatchedSelectorsRuleSet(Document&);
+#if !defined(MINI_UI_QUICKJS)
     void UpdateDocumentRulesSelectorsRuleSet(Document&);
+#endif
     void MarkDirty()
     {
         is_dirty_ = true;
@@ -48,10 +50,12 @@ public:
     {
         return watched_selectors_rule_set_.Get();
     }
+#if !defined(MINI_UI_QUICKJS)
     RuleSet* DocumentRulesSelectorsRuleSet() const
     {
         return document_rules_selectors_rule_set_.Get();
     }
+#endif
     bool HasFullscreenUAStyle() const
     {
         return has_fullscreen_ua_style_;
@@ -67,9 +71,11 @@ private:
     // Rules injected from extensions.
     Member<RuleSet> watched_selectors_rule_set_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Rules extracted from CSS selector document rule predicates in speculation
     // rules.
     Member<RuleSet> document_rules_selectors_rule_set_;
+#endif
 
     bool has_fullscreen_ua_style_ = false;
     bool is_dirty_ = true;

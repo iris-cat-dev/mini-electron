@@ -1,0 +1,39 @@
+[
+  {
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "build.py",
+      "--ui",
+      "--ui-configure-only",
+      "--out",
+      "out/ui-windows-x64"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 34.751519199999166,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-build-0.log"
+  },
+  {
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe",
+      "-f",
+      "D:\\Project\\mini-electron\\out\\ui-windows-x64\\build.ninja",
+      "-j",
+      "4",
+      "host"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 20.723573700000998,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-build-1.log"
+  },
+  {
+    "command": [
+      "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--out-dir",
+      "out/ui-runtime-checks-final"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 6.0197664000006625,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-build-2.log"
+  }
+]

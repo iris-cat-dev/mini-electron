@@ -42,7 +42,11 @@ WorkerSchedulerImpl::WorkerSchedulerImpl(WorkerThreadScheduler* worker_thread_sc
     , pausable_non_vt_task_queue_(worker_thread_scheduler->CreateTaskQueue(base::sequence_manager::QueueName::WORKER_PAUSABLE_TQ))
     , unpausable_task_queue_(worker_thread_scheduler->CreateTaskQueue(base::sequence_manager::QueueName::WORKER_UNPAUSABLE_TQ))
     , thread_scheduler_(worker_thread_scheduler)
+#if !defined(MINI_UI_QUICKJS)
     , back_forward_cache_disabling_feature_tracker_(&tracing_controller_, thread_scheduler_)
+#else
+    , back_forward_cache_disabling_feature_tracker_(thread_scheduler_)
+#endif
 {
     task_runners_.emplace(throttleable_task_queue_, throttleable_task_queue_->CreateQueueEnabledVoter());
     task_runners_.emplace(pausable_task_queue_, pausable_task_queue_->CreateQueueEnabledVoter());

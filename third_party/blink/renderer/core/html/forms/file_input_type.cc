@@ -30,6 +30,7 @@
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/core/fileapi/file_list.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/core/html/forms/form_data.h"
@@ -42,7 +43,9 @@
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/drag_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -192,7 +195,9 @@ void FileInputType::OpenPopupView()
     Document& document = input.GetDocument();
 
     bool intercepted = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::FileChooserOpened(document.GetFrame(), &input, input.Multiple(), &intercepted);
+#endif
     if (intercepted) {
         return;
     }
@@ -297,6 +302,10 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
         if (base_dir == root_path)
             root_length = 0;
         for (const auto& file : files) {
+#if defined(MINI_UI_QUICKJS)
+            if (!file->is_native_file())
+                continue;
+#else
             if (file->is_file_system()) {
                 const auto& info = file->get_file_system();
                 FileMetadata metadata;
@@ -311,6 +320,7 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
                     file_list->Append(selected);
                 continue;
             }
+#endif
             // Normalize backslashes to slashes before exposing the relative path to
             // script.
             String string_path = FilePathToString(file->get_native_file()->file_path);
@@ -346,6 +356,7 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
         if (file->is_native_file()) {
             file_list->Append(
                 File::CreateForUserProvidedFile(&context, FilePathToString(file->get_native_file()->file_path), file->get_native_file()->display_name));
+#if !defined(MINI_UI_QUICKJS)
         } else {
             const auto& fs_info = file->get_file_system();
             FileMetadata metadata;
@@ -354,6 +365,7 @@ FileList* FileInputType::CreateFileList(ExecutionContext& context, const FileCho
             metadata.type = FileMetadata::kTypeFile;
             if (File* selected = File::CreateForFileSystemFile(context, fs_info->url, metadata, File::kIsUserVisible))
                 file_list->Append(selected);
+#endif
         }
     }
     return file_list;

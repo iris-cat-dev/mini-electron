@@ -44,7 +44,9 @@
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/style/computed_style_base_constants.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scoped_paint_chunk_properties.h"
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
@@ -238,6 +240,8 @@ void FrameCaret::SetVisibleIfActive(bool visible)
 
     auto change_type = effect_->Update(*effect_->Parent(), CaretEffectNodeState(visible, effect_->LocalTransformSpace()));
     DCHECK_EQ(PaintPropertyChangeType::kChangedOnlySimpleValues, change_type);
+    static_cast<void>(change_type);
+#if !defined(MINI_UI_QUICKJS)
     if (auto* compositor = frame_->View()->GetPaintArtifactCompositor()) {
         if (compositor->DirectlyUpdateCompositedOpacityValue(*effect_)) {
             effect_->CompositorSimpleValuesUpdated();
@@ -246,10 +250,12 @@ void FrameCaret::SetVisibleIfActive(bool visible)
     }
     // Fallback to full update if direct update is not available.
     frame_->View()->SetPaintArtifactCompositorNeedsUpdate();
+#endif
 }
 
 void FrameCaret::PaintCaret(GraphicsContext& context, const PhysicalOffset& paint_offset) const
 {
+#if !defined(MINI_UI_QUICKJS)
     if (effect_->Update(context.GetPaintController().CurrentPaintChunkProperties().Effect(),
             CaretEffectNodeState(IsVisibleIfActive(), context.GetPaintController().CurrentPaintChunkProperties().Transform()))
         != PaintPropertyChangeType::kUnchanged) {
@@ -257,6 +263,10 @@ void FrameCaret::PaintCaret(GraphicsContext& context, const PhysicalOffset& pain
         // transform space changed.
         frame_->View()->SetPaintArtifactCompositorNeedsUpdate();
     }
+#else
+    effect_->Update(context.GetPaintController().CurrentPaintChunkProperties().Effect(),
+        CaretEffectNodeState(IsVisibleIfActive(), context.GetPaintController().CurrentPaintChunkProperties().Transform()));
+#endif
     ScopedPaintChunkProperties scoped_properties(context.GetPaintController(), *effect_, *display_item_client_, DisplayItem::kCaret);
 
     display_item_client_->PaintCaret(context, paint_offset, DisplayItem::kCaret);

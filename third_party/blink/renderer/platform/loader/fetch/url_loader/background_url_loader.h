@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_BACKGROUND_URL_LOADER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_BACKGROUND_URL_LOADER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
@@ -20,7 +21,9 @@ struct ResourceRequest;
 namespace blink {
 
 class BackForwardCacheLoaderHelper;
+#if !defined(MINI_UI_QUICKJS)
 class BackgroundCodeCacheHost;
+#endif
 class URLLoaderClient;
 struct ResourceLoaderOptions;
 class WebBackgroundResourceFetchAssets;
@@ -43,9 +46,14 @@ public:
     // enabled, the request comes to the BackgroundURLLoader.
     static bool CanHandleRequest(const network::ResourceRequest& request, const ResourceLoaderOptions& options, bool is_prefech_only_document);
 
+#if defined(MINI_UI_QUICKJS)
+    BackgroundURLLoader(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context, const Vector<String>& cors_exempt_header_list,
+        scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner, BackForwardCacheLoaderHelper* back_forward_cache_loader_helper);
+#else
     BackgroundURLLoader(scoped_refptr<WebBackgroundResourceFetchAssets> background_resource_fetch_context, const Vector<String>& cors_exempt_header_list,
         scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner, BackForwardCacheLoaderHelper* back_forward_cache_loader_helper,
         scoped_refptr<BackgroundCodeCacheHost> background_code_cache_host);
+#endif
     ~BackgroundURLLoader() override;
 
     void LoadSynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool download_to_blob,
@@ -53,8 +61,13 @@ public:
         scoped_refptr<SharedBuffer>& data, int64_t& encoded_data_length, uint64_t& encoded_body_length, scoped_refptr<BlobDataHandle>& downloaded_blob,
         std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper) override;
 
+#if defined(MINI_UI_QUICKJS)
+    void LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
+        std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, URLLoaderClient* client) override;
+#else
     void LoadAsynchronously(std::unique_ptr<network::ResourceRequest> request, scoped_refptr<const SecurityOrigin> top_frame_origin, bool no_mime_sniffing,
         std::unique_ptr<ResourceLoadInfoNotifierWrapper> resource_load_info_notifier_wrapper, CodeCacheHost* code_cache_host, URLLoaderClient* client) override;
+#endif
 
     void Freeze(LoaderFreezeMode mode) override;
 
@@ -75,5 +88,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_URL_LOADER_BACKGROUND_URL_LOADER_H_

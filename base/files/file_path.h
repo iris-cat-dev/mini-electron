@@ -110,7 +110,9 @@
 
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/base_tracing_forward.h"
+#endif
 #include "build/build_config.h"
 
 // Windows-style drive letter support and pathname separator characters can be
@@ -479,8 +481,10 @@ public:
         return CompareIgnoreCase(string1, string2) < 0;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Serialise this object into a trace.
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 
 #if BUILDFLAG(IS_APPLE)
     // Returns the string in the special canonical decomposed form as defined for

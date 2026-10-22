@@ -63,6 +63,12 @@ class DataPipeGetter;
 } // namespace mojom
 } // namespace network
 
+#if defined(MINI_UI_QUICKJS)
+namespace mini_ui {
+class LocalResources;
+}
+#endif
+
 namespace blink {
 namespace mojom {
 namespace blink {
@@ -79,6 +85,10 @@ using DataElementPtr = mojo::StructPtr<DataElement>;
 
 class BlobBytesProvider;
 class BlobDataHandle;
+#if defined(MINI_UI_QUICKJS)
+class NativeBlobData;
+class NativeBlobStorage;
+#endif
 
 class PLATFORM_EXPORT RawData : public ThreadSafeRefCounted<RawData> {
 public:
@@ -140,6 +150,9 @@ public:
         return elements_;
     }
     Vector<mojom::blink::DataElementPtr> ReleaseElements();
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<NativeBlobData> ReleaseNativeData();
+#endif
 
     void AppendBytes(base::span<const uint8_t> bytes);
     void AppendData(scoped_refptr<RawData>);
@@ -160,6 +173,9 @@ public:
     }
 
 private:
+#if defined(MINI_UI_QUICKJS)
+    friend class BlobDataHandle;
+#endif
     void AppendDataInternal(base::span<const char> data, scoped_refptr<RawData> = nullptr);
 
     String content_type_;
@@ -167,6 +183,9 @@ private:
 
     Vector<mojom::blink::DataElementPtr> elements_;
     size_t current_memory_population_ = 0;
+#if defined(MINI_UI_QUICKJS)
+    std::unique_ptr<NativeBlobData> native_data_;
+#endif
 
     // These two members are used to combine multiple consecutive 'bytes' elements
     // (as created by `AppendBytes`, `AppendData` or `AppendText`) into a single
@@ -240,6 +259,13 @@ public:
     }
 
     static mojom::blink::BlobRegistry* GetBlobRegistry();
+#if defined(MINI_UI_QUICKJS)
+    static mojo::PendingRemote<mojom::blink::BlobRegistry>
+    GetNativeBlobRegistryRemote();
+    // The service owns only the captured native grant, never a binding context.
+    static mojo::PendingRemote<mojom::blink::FileBackedBlobFactory>
+    GetNativeFileBackedBlobFactoryRemote(std::shared_ptr<mini_ui::LocalResources>);
+#endif
     static void SetBlobRegistryForTesting(mojom::blink::BlobRegistry*);
 
 private:
@@ -249,6 +275,9 @@ private:
         uint64_t size, bool synchronous_register = false);
     BlobDataHandle(const String& uuid, const String& type, uint64_t size);
     BlobDataHandle(const String& uuid, const String& type, uint64_t size, mojo::PendingRemote<mojom::blink::Blob>);
+#if defined(MINI_UI_QUICKJS)
+    friend class BlobData;
+#endif
 
     // This UUID is deprecated and should not be used to reference the blob in the
     // backend (BlobRegistry). TODO(crbug.com/40529364): remove.
@@ -256,6 +285,9 @@ private:
     const String type_;
     const uint64_t size_;
     const bool is_single_unknown_size_file_;
+#if defined(MINI_UI_QUICKJS)
+    scoped_refptr<NativeBlobStorage> native_storage_;
+#endif
     // This class is supposed to be thread safe. So to be able to use the mojo
     // Blob interface from multiple threads store a PendingRemote combined with
     // a lock, and make sure any access to the mojo interface is done protected

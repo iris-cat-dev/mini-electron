@@ -29,9 +29,13 @@
 #include "base/memory/weak_ptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/scroll/scroll_types.h"
+#include "cc/input/scroll_snap_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 
 namespace blink {
@@ -70,6 +74,7 @@ public:
     void DidCompositorScroll(CompositorElementId, const gfx::PointF&, const std::optional<cc::TargetSnapAreaElementIds>&);
     void DidChangeScrollbarsHidden(CompositorElementId, bool hidden);
 
+#if !defined(MINI_UI_QUICKJS)
     base::WeakPtr<CompositorScrollCallbacks> GetScrollCallbacks()
     {
         DCHECK(page_);
@@ -78,11 +83,13 @@ public:
         }
         return callbacks_->GetWeakPtr();
     }
+#endif
 
 protected:
     Member<Page> page_;
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     // This class adapts a base::WeakPtr into a GC-aware weak reference to the
     // ScrollingCoordinator. The cc::ScrollTree needs a WeakPtr since it lives
     // outside of Blink, but we cannot safely take a WeakPtr to a GC object
@@ -117,6 +124,7 @@ private:
         WeakPersistent<ScrollingCoordinator> scrolling_coordinator_;
     };
     std::unique_ptr<CallbackProxy> callbacks_;
+#endif
 };
 
 } // namespace blink

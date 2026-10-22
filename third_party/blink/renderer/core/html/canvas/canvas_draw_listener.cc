@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/html/canvas/canvas_draw_listener.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace blink {
 
 CanvasDrawListener::~CanvasDrawListener() = default;
@@ -11,3 +12,4 @@ CanvasDrawListener::~CanvasDrawListener() = default;
 CanvasDrawListener::CanvasDrawListener() = default;
 
 } // namespace blink
+#endif

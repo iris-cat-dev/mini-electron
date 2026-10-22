@@ -28,15 +28,19 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/create_element_flags.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8.h"
+#endif
 
 namespace blink {
 
 class HTMLImageLoader;
 class LayoutEmbeddedContent;
 class LayoutEmbeddedObject;
+#if !defined(MINI_UI_QUICKJS)
 enum class NamedPropertySetterResult;
 class WebPluginContainerImpl;
+#endif
 
 class PluginParameters {
 public:
@@ -73,9 +77,11 @@ public:
     bool HasPendingActivity() const final;
 
     void SetFocused(bool, mojom::blink::FocusType) override;
+#if !defined(MINI_UI_QUICKJS)
     void ResetInstance();
     WebPluginContainerImpl* OwnedPlugin() const;
     bool CanProcessDrag() const;
+#endif
     const String& Url() const
     {
         return url_;
@@ -92,7 +98,9 @@ public:
     }
     void UpdatePlugin();
 
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldAccelerate() const;
+#endif
 
     ParsedPermissionsPolicy ConstructContainerPolicy() const override;
 
@@ -103,8 +111,10 @@ public:
     }
     virtual bool UseFallbackContent() const;
 
+#if !defined(MINI_UI_QUICKJS)
     ScriptValue AnonymousNamedGetter(const AtomicString&);
     NamedPropertySetterResult AnonymousNamedSetter(const AtomicString&, const ScriptValue&);
+#endif
 
 protected:
     HTMLPlugInElement(const QualifiedName& tag_name, Document&, const CreateElementFlags);
@@ -132,7 +142,9 @@ protected:
     bool RequestObject(const PluginParameters& plugin_params);
 
     void DispatchErrorEvent();
+#if !defined(MINI_UI_QUICKJS)
     bool IsErrorplaceholder();
+#endif
     void ReattachOnPluginChangeIfNeeded();
 
     void SetUrl(const String& url)
@@ -190,33 +202,29 @@ private:
     bool HasCustomFocusLogic() const override;
     bool IsPluginElement() const final;
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(dcheng): Consider removing this, since HTMLEmbedElementLegacyCall
     // and HTMLObjectElementLegacyCall usage is extremely low.
     v8::Local<v8::Object> PluginWrapper();
-    // TODO(joelhockey): Clean up PluginEmbeddedContentView and
-    // OwnedEmbeddedContentView (maybe also PluginWrapper).  It would be good to
-    // remove and/or rename some of these. PluginEmbeddedContentView and
-    // OwnedPlugin both return the plugin that is stored as
-    // HTMLFrameOwnerElement::embedded_content_view_.  However
-    // PluginEmbeddedContentView will synchronously create the plugin if required
-    // by calling LayoutEmbeddedContentForJSBindings.  This can cause
-    // navigations, and it also means that two successive calls to
-    // PluginEmbeddedContentView might not return the same result.  Possibly the
-    // PluginEmbeddedContentView code can be inlined into PluginWrapper.
     WebPluginContainerImpl* PluginEmbeddedContentView() const;
+#endif
 
     // Return any existing LayoutEmbeddedContent without triggering relayout, or 0
     // if it doesn't yet exist.
     virtual LayoutEmbeddedContent* ExistingLayoutEmbeddedContent() const = 0;
     virtual void UpdatePluginInternal() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     bool LoadPlugin(const KURL&, const String& mime_type, const PluginParameters& plugin_params, bool use_fallback);
     // Perform checks after we have determined that a plugin will be used to
     // show the object (i.e after `AllowedToLoadObject()`).
     bool AllowedToLoadPlugin(const KURL&);
+#endif
     // Perform checks based on the URL and MIME-type of the object to load.
     bool AllowedToLoadObject(const KURL&, const String& mime_type);
+#if !defined(MINI_UI_QUICKJS)
     void RemovePluginFromFrameView(WebPluginContainerImpl* plugin);
+#endif
 
     enum class ObjectContentType {
         kNone,
@@ -227,12 +235,17 @@ private:
     };
     ObjectContentType GetObjectContentType() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetPersistedPlugin(WebPluginContainerImpl*);
+#endif
 
     void UpdateServiceTypeIfEmpty();
 
+#if !defined(MINI_UI_QUICKJS)
     v8::Global<v8::Object> plugin_wrapper_;
+#endif
     bool needs_plugin_update_;
+#if !defined(MINI_UI_QUICKJS)
     // Represents |layoutObject() && layoutObject()->isEmbeddedObject() &&
     // !layoutEmbeddedItem().showsUnavailablePluginIndicator()|.  We want to
     // avoid accessing |layoutObject()| in layoutObjectIsFocusable().
@@ -240,11 +253,9 @@ private:
 
     // Normally the plugin is stored in
     // HTMLFrameOwnerElement::embedded_content_view. However, plugins can persist
-    // even when not rendered. In order to prevent confusing code which may assume
-    // that OwnedEmbeddedContentView() != null means the frame is active, we save
-    // off embedded_content_view_ here while the plugin is persisting but not
-    // being displayed.
+    // even when not rendered.
     Member<WebPluginContainerImpl> persisted_plugin_;
+#endif
 
     // True when the element has changed in such a way (new URL, for instance)
     // that we cannot re-use the old view when re-attaching.

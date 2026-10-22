@@ -25,6 +25,7 @@
 
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
 
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
 #include "third_party/blink/public/common/input/web_mouse_event.h"
 #include "third_party/blink/public/mojom/input/pointer_lock_result.mojom-blink.h"
@@ -59,12 +60,12 @@ bool PointerLockController::RequestPointerLock(Element* target, ResultCallback c
         return false;
     }
     LocalDOMWindow* window = To<LocalDOMWindow>(target->GetExecutionContext());
+    lock_pending_ = true;
+    element_ = target;
     window->GetFrame()->GetWidgetForLocalRoot()->RequestMouseLock(LocalFrame::HasTransientUserActivation(window->GetFrame()),
         /*unadjusted_movement_requested=*/false,
         WTF::BindOnce(&PointerLockController::LockRequestCallback, WrapWeakPersistent(this), std::move(callback),
             /*unadjusted_movement_requested=*/false));
-    lock_pending_ = true;
-    element_ = target;
     return true;
 }
 
@@ -106,6 +107,11 @@ void PointerLockController::RequestPointerLock(ScriptPromiseResolver<IDLUndefine
     }
 
     bool unadjusted_movement_requested = options ? options->unadjustedMovement() : false;
+    if (lock_pending_ || lock_change_pending_) {
+        EnqueueEvent(event_type_names::kPointerlockerror, target);
+        resolver->RejectWithDOMException(DOMExceptionCode::kInUseAttributeError, "Pointer lock pending.");
+        return;
+    }
     if (element_) {
         if (element_->GetDocument() != target->GetDocument()) {
             EnqueueEvent(event_type_names::kPointerlockerror, target);
@@ -122,9 +128,12 @@ void PointerLockController::RequestPointerLock(ScriptPromiseResolver<IDLUndefine
                 return;
             }
 
+            lock_change_pending_ = true;
             mouse_lock_context_->RequestMouseLockChange(unadjusted_movement_requested,
-                WTF::BindOnce(&PointerLockController::ChangeLockRequestCallback, WrapWeakPersistent(this), WrapWeakPersistent(target),
-                    WTF::BindOnce(&PointerLockController::ProcessResultPromise, WrapPersistent(resolver)), unadjusted_movement_requested));
+                mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+                    WTF::BindOnce(&PointerLockController::ChangeLockRequestCallback, WrapWeakPersistent(this), WrapWeakPersistent(target),
+                        WTF::BindOnce(&PointerLockController::ProcessResultPromise, WrapPersistent(resolver)), unadjusted_movement_requested),
+                    mojom::blink::PointerLockResult::kUserRejected));
             return;
         }
 
@@ -132,21 +141,30 @@ void PointerLockController::RequestPointerLock(ScriptPromiseResolver<IDLUndefine
         element_ = target;
         resolver->Resolve();
 
-        // Subsequent steps are handled in the browser process.
     } else {
+        lock_pending_ = true;
+        element_ = target;
         window->GetFrame()->GetWidgetForLocalRoot()->RequestMouseLock(LocalFrame::HasTransientUserActivation(window->GetFrame()), unadjusted_movement_requested,
             WTF::BindOnce(&PointerLockController::LockRequestCallback, WrapWeakPersistent(this),
                 WTF::BindOnce(&PointerLockController::ProcessResultPromise, WrapPersistent(resolver)), unadjusted_movement_requested));
-        lock_pending_ = true;
-        element_ = target;
     }
 }
 
 void PointerLockController::ChangeLockRequestCallback(
     Element* target, ResultCallback callback, bool unadjusted_movement_requested, mojom::blink::PointerLockResult result)
 {
-    if (result == mojom::blink::PointerLockResult::kSuccess)
-        element_ = target;
+    lock_change_pending_ = false;
+    if (result == mojom::blink::PointerLockResult::kSuccess) {
+        current_unadjusted_movement_setting_ = unadjusted_movement_requested;
+        if (!target || !target->isConnected() || !mouse_lock_context_.is_bound())
+            result = mojom::blink::PointerLockResult::kElementDestroyed;
+        else {
+            element_ = target;
+            EnqueueEvent(event_type_names::kPointerlockchange, target);
+        }
+    }
+    if (result != mojom::blink::PointerLockResult::kSuccess)
+        EnqueueEvent(event_type_names::kPointerlockerror, target ? target : element_.Get());
 
     ProcessResult(std::move(callback), unadjusted_movement_requested, result);
 }
@@ -154,7 +172,15 @@ void PointerLockController::ChangeLockRequestCallback(
 void PointerLockController::LockRequestCallback(ResultCallback callback, bool unadjusted_movement_requested, mojom::blink::PointerLockResult result,
     mojo::PendingRemote<blink::mojom::blink::PointerLockContext> context)
 {
-    if (element_ && context) {
+    // The direct embedder can complete synchronously, and a detached target
+    // must never retain a native lock by keeping its context pipe alive.
+    if (result == mojom::blink::PointerLockResult::kSuccess && (!element_ || !element_->isConnected())) {
+        context.reset();
+        result = mojom::blink::PointerLockResult::kElementDestroyed;
+    }
+    if (result == mojom::blink::PointerLockResult::kSuccess && !context)
+        result = mojom::blink::PointerLockResult::kUnknownError;
+    if (result == mojom::blink::PointerLockResult::kSuccess && element_ && context) {
         mouse_lock_context_.Bind(std::move(context), element_->GetExecutionContext()->GetTaskRunner(TaskType::kUserInteraction));
         // The browser might unlock the mouse for many reasons including closing
         // the tab, the user hitting esc, the page losing focus, and more.
@@ -214,6 +240,8 @@ DOMException* PointerLockController::ConvertResultToException(mojom::blink::Poin
 
 void PointerLockController::ExitPointerLock()
 {
+    if (!element_ && !document_of_removed_element_while_waiting_for_unlock_ && !mouse_lock_context_.is_bound())
+        return;
     Document* pointer_lock_document = element_ ? &element_->GetDocument() : document_of_removed_element_while_waiting_for_unlock_.Get();
     EnqueueEvent(event_type_names::kPointerlockchange, pointer_lock_document);
 
@@ -323,6 +351,7 @@ void PointerLockController::GetPointerLockPosition(gfx::PointF* lock_position, g
 void PointerLockController::ClearElement()
 {
     lock_pending_ = false;
+    lock_change_pending_ = false;
     element_ = nullptr;
 }
 

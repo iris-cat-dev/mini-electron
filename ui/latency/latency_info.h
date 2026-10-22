@@ -5,29 +5,33 @@
 #ifndef UI_LATENCY_LATENCY_INFO_H_
 #define UI_LATENCY_LATENCY_INFO_H_
 
+#include <iosfwd>
 #include <optional>
 #include <vector>
 
 #include "base/containers/flat_map.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/tracing/protos/chrome_track_event.pbzero.h"
+#include "third_party/perfetto/include/perfetto/tracing/event_context.h"
+#endif
 #include "build/blink_buildflags.h"
 #include "build/build_config.h"
-#include "third_party/perfetto/include/perfetto/tracing/event_context.h"
-//#include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_latency_info.pbzero.h"
 
-#if BUILDFLAG(USE_BLINK)
+#if BUILDFLAG(USE_BLINK) && !defined(MINI_UI_QUICKJS)
 #include "ipc/ipc_param_traits.h" // nogncheck
 #include "mojo/public/cpp/bindings/struct_traits.h" // nogncheck
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto {
 class EventContext;
 }
+#endif
 
 namespace ui {
 
-#if BUILDFLAG(USE_BLINK)
+#if BUILDFLAG(USE_BLINK) && !defined(MINI_UI_QUICKJS)
 namespace mojom {
 class LatencyInfoDataView;
 }
@@ -104,6 +108,7 @@ public:
     // for corruption/compromise detection.
     static bool Verify(const std::vector<LatencyInfo>& latency_info, const char* referring_msg);
 
+#if !defined(MINI_UI_QUICKJS)
     // Populates fields for the `LatencyInfo.Flow` event in a flow, for
     // `latency_trace_id` with `ctx`. Returns a pointer to the created
     // `ChromeLatencyInfo2` message.
@@ -112,15 +117,13 @@ public:
     //       returned `ChromeLatencyInfo2`, they should do it immediately after
     //       `FillTraceEvent` returns, and before writes to any other fields or
     //       submessages.
-    //   static perfetto::protos::pbzero::ChromeLatencyInfo2* FillTraceEvent(
-    //       perfetto::EventContext& ctx,
-    //       int64_t latency_trace_id,
-    //       perfetto::protos::pbzero::ChromeLatencyInfo2::Step step,
-    //       std::optional<perfetto::protos::pbzero::ChromeLatencyInfo2::InputType>
-    //           input_type = std::nullopt,
-    //       std::optional<
-    //           perfetto::protos::pbzero::ChromeLatencyInfo2::InputResultState>
-    //           input_result_state = std::nullopt);
+    static perfetto::protos::pbzero::ChromeLatencyInfo2* FillTraceEvent(
+        perfetto::EventContext& ctx,
+        int64_t latency_trace_id,
+        perfetto::protos::pbzero::ChromeLatencyInfo2::Step step,
+        std::optional<perfetto::protos::pbzero::ChromeLatencyInfo2::InputType> input_type = std::nullopt,
+        std::optional<perfetto::protos::pbzero::ChromeLatencyInfo2::InputResultState> input_result_state = std::nullopt);
+#endif
 
     // Add timestamps for components that are in |other| but not in |this|.
     void AddNewLatencyFrom(const LatencyInfo& other);
@@ -218,7 +221,7 @@ private:
     // gesture_scroll_id_.
     int64_t touch_trace_id_ = 0;
 
-#if BUILDFLAG(USE_BLINK)
+#if BUILDFLAG(USE_BLINK) && !defined(MINI_UI_QUICKJS)
     friend struct IPC::ParamTraits<ui::LatencyInfo>;
     friend struct mojo::StructTraits<ui::mojom::LatencyInfoDataView, ui::LatencyInfo>;
 #endif

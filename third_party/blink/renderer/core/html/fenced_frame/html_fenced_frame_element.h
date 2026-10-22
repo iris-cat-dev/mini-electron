@@ -40,8 +40,10 @@ public:
     // enabling the `blink::features::kFencedFrames` feature.
     class CORE_EXPORT FencedFrameDelegate : public GarbageCollected<FencedFrameDelegate> {
     public:
+#if !defined(MINI_UI_QUICKJS)
         static FencedFrameDelegate* Create(HTMLFencedFrameElement* outer_element);
         explicit FencedFrameDelegate(HTMLFencedFrameElement* outer_element);
+#endif
         ~FencedFrameDelegate() = default;
 
         void Navigate(const KURL&, const String&);
@@ -151,8 +153,10 @@ private:
     // navigates to it.
     void NavigateToConfig();
 
+#if !defined(MINI_UI_QUICKJS)
     // Delegate creation will be deferred if the page is currently prerendering.
     void CreateDelegateAndNavigate();
+#endif
 
     // Node overrides.
     Node::InsertionNotificationRequest InsertedInto(ContainerNode&) override;

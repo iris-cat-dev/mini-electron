@@ -82,12 +82,14 @@ public:
     // be called before using the widget.
     virtual void InitializeNonCompositing(WebNonCompositedWidgetClient* client) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // Similar to `WebWidget::InitializeCompositing()` but for cases where there
     // is a `previous_widget` whose compositing setup should be reused instead of
     // initializing a new compositor.
     virtual void InitializeCompositingFromPreviousWidget(
         const display::ScreenInfos& screen_info, const cc::LayerTreeSettings* settings, WebFrameWidget& previous_widget)
         = 0;
+#endif
 
     // Returns the local root of this WebFrameWidget.
     virtual WebLocalFrame* LocalRoot() const = 0;
@@ -147,6 +149,7 @@ public:
     // compositor. Useful for tests that don't use a compositor.
     virtual void ApplyViewportChangesForTesting(const cc::ApplyViewportChangesArgs& args) = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // The |callback| will be fired when the corresponding renderer frame is
     // presented to the user. If the presentation is successful, the argument
     // passed to the callback is the presentation timestamp; otherwise, it would
@@ -160,6 +163,7 @@ public:
     // Instructs devtools to pause loading of the frame as soon as it's shown
     // until explicit command from the devtools client.
     virtual void WaitForDebuggerWhenShown() = 0;
+#endif
 
     // Scales the text in the frame by a factor of text_zoom_factor.
     virtual void SetTextZoomFactor(float text_zoom_factor) = 0;
@@ -221,9 +225,12 @@ public:
     // `FrameWidgetTestHelper::CreateTestWebFrameWidget()`.
     virtual FrameWidgetTestHelper* GetFrameWidgetTestHelperForTesting() = 0;
 
+#if !defined(MINI_UI_QUICKJS)
     // This should be called for the local root frame before calling the final
     // UpdateAllLifecyclePhases() just before dumping pixels.
     virtual void PrepareForFinalLifecyclUpdateForTesting() = 0;
+
+#endif
 
     // Returns the current zoom level.  0 is "original size", and each increment
     // above or below represents zooming 20% larger or smaller to default limits
@@ -239,10 +246,14 @@ public:
     // element of this widget (if any) and all of its WebFrame ancestors.
     virtual double GetCSSZoomFactor() const = 0;
 
-    // Update the LocalSurfaceId used for frames produced by this widget.
+#if !defined(MINI_UI_QUICKJS)
+    // Updates the LocalSurfaceId used by the hardware compositor.
     virtual void ApplyLocalSurfaceIdUpdate(const viz::LocalSurfaceId& id) = 0;
+#endif
 
     // Forces a full-viewport commit and runs the callback only after successful
+#if !defined(MINI_UI_QUICKJS)
+    // Requests a redraw and invokes `callback` after its successful
     // presentation. Returns false if the compositor is unavailable.
     virtual bool RequestSuccessfulPresentationWithForcedRedraw(
         base::OnceClosure callback) = 0;
@@ -254,6 +265,7 @@ private:
 
     // GPU benchmarking extension needs access to the LayerTreeHost
     friend class GpuBenchmarkingContext;
+#endif
 
     // This private constructor and the class/friend declaration ensures that
     // WebFrameWidgetImpl is the only concrete subclass that implements
@@ -266,12 +278,19 @@ private:
 // InstallCreateWebFrameWidgetHook(). The method signature matches the
 // WebFrameWidgetImpl constructor and must return a subclass of
 // WebFrameWidgetImpl, though we do not expose that type here.
+#if defined(MINI_UI_QUICKJS)
+using CreateWebFrameWidgetCallback = base::RepeatingCallback<WebFrameWidget*(base::PassKey<WebLocalFrame>,
+    CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner, const viz::FrameSinkId& frame_sink_id, bool hidden, bool never_composited,
+    bool is_for_child_local_root, bool is_for_nested_main_frame, bool is_for_scalable_page)>;
+#else
 using CreateWebFrameWidgetCallback = base::RepeatingCallback<WebFrameWidget*(base::PassKey<WebLocalFrame>,
     CrossVariantMojoAssociatedRemote<mojom::FrameWidgetHostInterfaceBase> frame_widget_host,
     CrossVariantMojoAssociatedReceiver<mojom::FrameWidgetInterfaceBase> frame_widget,
     CrossVariantMojoAssociatedRemote<mojom::WidgetHostInterfaceBase> widget_host, CrossVariantMojoAssociatedReceiver<mojom::WidgetInterfaceBase> widget,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner, const viz::FrameSinkId& frame_sink_id, bool hidden, bool never_composited,
     bool is_for_child_local_root, bool is_for_nested_main_frame, bool is_for_scalable_page)>;
+#endif
 // Allows tests to inject their own type of WebFrameWidget in order to
 // override methods of the WebFrameWidgetImpl.
 void BLINK_EXPORT InstallCreateWebFrameWidgetHook(CreateWebFrameWidgetCallback* create_widget);

@@ -1,0 +1,72 @@
+[
+  {
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe",
+      "-f",
+      "D:\\Project\\mini-electron\\out\\ui-windows-x64\\build.ninja",
+      "-j",
+      "4",
+      "host"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 2581.625779299997,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-validation-0.log"
+  },
+  {
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--out-dir",
+      "out/ui-runtime-checks-boundaries-after"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 6.459457599994494,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-validation-1.log"
+  },
+  {
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--out-dir",
+      "out/ui-opt-final-native",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 563.3965827000065,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-validation-2.log"
+  },
+  {
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/before_after.py",
+      "--before",
+      "benchmarks/ui/results/2026-10-22/mini-ui",
+      "--after",
+      "out/ui-opt-final-native",
+      "--out-dir",
+      "out/ui-opt-final-before-after"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 0.09424040000885725,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-validation-3.log"
+  },
+  {
+    "command": [
+      "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/compare.py",
+      "--mini-out",
+      "out/ui-opt-final-native",
+      "--chrome-out",
+      "out/ui-opt-final-chrome-default",
+      "--chrome-software-out",
+      "out/ui-opt-final-chrome-software",
+      "--out-dir",
+      "out/ui-opt-final-chrome-comparison"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 0.0904385000030743,
+    "log": "D:\\Project\\mini-electron\\.build-tools\\ui-opt\\final-validation-4.log"
+  }
+]

@@ -17,7 +17,9 @@ class ExceptionState;
 class ImageBitmap;
 class OffscreenCanvas;
 class MessagePort;
+#if !defined(MINI_UI_QUICKJS)
 class MojoHandle;
+#endif
 class ReadableStream;
 class WritableStream;
 class TransformStream;
@@ -27,7 +29,9 @@ using ArrayBufferArray = HeapVector<Member<DOMArrayBufferBase>>;
 using ImageBitmapArray = HeapVector<Member<ImageBitmap>>;
 using OffscreenCanvasArray = HeapVector<Member<OffscreenCanvas>>;
 using MessagePortArray = HeapVector<Member<MessagePort>>;
+#if !defined(MINI_UI_QUICKJS)
 using MojoHandleArray = HeapVector<Member<blink::MojoHandle>>;
+#endif
 using ReadableStreamArray = HeapVector<Member<ReadableStream>>;
 using WritableStreamArray = HeapVector<Member<WritableStream>>;
 using TransformStreamArray = HeapVector<Member<TransformStream>>;
@@ -48,7 +52,9 @@ public:
     ImageBitmapArray image_bitmaps;
     OffscreenCanvasArray offscreen_canvases;
     MessagePortArray message_ports;
+#if !defined(MINI_UI_QUICKJS)
     MojoHandleArray mojo_handles;
+#endif
     ReadableStreamArray readable_streams;
     WritableStreamArray writable_streams;
     TransformStreamArray transform_streams;

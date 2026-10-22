@@ -37,19 +37,25 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/ranges/algorithm.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_info.h"
+#endif
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "services/network/public/mojom/cors.mojom-shared.h"
 #include "services/network/public/mojom/ip_address_space.mojom-shared.h"
 #include "services/network/public/mojom/load_timing_info.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/service_worker_router_info.mojom-blink.h"
+#endif
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "third_party/blink/public/platform/web_http_header_visitor.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/service_worker_router_info.h"
+#endif
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "net/http/http_response_headers.h"
@@ -90,6 +96,7 @@ void SetSecurityStyleAndDetails(const GURL& url, const network::mojom::URLRespon
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The resource loader does not provide a guarantee that requests always have
     // security info (such as a certificate) attached. Use SecurityStyleUnknown
     // in this case where there isn't enough information to be useful.
@@ -110,6 +117,9 @@ void SetSecurityStyleAndDetails(const GURL& url, const network::mojom::URLRespon
     }
 
     response->SetSSLInfo(ssl_info);
+#else
+    response->SetSecurityStyle(SecurityStyle::kUnknown);
+#endif
 }
 
 } // namespace
@@ -124,20 +134,27 @@ WebURLResponse WebURLResponse::Create(const WebURL& url, const network::mojom::U
     response.SetMimeType(WebString::FromUTF8(head.mime_type));
     response.SetTextEncodingName(WebString::FromUTF8(head.charset));
     response.SetExpectedContentLength(head.content_length);
+#if !defined(MINI_UI_QUICKJS)
     response.SetHasMajorCertificateErrors(net::IsCertStatusError(head.cert_status));
+#endif
     response.SetHasRangeRequested(head.has_range_requested);
     response.SetTimingAllowPassed(head.timing_allow_passed);
     response.SetWasCached(!head.load_timing.request_start_time.is_null() && head.response_time < head.load_timing.request_start_time);
     response.SetConnectionID(head.load_timing.socket_log_id);
     response.SetConnectionReused(head.load_timing.socket_reused);
     response.SetWasFetchedViaSPDY(head.was_fetched_via_spdy);
+#if !defined(MINI_UI_QUICKJS)
     response.SetWasFetchedViaServiceWorker(head.was_fetched_via_service_worker);
+#endif
     response.SetDidUseSharedDictionary(head.did_use_shared_dictionary);
+#if !defined(MINI_UI_QUICKJS)
     response.SetServiceWorkerResponseSource(head.service_worker_response_source);
     if (!head.service_worker_router_info.is_null()) {
         response.SetServiceWorkerRouterInfo(*head.service_worker_router_info);
     }
+#endif
     response.SetType(head.response_type);
+#if !defined(MINI_UI_QUICKJS)
     response.SetPadding(head.padding);
     WebVector<KURL> url_list_via_service_worker(head.url_list_via_service_worker.size());
     base::ranges::transform(head.url_list_via_service_worker, url_list_via_service_worker.begin(), [](const GURL& h) { return KURL(h); });
@@ -145,6 +162,8 @@ WebURLResponse WebURLResponse::Create(const WebURL& url, const network::mojom::U
     response.SetCacheStorageCacheName(head.service_worker_response_source == network::mojom::FetchResponseSource::kCacheStorage
             ? WebString::FromUTF8(head.cache_storage_cache_name)
             : WebString());
+
+#endif
 
     WebVector<WebString> dns_aliases(head.dns_aliases.size());
     base::ranges::transform(head.dns_aliases, dns_aliases.begin(), &WebString::FromASCII);
@@ -158,7 +177,9 @@ WebURLResponse WebURLResponse::Create(const WebURL& url, const network::mojom::U
     base::ranges::transform(
         head.cors_exposed_header_names, cors_exposed_header_names.begin(), [](const auto& header_name) { return WebString::FromLatin1(header_name); });
     response.SetCorsExposedHeaderNames(cors_exposed_header_names);
+#if !defined(MINI_UI_QUICKJS)
     response.SetDidServiceWorkerNavigationPreload(head.did_service_worker_navigation_preload);
+#endif
     response.SetIsValidated(head.is_validated);
     response.SetEncodedDataLength(head.encoded_data_length);
     response.SetEncodedBodyLength(head.encoded_body_length ? head.encoded_body_length->value : 0);
@@ -292,12 +313,14 @@ void WebURLResponse::SetLoadTiming(const network::mojom::LoadTimingInfo& mojo_ti
     timing->SetDomainLookupEnd(mojo_timing.connect_timing.domain_lookup_end);
     timing->SetConnectStart(mojo_timing.connect_timing.connect_start);
     timing->SetConnectEnd(mojo_timing.connect_timing.connect_end);
+#if !defined(MINI_UI_QUICKJS)
     timing->SetWorkerStart(mojo_timing.service_worker_start_time);
     timing->SetWorkerRouterEvaluationStart(mojo_timing.service_worker_router_evaluation_start);
     timing->SetWorkerCacheLookupStart(mojo_timing.service_worker_cache_lookup_start);
     timing->SetWorkerReady(mojo_timing.service_worker_ready_time);
     timing->SetWorkerFetchStart(mojo_timing.service_worker_fetch_start);
     timing->SetWorkerRespondWithSettled(mojo_timing.service_worker_respond_with_settled);
+#endif
     timing->SetSendStart(mojo_timing.send_start);
     timing->SetSendEnd(mojo_timing.send_end);
     timing->SetReceiveHeadersStart(mojo_timing.receive_headers_start);
@@ -446,10 +469,12 @@ void WebURLResponse::SetSecurityStyle(SecurityStyle security_style)
     resource_response_->SetSecurityStyle(security_style);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebURLResponse::SetSSLInfo(const net::SSLInfo& ssl_info)
 {
     resource_response_->SetSSLInfo(ssl_info);
 }
+#endif
 
 const ResourceResponse& WebURLResponse::ToResourceResponse() const
 {
@@ -471,6 +496,7 @@ void WebURLResponse::SetWasFetchedViaSPDY(bool value)
     resource_response_->SetWasFetchedViaSPDY(value);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebURLResponse::WasFetchedViaServiceWorker() const
 {
     return resource_response_->WasFetchedViaServiceWorker();
@@ -504,6 +530,8 @@ void WebURLResponse::SetServiceWorkerResponseSource(network::mojom::FetchRespons
     resource_response_->SetServiceWorkerResponseSource(value);
 }
 
+#endif
+
 void WebURLResponse::SetDidUseSharedDictionary(bool did_use_shared_dictionary)
 {
     resource_response_->SetDidUseSharedDictionary(did_use_shared_dictionary);
@@ -519,6 +547,7 @@ network::mojom::FetchResponseType WebURLResponse::GetType() const
     return resource_response_->GetType();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebURLResponse::SetPadding(int64_t padding)
 {
     resource_response_->SetPadding(padding);
@@ -552,6 +581,8 @@ void WebURLResponse::SetCacheStorageCacheName(const WebString& cache_storage_cac
     resource_response_->SetCacheStorageCacheName(cache_storage_cache_name);
 }
 
+#endif
+
 WebVector<WebString> WebURLResponse::CorsExposedHeaderNames() const
 {
     return resource_response_->CorsExposedHeaderNames();
@@ -564,10 +595,13 @@ void WebURLResponse::SetCorsExposedHeaderNames(const WebVector<WebString>& heade
     resource_response_->SetCorsExposedHeaderNames(exposed_header_names);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebURLResponse::SetDidServiceWorkerNavigationPreload(bool value)
 {
     resource_response_->SetDidServiceWorkerNavigationPreload(value);
 }
+
+#endif
 
 net::IPEndPoint WebURLResponse::RemoteIPEndpoint() const
 {

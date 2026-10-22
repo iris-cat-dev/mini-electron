@@ -13,13 +13,16 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 
 namespace blink {
-
+#if !defined(MINI_UI_QUICKJS)
 #define TRACE_STYLE_INVALIDATOR_INVALIDATION_IF_ENABLED(element, reason)                                                                                       \
     if (InvalidationTracingFlag::IsEnabled()) [[unlikely]]                                                                                                     \
         TRACE_STYLE_INVALIDATOR_INVALIDATION(element, reason);
+#endif
 
 void StyleInvalidator::Invalidate(Document& document, Element* root_element)
 {
@@ -81,7 +84,9 @@ void StyleInvalidator::PushInvalidationSet(const InvalidationSet& invalidation_s
 ALWAYS_INLINE bool StyleInvalidator::MatchesCurrentInvalidationSets(Element& element) const
 {
     if (invalidation_flags_.InvalidateCustomPseudo() && element.ShadowPseudoId() != g_null_atom) {
+#if !defined(MINI_UI_QUICKJS)
         TRACE_STYLE_INVALIDATOR_INVALIDATION_IF_ENABLED(element, kInvalidateCustomPseudo);
+#endif
         return true;
     }
 
@@ -162,7 +167,9 @@ bool StyleInvalidator::SiblingData::MatchCurrentInvalidationSets(Element& elemen
 
         if (const DescendantInvalidationSet* descendants = invalidation_set.SiblingDescendants()) {
             if (descendants->WholeSubtreeInvalid()) {
+#if !defined(MINI_UI_QUICKJS)
                 TRACE_STYLE_INVALIDATOR_INVALIDATION_SET(element, kInvalidationSetInvalidatesSubtree, *descendants);
+#endif
                 element.SetNeedsStyleRecalc(kSubtreeStyleChange, StyleChangeReasonForTracing::Create(style_change_reason::kRelatedStyleRule));
                 return true;
             }
@@ -205,11 +212,13 @@ void StyleInvalidator::PushInvalidationSetsForContainerNode(ContainerNode& node,
             CHECK(invalidation_set->IsAlive());
             PushInvalidationSet(*invalidation_set);
         }
+#if !defined(MINI_UI_QUICKJS)
         if (InvalidationTracingFlag::IsEnabled()) [[unlikely]] {
             DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline.invalidationTracking"),
                 "StyleInvalidatorInvalidationTracking", inspector_style_invalidator_invalidate_event::InvalidationList, node,
                 pending_invalidations.Descendants());
         }
+#endif
     }
 }
 

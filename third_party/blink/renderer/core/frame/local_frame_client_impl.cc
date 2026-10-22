@@ -47,12 +47,14 @@
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/frame/user_activation_update_types.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/loader/fetch_later.mojom-blink.h"
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider.h"
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider_client.h"
-#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
 #include "third_party/blink/public/platform/web_media_player_source.h"
+#endif
+#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_error.h"
@@ -62,21 +64,29 @@
 #include "third_party/blink/public/web/web_dom_event.h"
 #include "third_party/blink/public/web/web_form_element.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_manifest_manager.h"
+#endif
 #include "third_party/blink/public/web/web_navigation_params.h"
 #include "third_party/blink/public/web/web_node.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
 #include "third_party/blink/public/web/web_plugin_params.h"
+#endif
 #include "third_party/blink/public/web/web_view_client.h"
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_initializer.h"
+#endif
 #include "third_party/blink/renderer/core/events/current_input_event.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/events/mouse_event.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
 #endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
@@ -87,12 +97,18 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/dev_tools_emulator.h"
+#endif
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
@@ -101,8 +117,9 @@
 #include "third_party/blink/renderer/core/loader/history_item.h"
 #include "third_party/blink/renderer/core/origin_trials/origin_trial_context.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/page/plugin_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_request.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_response.h"
@@ -155,6 +172,7 @@ bool IsBackForwardNavigationInProgress(LocalFrame* local_frame)
     return local_frame && IsBackForwardOrRestore(local_frame->Loader().GetDocumentLoader()->LoadType()) && !local_frame->GetDocument()->LoadEventFinished();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // Called after committing provisional load to reset the EventHandlerProperties.
 // Only called on local frame roots.
 void ResetWheelAndTouchEventHandlerProperties(LocalFrame& frame)
@@ -173,6 +191,7 @@ bool IsCompositedOutermostMainFrame(WebLocalFrameImpl* web_frame)
 {
     return web_frame->GetFrame()->IsMainFrame() && !web_frame->IsInFencedFrameTree() && web_frame->ViewImpl()->does_composite();
 }
+#endif
 
 } // namespace
 
@@ -214,11 +233,13 @@ void LocalFrameClientImpl::DispatchDidClearWindowObjectInMainWorld(v8::Isolate* 
             v8::MicrotasksScope microtasks(isolate, microtask_queue, v8::MicrotasksScope::kDoNotRunMicrotasks);
             web_frame_->Client()->DidClearWindowObject();
         }
+#if !defined(MINI_UI_QUICKJS)
         Document* document = web_frame_->GetFrame()->GetDocument();
         if (document) {
             const Settings* const settings = web_frame_->GetFrame()->GetSettings();
             CoreInitializer::GetInstance().OnClearWindowObjectInMainWorld(*document, *settings);
         }
+#endif
     }
 }
 
@@ -425,6 +446,7 @@ void LocalFrameClientImpl::DidFinishSameDocumentNavigation(WebHistoryCommitType 
     // TODO(dglazkov): Does this need to be called for subframes?
     web_frame_->ViewImpl()->DidCommitLoad(should_create_history_entry, true);
     if (web_frame_->Client()) {
+#if !defined(MINI_UI_QUICKJS)
         // This unique token is used to associate the session history entry, and its
         // viewport screenshot before the navigation finishes in the renderer.
         base::UnguessableToken screenshot_destination;
@@ -471,8 +493,13 @@ void LocalFrameClientImpl::DidFinishSameDocumentNavigation(WebHistoryCommitType 
         if (!screenshot_destination.is_empty()) {
             token = blink::SameDocNavigationScreenshotDestinationToken(screenshot_destination);
         }
+#endif
         web_frame_->Client()->DidFinishSameDocumentNavigation(
-            commit_type, is_synchronously_committed, same_document_navigation_type, is_client_redirect, token);
+            commit_type, is_synchronously_committed, same_document_navigation_type, is_client_redirect
+#if !defined(MINI_UI_QUICKJS)
+            , token
+#endif
+        );
     }
 
     // Set the layout shift exclusion window for the browser initiated same
@@ -521,31 +548,22 @@ void LocalFrameClientImpl::DispatchDidCommitLoad(HistoryItem* item, WebHistoryCo
             // so that the browser and compositor could reset their states. However,
             // up to this point |web_frame_| is still provisional and the updates will
             // not get sent. Revise this when https://crbug.com/578349 is fixed.
+#if !defined(MINI_UI_QUICKJS)
             ResetWheelAndTouchEventHandlerProperties(*web_frame_->GetFrame());
-
             web_frame_->FrameWidgetImpl()->DidNavigate();
-
-            // The navigation state pushed to the compositor is limited to outermost
-            // main frames. This is particularly important for UKM metrics, since we
-            // only record URL keyed data if the URL is being displayed in the main
-            // frame.
             if (IsCompositedOutermostMainFrame(web_frame_)) {
                 WebFrameWidgetImpl* frame_widget = web_frame_->FrameWidgetImpl();
-
-                // Update the navigation states (URL, the document source id used to key
-                // UKM metrics in the compositor. Note that the metrics for all frames
-                // are keyed to the main frame's URL.
                 frame_widget->UpdateNavigationStateForCompositor(
                     web_frame_->GetDocument().GetUkmSourceId(), KURL(web_frame_->Client()->LastCommittedUrlForUKM()));
-
                 auto shmem = frame_widget->CreateSharedMemoryForSmoothnessUkm();
                 if (shmem.IsValid()) {
                     web_frame_->Client()->SetUpSharedMemoryForSmoothness(std::move(shmem));
                 }
             }
+#endif
         }
     }
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* dev_tools = DevToolsAgent(/*create_if_necessary=*/false)) {
         dev_tools->DidCommitLoadForLocalFrame(web_frame_->GetFrame());
     }
@@ -576,15 +594,19 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
     network::mojom::CSPDisposition should_check_main_world_content_security_policy, mojo::PendingRemote<mojom::blink::BlobURLToken> blob_url_token,
     base::TimeTicks input_start_time, const String& href_translate, const std::optional<Impression>& impression, const LocalFrameToken* initiator_frame_token,
     std::unique_ptr<SourceLocation> source_location,
-    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle, bool is_container_initiated,
-    bool has_rel_opener)
+#if !defined(MINI_UI_QUICKJS)
+    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle,
+#endif
+    bool is_container_initiated, bool has_rel_opener)
 {
     if (!web_frame_->Client())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // |initiator_frame_token| and |initiator_navigation_state_keep_alive_handle|
     // should either be both specified or both null.
     DCHECK(!initiator_frame_token == !initiator_navigation_state_keep_alive_handle);
+#endif
 
     auto navigation_info = std::make_unique<WebNavigationInfo>();
     navigation_info->url_request.CopyFrom(WrappedResourceRequest(request));
@@ -602,7 +624,9 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
     navigation_info->blob_url_token = std::move(blob_url_token);
     navigation_info->input_start = input_start_time;
     navigation_info->initiator_frame_token = base::OptionalFromPtr(initiator_frame_token);
+#if !defined(MINI_UI_QUICKJS)
     navigation_info->initiator_navigation_state_keep_alive_handle = std::move(initiator_navigation_state_keep_alive_handle);
+#endif
     LocalFrame* origin_frame = origin_window ? origin_window->GetFrame() : nullptr;
     if (origin_frame) {
         // Many navigation paths do not pass an |initiator_frame_token|, so we need
@@ -610,17 +634,22 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
         if (!navigation_info->initiator_frame_token) {
             navigation_info->initiator_frame_token = origin_frame->GetLocalFrameToken();
         }
+#if !defined(MINI_UI_QUICKJS)
         // Similarly, many navigation paths do not pass an
         // |initiator_navigation_state_keep_alive_handle|.
         if (!navigation_info->initiator_navigation_state_keep_alive_handle) {
             navigation_info->initiator_navigation_state_keep_alive_handle = origin_frame->IssueKeepAliveHandle();
         }
-    } else {
+#endif
+    }
+#if !defined(MINI_UI_QUICKJS)
+    else {
         // TODO(https://crbug.com/1173409 and https://crbug.com/1059959): Check that
         // we always pass an |initiator_frame_token| and an
         // |initiator_navigation_state_keep_alive_handle| if |origin_window| is not
         // set.
     }
+#endif
 
     navigation_info->impression = impression;
 
@@ -655,7 +684,9 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
         navigation_info->is_opener_navigation = origin_frame->Opener() == ToCoreFrame(web_frame_);
         navigation_info->initiator_frame_has_download_sandbox_flag = origin_window->IsSandboxed(network::mojom::blink::WebSandboxFlags::kDownloads);
         navigation_info->initiator_frame_is_ad = origin_frame->IsAdFrame();
+#if !defined(MINI_UI_QUICKJS)
         navigation_info->is_ad_script_in_stack = origin_frame->IsAdScriptInStack();
+#endif
     }
 
     navigation_info->has_rel_opener = has_rel_opener;
@@ -691,7 +722,7 @@ void LocalFrameClientImpl::BeginNavigation(const ResourceRequest& request, const
         }
     }
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (WebDevToolsAgentImpl* devtools = DevToolsAgent(/*create_if_necessary=*/false)) {
         navigation_info->devtools_initiator_info = devtools->NavigationInitiatorInfo(web_frame_->GetFrame());
     }
@@ -851,7 +882,9 @@ std::optional<UserAgentMetadata> LocalFrameClientImpl::UserAgentMetadata()
         = ua_override_on ? web_frame_->Client()->UserAgentMetadataOverride() : Platform::Current()->UserAgentMetadata();
 
     Document* document = web_frame_->GetDocument();
+#if !defined(MINI_UI_QUICKJS)
     probe::ApplyUserAgentMetadataOverride(probe::ToCoreProbeSink(document), &user_agent_metadata);
+#endif
 
     return user_agent_metadata;
 }
@@ -875,12 +908,15 @@ LocalFrame* LocalFrameClientImpl::CreateFrame(const AtomicString& name, HTMLFram
     return web_frame_->CreateChildFrame(name, owner_element);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 RemoteFrame* LocalFrameClientImpl::CreateFencedFrame(
     HTMLFencedFrameElement* fenced_frame, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost> receiver)
 {
     return web_frame_->CreateFencedFrame(fenced_frame, std::move(receiver));
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainerImpl* LocalFrameClientImpl::CreatePlugin(HTMLPlugInElement& element, const KURL& url, const Vector<String>& param_names,
     const Vector<String>& param_values, const String& mime_type, bool load_manually)
 {
@@ -909,7 +945,9 @@ WebPluginContainerImpl* LocalFrameClientImpl::CreatePlugin(HTMLPlugInElement& el
 
     return container;
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<WebMediaPlayer> LocalFrameClientImpl::CreateWebMediaPlayer(
     HTMLMediaElement& html_media_element, const WebMediaPlayerSource& source, WebMediaPlayerClient* client)
 {
@@ -926,6 +964,7 @@ RemotePlaybackClient* LocalFrameClientImpl::CreateRemotePlaybackClient(HTMLMedia
 {
     return CoreInitializer::GetInstance().CreateRemotePlaybackClient(html_media_element);
 }
+#endif
 
 void LocalFrameClientImpl::DidChangeName(const String& name)
 {
@@ -934,22 +973,26 @@ void LocalFrameClientImpl::DidChangeName(const String& name)
     web_frame_->Client()->DidChangeName(name);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 std::unique_ptr<WebServiceWorkerProvider> LocalFrameClientImpl::CreateServiceWorkerProvider()
 {
     if (!web_frame_->Client())
         return nullptr;
     return web_frame_->Client()->CreateServiceWorkerProvider();
 }
+#endif
 
 WebContentSettingsClient* LocalFrameClientImpl::GetContentSettingsClient()
 {
     return web_frame_->GetContentSettingsClient();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameClientImpl::DispatchDidChangeManifest()
 {
     CoreInitializer::GetInstance().DidChangeManifest(*web_frame_->GetFrame());
 }
+#endif
 
 unsigned LocalFrameClientImpl::BackForwardLength()
 {
@@ -957,6 +1000,7 @@ unsigned LocalFrameClientImpl::BackForwardLength()
     return webview ? webview->HistoryListLength() : 0;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebDevToolsAgentImpl* LocalFrameClientImpl::DevToolsAgent(bool create_if_necessary)
 {
 #if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -965,6 +1009,7 @@ WebDevToolsAgentImpl* LocalFrameClientImpl::DevToolsAgent(bool create_if_necessa
     return WebLocalFrameImpl::FromFrame(web_frame_->GetFrame()->LocalFrameRoot())->DevToolsAgentImpl(create_if_necessary);
 #endif
 }
+#endif
 
 KURL LocalFrameClientImpl::OverrideFlashEmbedWithHTML(const KURL& url)
 {
@@ -994,16 +1039,19 @@ WebTextCheckClient* LocalFrameClientImpl::GetTextCheckerClient() const
     return web_frame_->GetTextCheckerClient();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<network::SharedURLLoaderFactory> LocalFrameClientImpl::GetURLLoaderFactory()
 {
     return web_frame_->Client()->GetURLLoaderFactory();
 }
+#endif
 
 std::unique_ptr<URLLoader> LocalFrameClientImpl::CreateURLLoaderForTesting()
 {
     return web_frame_->Client()->CreateURLLoaderForTesting();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 blink::ChildURLLoaderFactoryBundle* LocalFrameClientImpl::GetLoaderFactoryBundle()
 {
     return web_frame_->Client()->GetLoaderFactoryBundle();
@@ -1013,6 +1061,7 @@ scoped_refptr<WebBackgroundResourceFetchAssets> LocalFrameClientImpl::MaybeGetBa
 {
     return web_frame_->Client()->MaybeGetBackgroundResourceFetchAssets();
 }
+#endif
 
 AssociatedInterfaceProvider* LocalFrameClientImpl::GetRemoteNavigationAssociatedInterfaces()
 {
@@ -1024,6 +1073,7 @@ base::UnguessableToken LocalFrameClientImpl::GetDevToolsFrameToken() const
     return web_frame_->Client()->GetDevToolsFrameToken();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 String LocalFrameClientImpl::evaluateInInspectorOverlayForTesting(const String& script)
 {
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -1033,6 +1083,7 @@ String LocalFrameClientImpl::evaluateInInspectorOverlayForTesting(const String& 
 #endif
     return g_empty_string;
 }
+#endif
 
 bool LocalFrameClientImpl::HandleCurrentKeyboardEvent()
 {
@@ -1094,6 +1145,7 @@ void LocalFrameClientImpl::OnLargeStickyAdDetected()
     web_frame_->Client()->OnLargeStickyAdDetected();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool LocalFrameClientImpl::IsPluginHandledExternally(HTMLPlugInElement& plugin_element, const KURL& resource_url, const String& suggesed_mime_type)
 {
     return web_frame_->Client()->IsPluginHandledExternally(&plugin_element, resource_url, suggesed_mime_type);
@@ -1103,7 +1155,9 @@ v8::Local<v8::Object> LocalFrameClientImpl::GetScriptableObject(HTMLPlugInElemen
 {
     return web_frame_->Client()->GetScriptableObject(&plugin_element, isolate);
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<WebWorkerFetchContext> LocalFrameClientImpl::CreateWorkerFetchContext()
 {
     DCHECK(web_frame_->Client());
@@ -1121,7 +1175,9 @@ std::unique_ptr<WebContentSettingsClient> LocalFrameClientImpl::CreateWorkerCont
     DCHECK(web_frame_->Client());
     return web_frame_->Client()->CreateWorkerContentSettingsClient();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameClientImpl::SetMouseCapture(bool capture)
 {
     web_frame_->LocalRoot()->FrameWidgetImpl()->SetMouseCapture(capture);
@@ -1131,6 +1187,7 @@ void LocalFrameClientImpl::NotifyAutoscrollForSelectionInMainFrame(bool autoscro
 {
     web_frame_->LocalRoot()->FrameWidgetImpl()->NotifyAutoscrollForSelectionInMainFrame(autoscroll_selection);
 }
+#endif
 
 std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> LocalFrameClientImpl::CreateResourceLoadInfoNotifierWrapper()
 {
@@ -1138,6 +1195,7 @@ std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> LocalFrameClientImpl::Cr
     return web_frame_->Client()->CreateResourceLoadInfoNotifierWrapper();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameClientImpl::BindDevToolsAgent(
     mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver)
 {
@@ -1147,10 +1205,13 @@ void LocalFrameClientImpl::BindDevToolsAgent(
     }
 #endif
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool LocalFrameClientImpl::IsDomStorageDisabled() const
 {
     return web_frame_->Client()->IsDomStorageDisabled();
 }
+#endif
 
 } // namespace blink

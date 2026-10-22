@@ -71,6 +71,7 @@ base::TimeTicks WebPerformanceMetricsForReporting::NavigationStartAsMonotonicTim
     return private_->timingForReporting()->NavigationStartAsMonotonicTime();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebPerformanceMetricsForReporting::BackForwardCacheRestoreTimings WebPerformanceMetricsForReporting::BackForwardCacheRestore() const
 {
     PerformanceTimingForReporting::BackForwardCacheRestoreTimings restore_timings = private_->timingForReporting()->BackForwardCacheRestore();
@@ -86,6 +87,8 @@ WebPerformanceMetricsForReporting::BackForwardCacheRestoreTimings WebPerformance
     }
     return timings;
 }
+
+#endif
 
 double WebPerformanceMetricsForReporting::InputForNavigationStart() const
 {

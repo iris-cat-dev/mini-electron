@@ -5,18 +5,24 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_PERFORMANCE_MONITOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_CANVAS_CANVAS_PERFORMANCE_MONITOR_H_
 
+#include "third_party/blink/renderer/core/core_export.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/task/sequence_manager/task_time_observer.h"
 #include "base/time/time.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
+#endif
 
 namespace blink {
 
 class CanvasRenderingContext;
 
 // Measures tasks that draw to canvas rendering contexts.
-class CORE_EXPORT CanvasPerformanceMonitor : public base::sequence_manager::TaskTimeObserver {
+class CORE_EXPORT CanvasPerformanceMonitor
+#if !defined(MINI_UI_QUICKJS)
+    : public base::sequence_manager::TaskTimeObserver
+#endif
+{
 public:
     // Flag bits that can be passed to DidDraw.
     enum class DrawType {
@@ -31,11 +37,14 @@ public:
         kRectangle = 1 << 3,
         kImageData = 1 << 4,
 
+#if !defined(MINI_UI_QUICKJS)
         // WebGL draw types
         kDrawArrays = 1 << 5,
         kDrawElements = 1 << 6,
+#endif
     };
 
+#if !defined(MINI_UI_QUICKJS)
     CanvasPerformanceMonitor() = default;
 
     void CurrentTaskDrawsToContext(CanvasRenderingContext*);
@@ -67,6 +76,7 @@ private:
     uint32_t task_counter_ = 0;
     bool is_render_task_ = false;
     bool measure_current_task_ = false;
+#endif
 };
 
 } // namespace blink

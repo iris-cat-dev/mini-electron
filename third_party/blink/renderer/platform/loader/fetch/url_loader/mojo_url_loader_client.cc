@@ -359,6 +359,11 @@ void MojoURLLoaderClient::StopBackForwardCacheEvictionTimer()
 
 void MojoURLLoaderClient::OnReceiveRedirect(const net::RedirectInfo& redirect_info, network::mojom::URLResponseHeadPtr response_head)
 {
+#if defined(MINI_UI_QUICKJS)
+    // UI Mojo loaders are backed only by local Blob factories. A redirect is
+    // invalid for that capability, not a browser redirect-policy decision.
+    OnComplete(network::URLLoaderCompletionStatus(net::ERR_UNSAFE_REDIRECT));
+#else
     base::TimeTicks redirect_ipc_arrival_time = base::TimeTicks::Now();
     DCHECK(!has_received_response_head_);
     if (freeze_mode_ == LoaderFreezeMode::kBufferIncoming) {
@@ -384,6 +389,7 @@ void MojoURLLoaderClient::OnReceiveRedirect(const net::RedirectInfo& redirect_in
     } else {
         resource_request_sender_->OnReceivedRedirect(redirect_info, std::move(response_head), redirect_ipc_arrival_time);
     }
+#endif
 }
 
 void MojoURLLoaderClient::OnUploadProgress(int64_t current_position, int64_t total_size, OnUploadProgressCallback ack_callback)

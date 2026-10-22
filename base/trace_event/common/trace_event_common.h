@@ -5,6 +5,16 @@
 #ifndef BASE_TRACE_EVENT_COMMON_TRACE_EVENT_COMMON_H_
 #define BASE_TRACE_EVENT_COMMON_TRACE_EVENT_COMMON_H_
 
+#define TRACE_VALUE_TYPE_BOOL (static_cast<unsigned char>(1))
+#define TRACE_VALUE_TYPE_UINT (static_cast<unsigned char>(2))
+#define TRACE_VALUE_TYPE_INT (static_cast<unsigned char>(3))
+#define TRACE_VALUE_TYPE_DOUBLE (static_cast<unsigned char>(4))
+#define TRACE_VALUE_TYPE_POINTER (static_cast<unsigned char>(5))
+#define TRACE_VALUE_TYPE_STRING (static_cast<unsigned char>(6))
+#define TRACE_VALUE_TYPE_COPY_STRING (static_cast<unsigned char>(7))
+#define TRACE_VALUE_TYPE_CONVERTABLE (static_cast<unsigned char>(8))
+#define TRACE_VALUE_TYPE_PROTO (static_cast<unsigned char>(9))
+
 // Trace events are for tracking application performance and resource usage.
 // Macros are provided to track:
 //    Begin and end of function calls

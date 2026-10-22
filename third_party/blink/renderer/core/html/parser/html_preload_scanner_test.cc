@@ -17,7 +17,9 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/cross_origin_attribute.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/parser/background_html_scanner.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_parser_options.h"
 #include "third_party/blink/renderer/core/html/parser/html_resource_preloader.h"
 #include "third_party/blink/renderer/core/html/parser/html_tokenizer.h"
@@ -331,7 +333,9 @@ protected:
         GetFrame().DomWindow()->SetReferrerPolicy(document_referrer_policy);
         scanner_ = std::make_unique<HTMLPreloadScanner>(std::make_unique<HTMLTokenizer>(options), document_url,
             std::make_unique<CachedDocumentParameters>(&GetDocument()), CreateMediaValuesData(), TokenPreloadScanner::ScannerType::kMainDocument,
+#if !defined(MINI_UI_QUICKJS)
             /* script_token_scanner=*/nullptr,
+#endif
             /* take_preload=*/HTMLPreloadScanner::TakePreloadFn(), locators, disable_preload_scanning);
     }
 

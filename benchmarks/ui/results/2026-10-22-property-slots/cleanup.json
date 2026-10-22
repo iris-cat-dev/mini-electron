@@ -1,0 +1,121 @@
+{
+  "removed": [
+    {
+      "path": "out/ui-field-before",
+      "bytes": 29748609
+    },
+    {
+      "path": "out/ui-field-validation",
+      "bytes": 207146
+    },
+    {
+      "path": "out/ui-field-checks-before",
+      "bytes": 91073381
+    },
+    {
+      "path": "out/ui-field-candidate",
+      "bytes": 468302444
+    },
+    {
+      "path": "out/ui-field-checks-after",
+      "bytes": 91073500
+    },
+    {
+      "path": "out/ui-field-after",
+      "bytes": 116206566
+    },
+    {
+      "path": "out/ui-field-comparison",
+      "bytes": 372306
+    },
+    {
+      "path": "out/ui-field-hint-validation",
+      "bytes": 207251
+    },
+    {
+      "path": "out/ui-field-hint-checks-before",
+      "bytes": 91074675
+    },
+    {
+      "path": "out/ui-field-hint-candidate",
+      "bytes": 468302649
+    },
+    {
+      "path": "out/ui-field-hint-checks-after",
+      "bytes": 91075335
+    },
+    {
+      "path": "out/ui-field-hint-after",
+      "bytes": 116208456
+    },
+    {
+      "path": "out/ui-field-hint-comparison",
+      "bytes": 372014
+    },
+    {
+      "path": "out/ui-field-inline-validation",
+      "bytes": 130909
+    },
+    {
+      "path": "out/ui-field-inline-candidate",
+      "bytes": 468302504
+    },
+    {
+      "path": "out/ui-field-inline-checks-after",
+      "bytes": 91075260
+    },
+    {
+      "path": "out/ui-field-inline-after",
+      "bytes": 116209968
+    },
+    {
+      "path": "out/ui-field-inline-comparison",
+      "bytes": 372617
+    },
+    {
+      "path": "out/ui-field-repeat-validation",
+      "bytes": 1336
+    },
+    {
+      "path": "out/ui-field-inline-repeat",
+      "bytes": 14881479
+    },
+    {
+      "path": "out/ui-field-before-repeat",
+      "bytes": 14881648
+    },
+    {
+      "path": "out/ui-field-repeat-comparison",
+      "bytes": 186380
+    },
+    {
+      "path": "out/ui-field-final-validation",
+      "bytes": 130631
+    },
+    {
+      "path": "out/ui-field-chrome-default",
+      "bytes": 645834
+    },
+    {
+      "path": "out/ui-field-chrome-software",
+      "bytes": 639537
+    },
+    {
+      "path": "out/ui-field-chrome-comparison",
+      "bytes": 117643
+    },
+    {
+      "path": ".build-tools/ui-field",
+      "bytes": 11263
+    }
+  ],
+  "total_bytes": 2271811341,
+  "retained": [
+    "out/ui-windows-x64",
+    "out/ui-field-final-checks",
+    "out/ui-field-final-smoke",
+    "benchmarks/ui/results/2026-10-22-property-slots"
+  ],
+  "prior_artifacts_untouched": true,
+  "shutdown": false
+}

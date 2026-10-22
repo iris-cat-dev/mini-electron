@@ -119,18 +119,24 @@ public:
     // ScrollAnimatorCompositorCoordinator implementation.
     void TickAnimation(base::TimeTicks monotonic_time) override;
     void CancelAnimation() override;
+#if !defined(MINI_UI_QUICKJS)
     void TakeOverCompositorAnimation() override;
+#endif
     void ResetAnimationState() override;
     void UpdateCompositorAnimations() override;
+#if !defined(MINI_UI_QUICKJS)
     void NotifyCompositorAnimationFinished(int group_id) override;
     void NotifyCompositorAnimationAborted(int group_id) override;
 
+#endif
     void Trace(Visitor*) const override;
 
+#if !defined(MINI_UI_QUICKJS)
 protected:
     // Returns whether or not the animation was sent to the compositor.
     virtual bool SendAnimationToCompositor();
 
+#endif
 private:
     // Returns true if the animation was scheduled successfully. If animation
     // could not be scheduled (e.g. because the frame is detached), scrolls

@@ -61,8 +61,10 @@
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
 #include "third_party/blink/renderer/core/layout/hit_test_request.h"
@@ -256,8 +258,10 @@ void DragController::PerformDrag(DragData* drag_data, LocalFrame& local_root)
                 // should prevent default behavior.
                 const HitTestLocation location(local_root.View()->ConvertFromRootFrame(PhysicalOffset::FromPointFRound(drag_data->ClientPosition())));
                 const HitTestResult result = event_handler.HitTestResultAtLocation(location);
+#if !defined(MINI_UI_QUICKJS)
                 auto* html_plugin_element = DynamicTo<HTMLPlugInElement>(result.InnerNode());
                 prevented_default |= html_plugin_element && html_plugin_element->CanProcessDrag();
+#endif
             }
 
             // Invalidate clipboard here for security.
@@ -452,7 +456,11 @@ DragOperation DragController::OperationForLoad(DragData* drag_data, LocalFrame& 
     DCHECK(drag_data);
     Document* doc = local_root.DocumentAtPoint(PhysicalOffset::FromPointFRound(drag_data->ClientPosition()));
 
+#if defined(MINI_UI_QUICKJS)
+    if (doc && (did_initiate_drag_ || IsEditable(*doc)))
+#else
     if (doc && (did_initiate_drag_ || IsA<PluginDocument>(doc) || IsEditable(*doc)))
+#endif
         return DragOperation::kNone;
     return GetDragOperation(drag_data);
 }
@@ -652,12 +660,17 @@ bool DragController::CanProcessDrag(DragData* drag_data, LocalFrame& local_root)
     if (drag_data->ContainsFiles() && AsFileInput(result.InnerNode()))
         return true;
 
+#if defined(MINI_UI_QUICKJS)
+    if (!IsEditable(*result.InnerNode()))
+        return false;
+#else
     if (auto* plugin = DynamicTo<HTMLPlugInElement>(result.InnerNode())) {
         if (!plugin->CanProcessDrag() && !IsEditable(*result.InnerNode()))
             return false;
     } else if (!IsEditable(*result.InnerNode())) {
         return false;
     }
+#endif
 
     if (did_initiate_drag_ && document_under_mouse_ == (drag_initiator_ ? drag_initiator_->document() : nullptr)) {
         const PhysicalOffset point_in_frame

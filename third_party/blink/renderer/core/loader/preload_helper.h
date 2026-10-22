@@ -47,9 +47,11 @@ public:
         kLinkCalledFromMarkup,
     };
 
+#if !defined(MINI_UI_QUICKJS)
     static void DnsPrefetchIfNeeded(const LinkLoadParameters&, Document*, LocalFrame*, LinkCaller);
     static void PreconnectIfNeeded(const LinkLoadParameters&, Document*, LocalFrame*, LinkCaller);
     static void PrefetchIfNeeded(const LinkLoadParameters&, Document&, PendingLinkPreload*);
+#endif
     static void PreloadIfNeeded(
         const LinkLoadParameters&, Document&, const KURL& base_url, LinkCaller, const ViewportDescription*, ParserDisposition, PendingLinkPreload*);
     static void ModulePreloadIfNeeded(const LinkLoadParameters&, Document&, const ViewportDescription*, PendingLinkPreload*);

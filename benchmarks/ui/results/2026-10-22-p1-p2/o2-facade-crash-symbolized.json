@@ -1,0 +1,271 @@
+{
+  "exception": "FAST_FAIL_FATAL_APP_EXIT",
+  "subcode": 7,
+  "module_base": "0x7ff6e7df0000",
+  "stack": [
+    {
+      "rva": "0x168cff5",
+      "symbol": "abort",
+      "displacement": 53,
+      "object": "libucrt:abort.obj"
+    },
+    {
+      "rva": "0x31829",
+      "symbol": "?Adopt@detail@v8@@YA?AV?$Local@VValue@v8@@@2@PEAUJSContext@@UJSValue@@@Z",
+      "displacement": 185,
+      "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+    },
+    {
+      "rva": "0x17a40d",
+      "symbol": "?Setup@?A0xEBED13CD@v8@@YAXAEAUCallbackState@detail@1@UJSValue@@11_N2@Z",
+      "displacement": 189,
+      "object": "mini-ui:791eae3654574fd278fd.obj"
+    },
+    {
+      "rva": "0x174f1d",
+      "symbol": "?HostGet@?A0xEBED13CD@v8@@YA?AUJSValue@@PEAUJSContext@@U2@I1@Z",
+      "displacement": 621,
+      "object": "mini-ui:791eae3654574fd278fd.obj"
+    },
+    {
+      "rva": "0x6a4ec",
+      "symbol": "JS_GetPropertyImpl",
+      "displacement": 1439,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x6b9ed",
+      "symbol": "JS_GetPropertyValue",
+      "displacement": 244,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x747f2",
+      "symbol": "JS_CallInternal",
+      "displacement": 11991,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x7227d",
+      "symbol": "JS_CallInternal",
+      "displacement": 2402,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x9624d",
+      "symbol": "async_func_resume",
+      "displacement": 204,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0xa5c3b",
+      "symbol": "js_async_function_resume",
+      "displacement": 77,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x82494",
+      "symbol": "js_async_function_resolve_call",
+      "displacement": 182,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x71b16",
+      "symbol": "JS_CallInternal",
+      "displacement": 507,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0xa4c14",
+      "symbol": "promise_reaction_job",
+      "displacement": 316,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x5fc15",
+      "symbol": "JS_ExecutePendingJob",
+      "displacement": 181,
+      "object": "mini-ui:05c2888a0f2b380aed57.obj"
+    },
+    {
+      "rva": "0x2d96c",
+      "symbol": "?PerformMicrotaskCheckpoint@Isolate@v8@@QEAAXXZ",
+      "displacement": 364,
+      "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+    },
+    {
+      "rva": "0x3756c",
+      "symbol": "??1MicrotasksScope@v8@@QEAA@XZ",
+      "displacement": 124,
+      "object": "mini-ui:51b4a528527cb12a0aa0.obj"
+    },
+    {
+      "rva": "0x290567",
+      "symbol": "?CallFunction@V8ScriptRunner@blink@@SA?AV?$MaybeLocal@VValue@v8@@@v8@@V?$Local@VFunction@v8@@@4@PEAVExecutionContext@2@V?$Local@VValue@v8@@@4@HQEAV74@PEAVIsolate@4@@Z",
+      "displacement": 399,
+      "object": "mini-ui:cfe4a62814b6dadc23f3.obj"
+    },
+    {
+      "rva": "0xe2ba1b",
+      "symbol": "?CallInternal@?$CallbackInvokeHelper@VCallbackFunctionWithTaskAttributionBase@blink@@$0A@$0A@@bindings@blink@@AEAA_NHPEAV?$Local@VValue@v8@@@v8@@@Z",
+      "displacement": 163,
+      "object": "mini-ui:0d6a391457a558d0b442.obj"
+    },
+    {
+      "rva": "0xe2b969",
+      "symbol": "?Call@?$CallbackInvokeHelper@VCallbackFunctionBase@blink@@$01$0A@@bindings@blink@@QEAA_NHPEAV?$Local@VValue@v8@@@v8@@@Z",
+      "displacement": 13,
+      "object": "mini-ui:0d6a391457a558d0b442.obj"
+    },
+    {
+      "rva": "0xe2d752",
+      "symbol": "?Invoke@V8FrameRequestCallback@blink@@QEAA?AV?$Maybe@X@v8@@VV8ValueOrScriptWrappableAdapter@bindings@2@N@Z",
+      "displacement": 270,
+      "object": "mini-ui:1fc70a91e648ae9625ff.obj"
+    },
+    {
+      "rva": "0xe2d90d",
+      "symbol": "?InvokeAndReportException@V8FrameRequestCallback@blink@@QEAAXVV8ValueOrScriptWrappableAdapter@bindings@2@N@Z",
+      "displacement": 109,
+      "object": "mini-ui:1fc70a91e648ae9625ff.obj"
+    },
+    {
+      "rva": "0x7b334d",
+      "symbol": "?Invoke@V8FrameCallback@blink@@UEAAXN@Z",
+      "displacement": 53,
+      "object": "mini-ui:3e3fd9ce5d927391c18c.obj"
+    },
+    {
+      "rva": "0x7b3133",
+      "symbol": "?ExecuteFrameCallbacks@FrameRequestCallbackCollection@blink@@QEAAXNN@Z",
+      "displacement": 331,
+      "object": "mini-ui:3e3fd9ce5d927391c18c.obj"
+    },
+    {
+      "rva": "0x23bfcf",
+      "symbol": "?ServiceScriptedAnimations@PageAnimator@blink@@SAXVTimeTicks@base@@AEBV?$HeapVector@U?$pair@V?$BasicMember@VScriptedAnimationController@blink@@VStrongMemberTag@internal@cppgc@@UDijkstraWriteBarrierPolicy@45@VDisabledCheckingPolicy@45@VCompressedPointer@45@@internal@cppgc@@_N@std@@$0A@@2@@Z",
+      "displacement": 2299,
+      "object": "mini-ui:fe45a82cfcb62f2b440f.obj"
+    },
+    {
+      "rva": "0x23b590",
+      "symbol": "?ServiceScriptedAnimations@PageAnimator@blink@@QEAAXVTimeTicks@base@@@Z",
+      "displacement": 830,
+      "object": "mini-ui:fe45a82cfcb62f2b440f.obj"
+    },
+    {
+      "rva": "0x1a9499",
+      "symbol": "?Animate@Page@blink@@QEAAXVTimeTicks@base@@@Z",
+      "displacement": 55,
+      "object": "mini-ui:de171c65659a3f5715bf.obj"
+    },
+    {
+      "rva": "0x4394c",
+      "symbol": "?BeginMainFrame@WebFrameWidgetImpl@blink@@UEAAXVTimeTicks@base@@@Z",
+      "displacement": 204,
+      "object": "mini-ui:0ca6feca22adcd7fa9d6.obj"
+    },
+    {
+      "rva": "0x1c2ea",
+      "symbol": "?Tick@Impl@BlinkBackend@mini_ui@@QEAA_NNPEAUError@3@@Z",
+      "displacement": 606,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x1dc44",
+      "symbol": "?RunOnce@?$Invoker@U?$FunctorTraits@$$QEAV<lambda_1>@?0??RunTask@BlinkProcess@?A0xDE703E84@mini_ui@@QEAA_NV?$FunctionRef@$$A6A_NXZ@base@@PEAUError@4@@Z@PEAV56@PEAV?$optional@_N@std@@PEAVexception_ptr@9@PEAVRunLoop@6@@internal@base@@U?$BindState@$0A@$0A@$0A@V<lambda_1>@?0??RunTask@BlinkProcess@?A0xDE703E84@mini_ui@@QEAA_NV?$FunctionRef@$$A6A_NXZ@base@@PEAUError@4@@Z@V?$UnretainedWrapper@V?$FunctionRef@$$A6A_NXZ@base@@UMayNotDangle@unretained_traits@2@$0A@@internal@6@V?$UnretainedWrapper@V?$optional@_N@std@@UMayNotDangle@unretained_traits@base@@$0A@@96@V?$UnretainedWrapper@Vexception_ptr@std@@UMayNotDangle@unretained_traits@base@@$0A@@96@V?$UnretainedWrapper@VRunLoop@base@@UMayNotDangle@unretained_traits@2@$0A@@96@@23@$$A6AXXZ@internal@base@@SAXPEAVBindStateBase@23@@Z",
+      "displacement": 94,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x1dfcb",
+      "symbol": "?Run@?$OnceCallback@$$A6AXXZ@base@@QEHAAXXZ",
+      "displacement": 51,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x1dfcb",
+      "symbol": "?Run@?$OnceCallback@$$A6AXXZ@base@@QEHAAXXZ",
+      "displacement": 51,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x2a8fb",
+      "symbol": "?RunTaskImpl@TaskAnnotator@base@@AEAAXAEAUPendingTask@2@@Z",
+      "displacement": 289,
+      "object": "mini-ui:2b2cf0fd874edd28cc6d.obj"
+    },
+    {
+      "rva": "0x826feb",
+      "symbol": "?DoWorkImpl@ThreadControllerWithMessagePumpImpl@internal@sequence_manager@base@@AEAA?AV?$optional@UWakeUp@sequence_manager@base@@@std@@PEAVLazyNow@4@@Z",
+      "displacement": 581,
+      "object": "mini-ui:e6d6e117f630fe86fa24.obj"
+    },
+    {
+      "rva": "0x826c1d",
+      "symbol": "?DoWork@ThreadControllerWithMessagePumpImpl@internal@sequence_manager@base@@MEAA?AUNextWorkInfo@Delegate@MessagePump@4@XZ",
+      "displacement": 133,
+      "object": "mini-ui:e6d6e117f630fe86fa24.obj"
+    },
+    {
+      "rva": "0x2a049e",
+      "symbol": "?DoRunLoop@MessagePumpForUI@base@@EEAAXXZ",
+      "displacement": 120,
+      "object": "mini-ui:5652ad37dba98a4bb777.obj"
+    },
+    {
+      "rva": "0x29fe97",
+      "symbol": "?Run@MessagePumpWin@base@@UEAAXPEAVDelegate@MessagePump@2@@Z",
+      "displacement": 121,
+      "object": "mini-ui:5652ad37dba98a4bb777.obj"
+    },
+    {
+      "rva": "0x8273b8",
+      "symbol": "?Run@ThreadControllerWithMessagePumpImpl@internal@sequence_manager@base@@MEAAX_NVTimeDelta@4@@Z",
+      "displacement": 238,
+      "object": "mini-ui:e6d6e117f630fe86fa24.obj"
+    },
+    {
+      "rva": "0x2addf",
+      "symbol": "?Run@RunLoop@base@@QEAAXAEBVLocation@2@@Z",
+      "displacement": 405,
+      "object": "mini-ui:5d1f323247fb314fa413.obj"
+    },
+    {
+      "rva": "0x1b458",
+      "symbol": "?RunTask@BlinkProcess@?A0xDE703E84@mini_ui@@QEAA_NV?$FunctionRef@$$A6A_NXZ@base@@PEAUError@2@@Z",
+      "displacement": 584,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x1e2a0",
+      "symbol": "?RunTask@Impl@BlinkBackend@mini_ui@@QEAA_NV?$FunctionRef@$$A6A_NXZ@base@@PEAUError@3@@Z",
+      "displacement": 120,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x1c1f5",
+      "symbol": "?Tick@Impl@BlinkBackend@mini_ui@@QEAA_NNPEAUError@3@@Z",
+      "displacement": 361,
+      "object": "mini-ui:58097f1658c874967592.obj"
+    },
+    {
+      "rva": "0x677f",
+      "symbol": "?PumpUntil@?A0xD8BD01E1@@YA_NAEAVView@mini_ui@@V?$basic_string_view@DU?$char_traits@D@std@@@std@@1HPEAUTickMetrics@?A0xD8BD01E1@@PEAUFailure@?A0xD8BD01E1@@@Z",
+      "displacement": 313,
+      "object": "ui-benchmark.obj"
+    },
+    {
+      "rva": "0x286b",
+      "symbol": "$ehgcr_0_111",
+      "displacement": 1896,
+      "object": "ui-benchmark.obj"
+    },
+    {
+      "rva": "0x1675d62",
+      "symbol": "?__scrt_common_main_seh@@YAHXZ",
+      "displacement": 262,
+      "object": "libcmt:exe_wwinmain.obj"
+    }
+  ]
+}

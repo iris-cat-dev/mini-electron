@@ -1,0 +1,125 @@
+{
+  "total_main_thread_samples": 2094,
+  "ntdll_symbols": [
+    {
+      "name": "NtDelayExecution",
+      "samples": 114,
+      "percent_of_all": 5.444126074498567
+    },
+    {
+      "name": "RtlAllocateHeap",
+      "samples": 80,
+      "percent_of_all": 3.8204393505253105
+    },
+    {
+      "name": "memset",
+      "samples": 40,
+      "percent_of_all": 1.9102196752626552
+    },
+    {
+      "name": "RtlCreateTimer",
+      "samples": 30,
+      "percent_of_all": 1.4326647564469914
+    },
+    {
+      "name": "RtlSizeHeap",
+      "samples": 14,
+      "percent_of_all": 0.6685768863419294
+    },
+    {
+      "name": "RtlGetCurrentServiceSessionId",
+      "samples": 9,
+      "percent_of_all": 0.4297994269340974
+    },
+    {
+      "name": "RtlSetUserValueHeap",
+      "samples": 8,
+      "percent_of_all": 0.38204393505253104
+    },
+    {
+      "name": "RtlReleaseSRWLockExclusive",
+      "samples": 6,
+      "percent_of_all": 0.28653295128939826
+    },
+    {
+      "name": "RtlReAllocateHeap",
+      "samples": 6,
+      "percent_of_all": 0.28653295128939826
+    },
+    {
+      "name": "NtUnlockVirtualMemory",
+      "samples": 5,
+      "percent_of_all": 0.2387774594078319
+    },
+    {
+      "name": "RtlReleaseSRWLockShared",
+      "samples": 4,
+      "percent_of_all": 0.19102196752626552
+    },
+    {
+      "name": "ZwFreeVirtualMemory",
+      "samples": 4,
+      "percent_of_all": 0.19102196752626552
+    },
+    {
+      "name": "RtlTryAcquireSRWLockExclusive",
+      "samples": 3,
+      "percent_of_all": 0.14326647564469913
+    },
+    {
+      "name": "RtlFreeHeap",
+      "samples": 2,
+      "percent_of_all": 0.09551098376313276
+    },
+    {
+      "name": "ZwProtectVirtualMemory",
+      "samples": 2,
+      "percent_of_all": 0.09551098376313276
+    },
+    {
+      "name": "RtlUserThreadStart",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "memcpy",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "RtlAcquireSRWLockExclusive",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "RtlGetFullPathName_UstrEx",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "ZwQueryVirtualMemory",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "NtSetInformationVirtualMemory",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "ZwAllocateVirtualMemory",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "RtlEqualUnicodeString",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    },
+    {
+      "name": "RtlTryEnterCriticalSection",
+      "samples": 1,
+      "percent_of_all": 0.04775549188156638
+    }
+  ]
+}

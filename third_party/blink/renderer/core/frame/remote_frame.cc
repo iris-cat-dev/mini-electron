@@ -5,21 +5,29 @@
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 
 #include "base/types/optional_util.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/surface_layer.h"
+#endif
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
 #include "third_party/blink/public/common/fenced_frame/fenced_frame_utils.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/navigation/navigation_policy.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/page/page_zoom.h"
+#endif
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/fullscreen.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/loader/referrer.mojom-blink.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/platform.h"
+#endif
 #include "third_party/blink/public/platform/url_conversion.h"
 #include "third_party/blink/public/platform/web_url_request_util.h"
 #include "third_party/blink/public/web/web_frame.h"
@@ -36,14 +44,20 @@
 #include "third_party/blink/renderer/core/frame/remote_dom_window.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_client.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_owner.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
+#endif
 #include "third_party/blink/renderer/core/frame/user_activation.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/text_autosizer.h"
@@ -52,9 +66,13 @@
 #include "third_party/blink/renderer/core/loader/mixed_content_checker.h"
 #include "third_party/blink/renderer/core/messaging/blink_transferable_message.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_script_forbidden_scope.h"
+#endif
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_request.h"
@@ -70,12 +88,14 @@
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
 
+#if !defined(MINI_UI_QUICKJS)
 bool mojo::EnumTraits<network::mojom::StorageAccessApiStatus, net::StorageAccessApiStatus>::FromMojom(
     network::mojom::StorageAccessApiStatus, net::StorageAccessApiStatus*)
 {
     *(int*)1 = 1;
     return false;
 }
+#endif
 
 namespace blink {
 
@@ -100,6 +120,7 @@ RemoteFrame* RemoteFrame::FromFrameToken(const RemoteFrameToken& frame_token)
     return it == remote_frames_map.end() ? nullptr : it->value.Get();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 RemoteFrame::RemoteFrame(RemoteFrameClient* client, Page& page, FrameOwner* owner, Frame* parent, Frame* previous_sibling, FrameInsertType insert_type,
     const RemoteFrameToken& frame_token, WindowAgentFactory* inheriting_agent_factory, WebFrameWidget* ancestor_widget,
     const base::UnguessableToken& devtools_frame_token, mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> remote_frame_host,
@@ -129,10 +150,13 @@ RemoteFrame::RemoteFrame(RemoteFrameClient* client, Page& page, FrameOwner* owne
     if (ancestor_widget)
         compositing_helper_ = std::make_unique<ChildFrameCompositingHelper>(this);
 }
+#endif
 
 RemoteFrame::~RemoteFrame()
 {
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(!view_);
+#endif
 }
 
 void RemoteFrame::DetachAndDispose()
@@ -143,7 +167,9 @@ void RemoteFrame::DetachAndDispose()
 
 void RemoteFrame::Trace(Visitor* visitor) const
 {
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(view_);
+#endif
     visitor->Trace(security_context_);
     visitor->Trace(remote_frame_host_remote_);
     visitor->Trace(receiver_);
@@ -199,30 +225,37 @@ void RemoteFrame::Navigate(FrameLoadRequest& frame_request, WebFrameLoadType fra
     bool is_ad_script_in_stack = false;
 
     std::optional<LocalFrameToken> initiator_frame_token = base::OptionalFromPtr(frame_request.GetInitiatorFrameToken());
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle
         = frame_request.TakeInitiatorNavigationStateKeepAliveHandle();
 
     // |initiator_frame_token| and |initiator_navigation_state_keep_alive_handle|
     // should either be both specified or both null.
     DCHECK(!initiator_frame_token == !initiator_navigation_state_keep_alive_handle);
+#endif
 
     initiator_frame_has_download_sandbox_flag = window->IsSandboxed(network::mojom::blink::WebSandboxFlags::kDownloads);
     if (window->GetFrame()) {
         is_opener_navigation = window->GetFrame()->Opener() == this;
         initiator_frame_is_ad = window->GetFrame()->IsAdFrame();
+#if !defined(MINI_UI_QUICKJS)
         is_ad_script_in_stack = window->GetFrame()->IsAdScriptInStack();
-
         probe::FrameRequestedNavigation(window->GetFrame(), this, url, frame_request.GetClientNavigationReason(), kNavigationPolicyCurrentTab);
+#endif
 
         if (!initiator_frame_token) {
             initiator_frame_token = window->GetFrame()->GetLocalFrameToken();
+#if !defined(MINI_UI_QUICKJS)
             initiator_navigation_state_keep_alive_handle = window->GetFrame()->IssueKeepAliveHandle();
+#endif
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // TODO(https://crbug.com/1173409 and https://crbug.com/1059959): Check that
     // we always have valid |initiator_frame_token| and
     // |initiator_navigation_state_keep_alive_handle|.
+#endif
     ResourceRequest& request = frame_request.GetResourceRequest();
     DCHECK(request.RequestorOrigin().get());
 
@@ -243,7 +276,9 @@ void RemoteFrame::Navigate(FrameLoadRequest& frame_request, WebFrameLoadType fra
     params->triggering_event_info = mojom::blink::TriggeringEventInfo::kUnknown;
     params->blob_url_token = frame_request.GetBlobURLToken();
     params->href_translate = String(frame_request.HrefTranslate().Latin1().c_str());
+#if !defined(MINI_UI_QUICKJS)
     params->initiator_navigation_state_keep_alive_handle = std::move(initiator_navigation_state_keep_alive_handle);
+#endif
     params->initiator_frame_token = base::OptionalFromPtr(base::OptionalToPtr(initiator_frame_token));
     params->source_location = network::mojom::blink::SourceLocation::New();
 
@@ -283,30 +318,37 @@ bool RemoteFrame::NavigationShouldReplaceCurrentHistoryEntry(WebFrameLoadType fr
 
 bool RemoteFrame::DetachImpl(FrameDetachType type)
 {
+#if !defined(MINI_UI_QUICKJS)
     PluginScriptForbiddenScope forbid_plugin_destructor_scripting;
+#endif
 
     if (!DetachChildren())
         return false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Clean up the frame's view if needed. A remote frame only has a view if
     // the parent is a local frame.
     if (view_)
         view_->Dispose();
     SetView(nullptr);
+#endif
     // ... the RemoteDOMWindow will need to be informed of detachment,
     // as otherwise it will keep a strong reference back to this RemoteFrame.
     // That combined with wrappers (owned and kept alive by RemoteFrame) keeping
     // persistent strong references to RemoteDOMWindow will prevent the GCing
     // of all these objects. Break the cycle by notifying of detachment.
     To<RemoteDOMWindow>(dom_window_.Get())->FrameDetached();
+#if !defined(MINI_UI_QUICKJS)
     if (cc_layer_)
         SetCcLayer(nullptr, false);
+#endif
     receiver_.reset();
     main_frame_receiver_.reset();
 
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const scoped_refptr<cc::Layer>& RemoteFrame::GetCcLayer()
 {
     return cc_layer_;
@@ -338,6 +380,7 @@ SkBitmap* RemoteFrame::GetSadPageBitmap()
 {
     return Platform::Current()->GetSadPageBitmap();
 }
+#endif
 
 bool RemoteFrame::DetachDocument()
 {
@@ -415,6 +458,7 @@ void RemoteFrame::DidFocus()
     GetRemoteFrameHostRemote().DidFocusFrame();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::SetView(RemoteFrameView* view)
 {
     // Oilpan: as RemoteFrameView performs no finalization actions,
@@ -436,6 +480,7 @@ void RemoteFrame::CreateView()
     if (OwnerLayoutObject())
         DeprecatedLocalOwner()->SetEmbeddedContentView(view_);
 }
+#endif
 
 void RemoteFrame::ForwardPostMessage(BlinkTransferableMessage transferable_message, LocalFrame* source_frame,
     scoped_refptr<const SecurityOrigin> source_security_origin, scoped_refptr<const SecurityOrigin> target_security_origin)
@@ -464,6 +509,7 @@ RemoteFrameClient* RemoteFrame::Client() const
     return static_cast<RemoteFrameClient*>(Frame::Client());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::DidChangeVisibleToHitTesting()
 {
     if (!cc_layer_ || !is_surface_layer_)
@@ -471,6 +517,7 @@ void RemoteFrame::DidChangeVisibleToHitTesting()
 
     static_cast<cc::SurfaceLayer&>(*cc_layer_).SetHasPointerEventsNone(IsIgnoredForHitTest());
 }
+#endif
 
 void RemoteFrame::SetReplicatedPermissionsPolicyHeader(const ParsedPermissionsPolicy& parsed_header)
 {
@@ -488,6 +535,7 @@ void RemoteFrame::SetInsecureRequestPolicy(mojom::blink::InsecureRequestPolicy p
     security_context_.SetInsecureRequestPolicy(policy);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::FrameRectsChanged(const gfx::Size& local_frame_size, const gfx::Rect& rect_in_local_root)
 {
     pending_visual_properties_.rect_in_local_root = rect_in_local_root;
@@ -500,6 +548,7 @@ void RemoteFrame::InitializeFrameVisualProperties(const FrameVisualProperties& p
     pending_visual_properties_ = properties;
     SynchronizeVisualProperties();
 }
+#endif
 
 void RemoteFrame::WillEnterFullscreen(mojom::blink::FullscreenOptionsPtr request_options)
 {
@@ -597,10 +646,12 @@ void RemoteFrame::SetHadStickyUserActivationBeforeNavigation(bool value)
     Frame::SetHadStickyUserActivationBeforeNavigation(value);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::SetNeedsOcclusionTracking(bool needs_tracking)
 {
     View()->SetNeedsOcclusionTracking(needs_tracking);
 }
+#endif
 
 void RemoteFrame::BubbleLogicalScroll(mojom::blink::ScrollDirection direction, ui::ScrollGranularity granularity)
 {
@@ -674,6 +725,7 @@ void RemoteFrame::ScrollRectToVisible(const gfx::RectF& rect_to_scroll, mojom::b
         /*from_remote_frame=*/true);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::IntrinsicSizingInfoOfChildChanged(mojom::blink::IntrinsicSizingInfoPtr info)
 {
     FrameOwner* owner = Owner();
@@ -694,6 +746,7 @@ void RemoteFrame::IntrinsicSizingInfoOfChildChanged(mojom::blink::IntrinsicSizin
 
     owner->IntrinsicSizingInfoChanged();
 }
+#endif
 
 // Update the proxy's SecurityContext with new sandbox flags or permissions
 // policy that were set during navigation. Unlike changes to the FrameOwner,
@@ -801,6 +854,7 @@ void RemoteFrame::WasAttachedAsRemoteMainFrame(mojo::PendingAssociatedReceiver<m
     main_frame_receiver_.Bind(std::move(main_frame), task_runner_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const viz::LocalSurfaceId& RemoteFrame::GetLocalSurfaceId() const
 {
     return parent_local_surface_id_allocator_->GetCurrentLocalSurfaceId();
@@ -847,6 +901,7 @@ bool RemoteFrame::IsIgnoredForHitTest() const
 
     return !visible_to_hit_testing_;
 }
+#endif
 
 void RemoteFrame::AdvanceFocus(mojom::blink::FocusType type, LocalFrame* source)
 {
@@ -878,6 +933,7 @@ void RemoteFrame::ApplyReplicatedPermissionsPolicyHeader()
     security_context_.InitializePermissionsPolicy(permissions_policy_header_, container_policy, parent_permissions_policy);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool RemoteFrame::SynchronizeVisualProperties(bool propagate, ChildFrameCompositingHelper::AllowPaintHolding allow_paint_holding)
 {
     if (!GetFrameSinkId().is_valid() || remote_process_gone_)
@@ -888,10 +944,12 @@ bool RemoteFrame::SynchronizeVisualProperties(bool propagate, ChildFrameComposit
         ? ChildFrameCompositingHelper::CaptureSequenceNumberChanged::kYes
         : ChildFrameCompositingHelper::CaptureSequenceNumberChanged::kNo;
 
+#if !defined(MINI_UI_QUICKJS)
     if (view_) {
         pending_visual_properties_.compositor_viewport = view_->GetCompositingRect();
         pending_visual_properties_.compositing_scale_factor = view_->GetCompositingScaleFactor();
     }
+#endif
 
     bool synchronized_props_changed = !sent_visual_properties_ || sent_visual_properties_->auto_resize_enabled != pending_visual_properties_.auto_resize_enabled
         || sent_visual_properties_->min_size_for_auto_resize != pending_visual_properties_.min_size_for_auto_resize
@@ -1046,6 +1104,7 @@ void RemoteFrame::DisableAutoResize()
     pending_visual_properties_.auto_resize_enabled = false;
     SynchronizeVisualProperties();
 }
+#endif
 
 void RemoteFrame::CreateRemoteChild(const RemoteFrameToken& token, const std::optional<FrameToken>& opener_frame_token,
     mojom::blink::TreeScopeType tree_scope_type, mojom::blink::FrameReplicationStatePtr replication_state,
@@ -1061,11 +1120,13 @@ void RemoteFrame::CreateRemoteChildren(Vector<mojom::blink::CreateRemoteChildPar
     Client()->CreateRemoteChildren(params);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RemoteFrame::ForwardFencedFrameEventToEmbedder(const WTF::String& event_type)
 {
     // This will also CHECK if the conversion to HTMLFrameOwnerElement fails.
     CHECK(To<HTMLFrameOwnerElement>(Owner())->IsHTMLFencedFrameElement());
     static_cast<HTMLFencedFrameElement*>(Owner())->DispatchFencedEvent(event_type);
 }
+#endif
 
 } // namespace blink

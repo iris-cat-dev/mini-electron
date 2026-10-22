@@ -1,0 +1,66 @@
+from pathlib import Path
+import importlib.util
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+root = Path(__file__).resolve().parents[2]
+base = root / 'out/ui-windows-x64'
+trial = root / (sys.argv[1] if len(sys.argv) > 1 else 'out/ui-atom-candidate')
+trial.mkdir(parents=True, exist_ok=True)
+(trial / 'jobs').mkdir(exist_ok=True)
+(trial / 'obj').mkdir(exist_ok=True)
+spec = importlib.util.spec_from_file_location('benchmark_run', root / 'benchmarks/ui/run.py')
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+sys.path.insert(0, str(root / 'build'))
+from mini_ui.windows import visual_studio_environment
+env = visual_studio_environment()
+records = []
+
+def execute(command, name):
+    start = time.perf_counter()
+    log = trial / (name + '.log')
+    with log.open('wb') as stream:
+        result = subprocess.run(command, cwd=root, env=env, stdout=stream, stderr=subprocess.STDOUT)
+    records.append({'name': name, 'command': command, 'exit_code': result.returncode, 'wall_seconds': time.perf_counter() - start, 'log': str(log)})
+    (trial / 'candidate-build.json').write_text(json.dumps(records, indent=2), encoding='utf-8')
+    print(json.dumps(records[-1]), flush=True)
+    if result.returncode:
+        raise SystemExit(result.returncode)
+
+sources = {'third_party/quickjs/quickjs.c', 'runtime/ui/quickjs_v8_objects.cc'}
+replacements = {}
+for path in (base / 'jobs').glob('*.json'):
+    job = json.loads(path.read_text(encoding='utf-8'))
+    source = job.get('source', '').replace('\\', '/')
+    if source == 'examples/ui/main.cc':
+        shutil.copy2(path, trial / 'jobs' / path.name)
+    if source not in sources:
+        continue
+    output = trial / 'obj' / Path(job['output']).name
+    command = [('/Fo' + str(output)) if argument.startswith('/Fo') else argument for argument in job['command']]
+    execute(command, Path(source).stem)
+    replacements[os.path.normcase(job['output'])] = str(output)
+if len(replacements) != len(sources):
+    raise RuntimeError('missing exact compiler job')
+archive_job = json.loads((base / 'jobs/archive.json').read_text(encoding='utf-8'))
+arguments = runner.split_windows_command_line((base / 'archive.rsp').read_text(encoding='utf-8').strip())
+arguments = ['/OUT:' + str(trial / 'mini-ui.lib') if argument.lower().startswith('/out:') else replacements.get(os.path.normcase(argument), argument) for argument in arguments]
+rsp = trial / 'archive.rsp'
+rsp.write_text(subprocess.list2cmdline(arguments) + '\n', encoding='utf-8')
+execute([archive_job['command'][0], '@' + str(rsp)], 'archive')
+shutil.copy2(base / 'source-closure.json', trial / 'source-closure.json')
+link_job = json.loads((base / 'jobs/link.json').read_text(encoding='utf-8'))
+arguments = runner.split_windows_command_line(Path(link_job['command'][1][1:]).read_text(encoding='utf-8').strip())
+old_library = os.path.normcase(str(base / 'mini-ui.lib'))
+assert sum(os.path.normcase(argument) == old_library for argument in arguments) == 1
+arguments = [str(trial / 'mini-ui.lib') if os.path.normcase(argument) == old_library else argument for argument in arguments]
+rsp = trial / 'link.rsp'
+rsp.write_text(subprocess.list2cmdline(arguments) + '\n', encoding='utf-8')
+link_job['command'][1] = '@' + str(rsp)
+(trial / 'jobs/link.json').write_text(json.dumps(link_job, indent=2), encoding='utf-8')
+print('Candidate library: ' + runner.sha256_file(trial / 'mini-ui.lib'), flush=True)

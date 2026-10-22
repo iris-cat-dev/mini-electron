@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
-
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_TEXTURE_BACKING_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_TEXTURE_BACKING_H_
+
+#if !defined(MINI_UI_QUICKJS)
+
+#include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
 
 #include "base/memory/weak_ptr.h"
 #include "base/threading/thread_checker.h"
@@ -41,4 +43,6 @@ private:
 
 } // namespace blink
 
+
+#endif // !defined(MINI_UI_QUICKJS)
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_MAILBOX_TEXTURE_BACKING_H__

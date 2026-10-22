@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/mobile_metrics/tap_friendliness_checker.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
@@ -94,3 +95,5 @@ void TapFriendlinessChecker::Trace(Visitor* visitor) const
 }
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)

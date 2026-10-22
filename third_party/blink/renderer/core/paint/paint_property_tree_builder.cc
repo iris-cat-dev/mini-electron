@@ -35,7 +35,9 @@
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/layout/layout_video.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/pagination_utils.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
@@ -48,7 +50,9 @@
 #include "third_party/blink/renderer/core/layout/table/layout_table.h"
 #include "third_party/blink/renderer/core/layout/table/layout_table_row.h"
 #include "third_party/blink/renderer/core/layout/table/layout_table_section.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/link_highlight.h"
+#endif
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/scrolling/snap_coordinator.h"
 #include "third_party/blink/renderer/core/page/scrolling/sticky_position_scrolling_constraints.h"
@@ -70,16 +74,21 @@
 #include "third_party/blink/renderer/core/style/computed_style_base_constants.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+#endif
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "ui/gfx/geometry/outsets_f.h"
+#include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/geometry/vector2d_conversions.h"
 
@@ -142,9 +151,11 @@ void VisualViewportPaintPropertyTreeBuilder::Update(
             layout_view->Layer()->SetNeedsRepaint();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (property_changed > PaintPropertyChangeType::kChangedOnlyCompositedValues) {
         main_frame_view.SetPaintArtifactCompositorNeedsUpdate();
     }
+#endif
 
 #if DCHECK_IS_ON()
     paint_property_tree_printer::UpdateDebugNames(visual_viewport);
@@ -234,9 +245,11 @@ private:
     ALWAYS_INLINE void UpdateTransformForSVGChild(CompositingReasons);
     ALWAYS_INLINE bool NeedsEffect() const;
     ALWAYS_INLINE bool EffectCanUseCurrentClipAsOutputClip() const;
+#if !defined(MINI_UI_QUICKJS)
     ALWAYS_INLINE void UpdateViewTransitionSubframeRootEffect();
     ALWAYS_INLINE void UpdateViewTransitionEffect();
     ALWAYS_INLINE void UpdateViewTransitionClip();
+#endif
     ALWAYS_INLINE void UpdateEffect();
     ALWAYS_INLINE void UpdateElementCaptureEffect();
     ALWAYS_INLINE void UpdateFilter();
@@ -430,8 +443,10 @@ static bool NeedsReplacedContentTransform(const LayoutObject& object)
     if (object.IsSVGRoot())
         return true;
 
+#if !defined(MINI_UI_QUICKJS)
     if (auto* layout_embedded_object = DynamicTo<LayoutEmbeddedContent>(object))
         return layout_embedded_object->FrozenFrameSize().has_value();
+#endif
 
     return false;
 }
@@ -555,7 +570,10 @@ static bool NeedsPaintOffsetTranslation(const LayoutObject& object, CompositingR
         // their containing blocks. TODO(crbug.com/780242): This can be avoided if
         // we have fully correct paint property tree states for floating objects
         // and column spans.
-        if (box_model.IsLayoutBlock() || object.IsLayoutReplaced() || (direct_compositing_reasons & CompositingReason::kViewTransitionElement)
+        if (box_model.IsLayoutBlock() || object.IsLayoutReplaced()
+#if !defined(MINI_UI_QUICKJS)
+            || (direct_compositing_reasons & CompositingReason::kViewTransitionElement)
+#endif
             || (direct_compositing_reasons & CompositingReason::kElementCapture)) {
             return true;
         }
@@ -777,6 +795,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // Directly updates the associated cc transform node if possible, and
 // downgrades the |PaintPropertyChangeType| if successful.
 static void DirectlyUpdateCcTransform(const TransformPaintPropertyNode& transform, const LayoutObject& object, PaintPropertyChangeType& change_type)
@@ -808,6 +827,7 @@ static void DirectlyUpdateCcOpacity(const LayoutObject& object, ObjectPaintPrope
         }
     }
 }
+#endif
 
 // TODO(dbaron): Remove this function when we can remove the
 // BackfaceVisibilityInteropEnabled() check, and have the caller use
@@ -884,7 +904,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateTransformForSVGChild(CompositingRea
             TransformPaintPropertyNode::AnimationState animation_state;
             animation_state.is_running_animation_on_compositor = object_.StyleRef().IsRunningTransformAnimationOnCompositor();
             auto effective_change_type = properties_->UpdateTransform(*context_.current.transform, std::move(state), animation_state);
+#if !defined(MINI_UI_QUICKJS)
             DirectlyUpdateCcTransform(*properties_->Transform(), object_, effective_change_type);
+#endif
             OnUpdateTransform(effective_change_type);
         } else {
             OnClearTransform(properties_->ClearTransform());
@@ -1091,7 +1113,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateIndividualTransform(bool (*needs_pr
             TransformPaintPropertyNode::AnimationState animation_state;
             animation_state.is_running_animation_on_compositor = running_on_compositor_test && (style.*running_on_compositor_test)();
             auto effective_change_type = (properties_->*updater)(*context_.current.transform, std::move(state), animation_state);
+#if !defined(MINI_UI_QUICKJS)
             DirectlyUpdateCcTransform(*(properties_->*getter)(), object_, effective_change_type);
+#endif
             OnUpdateTransform(effective_change_type);
         } else {
             OnClearTransform((properties_->*clearer)());
@@ -1214,6 +1238,7 @@ static bool NeedsClipPathClipOrMask(const LayoutObject& object)
         && (ClipPathClipper::HasCompositeClipPathAnimation(object) || (object.StyleRef().HasClipPath() && (object.HasLayer() || object.IsSVGChild())));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 static bool NeedsEffectForViewTransition(const LayoutObject& object)
 {
     // The view-transition-name property when set creates a backdrop filter root.
@@ -1234,6 +1259,7 @@ static bool NeedsEffectForViewTransition(const LayoutObject& object)
 
     return style.ViewTransitionName() && !object.IsDocumentElement() && !object.IsLayoutView();
 }
+#endif
 
 static bool NeedsEffectIgnoringClipPath(const LayoutObject& object, CompositingReasons direct_compositing_reasons)
 {
@@ -1281,6 +1307,7 @@ static bool NeedsEffectIgnoringClipPath(const LayoutObject& object, CompositingR
         return true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The view-transition-name property when set creates a backdrop filter root.
     // We do this by ensuring that this object needs an effect node.
     // This is not required for the root element since its snapshot comes from the
@@ -1288,6 +1315,7 @@ static bool NeedsEffectIgnoringClipPath(const LayoutObject& object, CompositingR
     if (NeedsEffectForViewTransition(object)) {
         return true;
     }
+#endif
 
     return false;
 }
@@ -1409,13 +1437,16 @@ void FragmentPaintPropertyTreeBuilder::UpdateEffect()
                 state.compositor_element_id = GetCompositorElementId(CompositorElementIdNamespace::kPrimary);
             }
 
+#if !defined(MINI_UI_QUICKJS)
             state.self_or_ancestor_participates_in_view_transition = context_.self_or_ancestor_participates_in_view_transition;
+#endif
 
             EffectPaintPropertyNode::AnimationState animation_state;
             animation_state.is_running_opacity_animation_on_compositor = style.IsRunningOpacityAnimationOnCompositor();
             animation_state.is_running_backdrop_filter_animation_on_compositor = style.IsRunningBackdropFilterAnimationOnCompositor();
 
             const auto* parent_effect = context_.current_effect;
+#if !defined(MINI_UI_QUICKJS)
             // The transition pseudo element doesn't draw into the LayoutView's
             // effect, but rather as its sibling. So this re-parents the effect to
             // whatever the grand-parent effect was. Note that it doesn't matter
@@ -1432,13 +1463,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateEffect()
                 }
                 DCHECK(parent_effect);
             }
+#endif
             DCHECK(parent_effect);
 
             auto effective_change_type = properties_->UpdateEffect(*parent_effect, std::move(state), animation_state);
-            // If we have simple value change, which means opacity, we should try to
-            // directly update it on the PaintArtifactCompositor in order to avoid
-            // doing a full rebuild.
+#if !defined(MINI_UI_QUICKJS)
+            // If we have simple value change, which means opacity, try to
+            // directly update the compositor property node.
             DirectlyUpdateCcOpacity(object_, *properties_, effective_change_type);
+#endif
             OnUpdateEffect(effective_change_type);
 
             auto mask_direct_compositing_reasons = full_context_.direct_compositing_reasons & CompositingReason::kDirectReasonsForBackdropFilter
@@ -1527,6 +1560,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCaptureEffect()
     context_.current_effect = properties_->ElementCaptureEffect();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void FragmentPaintPropertyTreeBuilder::UpdateViewTransitionSubframeRootEffect()
 {
     if (NeedsPaintPropertyUpdate()) {
@@ -1637,12 +1671,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateViewTransitionClip()
         }
     }
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 static bool IsLinkHighlighted(const LayoutObject& object)
 {
     return object.GetFrame()->GetPage()->GetLinkHighlight().IsHighlighting(object);
 }
 
+#endif
 static bool IsClipPathDescendant(const LayoutObject& object)
 {
     // If the object itself is a resource container (root of a resource subtree)
@@ -1751,7 +1788,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter()
 
             state.compositor_element_id = GetCompositorElementId(CompositorElementIdNamespace::kEffectFilter);
 
+#if !defined(MINI_UI_QUICKJS)
             state.self_or_ancestor_participates_in_view_transition = context_.self_or_ancestor_participates_in_view_transition;
+#endif
 
             // This must be computed before std::move(state) below.
             bool needs_pixel_moving_filter_clip_expander
@@ -1857,12 +1896,16 @@ void FragmentPaintPropertyTreeBuilder::UpdateClipPathClip()
                 if (std::optional<Path> path = ClipPathClipper::PathBasedClip(object_)) {
                     path->Translate(paint_offset);
                     std::optional<FloatRoundedRect> rrect;
+#if !defined(MINI_UI_QUICKJS)
                     // TODO(crbug.com/337191311): The optimization breaks view-transition
                     // if the bounding box of clip-path is larger than the contents.
                     if (!(full_context_.direct_compositing_reasons
                             & (CompositingReason::kViewTransitionElement | CompositingReason::kViewTransitionElementDescendantWithClipPath))) {
                         rrect = PathToRRect(*path);
                     }
+#else
+                    rrect = PathToRRect(*path);
+#endif
                     ClipPaintPropertyNode::State state(*context_.current.transform, *clip_path_bounding_box_,
                         rrect.value_or(FloatRoundedRect(gfx::ToEnclosingRect(*clip_path_bounding_box_))));
                     if (!rrect) {
@@ -1908,9 +1951,12 @@ static bool NeedsOverflowClipForReplacedContents(const LayoutReplaced& replaced)
     if (replaced.StyleRef().HasBorderRadius())
         return true;
 
-    // ImagePainter (but not painters for LayoutMedia whose IsImage is also true)
-    // won't paint outside of the content box.
+    // ImagePainter won't paint outside of the content box.
+#if defined(MINI_UI_QUICKJS)
+    if (replaced.IsImage())
+#else
     if (replaced.IsImage() && !replaced.IsMedia())
+#endif
         return false;
 
     // Non-plugin embedded contents are always sized to fit the content box.
@@ -1959,8 +2005,11 @@ void FragmentPaintPropertyTreeBuilder::UpdateLocalBorderBoxContext()
     const ClipPaintPropertyNodeOrAlias* new_clip = nullptr;
     const EffectPaintPropertyNodeOrAlias* new_effect = nullptr;
 
-    if (object_.HasLayer() || properties_ || IsLinkHighlighted(object_) || object_.CanContainFixedPositionObjects()
-        || object_.CanContainAbsolutePositionObjects()) {
+    if (object_.HasLayer() || properties_
+#if !defined(MINI_UI_QUICKJS)
+        || IsLinkHighlighted(object_)
+#endif
+        || object_.CanContainFixedPositionObjects() || object_.CanContainAbsolutePositionObjects()) {
         new_transform = context_.current.transform;
         new_clip = context_.current.clip;
         new_effect = context_.current_effect;
@@ -2160,9 +2209,11 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowClip()
                 // display_rect and can enable hardware overlays. Adjust the base rect
                 // here, before applying padding and corner rounding.
                 PhysicalRect content_rect(context_.current.paint_offset, replaced.Size());
+#if !defined(MINI_UI_QUICKJS)
                 if (IsA<LayoutVideo>(replaced)) {
                     content_rect = LayoutReplaced::PreSnappedRectForPersistentSizing(content_rect);
                 }
+#endif
                 // LayoutReplaced clips the foreground by rounded content box.
                 auto clip_rect = RoundedBorderGeometry::PixelSnappedRoundedBorderWithOutsets(replaced.StyleRef(), content_rect,
                     PhysicalBoxStrut(-(replaced.PaddingTop() + replaced.BorderTop()), -(replaced.PaddingRight() + replaced.BorderRight()),
@@ -2407,12 +2458,12 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlEffects()
     // ]
     // The non-contiguous node causes the creation of two compositor effect
     // nodes from this one paint effect node which isn't supported by view
-    // transitions. Create a separate effect node, a child of the root, for
-    // any frame scrollbars so that:
-    // 1) they don't cause multiple compositor effect nodes for a view
-    //    transition
-    // 2) scrollbars aren't captured in the root snapshot.
-    bool transition_forces_scrollbar_effect_nodes = object_.IsLayoutView() && ViewTransitionUtils::GetTransition(object_.GetDocument());
+#if !defined(MINI_UI_QUICKJS)
+    // View transitions require separate scrollbar effect nodes so scrollbars
+    // are not captured in the root snapshot.
+    const bool transition_forces_scrollbar_effect_nodes
+        = object_.IsLayoutView() && ViewTransitionUtils::GetTransition(object_.GetDocument());
+#endif
 
     // Overflow controls are not clipped by InnerBorderRadiusClip or
     // OverflowClip, so the output clip should skip them.
@@ -2422,12 +2473,20 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlEffects()
     }
 
     auto* scrollable_area = To<LayoutBox>(object_).GetScrollableArea();
-    auto setup_scrollbar_effect_node = [this, scrollable_area, transition_forces_scrollbar_effect_nodes, output_clip](ScrollbarOrientation orientation) {
+    auto setup_scrollbar_effect_node = [this, scrollable_area, output_clip
+#if !defined(MINI_UI_QUICKJS)
+                                           ,
+                                           transition_forces_scrollbar_effect_nodes
+#endif
+    ](ScrollbarOrientation orientation) {
         Scrollbar* scrollbar = scrollable_area->GetScrollbar(orientation);
 
         bool scrollbar_is_overlay = scrollbar && scrollbar->IsOverlayScrollbar();
 
-        bool needs_effect_node = scrollbar && (transition_forces_scrollbar_effect_nodes || scrollbar_is_overlay);
+        bool needs_effect_node = scrollbar && scrollbar_is_overlay;
+#if !defined(MINI_UI_QUICKJS)
+        needs_effect_node |= scrollbar && transition_forces_scrollbar_effect_nodes;
+#endif
 
         if (needs_effect_node) {
             EffectPaintPropertyNode::State effect_state;
@@ -2439,8 +2498,12 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlEffects()
                 effect_state.direct_compositing_reasons = CompositingReason::kActiveOpacityAnimation;
             }
 
-            const EffectPaintPropertyNodeOrAlias* parent
-                = transition_forces_scrollbar_effect_nodes ? &EffectPaintPropertyNode::Root() : context_.current_effect;
+            const EffectPaintPropertyNodeOrAlias* parent = context_.current_effect;
+#if !defined(MINI_UI_QUICKJS)
+            if (transition_forces_scrollbar_effect_nodes) {
+                parent = &EffectPaintPropertyNode::Root();
+            }
+#endif
 
             PaintPropertyChangeType change_type = orientation == ScrollbarOrientation::kHorizontalScrollbar
                 ? properties_->UpdateHorizontalScrollbarEffect(*parent, std::move(effect_state))
@@ -2456,6 +2519,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlEffects()
     setup_scrollbar_effect_node(ScrollbarOrientation::kVerticalScrollbar);
     setup_scrollbar_effect_node(ScrollbarOrientation::kHorizontalScrollbar);
 
+#if !defined(MINI_UI_QUICKJS)
     bool has_scroll_corner
         = scrollable_area->HorizontalScrollbar() && scrollable_area->VerticalScrollbar() && !scrollable_area->VerticalScrollbar()->IsOverlayScrollbar();
     DCHECK(!has_scroll_corner || !scrollable_area->HorizontalScrollbar()->IsOverlayScrollbar());
@@ -2469,7 +2533,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlEffects()
         effect_state.output_clip = output_clip;
         effect_state.compositor_element_id = scrollable_area->GetScrollCornerElementId();
         OnUpdateEffect(properties_->UpdateScrollCornerEffect(EffectPaintPropertyNode::Root(), std::move(effect_state)));
-    } else {
+    } else
+#endif
+    {
         OnClearEffect(properties_->ClearScrollCornerEffect());
     }
 }
@@ -2498,6 +2564,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateScrollTranslation()
     DCHECK_EQ(state.backface_visibility, TransformPaintPropertyNode::BackfaceVisibility::kInherited);
 
     auto effective_change_type = properties_->UpdateScrollTranslation(*context_.current.transform, std::move(state));
+#if !defined(MINI_UI_QUICKJS)
     // Even if effective_change_type is kUnchanged, we might still need to
     // DirectlyUpdateScrollOffsetTransform, in case the cc::TransformNode
     // was also updated in LayerTreeHost::ApplyCompositorChanges.
@@ -2518,6 +2585,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateScrollTranslation()
             }
         }
     }
+#endif
     OnUpdateScrollTranslation(effective_change_type);
 }
 
@@ -2848,8 +2916,11 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf()
             UpdateTransform();
         }
         UpdateElementCaptureEffect();
+#if !defined(MINI_UI_QUICKJS)
         UpdateViewTransitionSubframeRootEffect();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
         // When layered capture is enabled (see the inverse condition below), the
         // effects (clip/clip-path/opacity/mask/filter) are rendered in an ancestor
         // of the view transition capture. The corresponding CSS is copied to the
@@ -2861,16 +2932,19 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf()
             UpdateViewTransitionEffect();
             UpdateViewTransitionClip();
         }
+#endif
         UpdateClipPathClip();
         UpdateEffect();
         UpdateCssClip();
         UpdateFilter();
 
+#if !defined(MINI_UI_QUICKJS)
         // See comment above in inverse condition.
         if (delegate_effects_to_view_transition) {
             UpdateViewTransitionEffect();
             UpdateViewTransitionClip();
         }
+#endif
         UpdateOverflowControlsClip();
         UpdateBackgroundClip();
     } else if (!object_.IsAnonymous()) {
@@ -3114,9 +3188,11 @@ void PaintPropertyTreeBuilder::UpdateForSelf()
         context_.direct_compositing_reasons &= ~CompositingReason::kTrivial3DTransform;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (context_.fragment_context.self_or_ancestor_participates_in_view_transition && object_.StyleRef().HasClipPath()) {
         context_.direct_compositing_reasons |= CompositingReason::kViewTransitionElementDescendantWithClipPath;
     }
+#endif
 
     context_.was_layout_shift_root = IsLayoutShiftRoot(object_, object_.FirstFragment());
 
@@ -3132,12 +3208,14 @@ void PaintPropertyTreeBuilder::UpdateForSelf()
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Resolve the current composited clip path animation status. This is needed
     // to determine whether we need to initialize paint properties for this
     // object.
     const bool is_in_fragment_container = pre_paint_info_ && pre_paint_info_->fragmentainer_is_oof_containing_block && IsA<LayoutBox>(object_)
         && (To<LayoutBox>(object_).PhysicalFragmentCount() > 1);
     ClipPathClipper::ResolveClipPathStatus(object_, is_in_fragment_container);
+#endif
 
     UpdatePaintingLayer();
     UpdateFragmentData();
@@ -3288,15 +3366,19 @@ void PaintPropertyTreeBuilder::DirectlyUpdateTransformMatrix(const LayoutObject&
     TransformPaintPropertyNode::AnimationState animation_state;
     animation_state.is_running_animation_on_compositor = box.StyleRef().IsRunningTransformAnimationOnCompositor();
     auto effective_change_type = properties->DirectlyUpdateTransformAndOrigin(std::move(transform_and_origin), animation_state);
+#if !defined(MINI_UI_QUICKJS)
     DirectlyUpdateCcTransform(*transform, object, effective_change_type);
+#endif
 
     if (effective_change_type > PaintPropertyChangeType::kUnchanged) {
         object.GetFrameView()->SetIntersectionObservationState(LocalFrameView::kDesired);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (effective_change_type >= PaintPropertyChangeType::kChangedOnlySimpleValues) {
         object.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
     }
+#endif
 
     PaintPropertiesChangeInfo properties_changed {
         .transform_changed = effective_change_type,
@@ -3317,14 +3399,17 @@ void PaintPropertyTreeBuilder::DirectlyUpdateOpacityValue(const LayoutObject& ob
     FragmentData* fragment_data = &object.GetMutableForPainting().FirstFragment();
     auto* properties = fragment_data->PaintProperties();
     auto effective_change_type = properties->DirectlyUpdateOpacity(style.Opacity(), animation_state);
-    // If we have simple value change, which means opacity, we should try to
-    // directly update it on the PaintArtifactCompositor in order to avoid
-    // needing to run the property tree builder at all.
+#if !defined(MINI_UI_QUICKJS)
+    // If we have simple value change, which means opacity, try to directly
+    // update the compositor property node.
     DirectlyUpdateCcOpacity(object, *properties, effective_change_type);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (effective_change_type >= PaintPropertyChangeType::kChangedOnlySimpleValues) {
         object.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
     }
+#endif
 }
 
 void PaintPropertyTreeBuilder::IssueInvalidationsAfterUpdate()
@@ -3349,9 +3434,11 @@ void PaintPropertyTreeBuilder::IssueInvalidationsAfterUpdate()
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (max_change > PaintPropertyChangeType::kChangedOnlyCompositedValues) {
         object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
     }
+#endif
 
     CullRectUpdater::PaintPropertiesChanged(object_, properties_changed_);
 }

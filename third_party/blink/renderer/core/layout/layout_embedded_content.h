@@ -36,7 +36,9 @@ namespace blink {
 
 class EmbeddedContentView;
 class FrameView;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
 
 // LayoutObject for frames via LayoutFrame and LayoutIFrame, and plugins via
 // LayoutEmbeddedObject.
@@ -52,7 +54,9 @@ public:
     // with the root Document Frame.
     FrameView* ChildFrameView() const;
     LayoutView* ChildLayoutView() const;
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* Plugin() const;
+#endif
     EmbeddedContentView* GetEmbeddedContentView() const;
 
     // Subtracts border/padding, and other offsets if they exist.
@@ -75,9 +79,11 @@ public:
 
     bool IsThrottledFrameView() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // The size of the child frame when it should be "frozen"; i.e., it should not
     // change even when the size of |this| changes.
     virtual const std::optional<PhysicalSize> FrozenFrameSize() const;
+#endif
 
     // A transform mapping from the coordinate space of the embedded content
     // rendered by this object to the object's border-box.

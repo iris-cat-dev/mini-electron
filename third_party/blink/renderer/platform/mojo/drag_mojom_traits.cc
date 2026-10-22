@@ -20,11 +20,15 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
 #include "mojo/public/cpp/base/big_buffer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/pending_remote.h"
+#endif
 #include "services/network/public/mojom/referrer_policy.mojom-shared.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/mojom/blob/serialized_blob.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom-blink.h"
+#endif
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/web_drag_data.h"
 #include "third_party/blink/public/platform/web_string.h"
@@ -89,6 +93,7 @@ base::FilePath StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDr
     return WebStringToFilePath(item.display_name);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 mojo::PendingRemote<blink::mojom::blink::FileSystemAccessDataTransferToken>
 StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDragData::FilenameItem>::file_system_access_token(const blink::WebDragData::FilenameItem& item)
@@ -98,6 +103,7 @@ StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDragData::Filenam
     DCHECK(!item.file_system_access_entry);
     return mojo::NullRemote();
 }
+#endif
 
 // static
 bool StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDragData::FilenameItem>::Read(
@@ -109,9 +115,11 @@ bool StructTraits<blink::mojom::DataTransferFileDataView, blink::WebDragData::Fi
 
     out->filename = blink::FilePathToWebString(filename_data);
     out->display_name = blink::FilePathToWebString(display_name_data);
+#if !defined(MINI_UI_QUICKJS)
     mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessDataTransferToken> file_system_access_token(
         data.TakeFileSystemAccessToken<mojo::PendingRemote<::blink::mojom::blink::FileSystemAccessDataTransferToken>>());
     out->file_system_access_entry = base::MakeRefCounted<::blink::FileSystemAccessDropData>(std::move(file_system_access_token));
+#endif
 
     return true;
 }

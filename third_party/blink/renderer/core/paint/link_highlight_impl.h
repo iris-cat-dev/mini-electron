@@ -26,6 +26,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_LINK_HIGHLIGHT_IMPL_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_LINK_HIGHLIGHT_IMPL_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <memory>
 
 #include "base/time/time.h"
@@ -50,7 +51,9 @@ namespace blink {
 
 class EffectPaintPropertyNode;
 class GraphicsContext;
+#if !defined(MINI_UI_QUICKJS)
 class PaintArtifactCompositor;
+#endif
 
 class CORE_EXPORT LinkHighlightImpl final : public CompositorAnimationDelegate, public CompositorAnimationClient {
     USING_FAST_MALLOC(LinkHighlightImpl);
@@ -91,7 +94,9 @@ public:
     void UpdateBeforePrePaint();
     void UpdateAfterPrePaint();
     void Paint(GraphicsContext&);
+#if !defined(MINI_UI_QUICKJS)
     void UpdateAfterPaint(const PaintArtifactCompositor* paint_artifact_compositor);
+#endif
 
     wtf_size_t FragmentCountForTesting() const
     {
@@ -159,5 +164,7 @@ private:
 };
 
 } // namespace blink
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_LINK_HIGHLIGHT_IMPL_H_

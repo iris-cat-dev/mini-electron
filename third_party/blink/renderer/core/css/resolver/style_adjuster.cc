@@ -50,7 +50,9 @@
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/html_field_set_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_legend_element.h"
@@ -76,7 +78,9 @@
 #include "third_party/blink/renderer/core/html/html_table_element.h"
 #include "third_party/blink/renderer/core/html/html_ulist_element.h"
 #include "third_party/blink/renderer/core/html/html_wbr_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
@@ -219,7 +223,9 @@ static EDisplay EquivalentBlockDisplay(EDisplay display)
     case EDisplay::kBlockRuby:
     case EDisplay::kListItem:
     case EDisplay::kFlowRoot:
+#if !defined(MINI_UI_QUICKJS)
     case EDisplay::kLayoutCustom:
+#endif
     case EDisplay::kMasonry:
         return display;
     case EDisplay::kInlineTable:
@@ -234,8 +240,10 @@ static EDisplay EquivalentBlockDisplay(EDisplay display)
         return EDisplay::kBlockMath;
     case EDisplay::kRuby:
         return EDisplay::kBlockRuby;
+#if !defined(MINI_UI_QUICKJS)
     case EDisplay::kInlineLayoutCustom:
         return EDisplay::kLayoutCustom;
+#endif
     case EDisplay::kInlineListItem:
         return EDisplay::kListItem;
     case EDisplay::kInlineFlowRootListItem:
@@ -287,13 +295,17 @@ static EDisplay EquivalentInlineDisplay(EDisplay display)
         return EDisplay::kRuby;
     case EDisplay::kListItem:
         return EDisplay::kInlineListItem;
+#if !defined(MINI_UI_QUICKJS)
     case EDisplay::kLayoutCustom:
         return EDisplay::kInlineLayoutCustom;
+#endif
 
     case EDisplay::kInlineFlex:
     case EDisplay::kInlineFlowRootListItem:
     case EDisplay::kInlineGrid:
+#if !defined(MINI_UI_QUICKJS)
     case EDisplay::kInlineLayoutCustom:
+#endif
     case EDisplay::kInlineListItem:
     case EDisplay::kInlineMasonry:
     case EDisplay::kInlineTable:
@@ -327,18 +339,18 @@ static bool IsOutermostSVGElement(const Element* element)
     return svg_element && svg_element->IsOutermostSVGSVGElement();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 static bool IsAtMediaUAShadowBoundary(const Element* element)
 {
-    if (!element) {
+    if (!element)
         return false;
-    }
     if (ContainerNode* parent = element->parentNode()) {
-        if (auto* shadow_root = DynamicTo<ShadowRoot>(parent)) {
+        if (auto* shadow_root = DynamicTo<ShadowRoot>(parent))
             return shadow_root->host().IsMediaElement();
-        }
     }
     return false;
 }
+#endif
 
 // CSS requires text-decoration to be reset at each DOM element for inline
 // blocks, inline tables, floating elements, and absolute or relatively
@@ -348,8 +360,12 @@ static bool IsAtMediaUAShadowBoundary(const Element* element)
 // to manually stop text-decorations to apply to text inside media controls.
 static bool StopPropagateTextDecorations(const ComputedStyleBuilder& builder, const Element* element)
 {
-    return builder.IsDisplayReplacedType() || IsAtMediaUAShadowBoundary(element) || builder.IsFloating() || builder.HasOutOfFlowPosition()
+    bool stop = builder.IsDisplayReplacedType() || builder.IsFloating() || builder.HasOutOfFlowPosition()
         || IsOutermostSVGElement(element) || builder.Display() == EDisplay::kRubyText;
+#if !defined(MINI_UI_QUICKJS)
+    stop |= IsAtMediaUAShadowBoundary(element);
+#endif
+    return stop;
 }
 
 static bool LayoutParentStyleForcesZIndexToCreateStackingContext(const ComputedStyle& layout_parent_style)
@@ -513,6 +529,7 @@ static void AdjustStyleForHTMLElement(ComputedStyleBuilder& builder, HTMLElement
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsA<HTMLFencedFrameElement>(element)) {
         // Force the CSS style `zoom` property to 1 so that the embedder cannot
         // communicate into the fenced frame by adjusting it, but still include
@@ -520,6 +537,7 @@ static void AdjustStyleForHTMLElement(ComputedStyleBuilder& builder, HTMLElement
         // comes from user intervention. crbug.com/1285327
         builder.SetEffectiveZoom(element.GetDocument().GetStyleResolver().InitialZoom());
     }
+#endif
 
     if (IsA<HTMLLegendElement>(element) && builder.Display() != EDisplay::kContents) {
         // Allow any blockified display value for legends. Note that according to
@@ -551,7 +569,9 @@ static void AdjustStyleForHTMLElement(ComputedStyleBuilder& builder, HTMLElement
     }
 
     if (auto* html_plugin_element = DynamicTo<HTMLPlugInElement>(element)) {
+#if !defined(MINI_UI_QUICKJS)
         builder.SetRequiresAcceleratedCompositingForExternalReasons(html_plugin_element->ShouldAccelerate());
+#endif
         if (builder.Display() == EDisplay::kContents) {
             builder.SetDisplay(EDisplay::kNone);
         }
@@ -566,11 +586,15 @@ static void AdjustStyleForHTMLElement(ComputedStyleBuilder& builder, HTMLElement
     if (builder.Display() == EDisplay::kContents) {
         // See https://drafts.csswg.org/css-display/#unbox-html
         // Some of these elements are handled with other adjustments above.
-        if (IsA<HTMLBRElement>(element) || IsA<HTMLWBRElement>(element) || IsA<HTMLMeterElement>(element) || IsA<HTMLProgressElement>(element)
-            || IsA<HTMLCanvasElement>(element) || IsA<HTMLMediaElement>(element) || IsA<HTMLInputElement>(element) || IsA<HTMLTextAreaElement>(element)
-            || IsA<HTMLSelectElement>(element)) {
+        bool should_compute_to_none = IsA<HTMLBRElement>(element) || IsA<HTMLWBRElement>(element)
+            || IsA<HTMLMeterElement>(element) || IsA<HTMLProgressElement>(element)
+            || IsA<HTMLCanvasElement>(element) || IsA<HTMLInputElement>(element)
+            || IsA<HTMLTextAreaElement>(element) || IsA<HTMLSelectElement>(element);
+#if !defined(MINI_UI_QUICKJS)
+        should_compute_to_none |= IsA<HTMLMediaElement>(element);
+#endif
+        if (should_compute_to_none)
             builder.SetDisplay(EDisplay::kNone);
-        }
     }
 
     if (IsA<HTMLBodyElement>(element) && element.GetDocument().FirstBodyElement() != element) {
@@ -715,10 +739,11 @@ static void AdjustStyleForDisplay(ComputedStyleBuilder& builder, const ComputedS
         builder.UpdateFontOrientation();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Blockify the child boxes of media elements. crbug.com/1379779.
-    if (IsAtMediaUAShadowBoundary(element)) {
+    if (IsAtMediaUAShadowBoundary(element))
         builder.SetDisplay(EquivalentBlockDisplay(builder.Display()));
-    }
+#endif
 
     // display: -webkit-box when used with (-webkit)-line-clamp
     if (RuntimeEnabledFeatures::CSSLineClampWebkitBoxBlockificationEnabled() && builder.BoxOrient() == EBoxOrient::kVertical
@@ -990,11 +1015,13 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state, Element* elem
 
         AdjustStyleForDisplay(builder, layout_parent_style, element, element ? &element->GetDocument() : nullptr);
 
+#if !defined(MINI_UI_QUICKJS)
         // If this is a child of a LayoutCustom, we need the name of the parent
         // layout function for invalidation purposes.
         if (layout_parent_style.IsDisplayLayoutCustomBox()) {
             builder.SetDisplayLayoutCustomParentName(layout_parent_style.DisplayLayoutCustomName());
         }
+#endif
 
         bool is_in_main_frame = element && element->GetDocument().IsInMainFrame();
         // The root element of the main frame has no backdrop, so don't allow
@@ -1017,8 +1044,13 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state, Element* elem
         }
     }
 
-    if (element == state.GetDocument().documentElement() || (element && IsA<SVGForeignObjectElement>(*element)) || builder.Overlay() == EOverlay::kAuto
-        || builder.StyleType() == kPseudoIdBackdrop || builder.StyleType() == kPseudoIdViewTransition || IsCanvasPlacedElement(element)) {
+    bool forces_stacking_context
+        = element == state.GetDocument().documentElement() || (element && IsA<SVGForeignObjectElement>(*element))
+        || builder.Overlay() == EOverlay::kAuto || builder.StyleType() == kPseudoIdBackdrop || IsCanvasPlacedElement(element);
+#if !defined(MINI_UI_QUICKJS)
+    forces_stacking_context |= builder.StyleType() == kPseudoIdViewTransition;
+#endif
+    if (forces_stacking_context) {
         builder.SetForcesStackingContext(true);
     }
 
@@ -1117,10 +1149,12 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state, Element* elem
         element->AdjustStyle(base::PassKey<StyleAdjuster>(), builder);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // We need to use styled element here to ensure coverage for pseudo-elements.
     if (state.GetStyledElement() && ViewTransitionUtils::IsViewTransitionElementExcludingRootFromSupplement(*state.GetStyledElement())) {
         builder.SetElementIsViewTransitionParticipant();
     }
+#endif
 
     if (RuntimeEnabledFeatures::CSSContentVisibilityImpliesContainIntrinsicSizeAutoEnabled() && builder.ContentVisibility() == EContentVisibility::kAuto) {
         builder.SetContainIntrinsicSizeAuto();

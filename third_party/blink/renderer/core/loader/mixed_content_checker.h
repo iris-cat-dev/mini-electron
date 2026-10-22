@@ -80,11 +80,15 @@ public:
         const KURL& url_before_redirects, ResourceRequest::RedirectStatus redirect_status, const KURL& url, const String& devtools_id,
         ReportingDisposition reporting_disposition, mojom::blink::ContentSecurityNotifier& notifier);
 
+#if !defined(MINI_UI_QUICKJS)
     static bool ShouldBlockFetchOnWorker(WorkerFetchContext&, mojom::blink::RequestContextType, const KURL& url_before_redirects,
         ResourceRequest::RedirectStatus, const KURL&, ReportingDisposition, bool is_worklet_global_scope);
+#endif
 
     static bool IsWebSocketAllowed(const FrameFetchContext&, LocalFrame*, const KURL&);
+#if !defined(MINI_UI_QUICKJS)
     static bool IsWebSocketAllowed(WorkerFetchContext&, const KURL&);
+#endif
 
     static bool IsMixedContent(const SecurityOrigin*, const KURL&);
     static bool IsMixedContent(const String& origin_protocol, const KURL&);

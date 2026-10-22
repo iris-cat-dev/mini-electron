@@ -33,6 +33,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 StringCacheMapTraits::MapType* StringCacheMapTraits::MapFromWeakCallbackInfo(const v8::WeakCallbackInfo<WeakCallbackDataType>& data)
 {
     return &(V8PerIsolateData::From(data.GetIsolate())->GetStringCache()->string_cache_);
@@ -66,14 +67,78 @@ void ParkableStringCacheMapTraits::DisposeWeak(const v8::WeakCallbackInfo<WeakCa
 void ParkableStringCacheMapTraits::OnWeakCallback(const v8::WeakCallbackInfo<WeakCallbackDataType>& data)
 {
 }
+#endif
 
 void StringCache::Dispose()
 {
+#if defined(MINI_UI_QUICKJS)
+    while (fifo_size_)
+        EvictOldest();
+#else
     // The MapType::Dispose callback calls StringCache::InvalidateLastString,
     // which will only work while the destructor has not yet finished. Thus,
     // we need to clear the map before the destructor has completed.
     string_cache_.Clear();
+#endif
 }
+
+#if defined(MINI_UI_QUICKJS)
+StringCache::~StringCache()
+{
+    Dispose();
+}
+
+v8::Local<v8::String> StringCache::NewLocal(v8::Isolate* isolate, JSValueConst value) const
+{
+    DCHECK_EQ(runtime_, isolate->GetQuickJSRuntime());
+    JSContext* context = v8::detail::CurrentJSContext(isolate);
+    return v8::detail::Adopt(context, JS_DupValueRT(runtime_, value)).As<v8::String>();
+}
+
+void StringCache::MakeRoom(size_t payload_bytes)
+{
+    DCHECK_LE(payload_bytes, kMaxPayloadBytes);
+    while (fifo_size_ == kMaxEntries || payload_bytes > kMaxPayloadBytes - total_payload_bytes_)
+        EvictOldest();
+}
+
+void StringCache::EvictOldest()
+{
+    DCHECK(fifo_size_);
+
+    const FifoSlot slot = fifo_[fifo_head_];
+    fifo_[fifo_head_] = FifoSlot();
+    fifo_head_ = (fifo_head_ + 1) % kMaxEntries;
+    --fifo_size_;
+
+    CacheEntry entry;
+    if (slot.kind == CacheKind::kString) {
+        auto* key = static_cast<StringImpl*>(slot.key);
+        // Keep the cache-owned key reference until external finalization ends.
+        auto it = string_cache_.find(key);
+        DCHECK(it != string_cache_.end());
+        entry = it->value;
+        string_cache_.erase(it);
+        DCHECK_GE(total_payload_bytes_, entry.payload_bytes);
+        total_payload_bytes_ -= entry.payload_bytes;
+        JS_FreeValueRT(runtime_, entry.value);
+        key->Release();
+        return;
+    }
+
+    DCHECK_EQ(slot.kind, CacheKind::kParkableString);
+    auto* key = static_cast<ParkableStringImpl*>(slot.key);
+    // Keep the cache-owned key reference until external finalization ends.
+    auto it = parkable_string_cache_.find(key);
+    DCHECK(it != parkable_string_cache_.end());
+    entry = it->value;
+    parkable_string_cache_.erase(it);
+    DCHECK_GE(total_payload_bytes_, entry.payload_bytes);
+    total_payload_bytes_ -= entry.payload_bytes;
+    JS_FreeValueRT(runtime_, entry.value);
+    key->Release();
+}
+#endif
 
 static v8::Local<v8::String> MakeExternalString(v8::Isolate* isolate, String string)
 {
@@ -128,10 +193,16 @@ v8::Local<v8::String> StringCache::V8ExternalString(v8::Isolate* isolate, String
     if (!string_impl->length())
         return v8::String::Empty(isolate);
 
+#if defined(MINI_UI_QUICKJS)
+    auto cached = string_cache_.find(string_impl);
+    if (cached != string_cache_.end())
+        return NewLocal(isolate, cached->value.value);
+#else
     StringCacheMapTraits::MapType::PersistentValueReference cached_v8_string = string_cache_.GetReference(string_impl);
     if (!cached_v8_string.IsEmpty()) {
         return cached_v8_string.NewLocal(isolate);
     }
+#endif
 
     return CreateStringAndInsertIntoCache(isolate, string_impl);
 }
@@ -141,10 +212,16 @@ v8::Local<v8::String> StringCache::V8ExternalString(v8::Isolate* isolate, const 
     if (!string.length())
         return v8::String::Empty(isolate);
 
+#if defined(MINI_UI_QUICKJS)
+    auto cached = parkable_string_cache_.find(string.Impl());
+    if (cached != parkable_string_cache_.end())
+        return NewLocal(isolate, cached->value.value);
+#else
     ParkableStringCacheMapTraits::MapType::PersistentValueReference cached_v8_string = parkable_string_cache_.GetReference(string.Impl());
     if (!cached_v8_string.IsEmpty()) {
         return cached_v8_string.NewLocal(isolate);
     }
+#endif
 
     return CreateStringAndInsertIntoCache(isolate, string);
 }
@@ -158,17 +235,50 @@ void StringCache::SetReturnValueFromString(v8::ReturnValue<v8::Value> return_val
         return;
     }
 
+#if defined(MINI_UI_QUICKJS)
+    auto cached = string_cache_.find(string_impl);
+    if (cached != string_cache_.end()) {
+        return_value.Set(NewLocal(return_value.GetIsolate(), cached->value.value));
+        return;
+    }
+#else
     StringCacheMapTraits::MapType::PersistentValueReference cached_v8_string = string_cache_.GetReference(string_impl);
     if (!cached_v8_string.IsEmpty()) {
         cached_v8_string.SetReturnValue(return_value);
         return;
     }
+#endif
 
     return_value.Set(CreateStringAndInsertIntoCache(return_value.GetIsolate(), string_impl));
 }
 
 v8::Local<v8::String> StringCache::CreateStringAndInsertIntoCache(v8::Isolate* isolate, StringImpl* string_impl)
 {
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(!string_cache_.Contains(string_impl));
+    DCHECK(string_impl->length());
+
+    v8::Local<v8::String> new_string = MakeExternalString(isolate, String(string_impl));
+    DCHECK(!new_string.IsEmpty());
+    DCHECK(new_string->Length());
+
+    const size_t payload_bytes = string_impl->CharactersSizeInBytes();
+    if (payload_bytes > kMaxPayloadBytes)
+        return new_string;
+
+    MakeRoom(payload_bytes);
+    // Eviction may run an external-resource finalizer. If it re-entered the
+    // cache for this key, keep its entry and discard this redundant string.
+    auto reentrant_entry = string_cache_.find(string_impl);
+    if (reentrant_entry != string_cache_.end())
+        return NewLocal(isolate, reentrant_entry->value.value);
+    CacheEntry entry { JS_DupValueRT(runtime_, v8::detail::Borrow(*new_string)), payload_bytes };
+    string_impl->AddRef();
+    string_cache_.Set(string_impl, entry);
+    fifo_[(fifo_head_ + fifo_size_) % kMaxEntries] = { string_impl, CacheKind::kString };
+    ++fifo_size_;
+    total_payload_bytes_ += payload_bytes;
+#else
     DCHECK(!string_cache_.Contains(string_impl));
     DCHECK(string_impl->length());
 
@@ -178,13 +288,38 @@ v8::Local<v8::String> StringCache::CreateStringAndInsertIntoCache(v8::Isolate* i
 
     string_impl->AddRef();
     string_cache_.Set(string_impl, new_string);
-
+#endif
     return new_string;
 }
 
 v8::Local<v8::String> StringCache::CreateStringAndInsertIntoCache(v8::Isolate* isolate, ParkableString string)
 {
     ParkableStringImpl* string_impl = string.Impl();
+#if defined(MINI_UI_QUICKJS)
+    DCHECK(!parkable_string_cache_.Contains(string_impl));
+    DCHECK(string_impl->length());
+
+    const size_t payload_bytes = string_impl->CharactersSizeInBytes();
+    v8::Local<v8::String> new_string = MakeExternalString(isolate, std::move(string));
+    DCHECK(!new_string.IsEmpty());
+    DCHECK(new_string->Length());
+
+    if (payload_bytes > kMaxPayloadBytes)
+        return new_string;
+
+    MakeRoom(payload_bytes);
+    // Eviction may run an external-resource finalizer. If it re-entered the
+    // cache for this key, keep its entry and discard this redundant string.
+    auto reentrant_entry = parkable_string_cache_.find(string_impl);
+    if (reentrant_entry != parkable_string_cache_.end())
+        return NewLocal(isolate, reentrant_entry->value.value);
+    CacheEntry entry { JS_DupValueRT(runtime_, v8::detail::Borrow(*new_string)), payload_bytes };
+    string_impl->AddRef();
+    parkable_string_cache_.Set(string_impl, entry);
+    fifo_[(fifo_head_ + fifo_size_) % kMaxEntries] = { string_impl, CacheKind::kParkableString };
+    ++fifo_size_;
+    total_payload_bytes_ += payload_bytes;
+#else
     DCHECK(!parkable_string_cache_.Contains(string_impl));
     DCHECK(string_impl->length());
 
@@ -199,7 +334,7 @@ v8::Local<v8::String> StringCache::CreateStringAndInsertIntoCache(v8::Isolate* i
     // |last_string_impl_|.
     ParkableStringCacheMapTraits::MapType::PersistentValueReference unused;
     parkable_string_cache_.Set(string_impl, std::move(wrapper), &unused);
-
+#endif
     return new_string;
 }
 

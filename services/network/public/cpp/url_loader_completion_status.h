@@ -12,12 +12,16 @@
 #include "base/component_export.h"
 #include "base/time/time.h"
 #include "net/dns/public/resolve_error_info.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_info.h"
+#endif
 #include "services/network/public/cpp/cors/cors_error_status.h"
 #include "services/network/public/mojom/blocked_by_response_reason.mojom-shared.h"
 #include "services/network/public/mojom/cors.mojom-shared.h"
 #include "services/network/public/mojom/trust_tokens.mojom-shared.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace network {
 
@@ -91,8 +95,10 @@ struct /*COMPONENT_EXPORT(NETWORK_CPP_BASE)*/ URLLoaderCompletionStatus {
     // attempted.
     mojom::TrustTokenOperationStatus trust_token_operation_status = mojom::TrustTokenOperationStatus::kOk;
 
+#if !defined(MINI_UI_QUICKJS)
     // Optional SSL certificate info.
     std::optional<net::SSLInfo> ssl_info;
+#endif
 
     // More detailed reason for failing the response with
     // net::ERR_BLOCKED_BY_RESPONSE |error_code|.
@@ -108,8 +114,10 @@ struct /*COMPONENT_EXPORT(NETWORK_CPP_BASE)*/ URLLoaderCompletionStatus {
     // Whether the initiator of this request should be collapsed.
     bool should_collapse_initiator = false;
 
+#if !defined(MINI_UI_QUICKJS)
     // Write a representation of this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue context) const;
+#endif
 };
 
 } // namespace network

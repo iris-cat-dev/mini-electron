@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "attempt": "first complete Vue/React matrix attempt before the native trace-cursor fix",
+  "overall_execution": "The invoking tool reached its 3600-second deadline. The runner did not complete or write an aggregate. No child benchmark process remained after timeout cleanup.",
+  "accepted_cells": [
+    {
+      "framework": "vue",
+      "rows": 100,
+      "raw_file": "raw/vue-100.json",
+      "normal_process_exit_code": 0
+    },
+    {
+      "framework": "vue",
+      "rows": 1000,
+      "raw_file": "raw/vue-1000.json",
+      "normal_process_exit_code": 0
+    }
+  ],
+  "failed_cells": [
+    {
+      "framework": "vue",
+      "rows": 5000,
+      "raw_file": "raw/vue-5000.json",
+      "failure": "runner_timeout",
+      "process_limit_ms": 2730000
+    }
+  ],
+  "not_accepted_cells": [
+    {
+      "framework": "vue",
+      "rows": 10000,
+      "raw_file": "raw/vue-10000.json",
+      "application_status": "complete",
+      "reason": "Application wrote a complete report, but no normal process exit was observed before the outer timeout. This is not a successful matrix cell."
+    }
+  ],
+  "unexecuted_frameworks": [
+    "react"
+  ],
+  "paths_note": "Original commands and captures retain their original out/ui-benchmark-results paths. The whole original output was moved intact to out/ui-benchmark-attempt-1-timeout before retrying. These JSON files are preserved verbatim.",
+  "library_sha256": "1c801ff751e42f960afd4acd5ccdb7b12912e62c9edce1723f375897487bc0cc"
+}

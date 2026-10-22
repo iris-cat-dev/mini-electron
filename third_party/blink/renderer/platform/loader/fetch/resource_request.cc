@@ -97,7 +97,9 @@ ResourceRequestHead::ResourceRequestHead(const KURL& url)
     , shared_storage_writable_opted_in_(false)
     , shared_storage_writable_eligible_(false)
     , allow_stale_response_(false)
+#if !defined(MINI_UI_QUICKJS)
     , skip_service_worker_(false)
+#endif
     , download_to_cache_only_(false)
     , site_for_cookies_set_(false)
     , is_form_submission_(false)
@@ -201,9 +203,14 @@ void ResourceRequest::CopyHeadFrom(const ResourceRequestHead& src)
     this->ResourceRequestHead::operator=(src);
 }
 
+#if defined(MINI_UI_QUICKJS)
+std::unique_ptr<ResourceRequest> ResourceRequestHead::CreateRedirectRequest(const KURL& new_url, const AtomicString& new_method,
+    const net::SiteForCookies& new_site_for_cookies, const String& new_referrer, network::mojom::ReferrerPolicy new_referrer_policy) const
+#else
 std::unique_ptr<ResourceRequest> ResourceRequestHead::CreateRedirectRequest(const KURL& new_url, const AtomicString& new_method,
     const net::SiteForCookies& new_site_for_cookies, const String& new_referrer, network::mojom::ReferrerPolicy new_referrer_policy,
     bool skip_service_worker) const
+#endif
 {
     std::unique_ptr<ResourceRequest> request = std::make_unique<ResourceRequest>(new_url);
     request->SetRequestorOrigin(RequestorOrigin());
@@ -213,7 +220,9 @@ std::unique_ptr<ResourceRequest> ResourceRequestHead::CreateRedirectRequest(cons
     String referrer = new_referrer.empty() ? Referrer::NoReferrer() : String(new_referrer);
     request->SetReferrerString(referrer);
     request->SetReferrerPolicy(new_referrer_policy);
+#if !defined(MINI_UI_QUICKJS)
     request->SetSkipServiceWorker(skip_service_worker);
+#endif
     request->redirect_info_ = RedirectInfo(redirect_info_ ? redirect_info_->original_url : Url(), Url());
 
     // Copy from parameters for |this|.

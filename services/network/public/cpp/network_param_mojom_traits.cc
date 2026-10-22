@@ -9,7 +9,9 @@
 #include "mojo/public/cpp/base/time_mojom_traits.h"
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "net/log/net_log_source_type.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/ssl/ssl_cert_request_info.h"
+#endif
 
 namespace mojo {
 
@@ -160,6 +162,7 @@ bool StructTraits<network::mojom::ProxyChainDataView, net::ProxyChain>::Read(net
     return true;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 bool StructTraits<network::mojom::SSLCertRequestInfoDataView, scoped_refptr<net::SSLCertRequestInfo>>::Read(
     network::mojom::SSLCertRequestInfoDataView data, scoped_refptr<net::SSLCertRequestInfo>* out)
@@ -187,6 +190,7 @@ bool StructTraits<network::mojom::SSLCertRequestInfoDataView, scoped_refptr<net:
 
     return true;
 }
+#endif
 
 // static
 bool StructTraits<network::mojom::NetLogSourceDataView, net::NetLogSource>::Read(network::mojom::NetLogSourceDataView data, net::NetLogSource* out)

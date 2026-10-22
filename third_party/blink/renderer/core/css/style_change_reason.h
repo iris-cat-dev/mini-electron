@@ -28,7 +28,9 @@ extern const char kDialog[];
 extern const char kDisplayLock[];
 extern const char kEditContext[];
 extern const char kEnvironmentVariableChanged[];
+#if !defined(MINI_UI_QUICKJS)
 extern const char kViewTransition[];
+#endif
 extern const char kFrame[];
 extern const char kFlatTreeChange[];
 extern const char kFonts[];
@@ -67,8 +69,10 @@ typedef const char StyleChangeReasonString[];
 
 namespace style_change_extra_data {
 extern const AtomicString& g_active;
+#if !defined(MINI_UI_QUICKJS)
 extern const AtomicString& g_active_view_transition;
 extern const AtomicString& g_active_view_transition_type;
+#endif
 extern const AtomicString& g_disabled;
 extern const AtomicString& g_drag;
 extern const AtomicString& g_focus;

@@ -36,7 +36,9 @@ class WebPluginContainerImpl;
 
 class CORE_EXPORT PluginDocument final : public HTMLDocument {
 public:
+#if !defined(MINI_UI_QUICKJS)
     PluginDocument(const DocumentInit&);
+#endif
 
     void SetPluginNode(HTMLPlugInElement* plugin_node)
     {

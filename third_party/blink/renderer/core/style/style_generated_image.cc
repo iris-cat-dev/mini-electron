@@ -25,7 +25,9 @@
 
 #include "third_party/blink/renderer/core/css/css_gradient_value.h"
 #include "third_party/blink/renderer/core/css/css_image_generator_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "ui/gfx/geometry/size_f.h"
 
@@ -36,9 +38,11 @@ StyleGeneratedImage::StyleGeneratedImage(const CSSImageGeneratorValue& value, co
     , container_sizes_(container_sizes)
 {
     is_generated_image_ = true;
+#if !defined(MINI_UI_QUICKJS)
     if (value.IsPaintValue()) {
         is_paint_image_ = true;
     }
+#endif
 }
 
 bool StyleGeneratedImage::IsEqual(const StyleImage& other) const
@@ -63,8 +67,12 @@ CSSValue* StyleGeneratedImage::ComputedCSSValue(const ComputedStyle& style, bool
     if (auto* image_gradient_value = DynamicTo<cssvalue::CSSGradientValue>(image_generator_value_.Get())) {
         return image_gradient_value->ComputedCSSValue(style, allow_visited_style, value_phase);
     }
+#if !defined(MINI_UI_QUICKJS)
     DCHECK(IsA<CSSPaintValue>(image_generator_value_.Get()));
     return image_generator_value_.Get();
+#else
+    NOTREACHED();
+#endif
 }
 
 IntrinsicSizingInfo StyleGeneratedImage::GetNaturalSizingInfo(float multiplier, RespectImageOrientationEnum respect_orientation) const
@@ -87,10 +95,12 @@ void StyleGeneratedImage::RemoveClient(ImageResourceObserver* observer)
     image_generator_value_->RemoveClient(observer);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool StyleGeneratedImage::IsUsingCustomProperty(const AtomicString& custom_property_name, const Document& document) const
 {
     return image_generator_value_->IsUsingCustomProperty(custom_property_name, document);
 }
+#endif
 
 bool StyleGeneratedImage::IsUsingCurrentColor() const
 {

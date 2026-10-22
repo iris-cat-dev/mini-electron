@@ -7,7 +7,9 @@
 #include "base/notreached.h"
 #include "base/trace_event/trace_event.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 
 namespace blink {
@@ -86,7 +88,9 @@ bool ConsoleMessageStorage::AddConsoleMessage(ExecutionContext* context, Console
         }
     }
     TraceConsoleMessageEvent(message);
+#if !defined(MINI_UI_QUICKJS)
     probe::ConsoleMessageAdded(context, message);
+#endif
     if (messages_.size() == kMaxConsoleMessageCount) {
         ++expired_count_;
         messages_.pop_front();

@@ -23,7 +23,7 @@
 #include "base/trace_event/base_tracing.h"
 #include "base/tracing_buildflags.h"
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_mojo_event_info.pbzero.h" // nogncheck
 #endif
 
@@ -67,7 +67,7 @@ TaskAnnotator::LongTaskTracker* GetCurrentLongTaskTracker()
     return current_long_task_tracker;
 }
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
 perfetto::protos::pbzero::ChromeTaskAnnotator::DelayPolicy ToProtoEnum(subtle::DelayPolicy type)
 {
     using ProtoType = perfetto::protos::pbzero::ChromeTaskAnnotator::DelayPolicy;
@@ -117,10 +117,16 @@ void TaskAnnotator::MarkCurrentTaskAsInterestingForTracing()
 TaskAnnotator::TaskAnnotator() = default;
 TaskAnnotator::~TaskAnnotator() = default;
 
-void TaskAnnotator::WillQueueTask(perfetto::StaticString trace_event_name, TaskMetadata* pending_task)
+void TaskAnnotator::WillQueueTask(
+#if !defined(MINI_UI_QUICKJS)
+    perfetto::StaticString trace_event_name,
+#endif
+    TaskMetadata* pending_task)
 {
     DCHECK(pending_task);
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_INSTANT("toplevel.flow", trace_event_name, perfetto::Flow::ProcessScoped(GetTaskTraceID(*pending_task)));
+#endif
 
     DCHECK(!pending_task->task_backtrace[0]) << "Task backtrace was already set, task posted twice??";
     if (pending_task->task_backtrace[0])
@@ -224,7 +230,7 @@ void TaskAnnotator::ClearObserverForTesting()
     g_task_annotator_observer = nullptr;
 }
 
-#if BUILDFLAG(ENABLE_BASE_TRACING)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS)
 // TRACE_EVENT argument helper, writing the task location data into
 // EventContext.
 void TaskAnnotator::EmitTaskLocation(perfetto::EventContext& ctx, const PendingTask& task)
@@ -361,7 +367,7 @@ void TaskAnnotator::LongTaskTracker::EmitReceivedIPCDetails(perfetto::EventConte
 {
     if (!ipc_interface_name_ || !ipc_hash_ || !ipc_method_info_)
         return;
-#if BUILDFLAG(ENABLE_BASE_TRACING) && !BUILDFLAG(IS_NACL)
+#if BUILDFLAG(ENABLE_BASE_TRACING) && !defined(MINI_UI_QUICKJS) && !BUILDFLAG(IS_NACL)
     // Emit all of the IPC hash information if this task
     // comes from a mojo interface.
     auto* info = ctx.event()->set_chrome_mojo_event_info();

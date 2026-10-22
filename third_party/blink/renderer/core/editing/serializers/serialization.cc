@@ -34,9 +34,10 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/timer/elapsed_timer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/single_request_url_loader_factory.h"
-#include "services/network/public/cpp/single_request_url_loader_factory.h"
+#endif
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -135,6 +136,7 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 class EmptyLocalFrameClientWithFailingLoaderFactory final : public EmptyLocalFrameClient {
 public:
     scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override
@@ -151,6 +153,7 @@ public:
                               mojo::PendingRemote<network::mojom::URLLoaderClient> client) { NOTREACHED(); }));
     }
 };
+#endif
 
 void LogFastPathParserTotalTime(base::TimeDelta parse_time)
 {
@@ -775,7 +778,11 @@ static Document* CreateStagingDocumentForMarkupSanitization(AgentGroupScheduler&
     page->GetSettings().SetAcceleratedCompositingEnabled(false);
     page->GetSettings().SetParserScriptingFlagPolicy(ParserScriptingFlagPolicy::kEnabled);
 
+#if defined(MINI_UI_QUICKJS)
+    auto* client = MakeGarbageCollected<EmptyLocalFrameClient>();
+#else
     auto* client = MakeGarbageCollected<EmptyLocalFrameClientWithFailingLoaderFactory>();
+#endif
     LocalFrame* frame = MakeGarbageCollected<LocalFrame>(client, *page,
         nullptr, // FrameOwner*
         nullptr, // Frame* parent

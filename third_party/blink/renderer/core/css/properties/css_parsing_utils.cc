@@ -38,7 +38,9 @@
 #include "third_party/blink/renderer/core/css/css_math_expression_node.h"
 #include "third_party/blink/renderer/core/css/css_math_function_value.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_palette_mix_value.h"
 #include "third_party/blink/renderer/core/css/css_path_value.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
@@ -774,7 +776,9 @@ bool IsGeneratedImage(const CSSValueID id)
     case CSSValueID::kWebkitRepeatingRadialGradient:
     case CSSValueID::kWebkitGradient:
     case CSSValueID::kWebkitCrossFade:
+#if !defined(MINI_UI_QUICKJS)
     case CSSValueID::kPaint:
+#endif
     case CSSValueID::kCrossFade:
         return true;
 
@@ -2758,6 +2762,7 @@ static CSSValue* ConsumeCrossFade(CSSParserTokenStream& stream, const CSSParserC
         /*is_legacy_variant=*/false, image_and_percentages);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 static CSSValue* ConsumePaint(CSSParserTokenStream& stream, const CSSParserContext& context)
 {
     CSSCustomIdentValue* name = ConsumeCustomIdent(stream, context);
@@ -2822,6 +2827,7 @@ static CSSValue* ConsumePaint(CSSParserTokenStream& stream, const CSSParserConte
 
     return MakeGarbageCollected<CSSPaintValue>(name, std::move(variable_data));
 }
+#endif
 
 static CSSValue* ConsumeGeneratedImage(CSSParserTokenStream& stream, const CSSParserContext& context)
 {
@@ -2865,8 +2871,10 @@ static CSSValue* ConsumeGeneratedImage(CSSParserTokenStream& stream, const CSSPa
             result = ConsumeDeprecatedWebkitCrossFade(stream, context);
         } else if (RuntimeEnabledFeatures::CSSCrossFadeEnabled() && id == CSSValueID::kCrossFade) {
             result = ConsumeCrossFade(stream, context);
+#if !defined(MINI_UI_QUICKJS)
         } else if (id == CSSValueID::kPaint) {
             result = context.IsSecureContext() ? ConsumePaint(stream, context) : nullptr;
+#endif
         }
         if (!result || !stream.AtEnd()) {
             return nullptr;
@@ -2878,8 +2886,10 @@ static CSSValue* ConsumeGeneratedImage(CSSParserTokenStream& stream, const CSSPa
     WebFeature feature;
     if (id == CSSValueID::kWebkitCrossFade) {
         feature = WebFeature::kWebkitCrossFade;
+#if !defined(MINI_UI_QUICKJS)
     } else if (id == CSSValueID::kPaint) {
         feature = WebFeature::kCSSPaintFunction;
+#endif
     } else {
         feature = WebFeature::kCSSGradient;
     }

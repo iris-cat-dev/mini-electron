@@ -100,8 +100,12 @@ public:
     // Used for dragging in files from the desktop.
     bool ContainsFilenames() const;
     Vector<String> Filenames() const;
+#if !defined(MINI_UI_QUICKJS)
     void AddFilename(ExecutionContext* context, const String& filename, const String& display_name, const String& file_system_id,
         scoped_refptr<FileSystemAccessDropData> file_system_access_entry = nullptr);
+#else
+    void AddFilename(ExecutionContext* context, const String& filename, const String& display_name, const String& file_system_id);
+#endif
 
     // Used for dragging in filesystem from the desktop.
     void SetFilesystemId(const String& file_system_id)

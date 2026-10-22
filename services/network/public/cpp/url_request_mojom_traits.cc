@@ -21,11 +21,17 @@
 #include "services/network/public/cpp/resource_request_body.h"
 #include "services/network/public/cpp/storage_access_api_mojom_traits.h"
 #include "services/network/public/cpp/url_request_param_mojom_traits.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/cookie_access_observer.mojom.h"
+#endif
 #include "services/network/public/mojom/data_pipe_getter.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/devtools_observer.mojom.h"
+#endif
 #include "services/network/public/mojom/ip_address_space.mojom.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/trust_token_access_observer.mojom.h"
+#endif
 #include "services/network/public/mojom/trust_tokens.mojom.h"
 #include "services/network/public/mojom/url_loader.mojom-shared.h"
 #include "services/network/public/mojom/url_request.mojom.h"
@@ -90,15 +96,19 @@ bool StructTraits<network::mojom::TrustedUrlRequestParamsDataView, network::Reso
     out->has_user_activation = data.has_user_activation();
     out->allow_cookies_from_browser = data.allow_cookies_from_browser();
     out->include_request_cookies_with_response = data.include_request_cookies_with_response();
+#if !defined(MINI_UI_QUICKJS)
     out->cookie_observer = data.TakeCookieObserver<mojo::PendingRemote<network::mojom::CookieAccessObserver>>();
     out->trust_token_observer = data.TakeTrustTokenObserver<mojo::PendingRemote<network::mojom::TrustTokenAccessObserver>>();
     out->url_loader_network_observer = data.TakeUrlLoaderNetworkObserver<mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>>();
     out->devtools_observer = data.TakeDevtoolsObserver<mojo::PendingRemote<network::mojom::DevToolsObserver>>();
+#endif
     if (!data.ReadClientSecurityState(&out->client_security_state)) {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     out->accept_ch_frame_observer = data.TakeAcceptChFrameObserver<mojo::PendingRemote<network::mojom::AcceptCHFrameObserver>>();
     out->shared_dictionary_observer = data.TakeSharedDictionaryObserver<mojo::PendingRemote<network::mojom::SharedDictionaryAccessObserver>>();
+#endif
     return true;
 }
 

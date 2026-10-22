@@ -38,7 +38,9 @@
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/settings.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_html_element.h"
@@ -46,8 +48,10 @@
 #if !defined(MINI_ELECTRON_DISABLE_PERMISSION_ELEMENT)
 #include "third_party/blink/renderer/core/html/html_permission_element.h"
 #endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/mathml_names.h"
 #include "third_party/blink/renderer/platform/data_resource_helper.h"
@@ -112,7 +116,6 @@ const MediaQueryEvaluator& CSSDefaultStyleSheets::ScreenEval()
 }
 
 CSSDefaultStyleSheets::CSSDefaultStyleSheets()
-    : media_controls_style_sheet_loader_(nullptr)
 {
     // Strict-mode rules.
     String default_rules = UncompressResourceAsASCIIString(IDR_UASTYLE_HTML_CSS) + LayoutTheme::GetTheme().ExtraDefaultStyleSheet();
@@ -136,8 +139,10 @@ void CSSDefaultStyleSheets::Reset()
     // Clear the optional style sheets.
     svg_style_sheet_.Clear();
     mathml_style_sheet_.Clear();
+#if !defined(MINI_UI_QUICKJS)
     media_controls_style_sheet_.Clear();
     text_track_style_sheet_.Clear();
+#endif
     forced_colors_style_sheet_.Clear();
     fullscreen_style_sheet_.Clear();
     customizable_select_style_sheet_.Clear();
@@ -176,10 +181,12 @@ void CSSDefaultStyleSheets::VerifyUniversalRuleCount()
         DCHECK_EQ(default_svg_style_->UniversalRules().size(), 1u);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (media_controls_style_sheet_) {
         default_media_controls_style_->CompactRulesIfNeeded();
         DCHECK_EQ(default_media_controls_style_->UniversalRules().size(), 4u);
     }
+#endif
 
     if (fullscreen_style_sheet_) {
         default_fullscreen_style_->CompactRulesIfNeeded();
@@ -203,17 +210,23 @@ void CSSDefaultStyleSheets::InitializeDefaultStyles()
     default_svg_style_ = MakeGarbageCollected<RuleSet>();
     default_html_quirks_style_ = MakeGarbageCollected<RuleSet>();
     default_print_style_ = MakeGarbageCollected<RuleSet>();
+#if !defined(MINI_UI_QUICKJS)
     default_media_controls_style_ = MakeGarbageCollected<RuleSet>();
+#endif
     default_fullscreen_style_ = MakeGarbageCollected<RuleSet>();
     default_forced_color_style_.Clear();
     default_pseudo_element_style_.Clear();
+#if !defined(MINI_UI_QUICKJS)
     default_forced_colors_media_controls_style_.Clear();
+#endif
 
     default_html_style_->AddRulesFromSheet(DefaultStyleSheet(), ScreenEval());
     default_html_quirks_style_->AddRulesFromSheet(QuirksStyleSheet(), ScreenEval());
     default_print_style_->AddRulesFromSheet(DefaultStyleSheet(), PrintEval());
 
+#if !defined(MINI_UI_QUICKJS)
     CHECK(default_html_style_->ViewTransitionRules().empty()) << "@view-transition is not implemented for the UA stylesheet.";
+#endif
 
     VerifyUniversalRuleCount();
 }
@@ -260,20 +273,23 @@ void CSSDefaultStyleSheets::AddRulesToDefaultStyleSheets(StyleSheetContents* rul
     case NamespaceType::kMathML:
         default_mathml_style_->AddRulesFromSheet(rules, ScreenEval());
         break;
+#if !defined(MINI_UI_QUICKJS)
     case NamespaceType::kMediaControls:
         default_media_controls_style_->AddRulesFromSheet(rules, ScreenEval());
         break;
+#endif
     }
     // Add to print and forced color for all namespaces.
     default_print_style_->AddRulesFromSheet(rules, PrintEval());
     if (default_forced_color_style_) {
         switch (type) {
+#if !defined(MINI_UI_QUICKJS)
         case NamespaceType::kMediaControls:
-            if (!default_forced_colors_media_controls_style_) {
+            if (!default_forced_colors_media_controls_style_)
                 default_forced_colors_media_controls_style_ = MakeGarbageCollected<RuleSet>();
-            }
             default_forced_colors_media_controls_style_->AddRulesFromSheet(rules, ForcedColorsEval());
             break;
+#endif
         default:
             default_forced_color_style_->AddRulesFromSheet(rules, ForcedColorsEval());
             break;
@@ -299,6 +315,7 @@ bool CSSDefaultStyleSheets::EnsureDefaultStyleSheetsForElement(const Element& el
         changed_default_style = true;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (!media_controls_style_sheet_ && HasMediaControlsStyleSheetLoader() && (IsA<HTMLVideoElement>(element) || IsA<HTMLAudioElement>(element))) {
         // FIXME: We should assert that this sheet only contains rules for <video>
         // and <audio>.
@@ -350,6 +367,7 @@ bool CSSDefaultStyleSheets::EnsureDefaultStyleSheetsForElement(const Element& el
             changed_default_style = true;
         }
     }
+#endif
 
     if (!customizable_select_style_sheet_ && IsA<HTMLSelectElement>(element) && RuntimeEnabledFeatures::CustomizableSelectEnabled()) {
         // TODO(crbug.com/1511354): Merge customizable_select.css into html.css and
@@ -382,10 +400,12 @@ bool CSSDefaultStyleSheets::EnsureDefaultStyleSheetsForPseudoElement(PseudoId ps
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CSSDefaultStyleSheets::SetMediaControlsStyleSheetLoader(std::unique_ptr<UAStyleSheetLoader> loader)
 {
     media_controls_style_sheet_loader_.swap(loader);
 }
+#endif
 
 void CSSDefaultStyleSheets::EnsureDefaultStyleSheetForFullscreen(const Element& element)
 {
@@ -440,11 +460,13 @@ bool CSSDefaultStyleSheets::EnsureDefaultStyleSheetForForcedColors()
         default_forced_color_style_->AddRulesFromSheet(SvgStyleSheet(), ForcedColorsEval());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (media_controls_style_sheet_) {
         CHECK(!default_forced_colors_media_controls_style_);
         default_forced_colors_media_controls_style_ = MakeGarbageCollected<RuleSet>();
         default_forced_colors_media_controls_style_->AddRulesFromSheet(MediaControlsStyleSheet(), ForcedColorsEval());
     }
+#endif
 
     return true;
 }
@@ -454,9 +476,10 @@ void CSSDefaultStyleSheets::CollectFeaturesTo(const Document& document, RuleFeat
     if (DefaultHtmlStyle()) {
         features.Merge(DefaultHtmlStyle()->Features());
     }
-    if (DefaultMediaControlsStyle()) {
+#if !defined(MINI_UI_QUICKJS)
+    if (DefaultMediaControlsStyle())
         features.Merge(DefaultMediaControlsStyle()->Features());
-    }
+#endif
     if (DefaultMathMLStyle()) {
         features.Merge(DefaultMathMLStyle()->Features());
     }
@@ -481,22 +504,30 @@ void CSSDefaultStyleSheets::Trace(Visitor* visitor) const
     visitor->Trace(default_view_source_style_);
     visitor->Trace(default_forced_color_style_);
     visitor->Trace(default_pseudo_element_style_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(default_media_controls_style_);
+#endif
     visitor->Trace(default_fullscreen_style_);
     visitor->Trace(default_style_sheet_);
     visitor->Trace(quirks_style_sheet_);
     visitor->Trace(svg_style_sheet_);
     visitor->Trace(mathml_style_sheet_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(media_controls_style_sheet_);
+#endif
     visitor->Trace(permission_element_style_sheet_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(text_track_style_sheet_);
+#endif
     visitor->Trace(forced_colors_style_sheet_);
     visitor->Trace(fullscreen_style_sheet_);
     visitor->Trace(customizable_select_style_sheet_);
     visitor->Trace(customizable_select_forced_colors_style_sheet_);
     visitor->Trace(marker_style_sheet_);
     visitor->Trace(default_json_document_style_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(default_forced_colors_media_controls_style_);
+#endif
 }
 
 CSSDefaultStyleSheets::TestingScope::TestingScope() = default;

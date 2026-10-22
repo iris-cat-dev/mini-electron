@@ -43,12 +43,16 @@
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/core/frame/frame_view.h"
 #include "third_party/blink/renderer/core/frame/layout_subtree_root_list.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#endif
 #include "third_party/blink/renderer/core/frame/overlay_interstitial_ad_detector.h"
 #include "third_party/blink/renderer/core/frame/sticky_ad_detector.h"
 #include "third_party/blink/renderer/core/layout/hit_test_request.h"
 #include "third_party/blink/renderer/core/paint/layout_object_counter.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/view_transition/view_transition_request_forward.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/graphics/paint/cull_rect.h"
@@ -89,7 +93,9 @@ class Element;
 class FragmentAnchor;
 class Frame;
 class FrameViewAutoSizeInfo;
+#if !defined(MINI_UI_QUICKJS)
 class HTMLVideoElement;
+#endif
 class HitTestLocation;
 class HitTestResult;
 class JSONObject;
@@ -102,23 +108,33 @@ class LayoutShiftTracker;
 class LayoutSVGRoot;
 class LayoutView;
 class LocalFrame;
+#if !defined(MINI_UI_QUICKJS)
 class MobileFriendlinessChecker;
+#endif
 class Page;
 class PaginationState;
 class PaintArtifact;
+#if !defined(MINI_UI_QUICKJS)
 class PaintArtifactCompositor;
+#endif
 class PaintController;
 class PaintControllerPersistentData;
 class PaintLayer;
 class PaintLayerScrollableArea;
 class PaintTimingDetector;
+#if !defined(MINI_UI_QUICKJS)
 class RemoteFrameView;
+#endif
 class RootFrameViewport;
 class ScrollableArea;
 class Scrollbar;
+#if !defined(MINI_UI_QUICKJS)
 class TapFriendlinessChecker;
+#endif
 class TransformState;
+#if !defined(MINI_UI_QUICKJS)
 class WebPluginContainerImpl;
+#endif
 struct DraggableRegionValue;
 struct IntrinsicSizingInfo;
 struct PhysicalOffset;
@@ -200,14 +216,19 @@ public:
     bool LayoutPending() const;
     bool IsInPerformLayout() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Methods to capture forced layout metrics.
     void WillStartForcedLayout(DocumentUpdateReason);
     void DidFinishForcedLayout();
 
+#endif
     void ClearLayoutSubtreeRoot(const LayoutObject&);
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns true if commits will be deferred for first contentful paint.
     bool WillDoPaintHoldingForFCP() const;
+
+#endif
 
     unsigned LayoutCountForTesting() const
     {
@@ -275,7 +296,9 @@ public:
 
     void ForceUpdateViewportIntersections();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetPaintArtifactCompositorNeedsUpdate();
+#endif
 
     // Methods for getting/setting the size Blink should use to layout the
     // contents.
@@ -546,7 +569,9 @@ public:
 
     void ScheduleAnimation(base::TimeDelta = base::TimeDelta(), base::Location location = base::Location::Current());
 
+#if !defined(MINI_UI_QUICKJS)
     void OnCommitRequested();
+#endif
 
     // FIXME: This should probably be renamed as the 'inSubtreeLayout' parameter
     // passed around the LocalFrameView layout methods can be true while this
@@ -565,6 +590,7 @@ public:
     LayoutEmbeddedContent* GetLayoutEmbeddedContent() const override;
     void AttachToLayout() override;
     void DetachFromLayout() override;
+#if !defined(MINI_UI_QUICKJS)
     using PluginSet = HeapHashSet<Member<WebPluginContainerImpl>>;
     const PluginSet& Plugins() const
     {
@@ -572,6 +598,7 @@ public:
     }
     void AddPlugin(WebPluginContainerImpl*);
     void RemovePlugin(WebPluginContainerImpl*);
+#endif
     // Custom scrollbars in PaintLayerScrollableArea need to be called with
     // StyleChanged whenever window focus is changed.
     void RemoveScrollbar(Scrollbar*);
@@ -703,7 +730,10 @@ public:
     bool CanThrottleRendering() const override;
     void UpdateRenderThrottlingStatus(bool hidden_for_throttling, bool subtree_throttled, bool display_locked, bool recurse = false) override;
 
+#if !defined(MINI_UI_QUICKJS)
     void SetThrottledForViewTransition(bool throttled);
+
+#endif
 
     void BeginLifecycleUpdates();
 
@@ -775,6 +805,7 @@ public:
     // scrolling should continue in the parent process.
     void ScrollRectToVisibleInRemoteParent(const PhysicalRect&, mojom::blink::ScrollIntoViewParamsPtr);
 
+#if !defined(MINI_UI_QUICKJS)
     PaintArtifactCompositor* GetPaintArtifactCompositor() const;
 
     cc::Layer* RootCcLayer();
@@ -782,6 +813,7 @@ public:
 
     cc::AnimationHost* GetCompositorAnimationHost() const;
     cc::AnimationTimeline* GetScrollAnimationTimeline() const;
+#endif
 
     LayoutShiftTracker& GetLayoutShiftTracker()
     {
@@ -792,6 +824,7 @@ public:
         return *paint_timing_detector_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     MobileFriendlinessChecker* GetMobileFriendlinessChecker() const
     {
         return mobile_friendliness_checker_.Get();
@@ -803,6 +836,7 @@ public:
     LocalFrameUkmAggregator* GetUkmAggregator();
     void ResetUkmAggregatorForTesting();
 
+#endif
     // Report the First Contentful Paint signal to the LocalFrameView.
     // This causes Deferred Commits to be restarted and tells the UKM
     // aggregator that FCP has been reached.
@@ -833,12 +867,12 @@ public:
         return std::move(start_of_lifecycle_tasks_);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Called when the "dominant visible" status has changed for a
-    // HTMLVideoElement in the page. "dominant visible" means the element is
-    // mostly filling the viewport.
+    // HTMLVideoElement in the page.
     void NotifyVideoIsDominantVisibleStatus(HTMLVideoElement* element, bool is_dominant);
-
     bool HasDominantVideoElement() const;
+#endif
 
     // Gets the xr overlay layer if present, or nullptr if there is none.
     PaintLayer* GetXROverlayLayer() const;
@@ -1004,8 +1038,10 @@ private:
     void PerformPostLayoutTasks(bool view_size_changed);
 
     void PaintTree(PaintBenchmarkMode, std::optional<PaintController>&);
+#if !defined(MINI_UI_QUICKJS)
     void PushPaintArtifactToCompositor(bool repainted);
     void CreatePaintTimelineEvents();
+#endif
 
     void ClearLayoutSubtreeRootsAndMarkContainingBlocks();
 
@@ -1042,7 +1078,9 @@ private:
     void ForAllNonThrottledLocalFrameViews(base::FunctionRef<void(LocalFrameView&)>, TraversalOrder = kPreOrder);
     void ForAllThrottledLocalFrameViews(base::FunctionRef<void(LocalFrameView&)>);
 
+#if !defined(MINI_UI_QUICKJS)
     void ForAllRemoteFrameViews(base::FunctionRef<void(RemoteFrameView&)>);
+#endif
 
     bool UpdateViewportIntersectionsForSubtree(unsigned parent_flags, ComputeIntersectionsContext&) override;
     void DeliverSynchronousIntersectionObservations();
@@ -1055,7 +1093,10 @@ private:
     bool RunResizeObserverSteps(DocumentLifecycle::LifecycleState target_state);
     void ClearResizeObserverLimit();
 
+#if !defined(MINI_UI_QUICKJS)
     bool RunViewTransitionSteps(DocumentLifecycle::LifecycleState target_state);
+
+#endif
 
     bool CheckLayoutInvalidationIsAllowed() const;
 
@@ -1086,8 +1127,11 @@ private:
     // StyleEngine instead of the base background color.
     bool ShouldUseColorAdjustBackground() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Append view transition requests from this view into the given vector.
     void AppendViewTransitionRequests(WTF::Vector<std::unique_ptr<ViewTransitionRequest>>&);
+
+#endif
 
     bool AnyFrameIsPrintingOrPaintingPreview();
 
@@ -1152,7 +1196,9 @@ private:
     bool has_been_disposed_ = false;
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
     PluginSet plugins_;
+#endif
     HeapHashSet<Member<Scrollbar>> scrollbars_;
 
     // TODO(bokan): This is unneeded when root-layer-scrolls is turned on.
@@ -1193,12 +1239,15 @@ private:
 
     mojom::blink::ViewportIntersectionState last_intersection_state_;
 
+#if !defined(MINI_UI_QUICKJS)
     // True if the frame has deferred commits at least once per document load.
     // We won't defer again for the same document. This is only meaningful for
     // main frames.
     bool have_deferred_main_frame_commits_ = false;
 
     bool throttled_for_view_transition_ = false;
+
+#endif
 
     bool visual_viewport_or_overlay_needs_repaint_ = false;
 
@@ -1211,18 +1260,22 @@ private:
     // For testing.
     bool is_tracking_raster_invalidations_ = false;
 
-    // Used by |PaintTree()| to collect the updated |PaintArtifact| which will be
-    // passed to the compositor. It caches display items and subsequences across
-    // frame updates and repaints.
+    // Used by PaintTree() to collect and cache display items and subsequences.
+    // The noncomposited renderer consumes this artifact through GetPaintRecord();
+    // the compositor consumes the same artifact when compositing is enabled.
     Member<PaintControllerPersistentData> paint_controller_persistent_data_;
+#if !defined(MINI_UI_QUICKJS)
     Member<PaintArtifactCompositor> paint_artifact_compositor_;
+#endif
 
     MainThreadScrollingReasons main_thread_scrolling_reasons_;
 
+#if !defined(MINI_UI_QUICKJS)
     scoped_refptr<LocalFrameUkmAggregator> ukm_aggregator_;
     unsigned forced_layout_stack_depth_;
     std::optional<LocalFrameUkmAggregator::ScopedForcedLayoutTimer> forced_layout_timer_;
 
+#endif
     // From the beginning of the document, how many frames have painted.
     size_t paint_frame_count_;
 
@@ -1230,14 +1283,18 @@ private:
     Member<LayoutShiftTracker> layout_shift_tracker_;
     Member<PaintTimingDetector> paint_timing_detector_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Non-null in the outermost main frame of an ordinary page only.
     Member<MobileFriendlinessChecker> mobile_friendliness_checker_;
 
     Member<TapFriendlinessChecker> tap_friendliness_checker_;
 
+#endif
     HeapHashSet<WeakMember<LifecycleNotificationObserver>> lifecycle_observers_;
 
+#if !defined(MINI_UI_QUICKJS)
     HeapHashSet<WeakMember<HTMLVideoElement>> fullscreen_video_elements_;
+#endif
 
     std::unique_ptr<OverlayInterstitialAdDetector> overlay_interstitial_ad_detector_;
 

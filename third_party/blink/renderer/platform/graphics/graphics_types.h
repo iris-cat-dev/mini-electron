@@ -37,6 +37,8 @@ class String;
 
 namespace blink {
 
+enum SourceDrawingBuffer { kFrontBuffer, kBackBuffer };
+
 typedef uintptr_t DisplayItemClientId;
 static const DisplayItemClientId kInvalidDisplayItemClientId = 0u;
 

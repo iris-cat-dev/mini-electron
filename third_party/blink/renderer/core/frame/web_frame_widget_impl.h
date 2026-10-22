@@ -42,7 +42,9 @@
 #include "cc/input/browser_controls_offset_tags_info.h"
 #include "cc/input/event_listener_properties.h"
 #include "cc/input/overscroll_behavior.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/trees/layer_tree_host.h"
+#endif
 #include "cc/trees/paint_holding_reason.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/viz/public/mojom/hit_test/input_target_client.mojom-blink.h"
@@ -100,24 +102,37 @@ class Page;
 class PaintWorkletPaintDispatcher;
 class RemoteFrame;
 class WebLocalFrameImpl;
+#if !defined(MINI_UI_QUICKJS)
 class WebPlugin;
+#endif
 class WebViewImpl;
 class WidgetBase;
 class WidgetEventHandler;
+#if !defined(MINI_UI_QUICKJS)
 class ScreenMetricsEmulator;
+#endif
+
+#if defined(MINI_UI_QUICKJS)
+#define BLINK_FRAME_WIDGET_IPC_OVERRIDE
+#else
+#define BLINK_FRAME_WIDGET_IPC_OVERRIDE override
+#endif
 
 // Implements WebFrameWidget for both main frames and child local root frame
 // (OOPIF).
 class CORE_EXPORT WebFrameWidgetImpl : public GarbageCollected<WebFrameWidgetImpl>,
                                        public WebFrameWidget,
                                        public WidgetBaseClient,
+#if !defined(MINI_UI_QUICKJS)
                                        public mojom::blink::FrameWidget,
                                        public viz::mojom::blink::InputTargetClient,
                                        public mojom::blink::FrameWidgetInputHandler,
+#endif
                                        public FrameWidget,
                                        public AnimationFrameTimingMonitor::Client,
                                        public WidgetEventHandler {
 public:
+#if !defined(MINI_UI_QUICKJS)
     struct PromiseCallbacks {
         base::OnceCallback<void(base::TimeTicks)> swap_time_callback;
         base::OnceCallback<void(const viz::FrameTimingDetails&)> presentation_time_callback;
@@ -133,13 +148,23 @@ public:
                 !presentation_time_callback);
         }
     };
+#endif
 
+#if defined(MINI_UI_QUICKJS)
+    WebFrameWidgetImpl(base::PassKey<WebLocalFrame>,
+        CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> widget_host,
+        scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+        const viz::FrameSinkId& frame_sink_id, bool hidden, bool never_composited,
+        bool is_for_child_local_root, bool is_for_nested_main_frame,
+        bool is_for_scalable_page);
+#else
     WebFrameWidgetImpl(base::PassKey<WebLocalFrame>, CrossVariantMojoAssociatedRemote<mojom::blink::FrameWidgetHostInterfaceBase> frame_widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::blink::FrameWidgetInterfaceBase> frame_widget,
         CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> widget_host,
         CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> widget, scoped_refptr<base::SingleThreadTaskRunner> task_runner,
         const viz::FrameSinkId& frame_sink_id, bool hidden, bool never_composited, bool is_for_child_local_root, bool is_for_nested_main_frame,
         bool is_for_scalable_page);
+#endif
     ~WebFrameWidgetImpl() override;
 
     virtual void Trace(Visitor*) const;
@@ -178,43 +203,43 @@ public:
         return !ForSubframe();
     }
 
-    // Called when the intrinsic size of the owning container is changing its
-    // size. This should only be called when `ForSubframe` is true.
+#if !defined(MINI_UI_QUICKJS)
+    // Called when the intrinsic size of a remote owning container changes.
     void IntrinsicSizingInfoChanged(mojom::blink::IntrinsicSizingInfoPtr);
 
     void AutoscrollStart(const gfx::PointF& position);
     void AutoscrollFling(const gfx::Vector2dF& position);
     void AutoscrollEnd();
+#endif
 
     bool HandleCurrentKeyboardEvent();
 
-    // Creates or returns cached mutator dispatcher. This usually requires a
-    // round trip to the compositor. The returned WeakPtr must only be
-    // dereferenced on the output |mutator_task_runner|.
-    base::WeakPtr<AnimationWorkletMutatorDispatcherImpl> EnsureCompositorMutatorDispatcher(scoped_refptr<base::SingleThreadTaskRunner> mutator_task_runner);
-
-    // TODO: consider merge the input and return value to be one parameter.
-    // Creates or returns cached paint dispatcher. The returned WeakPtr must only
-    // be dereferenced on the output |paint_task_runner|.
-    base::WeakPtr<PaintWorkletPaintDispatcher> EnsureCompositorPaintDispatcher(scoped_refptr<base::SingleThreadTaskRunner>* paint_task_runner);
+#if !defined(MINI_UI_QUICKJS)
+    base::WeakPtr<AnimationWorkletMutatorDispatcherImpl> EnsureCompositorMutatorDispatcher(
+        scoped_refptr<base::SingleThreadTaskRunner> mutator_task_runner);
+    base::WeakPtr<PaintWorkletPaintDispatcher> EnsureCompositorPaintDispatcher(
+        scoped_refptr<base::SingleThreadTaskRunner>* paint_task_runner);
+#endif
 
     HitTestResult CoreHitTestResultAt(const gfx::PointF&);
 
-    // Registers callbacks for the corresponding renderer frame: `swap_callback`
-    // is fired with the submission (aka swap) timestamp when the frame is
-    // submitted to Viz; `presentation_callback` is fired with the presentation
-    // timestamp after the frame is presented to the user.
+#if !defined(MINI_UI_QUICKJS)
+    // Registers compositor swap and presentation callbacks for tests.
     void NotifySwapAndPresentationTimeForTesting(PromiseCallbacks callbacks);
+#endif
 
     // Process the input event, invoking the callback when complete. This
     // method will call the callback synchronously.
     void ProcessInputEventSynchronouslyForTesting(const WebCoalescedInputEvent&, WidgetBaseInputHandler::HandledEventCallback);
 
     // FrameWidget overrides.
+#if !defined(MINI_UI_QUICKJS)
     cc::AnimationHost* AnimationHost() const final;
     cc::AnimationTimeline* ScrollAnimationTimeline() const final;
     void SetOverscrollBehavior(const cc::OverscrollBehavior& overscroll_behavior) final;
+#endif
     void RequestAnimationAfterDelay(const base::TimeDelta&) final;
+#if !defined(MINI_UI_QUICKJS)
     void SetRootLayer(scoped_refptr<cc::Layer>) override;
     void RequestDecode(const cc::PaintImage&, base::OnceCallback<void(bool)>) override;
     void NotifyPresentationTimeInBlink(base::OnceCallback<void(const viz::FrameTimingDetails&)> presentation_callback) final;
@@ -225,13 +250,16 @@ public:
         base::optional_ref<const cc::BrowserControlsOffsetTagsInfo> offset_tags_info) final;
     void SetEventListenerProperties(cc::EventListenerClass, cc::EventListenerProperties) final;
     cc::EventListenerProperties EventListenerProperties(cc::EventListenerClass) const final;
+#endif
     mojom::blink::DisplayMode DisplayMode() const override;
     ui::mojom::blink::WindowShowState WindowShowState() const override;
     bool Resizable() const override;
     const WebVector<gfx::Rect>& ViewportSegments() const override;
+#if !defined(MINI_UI_QUICKJS)
     void SetDelegatedInkMetadata(std::unique_ptr<gfx::DelegatedInkMetadata> metadata) final;
     void InjectScrollbarGestureScroll(
         const gfx::Vector2dF& delta, ui::ScrollGranularity granularity, cc::ElementId scrollable_area_element_id, WebInputEvent::Type injected_type) override;
+#endif
     void DidChangeCursor(const ui::Cursor&) override;
     void GetCompositionCharacterBoundsInWindow(Vector<gfx::Rect>* bounds_in_dips) override;
     // Return the last calculated line bounds.
@@ -259,7 +287,7 @@ public:
     void SetEditCommandsForNextKeyEvent(Vector<mojom::blink::EditCommandPtr> edit_commands) override;
     Vector<ui::mojom::blink::ImeTextSpanInfoPtr> GetImeTextSpansInfo(const WebVector<ui::ImeTextSpan>& ime_text_spans) override;
     void RequestMouseLock(
-        bool has_transient_user_activation, bool request_unadjusted_movement, mojom::blink::WidgetInputHandlerHost::RequestMouseLockCallback callback) override;
+        bool has_transient_user_activation, bool request_unadjusted_movement, MouseLockCallback callback) override;
     gfx::RectF BlinkSpaceToDIPs(const gfx::RectF& rect) override;
     gfx::Rect BlinkSpaceToEnclosedDIPs(const gfx::Rect& rect) override;
     gfx::Size BlinkSpaceToFlooredDIPs(const gfx::Size& size) override;
@@ -269,45 +297,60 @@ public:
     float DIPsToBlinkSpace(float scalar) override;
     void MouseCaptureLost() override;
     bool CanComposeInline() override;
+#if !defined(MINI_UI_QUICKJS)
     bool ShouldDispatchImeEventsToPlugin() override;
     void ImeSetCompositionForPlugin(const String& text, const Vector<ui::ImeTextSpan>& ime_text_spans, const gfx::Range& replacement_range, int selection_start,
         int selection_end) override;
     void ImeCommitTextForPlugin(
         const String& text, const Vector<ui::ImeTextSpan>& ime_text_spans, const gfx::Range& replacement_range, int relative_cursor_pos) override;
     void ImeFinishComposingTextForPlugin(bool keep_selection) override;
+#endif
     float GetCompositingScaleFactor() override;
+#if !defined(MINI_UI_QUICKJS)
     const cc::LayerTreeDebugState* GetLayerTreeDebugState() override;
     void SetLayerTreeDebugState(const cc::LayerTreeDebugState& state) override;
     void SetMayThrottleIfUndrawnFrames(bool may_throttle_if_undrawn_frames) override;
+#endif
     int GetVirtualKeyboardResizeHeight() const override;
 
     void OnTaskCompletedForFrame(base::TimeTicks start_time, base::TimeTicks end_time, LocalFrame*) override;
     void SetVirtualKeyboardResizeHeightForTesting(int);
+#if !defined(MINI_UI_QUICKJS)
     bool GetMayThrottleIfUndrawnFramesForTesting();
+#endif
 
     // AnimationFrameTimingMonitor::Client overrides
     void ReportLongAnimationFrameTiming(AnimationFrameTimingInfo* info) override;
     bool ShouldReportLongAnimationFrameTiming() const override;
     void ReportLongTaskTiming(base::TimeTicks start_time, base::TimeTicks end, ExecutionContext* task_context) override;
     bool RequestedMainFramePending() override;
+#if !defined(MINI_UI_QUICKJS)
     ukm::UkmRecorder* MainFrameUkmRecorder() override;
     ukm::SourceId MainFrameUkmSourceId() override;
+#endif
 
     // WebFrameWidget overrides.
     void InitializeNonCompositing(WebNonCompositedWidgetClient* client) override;
+#if defined(MINI_UI_QUICKJS)
+    WebViewClient* NativeViewClient() override;
+#endif
     WebLocalFrame* LocalRoot() const override;
+#if !defined(MINI_UI_QUICKJS)
     void UpdateCompositorScrollState(const cc::CompositorCommitData& commit_data) override;
+#endif
     WebInputMethodController* GetActiveWebInputMethodController() const override;
     void DisableDragAndDrop() override;
     WebLocalFrameImpl* FocusedWebLocalFrameInWidget() const override;
     bool ScrollFocusedEditableElementIntoView() override;
     void ApplyViewportChangesForTesting(const ApplyViewportChangesArgs& args) override;
     void ApplyViewportIntersectionForTesting(mojom::blink::ViewportIntersectionStatePtr intersection_state);
+#if !defined(MINI_UI_QUICKJS)
     void NotifyPresentationTime(base::OnceCallback<void(const viz::FrameTimingDetails&)> presentation_callback) override;
 #if BUILDFLAG(IS_APPLE)
     void NotifyCoreAnimationErrorCode(base::OnceCallback<void(gfx::CALayerResult)> callback) override;
 #endif
     void WaitForDebuggerWhenShown() override;
+#endif
     void SetTextZoomFactor(float text_zoom_factor) override;
     float TextZoomFactor() override;
     void SetMainFrameOverlayColor(SkColor) override;
@@ -323,8 +366,12 @@ public:
     void ResetZoomLevelForTesting() override;
     void SetDeviceScaleFactorForTesting(float factor) override;
     FrameWidgetTestHelper* GetFrameWidgetTestHelperForTesting() override;
+#if !defined(MINI_UI_QUICKJS)
     void PrepareForFinalLifecyclUpdateForTesting() override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void ApplyLocalSurfaceIdUpdate(const viz::LocalSurfaceId& id) override;
+#endif
 
     // Called when a drag-n-drop operation should begin.
     virtual void StartDragging(LocalFrame* source_frame, const WebDragData&, DragOperationsMask, const SkBitmap& drag_image, const gfx::Vector2d& cursor_offset,
@@ -344,18 +391,22 @@ public:
     void ResetMeaningfulLayoutStateForMainFrame();
 
     // WebWidget overrides.
+#if !defined(MINI_UI_QUICKJS)
     void InitializeCompositing(const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings) override;
     void InitializeCompositingFromPreviousWidget(
         const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings, WebFrameWidget& previous_widget) override;
     void SetCompositorVisible(bool visible) override;
     void WarmUpCompositor() override;
+#endif
     gfx::Size Size() override;
     void Resize(const gfx::Size& size_with_dsf) override;
     void SetCursor(const ui::Cursor& cursor) override;
     bool HandlingInputEvent() override;
     void SetHandlingInputEvent(bool handling) override;
+#if !defined(MINI_UI_QUICKJS)
     void ProcessInputEventSynchronouslyForTesting(const WebCoalescedInputEvent&) override;
     void DispatchNonBlockingEventForTesting(std::unique_ptr<WebCoalescedInputEvent> event) override;
+#endif
     WebInputEventResult DispatchBufferedTouchEvents() override;
     WebInputEventResult HandleInputEvent(const WebCoalescedInputEvent&) override;
     void UpdateTextInputState() override;
@@ -363,9 +414,13 @@ public:
     void ShowVirtualKeyboard() override;
     bool HasFocus() override;
     void SetFocus(bool focus) override;
+#if !defined(MINI_UI_QUICKJS)
     void FlushInputProcessedCallback() override;
     void CancelCompositionForPepper() override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void ApplyVisualProperties(const VisualProperties& visual_properties) override;
+#endif
     bool PinchGestureActiveInMainFrame() override;
     float PageScaleInMainFrame() override;
     const display::ScreenInfo& GetScreenInfo() override;
@@ -378,20 +433,28 @@ public:
     gfx::Size VisibleViewportSizeInDIPs() override;
     bool IsHidden() const override;
     WebString GetLastToolTipTextForTesting() const override;
+#if !defined(MINI_UI_QUICKJS)
     float GetEmulatorScale() override;
+#endif
 
     // WidgetBaseClient overrides:
+#if !defined(MINI_UI_QUICKJS)
     void OnCommitRequested() override;
+#endif
     void BeginMainFrame(base::TimeTicks last_frame_time) override;
     void UpdateLifecycle(WebLifecycleUpdate requested_update, DocumentUpdateReason reason) override;
     void ShowContextMenu(ui::mojom::blink::MenuSourceType source_type, const gfx::Point& location) override;
+
+#if !defined(MINI_UI_QUICKJS)
     void BindInputTargetClient(mojo::PendingReceiver<viz::mojom::blink::InputTargetClient> receiver) override;
 
     // mojom::blink::FrameWidget overrides:
     void SetViewportIntersection(
         mojom::blink::ViewportIntersectionStatePtr intersection_state, const std::optional<VisualProperties>& visual_properties) override;
+#endif
     void DragSourceEndedAt(
         const gfx::PointF& point_in_viewport, const gfx::PointF& screen_point, ui::mojom::blink::DragOperation, base::OnceClosure callback) override;
+#if !defined(MINI_UI_QUICKJS)
     void OnStartStylusWriting(
         const gfx::Rect& focus_rect_in_widget,
         OnStartStylusWritingCallback callback) override;
@@ -402,6 +465,7 @@ public:
 
     // mojom::blink::FrameWidgetInputHandler overrides:
     void HandleStylusWritingGestureAction(mojom::blink::StylusWritingGestureDataPtr gesture_data, HandleStylusWritingGestureActionCallback callback) override;
+#endif
 
     // Sets the display mode, which comes from the top-level browsing context and
     // is applied to all widgets.
@@ -414,10 +478,12 @@ public:
 
     std::optional<gfx::Point> GetAndResetContextMenuLocation();
 
+#if !defined(MINI_UI_QUICKJS)
     void BindWidgetCompositor(mojo::PendingReceiver<mojom::blink::WidgetCompositor> receiver) override;
 
     // viz::mojom::blink::InputTargetClient:
     void FrameSinkIdAt(const gfx::PointF& point, const uint64_t trace_id, FrameSinkIdAtCallback callback) override;
+#endif
 
     // Called when the FrameView for this Widget's local root is created.
     void DidCreateLocalRootView();
@@ -437,75 +503,44 @@ public:
 
     // For when the embedder itself change scales on the page (e.g. devtools)
     // and wants all of the content at the new scale to be crisp
+#if !defined(MINI_UI_QUICKJS)
     void SetNeedsRecalculateRasterScales();
-
-    // Sets the background color to be filled in as gutter behind/around the
-    // painted content. Non-composited WebViews need not implement this, as they
-    // paint into another widget which has a background color of its own.
     void SetBackgroundColor(SkColor color);
-
-    // Sets whether the prefers-reduced-motion hint has been enabled.
     void SetPrefersReducedMotion(bool prefers_reduced_motion);
-
-    // Starts an animation of the page scale to a target scale factor and scroll
-    // offset.
-    // If use_anchor is true, destination is a point on the screen that will
-    // remain fixed for the duration of the animation.
-    // If use_anchor is false, destination is the final top-left scroll position.
     void StartPageScaleAnimation(const gfx::Point& destination, bool use_anchor, float new_page_scale, base::TimeDelta duration);
-
-    // Called to update if scroll events should be sent.
     void SetHaveScrollEventHandlers(bool);
-
-    // Start deferring commits to the compositor, allowing document lifecycle
-    // updates without committing the layer tree. Commits are deferred
-    // until at most the given |timeout| has passed. If multiple calls are made
-    // when deferral is active then the initial timeout applies.
     bool StartDeferringCommits(base::TimeDelta timeout, cc::PaintHoldingReason reason);
-    // Immediately stop deferring commits.
     void StopDeferringCommits(cc::PaintHoldingCommitTrigger);
-
-    // Pause all rendering (main and compositor thread) in the compositor.
     [[nodiscard]] std::unique_ptr<cc::ScopedPauseRendering> PauseRendering();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Returns the maximum bounds for buffers allocated for rasterization and
     // compositing. This is is max texture size for GPU compositing and a browser
     // chosen limit in software mode.
     // Returns null if the compositing stack has not been initialized yet.
     std::optional<int> GetMaxRenderBufferBounds() const;
 
-    // Prevents any updates to the input for the layer tree, and the layer tree
-    // itself, and the layer tree from becoming visible.
+#endif
+
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<cc::ScopedDeferMainFrameUpdate> DeferMainFrameUpdate();
-
-    // Sets the amount that the top and bottom browser controls are showing, from
-    // 0 (hidden) to 1 (fully shown).
     void SetBrowserControlsShownRatio(float top_ratio, float bottom_ratio);
-
-    // Set browser controls params. These params consist of top and bottom
-    // heights, min-heights, browser_controls_shrink_blink_size, and
-    // animate_browser_controls_height_changes. If
-    // animate_browser_controls_height_changes is set to true, changes to the
-    // browser controls height will be animated. If
-    // browser_controls_shrink_blink_size is set to true, then Blink shrunk the
-    // viewport clip layers by the top and bottom browser controls height. Top
-    // controls will translate the web page down and do not immediately scroll
-    // when hiding. The bottom controls scroll immediately and never translate the
-    // content (only clip it).
     void SetBrowserControlsParams(cc::BrowserControlsParams params);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // This function provides zooming for find in page results when browsing with
     // page autosize.
     void ZoomToFindInPageRect(const gfx::Rect& rect_in_root_frame);
+#endif
 
-    // Return the compositor LayerTreeHost.
+#if !defined(MINI_UI_QUICKJS)
     cc::LayerTreeHost* LayerTreeHostForTesting() const;
-    // Ask compositor to composite a frame for testing. This will generate a
-    // BeginMainFrame, and update the document lifecycle.
     void SynchronouslyCompositeForTesting(base::TimeTicks frame_time);
-
-    // Sets the device color space for testing.
     void SetDeviceColorSpaceForTesting(const gfx::ColorSpace& color_space);
+#endif
+
 
     // Converts from DIPs to Blink coordinate space (ie. Viewport/Physical
     // pixels).
@@ -520,40 +555,31 @@ public:
 
     void ShowVirtualKeyboardOnElementFocus();
     void ProcessTouchAction(WebTouchAction touch_action);
+#if !defined(MINI_UI_QUICKJS)
     void SetPanAction(mojom::blink::PanAction pan_action);
-
-    // Called to update whether low latency input mode is enabled or not.
     void SetNeedsLowLatencyInput(bool);
-
-    // Requests unbuffered (ie. low latency) input until a pointerup
-    // event occurs.
     void RequestUnbufferedInputEvents();
-
-    // Requests unbuffered (ie. low latency) input due to debugger being
-    // attached. Debugger needs to paint when stopped in the event handler.
     void SetNeedsUnbufferedInputForDebugger(bool);
-
-    // Called when the main frame navigates.
     void DidNavigate();
-
-    // Ensures all queued input in the widget has been processed and the queues
-    // emptied.
     void FlushInputForTesting(base::OnceClosure done_callback);
-
-    // Called when the widget should get targeting input.
     void SetMouseCapture(bool capture);
-
-    // Called when the widget's main frame has ongoing autoscroll selection.
     void NotifyAutoscrollForSelectionInMainFrame(bool autoscroll_selection);
+#endif
 
     // Sets the current page scale factor and minimum / maximum limits. Both
     // limits are initially 1 (no page scale allowed).
     void SetPageScaleStateAndLimits(float page_scale_factor, bool is_pinch_gesture_active, float minimum, float maximum);
+#if !defined(MINI_UI_QUICKJS)
     void UpdateViewportDescription(const ViewportDescription& viewport_description);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     const viz::LocalSurfaceId& LocalSurfaceIdFromParent();
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     ScreenMetricsEmulator* DeviceEmulator();
+#endif
 
     // Calculates the selection bounds in the root frame. Returns bounds unchanged
     // when there is no focused frame. Returns the caret bounds if the selection
@@ -563,22 +589,26 @@ public:
     // Returns if auto resize mode is enabled.
     bool AutoResizeMode();
 
+#if !defined(MINI_UI_QUICKJS)
     void SetScreenMetricsEmulationParameters(bool enabled, const blink::DeviceEmulationParams& params);
     void SetScreenInfoAndSize(const display::ScreenInfos& screen_infos, const gfx::Size& widget_size, const gfx::Size& visible_viewport_size);
+#endif
 
-    // Update the surface allocation information, compositor viewport rect and
-    // screen info on the widget.
+#if !defined(MINI_UI_QUICKJS)
     void UpdateSurfaceAndScreenInfo(
         const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect, const display::ScreenInfos& screen_infos);
-    // Similar to UpdateSurfaceAndScreenInfo but the surface allocation
-    // and compositor viewport rect remains the same.
-    void UpdateScreenInfo(const display::ScreenInfos& screen_infos);
     void UpdateSurfaceAndCompositorRect(const viz::LocalSurfaceId& new_local_surface_id, const gfx::Rect& compositor_viewport_pixel_rect);
+#endif
+    void UpdateScreenInfo(const display::ScreenInfos& screen_infos);
     void UpdateCompositorViewportRect(const gfx::Rect& compositor_viewport_pixel_rect);
+#if !defined(MINI_UI_QUICKJS)
     void OverrideDevicePostureForEmulation(mojom::blink::DevicePostureType device_posture_param);
     void DisableDevicePostureOverrideForEmulation();
+#endif
     void SetViewportSegments(const std::vector<gfx::Rect>& viewport_segments);
+#if !defined(MINI_UI_QUICKJS)
     viz::FrameSinkId GetFrameSinkIdAtPoint(const gfx::PointF& point, gfx::PointF* local_point);
+#endif
 
     // Set the pending window rect. For every SetPendingWindowRect
     // call there must be an AckPendingWindowRect call.
@@ -588,24 +618,21 @@ public:
     // call there must be an AckPendingWindowRect call.
     void AckPendingWindowRect();
 
+#if !defined(MINI_UI_QUICKJS)
     // Return the focused WebPlugin if there is one.
     WebPlugin* GetFocusedPluginContainer();
+#endif
 
-    // Return if there is a pending scale animation.
+#if !defined(MINI_UI_QUICKJS)
+    // Return if there is a pending compositor page scale animation.
     bool HasPendingPageScaleAnimation();
+#endif
 
-    // Set the source URL (if the compositor is rendering the primary main frame).
-    // Also propagates the history sequence number (equivalent to a
-    // `PropagateHistorySequenceNumberToCompositor()` call).
+#if !defined(MINI_UI_QUICKJS)
     void UpdateNavigationStateForCompositor(ukm::SourceId source_id, const KURL& url);
-
-    // Propagates the HistoryItem's ItemSequenceNumber to the compositor. This is
-    // used as part of a RenderFrameMetadata which is sent to the browser when the
-    // compositor submits a frame.
     void PropagateHistorySequenceNumberToCompositor();
-
-    // Ask compositor to create the shared memory for smoothness ukm region.
     base::ReadOnlySharedMemoryRegion CreateSharedMemoryForSmoothnessUkm();
+#endif
 
     // Calculate and cache the most up to date line bounding boxes in the document
     // coordinate space.
@@ -618,21 +645,22 @@ public:
 
     bool IsScrollGestureActive() const;
 
-    // Request the compositor thread to tell the GPU process to generate a
-    // screenshot of the current viewport. The screenshot is tagged with `token`.
-    // The caller must have requested a new `viz::LocalSurfaceID` before making
-    // this request.
+#if !defined(MINI_UI_QUICKJS)
     void RequestViewportScreenshot(const base::UnguessableToken& token);
-
-    // Request a new `viz::LocalSurfaceId` on the compositor thread.
     void RequestNewLocalSurfaceId();
+#endif
 
 protected:
     // WidgetBaseClient overrides:
     void ScheduleAnimation() override;
+#if defined(MINI_UI_QUICKJS)
+    void DidBeginMainFrame();
+    void WasShown(bool was_evicted);
+#else
     void DidBeginMainFrame() override;
     std::unique_ptr<cc::LayerTreeFrameSink> AllocateNewLayerTreeFrameSink() override;
     void WasShown(bool was_evicted) override;
+#endif
 
     // Whether compositing to LCD text should be auto determined. This can be
     // overridden by tests to disable this.
@@ -643,26 +671,35 @@ protected:
         return widget_base_.get();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // WebFrameWidget overrides.
     cc::LayerTreeHost* LayerTreeHost() override;
     bool RequestSuccessfulPresentationWithForcedRedraw(
         base::OnceClosure callback) override;
+#endif
 
     // Determines whether the drag source is currently dragging.
     bool doing_drag_and_drop_ = false;
 
 private:
     friend class WebViewImpl;
+#if !defined(MINI_UI_QUICKJS)
     friend class ReportTimeSwapPromise;
 
     void NotifySwapAndPresentationTime(PromiseCallbacks callbacks);
 
-    // WidgetBaseClient overrides.
+    // WidgetBaseClient compositor callbacks.
     void BeginCommitCompositorFrame() override;
     void EndCommitCompositorFrame(base::TimeTicks commit_start_time, base::TimeTicks commit_finish_time) override;
+#endif
+#if defined(MINI_UI_QUICKJS)
+    void ApplyViewportChanges(const cc::ApplyViewportChangesArgs& args);
+#else
     void ApplyViewportChanges(const cc::ApplyViewportChangesArgs& args) override;
     void RecordDispatchRafAlignedInputTime(base::TimeTicks raf_aligned_input_start_time) override;
     void SetSuppressFrameRequestsWorkaroundFor704763Only(bool) override;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void RecordStartOfFrameMetrics() override;
     void RecordEndOfFrameMetrics(base::TimeTicks, cc::ActiveFrameSequenceTrackers trackers) override;
     std::unique_ptr<cc::BeginMainFrameMetrics> GetBeginMainFrameMetrics() override;
@@ -671,11 +708,14 @@ private:
     void DidCommitAndDrawCompositorFrame() override;
     void DidObserveFirstScrollDelay(base::TimeDelta first_scroll_delay, base::TimeTicks first_scroll_timestamp) override;
     void DidCompletePageScaleAnimation() override;
+#endif
     void FocusChangeComplete() override;
     void WillHandleGestureEvent(const WebGestureEvent& event, bool* suppress) override;
     void WillHandleMouseEvent(const WebMouseEvent& event) override;
+#if !defined(MINI_UI_QUICKJS)
     void ObserveGestureEventAndResult(const WebGestureEvent& gesture_event, const gfx::Vector2dF& unused_delta,
         const cc::OverscrollBehavior& overscroll_behavior, bool event_processed) override;
+#endif
     bool SupportsBufferedTouchEvents() override
     {
         return true;
@@ -689,75 +729,85 @@ private:
     }
     void FocusChanged(mojom::blink::FocusState focus_state) override;
     bool ShouldAckSyntheticInputImmediately() override;
+#if defined(MINI_UI_QUICKJS)
+    bool UpdateScreenRects(const gfx::Rect& widget_screen_rect, const gfx::Rect& window_screen_rect);
+#else
     void UpdateVisualProperties(const VisualProperties& visual_properties) override;
     bool UpdateScreenRects(const gfx::Rect& widget_screen_rect, const gfx::Rect& window_screen_rect) override;
+#endif
     void OrientationChanged() override;
     void DidUpdateSurfaceAndScreen(const display::ScreenInfos& previous_original_screen_infos) override;
     gfx::Rect ViewportVisibleRect() override;
     std::optional<display::mojom::blink::ScreenOrientation> ScreenOrientationOverride() override;
+#if defined(MINI_UI_QUICKJS)
+    void WasHidden();
+    void RunPaintBenchmark(int repeat_count, cc::PaintBenchmarkResult& result);
+#else
     void WasHidden() override;
     void RunPaintBenchmark(int repeat_count, cc::PaintBenchmarkResult& result) override;
+#endif
     KURL GetURLForDebugTrace() override;
     float GetTestingDeviceScaleFactorOverride() override;
     void CountDroppedPointerDownForEventTiming(unsigned count) override;
     // mojom::blink::FrameWidget overrides.
     void DragTargetDragEnter(const WebDragData&, const gfx::PointF& point_in_viewport, const gfx::PointF& screen_point, DragOperationsMask operations_allowed,
-        uint32_t key_modifiers, DragTargetDragEnterCallback callback) override;
+        uint32_t key_modifiers, base::OnceCallback<void(ui::mojom::DragOperation, bool)> callback) override;
     void DragTargetDragOver(const gfx::PointF& point_in_viewport, const gfx::PointF& screen_point, DragOperationsMask operations_allowed,
-        uint32_t key_modifiers, DragTargetDragOverCallback callback) override;
+        uint32_t key_modifiers, base::OnceCallback<void(ui::mojom::DragOperation, bool)> callback) override;
     void DragTargetDragLeave(const gfx::PointF& point_in_viewport, const gfx::PointF& screen_point) override;
     void DragTargetDrop(
         const WebDragData&, const gfx::PointF& point_in_viewport, const gfx::PointF& screen_point, uint32_t key_modifiers, base::OnceClosure callback) override;
     void DragSourceSystemDragEnded() override;
+#if !defined(MINI_UI_QUICKJS)
     void SetBackgroundOpaque(bool opaque) override;
     void SetActive(bool active) override;
-    // For both mainframe and childframe change the text direction of the
-    // currently selected input field (if any).
     void SetTextDirection(base::i18n::TextDirection direction) override;
-    // Sets the inherited effective touch action on an out-of-process iframe.
     void SetInheritedEffectiveTouchActionForSubFrame(WebTouchAction touch_action) override;
-    // Toggles render throttling for an out-of-process iframe. Local frames are
-    // throttled based on their visibility in the viewport, but remote frames
-    // have to have throttling information propagated from parent to child
-    // across processes.
     void UpdateRenderThrottlingStatusForSubFrame(bool is_throttled, bool subtree_throttled, bool display_locked) override;
     void EnableDeviceEmulation(const DeviceEmulationParams& parameters) override;
     void DisableDeviceEmulation() override;
-    // Sets the inert bit on an out-of-process iframe, causing it to ignore
-    // input.
     void SetIsInertForSubFrame(bool inert) override;
+#endif
 
-    // mojom::blink::FrameWidgetInputHandler overrides.
-    void AddImeTextSpansToExistingText(uint32_t start, uint32_t end, const Vector<ui::ImeTextSpan>& ime_text_spans) override;
-    void ClearImeTextSpansByType(uint32_t start, uint32_t end, ui::ImeTextSpan::Type type) override;
-    void SetCompositionFromExistingText(int32_t start, int32_t end, const Vector<ui::ImeTextSpan>& ime_text_spans) override;
-    void ExtendSelectionAndDelete(int32_t before, int32_t after) override;
-    void ExtendSelectionAndReplace(uint32_t before, uint32_t after, const String& replacement_text) override;
-    void DeleteSurroundingText(int32_t before, int32_t after) override;
-    void DeleteSurroundingTextInCodePoints(int32_t before, int32_t after) override;
-    void SetEditableSelectionOffsets(int32_t start, int32_t end) override;
-    void ExecuteEditCommand(const String& command, const String& value) override;
-    void Undo() override;
-    void Redo() override;
-    void Cut() override;
-    void Copy() override;
-    void CopyToFindPboard() override;
-    void CenterSelection() override;
-    void Paste() override;
-    void PasteAndMatchStyle() override;
-    void Delete() override;
-    void SelectAll() override;
-    void CollapseSelection() override;
-    void Replace(const String& word) override;
-    void ReplaceMisspelling(const String& word) override;
-    void SelectRange(const gfx::Point& base_in_dips, const gfx::Point& extent_in_dips) override;
-    void AdjustSelectionByCharacterOffset(int32_t start, int32_t end, mojom::blink::SelectionMenuBehavior behavior) override;
-    void MoveRangeSelectionExtent(const gfx::Point& extent_in_dips) override;
-    void ScrollFocusedEditableNodeIntoView() override;
+    // Native direct editing/IME entry points. In the full renderer these also
+    // implement FrameWidgetInputHandler IPC.
+    void AddImeTextSpansToExistingText(uint32_t start, uint32_t end, const Vector<ui::ImeTextSpan>& ime_text_spans)
+        BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ClearImeTextSpansByType(uint32_t start, uint32_t end, ui::ImeTextSpan::Type type)
+        BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void SetCompositionFromExistingText(int32_t start, int32_t end, const Vector<ui::ImeTextSpan>& ime_text_spans)
+        BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ExtendSelectionAndDelete(int32_t before, int32_t after) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ExtendSelectionAndReplace(uint32_t before, uint32_t after, const String& replacement_text) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void DeleteSurroundingText(int32_t before, int32_t after) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void DeleteSurroundingTextInCodePoints(int32_t before, int32_t after) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void SetEditableSelectionOffsets(int32_t start, int32_t end) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ExecuteEditCommand(const String& command, const String& value) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Undo() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Redo() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Cut() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Copy() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void CopyToFindPboard() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void CenterSelection() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Paste() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void PasteAndMatchStyle() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Delete() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void SelectAll() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void CollapseSelection() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void Replace(const String& word) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ReplaceMisspelling(const String& word) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void SelectRange(const gfx::Point& base_in_dips, const gfx::Point& extent_in_dips) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void AdjustSelectionByCharacterOffset(int32_t start, int32_t end, mojom::blink::SelectionMenuBehavior behavior)
+        BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void MoveRangeSelectionExtent(const gfx::Point& extent_in_dips) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+    void ScrollFocusedEditableNodeIntoView() BLINK_FRAME_WIDGET_IPC_OVERRIDE;
+#if !defined(MINI_UI_QUICKJS)
     void WaitForPageScaleAnimationForTesting(WaitForPageScaleAnimationForTestingCallback callback) override;
-    void MoveCaret(const gfx::Point& point_in_dips) override;
+#endif
+    void MoveCaret(const gfx::Point& point_in_dips) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
     void SelectAroundCaret(
-        mojom::blink::SelectionGranularity granularity, bool should_show_handle, bool should_show_context_menu, SelectAroundCaretCallback callback) override;
+        mojom::blink::SelectionGranularity granularity, bool should_show_handle, bool should_show_context_menu,
+        mojom::blink::FrameWidgetInputHandler::SelectAroundCaretCallback callback) BLINK_FRAME_WIDGET_IPC_OVERRIDE;
 
     // PageWidgetEventHandler overrides:
     WebInputEventResult HandleKeyEvent(const WebKeyboardEvent&) override;
@@ -769,12 +819,16 @@ private:
     WebInputEventResult HandleCharEvent(const WebKeyboardEvent&) override;
 
     void SetZoomInternal(double zoom_level, double css_zoom_factor);
-
+#if !defined(MINI_UI_QUICKJS)
     WebInputEventResult HandleCapturedMouseEvent(const WebCoalescedInputEvent&);
+#endif
     void MouseContextMenu(const WebMouseEvent&);
     void CancelDrag();
+#if !defined(MINI_UI_QUICKJS)
     void PresentationCallbackForMeaningfulLayout(const viz::FrameTimingDetails& first_paint_details);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     void ForEachRemoteFrameControlledByWidget(base::FunctionRef<void(RemoteFrame*)> callback);
 
     void SendOverscrollEventFromImplSide(const gfx::Vector2dF& overscroll_delta, cc::ElementId scroll_latched_element_id);
@@ -786,6 +840,7 @@ private:
     void SendEndOfScrollEvents(const cc::CompositorCommitData& commit_data);
     void SendScrollSnapChangingEventIfNeeded(const cc::CompositorCommitData& commit_data);
     void RecordManipulationTypeCounts(cc::ManipulationInfo info);
+#endif
 
     enum DragAction { kDragEnter, kDragOver };
     // Consolidate some common code between starting a drag over a target and
@@ -802,9 +857,10 @@ private:
     // the page is shutting down, but will be valid at all other times.
     Page* GetPage() const;
 
+#if !defined(MINI_UI_QUICKJS)
     mojom::blink::FrameWidgetHost* GetAssociatedFrameWidgetHost() const;
-
     void InitializeCompositingInternal(const display::ScreenInfos& screen_infos, const cc::LayerTreeSettings* settings, WebFrameWidget* previous_widget);
+#endif
 
     // Notifies RenderWidgetHostImpl that the frame widget has painted something.
     void DidMeaningfulLayout(WebMeaningfulLayout layout_type);
@@ -818,8 +874,10 @@ private:
     // Called when a gesture event has been processed.
     void DidHandleGestureEvent(const WebGestureEvent& event);
 
+#if !defined(MINI_UI_QUICKJS)
     // Called to update if pointerrawupdate events should be sent.
     void SetHasPointerRawUpdateEventHandlers(bool);
+#endif
 
     // Helper function to process events while pointer locked.
     void PointerLockMouseEvent(const WebCoalescedInputEvent&);
@@ -850,15 +908,17 @@ private:
     // Perform a hit test for a point relative to the root frame of the page.
     HitTestResult HitTestResultForRootFramePos(const gfx::PointF& pos_in_root_frame);
 
-    // Called during |UpdateVisualProperties| to apply the new size to the widget.
+#if !defined(MINI_UI_QUICKJS)
+    // Applies browser-delivered compositor visual sizing.
     void ApplyVisualPropertiesSizing(const VisualProperties& visual_properties);
-
-    // Returns true iff the visual property state contains an update that will
-    // change the fullscreen state (e.g. on/off or current display).
     bool DidChangeFullscreenState(const VisualProperties& visual_properties) const;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Satisfy the render blocking condition for cross-document view transitions.
     void NotifyViewTransitionRenderingHasBegun();
+
+#endif
 
     // True when `this` should ignore input events.
     bool ShouldIgnoreInputEvents();
@@ -866,8 +926,10 @@ private:
     // Triggers onmove event for window.
     void EnqueueMoveEvent();
 
+#if !defined(MINI_UI_QUICKJS)
     // Update scroll-markers for any scroller scrolled by the impl thread.
     void HandleScrollMarkerUpdates(const cc::CompositorCommitData& commit_data);
+#endif
 
 #if BUILDFLAG(IS_WIN)
     // Computes a contiguous range of character bounds within proximity of
@@ -912,8 +974,10 @@ private:
 
     bool is_scroll_gesture_active_ = false;
 
-    // If set, the (plugin) element which has mouse capture.
+#if !defined(MINI_UI_QUICKJS)
+    // If set, the plugin element which has mouse capture.
     Member<HTMLPlugInElement> mouse_capture_element_;
+#endif
 
     // The size of the widget in viewport coordinates. This is slightly different
     // than the WebViewImpl::size_ since isn't set in auto resize mode.
@@ -938,27 +1002,23 @@ private:
 
     WebVector<gfx::Rect> viewport_segments_;
 
-    // This is owned by the LayerTreeHostImpl, and should only be used on the
-    // compositor thread, so we keep the TaskRunner where you post tasks to
-    // make that happen.
+#if !defined(MINI_UI_QUICKJS)
+    // Compositor worklet dispatchers.
     base::WeakPtr<AnimationWorkletMutatorDispatcherImpl> mutator_dispatcher_;
     scoped_refptr<base::SingleThreadTaskRunner> mutator_task_runner_;
-
-    // The |paint_dispatcher_| should only be dereferenced on the
-    // |paint_task_runner_| (in practice this is the compositor thread). We keep a
-    // copy of it here to provide to new PaintWorkletProxyClient objects (which
-    // run on the worklet thread) so that they can talk to the
-    // PaintWorkletPaintDispatcher on the compositor thread.
     base::WeakPtr<PaintWorkletPaintDispatcher> paint_dispatcher_;
     scoped_refptr<base::SingleThreadTaskRunner> paint_task_runner_;
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // WebFrameWidgetImpl is not tied to ExecutionContext
     HeapMojoAssociatedRemote<mojom::blink::FrameWidgetHost> frame_widget_host_ { nullptr };
     // WebFrameWidgetImpl is not tied to ExecutionContext
     HeapMojoAssociatedReceiver<mojom::blink::FrameWidget, WebFrameWidgetImpl> receiver_ { this, nullptr };
     HeapMojoReceiver<viz::mojom::blink::InputTargetClient, WebFrameWidgetImpl> input_target_receiver_ { this, nullptr };
+#endif
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) && !defined(MINI_UI_QUICKJS)
     // WebFrameWidgetImpl is not tied to ExecutionContext
     HeapMojoRemote<mojom::blink::ImeRenderWidgetHost> ime_render_widget_host_ { nullptr };
 #endif
@@ -978,17 +1038,16 @@ private:
     // Indicates whether we need to consume scroll gestures to move cursor.
     bool swipe_to_move_cursor_activated_ = false;
 
-    // Set when a measurement begins, reset when the measurement is taken.
+#if !defined(MINI_UI_QUICKJS)
     std::optional<base::TimeTicks> update_layers_start_time_;
-
-    // Metrics for gathering time for commit of compositor frame.
     std::optional<base::TimeTicks> commit_compositor_frame_start_time_;
     std::optional<base::TimeTicks> next_commit_compositor_frame_start_time_;
+#endif
 
-    // Present when emulation is enabled, only on a main frame's WebFrameWidget.
-    // Used to override values given from the browser such as ScreenInfo,
-    // WidgetScreenRect, WindowScreenRect, and the widget's size.
+#if !defined(MINI_UI_QUICKJS)
+    // Present only while DevTools screen emulation is enabled.
     Member<ScreenMetricsEmulator> device_emulator_;
+#endif
 
     Member<AnimationFrameTimingMonitor> animation_frame_timing_monitor_;
 
@@ -1070,18 +1129,24 @@ private:
     // information through to avoid breaking assumptions.
     const bool is_for_scalable_page_;
 
+#if !defined(MINI_UI_QUICKJS)
     WaitForPageScaleAnimationForTestingCallback page_scale_animation_for_testing_callback_;
+#endif
 
     // This stores the last hidden page popup. If a GestureTap attempts to open
     // the popup that is closed by its previous GestureTapDown, the popup remains
     // closed.
     scoped_refptr<WebPagePopupImpl> last_hidden_page_popup_;
 
+#if !defined(MINI_UI_QUICKJS)
     base::WeakPtrFactory<mojom::blink::FrameWidgetInputHandler> input_handler_weak_ptr_factory_ { this };
+#endif
 
     double zoom_level_ = 0;
     double css_zoom_factor_ = 1;
 };
+
+#undef BLINK_FRAME_WIDGET_IPC_OVERRIDE
 
 } // namespace blink
 

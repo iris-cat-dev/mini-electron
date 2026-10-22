@@ -19,7 +19,9 @@
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
 #include "net/base/request_priority.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/scheduler/common/back_forward_cache_disabling_feature_tracker.h"
@@ -44,9 +46,11 @@ class TaskQueue;
 } // namespace sequence_manager
 } // namespace base
 
+#if !defined(MINI_UI_QUICKJS)
 namespace ukm {
 class UkmRecorder;
 }
+#endif
 
 namespace blink {
 
@@ -106,7 +110,9 @@ public:
 
     bool IsInEmbeddedFrameTree() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     void TraceUrlChange(const String& url) override;
+#endif
     void AddTaskTime(base::TimeDelta time) override;
     void OnTaskCompleted(TaskQueue::TaskTiming*);
     FrameScheduler::FrameType GetFrameType() const override;
@@ -169,20 +175,26 @@ public:
         return opted_out_from_aggressive_throttling_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     void OnTraceLogEnabled()
     {
         tracing_controller_.OnTraceLogEnabled();
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     void SetPageFrozenForTracing(bool frozen);
+#endif
 
     // Computes the priority of |task_queue| if it is associated to this frame
     // scheduler. Note that the main thread's policy should be upto date to
     // compute the correct priority.
     TaskPriority ComputePriority(MainThreadTaskQueue* task_queue) const;
 
+#if !defined(MINI_UI_QUICKJS)
     ukm::SourceId GetUkmSourceId() override;
     ukm::UkmRecorder* GetUkmRecorder();
+#endif
 
     // FrameTaskQueueController::Delegate implementation.
     void OnTaskQueueCreated(MainThreadTaskQueue*, base::sequence_manager::TaskQueue::QueueEnabledVoter*) override;
@@ -333,7 +345,9 @@ private:
     // due to complexities in passing this value.
     base::TimeDelta unreported_task_time_;
 
+#if !defined(MINI_UI_QUICKJS)
     TraceableVariableController tracing_controller_;
+#endif
     std::unique_ptr<FrameTaskQueueController> frame_task_queue_controller_;
 
     const raw_ptr<MainThreadSchedulerImpl, DanglingUntriaged> main_thread_scheduler_; // NOT OWNED
@@ -346,7 +360,9 @@ private:
     TraceableState<bool, TracingCategory::kInfo> frame_paused_;
     TraceableState<FrameOriginType, TracingCategory::kInfo> frame_origin_type_;
     TraceableState<bool, TracingCategory::kInfo> subresource_loading_paused_;
+#if !defined(MINI_UI_QUICKJS)
     StateTracer<TracingCategory::kInfo> url_tracer_;
+#endif
     TraceableState<ThrottlingType, TracingCategory::kInfo> throttling_type_;
     Vector<MainThreadTaskQueue::ThrottleHandle> throttled_task_queue_handles_;
     TraceableState<bool, TracingCategory::kInfo> preempted_for_cooperative_scheduling_;
@@ -361,10 +377,12 @@ private:
 
     TaskPriority low_priority_async_script_task_priority_;
 
+#if !defined(MINI_UI_QUICKJS)
     // These are the states of the Page.
     // They should be accessed via GetPageScheduler()->SetPageState().
     // they are here because we don't support page-level tracing yet.
     TraceableState<bool, TracingCategory::kInfo> page_frozen_for_tracing_;
+#endif
 
     TraceableState<bool, TracingCategory::kInfo> waiting_for_contentful_paint_;
     TraceableState<bool, TracingCategory::kInfo> waiting_for_meaningful_paint_;

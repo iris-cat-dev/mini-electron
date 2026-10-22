@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,14 +13,13 @@ namespace core {
 
 namespace internal {
 MOJO_SYSTEM_IMPL_EXPORT extern Configuration g_configuration;
-} // namespace internal
+}  // namespace internal
 
-MOJO_SYSTEM_IMPL_EXPORT inline const Configuration& GetConfiguration()
-{
-    return internal::g_configuration;
+MOJO_SYSTEM_IMPL_EXPORT inline const Configuration& GetConfiguration() {
+  return internal::g_configuration;
 }
 
-} // namespace core
-} // namespace mojo
+}  // namespace core
+}  // namespace mojo
 
-#endif // MOJO_CORE_CONFIGURATION_H_
+#endif  // MOJO_CORE_CONFIGURATION_H_

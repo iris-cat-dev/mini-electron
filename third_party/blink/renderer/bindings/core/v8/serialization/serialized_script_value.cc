@@ -596,13 +596,22 @@ void SerializedScriptValue::RegisterMemoryAllocatedWithCurrentScriptContext()
 
 bool SerializedScriptValue::IsLockedToAgentCluster() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return !shared_array_buffers_contents_.empty()
+        || base::ranges::any_of(attachments_, [](const auto& entry) { return entry.value->IsLockedToAgentCluster(); });
+#else
     return !wasm_modules_.empty() || !shared_array_buffers_contents_.empty()
         || base::ranges::any_of(attachments_, [](const auto& entry) { return entry.value->IsLockedToAgentCluster(); }) || shared_value_conveyor_.has_value();
+#endif
 }
 
 bool SerializedScriptValue::IsOriginCheckRequired() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return false;
+#else
     return file_system_access_tokens_.size() > 0 || wasm_modules_.size() > 0;
+#endif
 }
 
 bool SerializedScriptValue::CanDeserializeIn(ExecutionContext* execution_context)

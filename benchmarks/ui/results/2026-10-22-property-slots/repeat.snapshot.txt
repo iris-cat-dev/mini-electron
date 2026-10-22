@@ -1,0 +1,23 @@
+from pathlib import Path
+import json
+import subprocess
+import sys
+import time
+root=Path(__file__).resolve().parents[2]
+out=root/'out/ui-field-repeat-validation'
+out.mkdir(parents=True,exist_ok=True)
+records=[]
+for name,ui,exe,dest in [
+ ('candidate-repeat','out/ui-field-inline-candidate','out/ui-field-inline-after/build/ui-benchmark.exe','out/ui-field-inline-repeat'),
+ ('baseline-repeat','out/ui-windows-x64','out/ui-map-final-smoke/build/ui-benchmark.exe','out/ui-field-before-repeat')]:
+ command=[sys.executable,'benchmarks/ui/run.py','--exe',exe,'--ui-out',ui,'--out-dir',dest,'--counts','100,10000','--timeout-ms','900000']
+ start=time.perf_counter()
+ log=out/(name+'.log')
+ with log.open('wb') as stream:
+  process=subprocess.run(command,cwd=root,stdout=stream,stderr=subprocess.STDOUT)
+ records.append({'name':name,'command':command,'exit_code':process.returncode,'seconds':time.perf_counter()-start,'log':str(log)})
+ (out/'validation.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
+ print(json.dumps(records[-1]),flush=True)
+ if process.returncode:raise SystemExit(process.returncode)
+command=[sys.executable,'benchmarks/ui/before_after.py','--before','out/ui-field-before-repeat','--after','out/ui-field-inline-repeat','--out-dir','out/ui-field-repeat-comparison']
+subprocess.run(command,cwd=root,check=True)

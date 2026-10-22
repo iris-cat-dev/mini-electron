@@ -136,7 +136,9 @@ void AutoscrollController::StartAutoscrollForSelection(LayoutObject* layout_obje
     pressed_layout_object_ = DynamicTo<LayoutBox>(layout_object);
     autoscroll_type_ = kAutoscrollForSelection;
     autoscroll_layout_object_ = scrollable;
+#if !defined(MINI_UI_QUICKJS)
     UpdateCachedAutoscrollForSelectionState(true);
+#endif
     ScheduleMainThreadAnimation();
 }
 
@@ -147,7 +149,9 @@ void AutoscrollController::StopAutoscroll()
             pressed_layout_object_->GetNode()->StopAutoscroll();
         pressed_layout_object_ = nullptr;
     }
+#if !defined(MINI_UI_QUICKJS)
     UpdateCachedAutoscrollForSelectionState(false);
+#endif
     autoscroll_layout_object_ = nullptr;
     autoscroll_type_ = kNoAutoscroll;
 }
@@ -164,13 +168,17 @@ void AutoscrollController::StopAutoscrollIfNeeded(LayoutObject* layout_object)
         vertical_autoscroll_layout_box_ = nullptr;
 
     if (MiddleClickAutoscrollInProgress() && !horizontal_autoscroll_layout_box_ && !vertical_autoscroll_layout_box_) {
+#if !defined(MINI_UI_QUICKJS)
         page_->GetChromeClient().AutoscrollEnd(layout_object->GetFrame());
+#endif
         autoscroll_type_ = kNoAutoscroll;
     }
 
     if (autoscroll_layout_object_ != layout_object)
         return;
+#if !defined(MINI_UI_QUICKJS)
     UpdateCachedAutoscrollForSelectionState(false);
+#endif
     autoscroll_layout_object_ = nullptr;
     autoscroll_type_ = kNoAutoscroll;
 }
@@ -280,7 +288,9 @@ void AutoscrollController::HandleMouseMoveForMiddleClickAutoscroll(LocalFrame* f
         page_->GetChromeClient().SetCursorOverridden(false);
         view->SetCursor(MiddleClickAutoscrollCursor(velocity, can_scroll_vertically, can_scroll_horizontally));
         page_->GetChromeClient().SetCursorOverridden(true);
+#if !defined(MINI_UI_QUICKJS)
         page_->GetChromeClient().AutoscrollFling(velocity, frame);
+#endif
     }
 }
 
@@ -306,7 +316,9 @@ void AutoscrollController::StopMiddleClickAutoscroll(LocalFrame* frame)
     if (!MiddleClickAutoscrollInProgress())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     page_->GetChromeClient().AutoscrollEnd(frame);
+#endif
     autoscroll_type_ = kNoAutoscroll;
     page_->GetChromeClient().SetCursorOverridden(false);
     frame->LocalFrameRoot().GetEventHandler().UpdateCursor();
@@ -386,7 +398,9 @@ void AutoscrollController::StartMiddleClickAutoscroll(LocalFrame* frame, LayoutB
         view->SetCursor(MiddleClickAutoscrollCursor(last_velocity_, can_scroll_vertically, can_scroll_horizontally));
     }
     page_->GetChromeClient().SetCursorOverridden(true);
+#if !defined(MINI_UI_QUICKJS)
     page_->GetChromeClient().AutoscrollStart(gfx::ScalePoint(position, 1 / frame->DevicePixelRatio()), frame);
+#endif
 }
 
 void AutoscrollController::Animate()
@@ -435,6 +449,7 @@ void AutoscrollController::ScheduleMainThreadAnimation()
     page_->GetChromeClient().ScheduleAnimation(autoscroll_layout_object_->GetFrame()->View());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void AutoscrollController::UpdateCachedAutoscrollForSelectionState(bool autoscroll_selection)
 {
     if (!autoscroll_layout_object_ || !autoscroll_layout_object_->GetFrame() || !autoscroll_layout_object_->GetFrame()->IsAttached()
@@ -443,6 +458,7 @@ void AutoscrollController::UpdateCachedAutoscrollForSelectionState(bool autoscro
     }
     autoscroll_layout_object_->GetFrame()->LocalFrameRoot().Client()->NotifyAutoscrollForSelectionInMainFrame(autoscroll_selection);
 }
+#endif
 
 bool AutoscrollController::IsAutoscrolling() const
 {

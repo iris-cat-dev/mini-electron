@@ -26,7 +26,9 @@
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loading_log.h"
@@ -35,12 +37,14 @@ namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 bool ShouldSkipEventDispatch(Element* element)
 {
     // HTMLVideoElement uses this class to load the poster image, but it should
     // not fire events for loading or failure.
     return IsA<HTMLVideoElement>(*element);
 }
+#endif
 
 } // namespace
 
@@ -54,9 +58,10 @@ HTMLImageLoader::~HTMLImageLoader() = default;
 void HTMLImageLoader::DispatchLoadEvent()
 {
     RESOURCE_LOADING_DVLOG(1) << "HTMLImageLoader::dispatchLoadEvent " << this;
-    if (ShouldSkipEventDispatch(GetElement())) {
+#if !defined(MINI_UI_QUICKJS)
+    if (ShouldSkipEventDispatch(GetElement()))
         return;
-    }
+#endif
 
     if (GetContent()->ErrorOccurred()) {
         DispatchErrorEvent();
@@ -74,9 +79,11 @@ void HTMLImageLoader::DispatchLoadEvent()
 
 void HTMLImageLoader::DispatchErrorEvent()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (ShouldSkipEventDispatch(GetElement())) {
         return;
     }
+#endif
 
     GetElement()->DispatchEvent(*Event::Create(event_type_names::kError));
 }

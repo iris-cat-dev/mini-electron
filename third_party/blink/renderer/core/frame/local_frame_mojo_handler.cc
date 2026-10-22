@@ -16,51 +16,63 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/page_state/page_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom-blink.h"
 #include "third_party/blink/public/mojom/opengraph/metadata.mojom-blink.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
+#endif
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/interface_registry.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_function.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_fullscreen_options.h"
+#endif
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/ignore_opens_during_unload_count_incrementer.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/editing/surrounding_text.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
 #include "third_party/blink/renderer/core/frame/intervention.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/pausable_script_executor.h"
+#endif
 #include "third_party/blink/renderer/core/frame/remote_frame_owner.h"
 #include "third_party/blink/renderer/core/frame/reporting_context.h"
 #include "third_party/blink/renderer/core/frame/savable_resources.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
 #include "third_party/blink/renderer/core/html/html_link_element.h"
 #include "third_party/blink/renderer/core/html/html_meta_element.h"
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/main_thread_debugger.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#endif
 #include "third_party/blink/renderer/core/loader/mixed_content_checker.h"
 #include "third_party/blink/renderer/core/messaging/message_port.h"
 #include "third_party/blink/renderer/core/navigation_api/navigation_api.h"
@@ -68,10 +80,12 @@
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/view_transition/page_swap_event.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/resource_timing_utils.h"
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
 
@@ -84,6 +98,7 @@
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 constexpr char kInvalidWorldID[] = "JavaScriptExecuteRequestInIsolatedWorld gets an invalid world id.";
@@ -302,6 +317,7 @@ void ActiveURLMessageFilter::DidDispatchOrReject(mojo::Message* message, bool ac
     Platform::Current()->SetActiveURL(WebURL(), WebString());
     debug_url_set_ = false;
 }
+#endif
 
 LocalFrameMojoHandler::LocalFrameMojoHandler(blink::LocalFrame& frame)
     : frame_(frame)
@@ -320,9 +336,11 @@ LocalFrameMojoHandler::LocalFrameMojoHandler(blink::LocalFrame& frame)
     frame.GetRemoteNavigationAssociatedInterfaces()->GetInterface(
         local_frame_host_remote_.BindNewEndpointAndPassReceiver(frame.GetTaskRunner(TaskType::kInternalDefault)));
 
+#if !defined(MINI_UI_QUICKJS)
     auto* registry = frame.GetInterfaceRegistry();
     registry->AddAssociatedInterface(WTF::BindRepeating(&LocalFrameMojoHandler::BindToLocalFrameReceiver, WrapWeakPersistent(this)));
     registry->AddAssociatedInterface(WTF::BindRepeating(&LocalFrameMojoHandler::BindFullscreenVideoElementReceiver, WrapWeakPersistent(this)));
+#endif
 }
 
 void LocalFrameMojoHandler::Trace(Visitor* visitor) const
@@ -336,12 +354,15 @@ void LocalFrameMojoHandler::Trace(Visitor* visitor) const
     visitor->Trace(device_posture_provider_service_);
     visitor->Trace(local_frame_host_remote_);
     visitor->Trace(non_associated_local_frame_host_remote_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(local_frame_receiver_);
     visitor->Trace(main_frame_receiver_);
     visitor->Trace(fullscreen_video_receiver_);
+#endif
     visitor->Trace(device_posture_receiver_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::WasAttachedAsLocalMainFrame()
 {
     frame_->GetInterfaceRegistry()->AddAssociatedInterface(WTF::BindRepeating(&LocalFrameMojoHandler::BindToMainFrameReceiver, WrapWeakPersistent(this)));
@@ -360,6 +381,7 @@ void LocalFrameMojoHandler::ClosePageForTesting()
 {
     ClosePage(base::DoNothing());
 }
+#endif
 
 mojom::blink::BackForwardCacheControllerHost& LocalFrameMojoHandler::BackForwardCacheControllerHostRemote()
 {
@@ -423,6 +445,7 @@ mojom::blink::DevicePostureType LocalFrameMojoHandler::GetDevicePosture()
     return current_device_posture_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::OverrideDevicePostureForEmulation(mojom::blink::DevicePostureType device_posture_param)
 {
     DevicePostureProvider()->OverrideDevicePostureForEmulation(device_posture_param);
@@ -432,6 +455,7 @@ void LocalFrameMojoHandler::DisableDevicePostureOverrideForEmulation()
 {
     DevicePostureProvider()->DisableDevicePostureOverrideForEmulation();
 }
+#endif
 
 Page* LocalFrameMojoHandler::GetPage() const
 {
@@ -448,6 +472,7 @@ Document* LocalFrameMojoHandler::GetDocument() const
     return frame_->GetDocument();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::BindToLocalFrameReceiver(mojo::PendingAssociatedReceiver<mojom::blink::LocalFrame> receiver)
 {
     if (frame_->IsDetached())
@@ -721,6 +746,7 @@ void LocalFrameMojoHandler::OnFrameVisibilityChanged(mojom::blink::FrameVisibili
         frame_->Client()->GetWebFrame()->Client()->OnFrameVisibilityChanged(visibility);
     }
 }
+#endif
 
 void LocalFrameMojoHandler::OnPostureChanged(mojom::blink::DevicePostureType posture)
 {
@@ -734,6 +760,7 @@ void LocalFrameMojoHandler::OnPostureChanged(mojom::blink::DevicePostureType pos
     frame_->MediaQueryAffectingValueChangedForLocalSubtree(MediaValueChange::kOther);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::PostMessageEvent(
     const std::optional<RemoteFrameToken>& source_frame_token, const String& source_origin, const String& target_origin, BlinkTransferableMessage message)
 {
@@ -953,12 +980,14 @@ void LocalFrameMojoHandler::MixedContentFound(const KURL& main_resource_url, con
         frame_, main_resource_url, mixed_content_url, request_context, was_allowed, url_before_redirects, had_redirect, std::move(source));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::BindDevToolsAgent(
     mojo::PendingAssociatedRemote<mojom::blink::DevToolsAgentHost> host, mojo::PendingAssociatedReceiver<mojom::blink::DevToolsAgent> receiver)
 {
     DCHECK(frame_->Client());
     frame_->Client()->BindDevToolsAgent(std::move(host), std::move(receiver));
 }
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
 void LocalFrameMojoHandler::ExtractSmartClipData(const gfx::Rect& rect, ExtractSmartClipDataCallback callback)
@@ -1198,6 +1227,7 @@ void LocalFrameMojoHandler::SetV8CompileHints(base::ReadOnlySharedMemoryRegion d
     page->GetV8CrowdsourcedCompileHintsConsumer().SetData(memory, mapping.size() / 8);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void LocalFrameMojoHandler::SnapshotDocumentForViewTransition(
     const blink::ViewTransitionToken& transition_token, mojom::blink::PageSwapEventParamsPtr params, SnapshotDocumentForViewTransitionCallback callback)
 {
@@ -1216,6 +1246,8 @@ void LocalFrameMojoHandler::DispatchPageSwap(mojom::blink::PageSwapEventParamsPt
     auto* page_swap_event = MakeGarbageCollected<PageSwapEvent>(*frame_->GetDocument(), std::move(params), nullptr);
     frame_->GetDocument()->domWindow()->DispatchEvent(*page_swap_event);
 }
+
+#endif
 
 void LocalFrameMojoHandler::AddResourceTimingEntryForFailedSubframeNavigation(const FrameToken& subframe_token, const KURL& initial_url,
     base::TimeTicks start_time, base::TimeTicks redirect_time, base::TimeTicks request_start, base::TimeTicks response_start, uint32_t response_code,
@@ -1285,5 +1317,6 @@ void LocalFrameMojoHandler::UpdatePrerenderURL(const KURL& matched_url, UpdatePr
         /*is_browser_initiated=*/true);
     std::move(callback).Run();
 }
+#endif
 
 } // namespace blink

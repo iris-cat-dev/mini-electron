@@ -15,6 +15,7 @@ namespace blink {
 
 namespace scroll_timeline_util {
 
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<CompositorScrollTimeline> ToCompositorScrollTimeline(AnimationTimeline* timeline)
 {
     if (!timeline || IsA<DocumentTimeline>(timeline))
@@ -30,6 +31,7 @@ scoped_refptr<CompositorScrollTimeline> ToCompositorScrollTimeline(AnimationTime
 
     return CompositorScrollTimeline::Create(element_id, orientation, scroll_snapshot_timeline->GetResolvedScrollOffsets());
 }
+#endif
 
 std::optional<CompositorElementId> GetCompositorScrollElementId(const Node* node)
 {

@@ -152,6 +152,7 @@ void ScopedBoxContentsPaintState::AdjustForBoxContents(const LayoutBox& box)
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (input_paint_info_.phase == PaintPhase::kForeground) {
         // We treat horizontal-scrollable scrollers like replaced objects.
         if (auto* mf_checker = MobileFriendlinessChecker::From(box.GetDocument())) {
@@ -175,6 +176,7 @@ void ScopedBoxContentsPaintState::AdjustForBoxContents(const LayoutBox& box)
             }
         }
     }
+#endif
 }
 
 } // namespace blink

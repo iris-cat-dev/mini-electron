@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "status": "error",
+  "diagnostic": {
+    "stage": "host_process_without_valid_result",
+    "message": "[Errno 2] No such file or directory: 'D:\\\\Project\\\\mini-electron\\\\out\\\\ui-opt-o2-trial\\\\raw\\\\vue-1000.json'",
+    "exit_code": 3221226505,
+    "stdout": "",
+    "stderr": ""
+  },
+  "command": [
+    "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\build\\ui-benchmark.exe",
+    "--framework",
+    "vue",
+    "--rows",
+    "1000",
+    "--warmups",
+    "2",
+    "--iterations",
+    "7",
+    "--resource-root",
+    "D:\\Project\\mini-electron\\benchmarks\\ui\\assets",
+    "--output",
+    "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\raw\\vue-1000.json",
+    "--capture",
+    "D:\\Project\\mini-electron\\out\\ui-opt-o2-trial\\captures\\vue-1000.bmp",
+    "--width",
+    "1280",
+    "--height",
+    "720",
+    "--device-scale",
+    "1.0",
+    "--timeout-ms",
+    "900000"
+  ]
+}

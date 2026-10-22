@@ -4,8 +4,11 @@
 
 #include "third_party/blink/renderer/core/dom/frame_request_callback_collection.h"
 
+#include "base/trace_event/base_tracing.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
@@ -23,9 +26,11 @@ FrameRequestCallbackCollection::CallbackId FrameRequestCallbackCollection::Regis
     callback->SetId(id);
     frame_callbacks_.push_back(callback);
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("RequestAnimationFrame", inspector_animation_frame_event::Data, context_, id);
     callback->async_task_context()->Schedule(context_, "requestAnimationFrame");
     probe::BreakableLocation(context_, "requestAnimationFrame");
+#endif
     return id;
 }
 
@@ -33,18 +38,24 @@ void FrameRequestCallbackCollection::CancelFrameCallback(CallbackId id)
 {
     for (wtf_size_t i = 0; i < frame_callbacks_.size(); ++i) {
         if (frame_callbacks_[i]->Id() == id) {
+#if !defined(MINI_UI_QUICKJS)
             frame_callbacks_[i]->async_task_context()->Cancel();
             probe::BreakableLocation(context_, "cancelAnimationFrame");
+#endif
             frame_callbacks_.EraseAt(i);
+#if !defined(MINI_UI_QUICKJS)
             DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("CancelAnimationFrame", inspector_animation_frame_event::Data, context_.Get(), id);
+#endif
             return;
         }
     }
     for (const auto& callback : callbacks_to_invoke_) {
         if (callback->Id() == id) {
+#if !defined(MINI_UI_QUICKJS)
             callback->async_task_context()->Cancel();
             probe::BreakableLocation(context_, "cancelAnimationFrame");
             DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("CancelAnimationFrame", inspector_animation_frame_event::Data, context_.Get(), id);
+#endif
             callback->SetIsCancelled(true);
             // will be removed at the end of ExecuteCallbacks()
             return;
@@ -75,8 +86,10 @@ void FrameRequestCallbackCollection::ExecuteFrameCallbacks(double high_res_now_m
             UseCounter::Count(context_, WebFeature::kAnimationFrameCancelledWithinFrame);
             continue;
         }
+#if !defined(MINI_UI_QUICKJS)
         DEVTOOLS_TIMELINE_TRACE_EVENT("FireAnimationFrame", inspector_animation_frame_event::Data, context_, callback->Id());
         probe::AsyncTask async_task(context_, callback->async_task_context());
+#endif
         probe::UserCallback probe(context_, "requestAnimationFrame", AtomicString(), true);
         if (callback->GetUseLegacyTimeBase())
             callback->Invoke(high_res_now_ms_legacy);

@@ -81,7 +81,9 @@ public:
 
 private:
     void UpdatePageScaleConstraints(bool reset_constraints);
+#if !defined(MINI_UI_QUICKJS)
     void RestoreBackgroundColorOverride();
+#endif
 
     void NotifyFramesOfFullscreenEntry(bool granted);
 

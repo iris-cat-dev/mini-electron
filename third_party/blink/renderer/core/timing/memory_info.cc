@@ -46,11 +46,20 @@ static constexpr base::TimeDelta kFiftyMs = base::Milliseconds(50);
 
 static void GetHeapSize(HeapInfo& info)
 {
+#if defined(MINI_UI_QUICKJS)
+    JSMemoryUsage usage {};
+    JS_ComputeMemoryUsage(v8::Isolate::GetCurrent()->GetQuickJSRuntime(), &usage);
+    // Report the actual engine payload, allocator bytes and configured limit.
+    info.used_js_heap_size = static_cast<size_t>(usage.memory_used_size);
+    info.total_js_heap_size = static_cast<size_t>(usage.malloc_size);
+    info.js_heap_size_limit = static_cast<size_t>(usage.malloc_limit);
+#else
     v8::HeapStatistics heap_statistics;
     v8::Isolate::GetCurrent()->GetHeapStatistics(&heap_statistics);
     info.used_js_heap_size = heap_statistics.used_heap_size() + heap_statistics.external_memory();
     info.total_js_heap_size = heap_statistics.total_physical_size() + heap_statistics.external_memory();
     info.js_heap_size_limit = heap_statistics.heap_size_limit();
+#endif
 }
 
 class HeapSizeCache {

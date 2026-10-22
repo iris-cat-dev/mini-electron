@@ -6,7 +6,9 @@
 
 #include "base/trace_event/traced_value.h"
 #include "cc/input/scrollbar.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/layers/scrollbar_layer_base.h"
+#endif
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
@@ -63,6 +65,7 @@ bool ScrollbarDisplayItem::NeedsUpdateDisplay() const
     return data_->scrollbar_->NeedsUpdateDisplay();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 scoped_refptr<cc::ScrollbarLayerBase> ScrollbarDisplayItem::CreateOrReuseLayer(
     cc::ScrollbarLayerBase* existing_layer, gfx::Vector2dF offset_of_decomposited_transforms) const
 {
@@ -90,6 +93,7 @@ scoped_refptr<cc::ScrollbarLayerBase> ScrollbarDisplayItem::CreateOrReuseLayer(
     }
     return layer;
 }
+#endif
 
 bool ScrollbarDisplayItem::IsOpaque() const
 {

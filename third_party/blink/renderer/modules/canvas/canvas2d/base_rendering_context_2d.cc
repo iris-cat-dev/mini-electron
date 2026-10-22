@@ -46,12 +46,14 @@
 #include "cc/paint/paint_image.h"
 #include "cc/paint/record_paint_canvas.h"
 #include "cc/paint/refcounted_buffer.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/common/sync_token.h"
 #include "media/base/video_frame.h"
 #include "media/base/video_frame_metadata.h"
 #include "media/base/video_transformation.h"
+#endif
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
@@ -60,10 +62,14 @@
 #include "third_party/blink/renderer/bindings/core/v8/native_value_traits_impl.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_object_objectarray_string.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_begin_layer_options.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_2d_gpu_transfer_option.h"
+#endif
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_font_stretch.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_text_rendering.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_texture_format.h"
+#endif
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasfilter_string.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
@@ -95,7 +101,9 @@
 #include "third_party/blink/renderer/core/html/canvas/image_data.h"
 #include "third_party/blink/renderer/core/html/canvas/text_cluster.h"
 #include "third_party/blink/renderer/core/html/canvas/text_metrics.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#endif
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/paint/filter_effect_builder.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
@@ -116,7 +124,9 @@
 #include "third_party/blink/renderer/modules/canvas/canvas2d/mesh_2d_vertex_buffer.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/path_2d.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/v8_canvas_style.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
+#endif
 // #include "third_party/blink/renderer/modules/webgpu/dawn_conversions.h"
 // #include "third_party/blink/renderer/modules/webgpu/dawn_enum_conversions.h"
 // #include "third_party/blink/renderer/modules/webgpu/gpu.h"
@@ -148,7 +158,9 @@
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/stroke_data.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/video_frame_image_util.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
@@ -1629,18 +1641,20 @@ void BaseRenderingContext2D::fillRect(double x, double y, double width, double h
         identifiability_study_helper_.UpdateBuilder(CanvasOps::kFillRect, x, y, width, height);
     }
 
+    const CanvasRenderingContext2DState& state = GetState();
+    const bool has_pattern = state.HasPattern(CanvasRenderingContext2DState::kFillPaintType);
+#if !defined(MINI_UI_QUICKJS)
     // We are assuming that if the pattern is not accelerated and the current
     // canvas is accelerated, the texture of the pattern will not be able to be
     // moved to the texture of the canvas receiving the pattern (because if the
     // pattern was unaccelerated is because it was not possible to hold that image
     // in an accelerated texture - that is, into the GPU). That's why we disable
     // the acceleration to be sure that it will work.
-    const CanvasRenderingContext2DState& state = GetState();
-    const bool has_pattern = state.HasPattern(CanvasRenderingContext2DState::kFillPaintType);
     if (IsAccelerated() && has_pattern && !state.PatternIsAccelerated(CanvasRenderingContext2DState::kFillPaintType)) {
         DisableAcceleration();
         base::UmaHistogramEnumeration("Blink.Canvas.GPUFallbackToCPU", GPUFallbackToCPUScenario::kLargePatternDrawnToGPU);
     }
+#endif
 
     // clamp to float to avoid float cast overflow when used as SkScalar
     AdjustRectForCanvas(x, y, width, height);
@@ -2008,6 +2022,7 @@ void BaseRenderingContext2D::DrawImageInternal(cc::PaintCanvas* c, CanvasImageSo
         image_flags.setImageFilter(nullptr);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (image_source->IsVideoElement()) {
         c->save();
         c->clipRect(gfx::RectFToSkRect(dst_rect));
@@ -2034,7 +2049,9 @@ void BaseRenderingContext2D::DrawImageInternal(cc::PaintCanvas* c, CanvasImageSo
         c->scale(dst_rect.width() / corrected_src_rect.width(), dst_rect.height() / corrected_src_rect.height());
         c->translate(-corrected_src_rect.x(), -corrected_src_rect.y());
         DrawVideoFrameIntoCanvas(std::move(media_frame), c, image_flags, ignore_transformation);
-    } else {
+    } else
+#endif
+    {
         // We always use the image-orientation property on the canvas element
         // because the alternative would result in complex rules depending on
         // the source of the image.
@@ -2071,6 +2088,7 @@ void BaseRenderingContext2D::drawImage(
     scoped_refptr<Image> image;
     gfx::SizeF default_object_size(Width(), Height());
     SourceImageStatus source_image_status = kInvalidSourceImageStatus;
+#if !defined(MINI_UI_QUICKJS)
     if (image_source->IsVideoElement()) {
         if (!static_cast<HTMLVideoElement*>(image_source)->HasAvailableVideoFrame()) {
             return;
@@ -2079,7 +2097,9 @@ void BaseRenderingContext2D::drawImage(
         if (!static_cast<VideoFrame*>(image_source)->frame()) {
             return;
         }
-    } else {
+    } else
+#endif
+    {
         image = image_source->GetSourceImageForCanvas(FlushReason::kDrawImage, &source_image_status, default_object_size, kPremultiplyAlpha);
         if (source_image_status == kUndecodableSourceImageStatus) {
             exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "The HTMLImageElement provided is in the 'broken' state.");
@@ -2519,6 +2539,7 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(int sx, int sy, int sw, 
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // The default behavior before the willReadFrequently feature existed:
     // Accelerated canvases fall back to CPU when there is a readback.
     if (will_read_frequently_value == CanvasContextCreationAttributesCore::WillReadFrequently::kUndefined) {
@@ -2533,6 +2554,7 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(int sx, int sy, int sw, 
             }
         }
     }
+#endif
 
     scoped_refptr<StaticBitmapImage> snapshot = GetImage(FlushReason::kGetImageData);
 
@@ -3434,6 +3456,7 @@ bool BaseRenderingContext2D::IsAccelerated() const
 }
 
 
+#if !defined(MINI_UI_QUICKJS)
 V8GPUTextureFormat BaseRenderingContext2D::getTextureFormat() const
 {
     *(int*)1 = 1;
@@ -3637,5 +3660,6 @@ void BaseRenderingContext2D::transferBackFromGPUTexture(ExceptionState& exceptio
 // 
 //     WillDraw(SkIRect::MakeXYWH(0, 0, Width(), Height()), CanvasPerformanceMonitor::DrawType::kOther);
 }
+#endif
 
 } // namespace blink

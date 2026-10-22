@@ -45,7 +45,9 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/default_clock.h"
 #include "base/time/default_tick_clock.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "services/metrics/public/cpp/ukm_builders.h"
+#endif
 #include "third_party/blink/public/mojom/permissions_policy/document_policy_feature.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
@@ -53,7 +55,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_object_builder.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_performance_mark_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_performance_measure_options.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_profiler_init_options.h"
+#endif
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_double_string.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_performancemeasureoptions_string.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -67,13 +71,19 @@
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/loader/document_load_timing.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/timing/back_forward_cache_restoration.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/background_tracing_helper.h"
+#endif
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/largest_contentful_paint.h"
 #include "third_party/blink/renderer/core/timing/layout_shift.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/measure_memory/measure_memory_controller.h"
+#endif
 #include "third_party/blink/renderer/core/timing/performance.h"
 #include "third_party/blink/renderer/core/timing/performance_element_timing.h"
 #include "third_party/blink/renderer/core/timing/performance_entry.h"
@@ -85,8 +95,10 @@
 #include "third_party/blink/renderer/core/timing/performance_resource_timing.h"
 #include "third_party/blink/renderer/core/timing/performance_server_timing.h"
 #include "third_party/blink/renderer/core/timing/performance_user_timing.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/timing/profiler.h"
 #include "third_party/blink/renderer/core/timing/profiler_group.h"
+#endif
 #include "third_party/blink/renderer/core/timing/soft_navigation_entry.h"
 #include "third_party/blink/renderer/core/timing/time_clamper.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -99,15 +111,19 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "v8/include/v8-metrics.h"
+#endif
 
 namespace blink {
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 // LongTask API can be a source of many events. Filter on Performance object
 // level before reporting to UKM to smooth out recorded events over all pages.
 constexpr size_t kLongTaskUkmSampleInterval = 100;
+#endif
 
 constexpr base::TimeDelta kExtraCoarseResolution = base::Milliseconds(4);
 
@@ -125,6 +141,7 @@ base::TimeDelta GetUnixAtZeroMonotonic(const base::Clock* clock, const base::Tic
     return unix_time_now - time_since_origin;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RecordLongTaskUkm(ExecutionContext* execution_context, base::TimeDelta start_time, base::TimeDelta duration)
 {
     v8::metrics::LongTaskStats stats = v8::metrics::LongTaskStats::Get(execution_context->GetIsolate());
@@ -140,6 +157,7 @@ void RecordLongTaskUkm(ExecutionContext* execution_context, base::TimeDelta star
         .SetDuration_V8_Execute(stats.v8_execute_us)
         .Record(execution_context->UkmRecorder());
 }
+#endif
 
 PerformanceEntry::EntryType kDroppableEntryTypes[] = {
     PerformanceEntry::kResource,
@@ -274,10 +292,12 @@ Performance::Performance(
     , resource_timing_buffer_full_timer_(task_runner_, this, &Performance::FireResourceTimingBufferFull)
 {
     unix_at_zero_monotonic_ = GetUnixAtZeroMonotonic(base::DefaultClock::GetInstance(), tick_clock_);
+#if !defined(MINI_UI_QUICKJS)
     // |context| may be null in tests.
     if (context) {
         background_tracing_helper_ = MakeGarbageCollected<BackgroundTracingHelper>(context);
     }
+#endif
     // Initialize the map of dropped entry types only with those which could be
     // dropped (saves some unnecessary 0s).
     for (const auto type : kDroppableEntryTypes) {
@@ -312,10 +332,12 @@ EventCounts* Performance::eventCounts()
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ScriptPromise<MemoryMeasurement> Performance::measureUserAgentSpecificMemory(ScriptState* script_state, ExceptionState& exception_state) const
 {
     return MeasureMemoryController::StartMeasurement(script_state, exception_state);
 }
+#endif
 
 DOMHighResTimeStamp Performance::timeOrigin() const
 {
@@ -741,7 +763,9 @@ void Performance::AddToEventTimingBuffer(PerformanceEventTiming& entry)
 
 void Performance::AddToLayoutShiftBuffer(LayoutShift& entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::PerformanceEntryAdded(GetExecutionContext(), &entry);
+#endif
     if (layout_shift_buffer_.size() < kDefaultLayoutShiftBufferSize) {
         InsertEntryIntoSortedBuffer(layout_shift_buffer_, entry, kRecordSwaps);
     } else {
@@ -751,7 +775,9 @@ void Performance::AddToLayoutShiftBuffer(LayoutShift& entry)
 
 void Performance::AddLargestContentfulPaint(LargestContentfulPaint* entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::PerformanceEntryAdded(GetExecutionContext(), entry);
+#endif
     if (largest_contentful_paint_buffer_.size() < kDefaultLargestContenfulPaintSize) {
         InsertEntryIntoSortedBuffer(largest_contentful_paint_buffer_, *entry, kRecordSwaps);
     } else {
@@ -761,7 +787,9 @@ void Performance::AddLargestContentfulPaint(LargestContentfulPaint* entry)
 
 void Performance::AddSoftNavigationToPerformanceTimeline(SoftNavigationEntry* entry)
 {
+#if !defined(MINI_UI_QUICKJS)
     probe::PerformanceEntryAdded(GetExecutionContext(), entry);
+#endif
     if (soft_navigation_buffer_.size() < kDefaultSoftNavigationBufferSize) {
         InsertEntryIntoSortedBuffer(soft_navigation_buffer_, *entry, kRecordSwaps);
     } else {
@@ -871,9 +899,11 @@ void Performance::AddLongTaskTiming(base::TimeTicks start_time, base::TimeTicks 
         ++(dropped_entries_count_map_.find(PerformanceEntry::kLongTask)->value);
         UseCounter::Count(execution_context, WebFeature::kLongTaskBufferFull);
     }
+#if !defined(MINI_UI_QUICKJS)
     if ((++long_task_counter_ % kLongTaskUkmSampleInterval) == 0) {
         RecordLongTaskUkm(execution_context, base::Milliseconds(dom_high_res_start_time), end_time - start_time);
     }
+#endif
     NotifyObserversOfEntry(*entry);
 }
 
@@ -910,7 +940,9 @@ PerformanceMark* Performance::mark(
     }
     PerformanceMark* performance_mark = PerformanceMark::Create(script_state, mark_name, mark_options, exception_state);
     if (performance_mark) {
+#if !defined(MINI_UI_QUICKJS)
         background_tracing_helper_->MaybeEmitBackgroundTracingPerformanceMarkEvent(*performance_mark);
+#endif
         GetUserTiming().AddMarkToPerformanceTimeline(*performance_mark, mark_options);
         if (mark_name == mark_fully_loaded) {
             if (LocalDOMWindow* window = LocalDOMWindow::From(script_state)) {
@@ -1287,7 +1319,9 @@ void Performance::Trace(Visitor* visitor) const
     visitor->Trace(suspended_observers_);
     visitor->Trace(deliver_observations_timer_);
     visitor->Trace(resource_timing_buffer_full_timer_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(background_tracing_helper_);
+#endif
     EventTarget::Trace(visitor);
 }
 

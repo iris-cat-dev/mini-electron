@@ -6,7 +6,9 @@
 
 #include "services/network/public/cpp/features.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/language.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -69,7 +71,9 @@ void NavigatorLanguage::EnsureUpdatedLanguage()
 {
     if (languages_dirty_) {
         String accept_languages_override;
+#if !defined(MINI_UI_QUICKJS)
         probe::ApplyAcceptLanguageOverride(execution_context_, &accept_languages_override);
+#endif
 
         if (!accept_languages_override.IsNull()) {
             languages_ = ParseAndSanitize(accept_languages_override);

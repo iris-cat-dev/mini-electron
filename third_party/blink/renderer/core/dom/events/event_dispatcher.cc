@@ -51,14 +51,18 @@
 #include "third_party/blink/renderer/core/events/simulated_event_util.h"
 #include "third_party/blink/renderer/core/events/text_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/ad_tracker.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/keywords.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 #include "third_party/blink/renderer/core/page/page.h"
@@ -202,7 +206,9 @@ DispatchEventResult EventDispatcher::Dispatch()
     if (is_click && event_->isTrusted() && frame) {
         // A genuine mouse click cannot be triggered by script so we don't expect
         // there are any script in the stack.
+#if !defined(MINI_UI_QUICKJS)
         DCHECK(!frame->GetAdTracker() || !frame->GetAdTracker()->IsAdScriptInStack(AdTracker::StackType::kBottomAndTop));
+#endif
         if (frame->IsAdFrame()) {
             UseCounter::Count(document, WebFeature::kAdClick);
         }
@@ -235,7 +241,9 @@ DispatchEventResult EventDispatcher::Dispatch()
     DCHECK(!EventDispatchForbiddenScope::IsEventDispatchForbidden());
 #endif
     DCHECK(event_->target());
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("EventDispatch", inspector_event_dispatch_event::Data, *event_, document.GetAgent().isolate());
+#endif
     EventDispatchHandlingState* pre_dispatch_event_handler_result = nullptr;
     if (DispatchEventPreProcess(activation_target, pre_dispatch_event_handler_result) == kContinueDispatching) {
         if (DispatchEventAtCapturing() == kContinueDispatching) {

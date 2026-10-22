@@ -170,7 +170,6 @@ private:
 
     void DidReceiveDataImpl(absl::variant<SegmentedBuffer, base::span<const char>> data);
 
-    bool ShouldFetchCodeCache();
     void StartFetch();
 
     void Release(ResourceLoadScheduler::ReleaseOption, const ResourceLoadScheduler::TrafficReportHints&);
@@ -259,7 +258,9 @@ private:
 
     base::TimeTicks response_end_time_for_error_cases_;
 
+#if !defined(MINI_UI_QUICKJS)
     int64_t received_body_length_from_service_worker_ = 0;
+#endif
     CnameAliasInfoForTesting cname_alias_info_for_testing_;
     bool finished_ = false;
 

@@ -13,7 +13,9 @@
 #include "third_party/blink/renderer/platform/scheduler/common/scheduler_helper.h"
 #include "third_party/blink/renderer/platform/scheduler/public/virtual_time_controller.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif
 
 namespace base {
 class TickClock;
@@ -88,7 +90,9 @@ protected:
     // task.
     void DispatchOnTaskCompletionCallbacks();
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteVirtualTimeInfoIntoTrace(perfetto::TracedDictionary& dict) const;
+#endif
 
     // A derived implementation should provide a task runner associated for
     // virtual time control tasks (when VT budget is exhausted, callback will be

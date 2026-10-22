@@ -13,7 +13,9 @@
 #include "base/no_destructor.h"
 #include "base/time/time.h"
 #include "net/http/http_response_headers.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "net/url_request/url_request.h"
+#endif
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/origin_trials/origin_trial_policy.h"
 #include "third_party/blink/public/common/origin_trials/origin_trials.h"
@@ -21,11 +23,6 @@
 #include "third_party/blink/public/common/origin_trials/trial_token_result.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"
 
-net::HttpResponseHeaders* net::URLRequest::response_headers(void) const
-{
-    *(int*)1 = 1;
-    return nullptr;
-}
 
 namespace blink {
 namespace {
@@ -308,12 +305,14 @@ bool TrialTokenValidator::TrialEnablesFeaturesForOS(std::string_view trial_name)
     return !FeaturesEnabledByTrial(trial_name).empty();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool TrialTokenValidator::RequestEnablesFeature(const net::URLRequest* request, std::string_view feature_name, base::Time current_time) const
 {
     // TODO(mek): Possibly cache the features that are availble for request in
     // UserData associated with the request.
     return RequestEnablesFeature(request->url(), request->response_headers(), feature_name, current_time);
 }
+#endif
 
 bool TrialTokenValidator::RequestEnablesFeature(
     const GURL& request_url, const net::HttpResponseHeaders* response_headers, std::string_view feature_name, base::Time current_time) const

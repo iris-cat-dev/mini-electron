@@ -10,7 +10,9 @@
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 
 namespace blink {
 
@@ -48,11 +50,12 @@ OffscreenCanvas* HTMLCanvasElementModule::transferControlToOffscreen(ScriptState
     if (canvas.IsOffscreenCanvasRegistered()) {
         exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "Cannot transfer control from a canvas for more than one time.");
     } else {
-        // CPU resource compositing paints the owned placeholder image directly;
-        // it does not create a Viz surface/EmbeddedFrameSink connection.
+#if !defined(MINI_UI_QUICKJS)
         if (SharedGpuContext::IsGpuCompositingEnabled())
             canvas.CreateLayer();
-        offscreen_canvas = TransferControlToOffscreenInternal(script_state, canvas, exception_state);
+#endif
+        offscreen_canvas = TransferControlToOffscreenInternal(
+            script_state, canvas, exception_state);
     }
 
     base::UmaHistogramBoolean("Blink.OffscreenCanvas.TransferControlToOffscreen", !!offscreen_canvas);
@@ -69,10 +72,14 @@ OffscreenCanvas* HTMLCanvasElementModule::TransferControlToOffscreenInternal(
     canvas.RegisterPlaceholderCanvas(static_cast<int>(canvas_id));
     offscreen_canvas->SetPlaceholderCanvasId(canvas_id);
 
+#if !defined(MINI_UI_QUICKJS)
     SurfaceLayerBridge* bridge = canvas.SurfaceLayerBridge();
     if (bridge) {
-        offscreen_canvas->SetFrameSinkId(bridge->GetFrameSinkId().client_id(), bridge->GetFrameSinkId().sink_id());
+        offscreen_canvas->SetFrameSinkId(
+            bridge->GetFrameSinkId().client_id(),
+            bridge->GetFrameSinkId().sink_id());
     }
+#endif
     return offscreen_canvas;
 }
 

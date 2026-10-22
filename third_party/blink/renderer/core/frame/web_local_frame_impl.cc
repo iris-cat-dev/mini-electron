@@ -109,12 +109,18 @@
 #include "third_party/blink/public/common/page_state/page_state.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/browser_interface_broker.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/fenced_frame/fenced_frame.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/tree_scope_type.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/lcp_critical_path_predictor/lcp_critical_path_predictor.mojom.h"
+#endif
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink.h"
 #include "third_party/blink/public/platform/interface_registry.h"
 #include "third_party/blink/public/platform/task_type.h"
@@ -138,7 +144,9 @@
 #include "third_party/blink/public/web/web_node.h"
 #include "third_party/blink/public/web/web_performance_metrics_for_nested_contexts.h"
 #include "third_party/blink/public/web/web_performance_metrics_for_reporting.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/web/web_plugin.h"
+#endif
 #include "third_party/blink/public/web/web_print_client.h"
 #include "third_party/blink/public/web/web_print_page_description.h"
 #include "third_party/blink/public/web/web_print_params.h"
@@ -153,10 +161,14 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_evaluation_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/bindings/core/v8/v8_gc_controller.h"
+#endif
 #include "third_party/blink/renderer/core/clipboard/clipboard_utilities.h"
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/core_initializer.h"
+#endif
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
 #include "third_party/blink/renderer/core/dom/icon_url.h"
@@ -185,10 +197,12 @@
 #include "third_party/blink/renderer/core/events/before_print_event.h"
 #include "third_party/blink/renderer/core/events/touch_event.h"
 #include "third_party/blink/renderer/core/execution_context/window_agent.h"
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/exported/web_dev_tools_agent_impl.h"
 #endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
@@ -206,8 +220,12 @@
 #include "third_party/blink/renderer/core/frame/smart_clip.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
+#endif
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
+#endif
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
@@ -219,21 +237,27 @@
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/html_link_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/plugin_document.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/context_menu_allowed_scope.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #include "third_party/blink/renderer/core/inspector/inspector_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue_conversion.h"
 #endif
+#endif
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
@@ -271,7 +295,6 @@
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_context.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
-#include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_factory.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/scheduling_policy.h"
 #include "third_party/blink/renderer/platform/text/text_direction.h"
@@ -528,6 +551,7 @@ private:
     }
 };
 
+#if !defined(MINI_UI_QUICKJS)
 // Simple class to override some of PrintContext behavior. This is used when
 // the frame hosts a plugin that supports custom printing. In this case, we
 // want to delegate all printing related calls to the plugin.
@@ -599,6 +623,7 @@ private:
 
     wtf_size_t page_count_ = 0;
 };
+#endif
 
 class PaintPreviewContext : public PrintContext {
 public:
@@ -707,6 +732,17 @@ void InstallCreateWebFrameWidgetHook(CreateWebFrameWidgetCallback* create_widget
     g_create_web_frame_widget = create_widget;
 }
 
+#if defined(MINI_UI_QUICKJS)
+WebFrameWidget* WebLocalFrame::InitializeFrameWidget(
+    CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> mojo_widget_host,
+    const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
+    bool is_for_scalable_page, bool hidden)
+{
+    CreateFrameWidgetInternal(base::PassKey<WebLocalFrame>(), std::move(mojo_widget_host),
+        frame_sink_id, is_for_nested_main_frame, is_for_scalable_page, hidden);
+    return FrameWidget();
+}
+#else
 WebFrameWidget* WebLocalFrame::InitializeFrameWidget(CrossVariantMojoAssociatedRemote<mojom::blink::FrameWidgetHostInterfaceBase> mojo_frame_widget_host,
     CrossVariantMojoAssociatedReceiver<mojom::blink::FrameWidgetInterfaceBase> mojo_frame_widget,
     CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> mojo_widget_host,
@@ -717,6 +753,7 @@ WebFrameWidget* WebLocalFrame::InitializeFrameWidget(CrossVariantMojoAssociatedR
         std::move(mojo_widget), frame_sink_id, is_for_nested_main_frame, is_for_scalable_page, hidden);
     return FrameWidget();
 }
+#endif
 
 int WebFrame::InstanceCount()
 {
@@ -833,7 +870,7 @@ void WebLocalFrameImpl::Close(DetachReason detach_reason)
 
     client_ = nullptr;
 
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_.Clear();
 #endif
@@ -997,11 +1034,13 @@ bool WebLocalFrameImpl::IsAdFrame() const
     return GetFrame()->IsAdFrame();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebLocalFrameImpl::IsAdScriptInStack() const
 {
     DCHECK(GetFrame());
     return GetFrame()->IsAdScriptInStack();
 }
+#endif
 
 void WebLocalFrameImpl::SetAdEvidence(const blink::FrameAdEvidence& ad_evidence)
 {
@@ -1130,24 +1169,39 @@ void WebLocalFrameImpl::RequestExecuteV8Function(v8::Local<v8::Context> context,
     v8::Local<v8::Value> argv[], WebScriptExecutionCallback callback)
 {
     DCHECK(GetFrame());
+#if !defined(MINI_UI_QUICKJS)
     const auto want_result_option = callback ? mojom::blink::WantResultOption::kWantResult : mojom::blink::WantResultOption::kNoResult;
-    PausableScriptExecutor::CreateAndRun(context, function, receiver, argc, argv, want_result_option, std::move(callback));
+#endif
+    PausableScriptExecutor::CreateAndRun(context, function, receiver, argc, argv,
+#if !defined(MINI_UI_QUICKJS)
+        want_result_option,
+#endif
+        std::move(callback));
 }
 
 void WebLocalFrameImpl::RequestExecuteScript(int32_t world_id, base::span<const WebScriptSource> sources, mojom::blink::UserActivationOption user_gesture,
     mojom::blink::EvaluationTiming evaluation_timing, mojom::blink::LoadEventBlockingOption blocking_option, WebScriptExecutionCallback callback,
-    BackForwardCacheAware back_forward_cache_aware, mojom::blink::WantResultOption want_result_option, mojom::blink::PromiseResultOption promise_behavior)
+    BackForwardCacheAware back_forward_cache_aware,
+#if !defined(MINI_UI_QUICKJS)
+    mojom::blink::WantResultOption want_result_option,
+#endif
+    mojom::blink::PromiseResultOption promise_behavior)
 {
     DCHECK(GetFrame());
     GetFrame()->RequestExecuteScript(world_id, sources, user_gesture, evaluation_timing, blocking_option, std::move(callback), back_forward_cache_aware,
-        want_result_option, promise_behavior);
+#if !defined(MINI_UI_QUICKJS)
+        want_result_option,
+#endif
+        promise_behavior);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebLocalFrameImpl::IsInspectorConnected()
 {
     return LocalRoot()->DevToolsAgentImpl(/*create_if_necessary=*/false);
 }
 
+#endif
 v8::MaybeLocal<v8::Value> WebLocalFrameImpl::CallFunctionEvenIfScriptDisabled(
     v8::Local<v8::Function> function, v8::Local<v8::Value> receiver, int argc, v8::Local<v8::Value> argv[])
 {
@@ -1328,6 +1382,7 @@ bool WebLocalFrameImpl::ExecuteCommand(const WebString& name)
     if (command[command.length() - 1] == UChar(':'))
         command = command.Substring(0, command.length() - 1);
 
+#if !defined(MINI_UI_QUICKJS)
     Node* plugin_lookup_context_node = nullptr;
     if (WebPluginContainerImpl::SupportsCommand(name))
         plugin_lookup_context_node = ContextMenuNodeInner();
@@ -1335,6 +1390,7 @@ bool WebLocalFrameImpl::ExecuteCommand(const WebString& name)
     WebPluginContainerImpl* plugin_container = GetFrame()->GetWebPluginContainer(plugin_lookup_context_node);
     if (plugin_container && plugin_container->ExecuteEditCommand(name))
         return true;
+#endif
 
     return GetFrame()->GetEditor().ExecuteCommand(command);
 }
@@ -1343,9 +1399,11 @@ bool WebLocalFrameImpl::ExecuteCommand(const WebString& name, const WebString& v
 {
     DCHECK(GetFrame());
 
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* plugin_container = GetFrame()->GetWebPluginContainer();
     if (plugin_container && plugin_container->ExecuteEditCommand(name, value))
         return true;
+#endif
 
     return GetFrame()->GetEditor().ExecuteCommand(name, value);
 }
@@ -1396,8 +1454,10 @@ void WebLocalFrameImpl::ReplaceMisspelledRange(const WebString& text)
     // If this caret selection has two or more markers, this function replace the
     // range covered by the first marker with the specified word as Microsoft Word
     // does.
+#if !defined(MINI_UI_QUICKJS)
     if (GetFrame()->GetWebPluginContainer())
         return;
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  see http://crbug.com/590369 for more details.
@@ -1421,9 +1481,11 @@ void WebLocalFrameImpl::RemoveSpellingMarkersUnderWords(const WebVector<WebStrin
 bool WebLocalFrameImpl::HasSelection() const
 {
     DCHECK(GetFrame());
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* plugin_container = GetFrame()->GetWebPluginContainer();
     if (plugin_container)
         return plugin_container->Plugin()->HasSelection();
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayoutIgnorePendingStylesheets
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1443,9 +1505,11 @@ WebRange WebLocalFrameImpl::SelectionRange() const
 WebString WebLocalFrameImpl::SelectionAsText() const
 {
     DCHECK(GetFrame());
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* plugin_container = GetFrame()->GetWebPluginContainer();
     if (plugin_container)
         return plugin_container->Plugin()->SelectionAsText();
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1466,9 +1530,11 @@ WebString WebLocalFrameImpl::SelectionAsText() const
 
 WebString WebLocalFrameImpl::SelectionAsMarkup() const
 {
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* plugin_container = GetFrame()->GetWebPluginContainer();
     if (plugin_container)
         return plugin_container->Plugin()->SelectionAsMarkup();
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1678,10 +1744,12 @@ void WebLocalFrameImpl::ExtendSelectionAndDelete(int before, int after)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         plugin->ExtendSelectionAndDelete(before, after);
         return;
     }
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1701,11 +1769,13 @@ void WebLocalFrameImpl::ExtendSelectionAndReplace(int before, int after, const W
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         plugin->ExtendSelectionAndDelete(before, after);
         plugin->CommitText(replacement_text, std::vector<ui::ImeTextSpan>(), blink::WebRange(), 0);
         return;
     }
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1723,10 +1793,12 @@ void WebLocalFrameImpl::DeleteSurroundingText(int before, int after)
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         plugin->DeleteSurroundingText(before, after);
         return;
     }
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1738,10 +1810,12 @@ void WebLocalFrameImpl::DeleteSurroundingText(int before, int after)
 void WebLocalFrameImpl::DeleteSurroundingTextInCodePoints(int before, int after)
 {
     TRACE_EVENT0("blink", "WebLocalFrameImpl::deleteSurroundingTextInCodePoints");
+#if !defined(MINI_UI_QUICKJS)
     if (WebPlugin* plugin = FocusedPluginIfInputMethodSupported()) {
         plugin->DeleteSurroundingTextInCodePoints(before, after);
         return;
     }
+#endif
 
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -1750,6 +1824,7 @@ void WebLocalFrameImpl::DeleteSurroundingTextInCodePoints(int before, int after)
     GetFrame()->GetInputMethodController().DeleteSurroundingTextInCodePoints(before, after);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebPlugin* WebLocalFrameImpl::FocusedPluginIfInputMethodSupported()
 {
     WebPluginContainerImpl* container = GetFrame()->GetWebPluginContainer();
@@ -1757,6 +1832,7 @@ WebPlugin* WebLocalFrameImpl::FocusedPluginIfInputMethodSupported()
         return container->Plugin();
     return nullptr;
 }
+#endif
 
 void WebLocalFrameImpl::DispatchBeforePrintEvent(base::WeakPtr<WebPrintClient> print_client)
 {
@@ -1818,11 +1894,12 @@ void WebLocalFrameImpl::DispatchPrintEventRecursively(const AtomicString& event_
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebPluginContainerImpl* WebLocalFrameImpl::GetPluginToPrintHelper(const WebNode& constrain_to_node)
 {
     if (constrain_to_node.IsNull()) {
         // If this is a plugin document, check if the plugin supports its own
-        // printing. If it does, we will delegate all printing to that.
+        // printing. If it does, we will delegate all printing to the plugin.
         return GetFrame()->GetWebPluginContainer();
     }
 
@@ -1835,6 +1912,7 @@ WebPlugin* WebLocalFrameImpl::GetPluginToPrint(const WebNode& constrain_to_node)
     WebPluginContainerImpl* plugin_container = GetPluginToPrintHelper(constrain_to_node);
     return plugin_container ? plugin_container->Plugin() : nullptr;
 }
+#endif
 
 bool WebLocalFrameImpl::WillPrintSoon()
 {
@@ -1843,12 +1921,16 @@ bool WebLocalFrameImpl::WillPrintSoon()
 
 uint32_t WebLocalFrameImpl::PrintBegin(const WebPrintParams& print_params, const WebNode& constrain_to_node)
 {
+#if !defined(MINI_UI_QUICKJS)
     WebPluginContainerImpl* plugin_container = GetPluginToPrintHelper(constrain_to_node);
     if (plugin_container && plugin_container->SupportsPaginatedPrint()) {
         print_context_ = MakeGarbageCollected<ChromePluginPrintContext>(GetFrame(), plugin_container);
     } else {
         print_context_ = MakeGarbageCollected<ChromePrintContext>(GetFrame());
     }
+#else
+    print_context_ = MakeGarbageCollected<ChromePrintContext>(GetFrame());
+#endif
 
     print_context_->BeginPrintMode(print_params);
 
@@ -1871,6 +1953,7 @@ void WebLocalFrameImpl::PrintEnd()
     print_context_.Clear();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebLocalFrameImpl::GetPrintPresetOptionsForPlugin(const WebNode& node, WebPrintPresetOptions* preset_options)
 {
     WebPluginContainerImpl* plugin_container = GetPluginToPrintHelper(node);
@@ -1879,6 +1962,7 @@ bool WebLocalFrameImpl::GetPrintPresetOptionsForPlugin(const WebNode& node, WebP
 
     return plugin_container->GetPrintPresetOptionsFromDocument(preset_options);
 }
+#endif
 
 bool WebLocalFrameImpl::CapturePaintPreview(const gfx::Rect& bounds, cc::PaintCanvas* canvas, bool include_linked_destinations, bool skip_accelerated_content)
 {
@@ -2043,6 +2127,10 @@ WebLocalFrameImpl* WebLocalFrameImpl::CreateProvisional(WebLocalFrameClient* cli
     // document is a weird implementation detail and this is an attempt to
     // minimize its visibility/usefulness.
     Page* page_for_provisional_frame = To<WebViewImpl>(web_view)->GetPage();
+#if defined(MINI_UI_QUICKJS)
+    CHECK(previous_frame->IsLocalFrame());
+    CHECK_EQ(previous_frame->GetPage(), page_for_provisional_frame);
+#endif
     web_frame->InitializeCoreFrame(*page_for_provisional_frame, MakeGarbageCollected<DummyFrameOwner>(), previous_web_frame->Parent(), nullptr,
         FrameInsertType::kInsertLater, name, &ToCoreFrame(*previous_web_frame)->window_agent_factory(), previous_web_frame->Opener(), DocumentToken(),
         std::move(interface_broker),
@@ -2051,6 +2139,7 @@ WebLocalFrameImpl* WebLocalFrameImpl::CreateProvisional(WebLocalFrameClient* cli
 
     LocalFrame* new_frame = web_frame->GetFrame();
 
+#if !defined(MINI_UI_QUICKJS)
     if (previous_frame->GetPage() != page_for_provisional_frame) {
         // The previous frame's Page is different from the new frame's page. This
         // can only be true when creating a provisional LocalFrame that will do a
@@ -2071,6 +2160,9 @@ WebLocalFrameImpl* WebLocalFrameImpl::CreateProvisional(WebLocalFrameClient* cli
         page_for_provisional_frame->SetPreviousMainFrameForLocalSwap(DynamicTo<LocalFrame>(ToCoreFrame(*previous_web_frame)));
         page_for_provisional_frame->MainFrame()->SetProvisionalFrame(new_frame);
     } else {
+#else
+    {
+#endif
         // This is a normal provisional frame, which will either replace a
         // RemoteFrame or a non-main-frame LocalFrame. This makes it possible to
         // find the provisional owner frame (the previous frame) when swapping in
@@ -2111,11 +2203,13 @@ WebLocalFrameImpl::WebLocalFrameImpl(base::PassKey<WebLocalFrameImpl>, mojom::bl
     client_->BindToFrame(this);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 WebLocalFrameImpl::WebLocalFrameImpl(base::PassKey<WebRemoteFrameImpl>, mojom::blink::TreeScopeType scope, WebLocalFrameClient* client,
     InterfaceRegistry* interface_registry, const LocalFrameToken& frame_token)
     : WebLocalFrameImpl(base::PassKey<WebLocalFrameImpl>(), scope, client, interface_registry, frame_token)
 {
 }
+#endif
 
 WebLocalFrameImpl::~WebLocalFrameImpl()
 {
@@ -2129,7 +2223,7 @@ void WebLocalFrameImpl::Trace(Visitor* visitor) const
     visitor->Trace(local_frame_client_);
     visitor->Trace(find_in_page_);
     visitor->Trace(frame_);
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     visitor->Trace(dev_tools_agent_);
 #endif
     visitor->Trace(frame_widget_);
@@ -2264,6 +2358,7 @@ LocalFrame* WebLocalFrameImpl::CreateChildFrame(const AtomicString& name, HTMLFr
     return webframe_child->GetFrame();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 RemoteFrame* WebLocalFrameImpl::CreateFencedFrame(
     HTMLFencedFrameElement* fenced_frame, mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost> receiver)
 {
@@ -2286,6 +2381,7 @@ RemoteFrame* WebLocalFrameImpl::CreateFencedFrame(
     client_->DidCreateFencedFrame(frame_token);
     return remote_frame->GetFrame();
 }
+#endif
 
 void WebLocalFrameImpl::DidChangeContentsSize(const gfx::Size& size)
 {
@@ -2293,6 +2389,7 @@ void WebLocalFrameImpl::DidChangeContentsSize(const gfx::Size& size)
         GetTextFinder()->IncreaseMarkerVersion();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebLocalFrameImpl::HasDevToolsOverlays() const
 {
 #if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -2318,6 +2415,7 @@ void WebLocalFrameImpl::PaintDevToolsOverlays(GraphicsContext& context)
 #endif
 }
 
+#endif
 void WebLocalFrameImpl::CreateFrameView()
 {
     TRACE_EVENT0("blink", "WebLocalFrameImpl::createFrameView");
@@ -2383,6 +2481,7 @@ WebViewImpl* WebLocalFrameImpl::ViewImpl() const
     return GetFrame()->GetPage()->GetChromeClient().GetWebView();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool WebLocalFrameImpl::ShouldWarmUpCompositorOnPrerenderFromThisPoint(features::Prerender2WarmUpCompositorTriggerPoint trigger_point)
 {
     static const bool is_warm_up_compositor_enabled = base::FeatureList::IsEnabled(::features::kWarmUpCompositor);
@@ -2407,25 +2506,32 @@ bool WebLocalFrameImpl::ShouldWarmUpCompositorOnPrerenderFromThisPoint(features:
 
     return true;
 }
+#endif
 
 void WebLocalFrameImpl::DidCommitLoad()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget_ && ShouldWarmUpCompositorOnPrerenderFromThisPoint(features::Prerender2WarmUpCompositorTriggerPoint::kDidCommitLoad)) {
         frame_widget_->WarmUpCompositor();
     }
+#endif
 }
 
 void WebLocalFrameImpl::DidDispatchDOMContentLoadedEvent()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget_ && ShouldWarmUpCompositorOnPrerenderFromThisPoint(features::Prerender2WarmUpCompositorTriggerPoint::kDidDispatchDOMContentLoadedEvent)) {
         frame_widget_->WarmUpCompositor();
     }
+#endif
 }
 
 void WebLocalFrameImpl::DidFailLoad(const ResourceError& error, WebHistoryCommitType web_commit_type)
 {
+#if !defined(MINI_UI_QUICKJS)
     if (WebPluginContainerImpl* plugin = GetFrame()->GetWebPluginContainer())
         plugin->DidFailLoading(error);
+#endif
     WebDocumentLoader* document_loader = GetDocumentLoader();
     DCHECK(document_loader);
     GetFrame()->GetLocalFrameHostRemote().DidFailLoadWithError(document_loader->GetUrl(), error.ErrorCode());
@@ -2436,12 +2542,16 @@ void WebLocalFrameImpl::DidFinish()
     if (!Client())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     if (frame_widget_ && ShouldWarmUpCompositorOnPrerenderFromThisPoint(features::Prerender2WarmUpCompositorTriggerPoint::kDidFinishLoad)) {
         frame_widget_->WarmUpCompositor();
     }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     if (WebPluginContainerImpl* plugin = GetFrame()->GetWebPluginContainer())
         plugin->DidFinishLoading();
+#endif
 
     Client()->DidFinishLoad();
 }
@@ -2677,8 +2787,10 @@ void WebLocalFrameImpl::SendOrientationChangeEvent()
     if (!GetFrame() || !GetFrame()->DomWindow())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // Screen Orientation API
     CoreInitializer::GetInstance().NotifyOrientationChanged(*GetFrame());
+#endif
 
     // Legacy window.orientation API
     if (RuntimeEnabledFeatures::OrientationEventEnabled())
@@ -2699,7 +2811,7 @@ void WebLocalFrameImpl::WillBeDetached()
 {
     if (frame_->IsMainFrame())
         ViewImpl()->DidDetachLocalMainFrame();
-#if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
+#if !defined(MINI_UI_QUICKJS) && !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     if (dev_tools_agent_)
         dev_tools_agent_->WillBeDestroyed();
 #endif
@@ -2725,6 +2837,13 @@ void WebLocalFrameImpl::WillDetachParent()
     }
 }
 
+#if defined(MINI_UI_QUICKJS)
+void WebLocalFrameImpl::CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
+    CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase> mojo_widget_host,
+    const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
+    bool is_for_scalable_page, bool hidden)
+{
+#else
 void WebLocalFrameImpl::CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> pass_key,
     CrossVariantMojoAssociatedRemote<mojom::blink::FrameWidgetHostInterfaceBase> mojo_frame_widget_host,
     CrossVariantMojoAssociatedReceiver<mojom::blink::FrameWidgetInterfaceBase> mojo_frame_widget,
@@ -2732,6 +2851,7 @@ void WebLocalFrameImpl::CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> p
     CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase> mojo_widget, const viz::FrameSinkId& frame_sink_id, bool is_for_nested_main_frame,
     bool is_for_scalable_page, bool hidden)
 {
+#endif
     DCHECK(!frame_widget_);
     DCHECK(frame_->IsLocalRoot());
     bool is_for_child_local_root = Parent();
@@ -2747,13 +2867,25 @@ void WebLocalFrameImpl::CreateFrameWidgetInternal(base::PassKey<WebLocalFrame> p
         // subclass of WebFrameWidget that is allowed is WebFrameWidgetImpl. This
         // is enforced via a private constructor (and friend class) on
         // WebFrameWidget.
+#if defined(MINI_UI_QUICKJS)
+        frame_widget_ = static_cast<WebFrameWidgetImpl*>(g_create_web_frame_widget->Run(std::move(pass_key),
+            std::move(mojo_widget_host), Scheduler()->GetAgentGroupScheduler()->DefaultTaskRunner(),
+            frame_sink_id, hidden, never_composited, is_for_child_local_root, is_for_nested_main_frame, is_for_scalable_page));
+#else
         frame_widget_ = static_cast<WebFrameWidgetImpl*>(g_create_web_frame_widget->Run(std::move(pass_key), std::move(mojo_frame_widget_host),
             std::move(mojo_frame_widget), std::move(mojo_widget_host), std::move(mojo_widget), Scheduler()->GetAgentGroupScheduler()->DefaultTaskRunner(),
             frame_sink_id, hidden, never_composited, is_for_child_local_root, is_for_nested_main_frame, is_for_scalable_page));
+#endif
     } else {
+#if defined(MINI_UI_QUICKJS)
+        frame_widget_ = MakeGarbageCollected<WebFrameWidgetImpl>(std::move(pass_key),
+            std::move(mojo_widget_host), Scheduler()->GetAgentGroupScheduler()->DefaultTaskRunner(),
+            frame_sink_id, hidden, never_composited, is_for_child_local_root, is_for_nested_main_frame, is_for_scalable_page);
+#else
         frame_widget_ = MakeGarbageCollected<WebFrameWidgetImpl>(std::move(pass_key), std::move(mojo_frame_widget_host), std::move(mojo_frame_widget),
             std::move(mojo_widget_host), std::move(mojo_widget), Scheduler()->GetAgentGroupScheduler()->DefaultTaskRunner(), frame_sink_id, hidden,
             never_composited, is_for_child_local_root, is_for_nested_main_frame, is_for_scalable_page);
+#endif
     }
     frame_widget_->BindLocalRoot(*this);
 
@@ -2802,9 +2934,14 @@ void WebLocalFrameImpl::ShowContextMenu(mojo::PendingAssociatedRemote<mojom::bli
         // Determine if rounding is more appropriate.
         gfx::Rect position_in_dips = LocalRootFrameWidget()->BlinkSpaceToEnclosedDIPs(gfx::Rect(params.x, params.y, 0, 0));
 
+#if defined(MINI_UI_QUICKJS)
+        params.x = position_in_dips.x();
+        params.y = position_in_dips.y();
+#else
         const float scale = LocalRootFrameWidget()->GetEmulatorScale();
         params.x = position_in_dips.x() * scale;
         params.y = position_in_dips.y() * scale;
+#endif
     }
 
     // Serializing a GURL longer than kMaxURLChars will fail, so don't do
@@ -2924,6 +3061,7 @@ void WebLocalFrameImpl::AddMessageToConsoleImpl(const WebConsoleMessage& message
     GetFrame()->GetDocument()->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(message, GetFrame()), discard_duplicates);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // This is only triggered by test_runner.cc
 void WebLocalFrameImpl::AddInspectorIssueImpl(mojom::blink::InspectorIssueCode code)
 {
@@ -2945,6 +3083,7 @@ void WebLocalFrameImpl::AddGenericIssueImpl(mojom::blink::GenericIssueErrorType 
     DCHECK(GetFrame());
     AuditsIssue::ReportGenericIssue(GetFrame(), error_type, violating_node_id, violating_node_attribute);
 }
+#endif
 
 void WebLocalFrameImpl::SetTextCheckClient(WebTextCheckClient* text_check_client)
 {
@@ -2976,6 +3115,7 @@ Node* WebLocalFrameImpl::ContextMenuImageNodeInner() const
     return ViewImpl()->GetPage()->GetContextMenuController().ContextMenuImageNodeForFrame(GetFrame());
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebLocalFrameImpl::WaitForDebuggerWhenShown()
 {
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -2999,6 +3139,7 @@ WebDevToolsAgentImpl* WebLocalFrameImpl::DevToolsAgentImpl(bool create_if_necess
 #endif
 }
 
+#endif
 void WebLocalFrameImpl::WasHidden()
 {
     if (frame_)
@@ -3028,6 +3169,7 @@ WebHistoryItem WebLocalFrameImpl::GetCurrentHistoryItem() const
     return WebHistoryItem(current_history_item_);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebLocalFrameImpl::SetLocalStorageArea(CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase> local_storage_area)
 {
     CoreInitializer::GetInstance().SetLocalStorageArea(*GetFrame(), std::move(local_storage_area));
@@ -3037,6 +3179,7 @@ void WebLocalFrameImpl::SetSessionStorageArea(CrossVariantMojoRemote<mojom::Stor
 {
     CoreInitializer::GetInstance().SetSessionStorageArea(*GetFrame(), std::move(session_storage_area));
 }
+#endif
 
 void WebLocalFrameImpl::SetNotRestoredReasons(const mojom::BackForwardCacheNotRestoredReasonsPtr& not_restored_reasons)
 {
@@ -3087,6 +3230,7 @@ mojom::blink::BackForwardCacheNotRestoredReasonsPtr WebLocalFrameImpl::ConvertNo
     return not_restored_reasons;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebLocalFrameImpl::SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigationTimeHintPtr& hint)
 {
     LocalFrame* frame = GetFrame();
@@ -3135,7 +3279,8 @@ void WebLocalFrameImpl::SetLCPPHint(const mojom::LCPCriticalPathPredictorNavigat
     lcpp->set_unused_preloads(std::move(unused_preloads));
 }
 
-bool WebLocalFrameImpl::IsFeatureEnabled(const mojom::blink::PermissionsPolicyFeature& feature) const
+#endif
+bool WebLocalFrameImpl::IsFeatureEnabled(const mojom::PermissionsPolicyFeature& feature) const
 {
     return GetFrame()->DomWindow()->IsFeatureEnabled(feature);
 }
@@ -3169,10 +3314,12 @@ void WebLocalFrameImpl::ResumeParserForTesting()
     GetFrame()->Loader().GetDocumentLoader()->ResumeParser();
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void WebLocalFrameImpl::FlushInputForTesting(base::OnceClosure done_callback)
 {
     frame_widget_->FlushInputForTesting(std::move(done_callback));
 }
+#endif
 
 void WebLocalFrameImpl::SetTargetToCurrentHistoryItem(const WebString& target)
 {
@@ -3202,7 +3349,11 @@ void WebLocalFrameImpl::ScrollFocusedEditableElementIntoView()
         return;
 
     has_scrolled_focused_editable_node_into_rect_ = true;
+#if defined(MINI_UI_QUICKJS)
+    if (autofill_client_) {
+#else
     if (!local_root_frame_widget->HasPendingPageScaleAnimation() && autofill_client_) {
+#endif
         autofill_client_->DidCompleteFocusChangeInFrame();
     }
 }

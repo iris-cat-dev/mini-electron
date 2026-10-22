@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "checks": [
+    {
+      "scenario": "actual matching completed baseline and both real Chrome modes",
+      "command": [
+        "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "D:\\Project\\mini-electron\\benchmarks\\ui\\compare.py",
+        "--mini-out",
+        "out/ui-benchmark-before-font-init",
+        "--chrome-out",
+        "out/ui-chrome-results",
+        "--chrome-software-out",
+        "out/ui-chrome-software-results",
+        "--out-dir",
+        "out/ui-comparison-validator"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "stdout": "D:\\Project\\mini-electron\\out\\ui-comparison-validator\\comparison.json\r\n",
+      "stderr": ""
+    },
+    {
+      "scenario": "profiled diagnostic rejected rather than pooled",
+      "command": [
+        "C:\\Users\\11297\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "D:\\Project\\mini-electron\\benchmarks\\ui\\compare.py",
+        "--mini-out",
+        "out/ui-benchmark-before-font-init",
+        "--chrome-out",
+        "out/ui-chrome-profiles",
+        "--out-dir",
+        "out/ui-comparison-rejected-profile"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "stdout": "",
+      "stderr": "error: control must be an unprofiled genuine Google Chrome run\r\n"
+    }
+  ],
+  "notes": "The matching-input guard smoke uses preserved pre-font data only to exercise aggregation, not as final performance evidence. The final corrected full-matrix comparison is comparison.json, library ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a. Profiled diagnostics are rejected.",
+  "final_comparison_status": "complete"
+}

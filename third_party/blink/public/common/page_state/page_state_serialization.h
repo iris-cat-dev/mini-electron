@@ -15,6 +15,7 @@
 #include "build/build_config.h"
 #include "services/network/public/cpp/resource_request_body.h"
 #include "services/network/public/mojom/referrer_policy.mojom.h"
+#include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/point_f.h"

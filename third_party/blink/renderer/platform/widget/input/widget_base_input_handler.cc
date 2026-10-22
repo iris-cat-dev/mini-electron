@@ -16,8 +16,10 @@
 #include "build/build_config.h"
 #include "cc/metrics/event_metrics.h"
 #include "cc/paint/element_id.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/trees/latency_info_swap_promise_monitor.h"
 #include "cc/trees/layer_tree_host.h"
+#endif
 //#include "services/tracing/public/cpp/perfetto/macros.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_gesture_device.h"
@@ -195,6 +197,7 @@ public:
         input_handler_->handling_input_state_ = previous_state_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<InputHandlerProxy::DidOverscrollParams>& event_overscroll()
     {
         return event_overscroll_;
@@ -203,6 +206,7 @@ public:
     {
         event_overscroll_ = std::move(params);
     }
+#endif
 
     std::optional<WebTouchAction>& touch_action()
     {
@@ -220,11 +224,13 @@ public:
     }
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     // Used to intercept overscroll notifications while an event is being
     // handled. If the event causes overscroll, the overscroll metadata can be
     // bundled in the event ack, saving an IPC.  Note that we must continue
     // supporting overscroll IPC notifications due to fling animation updates.
     std::unique_ptr<InputHandlerProxy::DidOverscrollParams> event_overscroll_;
+#endif
 
     std::optional<WebTouchAction> touch_action_;
 
@@ -295,6 +301,10 @@ void WidgetBaseInputHandler::HandleInputEvent(
 
     ui::LatencyInfo swap_latency_info(coalesced_event.latency_info());
     swap_latency_info.AddLatencyNumber(ui::LatencyComponentType::INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT);
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(metrics);
+    std::unique_ptr<cc::EventMetrics> cloned_metrics;
+#else
     cc::LatencyInfoSwapPromiseMonitor latency_info_swap_promise_monitor(&swap_latency_info, widget_->LayerTreeHost()->GetSwapPromiseManager());
     std::unique_ptr<cc::EventMetrics> cloned_metrics;
     cc::EventsMetricsManager::ScopedMonitor::DoneCallback done_callback;
@@ -313,6 +323,7 @@ void WidgetBaseInputHandler::HandleInputEvent(
             std::move(metrics));
     }
     auto event_metrics_monitor = widget_->LayerTreeHost()->GetScopedEventMetricsMonitor(std::move(done_callback));
+#endif
 
     bool prevent_default = false;
     bool show_virtual_keyboard_for_mouse = false;
@@ -379,8 +390,14 @@ void WidgetBaseInputHandler::HandleInputEvent(
         // this class.
         if (!weak_self) {
             if (callback) {
+#if defined(MINI_UI_QUICKJS)
+                std::move(callback).Run(
+                    GetAckResult(processed), swap_latency_info,
+                    std::move(handling_state.touch_action()));
+#else
                 std::move(callback).Run(
                     GetAckResult(processed), swap_latency_info, std::move(handling_state.event_overscroll()), std::move(handling_state.touch_action()));
+#endif
             }
             return;
         }
@@ -389,7 +406,9 @@ void WidgetBaseInputHandler::HandleInputEvent(
     // Handling |input_event| is finished and further down, we might start
     // handling injected scroll events. So, stop monitoring EventMetrics for
     // |input_event| to avoid nested monitors.
+#if !defined(MINI_UI_QUICKJS)
     event_metrics_monitor = nullptr;
+#endif
 
     LogAllPassiveEventListenersUma(input_event, processed);
 
@@ -411,6 +430,7 @@ void WidgetBaseInputHandler::HandleInputEvent(
 
     // Send gesture scroll events and their dispositions to the compositor thread,
     // so that they can be used to produce the elastic overscroll effect.
+#if !defined(MINI_UI_QUICKJS)
     if (input_event.GetType() == WebInputEvent::Type::kGestureScrollBegin || input_event.GetType() == WebInputEvent::Type::kGestureScrollEnd
         || input_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
         const WebGestureEvent& gesture_event = static_cast<const WebGestureEvent&>(input_event);
@@ -423,13 +443,25 @@ void WidgetBaseInputHandler::HandleInputEvent(
                 gesture_event, latest_overscroll_delta, overscroll_behavior, processed != WebInputEventResult::kNotHandled);
         }
     }
+#endif
 
+#if defined(MINI_UI_QUICKJS)
     if (callback) {
         std::move(callback).Run(
-            GetAckResult(processed), swap_latency_info, std::move(handling_state.event_overscroll()), std::move(handling_state.touch_action()));
-    } else {
-        DCHECK(!handling_state.event_overscroll()) << "Unexpected overscroll for un-acked event";
+            GetAckResult(processed), swap_latency_info,
+            std::move(handling_state.touch_action()));
     }
+#else
+    if (callback) {
+        std::move(callback).Run(
+            GetAckResult(processed), swap_latency_info,
+            std::move(handling_state.event_overscroll()),
+            std::move(handling_state.touch_action()));
+    } else {
+        DCHECK(!handling_state.event_overscroll())
+            << "Unexpected overscroll for un-acked event";
+    }
+#endif
 
     // Show the virtual keyboard if enabled and a user gesture triggers a focus
     // change.
@@ -492,9 +524,14 @@ void WidgetBaseInputHandler::HandleInjectedScrollGestures(Vector<InjectScrollGes
 {
     DCHECK(injected_scroll_params.size());
 
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(original_metrics);
+#endif
+#if !defined(MINI_UI_QUICKJS)
     base::TimeTicks original_timestamp;
     bool found_original_component = original_latency_info.FindLatency(ui::INPUT_EVENT_LATENCY_ORIGINAL_COMPONENT, &original_timestamp);
     DCHECK(found_original_component);
+#endif
 
     gfx::PointF position = PositionInWidgetFromInputEvent(input_event);
     for (const InjectScrollGestureParams& params : injected_scroll_params) {
@@ -512,6 +549,7 @@ void WidgetBaseInputHandler::HandleInjectedScrollGestures(Vector<InjectScrollGes
         std::unique_ptr<WebGestureEvent> gesture_event
             = WebGestureEvent::GenerateInjectedScrollbarGestureScroll(params.type, input_event.TimeStamp(), position, params.scroll_delta, params.granularity);
 
+#if !defined(MINI_UI_QUICKJS)
         std::unique_ptr<cc::EventMetrics> metrics;
         if (params.type == WebInputEvent::Type::kGestureScrollUpdate) {
             if (input_event.GetType() != WebInputEvent::Type::kGestureScrollUpdate) {
@@ -536,6 +574,7 @@ void WidgetBaseInputHandler::HandleInjectedScrollGestures(Vector<InjectScrollGes
             metrics = cc::ScrollEventMetrics::CreateFromExisting(gesture_event->GetTypeAsUiEventType(), ui::ScrollInputType::kScrollbar, /*is_inertial=*/false,
                 cc::EventMetrics::DispatchStage::kRendererCompositorFinished, original_metrics);
         }
+#endif
 
         if (params.type == WebInputEvent::Type::kGestureScrollBegin) {
             gesture_event->data.scroll_begin.scrollable_area_element_id = params.scrollable_area_element_id.GetInternalValue();
@@ -544,6 +583,10 @@ void WidgetBaseInputHandler::HandleInjectedScrollGestures(Vector<InjectScrollGes
             last_injected_gesture_was_begin_ = false;
         }
 
+#if defined(MINI_UI_QUICKJS)
+        widget_->client()->HandleInputEvent(
+            WebCoalescedInputEvent(*gesture_event, scrollbar_latency_info));
+#else
         {
             cc::LatencyInfoSwapPromiseMonitor latency_info_swap_promise_monitor(&scrollbar_latency_info, widget_->LayerTreeHost()->GetSwapPromiseManager());
             cc::EventsMetricsManager::ScopedMonitor::DoneCallback done_callback;
@@ -564,6 +607,7 @@ void WidgetBaseInputHandler::HandleInjectedScrollGestures(Vector<InjectScrollGes
             auto event_metrics_monitor = widget_->LayerTreeHost()->GetScopedEventMetricsMonitor(std::move(done_callback));
             widget_->client()->HandleInputEvent(WebCoalescedInputEvent(*gesture_event, scrollbar_latency_info));
         }
+#endif
     }
 }
 

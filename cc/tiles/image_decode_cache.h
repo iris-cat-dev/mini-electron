@@ -9,7 +9,9 @@
 
 #include "base/memory/ref_counted.h"
 #include "base/notreached.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "cc/base/devtools_instrumentation.h"
+#endif
 #include "cc/cc_export.h"
 #include "cc/paint/decoded_draw_image.h"
 #include "cc/paint/draw_image.h"
@@ -61,6 +63,7 @@ public:
         const TilePriority::PriorityBin requesting_tile_bin = TilePriority::NOW;
     };
 
+#if !defined(MINI_UI_QUICKJS)
     static devtools_instrumentation::ScopedImageDecodeTask::TaskType ToScopedTaskType(TaskType task_type)
     {
         using ScopedTaskType = devtools_instrumentation::ScopedImageDecodeTask::TaskType;
@@ -95,6 +98,7 @@ public:
             return ScopedImageType::kOther;
         }
     }
+#endif // !defined(MINI_UI_QUICKJS)
 
     virtual ~ImageDecodeCache()
     {

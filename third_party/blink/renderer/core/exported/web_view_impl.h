@@ -38,7 +38,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/observer_list.h"
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "mojo/public/cpp/bindings/associated_receiver.h"
+#endif
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
 #include "third_party/blink/public/common/input/web_gesture_event.h"
@@ -47,7 +49,9 @@
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/page/page.mojom-blink.h"
 #include "third_party/blink/public/mojom/page/page_visibility_state.mojom-blink.h"
@@ -68,7 +72,9 @@
 #include "third_party/blink/renderer/core/loader/navigation_policy.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/context_menu_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/event_with_hit_test_results.h"
+#endif
 #include "third_party/blink/renderer/core/page/scoped_page_pauser.h"
 #include "third_party/blink/renderer/platform/graphics/apply_viewport_changes.h"
 #include "third_party/blink/renderer/platform/graphics/touch_action.h"
@@ -94,7 +100,9 @@ class WebViewHelper;
 
 class BrowserControls;
 struct ColorProviderColorMaps;
+#if !defined(MINI_UI_QUICKJS)
 class DevToolsEmulator;
+#endif
 class Frame;
 class FullscreenController;
 class PageScaleConstraintsSet;
@@ -114,14 +122,21 @@ class TextAutosizerPageInfo;
 
 using PaintHoldingCommitTrigger = cc::PaintHoldingCommitTrigger;
 
-class CORE_EXPORT WebViewImpl final : public WebView, public mojom::blink::PageBroadcast {
+class CORE_EXPORT WebViewImpl final : public WebView
+#if !defined(MINI_UI_QUICKJS)
+    , public mojom::blink::PageBroadcast
+#endif
+{
 public:
     static WebViewImpl* Create(WebViewClient*, mojom::blink::PageVisibilityState visibility, blink::mojom::PrerenderParamPtr prerender_param,
         std::optional<blink::FencedFrame::DeprecatedFencedFrameMode> fenced_frame_mode, bool compositing_enabled, bool widgets_never_composited,
-        WebViewImpl* opener, mojo::PendingAssociatedReceiver<mojom::blink::PageBroadcast> page_handle, scheduler::WebAgentGroupScheduler& agent_group_scheduler,
-        const SessionStorageNamespaceId& session_storage_namespace_id, std::optional<SkColor> page_base_background_color,
-        const BrowsingContextGroupInfo& browsing_context_group_info, const ColorProviderColorMaps* color_provider_colors,
-        blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params);
+        WebViewImpl* opener,
+#if !defined(MINI_UI_QUICKJS)
+        mojo::PendingAssociatedReceiver<mojom::blink::PageBroadcast> page_handle,
+#endif
+        scheduler::WebAgentGroupScheduler& agent_group_scheduler, const SessionStorageNamespaceId& session_storage_namespace_id,
+        std::optional<SkColor> page_base_background_color, const BrowsingContextGroupInfo& browsing_context_group_info,
+        const ColorProviderColorMaps* color_provider_colors, blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params);
 
     // All calls to Create() should be balanced with a call to Close(). This
     // synchronously destroys the WebViewImpl.
@@ -140,9 +155,11 @@ public:
     // WebView methods:
     void DidAttachLocalMainFrame() override;
     void DidDetachLocalMainFrame() override;
+#if !defined(MINI_UI_QUICKJS)
     void DidAttachRemoteMainFrame(CrossVariantMojoAssociatedRemote<mojom::blink::RemoteMainFrameHostInterfaceBase>,
         CrossVariantMojoAssociatedReceiver<mojom::blink::RemoteMainFrameInterfaceBase>) override;
     void DidDetachRemoteMainFrame() override;
+#endif
     void SetNoStatePrefetchClient(WebNoStatePrefetchClient*) override;
     WebSettings* GetSettings() override;
     WebString PageEncoding() const override;
@@ -155,7 +172,9 @@ public:
     const WebFrame* MainFrame() const override;
     WebLocalFrame* FocusedFrame() override;
     void SetFocusedFrame(WebFrame*) override;
+#if !defined(MINI_UI_QUICKJS)
     void SmoothScroll(int target_x, int target_y, base::TimeDelta duration) override;
+#endif
     void AdvanceFocus(bool reverse) override;
     float PageScaleFactor() const override;
     float MinimumPageScaleFactor() const override;
@@ -192,8 +211,10 @@ public:
     void EnableAutoResizeForTesting(const gfx::Size& min_window_size, const gfx::Size& max_window_size) override;
     void DisableAutoResizeForTesting(const gfx::Size& new_window_size) override;
     WebHitTestResult HitTestResultForTap(const gfx::Point&, const gfx::Size&) override;
+#if !defined(MINI_UI_QUICKJS)
     void EnableDeviceEmulation(const DeviceEmulationParams&) override;
     void DisableDeviceEmulation() override;
+#endif
     void PerformCustomContextMenuAction(unsigned action) override;
     void DidCloseContextMenu() override;
     void CancelPagePopup() override;
@@ -203,7 +224,9 @@ public:
     }
     void SetPageFrozen(bool frozen) override;
     WebFrameWidget* MainFrameWidget() override;
+#if !defined(MINI_UI_QUICKJS)
     void SetDeviceColorSpaceForTesting(const gfx::ColorSpace& color_space) override;
+#endif
     void PaintContent(cc::PaintCanvas*, const gfx::Rect&) override;
     void RegisterRendererPreferenceWatcher(CrossVariantMojoRemote<mojom::RendererPreferenceWatcherInterfaceBase> watcher) override;
     void SetRendererPreferences(const RendererPreferences& preferences) override;
@@ -267,10 +290,13 @@ public:
     // includes all browser controls params such as the min heights.
     void ResizeWithBrowserControls(const gfx::Size& main_frame_widget_size, const gfx::Size& visible_viewport_size, cc::BrowserControlsParams);
 
+#if !defined(MINI_UI_QUICKJS)
     // Requests a page-scale animation based on the specified point/rect.
     void AnimateDoubleTapZoom(const gfx::Point&, const gfx::Rect& block_bounds);
 
-    // mojom::blink::PageBroadcast method:
+#endif
+#if !defined(MINI_UI_QUICKJS)
+    // mojom::blink::PageBroadcast methods:
     void SetPageLifecycleState(
         mojom::blink::PageLifecycleStatePtr state, mojom::blink::PageRestoreParamsPtr page_restore_params, SetPageLifecycleStateCallback callback) override;
     void AudioStateChanged(bool is_audio_playing) override;
@@ -287,10 +313,16 @@ public:
     void UpdatePageBrowsingContextGroup(const BrowsingContextGroupInfo& browsing_context_group_info) override;
     void SetPageAttributionSupport(network::mojom::AttributionSupport support) override;
     void UpdateColorProviders(const ColorProviderColorMaps& color_provider_colors) override;
+#else
+    // Also used directly by non-browser embedders and tests.
+    void SetPageBaseBackgroundColor(std::optional<SkColor> color);
+#endif
 
     void DispatchPersistedPageshow(base::TimeTicks navigation_start);
     void DispatchPagehide(mojom::blink::PagehideDispatch pagehide_dispatch);
+#if !defined(MINI_UI_QUICKJS)
     void HookBackForwardCacheEviction(bool hook);
+#endif
 
     float DefaultMinimumPageScaleFactor() const;
     float DefaultMaximumPageScaleFactor() const;
@@ -303,11 +335,15 @@ public:
 
     void SetZoomFactorOverride(float);
     void SetCompositorDeviceScaleFactorOverride(float);
+#if !defined(MINI_UI_QUICKJS)
     gfx::Transform GetDeviceEmulationTransform() const;
+#endif
     void EnableAutoResizeMode(const gfx::Size& min_viewport_size, const gfx::Size& max_viewport_size);
     void DisableAutoResizeMode();
+#if !defined(MINI_UI_QUICKJS)
     void ActivateDevToolsTransform(const DeviceEmulationParams&);
     void DeactivateDevToolsTransform();
+#endif
 
     SkColor BackgroundColor() const;
     Color BaseBackgroundColor() const;
@@ -329,10 +365,12 @@ public:
         return web_view_client_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     DevToolsEmulator* GetDevToolsEmulator() const
     {
         return dev_tools_emulator_.Get();
     }
+#endif
 
     // When true, a hint to all WebWidgets that they will never be
     // user-visible and thus never need to produce pixels for display. This is
@@ -357,6 +395,7 @@ public:
     // TODO(https://crbug.com/1139104): Remove this.
     std::string GetNullFrameReasonForBug1139104() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Finishes a ScrollIntoView for a focused editable element by performing a
     // view-level reveal. That is, when an embedder requests to reveal a focused
     // editable, the editable is first ScrollIntoView'ed in the layout tree to
@@ -367,6 +406,7 @@ public:
     // frame is local and outermost.
     void FinishScrollFocusedEditableIntoView(const gfx::RectF& caret_rect_in_root_frame, mojom::blink::ScrollIntoViewParamsPtr params);
 
+#endif
     // Handles context menu events orignated via the the keyboard. These
     // include the VK_APPS virtual key and the Shift+F10 combine. Code is
     // based on the Webkit function bool WebView::handleContextMenuEvent(WPARAM
@@ -432,20 +472,27 @@ public:
 
     void SetPageLifecycleStateFromNewPageCommit(mojom::blink::PageVisibilityState visibility, mojom::blink::PagehideDispatch pagehide_dispatch) override;
 
+#if !defined(MINI_UI_QUICKJS)
     // Called by a full frame plugin inside this view to inform it that its
     // zoom level has been updated.  The plugin should only call this function
     // if the zoom change was triggered by the browser, it's only needed in case
     // a plugin can update its own zoom, say because of its own UI.
     void FullFramePluginZoomLevelChanged(double zoom_level);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Requests a page-scale animation based on the specified rect.
     void ZoomToFindInPageRect(const gfx::Rect&);
 
+#endif
     void ComputeScaleAndScrollForBlockRect(
         const gfx::Point& hit_point, const gfx::Rect& block_rect, float padding, float default_scale_when_already_legible, float& scale, gfx::Point& scroll);
+#if !defined(MINI_UI_QUICKJS)
     Node* BestTapNode(const GestureEventWithHitTestResults& targeted_tap_event);
     void EnableTapHighlightAtPoint(const GestureEventWithHitTestResults& targeted_tap_event);
 
+#endif
+#if !defined(MINI_UI_QUICKJS)
     void EnableFakePageScaleAnimationForTesting(bool);
     bool FakeDoubleTapAnimationPendingForTesting() const
     {
@@ -463,6 +510,7 @@ public:
     {
         return fake_page_scale_animation_use_anchor_;
     }
+#endif
     ui::mojom::blink::VirtualKeyboardMode VirtualKeyboardModeForTesting()
     {
         return virtual_keyboard_mode_;
@@ -507,11 +555,14 @@ public:
         return *chrome_client_.Get();
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Allows main frame updates to occur if they were previously blocked. They
     // are blocked during loading a navigation, to allow Blink to proceed without
     // being interrupted by useless work until enough progress is made that it
     // desires composited output to be generated.
     void StopDeferringMainFrameUpdate();
+
+#endif
 
     // This function checks the element ids of ScrollableAreas only and returns
     // the equivalent DOM Node if such exists.
@@ -520,9 +571,8 @@ public:
     void DidEnterFullscreen();
     void DidExitFullscreen();
 
-    // Called when some JS code has instructed the window associated to the main
-    // frame to close, which will result in a request to the browser to close the
-    // Widget associated to it.
+    // Called when JS requests closing the window associated to the main frame.
+    // The embedder (UI) or browser (normal profile) owns the actual close.
     void CloseWindow();
 
     // Controls whether pressing Tab key advances focus to links.
@@ -549,19 +599,18 @@ public:
     // Called when keyboard focus switches to an anchor with the given URL.
     void SetKeyboardFocusURL(const KURL&);
 
-    // Asks the browser process to activate this web view.
+    // Requests activation from the native embedder (UI) or browser.
     void Focus();
 
-    // Asks the browser process to take focus away from the WebView by focusing an
-    // adjacent UI element in the containing window.
+    // Requests focus transfer to an adjacent element in the containing window.
     void TakeFocus(bool reverse);
 
     // Shows a previously created WebView (via window.open()).
     void Show(const LocalFrameToken& opener_frame_token, NavigationPolicy policy, const gfx::Rect& requested_rect, const gfx::Rect& adjusted_rect,
         bool opened_by_user_gesture);
 
-    // Send the window rect to the browser and call `ack_callback` when the
-    // browser has processed it.
+    // Requests window bounds. `ack_callback` acknowledges processing, not success;
+    // the native embedder (UI) or browser supplies the actual accepted bounds.
     void SendWindowRectToMainFrameHost(const gfx::Rect& bounds, base::OnceClosure ack_callback);
 
     // Tells the browser that another page has accessed the DOM of the initial
@@ -581,8 +630,10 @@ public:
     // code should eventually move out of WebView into somewhere else.
     void ApplyViewportChanges(const ApplyViewportChangesArgs& args);
 
-    // Indication that the root layer for the main frame widget has changed.
+#if !defined(MINI_UI_QUICKJS)
+    // Notification that the hardware compositor root layer changed.
     void DidChangeRootLayer(bool root_layer_exists);
+#endif
 
     // Sets the page focus.
     void SetPageFocus(bool enable);
@@ -644,8 +695,11 @@ private:
     void PropagateZoomFactorToLocalFrameRoots(Frame* frame, float zoom_factor);
     void SetPageLifecycleStateInternal(mojom::blink::PageLifecycleStatePtr new_state, mojom::blink::PageRestoreParamsPtr page_restore_params);
 
+#if !defined(MINI_UI_QUICKJS)
     // Updates the main frame's view transition state.
     void UpdateViewTransitionState(bool restoring_from_bfcache, bool storing_in_bfcache, const mojom::blink::PageRestoreParamsPtr& page_restore_params);
+
+#endif
 
     float MaximumLegiblePageScale() const;
     void RefreshPageScaleFactor();
@@ -656,6 +710,9 @@ private:
     void ResizeViewWhileAnchored(cc::BrowserControlsParams params, const gfx::Size& visible_viewport_size);
 
     void UpdateBaseBackgroundColor();
+    void ApplyRendererPreferences(const RendererPreferences&);
+    void ApplyWebPreferencesInternal(const web_pref::WebPreferences&);
+    void ApplyHistoryOffsetAndLength(int32_t history_offset, int32_t history_length);
     void UpdateFontRenderingFromRendererPrefs();
 
     // Request the window to close from the renderer by sending the request to the
@@ -668,19 +725,27 @@ private:
 
     WebViewImpl(WebViewClient*, mojom::blink::PageVisibilityState visibility, blink::mojom::PrerenderParamPtr prerender_param,
         std::optional<blink::FencedFrame::DeprecatedFencedFrameMode> fenced_frame_mode, bool does_composite, bool widgets_never_composite, WebViewImpl* opener,
-        mojo::PendingAssociatedReceiver<mojom::blink::PageBroadcast> page_handle, scheduler::WebAgentGroupScheduler& agent_group_scheduler,
-        const SessionStorageNamespaceId& session_storage_namespace_id, std::optional<SkColor> page_base_background_color,
-        const BrowsingContextGroupInfo& browsing_context_group_info, const ColorProviderColorMaps* color_provider_colors,
-        blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params);
+#if !defined(MINI_UI_QUICKJS)
+        mojo::PendingAssociatedReceiver<mojom::blink::PageBroadcast> page_handle,
+#endif
+        scheduler::WebAgentGroupScheduler& agent_group_scheduler, const SessionStorageNamespaceId& session_storage_namespace_id,
+        std::optional<SkColor> page_base_background_color, const BrowsingContextGroupInfo& browsing_context_group_info,
+        const ColorProviderColorMaps* color_provider_colors, blink::mojom::PartitionedPopinParamsPtr partitioned_popin_params);
+#if defined(MINI_UI_QUICKJS)
+    // Close() deletes this final type; WebView's destructor is non-virtual.
+    ~WebViewImpl();
+#else
     ~WebViewImpl() override;
+#endif
 
     void ConfigureAutoResizeMode();
 
     void DoComposite();
     void ReallocateRenderer();
-
+#if !defined(MINI_UI_QUICKJS)
     void SetDeviceEmulationTransform(const gfx::Transform&);
     void UpdateDeviceEmulationTransform();
+#endif
 
     // Helper function: Widens the width of |source| by the specified margins
     // while keeping it smaller than page width.
@@ -704,6 +769,7 @@ private:
     void ComputeScaleAndScrollForEditableElementRects(const gfx::Rect& element_bounds_in_root_frame, const gfx::Rect& caret_bounds_in_root_frame,
         bool zoom_into_legible_scale, float& new_scale, gfx::Point& new_scroll_position, bool& need_animation);
 
+#if !defined(MINI_UI_QUICKJS)
     // Starts a page scale (and scroll!) animation on the compositor thread that
     // will smoothly animate the viewport position and zoom. Returns true if an
     // animation was queued, false if an animation was not needed.
@@ -719,6 +785,7 @@ private:
     // * duration: The animation's duration.
     bool StartPageScaleAnimation(const gfx::Point& target_position, bool use_anchor, float new_scale, base::TimeDelta duration);
 
+#endif
     // Sends any outstanding TrackedFeaturesUpdate messages to the browser.
     void ReportActiveSchedulerTrackedFeatures();
 
@@ -726,8 +793,10 @@ private:
     // Corresponds to a Show method call.
     void DidShowCreatedWindow();
 
-    // Called when mojo is disconnected.
+#if !defined(MINI_UI_QUICKJS)
+    // Called when the PageBroadcast endpoint is disconnected.
     void MojoDisconnected();
+#endif
 
     // Called when any input to zoom factor calculation changes on the WebView, to
     // trigger recalculation of zoom factor for all affected widgets.
@@ -810,6 +879,7 @@ private:
     // page scale that can result from automatic zooms.
     float maximum_legible_scale_ = 1.f;
 
+#if !defined(MINI_UI_QUICKJS)
     // The scale moved to by the latest double tap zoom, if any.
     float double_tap_zoom_page_scale_factor_ = 0.f;
     // Have we sent a double-tap zoom and not yet heard back the scale?
@@ -821,8 +891,11 @@ private:
     float fake_page_scale_animation_page_scale_factor_ = 0.f;
     bool fake_page_scale_animation_use_anchor_ = false;
 
+#endif
     float compositor_device_scale_factor_override_ = 0.f;
+#if !defined(MINI_UI_QUICKJS)
     gfx::Transform device_emulation_transform_;
+#endif
 
     // The offset of the current item in the history list.
     // The initial value is -1 since the offset should be lower than
@@ -843,7 +916,9 @@ private:
     // closed.
     scoped_refptr<WebPagePopupImpl> page_popup_;
 
+#if !defined(MINI_UI_QUICKJS)
     Persistent<DevToolsEmulator> dev_tools_emulator_;
+#endif
 
     // Whether the user can press tab to focus links.
     bool tabs_to_links_ = false;
@@ -899,9 +974,12 @@ private:
     // WebWidget destroys itself. This will be null if the main frame is remote.
     WeakPersistent<WebFrameWidgetImpl> web_widget_;
 
+#if !defined(MINI_UI_QUICKJS)
     // We defer commits when transitioning to a new page. ChromeClientImpl calls
     // StopDeferringCommits() to release this when a new page is loaded.
     std::unique_ptr<cc::ScopedDeferMainFrameUpdate> scoped_defer_main_frame_update_;
+
+#endif
 
     Persistent<ResizeViewportAnchor> resize_viewport_anchor_;
 
@@ -911,15 +989,19 @@ private:
     // of this AssociatedRemote and the lifetime of the main LocalFrame.
     mojo::AssociatedRemote<mojom::blink::LocalMainFrameHost> local_main_frame_host_remote_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Handle to the remote main frame host. Only valid when the MainFrame is
     // remote.  It is ok to use WTF::Unretained(this) for callbacks made on this
     // interface because the callbacks will be associated with the lifecycle
     // of this AssociatedRemote and the lifetime of the main RemoteFrame.
     mojo::AssociatedRemote<mojom::blink::RemoteMainFrameHost> remote_main_frame_host_remote_;
+#endif
 
     std::optional<display::mojom::blink::ScreenOrientation> screen_orientation_override_;
 
+#if !defined(MINI_UI_QUICKJS)
     mojo::AssociatedReceiver<mojom::blink::PageBroadcast> receiver_;
+#endif
 
     // These are observing changes in |renderer_preferences_|. This is used for
     // keeping WorkerFetchContext in sync.

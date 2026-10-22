@@ -414,10 +414,12 @@ void InlineBoxFragmentPainter::PaintAllFragments(
         ObjectPainter(layout_inline).AddURLRectIfNeeded(local_paint_info, paint_offset);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     ScopedPaintTimingDetectorBlockPaintHook scoped_paint_timing_detector_block_paint_hook;
     if (paint_info.phase == PaintPhase::kForeground) {
         scoped_paint_timing_detector_block_paint_hook.EmplaceIfNeeded(layout_inline, paint_info.context.GetPaintController().CurrentPaintChunkProperties());
     }
+#endif
 
     if (paint_info.phase == PaintPhase::kForeground && paint_info.ShouldAddUrlMetadata()) {
         // URLRects for descendants are normally added via BoxFragmentPainter::

@@ -32,7 +32,9 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/html/html_picture_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
@@ -99,8 +101,10 @@ Node::InsertionNotificationRequest HTMLSourceElement::InsertedInto(ContainerNode
 {
     HTMLElement::InsertedInto(insertion_point);
     Element* parent = parentElement();
+#if !defined(MINI_UI_QUICKJS)
     if (auto* media = DynamicTo<HTMLMediaElement>(parent))
         media->SourceWasAdded(this);
+#endif
 
     auto* html_picture_element = parent == insertion_point ? DynamicTo<HTMLPictureElement>(parent) : nullptr;
     if (html_picture_element) {
@@ -115,8 +119,10 @@ void HTMLSourceElement::RemovedFrom(ContainerNode& removal_root)
     bool was_removed_from_parent = !parent;
     if (was_removed_from_parent)
         parent = DynamicTo<Element>(&removal_root);
+#if !defined(MINI_UI_QUICKJS)
     if (auto* media = DynamicTo<HTMLMediaElement>(parent))
         media->SourceWasRemoved(this);
+#endif
     if (auto* picture = DynamicTo<HTMLPictureElement>(parent)) {
         RemoveMediaQueryListListener();
         if (was_removed_from_parent)

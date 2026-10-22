@@ -329,11 +329,16 @@ bool DOMDataStore::SetWrapperInInlineStorage(
         wrapper = ref.Get(isolate);
         return false;
     }
+#if defined(MINI_UI_QUICKJS)
+    // Joint atomic collection owns wrapper liveness, not V8's droppable hint.
+    ref.Reset(isolate, wrapper);
+#else
     if (wrapper_type_info->SupportsDroppingWrapper()) {
         ref.Reset(isolate, wrapper, TraceWrapperV8Reference<v8::Object>::IsDroppable {});
     } else {
         ref.Reset(isolate, wrapper);
     }
+#endif
     DCHECK(!ref.IsEmpty());
     return true;
 }

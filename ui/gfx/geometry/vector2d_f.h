@@ -15,9 +15,11 @@
 
 #include "ui/gfx/geometry/geometry_export.h"
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto {
 class TracedValue;
 }
+#endif
 namespace gfx {
 
 class GEOMETRY_EXPORT Vector2dF {
@@ -122,7 +124,9 @@ public:
 
     std::string ToString() const;
 
+#if !defined(MINI_UI_QUICKJS)
     void WriteIntoTrace(perfetto::TracedValue) const;
+#endif
 
 private:
     float x_;

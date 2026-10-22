@@ -618,9 +618,11 @@ bool EventTarget::AddEventListenerInternal(const AtomicString& event_type, Event
         }
 
         AddedEventListener(event_type, *registered_listener);
+#if !defined(MINI_UI_QUICKJS)
         if (IsA<JSBasedEventListener>(listener) && IsInstrumentedForAsyncStack(event_type)) {
             listener->async_task_context()->Schedule(GetExecutionContext(), event_type);
         }
+#endif
     }
     return added;
 }
@@ -780,9 +782,11 @@ bool EventTarget::SetAttributeEventListener(const AtomicString& event_type, Even
         return false;
     }
     if (registered_listener) {
+#if !defined(MINI_UI_QUICKJS)
         if (IsA<JSBasedEventListener>(listener) && IsInstrumentedForAsyncStack(event_type)) {
             listener->async_task_context()->Schedule(GetExecutionContext(), event_type);
         }
+#endif
         registered_listener->SetCallback(listener);
         return true;
     }
@@ -1003,7 +1007,9 @@ bool EventTarget::FireEventListeners(Event& event, EventTargetData* d, EventList
         event.SetHandlingPassive(EventPassiveMode(*registered_listener));
 
         probe::UserCallback probe(context, nullptr, event.type(), false, this);
+#if !defined(MINI_UI_QUICKJS)
         probe::AsyncTask async_task(context, listener->async_task_context(), "event", IsInstrumentedForAsyncStack(event.type()));
+#endif
 
         // To match Mozilla, the AT_TARGET phase fires both capturing and bubbling
         // event listeners, even though that violates some versions of the DOM spec.
@@ -1063,7 +1069,9 @@ void EventTarget::EnqueueEvent(Event& event, TaskType task_type)
     ExecutionContext* context = GetExecutionContext();
     if (!context)
         return;
+#if !defined(MINI_UI_QUICKJS)
     event.async_task_context()->Schedule(context, event.type());
+#endif
     context->GetTaskRunner(task_type)->PostTask(
         FROM_HERE, WTF::BindOnce(&EventTarget::DispatchEnqueuedEvent, WrapPersistent(this), WrapPersistent(&event), WrapPersistent(context)));
 }
@@ -1071,11 +1079,15 @@ void EventTarget::EnqueueEvent(Event& event, TaskType task_type)
 void EventTarget::DispatchEnqueuedEvent(Event* event, ExecutionContext* context)
 {
     if (!GetExecutionContext()) {
+#if !defined(MINI_UI_QUICKJS)
         event->async_task_context()->Cancel();
+#endif
         return;
     }
     this->ResetEventQueueStatus(event->type());
+#if !defined(MINI_UI_QUICKJS)
     probe::AsyncTask async_task(context, event->async_task_context());
+#endif
     DispatchEvent(*event);
 }
 

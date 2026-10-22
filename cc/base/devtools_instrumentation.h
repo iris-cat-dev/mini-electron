@@ -5,6 +5,8 @@
 #ifndef CC_BASE_DEVTOOLS_INSTRUMENTATION_H_
 #define CC_BASE_DEVTOOLS_INSTRUMENTATION_H_
 
+#if !defined(MINI_UI_QUICKJS)
+
 #include <stdint.h>
 
 #include <memory>
@@ -227,5 +229,7 @@ inline void CC_BASE_EXPORT NeedsBeginFrameChanged(int layer_tree_host_id, bool n
 
 } // namespace devtools_instrumentation
 } // namespace cc
+
+#endif // !defined(MINI_UI_QUICKJS)
 
 #endif // CC_BASE_DEVTOOLS_INSTRUMENTATION_H_

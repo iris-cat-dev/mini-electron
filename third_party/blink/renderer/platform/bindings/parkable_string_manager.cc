@@ -20,7 +20,9 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/disk_data_allocator.h"
+#endif
 #include "third_party/blink/renderer/platform/instrumentation/memory_pressure_listener.h"
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread_scheduler.h"
@@ -147,8 +149,10 @@ bool ParkableStringManager::OnMemoryDump(base::trace_event::ProcessMemoryDump* p
     // Has to be uint64_t.
     dump->AddScalar("savings_size", "bytes", stats.savings_size > 0 ? stats.savings_size : 0);
     dump->AddScalar("on_disk_size", "bytes", stats.on_disk_size);
+#if !defined(MINI_UI_QUICKJS)
     dump->AddScalar("on_disk_footprint", "bytes", data_allocator().disk_footprint());
     dump->AddScalar("on_disk_free_chunks", "bytes", data_allocator().free_chunks_size());
+#endif
 
     pmd->AddSuballocation(dump->guid(), WTF::Partitions::kAllocatedObjectPoolName);
     return true;
@@ -255,12 +259,14 @@ void ParkableStringManager::RemoveOnMainThread(ParkableStringImpl* string)
         map->erase(it);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (string->has_on_disk_data()) {
         data_allocator().Discard(std::move(string->metadata_->on_disk_metadata_));
         // Now data_allocator may have enough free space for pending compressed
         // strings. Schedule for them.
         ScheduleAgingTaskIfNeeded();
     }
+#endif
 
     delete string;
 }
@@ -358,6 +364,7 @@ void ParkableStringManager::RecordStatisticsAfter5Minutes() const
     base::UmaHistogramTimes("Memory.ParkableString.TotalParkingThreadTime.5min", total_parking_thread_time_);
     base::UmaHistogramTimes("Memory.ParkableString.TotalUnparkingTime.5min", total_unparking_time_);
 
+#if !defined(MINI_UI_QUICKJS)
     // These metrics only make sense if the disk allocator is used.
     if (data_allocator().may_write()) {
         Statistics stats = ComputeStatistics();
@@ -365,6 +372,7 @@ void ParkableStringManager::RecordStatisticsAfter5Minutes() const
         base::UmaHistogramTimes("Memory.ParkableString.DiskReadTime.5min", total_disk_read_time_);
         base::UmaHistogramCounts100000("Memory.ParkableString.OnDiskSizeKb.5min", static_cast<int>(stats.on_disk_size / 1000));
     }
+#endif
 }
 
 void ParkableStringManager::AgeStringsAndPark()
@@ -453,8 +461,10 @@ ParkableStringManager::Statistics ParkableStringManager::ComputeStatistics() con
         if (str->has_compressed_data())
             stats.overhead_size += str->compressed_size();
 
+#if !defined(MINI_UI_QUICKJS)
         if (str->has_on_disk_data())
             stats.on_disk_size += str->on_disk_size();
+#endif
 
         // Since ParkableStringManager wants to have a finer breakdown of memory
         // footprint, this doesn't directly use
@@ -472,14 +482,17 @@ ParkableStringManager::Statistics ParkableStringManager::ComputeStatistics() con
         stats.compressed_size += str->compressed_size();
         stats.metadata_size += kParkableStringImplActualSize;
 
+#if !defined(MINI_UI_QUICKJS)
         if (str->has_on_disk_data())
             stats.on_disk_size += str->on_disk_size();
+#endif
 
         // See comment above.
         size_t memory_footprint = str->compressed_size() + kParkableStringImplActualSize;
         DCHECK_EQ(memory_footprint, str->MemoryFootprintForDump());
     }
 
+#if !defined(MINI_UI_QUICKJS)
     for (const auto& kv : on_disk_strings_) {
         ParkableStringImpl* str = kv.value;
         size_t size = str->CharactersSizeInBytes();
@@ -487,6 +500,7 @@ ParkableStringManager::Statistics ParkableStringManager::ComputeStatistics() con
         stats.metadata_size += kParkableStringImplActualSize;
         stats.on_disk_size += str->on_disk_size();
     }
+#endif
 
     stats.total_size = stats.uncompressed_size + stats.compressed_size + stats.metadata_size + stats.overhead_size;
     size_t memory_footprint = stats.compressed_size + stats.uncompressed_size + stats.metadata_size + stats.overhead_size;
@@ -521,7 +535,9 @@ void ParkableStringManager::ResetForTesting()
     unparked_strings_.clear();
     parked_strings_.clear();
     on_disk_strings_.clear();
+#if !defined(MINI_UI_QUICKJS)
     allocator_for_testing_ = nullptr;
+#endif
     first_string_aging_was_delayed_ = false;
 }
 

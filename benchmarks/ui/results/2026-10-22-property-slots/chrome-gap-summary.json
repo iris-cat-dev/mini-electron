@@ -1,0 +1,66 @@
+[
+  {
+    "framework": "vue",
+    "rows": 100,
+    "native_ms": 134.99999997019768,
+    "chrome_default_ms": 7.300000041723251,
+    "chrome_software_ms": 7.0999999940395355,
+    "native_over_default": 18.493150575151137
+  },
+  {
+    "framework": "vue",
+    "rows": 1000,
+    "native_ms": 935.4000000357628,
+    "chrome_default_ms": 41.09999996423721,
+    "chrome_software_ms": 40.700000047683716,
+    "native_over_default": 22.759124108265024
+  },
+  {
+    "framework": "vue",
+    "rows": 5000,
+    "native_ms": 4673.300000041723,
+    "chrome_default_ms": 231.30000004172325,
+    "chrome_software_ms": 227.2000000178814,
+    "native_over_default": 20.204496321654673
+  },
+  {
+    "framework": "vue",
+    "rows": 10000,
+    "native_ms": 9829.200000017881,
+    "chrome_default_ms": 469.19999995827675,
+    "chrome_software_ms": 537.0,
+    "native_over_default": 20.948849106760306
+  },
+  {
+    "framework": "react",
+    "rows": 100,
+    "native_ms": 84.7999999821186,
+    "chrome_default_ms": 4.5999999940395355,
+    "chrome_software_ms": 4.800000041723251,
+    "native_over_default": 18.43478262869532
+  },
+  {
+    "framework": "react",
+    "rows": 1000,
+    "native_ms": 539.6999999880791,
+    "chrome_default_ms": 23.899999976158142,
+    "chrome_software_ms": 25.30000001192093,
+    "native_over_default": 22.581589980186866
+  },
+  {
+    "framework": "react",
+    "rows": 5000,
+    "native_ms": 3740.400000065565,
+    "chrome_default_ms": 131.69999995827675,
+    "chrome_software_ms": 165.09999999403954,
+    "native_over_default": 28.400911171226603
+  },
+  {
+    "framework": "react",
+    "rows": 10000,
+    "native_ms": 10010.199999988079,
+    "chrome_default_ms": 373.80000004172325,
+    "chrome_software_ms": 439.9000000655651,
+    "native_over_default": 26.779561259686325
+  }
+]

@@ -1,4 +1,4 @@
-﻿// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,14 +7,15 @@
 
 #include <string>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 
 namespace mojo {
 namespace core {
 
-using ProcessErrorCallback = base::RepeatingCallback<void(const std::string& error)>;
+using ProcessErrorCallback =
+    base::RepeatingCallback<void(const std::string& error)>;
 
-} // namespace core
-} // namespace mojo
+}  // namespace core
+}  // namespace mojo
 
-#endif // MOJO_CORE_EMBEDDER_PROCESS_ERROR_CALLBACK_H_
+#endif  // MOJO_CORE_EMBEDDER_PROCESS_ERROR_CALLBACK_H_

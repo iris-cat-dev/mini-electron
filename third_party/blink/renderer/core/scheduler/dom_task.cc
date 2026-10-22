@@ -18,8 +18,10 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scheduler/dom_task_signal.h"
 #include "third_party/blink/renderer/core/scheduler/script_wrappable_task_state.h"
 #include "third_party/blink/renderer/core/scheduler/web_scheduling_task_state.h"
@@ -63,9 +65,13 @@ DOMTask::DOMTask(ScriptPromiseResolver<IDLAny>* resolver, V8SchedulerPostTaskCal
     }
 
     auto* context = ExecutionContext::From(script_state);
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("SchedulePostTaskCallback", inspector_scheduler_schedule_event::Data, context, task_id_for_tracing_,
         task_queue_->GetPriority(), delay_.InMillisecondsF());
+#endif
+#if !defined(MINI_UI_QUICKJS)
     async_task_context_.Schedule(context, "postTask");
+#endif
 }
 
 void DOMTask::Trace(Visitor* visitor) const
@@ -122,9 +128,11 @@ void DOMTask::InvokeInternal(ScriptState* script_state)
 
     ExecutionContext* context = ExecutionContext::From(script_state);
     DCHECK(context);
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT(
         "RunPostTaskCallback", inspector_scheduler_run_event::Data, context, task_id_for_tracing_, task_queue_->GetPriority(), delay_.InMillisecondsF());
     probe::AsyncTask async_task(context, &async_task_context_);
+#endif
 
     std::optional<scheduler::TaskAttributionTracker::TaskScope> task_attribution_scope;
     // For the main thread (tracker exists), create the task scope with the signal
@@ -155,7 +163,9 @@ void DOMTask::OnAbort()
         return;
 
     task_handle_.Cancel();
+#if !defined(MINI_UI_QUICKJS)
     async_task_context_.Cancel();
+#endif
 
     DCHECK(resolver_);
 
@@ -171,7 +181,9 @@ void DOMTask::OnAbort()
 
     auto* context = ExecutionContext::From(resolver_script_state);
     DCHECK(context);
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT("AbortPostTaskCallback", inspector_scheduler_abort_event::Data, context, task_id_for_tracing_);
+#endif
 
     // TODO(crbug.com/1293949): Add an error message.
     resolver_->Reject(abort_source_->reason(resolver_script_state).V8ValueFor(resolver_script_state));

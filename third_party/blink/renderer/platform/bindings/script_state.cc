@@ -7,7 +7,9 @@
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/instrumentation/instance_counters.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/renderer_resource_coordinator.h"
+#endif
 
 namespace blink {
 
@@ -27,8 +29,10 @@ ScriptState* ScriptState::Create(v8::Local<v8::Context> context, DOMWrapperWorld
     return s_create_callback_(context, world, execution_context);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 int kBlinkV8ContextFlagIndex = 19;
 int kBlinkV8ContextFlagValue = 123456;
+#endif
 
 ScriptState::ScriptState(v8::Local<v8::Context> context, DOMWrapperWorld* world, ExecutionContext* execution_context)
     : isolate_(context->GetIsolate())
@@ -39,12 +43,14 @@ ScriptState::ScriptState(v8::Local<v8::Context> context, DOMWrapperWorld* world,
     DCHECK(world_);
     context_.SetWeak(this, &OnV8ContextCollectedCallback);
     context->SetAlignedPointerInEmbedderData(kV8ContextPerContextDataIndex, this);
+#if !defined(MINI_UI_QUICKJS)
     RendererResourceCoordinator::Get()->OnScriptStateCreated(this, execution_context);
 
     //--
     CHECK(context->GetNumberOfEmbedderDataFields() < kBlinkV8ContextFlagIndex);
     context->SetEmbedderData(kBlinkV8ContextFlagIndex, v8::Integer::New(isolate_, kBlinkV8ContextFlagValue));
     //---
+#endif
 }
 
 ScriptState::~ScriptState()
@@ -52,7 +58,9 @@ ScriptState::~ScriptState()
     DCHECK(!per_context_data_);
     DCHECK(context_.IsEmpty());
     InstanceCounters::DecrementCounter(InstanceCounters::kDetachedScriptStateCounter);
+#if !defined(MINI_UI_QUICKJS)
     RendererResourceCoordinator::Get()->OnScriptStateDestroyed(this);
+#endif
 }
 
 ScriptState* ScriptState::From(v8::Isolate* isolate, v8::Local<v8::Context> context)
@@ -73,6 +81,7 @@ ScriptState* ScriptState::MaybeFrom(v8::Isolate* isolate, v8::Local<v8::Context>
         return nullptr;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // ---- check for nodejs context
     if (context->GetNumberOfEmbedderDataFields() < kBlinkV8ContextFlagIndex)
         return nullptr;
@@ -83,6 +92,7 @@ ScriptState* ScriptState::MaybeFrom(v8::Isolate* isolate, v8::Local<v8::Context>
     if (value != kBlinkV8ContextFlagValue)
         return nullptr;
     //----
+#endif
 
     ScriptState* script_state = static_cast<ScriptState*>(context->GetAlignedPointerFromEmbedderData(isolate, kV8ContextPerContextDataIndex));
     SECURITY_CHECK(!script_state || script_state->context_ == context);
@@ -106,7 +116,9 @@ void ScriptState::DisposePerContextData()
     per_context_data_->Dispose();
     per_context_data_ = nullptr;
     InstanceCounters::IncrementCounter(InstanceCounters::kDetachedScriptStateCounter);
+#if !defined(MINI_UI_QUICKJS)
     RendererResourceCoordinator::Get()->OnScriptStateDetached(this);
+#endif
 }
 
 void ScriptState::DissociateContext()

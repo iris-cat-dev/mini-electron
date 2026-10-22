@@ -34,8 +34,10 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gin/public/context_holder.h"
 #include "gin/public/gin_embedders.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/scoped_persistent.h"
 #include "third_party/blink/renderer/platform/bindings/trace_wrapper_v8_reference.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -129,7 +131,9 @@ private:
 
     HeapHashMap<const WrapperTypeInfo*, TraceWrapperV8Reference<v8::Function>> constructor_map_;
 
+#if !defined(MINI_UI_QUICKJS)
     std::unique_ptr<gin::ContextHolder> context_holder_;
+#endif
 
     ScopedPersistent<v8::Context> context_;
 

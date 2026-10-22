@@ -46,7 +46,9 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader_client.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
 #include "third_party/blink/renderer/platform/loader/cors/cors.h"
@@ -146,11 +148,13 @@ void ThreadableLoader::Start(ResourceRequest request)
     request_mode_ = request.GetMode();
 
     // Set the service worker mode to none if "bypass for network" in DevTools is
-    // enabled.
+#if !defined(MINI_UI_QUICKJS)
+    // Give instrumentation a chance to bypass the service worker.
     bool should_bypass_service_worker = false;
     probe::ShouldBypassServiceWorker(execution_context_, &should_bypass_service_worker);
     if (should_bypass_service_worker)
         request.SetSkipServiceWorker(true);
+#endif
 
     const bool async = resource_loader_options_.synchronous_policy == kRequestAsynchronously;
     if (!timeout_.is_zero()) {
@@ -321,6 +325,7 @@ void ThreadableLoader::ResponseBodyReceived(Resource* resource, BytesConsumer& b
     client_->DidStartLoadingResponseBody(body);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void ThreadableLoader::CachedMetadataReceived(Resource* resource, mojo_base::BigBuffer cached_metadata)
 {
     DCHECK(client_);
@@ -330,6 +335,8 @@ void ThreadableLoader::CachedMetadataReceived(Resource* resource, mojo_base::Big
 
     client_->DidReceiveCachedMetadata(std::move(cached_metadata));
 }
+
+#endif
 
 void ThreadableLoader::DataReceived(Resource* resource, base::span<const char> data)
 {

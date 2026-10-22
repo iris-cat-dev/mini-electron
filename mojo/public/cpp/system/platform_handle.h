@@ -1,4 +1,4 @@
-﻿// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,16 +27,20 @@
 namespace mojo {
 
 #if BUILDFLAG(IS_WIN)
-const MojoPlatformHandleType kPlatformFileHandleType = MOJO_PLATFORM_HANDLE_TYPE_WINDOWS_HANDLE;
+const MojoPlatformHandleType kPlatformFileHandleType =
+    MOJO_PLATFORM_HANDLE_TYPE_WINDOWS_HANDLE;
 #else
-const MojoPlatformHandleType kPlatformFileHandleType = MOJO_PLATFORM_HANDLE_TYPE_FILE_DESCRIPTOR;
-#endif // BUILDFLAG(IS_WIN)
+const MojoPlatformHandleType kPlatformFileHandleType =
+    MOJO_PLATFORM_HANDLE_TYPE_FILE_DESCRIPTOR;
+#endif  // BUILDFLAG(IS_WIN)
 
 // Wraps and unwraps base::subtle::PlatformSharedMemoryRegions. This should be
 // used only while transitioning from the legacy shared memory API. In new code
 // only base::*SharedMemoryRegion should be used instead.
-MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle WrapPlatformSharedMemoryRegion(base::subtle::PlatformSharedMemoryRegion region);
-MOJO_CPP_SYSTEM_EXPORT base::subtle::PlatformSharedMemoryRegion UnwrapPlatformSharedMemoryRegion(ScopedSharedBufferHandle mojo_handle);
+MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle
+WrapPlatformSharedMemoryRegion(base::subtle::PlatformSharedMemoryRegion region);
+MOJO_CPP_SYSTEM_EXPORT base::subtle::PlatformSharedMemoryRegion
+UnwrapPlatformSharedMemoryRegion(ScopedSharedBufferHandle mojo_handle);
 
 // Wraps a PlatformHandle from the C++ platform support library as a Mojo
 // handle.
@@ -53,24 +57,31 @@ ScopedHandle WrapPlatformFile(base::ScopedPlatformFile platform_file);
 
 // Unwraps a PlatformFile from a Mojo handle.
 MOJO_CPP_SYSTEM_EXPORT
-MojoResult UnwrapPlatformFile(ScopedHandle handle, base::ScopedPlatformFile* file);
+MojoResult UnwrapPlatformFile(ScopedHandle handle,
+                              base::ScopedPlatformFile* file);
 
 // Helpers for wrapping and unwrapping new base shared memory API primitives.
 // If the input |region| is valid for the Wrap* functions, they will always
 // succeed and return a valid Mojo shared buffer handle.
 
-MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle WrapReadOnlySharedMemoryRegion(base::ReadOnlySharedMemoryRegion region);
+MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle
+WrapReadOnlySharedMemoryRegion(base::ReadOnlySharedMemoryRegion region);
 
-MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle WrapUnsafeSharedMemoryRegion(base::UnsafeSharedMemoryRegion region);
+MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle
+WrapUnsafeSharedMemoryRegion(base::UnsafeSharedMemoryRegion region);
 
-MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle WrapWritableSharedMemoryRegion(base::WritableSharedMemoryRegion region);
+MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle
+WrapWritableSharedMemoryRegion(base::WritableSharedMemoryRegion region);
 
-MOJO_CPP_SYSTEM_EXPORT base::ReadOnlySharedMemoryRegion UnwrapReadOnlySharedMemoryRegion(ScopedSharedBufferHandle handle);
+MOJO_CPP_SYSTEM_EXPORT base::ReadOnlySharedMemoryRegion
+UnwrapReadOnlySharedMemoryRegion(ScopedSharedBufferHandle handle);
 
-MOJO_CPP_SYSTEM_EXPORT base::UnsafeSharedMemoryRegion UnwrapUnsafeSharedMemoryRegion(ScopedSharedBufferHandle handle);
+MOJO_CPP_SYSTEM_EXPORT base::UnsafeSharedMemoryRegion
+UnwrapUnsafeSharedMemoryRegion(ScopedSharedBufferHandle handle);
 
-MOJO_CPP_SYSTEM_EXPORT base::WritableSharedMemoryRegion UnwrapWritableSharedMemoryRegion(ScopedSharedBufferHandle handle);
+MOJO_CPP_SYSTEM_EXPORT base::WritableSharedMemoryRegion
+UnwrapWritableSharedMemoryRegion(ScopedSharedBufferHandle handle);
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_SYSTEM_PLATFORM_HANDLE_H_
+#endif  // MOJO_PUBLIC_CPP_SYSTEM_PLATFORM_HANDLE_H_

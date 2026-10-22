@@ -15,7 +15,10 @@
 #include "base/bits.h"
 #include "base/logging.h"
 #include "base/memory/shared_memory_security_policy.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/memory/shared_memory_tracker.h"
+#endif
 #include "base/system/sys_info.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
@@ -55,7 +58,9 @@ SharedMemoryMapping::SharedMemoryMapping(span<uint8_t> mapped_span, size_t size,
 {
     CHECK_LE(size_, mapped_span_.size());
     // Note: except on Windows, `mapped_span_.size() == size_`.
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     SharedMemoryTracker::GetInstance()->IncrementMemoryUsage(*this);
+#endif
 }
 
 void SharedMemoryMapping::Unmap()
@@ -64,7 +69,9 @@ void SharedMemoryMapping::Unmap()
         return;
 
     SharedMemorySecurityPolicy::ReleaseReservationForMapping(size_);
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     SharedMemoryTracker::GetInstance()->DecrementMemoryUsage(*this);
+#endif
 
     SharedMemoryMapper* mapper = mapper_;
     if (!mapper)

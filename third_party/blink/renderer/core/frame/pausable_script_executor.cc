@@ -17,7 +17,9 @@
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/platform/platform.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/public/web/web_script_execution_callback.h"
@@ -220,27 +222,54 @@ void V8FunctionExecutor::Trace(Visitor* visitor) const
 } // namespace
 
 void PausableScriptExecutor::CreateAndRun(v8::Local<v8::Context> context, v8::Local<v8::Function> function, v8::Local<v8::Value> receiver, int argc,
-    v8::Local<v8::Value> argv[], mojom::blink::WantResultOption want_result_option, WebScriptExecutionCallback callback)
+    v8::Local<v8::Value> argv[],
+#if !defined(MINI_UI_QUICKJS)
+    mojom::blink::WantResultOption want_result_option,
+#endif
+    WebScriptExecutionCallback callback)
 {
     v8::Isolate* isolate = context->GetIsolate();
     ScriptState* script_state = ScriptState::From(isolate, context);
     if (!script_state->ContextIsValid()) {
-        if (callback)
+        if (callback) {
+#if defined(MINI_UI_QUICKJS)
+            v8::HandleScope handle_scope(isolate);
+#endif
             std::move(callback).Run({}, {});
+        }
         return;
     }
     PausableScriptExecutor* executor = MakeGarbageCollected<PausableScriptExecutor>(script_state, mojom::blink::UserActivationOption::kDoNotActivate,
-        mojom::blink::LoadEventBlockingOption::kDoNotBlock, want_result_option, mojom::blink::PromiseResultOption::kDoNotWait, std::move(callback),
+        mojom::blink::LoadEventBlockingOption::kDoNotBlock,
+#if !defined(MINI_UI_QUICKJS)
+        want_result_option,
+#endif
+        mojom::blink::PromiseResultOption::kDoNotWait, std::move(callback),
         MakeGarbageCollected<V8FunctionExecutor>(script_state->GetIsolate(), function, receiver, argc, argv));
     executor->Run();
 }
 
 void PausableScriptExecutor::CreateAndRun(ScriptState* script_state, Vector<WebScriptSource> sources, ExecuteScriptPolicy execute_script_policy,
     mojom::blink::UserActivationOption user_activation_option, mojom::blink::EvaluationTiming evaluation_timing,
-    mojom::blink::LoadEventBlockingOption blocking_option, mojom::blink::WantResultOption want_result_option,
+    mojom::blink::LoadEventBlockingOption blocking_option,
+#if !defined(MINI_UI_QUICKJS)
+    mojom::blink::WantResultOption want_result_option,
+#endif
     mojom::blink::PromiseResultOption promise_result_option, WebScriptExecutionCallback callback)
 {
-    auto* executor = MakeGarbageCollected<PausableScriptExecutor>(script_state, user_activation_option, blocking_option, want_result_option,
+#if defined(MINI_UI_QUICKJS)
+    if (!script_state->ContextIsValid()) {
+        if (callback) {
+            v8::HandleScope handle_scope(script_state->GetIsolate());
+            std::move(callback).Run({}, {});
+        }
+        return;
+    }
+#endif
+    auto* executor = MakeGarbageCollected<PausableScriptExecutor>(script_state, user_activation_option, blocking_option,
+#if !defined(MINI_UI_QUICKJS)
+        want_result_option,
+#endif
         promise_result_option, std::move(callback), MakeGarbageCollected<WebScriptExecutor>(std::move(sources), execute_script_policy));
     switch (evaluation_timing) {
     case mojom::blink::EvaluationTiming::kAsynchronous:
@@ -255,25 +284,33 @@ void PausableScriptExecutor::CreateAndRun(ScriptState* script_state, Vector<WebS
 void PausableScriptExecutor::ContextDestroyed()
 {
     if (callback_) {
-        // Though the context is (about to be) destroyed, the callback is invoked
-        // with a vector of v8::Local<>s, which implies that creating v8::Locals
-        // is permitted. Ensure a valid scope is present for the callback.
+#if defined(MINI_UI_QUICKJS)
+        // Destruction may have invalidated the context. Empty completion needs
+        // an isolate handle scope, not entry into the detached realm.
+        v8::HandleScope handle_scope(script_state_->GetIsolate());
+#else
         // See https://crbug.com/840719.
         ScriptState::Scope script_scope(script_state_);
+#endif
         std::move(callback_).Run({}, {});
     }
     Dispose();
 }
 
 PausableScriptExecutor::PausableScriptExecutor(ScriptState* script_state, mojom::blink::UserActivationOption user_activation_option,
-    mojom::blink::LoadEventBlockingOption blocking_option, mojom::blink::WantResultOption want_result_option,
+    mojom::blink::LoadEventBlockingOption blocking_option,
+#if !defined(MINI_UI_QUICKJS)
+    mojom::blink::WantResultOption want_result_option,
+#endif
     mojom::blink::PromiseResultOption promise_result_option, WebScriptExecutionCallback callback, Executor* executor)
     : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state))
     , script_state_(script_state)
     , callback_(std::move(callback))
     , user_activation_option_(user_activation_option)
     , blocking_option_(blocking_option)
+#if !defined(MINI_UI_QUICKJS)
     , want_result_option_(want_result_option)
+#endif
     , wait_for_promise_(promise_result_option)
     , executor_(executor)
 {
@@ -363,6 +400,10 @@ void PausableScriptExecutor::HandleResults(const v8::LocalVector<v8::Value>& res
     }
 
     if (callback_) {
+#if defined(MINI_UI_QUICKJS)
+        v8::HandleScope handle_scope(script_state_->GetIsolate());
+        std::move(callback_).Run(results.empty() ? v8::Local<v8::Value>() : results.back(), start_time_);
+#else
         std::optional<base::Value> value;
         switch (want_result_option_) {
         case mojom::blink::WantResultOption::kWantResult:
@@ -385,6 +426,7 @@ void PausableScriptExecutor::HandleResults(const v8::LocalVector<v8::Value>& res
         }
 
         std::move(callback_).Run(std::move(value), start_time_);
+#endif
     }
 
     Dispose();

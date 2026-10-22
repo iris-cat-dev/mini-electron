@@ -67,7 +67,9 @@ void ReadableStreamGenericReader::GenericRelease(ScriptState* script_state, Read
         reader->closed_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
         reader->closed_promise_ = reader->closed_resolver_->Promise();
     }
+#if !defined(MINI_UI_QUICKJS)
     reader->closed_promise_.MarkAsSilent();
+#endif
     reader->closed_resolver_->Reject(v8::Exception::TypeError(V8String(isolate,
         "This readable stream reader has been released and cannot be used "
         "to monitor the stream's state")));
@@ -139,7 +141,9 @@ void ReadableStreamGenericReader::GenericInitialize(ScriptState* script_state, R
 
         // b. Set reader.[[closedPromise]] to a promise rejected with stream.
         //    [[storedError]].
+#if !defined(MINI_UI_QUICKJS)
         reader->closed_promise_.MarkAsSilent();
+#endif
         reader->closed_resolver_->Reject(stream->GetStoredError(isolate));
 
         // c. Set reader.[[closedPromise]].[[PromiseIsHandled]] to true.

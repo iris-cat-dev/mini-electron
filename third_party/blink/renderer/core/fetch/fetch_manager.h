@@ -11,9 +11,11 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/tick_clock.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions/permission_status.mojom-blink.h"
 #include "third_party/blink/public/platform/child_url_loader_factory_bundle.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -26,7 +28,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_priority.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
+#endif
 
 namespace network {
 
@@ -64,6 +68,7 @@ private:
     HeapHashSet<Member<Loader>> loaders_;
 };
 
+#if !defined(MINI_UI_QUICKJS)
 class CORE_EXPORT FetchLaterManager final : public GarbageCollected<FetchLaterManager>,
                                             public ExecutionContextLifecycleObserver,
                                             public mojom::blink::PermissionObserver {
@@ -119,6 +124,7 @@ private:
     mojom::blink::PermissionStatus background_sync_permission_ = mojom::blink::PermissionStatus::DENIED;
     HeapMojoReceiver<mojom::blink::PermissionObserver, FetchLaterManager> permission_observer_receiver_;
 };
+#endif
 
 } // namespace blink
 

@@ -26,8 +26,11 @@
 #include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/visited_link_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_base_constants.h"
 
 namespace blink {
@@ -71,13 +74,17 @@ EInsideLink GetLinkStateForElement(Element& element)
     }
 
     bool force_visited = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ForcePseudoState(&element, CSSSelector::kPseudoVisited, &force_visited);
+#endif
     if (force_visited) {
         return EInsideLink::kInsideVisitedLink;
     }
 
     bool force_link = false;
+#if !defined(MINI_UI_QUICKJS)
     probe::ForcePseudoState(&element, CSSSelector::kPseudoLink, &force_link);
+#endif
     if (force_link) {
         return EInsideLink::kInsideUnvisitedLink;
     }

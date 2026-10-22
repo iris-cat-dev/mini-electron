@@ -124,7 +124,9 @@ private:
     scoped_refptr<Image> GetSourceImageForCanvas(FlushReason, SourceImageStatus*, const gfx::SizeF&, const AlphaDisposition alpha_disposition) override;
 
     gfx::SizeF ElementSize(const gfx::SizeF&, const RespectImageOrientationEnum) const override;
+#if !defined(MINI_UI_QUICKJS)
     bool IsVideoFrame() const override;
+#endif
     bool IsOpaque() const override;
     bool IsAccelerated() const override;
 

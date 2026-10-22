@@ -42,7 +42,9 @@
 #include "net/storage_access_api/status.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/frame/view_transition_state.h"
+#endif
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy.h"
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
@@ -59,7 +61,9 @@
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
 #include "third_party/blink/public/mojom/runtime_feature_state/runtime_feature.mojom-blink-forward.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/mojom/service_worker/controller_service_worker_mode.mojom-blink.h"
+#endif
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/public/platform/web_navigation_body_loader.h"
@@ -81,12 +85,16 @@
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/permissions_policy/policy_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/speculation_rules/speculation_rule_set.h"
+#endif
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_response.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/client_hints_preferences.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
+#endif
 #include "third_party/blink/renderer/platform/loader/fetch/early_hints_preload_entry.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_error.h"
@@ -104,9 +112,11 @@ class TickClock;
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 class BackgroundCodeCacheHost;
-class ContentSecurityPolicy;
 class CodeCacheHost;
+#endif
+class ContentSecurityPolicy;
 class Document;
 class DocumentParser;
 class Element;
@@ -117,10 +127,14 @@ class LocalDOMWindow;
 class LocalFrame;
 class LocalFrameClient;
 class MHTMLArchive;
+#if !defined(MINI_UI_QUICKJS)
 class PrefetchedSignedExchangeManager;
+#endif
 class SerializedScriptValue;
 class SubresourceFilter;
+#if !defined(MINI_UI_QUICKJS)
 class WebServiceWorkerNetworkProvider;
+#endif
 struct JavaScriptFrameworkDetectionResult;
 
 namespace mojom {
@@ -207,6 +221,7 @@ public:
     std::unique_ptr<ExtraData> CloneExtraData() override;
     void SetExtraData(std::unique_ptr<ExtraData>) override;
     void SetSubresourceFilter(WebDocumentSubresourceFilter*) override;
+#if !defined(MINI_UI_QUICKJS)
     void SetServiceWorkerNetworkProvider(std::unique_ptr<WebServiceWorkerNetworkProvider>) override;
     // May return null before the first HTML tag is inserted by the
     // parser (before didCreateDataSource is called), after the document
@@ -215,6 +230,7 @@ public:
     {
         return service_worker_network_provider_.get();
     }
+#endif
     // Can be used to temporarily suspend feeding the parser with new data. The
     // parser will be allowed to read new data when ResumeParser() is called the
     // same number of time than BlockParser().
@@ -229,8 +245,10 @@ public:
     {
         return last_navigation_had_transient_user_activation_;
     }
+#if !defined(MINI_UI_QUICKJS)
     void SetCodeCacheHost(CrossVariantMojoRemote<mojom::blink::CodeCacheHostInterfaceBase> code_cache_host,
         CrossVariantMojoRemote<mojom::blink::CodeCacheHostInterfaceBase> code_cache_host_for_background) override;
+#endif
     WebString OriginCalculationDebugInfo() const override
     {
         return origin_calculation_debug_info_;
@@ -386,7 +404,9 @@ public:
         return use_counter_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     PrefetchedSignedExchangeManager* GetPrefetchedSignedExchangeManager() const;
+#endif
 
     // UseCounter
     void CountUse(mojom::WebFeature) override;
@@ -443,11 +463,13 @@ public:
     // activated.
     void NotifyPrerenderingDocumentActivated(const mojom::blink::PrerenderPageActivationParams& params);
 
+#if !defined(MINI_UI_QUICKJS)
     CodeCacheHost* GetCodeCacheHost();
     scoped_refptr<BackgroundCodeCacheHost> CreateBackgroundCodeCacheHost();
     static void DisableCodeCacheForTesting();
 
     mojo::PendingRemote<mojom::blink::CodeCacheHost> CreateWorkerCodeCacheHost();
+#endif
 
     HashMap<KURL, EarlyHintsPreloadEntry> GetEarlyHintsPreloadedResources();
 
@@ -478,15 +500,19 @@ public:
     // have this problem.
     bool IsReloadedOrFormSubmitted() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // (crbug.com/1371756) Record the page if the main resource is not fetched via
     // ServiceWorker and at least one subresource is fetched via ServiceWorker.
     // This method won't record the page if the main resource was not controlled
     // by ServiceWorker at the time of the initial navigation. This helps us to
     // understand the potential impact of the fetch fast-path effort.
     void MaybeRecordServiceWorkerFallbackMainResource(bool was_subresource_fetched_via_service_worker);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Starts loading the navigation body in a background thread.
     static void MaybeStartLoadingBodyInBackground(WebNavigationBodyLoader* body_loader, LocalFrame* frame, const KURL& url, const ResourceResponse& response);
+#endif
 
     // This needs to be kept as public to be accessible from
     // SameSizeAsDocumentLoader as GCC will fail to allow access
@@ -603,6 +629,7 @@ private:
 
     void ApplyClientHintsConfig(const WebVector<network::mojom::WebClientHintsType>& enabled_client_hints);
 
+#if !defined(MINI_UI_QUICKJS)
     // If the page was loaded from a signed exchange which has "allowed-alt-sxg"
     // link headers in the inner response and PrefetchedSignedExchanges were
     // passed from the previous page, initializes a
@@ -613,6 +640,7 @@ private:
     // PrefetchedSignedExchangeManager will be used to load the prefetched signed
     // exchanges for matching requests.
     void InitializePrefetchedSignedExchangeManager();
+#endif
 
     bool IsJavaScriptURLOrXSLTCommitOrDiscard() const
     {
@@ -624,15 +652,18 @@ private:
 
     bool IsSameOriginInitiator() const;
 
-    // This initiates a view transition if the `view_transition_state_` has been
-    // specified.
+#if !defined(MINI_UI_QUICKJS)
+    // Initiates a view transition when snapshot state was supplied.
     void StartViewTransitionIfNeeded(Document& document);
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
     // Injects speculation rules automatically for some pages based on their
     // contents (currently only detected JavaScript frameworks). Configured by the
     // AutoSpeculationRules feature.
     void InjectAutoSpeculationRules(const JavaScriptFrameworkDetectionResult&);
     void InjectSpeculationRulesFromString(const String&, BrowserInjectedSpeculationRuleOptOut);
+#endif
 
     // Params are saved in constructor and are cleared after StartLoading().
     // TODO(dgozman): remove once StartLoading is merged with constructor.
@@ -707,9 +738,11 @@ private:
 
     base::TimeTicks time_of_last_data_received_;
 
+#if !defined(MINI_UI_QUICKJS)
     mojom::blink::ControllerServiceWorkerMode service_worker_initial_controller_mode_ = mojom::blink::ControllerServiceWorkerMode::kNoController;
 
     std::unique_ptr<WebServiceWorkerNetworkProvider> service_worker_network_provider_;
+#endif
 
     DocumentPolicy::ParsedDocumentPolicy document_policy_;
     bool was_blocked_by_document_policy_;
@@ -779,7 +812,9 @@ private:
     uint64_t main_resource_identifier_ = 0;
     mojom::blink::ResourceTimingInfoPtr resource_timing_info_for_parent_;
     WebScopedVirtualTimePauser virtual_time_pauser_;
+#if !defined(MINI_UI_QUICKJS)
     Member<PrefetchedSignedExchangeManager> prefetched_signed_exchange_manager_;
+#endif
     ukm::SourceId ukm_source_id_;
 
     // This UseCounter tracks feature usage associated with the lifetime of
@@ -813,10 +848,12 @@ private:
     WebVector<WebHistoryItem> navigation_api_forward_entries_;
     Member<HistoryItem> navigation_api_previous_entry_;
 
+#if !defined(MINI_UI_QUICKJS)
     // This is the interface that handles generated code cache
     // requests to fetch code cache when loading resources.
     std::unique_ptr<CodeCacheHost> code_cache_host_;
     mojo::PendingRemote<mojom::blink::CodeCacheHost> pending_code_cache_host_for_background_;
+#endif
 
     HashMap<KURL, EarlyHintsPreloadEntry> early_hints_preloaded_resources_;
 
@@ -832,9 +869,10 @@ private:
 
     const network::mojom::NavigationDeliveryType navigation_delivery_type_;
 
-    // Provides state from the previous Document that will be replaced by this
-    // navigation for a ViewTransition.
+#if !defined(MINI_UI_QUICKJS)
+    // State from the previous Document being replaced by a view transition.
     std::optional<ViewTransitionState> view_transition_state_;
+#endif
 
     std::optional<FencedFrame::RedactedFencedFrameProperties> fenced_frame_properties_;
 
@@ -861,9 +899,11 @@ private:
     // Renderer-enforced content settings are stored on a per-document basis.
     mojom::RendererContentSettingsPtr content_settings_;
 
-    // When document is fetched from service worker, we keep track of the body
-    // size for reporting in Navigation Timing encodedBodySize/decodedBodySize.
+#if !defined(MINI_UI_QUICKJS)
+    // When document is fetched from service worker, keep track of its body size
+    // for Navigation Timing encodedBodySize/decodedBodySize reporting.
     int64_t total_body_size_from_service_worker_ = 0;
+#endif
 
     // Map of permission statuses, snapshotting and propagated from browser before
     // committing a navigation.

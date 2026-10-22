@@ -107,13 +107,17 @@ public:
     virtual void SetAlwaysShowContextMenuOnTouch(bool) = 0;
     virtual void SetAntialiased2dCanvasEnabled(bool) = 0;
     virtual void SetAntialiasedClips2dCanvasEnabled(bool) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetAutoplayPolicy(mojom::AutoplayPolicy) = 0;
+#endif
     virtual void SetRequireTransientActivationForGetDisplayMedia(bool) = 0;
     virtual void SetRequireTransientActivationForShowFileOrDirectoryPicker(bool) = 0;
     virtual void SetAutoZoomFocusedEditableToLegibleScale(bool) = 0;
     virtual void SetCaretBrowsingEnabled(bool) = 0;
     virtual void SetClobberUserAgentInitialScaleQuirk(bool) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetCookieEnabled(bool) = 0;
+#endif
     virtual void SetCursiveFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void SetDNSPrefetchingEnabled(bool) = 0;
     virtual void SetDOMPasteAllowed(bool) = 0;
@@ -158,7 +162,9 @@ public:
     virtual void SetLoadsImagesAutomatically(bool) = 0;
     virtual void SetLoadWithOverviewMode(bool) = 0;
     virtual void SetShouldReuseGlobalForUnownedMainFrame(bool) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetLocalStorageEnabled(bool) = 0;
+#endif
     virtual void SetMainFrameClipsContent(bool) = 0;
     virtual void SetMainFrameResizesAreOrientationChanges(bool) = 0;
     virtual void SetMaxTouchPoints(int) = 0;
@@ -221,7 +227,9 @@ public:
     virtual void SetAccessibilityFontScaleFactor(float) = 0;
     virtual void SetAccessibilityTextSizeContrastFactor(int) = 0;
     virtual void SetAccessibilityAlwaysShowFocus(bool) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetTextTrackKindUserPreference(TextTrackKindUserPreference) = 0;
+#endif
     virtual void SetTextTrackBackgroundColor(const WebString&) = 0;
     virtual void SetTextTrackFontFamily(const WebString&) = 0;
     virtual void SetTextTrackFontStyle(const WebString&) = 0;
@@ -237,7 +245,9 @@ public:
     virtual void SetBarrelButtonForDragEnabled(bool) = 0;
     virtual void SetViewportStyle(mojom::ViewportStyle) = 0;
     virtual void SetUseWideViewport(bool) = 0;
+#if !defined(MINI_UI_QUICKJS)
     virtual void SetV8CacheOptions(mojom::V8CacheOptions) = 0;
+#endif
     virtual void SetValidationMessageTimerMagnification(int) = 0;
     virtual void SetViewportEnabled(bool) = 0;
     virtual void SetViewportMetaEnabled(bool) = 0;

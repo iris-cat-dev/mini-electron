@@ -140,8 +140,10 @@ void ModuleScriptLoader::FetchInternal(const ModuleScriptFetchRequest& module_re
     // Prevents web service workers from intercepting isolated world dynamic
     // script imports requests and responding with different contents.
     // TODO(crbug.com/1296102): Link to documentation that describes the criteria
-    // where module imports are handled by service worker fetch handler.
+#if !defined(MINI_UI_QUICKJS)
+    // Isolated-world module imports bypass service worker fetch handlers.
     resource_request.SetSkipServiceWorker(request_world.IsIsolatedWorld());
+#endif
 
     // <spec step="9">Set request 's destination to the result of running the
     // fetch destination from module type steps given destination and

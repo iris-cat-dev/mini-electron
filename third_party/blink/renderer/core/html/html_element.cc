@@ -240,6 +240,9 @@ String HTMLElement::nodeName() const
 
 const char* HTMLElement::NameInHeapSnapshot() const
 {
+#if defined(MINI_UI_QUICKJS)
+    return Element::NameInHeapSnapshot();
+#else
     if (!ThreadState::Current()->IsTakingHeapSnapshot()) {
         // If a heap snapshot is not in progress, we must return a string with
         // static lifetime rather than allocating something.
@@ -249,6 +252,7 @@ const char* HTMLElement::NameInHeapSnapshot() const
     String start_tag = builder.GetStartTag(*this);
     std::string utf_8 = start_tag.Utf8();
     return ThreadState::Current()->CopyNameForHeapSnapshot(utf_8.c_str());
+#endif
 }
 
 bool HTMLElement::ShouldSerializeEndTag() const
@@ -2671,8 +2675,10 @@ int HTMLElement::offsetWidthForBinding()
     int result = 0;
     if (const auto* layout_object = GetLayoutBoxModelObject()) {
         result = AdjustedOffsetForZoom(layout_object->OffsetWidth());
+#if !defined(MINI_UI_QUICKJS)
         RecordScrollbarSizeForStudy(result, /* is_width= */ true,
             /* is_offset= */ true);
+#endif
     }
     return result;
 }
@@ -2684,8 +2690,10 @@ int HTMLElement::offsetHeightForBinding()
     int result = 0;
     if (const auto* layout_object = GetLayoutBoxModelObject()) {
         result = AdjustedOffsetForZoom(layout_object->OffsetHeight());
+#if !defined(MINI_UI_QUICKJS)
         RecordScrollbarSizeForStudy(result, /* is_width= */ false,
             /* is_offset= */ true);
+#endif
     }
     return result;
 }

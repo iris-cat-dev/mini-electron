@@ -11,11 +11,13 @@
 #include "services/network/public/mojom/cors.mojom-shared.h"
 #include "services/network/public/mojom/ip_address_space.mojom-shared.h"
 
+#if !defined(MINI_UI_QUICKJS)
 std::ostream& network::mojom::operator<<(std::ostream& a, ::network::mojom::CorsError b)
 {
     *(int*)1 = 1;
     return a << (int)(b);
 }
+#endif
 
 
 namespace network {

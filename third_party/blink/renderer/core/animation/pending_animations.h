@@ -61,7 +61,9 @@ class CORE_EXPORT PendingAnimations final : public GarbageCollected<PendingAnima
 public:
     explicit PendingAnimations(Document& document)
         : timer_(document.GetTaskRunner(TaskType::kInternalDefault), this, &PendingAnimations::TimerFired)
+#if !defined(MINI_UI_QUICKJS)
         , compositor_group_(1)
+#endif
         , inside_timer_fired_(false)
     {
     }
@@ -88,19 +90,27 @@ public:
     // Returns whether we are waiting for an animation to start and should service
     // again on the next frame.
     bool Update(const PaintArtifactCompositor* paint_artifact_compositor, bool start_on_compositor = true);
+#if !defined(MINI_UI_QUICKJS)
     void NotifyCompositorAnimationStarted(double monotonic_animation_start_time, int compositor_group = 0);
+#endif
 
     void Trace(Visitor*) const;
 
 private:
     void TimerFired(TimerBase*);
+#if !defined(MINI_UI_QUICKJS)
     int NextCompositorGroup();
     void FlushWaitingNonCompositedAnimations();
+#endif
 
     HeapVector<Member<Animation>> pending_;
+#if !defined(MINI_UI_QUICKJS)
     HeapVector<Member<Animation>> waiting_for_compositor_animation_start_;
+#endif
     HeapTaskRunnerTimer<PendingAnimations> timer_;
+#if !defined(MINI_UI_QUICKJS)
     int compositor_group_;
+#endif
     bool inside_timer_fired_;
 };
 

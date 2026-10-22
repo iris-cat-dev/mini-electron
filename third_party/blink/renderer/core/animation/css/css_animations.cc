@@ -60,7 +60,9 @@
 #include "third_party/blink/renderer/core/animation/timing.h"
 #include "third_party/blink/renderer/core/animation/timing_calculations.h"
 #include "third_party/blink/renderer/core/animation/transition_interpolation.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/animation/worklet_animation_base.h"
+#endif
 #include "third_party/blink/renderer/core/css/css_keyframe_rule.h"
 #include "third_party/blink/renderer/core/css/css_property_equality.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
@@ -1391,11 +1393,13 @@ void CSSAnimations::CalculateCompositorAnimationUpdate(CSSAnimationUpdate& updat
         }
     }
 
+#if !defined(MINI_UI_QUICKJS)
     for (auto& entry : element_animations->GetWorkletAnimations()) {
         WorkletAnimationBase& animation = *entry;
         if (snapshot(animation.GetEffect()))
             animation.InvalidateCompositingState();
     }
+#endif
 }
 
 void CSSAnimations::CalculateTimelineUpdate(CSSAnimationUpdate& update, Element& animating_element, const ComputedStyleBuilder& style_builder)
@@ -1698,6 +1702,7 @@ void CSSAnimations::UpdateAnimationFlags(Element& animating_element, CSSAnimatio
                 UpdateAnimationFlagsForAnimation(*entry.key, builder);
         }
 
+#if !defined(MINI_UI_QUICKJS)
         for (auto& entry : element_animations->GetWorkletAnimations()) {
             // TODO(majidvp): we should check the effect's phase before updating the
             // style once the timing of effect is ready to use.
@@ -1729,6 +1734,7 @@ void CSSAnimations::UpdateAnimationFlags(Element& animating_element, CSSAnimatio
             builder.SetIsRunningBackdropFilterAnimationOnCompositor(
                 effect_stack.HasActiveAnimationsOnCompositor(PropertyHandle(GetCSSPropertyBackdropFilter())));
         }
+#endif
     }
 }
 
@@ -1830,18 +1836,22 @@ void CSSAnimations::MaybeApplyPendingUpdate(Element* element)
         running_animations_.push_back(MakeGarbageCollected<RunningAnimation>(animation, entry));
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Track retargeted transitions that are running on the compositor in order
     // to update their start times.
     HashSet<PropertyHandle> retargeted_compositor_transitions;
+#endif
     for (const PropertyHandle& property : pending_update_.CancelledTransitions()) {
         DCHECK(transitions_.Contains(property));
 
         Animation* animation = transitions_.Take(property)->animation;
         auto* effect = To<KeyframeEffect>(animation->effect());
+#if !defined(MINI_UI_QUICKJS)
         if (effect && effect->HasActiveAnimationsOnCompositor(property) && base::Contains(pending_update_.NewTransitions(), property)
             && !animation->Limited()) {
             retargeted_compositor_transitions.insert(property);
         }
+#endif
         animation->ClearOwningElement();
         animation->cancel();
         // After cancellation, transitions must be downgraded or they'll fail
@@ -1888,10 +1898,12 @@ void CSSAnimations::MaybeApplyPendingUpdate(Element* element)
 
         animation->play();
 
+#if !defined(MINI_UI_QUICKJS)
         // Set the current time as the start time for retargeted transitions
         if (retargeted_compositor_transitions.Contains(property)) {
             animation->setStartTime(element->GetDocument().Timeline().currentTime(), ASSERT_NO_EXCEPTION);
         }
+#endif
         animation->Update(kTimingUpdateOnDemand);
 
         RunningTransition* running_transition = MakeGarbageCollected<RunningTransition>(

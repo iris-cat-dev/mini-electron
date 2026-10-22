@@ -12,11 +12,15 @@
 #include "base/location.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "build/build_config.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metrics.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
+#endif
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
@@ -39,7 +43,9 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_std.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/wtf/text/base64.h"
+#endif
 
 #include "third_party/skia/include/core/SkSurface.h"
 
@@ -130,13 +136,24 @@ void RecordScaledDurationHistogram(ImageEncodingMimeType mime_type, base::TimeDe
 } // anonymous namespace
 
 CanvasAsyncBlobCreator::CanvasAsyncBlobCreator(scoped_refptr<StaticBitmapImage> image, const ImageEncodeOptions* options, ToBlobFunctionType function_type,
-    base::TimeTicks start_time, ExecutionContext* context, const IdentifiableToken& input_digest, ScriptPromiseResolver<Blob>* resolver)
-    : CanvasAsyncBlobCreator(image, options, function_type, nullptr, start_time, context, input_digest, resolver)
+    base::TimeTicks start_time, ExecutionContext* context,
+#if !defined(MINI_UI_QUICKJS)
+    const IdentifiableToken& input_digest,
+#endif
+    ScriptPromiseResolver<Blob>* resolver)
+    : CanvasAsyncBlobCreator(image, options, function_type, nullptr, start_time, context,
+#if !defined(MINI_UI_QUICKJS)
+        input_digest,
+#endif
+        resolver)
 {
 }
 
 CanvasAsyncBlobCreator::CanvasAsyncBlobCreator(scoped_refptr<StaticBitmapImage> image, const ImageEncodeOptions* options, ToBlobFunctionType function_type,
-    V8BlobCallback* callback, base::TimeTicks start_time, ExecutionContext* context, const IdentifiableToken& input_digest,
+    V8BlobCallback* callback, base::TimeTicks start_time, ExecutionContext* context,
+#if !defined(MINI_UI_QUICKJS)
+    const IdentifiableToken& input_digest,
+#endif
     ScriptPromiseResolver<Blob>* resolver)
     : fail_encoder_initialization_for_test_(false)
     , enforce_idle_encoding_for_test_(false)
@@ -144,7 +161,9 @@ CanvasAsyncBlobCreator::CanvasAsyncBlobCreator(scoped_refptr<StaticBitmapImage> 
     , function_type_(function_type)
     , start_time_(start_time)
     , static_bitmap_image_loaded_(false)
+#if !defined(MINI_UI_QUICKJS)
     , input_digest_(input_digest)
+#endif
     , callback_(callback)
     , script_promise_resolver_(resolver)
 {
@@ -199,7 +218,9 @@ CanvasAsyncBlobCreator::~CanvasAsyncBlobCreator() = default;
 
 void CanvasAsyncBlobCreator::Dispose()
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_INSTANT(TRACE_DISABLED_BY_DEFAULT("identifiability.high_entropy_api"), "CanvasReadback", perfetto::TerminatingFlow::FromPointer(this));
+#endif
 
     // Eagerly let go of references to prevent retention of these
     // resources while any remaining posted tasks are queued.
@@ -251,7 +272,9 @@ bool CanvasAsyncBlobCreator::EncodeImage(
 //    within this function.
 void CanvasAsyncBlobCreator::ScheduleAsyncBlobCreation(const double& quality)
 {
+#if !defined(MINI_UI_QUICKJS)
     TRACE_EVENT_INSTANT(TRACE_DISABLED_BY_DEFAULT("identifiability.high_entropy_api"), "CanvasReadback", perfetto::Flow::FromPointer(this));
+#endif
 
     if (!static_bitmap_image_loaded_) {
         context_->GetTaskRunner(TaskType::kCanvasBlobSerialization)
@@ -402,6 +425,7 @@ void CanvasAsyncBlobCreator::CreateBlobAndReturnResult(Vector<unsigned char> enc
 
     RecordScaledDurationHistogram(mime_type_, base::TimeTicks::Now() - start_time_, image_->width(), image_->height());
 
+#if !defined(MINI_UI_QUICKJS)
     TraceCanvasContent(&encoded_image);
     if (IdentifiabilityStudySettings::Get()->ShouldSampleType(blink::IdentifiableSurface::Type::kCanvasReadback)) {
         // Creating this ImageDataBuffer has some overhead, namely getting the
@@ -419,8 +443,12 @@ void CanvasAsyncBlobCreator::CreateBlobAndReturnResult(Vector<unsigned char> enc
         // dispose itself. So here we only call dispose if not recording the metric.
         Dispose();
     }
+#else
+    Dispose();
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasAsyncBlobCreator::RecordIdentifiabilityMetric()
 {
     std::unique_ptr<ImageDataBuffer> data_buffer = ImageDataBuffer::Create(image_);
@@ -447,6 +475,7 @@ void CanvasAsyncBlobCreator::TraceCanvasContent(Vector<unsigned char>* encoded_i
             ctx.AddDebugAnnotation("data_url", data.Utf8());
         });
 }
+#endif
 
 void CanvasAsyncBlobCreator::CreateNullAndReturnResult()
 {
@@ -462,7 +491,9 @@ void CanvasAsyncBlobCreator::CreateNullAndReturnResult()
                 WTF::BindOnce(&ScriptPromiseResolverBase::Reject<DOMException, DOMException*>, WrapPersistent(script_promise_resolver_.Get()),
                     WrapPersistent(MakeGarbageCollected<DOMException>(DOMExceptionCode::kEncodingError, "Encoding of the source image has failed."))));
     }
+#if !defined(MINI_UI_QUICKJS)
     TraceCanvasContent(nullptr);
+#endif
     // Avoid unwanted retention, see dispose().
     Dispose();
 }

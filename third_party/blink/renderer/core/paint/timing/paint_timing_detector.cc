@@ -119,19 +119,27 @@ void ReportImagePixelInaccuracy(HTMLImageElement* image_element)
 
 PaintTimingDetector::PaintTimingDetector(LocalFrameView* frame_view)
     : frame_view_(frame_view)
+#if !defined(MINI_UI_QUICKJS)
     , text_paint_timing_detector_(MakeGarbageCollected<TextPaintTimingDetector>(frame_view, this, nullptr /*set later*/))
     , image_paint_timing_detector_(MakeGarbageCollected<ImagePaintTimingDetector>(frame_view, nullptr /*set later*/))
     , callback_manager_(MakeGarbageCollected<PaintTimingCallbackManagerImpl>(frame_view))
+#else
+    , text_paint_timing_detector_(MakeGarbageCollected<TextPaintTimingDetector>(frame_view, this))
+    , image_paint_timing_detector_(MakeGarbageCollected<ImagePaintTimingDetector>(frame_view))
+#endif
 {
+#if !defined(MINI_UI_QUICKJS)
     if (PaintTimingVisualizer::IsTracingEnabled()) {
         visualizer_.emplace();
     }
     text_paint_timing_detector_->ResetCallbackManager(callback_manager_.Get());
     image_paint_timing_detector_->ResetCallbackManager(callback_manager_.Get());
+#endif
 }
 
 void PaintTimingDetector::NotifyPaintFinished()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (PaintTimingVisualizer::IsTracingEnabled()) {
         if (!visualizer_) {
             visualizer_.emplace();
@@ -147,12 +155,14 @@ void PaintTimingDetector::NotifyPaintFinished()
     if (callback_manager_->CountCallbacks() > 0) {
         callback_manager_->RegisterPaintTimeCallbackForCombinedCallbacks();
     }
+#endif
     LocalDOMWindow* window = frame_view_->GetFrame().DomWindow();
     if (window) {
         DOMWindowPerformance::performance(*window)->OnPaintFinished();
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 bool PaintTimingDetector::NotifyBackgroundImagePaint(const Node& node, const Image& image, const StyleImage& style_image,
     const PropertyTreeStateOrAlias& current_paint_chunk_properties, const gfx::Rect& image_border)
@@ -217,6 +227,7 @@ bool PaintTimingDetector::NotifyImagePaint(const LayoutObject& object, const gfx
 
     return image_paint_timing_detector.RecordImage(object, intrinsic_size, media_timing, current_paint_chunk_properties, nullptr, image_border);
 }
+#endif
 
 void PaintTimingDetector::NotifyImageFinished(const LayoutObject& object, const MediaTiming* media_timing)
 {
@@ -489,6 +500,7 @@ bool PaintTimingDetector::IsUnrelatedSoftNavigationPaint(const Node& node)
     return (WasLCPRestarted() && !(IsSoftNavigationDetected() || node.IsModifiedBySoftNavigation()));
 }
 
+#if !defined(MINI_UI_QUICKJS)
 ScopedPaintTimingDetectorBlockPaintHook* ScopedPaintTimingDetectorBlockPaintHook::top_ = nullptr;
 
 void ScopedPaintTimingDetectorBlockPaintHook::EmplaceIfNeeded(const LayoutBoxModelObject& aggregator, const PropertyTreeStateOrAlias& property_tree_state)
@@ -533,6 +545,7 @@ ScopedPaintTimingDetectorBlockPaintHook::~ScopedPaintTimingDetectorBlockPaintHoo
     }
     data_->detector_->RecordAggregatedText(data_->aggregator_, data_->aggregated_visual_rect_, data_->property_tree_state_);
 }
+#endif
 
 void PaintTimingDetector::Trace(Visitor* visitor) const
 {
@@ -540,7 +553,9 @@ void PaintTimingDetector::Trace(Visitor* visitor) const
     visitor->Trace(image_paint_timing_detector_);
     visitor->Trace(frame_view_);
     visitor->Trace(largest_contentful_paint_calculator_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(callback_manager_);
+#endif
     visitor->Trace(potential_soft_navigation_image_record_);
     visitor->Trace(potential_soft_navigation_text_record_);
 }

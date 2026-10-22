@@ -90,6 +90,7 @@ bool EffectStack::CompareSampledEffects(const Member<SampledEffect>& sampled_eff
 
 EffectStack::EffectStack() = default;
 
+#if !defined(MINI_UI_QUICKJS)
 bool EffectStack::HasActiveAnimationsOnCompositor(const PropertyHandle& property) const
 {
     for (const auto& sampled_effect : sampled_effects_) {
@@ -98,6 +99,7 @@ bool EffectStack::HasActiveAnimationsOnCompositor(const PropertyHandle& property
     }
     return false;
 }
+#endif
 
 bool EffectStack::AffectsProperties(PropertyHandleFilter filter) const
 {

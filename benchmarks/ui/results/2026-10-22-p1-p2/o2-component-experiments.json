@@ -1,0 +1,116 @@
+[
+  {
+    "group": "quickjs",
+    "stage": "build",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      ".build-tools/ui-opt/isolate-o2-source.py",
+      "--group",
+      "quickjs"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 11.40032020000217
+  },
+  {
+    "group": "quickjs",
+    "stage": "invariants",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-opt-o2-only-quickjs",
+      "--out-dir",
+      "out/ui-opt-o2-quickjs-checks"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 5.219795900004101
+  },
+  {
+    "group": "quickjs",
+    "stage": "matrix",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--ui-out",
+      "out/ui-opt-o2-only-quickjs",
+      "--out-dir",
+      "out/ui-opt-o2-quickjs-matrix",
+      "--frameworks",
+      "vue,react",
+      "--counts",
+      "1000,5000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 199.66034529999888
+  },
+  {
+    "group": "facade",
+    "stage": "build",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      ".build-tools/ui-opt/isolate-o2-source.py",
+      "--group",
+      "facade"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 13.132915099995444
+  },
+  {
+    "group": "facade",
+    "stage": "invariants",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/check_runtime.py",
+      "--ui-out",
+      "out/ui-opt-o2-only-facade",
+      "--out-dir",
+      "out/ui-opt-o2-facade-checks"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 5.151950300001772
+  },
+  {
+    "group": "facade",
+    "stage": "matrix",
+    "command": [
+      "d:\\project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+      "benchmarks/ui/run.py",
+      "--build",
+      "--ui-out",
+      "out/ui-opt-o2-only-facade",
+      "--out-dir",
+      "out/ui-opt-o2-facade-matrix",
+      "--frameworks",
+      "vue,react",
+      "--counts",
+      "1000,5000",
+      "--warmups",
+      "2",
+      "--iterations",
+      "7",
+      "--width",
+      "1280",
+      "--height",
+      "720",
+      "--device-scale",
+      "1",
+      "--timeout-ms",
+      "900000"
+    ],
+    "exit_code": 1,
+    "wall_seconds": 171.78608380000514
+  }
+]

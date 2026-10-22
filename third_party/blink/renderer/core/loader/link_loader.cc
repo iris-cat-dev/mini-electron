@@ -41,7 +41,9 @@
 #include "third_party/blink/renderer/core/loader/link_loader_client.h"
 #include "third_party/blink/renderer/core/loader/pending_link_preload.h"
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/loader/prerender_handle.h"
+#endif
 #include "third_party/blink/renderer/core/loader/resource/css_style_sheet_resource.h"
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
@@ -56,6 +58,7 @@ namespace blink {
 
 class WebPrescientNetworking;
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
 
 // Decide the prerender type based on the link rel attribute. Returns
@@ -77,6 +80,7 @@ std::optional<mojom::blink::PrerenderTriggerType> PrerenderTriggerTypeFromRelAtt
 }
 
 } // namespace
+#endif
 
 LinkLoader::LinkLoader(LinkLoaderClient* client)
     : client_(client)
@@ -124,23 +128,29 @@ bool LinkLoader::LoadLink(const LinkLoadParameters& params, Document& document)
 
     // If any loading process is in progress, abort it.
 
+#if !defined(MINI_UI_QUICKJS)
     PreloadHelper::DnsPrefetchIfNeeded(params, &document, document.GetFrame(), PreloadHelper::kLinkCalledFromMarkup);
 
     PreloadHelper::PreconnectIfNeeded(params, &document, document.GetFrame(), PreloadHelper::kLinkCalledFromMarkup);
+#endif
 
     PreloadHelper::PreloadIfNeeded(params, document, NullURL(), PreloadHelper::kLinkCalledFromMarkup, nullptr /* viewport_description */,
         client_->IsLinkCreatedByParser() ? kParserInserted : kNotParserInserted, pending_preload_);
+#if !defined(MINI_UI_QUICKJS)
     if (!pending_preload_->HasResource())
         PreloadHelper::PrefetchIfNeeded(params, document, pending_preload_);
+#endif
     PreloadHelper::ModulePreloadIfNeeded(params, document, nullptr /* viewport_description */, pending_preload_);
     PreloadHelper::FetchCompressionDictionaryIfNeeded(params, document, pending_preload_);
 
+#if !defined(MINI_UI_QUICKJS)
     std::optional<mojom::blink::PrerenderTriggerType> trigger_type = PrerenderTriggerTypeFromRelAttribute(params.rel, document);
     if (trigger_type) {
         // The previous prerender should already be aborted by Abort().
         DCHECK(!prerender_);
         prerender_ = PrerenderHandle::Create(document, params.href, *trigger_type);
     }
+#endif
     return true;
 }
 
@@ -181,10 +191,12 @@ void LinkLoader::LoadStylesheet(const LinkLoadParameters& params, const AtomicSt
 
 void LinkLoader::Abort()
 {
+#if !defined(MINI_UI_QUICKJS)
     if (prerender_) {
         prerender_->Cancel();
         prerender_.Clear();
     }
+#endif
     if (pending_preload_) {
         pending_preload_->Dispose();
         pending_preload_.Clear();
@@ -195,7 +207,9 @@ void LinkLoader::Trace(Visitor* visitor) const
 {
     visitor->Trace(client_);
     visitor->Trace(pending_preload_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(prerender_);
+#endif
 }
 
 } // namespace blink

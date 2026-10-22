@@ -31,10 +31,15 @@
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/dom/tag_collection.h"
 #include "third_party/blink/renderer/core/dom/text.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+#endif
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
+#include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
 #include "third_party/blink/renderer/core/html/html_image_loader.h"
 #include "third_party/blink/renderer/core/html/html_meta_element.h"
@@ -42,6 +47,7 @@
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_object.h"
+#include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
@@ -216,6 +222,7 @@ void HTMLObjectElement::UpdatePluginInternal()
     if (!GetLayoutObject())
         return;
 
+#if !defined(MINI_UI_QUICKJS)
     // Overwrites the URL and MIME type of a Flash embed to use an HTML5 embed.
     KURL overriden_url = GetDocument().GetFrame()->Client()->OverrideFlashEmbedWithHTML(GetDocument().CompleteURL(url_));
     if (!overriden_url.IsEmpty()) {
@@ -223,15 +230,18 @@ void HTMLObjectElement::UpdatePluginInternal()
         url_ = overriden_url.GetString();
         SetServiceType("text/html");
     }
+#endif
 
     if (!HasValidClassId() || !RequestObject(plugin_params)) {
         if (!url_.empty())
             DispatchErrorEvent();
         if (HasFallbackContent())
             RenderFallbackContent(ErrorEventPolicy::kDoNotDispatch);
+#if !defined(MINI_UI_QUICKJS)
     } else {
         if (IsErrorplaceholder())
             DispatchErrorEvent();
+#endif
     }
 }
 
@@ -393,8 +403,10 @@ bool HTMLObjectElement::DidFinishLoading() const
 {
     if (!isConnected())
         return false;
+#if !defined(MINI_UI_QUICKJS)
     if (OwnedPlugin())
         return true;
+#endif
     if (auto* frame = ContentFrame()) {
         if (!frame->IsLoading())
             return true;

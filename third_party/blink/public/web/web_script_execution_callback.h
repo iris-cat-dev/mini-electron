@@ -5,17 +5,31 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_SCRIPT_EXECUTION_CALLBACK_H_
 #define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_SCRIPT_EXECUTION_CALLBACK_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include <optional>
-
+#endif
 #include "base/functional/callback.h"
+#if defined(MINI_UI_QUICKJS)
+#include "v8/include/v8-forward.h"
+#endif
 
 namespace base {
 class TimeTicks;
+#if !defined(MINI_UI_QUICKJS)
 class Value;
+#endif
 }
 
 namespace blink {
 
+#if defined(MINI_UI_QUICKJS)
+// Returns the actual last result. JavaScript undefined and null are nonempty;
+// exceptions, awaited rejection and invalidated contexts return an empty Local.
+// The callback runs once inside a HandleScope. Persist the result explicitly
+// when it must outlive that callback scope.
+// The timestamp is evaluation start time, or zero for an invalidated context.
+using WebScriptExecutionCallback = base::OnceCallback<void(v8::Local<v8::Value>, base::TimeTicks)>;
+#else
 // Non-nullopt `base::Value` is passed to the callback if
 // -`WantResultOption::kWantResult` or
 //  `WantResultOption::kWantResultDateAndRegexpAllowed` is used,
@@ -42,6 +56,7 @@ namespace blink {
 // representing the arguments and invariants.
 using WebScriptExecutionCallback = base::OnceCallback<void(std::optional<base::Value>, base::TimeTicks)>;
 
+#endif
 } // namespace blink
 
 #endif // THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_SCRIPT_EXECUTION_CALLBACK_H_

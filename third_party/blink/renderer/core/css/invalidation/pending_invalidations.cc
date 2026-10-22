@@ -14,7 +14,9 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 
 namespace blink {
 
@@ -34,7 +36,9 @@ void PendingInvalidations::ScheduleInvalidationSetsForNode(const InvalidationLis
                 auto* shadow_root = DynamicTo<ShadowRoot>(node);
                 auto* subtree_root = shadow_root ? &shadow_root->host() : &node;
                 if (subtree_root->IsElementNode()) {
+#if !defined(MINI_UI_QUICKJS)
                     TRACE_STYLE_INVALIDATOR_INVALIDATION_SET(To<Element>(*subtree_root), kInvalidationSetInvalidatesSubtree, *invalidation_set);
+#endif
                 }
                 subtree_root->SetNeedsStyleRecalc(kSubtreeStyleChange, StyleChangeReasonForTracing::Create(style_change_reason::kRelatedStyleRule));
                 requires_descendant_invalidation = false;
@@ -42,7 +46,9 @@ void PendingInvalidations::ScheduleInvalidationSetsForNode(const InvalidationLis
             }
 
             if (invalidation_set->InvalidatesSelf() && node.IsElementNode()) {
+#if !defined(MINI_UI_QUICKJS)
                 TRACE_STYLE_INVALIDATOR_INVALIDATION_SET(To<Element>(node), kInvalidationSetInvalidatesSelf, *invalidation_set);
+#endif
                 node.SetNeedsStyleRecalc(kLocalStyleChange, StyleChangeReasonForTracing::Create(style_change_reason::kRelatedStyleRule));
             }
 
@@ -121,10 +127,14 @@ void PendingInvalidations::ScheduleSiblingInvalidationsAsDescendants(const Inval
         DescendantInvalidationSet* descendants = To<SiblingInvalidationSet>(*invalidation_set).SiblingDescendants();
         bool whole_subtree_invalid = false;
         if (invalidation_set->WholeSubtreeInvalid()) {
+#if !defined(MINI_UI_QUICKJS)
             TRACE_STYLE_INVALIDATOR_INVALIDATION_SET(*subtree_root, kInvalidationSetInvalidatesSubtree, *invalidation_set);
+#endif
             whole_subtree_invalid = true;
         } else if (descendants && descendants->WholeSubtreeInvalid()) {
+#if !defined(MINI_UI_QUICKJS)
             TRACE_STYLE_INVALIDATOR_INVALIDATION_SET(*subtree_root, kInvalidationSetInvalidatesSubtree, *descendants);
+#endif
             whole_subtree_invalid = true;
         }
         if (whole_subtree_invalid) {

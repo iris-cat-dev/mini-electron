@@ -30,6 +30,7 @@
 
 #include "third_party/blink/renderer/core/loader/prerender_handle.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "services/network/public/mojom/referrer_policy.mojom-blink.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -112,3 +113,4 @@ void PrerenderHandle::Trace(Visitor* visitor) const
 }
 
 } // namespace blink
+#endif // !defined(MINI_UI_QUICKJS)

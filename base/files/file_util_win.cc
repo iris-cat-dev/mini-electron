@@ -5,7 +5,9 @@
 #include "base/files/file_util.h"
 
 #include <windows.h>
+#if !defined(MINI_UI_QUICKJS)
 #include <winsock2.h>
+#endif
 
 #include <io.h>
 #include <psapi.h>
@@ -1022,6 +1024,7 @@ bool CopyFile(const FilePath& from_path, const FilePath& to_path)
     return DoCopyFile(from_path, to_path, false);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool SetNonBlocking(int fd)
 {
     unsigned long nonblocking = 1;
@@ -1029,6 +1032,8 @@ bool SetNonBlocking(int fd)
         return true;
     return false;
 }
+
+#endif
 
 bool PreReadFile(const FilePath& file_path, bool is_executable, bool sequential, int64_t max_bytes)
 {

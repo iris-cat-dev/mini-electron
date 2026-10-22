@@ -1,0 +1,55 @@
+{
+  "root": "D:\\Project\\mini-electron",
+  "output": "D:\\Project\\mini-electron\\out\\ui-opt-o2-only-facade\\mini-ui-example.exe",
+  "library": "D:\\Project\\mini-electron\\out\\ui-opt-o2-only-facade\\mini-ui.lib",
+  "command": [
+    "C:\\Program Files\\LLVM\\bin\\lld-link.exe",
+    "@D:\\Project\\mini-electron\\out\\ui-opt-o2-only-facade\\link.rsp"
+  ],
+  "tools": {
+    "clang-cl.exe": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe",
+    "clang.exe": "C:\\Program Files\\LLVM\\bin\\clang.exe",
+    "llvm-lib.exe": "C:\\Program Files\\LLVM\\bin\\llvm-lib.exe",
+    "lld-link.exe": "C:\\Program Files\\LLVM\\bin\\lld-link.exe",
+    "llvm-readobj.exe": "C:\\Program Files\\LLVM\\bin\\llvm-readobj.exe",
+    "llvm-nm.exe": "C:\\Program Files\\LLVM\\bin\\llvm-nm.exe",
+    "ml64.exe": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\ml64.exe",
+    "nasm.exe": "D:\\Project\\mini-electron\\.build-tools\\nasm-2.16.03-windows-x64\\nasm-2.16.03\\nasm.exe"
+  },
+  "system_libraries": [
+    "kernel32.lib",
+    "user32.lib",
+    "gdi32.lib",
+    "advapi32.lib",
+    "shell32.lib",
+    "ole32.lib",
+    "oleaut32.lib",
+    "uuid.lib",
+    "comdlg32.lib",
+    "comctl32.lib",
+    "shlwapi.lib",
+    "version.lib",
+    "dbghelp.lib",
+    "setupapi.lib",
+    "usp10.lib",
+    "imm32.lib",
+    "dwrite.lib",
+    "windowscodecs.lib",
+    "bcrypt.lib",
+    "winmm.lib",
+    "uxtheme.lib",
+    "dwmapi.lib",
+    "rpcrt4.lib",
+    "psapi.lib",
+    "userenv.lib",
+    "propsys.lib",
+    "runtimeobject.lib",
+    "mincore.lib",
+    "powrprof.lib",
+    "shcore.lib",
+    "ntdll.lib"
+  ],
+  "compiler_runtime_libraries": [
+    "C:\\Program Files\\LLVM\\lib\\clang\\22\\lib\\windows\\clang_rt.builtins-x86_64.lib"
+  ]
+}

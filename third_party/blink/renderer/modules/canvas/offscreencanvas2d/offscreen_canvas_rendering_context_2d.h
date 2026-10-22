@@ -52,7 +52,9 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     V8RenderingContext* AsV8RenderingContext() final;
+#endif
     V8OffscreenRenderingContext* AsV8OffscreenRenderingContext() final;
     void PageVisibilityChanged() override
     {
@@ -137,6 +139,7 @@ public:
     CanvasRenderingContextHost* GetCanvasRenderingContextHost() const override;
     ExecutionContext* GetTopExecutionContext() const override;
 
+#if !defined(MINI_UI_QUICKJS)
     IdentifiableToken IdentifiableTextToken() const override
     {
         return identifiability_study_helper_.GetToken();
@@ -156,6 +159,7 @@ public:
     {
         return identifiability_study_helper_.encountered_partially_digested_image();
     }
+#endif
 
     std::optional<cc::PaintRecord> FlushCanvas(FlushReason) override;
 

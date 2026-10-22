@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include "third_party/blink/renderer/platform/wtf/forward.h"
+#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 
 // WebGL-specific enums
 const unsigned GC3D_UNPACK_FLIP_Y_WEBGL = 0x9240;
@@ -50,10 +51,5 @@ const unsigned GC3D_COMPRESSED_ATC_RGB_AMD = 0x8C92;
 const unsigned GC3D_COMPRESSED_ATC_RGBA_EXPLICIT_ALPHA_AMD = 0x8C93;
 const unsigned GC3D_COMPRESSED_ATC_RGBA_INTERPOLATED_ALPHA_AMD = 0x87EE;
 
-namespace blink {
-
-enum SourceDrawingBuffer { kFrontBuffer, kBackBuffer };
-
-} // namespace blink
 
 #endif // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_GRAPHICS_TYPES_3D_H_

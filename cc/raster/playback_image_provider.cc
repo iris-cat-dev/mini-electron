@@ -5,9 +5,12 @@
 #include "cc/raster/playback_image_provider.h"
 
 #include <utility>
+#include "base/check.h"
 #include "base/functional/bind.h"
 #include "cc/tiles/image_decode_cache.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gpu/command_buffer/common/mailbox.h"
+#endif
 
 namespace cc {
 namespace {
@@ -51,6 +54,11 @@ ImageProvider::ScopedResult PlaybackImageProvider::GetRasterContent(const DrawIm
 
     DrawImage adjusted_image(draw_image, 1.f, frame_index, target_color_params_);
     if (!cache_->UseCacheForDrawImage(adjusted_image)) {
+#if defined(MINI_UI_QUICKJS)
+        CHECK(settings_->raster_mode == RasterMode::kSoftware);
+        return ScopedResult(DecodedDrawImage(
+            paint_image.GetSwSkImage(), nullptr, SkSize::Make(0, 0), SkSize::Make(1.f, 1.f), draw_image.filter_quality(), true /* is_budgeted */));
+#else
         if (settings_->raster_mode == RasterMode::kOop) {
             return ScopedResult(DecodedDrawImage(paint_image.GetMailbox(), draw_image.filter_quality()));
         } else if (settings_->raster_mode == RasterMode::kGpu) {
@@ -60,6 +68,7 @@ ImageProvider::ScopedResult PlaybackImageProvider::GetRasterContent(const DrawIm
             return ScopedResult(DecodedDrawImage(
                 paint_image.GetSwSkImage(), nullptr, SkSize::Make(0, 0), SkSize::Make(1.f, 1.f), draw_image.filter_quality(), true /* is_budgeted */));
         }
+#endif
     }
 
     auto decoded_draw_image = cache_->GetDecodedImageForDraw(adjusted_image);

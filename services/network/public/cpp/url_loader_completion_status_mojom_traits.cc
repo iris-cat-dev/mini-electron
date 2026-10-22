@@ -21,8 +21,15 @@ bool StructTraits<network::mojom::URLLoaderCompletionStatusDataView, network::UR
 {
     if (!data.ReadCompletionTime(&out->completion_time) || !data.ReadCorsErrorStatus(&out->cors_error_status)
         || !data.ReadPrivateNetworkAccessPreflightResult(&out->private_network_access_preflight_result)
-        || !data.ReadTrustTokenOperationStatus(&out->trust_token_operation_status) || !data.ReadSslInfo(&out->ssl_info)
-        || !data.ReadBlockedByResponseReason(&out->blocked_by_response_reason) || !data.ReadResolveErrorInfo(&out->resolve_error_info)) {
+        || !data.ReadTrustTokenOperationStatus(&out->trust_token_operation_status)) {
+        return false;
+    }
+#if !defined(MINI_UI_QUICKJS)
+    if (!data.ReadSslInfo(&out->ssl_info)) {
+        return false;
+    }
+#endif
+    if (!data.ReadBlockedByResponseReason(&out->blocked_by_response_reason) || !data.ReadResolveErrorInfo(&out->resolve_error_info)) {
         return false;
     }
 

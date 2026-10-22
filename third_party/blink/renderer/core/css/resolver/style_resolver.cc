@@ -103,10 +103,12 @@
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/track/text_track.h"
 #include "third_party/blink/renderer/core/html/track/text_track_cue.h"
 #include "third_party/blink/renderer/core/html/track/vtt/vtt_cue.h"
 #include "third_party/blink/renderer/core/html/track/vtt/vtt_element.h"
+#endif
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/mathml/mathml_fraction_element.h"
@@ -117,7 +119,9 @@
 #include "third_party/blink/renderer/core/media_type_names.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/scrolling/snap_coordinator.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/style_initial_data.h"
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
@@ -549,7 +553,9 @@ inline ScopedStyleResolver* ScopedResolverFor(const Element& element)
 {
     TreeScope* tree_scope = &element.GetTreeScope();
     if (ScopedStyleResolver* resolver = tree_scope->GetScopedStyleResolver()) {
+#if !defined(MINI_UI_QUICKJS)
         DCHECK(!element.IsVTTElement());
+#endif
         return resolver;
     }
 
@@ -566,8 +572,12 @@ inline bool UseParentResolverForUAShadowPseudo(const Element& element, bool* sty
         return false;
     }
     const AtomicString& shadow_pseudo_id = element.ShadowPseudoId();
+#if defined(MINI_UI_QUICKJS)
+    if (shadow_pseudo_id.empty()) {
+#else
     bool is_vtt = element.IsVTTElement();
     if (shadow_pseudo_id.empty() && !is_vtt) {
+#endif
         return false;
     }
     ScopedStyleResolver* parent_resolver = tree_scope->GetScopedStyleResolver();
@@ -669,6 +679,7 @@ void MatchSlottedRules(const Element& element, ElementRuleCollector& collector, 
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 const TextTrack* GetTextTrackFromElement(const Element& element)
 {
     if (auto* vtt_element = DynamicTo<VTTElement>(element)) {
@@ -703,6 +714,7 @@ void MatchVTTRules(const Element& element, ElementRuleCollector& collector, Styl
         collector.SortAndTransferMatchedRules(CascadeOrigin::kAuthor, true /* is_vtt_embedded_style */, tracker);
     }
 }
+#endif
 
 void MatchHostPartRules(const Element& element, ElementRuleCollector& collector, StyleRuleUsageTracker* tracker)
 {
@@ -984,7 +996,9 @@ void StyleResolver::MatchAuthorRules(const Element& element, ElementRuleCollecto
     } else {
         MatchPseudoPartRules(originating_element, collector);
     }
+#if !defined(MINI_UI_QUICKJS)
     MatchVTTRules(element, collector, tracker_);
+#endif
     MatchPositionTryRules(collector);
 }
 
@@ -997,12 +1011,12 @@ void StyleResolver::MatchUserRules(ElementRuleCollector& collector)
 
 namespace {
 
+#if !defined(MINI_UI_QUICKJS)
 bool IsInMediaUAShadow(const Element& element)
 {
     ShadowRoot* root = UltimateOriginatingElementOrSelf(element).ContainingShadowRoot();
-    if (!root || !root->IsUserAgent()) {
+    if (!root || !root->IsUserAgent())
         return false;
-    }
     ShadowRoot* outer_root;
     do {
         outer_root = root;
@@ -1010,6 +1024,7 @@ bool IsInMediaUAShadow(const Element& element)
     } while (root && root->IsUserAgent());
     return outer_root->host().IsMediaElement();
 }
+#endif
 
 } // namespace
 
@@ -1017,7 +1032,11 @@ template <typename Functor> void StyleResolver::ForEachUARulesForElement(const E
 {
     CSSDefaultStyleSheets& default_style_sheets = CSSDefaultStyleSheets::Instance();
     if (!print_media_type_) {
+#if defined(MINI_UI_QUICKJS)
+        if (element.IsHTMLElement() || element.IsPseudoElement()) [[likely]] {
+#else
         if (element.IsHTMLElement() || element.IsPseudoElement() || element.IsVTTElement()) [[likely]] {
+#endif
             func(default_style_sheets.DefaultHtmlStyle());
         } else if (element.IsSVGElement()) {
             func(default_style_sheets.DefaultSVGStyle());
@@ -1057,8 +1076,12 @@ template <typename Functor> void StyleResolver::ForEachUARulesForElement(const E
         return;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     auto* rule_set = IsTransitionPseudoElement(pseudo_id) ? GetDocument().GetStyleEngine().DefaultViewTransitionStyle()
                                                           : (pseudo_id == kPseudoIdMarker ? default_style_sheets.DefaultPseudoElementStyleOrNull() : nullptr);
+#else
+    auto* rule_set = pseudo_id == kPseudoIdMarker ? default_style_sheets.DefaultPseudoElementStyleOrNull() : nullptr;
+#endif
     if (rule_set) {
         func(rule_set);
     }
@@ -1078,17 +1101,18 @@ void StyleResolver::MatchUARules(const Element& element, ElementRuleCollector& c
         collector.SortAndTransferMatchedRules(CascadeOrigin::kUserAgent, /*is_vtt_embedded_style=*/false, tracker_);
     }
 
+#if !defined(MINI_UI_QUICKJS)
     if (IsInMediaUAShadow(element)) {
         RuleSet* rule_set = IsForcedColorsModeEnabled() ? CSSDefaultStyleSheets::Instance().DefaultForcedColorsMediaControlsStyle()
                                                         : CSSDefaultStyleSheets::Instance().DefaultMediaControlsStyle();
-        // Match media controls UA shadow rules in separate UA origin, as they
-        // should override UA styles regardless of specificity.
+        // Match media controls UA shadow rules in separate UA origin.
         MatchRequest media_controls_request(rule_set);
         collector.ClearMatchedRules();
         collector.CollectMatchingRules(media_controls_request,
             /*part_names*/ nullptr);
         collector.SortAndTransferMatchedRules(CascadeOrigin::kUserAgent, /*is_vtt_embedded_style=*/false, tracker_);
     }
+#endif
 
     collector.SetMatchingUARules(false);
 }
@@ -1668,9 +1692,11 @@ void StyleResolver::ApplyBaseStyleNoCache(
     builder.SetInsideLink(state.InsideLink());
 
     ApplyCallbackSelectors(state);
+#if !defined(MINI_UI_QUICKJS)
     if (element->IsLink() && (element->HasTagName(html_names::kATag) || element->HasTagName(html_names::kAreaTag))) {
         ApplyDocumentRulesSelectors(state, To<ContainerNode>(&element->TreeRoot()));
     }
+#endif
 
     // Cache our if our original display is inline.
     builder.SetIsOriginalDisplayInlineType(ComputedStyle::IsDisplayInlineType(builder.Display()));
@@ -2641,6 +2667,7 @@ void StyleResolver::ApplyCallbackSelectors(StyleResolverState& state)
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void StyleResolver::ApplyDocumentRulesSelectors(StyleResolverState& state, ContainerNode* scope)
 {
     StyleRuleList* rules = CollectMatchingRulesFromUnconnectedRuleSet(state, GetDocument().GetStyleEngine().DocumentRulesSelectorsRuleSet(), scope);
@@ -2651,6 +2678,7 @@ void StyleResolver::ApplyDocumentRulesSelectors(StyleResolverState& state, Conta
         state.StyleBuilder().AddDocumentRulesSelector(rule);
     }
 }
+#endif
 
 StyleRuleList* StyleResolver::CollectMatchingRulesFromUnconnectedRuleSet(StyleResolverState& state, RuleSet* rule_set, ContainerNode* scope)
 {
@@ -2941,12 +2969,14 @@ void StyleResolver::PropagateStyleToViewport()
                 overflow_anchor = EOverflowAnchor::kAuto;
             }
 
+#if !defined(MINI_UI_QUICKJS)
             if (GetDocument().IsInOutermostMainFrame()) {
                 using OverscrollBehaviorType = cc::OverscrollBehavior::Type;
                 GetDocument().GetPage()->GetChromeClient().SetOverscrollBehavior(*GetDocument().GetFrame(),
                     cc::OverscrollBehavior(static_cast<OverscrollBehaviorType>(overflow_style->OverscrollBehaviorX()),
                         static_cast<OverscrollBehaviorType>(overflow_style->OverscrollBehaviorY())));
             }
+#endif
 
             if (overflow_style->HasCustomScrollbarStyle(document_element)) {
                 update_scrollbar_style = true;

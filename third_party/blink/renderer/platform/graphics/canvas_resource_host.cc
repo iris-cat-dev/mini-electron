@@ -6,22 +6,26 @@
 
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#endif
 
 namespace blink {
 
+#if !defined(MINI_UI_QUICKJS)
 namespace {
-
 constexpr unsigned kMaxCanvasAnimationBacklog = 2;
 
 bool CanUseGPU()
 {
-    base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper = SharedGpuContext::ContextProviderWrapper();
-    return context_provider_wrapper && !context_provider_wrapper->ContextProvider()->IsContextLost();
+    base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper =
+        SharedGpuContext::ContextProviderWrapper();
+    return context_provider_wrapper
+        && !context_provider_wrapper->ContextProvider()->IsContextLost();
 }
-
 } // namespace
+#endif
 
 CanvasResourceHost::CanvasResourceHost(gfx::Size size)
     : size_(size)
@@ -30,7 +34,9 @@ CanvasResourceHost::CanvasResourceHost(gfx::Size size)
 
 CanvasResourceHost::~CanvasResourceHost()
 {
+#if !defined(MINI_UI_QUICKJS)
     ResetLayer();
+#endif
 }
 
 std::unique_ptr<CanvasResourceProvider> CanvasResourceHost::ReplaceResourceProvider(std::unique_ptr<CanvasResourceProvider> new_resource_provider)
@@ -38,9 +44,11 @@ std::unique_ptr<CanvasResourceProvider> CanvasResourceHost::ReplaceResourceProvi
     std::unique_ptr<CanvasResourceProvider> old_resource_provider = std::move(resource_provider_);
     resource_provider_ = std::move(new_resource_provider);
     UpdateMemoryUsage();
+#if !defined(MINI_UI_QUICKJS)
     if (resource_provider_) {
         resource_provider_->AlwaysEnableRasterTimersForTesting(always_enable_raster_timers_for_testing_);
     }
+#endif
     if (old_resource_provider) {
         old_resource_provider->SetCanvasResourceHost(nullptr);
     }
@@ -59,23 +67,32 @@ void CanvasResourceHost::SetFilterQuality(cc::PaintFlags::FilterQuality filter_q
     if (resource_provider_) {
         resource_provider_->SetFilterQuality(filter_quality);
     }
+#if !defined(MINI_UI_QUICKJS)
     if (cc_layer_) {
         cc_layer_->SetNearestNeighbor(filter_quality == cc::PaintFlags::FilterQuality::kNone);
     }
+#endif
 }
 
 void CanvasResourceHost::SetPreferred2DRasterMode(RasterModeHint hint)
 {
-    // TODO(junov): move code that switches between CPU and GPU rasterization
-    // to here.
+#if defined(MINI_UI_QUICKJS)
+    static_cast<void>(hint);
+    preferred_2d_raster_mode_ = RasterModeHint::kPreferCPU;
+#else
     preferred_2d_raster_mode_ = hint;
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 bool CanvasResourceHost::ShouldTryToUseGpuRaster() const
 {
-    return preferred_2d_raster_mode_ == RasterModeHint::kPreferGPU && CanUseGPU();
+    return preferred_2d_raster_mode_ == RasterModeHint::kPreferGPU
+        && CanUseGPU();
 }
+#endif
 
+#if !defined(MINI_UI_QUICKJS)
 bool CanvasResourceHost::IsComposited() const
 {
     if (IsHibernating()) {
@@ -88,12 +105,13 @@ bool CanvasResourceHost::IsComposited() const
 
     return resource_provider_->SupportsDirectCompositing() && !LowLatencyEnabled();
 }
+#endif
 
 void CanvasResourceHost::SetIsDisplayed(bool displayed)
 {
     is_displayed_ = displayed;
-    // If the canvas is no longer being displayed, stop using the rate
-    // limiter.
+#if !defined(MINI_UI_QUICKJS)
+    // If the canvas is no longer being displayed, stop using the rate limiter.
     if (!is_displayed_) {
         frames_since_last_commit_ = 0;
         if (rate_limiter_) {
@@ -101,8 +119,10 @@ void CanvasResourceHost::SetIsDisplayed(bool displayed)
             rate_limiter_.reset(nullptr);
         }
     }
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 SharedContextRateLimiter* CanvasResourceHost::RateLimiter() const
 {
     return rate_limiter_.get();
@@ -112,34 +132,36 @@ void CanvasResourceHost::CreateRateLimiter()
 {
     rate_limiter_ = std::make_unique<SharedContextRateLimiter>(kMaxCanvasAnimationBacklog);
 }
+#endif
 
 RasterMode CanvasResourceHost::GetRasterMode() const
 {
-    if (preferred_2d_raster_mode() == RasterModeHint::kPreferCPU) {
+#if defined(MINI_UI_QUICKJS)
+    return RasterMode::kCPU;
+#else
+    if (preferred_2d_raster_mode() == RasterModeHint::kPreferCPU)
         return RasterMode::kCPU;
-    }
-    if (IsHibernating()) {
+    if (IsHibernating())
         return RasterMode::kCPU;
-    }
     if (resource_provider_) {
-        return resource_provider_->IsAccelerated() ? RasterMode::kGPU : RasterMode::kCPU;
+        return resource_provider_->IsAccelerated()
+            ? RasterMode::kGPU
+            : RasterMode::kCPU;
     }
-
-    // Whether or not to accelerate is not yet resolved, the canvas cannot be
-    // accelerated if the gpu context is lost.
     return ShouldTryToUseGpuRaster() ? RasterMode::kGPU : RasterMode::kCPU;
+#endif
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void CanvasResourceHost::ResetLayer()
 {
     if (cc_layer_) {
+#if !defined(MINI_UI_QUICKJS)
         if (GetRasterMode() == RasterMode::kGPU) {
             cc_layer_->ClearTexture();
-            // Orphaning the layer is required to trigger the recreation of a new
-            // layer in the case where destruction is caused by a canvas resize. Test:
-            // virtual/gpu/fast/canvas/canvas-resize-after-paint-without-layout.html
             cc_layer_->RemoveFromParent();
         }
+#endif
         cc_layer_->ClearClient();
         cc_layer_ = nullptr;
     }
@@ -158,12 +180,14 @@ void CanvasResourceHost::SetNeedsPushProperties()
         cc_layer_->SetNeedsSetTransferableResource();
     }
 }
+#endif
 
 void CanvasResourceHost::SetHdrMetadata(const gfx::HDRMetadata& hdr_metadata)
 {
     hdr_metadata_ = hdr_metadata;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 cc::TextureLayer* CanvasResourceHost::GetOrCreateCcLayerIfNeeded()
 {
     if (!IsComposited()) {
@@ -271,6 +295,7 @@ void CanvasResourceHost::SetOpacityMode(OpacityMode opacity_mode)
         cc_layer_->SetBlendBackgroundColor(opacity_mode_ != kOpaque);
     }
 }
+#endif
 
 void CanvasResourceHost::FlushRecording(FlushReason reason)
 {
@@ -281,41 +306,40 @@ void CanvasResourceHost::FlushRecording(FlushReason reason)
 
 bool CanvasResourceHost::IsResourceValid()
 {
-    if (IsHibernating()) {
+#if defined(MINI_UI_QUICKJS)
+    return !resource_provider_ || resource_provider_->IsValid();
+#else
+    if (IsHibernating())
         return true;
-    }
-
-    if (!cc_layer_) {
+    if (!cc_layer_)
         return true;
-    }
-
-    if (!features::IsCanvasSharedBitmapConversionEnabled() || (resource_provider_ && resource_provider_->GetType() == CanvasResourceProvider::kBitmap)) {
-        if (preferred_2d_raster_mode_ == RasterModeHint::kPreferCPU) {
+    if (!features::IsCanvasSharedBitmapConversionEnabled()
+        || (resource_provider_
+            && resource_provider_->GetType()
+                == CanvasResourceProvider::kBitmap)) {
+        if (preferred_2d_raster_mode_ == RasterModeHint::kPreferCPU)
             return true;
-        }
     }
-
-    if (context_lost_ || shared_bitmap_gpu_channel_lost_) {
+    if (context_lost_ || shared_bitmap_gpu_channel_lost_)
         return false;
-    }
-
-    // For Gpu rendering
-    if (resource_provider_ && resource_provider_->IsAccelerated() && resource_provider_->IsGpuContextLost()) {
+    if (resource_provider_ && resource_provider_->IsAccelerated()
+        && resource_provider_->IsGpuContextLost()) {
         context_lost_ = true;
         ReplaceResourceProvider(nullptr);
         NotifyGpuContextLost();
         return false;
     }
-
-    // For software rendering with CanvasResourceProvider::kSharedBitmap
-    if (resource_provider_ && resource_provider_->GetType() == CanvasResourceProvider::kSharedBitmap && resource_provider_->IsSharedBitmapGpuChannelLost()) {
+    if (resource_provider_
+        && resource_provider_->GetType()
+            == CanvasResourceProvider::kSharedBitmap
+        && resource_provider_->IsSharedBitmapGpuChannelLost()) {
         shared_bitmap_gpu_channel_lost_ = true;
         ReplaceResourceProvider(nullptr);
         NotifyGpuContextLost();
         return false;
     }
-
     return !!GetOrCreateCanvasResourceProvider(preferred_2d_raster_mode_);
+#endif
 }
 
 } // namespace blink

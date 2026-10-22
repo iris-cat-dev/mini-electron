@@ -69,6 +69,7 @@ void* RecordPaintCanvas::accessTopLayerPixels(SkImageInfo* info, size_t* rowByte
     return nullptr;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void RecordPaintCanvas::flush()
 {
     // RecordPaintCanvas is unable to flush its own recording into the graphics
@@ -80,6 +81,7 @@ void RecordPaintCanvas::flush()
     // and starting a new recording.
     needs_flush_ = true;
 }
+#endif
 
 bool RecordPaintCanvas::NeedsFlush() const
 {

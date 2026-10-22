@@ -1419,7 +1419,11 @@ bool CanPaintMultipleFragments(const LayoutObject& layout_object)
     // sense to repeat too many types of replaced content, even if we should
     // become technically capable of doing it.
     if (layout_box->IsLayoutReplaced()) {
+#if defined(MINI_UI_QUICKJS)
+        if (layout_box->IsLayoutImage())
+#else
         if (layout_box->IsLayoutImage() && !layout_box->IsMedia())
+#endif
             return true;
         if (layout_box->IsSVGRoot())
             return true;

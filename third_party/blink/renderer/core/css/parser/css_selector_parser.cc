@@ -993,6 +993,7 @@ PseudoId CSSSelectorParser::ParsePseudoElement(const String& selector_string, co
         return pseudo_id;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     case kPseudoIdViewTransitionGroup:
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionOld:
@@ -1003,6 +1004,7 @@ PseudoId CSSSelectorParser::ParsePseudoElement(const String& selector_string, co
         argument = result.IdentList()[0];
         return pseudo_id;
     }
+#endif
 
     default:
         return pseudo_id;
@@ -1069,11 +1071,13 @@ bool IsPseudoClassValidAfterPseudoElement(CSSSelector::PseudoType pseudo_class, 
     case CSSSelector::kPseudoBlinkInternalElement:
     case CSSSelector::kPseudoFileSelectorButton:
         return IsUserActionPseudoClass(pseudo_class);
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoViewTransitionGroup:
     case CSSSelector::kPseudoViewTransitionImagePair:
     case CSSSelector::kPseudoViewTransitionOld:
     case CSSSelector::kPseudoViewTransitionNew:
         return pseudo_class == CSSSelector::kPseudoOnlyChild;
+#endif
     case CSSSelector::kPseudoSearchText:
         return pseudo_class == CSSSelector::kPseudoCurrent;
     case CSSSelector::kPseudoScrollMarker:
@@ -1643,6 +1647,7 @@ bool CSSSelectorParser::ConsumePseudo(CSSParserTokenStream& stream)
         output_.push_back(std::move(selector));
         return true;
     }
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoActiveViewTransitionType: {
         if (!RuntimeEnabledFeatures::ViewTransitionTypesEnabled()) {
             return false;
@@ -1723,6 +1728,7 @@ bool CSSSelectorParser::ConsumePseudo(CSSParserTokenStream& stream)
         output_.push_back(std::move(selector));
         return true;
     }
+#endif
     case CSSSelector::kPseudoSlotted: {
         DisallowPseudoElementsScope scope(this);
         base::AutoReset<bool> inside_compound(&inside_compound_pseudo_, true);
@@ -2335,9 +2341,11 @@ static void RecordUsageAndDeprecationsOneSelector(const CSSSelector* selector, c
             *has_visited_pseudo = true;
         }
         break;
+#if !defined(MINI_UI_QUICKJS)
     case CSSSelector::kPseudoActiveViewTransition:
         feature = WebFeature::kActiveViewTransitionPseudo;
         break;
+#endif
     default:
         break;
     }

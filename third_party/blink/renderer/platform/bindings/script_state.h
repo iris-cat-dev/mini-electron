@@ -6,8 +6,10 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_SCRIPT_STATE_H_
 
 #include "base/memory/raw_ptr.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "gin/public/context_holder.h"
 #include "gin/public/gin_embedders.h"
+#endif
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/platform/bindings/scoped_persistent.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -261,7 +263,12 @@ private:
     static void SetCreateCallback(CreateCallback);
     friend class ScriptStateImpl;
 
+#if defined(MINI_UI_QUICKJS)
+    // The facade owns this context slot; there is no gin/debugger reservation.
+    static constexpr int kV8ContextPerContextDataIndex = 0;
+#else
     static constexpr int kV8ContextPerContextDataIndex = static_cast<int>(gin::kPerContextDataStartIndex) + static_cast<int>(gin::kEmbedderBlink);
+#endif
 
     // For accessing information about the last script compilation via
     // internals.idl.

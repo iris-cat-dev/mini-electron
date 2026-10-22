@@ -53,16 +53,22 @@
 #include "third_party/blink/renderer/core/frame/page_scale_constraints.h"
 #include "third_party/blink/renderer/core/frame/page_scale_constraints_set.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
+#endif
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/viewport_data.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+#endif
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/inspector/console_message_storage.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_issue_storage.h"
+#endif
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/loader/idleness_detector.h"
@@ -71,11 +77,15 @@
 #include "third_party/blink/renderer/core/page/context_menu_controller.h"
 #include "third_party/blink/renderer/core/page/drag_controller.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/link_highlight.h"
+#endif
 #include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/page/page_hidden_state.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/plugin_data.h"
 #include "third_party/blink/renderer/core/page/plugins_changed_observer.h"
+#endif
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
 #include "third_party/blink/renderer/core/page/scoped_browsing_context_group_pauser.h"
 #include "third_party/blink/renderer/core/page/scoped_page_pauser.h"
@@ -87,7 +97,9 @@
 #include "third_party/blink/renderer/core/preferences/navigator_preferences.h"
 #include "third_party/blink/renderer/core/preferences/preference_manager.h"
 #include "third_party/blink/renderer/core/preferences/preference_overrides.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme_overlay_mobile.h"
 #include "third_party/blink/renderer/core/scroll/smooth_scroll_sequencer.h"
@@ -132,6 +144,7 @@ void SetSafeAreaEnvVariables(LocalFrame* frame, const gfx::Insets& safe_area)
 
 } // namespace
 
+#if !defined(MINI_UI_QUICKJS)
 // Function defined in third_party/blink/public/web/blink.h.
 void ResetPluginCache(bool reload_pages)
 {
@@ -140,6 +153,7 @@ void ResetPluginCache(bool reload_pages)
     DCHECK(!reload_pages);
     Page::ResetPluginData();
 }
+#endif
 
 // Set of all live pages; includes internal Page objects that are
 // not observable from scripts.
@@ -221,8 +235,10 @@ Page::Page(base::PassKey<Page>, ChromeClient& chrome_client, AgentGroupScheduler
     , console_message_storage_(MakeGarbageCollected<ConsoleMessageStorage>())
     , global_root_scroller_controller_(MakeGarbageCollected<TopDocumentRootScrollerController>(*this))
     , visual_viewport_(MakeGarbageCollected<VisualViewport>(*this))
+#if !defined(MINI_UI_QUICKJS)
     , link_highlight_(MakeGarbageCollected<LinkHighlight>(*this))
     , plugin_data_(nullptr)
+#endif
     ,
     // TODO(pdr): Initialize |validation_message_client_| lazily.
     validation_message_client_(MakeGarbageCollected<ValidationMessageClientImpl>(*this))
@@ -237,8 +253,10 @@ Page::Page(base::PassKey<Page>, ChromeClient& chrome_client, AgentGroupScheduler
     , prev_related_page_(this)
     , autoplay_flags_(0)
     , web_text_autosizer_page_info_({ 0, 0, 1.f })
+#if !defined(MINI_UI_QUICKJS)
     , v8_compile_hints_producer_(MakeGarbageCollected<v8_compile_hints::V8CrowdsourcedCompileHintsProducer>(this))
     , v8_compile_hints_consumer_(MakeGarbageCollected<v8_compile_hints::V8CrowdsourcedCompileHintsConsumer>())
+#endif
     , browsing_context_group_info_(browsing_context_group_info)
 {
     if (partitioned_popin_params) {
@@ -375,6 +393,7 @@ const ConsoleMessageStorage& Page::GetConsoleMessageStorage() const
     return *console_message_storage_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 InspectorIssueStorage& Page::GetInspectorIssueStorage()
 {
     return inspector_issue_storage_;
@@ -384,6 +403,8 @@ const InspectorIssueStorage& Page::GetInspectorIssueStorage() const
 {
     return inspector_issue_storage_;
 }
+
+#endif
 
 TopDocumentRootScrollerController& Page::GlobalRootScrollerController() const
 {
@@ -400,11 +421,13 @@ const VisualViewport& Page::GetVisualViewport() const
     return *visual_viewport_;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 LinkHighlight& Page::GetLinkHighlight()
 {
     return *link_highlight_;
 }
 
+#endif
 void Page::SetMainFrame(Frame* main_frame)
 {
     // TODO(https://crbug.com/952836): Assert that this is only called during
@@ -661,6 +684,7 @@ void Page::InitialStyleChanged()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 PluginData* Page::GetPluginData()
 {
     if (!plugin_data_)
@@ -679,6 +703,7 @@ void Page::ResetPluginData()
         }
     }
 }
+#endif
 
 static void RestoreSVGImageAnimations()
 {
@@ -887,6 +912,7 @@ void CheckFrameCountConsistency(int expected_frame_count, Frame* frame)
     for (; frame; frame = frame->Tree().TraverseNext()) {
         ++actual_frame_count;
 
+#if !defined(MINI_UI_QUICKJS)
         // Check the ``DocumentFencedFrames`` on every local frame beneath
         // the ``frame`` to get an accurate count (i.e. if an iframe embeds
         // a fenced frame and creates a new ``DocumentFencedFrames`` object).
@@ -895,6 +921,7 @@ void CheckFrameCountConsistency(int expected_frame_count, Frame* frame)
                 actual_frame_count += static_cast<int>(fenced_frames->GetFencedFrames().size());
             }
         }
+#endif
     }
 
     DCHECK_EQ(expected_frame_count, actual_frame_count);
@@ -977,7 +1004,9 @@ void Page::SettingsChanged(ChangeType change_type)
     case ChangeType::kViewportPaintProperties:
         if (GetVisualViewport().IsActiveViewport()) {
             GetVisualViewport().SetNeedsPaintPropertyUpdate();
+#if !defined(MINI_UI_QUICKJS)
             GetVisualViewport().InitializeScrollbars();
+#endif
         }
         if (auto* local_frame = DynamicTo<LocalFrame>(MainFrame())) {
             if (LocalFrameView* view = local_frame->View())
@@ -1049,6 +1078,7 @@ void Page::SettingsChanged(ChangeType change_type)
             doc->GetStyleEngine().ViewportStyleSettingChanged();
         break;
     }
+#if !defined(MINI_UI_QUICKJS)
     case ChangeType::kTextTrackKindUserPreference:
         for (Frame* frame = MainFrame(); frame; frame = frame->Tree().TraverseNext()) {
             if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
@@ -1058,6 +1088,7 @@ void Page::SettingsChanged(ChangeType change_type)
             }
         }
         break;
+#endif
     case ChangeType::kDOMWorlds: {
         if (!GetSettings().GetForceMainWorldInitialization())
             break;
@@ -1069,6 +1100,7 @@ void Page::SettingsChanged(ChangeType change_type)
         }
         break;
     }
+#if !defined(MINI_UI_QUICKJS)
     case ChangeType::kMediaControls:
         for (Frame* frame = MainFrame(); frame; frame = frame->Tree().TraverseNext()) {
             auto* local_frame = DynamicTo<LocalFrame>(frame);
@@ -1079,10 +1111,13 @@ void Page::SettingsChanged(ChangeType change_type)
                 HTMLMediaElement::OnMediaControlsEnabledChange(doc);
         }
         break;
+#endif
+#if !defined(MINI_UI_QUICKJS)
     case ChangeType::kPlugins: {
         NotifyPluginsChanged();
         break;
     }
+#endif
     case ChangeType::kHighlightAds: {
         for (Frame* frame = MainFrame(); frame; frame = frame->Tree().TraverseNext()) {
             if (auto* local_frame = DynamicTo<LocalFrame>(frame))
@@ -1170,12 +1205,14 @@ void Page::InvalidatePaint()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Page::NotifyPluginsChanged() const
 {
     HeapVector<Member<PluginsChangedObserver>, 32> observers(plugins_changed_observers_);
     for (PluginsChangedObserver* observer : observers)
         observer->PluginsChanged();
 }
+#endif
 
 void Page::UpdateAcceleratedCompositingSettings()
 {
@@ -1203,7 +1240,9 @@ void Page::DidCommitLoad(LocalFrame* frame)
 {
     if (main_frame_ == frame) {
         GetConsoleMessageStorage().Clear();
+#if !defined(MINI_UI_QUICKJS)
         GetInspectorIssueStorage().Clear();
+#endif
         // TODO(loonybear): Most of this doesn't appear to take into account that
         // each SVGImage gets it's own Page instance.
         GetDeprecation().ClearSuppression();
@@ -1230,7 +1269,9 @@ void Page::DidCommitLoad(LocalFrame* frame)
     // becomes the main frame of the page (i.e. when the navigation is
     // committed).
     frame->UpdateAdHighlight();
+#if !defined(MINI_UI_QUICKJS)
     GetLinkHighlight().ResetForPageNavigation();
+#endif
 }
 
 void Page::AcceptLanguagesChanged()
@@ -1265,32 +1306,42 @@ void Page::Trace(Visitor* visitor) const
     visitor->Trace(console_message_storage_);
     visitor->Trace(global_root_scroller_controller_);
     visitor->Trace(visual_viewport_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(link_highlight_);
+#endif
     visitor->Trace(spatial_navigation_controller_);
     visitor->Trace(svg_resource_document_cache_);
     visitor->Trace(main_frame_);
     visitor->Trace(previous_main_frame_for_local_swap_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(plugin_data_);
-    visitor->Trace(validation_message_client_);
     visitor->Trace(plugins_changed_observers_);
+#endif
+    visitor->Trace(validation_message_client_);
     visitor->Trace(next_related_page_);
     visitor->Trace(prev_related_page_);
     visitor->Trace(agent_group_scheduler_);
+#if !defined(MINI_UI_QUICKJS)
     visitor->Trace(v8_compile_hints_producer_);
     visitor->Trace(v8_compile_hints_consumer_);
+#endif
     visitor->Trace(close_task_handler_);
     visitor->Trace(opener_);
     Supplementable<Page>::Trace(visitor);
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Page::DidInitializeCompositing(cc::AnimationHost& host)
 {
     GetLinkHighlight().AnimationHostInitialized(host);
 }
 
+#endif
 void Page::WillStopCompositing()
 {
+#if !defined(MINI_UI_QUICKJS)
     GetLinkHighlight().WillCloseAnimationHost();
+#endif
     // We may have disconnected the associated LayerTreeHost during
     // the frame lifecycle so ensure the PageAnimator is reset to the
     // default state.
@@ -1354,10 +1405,12 @@ void Page::WillBeDestroyed()
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Page::RegisterPluginsChangedObserver(PluginsChangedObserver* observer)
 {
     plugins_changed_observers_.insert(observer);
 }
+#endif
 
 ScrollbarTheme& Page::GetScrollbarTheme() const
 {
@@ -1387,11 +1440,16 @@ bool Page::IsOrdinary() const
 
 bool Page::RequestBeginMainFrameNotExpected(bool new_state)
 {
+#if defined(MINI_UI_QUICKJS)
+    // The software frame driver has no compositor begin-frame expectation state.
+    return false;
+#else
     if (!main_frame_ || !main_frame_->IsLocalFrame())
         return false;
 
     chrome_client_->RequestBeginMainFrameNotExpected(*DeprecatedLocalMainFrame(), new_state);
     return true;
+#endif
 }
 
 void Page::AddAutoplayFlags(int32_t value)
@@ -1532,15 +1590,18 @@ void Page::UpdateBrowsingContextGroup(const blink::BrowsingContextGroupInfo& bro
     }
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void Page::SetAttributionSupport(network::mojom::AttributionSupport attribution_support)
 {
     attribution_support_ = attribution_support;
 }
+#endif
 
 template class CORE_TEMPLATE_EXPORT Supplement<Page>;
 
 const char InternalSettingsPageSupplementBase::kSupplementName[] = "InternalSettings";
 
+#if !defined(MINI_UI_QUICKJS)
 // static
 void Page::PrepareForLeakDetection()
 {
@@ -1556,6 +1617,8 @@ void Page::PrepareForLeakDetection()
         page->v8_compile_hints_producer_->ClearData();
     }
 }
+
+#endif
 
 // Ensure the 10 bits reserved for connected frame count in NodeRareData are
 // sufficient.

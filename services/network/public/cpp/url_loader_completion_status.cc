@@ -4,7 +4,9 @@
 
 #include "services/network/public/cpp/url_loader_completion_status.h"
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event.h"
+#endif
 #include "net/base/net_errors.h"
 
 namespace network {
@@ -42,6 +44,7 @@ bool URLLoaderCompletionStatus::operator==(const URLLoaderCompletionStatus& rhs)
         && should_collapse_initiator == rhs.should_collapse_initiator;
 }
 
+#if !defined(MINI_UI_QUICKJS)
 void URLLoaderCompletionStatus::WriteIntoTrace(perfetto::TracedValue context) const
 {
     auto dict = std::move(context).WriteDictionary();
@@ -51,5 +54,6 @@ void URLLoaderCompletionStatus::WriteIntoTrace(perfetto::TracedValue context) co
     dict.Add("encoded_body_length", encoded_body_length);
     dict.Add("decoded_body_length", decoded_body_length);
 }
+#endif
 
 } // namespace network

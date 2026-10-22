@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
 
 #include "base/check_op.h"
@@ -127,3 +128,5 @@ void SyncScrollAttemptHeuristic::DisableObservation()
 }
 
 } // namespace blink
+
+#endif

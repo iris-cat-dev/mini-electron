@@ -1,4 +1,4 @@
-﻿// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,9 +18,10 @@
 // category is used.
 // - If detailed mojo tracing is disabled, then the passed category is used.
 #if BUILDFLAG(MOJO_TRACE_ENABLED)
-#define TRACE_CATEGORY_OR_DISABLED_BY_DEFAULT_MOJOM(category) TRACE_DISABLED_BY_DEFAULT("mojom")
+#define TRACE_CATEGORY_OR_DISABLED_BY_DEFAULT_MOJOM(category) \
+  TRACE_DISABLED_BY_DEFAULT("mojom")
 #else
 #define TRACE_CATEGORY_OR_DISABLED_BY_DEFAULT_MOJOM(category) category
 #endif
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_TRACING_HELPERS_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_TRACING_HELPERS_H_

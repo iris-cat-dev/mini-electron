@@ -50,7 +50,9 @@
 #include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/css_supports_rule.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/css_view_transition_rule.h"
+#endif
 #include "third_party/blink/renderer/core/css/parser/container_query_parser.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_context.h"
@@ -66,7 +68,9 @@
 #include "third_party/blink/renderer/core/css/style_rule_keyframe.h"
 #include "third_party/blink/renderer/core/css/style_rule_namespace.h"
 #include "third_party/blink/renderer/core/css/style_rule_nested_declarations.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/css/style_rule_view_transition.h"
+#endif
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
@@ -160,9 +164,11 @@ void StyleRuleBase::Trace(Visitor* visitor) const
     case kStartingStyle:
         To<StyleRuleStartingStyle>(this)->TraceAfterDispatch(visitor);
         return;
+#if !defined(MINI_UI_QUICKJS)
     case kViewTransition:
         To<StyleRuleViewTransition>(this)->TraceAfterDispatch(visitor);
         return;
+#endif
     case kFunction:
         To<StyleRuleFunction>(this)->TraceAfterDispatch(visitor);
         return;
@@ -248,9 +254,11 @@ void StyleRuleBase::FinalizeGarbageCollectedObject()
     case kStartingStyle:
         To<StyleRuleStartingStyle>(this)->~StyleRuleStartingStyle();
         return;
+#if !defined(MINI_UI_QUICKJS)
     case kViewTransition:
         To<StyleRuleViewTransition>(this)->~StyleRuleViewTransition();
         return;
+#endif
     case kFunction:
         To<StyleRuleFunction>(this)->~StyleRuleFunction();
         return;
@@ -317,8 +325,10 @@ StyleRuleBase* StyleRuleBase::Copy() const
         return To<StyleRuleCounterStyle>(this)->Copy();
     case kStartingStyle:
         return To<StyleRuleStartingStyle>(this)->Copy();
+#if !defined(MINI_UI_QUICKJS)
     case kViewTransition:
         return To<StyleRuleViewTransition>(this)->Copy();
+#endif
     case kPositionTry:
         return To<StyleRulePositionTry>(this)->Copy();
     }
@@ -390,9 +400,11 @@ CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint, CSSStyleShe
     case kStartingStyle:
         rule = MakeGarbageCollected<CSSStartingStyleRule>(To<StyleRuleStartingStyle>(self), parent_sheet);
         break;
+#if !defined(MINI_UI_QUICKJS)
     case kViewTransition:
         rule = MakeGarbageCollected<CSSViewTransitionRule>(To<StyleRuleViewTransition>(self), parent_sheet);
         break;
+#endif
     case kPositionTry:
         rule = MakeGarbageCollected<CSSPositionTryRule>(To<StyleRulePositionTry>(self), parent_sheet);
         break;
@@ -568,7 +580,9 @@ void StyleRuleBase::Reparent(StyleRule* new_parent)
     case kCounterStyle:
     case kKeyframe:
     case kCharset:
+#if !defined(MINI_UI_QUICKJS)
     case kViewTransition:
+#endif
     case kFunction:
     case kPositionTry:
         // Cannot have any child rules.

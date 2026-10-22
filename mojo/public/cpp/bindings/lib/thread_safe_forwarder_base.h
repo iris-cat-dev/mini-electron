@@ -1,4 +1,4 @@
-﻿// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,25 +30,27 @@ namespace internal {
 // underlying weakly-referenced interface proxy (e.g. a Remote) which may be
 // bound on a different sequence and referenced weakly by any number of other
 // ThreadSafeForwarders.
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ ThreadSafeForwarderBase : public MessageReceiverWithResponder {
-public:
-    // Constructs a new ThreadSafeForwarderBase which forwards requests through
-    // an InterfaceEndpointClient's ThreadSafeProxy.
-    explicit ThreadSafeForwarderBase(scoped_refptr<ThreadSafeProxy> proxy);
-    ThreadSafeForwarderBase(const ThreadSafeForwarderBase&) = delete;
-    ThreadSafeForwarderBase& operator=(const ThreadSafeForwarderBase&) = delete;
-    ~ThreadSafeForwarderBase() override;
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) ThreadSafeForwarderBase
+    : public MessageReceiverWithResponder {
+ public:
+  // Constructs a new ThreadSafeForwarderBase which forwards requests through
+  // an InterfaceEndpointClient's ThreadSafeProxy.
+  explicit ThreadSafeForwarderBase(scoped_refptr<ThreadSafeProxy> proxy);
+  ThreadSafeForwarderBase(const ThreadSafeForwarderBase&) = delete;
+  ThreadSafeForwarderBase& operator=(const ThreadSafeForwarderBase&) = delete;
+  ~ThreadSafeForwarderBase() override;
 
-    // MessageReceiverWithResponder implementation:
-    bool PrefersSerializedMessages() override;
-    bool Accept(Message* message) override;
-    bool AcceptWithResponder(Message* message, std::unique_ptr<MessageReceiver> responder) override;
+  // MessageReceiverWithResponder implementation:
+  bool PrefersSerializedMessages() override;
+  bool Accept(Message* message) override;
+  bool AcceptWithResponder(Message* message,
+                           std::unique_ptr<MessageReceiver> responder) override;
 
-private:
-    const scoped_refptr<ThreadSafeProxy> proxy_;
+ private:
+  const scoped_refptr<ThreadSafeProxy> proxy_;
 };
 
-} // namespace internal
-} // namespace mojo
+}  // namespace internal
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_LIB_THREAD_SAFE_FORWARDER_BASE_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_LIB_THREAD_SAFE_FORWARDER_BASE_H_

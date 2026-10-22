@@ -39,12 +39,6 @@ void AnimationUpdateOnMissingPropertyNodeUMALog(bool missing_property_node)
     UMA_HISTOGRAM_BOOLEAN("Compositing.Renderer.AnimationUpdateOnMissingPropertyNode", missing_property_node);
 }
 
-AnchorPositionScrollData::AnchorPositionScrollData() = default;
-AnchorPositionScrollData::~AnchorPositionScrollData() = default;
-AnchorPositionScrollData::AnchorPositionScrollData(const AnchorPositionScrollData&) = default;
-
-bool AnchorPositionScrollData::operator==(const AnchorPositionScrollData& other) const = default;
-
 bool StickyPositionNodeData::operator==(const StickyPositionNodeData& other) const = default;
 
 template <typename T>

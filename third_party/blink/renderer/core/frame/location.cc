@@ -35,13 +35,17 @@
 #include "third_party/blink/renderer/core/frame/dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/frame/remote_dom_window.h"
+#endif
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/url/dom_url_utils_read_only.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_activity_logger.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
+#endif
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
@@ -59,6 +63,11 @@ v8::Local<v8::Value> Location::Wrap(ScriptState* script_state)
     // local, the |location| property must always return the same wrapper, even if
     // the cross-origin status changes by changing properties like
     // |document.domain|.
+#if defined(MINI_UI_QUICKJS)
+    // Remote embedding is excluded; local cross-origin Locations still use the
+    // realm's normal wrapper and generated access checks.
+    CHECK(IsA<LocalDOMWindow>(dom_window_.Get()));
+#else
     if (IsA<RemoteDOMWindow>(dom_window_.Get())) {
         DCHECK(!DOMDataStore::ContainsWrapper(script_state->GetIsolate(), this));
 
@@ -69,6 +78,7 @@ v8::Local<v8::Value> Location::Wrap(ScriptState* script_state)
             = location_wrapper_type->GetV8ClassTemplate(isolate, world).As<v8::FunctionTemplate>()->NewRemoteInstance().ToLocalChecked();
         return V8DOMWrapper::AssociateObjectWithWrapper(isolate, this, location_wrapper_type, new_wrapper);
     }
+#endif
 
     return ScriptWrappable::Wrap(script_state);
 }

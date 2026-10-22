@@ -10,17 +10,21 @@
 #include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/perfetto/include/perfetto/tracing/event_context.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
 //#include "third_party/perfetto/include/perfetto/tracing/track.h"
 //#include "third_party/perfetto/protos/perfetto/trace/track_event/track_event.pbzero.h"
+#endif
 
 namespace blink {
 namespace scheduler {
@@ -29,6 +33,7 @@ namespace scheduler {
 // friends.
 enum class TracingCategory { kTopLevel, kDefault, kInfo, kDebug };
 
+#if !defined(MINI_UI_QUICKJS)
 namespace internal {
 
 constexpr const char* TracingCategoryToString(TracingCategory category)
@@ -47,11 +52,13 @@ constexpr const char* TracingCategoryToString(TracingCategory category)
 }
 
 } // namespace internal
+#endif
 
 PLATFORM_EXPORT double TimeDeltaToMilliseconds(const base::TimeDelta& value);
 
 PLATFORM_EXPORT const char* YesNoStateToString(bool is_yes);
 
+#if !defined(MINI_UI_QUICKJS)
 PLATFORM_EXPORT
 // perfetto::protos::pbzero::RendererMainThreadTaskExecution::TaskType
 // TaskTypeToProto(TaskType task_type);
@@ -457,6 +464,78 @@ private:
 
     T value_;
 };
+#else
+template <typename T, TracingCategory category> class TraceableState {
+public:
+    explicit TraceableState(T initial_state)
+        : state_(initial_state)
+    {
+    }
+
+    TraceableState(const TraceableState&) = delete;
+
+    TraceableState& operator=(const T& value)
+    {
+        Assign(value);
+        return *this;
+    }
+    TraceableState& operator=(const TraceableState& another)
+    {
+        Assign(another.state_);
+        return *this;
+    }
+    operator T() const { return state_; }
+    const T& get() const { return state_; }
+
+protected:
+    void Assign(T new_state)
+    {
+        if (state_ != new_state) {
+            state_ = new_state;
+        }
+    }
+
+private:
+    T state_;
+};
+
+template <typename T, TracingCategory category> class TraceableCounter {
+public:
+    explicit TraceableCounter(T initial_value)
+        : value_(initial_value)
+    {
+    }
+
+    TraceableCounter(const TraceableCounter&) = delete;
+
+    TraceableCounter& operator=(const T& value)
+    {
+        value_ = value;
+        return *this;
+    }
+    TraceableCounter& operator=(const TraceableCounter& another)
+    {
+        value_ = another.value_;
+        return *this;
+    }
+    TraceableCounter& operator+=(const T& value)
+    {
+        value_ += value;
+        return *this;
+    }
+    TraceableCounter& operator-=(const T& value)
+    {
+        value_ -= value;
+        return *this;
+    }
+    const T& value() const { return value_; }
+    const T* operator->() const { return &value_; }
+    operator T() const { return value_; }
+
+private:
+    T value_;
+};
+#endif
 
 // Add operators when it's needed.
 

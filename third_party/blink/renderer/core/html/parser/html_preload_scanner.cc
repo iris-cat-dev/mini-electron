@@ -55,20 +55,26 @@
 #include "third_party/blink/renderer/core/html/html_meta_element.h"
 #include "third_party/blink/renderer/core/html/link_rel_attribute.h"
 #include "third_party/blink/renderer/core/html/loading_attribute.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/html/parser/background_html_scanner.h"
+#endif
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
 #include "third_party/blink/renderer/core/html/parser/html_srcset_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_tokenizer.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+#endif
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/fetch_priority_attribute.h"
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
 #include "third_party/blink/renderer/core/loader/web_bundle/script_web_bundle_rule.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#endif
 #include "third_party/blink/renderer/core/script/script_loader.h"
 #include "third_party/blink/renderer/core/script_type_names.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -333,10 +339,12 @@ public:
         if (scanner_type_ == ScannerType::kInsertion)
             request->SetFromInsertionScanner(true);
 
+#if !defined(MINI_UI_QUICKJS)
         if (attributionsrc_attr_set_) {
             DCHECK(is_script || is_img);
             request->SetAttributionReportingEligibleImgOrScript(true);
         }
+#endif
 
         if (shared_storage_writable_opted_in_) {
             DCHECK(is_img);
@@ -376,8 +384,10 @@ private:
             SetFetchPriorityHint(attribute_value);
         } else if (Match(attribute_name, html_names::kBlockingAttr)) {
             blocking_attribute_value_ = attribute_value;
+#if !defined(MINI_UI_QUICKJS)
         } else if (Match(attribute_name, html_names::kAttributionsrcAttr)) {
             attributionsrc_attr_set_ = true;
+#endif
         }
     }
 
@@ -407,8 +417,10 @@ private:
             }
         } else if (loading_attr_value_ == LoadingAttributeValue::kAuto && Match(attribute_name, html_names::kLoadingAttr)) {
             loading_attr_value_ = GetLoadingAttributeValue(attribute_value);
+#if !defined(MINI_UI_QUICKJS)
         } else if (Match(attribute_name, html_names::kAttributionsrcAttr)) {
             attributionsrc_attr_set_ = true;
+#endif
         } else if (Match(attribute_name, html_names::kSharedstoragewritableAttr)) {
             shared_storage_writable_opted_in_ = true;
         } else if (use_data_src_attr_match_for_image_ && Match(attribute_name, html_names::kDataSrcAttr) && img_src_url_.IsNull()) {
@@ -657,10 +669,12 @@ private:
                 // TODO(crbug.com/922212): External import maps are not yet supported.
                 return false;
 
+#if !defined(MINI_UI_QUICKJS)
             case ScriptLoader::ScriptTypeAtPrepare::kSpeculationRules:
                 // TODO(crbug.com/1182803): External speculation rules are not yet
                 // supported.
                 return false;
+#endif
 
             case ScriptLoader::ScriptTypeAtPrepare::kWebBundle:
                 // External webbundle is not yet supported.
@@ -755,7 +769,9 @@ private:
     TokenPreloadScanner::ScannerType scanner_type_;
     // For explanation, see TokenPreloadScanner's declaration.
     const HashSet<String>* disabled_image_types_;
+#if !defined(MINI_UI_QUICKJS)
     bool attributionsrc_attr_set_ = false;
+#endif
     bool shared_storage_writable_opted_in_ = false;
     std::optional<float> resource_width_;
     std::optional<float> resource_height_;
@@ -764,7 +780,12 @@ private:
 };
 
 TokenPreloadScanner::TokenPreloadScanner(const KURL& document_url, std::unique_ptr<CachedDocumentParameters> document_parameters,
-    std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data, const ScannerType scanner_type, Vector<ElementLocator> locators)
+    std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data, const ScannerType scanner_type
+#if !defined(MINI_UI_QUICKJS)
+    ,
+    Vector<ElementLocator> locators
+#endif
+    )
     : document_url_(document_url)
     , in_style_(false)
     , in_picture_(false)
@@ -776,7 +797,9 @@ TokenPreloadScanner::TokenPreloadScanner(const KURL& document_url, std::unique_p
     , document_parameters_(std::move(document_parameters))
     , media_values_cached_data_(std::move(media_values_cached_data))
     , scanner_type_(scanner_type)
+#if !defined(MINI_UI_QUICKJS)
     , lcp_element_matcher_(std::move(locators))
+#endif
 {
     CHECK(document_parameters_.get());
     CHECK(media_values_cached_data_.get());
@@ -850,7 +873,9 @@ void TokenPreloadScanner::Scan(const HTMLToken& token, const SegmentedString& so
     }
     case HTMLToken::kEndTag: {
         const StringImpl* tag_impl = TagImplFor(token.Data());
+#if !defined(MINI_UI_QUICKJS)
         lcp_element_matcher_.ObserveEndTag(tag_impl);
+#endif
         if (Match(tag_impl, html_names::kTemplateTag)) {
             if (template_count_)
                 --template_count_;
@@ -878,10 +903,15 @@ void TokenPreloadScanner::Scan(const HTMLToken& token, const SegmentedString& so
     }
     case HTMLToken::kStartTag: {
         const StringImpl* tag_impl = TagImplFor(token.Data());
-        const bool potentially_lcp_element = lcp_element_matcher_.ObserveStartTagAndReportMatch(tag_impl, token);
+#if !defined(MINI_UI_QUICKJS)
+        const bool potentially_lcp_element =
+            lcp_element_matcher_.ObserveStartTagAndReportMatch(tag_impl, token);
         if (potentially_lcp_element) {
             seen_potential_lcp_element_ = true;
         }
+#else
+        const bool potentially_lcp_element = false;
+#endif
 
         if (Match(tag_impl, html_names::kTemplateTag)) {
             bool is_declarative_shadow_root = false;
@@ -991,7 +1021,9 @@ void TokenPreloadScanner::Scan(const HTMLToken& token, const SegmentedString& so
             predicted_base_element_url_, picture_data_, *document_parameters_, exclusion_info_.get(), seen_img_ || seen_body_, potentially_lcp_element);
         if (request) {
             request->SetInitiatorPosition(TextPosition(source.CurrentLine(), source.CurrentColumn()));
+#if !defined(MINI_UI_QUICKJS)
             request->SetIsPotentiallyLCPElement(potentially_lcp_element);
+#endif
             requests.push_back(std::move(request));
         }
         return;
@@ -1015,12 +1047,14 @@ void TokenPreloadScanner::UpdatePredictedBaseURL(const HTMLToken& token)
 // static
 std::unique_ptr<HTMLPreloadScanner> HTMLPreloadScanner::Create(Document& document, HTMLParserOptions options, TokenPreloadScanner::ScannerType scanner_type)
 {
+#if !defined(MINI_UI_QUICKJS)
     Vector<ElementLocator> locators;
     if (LocalFrame* frame = document.GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             locators = lcpp->lcp_element_locators();
         }
     }
+#endif
 
     bool skip_preload_scan = IsSkipPreloadScanEnabled(&document);
     if (skip_preload_scan) {
@@ -1028,8 +1062,15 @@ std::unique_ptr<HTMLPreloadScanner> HTMLPreloadScanner::Create(Document& documen
     }
 
     return std::make_unique<HTMLPreloadScanner>(std::make_unique<HTMLTokenizer>(options), document.Url(), std::make_unique<CachedDocumentParameters>(&document),
-        std::make_unique<MediaValuesCached::MediaValuesCachedData>(document), scanner_type, /* script_token_scanner=*/nullptr, TakePreloadFn(),
-        std::move(locators), skip_preload_scan);
+        std::make_unique<MediaValuesCached::MediaValuesCachedData>(document), scanner_type,
+#if !defined(MINI_UI_QUICKJS)
+        /* script_token_scanner=*/nullptr,
+#endif
+        TakePreloadFn(),
+#if !defined(MINI_UI_QUICKJS)
+        std::move(locators),
+#endif
+        skip_preload_scan);
 }
 
 // static
@@ -1049,12 +1090,14 @@ HTMLPreloadScanner::BackgroundPtr HTMLPreloadScanner::CreateBackground(
 {
     auto* document = parser->GetDocument();
 
+#if !defined(MINI_UI_QUICKJS)
     Vector<ElementLocator> locators;
     if (LocalFrame* frame = document->GetFrame()) {
         if (LCPCriticalPathPredictor* lcpp = frame->GetLCPP()) {
             locators = lcpp->lcp_element_locators();
         }
     }
+#endif
 
     bool skip_preload_scan = IsSkipPreloadScanEnabled(document);
     if (skip_preload_scan) {
@@ -1063,17 +1106,38 @@ HTMLPreloadScanner::BackgroundPtr HTMLPreloadScanner::CreateBackground(
 
     return BackgroundPtr(new HTMLPreloadScanner(std::make_unique<HTMLTokenizer>(options), document->Url(), std::make_unique<CachedDocumentParameters>(document),
                              std::make_unique<MediaValuesCached::MediaValuesCachedData>(*document), TokenPreloadScanner::ScannerType::kMainDocument,
-                             BackgroundHTMLScanner::ScriptTokenScanner::Create(parser), std::move(take_preload), std::move(locators), skip_preload_scan),
+#if !defined(MINI_UI_QUICKJS)
+                             BackgroundHTMLScanner::ScriptTokenScanner::Create(parser),
+#endif
+                             std::move(take_preload),
+#if !defined(MINI_UI_QUICKJS)
+                             std::move(locators),
+#endif
+                             skip_preload_scan),
         Deleter { task_runner });
 }
 
 HTMLPreloadScanner::HTMLPreloadScanner(std::unique_ptr<HTMLTokenizer> tokenizer, const KURL& document_url,
     std::unique_ptr<CachedDocumentParameters> document_parameters, std::unique_ptr<MediaValuesCached::MediaValuesCachedData> media_values_cached_data,
-    const TokenPreloadScanner::ScannerType scanner_type, std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner,
-    TakePreloadFn take_preload, Vector<ElementLocator> locators, bool skip_preload_scanning)
-    : scanner_(document_url, std::move(document_parameters), std::move(media_values_cached_data), scanner_type, std::move(locators))
+    const TokenPreloadScanner::ScannerType scanner_type,
+#if !defined(MINI_UI_QUICKJS)
+    std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner> script_token_scanner,
+#endif
+    TakePreloadFn take_preload,
+#if !defined(MINI_UI_QUICKJS)
+    Vector<ElementLocator> locators,
+#endif
+    bool skip_preload_scanning)
+    : scanner_(document_url, std::move(document_parameters), std::move(media_values_cached_data), scanner_type
+#if !defined(MINI_UI_QUICKJS)
+        ,
+        std::move(locators)
+#endif
+    )
     , tokenizer_(std::move(tokenizer))
+#if !defined(MINI_UI_QUICKJS)
     , script_token_scanner_(std::move(script_token_scanner))
+#endif
     , take_preload_(std::move(take_preload))
     , skip_preload_scanning_(skip_preload_scanning)
 {
@@ -1108,19 +1172,23 @@ std::unique_ptr<PendingPreloadData> HTMLPreloadScanner::Scan(const KURL& startin
     if (!starting_base_element_url.IsEmpty())
         scanner_.SetPredictedBaseElementURL(starting_base_element_url);
 
+#if !defined(MINI_UI_QUICKJS)
     // The script scanner needs to know whether this is the first script in the
     // chunk being scanned, since it may have different script compile behavior
     // depending on this.
     if (script_token_scanner_)
         script_token_scanner_->set_first_script_in_scan(true);
+#endif
 
     while (HTMLToken* token = tokenizer_->NextToken(source_)) {
         if (token->GetType() == HTMLToken::kStartTag)
             tokenizer_->UpdateStateFor(*token);
         int csp_meta_tag_count = 0;
         scanner_.Scan(*token, source_, pending_data->requests, pending_data->meta_ch_values, &pending_data->viewport, &csp_meta_tag_count);
+#if !defined(MINI_UI_QUICKJS)
         if (script_token_scanner_)
             script_token_scanner_->ScanToken(*token);
+#endif
         pending_data->csp_meta_tag_count += csp_meta_tag_count;
         token->Clear();
 
@@ -1145,7 +1213,10 @@ std::unique_ptr<PendingPreloadData> HTMLPreloadScanner::Scan(const KURL& startin
         }
     }
 
-    pending_data->has_located_potential_lcp_element = scanner_.HasLocatedPotentialLcpElement();
+#if !defined(MINI_UI_QUICKJS)
+    pending_data->has_located_potential_lcp_element =
+        scanner_.HasLocatedPotentialLcpElement();
+#endif
 
     return pending_data;
 }
@@ -1175,7 +1246,9 @@ CachedDocumentParameters::CachedDocumentParameters(Document* document)
     const features::LcppPreloadLazyLoadImageType kPreloadLazyLoadImageType = features::kLCPCriticalPathPredictorPreloadLazyLoadImageType.Get();
     preload_lazy_load_image_type
         = preload_lazy_load_image_type_for_testing.has_value() ? preload_lazy_load_image_type_for_testing.value() : kPreloadLazyLoadImageType;
+#if !defined(MINI_UI_QUICKJS)
     probe::GetDisabledImageTypes(document->GetExecutionContext(), &disabled_image_types);
+#endif
 }
 
 // static

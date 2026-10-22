@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "actual_command": [
+    "D:\\Project\\mini-electron\\.build-tools\\ui-benchmark-venv\\Scripts\\python.exe",
+    "benchmarks/ui/compare.py",
+    "--mini-out",
+    "benchmarks/ui/results/2026-10-22/mini-ui",
+    "--chrome-out",
+    "benchmarks/ui/results/2026-10-22/chrome-default",
+    "--chrome-software-out",
+    "benchmarks/ui/results/2026-10-22/chrome-software",
+    "--out-dir",
+    "out/ui-published-comparison-validation"
+  ],
+  "exit_code": 0,
+  "comparison_status": "complete",
+  "library_sha256": "ac9ecbfad62e72af6e59d1c4071d6509fdf8702f9cdd5847d8bbe2b7c17ca39a",
+  "result": "Both controls and all aligned sample summaries replay identically from permanent saved records; no benchmark or browser rerun."
+}

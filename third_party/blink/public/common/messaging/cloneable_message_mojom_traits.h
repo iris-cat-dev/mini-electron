@@ -60,10 +60,12 @@ template <> struct BLINK_COMMON_EXPORT StructTraits<blink::mojom::CloneableMessa
 
     static bool Read(blink::mojom::CloneableMessage::DataView data, blink::CloneableMessage* out);
 
+#if !defined(MINI_UI_QUICKJS)
     static std::vector<mojo::PendingRemote<blink::mojom::FileSystemAccessTransferToken>>& file_system_access_tokens(blink::CloneableMessage& input)
     {
         return input.file_system_access_tokens;
     }
+#endif
 };
 
 } // namespace mojo

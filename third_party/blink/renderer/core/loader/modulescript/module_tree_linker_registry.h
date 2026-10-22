@@ -15,7 +15,13 @@
 
 namespace blink {
 
+class Modulator;
+class ModuleScript;
+class ModuleTreeClient;
 class ModuleTreeLinker;
+class ResourceFetcher;
+class ScriptFetchOptions;
+enum class ModuleScriptCustomFetchType;
 
 // ModuleTreeLinkerRegistry keeps active ModuleTreeLinkers alive.
 class CORE_EXPORT ModuleTreeLinkerRegistry final : public GarbageCollected<ModuleTreeLinkerRegistry>, public NameClient {

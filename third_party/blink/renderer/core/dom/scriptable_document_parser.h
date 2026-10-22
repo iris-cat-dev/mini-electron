@@ -26,8 +26,10 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTABLE_DOCUMENT_PARSER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTABLE_DOCUMENT_PARSER_H_
 
+#if !defined(MINI_UI_QUICKJS)
 #include "base/synchronization/lock.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
+#endif
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/parser/css_tokenizer.h"
 #include "third_party/blink/renderer/core/dom/decoded_data_document_parser.h"
@@ -73,6 +75,7 @@ public:
         return parser_content_policy_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     // Adds a script streamer for |source| which can be later retrieved with
     // TakeInlineScriptStreamer(). This may be called on any thread.
     void AddInlineScriptStreamer(const String& source, scoped_refptr<BackgroundInlineScriptStreamer> streamer);
@@ -82,6 +85,7 @@ public:
     // matches the passed in |source|.
     InlineScriptStreamer* TakeInlineScriptStreamer(const String& source);
     bool HasInlineScriptStreamerForTesting(const String& source);
+#endif
 
 protected:
     explicit ScriptableDocumentParser(Document&, ParserContentPolicy = kAllowScriptingContent);
@@ -96,8 +100,10 @@ private:
     bool was_created_by_script_;
     ParserContentPolicy parser_content_policy_;
 
+#if !defined(MINI_UI_QUICKJS)
     base::Lock streamers_lock_;
     HashMap<String, scoped_refptr<BackgroundInlineScriptStreamer>> inline_script_streamers_ GUARDED_BY(streamers_lock_);
+#endif
 };
 
 } // namespace blink

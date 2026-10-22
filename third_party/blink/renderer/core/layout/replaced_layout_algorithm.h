@@ -22,7 +22,9 @@ public:
     const LayoutResult* Layout();
 
 private:
+#if !defined(MINI_UI_QUICKJS)
     void LayoutMediaChildren();
+#endif
     void LayoutCanvasChildren();
 };
 

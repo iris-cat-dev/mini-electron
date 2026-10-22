@@ -47,7 +47,9 @@ class Document;
 class ExecutionContext;
 class LocalDOMWindow;
 class LocalFrame;
+#if !defined(MINI_UI_QUICKJS)
 class PluginData;
+#endif
 
 class CORE_EXPORT DocumentInit final {
     STACK_ALLOCATED();
@@ -79,7 +81,20 @@ public:
     DocumentInit(const DocumentInit&);
     ~DocumentInit();
 
-    enum class Type { kHTML, kXHTML, kImage, kPlugin, kMedia, kSVG, kXML, kViewSource, kText, kUnspecified };
+    enum class Type {
+        kHTML,
+        kXHTML,
+        kImage,
+#if !defined(MINI_UI_QUICKJS)
+        kPlugin,
+        kMedia,
+#endif
+        kSVG,
+        kXML,
+        kViewSource,
+        kText,
+        kUnspecified
+    };
 
     DocumentInit& ForTest(ExecutionContext& execution_context);
 
@@ -117,11 +132,14 @@ public:
 
     // Compute the type of document to be loaded inside a `frame`, given its
     // `mime_type`.
-    //
+#if defined(MINI_UI_QUICKJS)
+    static Type ComputeDocumentType(LocalFrame* frame, const String& mime_type);
+#else
     // In case of plugin handled by MimeHandlerview (which do not create a
     // PluginDocument), the type is Type::KHTML and `is_for_external_handler` is
     // set to true.
     static Type ComputeDocumentType(LocalFrame* frame, const String& mime_type, bool* is_for_external_handler = nullptr);
+#endif
     DocumentInit& WithTypeFrom(const String& mime_type);
     Type GetType() const
     {
@@ -131,10 +149,12 @@ public:
     {
         return mime_type_;
     }
+#if !defined(MINI_UI_QUICKJS)
     bool IsForExternalHandler() const
     {
         return is_for_external_handler_;
     }
+#endif
 
     // Used when creating Documents not attached to a window.
     DocumentInit& WithExecutionContext(ExecutionContext*);
@@ -149,7 +169,9 @@ public:
         return url_;
     }
 
+#if !defined(MINI_UI_QUICKJS)
     const KURL& GetCookieUrl() const;
+#endif
 
     DocumentInit& WithSrcdocDocument(bool is_srcdoc_document);
     DocumentInit& WithFallbackBaseURL(const KURL& fallback_base_url);
@@ -171,7 +193,9 @@ public:
 private:
     DocumentInit() = default;
 
+#if !defined(MINI_UI_QUICKJS)
     static PluginData* GetPluginData(LocalFrame* frame);
+#endif
 
     Type type_ = Type::kUnspecified;
     bool is_prerendering_ = false;
@@ -200,7 +224,9 @@ private:
     // Seed for all PAAPI Auction Nonces generated for this document.
     base::Uuid base_auction_nonce_;
 
+#if !defined(MINI_UI_QUICKJS)
     bool is_for_external_handler_ = false;
+#endif
 
 #if DCHECK_IS_ON()
     bool for_test_ = false;

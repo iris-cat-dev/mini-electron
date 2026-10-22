@@ -106,8 +106,12 @@ public:
         kForeignLayerLinkHighlight,
         kForeignLayerViewportScroll,
         kForeignLayerViewportScrollbar,
+#if !defined(MINI_UI_QUICKJS)
         kForeignLayerViewTransitionContent,
         kForeignLayerLast = kForeignLayerViewTransitionContent,
+#else
+        kForeignLayerLast = kForeignLayerViewportScrollbar,
+#endif
 
         kClipPaintPhaseFirst,
         kClipPaintPhaseLast = kClipPaintPhaseFirst + kPaintPhaseMax,

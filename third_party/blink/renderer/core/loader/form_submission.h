@@ -137,8 +137,11 @@ public:
     FormSubmission(SubmitMethod, const KURL& action, const AtomicString& target, const AtomicString& content_type, Element* submitter,
         scoped_refptr<EncodedFormData>, const Event*, NavigationPolicy navigation_policy, mojom::blink::TriggeringEventInfo triggering_event_info,
         ClientNavigationReason reason, std::unique_ptr<ResourceRequest> resource_request, Frame* target_frame, WebFrameLoadType load_type,
-        LocalDOMWindow* origin_window, const LocalFrameToken& initiator_frame_token, bool has_rel_opener, std::unique_ptr<SourceLocation> source_location,
-        mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle);
+        LocalDOMWindow* origin_window, const LocalFrameToken& initiator_frame_token, bool has_rel_opener, std::unique_ptr<SourceLocation> source_location
+#if !defined(MINI_UI_QUICKJS)
+        , mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle
+#endif
+    );
     // FormSubmission for DialogMethod
     explicit FormSubmission(const String& result);
 
@@ -196,10 +199,12 @@ private:
     // the `FrameLoadRequest` will not return the correct location.
     std::unique_ptr<SourceLocation> source_location_;
 
+#if !defined(MINI_UI_QUICKJS)
     // Since form submissions are scheduled asynchronously, we need to keep a
     // handle to the initiator NavigationStateKeepAliveHandle. This ensures that
     // it remains available in the browser until we create the NavigationRequest.
     mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle_;
+#endif
 };
 
 } // namespace blink

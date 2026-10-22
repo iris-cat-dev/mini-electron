@@ -31,17 +31,54 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_NON_COMPOSITED_WIDGET_CLIENT_H_
 #define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_NON_COMPOSITED_WIDGET_CLIENT_H_
 
+#include <utility>
+
+#include "base/functional/callback.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "third_party/blink/public/mojom/input/pointer_lock_context.mojom-blink-forward.h"
+#include "third_party/blink/public/mojom/input/pointer_lock_result.mojom-blink.h"
+
+#if defined(MINI_UI_QUICKJS)
+namespace gfx {
+class Rect;
+}
+#endif
+
 namespace blink {
+
+#if defined(MINI_UI_QUICKJS)
+class WebPagePopup;
+#endif
 
 class WebNonCompositedWidgetClient {
 public:
     virtual ~WebNonCompositedWidgetClient() = default;
+
+    using PointerLockRequestCallback = base::OnceCallback<void(
+        mojom::blink::PointerLockResult, mojo::PendingRemote<mojom::blink::PointerLockContext>)>;
+
+    // A successful native host supplies a real context pipe. Closing either end
+    // releases the native lock; this is independent of Widget/presentation IPC.
+    virtual void RequestNonCompositedPointerLock(bool has_user_activation,
+        bool unadjusted_movement, PointerLockRequestCallback callback)
+    {
+        std::move(callback).Run(mojom::blink::PointerLockResult::kUnsupportedOptions, mojo::NullRemote());
+    }
 
     // Called to request a BeginMainFrame from the compositor. This is only
     // called for widget's WebViews that do not composite.
     virtual void ScheduleNonCompositedAnimation()
     {
     }
+
+#if defined(MINI_UI_QUICKJS)
+    // The popup is borrowed and paints through its real software WebWidget API.
+    // Bounds are screen DIPs; apply accepted bounds using SetScreenRects/Resize.
+    virtual void DidOpenNonCompositedPopup(WebPagePopup*, const gfx::Rect& bounds) = 0;
+    virtual void DidChangeNonCompositedPopupBounds(WebPagePopup*, const gfx::Rect& bounds) = 0;
+    // Invalidates the borrowed popup pointer before native ownership is dropped.
+    virtual void DidCloseNonCompositedPopup(WebPagePopup*) = 0;
+#endif
 };
 
 } // namespace blink

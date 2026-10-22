@@ -36,9 +36,13 @@ std::unique_ptr<SkCanvas> MakeAnalysisCanvas(const PaintOp::SerializeOptions& op
     // clip is applied to the canvas during serialization.
     const int kMaxExtent = std::numeric_limits<int>::max() >> 1;
 
+#if defined(MINI_UI_QUICKJS)
+    return std::make_unique<SkNoDrawCanvas>(kMaxExtent, kMaxExtent);
+#else
     return options.strike_server ? options.strike_server->makeAnalysisCanvas(kMaxExtent, kMaxExtent,
                skia::LegacyDisplayGlobals::ComputeSurfaceProps(options.can_use_lcd_text), options.color_space, options.context_supports_distance_field_text)
                                  : std::make_unique<SkNoDrawCanvas>(kMaxExtent, kMaxExtent);
+#endif
 }
 
 } // namespace
@@ -59,7 +63,9 @@ PlaybackParams PaintOpBufferSerializer::MakeParams(const SkCanvas* canvas) const
     // canvas for state tracking and don't need decoded images.
     PlaybackParams params(nullptr, canvas->getLocalToDevice());
     params.raster_inducing_scroll_offsets = options_.raster_inducing_scroll_offsets;
+#if !defined(MINI_UI_QUICKJS)
     params.is_analyzing = true;
+#endif
     return params;
 }
 
@@ -220,8 +226,10 @@ template <> bool PaintOpBufferSerializer::WillSerializeNextOp<float>(const Paint
     // performing an unnecessary expensive decode.
     bool skip_op = PaintOp::OpHasDiscardableImages(op) && PaintOp::QuickRejectDraw(op, canvas);
 
+#if !defined(MINI_UI_QUICKJS)
     // Skip text ops if there is no SkStrikeServer.
     skip_op |= op.GetType() == PaintOpType::kDrawTextBlob && !options_.strike_server;
+#endif
     if (skip_op)
         return true;
 
@@ -375,12 +383,18 @@ void PaintOpBufferSerializer::PlaybackOnAnalysisCanvas(SkCanvas* canvas, const P
     //    we need the correct ctm at which text and images will be rasterized, and
     //    the clip rect so we can skip sending data for ops which will not be
     //    rasterized.
+#if defined(MINI_UI_QUICKJS)
+    if (op.IsDrawOp()) {
+        return;
+    }
+#else
     // 2) kDrawtextblob ops since they need to be analyzed by the cache diff
     // canvas
     //    to serialize/lock the requisite glyphs for this op.
     if (op.IsDrawOp() && op.GetType() != PaintOpType::kDrawTextBlob) {
         return;
     }
+#endif
 
     if (op.IsPaintOpWithFlags() && flags_to_serialize) {
         static_cast<const PaintOpWithFlags&>(op).RasterWithFlags(canvas, flags_to_serialize, params);

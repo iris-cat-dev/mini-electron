@@ -205,7 +205,11 @@ void LayoutBlockFlow::AddChild(LayoutObject* new_child, LayoutObject* before_chi
 
 static bool IsMergeableAnonymousBlock(const LayoutBlockFlow* block)
 {
+#if !defined(MINI_UI_QUICKJS)
     return block->IsAnonymousBlock() && !block->BeingDestroyed() && !block->IsViewTransitionRoot();
+#else
+    return block->IsAnonymousBlock() && !block->BeingDestroyed();
+#endif
 }
 
 void LayoutBlockFlow::RemoveChild(LayoutObject* old_child)
@@ -321,11 +325,13 @@ static bool AllowsCollapseAnonymousBlockChild(const LayoutBlockFlow& parent, con
     // destroyed. See crbug.com/282088
     if (child.BeingDestroyed())
         return false;
+#if !defined(MINI_UI_QUICKJS)
     // The ViewTransitionRoot is also anonymous by design and shouldn't be
     // elided.
     if (child.IsViewTransitionRoot()) {
         return false;
     }
+#endif
     if (IsA<LayoutMultiColumnFlowThread>(parent) && parent.Parent()->IsLayoutNGObject() && child.ChildrenInline()) {
         // The test[1] reaches here.
         // [1] "fast/multicol/dynamic/remove-spanner-in-content.html"
@@ -646,11 +652,13 @@ bool LayoutBlockFlow::AllowsColumns() const
     if (IsRuby())
         return false;
 
+#if !defined(MINI_UI_QUICKJS)
     // We don't allow custom layout and multicol on the same object. This is
     // similar to not allowing it for flexbox, grids and tables (although those
     // don't create LayoutBlockFlow, so we don't need to check for those here).
     if (StyleRef().IsDisplayLayoutCustomBox())
         return false;
+#endif
 
     // MathML layout objects don't support multicol.
     if (IsMathML())

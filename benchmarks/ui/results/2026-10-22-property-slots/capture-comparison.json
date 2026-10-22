@@ -1,0 +1,110 @@
+[
+  {
+    "pair": "matrix",
+    "case": "react-100",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "react-1000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "react-10000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "react-5000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "vue-100",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "vue-1000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "vue-10000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "matrix",
+    "case": "vue-5000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "repeat",
+    "case": "react-100",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "repeat",
+    "case": "react-10000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "repeat",
+    "case": "vue-100",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  },
+  {
+    "pair": "repeat",
+    "case": "vue-10000",
+    "rgb_pixels_identical": true,
+    "size": [
+      1280,
+      720
+    ]
+  }
+]

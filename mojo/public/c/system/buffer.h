@@ -1,4 +1,4 @@
-﻿// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,14 +24,15 @@ typedef uint32_t MojoCreateSharedBufferFlags;
 
 // Options passed to |MojoCreateSharedBuffer()|.
 struct MOJO_ALIGNAS(8) MojoCreateSharedBufferOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoCreateSharedBufferFlags|.
-    MojoCreateSharedBufferFlags flags;
+  // See |MojoCreateSharedBufferFlags|.
+  MojoCreateSharedBufferFlags flags;
 };
 MOJO_STATIC_ASSERT(MOJO_ALIGNOF(int64_t) <= 8, "int64_t has weird alignment");
-MOJO_STATIC_ASSERT(sizeof(struct MojoCreateSharedBufferOptions) == 8, "MojoCreateSharedBufferOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoCreateSharedBufferOptions) == 8,
+                   "MojoCreateSharedBufferOptions has wrong size");
 
 // Flags passed to |MojoGetBufferInfo()| via |MojoGetBufferInfoOptions|. See
 // values defined below.
@@ -42,24 +43,26 @@ typedef uint32_t MojoGetBufferInfoFlags;
 
 // Options passed to |MojoGetBufferInfo()|.
 struct MOJO_ALIGNAS(8) MojoGetBufferInfoOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoGetBufferInfoFlags|.
-    MojoGetBufferInfoFlags flags;
+  // See |MojoGetBufferInfoFlags|.
+  MojoGetBufferInfoFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoGetBufferInfoOptions) == 8, "MojoSharedBufferOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoGetBufferInfoOptions) == 8,
+                   "MojoSharedBufferOptions has wrong size");
 
 // Structure used to receive information about a shared buffer via
 // |MojoGetBufferInfo()|.
 struct MOJO_ALIGNAS(8) MojoSharedBufferInfo {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // The size of the shared buffer.
-    uint64_t size;
+  // The size of the shared buffer.
+  uint64_t size;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoSharedBufferInfo) == 16, "MojoSharedBufferInfo has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoSharedBufferInfo) == 16,
+                   "MojoSharedBufferInfo has wrong size");
 
 // Flags passed to |MojoDuplicateBufferHandle()| via
 // |MojoDuplicateBufferHandleOptions|. See values defined below.
@@ -83,13 +86,14 @@ typedef uint32_t MojoDuplicateBufferHandleFlags;
 
 // Options passed to |MojoDuplicateBufferHandle()|.
 struct MojoDuplicateBufferHandleOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoDuplicateBufferHandleFlags|.
-    MojoDuplicateBufferHandleFlags flags;
+  // See |MojoDuplicateBufferHandleFlags|.
+  MojoDuplicateBufferHandleFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoDuplicateBufferHandleOptions) == 8, "MojoDuplicateBufferHandleOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoDuplicateBufferHandleOptions) == 8,
+                   "MojoDuplicateBufferHandleOptions has wrong size");
 
 // Flags passed to |MojoMapBuffer()| via |MojoMapBufferOptions|. See values
 // defined below.
@@ -100,13 +104,14 @@ typedef uint32_t MojoMapBufferFlags;
 
 // Options passed to |MojoMapBuffer()|.
 struct MojoMapBufferOptions {
-    // The size of this structure, used for versioning.
-    uint32_t struct_size;
+  // The size of this structure, used for versioning.
+  uint32_t struct_size;
 
-    // See |MojoMapBufferFlags|.
-    MojoMapBufferFlags flags;
+  // See |MojoMapBufferFlags|.
+  MojoMapBufferFlags flags;
 };
-MOJO_STATIC_ASSERT(sizeof(struct MojoMapBufferOptions) == 8, "MojoMapBufferOptions has wrong size");
+MOJO_STATIC_ASSERT(sizeof(struct MojoMapBufferOptions) == 8,
+                   "MojoMapBufferOptions has wrong size");
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,7 +136,10 @@ extern "C" {
 //       been reached (e.g., if the requested size was too large, or if the
 //       maximum number of handles was exceeded).
 //   |MOJO_RESULT_UNIMPLEMENTED| if an unsupported flag was set in |*options|.
-MOJO_SYSTEM_EXPORT MojoResult MojoCreateSharedBuffer(uint64_t num_bytes, const struct MojoCreateSharedBufferOptions* options, MojoHandle* shared_buffer_handle);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoCreateSharedBuffer(uint64_t num_bytes,
+                       const struct MojoCreateSharedBufferOptions* options,
+                       MojoHandle* shared_buffer_handle);
 
 // Duplicates the handle |buffer_handle| as a new shared buffer handle. On
 // success this returns the new handle in |*new_buffer_handle|. A shared buffer
@@ -158,7 +166,9 @@ MOJO_SYSTEM_EXPORT MojoResult MojoCreateSharedBuffer(uint64_t num_bytes, const s
 //       |MOJO_DUPLICATE_BUFFER_HANDLE_FLAG_READ_ONLY| was not set but the
 //       handle was already previously duplicated with that flag.
 MOJO_SYSTEM_EXPORT MojoResult MojoDuplicateBufferHandle(
-    MojoHandle buffer_handle, const struct MojoDuplicateBufferHandleOptions* options, MojoHandle* new_buffer_handle);
+    MojoHandle buffer_handle,
+    const struct MojoDuplicateBufferHandleOptions* options,
+    MojoHandle* new_buffer_handle);
 
 // Maps the part (at offset |offset| of length |num_bytes|) of the buffer given
 // by |buffer_handle| into memory, with options specified by |options|.
@@ -183,8 +193,12 @@ MOJO_SYSTEM_EXPORT MojoResult MojoDuplicateBufferHandle(
 //       |offset| and |num_bytes| is not valid, or |*options| is invalid).
 //   |MOJO_RESULT_RESOURCE_EXHAUSTED| if the mapping operation itself failed
 //       (e.g., due to not having appropriate address space available).
-MOJO_SYSTEM_EXPORT MojoResult MojoMapBuffer(
-    MojoHandle buffer_handle, uint64_t offset, uint64_t num_bytes, const struct MojoMapBufferOptions* options, void** buffer);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoMapBuffer(MojoHandle buffer_handle,
+              uint64_t offset,
+              uint64_t num_bytes,
+              const struct MojoMapBufferOptions* options,
+              void** buffer);
 
 // Unmaps a buffer pointer that was mapped by |MojoMapBuffer()|. |buffer| must
 // have been the result of |MojoMapBuffer()| (not some other pointer inside
@@ -212,10 +226,13 @@ MOJO_SYSTEM_EXPORT MojoResult MojoUnmapBuffer(void* buffer);
 //
 // On success, |info->size| will be set to the size of the buffer. On failure it
 // is not modified.
-MOJO_SYSTEM_EXPORT MojoResult MojoGetBufferInfo(MojoHandle buffer_handle, const struct MojoGetBufferInfoOptions* options, struct MojoSharedBufferInfo* info);
+MOJO_SYSTEM_EXPORT MojoResult
+MojoGetBufferInfo(MojoHandle buffer_handle,
+                  const struct MojoGetBufferInfoOptions* options,
+                  struct MojoSharedBufferInfo* info);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // MOJO_PUBLIC_C_SYSTEM_BUFFER_H_
+#endif  // MOJO_PUBLIC_C_SYSTEM_BUFFER_H_

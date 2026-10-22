@@ -1,4 +1,4 @@
-﻿// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,25 +30,25 @@ class PipeControlMessageProxy;
 // cases where a PendingFlush is needed before its corresponding flush operation
 // can be initiated (e.g. when the interface to flush lives on a different
 // thread from the interface that will wait on its PendingFlush).
-class /*COMPONENT_EXPORT(MOJO_CPP_BINDINGS)*/ AsyncFlusher {
-public:
-    AsyncFlusher();
-    AsyncFlusher(AsyncFlusher&&);
-    AsyncFlusher(const AsyncFlusher&) = delete;
-    AsyncFlusher& operator=(AsyncFlusher&&);
-    AsyncFlusher& operator=(const AsyncFlusher&) = delete;
-    ~AsyncFlusher();
+class COMPONENT_EXPORT(MOJO_CPP_BINDINGS) AsyncFlusher {
+ public:
+  AsyncFlusher();
+  AsyncFlusher(AsyncFlusher&&);
+  AsyncFlusher(const AsyncFlusher&) = delete;
+  AsyncFlusher& operator=(AsyncFlusher&&);
+  AsyncFlusher& operator=(const AsyncFlusher&) = delete;
+  ~AsyncFlusher();
 
-private:
-    friend class PendingFlush;
-    friend class PipeControlMessageProxy;
+ private:
+  friend class PendingFlush;
+  friend class PipeControlMessageProxy;
 
-    void SetPipe(ScopedMessagePipeHandle pipe);
-    ScopedMessagePipeHandle PassPipe();
+  void SetPipe(ScopedMessagePipeHandle pipe);
+  ScopedMessagePipeHandle PassPipe();
 
-    ScopedMessagePipeHandle pipe_;
+  ScopedMessagePipeHandle pipe_;
 };
 
-} // namespace mojo
+}  // namespace mojo
 
-#endif // MOJO_PUBLIC_CPP_BINDINGS_ASYNC_FLUSHER_H_
+#endif  // MOJO_PUBLIC_CPP_BINDINGS_ASYNC_FLUSHER_H_

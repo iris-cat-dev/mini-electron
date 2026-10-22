@@ -5,7 +5,9 @@
 #include "third_party/blink/renderer/core/paint/nine_piece_image_painter.h"
 
 #include "third_party/blink/renderer/core/dom/document.h"
+#if !defined(MINI_UI_QUICKJS)
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#endif
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/paint/nine_piece_image_grid.h"
 #include "third_party/blink/renderer/core/paint/paint_auto_dark_mode.h"
@@ -191,8 +193,10 @@ bool NinePieceImagePainter::Paint(GraphicsContext& graphics_context, const Image
     // 'border-image-slice' values to be in.
     gfx::SizeF unzoomed_image_size = style_image->ImageSize(1, gfx::ScaleSize(default_object_size, 1 / style.EffectiveZoom()), respect_orientation);
 
+#if !defined(MINI_UI_QUICKJS)
     DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage", inspector_paint_image_event::Data, node,
         *style_image, gfx::RectF(image->Rect()), gfx::RectF(border_image_rect));
+#endif
     PaintPieces(graphics_context, border_image_rect, style, document, nine_piece_image, *image, unzoomed_image_size, sides_to_include);
     return true;
 }

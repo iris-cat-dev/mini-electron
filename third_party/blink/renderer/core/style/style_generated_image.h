@@ -71,7 +71,9 @@ public:
     scoped_refptr<Image> GetImage(const ImageResourceObserver&, const Document&, const ComputedStyle&, const gfx::SizeF& target_size) const override;
     bool KnownToBeOpaque(const Document&, const ComputedStyle&) const override;
 
+#if !defined(MINI_UI_QUICKJS)
     bool IsUsingCustomProperty(const AtomicString& custom_property_name, const Document&) const;
+#endif
     bool IsUsingCurrentColor() const;
 
     void Trace(Visitor*) const override;

@@ -13,9 +13,11 @@
 namespace blink {
 namespace trace_event {
 
+#if !defined(MINI_UI_QUICKJS)
 using base::trace_event::TraceScopedTrackableObject;
 using AsyncEnabledStateObserver = base::trace_event::TraceLog::AsyncEnabledStateObserver;
 using EnabledStateObserver = base::trace_event::TraceLog::EnabledStateObserver;
+#endif
 
 inline base::TimeTicks ToTraceTimestamp(double seconds)
 {
@@ -25,6 +27,7 @@ inline base::TimeTicks ToTraceTimestamp(double seconds)
 // This is to avoid error of passing a chromium time internal value.
 void ToTraceTimestamp(int64_t);
 
+#if !defined(MINI_UI_QUICKJS)
 PLATFORM_EXPORT void EnableTracing(const String& category_filter);
 PLATFORM_EXPORT void DisableTracing();
 
@@ -33,6 +36,7 @@ PLATFORM_EXPORT void RemoveAsyncEnabledStateObserver(AsyncEnabledStateObserver*)
 
 PLATFORM_EXPORT void AddEnabledStateObserver(EnabledStateObserver*);
 PLATFORM_EXPORT void RemoveEnabledStateObserver(EnabledStateObserver*);
+#endif
 
 } // namespace trace_event
 } // namespace blink

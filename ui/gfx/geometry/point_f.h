@@ -18,9 +18,11 @@
 struct CGPoint;
 #endif
 
+#if !defined(MINI_UI_QUICKJS)
 namespace perfetto {
 class TracedValue;
 }
+#endif
 namespace gfx {
 
 // A floating version of gfx::Point.
@@ -149,8 +151,10 @@ public:
     // Returns a string representation of point.
     std::string ToString() const;
 
+#if !defined(MINI_UI_QUICKJS)
     // Write a represtation of this object into a trace event argument.
     void WriteIntoTrace(perfetto::TracedValue) const;
+#endif
 
 private:
     float x_;

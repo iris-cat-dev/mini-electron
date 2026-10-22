@@ -33,6 +33,7 @@ public:
     {
         return false;
     }
+#if !defined(MINI_UI_QUICKJS)
     ControllerServiceWorkerMode GetControllerServiceWorkerMode() const override;
     int64_t ServiceWorkerId() const override
     {
@@ -43,6 +44,7 @@ public:
         // available also on a non-main thread.
         return -1;
     }
+#endif
     bool IsPaused() const override;
     LoaderFreezeMode FreezeMode() const override;
     bool IsDetached() const override
