@@ -8094,7 +8094,9 @@
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\inspector_trace_events.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\invalidation_set_to_selector_map.cc" />
     <ClCompile Include="..\..\..\third_party\blink\renderer\core\inspector\request_debug_header_scope.cc" />
-    <ClCompile Include="..\..\..\runtime\engine\common\devtools_disabled.cc" />
+    <ClCompile Include="..\..\..\runtime\engine\common\devtools_disabled.cc">
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MiniElectronSourceRoot)v8</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\third_party\blink\renderer\modules\webgl\*.cc" />

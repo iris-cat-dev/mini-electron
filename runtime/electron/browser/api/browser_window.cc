@@ -3323,6 +3323,16 @@ private:
             createWindowParam->styles |= WS_VISIBLE;
 
         webContents = WebContents::create(options->isolate(), webPreferences, self);
+        if (!webContents || webContents->isDestroyedApi()) {
+            delete createWindowParam;
+            self->m_state = WindowDestroyed;
+            if (!options->isolate()->HasPendingException()) {
+                options->isolate()->ThrowException(v8::Exception::Error(
+                    v8::String::NewFromUtf8Literal(
+                        options->isolate(), "WebContents was destroyed during BrowserWindow creation")));
+            }
+            return nullptr;
+        }
         self->m_webContents = webContents;
         self->m_focusedWebContents = webContents;
         self->m_webContents->addObserver(self);
@@ -3489,8 +3499,10 @@ private:
                 args[0]->ToObject(args.GetIsolate()->GetCurrentContext()).ToLocalChecked() : 
                 v8::Object::New(isolate)));
             BrowserWindow* self = newWindow(&options, args.This());
+            if (!self)
+                return;
             WindowList::getInstance()->addWindow(self);
-            if (self && self->m_webContents && self->m_state == WindowInited
+            if (self->m_webContents && self->m_state == WindowInited
                 && ::IsWindow(self->m_hWnd) && App::getInstance()) {
                 App::getInstance()->emit("browser-window-created", args.This());
             }

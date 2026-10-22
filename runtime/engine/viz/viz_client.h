@@ -5,10 +5,12 @@
 #ifndef COMPONENTS_VIZ_DEMO_CLIENT_DEMO_CLIENT_H_
 #define COMPONENTS_VIZ_DEMO_CLIENT_DEMO_CLIENT_H_
 
-#include <atomic>
+#include <cstdint>
 #include <map>
 #include <vector>
 
+#include "base/containers/circular_deque.h"
+#include "base/functional/callback.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/thread.h"
 #include "components/viz/common/frame_timing_details_map.h"
@@ -55,7 +57,8 @@ namespace content {
 class VizClient : public viz::mojom::CompositorFrameSinkClient {
 public:
     VizClient(const viz::FrameSinkId& frame_sink_id, const viz::LocalSurfaceId& localSurfaceId, const gfx::Rect& bounds,
-        scoped_refptr<base::SingleThreadTaskRunner> service_runner);
+        scoped_refptr<base::SingleThreadTaskRunner> service_runner,
+        base::RepeatingCallback<void(uint64_t)> frame_completion_callback);
 
     VizClient(const VizClient&) = delete;
     VizClient& operator=(const VizClient&) = delete;
@@ -84,9 +87,8 @@ public:
     viz::LocalSurfaceId embedOnBlinkThread(const viz::FrameSinkId& frame_sink_id, const gfx::Rect& bounds, const viz::LocalSurfaceId& newLocalSurfaceId);
     void onChildSurfaceActivated(const viz::SurfaceId& surfaceId);
 
-    // When this client is resized, it is important that it also receives a new
-    // LocalSurfaceId with the new size.
-    void resizeOnHostThread(const gfx::Size& size, const viz::LocalSurfaceId& localSurfaceId, float device_scale_factor);
+    // Returns the revision containing the newly published root geometry.
+    uint64_t resizeOnHostThread(const gfx::Size& size, const viz::LocalSurfaceId& localSurfaceId, float device_scale_factor);
 
     viz::LocalSurfaceId GenLocalSurfaceId();
     viz::LocalSurfaceId GetLocalSurfaceId();
@@ -101,18 +103,6 @@ public:
         m_widgetHost = widget_host;
     }
 
-    bool isAllowResize() const
-    {
-        return m_allowResize.load(std::memory_order_acquire);
-    }
-    void allowResize()
-    {
-        m_allowResize.store(true, std::memory_order_release);
-    }
-    void disallowResize()
-    {
-        m_allowResize.store(false, std::memory_order_release);
-    }
 
 private:
     friend class RenderFrameMetadataObserverClientImpl;
@@ -126,6 +116,7 @@ private:
     viz::CompositorFrame createFrame(const viz::BeginFrameArgs& args) EXCLUSIVE_LOCKS_REQUIRED(m_lock);
     void requestBeginFrame();
     void didNotProduceFrame(viz::BeginFrameAck ack);
+    void notifyFrameCompletion(uint64_t frame_revision);
 
     viz::mojom::CompositorFrameSink* getPtrImpl();
 
@@ -166,21 +157,23 @@ private:
     std::map<viz::FrameSinkId, EmbedInfo> m_embeds /*GUARDED_BY(m_lock)*/;
     // m_frameRevision identifies the desired root state. The queued revision is
     // advanced before posting a submission so overlapping BeginFrames cannot
-    // enqueue duplicate full-damage frames. Revision zero is reserved so the
-    // initial desired state is always pending.
+    // enqueue duplicate full-damage frames. Submitted revisions are retained in
+    // FIFO order so each Viz ACK is attributed to the exact root state it
+    // accepted. Revision zero is reserved so the initial desired state is
+    // always pending.
     uint64_t m_frameRevision GUARDED_BY(m_lock) = 1;
     uint64_t m_queuedFrameRevision GUARDED_BY(m_lock) = 0;
+    base::circular_deque<uint64_t> m_submittedFrameRevisions GUARDED_BY(m_lock);
 
     bool m_isRootClient = false;
     content::RenderWidgetHostImpl* m_widgetHost = nullptr;
 
     bool m_canCommitFrame GUARDED_BY(m_lock) = true;
-    std::atomic<bool> m_allowResize { true };
+    const base::RepeatingCallback<void(uint64_t)> m_frameCompletionCallback;
 
     void* m_vizServer = nullptr;
 
     scoped_refptr<base::SingleThreadTaskRunner> m_vizCompositorRunner;
-    base::WeakPtrFactory<VizClient> m_weakPtrFactory { this };
 };
 
 } // namespace demo

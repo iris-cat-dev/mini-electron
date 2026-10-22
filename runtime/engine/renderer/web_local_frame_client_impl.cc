@@ -1189,7 +1189,22 @@ void WebLocalFrameClientImpl::DidAddMessageToConsole(
     if (!webview || !(webview->getClosure().m_ConsoleCallback))
         return;
 
-    webview->getClosure().m_ConsoleCallback(m_engineViewId, webview->getClosure().m_ConsoleParam, mini_electron_level_log, message.text.Utf8().c_str(),
+    mini_electron_console_level level = mini_electron_level_log;
+    switch (message.level) {
+    case blink::mojom::ConsoleMessageLevel::kVerbose:
+        level = mini_electron_level_debug;
+        break;
+    case blink::mojom::ConsoleMessageLevel::kInfo:
+        level = mini_electron_level_info;
+        break;
+    case blink::mojom::ConsoleMessageLevel::kWarning:
+        level = mini_electron_level_warning;
+        break;
+    case blink::mojom::ConsoleMessageLevel::kError:
+        level = mini_electron_level_error;
+        break;
+    }
+    webview->getClosure().m_ConsoleCallback(m_engineViewId, webview->getClosure().m_ConsoleParam, level, message.text.Utf8().c_str(),
         source_name.Utf8().c_str(), source_line, stack_trace.Utf8().c_str());
 }
 

@@ -71,8 +71,10 @@ void BrowserView::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
         options = new gin_helper::Dictionary(gin_helper::Dictionary::CreateEmpty(isolate));
 
     BrowserView* self = newBrowserView(options, args.This());
-    args.GetReturnValue().Set(args.This());
     delete options;
+    if (!self)
+        return;
+    args.GetReturnValue().Set(args.This());
 }
 
 void BrowserView::destroyed()
@@ -144,6 +146,16 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
             webPreferences.Set(options::kBackgroundColor, backgroundColorValue);
 
         webContents = WebContents::create(options->isolate(), webPreferences, self);
+        if (!webContents || webContents->isDestroyedApi()) {
+            delete createWindowParam;
+            self->m_state = WindowDestroyed;
+            if (!options->isolate()->HasPendingException()) {
+                options->isolate()->ThrowException(v8::Exception::Error(
+                    v8::String::NewFromUtf8Literal(
+                        options->isolate(), "WebContents was destroyed during BrowserView creation")));
+            }
+            return nullptr;
+        }
 
         //webPreferences.GetBydefaultVal("nodeIntegration", true, &webContents->m_isNodeIntegration);
     } else

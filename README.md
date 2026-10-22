@@ -23,7 +23,8 @@ runtime `0.1.18`; the npm installer remains `0.1.12`.
   disabling GPU rendering.
 
 The Windows DPAPI and preload source fixes are not delivered by this macOS-only
-release; Windows native verification and publication remain pending.
+release; Windows runtime publication remains pending. Targeted Windows native
+verification and its limits are recorded below.
 See [macOS idle scheduling verification](docs/RENDERING_PERFORMANCE.md#macos-idle-scheduling-and-visibility)
 for measured workload results, native regressions and verification limits.
 
@@ -413,6 +414,16 @@ Windows PowerShell for independent .NET DPAPI interoperability checks):
 out/windows-x64/mini-electron.exe --app=test/safe-storage-smoke.js
 ```
 
+Windows native verification on 2026-10-23 passed the actual application-mode
+regression against the current DPAPI implementation, including independent
+`.NET ProtectedData` exchange in both directions, ASCII/Unicode/empty/embedded-NUL
+values, malformed and legacy-XOR ciphertext rejection, and persisted decryption
+after a process restart with another application profile. Only synthetic values
+were used. Cross-user decryption and Windows 11 were not exercised.
+This was a targeted Windows x64 Release compile/link with retained native
+libraries, not a new published Windows runtime; existing release assets are not
+updated by a source checkout.
+
 ### Preload module scope
 
 The shared Windows/macOS preload runner gives each session and window preload
@@ -443,12 +454,52 @@ The existing IPC frame smoke passed; an additional single-process smoke on the
 targeted executable failed because renderer and host PIDs differed. These checks
 do not establish single-process compatibility or Windows packaged-app acceptance.
 
-Windows verification is pending. Rebuild the Windows runtime and run
-`test/preload-scope-smoke.js`, then launch the real packaged OMP Desktop with its
-normal `log.initialize({ spyRendererConsole: true })` and unmodified logging
-preload. Check multiple windows and document navigations for absence of unexpected
-`preload-error` events, and confirm renderer logs reach the main logger. Keep the
-preload and error reporting enabled; the source fix is not a published runtime.
+Windows native verification on 2026-10-23 also found and repaired the separate
+DevTools-free console path: Windows now installs a stateless native V8 console
+delegate for `log`/`info`/`warn`/`error`/`debug`, forwards the actual severity and
+source location, and publishes `app`'s `web-contents-created` event so logging
+libraries can subscribe before page output. It does not enable Inspector or CDP.
+Creation listeners that destroy contents or throw abort owner construction safely
+and preserve the original exception. Root-display resize is now ACK-driven and
+asynchronous, avoiding a Blink wait for a future frame during hidden-window load.
+
+The targeted native executable passed:
+- `test/preload-scope-smoke.js` in default and `--single-process` modes.
+- `test/console-message-smoke.js` in both modes: 72 exactly-once messages per run,
+  standard levels, document URLs/lines, main/iframe, hidden-window resize,
+  concurrent windows, navigation/reload, and native argument formatting.
+- `test/web-contents-created-smoke.js` in both modes: destroy/throw reentrancy,
+  owner cleanup, and subsequent real BrowserWindow/BrowserView operation.
+- `test/electron-log-smoke.js` with unmodified npm `electron-log@5.4.4` and the exact
+  `log.initialize({ spyRendererConsole: true })` initialization in both modes:
+  four windows and 12 document loads per run, context isolation on/off, all 24
+  explicit IPC and console-spy logs received, no unexpected preload errors.
+- `test/ipc-frame-smoke.js` and `test/safe-storage-smoke.js`.
+
+The electron-log consumer regression requires that package through normal Node
+module resolution. From the repository root in a Bash-compatible shell, using a
+**rebuilt** Windows executable:
+
+```sh
+npm install --no-save --prefix out/verification/issue5-deps electron-log@5.4.4
+NODE_PATH=./out/verification/issue5-deps/node_modules ./out/windows-x64/runtime-dist/electron.exe --app=test/electron-log-smoke.js
+NODE_PATH=./out/verification/issue5-deps/node_modules ./out/windows-x64/runtime-dist/electron.exe --single-process --app=test/electron-log-smoke.js
+```
+
+Verification limits: 13 current native translation units were rebuilt and linked
+with retained V8/Blink/Node libraries; this is not a full-tree rebuild or a
+published Windows release. The full local build stopped at pinned ANGLE checkout
+preparation. A separate `windows-resize-presentation-smoke.js` single-process
+stress still reports transient white backing samples during native sizing; that
+failure was observed before and after the asynchronous resize change and is not
+claimed fixed. The original packaged OMP Desktop was not run. Local commands,
+exit codes, package integrity and binary hashes are under
+`out/verification/issue5-current-main/`.
+
+After rebuilding, run the native regressions above, then validate the real OMP
+Desktop package with its normal logging initialization and unmodified preload.
+Keep preload execution and `preload-error` reporting enabled. Old Windows
+`0.1.17`/`0.1.18` download artifacts do not acquire these source fixes.
 
 ## Trusted single-process UI mode
 

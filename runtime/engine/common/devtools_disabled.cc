@@ -19,6 +19,13 @@
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
+#if defined(_WIN32)
+#include "base/no_destructor.h"
+#include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
+#include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+#include "v8/src/debug/debug-interface.h"
+#endif
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #error "This file is only for DevTools-free targets."
@@ -41,13 +48,185 @@ LocalFrame* ToLocalFrame(ExecutionContext* context)
 
 } // namespace
 
+#if defined(_WIN32)
+namespace {
+
+// V8ConsoleMessage's plain-text formatting, without remote objects or sessions.
+class ConsoleArgumentFormatter {
+public:
+    static String Format(v8::Local<v8::Context> context, v8::Local<v8::Value> value)
+    {
+        ConsoleArgumentFormatter formatter(context);
+        if (!formatter.Append(value) || formatter.try_catch_.HasCaught())
+            return String();
+        return formatter.text_.ToString();
+    }
+
+private:
+    explicit ConsoleArgumentFormatter(v8::Local<v8::Context> context)
+        : context_(context)
+        , isolate_(context->GetIsolate())
+        , arrays_(isolate_)
+        , try_catch_(isolate_)
+    {
+    }
+
+    bool Append(v8::Local<v8::Value> value, bool array_item = false)
+    {
+        if (value.IsEmpty() || (array_item && value->IsNullOrUndefined()))
+            return true;
+        if (value->IsBigIntObject())
+            value = value.As<v8::BigIntObject>()->ValueOf();
+        else if (value->IsBooleanObject())
+            value = v8::Boolean::New(isolate_, value.As<v8::BooleanObject>()->ValueOf());
+        else if (value->IsNumberObject())
+            value = v8::Number::New(isolate_, value.As<v8::NumberObject>()->ValueOf());
+        else if (value->IsStringObject())
+            value = value.As<v8::StringObject>()->ValueOf();
+        else if (value->IsSymbolObject())
+            value = value.As<v8::SymbolObject>()->ValueOf();
+
+        if (value->IsSymbol()) {
+            text_.Append("Symbol(");
+            auto description = value.As<v8::Symbol>()->Description(isolate_);
+            bool result = description->IsUndefined() || Append(description);
+            text_.Append(')');
+            return result;
+        }
+        if (value->IsArray()) {
+            auto array = value.As<v8::Array>();
+            for (auto visited : arrays_) {
+                if (visited == array)
+                    return true;
+            }
+            uint32_t length = array->Length();
+            if (length > remaining_array_items_ || arrays_.size() > 32)
+                return false;
+            remaining_array_items_ -= length;
+            arrays_.push_back(array);
+            bool result = true;
+            for (uint32_t i = 0; i < length; ++i) {
+                if (i)
+                    text_.Append(',');
+                v8::Local<v8::Value> item;
+                if (!array->Get(context_, i).ToLocal(&item))
+                    continue;
+                if (!Append(item, true)) {
+                    result = false;
+                    break;
+                }
+            }
+            arrays_.pop_back();
+            return result;
+        }
+        if (value->IsProxy()) {
+            text_.Append("[object Proxy]");
+            return true;
+        }
+        v8::Local<v8::String> text;
+        if (value->IsObject() && !value->IsDate() && !value->IsFunction()
+            && !value->IsNativeError() && !value->IsRegExp()) {
+            if (value.As<v8::Object>()->ObjectProtoToString(context_).ToLocal(&text))
+                return AppendText(text);
+        }
+        if (!value->ToString(context_).ToLocal(&text) || !AppendText(text))
+            return false;
+        if (value->IsBigInt())
+            text_.Append('n');
+        return true;
+    }
+
+    bool AppendText(v8::Local<v8::String> text)
+    {
+        if (try_catch_.HasCaught())
+            return false;
+        text_.Append(ToCoreString(isolate_, text));
+        return true;
+    }
+
+    v8::Local<v8::Context> context_;
+    v8::Isolate* isolate_;
+    StringBuilder text_;
+    v8::LocalVector<v8::Array> arrays_;
+    v8::TryCatch try_catch_;
+    uint32_t remaining_array_items_ = 10000;
+};
+
+} // namespace
+#endif
+
+#if defined(_WIN32)
+// Console output is an embedder API, independent of the DevTools inspector.
+// This delegate is stateless: it retains no isolate, context, frame or JS value.
+class DevToolsFreeConsoleDelegate final : public v8::debug::ConsoleDelegate {
+public:
+    static DevToolsFreeConsoleDelegate* Get()
+    {
+        static base::NoDestructor<DevToolsFreeConsoleDelegate> delegate;
+        return delegate.get();
+    }
+
+    void Log(const v8::debug::ConsoleCallArguments& args, const v8::debug::ConsoleContext&) override
+    {
+        Report(args, mojom::ConsoleMessageLevel::kInfo);
+    }
+    void Info(const v8::debug::ConsoleCallArguments& args, const v8::debug::ConsoleContext&) override
+    {
+        Report(args, mojom::ConsoleMessageLevel::kInfo);
+    }
+    void Warn(const v8::debug::ConsoleCallArguments& args, const v8::debug::ConsoleContext&) override
+    {
+        Report(args, mojom::ConsoleMessageLevel::kWarning);
+    }
+    void Error(const v8::debug::ConsoleCallArguments& args, const v8::debug::ConsoleContext&) override
+    {
+        Report(args, mojom::ConsoleMessageLevel::kError);
+    }
+    void Debug(const v8::debug::ConsoleCallArguments& args, const v8::debug::ConsoleContext&) override
+    {
+        Report(args, mojom::ConsoleMessageLevel::kVerbose);
+    }
+
+private:
+    static void Report(const v8::debug::ConsoleCallArguments& args, mojom::ConsoleMessageLevel level)
+    {
+        v8::Isolate* isolate = args.GetIsolate();
+        v8::HandleScope handles(isolate);
+        v8::Local<v8::Context> context = isolate->GetCurrentContext();
+        if (context.IsEmpty())
+            return;
+        auto* debugger = static_cast<ThreadDebuggerCommonImpl*>(ThreadDebugger::From(isolate));
+        ExecutionContext* execution_context = ToExecutionContext(context);
+        if (!debugger || !execution_context)
+            return;
+        auto location = CaptureSourceLocation(execution_context);
+        StringBuilder message;
+        for (int i = 0; i < args.Length(); ++i) {
+            if (i)
+                message.Append(' ');
+            message.Append(ConsoleArgumentFormatter::Format(context, args[i]));
+        }
+        debugger->ReportConsoleMessage(execution_context, mojom::ConsoleMessageSource::kConsoleApi,
+            level, message.ToString(), location.get());
+    }
+};
+#endif
+
 ThreadDebuggerCommonImpl::ThreadDebuggerCommonImpl(v8::Isolate* isolate)
     : ThreadDebugger(isolate)
     , isolate_(isolate)
 {
+#if defined(_WIN32)
+    v8::debug::SetConsoleDelegate(isolate_, DevToolsFreeConsoleDelegate::Get());
+#endif
 }
 
-ThreadDebuggerCommonImpl::~ThreadDebuggerCommonImpl() = default;
+ThreadDebuggerCommonImpl::~ThreadDebuggerCommonImpl()
+{
+#if defined(_WIN32)
+    v8::debug::SetConsoleDelegate(isolate_, nullptr);
+#endif
+}
 
 void ThreadDebuggerCommonImpl::AsyncTaskScheduled(const StringView&, void*, bool) { }
 void ThreadDebuggerCommonImpl::AsyncTaskCanceled(void*) { }

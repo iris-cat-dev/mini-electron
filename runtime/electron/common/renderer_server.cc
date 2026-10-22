@@ -4644,10 +4644,26 @@ private:
         void* parameter, mini_electron_console_level level, const utf8* message,
         const utf8* source, unsigned line, const utf8*)
     {
+        // Public engine levels are not Electron's legacy 0/1/2/3 event levels.
+        int event_level = 1;
+        switch (level) {
+        case mini_electron_level_debug:
+            event_level = 0;
+            break;
+        case mini_electron_level_warning:
+            event_level = 2;
+            break;
+        case mini_electron_level_error:
+        case mini_electron_level_revoked_error:
+            event_level = 3;
+            break;
+        default:
+            break;
+        }
         base::Value::Dict payload;
-        payload.Set("level", static_cast<int>(level));
+        payload.Set("level", event_level);
         payload.Set("message", message ? message : "");
-        payload.Set("source", source ? source : "");
+        payload.Set("sourceId", source ? source : "");
         payload.Set("line", static_cast<int>(line));
         static_cast<RendererServerImpl*>(parameter)->SendEvent("console-message", std::move(payload));
     }

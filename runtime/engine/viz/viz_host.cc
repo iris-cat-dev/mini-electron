@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include "base/memory/ref_counted_delete_on_sequence.h"
 #include "base/rand_util.h"
+#include "base/task/bind_post_task.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "runtime/engine/viz/viz_client.h"
@@ -19,6 +21,56 @@
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
 
 namespace content {
+
+// mojo_lite resolves Remote calls to the receiver object directly. Keep the
+// endpoint and every callable operation on the Viz service sequence; posted
+// operations retain this state rather than the owning VizHost.
+class VizHost::DisplayPrivateState
+    : public base::RefCountedDeleteOnSequence<VizHost::DisplayPrivateState> {
+public:
+    explicit DisplayPrivateState(scoped_refptr<base::SingleThreadTaskRunner> service_runner)
+        : base::RefCountedDeleteOnSequence<DisplayPrivateState>(service_runner)
+        , m_serviceRunner(std::move(service_runner))
+    {
+    }
+
+    mojo::PendingReceiver<viz::mojom::DisplayPrivate> BindNewEndpointAndPassReceiver()
+    {
+        return m_displayPrivate.BindNewEndpointAndPassReceiver(m_serviceRunner);
+    }
+
+    void Resize(const gfx::Size& size)
+    {
+        DCHECK(m_serviceRunner->RunsTasksInCurrentSequence());
+        if (auto* display = m_displayPrivate.TryGet())
+            display->Resize(size);
+    }
+
+    void SetDisplayVisible(bool visible)
+    {
+        DCHECK(m_serviceRunner->RunsTasksInCurrentSequence());
+        if (auto* display = m_displayPrivate.TryGet())
+            display->SetDisplayVisible(visible);
+    }
+
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+    void SetVSyncDisplayID(int64_t display_id)
+    {
+        DCHECK(m_serviceRunner->RunsTasksInCurrentSequence());
+        if (auto* display = m_displayPrivate.TryGet())
+            display->SetVSyncDisplayID(display_id);
+    }
+#endif
+
+private:
+    friend class base::RefCountedDeleteOnSequence<DisplayPrivateState>;
+    friend class base::DeleteHelper<DisplayPrivateState>;
+
+    ~DisplayPrivateState() = default;
+
+    const scoped_refptr<base::SingleThreadTaskRunner> m_serviceRunner;
+    mojo::AssociatedRemote<viz::mojom::DisplayPrivate> m_displayPrivate;
+};
 
 VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     //gfx::AcceleratedWidget widget,
@@ -39,6 +91,7 @@ VizHost::VizHost(WebViewHost* mbwebview, bool isTransparent,
     , m_workRunner(workRunner)
     , m_serviceRunner(serviceRunner)
 {
+    m_displayPrivateState = base::MakeRefCounted<DisplayPrivateState>(m_serviceRunner);
     //CHECK(m_thread.Start());
 
     m_hostFrameSinkManager.SetServiceRunner(serviceRunner);
@@ -58,36 +111,43 @@ VizHost::~VizHost()
 // ������������blink�߳�
 void VizHost::destroy(std::function<void(void)>&& callback)
 {
-    //m_hostFrameSinkManager.InvalidateFrameSinkId(m_frameSinkId);
-    //m_hostFrameSinkManager.SetConnectionLostCallback();
-    VizHost* self = this;
-    if (m_rootClient) {
-        m_rootClient->destroy([self, callback] {
-            self->m_workRunner->PostTask(FROM_HERE,
-                base::BindOnce(
-                    [](VizHost* self, std::function<void(void)>&& callback) {
-                        OutputDebugStringA("VizHost::destroy\n");
-                        self->m_rootClient.release(); // TODO
-                        (callback)();
+    if (!m_rootClient)
+        return;
 
-                        ThreadCall::delayDestroySelf(self, self->m_workRunner, 2000);
+    const base::WeakPtr<VizHost> host = m_hostWeakPtr;
+    const scoped_refptr<base::SingleThreadTaskRunner> hostRunner = m_workRunner;
+    m_rootClient->destroy(
+        [host, hostRunner, callback = std::move(callback)]() mutable {
+            hostRunner->PostTask(
+                FROM_HERE,
+                base::BindOnce(
+                    [](base::WeakPtr<VizHost> self,
+                        std::function<void(void)>&& callback) {
+                        if (!self)
+                            return;
+                        VizHost* host = self.get();
+                        const scoped_refptr<base::SingleThreadTaskRunner> hostRunner
+                            = host->m_workRunner;
+                        OutputDebugStringA("VizHost::destroy\n");
+                        host->m_hostWeakPtrFactory.InvalidateWeakPtrs();
+                        host->m_rootClient.release(); // Deleted by VizClient::destroy.
+                        callback();
+                        ThreadCall::delayDestroySelf(host, hostRunner, 2000);
                     },
-                    base::Unretained(self), std::move(callback)));
+                    host, std::move(callback)));
         });
-    }
 }
 
 void VizHost::resizeOnBlinkThread(const gfx::Size& size, float device_scale_factor)
 {
-    if (m_rootClient)
-        m_rootClient->disallowResize();
+    DCHECK(ThreadCall::isBlinkThread());
     OutputDebugStringA("VizHost::resizeOnBlinkThread\n");
 
     if (device_scale_factor <= 0.f)
         device_scale_factor = 1.f;
-    base::WaitableEvent waitEvt;
-    m_workRunner->PostTask(FROM_HERE, base::BindOnce(&VizHost::resizeOnHostThread, base::Unretained(this), size, device_scale_factor, &waitEvt));
-    waitEvt.Wait();
+    m_workRunner->PostTask(
+        FROM_HERE,
+        base::BindOnce(&VizHost::resizeOnHostThread, m_hostWeakPtr, size, device_scale_factor));
 }
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
@@ -113,18 +173,19 @@ void VizHost::setVisibleOnHostThread(bool visible)
         return;
     m_visible = visible;
     if (m_serviceRunner->RunsTasksInCurrentSequence()) {
-        if (auto* display = m_displayPrivate.TryGet())
-            display->SetDisplayVisible(visible);
+        m_displayPrivateState->SetDisplayVisible(visible);
         return;
     }
     base::WaitableEvent updated;
-    if (m_serviceRunner->PostTask(FROM_HERE,
+    if (m_serviceRunner->PostTask(
+            FROM_HERE,
             base::BindOnce(
-                [](VizHost* self, bool visible, base::WaitableEvent* updated) {
-                    if (auto* display = self->m_displayPrivate.TryGet())
-                        display->SetDisplayVisible(visible);
+                [](scoped_refptr<DisplayPrivateState> display_state, bool visible,
+                    base::WaitableEvent* updated) {
+                    display_state->SetDisplayVisible(visible);
                     updated->Signal();
-                }, base::Unretained(this), visible, &updated))) {
+                },
+                m_displayPrivateState, visible, &updated))) {
         updated.Wait();
     }
 }
@@ -137,48 +198,38 @@ void VizHost::setVSyncDisplayIdOnHostThread(int64_t display_id)
         return;
 #endif
     m_vsyncDisplayId = display_id;
-    // This runtime's Mojo Remote exposes the receiver directly, rather than a
-    // proxy which marshals calls. Use the same runner that creates the root
-    // sink and its DisplayScheduler, not the host runner owning this Remote.
+    // mojo_lite exposes the receiver directly, so all DisplayPrivate calls
+    // must run on the sequence that owns the receiver.
     if (m_serviceRunner->RunsTasksInCurrentSequence()) {
-        if (auto* display = m_displayPrivate.TryGet())
-            display->SetVSyncDisplayID(display_id);
+        m_displayPrivateState->SetVSyncDisplayID(display_id);
         return;
     }
 
-    // Completion bounds the raw captures' lifetime: host destruction runs on
-    // m_workRunner and cannot overtake this task while it is waiting. Resolve
-    // the receiver only on Viz so a preceding teardown cannot leave a raw sink.
-    // initialize() queues root creation on this same runner before publishing
-    // completion, so this update cannot overtake initial receiver binding.
     base::WaitableEvent updated;
-    if (m_serviceRunner->PostTask(FROM_HERE,
+    if (m_serviceRunner->PostTask(
+            FROM_HERE,
             base::BindOnce(
-                [](VizHost* self, int64_t display_id, base::WaitableEvent* updated) {
-                    DCHECK(self->m_serviceRunner->RunsTasksInCurrentSequence());
-                    if (auto* display = self->m_displayPrivate.TryGet())
-                        display->SetVSyncDisplayID(display_id);
+                [](scoped_refptr<DisplayPrivateState> display_state,
+                    int64_t display_id, base::WaitableEvent* updated) {
+                    display_state->SetVSyncDisplayID(display_id);
                     updated->Signal();
                 },
-                base::Unretained(this), display_id, &updated))) {
+                m_displayPrivateState, display_id, &updated))) {
         updated.Wait();
     }
 }
 #endif
 
-void VizHost::resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt)
+void VizHost::resizeOnHostThread(const gfx::Size& size, float device_scale_factor)
 {
-//     if (m_size == size) {
-//         if (m_rootClient)
-//             m_rootClient->allowResize();
-// 
-//         if (waitEvt)
-//             waitEvt->Signal();
-//         return;
-//     }
+    DCHECK(m_workRunner->RunsTasksInCurrentSequence());
+    if (!m_rootClient)
+        return;
+
     m_size = size;
 
-    // Every size change for a client needs a new LocalSurfaceId.
+    // Publish the new geometry and LocalSurfaceId before requesting the root
+    // frame whose ACK will permit the corresponding display resize.
     m_allocator.GenerateId();
     viz::LocalSurfaceId localSurfaceId = m_allocator.GetCurrentLocalSurfaceId();
 
@@ -187,32 +238,30 @@ void VizHost::resizeOnHostThread(const gfx::Size& size, float device_scale_facto
     OutputDebugStringA(output);
     free(output);
 
-    m_rootClient->resizeOnHostThread(m_size, localSurfaceId, device_scale_factor);
-    delayResizeDisplayOnVizThread(waitEvt);
+    const uint64_t frameRevision
+        = m_rootClient->resizeOnHostThread(m_size, localSurfaceId, device_scale_factor);
+    m_pendingDisplayResizeSize = size;
+    m_pendingDisplayResizeRevision = frameRevision;
 }
 
-void VizHost::delayResizeDisplayOnVizThread(base::WaitableEvent* waitEvt)
+void VizHost::onRootFrameCompletedOnHostThread(uint64_t frame_revision)
 {
-    gfx::Size size = m_size;
-    m_serviceRunner->PostTask(FROM_HERE,
+    DCHECK(m_workRunner->RunsTasksInCurrentSequence());
+    if (!m_pendingDisplayResizeRevision
+        || frame_revision < m_pendingDisplayResizeRevision) {
+        return;
+    }
+
+    const gfx::Size size = m_pendingDisplayResizeSize;
+    m_pendingDisplayResizeRevision = 0;
+    m_serviceRunner->PostTask(
+        FROM_HERE,
         base::BindOnce(
-            [](base::WeakPtr<VizHost> self, const gfx::Size& size, base::WaitableEvent* waitEvt) {
-                if (!self->isAllowResize()) {
-                    self->delayResizeDisplayOnVizThread(waitEvt);
-                    return;
-                }
-                self->m_displayPrivate->Resize(size);
-                if (waitEvt)
-                    waitEvt->Signal();
+            [](scoped_refptr<DisplayPrivateState> display_state,
+                const gfx::Size& size) {
+                display_state->Resize(size);
             },
-            m_weakPtrFactory.GetWeakPtr(), size, waitEvt));
-}
-
-bool VizHost::isAllowResize() const
-{
-    if (!m_rootClient.get())
-        return true;
-    return m_rootClient->isAllowResize();
+            m_displayPrivateState, size));
 }
 
 // ����������Ƕ���Ǹ�������
@@ -290,7 +339,7 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
 
     ::mojo::PendingReceiver<::viz::mojom::CompositorFrameSinkClient> client_receiver
         = rootParams->compositor_frame_sink_client.InitWithNewPipeAndPassReceiver();
-    rootParams->display_private = m_displayPrivate.BindNewEndpointAndPassReceiver();
+    rootParams->display_private = m_displayPrivateState->BindNewEndpointAndPassReceiver();
     rootParams->display_client = m_displayClient->GetBoundRemote(nullptr);
 
     constexpr viz::FrameSinkId rootFrameSinkId(0xdead, 0xbeef);
@@ -311,9 +360,7 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
 #if BUILDFLAG(IS_MAC)
     rootParams->renderer_settings.display_id = m_vsyncDisplayId;
 #endif
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     m_hostWeakPtr = m_hostWeakPtrFactory.GetWeakPtr();
-#endif
 
     if (m_isTransparent) {
         rootParams->renderer_settings.should_clear_root_render_pass = true;
@@ -321,7 +368,13 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     }
 
     m_allocator.GenerateId();
-    m_rootClient = std::make_unique<VizClient>(rootFrameSinkId, m_allocator.GetCurrentLocalSurfaceId(), gfx::Rect(m_size), m_serviceRunner);
+    m_rootClient = std::make_unique<VizClient>(
+        rootFrameSinkId, m_allocator.GetCurrentLocalSurfaceId(), gfx::Rect(m_size),
+        m_serviceRunner,
+        base::BindPostTask(
+            m_workRunner,
+            base::BindRepeating(
+                &VizHost::onRootFrameCompletedOnHostThread, m_hostWeakPtr)));
     m_rootClient->setIsRootClient();
 
     //     char* output = (char*)malloc(0x500);
@@ -341,17 +394,24 @@ void VizHost::initialize(mojo::PendingReceiver<viz::mojom::FrameSinkManagerClien
     m_hostFrameSinkManager.RegisterFrameSinkId(rootParams->frame_sink_id, this, viz::ReportFirstSurfaceActivation::kNo);
     m_hostFrameSinkManager.CreateRootCompositorFrameSink(std::move(rootParams));
 
-    m_serviceRunner->PostTask(FROM_HERE,
+    m_serviceRunner->PostTask(
+        FROM_HERE,
         base::BindOnce(
-            [](base::WeakPtr<VizHost> self, const gfx::Size& size) {
-                self->m_displayPrivate->Resize(size);
-                self->m_displayPrivate->SetDisplayVisible(true);
+            [](scoped_refptr<DisplayPrivateState> display_state,
+                const gfx::Size& size, int64_t vsync_display_id) {
+                display_state->Resize(size);
+                display_state->SetDisplayVisible(true);
 #if BUILDFLAG(IS_WIN)
-                self->m_displayPrivate->SetVSyncDisplayID(
-                    self->m_vsyncDisplayId);
+                display_state->SetVSyncDisplayID(vsync_display_id);
 #endif
             },
-            m_weakPtrFactory.GetWeakPtr(), m_size));
+            m_displayPrivateState, m_size,
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+            m_vsyncDisplayId
+#else
+            0
+#endif
+            ));
 
     // Initialize as a client now, since the host has to submit compositor frames
     // like any other clients.

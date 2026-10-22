@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_VIZ_DEMO_HOST_DEMO_HOST_H_
 #define COMPONENTS_VIZ_DEMO_HOST_DEMO_HOST_H_
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -73,11 +74,12 @@ public:
         return m_rootClient.get();
     }
 
-    bool isAllowResize() const;
 
 private:
-    void delayResizeDisplayOnVizThread(base::WaitableEvent* waitEvt);
-    void resizeOnHostThread(const gfx::Size& size, float device_scale_factor, base::WaitableEvent* waitEvt);
+    class DisplayPrivateState;
+
+    void onRootFrameCompletedOnHostThread(uint64_t frame_revision);
+    void resizeOnHostThread(const gfx::Size& size, float device_scale_factor);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayIdOnHostThread(int64_t display_id);
     void setVisibleOnHostThread(bool visible);
@@ -98,8 +100,10 @@ private:
     viz::FrameSinkId m_frameSinkId;
 
     gfx::Size m_size;
+    gfx::Size m_pendingDisplayResizeSize;
+    uint64_t m_pendingDisplayResizeRevision = 0;
     viz::HostFrameSinkManager m_hostFrameSinkManager;
-    mojo::AssociatedRemote<viz::mojom::DisplayPrivate> m_displayPrivate;
+    scoped_refptr<DisplayPrivateState> m_displayPrivateState;
     std::unique_ptr</*viz::HostDisplayClient*/ OffscreenDisplayClient> m_displayClient;
     viz::ParentLocalSurfaceIdAllocator m_allocator;
 
@@ -113,21 +117,17 @@ private:
     //base::Thread m_thread;
 
     base::WaitableEvent m_initialized;
+    // Created and first dereferenced on the host sequence. Callbacks arriving
+    // on other sequences use BindPostTask before consulting this pointer.
+    base::WeakPtr<VizHost> m_hostWeakPtr;
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     int64_t m_vsyncDisplayId = display::kInvalidDisplayId;
     bool m_visible = true;
-    // Created on the host sequence and published by constructor completion.
-    base::WeakPtr<VizHost> m_hostWeakPtr;
 #endif
 
     scoped_refptr<base::SingleThreadTaskRunner> m_workRunner;
     scoped_refptr<base::SingleThreadTaskRunner> m_serviceRunner;
-    base::WeakPtrFactory<VizHost> m_weakPtrFactory { this };
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-    // The legacy factory also serves service-runner callbacks. Keep screen
-    // updates bound exclusively to the sequence owning m_displayPrivate.
     base::WeakPtrFactory<VizHost> m_hostWeakPtrFactory { this };
-#endif
 };
 
 } // namespace demo

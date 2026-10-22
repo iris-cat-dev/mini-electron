@@ -58,6 +58,9 @@ protected:
     v8::Isolate* isolate_;
 
 private:
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+    friend class DevToolsFreeConsoleDelegate;
+#endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     // V8InspectorClient implementation.
     void beginUserGesture() override;

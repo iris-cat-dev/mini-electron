@@ -15,6 +15,7 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "net/base/filename_util.h"
+#include "runtime/electron/browser/api/app.h"
 #include "runtime/electron/browser/api/session.h"
 #include "runtime/electron/browser/api/window_interface.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -258,7 +259,22 @@ WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary op
         return nullptr;
     self->m_owner = owner;
     self->m_live_self.Reset(isolate, object);
-    return self;
+    v8::TryCatch creation_handler_exception(isolate);
+    if (App::getInstance())
+        App::getInstance()->emit("web-contents-created", object);
+    if (creation_handler_exception.HasCaught()) {
+        if (!self->isDestroyedApi()) {
+            // The original handler exception owns constructor failure.  Catch
+            // teardown-listener failures separately so they cannot replace it.
+            v8::TryCatch teardown_exception(isolate);
+            self->destroyApi();
+            if (teardown_exception.HasCaught())
+                teardown_exception.Reset();
+        }
+        creation_handler_exception.ReThrow();
+        return nullptr;
+    }
+    return self->isDestroyedApi() ? nullptr : self;
 }
 
 void WebContents::newFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -392,6 +408,9 @@ void WebContents::destroyApi()
     if (m_destroyed)
         return;
     m_destroyed = true;
+    // Destruction can be reentrant from web-contents-created.  Drop the
+    // prospective owner before its constructor can unwind and become collectible.
+    m_owner = nullptr;
     std::set<int> guests = m_guest_ids;
     for (int id : guests) {
         WebContents* guest = fromId(id);

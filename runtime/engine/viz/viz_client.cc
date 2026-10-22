@@ -15,7 +15,6 @@
 #include "components/viz/service/frame_sinks/compositor_frame_sink_support.h"
 #include "components/viz/service/frame_sinks/frame_sink_manager_impl.h"
 #include "runtime/engine/browser/render_widget_host_impl.h"
-#include "runtime/engine/renderer/render_thread_impl.h"
 #include "runtime/engine/common/thread_call.h"
 #include "runtime/engine/common/live_id_detect.h"
 
@@ -24,11 +23,13 @@ namespace content {
 static base::Thread* s_vizClientThread = nullptr;
 
 VizClient::VizClient(const viz::FrameSinkId& frameSinkId, const viz::LocalSurfaceId& localSurfaceId, const gfx::Rect& bounds,
-    scoped_refptr<base::SingleThreadTaskRunner> servicRrunner)
+    scoped_refptr<base::SingleThreadTaskRunner> serviceRunner,
+    base::RepeatingCallback<void(uint64_t)> frameCompletionCallback)
     : m_frameSinkId(frameSinkId)
     , m_hostLocalSurfaceId(localSurfaceId)
     , m_bounds(bounds)
-    , m_vizCompositorRunner(servicRrunner)
+    , m_frameCompletionCallback(std::move(frameCompletionCallback))
+    , m_vizCompositorRunner(std::move(serviceRunner))
 {
     if (!s_vizClientThread) {
         s_vizClientThread = new base::Thread("VizClient");
@@ -164,17 +165,19 @@ viz::LocalSurfaceId VizClient::GenLocalSurfaceId()
 }
 
 
-void VizClient::resizeOnHostThread(const gfx::Size& size, const viz::LocalSurfaceId& localSurfaceId, float device_scale_factor)
+uint64_t VizClient::resizeOnHostThread(const gfx::Size& size, const viz::LocalSurfaceId& localSurfaceId, float device_scale_factor)
 {
+    uint64_t frameRevision;
     {
         // createFrame() snapshots these values under the same lock.
         base::AutoLock lock(m_lock);
         m_bounds.set_size(size);
         m_hostLocalSurfaceId = localSurfaceId;
         m_deviceScaleFactor = device_scale_factor > 0.f ? device_scale_factor : 1.f;
-        ++m_frameRevision;
+        frameRevision = ++m_frameRevision;
     }
     requestBeginFrame();
+    return frameRevision;
 }
 
 void VizClient::requestBeginFrame()
@@ -213,6 +216,12 @@ void VizClient::didNotProduceFrame(viz::BeginFrameAck ack)
         }, m_id, std::move(ack)));
 }
 
+void VizClient::notifyFrameCompletion(uint64_t frame_revision)
+{
+    if (m_frameCompletionCallback)
+        m_frameCompletionCallback.Run(frame_revision);
+}
+
 viz::mojom::CompositorFrameSink* VizClient::getPtrImpl()
 {
     if (m_associatedSink.is_bound())
@@ -238,14 +247,16 @@ void VizClient::initializeOnThread(mojo::PendingReceiver<viz::mojom::CompositorF
 
 void VizClient::DidReceiveCompositorFrameAck(std::vector<viz::ReturnedResource> resources)
 {
-    RenderThreadImpl::get()->getCompositorTaskRunner()->PostTask(FROM_HERE,
-        base::BindOnce(
-            [](int64_t id) {
-                VizClient* self = (VizClient*)common::LiveIdDetect::get()->getPtr(id);
-                if (self)
-                    self->allowResize();
-            },
-            m_id));
+    uint64_t frameRevision = 0;
+    {
+        base::AutoLock lock(m_lock);
+        if (!m_submittedFrameRevisions.empty()) {
+            frameRevision = m_submittedFrameRevisions.front();
+            m_submittedFrameRevisions.pop_front();
+        }
+    }
+    if (frameRevision)
+        notifyFrameCompletion(frameRevision);
 }
 
 
@@ -319,10 +330,12 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
 
     std::optional<viz::CompositorFrame> frame;
     viz::LocalSurfaceId localSurfaceId;
+    uint64_t frameRevision = 0;
     {
         base::AutoLock lock(m_lock);
         if (m_canCommitFrame && m_queuedFrameRevision != m_frameRevision) {
             m_queuedFrameRevision = m_frameRevision;
+            frameRevision = m_queuedFrameRevision;
             localSurfaceId = m_hostLocalSurfaceId;
             frame.emplace(createFrame(args));
         }
@@ -339,7 +352,8 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
     m_vizCompositorRunner->PostTask(FROM_HERE,
         base::BindOnce(
             [](int64_t id, viz::CompositorFrame frame,
-                viz::LocalSurfaceId localSurfaceId, viz::BeginFrameAck noDamageAck) {
+                viz::LocalSurfaceId localSurfaceId, uint64_t frameRevision,
+                viz::BeginFrameAck noDamageAck) {
                 VizClient* self = (VizClient*)common::LiveIdDetect::get()->getPtr(id);
                 if (!self)
                     return;
@@ -350,15 +364,15 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
                     canCommitFrame = self->m_canCommitFrame;
                 }
                 if (!canCommitFrame || !ptr) {
-                    self->allowResize();
+                    self->notifyFrameCompletion(frameRevision);
                     if (ptr)
                         ptr->DidNotProduceFrame(noDamageAck);
                     return;
                 }
 
-                // Activation notifications can still be queued on Blink, which
-                // is waiting for this root acknowledgment. Query the service's
-                // actual active child before choosing fallback.
+                // Activation notifications can still be queued while this root
+                // submission is prepared. Query the service's actual active
+                // child before choosing fallback.
                 auto* support = static_cast<viz::CompositorFrameSinkSupport*>(self->m_vizServer);
                 if (support) {
                     size_t rangeIndex = 0;
@@ -386,6 +400,12 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
                         }
                     }
                 }
+                // Record the exact submitted state before calling into Viz so
+                // even a synchronously delivered ACK observes its revision.
+                if (self->m_frameCompletionCallback) {
+                    base::AutoLock lock(self->m_lock);
+                    self->m_submittedFrameRevisions.push_back(frameRevision);
+                }
                 ptr->SubmitCompositorFrame(localSurfaceId, std::move(frame),
                     absl::optional<viz::HitTestRegionList>(), /*trace_time=*/0);
 
@@ -401,7 +421,7 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
                 }
                 ptr->SetNeedsBeginFrame(needsBeginFrame);
             },
-            m_id, std::move(*frame), localSurfaceId,
+            m_id, std::move(*frame), localSurfaceId, frameRevision,
             viz::BeginFrameAck(args, false)));
 }
 
