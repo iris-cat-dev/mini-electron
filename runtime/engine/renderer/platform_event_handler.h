@@ -4,6 +4,7 @@
 
 #include "runtime/engine/common/common.h"
 #include <string>
+#include <optional>
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/platform/web_vector.h"
@@ -118,10 +119,12 @@ public:
         blink::WebVector<blink::WebDraggableRegion> draggableRegion;
         RenderWidgetHostImpl* renderWidgetHost = nullptr;
         int modifiers = 0;
+        std::optional<gfx::PointF> screenPosition;
     };
     LRESULT fireMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, const MouseEvtInfo& info, BOOL* bHandle);
     LRESULT fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-    void fireWheelEvent(int x, int y, float wheelDeltaX, float wheelDeltaY, int modifiers);
+    void fireWheelEvent(int x, int y, float wheelDeltaX, float wheelDeltaY, int modifiers,
+        std::optional<gfx::PointF> screenPosition = std::nullopt);
     void firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
     void fireCaptureChangedEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -131,7 +134,8 @@ public:
     void checkMouseLeave();
 
     bool fireMouseUpEventIfNeeded(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, const MouseEvtInfo& info, BOOL* bHandle);
-    void buildMousePosInfo(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, bool* handle, gfx::Point* pos, gfx::Point* globalPos);
+    void buildMousePosInfo(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, bool* handle, gfx::Point* pos,
+        gfx::PointF* globalPos, const std::optional<gfx::PointF>& screenPosition);
 
     void setIsDraggableNodeMousedown();
 
@@ -172,7 +176,8 @@ public:
 
 private:
     void fireWheelEventOnCompositorThread(int x, int y, float wheelTicksX, float wheelTicksY,
-        float deltaX, float deltaY, int modifiers, ui::ScrollGranularity deltaUnits, bool precise = false);
+        float deltaX, float deltaY, int modifiers, ui::ScrollGranularity deltaUnits, bool precise = false,
+        std::optional<gfx::PointF> screenPosition = std::nullopt);
 
     friend class RenderWidgetHostImpl;
 

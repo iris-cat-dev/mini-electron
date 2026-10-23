@@ -133,7 +133,8 @@ bool PlatformEventHandler::isDraggableRegionNcHitTest(HWND hWnd, const gfx::Poin
 
 void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y,
     float wheelTicksX, float wheelTicksY, float deltaX, float deltaY,
-    int modifiers, ui::ScrollGranularity deltaUnits, bool precise)
+    int modifiers, ui::ScrollGranularity deltaUnits, bool precise,
+    std::optional<gfx::PointF> screenPosition)
 {
     if (!m_blinkWidgetInputHandler.is_bound())
         return;
@@ -141,7 +142,7 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y,
 
     mouseWheelEvent.SetType(blink::mojom::EventType::kMouseWheel);
     mouseWheelEvent.SetPositionInWidget(gfx::PointF(x, y));
-    mouseWheelEvent.SetPositionInScreen(gfx::PointF(x, y));
+    mouseWheelEvent.SetPositionInScreen(screenPosition.value_or(gfx::PointF(x, y)));
     mouseWheelEvent.SetTimeStamp(base::TimeTicks::Now());
 
     mouseWheelEvent.delta_x = deltaX;
@@ -167,7 +168,7 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y,
     webGestureEvent.SetType(blink::mojom::EventType::kGestureScrollBegin);
     webGestureEvent.SetSourceDevice(blink::mojom::GestureDevice::kTouchpad);
     webGestureEvent.SetPositionInWidget(gfx::PointF(x, y));
-    webGestureEvent.SetPositionInScreen(gfx::PointF(x, y));
+    webGestureEvent.SetPositionInScreen(mouseWheelEvent.PositionInScreen());
     webGestureEvent.SetTimeStamp(base::TimeTicks::Now());
     webGestureEvent.data.scroll_begin.delta_x_hint = deltaX;
     webGestureEvent.data.scroll_begin.delta_y_hint = deltaY;
@@ -230,7 +231,7 @@ LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, UINT message, WPARAM wPa
 }
 
 void PlatformEventHandler::fireWheelEvent(int x, int y, float wheelDeltaX,
-    float wheelDeltaY, int modifiers)
+    float wheelDeltaY, int modifiers, std::optional<gfx::PointF> screenPosition)
 {
     if (wheelDeltaX == 0 && wheelDeltaY == 0)
         return;
@@ -276,16 +277,17 @@ void PlatformEventHandler::fireWheelEvent(int x, int y, float wheelDeltaX,
         base::BindOnce(
             [](PlatformEventHandler* self, int x, int y, float wheelTicksX,
                 float wheelTicksY, float deltaX, float deltaY, int modifiers,
-                ui::ScrollGranularity deltaUnits) {
+                ui::ScrollGranularity deltaUnits, std::optional<gfx::PointF> screenPosition) {
                 base::AutoLock lock(self->m_lock);
                 self->fireWheelEventOnCompositorThread(x, y, wheelTicksX,
-                    wheelTicksY, deltaX, deltaY, modifiers, deltaUnits);
+                    wheelTicksY, deltaX, deltaY, modifiers, deltaUnits, false, screenPosition);
             },
             base::Unretained(this), x, y, wheelTicksX, wheelTicksY, deltaX,
-            deltaY, modifiers, deltaUnits));
+            deltaY, modifiers, deltaUnits, screenPosition));
 }
 
-void PlatformEventHandler::buildMousePosInfo(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, bool* handle, gfx::Point* pos, gfx::Point* globalPos)
+void PlatformEventHandler::buildMousePosInfo(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, bool* handle, gfx::Point* pos,
+    gfx::PointF* globalPos, const std::optional<gfx::PointF>& screenPosition)
 {
     if (WM_MOUSELEAVE == message) {
         *handle = true;
@@ -293,7 +295,7 @@ void PlatformEventHandler::buildMousePosInfo(HWND hWnd, UINT message, WPARAM wPa
 
         POINT ptCursor;
         ::GetCursorPos(&ptCursor);
-        *globalPos = gfx::Point(ptCursor.x, ptCursor.y);
+        *globalPos = gfx::PointF(ptCursor.x, ptCursor.y);
         ::ScreenToClient(hWnd, &ptCursor);
 
         if (ptCursor.x < 2)
@@ -313,12 +315,16 @@ void PlatformEventHandler::buildMousePosInfo(HWND hWnd, UINT message, WPARAM wPa
         m_postMouseLeave = false;
         pos->set_x(/*m_offset.x() +*/ ((int)(short)LOWORD(lParam)));
         pos->set_y(/*m_offset.y() +*/ ((int)(short)HIWORD(lParam)));
+        if (screenPosition) {
+            *globalPos = *screenPosition;
+            return;
+        }
 
         POINT widgetPoint = { pos->x(), pos->y() };
 #if defined(WIN32)
         ::ClientToScreen(hWnd, &widgetPoint);
 #endif
-        *globalPos = gfx::Point(widgetPoint.x, widgetPoint.y);
+        *globalPos = gfx::PointF(widgetPoint.x, widgetPoint.y);
     }
 }
 
@@ -537,9 +543,9 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
 
 
     gfx::Point pos;
-    gfx::Point globalPos;
+    gfx::PointF globalPos;
 
-    buildMousePosInfo(hWnd, message, wParam, lParam, &handle, &pos, &globalPos);
+    buildMousePosInfo(hWnd, message, wParam, lParam, &handle, &pos, &globalPos, info.screenPosition);
 
 #if defined(WIN32)
     if (WM_MOUSELEAVE != message) {
@@ -556,7 +562,7 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     // Use the originating event's snapshot, not global key state on this thread.
     webMouseEvent.SetModifiers(info.modifiers);
     webMouseEvent.SetPositionInWidget(gfx::PointF(pos.x(), pos.y()));
-    webMouseEvent.SetPositionInScreen(gfx::PointF(globalPos.x(), globalPos.y()));
+    webMouseEvent.SetPositionInScreen(globalPos);
     webMouseEvent.SetTimeStamp(time);
     webMouseEvent.pointer_type = blink::WebPointerProperties::PointerType::kMouse;
     webMouseEvent.movement_x = pos.x() - m_lastPosMouseMove.x();

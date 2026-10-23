@@ -522,6 +522,30 @@ public:
                 view->getWebContents()->setVSyncDisplayId(id);
         }
     }
+    void publishScreenRects()
+    {
+        if (!m_webContents || !::IsWindow(m_hWnd))
+            return;
+        RECT window;
+        RECT client;
+        if (!::GetWindowRect(m_hWnd, &window)
+            || !::GetClientRect(m_hWnd, &client)) {
+            return;
+        }
+        POINT client_origin = { client.left, client.top };
+        if (!::ClientToScreen(m_hWnd, &client_origin))
+            return;
+        const gfx::Rect widget_pixels(client_origin.x, client_origin.y,
+            client.right - client.left, client.bottom - client.top);
+        m_webContents->setScreenRects(
+            display::win::ScreenWin::ScreenToDIPRect(m_hWnd, widget_pixels),
+            display::win::ScreenWin::ScreenToDIPRect(m_hWnd, gfx::Rect(window)));
+        for (BrowserView* view : m_browserViews) {
+            if (view)
+                view->updateScreenRects();
+        }
+    }
+
 
     void setRendererVisible(bool visible)
     {
@@ -1458,7 +1482,8 @@ public:
             next->setFocus(true);
     }
 
-    bool mouseMsgToBrowserViews(unsigned int message, int x, int y, unsigned int flags)
+    bool mouseMsgToBrowserViews(unsigned int message, int x, int y,
+        const gfx::PointF& screenPoint, unsigned int flags)
     {
         if (m_foucsBrowserView && !m_foucsBrowserView->getWebContents())
             setFocusedBrowserView(nullptr);
@@ -1471,7 +1496,8 @@ public:
             setFocusedBrowserView(hittestView);
             if (hittestView) {
                 isHandled = true;
-                hittestView->handleMouseMsgInUiThread(message, x, y, flags);
+                hittestView->handleMouseMsgInUiThread(message, x, y,
+                    screenPoint.x(), screenPoint.y(), flags);
             }
         } else {
             if (WM_LBUTTONUP == message)
@@ -1479,11 +1505,13 @@ public:
             if (m_isMouseDown) {
                 if (m_foucsBrowserView) {
                     isHandled = true;
-                    m_foucsBrowserView->handleMouseMsgInUiThread(message, x, y, flags);
+                    m_foucsBrowserView->handleMouseMsgInUiThread(message, x, y,
+                        screenPoint.x(), screenPoint.y(), flags);
                 }
             } else if (hittestView) {
                 isHandled = true;
-                hittestView->handleMouseMsgInUiThread(message, x, y, flags);
+                hittestView->handleMouseMsgInUiThread(message, x, y,
+                    screenPoint.x(), screenPoint.y(), flags);
             }
         }
         return isHandled;
@@ -1495,6 +1523,16 @@ public:
         if (m_isIgnoreMouseEvents)
             return;
 
+        const int x = GET_X_LPARAM(lParam);
+        const int y = GET_Y_LPARAM(lParam);
+        POINT nativeScreenPoint = { x, y };
+        if (!::ClientToScreen(hWnd, &nativeScreenPoint))
+            return;
+        // Snapshot before focus/capture or application callbacks can move the
+        // host. A renderer HWND is not the BrowserWindow's native window.
+        const gfx::PointF screenPoint = display::win::ScreenWin::ScreenToDIPPoint(
+            gfx::PointF(nativeScreenPoint.x, nativeScreenPoint.y));
+
         if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
             if (m_createWindowParam && m_createWindowParam->isFocusable)
                 ::SetFocus(hWnd);
@@ -1502,9 +1540,6 @@ public:
         } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
             ::ReleaseCapture();
         }
-
-        int x = GET_X_LPARAM(lParam);
-        int y = GET_Y_LPARAM(lParam);
 
         unsigned int flags = 0;
 
@@ -1530,9 +1565,10 @@ public:
         //                 return;
         //             self->delayDoMouseMsg(webview);
         //         });
-        if (!mouseMsgToBrowserViews(message, x, y, flags)) {
-            // Blink applies the widget DSF to native device-pixel input.
-            m_webContents->sendWindowsMouseEvent(message, x, y, flags);
+        if (!mouseMsgToBrowserViews(message, x, y, screenPoint, flags)) {
+            // Widget coordinates are native pixels; screen coordinates are DIP.
+            m_webContents->sendWindowsMouseEvent(
+                message, x, y, screenPoint.x(), screenPoint.y(), flags);
         }
 
     }
@@ -1952,6 +1988,7 @@ public:
 
         case WM_MOVE:
             updateVSyncDisplay();
+            publishScreenRects();
             updateImePosition();
             mate::EventEmitter<BrowserWindow>::emit("move");
             break;
@@ -1959,6 +1996,7 @@ public:
         case WM_DISPLAYCHANGE:
             display::win::ScreenWin::UpdateDisplayInfos();
             updateVSyncDisplay(true);
+            publishScreenRects();
             break;
 
         case WM_SYSCOMMAND: {
@@ -2003,6 +2041,7 @@ public:
                 m_hWnd, gfx::Size(x, y));
             m_webContents->resize(viewportSize.width(), viewportSize.height(),
                 display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
+            publishScreenRects();
 
             ::EnterCriticalSection(&m_memoryCanvasLock);
             m_contentsSize.cx = x;
@@ -2125,6 +2164,8 @@ public:
             POINT pt;
             pt.x = GET_X_LPARAM(lParam);
             pt.y = GET_Y_LPARAM(lParam);
+            const gfx::PointF screenPoint = display::win::ScreenWin::ScreenToDIPPoint(
+                gfx::PointF(pt.x, pt.y));
 
             if (pt.x != -1 && pt.y != -1)
                 ::ScreenToClient(hWnd, &pt);
@@ -2143,7 +2184,8 @@ public:
             if (wParam & MK_RBUTTON)
                 flags |= MINI_ELECTRON_RBUTTON;
 
-            m_webContents->sendWindowsMouseEvent(WM_CONTEXTMENU, pt.x, pt.y, flags);
+            m_webContents->sendWindowsMouseEvent(
+                WM_CONTEXTMENU, pt.x, pt.y, screenPoint.x(), screenPoint.y(), flags);
             break;
         }
         case WM_MOUSEWHEEL:
@@ -2153,6 +2195,8 @@ public:
             POINT pt;
             pt.x = GET_X_LPARAM(lParam);
             pt.y = GET_Y_LPARAM(lParam);
+            const gfx::PointF screenPoint = display::win::ScreenWin::ScreenToDIPPoint(
+                gfx::PointF(pt.x, pt.y));
             ::ScreenToClient(hWnd, &pt);
 
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -2184,7 +2228,7 @@ public:
             if (target) {
                 // Input stays in physical pixels; the renderer applies its DSF.
                 target->sendWindowsMouseEvent(
-                    message, targetX, targetY, flags, delta);
+                    message, targetX, targetY, screenPoint.x(), screenPoint.y(), flags, delta);
             }
             break;
         }
@@ -2259,6 +2303,7 @@ public:
                 if (view)
                     view->onParentScaleFactorChanged();
             }
+            publishScreenRects();
             rebuildDraggableRegion();
             invalidateCaptionButtons();
             return 0;
@@ -2956,7 +3001,9 @@ private:
 
     void setPositionApi(int x, int y)
     {
-        ::SetWindowPos(m_hWnd, nullptr, x, y, 0, 0,
+        const gfx::Point position =
+            display::win::ScreenWin::DIPToScreenPoint(gfx::Point(x, y));
+        ::SetWindowPos(m_hWnd, nullptr, position.x(), position.y(), 0, 0,
             SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
@@ -2964,8 +3011,9 @@ private:
     {
         RECT rect = { 0 };
         ::GetWindowRect(m_hWnd, &rect);
-        std::vector<int> pos = { rect.left, rect.top };
-        return pos;
+        const gfx::Rect bounds =
+            display::win::ScreenWin::ScreenToDIPRect(m_hWnd, gfx::Rect(rect));
+        return { bounds.x(), bounds.y() };
     }
 
     void setTitleApi(const std::string& title)
@@ -3614,6 +3662,7 @@ private:
         m_webContents->resize(viewportSize.width(), viewportSize.height(),
             display::win::ScreenWin::GetScaleFactorForHWND(hWnd));
         updateVSyncDisplay();
+        publishScreenRects();
         rebuildDraggableRegion();
         m_webContents->setFocus(createWindowParam->isFocusable);
         //setIcon(m_hWnd);

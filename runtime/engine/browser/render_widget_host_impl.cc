@@ -149,6 +149,18 @@ void RenderWidgetHostImpl::allowResize()
         m_engineWebView->updataBlinkSize();
 }
 
+void RenderWidgetHostImpl::setScreenRects(const gfx::Rect& widget_screen_rect,
+    const gfx::Rect& window_screen_rect)
+{
+    m_widgetScreenRect = widget_screen_rect;
+    m_windowScreenRect = window_screen_rect;
+    m_hasExplicitScreenRects = true;
+    if (m_webWiew && m_webWiew->MainFrameWidget()) {
+        m_webWiew->MainFrameWidget()->SetScreenRects(
+            m_widgetScreenRect, m_windowScreenRect);
+    }
+}
+
 void RenderWidgetHostImpl::resizeOnBlinkThread(int w, int h)
 {
     if (!m_sinkClient)
@@ -188,9 +200,15 @@ void RenderWidgetHostImpl::resizeOnBlinkThread(int w, int h)
     if (m_blinkWidget.get())
         m_blinkWidget->UpdateVisualProperties(m_visualProperties);
 
-    if (m_webWiew) {
-        gfx::Rect widgetScreenRect(dip_size);
-        m_webWiew->MainFrameWidget()->SetScreenRects(widgetScreenRect, widgetScreenRect);
+    if (m_hasExplicitScreenRects) {
+        m_widgetScreenRect.set_size(dip_size);
+    } else {
+        m_widgetScreenRect = gfx::Rect(dip_size);
+        m_windowScreenRect = m_widgetScreenRect;
+    }
+    if (m_webWiew && m_webWiew->MainFrameWidget()) {
+        m_webWiew->MainFrameWidget()->SetScreenRects(
+            m_widgetScreenRect, m_windowScreenRect);
     }
     m_sinkHost->resizeOnBlinkThread(pixel_size, dsf);
 }

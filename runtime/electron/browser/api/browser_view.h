@@ -37,8 +37,10 @@ public:
 
     void attachBrowserWindow(HWND hWnd);
     void detachBrowserWindow();
-    void handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent, unsigned int flags);
+    void handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent,
+        double screenX, double screenY, unsigned int flags);
     void onParentScaleFactorChanged();
+    void updateScreenRects();
     // WindowInterface
     bool isClosed() override;
     void close() override;

@@ -430,7 +430,7 @@ bool IsBrowserToRendererMethod(const std::string& method)
 #endif
     static constexpr std::string_view kMethods[] = {
         "navigate", "stop", "reload", "goBack", "goForward", "goToOffset",
-        "goToIndex", "setViewport", "setFocus", "input", "ipc-message",
+        "goToIndex", "setViewport", "setScreenRects", "setFocus", "input", "ipc-message",
         "executeJavaScript", "insertCSS", "removeInsertedCSS", "capturePage", "copyImageAt",
         "setUserAgent", "setZoomLevel", "setVisualZoomLevelLimits",
         "setLayoutZoomLevelLimits", "setIgnoreMenuShortcuts", "set-background-color", "invalidate",

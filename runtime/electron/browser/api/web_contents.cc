@@ -144,13 +144,15 @@ bool ReadFile(const std::string& filename, std::string* source)
 
 #if defined(_WIN32)
 base::Value::Dict InputFromWindows(const char* type, unsigned message, int x, int y,
-    unsigned flags, int delta)
+    double screenX, double screenY, unsigned flags, int delta)
 {
     base::Value::Dict event;
     event.Set("type", type);
     event.Set("nativeMessage", static_cast<int>(message));
     event.Set("x", x);
     event.Set("y", y);
+    event.Set("screenX", screenX);
+    event.Set("screenY", screenY);
     event.Set("modifiers", static_cast<int>(flags));
     if (delta)
         event.Set(message == WM_MOUSEHWHEEL ? "deltaX" : "deltaY", delta);
@@ -954,6 +956,47 @@ void WebContents::resize(int width, int height, double scale_factor)
         m_viewport_scale = scale_factor;
     }
 }
+#if BUILDFLAG(IS_WIN)
+void WebContents::setScreenRects(const gfx::Rect& widget_screen_rect,
+    const gfx::Rect& window_screen_rect)
+{
+    if (!isAlive() || widget_screen_rect.IsEmpty() || window_screen_rect.IsEmpty())
+        return;
+    if (!m_screen_rects_valid || widget_screen_rect != m_widget_screen_rect
+        || window_screen_rect != m_window_screen_rect) {
+        base::Value::Dict params;
+        params.Set("widgetX", widget_screen_rect.x());
+        params.Set("widgetY", widget_screen_rect.y());
+        params.Set("widgetWidth", widget_screen_rect.width());
+        params.Set("widgetHeight", widget_screen_rect.height());
+        params.Set("windowX", window_screen_rect.x());
+        params.Set("windowY", window_screen_rect.y());
+        params.Set("windowWidth", window_screen_rect.width());
+        params.Set("windowHeight", window_screen_rect.height());
+        if (!m_renderer->Send("setScreenRects", std::move(params)))
+            return;
+        m_widget_screen_rect = widget_screen_rect;
+        m_window_screen_rect = window_screen_rect;
+        m_screen_rects_valid = true;
+    }
+
+    for (int guest_id : m_guest_ids) {
+        WebContents* guest = fromId(guest_id);
+        const auto bounds = m_guest_bounds.find(guest_id);
+        if (!guest || guest->m_host != this || bounds == m_guest_bounds.end()
+            || bounds->second.IsEmpty()) {
+            continue;
+        }
+        const gfx::Rect& logical = bounds->second;
+        guest->setScreenRects(
+            gfx::Rect(widget_screen_rect.x() + logical.x(),
+                widget_screen_rect.y() + logical.y(),
+                logical.width(), logical.height()),
+            window_screen_rect);
+    }
+}
+#endif
+
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 void WebContents::setVSyncDisplayId(int64_t display_id)
@@ -1126,7 +1169,8 @@ bool WebContents::sendNativeFileDrag(base::Value::Dict event,
 }
 
 #if defined(_WIN32)
-void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta)
+void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y,
+    double screenX, double screenY, unsigned flags, int delta)
 {
     if (!isAlive())
         return;
@@ -1141,7 +1185,7 @@ void WebContents::sendWindowsMouseEvent(unsigned message, int x, int y, unsigned
     case WM_CONTEXTMENU: type = "contextMenu"; break;
     default: break;
     }
-    sendInput(InputFromWindows(type, message, x, y, flags, delta));
+    sendInput(InputFromWindows(type, message, x, y, screenX, screenY, flags, delta));
 }
 #endif
 
@@ -1284,6 +1328,10 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
             if (guest && guest->m_host == this)
                 guest->setVisible(m_visible && bounds != m_guest_bounds.end()
                     && !bounds->second.IsEmpty());
+#if BUILDFLAG(IS_WIN)
+            if (m_screen_rects_valid)
+                setScreenRects(m_widget_screen_rect, m_window_screen_rect);
+#endif
             m_observers.Notify(&WebContentsObserver::onWebContentsPaint, this, gfx::Rect());
         }
     }
@@ -1328,6 +1376,10 @@ bool WebContents::attachGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
         params.FindInt("x").value_or(0), params.FindInt("y").value_or(0),
         params.FindInt("width").value_or(1), params.FindInt("height").value_or(1));
     guest->setVisible(m_visible && !m_guest_bounds[guest_id].IsEmpty());
+#if BUILDFLAG(IS_WIN)
+    if (m_screen_rects_valid)
+        setScreenRects(m_widget_screen_rect, m_window_screen_rect);
+#endif
     #endif
     return m_renderer->Send("guest.attach", std::move(params));
 }

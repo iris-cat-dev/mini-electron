@@ -111,6 +111,8 @@ void BrowserView::_setBoundsApi(int x, int y, int w, int h)
 
     if (m_webContents && w > 0 && h > 0)
         m_webContents->resize(w, h, scale);
+    if (attached)
+        updateScreenRects();
     if (::IsWindow(m_hWnd)) {
         ::InvalidateRect(m_hWnd, &oldBounds, FALSE);
         ::InvalidateRect(m_hWnd, &clientBounds, FALSE);
@@ -225,6 +227,24 @@ void BrowserView::detachBrowserWindow()
         m_state = WindowUninited;
 }
 
+void BrowserView::updateScreenRects()
+{
+    if (!m_webContents || !::IsWindow(m_hWnd))
+        return;
+    RECT window;
+    if (!::GetWindowRect(m_hWnd, &window))
+        return;
+    const RECT bounds = getClientRect();
+    POINT widget_origin = { bounds.left, bounds.top };
+    if (!::ClientToScreen(m_hWnd, &widget_origin))
+        return;
+    const gfx::Rect widget_pixels(widget_origin.x, widget_origin.y,
+        bounds.right - bounds.left, bounds.bottom - bounds.top);
+    m_webContents->setScreenRects(
+        display::win::ScreenWin::ScreenToDIPRect(m_hWnd, widget_pixels),
+        display::win::ScreenWin::ScreenToDIPRect(m_hWnd, gfx::Rect(window)));
+}
+
 void BrowserView::onParentScaleFactorChanged()
 {
     if (!m_webContents || !::IsWindow(m_hWnd))
@@ -246,6 +266,7 @@ void BrowserView::onParentScaleFactorChanged()
     ::LeaveCriticalSection(&m_rectLock);
     if (width > 0 && height > 0)
         m_webContents->resize(width, height, scale);
+    updateScreenRects();
     ::InvalidateRect(m_hWnd, nullptr, FALSE);
 }
 
@@ -293,13 +314,14 @@ void BrowserView::onWebContentsDeleted(WebContents* contents)
         ::InvalidateRect(parent, &bounds, FALSE);
 }
 
-void BrowserView::handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent, unsigned int flags)
+void BrowserView::handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent,
+    double screenX, double screenY, unsigned int flags)
 {
     if (!m_webContents)
         return;
     RECT r = getClientRect();
     m_webContents->sendWindowsMouseEvent(
-        message, xInParent - r.left, yInParent - r.top, flags);
+        message, xInParent - r.left, yInParent - r.top, screenX, screenY, flags);
 }
 
 bool BrowserView::isClosed()

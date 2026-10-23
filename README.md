@@ -960,11 +960,25 @@ Native close transitions to the destroyed state before `closed` listeners run;
 `isDestroyed()` reports that state rather than retaining a live-window result.
 
 The Windows host declares Per-Monitor V2 DPI awareness and initializes its native
-screen before creating the first window. Window and viewport sizes remain in DIP;
+screen before creating the first window. Window bounds/positions and viewport sizes remain in DIP;
 Viz renders physical pixels at the window's device scale; native textures and
-CPU fallback bitmaps are presented 1:1. Native mouse coordinates stay in device
-pixels until Blink applies that scale. Page zoom is independent of display
-scaling; factor/level conversion preserves `setZoomFactor(1)` as a true reset.
+CPU fallback bitmaps are presented 1:1. Native mouse **widget** coordinates stay in
+device pixels until Blink applies that scale. Native **screen** coordinates are
+snapshotted in the browser process and converted to desktop DIP before crossing
+the renderer boundary; pointer, mouse, and wheel events retain that snapshot even
+if application code moves the window while input is queued. Page zoom is
+independent of display scaling; factor/level conversion preserves
+`setZoomFactor(1)` as a true reset.
+
+The Windows coordinate fix for [issue #7](https://github.com/iris-cat-dev/mini-electron/issues/7)
+also publishes distinct native client/widget and outer-window screen rectangles
+on creation, move-only updates, resize, display/DPI changes, and maximize/restore.
+Renderer resize must not reset their origins to zero. BrowserViews and embedded
+guests retain the host outer window rectangle and their own widget origin.
+`setPosition()` converts desktop DIP to native screen pixels, and `getPosition()`
+converts back using the window's display, consistently with `getBounds()`.
+OMP Desktop's restore-drag logic requires these desktop coordinates; substituting
+client coordinates creates a position feedback loop rather than a valid drag.
 
 Native Windows wheel input preserves partial and multiple 120-unit notches.
 Vertical lines and horizontal characters follow `SPI_GETWHEELSCROLLLINES` and
@@ -1071,6 +1085,7 @@ MINI_ELECTRON_DISABLE_GPU=1 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_EXPE
 ./out/windows-x64/mini-electron.exe --app=test/windows-restore-presentation-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-companion-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-screen-coordinates-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/windows-pointer-screen-coordinates-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/same-document-navigation-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-pointer-interaction-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-image-preview-smoke.js
@@ -1083,6 +1098,29 @@ and send real keyboard, pointer, and OLE input. Clipboard-mutating tests snapsho
 and restore the original clipboard, refusing formats that cannot be preserved losslessly.
 The caption, hover-presentation, restore-presentation, companion, screen-coordinate,
 navigation, pointer, image-preview, and composition-color regressions never read or change clipboard content.
+The pointer-screen-coordinate regression uses a separate PID/HWND-guarded native
+message helper. It compares trusted DOM coordinates with native `ClientToScreen`
+and window geometry, including negative/positive positions and non-100% DPI.
+It does not send global physical input or change display/input settings.
+Set `MINI_POINTER_SCREEN_COORDINATES_RESULT` to retain its structured evidence.
+
+Local issue-7 verification on Windows at 150% scaling passed 55 native-window/DOM
+checks in default GPU and single-process software modes, including move-only,
+negative/positive positions, resize, maximize/restore, framed client offsets,
+BrowserView input, pointer capture/release, and position API DIP roundtrips.
+A separately authorized physical-input fixture reused OMP Desktop 0.5.2's actual
+drag hook, WindowChromeProvider, preload, and window-manager handlers without a
+daemon or application workaround. Four held movements produced 100 actual
+position updates with the installed 0.1.22 runtime; 49 adjacent updates moved the
+window while the cursor was unchanged. The local fix produced nine updates and
+zero stationary-cursor feedback pairs. Native button/capture state stayed held
+through all ten stationary samples; one press/capture/release/capture-loss sequence
+was observed. Normal native dragging also preserved the physical pointer delta,
+and input cleanup restored the cursor and released the button.
+This is a local unreleased-runtime check, not a full installed-application run.
+Only one 150%-scale display was available: cross-display mixed-DPI transitions
+and physical negative-origin monitors remain unverified.
+
 The editor and composition-color regressions
 require Microsoft Pinyin already selected. The editor regression samples active/inactive
 selection pixels, decodes pasted image Files, and checks native/DOM caret geometry,

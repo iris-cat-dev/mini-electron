@@ -133,6 +133,10 @@ public:
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options);
     void resize(int width, int height, double scale_factor = 1.0);
+#if BUILDFLAG(IS_WIN)
+    void setScreenRects(const gfx::Rect& widget_screen_rect,
+        const gfx::Rect& window_screen_rect);
+#endif
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayId(int64_t display_id);
 #endif
@@ -141,7 +145,8 @@ public:
     // explicit backgroundThrottling:false preference or a first-frame lease.
     void setVisible(bool visible);
     bool sendInput(base::Value::Dict event);
-    void sendWindowsMouseEvent(unsigned message, int x, int y, unsigned flags, int delta = 0);
+    void sendWindowsMouseEvent(unsigned message, int x, int y,
+        double screenX, double screenY, unsigned flags, int delta = 0);
     // Browser-native drag input. Native paths are canonicalized and replaced
     // with Session capabilities before crossing into the renderer.
     bool sendNativeFileDrag(base::Value::Dict event,
@@ -294,6 +299,9 @@ private:
     mutable std::vector<uint8_t> m_windowsPaintPixels;
     mutable uint64_t m_windowsPaintPixelsGeneration = 0;
     mutable bool m_windowsPaintNeedsFullRepaint = false;
+    gfx::Rect m_widget_screen_rect;
+    gfx::Rect m_window_screen_rect;
+    bool m_screen_rects_valid = false;
 #endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;

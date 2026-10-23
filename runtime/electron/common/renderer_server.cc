@@ -1701,6 +1701,41 @@ private:
                 });
             }
             Reply(request_id);
+        } else if (method == "setScreenRects") {
+            const std::optional<int> widget_x = params.FindInt("widgetX");
+            const std::optional<int> widget_y = params.FindInt("widgetY");
+            const std::optional<int> widget_width = params.FindInt("widgetWidth");
+            const std::optional<int> widget_height = params.FindInt("widgetHeight");
+            const std::optional<int> window_x = params.FindInt("windowX");
+            const std::optional<int> window_y = params.FindInt("windowY");
+            const std::optional<int> window_width = params.FindInt("windowWidth");
+            const std::optional<int> window_height = params.FindInt("windowHeight");
+            constexpr int kMaxCoordinate = 1 << 24;
+            constexpr int kMaxDimension = 1 << 20;
+            if (!widget_x || !widget_y || !widget_width || !widget_height
+                || !window_x || !window_y || !window_width || !window_height
+                || *widget_x < -kMaxCoordinate || *widget_x > kMaxCoordinate
+                || *widget_y < -kMaxCoordinate || *widget_y > kMaxCoordinate
+                || *window_x < -kMaxCoordinate || *window_x > kMaxCoordinate
+                || *window_y < -kMaxCoordinate || *window_y > kMaxCoordinate
+                || *widget_width <= 0 || *widget_width > kMaxDimension
+                || *widget_height <= 0 || *widget_height > kMaxDimension
+                || *window_width <= 0 || *window_width > kMaxDimension
+                || *window_height <= 0 || *window_height > kMaxDimension) {
+                Reply(request_id, {}, "invalid screen rects");
+                return;
+            }
+            const gfx::Rect widget_rect(
+                *widget_x, *widget_y, *widget_width, *widget_height);
+            const gfx::Rect window_rect(
+                *window_x, *window_y, *window_width, *window_height);
+            PostBlink([this, widget_rect, window_rect] {
+                if (!closing_) {
+                    if (content::WebViewHost* view = View())
+                        view->setScreenRects(widget_rect, window_rect);
+                }
+            });
+            Reply(request_id);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         } else if (method == "setVSyncDisplayId") {
             int64_t display_id = -1;
@@ -2551,6 +2586,13 @@ private:
         int x = event.FindInt("x").value_or(0);
         int y = event.FindInt("y").value_or(0);
         int flags = event.FindInt("modifiers").value_or(0);
+#if BUILDFLAG(IS_WIN)
+        std::optional<gfx::PointF> screenPosition;
+        const auto screenX = event.FindDouble("screenX");
+        const auto screenY = event.FindDouble("screenY");
+        if (screenX && screenY)
+            screenPosition = gfx::PointF(*screenX, *screenY);
+#endif
         int guest_id = HitTestGuest(x, y, *type);
         if (guest_id) {
             base::Value::Dict payload;
@@ -2624,6 +2666,18 @@ private:
                     event.FindDouble("deltaX").value_or(0),
                     event.FindDouble("deltaY").value_or(0), flags);
 #endif
+#if BUILDFLAG(IS_WIN)
+            if (screenPosition) {
+                content::WebViewHost* view = View();
+                if (!view)
+                    return false;
+                view->onWheelEvent(x, y,
+                    static_cast<int>(std::lround(event.FindDouble("deltaX").value_or(0))),
+                    static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0))),
+                    flags, screenPosition);
+                return true;
+            }
+#endif
             return !!mini_electron_fire_mouse_wheel_event(view_, x, y,
                 static_cast<int>(std::lround(event.FindDouble("deltaX").value_or(0))),
                 static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0))), flags);
@@ -2677,6 +2731,13 @@ private:
                 break;
             default:
                 break;
+            }
+            if (screenPosition) {
+                content::WebViewHost* view = View();
+                if (!view)
+                    return false;
+                view->onMouseMessage(message, x, y, flags, screenPosition);
+                return true;
             }
 #endif
             return !!mini_electron_fire_mouse_event(view_, message, x, y, flags);

@@ -27,6 +27,7 @@
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom-blink.h"
 #include "components/viz/common/surfaces/child_local_surface_id_allocator.h"
+#include "ui/gfx/geometry/rect.h"
 
 #if defined(OS_WIN)
 #include "ui/display/win/screen_win.h"
@@ -86,6 +87,8 @@ public:
         ::mojo::PendingAssociatedReceiver<::blink::mojom::blink::WidgetHost> blinkWidgetHost,
         ::mojo::PendingAssociatedRemote<::blink::mojom::blink::Widget> blinkWidget);
     void resizeOnBlinkThread(int w, int h);
+    void setScreenRects(const gfx::Rect& widget_screen_rect,
+        const gfx::Rect& window_screen_rect);
     void setDeviceScaleFactor(float device_scale_factor);
     float deviceScaleFactor() const;
 
@@ -260,6 +263,9 @@ public:
     viz::FrameSinkId m_frameSinkId;
 
     ::blink::VisualProperties m_visualProperties;
+    gfx::Rect m_widgetScreenRect;
+    gfx::Rect m_windowScreenRect;
+    bool m_hasExplicitScreenRects = false;
 
     WebViewHost* m_engineWebView = nullptr;
 

@@ -523,6 +523,10 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
 
     setDefaultPreferences((blink::WebViewImpl*)webWiew);
     m_renderWidgetHostImpl->m_webFrameWidget = webFrameWidget;
+    if (!m_windowScreenRect.IsEmpty()) {
+        m_renderWidgetHostImpl->setScreenRects(
+            m_widgetScreenRect, m_windowScreenRect);
+    }
 
     webWiew->DidAttachLocalMainFrame();
 
@@ -1179,6 +1183,17 @@ void WebViewHost::setDeviceScaleFactor(float device_scale_factor)
 
 
 
+void WebViewHost::setScreenRects(const gfx::Rect& widget_screen_rect,
+    const gfx::Rect& window_screen_rect)
+{
+    m_widgetScreenRect = widget_screen_rect;
+    m_windowScreenRect = window_screen_rect;
+    if (m_renderWidgetHostImpl) {
+        m_renderWidgetHostImpl->setScreenRects(
+            widget_screen_rect, window_screen_rect);
+    }
+}
+
 // in ui thread
 void WebViewHost::onResize(int w, int h, bool needSetHostWnd)
 {
@@ -1271,7 +1286,8 @@ void WebViewHost::onImeText(const std::u16string& text, bool committed)
     }, id, text, committed));
 }
 
-void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned int flags)
+void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned int flags,
+    std::optional<gfx::PointF> screenPosition)
 {
     if (!m_enableMouseKeyMessage)
         return;
@@ -1300,7 +1316,7 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
     bool needCommit = true;
     ::EnterCriticalSection(&m_mouseMsgQueueLock);
     needCommit = m_mouseMsgQueue.size() == 0;
-    m_mouseMsgQueue.push_back(new MouseMsg(message, x, y, flags));
+    m_mouseMsgQueue.push_back(new MouseMsg(message, x, y, flags, screenPosition));
     ::LeaveCriticalSection(&m_mouseMsgQueueLock);
 
     if (!needCommit)
@@ -1328,7 +1344,8 @@ void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event)
         m_platformEventHandler->fireInputEventToCompositingThread(event);
 }
 
-void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags)
+void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags,
+    std::optional<gfx::PointF> screenPosition)
 {
     if (!m_platformEventHandler)
         return;
@@ -1337,7 +1354,7 @@ void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned in
         modifiers |= blink::WebInputEvent::kShiftKey;
     if (flags & MINI_ELECTRON_CONTROL)
         modifiers |= blink::WebInputEvent::kControlKey;
-    m_platformEventHandler->fireWheelEvent(x, y, deltaX, deltaY, modifiers);
+    m_platformEventHandler->fireWheelEvent(x, y, deltaX, deltaY, modifiers, screenPosition);
 }
 
 void WebViewHost::onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
@@ -1419,10 +1436,10 @@ void WebViewHost::delayDoMouseMsgInCompositorThread()
     for (; it != m_mouseMsgQueue.rend(); ++it) {
         mouseMsg = *it;
         if (WM_MOUSEMOVE != (*it)->message) {
-            mouseMsgQueue.push_back(new MouseMsg(mouseMsg->message, mouseMsg->x, mouseMsg->y, mouseMsg->flags));
+            mouseMsgQueue.push_back(new MouseMsg(*mouseMsg));
         } else if (!hasMouseMove) {
             hasMouseMove = true;
-            mouseMsgQueue.push_back(new MouseMsg(mouseMsg->message, mouseMsg->x, mouseMsg->y, mouseMsg->flags));
+            mouseMsgQueue.push_back(new MouseMsg(*mouseMsg));
         }
         delete mouseMsg;
     }
@@ -1458,6 +1475,7 @@ void WebViewHost::delayDoMouseMsgInCompositorThread()
             (mouseMsg->flags & MINI_ELECTRON_CONTROL ? blink::WebInputEvent::kControlKey : 0) |
             (mouseMsg->flags & MINI_ELECTRON_META ? blink::WebInputEvent::kMetaKey : 0) |
             (mouseMsg->flags & MINI_ELECTRON_ALT ? blink::WebInputEvent::kAltKey : 0);
+        info.screenPosition = mouseMsg->screenPosition;
         if (m_platformEventHandler.get())
             m_platformEventHandler->fireMouseEvent(m_hWnd, mouseMsg->message, wParam, lParam, info, &handled);
 

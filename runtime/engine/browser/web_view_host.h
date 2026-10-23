@@ -7,6 +7,7 @@
 #include "runtime/engine/viz/viz_host.h"
 #include "runtime/engine/browser/page_nav_controller.h"
 #include "ui/gfx/native_widget_types.h"
+#include "ui/gfx/geometry/rect.h"
 #include "ui/base/cursor/cursor.h"
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "ui/display/types/display_constants.h"
@@ -158,9 +159,11 @@ public:
         mini_electron_web_frame_handle frameId, int worldId, std::string* scriptString, BOOL isInClosure, mini_electron_run_js_callback callback, void* param);
 
     LRESULT fireWheelEventOnUiThread(UINT message, WPARAM wParam, LPARAM lParam);
-    void onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags);
+    void onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags,
+        std::optional<gfx::PointF> screenPosition = std::nullopt);
     void onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
-    void onMouseMessage(unsigned int message, int x, int y, unsigned int flags);
+    void onMouseMessage(unsigned int message, int x, int y, unsigned int flags,
+        std::optional<gfx::PointF> screenPosition = std::nullopt);
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyDown(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyPress(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
@@ -228,6 +231,8 @@ public:
 
     void onResize(int w, int h, bool needSetHostWnd);
     void setDeviceScaleFactor(float device_scale_factor);
+    void setScreenRects(const gfx::Rect& widget_screen_rect,
+        const gfx::Rect& window_screen_rect);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     // Blink-thread only; retained until compositor initialization if necessary.
     // Windows stores an HMONITOR reinterpreted as int64_t.
@@ -320,6 +325,8 @@ private:
 #endif
     std::unique_ptr<RenderWidgetHostImpl> m_renderWidgetHostImpl;
     std::unique_ptr<PlatformEventHandler> m_platformEventHandler;
+    gfx::Rect m_widgetScreenRect;
+    gfx::Rect m_windowScreenRect;
 
     WebLocalFrameClientImpl* m_frameClient = nullptr;
 
@@ -364,27 +371,18 @@ private:
 
     CRITICAL_SECTION m_mouseMsgQueueLock;
     struct MouseMsg {
-        MouseMsg(const MouseMsg& other)
-        {
-            init(other.message, other.x, other.y, other.flags);
-        }
+        MouseMsg(const MouseMsg& other) = default;
 
-        MouseMsg(unsigned int message, int x, int y, unsigned int flags)
+        MouseMsg(unsigned int message, int x, int y, unsigned int flags,
+            std::optional<gfx::PointF> screenPosition)
+            : message(message), x(x), y(y), flags(flags), screenPosition(screenPosition)
         {
-            init(message, x, y, flags);
-        }
-
-        void init(unsigned int message, int x, int y, unsigned int flags)
-        {
-            this->message = message;
-            this->x = x;
-            this->y = y;
-            this->flags = flags;
         }
         unsigned int message;
         int x;
         int y;
         unsigned int flags;
+        std::optional<gfx::PointF> screenPosition;
     };
     std::list<MouseMsg*> m_mouseMsgQueue;
 
