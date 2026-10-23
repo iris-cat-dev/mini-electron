@@ -7,6 +7,70 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### Windows runtime 0.1.22
+
+This release publishes Windows x64 assets only. The macOS release/channel and
+npm installer `0.1.12` are unchanged. It includes the shared `v0.1.20`/`0.1.21`
+crash hardening and the Windows source-review fixes below.
+
+- Invalid window options and WebContents adoption are rejected before allocating
+  a native window. Argument-type diagnostics use the calling V8 isolate, and
+  native Mojo handle transfer no longer unconditionally enters a V8 stack tracer.
+- Alternate Mojo dispatch validates message headers before delivery and preserves
+  transferred-handle ownership. Closed Blob/BytesProvider endpoints complete
+  without dereferencing a missing receiver or waiting indefinitely.
+- Frame hosts resolve the live view and exact Blink frame token, including during
+  frame creation, instead of retaining detached frame-client pointers.
+- WebContents uses mutation-safe observer notification and retains its wrapper
+  during renderer-event dispatch. A `ready-to-show` callback can synchronously
+  destroy its window without invalidating an active observer iterator.
+- Hidden startup painting is separate from `ready-to-show` delivery. Navigation
+  painting stays leased through its matching commit/paint; unattached BrowserViews
+  start logically hidden before Blink creation rather than briefly starting a
+  rendering clock.
+- D3D12 and Metal offscreen outputs let Viz derive the Display size from the
+  submitted root frame before its damage. Resizing only after the frame's ACK
+  could leave a static page and its capture permanently using the old backing.
+- The build uses the canonical serializers, generated providers and bundled
+  dependency implementations rather than duplicate partial providers. Reviewed
+  entrypoints without a real backend still fail explicitly.
+
+The stamped `0.1.22` distribution was rebuilt with
+`python build.py --jobs 12 --package-dist` and passed 22 actual packaged-runtime
+executions across both process modes, including Notification lifecycle checks.
+The published npm `0.1.12` installer consumed the assembled release locally,
+verified its inventory, and ran native version/ABI and reentrant-event checks.
+The release candidate's real D3D12 desktop window was also inspected. Candidate
+and installer evidence is under `out/verification/runtime-release-0.1.22/`.
+
+The following source-review results precede the `0.1.22` release version stamp.
+
+On Windows 10 x64 build 19045, `python build.py --jobs 12` completed the native
+incremental build, link and staging. This reused cached target libraries; it was
+not a clean-room rebuild. The staged `out/windows-x64/stage/mini-electron.exe`
+then passed 24 actual process executions across default sandboxed-renderer and
+`--single-process` modes, with every exit code checked. Coverage includes
+constructor/type failures, reentrant native events, WebCrypto vectors, Blink
+core APIs, HTTP/blob uploads, generated downloads, iframe focus/detachment,
+fullscreen, startup/visibility and WebGL pixel correctness. Static WebGL windows
+were resized through `720x460`, `640x420` and `560x400`; captures had the exact
+backing dimensions and retained the expected resource/alpha/worker pixels.
+Each process mode also completed 20 window/BrowserView lifecycle, reload,
+hide/show and capture cycles with no reported renderer loss. A real desktop
+lifecycle screenshot was inspected.
+
+Five console programs were separately compiled, linked against the production
+libraries and executed: Mojo ownership/validation/upload sequencing, closed
+Blob/BytesProvider endpoints, Skia mesh resource lifetime, Snappy/RE2 boundaries,
+and native audio resampling/channel scaling. Evidence, before-fix failures,
+native exit codes, binary hashes and screenshots are retained under
+`out/verification/crash-review-0.1.20/`.
+
+This review did not rebuild or run macOS/AppKit, exercise an
+`ENABLE_BASE_TRACING=1` configuration, or rerun the original packaged OMP Desktop.
+The current-source Windows GPU checks used D3D12, not the software compositor.
+These finite checks are not proof of indefinite crash freedom or leak freedom.
+
 ### macOS runtime 0.1.21
 
 This macOS arm64 release focuses on crash safety, not broader API coverage.
@@ -39,8 +103,8 @@ The unmodified OMP Desktop 0.5.2 main/frontend and real daemon also ran for
 and two real new-window/close cycles. No renderer loss or renderer-console errors
 were observed; initial/final native screenshots were inspected and the owned
 daemon shut down cleanly. This finite workload is not a leak-freedom proof.
-These checks do not prove indefinite uptime. Windows native verification remains
-deferred to a real Windows environment.
+These checks do not prove indefinite uptime. The Windows crash review above is
+separate from this published macOS acceptance.
 Full HTTP Permissions-Policy propagation is not established by this acceptance:
 the current native path reports the tested features allowed despite a denying
 response header. This change does not claim to complete that browser capability
@@ -127,8 +191,8 @@ runtime `0.1.16`; the npm installer remains `0.1.12`.
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned installs select Windows runtime `0.1.18` or macOS runtime
-`0.1.21` through separate channels.
+independent. Unpinned Windows installs select runtime `0.1.22`; the macOS release
+and its independent channel are not changed by this Windows update.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.12
@@ -196,7 +260,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` installs Windows `0.1.18` and macOS `0.1.21`.
+  For example, npm `0.1.12` can install Windows `0.1.22` or macOS `0.1.21`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -214,18 +278,18 @@ npx mini-electron --update-runtime
 # Pin the macOS runtime:
 npx mini-electron --update-runtime 0.1.21
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.18
+npx mini-electron --update-runtime 0.1.22
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.18` for Windows; `0.1.21` for macOS):
+(`0.1.22` for Windows; `0.1.21` for macOS):
 
 ```sh
 # macOS arm64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.21 npm ci
 # Windows x64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.18 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.22 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
