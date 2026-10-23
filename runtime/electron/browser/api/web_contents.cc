@@ -15,7 +15,9 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "net/base/filename_util.h"
+#if defined(_WIN32)
 #include "runtime/electron/browser/api/app.h"
+#endif
 #include "runtime/electron/browser/api/session.h"
 #include "runtime/electron/browser/api/window_interface.h"
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
@@ -259,6 +261,7 @@ WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary op
         return nullptr;
     self->m_owner = owner;
     self->m_live_self.Reset(isolate, object);
+#if defined(_WIN32)
     v8::TryCatch creation_handler_exception(isolate);
     if (App::getInstance())
         App::getInstance()->emit("web-contents-created", object);
@@ -274,6 +277,7 @@ WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary op
         creation_handler_exception.ReThrow();
         return nullptr;
     }
+#endif
     return self->isDestroyedApi() ? nullptr : self;
 }
 

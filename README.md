@@ -27,6 +27,9 @@ Windows stays on runtime `0.1.18`; the npm installer stays on `0.1.12`:
   backends remain unavailable rather than being implemented here.
 - Disabled LCP prediction and its protobuf providers remain excluded. Legitimate
   diagnostic assertions are not blanket-disabled.
+- Windows-only App creation-event dispatch stays out of the macOS build. The
+  shared WebContents factory keeps its checked construction/lifetime guards
+  without adding a second App implementation or new macOS event coverage.
 
 Targeted macOS checks cover AppKit appearance notifications, typed Mojo lifetime
 and upload sequencing, malformed IPC rejection, actual WebCrypto vectors and
