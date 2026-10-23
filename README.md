@@ -427,6 +427,53 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+### Windows Notification lifecycle (issue #8)
+
+Source builds fix the VERSION_4 callback/temporary-tray leak reported in
+[issue #8](https://github.com/iris-cat-dev/mini-electron/issues/8).
+Notification IDs come from `HIWORD(lParam)` and events from `LOWORD(lParam)`;
+`wParam` is not an ID in this protocol. IDs stay within the 16-bit range and
+allocation skips active IDs on wraparound.
+
+The balloon host registers a valid `NIF_ICON` icon with `NIS_HIDDEN`, negotiates
+VERSION_4, then submits the balloon. A rejected version or balloon submission
+deletes the temporary icon and emits `failed`, rather than assuming negotiation
+succeeded. Custom balloon icons use `NIIF_LARGE_ICON` and the system icon
+dimensions, including DPI; any resized handle is released after submission.
+Timeout/hide delete the temporary icon and emit `close`; click deletes it and
+emits `click` followed by `close`. Explicit `close()` also deletes the icon.
+Notification cleanup does not alter the application's independent `Tray`.
+See the [Microsoft notification contract](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-notifyicondataw).
+
+Run against a freshly rebuilt executable, not the installed 0.1.18 runtime:
+
+```sh
+./out/windows-x64/mini-electron.exe --app=test/windows-notification-smoke.js
+./out/windows-x64/mini-electron.exe --single-process --app=test/windows-notification-smoke.js
+# Optional: requires actual Shell delivery and natural expiration.
+./out/windows-x64/mini-electron.exe --app=test/windows-notification-smoke.js --natural-timeout
+```
+
+The regression compiles a C# helper with the system .NET Framework compiler.
+It verifies the host's PID before posting synthetic VERSION_4 callbacks and
+uses zero-flag `NIM_MODIFY` to probe registration without changing icon fields.
+`Shell_NotifyIconGetRect` alone cannot distinguish a hidden icon from a deleted
+one. It checks multiple notifications, undefined/misleading `wParam`, unknown
+and duplicate callbacks, re-show/reentrant close listeners, and resident Tray
+preservation.
+
+Local Windows 10 x64 build 19045 verification passed both process modes using a
+targeted rebuild of `notification.cc` linked with retained runtime objects and
+libraries. Active temporary icons had no tray position; terminal callbacks left
+all tested notification IDs unregistered while the resident Tray stayed
+registered. This is native Shell API evidence, not an expanded-overflow pixel
+inspection. An optional natural-expiration run did not receive a real Shell
+timeout within 120 seconds; no notification banner was observed. Synthetic
+timeout/click verification is not proof of natural delivery or a physical user
+click. Windows 11, the original packaged OMP Desktop, a full-tree rebuild, and
+a published Windows runtime were not verified for this change.
+
+
 ### safeStorage
 
 Source builds replace the fixed-key XOR backend reported in

@@ -27,6 +27,7 @@
 #include <shellapi.h>
 #include <strsafe.h>
 #include <windows.h>
+#include "base/win/scoped_gdi_object.h"
 #elif BUILDFLAG(IS_MAC)
 #include "platform/macos/electron/desktop_api_mac.h"
 #endif
@@ -42,7 +43,7 @@ namespace {
 constexpr wchar_t kNotificationWindowClass[] =
     L"MiniElectronNativeNotificationWindow";
 constexpr UINT kNotificationMessage = WM_APP + 0x3a1;
-
+constexpr UINT kMaxNotificationIdentifier = 0xffff;
 
 struct WindowsNotificationCallbacks {
     std::function<void()> shown;
@@ -73,19 +74,40 @@ public:
                 callbacks.failed("Unable to create the notification host window");
             return 0;
         }
-        const UINT identifier = next_identifier_++;
+        const UINT identifier = AllocateIdentifier();
+        if (!identifier) {
+            if (callbacks.failed)
+                callbacks.failed("Too many active native notifications");
+            return 0;
+        }
         NOTIFYICONDATAW data = {};
         data.cbSize = sizeof(data);
         data.hWnd = window_;
         data.uID = identifier;
-        data.uFlags = NIF_MESSAGE | NIF_TIP | NIF_INFO;
+        // Balloon notifications need a Shell icon, but not a visible tray item.
+        // Add it without NIF_INFO so no balloon precedes protocol negotiation.
+        data.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON | NIF_STATE;
+        data.dwState = NIS_HIDDEN;
+        data.dwStateMask = NIS_HIDDEN;
         data.uCallbackMessage = kNotificationMessage;
-        data.dwInfoFlags = icon ? NIIF_USER : NIIF_INFO;
+        data.dwInfoFlags = icon ? NIIF_USER | NIIF_LARGE_ICON : NIIF_INFO;
         if (silent)
             data.dwInfoFlags |= NIIF_NOSOUND;
-        data.uTimeout = 10000;
         data.hIcon = icon ? icon : ::LoadIconW(nullptr, IDI_APPLICATION);
-        data.hBalloonIcon = icon;
+        base::win::ScopedHICON owned_balloon_icon;
+        if (icon) {
+            // hBalloonIcon must match the system large-icon size, including DPI.
+            data.hBalloonIcon = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON,
+                ::GetSystemMetrics(SM_CXICON), ::GetSystemMetrics(SM_CYICON),
+                LR_COPYRETURNORG));
+            if (!data.hBalloonIcon) {
+                if (callbacks.failed)
+                    callbacks.failed("Unable to prepare the notification icon");
+                return 0;
+            }
+            if (data.hBalloonIcon != icon)
+                owned_balloon_icon.reset(data.hBalloonIcon);
+        }
         const std::wstring title_w(title.begin(), title.end());
         const std::wstring body_w(body.begin(), body.end());
         ::StringCchCopyW(data.szInfoTitle, std::size(data.szInfoTitle),
@@ -95,12 +117,26 @@ public:
             GetAppUserModelID());
         if (!::Shell_NotifyIconW(NIM_ADD, &data)) {
             if (callbacks.failed)
-                callbacks.failed("Windows rejected the native notification");
+                callbacks.failed("Windows rejected the notification icon registration");
             return 0;
         }
         data.uVersion = NOTIFYICON_VERSION_4;
-        ::Shell_NotifyIconW(NIM_SETVERSION, &data);
-        callbacks_.emplace(identifier, std::move(callbacks));
+        if (!::Shell_NotifyIconW(NIM_SETVERSION, &data)) {
+            DeleteIcon(identifier);
+            if (callbacks.failed)
+                callbacks.failed("Windows rejected notification callback version 4");
+            return 0;
+        }
+        auto entry = callbacks_.emplace(identifier, std::move(callbacks)).first;
+        data.uFlags = NIF_INFO;
+        if (!::Shell_NotifyIconW(NIM_MODIFY, &data)) {
+            WindowsNotificationCallbacks failed_callbacks = std::move(entry->second);
+            callbacks_.erase(entry);
+            DeleteIcon(identifier);
+            if (failed_callbacks.failed)
+                failed_callbacks.failed("Windows rejected the notification balloon");
+            return 0;
+        }
         return identifier;
     }
 
@@ -116,7 +152,7 @@ private:
         HWND window, UINT message, WPARAM wparam, LPARAM lparam)
     {
         if (message == kNotificationMessage) {
-            Get().OnNotification(static_cast<UINT>(wparam),
+            Get().OnNotification(static_cast<UINT>(HIWORD(lparam)),
                 static_cast<UINT>(LOWORD(lparam)));
             return 0;
         }
@@ -139,6 +175,19 @@ private:
         window_ = ::CreateWindowExW(0, kNotificationWindowClass, L"", 0,
             0, 0, 0, 0, HWND_MESSAGE, nullptr, window_class.hInstance, nullptr);
         return window_ != nullptr;
+    }
+
+    UINT AllocateIdentifier()
+    {
+        // VERSION_4 carries uID in HIWORD(lParam); never truncate or reuse a
+        // still-live ID when the counter wraps.
+        if (callbacks_.size() == kMaxNotificationIdentifier)
+            return 0;
+        do {
+            next_identifier_ = next_identifier_ == kMaxNotificationIdentifier
+                ? 1 : next_identifier_ + 1;
+        } while (callbacks_.find(next_identifier_) != callbacks_.end());
+        return next_identifier_;
     }
 
     void DeleteIcon(UINT identifier)
@@ -171,7 +220,7 @@ private:
     }
 
     HWND window_ = nullptr;
-    UINT next_identifier_ = 1;
+    UINT next_identifier_ = 0;
     std::map<UINT, WindowsNotificationCallbacks> callbacks_;
 };
 #endif
