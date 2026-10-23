@@ -56,6 +56,14 @@ app.whenReady().then(async () => {
   assert.deepEqual(parent.getBounds(), boundsBefore, 'unsupported operations must not resize the live window');
   assert.equal(await parent.webContents.executeJavaScript('document.title'), `mini-crash-api-${process.pid}`);
   assert.throws(() => new BrowserWindow({ parent: {}, show: false }), TypeError);
+  assert.throws(() => new BrowserWindow(null), TypeError);
+  for (const webContents of [{}, null, parent.webContents]) {
+    assert.throws(() => new BrowserWindow({ webContents, show: false }), TypeError);
+  }
+  assert.deepEqual(BrowserWindow.getAllWindows().map(window => window.id), windowsBefore,
+    'invalid options and rejected WebContents adoption must not leave registered windows');
+  const defaultWindow = new BrowserWindow(undefined);
+  defaultWindow.destroy();
   assert.throws(() => parent.setParentWindow({}), TypeError);
 
   for (const frame of [true, false]) {

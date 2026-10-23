@@ -122,8 +122,9 @@ WPARAM MouseFlags(unsigned int flags) {
 }  // namespace
 
 mini_electron_web_view mini_electron_create_web_view_with_background(
-    unsigned background_color, bool transparent) {
-  auto* view = new content::WebViewHost(false, background_color, transparent);
+    unsigned background_color, bool transparent, bool initially_visible) {
+  auto* view = new content::WebViewHost(
+      false, background_color, transparent, initially_visible);
   const mini_electron_web_view handle = view->getWebviewHandle();
   std::fprintf(stderr, "[mini-electron] mini_electron_create_web_view(%lld) -> Blink WebView task\n",
                static_cast<long long>(handle));
@@ -157,7 +158,8 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_uninit() {
 }
 
 mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view() {
-  return mini_electron_create_web_view_with_background(0xffffffff, false);
+  return mini_electron_create_web_view_with_background(
+      0xffffffff, false, true);
 }
 
 void MINI_ELECTRON_CALL_TYPE mini_electron_destroy_web_view(mini_electron_web_view handle) {

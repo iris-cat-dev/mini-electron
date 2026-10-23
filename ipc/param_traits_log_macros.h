@@ -45,10 +45,12 @@
     }
 
 #undef IPC_ENUM_TRAITS
-#define IPC_ENUM_TRAITS(enum_name)                                                                                                                             \
-    void ParamTraits<enum_name>::Log(const param_type& p, std::string* l)                                                                                      \
-    {                                                                                                                                                          \
-        LogParam(static_cast<int>(p), l);                                                                                                                      \
+#define IPC_ENUM_TRAITS(enum_name) IPC_ENUM_TRAITS_VALIDATE(enum_name, true)
+#undef IPC_ENUM_TRAITS_VALIDATE
+#define IPC_ENUM_TRAITS_VALIDATE(enum_name, validation_expression) \
+    void ParamTraits<enum_name>::Log(const param_type& p, std::string* l) \
+    { \
+        LogParam(static_cast<int>(p), l); \
     }
 
 #endif // IPC_PARAM_TRAITS_LOG_MACROS_H_

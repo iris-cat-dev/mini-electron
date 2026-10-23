@@ -31,10 +31,12 @@
 #define IPC_STRUCT_TRAITS_END() }
 
 #undef IPC_ENUM_TRAITS
-#define IPC_ENUM_TRAITS(enum_name)                                                                                                                             \
-    void ParamTraits<enum_name>::Write(Message* m, const param_type& p)                                                                                        \
-    {                                                                                                                                                          \
-        m->WriteInt(static_cast<int>(p));                                                                                                                      \
+#define IPC_ENUM_TRAITS(enum_name) IPC_ENUM_TRAITS_VALIDATE(enum_name, true)
+#undef IPC_ENUM_TRAITS_VALIDATE
+#define IPC_ENUM_TRAITS_VALIDATE(enum_name, validation_expression) \
+    void ParamTraits<enum_name>::Write(base::Pickle* m, const param_type& p) \
+    { \
+        m->WriteInt(static_cast<int>(p)); \
     }
 
 #endif // IPC_PARAM_TRAITS_WRITE_MACROS_H_

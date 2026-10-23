@@ -142,14 +142,14 @@ public:
 //private:
 //    ImplPointerType sink_;
 //};
-//class TrustTokenQueryAnswererRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class TrustTokenQueryAnswererResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+class TrustTokenQueryAnswererRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class TrustTokenQueryAnswererResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class HasTrustTokensResult {
 public:

@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/trust_tokens.mojom-params-data.h"
 #include "services/network/public/mojom/trust_tokens.mojom-shared-message-ids.h"
@@ -44,37 +49,151 @@
 #include "services/network/public/mojom/trust_tokens.mojom-test-utils.h"
 
 namespace network::mojom {
-TrustTokenParams::TrustTokenParams()
+
+HasTrustTokensResult::HasTrustTokensResult()
+    : status()
+    , has_trust_tokens()
+{
+}
+
+HasTrustTokensResult::HasTrustTokensResult(TrustTokenOperationStatus status_in, bool has_trust_tokens_in)
+    : status(std::move(status_in))
+    , has_trust_tokens(std::move(has_trust_tokens_in))
+{
+}
+
+HasTrustTokensResult::~HasTrustTokensResult() = default;
+
+HasRedemptionRecordResult::HasRedemptionRecordResult()
+    : status()
+    , has_redemption_record()
+{
+}
+
+HasRedemptionRecordResult::HasRedemptionRecordResult(TrustTokenOperationStatus status_in, bool has_redemption_record_in)
+    : status(std::move(status_in))
+    , has_redemption_record(std::move(has_redemption_record_in))
+{
+}
+
+HasRedemptionRecordResult::~HasRedemptionRecordResult() = default;
+
+TrustTokenVerificationKey::TrustTokenVerificationKey()
+    : body()
+    , expiry()
+{
+}
+
+TrustTokenVerificationKey::TrustTokenVerificationKey(const std::string& body_in, ::base::Time expiry_in)
+    : body(std::move(body_in))
+    , expiry(std::move(expiry_in))
+{
+}
+
+TrustTokenVerificationKey::~TrustTokenVerificationKey() = default;
+
+TrustTokenKeyCommitmentResult::TrustTokenKeyCommitmentResult()
+    : protocol_version()
+    , id()
+    , batch_size()
+    , keys()
+    , request_issuance_locally_on()
+    , unavailable_local_operation_fallback()
+{
+}
+
+TrustTokenKeyCommitmentResult::TrustTokenKeyCommitmentResult(TrustTokenProtocolVersion protocol_version_in, int32_t id_in, int32_t batch_size_in,
+    std::vector<TrustTokenVerificationKeyPtr> keys_in, std::vector<TrustTokenKeyCommitmentResult::Os> request_issuance_locally_on_in,
+    TrustTokenKeyCommitmentResult::UnavailableLocalOperationFallback unavailable_local_operation_fallback_in)
+    : protocol_version(std::move(protocol_version_in))
+    , id(std::move(id_in))
+    , batch_size(std::move(batch_size_in))
+    , keys(std::move(keys_in))
+    , request_issuance_locally_on(std::move(request_issuance_locally_on_in))
+    , unavailable_local_operation_fallback(std::move(unavailable_local_operation_fallback_in))
+{
+}
+
+TrustTokenKeyCommitmentResult::~TrustTokenKeyCommitmentResult() = default;
+
+FulfillTrustTokenIssuanceRequest::FulfillTrustTokenIssuanceRequest()
+    : issuer()
+    , request()
+{
+}
+
+FulfillTrustTokenIssuanceRequest::FulfillTrustTokenIssuanceRequest(const ::url::Origin& issuer_in, const std::string& request_in)
+    : issuer(std::move(issuer_in))
+    , request(std::move(request_in))
+{
+}
+
+FulfillTrustTokenIssuanceRequest::~FulfillTrustTokenIssuanceRequest() = default;
+
+FulfillTrustTokenIssuanceAnswer::FulfillTrustTokenIssuanceAnswer()
+    : status()
+    , response()
+{
+}
+
+FulfillTrustTokenIssuanceAnswer::FulfillTrustTokenIssuanceAnswer(FulfillTrustTokenIssuanceAnswer::Status status_in, const std::string& response_in)
+    : status(std::move(status_in))
+    , response(std::move(response_in))
+{
+}
+
+FulfillTrustTokenIssuanceAnswer::~FulfillTrustTokenIssuanceAnswer() = default;
+
+TrustTokenOperationResult::TrustTokenOperationResult()
     : operation()
-    , refresh_policy(TrustTokenRefreshPolicy::kUseCached)
-    , custom_key_commitment()
-    , custom_issuer()
-    , sign_request_data(TrustTokenSignRequestData::kOmit)
-    , include_timestamp_header(false)
-    , issuers()
-    , additional_signed_headers()
-    , possibly_unsafe_additional_signing_data()
+    , status()
+    , issuer()
+    , top_level_origin()
+    , issued_token_count(0)
 {
 }
 
-TrustTokenParams::TrustTokenParams(TrustTokenOperationType operation_in, TrustTokenRefreshPolicy refresh_policy_in,
-    const std::optional<std::string>& custom_key_commitment_in, const std::optional<::url::Origin>& custom_issuer_in,
-    TrustTokenSignRequestData sign_request_data_in, bool include_timestamp_header_in, std::vector<::url::Origin> issuers_in,
-    std::vector<std::string> additional_signed_headers_in, const std::optional<std::string>& possibly_unsafe_additional_signing_data_in)
+TrustTokenOperationResult::TrustTokenOperationResult(TrustTokenOperationType operation_in, TrustTokenOperationStatus status_in,
+    const std::optional<::url::Origin>& issuer_in, const std::optional<::url::Origin>& top_level_origin_in, int32_t issued_token_count_in)
     : operation(std::move(operation_in))
-    , refresh_policy(std::move(refresh_policy_in))
-    , custom_key_commitment(std::move(custom_key_commitment_in))
-    , custom_issuer(std::move(custom_issuer_in))
-    , sign_request_data(std::move(sign_request_data_in))
-    , include_timestamp_header(std::move(include_timestamp_header_in))
-    , issuers(std::move(issuers_in))
-    , additional_signed_headers(std::move(additional_signed_headers_in))
-    , possibly_unsafe_additional_signing_data(std::move(possibly_unsafe_additional_signing_data_in))
+    , status(std::move(status_in))
+    , issuer(std::move(issuer_in))
+    , top_level_origin(std::move(top_level_origin_in))
+    , issued_token_count(std::move(issued_token_count_in))
 {
 }
 
-TrustTokenParams::~TrustTokenParams() = default;
+TrustTokenOperationResult::~TrustTokenOperationResult() = default;
 
+StoredTrustTokensForIssuer::StoredTrustTokensForIssuer()
+    : issuer()
+    , count()
+{
+}
+
+StoredTrustTokensForIssuer::StoredTrustTokensForIssuer(const ::url::Origin& issuer_in, int32_t count_in)
+    : issuer(std::move(issuer_in))
+    , count(std::move(count_in))
+{
+}
+
+StoredTrustTokensForIssuer::~StoredTrustTokensForIssuer() = default;
+
+ToplevelRedemptionRecord::ToplevelRedemptionRecord()
+    : toplevel_origin()
+    , last_redemption()
+{
+}
+
+ToplevelRedemptionRecord::ToplevelRedemptionRecord(const ::url::Origin& toplevel_origin_in, ::base::Time last_redemption_in)
+    : toplevel_origin(std::move(toplevel_origin_in))
+    , last_redemption(std::move(last_redemption_in))
+{
+}
+
+ToplevelRedemptionRecord::~ToplevelRedemptionRecord() = default;
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void TrustTokenParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -142,24 +261,12 @@ void TrustTokenParams::WriteIntoTrace(perfetto::TracedValue traced_context) cons
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool TrustTokenParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-HasTrustTokensResult::HasTrustTokensResult()
-    : status()
-    , has_trust_tokens()
-{
-}
-
-HasTrustTokensResult::HasTrustTokensResult(TrustTokenOperationStatus status_in, bool has_trust_tokens_in)
-    : status(std::move(status_in))
-    , has_trust_tokens(std::move(has_trust_tokens_in))
-{
-}
-
-HasTrustTokensResult::~HasTrustTokensResult() = default;
 size_t HasTrustTokensResult::Hash(size_t seed) const
 {
     seed = mojo::internal::Hash(seed, this->status);
@@ -167,6 +274,7 @@ size_t HasTrustTokensResult::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void HasTrustTokensResult::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -185,24 +293,12 @@ void HasTrustTokensResult::WriteIntoTrace(perfetto::TracedValue traced_context) 
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool HasTrustTokensResult::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-HasRedemptionRecordResult::HasRedemptionRecordResult()
-    : status()
-    , has_redemption_record()
-{
-}
-
-HasRedemptionRecordResult::HasRedemptionRecordResult(TrustTokenOperationStatus status_in, bool has_redemption_record_in)
-    : status(std::move(status_in))
-    , has_redemption_record(std::move(has_redemption_record_in))
-{
-}
-
-HasRedemptionRecordResult::~HasRedemptionRecordResult() = default;
 size_t HasRedemptionRecordResult::Hash(size_t seed) const
 {
     seed = mojo::internal::Hash(seed, this->status);
@@ -210,6 +306,7 @@ size_t HasRedemptionRecordResult::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void HasRedemptionRecordResult::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -228,25 +325,14 @@ void HasRedemptionRecordResult::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool HasRedemptionRecordResult::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-TrustTokenVerificationKey::TrustTokenVerificationKey()
-    : body()
-    , expiry()
-{
-}
 
-TrustTokenVerificationKey::TrustTokenVerificationKey(const std::string& body_in, ::base::Time expiry_in)
-    : body(std::move(body_in))
-    , expiry(std::move(expiry_in))
-{
-}
-
-TrustTokenVerificationKey::~TrustTokenVerificationKey() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void TrustTokenVerificationKey::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -265,35 +351,14 @@ void TrustTokenVerificationKey::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool TrustTokenVerificationKey::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-TrustTokenKeyCommitmentResult::TrustTokenKeyCommitmentResult()
-    : protocol_version()
-    , id()
-    , batch_size()
-    , keys()
-    , request_issuance_locally_on()
-    , unavailable_local_operation_fallback()
-{
-}
 
-TrustTokenKeyCommitmentResult::TrustTokenKeyCommitmentResult(TrustTokenProtocolVersion protocol_version_in, int32_t id_in, int32_t batch_size_in,
-    std::vector<TrustTokenVerificationKeyPtr> keys_in, std::vector<TrustTokenKeyCommitmentResult::Os> request_issuance_locally_on_in,
-    TrustTokenKeyCommitmentResult::UnavailableLocalOperationFallback unavailable_local_operation_fallback_in)
-    : protocol_version(std::move(protocol_version_in))
-    , id(std::move(id_in))
-    , batch_size(std::move(batch_size_in))
-    , keys(std::move(keys_in))
-    , request_issuance_locally_on(std::move(request_issuance_locally_on_in))
-    , unavailable_local_operation_fallback(std::move(unavailable_local_operation_fallback_in))
-{
-}
-
-TrustTokenKeyCommitmentResult::~TrustTokenKeyCommitmentResult() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void TrustTokenKeyCommitmentResult::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -340,25 +405,14 @@ void TrustTokenKeyCommitmentResult::WriteIntoTrace(perfetto::TracedValue traced_
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool TrustTokenKeyCommitmentResult::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-FulfillTrustTokenIssuanceRequest::FulfillTrustTokenIssuanceRequest()
-    : issuer()
-    , request()
-{
-}
 
-FulfillTrustTokenIssuanceRequest::FulfillTrustTokenIssuanceRequest(const ::url::Origin& issuer_in, const std::string& request_in)
-    : issuer(std::move(issuer_in))
-    , request(std::move(request_in))
-{
-}
-
-FulfillTrustTokenIssuanceRequest::~FulfillTrustTokenIssuanceRequest() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void FulfillTrustTokenIssuanceRequest::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -377,24 +431,12 @@ void FulfillTrustTokenIssuanceRequest::WriteIntoTrace(perfetto::TracedValue trac
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool FulfillTrustTokenIssuanceRequest::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-FulfillTrustTokenIssuanceAnswer::FulfillTrustTokenIssuanceAnswer()
-    : status()
-    , response()
-{
-}
-
-FulfillTrustTokenIssuanceAnswer::FulfillTrustTokenIssuanceAnswer(FulfillTrustTokenIssuanceAnswer::Status status_in, const std::string& response_in)
-    : status(std::move(status_in))
-    , response(std::move(response_in))
-{
-}
-
-FulfillTrustTokenIssuanceAnswer::~FulfillTrustTokenIssuanceAnswer() = default;
 size_t FulfillTrustTokenIssuanceAnswer::Hash(size_t seed) const
 {
     seed = mojo::internal::Hash(seed, this->status);
@@ -402,6 +444,7 @@ size_t FulfillTrustTokenIssuanceAnswer::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void FulfillTrustTokenIssuanceAnswer::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -420,32 +463,14 @@ void FulfillTrustTokenIssuanceAnswer::WriteIntoTrace(perfetto::TracedValue trace
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool FulfillTrustTokenIssuanceAnswer::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-TrustTokenOperationResult::TrustTokenOperationResult()
-    : operation()
-    , status()
-    , issuer()
-    , top_level_origin()
-    , issued_token_count(0)
-{
-}
 
-TrustTokenOperationResult::TrustTokenOperationResult(TrustTokenOperationType operation_in, TrustTokenOperationStatus status_in,
-    const std::optional<::url::Origin>& issuer_in, const std::optional<::url::Origin>& top_level_origin_in, int32_t issued_token_count_in)
-    : operation(std::move(operation_in))
-    , status(std::move(status_in))
-    , issuer(std::move(issuer_in))
-    , top_level_origin(std::move(top_level_origin_in))
-    , issued_token_count(std::move(issued_token_count_in))
-{
-}
-
-TrustTokenOperationResult::~TrustTokenOperationResult() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void TrustTokenOperationResult::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -485,25 +510,14 @@ void TrustTokenOperationResult::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool TrustTokenOperationResult::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-StoredTrustTokensForIssuer::StoredTrustTokensForIssuer()
-    : issuer()
-    , count()
-{
-}
 
-StoredTrustTokensForIssuer::StoredTrustTokensForIssuer(const ::url::Origin& issuer_in, int32_t count_in)
-    : issuer(std::move(issuer_in))
-    , count(std::move(count_in))
-{
-}
-
-StoredTrustTokensForIssuer::~StoredTrustTokensForIssuer() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void StoredTrustTokensForIssuer::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -522,25 +536,14 @@ void StoredTrustTokensForIssuer::WriteIntoTrace(perfetto::TracedValue traced_con
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool StoredTrustTokensForIssuer::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-ToplevelRedemptionRecord::ToplevelRedemptionRecord()
-    : toplevel_origin()
-    , last_redemption()
-{
-}
 
-ToplevelRedemptionRecord::ToplevelRedemptionRecord(const ::url::Origin& toplevel_origin_in, ::base::Time last_redemption_in)
-    : toplevel_origin(std::move(toplevel_origin_in))
-    , last_redemption(std::move(last_redemption_in))
-{
-}
-
-ToplevelRedemptionRecord::~ToplevelRedemptionRecord() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ToplevelRedemptionRecord::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -559,6 +562,7 @@ void ToplevelRedemptionRecord::WriteIntoTrace(perfetto::TracedValue traced_conte
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ToplevelRedemptionRecord::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

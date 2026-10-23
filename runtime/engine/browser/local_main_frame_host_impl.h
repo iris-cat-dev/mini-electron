@@ -10,12 +10,22 @@
 #include "runtime/engine/common/common.h"
 #include "base/functional/callback.h"
 #include "base/values.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
+
+namespace blink {
+class WebLocalFrame;
+}
 
 namespace content {
 
 class WebLocalFrameClientImpl;
-void requestNativeWindowCommand(WebLocalFrameClientImpl* frame_client,
-    base::Value::Dict command, base::OnceCallback<void(bool)> reply);
+class WebViewHost;
+blink::WebLocalFrame* resolveLiveFrame(int64_t view_id,
+    const blink::LocalFrameToken& frame_token,
+    WebViewHost** resolved_host = nullptr);
+void requestNativeWindowCommand(int64_t view_id,
+    const blink::LocalFrameToken& frame_token, base::Value::Dict command,
+    base::OnceCallback<void(bool)> reply);
 
 class LocalMainFrameHostImpl : public ::blink::mojom::blink::LocalMainFrameHost {
 public:
@@ -71,7 +81,10 @@ public:
     }
 
 private:
-    WebLocalFrameClientImpl* m_frameClient = nullptr;
+    // Mojo receivers can outlive WebLocalFrameClientImpl. Resolve this stable
+    // identity for every dispatch instead of retaining the client.
+    int64_t m_engineViewId = 0;
+    blink::LocalFrameToken m_frameToken;
 };
 
 }

@@ -22,7 +22,10 @@
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom-features.h" // IWYU pragma: export
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom-shared.h" // IWYU pragma: export
@@ -185,88 +188,88 @@ public:
     virtual void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) = 0;
 };
 
-//class BLINK_COMMON_EXPORT FileSystemAccessFileHandleProxy : public FileSystemAccessFileHandle {
-//public:
-//    using InterfaceType = FileSystemAccessFileHandle;
-//
-//    explicit FileSystemAccessFileHandleProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void GetPermissionStatus(bool writable, GetPermissionStatusCallback callback) final;
-//
-//    void RequestPermission(bool writable, RequestPermissionCallback callback) final;
-//
-//    void AsBlob(AsBlobCallback callback) final;
-//
-//    void CreateFileWriter(bool keep_existing_data, bool auto_close, FileSystemAccessWritableFileStreamLockMode mode, CreateFileWriterCallback callback) final;
-//
-//    void Rename(const std::string& new_entry_name, RenameCallback callback) final;
-//
-//    void Move(::mojo::PendingRemote<::blink::mojom::FileSystemAccessTransferToken> destination_directory, const std::string& new_entry_name,
-//        MoveCallback callback) final;
-//
-//    void Remove(RemoveCallback callback) final;
-//
-//    void OpenAccessHandle(FileSystemAccessAccessHandleLockMode mode, OpenAccessHandleCallback callback) final;
-//
-//    void IsSameEntry(::mojo::PendingRemote<::blink::mojom::FileSystemAccessTransferToken> other, IsSameEntryCallback callback) final;
-//
-//    void Transfer(::mojo::PendingReceiver<::blink::mojom::FileSystemAccessTransferToken> token) final;
-//
-//    void GetUniqueId(GetUniqueIdCallback callback) final;
-//
-//    void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class BLINK_COMMON_EXPORT FileSystemAccessFileHandleStubDispatch {
-//public:
-//    static bool Accept(FileSystemAccessFileHandle* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(FileSystemAccessFileHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+class BLINK_COMMON_EXPORT FileSystemAccessFileHandleProxy : public FileSystemAccessFileHandle {
+public:
+    using InterfaceType = FileSystemAccessFileHandle;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessFileHandle>>
-//class FileSystemAccessFileHandleStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    FileSystemAccessFileHandleStub() = default;
-//    ~FileSystemAccessFileHandleStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessFileHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return FileSystemAccessFileHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class BLINK_COMMON_EXPORT FileSystemAccessFileHandleRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class BLINK_COMMON_EXPORT FileSystemAccessFileHandleResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    explicit FileSystemAccessFileHandleProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void GetPermissionStatus(bool writable, GetPermissionStatusCallback callback) final;
+
+    void RequestPermission(bool writable, RequestPermissionCallback callback) final;
+
+    void AsBlob(AsBlobCallback callback) final;
+
+    void CreateFileWriter(bool keep_existing_data, bool auto_close, FileSystemAccessWritableFileStreamLockMode mode, CreateFileWriterCallback callback) final;
+
+    void Rename(const std::string& new_entry_name, RenameCallback callback) final;
+
+    void Move(::mojo::PendingRemote<::blink::mojom::FileSystemAccessTransferToken> destination_directory, const std::string& new_entry_name,
+        MoveCallback callback) final;
+
+    void Remove(RemoveCallback callback) final;
+
+    void OpenAccessHandle(FileSystemAccessAccessHandleLockMode mode, OpenAccessHandleCallback callback) final;
+
+    void IsSameEntry(::mojo::PendingRemote<::blink::mojom::FileSystemAccessTransferToken> other, IsSameEntryCallback callback) final;
+
+    void Transfer(::mojo::PendingReceiver<::blink::mojom::FileSystemAccessTransferToken> token) final;
+
+    void GetUniqueId(GetUniqueIdCallback callback) final;
+
+    void GetCloudIdentifiers(GetCloudIdentifiersCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class BLINK_COMMON_EXPORT FileSystemAccessFileHandleStubDispatch {
+public:
+    static bool Accept(FileSystemAccessFileHandle* impl, mojo::Message* message);
+    static bool AcceptWithResponder(FileSystemAccessFileHandle* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<FileSystemAccessFileHandle>>
+class FileSystemAccessFileHandleStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    FileSystemAccessFileHandleStub() = default;
+    ~FileSystemAccessFileHandleStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessFileHandleStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return FileSystemAccessFileHandleStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class BLINK_COMMON_EXPORT FileSystemAccessFileHandleRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class BLINK_COMMON_EXPORT FileSystemAccessFileHandleResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class BLINK_COMMON_EXPORT FileSystemAccessAccessHandleFile {
 public:
@@ -308,14 +311,8 @@ public:
         return mojo::TypeConverter<U, FileSystemAccessAccessHandleFile>::Convert(*this);
     }
 
-    FileSystemAccessAccessHandleFile()
-    : tag_(Tag::kRegularFile)
-{
-    data_.regular_file = new FileSystemAccessRegularFilePtr;
-}
-    ~FileSystemAccessAccessHandleFile(){
-    DestroyActive();
-}
+    FileSystemAccessAccessHandleFile();
+    ~FileSystemAccessAccessHandleFile();
     // Delete the copy constructor and copy assignment operators because `data_`
     // contains raw pointers that must not be copied.
     FileSystemAccessAccessHandleFile(const FileSystemAccessAccessHandleFile& other) = delete;
@@ -414,24 +411,15 @@ public:
         return mojo::TypeConverter<U, FileSystemAccessRegularFile>::Convert(*this);
     }
 
-    FileSystemAccessRegularFile()
-    : os_file()
-    , file_size()
-    , file_modification_host()
-{
-}
+    FileSystemAccessRegularFile();
 
     FileSystemAccessRegularFile(
-    ::base::File os_file_in, int64_t file_size_in, ::mojo::PendingRemote<::blink::mojom::FileSystemAccessFileModificationHost> file_modification_host_in)
-    : os_file(std::move(os_file_in))
-    , file_size(std::move(file_size_in))
-    , file_modification_host(std::move(file_modification_host_in)){
-}
+        ::base::File os_file_in, int64_t file_size_in, ::mojo::PendingRemote<::blink::mojom::FileSystemAccessFileModificationHost> file_modification_host_in);
 
     FileSystemAccessRegularFile(const FileSystemAccessRegularFile&) = delete;
     FileSystemAccessRegularFile& operator=(const FileSystemAccessRegularFile&) = delete;
 
-    ~FileSystemAccessRegularFile() = default;
+    ~FileSystemAccessRegularFile();
 
     // Clone() is a template so it is only instantiated if it is used. Thus, the
     // bindings generator does not need to know whether Clone() or copy
@@ -500,8 +488,10 @@ public:
 
     ::mojo::PendingRemote<::blink::mojom::FileSystemAccessFileModificationHost> file_modification_host;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
     // Serialise this struct into a trace.
     void WriteIntoTrace(perfetto::TracedValue traced_context) const;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 private:
     static bool Validate(const void* data, mojo::internal::ValidationContext* validation_context);

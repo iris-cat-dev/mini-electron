@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom-params-data.h"
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom-shared-message-ids.h"
@@ -46,44 +51,10 @@
 #include "third_party/blink/common/permissions_policy/permissions_policy_mojom_traits.h"
 
 namespace blink::mojom::blink {
-FrameReplicationState::FrameReplicationState()
-    : origin()
-    , name()
-    , unique_name()
-    , permissions_policy_header()
-    , active_sandbox_flags(::network::mojom::blink::WebSandboxFlags::kNone)
-    , frame_policy()
-    , insecure_request_policy(::blink::mojom::blink::InsecureRequestPolicy::kLeaveInsecureRequestsAlone)
-    , insecure_navigations_set()
-    , has_potentially_trustworthy_unique_origin(false)
-    , has_active_user_gesture(false)
-    , has_received_user_gesture_before_nav(false)
-    , is_ad_frame(false)
-{
-}
 
-FrameReplicationState::FrameReplicationState(const ::scoped_refptr<const ::blink::SecurityOrigin>& origin_in, const WTF::String& name_in,
-    const WTF::String& unique_name_in, WTF::Vector<::blink::ParsedPermissionsPolicyDeclaration> permissions_policy_header_in,
-    ::network::mojom::blink::WebSandboxFlags active_sandbox_flags_in, const ::blink::FramePolicy& frame_policy_in,
-    ::blink::mojom::blink::InsecureRequestPolicy insecure_request_policy_in, WTF::Vector<uint32_t> insecure_navigations_set_in,
-    bool has_potentially_trustworthy_unique_origin_in, bool has_active_user_gesture_in, bool has_received_user_gesture_before_nav_in, bool is_ad_frame_in)
-    : origin(std::move(origin_in))
-    , name(std::move(name_in))
-    , unique_name(std::move(unique_name_in))
-    , permissions_policy_header(std::move(permissions_policy_header_in))
-    , active_sandbox_flags(std::move(active_sandbox_flags_in))
-    , frame_policy(std::move(frame_policy_in))
-    , insecure_request_policy(std::move(insecure_request_policy_in))
-    , insecure_navigations_set(std::move(insecure_navigations_set_in))
-    , has_potentially_trustworthy_unique_origin(std::move(has_potentially_trustworthy_unique_origin_in))
-    , has_active_user_gesture(std::move(has_active_user_gesture_in))
-    , has_received_user_gesture_before_nav(std::move(has_received_user_gesture_before_nav_in))
-    , is_ad_frame(std::move(is_ad_frame_in))
-{
-}
 
-FrameReplicationState::~FrameReplicationState() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void FrameReplicationState::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -172,6 +143,7 @@ void FrameReplicationState::WriteIntoTrace(perfetto::TracedValue traced_context)
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool FrameReplicationState::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

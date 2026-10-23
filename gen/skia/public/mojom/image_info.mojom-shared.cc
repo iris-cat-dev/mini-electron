@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "skia/public/mojom/image_info.mojom-params-data.h"
 namespace skia {
@@ -125,10 +128,6 @@ bool ImageInfo_Data::Validate(const void* data, mojo::internal::ValidationContex
     return true;
 }
 
-ImageInfo_Data::ImageInfo_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
 
 // static
 bool BitmapN32ImageInfo_Data::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
@@ -168,6 +167,7 @@ BitmapN32ImageInfo_Data::BitmapN32ImageInfo_Data()
 } // namespace mojom
 } // namespace skia
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -187,3 +187,4 @@ void TraceFormatTraits<::skia::mojom::AlphaType>::WriteIntoTrace(perfetto::Trace
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

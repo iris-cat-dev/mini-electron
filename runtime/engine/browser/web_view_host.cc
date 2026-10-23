@@ -86,8 +86,10 @@ bool g_enableNativeSetFocus = true;
 void freeTempCharStrings();
 void clearWebViewInContextMenuIfNeeded(WebViewHost* webview);
 
-WebViewHost::WebViewHost(bool isPopup, COLORREF backgroundColor, bool isTransparent)
+WebViewHost::WebViewHost(bool isPopup, COLORREF backgroundColor,
+    bool isTransparent, bool initiallyVisible)
     : m_isTransparent(isTransparent)
+    , m_pageVisible(initiallyVisible)
     , m_backgroundColor(backgroundColor)
 {
     m_id = common::LiveIdDetect::getWebViewIds()->constructed(this);
@@ -415,6 +417,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
     if (!m_navigationController)
         m_navigationController = blink::MakeGarbageCollected<content::PageNavController>(this);
 
+
     m_sessionStorageNamespaceId = blink::AllocateSessionStorageNamespaceId();
 
     blink::BrowsingContextGroupInfo browsingContextGroupInfo = blink::BrowsingContextGroupInfo::CreateUnique();
@@ -427,7 +430,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
         false, // widgets_never_composited
         opener, 
         blink::CrossVariantMojoAssociatedReceiver<blink::mojom::PageBroadcastInterfaceBase>(),
-        *(content::RenderThreadImpl::get()->m_agentGroupScheduler), 
+        *(content::RenderThreadImpl::get()->m_agentGroupScheduler),
         m_sessionStorageNamespaceId, 
         absl::optional<SkColor>(m_isTransparent ? SK_ColorTRANSPARENT : m_backgroundColor),
         browsingContextGroupInfo,
@@ -446,7 +449,8 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
     std::unique_ptr<blink::WebPolicyContainer> policyContainer = std::make_unique<blink::WebPolicyContainer>(
         blink::WebPolicyContainerPolicies(), blink::ToCrossVariantAssociatedMojoType(std::move(policyContainerRemote)));
 
-    m_frameClient = new WebLocalFrameClientImpl(m_id);
+    const blink::LocalFrameToken frameToken;
+    m_frameClient = new WebLocalFrameClientImpl(m_id, frameToken);
     BlinkInterfaceRegistryImpl* blinkInterfaceRegistryImpl = new BlinkInterfaceRegistryImpl(m_frameClient);
     m_frameClient->m_blinkInterfaceRegistryImpl = blinkInterfaceRegistryImpl;
 
@@ -459,7 +463,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
             blinkInterfaceRegistryImpl, 
             // CrossVariantMojoRemote<mojom::BrowserInterfaceBrokerInterfaceBase>
             blink::CrossVariantMojoRemote<blink::mojom::BrowserInterfaceBrokerInterfaceBase>(std::move(browserInterfaceBroker)),
-            blink::LocalFrameToken(), 
+            frameToken,
             blink::DocumentToken(),
             std::move(policyContainer), 
             openerWebFrame, 
@@ -480,6 +484,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
 
     m_frameClient->m_blinkPolicyContainerHostReceiver = blinkPolicyContainerHostReceiver;
     m_frameClient->m_isMainFrame = true;
+
 
     m_renderWidgetHostImpl = std::make_unique<RenderWidgetHostImpl>(NULL_WEBVIEW, base::SequencedTaskRunner::GetCurrentDefault());
     m_renderWidgetHostImpl->setHostFrameSinkManager(m_host->host_frame_sink_manager());
@@ -510,7 +515,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
             blink::ToCrossVariantAssociatedMojoType(std::move(createFrameWidgetParams->frameWidget)),
             blink::ToCrossVariantAssociatedMojoType(std::move(createFrameWidgetParams->widgetHost)),
             blink::ToCrossVariantAssociatedMojoType(std::move(createFrameWidgetParams->blinkWidget)),
-            viz::FrameSinkId(/*RenderThread::Get()->GetClientId()*/ 1, /*params->widget_params->routing_id*/ 2),
+            viz::FrameSinkId(1, 2),
             /*is_for_nested_main_frame*/ false, /*is_for_scalable_page*/ true,
             /*hidden=*/true);
     webFrameWidget->InitializeCompositing(

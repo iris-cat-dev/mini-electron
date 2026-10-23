@@ -286,6 +286,10 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     context_.reset();
   }
 
+  // The offscreen backing can follow the submitted root frame. Resize before
+  // that frame's damage, not after its ACK when a static page may already idle.
+  bool SupportsOverridePlatformSize() const override { return true; }
+
   void Resize(const gfx::Size& size, float scale) override {
     DCHECK(runner_->RunsTasksInCurrentSequence());
     if (viewport_pixel_size_ == size && scale_factor_ == scale)

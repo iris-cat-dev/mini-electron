@@ -106,68 +106,68 @@ public:
     virtual void GetSubscription(int64_t service_worker_registration_id, GetSubscriptionCallback callback) = 0;
 };
 
-//class PLATFORM_EXPORT PushMessagingProxy : public PushMessaging {
-//public:
-//    using InterfaceType = PushMessaging;
-//
-//    explicit PushMessagingProxy(mojo::MessageReceiverWithResponder* receiver);
-//
-//    void Subscribe(int64_t service_worker_registration_id, PushSubscriptionOptionsPtr options, bool user_gesture, SubscribeCallback callback) final;
-//
-//    void Unsubscribe(int64_t service_worker_registration_id, UnsubscribeCallback callback) final;
-//
-//    void GetSubscription(int64_t service_worker_registration_id, GetSubscriptionCallback callback) final;
-//
-//private:
-//    mojo::MessageReceiverWithResponder* receiver_;
-//};
-//class PLATFORM_EXPORT PushMessagingStubDispatch {
-//public:
-//    static bool Accept(PushMessaging* impl, mojo::Message* message);
-//    static bool AcceptWithResponder(PushMessaging* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
-//};
+class PLATFORM_EXPORT PushMessagingProxy : public PushMessaging {
+public:
+    using InterfaceType = PushMessaging;
 
-//template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<PushMessaging>> class PushMessagingStub : public mojo::MessageReceiverWithResponderStatus {
-//public:
-//    using ImplPointerType = typename ImplRefTraits::PointerType;
-//
-//    PushMessagingStub() = default;
-//    ~PushMessagingStub() override = default;
-//
-//    void set_sink(ImplPointerType sink)
-//    {
-//        sink_ = std::move(sink);
-//    }
-//    ImplPointerType& sink()
-//    {
-//        return sink_;
-//    }
-//
-//    bool Accept(mojo::Message* message) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return PushMessagingStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
-//    }
-//
-//    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
-//    {
-//        if (ImplRefTraits::IsNull(sink_))
-//            return false;
-//        return PushMessagingStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
-//    }
-//
-//private:
-//    ImplPointerType sink_;
-//};
-//class PLATFORM_EXPORT PushMessagingRequestValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
-//class PLATFORM_EXPORT PushMessagingResponseValidator : public mojo::MessageReceiver {
-//public:
-//    bool Accept(mojo::Message* message) override;
-//};
+    explicit PushMessagingProxy(mojo::MessageReceiverWithResponder* receiver);
+
+    void Subscribe(int64_t service_worker_registration_id, PushSubscriptionOptionsPtr options, bool user_gesture, SubscribeCallback callback) final;
+
+    void Unsubscribe(int64_t service_worker_registration_id, UnsubscribeCallback callback) final;
+
+    void GetSubscription(int64_t service_worker_registration_id, GetSubscriptionCallback callback) final;
+
+private:
+    mojo::MessageReceiverWithResponder* receiver_;
+};
+class PLATFORM_EXPORT PushMessagingStubDispatch {
+public:
+    static bool Accept(PushMessaging* impl, mojo::Message* message);
+    static bool AcceptWithResponder(PushMessaging* impl, mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder);
+};
+
+template <typename ImplRefTraits = mojo::RawPtrImplRefTraits<PushMessaging>> class PushMessagingStub : public mojo::MessageReceiverWithResponderStatus {
+public:
+    using ImplPointerType = typename ImplRefTraits::PointerType;
+
+    PushMessagingStub() = default;
+    ~PushMessagingStub() override = default;
+
+    void set_sink(ImplPointerType sink)
+    {
+        sink_ = std::move(sink);
+    }
+    ImplPointerType& sink()
+    {
+        return sink_;
+    }
+
+    bool Accept(mojo::Message* message) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return PushMessagingStubDispatch::Accept(ImplRefTraits::GetRawPointer(&sink_), message);
+    }
+
+    bool AcceptWithResponder(mojo::Message* message, std::unique_ptr<mojo::MessageReceiverWithStatus> responder) override
+    {
+        if (ImplRefTraits::IsNull(sink_))
+            return false;
+        return PushMessagingStubDispatch::AcceptWithResponder(ImplRefTraits::GetRawPointer(&sink_), message, std::move(responder));
+    }
+
+private:
+    ImplPointerType sink_;
+};
+class PLATFORM_EXPORT PushMessagingRequestValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
+class PLATFORM_EXPORT PushMessagingResponseValidator : public mojo::MessageReceiver {
+public:
+    bool Accept(mojo::Message* message) override;
+};
 
 class PLATFORM_EXPORT PushSubscriptionOptions {
 public:

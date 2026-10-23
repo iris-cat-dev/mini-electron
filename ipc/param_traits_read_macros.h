@@ -34,14 +34,19 @@
     }
 
 #undef IPC_ENUM_TRAITS
-#define IPC_ENUM_TRAITS(enum_name)                                                                                                                             \
-    bool ParamTraits<enum_name>::Read(const Message* m, base::PickleIterator* iter, param_type* p)                                                             \
-    {                                                                                                                                                          \
-        int type;                                                                                                                                              \
-        if (!m->ReadInt(iter, &type))                                                                                                                          \
-            return false;                                                                                                                                      \
-        *p = static_cast<param_type>(type);                                                                                                                    \
-        return true;                                                                                                                                           \
+#define IPC_ENUM_TRAITS(enum_name) IPC_ENUM_TRAITS_VALIDATE(enum_name, true)
+#undef IPC_ENUM_TRAITS_VALIDATE
+#define IPC_ENUM_TRAITS_VALIDATE(enum_name, validation_expression) \
+    bool ParamTraits<enum_name>::Read(const base::Pickle* m, base::PickleIterator* iter, param_type* p) \
+    { \
+        int encoded; \
+        if (!iter->ReadInt(&encoded)) \
+            return false; \
+        const param_type value = static_cast<param_type>(encoded); \
+        if (!(validation_expression)) \
+            return false; \
+        *p = value; \
+        return true; \
     }
 
 #endif // IPC_PARAM_TRAITS_READ_MACROS_H_

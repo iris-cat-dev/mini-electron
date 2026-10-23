@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/client_security_state.mojom-params-data.h"
 #include "services/network/public/mojom/client_security_state.mojom-shared-message-ids.h"
@@ -44,28 +49,8 @@
 #include "services/network/public/mojom/client_security_state.mojom-test-utils.h"
 
 namespace network::mojom {
-ClientSecurityState::ClientSecurityState()
-    : cross_origin_embedder_policy()
-    , is_web_secure_context(false)
-    , ip_address_space(::network::mojom::IPAddressSpace::kUnknown)
-    , private_network_request_policy(PrivateNetworkRequestPolicy::kAllow)
-    , document_isolation_policy()
-{
-}
 
-ClientSecurityState::ClientSecurityState(const ::network::CrossOriginEmbedderPolicy& cross_origin_embedder_policy_in, bool is_web_secure_context_in,
-    ::network::mojom::IPAddressSpace ip_address_space_in, PrivateNetworkRequestPolicy private_network_request_policy_in,
-    const ::network::DocumentIsolationPolicy& document_isolation_policy_in)
-    : cross_origin_embedder_policy(std::move(cross_origin_embedder_policy_in))
-    , is_web_secure_context(std::move(is_web_secure_context_in))
-    , ip_address_space(std::move(ip_address_space_in))
-    , private_network_request_policy(std::move(private_network_request_policy_in))
-    , document_isolation_policy(std::move(document_isolation_policy_in))
-{
-}
-
-ClientSecurityState::~ClientSecurityState() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ClientSecurityState::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -105,6 +90,7 @@ void ClientSecurityState::WriteIntoTrace(perfetto::TracedValue traced_context) c
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ClientSecurityState::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/load_timing_info.mojom-params-data.h"
 #include "services/network/public/mojom/load_timing_info.mojom-shared-message-ids.h"
@@ -45,29 +50,8 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace network::mojom::blink {
-LoadTimingInfoConnectTiming::LoadTimingInfoConnectTiming()
-    : domain_lookup_start()
-    , domain_lookup_end()
-    , connect_start()
-    , connect_end()
-    , ssl_start()
-    , ssl_end()
-{
-}
 
-LoadTimingInfoConnectTiming::LoadTimingInfoConnectTiming(::base::TimeTicks domain_lookup_start_in, ::base::TimeTicks domain_lookup_end_in,
-    ::base::TimeTicks connect_start_in, ::base::TimeTicks connect_end_in, ::base::TimeTicks ssl_start_in, ::base::TimeTicks ssl_end_in)
-    : domain_lookup_start(std::move(domain_lookup_start_in))
-    , domain_lookup_end(std::move(domain_lookup_end_in))
-    , connect_start(std::move(connect_start_in))
-    , connect_end(std::move(connect_end_in))
-    , ssl_start(std::move(ssl_start_in))
-    , ssl_end(std::move(ssl_end_in))
-{
-}
-
-LoadTimingInfoConnectTiming::~LoadTimingInfoConnectTiming() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void LoadTimingInfoConnectTiming::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -114,69 +98,14 @@ void LoadTimingInfoConnectTiming::WriteIntoTrace(perfetto::TracedValue traced_co
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool LoadTimingInfoConnectTiming::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-LoadTimingInfo::LoadTimingInfo()
-    : socket_reused()
-    , socket_log_id()
-    , request_start_time()
-    , request_start()
-    , proxy_resolve_start()
-    , proxy_resolve_end()
-    , connect_timing()
-    , send_start()
-    , send_end()
-    , receive_headers_start()
-    , receive_headers_end()
-    , receive_non_informational_headers_start()
-    , first_early_hints_time()
-    , push_start()
-    , push_end()
-    , service_worker_start_time()
-    , service_worker_ready_time()
-    , service_worker_fetch_start()
-    , service_worker_respond_with_settled()
-    , service_worker_router_evaluation_start()
-    , service_worker_cache_lookup_start()
-{
-}
 
-LoadTimingInfo::LoadTimingInfo(bool socket_reused_in, uint32_t socket_log_id_in, ::base::Time request_start_time_in, ::base::TimeTicks request_start_in,
-    ::base::TimeTicks proxy_resolve_start_in, ::base::TimeTicks proxy_resolve_end_in, LoadTimingInfoConnectTimingPtr connect_timing_in,
-    ::base::TimeTicks send_start_in, ::base::TimeTicks send_end_in, ::base::TimeTicks receive_headers_start_in, ::base::TimeTicks receive_headers_end_in,
-    ::base::TimeTicks receive_non_informational_headers_start_in, ::base::TimeTicks first_early_hints_time_in, ::base::TimeTicks push_start_in,
-    ::base::TimeTicks push_end_in, ::base::TimeTicks service_worker_start_time_in, ::base::TimeTicks service_worker_ready_time_in,
-    ::base::TimeTicks service_worker_fetch_start_in, ::base::TimeTicks service_worker_respond_with_settled_in,
-    ::base::TimeTicks service_worker_router_evaluation_start_in, ::base::TimeTicks service_worker_cache_lookup_start_in)
-    : socket_reused(std::move(socket_reused_in))
-    , socket_log_id(std::move(socket_log_id_in))
-    , request_start_time(std::move(request_start_time_in))
-    , request_start(std::move(request_start_in))
-    , proxy_resolve_start(std::move(proxy_resolve_start_in))
-    , proxy_resolve_end(std::move(proxy_resolve_end_in))
-    , connect_timing(std::move(connect_timing_in))
-    , send_start(std::move(send_start_in))
-    , send_end(std::move(send_end_in))
-    , receive_headers_start(std::move(receive_headers_start_in))
-    , receive_headers_end(std::move(receive_headers_end_in))
-    , receive_non_informational_headers_start(std::move(receive_non_informational_headers_start_in))
-    , first_early_hints_time(std::move(first_early_hints_time_in))
-    , push_start(std::move(push_start_in))
-    , push_end(std::move(push_end_in))
-    , service_worker_start_time(std::move(service_worker_start_time_in))
-    , service_worker_ready_time(std::move(service_worker_ready_time_in))
-    , service_worker_fetch_start(std::move(service_worker_fetch_start_in))
-    , service_worker_respond_with_settled(std::move(service_worker_respond_with_settled_in))
-    , service_worker_router_evaluation_start(std::move(service_worker_router_evaluation_start_in))
-    , service_worker_cache_lookup_start(std::move(service_worker_cache_lookup_start_in))
-{
-}
-
-LoadTimingInfo::~LoadTimingInfo() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void LoadTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -328,6 +257,7 @@ void LoadTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool LoadTimingInfo::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

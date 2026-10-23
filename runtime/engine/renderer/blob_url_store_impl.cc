@@ -161,12 +161,13 @@ public:
         const ::net::MutableNetworkTrafficAnnotationTag& trafficAnnotation) override
     {
         auto* blob = BlobURLStoreSet::get()->getBlobByUrl(request.url.possibly_invalid_spec());
-        if (!blob) {
+        auto* blobEndpoint = blob ? blob->TryGet() : nullptr;
+        if (!blobEndpoint) {
             mojo::Remote<network::mojom::URLLoaderClient> remote(std::move(client));
             remote->OnComplete(network::URLLoaderCompletionStatus(net::ERR_FILE_NOT_FOUND));
             return;
         }
-        (*blob)->Load(
+        blobEndpoint->Load(
             mojo::PendingReceiver<network::mojom::blink::URLLoader>(loader.PassPipe()),
             WTF::String::FromUTF8(request.method), request.headers,
             mojo::PendingRemote<network::mojom::blink::URLLoaderClient>(client.PassPipe(), 0));

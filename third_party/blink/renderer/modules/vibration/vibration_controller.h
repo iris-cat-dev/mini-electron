@@ -86,6 +86,7 @@ private:
     void PageVisibilityChanged() override;
 
     bool Vibrate(const VibrationPattern&);
+    static VibrationPattern SanitizeVibrationPattern(const VibrationPattern&);
 
     // Remote to VibrationManager mojo interface. This is reset in
     // |contextDestroyed| and must not be called or recreated after it is reset.

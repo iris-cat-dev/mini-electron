@@ -47,7 +47,8 @@ MOJO_CPP_SYSTEM_EXPORT ScopedHandle WrapPlatformHandle(PlatformHandle handle);
 MOJO_CPP_SYSTEM_EXPORT PlatformHandle UnwrapPlatformHandle(ScopedHandle handle);
 
 // Wraps a ScopedPlatformFile as a Mojo handle. Takes ownership of the file
-// object. If |platform_file| is valid, this will return a valid handle.
+// object, returning an invalid handle when the transport cannot wrap native
+// objects (including lite), or wrapping otherwise fails.
 MOJO_CPP_SYSTEM_EXPORT
 ScopedHandle WrapPlatformFile(base::ScopedPlatformFile platform_file);
 
@@ -56,8 +57,7 @@ MOJO_CPP_SYSTEM_EXPORT
 MojoResult UnwrapPlatformFile(ScopedHandle handle, base::ScopedPlatformFile* file);
 
 // Helpers for wrapping and unwrapping new base shared memory API primitives.
-// If the input |region| is valid for the Wrap* functions, they will always
-// succeed and return a valid Mojo shared buffer handle.
+// Lite has no OS shared-memory dispatcher and returns invalid wrapped handles.
 
 MOJO_CPP_SYSTEM_EXPORT ScopedSharedBufferHandle WrapReadOnlySharedMemoryRegion(base::ReadOnlySharedMemoryRegion region);
 

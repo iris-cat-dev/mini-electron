@@ -43,6 +43,7 @@ struct RendererLaunchOptions {
     bool web_security = true;
     bool allow_running_insecure_content = false;
     bool transparent = false;
+    bool initially_visible = true;
     std::string background_color;
     base::Value::Dict preload_process_metadata;
 };

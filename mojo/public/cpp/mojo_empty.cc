@@ -479,10 +479,6 @@ network::mojom::TimingAllowOrigin::TimingAllowOrigin()
     data_.serialized_origins = new std::vector<std::string>;
 }
 
-int64_t mojo::StructTraits<mojo_base::mojom::TimeDataView, base::Time>::internal_value(const base::Time& time)
-{
-    return time.since_origin().InMicroseconds();
-}
 
 
 // WTF::Vector<SkBitmap, 0, WTF::PartitionAllocator>
@@ -898,13 +894,6 @@ void mojo::ReportBadMessage(base::StringPiece error)
     mojo::GetBadMessageCallback().Run(error);
 }
 
-void mojo::internal::SerializeInterfaceInfo(
-    mojo::ScopedMessagePipeHandle handle, uint32_t version, mojo::Message& message, mojo::internal::Interface_Data& data)
-{
-    SerializeHandle(mojo::ScopedHandle::From(std::move(handle)), message, data.handle);
-    data.version = version;
-}
-
 // mojo::ScopedHandleBase<mojo::SharedBufferHandle> __cdecl mojo::StructTraits<mojo_base::mojom::BigBufferSharedMemoryRegionDataView,
 //     mojo_base::internal::BigBufferSharedMemoryRegion>::buffer_handle(mojo_base::internal::BigBufferSharedMemoryRegion&)
 // {
@@ -1012,10 +1001,6 @@ media_session::mojom::blink::MediaPosition::MediaPosition(
 
 
 
-blink::mojom::internal::CloneableMessage_Data::CloneableMessage_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
 blink::mojom::internal::DEPRECATED_FileSystemFile_Data::DEPRECATED_FileSystemFile_Data(void)
     : header_({ sizeof(*this), 0 })
 {
@@ -1032,10 +1017,6 @@ blink::mojom::internal::HttpBody_Data::HttpBody_Data(void)
     : header_({ sizeof(*this), 0 })
 {
 }
-blink::mojom::internal::MessagePortDescriptor_Data::MessagePortDescriptor_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
 blink::mojom::internal::PageState_Data::PageState_Data(void)
     : header_({ sizeof(*this), 0 })
 {
@@ -1044,59 +1025,7 @@ blink::mojom::internal::RequestBody_Data::RequestBody_Data(void)
     : header_({ sizeof(*this), 0 })
 {
 }
-blink::mojom::internal::SerializedArrayBufferContents_Data::SerializedArrayBufferContents_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-blink::mojom::internal::SerializedBlob_Data::SerializedBlob_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-blink::mojom::internal::TaskAttributionId_Data::TaskAttributionId_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-blink::mojom::internal::UserActivationSnapshot_Data::UserActivationSnapshot_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
 blink::mojom::internal::ViewState_Data::ViewState_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-gfx::mojom::internal::PointF_Data::PointF_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-gfx::mojom::internal::Point_Data::Point_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-mojo_base::mojom::internal::BigBufferSharedMemoryRegion_Data::BigBufferSharedMemoryRegion_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-mojo_base::mojom::internal::String16_Data::String16_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-mojo_base::mojom::internal::Time_Data::Time_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-mojo_base::mojom::internal::UnguessableToken_Data::UnguessableToken_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-skia::mojom::internal::BitmapN32ImageInfo_Data::BitmapN32ImageInfo_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-skia::mojom::internal::BitmapN32_Data::BitmapN32_Data(void)
-    : header_({ sizeof(*this), 0 })
-{
-}
-url::mojom::internal::Origin_Data::Origin_Data(void)
     : header_({ sizeof(*this), 0 })
 {
 }
@@ -1124,6 +1053,21 @@ void viz::mojom::blink::BundledFrameSubmissionData::set_frame(BundledCompositorF
         DestroyActive();
         tag_ = Tag::kFrame;
         data_.frame = new BundledCompositorFramePtr(std::move(frame));
+    }
+}
+
+void viz::mojom::blink::BundledFrameSubmissionData::DestroyActive()
+{
+    switch (tag_) {
+    case Tag::kFrame:
+        delete data_.frame;
+        break;
+    case Tag::kDidNotProduceFrame:
+        delete data_.did_not_produce_frame;
+        break;
+    case Tag::kDidDeleteSharedBitmap:
+        delete data_.did_delete_shared_bitmap;
+        break;
     }
 }
 
@@ -1366,8 +1310,6 @@ const char PopupWidgetHost::Name_[] = "blink.mojom.PopupWidgetHost";
 // const char Portal::Name_[] = "blink.mojom.Portal";
 // const char PortalHost::Name_[] = "blink.mojom.PortalHost";
 const char ProgressClient::Name_[] = "blink.mojom.ProgressClient";
-const char RemoteFrameHost::Name_[] = "blink.mojom.RemoteFrameHost";
-const char RemoteMainFrameHost::Name_[] = "blink.mojom.RemoteMainFrameHost";
 const char RendererPreferenceWatcher::Name_[] = "blink.mojom.RendererPreferenceWatcher";
 const char ReportingServiceProxy::Name_[] = "blink.mojom.ReportingServiceProxy";
 const char ServiceWorkerWorkerClientRegistry::Name_[] = "blink.mojom.ServiceWorkerWorkerClientRegistry";
@@ -1406,8 +1348,6 @@ const char FrameWidget::Name_[] = "blink.mojom.FrameWidget";
 const char FrameWidgetInputHandler::Name_[] = "blink.mojom.FrameWidgetInputHandler";
 const char PageBroadcast::Name_[] = "blink.mojom.PageBroadcast";
 //const char PortalClient::Name_[] = "blink.mojom.PortalClient";
-const char RemoteFrame::Name_[] = "blink.mojom.RemoteFrame";
-const char RemoteMainFrame::Name_[] = "blink.mojom.RemoteMainFrame";
 const char Widget::Name_[] = "blink.mojom.Widget";
 
 } // blink

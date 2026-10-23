@@ -16,17 +16,23 @@
 #include "base/task/single_thread_task_executor.h"
 #include "base/threading/sequence_bound.h"
 #include "base/threading/thread.h"
+#include "cc/ipc/cc_param_traits_macros.h"
 #include "mojo/public/c/system/buffer.h"
 #include "mojo/public/c/system/data_pipe.h"
 #include "mojo/public/c/system/functions.h"
 #include "mojo/public/c/system/message_pipe.h"
 #include "mojo/public/c/system/trap.h"
+#include "mojo/public/cpp/bindings/connector.h"
+#include "mojo/public/cpp/bindings/lib/handle_serialization.h"
+#include "mojo/public/cpp/bindings/lib/pending_receiver_state.h"
 #include "mojo/public/cpp/bindings/message.h"
 #include "mojo/public/cpp/mojo_lite_msg.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/wait.h"
+#include "mojo/public/cpp/system/platform_handle.h"
+#include "mojo/public/cpp/system/message_pipe.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/cpp/system/data_pipe_drainer.h"
 #include "base/containers/stack_container.h"
@@ -204,6 +210,36 @@ void SharedBufferCapability() {
   Result(MojoClose(right), MOJO_RESULT_OK, "close preserved right handle");
 }
 
+void PlatformHandleOwnership() {
+#if BUILDFLAG(IS_WIN)
+  HANDLE native = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  Require(native != nullptr, "create real native handle");
+  auto wrapped = mojo::WrapPlatformFile(base::ScopedPlatformFile(native));
+  Require(!wrapped.is_valid(), "lite rejects unsupported native handle wrapping");
+  DWORD flags = 0;
+  Require(!::GetHandleInformation(native, &flags) && ::GetLastError() == ERROR_INVALID_HANDLE,
+          "unsupported wrapping releases transferred native ownership");
+#endif
+  auto region = base::WritableSharedMemoryRegion::Create(4096);
+  Require(region.IsValid(), "create actual OS shared memory region");
+  auto mapping = region.Map();
+  Require(mapping.IsValid(), "map actual OS shared memory region");
+  static_cast<char*>(mapping.memory())[0] = 'r';
+  auto shared = mojo::WrapWritableSharedMemoryRegion(std::move(region));
+  Require(!shared.is_valid() && static_cast<char*>(mapping.memory())[0] == 'r',
+          "unsupported wrapping leaves existing OS mappings alive");
+
+  mojo::MessagePipe pipe;
+  auto unwrapped = mojo::UnwrapPlatformHandle(
+      mojo::ScopedHandle(mojo::Handle(pipe.handle0.release().value())));
+  Require(!unwrapped.is_valid(), "unwrapping rejects a non-platform dispatcher");
+  MojoHandleSignalsState state = {};
+  Result(MojoQueryHandleSignalsState(pipe.handle1->value(), &state), MOJO_RESULT_OK,
+         "query peer after unsuccessful native unwrap");
+  Require(state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED,
+          "unsuccessful native unwrap consumes its Mojo input");
+}
+
 void CppMessageHandoff() {
   const uint8_t payload[] = {1, 2, 3};
   mojo::Message message{base::span<const uint8_t>(payload), base::span<mojo::ScopedHandle>()};
@@ -220,6 +256,136 @@ void CppMessageHandoff() {
   Require(header.name() == 42 && header.version() == 1 &&
               header.has_flag(mojo::Message::kFlagExpectsResponse),
           "C++ header construction preserves message fields");
+}
+
+void SerializedHandleOwnership() {
+  mojo::MessagePipe ordinary;
+  mojo::Message message(42, 0, 0, 0, nullptr);
+  mojo::internal::Handle_Data encoded;
+  mojo::internal::SerializeHandle(
+      mojo::ScopedHandle::From(std::move(ordinary.handle0)), message, encoded);
+  mojo::internal::PendingReceiverState receiver;
+  mojo::internal::DeserializeHandleAsReceiver(encoded, message, receiver);
+  message.Reset();
+  MojoHandleSignalsState state = {};
+  Result(MojoQueryHandleSignalsState(ordinary.handle1->value(), &state),
+         MOJO_RESULT_OK, "query decoded receiver peer");
+  Require(!(state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED),
+          "message destruction preserves the decoded receiver endpoint");
+  receiver.reset();
+  Result(MojoQueryHandleSignalsState(ordinary.handle1->value(), &state),
+         MOJO_RESULT_OK, "query reset receiver peer");
+  Require(state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED,
+          "receiver reset releases the decoded endpoint");
+
+  mojo::MessagePipe associated;
+  mojo::Message associated_message(43, 0, 0, 0, nullptr);
+  mojo::internal::AssociatedInterface_Data associated_data;
+  mojo::internal::SerializeAssociatedInterfaceInfo(
+      std::move(associated.handle0), 7, associated_message, associated_data);
+  auto endpoint = mojo::internal::DeserializeAssociatedEndpointHandle(
+      associated_data.handle, associated_message);
+  associated_message.Reset();
+  Result(MojoQueryHandleSignalsState(associated.handle1->value(), &state),
+         MOJO_RESULT_OK, "query decoded associated endpoint peer");
+  Require(!(state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED),
+          "message destruction preserves the decoded associated endpoint");
+  endpoint.reset();
+  Result(MojoQueryHandleSignalsState(associated.handle1->value(), &state),
+         MOJO_RESULT_OK, "query reset associated endpoint peer");
+  Require(state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED,
+          "decoded associated endpoint has sole ownership after handoff");
+}
+
+void NativeEnumBoundaries() {
+  for (int invalid : {-1, static_cast<int>(cc::TouchAction::kMax) + 1}) {
+    base::Pickle encoded;
+    encoded.WriteInt(invalid);
+    base::PickleIterator reader(encoded);
+    auto value = cc::TouchAction::kManipulation;
+    Require(!IPC::ParamTraits<cc::TouchAction>::Read(&encoded, &reader, &value),
+            "native enum decoding rejects values outside the declared range");
+    Require(value == cc::TouchAction::kManipulation,
+            "rejected enum decoding preserves the caller's output");
+  }
+  base::Pickle encoded;
+  IPC::ParamTraits<cc::TouchAction>::Write(&encoded, cc::TouchAction::kMax);
+  base::PickleIterator reader(encoded);
+  auto value = cc::TouchAction::kNone;
+  Require(IPC::ParamTraits<cc::TouchAction>::Read(&encoded, &reader, &value)
+              && value == cc::TouchAction::kMax,
+          "native enum decoding includes the declared upper boundary");
+  base::Pickle truncated;
+  base::PickleIterator empty_reader(truncated);
+  Require(!IPC::ParamTraits<cc::TouchAction>::Read(&truncated, &empty_reader, &value),
+          "native enum decoding rejects a truncated integer");
+}
+
+class IncomingMessageProbe final : public mojo::MessageReceiver {
+ public:
+  bool Accept(mojo::Message* message) override {
+    ++calls;
+    last_name = message->name();
+    return true;
+  }
+
+  int calls = 0;
+  uint32_t last_name = 0;
+};
+
+void AlternateTransportHeaderValidation() {
+  auto runner = base::SequencedTaskRunner::GetCurrentDefault();
+  {
+    mojo::MessagePipe transport;
+    mojo::Connector sender(std::move(transport.handle0),
+                           mojo::Connector::SINGLE_THREADED_SEND, runner);
+    mojo::Connector receiver(std::move(transport.handle1),
+                             mojo::Connector::SINGLE_THREADED_SEND, runner);
+    IncomingMessageProbe probe;
+    receiver.set_incoming_receiver(&probe);
+
+    mojo::Message valid(1234, 0, 0, 0, nullptr);
+    valid.set_heap_profiler_tag("mojom_blink_TransferableMessage_WrapAsMessage");
+    Require(sender.Accept(&valid), "alternate transport accepts a valid header");
+    base::RunLoop().RunUntilIdle();
+    Require(probe.calls == 1 && probe.last_name == 1234,
+            "valid alternate-transport message reaches its receiver");
+  }
+
+  mojo::MessagePipe transport;
+  mojo::Connector sender(std::move(transport.handle0),
+                         mojo::Connector::SINGLE_THREADED_SEND, runner);
+  mojo::Connector receiver(std::move(transport.handle1),
+                           mojo::Connector::SINGLE_THREADED_SEND, runner);
+  IncomingMessageProbe probe;
+  receiver.set_incoming_receiver(&probe);
+  bool rejected = false;
+  receiver.set_connection_error_handler(
+      base::BindOnce([](bool* rejected) { *rejected = true; }, &rejected));
+
+  mojo::MessagePipe attachment;
+  const mojo::MessagePipeHandle raw_attachment = attachment.handle0.release();
+  std::vector<mojo::ScopedHandle> attached;
+  attached.emplace_back(mojo::Handle(raw_attachment.value()));
+  const uint8_t truncated_header[] = {0, 0, 0, 0};
+  mojo::Message malformed{base::span<const uint8_t>(truncated_header),
+                          base::span<mojo::ScopedHandle>(attached)};
+  malformed.set_heap_profiler_tag(
+      "mojom_blink_TransferableMessage_WrapAsMessage");
+  Require(sender.Accept(&malformed),
+          "alternate transport queues a truncated control envelope");
+  base::RunLoop().RunUntilIdle();
+
+  Require(probe.calls == 0,
+          "truncated header is rejected before receiver header access");
+  Require(rejected && !receiver.is_valid() && sender.is_valid(),
+          "header rejection closes only the receiving connector route");
+  MojoHandleSignalsState attachment_state = {};
+  Result(MojoQueryHandleSignalsState(attachment.handle1->value(),
+                                     &attachment_state),
+         MOJO_RESULT_OK, "query rejected attachment peer");
+  Require(attachment_state.satisfied_signals & MOJO_HANDLE_SIGNAL_PEER_CLOSED,
+          "header rejection releases attached message handles");
 }
 
 class URLClientProbe final : public network::mojom::URLLoaderClient {
@@ -634,7 +800,11 @@ int main() {
   Result(MojoInitialize(nullptr), MOJO_RESULT_OK, "initialize actual lite transport");
   DataPipesAndTraps();
   SharedBufferCapability();
+  PlatformHandleOwnership();
   CppMessageHandoff();
+  SerializedHandleOwnership();
+  NativeEnumBoundaries();
+  AlternateTransportHeaderValidation();
   TypedPauseResumeAndLifetime();
   UploadGetterSequenceAndLifetime();
   TypedBlockingReceive<blink::mojom::BlobReaderClient>();

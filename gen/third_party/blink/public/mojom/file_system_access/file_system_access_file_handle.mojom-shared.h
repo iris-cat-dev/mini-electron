@@ -21,7 +21,10 @@
 #include "mojo/public/cpp/bindings/map_data_view.h"
 #include "mojo/public/cpp/bindings/string_data_view.h"
 
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom-shared-internal.h"
 #include "mojo/public/mojom/base/file_info.mojom-shared.h"
@@ -368,6 +371,7 @@ inline void FileSystemAccessAccessHandleFileDataView::GetRegularFileDataView(Fil
 // Declare TraceFormatTraits for enums, which should be defined in ::perfetto
 // namespace.
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceFormatTraits<::blink::mojom::FileSystemAccessAccessHandleLockMode> {
@@ -383,5 +387,6 @@ template <> struct COMPONENT_EXPORT(MOJOM_SHARED_BLINK_COMMON_EXPORT) TraceForma
 };
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #endif // THIRD_PARTY_BLINK_PUBLIC_MOJOM_FILE_SYSTEM_ACCESS_FILE_SYSTEM_ACCESS_FILE_HANDLE_MOJOM_SHARED_H_

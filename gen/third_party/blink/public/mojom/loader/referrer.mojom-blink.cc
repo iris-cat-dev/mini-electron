@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/loader/referrer.mojom-params-data.h"
 #include "third_party/blink/public/mojom/loader/referrer.mojom-shared-message-ids.h"
@@ -45,20 +50,10 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-Referrer::Referrer()
-    : url()
-    , policy(::network::mojom::blink::ReferrerPolicy::kDefault)
-{
-}
 
-Referrer::Referrer(const ::blink::KURL& url_in, ::network::mojom::blink::ReferrerPolicy policy_in)
-    : url(std::move(url_in))
-    , policy(std::move(policy_in))
-{
-}
 
-Referrer::~Referrer() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void Referrer::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -77,6 +72,7 @@ void Referrer::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool Referrer::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -1236,7 +1236,6 @@ mini_electron_openssl_sources = [
   "//third_party/openssl/openssl/providers/common/provider_util.c",
   "//third_party/openssl/openssl/providers/common/securitycheck.c",
   "//third_party/openssl/openssl/providers/common/securitycheck_default.c",
-  "//third_party/openssl/openssl/providers/common/securitycheck_fips.c",
   "//third_party/openssl/openssl/providers/defltprov.c",
   "//third_party/openssl/openssl/providers/implementations/asymciphers/rsa_enc.c",
   "//third_party/openssl/openssl/providers/implementations/asymciphers/sm2_enc.c",

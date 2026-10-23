@@ -769,7 +769,7 @@ void FrameSchedulerImpl::OnTaskCompleted(TaskQueue::TaskTiming* timing)
 void FrameSchedulerImpl::WriteIntoTrace(perfetto::TracedProto<RendererMainThreadTaskExecution> proto) const
 {
     proto->set_frame_visible(frame_visible_);
-    proto->set_page_visible(parent_page_scheduler_->IsPageVisible());
+    proto->set_page_visible(IsPageVisible());
     proto->set_frame_type(frame_type_ == FrameScheduler::FrameType::kMainFrame
             ? RendererMainThreadTaskExecution::FRAME_TYPE_MAIN_FRAME
             : IsCrossOriginToNearestMainFrame() ? RendererMainThreadTaskExecution::FRAME_TYPE_CROSS_ORIGIN_SUBFRAME

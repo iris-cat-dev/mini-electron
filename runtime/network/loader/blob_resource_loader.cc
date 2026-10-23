@@ -82,15 +82,22 @@ void BlobResourceLoader::doStart()
         return;
     }
     auto* blob = content::BlobURLStoreSet::get()->getBlobByUrl(m_url.possibly_invalid_spec());
-    if (!blob) {
+    auto* blobEndpoint = blob ? blob->TryGet() : nullptr;
+    if (!blobEndpoint) {
         failed(net::ERR_FILE_NOT_FOUND);
         return;
     }
     // Hold our own remote: revoking the URL must not invalidate an active load.
-    (*blob)->Clone(m_blob.BindNewPipeAndPassReceiver());
+    blobEndpoint->Clone(m_blob.BindNewPipeAndPassReceiver());
     m_blob.set_disconnect_handler(base::BindOnce(&BlobResourceLoader::failed,
         m_weakFactory.GetWeakPtr(), net::ERR_FAILED));
-    m_blob->GetInternalUUID(base::BindOnce(&BlobResourceLoader::didGetUUID, m_weakFactory.GetWeakPtr()));
+    auto* clonedEndpoint = m_blob.TryGet();
+    if (!clonedEndpoint) {
+        failed(net::ERR_FAILED);
+        return;
+    }
+    clonedEndpoint->GetInternalUUID(base::BindOnce(&BlobResourceLoader::didGetUUID,
+        m_weakFactory.GetWeakPtr()));
 }
 
 void BlobResourceLoader::didGetUUID(const WTF::String& uuid)
@@ -98,6 +105,11 @@ void BlobResourceLoader::didGetUUID(const WTF::String& uuid)
     content::BlobEntry* entry = content::BlobEntry::findByUuid(uuid.Utf8());
     if (!entry) {
         failed(net::ERR_FILE_NOT_FOUND);
+        return;
+    }
+    auto* blobEndpoint = m_blob.TryGet();
+    if (!blobEndpoint) {
+        failed(net::ERR_FAILED);
         return;
     }
     m_contentType = entry->m_contentType;
@@ -109,7 +121,7 @@ void BlobResourceLoader::didGetUUID(const WTF::String& uuid)
     auto client = m_receiver.BindNewPipeAndPassRemote();
     m_receiver.set_disconnect_handler(base::BindOnce(&BlobResourceLoader::failed,
         m_weakFactory.GetWeakPtr(), net::ERR_FAILED));
-    m_blob->ReadAll(std::move(producer), std::move(client));
+    blobEndpoint->ReadAll(std::move(producer), std::move(client));
 }
 
 void BlobResourceLoader::OnCalculatedSize(uint64_t totalSize, uint64_t expectedSize)

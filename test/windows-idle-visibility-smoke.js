@@ -61,7 +61,7 @@ async function visibility(contents, hidden, label) {
   await eventually(() => evaluate(contents, 'document.hidden'), actual => actual === hidden, label);
 }
 
-async function idle(contents, label) {
+async function idle(contents, label, monitorIdle = true) {
   let previous = await contents._getCompositorInfo();
   let stable = 0;
   await eventually(async () => {
@@ -75,7 +75,8 @@ async function idle(contents, label) {
   const after = await contents._getCompositorInfo();
   assert.equal(after.frames, before.frames, `${label}: idle renderer must not generate new frames`);
   assert.equal(after.importedFrames, before.importedFrames, `${label}: idle browser must not import duplicate frames`);
-  assert.equal(after.vsync.active, false, `${label}: idle compositor must release its high-rate clock`);
+  if (monitorIdle)
+    assert.equal(after.vsync.active, false, `${label}: idle monitor must release its high-rate clock`);
   evidence.phases.push({ label, before, after });
 }
 
@@ -106,6 +107,7 @@ app.whenReady().then(async () => {
   await window.loadURL(page('rgb(23,91,149)'));
   await bounded(initialFrame, 'initial hidden painting');
   assert.equal(window.isVisible(), false, 'initial painting must not reveal the native window');
+  await idle(view.webContents, 'unattached blank startup');
   view.setBounds({ x: 300, y: 100, width: 180, height: 130 });
   window.addBrowserView(view);
   await view.webContents.loadURL(page('rgb(30,130,70)'));
@@ -113,6 +115,8 @@ app.whenReady().then(async () => {
   for (const [name, contents] of [['root', window.webContents], ['view', view.webContents]]) {
     await visibility(contents, false, `${name} initially visible`);
     await idle(contents, `${name} static-visible`);
+  }
+  for (const contents of [window.webContents, view.webContents]) {
     await evaluate(contents, 'document.getElementById("marker").className="animate";true');
   }
   await animating(window.webContents, 'root visible animation');
@@ -142,7 +146,9 @@ app.whenReady().then(async () => {
   await animating(window.webContents, 'root shown-again animation');
   window.removeBrowserView(view);
   await visibility(view.webContents, true, 'detached BrowserView hidden');
-  await idle(view.webContents, 'detached BrowserView');
+  // The root still animates; its monitor-wide clock must remain available.
+  await idle(view.webContents, 'detached BrowserView', false);
+  await animating(window.webContents, 'root animation with detached BrowserView');
   window.addBrowserView(view);
   await visibility(view.webContents, false, 'reattached BrowserView visible');
   await animating(view.webContents, 'reattached BrowserView animation');

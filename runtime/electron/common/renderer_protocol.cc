@@ -434,7 +434,7 @@ bool IsBrowserToRendererMethod(const std::string& method)
         "executeJavaScript", "insertCSS", "removeInsertedCSS", "capturePage", "copyImageAt",
         "setUserAgent", "setZoomLevel", "setVisualZoomLevelLimits",
         "setLayoutZoomLevelLimits", "setIgnoreMenuShortcuts", "set-background-color", "invalidate",
-        "prepare-to-show",
+        "prepare-to-show", "fullscreen-state",
         "download.open", "download.read", "download.close",
         "download", "getState", "window-open-response", "guest.attach",
         "guest.detach", "guest.bounds", "guest.focus", "cdp.attach",

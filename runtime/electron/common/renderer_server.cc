@@ -225,6 +225,7 @@ struct ServerOptions {
     bool web_security = true;
     bool allow_running_insecure_content = false;
     bool transparent = false;
+    bool initially_visible = true;
     bool disable_gpu = false;
     uint32_t background_color = 0xffffffff;
     std::string accept_languages;
@@ -319,6 +320,8 @@ bool ParseOptions(base::Value::Dict launch, ServerOptions* options)
     options->allow_running_insecure_content
         = launch.FindBool("allowRunningInsecureContent").value_or(false);
     options->transparent = launch.FindBool("transparent").value_or(false);
+    options->initially_visible =
+        launch.FindBool("initiallyVisible").value_or(true);
     options->disable_gpu = launch.FindBool("disableGpu").value_or(false);
     if (const std::string* color = launch.FindString("backgroundColor")) {
         unsigned rgb = 0;
@@ -783,7 +786,8 @@ public:
         RegisterSchemes();
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         view_ = mini_electron_create_web_view_with_background(
-            options_.background_color, options_.transparent);
+            options_.background_color, options_.transparent,
+            options_.initially_visible);
 #else
         view_ = mini_electron_create_web_view();
 #endif

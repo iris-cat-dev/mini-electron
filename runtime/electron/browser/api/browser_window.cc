@@ -3405,6 +3405,23 @@ private:
                 v8::String::NewFromUtf8Literal(options->isolate(), "Modal and kiosk windows are not supported")));
             return nullptr;
         }
+        v8::Local<v8::Value> existingContents;
+        if (options->Get("webContents", &existingContents) && !existingContents->IsUndefined()) {
+            WebContents* contents = existingContents->IsObject()
+                ? static_cast<WebContents*>(GetNativePtr(
+                    existingContents.As<v8::Object>(), &WebContents::kWrapperInfo))
+                : nullptr;
+            if (!contents || contents->isDestroyedApi() || contents->getOwner()) {
+                options->isolate()->ThrowException(v8::Exception::TypeError(
+                    v8::String::NewFromUtf8Literal(options->isolate(),
+                        "webContents must be a live, unattached WebContents")));
+            } else {
+                options->isolate()->ThrowException(v8::Exception::Error(
+                    v8::String::NewFromUtf8Literal(options->isolate(),
+                        "Adopting an existing WebContents is not supported")));
+            }
+            return nullptr;
+        }
         BrowserWindow* self = new BrowserWindow(options->isolate(), wrapper);
 
         WebContents::BrowserWindowConstructorOptions* createWindowParam = new WebContents::BrowserWindowConstructorOptions();
@@ -3413,10 +3430,6 @@ private:
         createWindowParam->transparent = false;
 
         WebContents* webContents = nullptr;
-        v8::Handle<v8::Object> webContentsV8;
-        // If no WebContents was passed to the constructor, create it from options.
-        if (options->Get("webContents", &webContentsV8))
-            DebugBreak();
 
         // Use options.webPreferences to create WebContents.
         gin_helper::Dictionary webPreferences = gin_helper::Dictionary::CreateEmpty(options->isolate());
@@ -3700,13 +3713,17 @@ private:
         v8::Isolate* isolate = args.GetIsolate();
 
         if (args.IsConstructCall()) {
-            int conut = args.Length();
-            if (conut > 1)
+            if (args.Length() > 1)
                 return;
 
-            gin_helper::Dictionary options(isolate, (conut != 0 ? 
-                args[0]->ToObject(args.GetIsolate()->GetCurrentContext()).ToLocalChecked() : 
-                v8::Object::New(isolate)));
+            v8::Local<v8::Object> optionsObject;
+            if (args.Length() && !args[0]->IsUndefined()) {
+                if (!args[0]->ToObject(isolate->GetCurrentContext()).ToLocal(&optionsObject))
+                    return;
+            } else {
+                optionsObject = v8::Object::New(isolate);
+            }
+            gin_helper::Dictionary options(isolate, optionsObject);
             BrowserWindow* self = newWindow(&options, args.This());
             if (!self)
                 return;

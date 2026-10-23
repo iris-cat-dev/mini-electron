@@ -47,7 +47,7 @@ const uint32_t kUnusedColor = 0xFFA8456B;
 class WebViewHost {
 public:
     WebViewHost(bool isPopup, COLORREF backgroundColor = 0xffffffff,
-        bool isTransparent = false);
+        bool isTransparent = false, bool initiallyVisible = true);
     ~WebViewHost();
     bool preDestroyOnUiThread();
     void preDestroyOnBlinkThread();

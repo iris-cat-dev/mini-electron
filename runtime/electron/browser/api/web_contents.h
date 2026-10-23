@@ -14,6 +14,7 @@
 #include <functional>
 
 #include "base/files/file_path.h"
+#include "base/observer_list.h"
 #include "build/build_config.h"
 #include "base/values.h"
 #include "runtime/electron/common/api/event_emitter.h"
@@ -130,7 +131,7 @@ public:
     bool requestDownloadSource(std::string method, base::Value::Dict params,
         std::function<void(base::Value::Dict, std::string)> reply);
 
-    void setCreateWindowParam(BrowserWindowConstructorOptions* options) { m_createWindowParam = options; }
+    void setCreateWindowParam(BrowserWindowConstructorOptions* options);
     void resize(int width, int height, double scale_factor = 1.0);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     void setVSyncDisplayId(int64_t display_id);
@@ -297,7 +298,7 @@ private:
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     std::unique_ptr<DevToolsGateway> m_devtools_gateway;
 #endif
-    std::set<WebContentsObserver*> m_observers;
+    base::ObserverList<WebContentsObserver>::Unchecked m_observers { base::ObserverListPolicy::EXISTING_ONLY };
     struct PreparedFrame {
         uint64_t generation;
         std::function<void(const std::string&)> complete;
@@ -325,6 +326,9 @@ private:
     bool m_destroyed = false;
     bool m_destroy_event_emitted = false;
     bool m_ready_to_show_emitted = false;
+    bool m_ready_to_show_armed = false;
+    bool m_initial_paint_pending = true;
+    std::string m_ready_to_show_navigation_token;
     bool m_focused = false;
     bool m_visible = true;
     bool m_renderer_visible = true;

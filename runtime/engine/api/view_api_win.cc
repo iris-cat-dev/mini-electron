@@ -121,11 +121,11 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_set_init_settings(mini_electron_setti
 }
 
 mini_electron_web_view mini_electron_create_web_view_with_background(
-    unsigned background_color, bool transparent)
+    unsigned background_color, bool transparent, bool initially_visible)
 {
     checkThreadCallIsValid(__FUNCTION__);
     content::WebViewHost* result = new content::WebViewHost(
-        false, background_color, transparent);
+        false, background_color, transparent, initially_visible);
 
     if (content::RenderThreadImpl::get()->usesHostUiSequence()) {
         // The host immediately follows creation with a Blink FIFO barrier.
@@ -153,7 +153,8 @@ mini_electron_web_view mini_electron_create_web_view_with_background(
 
 mini_electron_web_view MINI_ELECTRON_CALL_TYPE mini_electron_create_web_view()
 {
-    return mini_electron_create_web_view_with_background(0xffffffff, false);
+    return mini_electron_create_web_view_with_background(
+        0xffffffff, false, true);
 }
 
 static bool s_gtkActivate = false;

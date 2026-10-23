@@ -6,6 +6,11 @@
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom-blink.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
+
+namespace blink {
+class WebLocalFrame;
+}
 
 namespace content {
 
@@ -223,8 +228,14 @@ public:
     virtual void NotifyDocumentInteractive() override;
 
 private:
+    blink::WebLocalFrame* getLiveFrame(WebViewHost** resolved_host = nullptr) const;
+    WebLocalFrameClientImpl* getLiveFrameClient() const;
     WebViewHost* getEngineWebView() const;
-    WebLocalFrameClientImpl* m_frameClient;
+
+    // Mojo receivers can outlive WebLocalFrameClientImpl. Resolve this stable
+    // identity for every dispatch instead of retaining the client.
+    int64_t m_engineViewId = 0;
+    blink::LocalFrameToken m_frameToken;
 
     mojo::AssociatedRemote<::blink::mojom::blink::ContextMenuClient>* m_contextMenuClient = nullptr;
     mojo::Remote<blink::mojom::blink::CloseListener> m_closeListener;

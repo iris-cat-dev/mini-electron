@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/document_isolation_policy.mojom-params-data.h"
 namespace network {
@@ -94,6 +97,7 @@ DocumentIsolationPolicy_Data::DocumentIsolationPolicy_Data()
 } // namespace mojom
 } // namespace network
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -104,3 +108,4 @@ void TraceFormatTraits<::network::mojom::DocumentIsolationPolicyValue>::WriteInt
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

@@ -462,7 +462,6 @@ void BlobReceiver::ReadSideData(ReadSideDataCallback callback)
 BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, const std::string& uuid, const std::string& contentType,
     const std::string& contentDisposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements)
 {
-    m_blobReceiverRefCount++;
     m_uuid = uuid;
     m_contentType = contentType;
     m_contentDisposition = contentDisposition;
@@ -475,22 +474,46 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
             dataEle->u.bytes = new DataElementBytesImpl();
             dataEle->u.bytes->length = ele->get_bytes()->length;
 
-            if (ele->get_bytes()->embedded_data.has_value() && ele->get_bytes()->embedded_data->size() > 0) {
-                CHECK(ele->get_bytes()->embedded_data->size() == dataEle->u.bytes->length);
-                dataEle->u.bytes->embeddedData.resize(ele->get_bytes()->embedded_data->size());
-                memcpy(dataEle->u.bytes->embeddedData.data(), ele->get_bytes()->embedded_data.value().data(), ele->get_bytes()->embedded_data->size());
+            if (ele->get_bytes()->embedded_data.has_value()) {
+                if (ele->get_bytes()->embedded_data->size() != dataEle->u.bytes->length) {
+                    delete dataEle;
+                    return;
+                }
+                dataEle->u.bytes->embeddedData.assign(
+                    ele->get_bytes()->embedded_data->begin(),
+                    ele->get_bytes()->embedded_data->end());
             } else if (ele->get_bytes()->data.is_valid()) {
                 mojo::Remote<blink::mojom::blink::BytesProvider> provider(std::move(ele->get_bytes()->data));
+                // Blink installs BytesProvider receivers on a sequenced ThreadPool
+                // runner. Wait for that bind (or peer closure), then avoid invoking
+                // a bound-but-disconnected lite Remote.
+                const bool receiverReady = !!provider.GetReceiverTaskRunner();
+                auto* bytesProvider = provider.TryGet();
+                if (!receiverReady || !bytesProvider) {
+                    delete dataEle;
+                    return;
+                }
                 base::RunLoop runLoop(base::RunLoop::Type::kNestableTasksAllowed);
+                bool receivedValidReply = false;
                 provider.set_disconnect_handler(runLoop.QuitClosure());
-                provider->RequestAsReply(base::BindOnce(
-                    [](DataElementImpl* element, base::OnceClosure quit, const WTF::Vector<uint8_t>& bytes) {
-                        element->u.bytes->embeddedData.assign(bytes.begin(), bytes.end());
+                bytesProvider->RequestAsReply(base::BindOnce(
+                    [](DataElementImpl* element, bool* receivedValidReply,
+                        base::OnceClosure quit, const WTF::Vector<uint8_t>& bytes) {
+                        if (bytes.size() == element->u.bytes->length) {
+                            element->u.bytes->embeddedData.assign(bytes.begin(), bytes.end());
+                            *receivedValidReply = true;
+                        }
                         std::move(quit).Run();
-                    }, dataEle, runLoop.QuitClosure()));
+                    }, dataEle, &receivedValidReply, runLoop.QuitClosure()));
                 runLoop.Run();
+                if (!receivedValidReply) {
+                    delete dataEle;
+                    return;
+                }
+            } else if (dataEle->u.bytes->length != 0) {
+                delete dataEle;
+                return;
             }
-            //CHECK(!(ele->get_bytes()->data.is_valid())); // 这个ele->get_bytes()->data暂时没搞明白有啥用
 
             m_elements.push_back(dataEle);
         } else if (ele->is_blob()) {
@@ -499,7 +522,12 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
             dataEle->u.blob = new DataElementBlobImpl();
 
             dataEle->u.blob->blob.Bind(std::move(ele->get_blob()->blob));
-            dataEle->u.blob->blob->GetInternalUUID(base::BindOnce(
+            auto* childBlob = dataEle->u.blob->blob.TryGet();
+            if (!childBlob) {
+                delete dataEle;
+                return;
+            }
+            childBlob->GetInternalUUID(base::BindOnce(
                 [](DataElementImpl* element, const WTF::String& uuid) {
                     element->u.blob->uuid = uuid.Utf8();
                 }, dataEle));
@@ -518,6 +546,8 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
             m_elements.push_back(dataEle);
         }
     }
+    m_valid = true;
+    ++m_blobReceiverRefCount;
     new BlobReceiver(blob.PassPipe(), uuid);
 }
 
@@ -681,8 +711,11 @@ bool BlobRegistryImpl::Register(::mojo::PendingReceiver<::blink::mojom::blink::B
 
     std::map<std::string, BlobEntry*>::const_iterator it = s_blobEntrys->find(uuid.Ascii());
     CHECK(it == s_blobEntrys->end());
-    ((*s_blobEntrys)[uuid.Ascii()]) = (new BlobEntry(std::move(blob), uuid.Ascii(), contentType.Ascii(), contentDisposition.Ascii(), std::move(elements)));
-
+    auto entry = std::make_unique<BlobEntry>(std::move(blob), uuid.Ascii(),
+        contentType.Ascii(), contentDisposition.Ascii(), std::move(elements));
+    if (!entry->isValid())
+        return false;
+    ((*s_blobEntrys)[uuid.Ascii()]) = entry.release();
     return true;
 }
 
@@ -690,8 +723,8 @@ void BlobRegistryImpl::Register(::mojo::PendingReceiver<::blink::mojom::blink::B
     const WTF::String& content_disposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements,
     ::blink::mojom::blink::BlobRegistry::RegisterCallback callback)
 {
-    if (Register(std::move(blob), uuid, content_type, content_disposition, std::move(elements)))
-        std::move(callback).Run();
+    Register(std::move(blob), uuid, content_type, content_disposition, std::move(elements));
+    std::move(callback).Run();
 }
 
 struct RegisterFromStreamAsyncCall {

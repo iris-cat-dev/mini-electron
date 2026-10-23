@@ -34,7 +34,7 @@ public:
     void reset();
 
     ScopedMessagePipeHandle pipe;
-    //     ConnectionGroup::Ref connection_group;
+    ConnectionGroup::Ref connection_group;
     //     scoped_refptr<RawPtrMessagePipe> raw_ptr_pipe;
 };
 

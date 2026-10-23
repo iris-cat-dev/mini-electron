@@ -16,6 +16,7 @@
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "services/network/public/mojom/restricted_cookie_manager.mojom.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
 
 namespace blink {
 class WebFrameWidget;
@@ -36,7 +37,8 @@ intptr_t getParentFrameId(intptr_t frame);
 
 class WebLocalFrameClientImpl : public blink::WebLocalFrameClient, public blink::mojom::BrowserInterfaceBroker {
 public:
-    WebLocalFrameClientImpl(int64_t mbwebviewId);
+    WebLocalFrameClientImpl(int64_t mbwebviewId,
+        const blink::LocalFrameToken& frameToken);
     ~WebLocalFrameClientImpl();
 
     void DidCreateDocumentLoader(blink::WebDocumentLoader*) override;
@@ -143,6 +145,10 @@ public:
     {
         return m_engineViewId;
     }
+    const blink::LocalFrameToken& getFrameToken() const
+    {
+        return m_frameToken;
+    }
     blink::WebNavigationControl* getNavigationControl() const
     {
         return m_navigationControl;
@@ -165,7 +171,10 @@ public:
         return m_localFrameRemote;
     }
 
+    // Frame hosts may bind while Blink is still constructing the WebLocalFrame,
+    // so retain the token supplied to that construction independently of m_frame.
     int64_t m_engineViewId = 0;
+    blink::LocalFrameToken m_frameToken;
 
     bool m_isMainFrame = false;
 

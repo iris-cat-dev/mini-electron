@@ -39,11 +39,6 @@ bool SkColorSpacePrimaries_Data::Validate(const void* data, mojo::internal::Vali
     return true;
 }
 
-SkColorSpacePrimaries_Data::SkColorSpacePrimaries_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
-
 } // namespace internal
 } // namespace mojom
 } // namespace skia

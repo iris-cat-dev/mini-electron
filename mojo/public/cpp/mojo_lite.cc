@@ -21,6 +21,7 @@
 #include "mojo/public/cpp/bindings/lib/pending_remote_state.h"
 #include "mojo/public/cpp/bindings/lib/unserialized_message_context.h"
 #include "mojo/public/cpp/bindings/lib/task_runner_helper.h"
+#include "mojo/public/cpp/bindings/lib/control_message_handler.h"
 #include "mojo/public/cpp/bindings/message.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/scoped_interface_endpoint_handle.h"
@@ -29,6 +30,9 @@
 #include "mojo/public/cpp/system/data_pipe_drainer.h"
 #include "mojo/public/cpp/system/handle.h"
 #include "mojo/public/cpp/system/wait.h"
+#include "mojo/public/cpp/platform/platform_handle.h"
+#include "mojo/public/c/system/platform_handle.h"
+#include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
 #include "mojo/public/cpp/system/wait_set.h"
 #include "mojo/public/cpp/bindings/lib/validation_context.h"
 #include "mojo/public/mojom/base/big_buffer.mojom-shared-internal.h"
@@ -1840,6 +1844,54 @@ MojoResult MojoReadData(MojoHandle data_pipe_consumer_handle, const struct MojoR
 
 // Lite has no OS shared-memory dispatcher or cross-process mapping protocol.
 // Report that capability boundary rather than manufacturing a usable handle.
+MojoResult MojoWrapPlatformHandle(const MojoPlatformHandle* platform_handle,
+    const MojoWrapPlatformHandleOptions* options, MojoHandle* output)
+{
+    if (!platform_handle || platform_handle->struct_size < sizeof(*platform_handle) || !output
+        || (options && (options->struct_size < sizeof(*options) || options->flags)))
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    auto owned = mojo::PlatformHandle::FromMojoPlatformHandle(platform_handle);
+    if (platform_handle->type != MOJO_PLATFORM_HANDLE_TYPE_INVALID && !owned.is_valid())
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    // Consume transferred native ownership even though lite cannot box it.
+    return MOJO_RESULT_UNIMPLEMENTED;
+}
+
+MojoResult MojoUnwrapPlatformHandle(MojoHandle handle,
+    const MojoUnwrapPlatformHandleOptions* options, MojoPlatformHandle* output)
+{
+    // Lite has no platform-handle dispatcher. Unwrapping consumes its input,
+    // including when the input has another dispatcher type or is invalid.
+    MojoClose(handle);
+    return MOJO_RESULT_INVALID_ARGUMENT;
+}
+
+MojoResult MojoWrapPlatformSharedMemoryRegion(const MojoPlatformHandle* platform_handles, uint32_t count,
+    uint64_t num_bytes, const MojoSharedBufferGuid* guid, MojoPlatformSharedMemoryRegionAccessMode access_mode,
+    const MojoWrapPlatformSharedMemoryRegionOptions* options, MojoHandle* output)
+{
+    if (!platform_handles || !count || count > 2 || !num_bytes || !guid || !output
+        || (options && (options->struct_size < sizeof(*options) || options->flags)))
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    bool valid = true;
+    for (uint32_t i = 0; i < count; ++i) {
+        auto owned = mojo::PlatformHandle::FromMojoPlatformHandle(&platform_handles[i]);
+        valid = owned.is_valid() && valid;
+    }
+    if (!valid)
+        return MOJO_RESULT_INVALID_ARGUMENT;
+    return MOJO_RESULT_UNIMPLEMENTED;
+}
+
+MojoResult MojoUnwrapPlatformSharedMemoryRegion(MojoHandle handle,
+    const MojoUnwrapPlatformSharedMemoryRegionOptions* options, MojoPlatformHandle* platform_handles,
+    uint32_t* count, uint64_t* num_bytes, MojoSharedBufferGuid* guid,
+    MojoPlatformSharedMemoryRegionAccessMode* access_mode)
+{
+    MojoClose(handle);
+    return MOJO_RESULT_INVALID_ARGUMENT;
+}
+
 MojoResult MojoCreateSharedBuffer(uint64_t num_bytes, const MojoCreateSharedBufferOptions* options, MojoHandle* output)
 {
     if (!output || !num_bytes || (options && options->struct_size < sizeof(*options)))
@@ -2307,6 +2359,17 @@ bool mojo::Message::IsValid() const
     return !IsNull();
 }
 
+uint64_t mojo::Message::GetTraceId() const
+{
+    return (static_cast<uint64_t>(header()->name) << 32) | header()->trace_nonce;
+}
+
+bool mojo::internal::ControlMessageHandler::IsControlMessage(const Message* message)
+{
+    return message->name() == interface_control::kRunMessageId
+        || message->name() == interface_control::kRunOrClosePipeMessageId;
+}
+
 void mojo::Message::Reset()
 {
     handle_.reset();
@@ -2621,6 +2684,25 @@ mojo::Connector::Connector(mojo::ScopedHandleBase<mojo::MessagePipeHandle> pipe,
 //     delete data;
 // }
 
+bool mojo::Connector::ValidateIncomingMessageHeader(mojo::Message* message)
+{
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    return header_validator_.Accept(message);
+}
+
+static void rejectIncomingConnectorMessage(
+    mojo::Connector* target, MojoHandle handle, base::StringPiece)
+{
+    MojoHandleMgr* manager = MojoHandleMgr::GetInst();
+    WTF::Locker<WTF::RecursiveMutex> locker(*manager->getLock());
+    if (!manager->findConnectorNotLock(target) || target->handle().value() != handle)
+        return;
+    // Detach before notifying: the error handler may destroy the connector.
+    auto pipe = target->PassMessagePipe();
+    pipe.reset();
+    target->RaiseError();
+}
+
 static void onConnectorAcceptMsg(mojo::Connector* connector, uintptr_t senderPid, mojo::MessageReceiver* incoming_receiver,
     std::unique_ptr<std::vector<char>> data, std::vector<mojo::ScopedHandle> handles)
 {
@@ -2648,20 +2730,16 @@ static void onConnectorAcceptMsg(mojo::Connector* connector, uintptr_t senderPid
     mojo::Message msg(base::span<const uint8_t>((const uint8_t*)(ptr), data->size()), base::span<mojo::ScopedHandle>(handles.data(), handles.size()));
     msg.set_heap_profiler_tag("mojom_blink_TransferableMessage_WrapAsMessage");
     const MojoHandle receiving_handle = connector->handle().value();
-    msg.SetBadMessageCallbackForTransport(base::BindOnce(
-        [](mojo::Connector* target, MojoHandle handle, base::StringPiece error) {
-            MojoHandleMgr* manager = MojoHandleMgr::GetInst();
-            WTF::Locker<WTF::RecursiveMutex> locker(*manager->getLock());
-            if (!manager->findConnectorNotLock(target) || target->handle().value() != handle)
-                return;
-            // Detach before notifying: the error handler may destroy the connector.
-            auto pipe = target->PassMessagePipe();
-            pipe.reset();
-            target->RaiseError();
-        }, connector, receiving_handle));
     mojo::Message* outer_message = std::exchange(s_dispatchingMessage, &msg);
-    if (!incoming_receiver->Accept(&msg))
-        msg.NotifyBadMessage("Incoming receiver rejected the message");
+    if (!connector->ValidateIncomingMessageHeader(&msg)) {
+        rejectIncomingConnectorMessage(
+            connector, receiving_handle, "Incoming message header failed validation");
+    } else {
+        msg.SetBadMessageCallbackForTransport(
+            base::BindOnce(&rejectIncomingConnectorMessage, connector, receiving_handle));
+        if (!incoming_receiver->Accept(&msg))
+            msg.NotifyBadMessage("Incoming receiver rejected the message");
+    }
     s_dispatchingMessage = outer_message;
 
     //     void* payloadData = msg.payload_buffer()->data();
@@ -2864,9 +2942,6 @@ bool mojo::Connector::Accept(mojo::Message* msg)
     const std::vector<mojo::ScopedHandle>& handles = *msg->mutable_handles();
     std::vector<uintptr_t> mojoHandles;
     for (size_t i = 0; i < handles.size(); ++i) {
-        MojoHandleMgr::MojoHandleEntry* entryTest = mgr->findEntryNotLock(handles[i].get().value());
-        content::printCallstack();
-
         mojoHandles.push_back(handles[i].get().value());
     }
 
@@ -2909,50 +2984,6 @@ bool mojo::Connector::Accept(mojo::Message* msg)
     return otherConnector->task_runner_->PostTask(FROM_HERE,
         base::BindOnce(&onConnectorAcceptMsg, otherConnector, (uintptr_t)base::GetCurrentProcId(), otherConnector->incoming_receiver_,
             std::move(data), std::move(*msg->mutable_handles())));
-}
-
-// mojo\public\cpp\bindings\lib\handle_serialization.cc
-void mojo::internal::SerializeHandle(mojo::ScopedHandleBase<mojo::Handle> handle, mojo::Message& message, struct mojo::internal::Handle_Data& data)
-{
-    if (!handle.is_valid()) {
-        data.value = kEncodedInvalidHandleValue;
-        return;
-    }
-
-    std::vector<ScopedHandle>& handles = *message.mutable_handles();
-    data.value = base::checked_cast<uint32_t>(handles.size());
-    handles.push_back(std::move(handle));
-}
-
-mojo::ScopedHandleBase<mojo::Handle> mojo::internal::DeserializeHandle(const mojo::internal::Handle_Data& data, mojo::Message& message)
-{
-    if (!data.is_valid())
-        return {};
-
-    std::vector<mojo::ScopedHandle>& handles = *message.mutable_handles();
-    DCHECK_LT(data.value, handles.size());
-    //     const mojo::ScopedHandle& h = handles[data.value];
-    //     const internal::MessageHeader* header = message.header();
-    //     int64_t senderPid = static_cast<int64_t>(header->trace_nonce) << 32 | static_cast<int64_t>(header->name);
-    //     int64_t currentPid = (int64_t)base::GetCurrentProcId();
-    //     if (senderPid != currentPid) {
-    //         MojoHandle localHandle = 0;
-    //         MojoChangeToRemoteClientMode(h->value(), senderPid, &localHandle);
-    //         mojo::Handle localH(localHandle);
-    //         mojo::ScopedHandleBase<mojo::Handle> localScopedHandle(localH);
-    //         return localScopedHandle;
-    //     }
-    return std::move(handles[data.value]);
-}
-
-bool mojo::internal::IsHandleOrInterfaceValid(const mojo::internal::Interface_Data& input)
-{
-    return input.handle.is_valid();
-}
-
-bool mojo::internal::IsHandleOrInterfaceValid(const mojo::internal::Handle_Data& input)
-{
-    return input.is_valid();
 }
 
 void mojo::Connector::StartReceiving(scoped_refptr<base::SequencedTaskRunner> taskRunner, bool allowWokenUpByOthers)
@@ -3929,6 +3960,7 @@ mojo::internal::PendingReceiverState& mojo::internal::PendingReceiverState::oper
 void mojo::internal::PendingReceiverState::reset()
 {
     pipe.reset();
+    connection_group.reset();
 }
 
 

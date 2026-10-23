@@ -57,11 +57,6 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
-enum skia::mojom::ColorType mojo::EnumTraits<enum skia::mojom::ColorType, enum SkColorType>::ToMojom(enum SkColorType t)
-{
-    return (skia::mojom::ColorType)t;
-}
-
 
 namespace blink {
 

@@ -9,6 +9,8 @@
 #ifndef MOJO_PUBLIC_CPP_PLATFORM_PLATFORM_HANDLE_INTERNAL_H_
 #define MOJO_PUBLIC_CPP_PLATFORM_PLATFORM_HANDLE_INTERNAL_H_
 
+#include <optional>
+
 #include "base/unguessable_token.h"
 #include "mojo/public/c/system/platform_handle.h"
 
@@ -21,8 +23,10 @@ public:
     {
         return { .high = token.GetHighForSerialization(), .low = token.GetLowForSerialization() };
     }
-    static base::UnguessableToken UnmarshalUnguessableToken(const MojoSharedBufferGuid* guid)
+    static std::optional<base::UnguessableToken> UnmarshalUnguessableToken(const MojoSharedBufferGuid* guid)
     {
+        if (!guid)
+            return std::nullopt;
         return base::UnguessableToken::Deserialize(guid->high, guid->low);
     }
 };

@@ -47,11 +47,6 @@ bool Mailbox_Data::Validate(const void* data, mojo::internal::ValidationContext*
     return true;
 }
 
-Mailbox_Data::Mailbox_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
-
 } // namespace internal
 } // namespace mojom
 } // namespace gpu

@@ -192,10 +192,14 @@ void VizClient::requestBeginFrame()
         if (!self)
             return;
         bool needsBeginFrame;
+        uint64_t queuedRevision;
+        uint64_t frameRevision;
         {
             base::AutoLock lock(self->m_lock);
+            queuedRevision = self->m_queuedFrameRevision;
+            frameRevision = self->m_frameRevision;
             needsBeginFrame = self->m_canCommitFrame
-                && self->m_queuedFrameRevision != self->m_frameRevision;
+                && queuedRevision != frameRevision;
         }
         if (needsBeginFrame) {
             if (viz::mojom::CompositorFrameSink* ptr = self->getPtrImpl())
@@ -414,10 +418,14 @@ void VizClient::OnBeginFrame(const ::viz::BeginFrameArgs& args, const base::flat
                 // Otherwise the submitted/queued root state is complete and
                 // feedback-only callbacks must not keep the source active.
                 bool needsBeginFrame;
+                uint64_t queuedRevision;
+                uint64_t desiredRevision;
                 {
                     base::AutoLock lock(self->m_lock);
+                    queuedRevision = self->m_queuedFrameRevision;
+                    desiredRevision = self->m_frameRevision;
                     needsBeginFrame = self->m_canCommitFrame
-                        && self->m_queuedFrameRevision != self->m_frameRevision;
+                        && queuedRevision != desiredRevision;
                 }
                 ptr->SetNeedsBeginFrame(needsBeginFrame);
             },

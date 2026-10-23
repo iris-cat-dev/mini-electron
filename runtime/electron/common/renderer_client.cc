@@ -135,6 +135,7 @@ public:
         launch.Set("webSecurity", options.web_security);
         launch.Set("allowRunningInsecureContent", options.allow_running_insecure_content);
         launch.Set("transparent", options.transparent);
+        launch.Set("initiallyVisible", options.initially_visible);
         launch.Set("backgroundColor", std::move(options.background_color));
 #if BUILDFLAG(IS_WIN)
         const auto* command_line = base::CommandLine::ForCurrentProcess();

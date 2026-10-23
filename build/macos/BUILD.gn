@@ -477,6 +477,50 @@ static_library("mini_electron_blink") {
 
 static_library("mini_electron_chromium") {
   sources = mini_electron_chromium_sources
+  sources += [
+    "//cc/ipc/cc_param_traits.cc",
+    "//cc/mojom/render_frame_metadata_mojom_traits.cc",
+    "//media/base/content_decryption_module.cc",
+    "//media/base/key_systems.cc",
+    "//net/reporting/reporting_endpoint.cc",
+    "//services/network/public/cpp/url_request_mojom_traits.cc",
+    "//third_party/blink/common/frame/frame_visual_properties_mojom_traits.cc",
+    "//third_party/blink/common/navigation/impression_mojom_traits.cc",
+    "//third_party/blink/common/navigation/navigation_policy_mojom_traits.cc",
+    "//third_party/blink/common/permissions_policy/permissions_policy_mojom_traits.cc",
+    "//third_party/blink/common/permissions_policy/policy_value_mojom_traits.cc",
+    "//third_party/blink/common/tokens/tokens_mojom_traits.cc",
+    "//ui/events/ipc/ui_events_param_traits.cc",
+    "//ui/gfx/image/canvas_image_source.cc",
+    "//ui/gfx/image/image.cc",
+    "//ui/gfx/image/image_family.cc",
+    "//ui/gfx/image/image_generic.cc",
+    "//ui/gfx/image/image_mac.mm",
+    "//ui/gfx/image/image_png_rep.cc",
+    "//ui/gfx/image/image_skia.cc",
+    "//ui/gfx/image/image_skia_operations.cc",
+    "//ui/gfx/image/image_skia_rep_default.cc",
+    "//ui/gfx/image/image_skia_source.cc",
+    "//ui/gfx/image/image_skia_util_mac.mm",
+    "//mojo/public/cpp/base/byte_string_mojom_traits.cc",
+    "//mojo/public/cpp/base/file_info_mojom_traits.cc",
+    "//mojo/public/cpp/base/file_path_mojom_traits.cc",
+    "//mojo/public/cpp/base/time_mojom_traits.cc",
+    "//services/network/public/cpp/crash_keys.cc",
+    "//services/network/public/cpp/cross_origin_embedder_policy_mojom_traits.cc",
+    "//services/network/public/cpp/document_isolation_policy_mojom_traits.cc",
+    "//net/ssl/ssl_cert_request_info.cc",
+    "//services/network/public/cpp/cookie_manager_shared_mojom_traits.cc",
+    "//services/network/public/cpp/http_request_headers_mojom_traits.cc",
+    "//services/network/public/cpp/isolation_info_mojom_traits.cc",
+    "//services/network/public/cpp/network_param_mojom_traits.cc",
+    "//services/network/public/cpp/schemeful_site_mojom_traits.cc",
+    "//ui/base/resource/resource_scale_factor.cc",
+    "//ui/display/mojom/screen_info_mojom_traits.cc",
+    "//ui/display/mojom/screen_infos_mojom_traits.cc",
+    "//ui/gfx/mojom/color_space_mojom_traits.cc",
+    "//ui/gfx/mojom/display_color_spaces_mojom_traits.cc",
+  ]
   configs += [ ":mini_electron_engine_config" ]
   deps = [ ":mini_electron_material_color_utilities" ]
 }
@@ -990,6 +1034,35 @@ executable("mini_electron_skia_mesh_smoke") {
 
 executable("mini_electron_mojo_lite_smoke") {
   sources = [ "//test/mojo-lite-crash-smoke.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+  deps = [
+    ":mini_electron_engine",
+    ":mini_electron_engine_api",
+    ":mini_electron_node_deps",
+  ]
+  libs = [
+    rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+    rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+    "z",
+    "iconv",
+  ]
+  frameworks = [
+    "AppKit.framework",
+    "Carbon.framework",
+    "CoreGraphics.framework",
+    "CoreServices.framework",
+    "CoreText.framework",
+    "IOSurface.framework",
+    "MediaAccessibility.framework",
+    "QuartzCore.framework",
+    "Security.framework",
+    "SystemConfiguration.framework",
+    "UniformTypeIdentifiers.framework",
+  ]
+}
+
+executable("mini_electron_blob_endpoint_smoke") {
+  sources = [ "//test/blob-endpoint-lifetime-smoke.cc" ]
   configs += [ ":mini_electron_engine_config" ]
   deps = [
     ":mini_electron_engine",

@@ -62,9 +62,12 @@ bool blink::mojom::blink::LocalFrameHost::RunBeforeUnloadConfirm(bool, bool*)
 
 namespace content {
 
-LocalFrameHostImpl::LocalFrameHostImpl(WebLocalFrameClientImpl* frameClient)
-    : m_frameClient(frameClient)
+LocalFrameHostImpl::LocalFrameHostImpl(WebLocalFrameClientImpl* frame_client)
 {
+    if (frame_client) {
+        m_engineViewId = frame_client->getEngineViewId();
+        m_frameToken = frame_client->getFrameToken();
+    }
 #if defined(OS_WIN)
     base::SequencedTaskRunner::GetCurrentDefault()->PostNonNestableDelayedTask(FROM_HERE,
         base::BindOnce([]() { ContextMenu::get();}), base::Seconds(3));
@@ -79,19 +82,16 @@ LocalFrameHostImpl::~LocalFrameHostImpl()
 void LocalFrameHostImpl::EnterFullscreen(
     ::blink::mojom::blink::FullscreenOptionsPtr options, ::blink::mojom::blink::LocalFrameHost::EnterFullscreenCallback callback)
 {
-    const auto id = m_frameClient->getEngineViewId();
-    requestNativeWindowCommand(m_frameClient,
+    requestNativeWindowCommand(m_engineViewId, m_frameToken,
         base::Value::Dict().Set("command", "fullscreen").Set("enabled", true),
-        base::BindOnce([](mini_electron_web_view id, EnterFullscreenCallback reply, bool granted) {
-            auto* host = static_cast<WebViewHost*>(common::LiveIdDetect::getWebViewIds()->getPtr(id));
-            granted = granted && host && host->getWebView();
+        base::BindOnce([](EnterFullscreenCallback reply, bool granted) {
             std::move(reply).Run(granted);
-        }, id, std::move(callback)));
+        }, std::move(callback)));
 }
 
 void LocalFrameHostImpl::ExitFullscreen()
 {
-    requestNativeWindowCommand(m_frameClient,
+    requestNativeWindowCommand(m_engineViewId, m_frameToken,
         base::Value::Dict().Set("command", "fullscreen").Set("enabled", false),
         base::BindOnce([](bool) {}));
 }
@@ -108,8 +108,8 @@ void LocalFrameHostImpl::RegisterProtocolHandler(const WTF::String& scheme, cons
 {
     // No per-profile web-handler permission/registry is installed. Registration
     // may be denied by the user agent; do not claim or install an OS handler.
-    if (m_frameClient && m_frameClient->getFrame())
-        m_frameClient->getFrame()->AddMessageToConsole(blink::WebConsoleMessage(
+    if (auto* frame = getLiveFrame())
+        frame->AddMessageToConsole(blink::WebConsoleMessage(
             blink::mojom::ConsoleMessageLevel::kWarning,
             blink::WebString::FromUTF8("Protocol handler registration was denied by this browser.")));
 }
@@ -164,13 +164,12 @@ void LocalFrameHostImpl::DidChangeBackgroundColor(const ::SkColor4f& background_
 
 void LocalFrameHostImpl::DidFailLoadWithError(const ::blink::KURL& url, int32_t error_code)
 {
-    if (!m_frameClient)
+    WebViewHost* webview = nullptr;
+    if (!getLiveFrame(&webview)
+        || !webview->getClosure().m_LoadingFinishCallback)
         return;
-    mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-    intptr_t id = m_frameClient->getFrameId();
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
-    if (!webview || !webview->getClosure().m_LoadingFinishCallback)
-        return;
+    mini_electron_web_view webviewHandle = m_engineViewId;
+    intptr_t id = blink::LocalFrameToken::Hasher()(m_frameToken);
 
     std::string* urlStr = new std::string(url.GetString().Utf8());
     ThreadCall::callUiThreadAsync(FROM_HERE, [webviewHandle, urlStr, id]() {
@@ -184,14 +183,15 @@ void LocalFrameHostImpl::DidFailLoadWithError(const ::blink::KURL& url, int32_t 
 
 void LocalFrameHostImpl::DidFocusFrame()
 {
-    WebViewHost* host = getEngineWebView();
-    if (host && host->getWebView())
-        host->getWebView()->SetFocusedFrame(m_frameClient->getFrame());
+    WebViewHost* host = nullptr;
+    auto* frame = getLiveFrame(&host);
+    if (host)
+        host->getWebView()->SetFocusedFrame(frame);
 }
 
 void LocalFrameHostImpl::DidCallFocus()
 {
-    requestNativeWindowCommand(m_frameClient,
+    requestNativeWindowCommand(m_engineViewId, m_frameToken,
         base::Value::Dict().Set("command", "focus"), base::BindOnce([](bool) {}));
 }
 
@@ -246,7 +246,7 @@ void LocalFrameHostImpl::DidChangeLoadProgress(double load_progress)
 void LocalFrameHostImpl::DidFinishLoad(const ::blink::KURL& validatedUrl)
 {
     printFuncName(__FUNCTION__, false, false);
-    if (!m_frameClient)
+    if (!getLiveFrame())
         return;
 
 }
@@ -256,14 +256,22 @@ void LocalFrameHostImpl::DispatchLoad()
     printFuncName(__FUNCTION__, true, false);
 }
 
+blink::WebLocalFrame* LocalFrameHostImpl::getLiveFrame(
+    WebViewHost** resolved_host) const
+{
+    return resolveLiveFrame(m_engineViewId, m_frameToken, resolved_host);
+}
+
+WebLocalFrameClientImpl* LocalFrameHostImpl::getLiveFrameClient() const
+{
+    auto* frame = getLiveFrame();
+    return frame ? static_cast<WebLocalFrameClientImpl*>(frame->Client()) : nullptr;
+}
+
 WebViewHost* LocalFrameHostImpl::getEngineWebView() const
 {
-    if (!m_frameClient)
-        return nullptr;
-
-    mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
-    return webview;
+    WebViewHost* webview = nullptr;
+    return getLiveFrame(&webview) ? webview : nullptr;
 }
 
 void LocalFrameHostImpl::GoToEntryAtOffset(int32_t offset, bool has_user_gesture, std::optional<::blink::scheduler::TaskAttributionId> soft_navigation_heuristics_task_id)
@@ -276,11 +284,12 @@ void LocalFrameHostImpl::GoToEntryAtOffset(int32_t offset, bool has_user_gesture
 
 void LocalFrameHostImpl::NavigateToNavigationApiKey(const WTF::String& key, bool has_user_gesture, std::optional<::blink::scheduler::TaskAttributionId> soft_navigation_heuristics_task_id)
 {
-    WebViewHost* host = getEngineWebView();
-    if (!host || !m_frameClient->getFrame())
+    WebViewHost* host = nullptr;
+    auto* web_frame = getLiveFrame(&host);
+    if (!host)
         return;
-    if (!host->m_navigationController->navigateToNavigationApiKey(m_frameClient->getFrame(), blink::WebString(key))) {
-        auto* frame = static_cast<blink::WebLocalFrameImpl*>(m_frameClient->getFrame())->GetFrame();
+    if (!host->m_navigationController->navigateToNavigationApiKey(web_frame, blink::WebString(key))) {
+        auto* frame = static_cast<blink::WebLocalFrameImpl*>(web_frame)->GetFrame();
         frame->DomWindow()->navigation()->TraverseCancelled(key, blink::mojom::blink::TraverseCancelledReason::kNotFound);
     }
 }
@@ -288,13 +297,11 @@ void LocalFrameHostImpl::NavigateToNavigationApiKey(const WTF::String& key, bool
 void LocalFrameHostImpl::UpdateTitle(const ::WTF::String& title, ::base::i18n::TextDirection titleDirection)
 {
     printFuncName(__FUNCTION__, false, false);
-    if (!m_frameClient)
-        return;
-
-    mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
+    WebViewHost* webview = getEngineWebView();
     if (!webview)
         return;
+
+    mini_electron_web_view webviewHandle = m_engineViewId;
 
     std::string* titleStr = new std::string(title.Utf8());
     ThreadCall::callUiThreadAsync(FROM_HERE, [webviewHandle, titleStr]() {
@@ -329,15 +336,13 @@ void LocalFrameHostImpl::HandleAccessibilityFindInPageTermination()
 void LocalFrameHostImpl::DocumentOnLoadCompleted()
 {
     printFuncName(__FUNCTION__, false, false);
-    if (!m_frameClient)
-        return;
-    mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
+    WebViewHost* webview = getEngineWebView();
     if (!webview)
         return;
+    mini_electron_web_view webviewHandle = m_engineViewId;
 
-    blink::LocalFrameToken token = m_frameClient->getFrame()->GetLocalFrameToken();
-    mini_electron_web_frame_handle frameId = (void*)(blink::LocalFrameToken::Hasher()(token));
+    mini_electron_web_frame_handle frameId = reinterpret_cast<void*>(
+        static_cast<uintptr_t>(blink::LocalFrameToken::Hasher()(m_frameToken)));
 
     if (webview->getClosure().m_DocumentReadyInBlinkCallback)
         webview->getClosure().m_DocumentReadyInBlinkCallback(webviewHandle, webview->getClosure().m_DocumentReadyInBlinkParam, frameId);
@@ -361,14 +366,14 @@ void LocalFrameHostImpl::DidDispatchDOMContentLoadedEvent()
 
 bool LocalFrameHostImpl::RunModalAlertDialog(const ::WTF::String& alertMsg, bool disable_third_party_subframe_suppresion)
 {
+    WebViewHost* webview = nullptr;
+    if (!getLiveFrame(&webview))
+        return true;
     std::string* txt = new std::string(alertMsg.Utf8());
     bool needPopupNativeMsgBox = true;
     do {
-        if (!m_frameClient)
-            break;
-        mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-        WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
-        if (!webview || !webview->getClosure().m_AlertBoxCallback)
+        mini_electron_web_view webviewHandle = m_engineViewId;
+        if (!webview->getClosure().m_AlertBoxCallback)
             break;
 
         auto invoke_dialog = [webviewHandle, txt]() {
@@ -400,16 +405,17 @@ void LocalFrameHostImpl::RunModalAlertDialog(
 
 bool LocalFrameHostImpl::RunModalConfirmDialog(const ::WTF::String& alertMsg, bool disable_third_party_subframe_suppresion, bool* outSuccess)
 {
+    *outSuccess = false;
+    WebViewHost* webview = nullptr;
+    if (!getLiveFrame(&webview))
+        return true;
     std::string* txt = new std::string(alertMsg.Utf8());
     bool needPopupNativeMsgBox = true;
     BOOL ret = FALSE;
 
     do {
-        if (!m_frameClient)
-            break;
-        mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-        WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
-        if (!webview || !webview->getClosure().m_ConfirmBoxCallback)
+        mini_electron_web_view webviewHandle = m_engineViewId;
+        if (!webview->getClosure().m_ConfirmBoxCallback)
             break;
 
         auto invoke_dialog = [webviewHandle, txt, &ret]() {
@@ -443,17 +449,19 @@ void LocalFrameHostImpl::RunModalConfirmDialog(
 bool LocalFrameHostImpl::RunModalPromptDialog(
     const ::WTF::String& alertMsg, const ::WTF::String& defaultVal, bool disableThirdPartySubframeSuppresion, bool* outSuccess, ::WTF::String* outResult)
 {
+    *outSuccess = false;
+    *outResult = WTF::String();
+    WebViewHost* webview = nullptr;
+    if (!getLiveFrame(&webview))
+        return false;
     std::string* txt = new std::string(alertMsg.Utf8());
     std::string* defaultValue = new std::string(defaultVal.Utf8());
     mini_electron_string_ptr ret = nullptr;
     BOOL isOk = FALSE;
 
     do {
-        if (!m_frameClient)
-            break;
-        mini_electron_web_view webviewHandle = m_frameClient->getEngineViewId();
-        WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(webviewHandle);
-        if (!webview || !webview->getClosure().m_PromptBoxCallback)
+        mini_electron_web_view webviewHandle = m_engineViewId;
+        if (!webview->getClosure().m_PromptBoxCallback)
             break;
 
         auto invoke_dialog = [webviewHandle, txt, defaultValue, &ret, &isOk]() {
@@ -515,8 +523,9 @@ void LocalFrameHostImpl::RunBeforeUnloadConfirm(bool is_reload, RunBeforeUnloadC
 
 void LocalFrameHostImpl::UpdateFaviconURL(WTF::Vector<::blink::mojom::blink::FaviconURLPtr> favicon_urls)
 {
-    WebViewHost* host = getEngineWebView();
-    if (!host || !m_frameClient->getFrame() || m_frameClient->getFrame()->Parent())
+    WebViewHost* host = nullptr;
+    auto* frame = getLiveFrame(&host);
+    if (!frame || frame->Parent())
         return;
     std::vector<std::string> urls;
     urls.reserve(favicon_urls.size());
@@ -539,11 +548,11 @@ void beginNavigation(std::unique_ptr<blink::WebNavigationInfo> info, blink::WebN
 class DataURLDownload final : public blink::mojom::blink::BlobReaderClient,
                               public mojo::DataPipeDrainer::Client {
 public:
-    DataURLDownload(blink::LocalFrameToken frame,
+    DataURLDownload(int64_t view_id, blink::LocalFrameToken frame,
         std::unique_ptr<blink::WebNavigationInfo> info, WTF::String name,
         mojo::PendingRemote<blink::mojom::blink::Blob> blob)
-        : m_frame(frame), m_info(std::move(info)), m_name(std::move(name)),
-          m_blob(std::move(blob)), m_receiver(this)
+        : m_viewId(view_id), m_frame(frame), m_info(std::move(info)),
+          m_name(std::move(name)), m_blob(std::move(blob)), m_receiver(this)
     {
     }
 
@@ -594,7 +603,7 @@ private:
     {
         if (!m_completed || !m_drained)
             return;
-        blink::WebLocalFrame* frame = blink::WebLocalFrame::FromFrameToken(m_frame);
+        blink::WebLocalFrame* frame = resolveLiveFrame(m_viewId, m_frame);
         if (frame && m_url.size() == m_expectedSize) {
             blink::KURL url(WTF::String::FromUTF8(m_url));
             if (url.IsValid() && url.ProtocolIsData()) {
@@ -606,6 +615,7 @@ private:
         delete this;
     }
 
+    int64_t m_viewId;
     blink::LocalFrameToken m_frame;
     std::unique_ptr<blink::WebNavigationInfo> m_info;
     WTF::String m_name;
@@ -621,6 +631,10 @@ private:
 void LocalFrameHostImpl::DownloadURL(::blink::mojom::blink::DownloadURLParamsPtr params)
 {
     printFuncName(__FUNCTION__, false, false);
+    auto* frame = getLiveFrame();
+    if (!frame)
+        return;
+    auto* frame_client = static_cast<WebLocalFrameClientImpl*>(frame->Client());
 
     std::unique_ptr<blink::WebNavigationInfo> info = std::make_unique<blink::WebNavigationInfo>();
     info->url_request.SetUrl(blink::WebURL(params->url));
@@ -629,13 +643,13 @@ void LocalFrameHostImpl::DownloadURL(::blink::mojom::blink::DownloadURLParamsPtr
     //info->navigation_policy = blink::kWebNavigationPolicyDownload;
 
     if (params->data_url_blob) {
-        auto* download = new DataURLDownload(m_frameClient->getFrame()->GetLocalFrameToken(),
+        auto* download = new DataURLDownload(m_engineViewId, m_frameToken,
             std::move(info), params->suggested_name, std::move(params->data_url_blob));
         download->start();
         return;
     }
 
-    m_frameClient->beginDownload(std::move(info), std::make_unique<String>(params->suggested_name));
+    frame_client->beginDownload(std::move(info), std::make_unique<String>(params->suggested_name));
 }
 
 void LocalFrameHostImpl::FocusedElementChanged(bool is_editable_element, bool is_richly_editable_element, const ::gfx::Rect& bounds_in_frame_widget, ::blink::mojom::blink::FocusType focus_type)
@@ -663,22 +677,24 @@ void LocalFrameHostImpl::CreateNewPopupWidget(::mojo::PendingAssociatedReceiver<
     ::mojo::PendingAssociatedReceiver<::blink::mojom::blink::WidgetHost> blinkWidgetHost,
     ::mojo::PendingAssociatedRemote<::blink::mojom::blink::Widget> blinkWidget)
 {
-    //printFuncName(__FUNCTION__, true, false);
-    mini_electron_web_view parentWebviewId = m_frameClient->getEngineViewId();
+    if (!getLiveFrame())
+        return;
     WebViewHost* newWebview = new WebViewHost(true);
-    newWebview->initPopupWidgetModeInBlinkThread(parentWebviewId, std::move(popupHost), std::move(blinkWidgetHost), std::move(blinkWidget));
+    newWebview->initPopupWidgetModeInBlinkThread(m_engineViewId, std::move(popupHost), std::move(blinkWidgetHost), std::move(blinkWidget));
 }
 
 void LocalFrameHostImpl::ShowContextMenu(
     ::mojo::PendingAssociatedRemote<::blink::mojom::blink::ContextMenuClient> client, const ::blink::UntrustworthyContextMenuParams& params)
 {
-    WebViewHost* webview = (WebViewHost*)common::LiveIdDetect::getWebViewIds()->getPtr(m_frameClient->getEngineViewId());
-    if (!webview || !webview->m_isContextMenuEnable)
+    WebViewHost* webview = nullptr;
+    if (!getLiveFrame(&webview) || !webview->m_isContextMenuEnable)
         return;
+    const auto frame_id = static_cast<intptr_t>(
+        blink::LocalFrameToken::Hasher()(m_frameToken));
     auto& callback = webview->getClosure().m_contextMenuCallback;
     if (callback) {
         callback(reinterpret_cast<mini_electron_web_frame_handle>(
-                     static_cast<uintptr_t>(getFrameIdByWebLocalFrame(m_frameClient->getFrame()))),
+                     static_cast<uintptr_t>(frame_id)),
             params);
         return;
     }
@@ -686,7 +702,7 @@ void LocalFrameHostImpl::ShowContextMenu(
     // Standalone engine consumers retain their default menu. Electron consumers
     // own the event and must never get a second legacy menu.
     ContextMenu::get()->setCurrentWebview(webview);
-    ContextMenu::get()->show(params, getFrameIdByWebLocalFrame(m_frameClient->getFrame()));
+    ContextMenu::get()->show(params, frame_id);
 #endif
 }
 
@@ -739,7 +755,7 @@ void LocalFrameHostImpl::Detach()
     // clears the actual frame. This associated-host notification must not
     // detach the same frame a second time or retain a dangling client pointer.
     m_closeListener.reset();
-    m_frameClient = nullptr;
+    m_engineViewId = 0;
 }
 
 class KeepAliveHandleImpl : public blink::mojom::blink::KeepAliveHandle {
@@ -799,14 +815,16 @@ void LocalFrameHostImpl::DidInferColorScheme(::blink::mojom::blink::PreferredCol
 
 void LocalFrameHostImpl::DidChangeSrcDoc(const ::blink::FrameToken& childFrameToken, const WTF::String& srcdocValue)
 {
+    auto* source = getLiveFrame();
+    if (!source)
+        return;
     blink::LocalFrameToken frameToken = childFrameToken.GetAs<blink::LocalFrameToken>();
-    blink::WebLocalFrame* child = blink::WebLocalFrame::FromFrameToken(frameToken);
-    if (!child)
+    blink::WebLocalFrame* child = resolveLiveFrame(m_engineViewId, frameToken);
+    if (!child || child->View() != source->View())
         return;
-    WebLocalFrameClientImpl* client = (WebLocalFrameClientImpl*)(child->Client());
-    if (!client)
-        return;
-    client->m_srcdoc = srcdocValue;
+    auto* client = static_cast<WebLocalFrameClientImpl*>(child->Client());
+    if (client)
+        client->m_srcdoc = srcdocValue;
 }
 
 
@@ -859,8 +877,8 @@ void LocalFrameHostImpl::CreateFencedFrame(::mojo::PendingAssociatedReceiver<::b
 
 void LocalFrameHostImpl::StartLoadingForAsyncNavigationApiCommit()
 {
-    if (m_frameClient)
-        m_frameClient->StartLoadingForAsyncNavigationApiCommit();
+    if (auto* client = getLiveFrameClient())
+        client->StartLoadingForAsyncNavigationApiCommit();
 }
 
 void LocalFrameHostImpl::NavigateEventHandlerPresenceChanged(bool present)
@@ -933,26 +951,28 @@ void LocalFrameHostImpl::OnViewTransitionOptInChanged(::blink::mojom::blink::Vie
 void LocalFrameHostImpl::StartDragging(const ::blink::WebDragData& drag_data, ::blink::DragOperationsMask operations_allowed, const ::SkBitmap& image,
     const ::gfx::Vector2d& cursor_offset_in_dip, const ::gfx::Rect& drag_obj_rect_in_dip, ::blink::mojom::blink::DragEventSourceInfoPtr event_info)
 {
-    if (!m_frameClient || !m_frameClient->getFrame())
+    auto* frame = getLiveFrame();
+    if (!frame)
         return;
-    auto* widget = m_frameClient->getLocalRootWebFrameWidget();
+    auto* client = static_cast<WebLocalFrameClientImpl*>(frame->Client());
+    auto* widget = client->getLocalRootWebFrameWidget();
     if (!widget)
         return;
     // This embedding has an inbound file-drop bridge, but no outbound native
     // drag session. Finish the Blink source with kNone, including dragend and
     // controller cleanup, instead of claiming a successful drop.
-    const auto token = m_frameClient->getFrame()->GetLocalFrameToken();
+    const auto token = m_frameToken;
     const gfx::Point screen = event_info ? event_info->location : widget->ViewRect().origin();
     const gfx::Point viewport = screen - widget->ViewRect().OffsetFromOrigin();
     widget->DragSourceEndedAt(gfx::PointF(viewport), gfx::PointF(screen), ui::mojom::DragOperation::kNone,
-        base::BindOnce([](const blink::LocalFrameToken& token) {
-            auto* frame = blink::WebLocalFrame::FromFrameToken(token);
+        base::BindOnce([](int64_t view_id, const blink::LocalFrameToken& token) {
+            auto* frame = resolveLiveFrame(view_id, token);
             if (!frame)
                 return;
             auto* client = static_cast<WebLocalFrameClientImpl*>(frame->Client());
             if (auto* widget = client->getLocalRootWebFrameWidget())
                 widget->DragSourceSystemDragEnded();
-        }, token));
+        }, m_engineViewId, token));
 }
 
 void LocalFrameHostImpl::IssueKeepAliveHandle(::mojo::PendingReceiver<::blink::mojom::blink::NavigationStateKeepAliveHandle> receiver)

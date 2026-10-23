@@ -20,6 +20,7 @@ public:
     BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, const std::string& uuid, const std::string& contentType,
         const std::string& contentDisposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements);
     ~BlobEntry();
+    bool isValid() const { return m_valid; }
 
     static BlobEntry* findByUuid(const std::string& uuid);
 
@@ -27,6 +28,7 @@ public:
     int64_t read(std::vector<uint8_t>* buffer, int64_t start, int64_t len, int64_t* allSize);
 
     //BlobReceiver* m_blob;
+    bool m_valid = false;
     int m_blobReceiverRefCount = 0;
     std::string m_uuid;
     std::string m_contentType;

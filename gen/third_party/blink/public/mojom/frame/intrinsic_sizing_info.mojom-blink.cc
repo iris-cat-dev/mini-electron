@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom-params-data.h"
 #include "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom-shared-message-ids.h"
@@ -45,24 +50,10 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-IntrinsicSizingInfo::IntrinsicSizingInfo()
-    : size()
-    , aspect_ratio()
-    , has_width()
-    , has_height()
-{
-}
 
-IntrinsicSizingInfo::IntrinsicSizingInfo(const ::gfx::SizeF& size_in, const ::gfx::SizeF& aspect_ratio_in, bool has_width_in, bool has_height_in)
-    : size(std::move(size_in))
-    , aspect_ratio(std::move(aspect_ratio_in))
-    , has_width(std::move(has_width_in))
-    , has_height(std::move(has_height_in))
-{
-}
 
-IntrinsicSizingInfo::~IntrinsicSizingInfo() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void IntrinsicSizingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -95,6 +86,7 @@ void IntrinsicSizingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) c
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool IntrinsicSizingInfo::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

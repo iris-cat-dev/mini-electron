@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-params-data.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-shared-message-ids.h"
@@ -45,35 +50,8 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-FrameOwnerProperties::FrameOwnerProperties()
-    : name()
-    , scrollbar_mode()
-    , margin_width()
-    , margin_height()
-    , allow_fullscreen()
-    , allow_payment_request()
-    , is_display_none()
-    , color_scheme(::blink::mojom::blink::ColorScheme::kLight)
-    , preferred_color_scheme(::blink::mojom::blink::PreferredColorScheme::kLight)
-{
-}
 
-FrameOwnerProperties::FrameOwnerProperties(const WTF::String& name_in, ::blink::mojom::blink::ScrollbarMode scrollbar_mode_in, int32_t margin_width_in,
-    int32_t margin_height_in, bool allow_fullscreen_in, bool allow_payment_request_in, bool is_display_none_in,
-    ::blink::mojom::blink::ColorScheme color_scheme_in, ::blink::mojom::blink::PreferredColorScheme preferred_color_scheme_in)
-    : name(std::move(name_in))
-    , scrollbar_mode(std::move(scrollbar_mode_in))
-    , margin_width(std::move(margin_width_in))
-    , margin_height(std::move(margin_height_in))
-    , allow_fullscreen(std::move(allow_fullscreen_in))
-    , allow_payment_request(std::move(allow_payment_request_in))
-    , is_display_none(std::move(is_display_none_in))
-    , color_scheme(std::move(color_scheme_in))
-    , preferred_color_scheme(std::move(preferred_color_scheme_in))
-{
-}
 
-FrameOwnerProperties::~FrameOwnerProperties() = default;
 size_t FrameOwnerProperties::Hash(size_t seed) const
 {
     seed = mojo::internal::WTFHash(seed, this->name);
@@ -88,6 +66,7 @@ size_t FrameOwnerProperties::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void FrameOwnerProperties::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -155,6 +134,7 @@ void FrameOwnerProperties::WriteIntoTrace(perfetto::TracedValue traced_context) 
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool FrameOwnerProperties::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

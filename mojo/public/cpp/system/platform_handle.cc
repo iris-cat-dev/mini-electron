@@ -15,14 +15,6 @@ namespace mojo {
 
 namespace {
 
-uint64_t ReleasePlatformHandleValueFromPlatformFile(base::ScopedPlatformFile file)
-{
-#if BUILDFLAG(IS_WIN)
-    return reinterpret_cast<uint64_t>(file.Take());
-#else
-    return static_cast<uint64_t>(file.release());
-#endif
-}
 
 base::ScopedPlatformFile PlatformFileFromPlatformHandleValue(uint64_t value)
 {
@@ -166,8 +158,11 @@ base::subtle::PlatformSharedMemoryRegion UnwrapPlatformSharedMemoryRegion(Scoped
         return base::subtle::PlatformSharedMemoryRegion();
     }
 
+    auto token = internal::PlatformHandleInternal::UnmarshalUnguessableToken(&mojo_guid);
+    if (!token)
+        return base::subtle::PlatformSharedMemoryRegion();
     return base::subtle::PlatformSharedMemoryRegion::Take(
-        std::move(region_handle), mode, size, internal::PlatformHandleInternal::UnmarshalUnguessableToken(&mojo_guid));
+        std::move(region_handle), mode, size, *token);
 }
 
 ScopedHandle WrapPlatformHandle(PlatformHandle handle)
@@ -194,16 +189,7 @@ PlatformHandle UnwrapPlatformHandle(ScopedHandle handle)
 
 ScopedHandle WrapPlatformFile(base::ScopedPlatformFile platform_file)
 {
-    MojoPlatformHandle platform_handle;
-    platform_handle.struct_size = sizeof(MojoPlatformHandle);
-    platform_handle.type = kPlatformFileHandleType;
-    platform_handle.value = ReleasePlatformHandleValueFromPlatformFile(std::move(platform_file));
-
-    MojoHandle mojo_handle;
-    MojoResult result = MojoWrapPlatformHandle(&platform_handle, nullptr, &mojo_handle);
-    CHECK_EQ(result, MOJO_RESULT_OK);
-
-    return ScopedHandle(Handle(mojo_handle));
+    return WrapPlatformHandle(PlatformHandle(std::move(platform_file)));
 }
 
 MojoResult UnwrapPlatformFile(ScopedHandle handle, base::ScopedPlatformFile* file)

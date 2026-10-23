@@ -4,7 +4,7 @@
 
 #include "runtime/electron/common/gin_helper/arguments.h"
 
-//#include "base/strings/stringprintf.h"
+#include "base/strings/stringprintf.h"
 #include "runtime/electron/common/gin_helper/converter.h"
 
 namespace gin_helper {
@@ -36,7 +36,7 @@ v8::Local<v8::Value> Arguments::PeekNext() const
     return (*info_)[next_];
 }
 
-std::string V8TypeAsString(v8::Local<v8::Value> value)
+std::string V8TypeAsString(v8::Isolate* isolate, v8::Local<v8::Value> value)
 {
     if (value.IsEmpty())
         return "<empty handle>";
@@ -45,7 +45,7 @@ std::string V8TypeAsString(v8::Local<v8::Value> value)
     if (value->IsNull())
         return "null";
     std::string result;
-    if (!ConvertFromV8(NULL, value, &result))
+    if (!ConvertFromV8(isolate, value, &result))
         return std::string();
     return result;
 }
@@ -55,11 +55,9 @@ void Arguments::ThrowError() const
     if (insufficient_arguments_)
         return ThrowTypeError("Insufficient number of arguments.");
 
-    char* err = new char[10000];
-    sprintf(err, "Error processing argument at index %d, conversion failure from %s", next_ - 1, V8TypeAsString((*info_)[next_ - 1]).c_str());
-
-    ThrowTypeError(err);
-    delete[] err;
+    const v8::Local<v8::Value> value = (*info_)[next_ - 1];
+    ThrowTypeError(base::StringPrintf("Error processing argument at index %d, conversion failure from %s",
+        next_ - 1, V8TypeAsString(isolate_, value).c_str()));
 }
 
 void Arguments::ThrowTypeError(const std::string& message) const

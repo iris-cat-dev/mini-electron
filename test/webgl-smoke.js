@@ -70,7 +70,19 @@ async function capture(probes, expected, label) {
   do {
     const image = await window.webContents.capturePage();
     assert.equal(image.isEmpty(), false, `${label}: capturePage must contain actual composed pixels`);
-    last = pngSamples(image.toPNG(), probes, report.renderer.viewport);
+    const png = image.toPNG();
+    const size = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+    const viewport = report.renderer.viewport;
+    // Geometry, like pixels, can lag a frame. Keep the same bounded wait, but
+    // require the exact backing size so proportional stale frames cannot pass.
+    const pixelSize = { width: Math.ceil(viewport.width * report.renderer.devicePixelRatio),
+      height: Math.ceil(viewport.height * report.renderer.devicePixelRatio) };
+    if (size.width !== pixelSize.width || size.height !== pixelSize.height) {
+      last = { ...size, viewport, pixelSize };
+      await pause(30);
+      continue;
+    }
+    last = pngSamples(png, probes, viewport);
     if (last.samples.length === expected.length && last.samples.every((rgba, index) => closeColor(rgba, expected[index]))) {
       if (native) {
         const presented = await native.snapshot(window.getTitle(), probes);
@@ -402,7 +414,7 @@ async function exerciseWebGL() {
     return true;
   };
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  return { checks: results, viewport: { width: innerWidth, height: innerHeight }, dataURL,
+  return { checks: results, viewport: { width: innerWidth, height: innerHeight }, devicePixelRatio, dataURL,
     contextVersions: [gl1.getParameter(gl1.VERSION), gl2.getParameter(gl2.VERSION)],
     renderer: [gl1.getParameter(gl1.RENDERER), gl2.getParameter(gl2.RENDERER)] };
 }
@@ -452,6 +464,19 @@ app.whenReady().then(async () => {
   const expected = [blue, yellow, red, green, red, green, blue, yellow, blue, yellow, red, green,
     green, [144, 32, 48, 255], green, [0, 255, 255, 255], yellow, red, [32, 64, 96, 255]];
   await capture(probes, expected, 'Initial actual BrowserWindow WebGL resources, alpha, copies, bitmap, resize and restore');
+  // With no animation or explicit redraw, every resize must still publish the
+  // new root backing and preserve the existing WebGL resources.
+  for (const [width, height] of [[720, 460], [640, 420], [560, 400]]) {
+    window.setContentSize(width, height);
+    const deadline = Date.now() + 3000;
+    do {
+      report.renderer.viewport = await window.webContents.executeJavaScript('({width:innerWidth,height:innerHeight})');
+      if (report.renderer.viewport.width === width && report.renderer.viewport.height === height) break;
+      await pause(16);
+    } while (Date.now() < deadline);
+    assert.deepEqual(report.renderer.viewport, { width, height }, 'Actual renderer resize must settle');
+    await capture(probes, expected, `Actual resized WebGL resources ${width}x${height}`);
+  }
   assert.equal(await window.webContents.executeJavaScript('webglSmokeUpdate()'), true);
   const updated = expected.slice(); updated[12] = blue; updated[15] = [255, 0, 255, 255]; updated[17] = green;
   await capture(probes, updated, 'Later actual BrowserWindow resources replace old pixels without damaging peers');

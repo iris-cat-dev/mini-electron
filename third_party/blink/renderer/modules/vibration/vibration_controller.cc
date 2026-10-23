@@ -22,59 +22,13 @@
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_union_unsignedlong_unsignedlongsequence.h"
 #include "third_party/blink/renderer/core/frame/intervention.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/navigator.h"
 #include "third_party/blink/renderer/core/page/page.h"
 
-// Maximum number of entries in a vibration pattern.
-const unsigned kVibrationPatternLengthMax = 99;
-
-// Maximum duration of a vibration is 10 seconds.
-const unsigned kVibrationDurationMsMax = 10000;
-
-blink::VibrationController::VibrationPattern sanitizeVibrationPatternInternal(const blink::VibrationController::VibrationPattern& pattern)
-{
-    blink::VibrationController::VibrationPattern sanitized = pattern;
-    wtf_size_t length = sanitized.size();
-
-    // If the pattern is too long then truncate it.
-    if (length > kVibrationPatternLengthMax) {
-        sanitized.Shrink(kVibrationPatternLengthMax);
-        length = kVibrationPatternLengthMax;
-    }
-
-    // If any pattern entry is too long then truncate it.
-    for (wtf_size_t i = 0; i < length; ++i) {
-        if (sanitized[i] > kVibrationDurationMsMax)
-            sanitized[i] = kVibrationDurationMsMax;
-    }
-
-    // If the last item in the pattern is a pause then discard it.
-    if (length && !(length % 2))
-        sanitized.pop_back();
-
-    return sanitized;
-}
-
 namespace blink {
-
-// static
-VibrationController::VibrationPattern VibrationController::SanitizeVibrationPattern(const V8UnionUnsignedLongOrUnsignedLongSequence* input)
-{
-    switch (input->GetContentType()) {
-    case V8UnionUnsignedLongOrUnsignedLongSequence::ContentType::kUnsignedLong: {
-        VibrationPattern pattern;
-        pattern.push_back(input->GetAsUnsignedLong());
-        return sanitizeVibrationPatternInternal(pattern);
-    }
-    case V8UnionUnsignedLongOrUnsignedLongSequence::ContentType::kUnsignedLongSequence:
-        return sanitizeVibrationPatternInternal(input->GetAsUnsignedLongSequence());
-    }
-    NOTREACHED();
-}
 
 // static
 VibrationController& VibrationController::From(Navigator& navigator)
@@ -156,7 +110,7 @@ bool VibrationController::Vibrate(const VibrationPattern& pattern)
     // Cancel clears the stored pattern and cancels any ongoing vibration.
     Cancel();
 
-    pattern_ = sanitizeVibrationPatternInternal(pattern);
+    pattern_ = SanitizeVibrationPattern(pattern);
 
     if (!pattern_.size())
         return true;

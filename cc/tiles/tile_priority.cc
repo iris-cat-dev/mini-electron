@@ -101,14 +101,13 @@ std::string TreePriorityToString(TreePriority prio)
 //   }
 //   return pbzeroMinorStateV2::TREE_PRIORITY_UNSPECIFIED;
 // }
-// 
-// void GlobalStateThatImpactsTilePriority::AsValueInto(base::trace_event::TracedValue* state) const
-// {
-//     state->SetString("memory_limit_policy", TileMemoryLimitPolicyToString(memory_limit_policy));
-//     state->SetInteger("soft_memory_limit_in_bytes", base::saturated_cast<int>(soft_memory_limit_in_bytes));
-//     state->SetInteger("hard_memory_limit_in_bytes", base::saturated_cast<int>(hard_memory_limit_in_bytes));
-//     state->SetInteger("num_resources_limit", base::saturated_cast<int>(num_resources_limit));
-//     state->SetString("tree_priority", TreePriorityToString(tree_priority));
-// }
+void GlobalStateThatImpactsTilePriority::AsValueInto(base::trace_event::TracedValue* state) const
+{
+    state->SetString("memory_limit_policy", TileMemoryLimitPolicyToString(memory_limit_policy));
+    state->SetInteger("soft_memory_limit_in_bytes", base::saturated_cast<int>(soft_memory_limit_in_bytes));
+    state->SetInteger("hard_memory_limit_in_bytes", base::saturated_cast<int>(hard_memory_limit_in_bytes));
+    state->SetInteger("num_resources_limit", base::saturated_cast<int>(num_resources_limit));
+    state->SetString("tree_priority", TreePriorityToString(tree_priority));
+}
 
 } // namespace cc

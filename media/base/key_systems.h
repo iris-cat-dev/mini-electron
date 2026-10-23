@@ -76,9 +76,8 @@ public:
     virtual EmeFeatureSupport GetDistinctiveIdentifierSupport(const std::string& key_system) const = 0;
 };
 
-// Returns a name for `key_system` for UMA logging. When `use_hw_secure_codecs`
-// is specified (non-nullopt), names with robustness will be returned for
-// supported key systems.
+// Returns a name for `key_system` for UMA logging. Builds without a proprietary
+// CDM classify unsupported key systems as unknown.
 MEDIA_EXPORT std::string GetKeySystemNameForUMA(const std::string& key_system, std::optional<bool> use_hw_secure_codecs = std::nullopt);
 
 // Returns an int mapping to `key_system` suitable for UKM reporting. CdmConfig

@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/source_location.mojom-params-data.h"
 #include "services/network/public/mojom/source_location.mojom-shared-message-ids.h"
@@ -45,21 +50,6 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace network::mojom::blink {
-SourceLocation::SourceLocation()
-    : url()
-    , line(0U)
-    , column(0U)
-{
-}
-
-SourceLocation::SourceLocation(const WTF::String& url_in, uint32_t line_in, uint32_t column_in)
-    : url(std::move(url_in))
-    , line(std::move(line_in))
-    , column(std::move(column_in))
-{
-}
-
-SourceLocation::~SourceLocation() = default;
 size_t SourceLocation::Hash(size_t seed) const
 {
     seed = mojo::internal::WTFHash(seed, this->url);
@@ -68,6 +58,7 @@ size_t SourceLocation::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void SourceLocation::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -93,6 +84,7 @@ void SourceLocation::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool SourceLocation::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

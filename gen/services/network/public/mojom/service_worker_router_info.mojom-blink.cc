@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "services/network/public/mojom/service_worker_router_info.mojom-params-data.h"
 #include "services/network/public/mojom/service_worker_router_info.mojom-shared-message-ids.h"
@@ -45,33 +50,8 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace network::mojom::blink {
-ServiceWorkerRouterInfo::ServiceWorkerRouterInfo()
-    : rule_id_matched(0)
-    , matched_source_type()
-    , actual_source_type()
-    , route_rule_num(0ULL)
-    , router_evaluation_time()
-    , cache_lookup_time()
-    , evaluation_worker_status()
-{
-}
 
-ServiceWorkerRouterInfo::ServiceWorkerRouterInfo(std::optional<uint32_t> rule_id_matched_in,
-    std::optional<ServiceWorkerRouterSourceType> matched_source_type_in, std::optional<ServiceWorkerRouterSourceType> actual_source_type_in,
-    uint64_t route_rule_num_in, ::base::TimeDelta router_evaluation_time_in, ::base::TimeDelta cache_lookup_time_in,
-    std::optional<ServiceWorkerStatus> evaluation_worker_status_in)
-    : rule_id_matched(std::move(rule_id_matched_in))
-    , matched_source_type(std::move(matched_source_type_in))
-    , actual_source_type(std::move(actual_source_type_in))
-    , route_rule_num(std::move(route_rule_num_in))
-    , router_evaluation_time(std::move(router_evaluation_time_in))
-    , cache_lookup_time(std::move(cache_lookup_time_in))
-    , evaluation_worker_status(std::move(evaluation_worker_status_in))
-{
-}
-
-ServiceWorkerRouterInfo::~ServiceWorkerRouterInfo() = default;
-
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ServiceWorkerRouterInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -125,6 +105,7 @@ void ServiceWorkerRouterInfo::WriteIntoTrace(perfetto::TracedValue traced_contex
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ServiceWorkerRouterInfo::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

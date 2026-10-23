@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "ui/gfx/mojom/display_color_spaces.mojom-params-data.h"
 namespace gfx {
@@ -100,6 +103,7 @@ DisplayColorSpaces_Data::DisplayColorSpaces_Data()
 } // namespace mojom
 } // namespace gfx
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -109,3 +113,4 @@ void TraceFormatTraits<::gfx::mojom::ContentColorUsage>::WriteIntoTrace(perfetto
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

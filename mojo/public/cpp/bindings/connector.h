@@ -125,6 +125,10 @@ public:
     }
     //--------------
 
+    // Validates the serialized header of a message received by an alternate
+    // transport before it is dispatched to `incoming_receiver_`.
+    bool ValidateIncomingMessageHeader(Message* message);
+
     // Errors from incoming receivers will force the connector into an error
     // state, where no more messages will be processed. This method is used
     // during testing to prevent that from happening.

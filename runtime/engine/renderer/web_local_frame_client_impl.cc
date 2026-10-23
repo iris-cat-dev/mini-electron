@@ -71,8 +71,10 @@ ui::AXLocationChange::~AXLocationChange() = default;
 
 namespace content {
 
-WebLocalFrameClientImpl::WebLocalFrameClientImpl(int64_t mbwebviewId)
+WebLocalFrameClientImpl::WebLocalFrameClientImpl(int64_t mbwebviewId,
+    const blink::LocalFrameToken& frameToken)
     : m_engineViewId(mbwebviewId)
+    , m_frameToken(frameToken)
     , m_associatedInterfaceProviderImpl(new AssociatedInterfaceProviderImpl(this))
     , m_interfaceProviderReceiver(m_associatedInterfaceProviderImpl)
 {
@@ -129,7 +131,8 @@ blink::WebLocalFrame* WebLocalFrameClientImpl::CreateChildFrame(
     blink::LocalFrameToken frameToken;
     blink::DocumentToken documentToken;
 
-    WebLocalFrameClientImpl* newClinet = new WebLocalFrameClientImpl(m_engineViewId);
+    WebLocalFrameClientImpl* newClinet = new WebLocalFrameClientImpl(
+        m_engineViewId, frameToken);
     newClinet->m_blinkInterfaceRegistryImpl = new BlinkInterfaceRegistryImpl(newClinet);
     blink::WebLocalFrame* webframe = m_navigationControl->CreateLocalChild(scope, newClinet,
         newClinet->m_blinkInterfaceRegistryImpl, // child_render_frame->blink_interface_registry_.get(),

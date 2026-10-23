@@ -15,7 +15,10 @@
 #include "mojo/public/cpp/bindings/lib/validate_params.h"
 #include "mojo/public/cpp/bindings/lib/validation_errors.h"
 #include "mojo/public/cpp/bindings/lib/validation_util.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "gpu/ipc/common/sync_token.mojom-params-data.h"
 namespace gpu {
@@ -77,15 +80,12 @@ bool SyncToken_Data::Validate(const void* data, mojo::internal::ValidationContex
     return true;
 }
 
-SyncToken_Data::SyncToken_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
 
 } // namespace internal
 } // namespace mojom
 } // namespace gpu
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 namespace perfetto {
 
 // static
@@ -95,3 +95,4 @@ void TraceFormatTraits<::gpu::mojom::CommandBufferNamespace>::WriteIntoTrace(per
 }
 
 } // namespace perfetto
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)

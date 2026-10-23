@@ -7,7 +7,7 @@
 #if defined(__APPLE__) || defined(_WIN32)
 // Configure the first Blink page before its asynchronous creation is queued.
 mini_electron_web_view mini_electron_create_web_view_with_background(
-    unsigned background_color, bool transparent);
+    unsigned background_color, bool transparent, bool initially_visible);
 #endif
 
 #if defined(__APPLE__)

@@ -22,6 +22,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_key_status.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_keys_policy.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/modules/encryptedmedia/media_key_session.h"
 #include "third_party/blink/renderer/modules/encryptedmedia/media_keys.h"
@@ -87,6 +88,15 @@ void CreateSessionOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& i
     RUNTIME_CALL_TIMER_SCOPE_DISABLED_BY_DEFAULT(info.GetIsolate(), "Blink_MediaKeys_createSession");
     BLINK_BINDINGS_TRACE_EVENT("MediaKeys.createSession");
 
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    ExceptionState exception_state(
+        info.GetIsolate(), v8::ExceptionContext::kOperation, "MediaKeys",
+        "createSession");
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media sessions are not supported by this build");
+    return;
+#else
     v8::Isolate* isolate = info.GetIsolate();
     v8::Local<v8::Object> v8_receiver = info.This();
     MediaKeys* blink_receiver = V8MediaKeys::ToWrappableUnsafe(isolate, v8_receiver);
@@ -108,6 +118,7 @@ void CreateSessionOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& i
         return;
     }
     bindings::V8SetReturnValue(info, return_value, blink_receiver);
+#endif
 }
 
 void GetStatusForPolicyOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -134,6 +145,15 @@ void GetStatusForPolicyOperationCallback(const v8::FunctionCallbackInfo<v8::Valu
         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    ExceptionState exception_state(
+        isolate, v8::ExceptionContext::kOperation, "MediaKeys",
+        "getStatusForPolicy");
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media policy queries are not supported by this build");
+    return;
+#else
 
     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
     ScriptState* script_state = receiver_script_state;
@@ -151,6 +171,7 @@ void GetStatusForPolicyOperationCallback(const v8::FunctionCallbackInfo<v8::Valu
         return;
     }
     bindings::V8SetReturnValue(info, return_value);
+#endif
 }
 
 void SetServerCertificateOperationCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
@@ -171,6 +192,15 @@ void SetServerCertificateOperationCallback(const v8::FunctionCallbackInfo<v8::Va
         V8ThrowException::ThrowTypeError(isolate, ExceptionMessages::NotEnoughArguments(1, info.Length()));
         return;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    ExceptionState exception_state(
+        isolate, v8::ExceptionContext::kOperation, "MediaKeys",
+        "setServerCertificate");
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media server certificates are not supported by this build");
+    return;
+#else
 
     MediaKeys* blink_receiver = V8MediaKeys::ToWrappableUnsafe(isolate, v8_receiver);
     ScriptState* receiver_script_state = ScriptState::ForRelevantRealm(isolate, v8_receiver);
@@ -188,6 +218,7 @@ void SetServerCertificateOperationCallback(const v8::FunctionCallbackInfo<v8::Va
         return;
     }
     bindings::V8SetReturnValue(info, return_value);
+#endif
 }
 
 } // namespace v8_media_keys

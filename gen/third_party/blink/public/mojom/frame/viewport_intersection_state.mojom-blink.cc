@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-params-data.h"
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-shared-message-ids.h"
@@ -45,32 +50,10 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-ViewportIntersectionState::ViewportIntersectionState()
-    : viewport_intersection()
-    , main_frame_intersection()
-    , compositor_visible_rect()
-    , occlusion_state(FrameOcclusionState::kUnknown)
-    , outermost_main_frame_size()
-    , outermost_main_frame_scroll_position()
-    , main_frame_transform()
-{
-}
 
-ViewportIntersectionState::ViewportIntersectionState(const ::gfx::Rect& viewport_intersection_in, const ::gfx::Rect& main_frame_intersection_in,
-    const ::gfx::Rect& compositor_visible_rect_in, FrameOcclusionState occlusion_state_in, const ::gfx::Size& outermost_main_frame_size_in,
-    const ::gfx::Point& outermost_main_frame_scroll_position_in, const ::gfx::Transform& main_frame_transform_in)
-    : viewport_intersection(std::move(viewport_intersection_in))
-    , main_frame_intersection(std::move(main_frame_intersection_in))
-    , compositor_visible_rect(std::move(compositor_visible_rect_in))
-    , occlusion_state(std::move(occlusion_state_in))
-    , outermost_main_frame_size(std::move(outermost_main_frame_size_in))
-    , outermost_main_frame_scroll_position(std::move(outermost_main_frame_scroll_position_in))
-    , main_frame_transform(std::move(main_frame_transform_in))
-{
-}
 
-ViewportIntersectionState::~ViewportIntersectionState() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ViewportIntersectionState::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -124,6 +107,7 @@ void ViewportIntersectionState::WriteIntoTrace(perfetto::TracedValue traced_cont
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ViewportIntersectionState::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-params-data.h"
 #include "third_party/blink/public/mojom/timing/resource_timing.mojom-shared-message-ids.h"
@@ -45,21 +50,8 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-ServerTimingInfo::ServerTimingInfo()
-    : name()
-    , duration()
-    , description()
-{
-}
 
-ServerTimingInfo::ServerTimingInfo(const WTF::String& name_in, double duration_in, const WTF::String& description_in)
-    : name(std::move(name_in))
-    , duration(std::move(duration_in))
-    , description(std::move(description_in))
-{
-}
 
-ServerTimingInfo::~ServerTimingInfo() = default;
 size_t ServerTimingInfo::Hash(size_t seed) const
 {
     seed = mojo::internal::WTFHash(seed, this->name);
@@ -68,6 +60,7 @@ size_t ServerTimingInfo::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ServerTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -93,67 +86,16 @@ void ServerTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) cons
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ServerTimingInfo::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-ResourceTimingInfo::ResourceTimingInfo()
-    : name()
-    , start_time()
-    , alpn_negotiated_protocol()
-    , connection_info()
-    , timing()
-    , last_redirect_end_time()
-    , response_end()
-    , cache_state()
-    , encoded_body_size()
-    , decoded_body_size()
-    , did_reuse_connection()
-    , is_secure_transport()
-    , allow_timing_details()
-    , allow_negative_values()
-    , server_timing()
-    , render_blocking_status()
-    , response_status()
-    , content_type()
-    , service_worker_router_info()
-    , service_worker_response_source()
-{
-}
 
-ResourceTimingInfo::ResourceTimingInfo(const WTF::String& name_in, ::base::TimeTicks start_time_in, const WTF::String& alpn_negotiated_protocol_in,
-    const WTF::String& connection_info_in, ::network::mojom::blink::LoadTimingInfoPtr timing_in, ::base::TimeTicks last_redirect_end_time_in,
-    ::base::TimeTicks response_end_in, CacheState cache_state_in, uint64_t encoded_body_size_in, uint64_t decoded_body_size_in, bool did_reuse_connection_in,
-    bool is_secure_transport_in, bool allow_timing_details_in, bool allow_negative_values_in, WTF::Vector<ServerTimingInfoPtr> server_timing_in,
-    bool render_blocking_status_in, uint16_t response_status_in, const WTF::String& content_type_in,
-    ::network::mojom::blink::ServiceWorkerRouterInfoPtr service_worker_router_info_in,
-    ::network::mojom::blink::FetchResponseSource service_worker_response_source_in)
-    : name(std::move(name_in))
-    , start_time(std::move(start_time_in))
-    , alpn_negotiated_protocol(std::move(alpn_negotiated_protocol_in))
-    , connection_info(std::move(connection_info_in))
-    , timing(std::move(timing_in))
-    , last_redirect_end_time(std::move(last_redirect_end_time_in))
-    , response_end(std::move(response_end_in))
-    , cache_state(std::move(cache_state_in))
-    , encoded_body_size(std::move(encoded_body_size_in))
-    , decoded_body_size(std::move(decoded_body_size_in))
-    , did_reuse_connection(std::move(did_reuse_connection_in))
-    , is_secure_transport(std::move(is_secure_transport_in))
-    , allow_timing_details(std::move(allow_timing_details_in))
-    , allow_negative_values(std::move(allow_negative_values_in))
-    , server_timing(std::move(server_timing_in))
-    , render_blocking_status(std::move(render_blocking_status_in))
-    , response_status(std::move(response_status_in))
-    , content_type(std::move(content_type_in))
-    , service_worker_router_info(std::move(service_worker_router_info_in))
-    , service_worker_response_source(std::move(service_worker_response_source_in))
-{
-}
 
-ResourceTimingInfo::~ResourceTimingInfo() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ResourceTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -298,6 +240,7 @@ void ResourceTimingInfo::WriteIntoTrace(perfetto::TracedValue traced_context) co
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ResourceTimingInfo::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

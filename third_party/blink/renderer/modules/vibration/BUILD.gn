@@ -8,6 +8,7 @@ blink_modules_sources("vibration") {
   sources = [
     "vibration_controller.cc",
     "vibration_controller.h",
+    "vibration_pattern.cc",
   ]
 
   deps = [ "//services/service_manager/public/cpp" ]

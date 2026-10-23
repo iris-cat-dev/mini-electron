@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-params-data.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-shared-message-ids.h"
@@ -45,21 +50,8 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-ScrollAlignment::ScrollAlignment()
-    : rect_visible(ScrollAlignment_Behavior::kNoScroll)
-    , rect_hidden(ScrollAlignment_Behavior::kCenter)
-    , rect_partial(ScrollAlignment_Behavior::kClosestEdge)
-{
-}
 
-ScrollAlignment::ScrollAlignment(ScrollAlignment::Behavior rect_visible_in, ScrollAlignment::Behavior rect_hidden_in, ScrollAlignment::Behavior rect_partial_in)
-    : rect_visible(std::move(rect_visible_in))
-    , rect_hidden(std::move(rect_hidden_in))
-    , rect_partial(std::move(rect_partial_in))
-{
-}
 
-ScrollAlignment::~ScrollAlignment() = default;
 size_t ScrollAlignment::Hash(size_t seed) const
 {
     seed = mojo::internal::WTFHash(seed, this->rect_visible);
@@ -68,6 +60,7 @@ size_t ScrollAlignment::Hash(size_t seed) const
     return seed;
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ScrollAlignment::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -93,27 +86,16 @@ void ScrollAlignment::WriteIntoTrace(perfetto::TracedValue traced_context) const
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ScrollAlignment::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-FocusedEditableParams::FocusedEditableParams()
-    : relative_location()
-    , size()
-    , can_zoom(true)
-{
-}
 
-FocusedEditableParams::FocusedEditableParams(const ::gfx::Vector2dF& relative_location_in, const ::gfx::SizeF& size_in, bool can_zoom_in)
-    : relative_location(std::move(relative_location_in))
-    , size(std::move(size_in))
-    , can_zoom(std::move(can_zoom_in))
-{
-}
 
-FocusedEditableParams::~FocusedEditableParams() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void FocusedEditableParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -139,39 +121,16 @@ void FocusedEditableParams::WriteIntoTrace(perfetto::TracedValue traced_context)
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool FocusedEditableParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-ScrollIntoViewParams::ScrollIntoViewParams()
-    : align_x()
-    , align_y()
-    , type(::blink::mojom::blink::ScrollType::kProgrammatic)
-    , make_visible_in_visual_viewport(true)
-    , behavior(::blink::mojom::blink::ScrollBehavior::kAuto)
-    , is_for_scroll_sequence(false)
-    , for_focused_editable()
-    , cross_origin_boundaries(true)
-{
-}
 
-ScrollIntoViewParams::ScrollIntoViewParams(ScrollAlignmentPtr align_x_in, ScrollAlignmentPtr align_y_in, ::blink::mojom::blink::ScrollType type_in,
-    bool make_visible_in_visual_viewport_in, ::blink::mojom::blink::ScrollBehavior behavior_in, bool is_for_scroll_sequence_in,
-    FocusedEditableParamsPtr for_focused_editable_in, bool cross_origin_boundaries_in)
-    : align_x(std::move(align_x_in))
-    , align_y(std::move(align_y_in))
-    , type(std::move(type_in))
-    , make_visible_in_visual_viewport(std::move(make_visible_in_visual_viewport_in))
-    , behavior(std::move(behavior_in))
-    , is_for_scroll_sequence(std::move(is_for_scroll_sequence_in))
-    , for_focused_editable(std::move(for_focused_editable_in))
-    , cross_origin_boundaries(std::move(cross_origin_boundaries_in))
-{
-}
 
-ScrollIntoViewParams::~ScrollIntoViewParams() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void ScrollIntoViewParams::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -232,6 +191,7 @@ void ScrollIntoViewParams::WriteIntoTrace(perfetto::TracedValue traced_context) 
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool ScrollIntoViewParams::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

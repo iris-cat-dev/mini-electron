@@ -20,8 +20,11 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/tracing_buildflags.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/typed_macros.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 #include "mojo/public/cpp/bindings/features.h"
 #include "mojo/public/cpp/bindings/lib/default_construct_tag_internal.h"
 #include "mojo/public/cpp/bindings/lib/generated_code_util.h"
@@ -35,7 +38,9 @@
 #include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/urgent_message_scope.h"
 #include "mojo/public/interfaces/bindings/interface_control_messages.mojom.h"
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 #include "third_party/blink/public/mojom/push_messaging/push_messaging.mojom-params-data.h"
 #include "third_party/blink/public/mojom/push_messaging/push_messaging.mojom-shared-message-ids.h"
@@ -45,20 +50,10 @@
 #include "mojo/public/cpp/bindings/lib/wtf_serialization.h"
 
 namespace blink::mojom::blink {
-PushSubscriptionOptions::PushSubscriptionOptions()
-    : user_visible_only()
-    , application_server_key()
-{
-}
 
-PushSubscriptionOptions::PushSubscriptionOptions(bool user_visible_only_in, WTF::Vector<uint8_t> application_server_key_in)
-    : user_visible_only(std::move(user_visible_only_in))
-    , application_server_key(std::move(application_server_key_in))
-{
-}
 
-PushSubscriptionOptions::~PushSubscriptionOptions() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void PushSubscriptionOptions::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -77,32 +72,16 @@ void PushSubscriptionOptions::WriteIntoTrace(perfetto::TracedValue traced_contex
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool PushSubscriptionOptions::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {
     return Data_::Validate(data, validation_context);
 }
-PushSubscription::PushSubscription()
-    : endpoint()
-    , expirationTime()
-    , options()
-    , p256dh()
-    , auth()
-{
-}
 
-PushSubscription::PushSubscription(const ::blink::KURL& endpoint_in, std::optional<::base::Time> expirationTime_in, PushSubscriptionOptionsPtr options_in,
-    WTF::Vector<uint8_t> p256dh_in, WTF::Vector<uint8_t> auth_in)
-    : endpoint(std::move(endpoint_in))
-    , expirationTime(std::move(expirationTime_in))
-    , options(std::move(options_in))
-    , p256dh(std::move(p256dh_in))
-    , auth(std::move(auth_in))
-{
-}
 
-PushSubscription::~PushSubscription() = default;
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 void PushSubscription::WriteIntoTrace(perfetto::TracedValue traced_context) const
 {
     [[maybe_unused]] auto dict = std::move(traced_context).WriteDictionary();
@@ -142,6 +121,7 @@ void PushSubscription::WriteIntoTrace(perfetto::TracedValue traced_context) cons
 #endif // BUILDFLAG(MOJO_TRACE_ENABLED)
     );
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 bool PushSubscription::Validate(const void* data, mojo::internal::ValidationContext* validation_context)
 {

@@ -47,10 +47,6 @@ bool Url_Data::Validate(const void* data, mojo::internal::ValidationContext* val
     return true;
 }
 
-Url_Data::Url_Data()
-    : header_({ sizeof(*this), 0 })
-{
-}
 
 } // namespace internal
 } // namespace mojom

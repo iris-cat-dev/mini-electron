@@ -306,6 +306,11 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     if (m_partition.empty())
         options.GetBydefaultVal("session", "", &m_partition);
     options.GetBydefaultVal("type", "window", &m_type);
+    // BrowserViews are unattached at construction and must not wait for a
+    // browser-side import before becoming hidden. Windows retain one bootstrap
+    // publication; non-window readiness remains an internal first-paint state.
+    m_ready_to_show_armed = m_type != "window";
+    m_initial_paint_pending = m_type != "browserView";
 
     bool context_isolation = true;
     bool webview_tag = false;
@@ -340,6 +345,7 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
     launch.allow_running_insecure_content = allow_insecure;
     launch.preload_all_frames = preload_all_frames;
     launch.transparent = transparent;
+    launch.initially_visible = m_type != "browserView";
     options.GetBydefaultVal("backgroundColor", "", &launch.background_color);
     launch.preload_process_metadata.Set("sandboxed", !IsSingleProcessMode());
     launch.preload_process_metadata.Set("type", "renderer");
@@ -390,16 +396,22 @@ WebContents::~WebContents()
     IdLiveDetect::get()->deconstructed(m_id);
 }
 
+void WebContents::setCreateWindowParam(
+    BrowserWindowConstructorOptions* options)
+{
+    m_createWindowParam = options;
+    if (options && m_type == "window")
+        setVisible(options->isShow);
+}
+
 void WebContents::unregisterAndNotify()
 {
     auto found = AllContents().find(m_id);
     if (found == AllContents().end())
         return;
     AllContents().erase(found);
-    std::set<WebContentsObserver*> observers = m_observers;
-    m_observers.clear();
-    for (WebContentsObserver* observer : observers)
-        observer->onWebContentsDeleted(this);
+    m_observers.Notify(&WebContentsObserver::onWebContentsDeleted, this);
+    m_observers.Clear();
 }
 
 void WebContents::destroyed()
@@ -438,8 +450,7 @@ void WebContents::destroyApi()
 void WebContents::closeRenderer()
 {
     cancelPreparedFrames("Renderer closed before native presentation");
-    for (WebContentsObserver* observer : m_observers)
-        observer->onWebContentsTextInputState(this, {});
+    m_observers.Notify(&WebContentsObserver::onWebContentsTextInputState, this, base::Value::Dict());
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     m_devtools_gateway.reset();
     m_debugger_attached = false;
@@ -473,15 +484,16 @@ bool WebContents::isDestroyedApi() const
 
 void WebContents::addObserver(WebContentsObserver* observer)
 {
-    if (observer)
-        m_observers.insert(observer);
+    if (observer && !m_observers.HasObserver(observer))
+        m_observers.AddObserver(observer);
 }
 
 void WebContents::removeObserver(WebContentsObserver* observer)
 {
-    m_observers.erase(observer);
+    if (observer)
+        m_observers.RemoveObserver(observer);
     if (std::none_of(m_observers.begin(), m_observers.end(),
-            [](WebContentsObserver* remaining) { return remaining->supportsFramePreparation(); }))
+            [](const WebContentsObserver& remaining) { return remaining.supportsFramePreparation(); }))
         cancelPreparedFrames("Native presentation host was removed");
 }
 
@@ -796,6 +808,17 @@ void WebContents::loadURLApi(const std::string& url)
     auto current = m_renderer_frames.find(m_main_frame_id);
     if (current != m_renderer_frames.end())
         navigation.initiator_origin = current->second.committed_origin;
+    if (!m_ready_to_show_emitted && m_type == "window") {
+        // The renderer eagerly publishes about:blank. Keep window readiness
+        // disarmed until the exact first requested document commits so that
+        // nested single-process view initialization cannot consume the event.
+        m_ready_to_show_armed = false;
+        m_ready_to_show_navigation_token = navigation.token;
+        // A hidden renderer may have released its blank startup lease already.
+        // Reacquire it through the requested document's post-commit paint.
+        m_initial_paint_pending = true;
+        updateVisibility();
+    }
     params.Set("navigationToken", navigation.token);
     if (current != m_renderer_frames.end()) {
         current->second.navigation = navigation;
@@ -980,11 +1003,11 @@ void WebContents::setVisible(bool visible)
 void WebContents::updateVisibility()
 {
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-    // Hidden startup still owes the host its initial paint/ready-to-show.
-    // Explicit preparation leases a live compositor only until native drawing
-    // completes; it must not permanently opt hidden content out of throttling.
+    // A hidden renderer gets one compositor publication for startup or for its
+    // first requested document. Readiness and renderer scheduling are separate:
+    // consuming either state must not keep the other alive indefinitely.
     const bool visible = m_visible || !m_background_throttling
-        || !m_ready_to_show_emitted || m_visibility_preparations;
+        || m_initial_paint_pending || m_visibility_preparations;
     if (!isAlive() || m_renderer_visible == visible)
         return;
     base::Value::Dict params;
@@ -998,8 +1021,7 @@ void WebContents::setFocus(bool focused)
 {
     m_focused = focused;
     if (!focused) {
-        for (WebContentsObserver* observer : m_observers)
-            observer->onWebContentsTextInputState(this, {});
+        m_observers.Notify(&WebContentsObserver::onWebContentsTextInputState, this, base::Value::Dict());
     }
     base::Value::Dict params;
     params.Set("focused", focused);
@@ -1262,8 +1284,7 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
             if (guest && guest->m_host == this)
                 guest->setVisible(m_visible && bounds != m_guest_bounds.end()
                     && !bounds->second.IsEmpty());
-            for (WebContentsObserver* observer : m_observers)
-                observer->onWebContentsPaint(this, {});
+            m_observers.Notify(&WebContentsObserver::onWebContentsPaint, this, gfx::Rect());
         }
     }
     #endif
@@ -1509,7 +1530,7 @@ void WebContents::prepareToShowApi(const v8::FunctionCallbackInfo<v8::Value>& in
     const int contents_id = m_id;
     const uint64_t presentation_epoch = m_presentation_epoch;
     if (std::none_of(m_observers.begin(), m_observers.end(),
-            [](WebContentsObserver* observer) { return observer->supportsFramePreparation(); })) {
+            [](const WebContentsObserver& observer) { return observer.supportsFramePreparation(); })) {
         preparation->promise.RejectWithErrorMessage("Native frame preparation is unavailable for this WebContents");
         return;
     }
@@ -1560,14 +1581,14 @@ void WebContents::completePreparedFrames()
     m_prepared_frames.clear();
     for (auto& frame : pending) {
         uint64_t drawn = 0;
-        for (WebContentsObserver* observer : m_observers)
-            drawn = std::max(drawn, observer->prepareWebContentsFrame(this, frame.generation));
+        for (WebContentsObserver& observer : m_observers)
+            drawn = std::max(drawn, observer.prepareWebContentsFrame(this, frame.generation));
         if (drawn >= frame.generation)
             frame.complete({});
         else if (!isAlive())
             frame.complete("Renderer closed before native presentation");
         else if (std::none_of(m_observers.begin(), m_observers.end(),
-                     [](WebContentsObserver* observer) { return observer->supportsFramePreparation(); }))
+                     [](const WebContentsObserver& observer) { return observer.supportsFramePreparation(); }))
             frame.complete("Native presentation host is unavailable");
         else
             m_prepared_frames.push_back(std::move(frame));
@@ -2068,8 +2089,7 @@ void WebContents::invalidateApi()
 {
     if (isAlive())
         m_renderer->Send("invalidate", {});
-    for (WebContentsObserver* observer : m_observers)
-        observer->onWebContentsPaint(this, {});
+    m_observers.Notify(&WebContentsObserver::onWebContentsPaint, this, gfx::Rect());
 }
 
 v8::Local<v8::Value> WebContents::getOwnerBrowserWindowApi()
@@ -2119,6 +2139,10 @@ void WebContents::onRendererEvent(base::Value::Dict event)
 {
     if (m_destroyed)
         return;
+    // A native observer can synchronously destroy this contents and release its
+    // persistent wrapper. Keep it alive until dispatch bookkeeping has unwound.
+    v8::HandleScope handle_scope(isolate());
+    [[maybe_unused]] const v8::Local<v8::Object> keep_alive = GetWrapper(isolate());
     const std::string type = ReadString(event, "type");
     const base::Value::Dict& payload = PayloadFrom(event);
     const uint64_t request_id = RequestIdFrom(event);
@@ -2139,8 +2163,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         // Renderer snapshots are asynchronous; never let a late snapshot
         // restore a text client after native focus has already left.
         if (m_focused) {
-            for (WebContentsObserver* observer : m_observers)
-                observer->onWebContentsTextInputState(this, payload);
+            m_observers.Notify(&WebContentsObserver::onWebContentsTextInputState, this, payload);
         }
         return;
     }
@@ -2223,28 +2246,60 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             || !registerRendererFrame(frame_id, parent_id, *main_frame))
             return;
         if (type == "frame-committed") {
-            const uint64_t previous_generation =
-                m_renderer_frames.at(frame_id).generation;
-            if (!commitRendererFrame(frame_id, ReadString(payload, "url")))
+            RendererFrameState& frame = m_renderer_frames.at(frame_id);
+            const std::string committed_url = ReadString(payload, "url");
+            const GURL committed_target(committed_url);
+            const bool frame_ready_navigation =
+                frame.navigation.token == m_ready_to_show_navigation_token
+                && (SameDocumentUrl(frame.navigation.url, committed_url)
+                    || SameDocumentUrl(frame.response_url, committed_url));
+            // Unbrokered data/about documents transfer the pending navigation
+            // into the frame inside commitRendererFrame(), so recognize the
+            // same token and URL before that move as well.
+            const bool pending_ready_navigation =
+                m_pending_main_navigation.token
+                    == m_ready_to_show_navigation_token
+                && SameDocumentUrl(
+                    m_pending_main_navigation.url, committed_url);
+            const bool expected_ready_navigation = *main_frame
+                && !m_ready_to_show_emitted
+                && !m_ready_to_show_navigation_token.empty()
+                && (frame_ready_navigation || pending_ready_navigation);
+            const bool first_renderer_navigation = *main_frame
+                && !m_ready_to_show_emitted
+                && m_ready_to_show_navigation_token.empty()
+                && committed_target.is_valid()
+                && !committed_target.IsAboutBlank()
+                && !committed_target.IsAboutSrcdoc();
+            const uint64_t previous_generation = frame.generation;
+            if (!commitRendererFrame(frame_id, committed_url))
                 return;
+            if (expected_ready_navigation || first_renderer_navigation) {
+                m_ready_to_show_armed = true;
+                m_ready_to_show_navigation_token.clear();
+                if (m_type == "window") {
+                    m_initial_paint_pending = true;
+                    updateVisibility();
+                }
+            }
             ApiSession* session = SessionMgr::get()->findOrCreateSession(
                 isolate(), m_partition, false);
             if (session) {
                 session->revokeFilesForFrame(
                     m_id, frame_id, previous_generation);
             }
-            const std::string committed_url =
+            const std::string& canonical_url =
                 m_renderer_frames.at(frame_id).committed_url;
             if (*main_frame) {
                 m_native_drag_tokens.clear();
                 m_native_drag_active = false;
-                m_url = committed_url;
+                m_url = canonical_url;
                 mate::EventEmitter<WebContents>::emit("did-navigate", m_url);
                 if (!isAlive())
                     return;
             }
             mate::EventEmitter<WebContents>::emit("did-frame-navigate",
-                committed_url, 200, "", *main_frame, getProcessIdApi(), m_id);
+                canonical_url, 200, "", *main_frame, getProcessIdApi(), m_id);
         }
         return;
     }
@@ -2721,11 +2776,22 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             && !SameDocumentUrl(failed_url, frame.committed_url))
             return;
         const bool main_frame = frame.main_frame;
+        const bool failed_ready_navigation = main_frame
+            && !m_ready_to_show_navigation_token.empty()
+            && (frame.navigation.token == m_ready_to_show_navigation_token
+                || m_pending_main_navigation.token
+                    == m_ready_to_show_navigation_token);
         frame.navigation = {};
         frame.response_url.clear();
         if (main_frame) {
             m_isLoading = false;
             m_pending_main_navigation = {};
+            if (failed_ready_navigation) {
+                m_ready_to_show_armed = false;
+                m_ready_to_show_navigation_token.clear();
+                m_initial_paint_pending = false;
+                updateVisibility();
+            }
         }
         mate::EventEmitter<WebContents>::emit("did-fail-load",
             payload.FindInt("errorCode").value_or(-2), ReadString(payload, "error"),
@@ -2822,10 +2888,14 @@ void WebContents::onRendererEvent(base::Value::Dict event)
     } else if (type == "draggable-regions") {
         const base::Value::List* regions = payload.FindList("regions");
         if (regions) {
-            for (WebContentsObserver* observer : m_observers)
-                observer->onWebContentsDraggableRegions(this, *regions);
+            m_observers.Notify(&WebContentsObserver::onWebContentsDraggableRegions, this, *regions);
         }
     } else if (type == "paint") {
+        const bool release_initial_paint = m_initial_paint_pending
+            && (m_ready_to_show_armed
+                || m_ready_to_show_navigation_token.empty());
+        if (release_initial_paint)
+            m_initial_paint_pending = false;
         gfx::Rect damage;
         if (const base::Value::Dict* dirty = payload.FindDict("dirty")) {
             const auto x = dirty->FindInt("x");
@@ -2852,8 +2922,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 m_host->m_renderer->Send("guest.invalidate",
                     base::Value::Dict().Set("guestContentsId", m_id));
             }
-            for (WebContentsObserver* observer : host->m_observers)
-                observer->onWebContentsPaint(host, {});
+            host->m_observers.Notify(&WebContentsObserver::onWebContentsPaint, host, gfx::Rect());
         }
         // A prior stale-source repaint may have missed damage from an older
         // generation. Refresh all pixels once a new publication is available.
@@ -2894,14 +2963,16 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 base::Value::Dict().Set("guestContentsId", m_id));
         }
 #endif
-        for (WebContentsObserver* observer : m_observers)
-            observer->onWebContentsPaint(this, damage);
+        m_observers.Notify(&WebContentsObserver::onWebContentsPaint, this, damage);
         completePreparedFrames();
-        if (!m_ready_to_show_emitted) {
+        if (!m_ready_to_show_emitted && m_ready_to_show_armed) {
             m_ready_to_show_emitted = true;
+            m_ready_to_show_armed = false;
+            m_ready_to_show_navigation_token.clear();
             updateVisibility();
-            for (WebContentsObserver* observer : m_observers)
-                observer->onWebContentsReadyToShow(this);
+            m_observers.Notify(&WebContentsObserver::onWebContentsReadyToShow, this);
+        } else if (release_initial_paint) {
+            updateVisibility();
         }
     } else if (type == "close") {
         if (m_owner)

@@ -260,6 +260,12 @@ MediaKeySession* MediaKeys::createSession(ScriptState* script_state, const V8Med
         exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError, "The context provided is invalid.");
         return nullptr;
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media sessions are not supported by this build");
+    return nullptr;
+#else
 
     // From https://w3c.github.io/encrypted-media/#dom-mediakeys-createsession
 
@@ -283,6 +289,7 @@ MediaKeySession* MediaKeys::createSession(ScriptState* script_state, const V8Med
     //    (Initialization is performed in the constructor.)
     // 4. Return session.
     return MakeGarbageCollected<MediaKeySession>(script_state, this, session_type, config_);
+#endif
 }
 
 ScriptPromise<IDLBoolean> MediaKeys::setServerCertificate(ScriptState* script_state, const DOMArrayPiece& server_certificate, ExceptionState& exception_state)
@@ -292,6 +299,12 @@ ScriptPromise<IDLBoolean> MediaKeys::setServerCertificate(ScriptState* script_st
         exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError, "The context provided is invalid.");
         return EmptyPromise();
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media server certificates are not supported by this build");
+    return EmptyPromise();
+#else
 
     // From
     // https://w3c.github.io/encrypted-media/#dom-mediakeys-setservercertificate
@@ -328,6 +341,7 @@ ScriptPromise<IDLBoolean> MediaKeys::setServerCertificate(ScriptState* script_st
 
     // 6. Return promise.
     return promise;
+#endif
 }
 
 void MediaKeys::SetServerCertificateTask(DOMArrayBuffer* server_certificate, ContentDecryptionModuleResult* result)
@@ -361,6 +375,12 @@ ScriptPromise<V8MediaKeyStatus> MediaKeys::getStatusForPolicy(
         exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError, "The context provided is invalid.");
         return EmptyPromise();
     }
+#if defined(MINI_ELECTRON_IMPLEMENTATION)
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        "Encrypted media policy queries are not supported by this build");
+    return EmptyPromise();
+#else
 
     // TODO(xhwang): Pass MediaKeysPolicy classes all the way to Chromium when
     // we have more than one policy to check.
@@ -378,6 +398,7 @@ ScriptPromise<V8MediaKeyStatus> MediaKeys::getStatusForPolicy(
 
     // Return promise.
     return promise;
+#endif
 }
 
 void MediaKeys::GetStatusForPolicyTask(const String& min_hdcp_version, ContentDecryptionModuleResult* result)

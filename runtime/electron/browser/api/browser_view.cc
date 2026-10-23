@@ -146,6 +146,8 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
 
     gin_helper::Dictionary webPreferences = gin_helper::Dictionary::CreateEmpty(options->isolate());
     options->Get(options::kWebPreferences, &webPreferences);
+    // BrowserView WebContents do not own BrowserWindow ready-to-show state.
+    webPreferences.Set("type", "browserView");
 
     v8::Local<v8::Value> preloadScriptValue;
     if (options->Get(options::kPreloadScript, &preloadScriptValue))
@@ -167,6 +169,10 @@ BrowserView* BrowserView::newBrowserView(const gin_helper::Dictionary* options, 
         return nullptr;
     }
     self->m_webContents = webContents;
+    // An unattached BrowserView has no native visibility. Its initial blank
+    // publication releases the startup compositor lease, then rendering stays
+    // paused until attachBrowserWindow() makes it visible.
+    webContents->setVisible(false);
 
     options->GetBydefaultVal("x", kNotSetXYFlag, &createWindowParam->x);
     options->GetBydefaultVal("y", kNotSetXYFlag, &createWindowParam->y);

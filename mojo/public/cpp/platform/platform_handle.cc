@@ -22,7 +22,9 @@
 #elif BUILDFLAG(IS_APPLE)
 #include <mach/vm_map.h>
 
-#include "base/apple/mach_logging.h"#include "base/apple/scoped_mach_port.h"#endif
+#include "base/apple/mach_logging.h"
+#include "base/apple/scoped_mach_port.h"
+#endif
 
 #if BUILDFLAG(IS_POSIX)
 #include <unistd.h>
