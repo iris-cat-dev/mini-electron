@@ -7,6 +7,30 @@ MiniBlink's Chromium 132, Blink, and V8 engine sources.
 > the root build command, and the same Electron example. API coverage differs
 > between the native hosts; neither is a drop-in replacement for full Electron.
 
+### Windows runtime 0.1.23
+
+This Windows x64-only update fixes the desktop-coordinate contract behind
+[issue #7](https://github.com/iris-cat-dev/mini-electron/issues/7). The macOS
+release/channel and npm installer `0.1.12` remain unchanged.
+
+- Mouse/pointer and wheel input retain the browser process's event-time desktop
+  DIP coordinates across IPC and input queues; renderer HWNDs no longer stand in
+  for the BrowserWindow host when computing native event screen positions.
+- Window/widget screen rectangles follow native creation, movement, resizing,
+  maximize/restore and display/DPI updates without resetting their origins.
+- Windows `setPosition()` and `getPosition()` use desktop DIP consistently with
+  `getBounds()`, including non-100% display scaling.
+- Adds a PID/HWND-guarded native regression for positive/negative positions,
+  move-only updates, framed client offsets, BrowserViews and captured input.
+
+The issue-7 physical acceptance at 150% scaling reused the actual OMP Desktop
+drag hook, WindowChromeProvider, preload and window-manager handlers. With a
+stationary, physically held pointer, the old runtime produced 49 adjacent
+window-position feedback pairs; the fix produced zero. Native dragging and
+capture/release remained functional. Cross-display mixed-DPI transitions and
+physical negative-origin monitors were not available for verification; this
+does not claim to resolve every compositing artifact in the original recording.
+
 ### Windows runtime 0.1.22
 
 This release publishes Windows x64 assets only. The macOS release/channel and
@@ -191,7 +215,7 @@ runtime `0.1.16`; the npm installer remains `0.1.12`.
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned Windows installs select runtime `0.1.22`; the macOS release
+independent. Unpinned Windows installs select runtime `0.1.23`; the macOS release
 and its independent channel are not changed by this Windows update.
 
 ```sh
@@ -260,7 +284,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` can install Windows `0.1.22` or macOS `0.1.21`.
+  For example, npm `0.1.12` can install Windows `0.1.23` or macOS `0.1.21`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -278,18 +302,18 @@ npx mini-electron --update-runtime
 # Pin the macOS runtime:
 npx mini-electron --update-runtime 0.1.21
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.22
+npx mini-electron --update-runtime 0.1.23
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.22` for Windows; `0.1.21` for macOS):
+(`0.1.23` for Windows; `0.1.21` for macOS):
 
 ```sh
 # macOS arm64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.21 npm ci
 # Windows x64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.22 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.23 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes
