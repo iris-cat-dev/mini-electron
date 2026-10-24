@@ -6,10 +6,11 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased source repairs (2026-10-24)
+### Windows runtime 0.1.24
 
-These are local source changes, not a new published runtime or npm version.
-The staged Windows candidate still carries runtime version `0.1.23`.
+This Windows x64-only runtime update leaves the macOS release/channel and npm
+installer `0.1.12` unchanged. Installer protocol `1`, Electron API compatibility
+`41.2.0` and Node ABI `134` are retained.
 
 - Windows renderer crashes use a preallocated exception channel and browser-side
   minidump/JSON writing, preserving the actual exception thread and context even
