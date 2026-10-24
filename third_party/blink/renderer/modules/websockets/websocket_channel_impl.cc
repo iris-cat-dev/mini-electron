@@ -42,6 +42,7 @@
 #include <limits>
 #include <memory>
 
+#include "base/auto_reset.h"
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
@@ -499,9 +500,20 @@ void WebSocketChannelImpl::CancelHandshake()
     Disconnect();
 }
 
+void WebSocketChannelImpl::CancelReceive()
+{
+    receive_cancelled_ = true;
+    message_chunks_->Clear();
+    backpressure_ = false;
+    if (GetState() == State::kOpen)
+        ConsumePendingDataFrames();
+}
+
 void WebSocketChannelImpl::ApplyBackpressure()
 {
     DVLOG(1) << this << " ApplyBackpressure";
+    if (receive_cancelled_)
+        return;
     backpressure_ = true;
 }
 
@@ -947,6 +959,9 @@ void WebSocketChannelImpl::OnReadable(MojoResult result, const mojo::HandleSigna
 void WebSocketChannelImpl::ConsumePendingDataFrames()
 {
     DCHECK_EQ(GetState(), State::kOpen);
+    if (consuming_pending_data_frames_)
+        return;
+    base::AutoReset<bool> consuming(&consuming_pending_data_frames_, true);
     while (!pending_data_frames_.empty() && !backpressure_ && GetState() == State::kOpen) {
         DataFrame& data_frame = pending_data_frames_.front();
         DVLOG(2) << " ConsumePendingDataFrame frame=(" << data_frame.fin << ", " << data_frame.type << ", (data_length = " << data_frame.data_length << "))";
@@ -993,6 +1008,8 @@ void WebSocketChannelImpl::ConsumeDataFrame(bool fin, network::mojom::blink::Web
     // Non-final frames cannot be empty.
     DCHECK(fin || size > 0);
 
+    if (receive_cancelled_)
+        return;
     switch (type) {
     case network::mojom::blink::WebSocketMessageType::CONTINUATION:
         break;

@@ -147,12 +147,12 @@ private:
     // FIXME: This should inherit blink::EventQueue.
     class EventQueue final : public GarbageCollected<EventQueue> {
     public:
-        static EventQueue* Create(EventTarget* target)
+        static EventQueue* Create(DOMWebSocket* target)
         {
             return MakeGarbageCollected<EventQueue>(target);
         }
 
-        explicit EventQueue(EventTarget*);
+        explicit EventQueue(DOMWebSocket*);
 
         // Dispatches the event if this queue is active.
         // Queues the event if this queue is suspended.
@@ -183,7 +183,7 @@ private:
         void UnpauseTask();
 
         State state_;
-        Member<EventTarget> target_;
+        Member<DOMWebSocket> target_;
         HeapDeque<Member<Event>> events_;
     };
 

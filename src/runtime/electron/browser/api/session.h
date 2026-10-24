@@ -103,6 +103,10 @@ public:
         const base::Value::Dict& details);
     std::vector<RendererPrivilegedScheme> getPrivilegedSchemes() const;
 
+    // Retire only the opening document's sockets, including delivered credits.
+    void onRendererFrameRetired(int contents_id, uint64_t frame_id,
+        uint64_t frame_generation);
+
     void onWebContentsDestroyed(int contentsId);
     friend class BrokerRequestPipeline;
 

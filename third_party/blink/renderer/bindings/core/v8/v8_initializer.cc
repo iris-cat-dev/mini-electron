@@ -40,6 +40,7 @@
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
 #include "components/crash/core/common/crash_key.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/public/common/switches.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -720,6 +721,9 @@ void ReportV8FatalError(const char* location, const char* message)
 
 void ReportV8OOMError(const char* location, const v8::OOMDetails& details)
 {
+#if BUILDFLAG(IS_WIN)
+    atom::RecordRendererV8OOM(location, details.is_heap_oom, details.detail);
+#endif
     if (location) {
         static crash_reporter::CrashKeyString<64> location_key("v8-oom-location");
         location_key.Set(location);

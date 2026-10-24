@@ -15,6 +15,9 @@
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+#include "third_party/blink/renderer/core/dom/events/event.h"
+#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
+#include "third_party/blink/renderer/core/event_type_names.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -402,6 +405,7 @@ TEST(DOMWebSocketTest, close)
         InSequence s;
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
         EXPECT_CALL(websocket_scope.Channel(), Close(3005, String("bye")));
+        EXPECT_CALL(websocket_scope.Channel(), CancelReceive());
     }
     websocket_scope.Socket().Connect("ws://example.com/", Vector<String>(), scope.GetExceptionState());
 
@@ -425,6 +429,7 @@ TEST(DOMWebSocketTest, closeWithoutReason)
         InSequence s;
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
         EXPECT_CALL(websocket_scope.Channel(), Close(3005, String()));
+        EXPECT_CALL(websocket_scope.Channel(), CancelReceive());
     }
     websocket_scope.Socket().Connect("ws://example.com/", Vector<String>(), scope.GetExceptionState());
 
@@ -448,6 +453,7 @@ TEST(DOMWebSocketTest, closeWithoutCodeAndReason)
         InSequence s;
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
         EXPECT_CALL(websocket_scope.Channel(), Close(-1, String()));
+        EXPECT_CALL(websocket_scope.Channel(), CancelReceive());
     }
     websocket_scope.Socket().Connect("ws://example.com/", Vector<String>(), scope.GetExceptionState());
 
@@ -471,6 +477,7 @@ TEST(DOMWebSocketTest, closeWhenClosing)
         InSequence s;
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
         EXPECT_CALL(websocket_scope.Channel(), Close(-1, String()));
+        EXPECT_CALL(websocket_scope.Channel(), CancelReceive());
     }
     websocket_scope.Socket().Connect("ws://example.com/", Vector<String>(), scope.GetExceptionState());
 
@@ -498,6 +505,7 @@ TEST(DOMWebSocketTest, closeWhenClosed)
         InSequence s;
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
         EXPECT_CALL(websocket_scope.Channel(), Close(-1, String()));
+        EXPECT_CALL(websocket_scope.Channel(), CancelReceive());
         EXPECT_CALL(websocket_scope.Channel(), Disconnect());
     }
     websocket_scope.Socket().Connect("ws://example.com/", Vector<String>(), scope.GetExceptionState());
@@ -808,7 +816,61 @@ TEST(DOMWebSocketTest, binaryType)
     EXPECT_EQ("blob", websocket_scope.Socket().binaryType().AsString());
 }
 
-// FIXME: We should add tests for suspend / resume.
+class PauseOnOpenListener final : public NativeEventListener {
+public:
+    explicit PauseOnOpenListener(DOMWebSocket* socket)
+        : socket_(socket)
+    {
+    }
+
+    void Invoke(ExecutionContext*, Event*) override
+    {
+        ++calls;
+        socket_->ContextLifecycleStateChanged(mojom::FrameLifecycleState::kPaused);
+    }
+
+    void Trace(Visitor* visitor) const override
+    {
+        visitor->Trace(socket_);
+        NativeEventListener::Trace(visitor);
+    }
+
+    int calls = 0;
+
+private:
+    Member<DOMWebSocket> socket_;
+};
+
+TEST(DOMWebSocketTest, ResumeDoesNotReleaseReceiveCreditBeforeEventQueueDispatch)
+{
+    test::TaskEnvironment task_environment;
+    V8TestingScope scope;
+    DOMWebSocketTestScope websocket_scope(scope.GetExecutionContext());
+    auto& socket = websocket_scope.Socket();
+    auto& channel = websocket_scope.Channel();
+    EXPECT_CALL(channel, Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
+    socket.Connect("ws://example.com/", Vector<String>(), ASSERT_NO_EXCEPTION);
+
+    auto* listener = MakeGarbageCollected<PauseOnOpenListener>(&socket);
+    socket.addEventListener(event_type_names::kOpen, listener, false);
+    EXPECT_CALL(channel, ApplyBackpressure()).Times(2);
+    EXPECT_CALL(channel, RemoveBackpressure()).Times(0);
+    socket.ContextLifecycleStateChanged(mojom::FrameLifecycleState::kPaused);
+    socket.DidConnect("", "");
+    EXPECT_EQ(listener->calls, 0);
+
+    socket.ContextLifecycleStateChanged(mojom::FrameLifecycleState::kRunning);
+    EXPECT_EQ(listener->calls, 0);
+    test::RunPendingTasks();
+    // Dispatching the queued open event paused the context again. Neither the
+    // initial resume signal nor its posted task may release receive credit.
+    EXPECT_EQ(listener->calls, 1);
+    testing::Mock::VerifyAndClearExpectations(&channel);
+
+    EXPECT_CALL(channel, RemoveBackpressure()).Times(1);
+    socket.ContextLifecycleStateChanged(mojom::FrameLifecycleState::kRunning);
+    test::RunPendingTasks();
+}
 
 class DOMWebSocketValidClosingTest : public testing::TestWithParam<uint16_t> {
     test::TaskEnvironment task_environment_;
@@ -874,6 +936,7 @@ TEST(DOMWebSocketTest, GCWhileEventsPending)
         DOMWebSocketTestScope websocket_scope(scope.GetExecutionContext());
 
         EXPECT_CALL(websocket_scope.Channel(), Connect(KURL("ws://example.com/"), String())).WillOnce(Return(true));
+        EXPECT_CALL(websocket_scope.Channel(), ApplyBackpressure());
         EXPECT_CALL(websocket_scope.Channel(), Disconnect());
 
         auto& socket = websocket_scope.Socket();

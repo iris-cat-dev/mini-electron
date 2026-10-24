@@ -277,6 +277,7 @@ private:
     bool registerRendererFrame(uint64_t frame_id, uint64_t parent_id,
         bool main_frame);
     bool commitRendererFrame(uint64_t frame_id, const std::string& url);
+    void retireRendererFrameSockets(uint64_t frame_id);
     bool isRendererFrameCurrent(uint64_t frame_id) const;
 #if BUILDFLAG(IS_WIN)
     void requestCapture(

@@ -45,6 +45,9 @@ struct RendererLaunchOptions {
     bool transparent = false;
     bool initially_visible = true;
     std::string background_color;
+#if BUILDFLAG(IS_WIN)
+    std::string crash_dump_directory;
+#endif
     base::Value::Dict preload_process_metadata;
 };
 

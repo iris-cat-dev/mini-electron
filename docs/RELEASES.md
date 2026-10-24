@@ -6,6 +6,41 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased source repairs (2026-10-24)
+
+These are local source changes, not a new published runtime or npm version.
+The staged Windows candidate still carries runtime version `0.1.23`.
+
+- Windows renderer crashes use a preallocated exception channel and browser-side
+  minidump/JSON writing, preserving the actual exception thread and context even
+  when normal IPC is blocked. Capture/output errors retain their Win32 codes.
+  Builds archive matching EXE/PDB identities and hashes for symbolized stacks.
+  Fatal capture and process exit are coordinated before classifying IPC loss;
+  the runtime still reads the actual OS exit status rather than synthesizing it.
+- OOM diagnostics retain the enforced Job limit, process/Job commit peaks,
+  system availability and V8 failure location. Missing Job refusal evidence stays
+  `null`/`unknown`; a historical refusal does not override the cause of a later
+  unrelated crash. Main-isolate heap samples are explicitly labeled and aged,
+  including when the failing thread belongs to a Worker.
+- WebSocket receive credit spans native assembly, every task/IPC queue and
+  Blink consumption/cancellation. Per-WebContents accounting uses an 8 MiB
+  ordinary window, a 68 MiB hard aggregate ceiling and a 4 KiB minimum message
+  charge while preserving the 60 MiB individual-message limit. Frame retirement,
+  stream cancellation and disposal release only their own outstanding payloads.
+- The bundled curl WebSocket decoder preserves FIN, continuation message type
+  and interleaved control frames, fixing fragmented text followed by binary data.
+- Windows pressure monitoring reaches Blink/V8, discardable storage and Skia
+  caches without increasing the existing Job budget. The production discardable
+  allocator accounts/frees live storage exactly, preserves locked data, and
+  supplies non-null live/discarded allocation dumps to decode-cache consumers.
+- Renderer cancellation keeps pending screenshot/reply callbacks on their owner
+  sequence and releases their V8 promises before isolate teardown, fixing a host
+  access violation when destroying a window and immediately exiting.
+
+Windows build/runtime evidence and limits are recorded in
+[verification](VERIFICATION.md#renderer-memory-forensics-and-receive-backpressure-2026-10-24).
+Shared WebSocket/allocator code has not been built or run on macOS for this repair.
+
 ### Windows runtime 0.1.23
 
 This Windows x64-only update fixes the desktop-coordinate contract behind

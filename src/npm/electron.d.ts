@@ -172,6 +172,55 @@ export interface WebRequest {
 }
 export interface WindowOpenHandlerDetails { url: string; frameName: string; features: string; disposition: string; referrer: { url: string; policy: string }; postBody?: { data: Array<{ bytes?: Buffer; file?: string }> } }
 export type WindowOpenHandlerResponse = { action: "deny" } | { action: "allow"; overrideBrowserWindowOptions?: BrowserWindowConstructorOptions };
+export interface RenderProcessGoneDetails {
+  reason: string;
+  exitCode?: number;
+  /** Windows Job evidence is true or unknown; null does not exclude a refused commit. */
+  sandboxMemoryLimitExceeded?: true | null;
+  /** Failure path is attributed only when the V8 marker matches exceptionThreadId. */
+  oomSource?: "v8-heap-limit" | "v8-allocation-failure" | "unknown";
+  memoryLimitEvidence?: "job-notification" | "sandbox-exit-code" | "unknown";
+  jobMemoryLimitEventAgeMilliseconds?: number;
+  crashCaptureStatus?: "captured" | "not-captured";
+  rendererPid?: number;
+  exceptionCode?: number;
+  exceptionThreadId?: number;
+  /** Null when the exception did not report a positive requested allocation size. */
+  failedAllocationBytes?: number | null;
+  crashDumpPath?: string;
+  crashDiagnosticsPath?: string;
+  crashDumpError?: number;
+  crashDiagnosticsError?: number;
+  jobNotificationError?: number;
+  memory?: {
+    processMemoryLimit: number;
+    privateBytes: number;
+    peakCommitBytes: number;
+    jobPeakProcessCommitBytes: number;
+    systemCommitLimitBytes: number;
+    systemCommitAvailableBytes: number;
+    physicalAvailableBytes: number;
+  };
+  v8?: {
+    usedHeapBytes?: number;
+    totalHeapBytes?: number;
+    heapLimitBytes?: number;
+    externalBytes?: number;
+    sampleAgeMilliseconds?: number;
+    sampleKind: "last-main-isolate" | "unavailable";
+    location?: string;
+    detail?: string;
+    isHeapOOM?: boolean;
+    failureThreadId?: number;
+  };
+  image?: {
+    timestamp?: number;
+    imageSize?: number;
+    pdbGuid?: string;
+    pdbAge?: number;
+    pdbName?: string;
+  };
+}
 export interface WebContents extends EventEmitter {
   readonly id: number;
   readonly session: Session;

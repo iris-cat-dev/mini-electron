@@ -6,12 +6,18 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "src/runtime/electron/common/renderer_protocol.h"
 
 namespace atom {
+
+#if BUILDFLAG(IS_WIN)
+class RendererCrashMonitor;
+#endif
 
 enum class RendererProcessState {
     kRunning,
@@ -22,7 +28,7 @@ struct RendererProcessStatus {
     RendererProcessState state = RendererProcessState::kRunning;
     uint32_t exit_code = 0;
     bool crashed = false;
-    bool sandbox_memory_limit_exceeded = false;
+    std::optional<bool> sandbox_memory_limit_exceeded;
 };
 
 struct RendererPlatformProcess {
@@ -34,12 +40,13 @@ struct RendererPlatformProcess {
     bool termination_observed = false;
     uint32_t exit_code = 0;
     bool crashed = false;
-    bool sandbox_memory_limit_exceeded = false;
+    std::optional<bool> sandbox_memory_limit_exceeded;
 #if BUILDFLAG(IS_WIN)
     HANDLE process = nullptr;
     HANDLE job = nullptr;
     HANDLE frame_mapping = nullptr;
     HANDLE control_pipe = nullptr;
+    std::shared_ptr<RendererCrashMonitor> crash_monitor;
 #else
     int frame_fd = -1; // Writable producer descriptor; never transferred.
     int frame_read_fd = -1; // Read-only descriptor used for guest transfers.

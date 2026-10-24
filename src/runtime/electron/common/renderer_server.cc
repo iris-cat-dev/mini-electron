@@ -40,6 +40,7 @@
 #include "build/build_config.h"
 #include "src/runtime/electron/common/renderer_client.h"
 #include "src/runtime/electron/common/renderer_platform.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "src/runtime/electron/common/renderer_protocol.h"
 #include "src/runtime/electron/renderer/sandbox_preload_host.h"
 #include "src/runtime/engine/api/internal_api.h"
@@ -208,6 +209,7 @@ struct ParsedArguments {
 #if BUILDFLAG(IS_WIN)
     HANDLE control = nullptr;
     HANDLE frame = nullptr;
+    RendererCrashHandles crash_handles;
 #else
     int control = -1;
     int frame = -1;
@@ -293,6 +295,16 @@ bool ParseArguments(int argc, Char* argv[], ParsedArguments* parsed)
                 + renderer_protocol::kMaxFrameBytes)
         return false;
 #if BUILDFLAG(IS_WIN)
+    uint64_t crash_mapping = 0, crash_requested = 0, crash_completed = 0;
+    if (!get("renderer-crash-mapping", &crash_mapping)
+        || !get("renderer-crash-requested", &crash_requested)
+        || !get("renderer-crash-completed", &crash_completed))
+        return false;
+    parsed->crash_handles = {
+        reinterpret_cast<HANDLE>(static_cast<uintptr_t>(crash_mapping)),
+        reinterpret_cast<HANDLE>(static_cast<uintptr_t>(crash_requested)),
+        reinterpret_cast<HANDLE>(static_cast<uintptr_t>(crash_completed))
+    };
     parsed->read_pipe = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(read));
     parsed->write_pipe = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(write));
     parsed->control = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(control));
@@ -870,7 +882,16 @@ public:
                 });
             content::SetRendererWebSocketCommand(
                 [](uint64_t frame_id, base::Value::Dict command) {
-                    auto* self = ForFrame(frame_id);
+                    const std::string* operation =
+                        command.FindString("operation");
+                    const bool receive_ack = operation
+                        && *operation == "websocket-receive-ack";
+                    // Detached frames no longer have a FrameOwners entry.
+                    // Only an exact, native pending cancellation can recover
+                    // its owning renderer; other commands require a live frame.
+                    auto* self = receive_ack
+                        ? ReleaseWebSocketReceiveCredit(frame_id, command)
+                        : ForFrame(frame_id);
                     if (!self || self->closing_)
                         return;
                     double socket_id =
@@ -878,14 +899,27 @@ public:
                     auto frame = reinterpret_cast<
                         mini_electron_web_frame_handle>(
                         static_cast<uintptr_t>(frame_id));
+                    if (receive_ack) {
+                        if (ForFrame(frame_id) != self)
+                            return;
+                        self->RequestParent("broker-request",
+                            std::move(command),
+                            [](base::Value::Dict, std::string) {},
+                            frame, true);
+                        return;
+                    }
+                    const bool send_operation =
+                        operation && *operation == "websocket-send";
                     if (!self->RequestParent("broker-request",
                             std::move(command),
-                            [socket_id](base::Value::Dict result,
+                            [socket_id, send_operation](base::Value::Dict result,
                                 std::string error) mutable {
                                 if (!error.empty()) {
                                     result.Set("socketId", socket_id);
                                     result.Set("event", "error");
                                     result.Set("message", std::move(error));
+                                    if (send_operation)
+                                        result.Set("operationError", true);
                                 }
                                 if (result.FindString("event")) {
                                     PostBlink(
@@ -902,6 +936,8 @@ public:
                         event.Set("event", "error");
                         event.Set("message",
                             "network broker channel is closed");
+                        if (send_operation)
+                            event.Set("operationError", true);
                         PostBlink([event = std::move(event)]() mutable {
                             content::DispatchRendererWebSocketEvent(
                                 std::move(event));
@@ -1034,6 +1070,8 @@ public:
         mini_electron_call_blink_thread_sync([](void* server, void*) {
             static_cast<RendererServerImpl*>(server)->preload_hosts_.clear();
             static_cast<RendererServerImpl*>(server)->generated_downloads_.clear();
+            static_cast<RendererServerImpl*>(server)->
+                ClearWebSocketReceiveCredits();
             auto& owners = FrameOwners();
             for (auto it = owners.begin(); it != owners.end();) {
                 if (it->second == server)
@@ -1459,6 +1497,123 @@ private:
     }
 #endif
 
+    struct WebSocketReceiveCredit {
+        RendererServerImpl* owner = nullptr;
+        uint64_t frame_id = 0;
+        uint64_t frame_generation = 0;
+        size_t bytes = 0;
+    };
+
+    using WebSocketReceiveKey = std::pair<uint64_t, uint64_t>;
+
+    // Several in-process WebContents share Blink's command callback. Keep only
+    // exact pending native events, never a retired-frame or socket-id allowlist.
+    // The minimum per-event charge bounds this route by the receive budgets.
+    static std::mutex& WebSocketReceiveLock()
+    {
+        static std::mutex lock;
+        return lock;
+    }
+
+    static std::map<WebSocketReceiveKey, WebSocketReceiveCredit>&
+    WebSocketReceiveOwners()
+    {
+        static std::map<WebSocketReceiveKey, WebSocketReceiveCredit> owners;
+        return owners;
+    }
+
+    void ClearWebSocketReceiveCredits()
+    {
+        std::lock_guard<std::mutex> lock(WebSocketReceiveLock());
+        auto& owners = WebSocketReceiveOwners();
+        for (auto it = owners.begin(); it != owners.end();) {
+            if (it->second.owner == this)
+                it = owners.erase(it);
+            else
+                ++it;
+        }
+        websocket_receive_bytes_ = 0;
+    }
+
+    bool ReserveWebSocketReceiveCredit(const base::Value::Dict& payload)
+    {
+        const std::string* method = payload.FindString("method");
+        const base::Value::Dict* event = payload.FindDict("params");
+        if (!method || *method != "network.websocket-event" || !event)
+            return true;
+        const std::string* type = event->FindString("event");
+        if (!type || (*type != "text" && *type != "binary"))
+            return true;
+        const std::optional<double> raw_socket =
+            event->FindDouble("socketId");
+        uint64_t event_id = 0;
+        size_t credit = 0;
+        uint64_t frame_id = 0;
+        uint64_t frame_generation = 0;
+        const std::string* raw_frame = event->FindString("frameId");
+        const std::string* raw_generation =
+            event->FindString("frameGeneration");
+        if (!raw_socket || !std::isfinite(*raw_socket) || *raw_socket < 1
+            || *raw_socket > 9007199254740991.0
+            || *raw_socket != static_cast<uint64_t>(*raw_socket)
+            || !raw_frame || !base::StringToUint64(*raw_frame, &frame_id)
+            || !frame_id || !raw_generation
+            || !base::StringToUint64(*raw_generation, &frame_generation)
+            || !frame_generation
+            || !renderer_protocol::ParseWebSocketReceiveEvent(
+                *event, &event_id, &credit)) {
+            return false;
+        }
+        const auto key = std::make_pair(
+            static_cast<uint64_t>(*raw_socket), event_id);
+        std::lock_guard<std::mutex> lock(WebSocketReceiveLock());
+        if (closing_.load(std::memory_order_acquire)
+            || credit > renderer_protocol::kWebSocketReceiveBudgetBytes
+                - websocket_receive_bytes_
+            || !WebSocketReceiveOwners().emplace(key,
+                WebSocketReceiveCredit {
+                    this, frame_id, frame_generation, credit }).second) {
+            return false;
+        }
+        websocket_receive_bytes_ += credit;
+        return true;
+    }
+
+    static RendererServerImpl* ReleaseWebSocketReceiveCredit(
+        uint64_t frame_id, base::Value::Dict& command)
+    {
+        const std::optional<double> raw_socket =
+            command.FindDouble("socketId");
+        uint64_t event_id = 0;
+        size_t credit = 0;
+        if (!raw_socket || !std::isfinite(*raw_socket) || *raw_socket < 1
+            || *raw_socket > 9007199254740991.0
+            || *raw_socket != static_cast<uint64_t>(*raw_socket)
+            || !renderer_protocol::ParseWebSocketReceiveAcknowledgement(
+                command, &event_id, &credit)) {
+            return nullptr;
+        }
+        const auto key = std::make_pair(
+            static_cast<uint64_t>(*raw_socket), event_id);
+        std::lock_guard<std::mutex> lock(WebSocketReceiveLock());
+        auto found = WebSocketReceiveOwners().find(key);
+        if (found == WebSocketReceiveOwners().end())
+            return nullptr;
+        RendererServerImpl* self = found->second.owner;
+        if (found->second.frame_id != frame_id
+            || found->second.bytes != credit
+            || credit > self->websocket_receive_bytes_
+            || (ForFrame(frame_id) != self
+                && !command.FindBool("cancelled").value_or(false))) {
+            return nullptr;
+        }
+        command.Set("frameGeneration",
+            base::NumberToString(found->second.frame_generation));
+        self->websocket_receive_bytes_ -= credit;
+        WebSocketReceiveOwners().erase(found);
+        return self;
+    }
+
     bool AcceptBrowserMessage(WireMessage message)
     {
         if (message.kind == MessageKind::kResponse) {
@@ -1490,6 +1645,8 @@ private:
             }
         } else if (message.kind == MessageKind::kRequest
             || message.kind == MessageKind::kSend) {
+            if (!ReserveWebSocketReceiveCredit(message.payload))
+                return false;
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
             if (!DispatchDialogResponseOnReader(message.kind,
                     message.request_id, message.payload)) {
@@ -1569,8 +1726,14 @@ private:
                 Reply(request_id, {}, "renderer method is not allowed");
             return;
         }
-        Dispatch(*method, params->Clone(),
-            kind == MessageKind::kRequest ? request_id : 0);
+        if (*method == "network.websocket-event") {
+            const std::string websocket_method = *method;
+            Dispatch(websocket_method, std::move(*params),
+                kind == MessageKind::kRequest ? request_id : 0);
+        } else {
+            Dispatch(*method, params->Clone(),
+                kind == MessageKind::kRequest ? request_id : 0);
+        }
     }
 
     void Dispatch(const std::string& method, base::Value::Dict params,
@@ -5063,6 +5226,7 @@ private:
     std::map<uint64_t, ParentReplyEntry> parent_replies_;
     std::mutex cancel_lock_;
     std::set<uint64_t> cancelled_;
+    size_t websocket_receive_bytes_ = 0;
     std::set<std::string> custom_schemes_;
     std::mutex navigation_lock_;
     std::map<uint64_t, PendingNavigation> pending_navigations_;
@@ -5096,6 +5260,10 @@ int RunRenderer(int argc, Char* argv[])
     ParsedArguments arguments;
     if (!ParseArguments(argc, argv, &arguments))
         return 120;
+#if BUILDFLAG(IS_WIN)
+    if (!InitializeRendererCrashDiagnostics(arguments.crash_handles))
+        return 126;
+#endif
     content::InitializeWebGL();
     content::InitializeWebGPU();
 #if BUILDFLAG(IS_MAC)

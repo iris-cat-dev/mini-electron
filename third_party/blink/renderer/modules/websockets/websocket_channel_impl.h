@@ -110,6 +110,7 @@ public:
     void Fail(const String& reason, mojom::ConsoleMessageLevel, std::unique_ptr<SourceLocation>) override;
     void Disconnect() override;
     void CancelHandshake() override;
+    void CancelReceive() override;
     void ApplyBackpressure() override;
     void RemoveBackpressure() override;
 
@@ -336,6 +337,8 @@ private:
     const Member<ExecutionContext> execution_context_;
 
     bool backpressure_ = false;
+    bool receive_cancelled_ = false;
+    bool consuming_pending_data_frames_ = false;
     bool receiving_message_type_is_text_ = false;
     bool received_text_is_all_ascii_ = true;
     bool throttle_passed_ = false;

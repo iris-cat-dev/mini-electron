@@ -36,6 +36,7 @@
 #include "src/runtime/network/websocket/socket_stream_handle.h"
 #include "src/runtime/network/websocket/web_socket_handshake.h"
 
+#include "third_party/blink/public/mojom/frame/lifecycle.mojom-shared.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -57,13 +58,14 @@ WebSocketChannelCurl* WebSocketChannelCurl::create(
     blink::ExecutionContext* context, blink::WebSocketChannelClient* client, std::unique_ptr<blink::SourceLocation> location)
 {
     WebSocketChannelCurl* channel = blink::MakeGarbageCollected<WebSocketChannelCurl>(context, client, std::move(location));
+    channel->UpdateStateIfNeeded();
     return channel;
 }
 
 WebSocketChannelCurl::WebSocketChannelCurl(
     blink::ExecutionContext* context, blink::WebSocketChannelClient* client, std::unique_ptr<blink::SourceLocation> location)
-    //: ContextLifecycleObserver(context)
-    : m_ref(0)
+    : blink::ExecutionContextLifecycleStateObserver(context)
+    , m_ref(0)
     , m_client(client)
     , m_resumeTimer(base::SingleThreadTaskRunner::GetCurrentDefault(), this, &WebSocketChannelCurl::resumeTimerFired)
     , m_suspended(false)
@@ -104,6 +106,18 @@ void WebSocketChannelCurl::dispose()
         content::ForgetRendererWebSocket(m_brokerSocketId);
         m_brokerSocketId = 0;
     }
+}
+
+void WebSocketChannelCurl::ContextDestroyed()
+{
+    Disconnect();
+}
+
+void WebSocketChannelCurl::ContextLifecycleStateChanged(
+    blink::mojom::FrameLifecycleState state)
+{
+    m_contextReceivePaused = state != blink::mojom::FrameLifecycleState::kRunning;
+    updateBrokerBackpressure();
 }
 
 
@@ -786,10 +800,16 @@ bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protoco
             auto* channel = static_cast<WebSocketChannelCurl*>(
                 common::LiveIdDetect::get()->getPtr(channel_id));
             if (!channel || !channel->m_client)
-                return;
+                return true;
             const std::string* type = event.FindString("event");
             if (!type)
-                return;
+                return true;
+            const bool received = *type == "text" || *type == "binary";
+            if (received && !channel->m_receiveCancelled
+                && channel->m_contextReceivePaused) {
+                channel->updateBrokerBackpressure();
+                return false;
+            }
             if (*type == "open") {
                 const std::string* selected = event.FindString("protocol");
                 const std::string* extensions = event.FindString("extensions");
@@ -827,6 +847,12 @@ bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protoco
                             : blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
                         code, reason ? WTF::String::FromUTF8(*reason) : WTF::String());
             } else if (*type == "error") {
+                if (event.FindBool("operationError").value_or(false)) {
+                    const uint64_t socket_id = channel->m_brokerSocketId;
+                    content::CloseRendererWebSocket(socket_id,
+                        CloseEventCodeGoingAway, "WebSocket operation failed");
+                    content::ForgetRendererWebSocket(socket_id);
+                }
                 channel->m_brokerSocketId = 0;
                 channel->m_client->DidError();
                 if (channel->m_client)
@@ -834,7 +860,9 @@ bool WebSocketChannelCurl::Connect(const blink::KURL& url, const String& protoco
                         blink::WebSocketChannelClient::kClosingHandshakeIncomplete,
                         CloseEventCodeAbnormalClosure, WTF::String());
             }
+            return true;
         });
+    updateBrokerBackpressure();
     return m_brokerSocketId != 0;
 }
 
@@ -953,12 +981,38 @@ void WebSocketChannelCurl::CancelHandshake()
     }
 }
 
+void WebSocketChannelCurl::CancelReceive()
+{
+    m_receiveCancelled = true;
+    m_clientBackpressure = false;
+    if (m_brokerSocketId)
+        content::CancelRendererWebSocketReceive(m_brokerSocketId);
+}
+
 void WebSocketChannelCurl::ApplyBackpressure()
 {
+    m_clientBackpressure = true;
+    updateBrokerBackpressure();
 }
 
 void WebSocketChannelCurl::RemoveBackpressure()
 {
+    m_clientBackpressure = false;
+    updateBrokerBackpressure();
+}
+
+void WebSocketChannelCurl::updateBrokerBackpressure()
+{
+    if (!m_brokerSocketId)
+        return;
+    if (m_receiveCancelled) {
+        content::CancelRendererWebSocketReceive(m_brokerSocketId);
+        return;
+    }
+    if (m_clientBackpressure || m_contextReceivePaused)
+        content::ApplyRendererWebSocketBackpressure(m_brokerSocketId);
+    else
+        content::RemoveRendererWebSocketBackpressure(m_brokerSocketId);
 }
 
 
@@ -982,6 +1036,7 @@ void WebSocketChannelCurl::deref()
 
 void WebSocketChannelCurl::Trace(blink::Visitor* visitor) const
 {
+    blink::ExecutionContextLifecycleStateObserver::Trace(visitor);
     visitor->Trace(m_client);
     visitor->Trace(m_executionContext);
     blink::WebSocketChannel::Trace(visitor);

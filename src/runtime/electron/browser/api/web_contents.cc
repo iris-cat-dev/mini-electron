@@ -341,6 +341,10 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
 
     RendererLaunchOptions launch;
     launch.contents_id = m_id;
+#if BUILDFLAG(IS_WIN)
+    if (App* app = App::getInstance())
+        launch.crash_dump_directory = app->getPathApi("crashDumps");
+#endif
     launch.context_isolation = context_isolation;
     launch.webview_tag = webview_tag;
     launch.web_security = web_security;
@@ -610,6 +614,30 @@ std::string WebContents::approveFrameNavigation(uint64_t frame_id,
     return frame.navigation.token;
 }
 
+void WebContents::retireRendererFrameSockets(uint64_t frame_id)
+{
+    ApiSession* session = SessionMgr::get()->findOrCreateSession(
+        isolate(), m_partition, false);
+    if (!session)
+        return;
+    // A parent commit invalidates descendants before their detach notifications
+    // arrive. Retire those opening generations while their ancestry still exists.
+    for (const auto& entry : m_renderer_frames) {
+        uint64_t ancestor = entry.first;
+        for (size_t depth = 0; depth < m_renderer_frames.size(); ++depth) {
+            if (ancestor == frame_id) {
+                session->onRendererFrameRetired(
+                    m_id, entry.first, entry.second.generation);
+                break;
+            }
+            auto found = m_renderer_frames.find(ancestor);
+            if (found == m_renderer_frames.end() || !found->second.parent_id)
+                break;
+            ancestor = found->second.parent_id;
+        }
+    }
+}
+
 bool WebContents::commitRendererFrame(
     uint64_t frame_id, const std::string& url)
 {
@@ -646,6 +674,7 @@ bool WebContents::commitRendererFrame(
         ? std::move(inherited_origin)
         : (origin.opaque() ? std::string() : origin.Serialize());
     frame.committed_url = target.spec();
+    retireRendererFrameSockets(frame_id);
     if (frame.main_frame)
         cancelPreparedFrames("Document replaced before native presentation");
     frame.generation = ++m_frame_generation;
@@ -2360,6 +2389,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         if (ReadFrameIdentity(event, "frameId", &frame_id)) {
             auto frame = m_renderer_frames.find(frame_id);
             if (frame != m_renderer_frames.end()) {
+                retireRendererFrameSockets(frame_id);
                 if (ApiSession* session = SessionMgr::get()->findOrCreateSession(
                         isolate(), m_partition, false)) {
                     session->revokeFilesForFrame(

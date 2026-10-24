@@ -102,6 +102,11 @@ public:
     // established. Do not call any other methods after this one.
     virtual void CancelHandshake() = 0;
 
+    // Permanently discard receive payloads, including already buffered messages,
+    // and remove receive backpressure so the closing handshake can complete.
+    // Terminal notifications are still delivered to the client.
+    virtual void CancelReceive() = 0;
+
     // Clients can call ApplyBackpressure() to indicate that they want to stop
     // receiving new messages. WebSocketChannelClient::DidReceive*Message() may
     // still be called after this, until existing flow control quota is used up.

@@ -260,7 +260,40 @@ Additional single-process checks passed `execute-javascript-smoke.js`,
 focus and taskbar transitions), and `webgl-smoke.js` (including Dedicated Worker
 OffscreenCanvas). The full GPU compositor/VSync smoke did not pass: this session
 selects a timer clock in both process modes, rather than hardware DXGI/DWM VSync.
-`websocket-smoke.js` also fails its received text/binary assertion identically
-in single-process mode, default mode and the unchanged released runtime.
+The previously recorded `websocket-smoke.js` text/binary failure is fixed in the
+current Windows source build: the bundled curl decoder now preserves FIN and
+the original message type across continuation and interleaved control frames.
+The actual text/binary, ping/pong and close smoke passes in both process modes.
 The macOS source path is integrated but has not been built or run for this change.
 
+## WebSocket receive backpressure
+
+Received payload credit stays outstanding through native assembly, browser tasks,
+IPC, renderer tasks and Blink delivery. It returns only after native payload
+destruction and consumption, or explicit cancellation. An unread WebSocketStream
+holds credit until its reader resumes; paused documents do not shift unbounded
+payloads into another task or MessageEvent queue.
+
+Each WebContents has an 8 MiB ordinary receive window and a 68 MiB hard aggregate
+credit ceiling. One fragmented message may borrow the oversize reserve so the
+existing 60 MiB individual-message limit can complete. Every message costs at
+least 4 KiB of credit, including empty messages. These are payload-accounting
+limits, not a promise that process commit equals the credited byte count.
+Separate windows have independent budgets even when they share a Session.
+Document replacement, iframe detachment, cancellation and disposal retire the
+owning document's reservations without releasing another renderer's credit.
+
+Run the actual native-runtime smokes in the default process mode, and the two
+lifecycle smokes again with `--single-process`:
+
+```sh
+out/windows-x64/stage/mini-electron.exe --app=test/websocket-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/websocket-backpressure-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/websocket-receive-lifecycle-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/websocket-frame-retirement-smoke.js
+```
+
+Windows verification covers blocked-producer progress/resumption, exact-60-MiB
+fragmentation with an empty final continuation, empty messages, aggregate sockets,
+unread stream cancellation, repeated navigation and iframe removal. Shared macOS
+sources changed, but this repair has not been built or exercised on macOS.

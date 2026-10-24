@@ -18,6 +18,7 @@
 #include "src/runtime/electron/common/gin_helper/promise.h"
 #include "src/runtime/electron/common/gin_helper/public/gin_embedders.h"
 #include "src/runtime/electron/common/gin_helper/public/wrapper_info.h"
+#include "src/runtime/electron/common/renderer_protocol.h"
 #include "src/runtime/engine/common/thread_call.h"
 #include "src/runtime/storage/storage_def.h"
 #include "src/runtime/storage/default_local_storage_dir.h"
@@ -56,6 +57,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cmath>
 #include <cerrno>
 #include <chrono>
 #include <limits>
@@ -182,7 +184,8 @@ void BrokerCurlShareUnlock(CURL*, curl_lock_data, void* user_data)
     static_cast<base::Lock*>(user_data)->Release();
 }
 
-constexpr size_t kMaximumBrokerBodySize = 60 * 1024 * 1024;
+constexpr size_t kMaximumBrokerBodySize =
+    renderer_protocol::kMaxWebSocketMessageBytes;
 
 struct BrokerNetworkRequest {
     std::string url;
@@ -1003,22 +1006,287 @@ BrokerNetworkResult PerformBrokerNetworkRequest(BrokerNetworkRequest request)
 }
 } // namespace
 
+struct BrokerReceiveKey {
+    int contents_id = 0;
+    uint64_t socket_id = 0;
+    uint64_t event_id = 0;
+
+    bool operator<(const BrokerReceiveKey& other) const
+    {
+        if (contents_id != other.contents_id)
+            return contents_id < other.contents_id;
+        if (socket_id != other.socket_id)
+            return socket_id < other.socket_id;
+        return event_id < other.event_id;
+    }
+
+    bool operator==(const BrokerReceiveKey& other) const
+    {
+        return contents_id == other.contents_id
+            && socket_id == other.socket_id
+            && event_id == other.event_id;
+    }
+};
+
+struct BrokerReceiveReservation {
+    uint64_t frame_id = 0;
+    uint64_t frame_generation = 0;
+    size_t bytes = 0;
+    bool complete = false;
+    bool delivered = false;
+    std::optional<base::Value::Dict> pending_delivery;
+};
+
+struct BrokerReceiveBudget {
+    size_t bytes = 0;
+    std::optional<BrokerReceiveKey> oversize;
+};
+
 struct BrokerSocketRegistry {
     base::Lock lock;
     std::map<std::pair<int, uint64_t>, std::shared_ptr<BrokerWebSocket>> sockets;
+
+    bool Reserve(const BrokerReceiveKey& key, uint64_t frame_id,
+        uint64_t frame_generation, size_t bytes,
+        const std::atomic_bool& stopped, std::atomic_bool& interrupted)
+    {
+        if (!bytes || bytes > renderer_protocol::kWebSocketReceiveBudgetBytes)
+            return false;
+        std::unique_lock<std::mutex> lock(receive_lock);
+        receive_changed.wait(lock, [&] {
+            return stopped.load(std::memory_order_acquire)
+                || interrupted.load(std::memory_order_acquire)
+                || CanReserve(key, bytes);
+        });
+        if (stopped.load(std::memory_order_acquire))
+            return false;
+        if (interrupted.exchange(false, std::memory_order_acq_rel))
+            return false;
+        auto [found, inserted] = reservations.try_emplace(key);
+        if ((inserted
+                && (!frame_id || !frame_generation))
+            || (!inserted
+                && (found->second.complete
+                    || found->second.frame_id != frame_id
+                    || found->second.frame_generation != frame_generation))) {
+            if (inserted)
+                reservations.erase(found);
+            return false;
+        }
+        if (inserted) {
+            found->second.frame_id = frame_id;
+            found->second.frame_generation = frame_generation;
+        }
+        auto& budget = receive_budgets[key.contents_id];
+        if (budget.bytes + bytes
+                > renderer_protocol::kWebSocketReceiveWindowBytes
+            && !budget.oversize) {
+            budget.oversize = key;
+        }
+        found->second.bytes += bytes;
+        budget.bytes += bytes;
+        return true;
+    }
+
+    void ReleasePartial(const BrokerReceiveKey& key, size_t bytes)
+    {
+        if (!bytes)
+            return;
+        {
+            std::lock_guard<std::mutex> lock(receive_lock);
+            auto found = reservations.find(key);
+            auto budget = receive_budgets.find(key.contents_id);
+            if (found == reservations.end() || budget == receive_budgets.end()
+                || found->second.complete || bytes > found->second.bytes
+                || bytes > budget->second.bytes) {
+                return;
+            }
+            found->second.bytes -= bytes;
+            budget->second.bytes -= bytes;
+            if (!found->second.bytes)
+                reservations.erase(found);
+            if (budget->second.oversize && *budget->second.oversize == key
+                && budget->second.bytes
+                    <= renderer_protocol::kWebSocketReceiveWindowBytes) {
+                budget->second.oversize.reset();
+            }
+        }
+        receive_changed.notify_all();
+    }
+
+    bool Complete(const BrokerReceiveKey& key, base::Value::Dict event)
+    {
+        const std::string* type = event.FindString("event");
+        size_t payload_bytes = 0;
+        if (type && *type == "text") {
+            const std::string* data = event.FindString("data");
+            if (!data)
+                return false;
+            payload_bytes = data->size();
+        } else if (type && *type == "binary") {
+            const base::Value::BlobStorage* data = event.FindBlob("data");
+            if (!data)
+                return false;
+            payload_bytes = data->size();
+        } else {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(receive_lock);
+        auto found = reservations.find(key);
+        if (found == reservations.end() || found->second.complete
+            || payload_bytes > renderer_protocol::kMaxWebSocketMessageBytes
+            || found->second.bytes
+                != renderer_protocol::WebSocketReceiveCharge(payload_bytes)) {
+            return false;
+        }
+        found->second.complete = true;
+        event.Set("eventId", base::NumberToString(key.event_id));
+        event.Set("credit", static_cast<int>(found->second.bytes));
+        found->second.pending_delivery.emplace(std::move(event));
+        return true;
+    }
+
+    bool TakeDelivery(
+        const BrokerReceiveKey& key, base::Value::Dict* event)
+    {
+        std::lock_guard<std::mutex> lock(receive_lock);
+        auto found = reservations.find(key);
+        if (found == reservations.end() || !found->second.complete
+            || found->second.delivered
+            || !found->second.pending_delivery) {
+            return false;
+        }
+        *event = std::move(*found->second.pending_delivery);
+        found->second.pending_delivery.reset();
+        found->second.delivered = true;
+        return true;
+    }
+
+    bool Acknowledge(const BrokerReceiveKey& key, uint64_t frame_id,
+        uint64_t frame_generation, size_t credit)
+    {
+        {
+            std::lock_guard<std::mutex> lock(receive_lock);
+            auto found = reservations.find(key);
+            auto budget = receive_budgets.find(key.contents_id);
+            if (found == reservations.end() || budget == receive_budgets.end()
+                || !found->second.complete
+                || !found->second.delivered
+                || found->second.frame_id != frame_id
+                || found->second.frame_generation != frame_generation
+                || found->second.bytes != credit
+                || credit > budget->second.bytes) {
+                return false;
+            }
+            budget->second.bytes -= credit;
+            reservations.erase(found);
+            if (budget->second.oversize && *budget->second.oversize == key)
+                budget->second.oversize.reset();
+        }
+        receive_changed.notify_all();
+        return true;
+    }
+
+    void Cancel(const BrokerReceiveKey& key)
+    {
+        {
+            std::lock_guard<std::mutex> lock(receive_lock);
+            auto found = reservations.find(key);
+            auto budget = receive_budgets.find(key.contents_id);
+            if (found == reservations.end() || budget == receive_budgets.end())
+                return;
+            if (found->second.bytes <= budget->second.bytes)
+                budget->second.bytes -= found->second.bytes;
+            reservations.erase(found);
+            if (budget->second.oversize && *budget->second.oversize == key)
+                budget->second.oversize.reset();
+        }
+        receive_changed.notify_all();
+    }
+
+    void CancelFrame(int contents_id, uint64_t frame_id,
+        uint64_t frame_generation)
+    {
+        std::vector<BrokerReceiveKey> keys;
+        {
+            std::lock_guard<std::mutex> lock(receive_lock);
+            for (const auto& entry : reservations) {
+                if (entry.first.contents_id == contents_id
+                    && entry.second.frame_id == frame_id
+                    && entry.second.frame_generation == frame_generation) {
+                    keys.push_back(entry.first);
+                }
+            }
+        }
+        for (const BrokerReceiveKey& key : keys)
+            Cancel(key);
+    }
+
+    void CancelContents(int contents_id)
+    {
+        {
+            std::lock_guard<std::mutex> lock(receive_lock);
+            for (auto it = reservations.begin(); it != reservations.end();) {
+                if (it->first.contents_id != contents_id) {
+                    ++it;
+                    continue;
+                }
+                it = reservations.erase(it);
+            }
+            receive_budgets.erase(contents_id);
+        }
+        receive_changed.notify_all();
+    }
+
+    void Notify()
+    {
+        receive_changed.notify_all();
+    }
+
+private:
+    bool CanReserve(const BrokerReceiveKey& key, size_t bytes) const
+    {
+        auto current = receive_budgets.find(key.contents_id);
+        if (current == receive_budgets.end())
+            return bytes <= renderer_protocol::kWebSocketReceiveBudgetBytes;
+        const auto& budget = current->second;
+        if (bytes > renderer_protocol::kWebSocketReceiveBudgetBytes
+                - budget.bytes) {
+            return false;
+        }
+        if (budget.bytes + bytes
+            <= renderer_protocol::kWebSocketReceiveWindowBytes) {
+            return true;
+        }
+        if (budget.oversize)
+            return *budget.oversize == key;
+        auto found = reservations.find(key);
+        return budget.bytes < renderer_protocol::kWebSocketReceiveWindowBytes
+            || (found != reservations.end() && found->second.bytes);
+    }
+
+    std::mutex receive_lock;
+    std::condition_variable receive_changed;
+    // One sandboxed renderer per WebContents; a paused window must not consume
+    // the receive window of another renderer sharing this Session.
+    std::map<int, BrokerReceiveBudget> receive_budgets;
+    std::map<BrokerReceiveKey, BrokerReceiveReservation> reservations;
 };
 
 
 class BrokerWebSocket
     : public std::enable_shared_from_this<BrokerWebSocket> {
 public:
-    BrokerWebSocket(int contents_id, uint64_t socket_id, std::string url,
+    BrokerWebSocket(int contents_id, uint64_t socket_id, uint64_t frame_id,
+        uint64_t frame_generation, std::string url,
         std::string protocol, std::string origin,
         bool enforce_private_network, CURLSH* cookie_share,
         scoped_refptr<base::SequencedTaskRunner> main_runner,
         std::weak_ptr<BrokerSocketRegistry> registry)
         : contents_id_(contents_id)
         , socket_id_(socket_id)
+        , frame_id_(frame_id)
+        , frame_generation_(frame_generation)
         , url_(std::move(url))
         , protocol_(std::move(protocol))
         , origin_(std::move(origin))
@@ -1031,6 +1299,24 @@ public:
 
     ~BrokerWebSocket() { Stop(); }
 
+    bool BelongsToFrame(uint64_t frame_id, uint64_t frame_generation) const
+    {
+        return frame_id_ == frame_id && frame_generation_ == frame_generation;
+    }
+
+    void Retire()
+    {
+        Stop();
+        // Queue after earlier native deliveries so Blink can forget the retired
+        // socket's cancellation route once all already-sent events have drained.
+        base::Value::Dict event;
+        event.Set("event", "close");
+        event.Set("code", 1001);
+        event.Set("reason", "Opening document was retired");
+        event.Set("clean", false);
+        Emit(std::move(event));
+    }
+
     void Start()
     {
         std::shared_ptr<BrokerWebSocket> self = shared_from_this();
@@ -1039,8 +1325,13 @@ public:
 
     void Queue(bool binary, std::vector<uint8_t> data)
     {
-        std::lock_guard<std::mutex> lock(queue_lock_);
-        queue_.push_back({ binary, false, 0, std::move(data) });
+        {
+            std::lock_guard<std::mutex> lock(queue_lock_);
+            queue_.push_back({ binary, false, 0, std::move(data) });
+        }
+        interrupt_receive_.store(true, std::memory_order_release);
+        if (auto registry = registry_.lock())
+            registry->Notify();
     }
 
     void Close(int code, std::string reason)
@@ -1053,13 +1344,20 @@ public:
             payload.push_back(static_cast<uint8_t>(code & 0xff));
             payload.insert(payload.end(), reason.begin(), reason.end());
         }
-        std::lock_guard<std::mutex> lock(queue_lock_);
-        queue_.push_back({ false, true, code, std::move(payload) });
+        {
+            std::lock_guard<std::mutex> lock(queue_lock_);
+            queue_.push_back({ false, true, code, std::move(payload) });
+        }
+        interrupt_receive_.store(true, std::memory_order_release);
+        if (auto registry = registry_.lock())
+            registry->Notify();
     }
 
     void Stop()
     {
-        stop_.store(true);
+        stop_.store(true, std::memory_order_release);
+        if (auto registry = registry_.lock())
+            registry->Notify();
         if (thread_.joinable()) {
             if (thread_.get_id() == std::this_thread::get_id())
                 thread_.detach();
@@ -1088,12 +1386,46 @@ private:
                 contents_id_, std::move(event)));
     }
 
+    bool EmitReceived(const BrokerReceiveKey& key, base::Value::Dict event)
+    {
+        event.Set("socketId", static_cast<double>(socket_id_));
+        event.Set("frameId", base::NumberToString(frame_id_));
+        event.Set("frameGeneration", base::NumberToString(frame_generation_));
+        std::shared_ptr<BrokerSocketRegistry> registry = registry_.lock();
+        if (!registry || !registry->Complete(key, std::move(event)))
+            return false;
+        const bool posted = main_runner_->PostTask(FROM_HERE,
+            base::BindOnce(
+                [](std::weak_ptr<BrokerSocketRegistry> weak_registry,
+                    BrokerReceiveKey receive_key) {
+                    std::shared_ptr<BrokerSocketRegistry> registry =
+                        weak_registry.lock();
+                    if (!registry)
+                        return;
+                    base::Value::Dict value;
+                    if (!registry->TakeDelivery(receive_key, &value))
+                        return;
+                    const bool sent = WebContents::sendRendererMessage(
+                        receive_key.contents_id,
+                        "network.websocket-event", std::move(value));
+                    value = {};
+                    if (!sent)
+                        registry->Cancel(receive_key);
+                },
+                registry_, key));
+        if (!posted)
+            registry->Cancel(key);
+        return posted;
+    }
+
     bool SendFrame(CURL* curl, const Outgoing& outgoing)
     {
         size_t offset = 0;
         const unsigned int flags = outgoing.close ? CURLWS_CLOSE
             : outgoing.binary ? CURLWS_BINARY : CURLWS_TEXT;
         for (;;) {
+            if (stop_.load(std::memory_order_acquire))
+                return false;
             size_t sent = 0;
             const void* data = outgoing.data.empty()
                 ? nullptr : outgoing.data.data() + offset;
@@ -1222,10 +1554,15 @@ private:
         opened.Set("extensions", "");
         Emit(std::move(opened));
 
+        std::shared_ptr<BrokerSocketRegistry> registry = registry_.lock();
         std::vector<uint8_t> incoming;
+        bool incoming_started = false;
         bool incoming_binary = false;
         bool close_sent = false;
-        while (!stop_.load()) {
+        uint64_t receive_event_id = 1;
+        size_t reserved_receive_bytes = 0;
+        while (registry && !stop_.load(std::memory_order_acquire)) {
+            interrupt_receive_.store(false, std::memory_order_release);
             std::deque<Outgoing> outgoing;
             {
                 std::lock_guard<std::mutex> lock(queue_lock_);
@@ -1233,11 +1570,13 @@ private:
             }
             for (const Outgoing& item : outgoing) {
                 if (!SendFrame(curl, item)) {
-                    base::Value::Dict event;
-                    event.Set("event", "error");
-                    event.Set("message", "WebSocket send failed");
-                    Emit(std::move(event));
-                    stop_.store(true);
+                    if (!stop_.load(std::memory_order_acquire)) {
+                        base::Value::Dict event;
+                        event.Set("event", "error");
+                        event.Set("message", "WebSocket send failed");
+                        Emit(std::move(event));
+                    }
+                    stop_.store(true, std::memory_order_release);
                     break;
                 }
                 close_sent = close_sent || item.close;
@@ -1248,26 +1587,61 @@ private:
                     Emit(std::move(consumed));
                 }
             }
-            if (stop_.load())
+            if (stop_.load(std::memory_order_acquire))
                 break;
 
             uint8_t buffer[64 * 1024];
+            const bool at_message_limit = incoming.size() == kMaximumBrokerBodySize;
+            // At the boundary, parse control frames or an empty final
+            // continuation into the fixed scratch buffer. Additional payload is
+            // rejected below, before it can be appended or retained.
+            const size_t receive_capacity = at_message_limit ? sizeof(buffer)
+                : std::min(sizeof(buffer), kMaximumBrokerBodySize - incoming.size());
+            const BrokerReceiveKey receive_key {
+                contents_id_, socket_id_, receive_event_id
+            };
+            if (!at_message_limit) {
+                if (!registry->Reserve(receive_key, frame_id_, frame_generation_,
+                        receive_capacity, stop_, interrupt_receive_)) {
+                    if (stop_.load(std::memory_order_acquire))
+                        break;
+                    continue;
+                }
+                reserved_receive_bytes += receive_capacity;
+            }
+
             size_t received = 0;
             const curl_ws_frame* metadata = nullptr;
-            CURLcode result = curl_ws_recv(curl, buffer, sizeof(buffer),
+            bool read_reservation_held = !at_message_limit;
+            CURLcode result = curl_ws_recv(curl, buffer, receive_capacity,
                 &received, &metadata);
             if (result == CURLE_AGAIN) {
+                if (read_reservation_held) {
+                    registry->ReleasePartial(receive_key, receive_capacity);
+                    reserved_receive_bytes -= receive_capacity;
+                    read_reservation_held = false;
+                }
                 if (WaitForCurlSocket(curl, true))
                     continue;
                 result = CURLE_RECV_ERROR;
             }
             if (result != CURLE_OK || !metadata) {
+                if (read_reservation_held) {
+                    registry->ReleasePartial(receive_key, receive_capacity);
+                    reserved_receive_bytes -= receive_capacity;
+                }
                 base::Value::Dict event;
                 event.Set("event", "error");
                 event.Set("message", result == CURLE_OK
                     ? "Invalid WebSocket frame" : curl_easy_strerror(result));
                 Emit(std::move(event));
                 break;
+            }
+            const bool control_frame = metadata->flags
+                & (CURLWS_CLOSE | CURLWS_PING | CURLWS_PONG);
+            if (control_frame && read_reservation_held) {
+                registry->ReleasePartial(receive_key, receive_capacity);
+                reserved_receive_bytes -= receive_capacity;
             }
             if (metadata->flags & CURLWS_CLOSE) {
                 int code = 1005; // No status was present in the peer's frame.
@@ -1298,8 +1672,7 @@ private:
             }
             if (metadata->flags & CURLWS_PONG)
                 continue;
-            if (incoming.empty())
-                incoming_binary = !!(metadata->flags & CURLWS_BINARY);
+
             if (received > kMaximumBrokerBodySize - incoming.size()) {
                 base::Value::Dict event;
                 event.Set("event", "error");
@@ -1307,20 +1680,50 @@ private:
                 Emit(std::move(event));
                 break;
             }
-            incoming.insert(incoming.end(), buffer, buffer + received);
-            if (metadata->bytesleft == 0 && !(metadata->flags & CURLWS_CONT)) {
-                base::Value::Dict event;
-                event.Set("event", incoming_binary ? "binary" : "text");
-                if (incoming_binary) {
-                    event.Set("data", base::Value(std::move(incoming)));
-                } else {
-                    event.Set("data", std::string(incoming.begin(),
-                        incoming.end()));
-                    incoming.clear();
-                }
-                Emit(std::move(event));
-                incoming.clear();
+            if (!incoming_started) {
+                incoming_started = true;
+                incoming_binary = !!(metadata->flags & CURLWS_BINARY);
             }
+            incoming.insert(incoming.end(), buffer, buffer + received);
+            const size_t charged_bytes =
+                renderer_protocol::WebSocketReceiveCharge(incoming.size());
+            if (reserved_receive_bytes > charged_bytes) {
+                registry->ReleasePartial(receive_key,
+                    reserved_receive_bytes - charged_bytes);
+                reserved_receive_bytes = charged_bytes;
+            }
+            const bool complete = metadata->bytesleft == 0
+                && !(metadata->flags & CURLWS_CONT);
+            if (metadata->bytesleft
+                > kMaximumBrokerBodySize - incoming.size()) {
+                base::Value::Dict event;
+                event.Set("event", "error");
+                event.Set("message", "WebSocket message exceeds IPC limit");
+                Emit(std::move(event));
+                break;
+            }
+            if (!complete)
+                continue;
+
+            base::Value::Dict event;
+            event.Set("event", incoming_binary ? "binary" : "text");
+            if (incoming_binary) {
+                event.Set("data", base::Value(std::move(incoming)));
+            } else {
+                std::string text(incoming.begin(), incoming.end());
+                std::vector<uint8_t>().swap(incoming);
+                event.Set("data", std::move(text));
+            }
+            if (!EmitReceived(receive_key, std::move(event)))
+                break;
+            reserved_receive_bytes = 0;
+            ++receive_event_id;
+            incoming.clear();
+            incoming_started = false;
+        }
+        if (registry && reserved_receive_bytes) {
+            registry->Cancel(
+                { contents_id_, socket_id_, receive_event_id });
         }
         curl_easy_setopt(curl, CURLOPT_SHARE, nullptr);
         curl_slist_free_all(headers);
@@ -1331,6 +1734,8 @@ private:
 
     int contents_id_;
     uint64_t socket_id_;
+    uint64_t frame_id_;
+    uint64_t frame_generation_;
     std::string url_;
     std::string protocol_;
     std::string origin_;
@@ -1339,6 +1744,7 @@ private:
     scoped_refptr<base::SequencedTaskRunner> main_runner_;
     std::weak_ptr<BrokerSocketRegistry> registry_;
     std::atomic<bool> stop_ { false };
+    std::atomic<bool> interrupt_receive_ { false };
     std::mutex queue_lock_;
     std::deque<Outgoing> queue_;
     std::thread thread_;
@@ -3383,7 +3789,8 @@ void ApiSession::handleNetworkBroker(int contentsId,
     }
 
     std::optional<double> raw_socket_id = payload.FindDouble("socketId");
-    if (!raw_socket_id || *raw_socket_id < 1
+    if (!raw_socket_id || !std::isfinite(*raw_socket_id)
+        || *raw_socket_id < 1
         || *raw_socket_id > 9007199254740991.0
         || *raw_socket_id != static_cast<uint64_t>(*raw_socket_id)) {
         reply({}, "Invalid WebSocket identifier");
@@ -3437,8 +3844,8 @@ void ApiSession::handleNetworkBroker(int contentsId,
         const std::string websocket_origin = authenticated_opaque_document
             ? "null" : frameContext.committed_origin;
         auto socket = std::make_shared<BrokerWebSocket>(contentsId,
-            socket_id, *url, protocol ? *protocol : std::string(),
-            websocket_origin,
+            socket_id, frameContext.frame_id, frameContext.frame_generation,
+            *url, protocol ? *protocol : std::string(), websocket_origin,
             frameContext.web_security
                 && !(local_application_origin
                     && IsPotentiallyPrivateHost(parsed))
@@ -3452,6 +3859,28 @@ void ApiSession::handleNetworkBroker(int contentsId,
             m_brokerSocketRegistry->sockets.emplace(key, socket);
         }
         socket->Start();
+        reply({}, {});
+        return;
+    }
+
+    if (*operation == "websocket-receive-ack") {
+        uint64_t event_id = 0;
+        uint64_t opening_generation = 0;
+        const std::string* generation = payload.FindString("frameGeneration");
+        size_t credit = 0;
+        if (!payload.FindBool("cancelled")
+            || !generation
+            || !base::StringToUint64(*generation, &opening_generation)
+            || opening_generation != frameContext.frame_generation
+            || !renderer_protocol::ParseWebSocketReceiveAcknowledgement(
+                payload, &event_id, &credit)
+            || !m_brokerSocketRegistry->Acknowledge(
+                { contentsId, socket_id, event_id },
+                frameContext.frame_id, frameContext.frame_generation,
+                credit)) {
+            reply({}, "Invalid WebSocket receive acknowledgement");
+            return;
+        }
         reply({}, {});
         return;
     }
@@ -3505,6 +3934,32 @@ void ApiSession::handleNetworkBroker(int contentsId,
     }
 }
 
+void ApiSession::onRendererFrameRetired(int contents_id, uint64_t frame_id,
+    uint64_t frame_generation)
+{
+    if (!m_brokerSocketRegistry)
+        return;
+    std::vector<std::shared_ptr<BrokerWebSocket>> sockets;
+    {
+        base::AutoLock lock(m_brokerSocketRegistry->lock);
+        for (auto it = m_brokerSocketRegistry->sockets.begin();
+             it != m_brokerSocketRegistry->sockets.end();) {
+            if (it->first.first == contents_id
+                && it->second->BelongsToFrame(frame_id, frame_generation)) {
+                sockets.push_back(it->second);
+                it = m_brokerSocketRegistry->sockets.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    // Stop first: a worker must not create a new reservation after cancellation.
+    for (const auto& socket : sockets)
+        socket->Retire();
+    m_brokerSocketRegistry->CancelFrame(
+        contents_id, frame_id, frame_generation);
+}
+
 void ApiSession::onWebContentsDestroyed(int contentsId)
 {
     std::vector<std::shared_ptr<BrokerWebSocket>> sockets;
@@ -3553,6 +4008,8 @@ void ApiSession::onWebContentsDestroyed(int contentsId)
     }
     for (const auto& socket : sockets)
         socket->Stop();
+    if (m_brokerSocketRegistry)
+        m_brokerSocketRegistry->CancelContents(contentsId);
 }
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)

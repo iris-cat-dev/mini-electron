@@ -40,6 +40,7 @@ enum ws_dec_state { WS_DEC_INIT, WS_DEC_HEAD, WS_DEC_PAYLOAD };
 struct ws_decoder {
     int frame_age; /* zero */
     int frame_flags; /* See the CURLWS_* defines */
+    int fragment_flags; /* data type of an unfinished fragmented message */
     curl_off_t payload_offset; /* the offset parsing is at */
     curl_off_t payload_len;
     unsigned char head[10];

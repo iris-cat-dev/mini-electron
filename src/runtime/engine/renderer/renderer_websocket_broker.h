@@ -14,7 +14,9 @@ namespace content {
 
 using RendererWebSocketCommand =
     std::function<void(uint64_t, base::Value::Dict)>;
-using RendererWebSocketEvent = std::function<void(const base::Value::Dict&)>;
+// False leaves the native event queued and its receive credit outstanding.
+using RendererWebSocketEvent =
+    std::function<bool(const base::Value::Dict&)>;
 
 void SetRendererWebSocketCommand(RendererWebSocketCommand command);
 uint64_t OpenRendererWebSocket(uint64_t frame_id,
@@ -24,6 +26,10 @@ void SendRendererWebSocket(uint64_t socket_id, bool binary,
 void CloseRendererWebSocket(uint64_t socket_id, int code,
     const std::string& reason);
 void ForgetRendererWebSocket(uint64_t socket_id);
+// Discard receive payloads and credits, but retain terminal handshake delivery.
+void CancelRendererWebSocketReceive(uint64_t socket_id);
+void ApplyRendererWebSocketBackpressure(uint64_t socket_id);
+void RemoveRendererWebSocketBackpressure(uint64_t socket_id);
 void DispatchRendererWebSocketEvent(base::Value::Dict event);
 
 } // namespace content

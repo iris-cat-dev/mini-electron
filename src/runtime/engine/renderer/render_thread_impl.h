@@ -3,11 +3,18 @@
 #define content_renderer_RenderThreadImpl_h
 
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 
+#include "base/memory/discardable_memory_allocator.h"
+#include "base/synchronization/lock.h"
+#include "base/task/single_thread_task_executor.h"
 #include "base/threading/thread.h"
+#include "base/time/time.h"
+#include "build/build_config.h"
 #include "third_party/blink/public/platform/scheduler/web_thread_scheduler.h"
 #include "ui/gfx/native_widget_types.h"
-#include "base/task/single_thread_task_executor.h"
 
 namespace node {
 class MultiIsolatePlatform;
@@ -23,6 +30,67 @@ class AssociatedInterfaceProvider;
 }
 
 namespace content {
+
+// Applies hysteresis and notification cooldowns to renderer memory samples.
+// Kept separate from the OS sampler so its transition behavior is deterministic.
+class RendererMemoryPressurePolicy {
+public:
+    enum class Level {
+        kNone,
+        kModerate,
+        kCritical,
+    };
+
+    enum class Action {
+        kNone,
+        kModerate,
+        kCritical,
+    };
+
+    Action Evaluate(uint64_t committed_bytes, uint64_t job_limit_bytes,
+        bool system_low_memory, base::TimeTicks now);
+    Level level() const { return m_level; }
+
+private:
+    Level m_level = Level::kNone;
+    base::TimeTicks m_lastModerateNotification;
+    base::TimeTicks m_lastCriticalNotification;
+    bool m_moderateNotificationPending = false;
+};
+
+// Heap-backed discardable memory for renderer caches. Unlocked allocations can
+// be reclaimed explicitly, while locked allocations remain valid. Accounting
+// and memory dumps report retained payload bytes, excluding allocation metadata.
+class RendererDiscardableMemoryAllocator final
+    : public base::DiscardableMemoryAllocator {
+public:
+    explicit RendererDiscardableMemoryAllocator(size_t max_bytes);
+    ~RendererDiscardableMemoryAllocator() override;
+
+    std::unique_ptr<base::DiscardableMemory>
+    AllocateLockedDiscardableMemory(size_t size) override;
+    size_t GetBytesAllocated() const override;
+    void ReleaseFreeMemory() override;
+
+private:
+    class Allocation;
+    friend class Allocation;
+
+    void DiscardUnlockedAllocationsLocked()
+        EXCLUSIVE_LOCKS_REQUIRED(m_lock);
+    void DiscardAllocationLocked(Allocation* allocation)
+        EXCLUSIVE_LOCKS_REQUIRED(m_lock);
+    void DestroyAllocation(Allocation* allocation);
+
+    const size_t m_maxBytes;
+    mutable base::Lock m_lock;
+    Allocation* m_allocations GUARDED_BY(m_lock) = nullptr;
+    size_t m_bytesAllocated GUARDED_BY(m_lock) = 0;
+};
+
+#if BUILDFLAG(IS_WIN)
+class RendererMemoryPressureMonitor;
+#endif
 
 class TestHost;
 class RendererBlinkPlatformImpl;
@@ -117,6 +185,9 @@ public:
     base::PlatformThreadId m_blinkThreadId = 0;
     scoped_refptr<base::SingleThreadTaskRunner> m_blinkTaskRunner;
     v8::Isolate* m_blinkIsolate = nullptr;
+#if BUILDFLAG(IS_WIN)
+    std::unique_ptr<RendererMemoryPressureMonitor> m_memoryPressureMonitor;
+#endif
     base::Thread m_thread;
     base::Thread m_hostThread;
 

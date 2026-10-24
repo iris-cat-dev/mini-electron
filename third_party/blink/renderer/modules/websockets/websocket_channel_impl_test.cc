@@ -1096,6 +1096,58 @@ TEST_F(WebSocketChannelImplTest, ReceiveWithExplicitBackpressure)
     Channel()->RemoveBackpressure();
 }
 
+TEST_F(WebSocketChannelImplTest, CancelReceiveDrainsPausedDataWithoutDispatch)
+{
+    EXPECT_CALL(*ChannelClient(), DidConnect(_, _));
+    mojo::ScopedDataPipeProducerHandle writable;
+    mojo::ScopedDataPipeConsumerHandle readable;
+    mojo::Remote<network::mojom::blink::WebSocketClient> client;
+    auto websocket = Connect(4, &writable, &readable, &client);
+    ASSERT_TRUE(websocket);
+
+    Channel()->ApplyBackpressure();
+    size_t written = 0;
+    ASSERT_EQ(MOJO_RESULT_OK, writable->WriteData(base::byte_span_from_cstring("abcd"), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE, written));
+    ASSERT_EQ(written, 4u);
+    client->OnDataFrame(true, WebSocketMessageType::TEXT, 4);
+    test::RunPendingTasks();
+    EXPECT_EQ(MOJO_RESULT_SHOULD_WAIT, writable->WriteData(base::byte_span_from_cstring("efgh"), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE, written));
+
+    Channel()->CancelReceive();
+    // The paused payload was discarded and the transport can continue reading
+    // through further data to the peer's terminal handshake.
+    ASSERT_EQ(MOJO_RESULT_OK, writable->WriteData(base::byte_span_from_cstring("efgh"), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE, written));
+    EXPECT_EQ(written, 4u);
+    Channel()->ApplyBackpressure();
+    client->OnDataFrame(true, WebSocketMessageType::BINARY, 4);
+    EXPECT_CALL(*ChannelClient(), DidStartClosingHandshake());
+    EXPECT_CALL(*ChannelClient(), DidClose(WebSocketChannelClient::kClosingHandshakeComplete, 1000, String()));
+    client->OnClosingHandshake();
+    client->OnDropChannel(true, 1000, String());
+    test::RunPendingTasks();
+}
+
+TEST_F(WebSocketChannelImplTest, CancelReceiveDuringMessageDispatchDoesNotReenterDataPipeRead)
+{
+    EXPECT_CALL(*ChannelClient(), DidConnect(_, _));
+    EXPECT_CALL(*ChannelClient(), DidReceiveTextMessage(String("abc"))).WillOnce([&] {
+        Channel()->CancelReceive();
+    });
+    mojo::ScopedDataPipeProducerHandle writable;
+    mojo::ScopedDataPipeConsumerHandle readable;
+    mojo::Remote<network::mojom::blink::WebSocketClient> client;
+    auto websocket = Connect(8, &writable, &readable, &client);
+    ASSERT_TRUE(websocket);
+
+    size_t written = 0;
+    ASSERT_EQ(MOJO_RESULT_OK, writable->WriteData(base::byte_span_from_cstring("abcdef"), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE, written));
+    client->OnDataFrame(true, WebSocketMessageType::TEXT, 3);
+    client->OnDataFrame(true, WebSocketMessageType::TEXT, 3);
+    test::RunPendingTasks();
+    ASSERT_EQ(MOJO_RESULT_OK, writable->WriteData(base::byte_span_from_cstring("ghijkl"), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE, written));
+    EXPECT_EQ(written, 6u);
+}
+
 TEST_F(WebSocketChannelImplTest, ReceiveMultipleMessagesWithSmallDataPipeWrites)
 {
     Checkpoint checkpoint;

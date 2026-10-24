@@ -22,6 +22,7 @@ import zipfile
 
 from .node_sources import generate_node_bootstraps
 from .windows_angle import build_angle
+from .windows_symbols import archive_windows_symbols
 from .dawn import build_dawn
 from .distribution import (
     copy_release_notices,
@@ -1071,6 +1072,9 @@ def build(root: Path, args: argparse.Namespace) -> int:
             dawn_root,
             jobs,
         )
+        if bool(getattr(args, "package_dist", False)) or bool(getattr(args, "omp_desktop", False)):
+            symbols = archive_windows_symbols(built, output / "symbols")
+            print(f"[windows] Matching executable and PDB: {symbols}")
         if bool(getattr(args, "package_dist", False)):
             _package_runtime_distribution(root, args, output, built)
             return 0

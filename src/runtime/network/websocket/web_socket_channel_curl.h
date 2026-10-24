@@ -38,6 +38,7 @@
 #include "src/runtime/network/websocket/web_socket_deflate_framer.h"
 #include "src/runtime/network/websocket/web_socket_one_frame.h"
 #include "src/runtime/network/websocket/web_socket_handshake.h"
+#include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_state_observer.h"
 #include "third_party/blink/renderer/modules/websockets/websocket_channel.h"
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/timer.h"
@@ -56,8 +57,8 @@ class ExecutionContext;
 namespace mini_electron {
 
 class WebSocketChannelCurl : public blink::WebSocketChannel,
-                             public SocketStreamHandleClient
-//, public blink::ContextLifecycleObserver
+                             public SocketStreamHandleClient,
+                             public blink::ExecutionContextLifecycleStateObserver
 {
     //USING_GARBAGE_COLLECTED_MIXIN(WebSocketChannelCurl);
     USING_PRE_FINALIZER(WebSocketChannelCurl, dispose);
@@ -106,8 +107,11 @@ public:
     void Fail(const String& reason, blink::mojom::ConsoleMessageLevel, std::unique_ptr<blink::SourceLocation>) override;
     void Disconnect() override;
     void CancelHandshake() override;
+    void CancelReceive() override;
     void ApplyBackpressure() override;
     void RemoveBackpressure() override;
+    void ContextDestroyed() override;
+    void ContextLifecycleStateChanged(blink::mojom::FrameLifecycleState) override;
 
     // SocketStreamHandleClient functions.
     virtual void willOpenSocketStream(SocketStreamHandle*) override;
@@ -153,6 +157,7 @@ private:
     void skipBuffer(size_t len);
     bool processBuffer();
     void resumeTimerFired(blink::TimerBase*);
+    void updateBrokerBackpressure();
     void startClosingHandshake(int code, const String& reason);
     void closingTimerFired(blink::TimerBase*);
 
@@ -199,6 +204,9 @@ private:
     scoped_refptr<SocketStreamHandle> m_handle;
     int64_t m_handleId;
     uint64_t m_brokerSocketId = 0;
+    bool m_clientBackpressure = false;
+    bool m_contextReceivePaused = false;
+    bool m_receiveCancelled = false;
 
     std::vector<char> m_buffer;
 

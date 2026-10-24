@@ -28,7 +28,7 @@
 #include "third_party/blink/renderer/core/streams/writable_stream_default_controller.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer_view.h"
-#include "third_party/blink/renderer/modules/websockets/websocket_channel_impl.h"
+#include "src/runtime/network/websocket/web_socket_channel_curl.h"
 #include "third_party/blink/renderer/modules/websockets/websocket_error.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -120,7 +120,8 @@ private:
 ScriptPromise<IDLUndefined> WebSocketStream::UnderlyingSource::Pull(ScriptState* script_state, ExceptionState&)
 {
     DVLOG(1) << "WebSocketStream::UnderlyingSource " << this << " Pull()";
-    creator_->channel_->RemoveBackpressure();
+    if (!closed_ && creator_->channel_)
+        creator_->channel_->RemoveBackpressure();
     return ToResolvedUndefinedPromise(script_state);
 }
 
@@ -129,6 +130,8 @@ ScriptPromise<IDLUndefined> WebSocketStream::UnderlyingSource::Cancel(ScriptStat
     DVLOG(1) << "WebSocketStream::UnderlyingSource " << this << " Cancel()";
     closed_ = true;
     creator_->CloseMaybeWithReason(reason, exception_state);
+    if (creator_->channel_)
+        creator_->channel_->CancelReceive();
     return ToResolvedUndefinedPromise(script_state);
 }
 
@@ -155,7 +158,8 @@ void WebSocketStream::UnderlyingSource::DidStartClosingHandshake()
 {
     DVLOG(1) << "WebSocketStream::UnderlyingSource " << this << " DidStartClosingHandshake()";
 
-    DCHECK(!closed_);
+    if (closed_)
+        return;
     Controller()->Close();
     closed_ = true;
 }
@@ -383,7 +387,7 @@ WebSocketStream* WebSocketStream::CreateInternal(
     if (channel) {
         stream->channel_ = channel;
     } else {
-        stream->channel_ = WebSocketChannelImpl::Create(execution_context, stream, CaptureSourceLocation(execution_context));
+        stream->channel_ = mini_electron::WebSocketChannelCurl::create(execution_context, stream, CaptureSourceLocation(execution_context));
     }
     stream->Connect(script_state, url, options, exception_state);
     if (exception_state.HadException())

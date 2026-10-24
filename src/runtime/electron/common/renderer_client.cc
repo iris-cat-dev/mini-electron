@@ -17,11 +17,13 @@
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "src/runtime/electron/common/renderer_platform.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "src/runtime/electron/common/renderer_protocol.h"
 #include "src/runtime/electron/common/renderer_server.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "base/command_line.h"
+#include "base/process/kill.h"
 #include "base/strings/string_number_conversions.h"
 #include "src/platform/windows/d3d_compositor.h"
 #include "src/platform/windows/dcomp_presenter.h"
@@ -496,18 +498,7 @@ private:
         payload.Set("method", std::move(method));
         payload.Set("params", std::move(params));
         if (!Write({ MessageKind::kRequest, id, std::move(payload) })) {
-            ReplyCallback failed;
-            {
-                std::lock_guard<std::mutex> state_lock(state_->lock);
-                auto it = state_->replies.find(id);
-                if (it != state_->replies.end()) {
-                    failed = std::move(it->second);
-                    state_->replies.erase(it);
-                }
-            }
-            if (failed)
-                PostReply(state_, std::move(failed), {},
-                    "renderer IPC write failed");
+            PostPendingReply(state_, id, {}, "renderer IPC write failed");
             return 0;
         }
         return id;
@@ -548,14 +539,18 @@ private:
         if (!report_crash)
             return;
 
-        // Pipe EOF commonly wins the race with process teardown. Briefly
-        // observe the owned process before deciding this was only an IPC
-        // transport failure; a renderer which remains alive is not reported as
-        // a synthetic process exit.
+        // Pipe EOF commonly wins the race with process teardown. An ordinary
+        // broken transport gets only a short observation; a known fatal
+        // exception must first finish its bounded dump/exit lifecycle.
         RendererProcessStatus status;
         {
             std::lock_guard<std::mutex> lock(process_lock_);
             status = ObserveRendererProcess(&process_, 250);
+#if BUILDFLAG(IS_WIN)
+            if (status.state == RendererProcessState::kRunning
+                && WaitForRendererCrashExit(process_.crash_monitor))
+                status = ObserveRendererProcess(&process_, 0);
+#endif
         }
         base::Value::Dict crash;
         crash.Set("type", "crashed");
@@ -566,11 +561,14 @@ private:
             payload.Set("error", failure_detail);
         } else {
             payload.Set("exitCode", static_cast<double>(status.exit_code));
-            if (status.exit_code == kChromiumOutOfMemoryExitCode
-                || status.sandbox_memory_limit_exceeded) {
+            bool memory_exit = status.exit_code == kChromiumOutOfMemoryExitCode;
+#if BUILDFLAG(IS_WIN)
+            memory_exit = memory_exit || status.exit_code == base::win::kSandboxFatalMemoryExceeded;
+#endif
+            if (memory_exit) {
                 payload.Set("reason", "oom");
-                payload.Set("sandboxMemoryLimitExceeded",
-                    status.sandbox_memory_limit_exceeded);
+                payload.Set("sandboxMemoryLimitExceeded", status.sandbox_memory_limit_exceeded
+                    ? base::Value(*status.sandbox_memory_limit_exceeded) : base::Value());
             } else if (status.exit_code == 0) {
                 payload.Set("reason", "clean-exit");
             } else if (status.crashed) {
@@ -579,6 +577,13 @@ private:
                 payload.Set("reason", "abnormal-exit");
             }
         }
+#if BUILDFLAG(IS_WIN)
+        AppendRendererCrashDiagnostics(process_.crash_monitor, &payload);
+        if (status.sandbox_memory_limit_exceeded.value_or(false))
+            payload.Set("sandboxMemoryLimitExceeded", true);
+        if (status.exit_code == base::win::kSandboxFatalMemoryExceeded)
+            payload.Set("memoryLimitEvidence", "sandbox-exit-code");
+#endif
         crash.Set("payload", std::move(payload));
         PostEvent(state, std::move(crash));
     }
@@ -625,15 +630,6 @@ private:
             }, state, request_id, std::move(result), std::move(error)));
     }
 
-    static void PostReply(const std::shared_ptr<ClientState>& state,
-        ReplyCallback callback, base::Value::Dict result, std::string error)
-    {
-        state->owner_runner->PostTask(FROM_HERE,
-            base::BindOnce([](ReplyCallback callback, base::Value::Dict result, std::string error) {
-                callback(std::move(result), std::move(error));
-            }, std::move(callback), std::move(result), std::move(error)));
-    }
-
     static void PostEvent(const std::shared_ptr<ClientState>& state,
         base::Value::Dict event)
     {
@@ -654,13 +650,23 @@ private:
     static void FailOutstanding(const std::shared_ptr<ClientState>& state,
         std::string error)
     {
+        if (!state->owner_runner->RunsTasksInCurrentSequence()) {
+            // Keep callbacks in cancellable state until the owner can release
+            // their V8 handles. Close may run before this task is dispatched.
+            state->owner_runner->PostTask(FROM_HERE,
+                base::BindOnce(&RendererClientImpl::FailOutstanding,
+                    state, std::move(error)));
+            return;
+        }
         std::map<uint64_t, ReplyCallback> replies;
         {
             std::lock_guard<std::mutex> lock(state->lock);
             replies.swap(state->replies);
         }
+        // Owner-sequence close must release reply-owned V8 handles before the
+        // isolate is torn down, not when a queued cancellation is discarded.
         for (auto& [id, callback] : replies)
-            PostReply(state, std::move(callback), {}, error);
+            callback({}, error);
     }
 
     mutable RendererPlatformProcess process_;
@@ -704,6 +710,14 @@ std::unique_ptr<RendererClient> RendererClient::Create(RendererLaunchOptions opt
     } else if (!LaunchRendererSandbox(auth_high, auth_low, &process, &error)) {
         return nullptr;
     }
+#if BUILDFLAG(IS_WIN)
+    if (!in_process && !StartRendererCrashMonitor(process.crash_monitor,
+            process.process, process.job, options.crash_dump_directory, &error)) {
+        TerminateRendererProcess(&process);
+        CloseRendererPlatformProcess(&process);
+        return nullptr;
+    }
+#endif
     auto state = std::make_shared<ClientState>();
     state->event_callback = std::move(event_callback);
     state->contents_id = options.contents_id;

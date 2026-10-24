@@ -11,6 +11,8 @@
 #include <string_view>
 #include <vector>
 
+#include "base/strings/string_number_conversions.h"
+
 #if !BUILDFLAG(IS_WIN)
 #include <unistd.h>
 #endif
@@ -338,6 +340,12 @@ private:
     const uint8_t* end_;
 };
 
+bool ParsePositiveUint64(const std::string* text, uint64_t* value)
+{
+    return text && base::StringToUint64(*text, value) && *value
+        && base::NumberToString(*value) == *text;
+}
+
 } // namespace
 
 bool ReadMessage(PipeHandle pipe, uint64_t auth_high, uint64_t auth_low,
@@ -413,6 +421,65 @@ void ClosePipe(PipeHandle pipe)
     if (pipe != kInvalidPipe)
         ::close(pipe);
 #endif
+}
+
+size_t WebSocketReceiveCharge(size_t payload_bytes)
+{
+    return std::max(payload_bytes, kWebSocketReceiveMinimumChargeBytes);
+}
+
+bool ParseWebSocketReceiveEvent(const base::Value::Dict& event,
+    uint64_t* event_id, size_t* credit)
+{
+    const std::string* type = event.FindString("event");
+    const std::optional<int> raw_credit = event.FindInt("credit");
+    size_t payload_bytes = 0;
+    if (!type || !raw_credit || *raw_credit <= 0
+        || !ParsePositiveUint64(event.FindString("eventId"), event_id)) {
+        return false;
+    }
+    if (*type == "text") {
+        const std::string* data = event.FindString("data");
+        if (!data)
+            return false;
+        payload_bytes = data->size();
+    } else if (*type == "binary") {
+        const base::Value::BlobStorage* data = event.FindBlob("data");
+        if (!data)
+            return false;
+        payload_bytes = data->size();
+    } else {
+        return false;
+    }
+    if (payload_bytes > kMaxWebSocketMessageBytes
+        || static_cast<size_t>(*raw_credit)
+            != WebSocketReceiveCharge(payload_bytes)) {
+        return false;
+    }
+    *credit = static_cast<size_t>(*raw_credit);
+    return true;
+}
+
+bool ParseWebSocketReceiveAcknowledgement(
+    const base::Value::Dict& acknowledgement,
+    uint64_t* event_id, size_t* credit)
+{
+    const std::string* kind = acknowledgement.FindString("kind");
+    const std::string* operation =
+        acknowledgement.FindString("operation");
+    const std::optional<int> raw_credit = acknowledgement.FindInt("credit");
+    if (!kind || *kind != "network" || !operation
+        || *operation != "websocket-receive-ack"
+        || !acknowledgement.FindBool("cancelled")
+        || !raw_credit || *raw_credit < static_cast<int>(
+            kWebSocketReceiveMinimumChargeBytes)
+        || static_cast<size_t>(*raw_credit) > kMaxWebSocketMessageBytes
+        || !ParsePositiveUint64(
+            acknowledgement.FindString("eventId"), event_id)) {
+        return false;
+    }
+    *credit = static_cast<size_t>(*raw_credit);
+    return true;
 }
 
 bool IsBrowserToRendererMethod(const std::string& method)

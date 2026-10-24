@@ -18,6 +18,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
 #include "base/win/scoped_handle.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "src/runtime/electron/common/renderer_protocol.h"
 
 namespace atom {
@@ -148,6 +149,11 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
         *error = "failed to create private renderer pipes";
         return false;
     }
+    auto crash_monitor = CreateRendererCrashMonitor(error);
+    if (!crash_monitor)
+        return false;
+    const auto crash_handles = GetRendererCrashHandles(crash_monitor);
+
 
     SECURITY_ATTRIBUTES inherited { sizeof(inherited), nullptr, TRUE };
     base::win::ScopedHandle frame_mapping(::CreateFileMappingW(INVALID_HANDLE_VALUE,
@@ -195,7 +201,8 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
         return false;
     }
     HANDLE inherited_handles[] = { child_read.get(), child_write.get(),
-        child_control.get(), frame_mapping.get() };
+        child_control.get(), frame_mapping.get(), crash_handles.mapping,
+        crash_handles.requested, crash_handles.completed };
     if (!::UpdateProcThreadAttribute(attributes, 0,
             PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherited_handles,
             sizeof(inherited_handles), nullptr, nullptr)) {
@@ -243,6 +250,9 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     command += HandleArgument(L"renderer-control-handle", child_control.get());
     command += HandleArgument(L"renderer-frame-handle", frame_mapping.get());
     command += L" --renderer-frame-size=" + base::NumberToWString(kFrameMappingSize);
+    command += HandleArgument(L"renderer-crash-mapping", crash_handles.mapping);
+    command += HandleArgument(L"renderer-crash-requested", crash_handles.requested);
+    command += HandleArgument(L"renderer-crash-completed", crash_handles.completed);
     command += L" --renderer-auth-high=" + base::NumberToWString(auth_high);
     command += L" --renderer-auth-low=" + base::NumberToWString(auth_low);
     std::vector<wchar_t> mutable_command(command.begin(), command.end());
@@ -290,6 +300,7 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     output->process_id = static_cast<int>(process_info.dwProcessId);
     output->process = process.Take();
     output->job = job.Take();
+    output->crash_monitor = std::move(crash_monitor);
     return true;
 }
 
@@ -357,18 +368,8 @@ RendererProcessStatus ObserveRendererProcess(RendererPlatformProcess* process,
         || exit_code == STILL_ACTIVE) {
         return status;
     }
-    process->sandbox_memory_limit_exceeded =
-        exit_code == base::win::kSandboxFatalMemoryExceeded;
-    JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2 violations {};
-    if (process->job
-        && ::QueryInformationJobObject(process->job,
-            JobObjectLimitViolationInformation2, &violations,
-            sizeof(violations), nullptr)) {
-        process->sandbox_memory_limit_exceeded =
-            process->sandbox_memory_limit_exceeded
-            || (violations.ViolationLimitFlags
-                & JOB_OBJECT_LIMIT_PROCESS_MEMORY) != 0;
-    }
+    process->sandbox_memory_limit_exceeded = exit_code == base::win::kSandboxFatalMemoryExceeded
+        ? std::optional<bool>(true) : RendererMemoryLimitExceeded(process->crash_monitor);
     process->termination_observed = true;
     process->exit_code = exit_code;
     process->crashed = (exit_code & 0x80000000u) != 0;
@@ -398,6 +399,8 @@ void TerminateRendererProcess(RendererPlatformProcess* process)
 
 void CloseRendererPlatformProcess(RendererPlatformProcess* process)
 {
+    StopRendererCrashMonitor(process->crash_monitor);
+    process->crash_monitor.reset();
     if (process->frame_memory)
         ::UnmapViewOfFile(process->frame_memory);
     process->frame_memory = nullptr;

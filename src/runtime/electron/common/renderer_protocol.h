@@ -28,6 +28,16 @@ inline constexpr size_t kMaxValueDepth = 64;
 inline constexpr uint32_t kFrameMagic = 0x4d454652; // "MEFR"
 inline constexpr size_t kMaxFrameBytes = 64 * 1024 * 1024;
 
+// Received WebSocket data keeps its credit from the first native receive
+// buffer until Blink has consumed (or cancelled) the message. The ordinary
+// window bounds queued small messages; one fragmented message may borrow the
+// oversize reserve so the existing 60 MiB message limit cannot deadlock.
+inline constexpr size_t kMaxWebSocketMessageBytes = 60 * 1024 * 1024;
+inline constexpr size_t kWebSocketReceiveWindowBytes = 8 * 1024 * 1024;
+inline constexpr size_t kWebSocketReceiveMinimumChargeBytes = 4 * 1024;
+inline constexpr size_t kWebSocketReceiveBudgetBytes =
+    kMaxWebSocketMessageBytes + kWebSocketReceiveWindowBytes;
+
 #if BUILDFLAG(IS_WIN)
 using PipeHandle = HANDLE;
 inline const PipeHandle kInvalidPipe = INVALID_HANDLE_VALUE;
@@ -109,6 +119,12 @@ bool ReadMessage(PipeHandle pipe, uint64_t auth_high, uint64_t auth_low,
 bool WriteMessage(PipeHandle pipe, uint64_t auth_high, uint64_t auth_low,
     const WireMessage& message, std::string* error);
 void ClosePipe(PipeHandle pipe);
+size_t WebSocketReceiveCharge(size_t payload_bytes);
+bool ParseWebSocketReceiveEvent(const base::Value::Dict& event,
+    uint64_t* event_id, size_t* credit);
+bool ParseWebSocketReceiveAcknowledgement(
+    const base::Value::Dict& acknowledgement,
+    uint64_t* event_id, size_t* credit);
 
 // Renderer IPC only accepts this deliberately small command vocabulary. File
 // paths and process-spawning operations are never accepted from an untrusted

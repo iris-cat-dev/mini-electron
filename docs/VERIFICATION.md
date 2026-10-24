@@ -8,6 +8,104 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Renderer memory forensics and receive backpressure (2026-10-24)
+
+The Windows 10 x64 source candidate was incrementally built and staged with
+`python build.py --package-dist --jobs 8 --dist-output out/verification/renderer-memory-fixes-20261024/runtime`,
+using the installed GN/Ninja/CMake toolchain and cached dependencies. This was
+not a clean-room rebuild, a new published release, or a replay of the original
+OMP Desktop incident.
+
+Verified executable SHA-256:
+`1858762d7d4a1ff1c2803b4ba8c88d42920aa62875bb5e159c3b7d3e5a30a249`.
+Its matching PDB has GUID `FCD654A3AAFA0A544C4C44205044422E`, age `1`, and SHA-256
+`e7a00317c950280a19cbc551b8fa0186139e6ef80ff011c238674afd2e6b47ec`.
+The archived identity is under
+`out/windows-x64/symbols/mini-electron.pdb/FCD654A3AAFA0A544C4C44205044422E1/`.
+
+### Actual runtime and native checks
+
+- **21 isolated packaged-runtime executions passed with external exit code 0.**
+  This includes WebSocket basic, receive/cancel and frame-retirement checks in
+  both process modes; bounded receive flow; real pressure/repaint; heap, mixed,
+  native-Blob and Worker OOM; unwritable dump output; ordinary native crash;
+  native crash after a recoverable Job refusal; transport/control memory curves;
+  and immediate-exit/continue capture cancellation in both process modes.
+  No owned child needed forced cleanup.
+- **Six real exception minidumps** matched the archived EXE/PDB identities and
+  were loaded in CDB with private symbols. Main/Worker V8 failures resolved
+  through `blink::ReportV8OOMError` and `V8::FatalProcessOutOfMemory`; native Blob
+  exhaustion resolved through `WTF::Partitions::HandleOutOfMemory` and
+  PartitionAlloc, while ordinary native exceptions retained their actual thread.
+  The dump contract also checked AMD64 control registers, exception stream,
+  module RSDS GUID/age and embedded diagnostic evidence.
+- The mixed workload recorded peak commit **4,294,950,912 bytes** against an
+  actually queried **4,294,967,296-byte** Job process limit, a real Job refusal,
+  V8 failure location `CALL_AND_RETRY_LAST`, `reason: "oom"` and unsigned
+  `exitCode: 0xe0000008`. Heap-limit OOM retained `null`/`unknown` Job evidence.
+  Worker failures preserved their failing thread and explicitly labeled
+  last-main-isolate samples rather than presenting those samples as worker data.
+- Native Blob OOM retained a **67,112,960-byte** failed allocation; unspecified
+  allocation size stayed `null`. A native breakpoint after a recovered refusal
+  remained `crashed`/unknown-source despite its historical Job evidence.
+  Replacing the dump directory with a file retained OOM diagnostics and the
+  exact Win32 `ERROR_FILE_EXISTS` (`80`) without claiming a dump was written.
+- Two production-linked native executables passed: discardable live-byte
+  accounting, locked-data preservation, purge/relock races, allocation dumps and
+  pressure hysteresis/cooldowns; and deterministic delayed fatal OOM/native
+  exit observation with a still-live broken-IPC control. Three symbol-archive
+  Python contract tests also passed.
+
+The final run fixed two additional observed failures rather than weakening
+their assertions. IPC closing after a captured fatal exception could beat the
+old 250 ms process observation and report `ipc-failure`; bounded capture/exit
+coordination now waits for the actual OS status. Pending capture cancellation
+could leave V8 promises in tasks destroyed after isolate teardown; owner-state
+cancellation now releases them before shutdown. The before-fix CDB host stack
+ran through `PromiseBase::~PromiseBase`, `GlobalHandles::NodeSpace::Free` and
+task-queue destruction. Both immediate exit and continued replacement-renderer
+scenarios passed after the fix.
+
+### Measured receive and pressure behavior
+
+For 1,024 ordered 128 KiB messages with JavaScript blocked for six seconds,
+renderer private growth while blocked was **10.94 MiB**, versus **161.02 MiB**
+in the original released-runtime investigation. The final one-message control
+grew **0.50 MiB**. At the blocked sample the producer had completed **86/1,024**
+messages; it resumed and delivered every message after the consumer resumed.
+These are finite workload measurements, not a process-memory ceiling.
+
+The broader WebSocket smoke also passed exact-60-MiB fragmented binary with an
+empty final continuation, minimum-charge empty messages, aggregate sockets,
+independent renderer budgets, unread stream cancellation and prompt disposal.
+The raw test peers now complete TCP half-closes, and flow tests await clean
+WebSocket close events before navigation rather than treating teardown resets
+as a transport failure.
+
+The real visible software-compositor pressure workload retained all touched
+live buffer pages at **3,042,627,584 bytes** private commit and measured
+**74,084,352 bytes (70.65 MiB)** reclaimed from warmed memory.
+The smoke's 4 GiB threshold is explicitly formula-derived, not a queried Job
+sample; the production monitor queries the actual Job limit. The workload stayed
+in the moderate band, preserved renderer identity and verified post-purge colors.
+Before/after **2283x2130** composed PNGs and numeric measurements were retained;
+the post-pressure surface was visually inspected.
+
+Evidence is under `out/verification/renderer-memory-fixes-20261024/`:
+`final-measurements.json`, `final-capture-validation.json`,
+`serial-suite-results.json`, native compile/link/run logs, and each
+`runs/accepted-*/` directory's samples, metadata, dump, symbolized stack and
+pressure captures. Earlier failing runs and debugger logs remain as before-fix
+evidence; temporary probe/driver source files were removed after verification.
+
+Limits: no native macOS build/run, Windows 11 replay, or live Desktop operation.
+The original incident still lacks its historical dump and memory curve, so these
+repairs do not identify its unique allocation cause. The pressure smoke uses a
+visible surface; initial hidden software capture progression is not fixed or
+claimed fixed. A non-yielding Blink-thread script can still delay pressure polls.
+See [Windows behavior](WINDOWS.md#renderer-memory-diagnostics-and-reclamation)
+and the [receive-credit contract](DEVELOPMENT.md#websocket-receive-backpressure).
+
 ## Source directory relocation (2026-10-23)
 
 Project-owned code now lives under `src/runtime/`, `src/platform/` and `src/npm/`.

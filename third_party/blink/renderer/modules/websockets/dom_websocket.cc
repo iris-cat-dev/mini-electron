@@ -75,7 +75,7 @@
 
 namespace blink {
 
-DOMWebSocket::EventQueue::EventQueue(EventTarget* target)
+DOMWebSocket::EventQueue::EventQueue(DOMWebSocket* target)
     : state_(kActive)
     , target_(target)
 {
@@ -110,6 +110,8 @@ void DOMWebSocket::EventQueue::Pause()
         return;
 
     state_ = kPaused;
+    if (target_->channel_)
+        target_->channel_->ApplyBackpressure();
 }
 
 void DOMWebSocket::EventQueue::Unpause()
@@ -162,6 +164,11 @@ void DOMWebSocket::EventQueue::UnpauseTask()
         return;
     state_ = kActive;
     DispatchQueuedEvents();
+    // Unpause() only posts this task. Do not release transport credit until
+    // queued events have actually been dispatched, and dispatch did not pause
+    // the queue again.
+    if (state_ == kActive && target_->channel_)
+        target_->channel_->RemoveBackpressure();
 }
 
 void DOMWebSocket::EventQueue::Trace(Visitor* visitor) const
@@ -262,6 +269,8 @@ void DOMWebSocket::Connect(const String& url, const Vector<String>& protocols, E
     case WebSocketCommon::ConnectResult::kSuccess:
         DCHECK(!exception_state.HadException());
         origin_string_ = SecurityOrigin::Create(common_.Url())->ToString();
+        if (event_queue_->IsPaused())
+            channel_->ApplyBackpressure();
         return;
 
     case WebSocketCommon::ConnectResult::kException:
@@ -423,7 +432,13 @@ void DOMWebSocket::close(uint16_t code, ExceptionState& exception_state)
 
 void DOMWebSocket::CloseInternal(std::optional<uint16_t> code, const String& reason, ExceptionState& exception_state)
 {
+    const bool was_open = common_.GetState() == kOpen;
     common_.CloseInternal(code, reason, channel_, exception_state);
+    // Ordinary WebSocket ignores received messages once it is closing. Do not
+    // leave their native payloads and receive credits blocking the peer close.
+    if (was_open && !exception_state.HadException() && channel_
+        && common_.GetState() == kClosing)
+        channel_->CancelReceive();
 }
 
 const KURL& DOMWebSocket::url() const

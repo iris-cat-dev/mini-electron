@@ -76,6 +76,7 @@
     <ClCompile Include="..\..\..\src\runtime\electron\common\asar\asar_util.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\common\asar\scoped_temporary_file.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\common\atom_command_line.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\renderer_crash_diagnostics_win.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\arguments.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\callback.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\context_holder.cc" />

@@ -341,6 +341,83 @@ authenticated IPC. Win32 `WM_NCHITTEST` returns `HTCAPTION` only for eligible dr
 regions; no-drag holes win even when rectangles overlap. Native caption handling
 replaces the obsolete synthetic `SC_MOVE` and double-click tracking paths.
 
+### Renderer memory diagnostics and reclamation
+
+Sandboxed Windows renderers retain the existing x64 Job budget,
+`clamp(physical RAM / 4, 1 GiB, 4 GiB)`, and per-isolate V8 heap policy.
+The repairs do not enlarge that budget or change explicit single-process mode
+into a sandboxed/crash-isolated mode.
+
+An independent, preallocated crash channel copies the renderer's exception
+record, actual failing thread and register context. The browser writes a
+minidump and diagnostic JSON under `app.getPath('crashDumps')`; applications
+can select that directory with `app.setPath('crashDumps', directory)` before
+creating their renderer. Dump writing does not depend on the normal IPC queue
+or allocation in the failing renderer.
+
+`render-process-gone` retains `reason` and the actual unsigned `exitCode`, and
+adds the captured diagnostics:
+
+- `crashCaptureStatus`, `crashDumpPath`, `crashDiagnosticsPath`, and explicit
+  `crashDumpError` / `crashDiagnosticsError` Win32 errors when output fails.
+- `exceptionCode`, `exceptionThreadId`, `rendererPid`, and
+  `failedAllocationBytes` when the exception supplied an allocation size;
+  otherwise that size is `null`, not a guessed zero.
+- `memory.processMemoryLimit`, current private bytes, process/Job commit peaks,
+  physical availability, and system commit limit/availability.
+- `v8.location`, `detail`, `isHeapOOM` and `failureThreadId` when V8 reported
+  a fatal allocation failure. Periodic heap/external-byte samples are explicitly
+  labeled `sampleKind: "last-main-isolate"` with their age, or `"unavailable"`.
+  A worker failure does not turn the last main-isolate sample into worker data.
+- `image.pdbGuid`, `pdbAge` and `pdbName`, plus PE image identity, for selecting
+  matching symbols. Windows builds archive the verified EXE/PDB pair beneath
+  `out/windows-x64/symbols/<pdbName>/<GUID><hex-age>/` with hashes in `symbols.json`.
+  The minidump includes module symbol identity and an embedded diagnostic stream.
+
+`oomSource` distinguishes a matching V8 heap-limit report from a V8 allocation
+failure and an unknown source. It does not derive the cause from the mere
+presence of PartitionAlloc/V8 frames. `memoryLimitEvidence: "job-notification"`
+means a real Job process-memory refusal was observed; absent evidence stays
+`"unknown"` and `sandboxMemoryLimitExceeded` stays `null`, never `false`.
+The refusal flag is historical for that renderer; its age is reported, and it
+does not reclassify a subsequent unrelated native exception as OOM.
+
+The Blink-thread monitor samples actual renderer private commit and the enforced
+Job limit every second, and also observes Windows low-memory notifications.
+Moderate/critical entry thresholds are 70%/85%, with 60%/75% exit hysteresis;
+moderate re-entry and sustained critical notifications are rate-limited to
+30/60 seconds. Pressure reaches Blink, V8 isolates, discardable memory and Skia
+caches. The production discardable allocator accounts live bytes, preserves
+locked buffers, frees unlocked buffers on purge, and reports discarded relock
+failure so consumers can reconstruct their data. Tight non-yielding JavaScript
+can still delay the Blink-thread monitor; reclamation is not an OOM guarantee.
+
+Exercise the native crash/output and production pressure paths in disposable
+runtime instances, not a live Desktop session:
+
+```sh
+out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-memory-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-memory-smoke.js --unwritable-dump-directory
+out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-pressure-reclamation-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/windows-capture-disposal-smoke.js
+MINI_CAPTURE_DISPOSAL_MODE=continue out/windows-x64/stage/mini-electron.exe --app=test/windows-capture-disposal-smoke.js
+```
+
+The pressure smoke deliberately approaches the actual Job threshold, validates
+retained buffer contents and reclaimed memory, and checks real post-purge
+software-compositor pixels. These Windows-specific diagnostics and monitor
+checks do not imply macOS verification.
+
+The pressure smoke uses a visible software surface. It does not promise that
+initial hidden software captures resume a suspended compositor. The separate
+capture-disposal regression destroys a hidden PNG-backed window with multiple
+captures pending, checking both immediate host exit and rejected promises
+followed by a working replacement renderer. Run it in both process modes.
+Cancellation retains callbacks in owner-sequence state until delivery or
+shutdown, rather than leaving V8 promises owned by late queue-destructor work.
+Minidumps may contain application data; retain them locally or share only with
+the intended diagnostic recipient.
+
 ### OMP Desktop package
 
 Use the original OMP Desktop main/preload scripts and Expo frontend from

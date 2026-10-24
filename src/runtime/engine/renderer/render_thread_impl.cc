@@ -15,7 +15,7 @@
 #include "gin/public/isolate_holder.h"
 #include "third_party/libnode/src/node.h"
 #include "src/runtime/engine/common/create_and_bind_templ.h"
-#include "src/runtime/engine/common/live_id_detect.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "src/runtime/engine/viz/viz_service.h"
 #include "src/runtime/engine/viz/viz_host.h"
 #include "gen/services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
@@ -33,6 +33,7 @@
 #include "third_party/blink/renderer/platform/network/network_state_notifier.h"
 #include "third_party/blink/renderer/platform/mojo/browser_interface_broker_proxy_impl.h"
 #include "third_party/blink/public/platform/web_policy_container.h"
+#include "third_party/blink/public/platform/web_memory_pressure_listener.h"
 #include "third_party/blink/public/platform/web_connection_type.h"
 #include "third_party/blink/public/web/web_navigation_control.h"
 #include "third_party/blink/public/web/web_settings.h"
@@ -53,31 +54,39 @@
 #include "ui/gfx/native_widget_types.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "base/check.h"
+#include "base/memory/memory_pressure_listener.h"
 #include "base/synchronization/lock.h"
 #include "base/memory/discardable_memory_allocator.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/power_monitor/power_monitor_device_source.h"
+#include "base/timer/timer.h"
+#include "base/trace_event/process_memory_dump.h"
 #include "third_party/icu/source/common/unicode/uclean.h"
 #include "third_party/icu/source/common/unicode/udata.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/ports/SkFontMgr_directory.h"
 #include "third_party/skia/include/core/SkGraphics.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
-#include "third_party/blink/renderer/platform/wtf/threading_primitives.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #if !defined(OS_WIN)
 #include <sys/mman.h>
 #else
+#include <windows.h>
+#include <psapi.h>
+
 #include "third_party/blink/public/web/win/web_font_rendering.h"
 #include "skia/ext/font_utils.h"
 #include "base/win/windows_version.h"
+#include "base/win/scoped_handle.h"
 #include "base/allocator/partition_alloc_support.h"
 #include "base/threading/sequence_local_storage_slot.h"
 #include <Shlwapi.h>
 #endif
 #include "url/url_util.h"
 #include <map>
+#include <new>
+#include <utility>
 
 #if !BUILDFLAG(IS_MAC)
 extern unsigned char icudtlData[1884304];
@@ -218,20 +227,6 @@ RenderThreadImpl::ThreadDelegate::ThreadDelegate(RenderThreadImpl* parent)
     m_parent = parent;
 }
 
-RenderThreadImpl::ThreadDelegate::~ThreadDelegate()
-{
-    // ThreadMain has unwound its RunLoop before releasing the delegate. The
-    // scheduler owns that loop's SequenceManager and cannot be destroyed from
-    // one of its own tasks.
-    CHECK_EQ(v8::Isolate::GetCurrent(), m_parent->m_blinkIsolate);
-    delete m_parent->m_agentGroupScheduler;
-    m_parent->m_agentGroupScheduler = nullptr;
-    blink::ThreadScheduler::Current()->SetV8Isolate(nullptr);
-    blink::V8PerIsolateData::WillBeDestroyed(m_parent->m_blinkIsolate);
-    blink::V8PerIsolateData::Destroy(m_parent->m_blinkIsolate);
-    m_parent->m_blinkIsolate = nullptr;
-    m_parent->m_mainThreadScheduler->Shutdown();
-}
 
 scoped_refptr<base::SingleThreadTaskRunner> RenderThreadImpl::ThreadDelegate::GetDefaultTaskRunner()
 {
@@ -242,6 +237,425 @@ void RenderThreadImpl::ThreadDelegate::BindToCurrentThread()
 {
     m_parent->initializeWebKitOnThread();
     m_parent->m_inited = true;
+}
+
+
+static void initializeICUData()
+{
+    UErrorCode error = U_ZERO_ERROR;
+#if BUILDFLAG(IS_MAC)
+    // The macOS target links //third_party/icu:icudata. Let ICU discover that
+    // full data package instead of replacing it with MiniBlink's legacy copy.
+    u_init(&error);
+#else
+    udata_setCommonData(const_cast<uint8_t*>(icudtlData), &error);
+#endif
+    CHECK(U_SUCCESS(error)) << "ICU initialization failed: " << u_errorName(error);
+}
+
+namespace {
+
+constexpr int kModerateEnterPercent = 70;
+constexpr int kModerateExitPercent = 60;
+constexpr int kCriticalEnterPercent = 85;
+constexpr int kCriticalExitPercent = 75;
+constexpr base::TimeDelta kModerateNotificationCooldown = base::Seconds(30);
+constexpr base::TimeDelta kCriticalNotificationCooldown = base::Minutes(1);
+
+uint64_t PercentageOf(uint64_t value, int percent)
+{
+    DCHECK_GE(percent, 0);
+    DCHECK_LE(percent, 100);
+    return (value / 100) * percent + ((value % 100) * percent) / 100;
+}
+
+} // namespace
+
+RendererMemoryPressurePolicy::Action RendererMemoryPressurePolicy::Evaluate(
+    uint64_t committed_bytes, uint64_t job_limit_bytes,
+    bool system_low_memory, base::TimeTicks now)
+{
+    const Level previous_level = m_level;
+    if (system_low_memory) {
+        m_level = Level::kCritical;
+    } else if (!job_limit_bytes) {
+        m_level = Level::kNone;
+    } else {
+        switch (previous_level) {
+        case Level::kNone:
+            if (committed_bytes
+                >= PercentageOf(job_limit_bytes, kCriticalEnterPercent)) {
+                m_level = Level::kCritical;
+            } else if (committed_bytes
+                >= PercentageOf(job_limit_bytes, kModerateEnterPercent)) {
+                m_level = Level::kModerate;
+            }
+            break;
+        case Level::kModerate:
+            if (committed_bytes
+                >= PercentageOf(job_limit_bytes, kCriticalEnterPercent)) {
+                m_level = Level::kCritical;
+            } else if (committed_bytes
+                < PercentageOf(job_limit_bytes, kModerateExitPercent)) {
+                m_level = Level::kNone;
+            }
+            break;
+        case Level::kCritical:
+            if (committed_bytes
+                < PercentageOf(job_limit_bytes, kModerateExitPercent)) {
+                m_level = Level::kNone;
+            } else if (committed_bytes
+                < PercentageOf(job_limit_bytes, kCriticalExitPercent)) {
+                m_level = Level::kModerate;
+            }
+            break;
+        }
+    }
+    if (m_level != Level::kModerate)
+        m_moderateNotificationPending = false;
+    else if (previous_level == Level::kNone)
+        m_moderateNotificationPending = true;
+
+
+    if (m_level == Level::kCritical
+        && (m_lastCriticalNotification.is_null()
+            || now - m_lastCriticalNotification
+                >= kCriticalNotificationCooldown)) {
+        m_lastCriticalNotification = now;
+        return Action::kCritical;
+    }
+    if (m_level == Level::kModerate && m_moderateNotificationPending
+        && (m_lastModerateNotification.is_null()
+            || now - m_lastModerateNotification
+                >= kModerateNotificationCooldown)) {
+        m_lastModerateNotification = now;
+        m_moderateNotificationPending = false;
+        return Action::kModerate;
+    }
+    return Action::kNone;
+}
+
+class RendererDiscardableMemoryAllocator::Allocation final
+    : public base::DiscardableMemory {
+public:
+    ~Allocation() override
+    {
+        m_allocator->DestroyAllocation(this);
+    }
+
+    bool Lock() override
+    {
+        base::AutoLock lock(m_allocator->m_lock);
+        DCHECK(!m_isLocked);
+        if (m_isLocked || !m_data)
+            return false;
+        m_isLocked = true;
+        return true;
+    }
+
+    void Unlock() override
+    {
+        base::AutoLock lock(m_allocator->m_lock);
+        DCHECK(m_isLocked);
+        if (!m_isLocked)
+            return;
+        m_isLocked = false;
+    }
+
+    void* data() const override
+    {
+        base::AutoLock lock(m_allocator->m_lock);
+        DCHECK(m_isLocked);
+        return m_isLocked ? m_data.get() : nullptr;
+    }
+
+    void DiscardForTesting() override
+    {
+        base::AutoLock lock(m_allocator->m_lock);
+        DCHECK(!m_isLocked);
+        m_allocator->DiscardAllocationLocked(this);
+    }
+
+    base::trace_event::MemoryAllocatorDump* CreateMemoryAllocatorDump(
+        const char* name, base::trace_event::ProcessMemoryDump* pmd) const override
+    {
+        base::AutoLock lock(m_allocator->m_lock);
+        auto* dump = pmd->CreateAllocatorDump(name);
+        dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize,
+            base::trace_event::MemoryAllocatorDump::kUnitsBytes,
+            m_data ? m_size : 0);
+        return dump;
+    }
+
+private:
+    friend class RendererDiscardableMemoryAllocator;
+
+    Allocation(RendererDiscardableMemoryAllocator* allocator, size_t size,
+        std::unique_ptr<uint8_t[]> data)
+        : m_allocator(allocator)
+        , m_size(size)
+        , m_data(std::move(data))
+    {
+    }
+
+    RendererDiscardableMemoryAllocator* const m_allocator;
+    const size_t m_size;
+    std::unique_ptr<uint8_t[]> m_data;
+    bool m_isLocked = true;
+    Allocation* m_previous = nullptr;
+    Allocation* m_next = nullptr;
+};
+
+RendererDiscardableMemoryAllocator::RendererDiscardableMemoryAllocator(
+    size_t max_bytes)
+    : m_maxBytes(max_bytes)
+{
+}
+
+RendererDiscardableMemoryAllocator::~RendererDiscardableMemoryAllocator()
+{
+    base::AutoLock lock(m_lock);
+    DCHECK(!m_allocations);
+    DCHECK_EQ(m_bytesAllocated, 0u);
+}
+
+std::unique_ptr<base::DiscardableMemory>
+RendererDiscardableMemoryAllocator::AllocateLockedDiscardableMemory(size_t size)
+{
+    base::AutoLock lock(m_lock);
+    if (size > m_maxBytes)
+        return nullptr;
+
+    if (m_bytesAllocated > m_maxBytes - size)
+        DiscardUnlockedAllocationsLocked();
+    if (m_bytesAllocated > m_maxBytes - size)
+        return nullptr;
+
+    std::unique_ptr<uint8_t[]> data(new (std::nothrow) uint8_t[size]);
+    if (!data)
+        return nullptr;
+    std::unique_ptr<Allocation> allocation(new (std::nothrow)
+            Allocation(this, size, std::move(data)));
+    if (!allocation)
+        return nullptr;
+
+    allocation->m_next = m_allocations;
+    if (m_allocations)
+        m_allocations->m_previous = allocation.get();
+    m_allocations = allocation.get();
+    m_bytesAllocated += size;
+    return allocation;
+}
+
+size_t RendererDiscardableMemoryAllocator::GetBytesAllocated() const
+{
+    base::AutoLock lock(m_lock);
+    return m_bytesAllocated;
+}
+
+void RendererDiscardableMemoryAllocator::ReleaseFreeMemory()
+{
+    base::AutoLock lock(m_lock);
+    DiscardUnlockedAllocationsLocked();
+}
+
+void RendererDiscardableMemoryAllocator::DiscardUnlockedAllocationsLocked()
+{
+    for (Allocation* allocation = m_allocations; allocation;
+         allocation = allocation->m_next) {
+        if (!allocation->m_isLocked)
+            DiscardAllocationLocked(allocation);
+    }
+}
+
+void RendererDiscardableMemoryAllocator::DiscardAllocationLocked(
+    Allocation* allocation)
+{
+    if (allocation->m_isLocked || !allocation->m_data)
+        return;
+    DCHECK_GE(m_bytesAllocated, allocation->m_size);
+    m_bytesAllocated -= allocation->m_size;
+    allocation->m_data.reset();
+}
+
+void RendererDiscardableMemoryAllocator::DestroyAllocation(
+    Allocation* allocation)
+{
+    base::AutoLock lock(m_lock);
+    if (allocation->m_previous)
+        allocation->m_previous->m_next = allocation->m_next;
+    else
+        m_allocations = allocation->m_next;
+    if (allocation->m_next)
+        allocation->m_next->m_previous = allocation->m_previous;
+    if (allocation->m_data) {
+        DCHECK_GE(m_bytesAllocated, allocation->m_size);
+        m_bytesAllocated -= allocation->m_size;
+        allocation->m_data.reset();
+    }
+}
+
+#if BUILDFLAG(IS_WIN)
+
+namespace {
+
+constexpr base::TimeDelta kMemoryPressurePollInterval = base::Seconds(1);
+
+bool ReadRendererJobMemory(uint64_t* committed_bytes, uint64_t* limit_bytes)
+{
+    BOOL in_job = FALSE;
+    if (!::IsProcessInJob(::GetCurrentProcess(), nullptr, &in_job) || !in_job)
+        return false;
+
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits {};
+    if (!::QueryInformationJobObject(nullptr,
+            JobObjectExtendedLimitInformation, &limits, sizeof(limits), nullptr)) {
+        return false;
+    }
+    SIZE_T enforced_limit = 0;
+    if ((limits.BasicLimitInformation.LimitFlags
+            & JOB_OBJECT_LIMIT_PROCESS_MEMORY)
+        && limits.ProcessMemoryLimit) {
+        enforced_limit = limits.ProcessMemoryLimit;
+    }
+    if ((limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_JOB_MEMORY)
+        && limits.JobMemoryLimit
+        && (!enforced_limit || limits.JobMemoryLimit < enforced_limit)) {
+        enforced_limit = limits.JobMemoryLimit;
+    }
+    if (!enforced_limit)
+        return false;
+
+    PROCESS_MEMORY_COUNTERS_EX counters {};
+    counters.cb = sizeof(counters);
+    if (!::GetProcessMemoryInfo(::GetCurrentProcess(),
+            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+            sizeof(counters))) {
+        return false;
+    }
+
+    *committed_bytes = static_cast<uint64_t>(counters.PrivateUsage);
+    *limit_bytes = static_cast<uint64_t>(enforced_limit);
+    return true;
+}
+
+} // namespace
+
+class RendererMemoryPressureMonitor {
+public:
+    explicit RendererMemoryPressureMonitor(v8::Isolate* isolate)
+        : m_isolate(isolate)
+    {
+        HANDLE notification =
+            ::CreateMemoryResourceNotification(LowMemoryResourceNotification);
+        if (notification)
+            m_lowMemoryNotification.Set(notification);
+    }
+
+    ~RendererMemoryPressureMonitor()
+    {
+        m_timer.Stop();
+    }
+
+    void Start()
+    {
+        m_timer.Start(FROM_HERE, kMemoryPressurePollInterval, this,
+            &RendererMemoryPressureMonitor::Poll);
+    }
+
+private:
+    bool IsSystemLowOnMemory() const
+    {
+        if (!m_lowMemoryNotification.is_valid())
+            return false;
+        BOOL low_memory = FALSE;
+        return ::QueryMemoryResourceNotification(
+                   m_lowMemoryNotification.get(), &low_memory)
+            && low_memory;
+    }
+
+    void Poll()
+    {
+        DCHECK_EQ(v8::Isolate::GetCurrent(), m_isolate);
+        atom::RecordRendererV8Memory(m_isolate);
+
+        uint64_t committed_bytes = 0;
+        uint64_t limit_bytes = 0;
+        ReadRendererJobMemory(&committed_bytes, &limit_bytes);
+        const RendererMemoryPressurePolicy::Level previous_level =
+            m_policy.level();
+        const RendererMemoryPressurePolicy::Action action = m_policy.Evaluate(
+            committed_bytes, limit_bytes, IsSystemLowOnMemory(),
+            base::TimeTicks::Now());
+        const RendererMemoryPressurePolicy::Level current_level =
+            m_policy.level();
+        if (action == RendererMemoryPressurePolicy::Action::kNone) {
+            if (previous_level
+                    == RendererMemoryPressurePolicy::Level::kCritical
+                && current_level
+                    == RendererMemoryPressurePolicy::Level::kModerate) {
+                blink::MemoryPressureNotificationToAllIsolates(
+                    v8::MemoryPressureLevel::kModerate);
+            } else if (previous_level
+                    != RendererMemoryPressurePolicy::Level::kNone
+                && current_level
+                    == RendererMemoryPressurePolicy::Level::kNone) {
+                blink::MemoryPressureNotificationToAllIsolates(
+                    v8::MemoryPressureLevel::kNone);
+            }
+            return;
+        }
+
+        const bool critical =
+            action == RendererMemoryPressurePolicy::Action::kCritical;
+        const auto base_level = critical
+            ? base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL
+            : base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE;
+        const auto v8_level = critical ? v8::MemoryPressureLevel::kCritical
+                                       : v8::MemoryPressureLevel::kModerate;
+        // V8 coalesces identical pressure levels. Reset only when a sustained
+        // critical state reaches our cooldown, so the retry can request work
+        // without forcing a collection on every monitor tick.
+        if (critical
+            && previous_level
+                == RendererMemoryPressurePolicy::Level::kCritical) {
+            blink::MemoryPressureNotificationToAllIsolates(
+                v8::MemoryPressureLevel::kNone);
+        }
+
+        base::MemoryPressureListener::NotifyMemoryPressure(base_level);
+        blink::WebMemoryPressureListener::OnMemoryPressure(base_level);
+        if (critical)
+            blink::WebMemoryPressureListener::OnPurgeMemory();
+        base::DiscardableMemoryAllocator::GetInstance()->ReleaseFreeMemory();
+        SkGraphics::PurgeAllCaches();
+        blink::MemoryPressureNotificationToAllIsolates(v8_level);
+    }
+
+    v8::Isolate* const m_isolate;
+    base::win::ScopedHandle m_lowMemoryNotification;
+    RendererMemoryPressurePolicy m_policy;
+    base::RepeatingTimer m_timer;
+};
+
+#endif // BUILDFLAG(IS_WIN)
+
+RenderThreadImpl::ThreadDelegate::~ThreadDelegate()
+{
+    // ThreadMain has unwound its RunLoop before releasing the delegate. The
+    // scheduler owns that loop's SequenceManager and cannot be destroyed from
+    // one of its own tasks.
+    CHECK_EQ(v8::Isolate::GetCurrent(), m_parent->m_blinkIsolate);
+#if BUILDFLAG(IS_WIN)
+    m_parent->m_memoryPressureMonitor.reset();
+#endif
+    delete m_parent->m_agentGroupScheduler;
+    m_parent->m_agentGroupScheduler = nullptr;
+    blink::ThreadScheduler::Current()->SetV8Isolate(nullptr);
+    blink::V8PerIsolateData::WillBeDestroyed(m_parent->m_blinkIsolate);
+    blink::V8PerIsolateData::Destroy(m_parent->m_blinkIsolate);
+    m_parent->m_blinkIsolate = nullptr;
+    m_parent->m_mainThreadScheduler->Shutdown();
 }
 
 RenderThreadImpl::RenderThreadImpl()
@@ -287,189 +701,6 @@ RenderThreadImpl::RenderThreadImpl()
 }
 
 RenderThreadImpl::~RenderThreadImpl() = default;
-
-static void initializeICUData()
-{
-    UErrorCode error = U_ZERO_ERROR;
-#if BUILDFLAG(IS_MAC)
-    // The macOS target links //third_party/icu:icudata. Let ICU discover that
-    // full data package instead of replacing it with MiniBlink's legacy copy.
-    u_init(&error);
-#else
-    udata_setCommonData(const_cast<uint8_t*>(icudtlData), &error);
-#endif
-    CHECK(U_SUCCESS(error)) << "ICU initialization failed: " << u_errorName(error);
-}
-
-// TestDiscardableMemoryAllocator is a simple DiscardableMemoryAllocator
-// implementation that can be used for testing. It allocates one-shot
-// DiscardableMemory instances backed by heap memory.
-class TestDiscardableMemoryAllocator : public base::DiscardableMemoryAllocator {
-public:
-    TestDiscardableMemoryAllocator() = default;
-
-    TestDiscardableMemoryAllocator(const TestDiscardableMemoryAllocator&) = delete;
-    TestDiscardableMemoryAllocator& operator=(const TestDiscardableMemoryAllocator&) = delete;
-
-    // Overridden from DiscardableMemoryAllocator:
-    std::unique_ptr<base::DiscardableMemory> AllocateLockedDiscardableMemory(size_t size) override;
-
-    size_t GetBytesAllocated() const override;
-
-    void ReleaseFreeMemory() override
-    {
-        // Do nothing since it is backed by heap memory.
-    }
-
-    void onDiscardableMemoryDestroy(int64_t id);
-    void onDiscardableMemoryAllocator(size_t size);
-    void onDiscardableMemoryRelease(size_t size);
-
-private:
-    WTF::RecursiveMutex m_lock;
-    std::set<int64_t> m_ids;
-    int64_t m_discardableMemorySize = 0;
-};
-
-const int kDebugSizeExt = 1
-#ifdef _DEBUG
-    + 1
-#endif
-    ;
-
-class DiscardableMemoryImpl : public base::DiscardableMemory {
-public:
-    explicit DiscardableMemoryImpl(TestDiscardableMemoryAllocator* allocator, size_t size)
-        : m_data(new uint8_t[size * kDebugSizeExt])
-        , m_size(size)
-        , m_allocator(allocator)
-    {
-        allocator->onDiscardableMemoryAllocator(size * kDebugSizeExt);
-
-        m_id = common::LiveIdDetect::get()->constructed(this);
-#ifdef _DEBUG
-        memset(m_data, 0xf4, size * kDebugSizeExt);
-#endif // _DEBUG
-    }
-
-    ~DiscardableMemoryImpl()
-    {
-        common::LiveIdDetect::get()->deconstructed(m_id);
-        m_allocator->onDiscardableMemoryDestroy(m_id);
-
-        DCHECK(!m_isLocked);
-        releaseMem();
-    }
-
-    // Overridden from DiscardableMemory:
-    bool Lock() override
-    {
-        DCHECK(!m_isLocked);
-        if (!m_data)
-            return false;
-        m_isLocked = true;
-        return true;
-    }
-
-    void Unlock() override
-    {
-        DCHECK(m_isLocked);
-        m_isLocked = false;
-        // Force eviction to catch clients not correctly checking the return value of Lock().
-        //memset(m_data, 0, m_size);
-    }
-
-    void* data() const override
-    {
-        DCHECK(m_isLocked);
-        return m_data;
-    }
-
-    void DiscardForTesting() override
-    {
-    }
-
-    void releaseMem()
-    {
-        if (m_isLocked || !m_data)
-            return;
-        m_allocator->onDiscardableMemoryRelease(m_size * kDebugSizeExt);
-#ifdef _DEBUG
-        for (size_t i = m_size; i < m_size * kDebugSizeExt; ++i) {
-            if (m_data[i] != 0xf4)
-                DebugBreak();
-        }
-#endif // _DEBUG
-        delete[] m_data;
-        m_data = nullptr;
-    }
-
-    int64_t getId() const
-    {
-        return m_id;
-    }
-
-    base::trace_event::MemoryAllocatorDump* CreateMemoryAllocatorDump(const char* name, base::trace_event::ProcessMemoryDump* pmd) const override
-    {
-        return nullptr;
-    }
-
-private:
-    bool m_isLocked = true;
-    uint8_t* m_data = nullptr;
-    size_t m_size = 0;
-    int64_t m_id = 0;
-    TestDiscardableMemoryAllocator* m_allocator = nullptr;
-};
-
-std::unique_ptr<base::DiscardableMemory> TestDiscardableMemoryAllocator::AllocateLockedDiscardableMemory(size_t size)
-{
-    if (size > cc::kMemoryThresholdTSoftwareImageDecodeCache)
-        return nullptr;
-
-    if (m_discardableMemorySize > cc::kMemoryThresholdTSoftwareImageDecodeCache) {
-        char output[100] = { 0 };
-        sprintf(output, "AllocateLockedDiscardableMemory fail: %d\n", size);
-        OutputDebugStringA(output);
-
-        m_lock.lock();
-        for (std::set<int64_t>::iterator it = m_ids.begin(); it != m_ids.end(); ++it) {
-            int64_t id = *it;
-            DiscardableMemoryImpl* item = (DiscardableMemoryImpl*)common::LiveIdDetect::get()->getPtr(id);
-            item->releaseMem();
-        }
-        m_lock.unlock();
-        return nullptr;
-    }
-
-    std::unique_ptr<DiscardableMemoryImpl> ret = std::make_unique<DiscardableMemoryImpl>(this, size);
-    WTF::Locker<WTF::RecursiveMutex> locker(m_lock);
-    m_ids.insert(ret->getId());
-    return std::move(ret);
-}
-
-void TestDiscardableMemoryAllocator::onDiscardableMemoryDestroy(int64_t id)
-{
-    WTF::Locker<WTF::RecursiveMutex> locker(m_lock);
-    m_ids.erase(id);
-}
-
-void TestDiscardableMemoryAllocator::onDiscardableMemoryAllocator(size_t size)
-{
-    WTF::Locker<WTF::RecursiveMutex> locker(m_lock);
-    m_discardableMemorySize += size;
-}
-
-void TestDiscardableMemoryAllocator::onDiscardableMemoryRelease(size_t size)
-{
-    WTF::Locker<WTF::RecursiveMutex> locker(m_lock);
-    m_discardableMemorySize -= size;
-}
-
-size_t TestDiscardableMemoryAllocator::GetBytesAllocated() const
-{
-    return 0U;
-}
 
 static std::unique_ptr<base::MessagePump> createMainThreadMessagePump()
 {
@@ -805,10 +1036,9 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
     initV8Data();
     blink::Platform::InitializeBlink();
 
-    if (!base::DiscardableMemoryAllocator::GetInstance()) {
-        base::DiscardableMemoryAllocator::SetInstance(
-            new TestDiscardableMemoryAllocator());
-    }
+    base::DiscardableMemoryAllocator::SetInstance(
+        new RendererDiscardableMemoryAllocator(
+            cc::kMemoryThresholdTSoftwareImageDecodeCache));
 
     m_mainThreadScheduler =
         blink::scheduler::WebThreadScheduler::CreateMainThreadScheduler(
@@ -853,6 +1083,11 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 
     url::EnableNonStandardSchemesForAndroidWebView();
 
+#if BUILDFLAG(IS_WIN)
+    m_memoryPressureMonitor =
+        std::make_unique<RendererMemoryPressureMonitor>(m_blinkIsolate);
+    m_memoryPressureMonitor->Start();
+#endif
 }
 
 void RenderThreadImpl::initializeCompositorThread()

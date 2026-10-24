@@ -42,6 +42,7 @@ public:
     }
     MOCK_METHOD0(Disconnect, void());
     MOCK_METHOD0(CancelHandshake, void());
+    MOCK_METHOD0(CancelReceive, void());
     MOCK_METHOD0(ApplyBackpressure, void());
     MOCK_METHOD0(RemoveBackpressure, void());
 };

@@ -142,6 +142,7 @@ static void ws_dec_reset(struct ws_decoder* dec)
 static void ws_dec_init(struct ws_decoder* dec)
 {
     ws_dec_reset(dec);
+    dec->fragment_flags = 0;
 }
 
 static CURLcode ws_dec_read_head(struct ws_decoder* dec, struct Curl_easy* data, struct bufq* inraw)
@@ -151,14 +152,47 @@ static CURLcode ws_dec_read_head(struct ws_decoder* dec, struct Curl_easy* data,
 
     while (Curl_bufq_peek(inraw, &inbuf, &inlen)) {
         if (dec->head_len == 0) {
+            unsigned char opcode;
+            bool is_final;
+
             dec->head[0] = *inbuf;
             Curl_bufq_skip(inraw, 1);
 
+            opcode = dec->head[0] & WSBIT_OPCODE_MASK;
+            is_final = !!(dec->head[0] & WSBIT_FIN);
             dec->frame_flags = ws_frame_op2flags(dec->head[0]);
             if (!dec->frame_flags) {
                 failf(data, "WS: unknown opcode: %x", dec->head[0]);
                 ws_dec_reset(dec);
                 return CURLE_RECV_ERROR;
+            }
+            /*
+             * curl_ws_recv documents CURLWS_CONT on every non-final data
+             * fragment and the original data type on every fragment. Keep the
+             * message type across control frames while normalizing wire
+             * continuation opcodes to that public metadata contract.
+             */
+            if (opcode == WSBIT_OPCODE_CONT) {
+                if (!dec->fragment_flags) {
+                    failf(data, "WS: continuation without fragmented message");
+                    ws_dec_reset(dec);
+                    return CURLE_RECV_ERROR;
+                }
+                dec->frame_flags = dec->fragment_flags;
+                if (is_final)
+                    dec->fragment_flags = 0;
+                else
+                    dec->frame_flags |= CURLWS_CONT;
+            } else if (dec->frame_flags & (CURLWS_TEXT | CURLWS_BINARY)) {
+                if (dec->fragment_flags) {
+                    failf(data, "WS: new data frame during fragmented message");
+                    ws_dec_reset(dec);
+                    return CURLE_RECV_ERROR;
+                }
+                if (!is_final) {
+                    dec->fragment_flags = dec->frame_flags;
+                    dec->frame_flags |= CURLWS_CONT;
+                }
             }
             dec->head_len = 1;
             /* ws_dec_info(dec, data, "seeing opcode"); */
@@ -562,7 +596,7 @@ CURLcode Curl_ws_accept(struct Curl_easy* data, const char* mem, size_t nread)
         ws_enc_init(&ws->enc);
     } else {
         Curl_bufq_reset(&ws->recvbuf);
-        ws_dec_reset(&ws->dec);
+        ws_dec_init(&ws->dec);
         ws_enc_reset(&ws->enc);
     }
     /* Verify the Sec-WebSocket-Accept response.
