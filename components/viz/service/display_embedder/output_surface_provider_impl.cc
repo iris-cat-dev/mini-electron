@@ -37,7 +37,7 @@
 
 #if BUILDFLAG(IS_WIN)
 #include "components/viz/service/display_embedder/software_output_device_win.h"
-#include "platform/windows/d3d_compositor.h"
+#include "src/platform/windows/d3d_compositor.h"
 #endif
 
 #if BUILDFLAG(IS_APPLE)
@@ -45,7 +45,7 @@
 #endif
 
 #if BUILDFLAG(IS_MAC)
-#include "platform/macos/metal_compositor.h"
+#include "src/platform/macos/metal_compositor.h"
 #include "ui/base/cocoa/remote_layer_api.h"
 #endif
 

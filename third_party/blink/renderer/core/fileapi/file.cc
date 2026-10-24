@@ -28,7 +28,7 @@
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
-#include "runtime/engine/renderer/brokered_file_registry.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 #include "third_party/blink/public/mojom/filesystem/file_system.mojom-blink.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/platform.h"

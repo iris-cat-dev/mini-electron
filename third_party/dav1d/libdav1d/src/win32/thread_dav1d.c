@@ -36,7 +36,7 @@
 #include "common/attributes.h"
 
 #include "src/thread.h"
-#include "platform/windows/compat/sync.h"
+#include "src/platform/windows/compat/sync.h"
 
 static HRESULT(WINAPI* set_thread_description)(HANDLE, PCWSTR);
 

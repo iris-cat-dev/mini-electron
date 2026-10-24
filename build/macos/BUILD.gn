@@ -21,8 +21,8 @@ import("$mini_electron_dawn_root/libraries.gni")
 
 source_set("engine_probe") {
   sources = [
-    "//platform/macos/smoke/engine_probe.cc",
-    "//platform/macos/smoke/engine_probe.h",
+    "//src/platform/macos/smoke/engine_probe.cc",
+    "//src/platform/macos/smoke/engine_probe.h",
   ]
 
   deps = [
@@ -91,7 +91,7 @@ config("mini_electron_engine_config") {
     "//third_party/dawn/src",
     "$mini_electron_dawn_root/gen/include",
     "$mini_electron_dawn_root/gen/src",
-    "//platform/posix/win32",
+    "//src/platform/posix/win32",
     "//gpu",
     "//base/allocator/partition_allocator/src",
     "//gen/base/allocator/partition_allocator/src",
@@ -243,7 +243,7 @@ static_library("mini_electron_cares") {
     "HAVE_CONFIG_H=1",
   ]
   include_dirs = [
-    "//platform/macos/compat",
+    "//src/platform/macos/compat",
     "//third_party/cares/include",
     "//third_party/cares/src/lib",
   ]
@@ -336,8 +336,8 @@ source_set("mini_electron_skia_metal") {
 
 source_set("mini_electron_metal_compositor") {
   sources = [
-    "//platform/macos/metal_compositor.h",
-    "//platform/macos/metal_compositor.mm",
+    "//src/platform/macos/metal_compositor.h",
+    "//src/platform/macos/metal_compositor.mm",
     "//ui/base/cocoa/remote_layer_api.mm",
   ]
   configs += [ ":mini_electron_engine_config" ]
@@ -353,7 +353,7 @@ source_set("mini_electron_metal_compositor") {
 
 source_set("mini_electron_webgl") {
   sources = [
-    "//runtime/engine/renderer/webgl_context_provider.cc",
+    "//src/runtime/engine/renderer/webgl_context_provider.cc",
     "//gpu/command_buffer/client/gles2_interface.cc",
     "//gpu/command_buffer/client/gl_helper.cc",
     "//gpu/command_buffer/client/gl_helper_scaling.cc",
@@ -470,7 +470,7 @@ static_library("mini_electron_libxslt") {
 
 static_library("mini_electron_blink") {
   sources = mini_electron_blink_sources
-  sources += [ "//runtime/engine/common/devtools_disabled.cc" ]
+  sources += [ "//src/runtime/engine/common/devtools_disabled.cc" ]
   sources += mini_electron_webgl_blink_sources
   configs += [ ":mini_electron_engine_config" ]
 }
@@ -535,8 +535,8 @@ source_set("mini_electron_net_data_url") {
 static_library("mini_electron_content") {
   sources = mini_electron_content_sources
   sources += [
-    "//platform/macos/clipboard_mac.mm",
-    "//platform/macos/sandbox_support_mac.mm",
+    "//src/platform/macos/clipboard_mac.mm",
+    "//src/platform/macos/sandbox_support_mac.mm",
   ]
   configs += [ ":mini_electron_engine_config" ]
   deps = [
@@ -579,7 +579,7 @@ source_set("mini_electron_platform_mac") {
     "//components/viz/service/frame_sinks/external_begin_frame_source_mac.cc",
     "//base/third_party/superfasthash/superfasthash.c",
     "//base/strings/utf_string_conversions.cc",
-    "//platform/macos/compat/node_runtime_stubs.cc",
+    "//src/platform/macos/compat/node_runtime_stubs.cc",
     "//components/performance_manager/public/mojom/web_memory_mojom_stub.cc",
     "//net/base/platform_mime_util_apple.mm",
     "//skia/ext/convolver_neon.cc",
@@ -601,7 +601,7 @@ source_set("mini_electron_platform_mac") {
     "//ui/gfx/mac/coordinate_conversion.mm",
     "//ui/gfx/mac/io_surface.cc",
     "//ui/native_theme/native_theme_mac.mm",
-    "//platform/macos/compat/legacy_win32_shims.cc",
+    "//src/platform/macos/compat/legacy_win32_shims.cc",
     "//ui/native_theme/scrollbar_animator_mac.cc",
   ]
   configs += [ ":mini_electron_engine_config" ]
@@ -617,17 +617,17 @@ source_set("mini_electron_platform_mac") {
 }
 
 source_set("mini_electron_engine_api") {
-  sources = [ "//platform/macos/api/engine_api.cc" ]
+  sources = [ "//src/platform/macos/api/engine_api.cc" ]
   configs += [ ":mini_electron_engine_config" ]
 }
 
 source_set("mini_electron_posix_win_compat") {
-  sources = [ "//platform/posix/win32/win32_compat.cc" ]
-  inputs = [ "//platform/macos/compat/darwin_legacy_stat_rename.h" ]
+  sources = [ "//src/platform/posix/win32/win32_compat.cc" ]
+  inputs = [ "//src/platform/macos/compat/darwin_legacy_stat_rename.h" ]
   configs += [ ":mini_electron_engine_config" ]
   cflags = [
     "-include",
-    rebase_path("//platform/macos/compat/darwin_legacy_stat_rename.h", root_build_dir),
+    rebase_path("//src/platform/macos/compat/darwin_legacy_stat_rename.h", root_build_dir),
   ]
 }
 
@@ -686,7 +686,7 @@ group("mini_electron_engine") {
 
 executable("mini_electron_smoke") {
   output_name = "mini-electron-smoke"
-  sources = [ "//platform/macos/smoke/headless_smoke.cc" ]
+  sources = [ "//src/platform/macos/smoke/headless_smoke.cc" ]
 
   deps = [ ":engine_probe" ]
 
@@ -695,7 +695,7 @@ executable("mini_electron_smoke") {
 
 executable("mini_electron_browser") {
   output_name = "mini-electron-browser"
-  sources = [ "//platform/macos/app/gui_demo.mm" ]
+  sources = [ "//src/platform/macos/app/gui_demo.mm" ]
   configs += [ ":mini_electron_engine_config" ]
   deps = [
     ":mini_electron_engine",
@@ -798,11 +798,11 @@ executable("mini_electron") {
   inputs = [
     "$mini_electron_curl_root/lib/libcurl.a",
     "$mini_electron_nghttp2_root/lib/libnghttp2.a",
-    "//platform/macos/node_exports.txt",
+    "//src/platform/macos/node_exports.txt",
   ]
   ldflags = [
     "-Wl,-exported_symbols_list," +
-        rebase_path("//platform/macos/node_exports.txt", root_build_dir),
+        rebase_path("//src/platform/macos/node_exports.txt", root_build_dir),
     "-rpath",
     "@executable_path/../Frameworks",
     "-rpath",

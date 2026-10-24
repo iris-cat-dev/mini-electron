@@ -11,7 +11,10 @@ const test = require('node:test');
 const artifacts = require('../artifacts.json');
 
 const ROOT = path.resolve(__dirname, '..');
-const PACKAGE_FILES = ['cli.js', 'index.js', 'install.js', 'package.json'];
+const PACKAGE_FILES = ['package.json'];
+const NPM_SOURCE = path.join('src', 'npm');
+const INSTALL_SCRIPT = path.join(NPM_SOURCE, 'install.js');
+const CLI_SCRIPT = path.join(NPM_SOURCE, 'cli.js');
 const WINDOWS_TARGET = {
   platform: 'win32',
   arch: 'x64',
@@ -36,7 +39,8 @@ function packageFixture(t, target) {
   const directory = path.join(temporaryDirectory(t), 'package');
   fs.mkdirSync(directory);
   for (const file of PACKAGE_FILES) fs.copyFileSync(path.join(ROOT, file), path.join(directory, file));
-  fs.cpSync(path.join(ROOT, 'lib'), path.join(directory, 'lib'), { recursive: true });
+  fs.mkdirSync(path.join(directory, 'src'));
+  fs.cpSync(path.join(ROOT, NPM_SOURCE), path.join(directory, NPM_SOURCE), { recursive: true });
   if (target) {
     const manifestFile = path.join(directory, 'package.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
@@ -222,7 +226,7 @@ function createMacDistribution(directory) {
 test('installer rejects unsupported targets before creating an install marker', (t) => {
   for (const [platform, arch] of [['linux', 'x64'], ['darwin', 'x64'], ['win32', 'arm64']]) {
     const fixture = packageFixture(t);
-    const result = runNode(['install.js'], {
+    const result = runNode([INSTALL_SCRIPT], {
       cwd: fixture,
       env: { npm_config_platform: platform, npm_config_arch: arch },
     });
@@ -234,7 +238,7 @@ test('installer rejects unsupported targets before creating an install marker', 
 
 test('skip-download fails clearly when no verified binary exists', (t) => {
   const fixture = packageFixture(t, WINDOWS_TARGET);
-  const result = runNode(['install.js'], {
+  const result = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: { ...targetEnvironment, MINI_ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
   });
@@ -247,7 +251,7 @@ test('offline distribution override installs atomically and require returns the 
   const fixture = packageFixture(t, WINDOWS_TARGET);
   const distribution = path.join(temporaryDirectory(t), 'runtime-dist');
   createDistribution(distribution);
-  const installed = runNode(['install.js'], {
+  const installed = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: { ...targetEnvironment, MINI_ELECTRON_DIST_PATH: distribution },
   });
@@ -275,7 +279,7 @@ test('installer rejects stale and unlisted runtime resources', (t) => {
     if (scenario === 'stale') fs.appendFileSync(resource, 'tampered\n');
     else fs.writeFileSync(path.join(distribution, 'unlisted.js'), 'unlisted\n');
 
-    const result = runNode(['install.js'], {
+    const result = runNode([INSTALL_SCRIPT], {
       cwd: fixture,
       env: { ...targetEnvironment, MINI_ELECTRON_DIST_PATH: distribution },
     });
@@ -307,7 +311,7 @@ test('verified offline zip installs through the same contract as release archive
     ['electron.exe', executable],
     ['version.json', `${JSON.stringify(version)}\n`],
   ]);
-  const result = runNode(['install.js'], {
+  const result = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: {
       ...targetEnvironment,
@@ -349,7 +353,7 @@ test('authenticated macOS framework symlinks survive ZIP installation', { skip: 
     [shipItRelative, shipIt, 0o100755],
     ['version.json', `${JSON.stringify(macVersion(files, links))}\n`],
   ]);
-  const result = runNode(['install.js'], {
+  const result = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: {
       ...macTargetEnvironment,
@@ -369,7 +373,7 @@ test('authenticated macOS framework symlinks survive a local distribution overri
   const distribution = path.join(temporaryDirectory(t), 'mac-runtime');
   fs.mkdirSync(distribution);
   const { framework, links } = createMacDistribution(distribution);
-  const result = runNode(['install.js'], {
+  const result = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: { ...macTargetEnvironment, MINI_ELECTRON_DIST_PATH: distribution },
   });
@@ -460,7 +464,7 @@ test('installer rejects unsafe, unlisted, altered, dangling, and cyclic archive 
       ['electron.exe', executable],
       ['version.json', `${JSON.stringify(version)}\n`],
     ]);
-    const result = runNode(['install.js'], {
+    const result = runNode([INSTALL_SCRIPT], {
       cwd: fixture,
       env: {
         ...targetEnvironment,
@@ -480,7 +484,7 @@ test('installer rejects traversal archives without leaving a binary or escaped f
   const fixture = packageFixture(t, WINDOWS_TARGET);
   const archive = path.join(temporaryDirectory(t), 'malicious.zip');
   storedZip(archive, [['../escaped.exe', 'not an executable']]);
-  const result = runNode(['install.js'], {
+  const result = runNode([INSTALL_SCRIPT], {
     cwd: fixture,
     env: {
       ...targetEnvironment,
@@ -505,7 +509,7 @@ test('electron bin preserves argv, stdout, stderr, and exit code', (t) => {
   else fs.symlinkSync(process.execPath, executable);
   const child = path.join(temporaryDirectory(t), 'child.js');
   fs.writeFileSync(child, "process.stdout.write(process.argv[2]); process.stderr.write(process.argv[3]); process.exit(23);\n");
-  const result = runNode([path.join(fixture, 'cli.js'), child, 'stdout-value', 'stderr-value'], {
+  const result = runNode([path.join(fixture, CLI_SCRIPT), child, 'stdout-value', 'stderr-value'], {
     env: { ...targetEnvironment, ELECTRON_OVERRIDE_DIST_PATH: override },
   });
   assert.equal(result.status, 23);
@@ -520,7 +524,7 @@ test('electron bin forwards termination signals and reports the child signal', {
   fs.symlinkSync(process.execPath, path.join(override, 'electron.exe'));
   const childScript = path.join(temporaryDirectory(t), 'signal-child.js');
   fs.writeFileSync(childScript, "process.once('SIGTERM', () => { process.removeAllListeners('SIGTERM'); process.kill(process.pid, 'SIGTERM'); }); console.log('ready'); setInterval(() => {}, 1000);\n");
-  const cli = childProcess.spawn(process.execPath, [path.join(fixture, 'cli.js'), childScript], {
+  const cli = childProcess.spawn(process.execPath, [path.join(fixture, CLI_SCRIPT), childScript], {
     env: { ...process.env, ...targetEnvironment, ELECTRON_OVERRIDE_DIST_PATH: override },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -610,7 +614,7 @@ test('Windows target channel installs independently and exact version pins take 
   assets.set('/runtime-v1-win32-x64/artifacts.json', JSON.stringify(channelRelease.manifest));
 
   const channelFixture = packageFixture(t);
-  let result = await runNodeAsync(['install.js'], { cwd: channelFixture, env });
+  let result = await runNodeAsync([INSTALL_SCRIPT], { cwd: channelFixture, env });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     fs.readFileSync(path.join(channelFixture, 'dist', 'electron.exe'), 'utf8'),
@@ -618,7 +622,7 @@ test('Windows target channel installs independently and exact version pins take 
   );
 
   const pinnedFixture = packageFixture(t);
-  result = await runNodeAsync(['install.js'], {
+  result = await runNodeAsync([INSTALL_SCRIPT], {
     cwd: pinnedFixture,
     env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.15' },
   });
@@ -636,16 +640,16 @@ test('runtime channel upgrades independently without changing npm or updating on
   const fixture = packageFixture(t, WINDOWS_TARGET);
   const npmManifest = fs.readFileSync(path.join(fixture, 'package.json'), 'utf8');
   assets.set('/runtime-v1/artifacts.json', JSON.stringify(oldRelease.manifest));
-  let result = await runNodeAsync(['install.js'], { cwd: fixture, env });
+  let result = await runNodeAsync([INSTALL_SCRIPT], { cwd: fixture, env });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), oldRelease.executable);
 
   assets.set('/runtime-v1/artifacts.json', JSON.stringify(newRelease.manifest));
-  result = await runNodeAsync(['install.js'], { cwd: fixture, env });
+  result = await runNodeAsync([INSTALL_SCRIPT], { cwd: fixture, env });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), oldRelease.executable);
 
-  result = await runNodeAsync(['cli.js', '--update-runtime'], { cwd: fixture, env });
+  result = await runNodeAsync([CLI_SCRIPT, '--update-runtime'], { cwd: fixture, env });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), newRelease.executable);
   assert.equal(fs.readFileSync(path.join(fixture, 'package.json'), 'utf8'), npmManifest);
@@ -657,19 +661,19 @@ test('runtime pins override channel selection and mismatched releases leave the 
   const { assets, env } = await releaseServer(t, [pinned, latest]);
   const fixture = packageFixture(t, WINDOWS_TARGET);
   assets.set('/runtime-v1/artifacts.json', JSON.stringify(latest.manifest));
-  let result = await runNodeAsync(['install.js'], {
+  let result = await runNodeAsync([INSTALL_SCRIPT], {
     cwd: fixture, env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.12' },
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), pinned.executable);
-  result = await runNodeAsync(['cli.js', '--update-runtime', '0.1.13'], {
+  result = await runNodeAsync([CLI_SCRIPT, '--update-runtime', '0.1.13'], {
     cwd: fixture, env: { ...env, MINI_ELECTRON_RUNTIME_VERSION: '0.1.12' },
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(path.join(fixture, 'dist', 'electron.exe'), 'utf8'), latest.executable);
 
   assets.set('/v0.1.14/artifacts.json', JSON.stringify(latest.manifest));
-  result = await runNodeAsync(['cli.js', '--update-runtime', '0.1.14'], { cwd: fixture, env });
+  result = await runNodeAsync([CLI_SCRIPT, '--update-runtime', '0.1.14'], { cwd: fixture, env });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /runtime manifest version mismatch/u);
   const required = runNode(['-p', 'require("./")'], { cwd: fixture, env });
@@ -684,7 +688,7 @@ test('incompatible manifests and corrupt downloads cannot replace a verified run
   const fixture = packageFixture(t, WINDOWS_TARGET);
   const local = path.join(temporaryDirectory(t), 'runtime');
   createDistribution(local);
-  const installed = runNode(['install.js'], {
+  const installed = runNode([INSTALL_SCRIPT], {
     cwd: fixture, env: { ...env, MINI_ELECTRON_DIST_PATH: local },
   });
   assert.equal(installed.status, 0, installed.stderr);
@@ -702,7 +706,7 @@ test('incompatible manifests and corrupt downloads cannot replace a verified run
     if (Object.keys(changes).length === 0) {
       assets.set(`/v0.1.12/${release.manifest.platforms['win32-x64'].archive}`, 'corrupt ZIP');
     }
-    const result = await runNodeAsync(['cli.js', '--update-runtime'], { cwd: fixture, env });
+    const result = await runNodeAsync([CLI_SCRIPT, '--update-runtime'], { cwd: fixture, env });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, error);
     assert.equal(hash(path.join(fixture, 'dist', 'electron.exe')), originalHash);
@@ -714,10 +718,10 @@ test('a fresh offline installation can use a version-pinned verified download ca
   const release = releaseFixture(t, '0.1.12');
   const { assets, env } = await releaseServer(t, [release]);
   assets.set('/runtime-v1/artifacts.json', JSON.stringify(release.manifest));
-  const downloaded = await runNodeAsync(['install.js'], { cwd: packageFixture(t, WINDOWS_TARGET), env });
+  const downloaded = await runNodeAsync([INSTALL_SCRIPT], { cwd: packageFixture(t, WINDOWS_TARGET), env });
   assert.equal(downloaded.status, 0, downloaded.stderr);
   const fixture = packageFixture(t, WINDOWS_TARGET);
-  const offline = await runNodeAsync(['install.js'], {
+  const offline = await runNodeAsync([INSTALL_SCRIPT], {
     cwd: fixture,
     env: {
       ...env, MINI_ELECTRON_OFFLINE: '1', MINI_ELECTRON_MIRROR: 'http://127.0.0.1:1',

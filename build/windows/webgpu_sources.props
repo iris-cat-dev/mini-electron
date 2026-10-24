@@ -1,7 +1,7 @@
 <!-- Copyright 2026 The mini-electron Authors. Apache-2.0. -->
 <Project>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'engine'">
-    <ClCompile Include="$(MiniElectronSourceRoot)runtime\engine\renderer\webgpu_context_provider.cc" />
+    <ClCompile Include="$(MiniElectronSourceRoot)src\runtime\engine\renderer\webgpu_context_provider.cc" />
     <ClCompile Include="$(MiniElectronSourceRoot)gpu\config\gpu_switches.cc" />
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'blink'">

@@ -8,7 +8,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "runtime/electron/common/renderer_protocol.h"
+#include "src/runtime/electron/common/renderer_protocol.h"
 
 using atom::renderer_protocol::FrameBufferHeader;
 

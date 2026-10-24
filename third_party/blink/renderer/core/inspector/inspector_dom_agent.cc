@@ -32,7 +32,7 @@
 
 #include <memory>
 
-#include "runtime/engine/renderer/brokered_file_registry.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/binding_security.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"

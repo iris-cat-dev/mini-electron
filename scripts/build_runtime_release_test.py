@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -48,11 +49,14 @@ class RuntimeReleaseTest(unittest.TestCase):
             json.dumps({"version": "1.0.0", "os": ["darwin"], "cpu": ["arm64"]}),
             encoding="utf-8",
         )
+        source = self.root / release._NPM_SOURCE
+        (source / "lib").mkdir(parents=True)
+        for name in ("cli.js", "electron.d.ts", "index.js", "install.js"):
+            (source / name).write_text(name, encoding="utf-8")
+        (source / "lib" / "paths.js").write_text("module.exports = {};", encoding="utf-8")
         for name in release._PACKAGE_FILES:
             if name != "package.json":
                 (self.root / name).write_text(name, encoding="utf-8")
-        (self.root / "lib").mkdir()
-        (self.root / "lib" / "paths.js").write_text("module.exports = {};", encoding="utf-8")
         self.distribution = self.root / "runtime-dist"
         self.distribution.mkdir()
         for name in ("electron.exe", "LICENSE", "LICENSES.chromium.html", "LICENSES.leveldb"):
@@ -166,6 +170,7 @@ class RuntimeReleaseTest(unittest.TestCase):
     def test_runtime_only_needs_no_npm_inputs(self) -> None:
         for name in release._PACKAGE_FILES:
             (self.root / name).unlink()
+        shutil.rmtree(self.root / release._NPM_SOURCE)
         self.args.runtime_only = True
         output = self.assemble()
         self.assertFalse((output / "npm-package").exists())

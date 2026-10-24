@@ -27,93 +27,93 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\app.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\browser_view.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\browser_window.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\command_line.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\dialog.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\download_item.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\electron.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\menu.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\message_port_main.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\parent_port.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\native_theme.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\notification.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\devtools_gateway.cc">
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\app.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\browser_view.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\browser_window.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\command_line.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\dialog.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\download_item.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\electron.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\menu.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\message_port_main.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\parent_port.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\native_theme.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\notification.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\devtools_gateway.cc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\power_monitor.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\protocol.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\safe_storage.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\session.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\tray.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\utility_process.cc">
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\power_monitor.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\protocol.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\safe_storage.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\session.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\tray.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\utility_process.cc">
       <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</PreprocessToFile>
     </ClCompile>
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\web_contents.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\web_frame_main.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\web_request.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\app_browser_win.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\post_message_util.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\browser\api\window_list.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\asar.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\clipboard.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\features.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\intl_collator.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\native_image.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\original_fs.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\screen.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\shell.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\v8_util.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\event.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\event_emitter.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\event_emitter_caller.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\object_life_monitor.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\remote_callback_freer.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\api\remote_object_freer.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\asar\archive.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\asar\asar_js.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\asar\asar_util.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\asar\scoped_temporary_file.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\atom_command_line.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\arguments.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\callback.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\context_holder.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\converter.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\data_object_builder.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\dictionary.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\error_thrower.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\function_template.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\interceptor.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\locker.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\microtasks_scope.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\object_template_builder.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\per_context_data.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\per_isolate_data.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\promise.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\gin_helper\wrappable.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\id_live_detect.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\init_gdi_plus.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\io_thread.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\ipc\utility_process_msgs.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\embedded_resources.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\node_binding.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\node_thread.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\renderer_client.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\renderer_protocol.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\renderer_server.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\renderer_platform_win.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\options_switches.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\platform_util_win.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\system_tray.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\common\v8_util.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\node_bindings.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\node_gin.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\api\context_bridge.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\api\object_cache.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\sandbox_preload_host.cc" />
-    <ClCompile Include="..\..\..\runtime\electron\renderer\authorized_file.cc" />
-    <ClCompile Include="..\..\..\runtime\storage\stock_profile_migrator.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\web_contents.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\web_frame_main.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\web_request.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\app_browser_win.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\post_message_util.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\browser\api\window_list.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\asar.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\clipboard.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\features.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\intl_collator.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\native_image.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\original_fs.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\screen.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\shell.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\v8_util.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\event.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\event_emitter.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\event_emitter_caller.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\object_life_monitor.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\remote_callback_freer.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\api\remote_object_freer.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\asar\archive.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\asar\asar_js.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\asar\asar_util.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\asar\scoped_temporary_file.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\atom_command_line.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\arguments.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\callback.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\context_holder.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\converter.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\data_object_builder.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\dictionary.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\error_thrower.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\function_template.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\interceptor.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\locker.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\microtasks_scope.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\object_template_builder.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\per_context_data.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\per_isolate_data.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\promise.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\gin_helper\wrappable.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\id_live_detect.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\init_gdi_plus.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\io_thread.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\ipc\utility_process_msgs.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\embedded_resources.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\node_binding.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\node_thread.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\renderer_client.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\renderer_protocol.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\renderer_server.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\renderer_platform_win.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\options_switches.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\platform_util_win.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\system_tray.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\common\v8_util.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\node_bindings.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\node_gin.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\renderer\api\context_bridge.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\renderer\api\object_cache.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\renderer\sandbox_preload_host.cc" />
+    <ClCompile Include="..\..\..\src\runtime\electron\renderer\authorized_file.cc" />
+    <ClCompile Include="..\..\..\src\runtime\storage\stock_profile_migrator.cc" />
     <ClCompile Include="..\..\..\third_party\sqlite\sqlite3.c">
       <CompileAs>CompileAsC</CompileAs>
       <PreprocessorDefinitions>SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_PREUPDATE_HOOK;SQLITE_ENABLE_SESSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -153,99 +153,98 @@
     <ClCompile Include="..\..\..\third_party\leveldb\util\logging.cc" />
     <ClCompile Include="..\..\..\third_party\leveldb\util\options.cc" />
     <ClCompile Include="..\..\..\third_party\leveldb\util\status.cc" />
-    <ClCompile Include="..\..\..\platform\windows\clipboard_win.cc" />
-    <ClCompile Include="..\..\..\platform\windows\d3d_compositor.cc" />
-    <ClCompile Include="..\..\..\platform\windows\dcomp_presenter.cc" />
-    <ClCompile Include="..\..\..\platform\windows\compat\atomic.cc" />
-    <ClCompile Include="..\..\..\platform\windows\main.cc">
+    <ClCompile Include="..\..\..\src\platform\windows\clipboard_win.cc" />
+    <ClCompile Include="..\..\..\src\platform\windows\d3d_compositor.cc" />
+    <ClCompile Include="..\..\..\src\platform\windows\dcomp_presenter.cc" />
+    <ClCompile Include="..\..\..\src\platform\windows\compat\atomic.cc" />
+    <ClCompile Include="..\..\..\src\platform\windows\main.cc">
       <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</PreprocessToFile>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\app.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\browser_view.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\download_item.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\message_port_main.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\session.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\web_contents.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\web_frame_main.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\web_request.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\app_browser.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\menu_event_notif.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\message_filter_wrap.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\post_message_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\protocol_interface.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\relauncher.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\window_interface.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\window_list.h" />
-    <ClInclude Include="..\..\..\runtime\electron\browser\api\window_state.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\key_weak_map.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\native_image.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\event.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\event_emitter.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\event_emitter_caller.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\get_constructor_from_tls.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\object_life_monitor.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\remote_callback_freer.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\api\remote_object_freer.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\asar\archive.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\asar\asar_init_js.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\asar\asar_js.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\asar\asar_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\asar\scoped_temporary_file.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\atom_command_line.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\atom_version.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\chrome_version.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\arguments.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\callback.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\callback_converter.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\converter.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\converter_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\data_object_builder.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\dictionary.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\error_thrower.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\function_template.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\interceptor.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\object_template_builder.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\per_context_data.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\per_isolate_data.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\promise.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\public\context_holder.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\public\gin_embedders.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\public\wrapper_info.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\gin_helper\wrappable.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\hide_wnd_help.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\icon_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\id_live_detect.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\init_gdi_plus.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\io_thread.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\ipc\utility_process_msgs.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\key_weak_map.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\embedded_resources.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\locker.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\node_binding.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\node_register_help.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\node_thread.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\options_switches.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\platform_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\string_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\system_tray.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\tracing_controller_impl.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\undef_check.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\v8_util.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\win_user_msg.h" />
-    <ClInclude Include="..\..\..\runtime\electron\common\world_ids.h" />
-    <ClInclude Include="..\..\..\runtime\electron\runtime.h" />
-    <ClInclude Include="..\..\..\runtime\electron\node_bindings.h" />
-    <ClInclude Include="..\..\..\runtime\electron\renderer\api\context_bridge.h" />
-    <ClInclude Include="..\..\..\runtime\electron\renderer\api\object_cache.h" />
-    <ClInclude Include="..\..\..\platform\clipboard.h" />
-    <ClInclude Include="..\..\..\platform\windows\d3d_compositor.h" />
-    <ClInclude Include="..\..\..\platform\windows\dcomp_presenter.h" />
-    <ClInclude Include="..\..\..\platform\windows\resources\resource.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\app.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\browser_view.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\download_item.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\message_port_main.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\session.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\web_contents.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\web_frame_main.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\web_request.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\app_browser.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\menu_event_notif.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\message_filter_wrap.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\post_message_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\protocol_interface.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\relauncher.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\window_interface.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\window_list.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\browser\api\window_state.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\key_weak_map.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\native_image.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\event.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\event_emitter.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\event_emitter_caller.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\get_constructor_from_tls.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\object_life_monitor.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\remote_callback_freer.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\api\remote_object_freer.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\asar\archive.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\asar\asar_init_js.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\asar\asar_js.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\asar\asar_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\asar\scoped_temporary_file.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\atom_command_line.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\atom_version.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\chrome_version.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\arguments.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\callback.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\callback_converter.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\converter.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\converter_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\data_object_builder.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\dictionary.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\error_thrower.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\function_template.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\interceptor.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\object_template_builder.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\per_context_data.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\per_isolate_data.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\promise.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\public\context_holder.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\public\gin_embedders.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\public\wrapper_info.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\gin_helper\wrappable.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\hide_wnd_help.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\icon_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\id_live_detect.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\init_gdi_plus.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\io_thread.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\ipc\utility_process_msgs.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\key_weak_map.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\embedded_resources.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\locker.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\node_binding.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\node_register_help.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\node_thread.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\options_switches.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\platform_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\string_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\system_tray.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\tracing_controller_impl.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\undef_check.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\v8_util.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\win_user_msg.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\common\world_ids.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\node_bindings.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\renderer\api\context_bridge.h" />
+    <ClInclude Include="..\..\..\src\runtime\electron\renderer\api\object_cache.h" />
+    <ClInclude Include="..\..\..\src\platform\clipboard.h" />
+    <ClInclude Include="..\..\..\src\platform\windows\d3d_compositor.h" />
+    <ClInclude Include="..\..\..\src\platform\windows\dcomp_presenter.h" />
+    <ClInclude Include="..\..\..\src\platform\windows\resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\platform\windows\resources\application.rc" />
+    <ResourceCompile Include="..\..\..\src\platform\windows\resources\application.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -360,7 +359,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
@@ -395,7 +394,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -414,7 +413,7 @@
       </AdditionalLibraryDirectories>
       <AdditionalOptions>/errorlimit:0 %(AdditionalOptions)</AdditionalOptions>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ManifestFile>$(SolutionDir)..\runtime\engine\resources\exe.manifest</ManifestFile>
+      <ManifestFile>$(SolutionDir)..\src\runtime\engine\resources\exe.manifest</ManifestFile>
     </Link>
     <NASM>
       <IncludePaths>$(SolutionDir)../third_party/dav1d/config/win/x86;$(SolutionDir)../third_party/dav1d/dav1d/src;$(SolutionDir)../third_party/dav1d/libdav1d/src;%(IncludePaths)</IncludePaths>
@@ -434,7 +433,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -457,7 +456,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -482,7 +481,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
@@ -508,7 +507,7 @@
       <ResourceOutputFileName>$(IntDir)%(Filename).res</ResourceOutputFileName>
     </ResourceCompile>
     <Manifest>
-      <AdditionalManifestFiles>$(SolutionDir)..\runtime\engine\resources\exe.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>$(SolutionDir)..\src\runtime\engine\resources\exe.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -523,7 +522,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir)../runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src/runtime/electron;$(SolutionDir)../third_party/libnode/deps/simdjson;$(SolutionDir)../third_party/libuv/include;$(SolutionDir)../third_party/openssl;$(SolutionDir)../third_party/zlib;$(SolutionDir)../third_party/iccjpeg;$(SolutionDir)../third_party/libjpeg_turbo;$(SolutionDir)../third_party/libwebp/src/src;$(SolutionDir)../third_party/libpng;$(SolutionDir)../third_party/harfbuzz-ng/src/src;$(SolutionDir)../third_party/khronos;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src/;$(SolutionDir)../;$(SolutionDir)../gen/;$(SolutionDir)../third_party/abseil-cpp;$(SolutionDir)../v8/include;$(SolutionDir)../third_party/skia;$(SolutionDir)../gen/v8/include;$(SolutionDir)../third_party/icu/source/i18n;$(SolutionDir)../third_party/icu/source/common;$(SolutionDir)../third_party/libxml/win32/include;$(SolutionDir)../third_party/libxml/src/include;$(SolutionDir)../third_party/libxslt/src;$(SolutionDir)../third_party/openssl/openssl/include;$(SolutionDir)../third_party/boringssl/src/include;$(SolutionDir)../gpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>

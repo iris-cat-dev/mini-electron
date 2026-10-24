@@ -71,7 +71,7 @@
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
-#include "runtime/network/websocket/web_socket_channel_curl.h"
+#include "src/runtime/network/websocket/web_socket_channel_curl.h"
 
 namespace blink {
 

@@ -509,7 +509,7 @@ def copy_release_notices(root: Path, destination: Path) -> None:
 
 
 def copy_runtime_javascript(root: Path, resources: Path) -> None:
-    source = root / "runtime" / "electron" / "lib"
+    source = root / "src" / "runtime" / "electron" / "lib"
     required = (
         source / "browser" / "init.js",
         source / "browser" / "electron.js",

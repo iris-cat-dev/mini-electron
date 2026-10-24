@@ -586,7 +586,7 @@ def _generate_asar_source_header(output: Path) -> None:
     temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
     try:
         temporary.write_text(
-            '#pragma once\n\n#include "runtime/electron/common/asar/asar_js.h"\n',
+            '#pragma once\n\n#include "src/runtime/electron/common/asar/asar_js.h"\n',
             encoding="utf-8",
             newline="\n",
         )

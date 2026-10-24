@@ -26,14 +26,11 @@ from mini_electron.distribution import (  # noqa: E402
 
 
 _PACKAGE_FILES = (
-    "cli.js",
-    "electron.d.ts",
-    "index.js",
-    "install.js",
     "LICENSE",
     "README.md",
     "package.json",
 )
+_NPM_SOURCE = Path("src") / "npm"
 _TARGETS = (
     ("win32", "x64", "windows_dist"),
     ("darwin", "arm64", "macos_dist"),
@@ -94,7 +91,10 @@ def _copy_npm_package(destination: Path) -> None:
         if not source.is_file():
             raise DistributionError(f"npm package input is missing: {source}")
         shutil.copy2(source, destination / relative)
-    shutil.copytree(ROOT / "lib", destination / "lib")
+    source = ROOT / _NPM_SOURCE
+    if not source.is_dir():
+        raise DistributionError(f"npm package input is missing: {source}")
+    shutil.copytree(source, destination / _NPM_SOURCE)
 
 
 def assemble(args: argparse.Namespace) -> Path:

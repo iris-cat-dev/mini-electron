@@ -13,7 +13,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include "runtime/electron/common/renderer_protocol.h"
+#include "src/runtime/electron/common/renderer_protocol.h"
 
 namespace {
 using atom::renderer_protocol::FrameBufferHeader;

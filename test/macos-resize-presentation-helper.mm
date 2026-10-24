@@ -13,7 +13,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include "runtime/electron/common/renderer_protocol.h"
+#include "src/runtime/electron/common/renderer_protocol.h"
 
 using atom::renderer_protocol::FrameBufferHeader;
 static pid_t stopped_pid = 0;

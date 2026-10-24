@@ -29,7 +29,7 @@
  */
 
 #include "third_party/blink/renderer/modules/filesystem/data_transfer_item_file_system.h"
-#include "runtime/engine/renderer/brokered_file_registry.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 
 #include "third_party/blink/renderer/core/clipboard/data_object.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer.h"

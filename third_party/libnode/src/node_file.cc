@@ -35,8 +35,8 @@
 #include "util-inl.h"
 
 #ifdef _WIN32
-#include "runtime/electron/common/asar/archive.h"
-#include "runtime/electron/common/asar/asar_util.h"
+#include "src/runtime/electron/common/asar/archive.h"
+#include "src/runtime/electron/common/asar/asar_util.h"
 #endif
 
 #include "tracing/trace_event.h"
@@ -57,7 +57,7 @@
 extern bool g_isElectronMode;
 
 #include <windows.h>
-#include "runtime/electron/common/embedded_resources.h"
+#include "src/runtime/electron/common/embedded_resources.h"
 #else
 #include <unistd.h>
 #endif

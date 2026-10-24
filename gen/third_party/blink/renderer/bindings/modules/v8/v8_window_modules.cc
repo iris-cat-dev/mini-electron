@@ -9,7 +9,7 @@
 // formatting of the generated files.
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_window.h"
-#include "platform/posix/win32/windows.h"
+#include "src/platform/posix/win32/windows.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trial_feature.mojom-shared.h"

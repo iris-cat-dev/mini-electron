@@ -79,8 +79,8 @@
 #include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/hash/hash.h"
-#include "runtime/engine/common/live_id_detect.h"
-#include "runtime/engine/renderer/render_thread_impl.h"
+#include "src/runtime/engine/common/live_id_detect.h"
+#include "src/runtime/engine/renderer/render_thread_impl.h"
 #include <unordered_map>
 #include <windows.h>
 #include <algorithm>

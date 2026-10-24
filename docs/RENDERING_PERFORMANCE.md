@@ -75,14 +75,14 @@ introducing a separate periodic 120 Hz animation timer.
 
 Relevant baseline source locations:
 
-- `runtime/engine/viz/viz_host.cc`: custom root compositor construction.
+- `src/runtime/engine/viz/viz_host.cc`: custom root compositor construction.
 - `components/viz/common/display/renderer_settings.h`: invalid display default.
 - `components/viz/service/frame_sinks/external_begin_frame_source_mac.cc`:
   DisplayLink creation, display updates and timer fallback.
 - `components/viz/common/frame_sinks/begin_frame_args.h`: 1/60-second fallback.
-- `platform/macos/electron/mac_electron_bindings.mm`: native view attachment,
+- `src/platform/macos/electron/mac_electron_bindings.mm`: native view attachment,
   screen/backing notifications and BrowserWindow/BrowserView viewport updates.
-- `runtime/electron/common/renderer_server.cc`: browser→renderer command handling.
+- `src/runtime/electron/common/renderer_server.cc`: browser→renderer command handling.
 
 ## Refresh rate and resource budget
 
@@ -502,7 +502,7 @@ canvas, render-pass surfaces and presentation can nevertheless execute on Metal.
 The full Chromium GPU service, GPU tile rasterization, accelerated Canvas2D
 and hardware video decoding are not enabled by the compositor change.
 WebGL and WebGPU now have separate native implementations: see the
-[WebGL](../README.md#webgl-1-and-2) and [WebGPU](../README.md#webgpu)
+[WebGL](GRAPHICS.md#webgl-1-and-2) and [WebGPU](GRAPHICS.md#webgpu)
 source-build support and limits.
 
 ### WebGL resources

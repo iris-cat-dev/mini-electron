@@ -230,7 +230,7 @@ def _runtime_versions(root: Path, source: Path) -> str:
 def _prepare_electron_distribution(root: Path, binary: Path, destination: Path) -> None:
     resources = destination / "resources"
     locales = destination / "locales"
-    runtime_source = root / "runtime" / "electron" / "lib"
+    runtime_source = root / "src" / "runtime" / "electron" / "lib"
     _require_directory(runtime_source, "mini-electron runtime JavaScript")
     destination.mkdir()
     resources.mkdir()

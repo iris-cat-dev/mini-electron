@@ -78,7 +78,7 @@
   "built_executable": "mini-electron.exe",
   "package_executable": "mini-electron.exe",
   "embedded_resources": {
-    "source_dir": "runtime/electron/lib",
+    "source_dir": "src/runtime/electron/lib",
     "output": "generated/runtime/electron/common/embedded_resources_data.h",
     "include_root": "."
   },
