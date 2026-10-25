@@ -65,15 +65,13 @@ public:
         //OutputDebugStringA("ResourceLoadInfoNotifierImpl::Clone not impl\n");
     }
 
-    static ResourceLoadInfoNotifierImpl* get();
-
-private:
 };
 
 class BodyLoaderClient;
 
 class URLLoaderImpl : public ::network::mojom::URLLoader {
 public:
+    // A parent owns this loader; otherwise the navigation pipe owns its lifetime.
     URLLoaderImpl(BodyLoaderClient* parent);
     ~URLLoaderImpl() override;
 
@@ -98,13 +96,11 @@ public:
         //OutputDebugStringA("URLLoaderImpl::ResumeReadingBodyFromNet not impl\n");
     }
 
-    bool m_canDestroy = false;
     BodyLoaderClient* m_parent = nullptr;
 
     ::mojo::Remote<::network::mojom::URLLoaderClient> m_urlLoaderClient;
     ::mojo::Receiver<::network::mojom::URLLoader> m_urlLoader { this };
 
-    //ResourceLoadInfoNotifierImpl* m_resourceLoadInfoNotifierImpl = nullptr; /*new ResourceLoadInfoNotifierImpl()*/;
 };
 
 class LoaderFactoryImpl final : public blink::URLLoaderFactory {

@@ -11,6 +11,7 @@
 #include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/web_policy_container.h"
+#include "third_party/blink/public/platform/weak_wrapper_resource_load_info_notifier.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/mojom/frame/policy_container.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
@@ -153,6 +154,10 @@ public:
     {
         return m_navigationControl;
     }
+    base::WeakPtr<blink::WeakWrapperResourceLoadInfoNotifier> getResourceLoadInfoNotifier()
+    {
+        return m_resourceLoadInfoNotifier.AsWeakPtr();
+    }
 
     void beginDownload(std::unique_ptr<blink::WebNavigationInfo> info, std::unique_ptr<String> downloadName);
 
@@ -201,6 +206,9 @@ public:
 
     //blink::BrowserInterfaceBrokerProxy m_browserInterfaceBrokerProxy;
     mojo::Receiver<blink::mojom::BrowserInterfaceBroker> m_browserInterfaceBrokerProxyReceiver { this };
+private:
+    mini_electron::ResourceLoadInfoNotifierImpl m_resourceLoadInfoNotifierImpl;
+    blink::WeakWrapperResourceLoadInfoNotifier m_resourceLoadInfoNotifier { &m_resourceLoadInfoNotifierImpl };
 };
 
 }

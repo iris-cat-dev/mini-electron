@@ -91,7 +91,7 @@ WebLocalFrameClientImpl::~WebLocalFrameClientImpl()
     if (m_blinkInterfaceRegistryImpl)
         delete m_blinkInterfaceRegistryImpl;
 
-    WebFrameMain::destroy(getFrameIdByWebLocalFrame(m_frame));
+    WebFrameMain::destroy(blink::LocalFrameToken::Hasher()(m_frameToken));
 }
 
 ::blink::AssociatedInterfaceProvider* WebLocalFrameClientImpl::GetRemoteNavigationAssociatedInterfaces()
@@ -548,11 +548,9 @@ static void beginNavigation(
     request->referrer = GURL(base::StringPiece(info->url_request.ReferrerString().Utf8()));
     setNetworkRequestHead(frame, request.get());
 
-    blink::WeakWrapperResourceLoadInfoNotifier* resourceLoadInfoNotifier
-        = new blink::WeakWrapperResourceLoadInfoNotifier(mini_electron::ResourceLoadInfoNotifierImpl::get());
-
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrap
-        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(resourceLoadInfoNotifier->AsWeakPtr());
+        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(
+            static_cast<WebLocalFrameClientImpl*>(frame->Client())->getResourceLoadInfoNotifier());
     resourceLoadInfoNotifierWrap->NotifyResourceLoadInitiated((int64_t)resourceLoadInfoNotifierWrap.get() /*request_id*/, (GURL)(request->url), request->method,
         GURL(info->url_request.ReferrerString().Utf8()) /*referrer*/, network::mojom::RequestDestination::kDocument, net::RequestPriority::DEFAULT_PRIORITY, false);
 
@@ -930,9 +928,7 @@ void WebLocalFrameClientImpl::loadHistoryItem(blink::WebLocalFrame* frame, const
     mojo::PendingAssociatedReceiver<blink::mojom::blink::PolicyContainerHost> policyContainerReceiver
         = policyContainerRemote.InitWithNewEndpointAndPassReceiver();
 
-    mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>* blinkPolicyContainerHostReceiver
-        = new mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>(new PolicyContainerHostImpl());
-    blinkPolicyContainerHostReceiver->Bind(std::move(policyContainerReceiver)); // TODO: �ڴ�й¶
+    createAndBindInterface<blink::mojom::blink::PolicyContainerHost, PolicyContainerHostImpl>(policyContainerReceiver.PassPipe());
 
     ::network::mojom::URLResponseHeadPtr urlResponseHead = ::network::mojom::URLResponseHead::New();
 
@@ -952,16 +948,14 @@ void WebLocalFrameClientImpl::loadHistoryItem(blink::WebLocalFrame* frame, const
     urlResponseHead->encoded_data_length = 0; // m_response->ExpectedContentLength();
     urlResponseHead->encoded_body_length = 0; // m_response->ExpectedContentLength();
 
-    mini_electron::URLLoaderImpl* urlLoaderImpl = new mini_electron::URLLoaderImpl(nullptr); // TODO: �ڴ�й¶
+    mini_electron::URLLoaderImpl* urlLoaderImpl = new mini_electron::URLLoaderImpl(nullptr);
 
     ::network::mojom::URLLoaderClientEndpointsPtr urlLoaderClientEndpoints = ::network::mojom::URLLoaderClientEndpoints::New(
         urlLoaderImpl->m_urlLoader.BindNewPipeAndPassRemote(), urlLoaderImpl->m_urlLoaderClient.BindNewPipeAndPassReceiver());
 
-    blink::WeakWrapperResourceLoadInfoNotifier* resourceLoadInfoNotifier
-        = new blink::WeakWrapperResourceLoadInfoNotifier(mini_electron::ResourceLoadInfoNotifierImpl::get());
-
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrap
-        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(resourceLoadInfoNotifier->AsWeakPtr());
+        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(
+            static_cast<WebLocalFrameClientImpl*>(frame->Client())->getResourceLoadInfoNotifier());
     resourceLoadInfoNotifierWrap->NotifyResourceLoadInitiated((int64_t)resourceLoadInfoNotifierWrap.get() /*request_id*/, (GURL)(blink::KURL)(params->url),
         "GET", GURL() /*referrer*/, network::mojom::RequestDestination::kDocument, net::RequestPriority::DEFAULT_PRIORITY, false);
 
@@ -1006,9 +1000,7 @@ void WebLocalFrameClientImpl::loadUrl(blink::WebLocalFrame* frame, const blink::
     mojo::PendingAssociatedReceiver<blink::mojom::blink::PolicyContainerHost> policyContainerReceiver
         = policyContainerRemote.InitWithNewEndpointAndPassReceiver();
 
-    mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>* blinkPolicyContainerHostReceiver
-        = new mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>(new PolicyContainerHostImpl());
-    blinkPolicyContainerHostReceiver->Bind(std::move(policyContainerReceiver)); // TODO: �ڴ�й¶
+    createAndBindInterface<blink::mojom::blink::PolicyContainerHost, PolicyContainerHostImpl>(policyContainerReceiver.PassPipe());
 
     ::network::mojom::URLResponseHeadPtr urlResponseHead = ::network::mojom::URLResponseHead::New();
 
@@ -1028,16 +1020,14 @@ void WebLocalFrameClientImpl::loadUrl(blink::WebLocalFrame* frame, const blink::
     urlResponseHead->encoded_data_length = 0; // m_response->ExpectedContentLength();
     urlResponseHead->encoded_body_length = 0; // m_response->ExpectedContentLength();
 
-    mini_electron::URLLoaderImpl* urlLoaderImpl = new mini_electron::URLLoaderImpl(nullptr); // TODO: �ڴ�й¶
+    mini_electron::URLLoaderImpl* urlLoaderImpl = new mini_electron::URLLoaderImpl(nullptr);
 
     ::network::mojom::URLLoaderClientEndpointsPtr urlLoaderClientEndpoints = ::network::mojom::URLLoaderClientEndpoints::New(
         urlLoaderImpl->m_urlLoader.BindNewPipeAndPassRemote(), urlLoaderImpl->m_urlLoaderClient.BindNewPipeAndPassReceiver());
 
-    blink::WeakWrapperResourceLoadInfoNotifier* resourceLoadInfoNotifier
-        = new blink::WeakWrapperResourceLoadInfoNotifier(mini_electron::ResourceLoadInfoNotifierImpl::get());
-
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrap
-        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(resourceLoadInfoNotifier->AsWeakPtr());
+        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(
+            static_cast<WebLocalFrameClientImpl*>(frame->Client())->getResourceLoadInfoNotifier());
     resourceLoadInfoNotifierWrap->NotifyResourceLoadInitiated((int64_t)resourceLoadInfoNotifierWrap.get() /*request_id*/, (GURL)(blink::KURL)(params->url),
         "GET", GURL() /*referrer*/, network::mojom::RequestDestination::kDocument, net::RequestPriority::DEFAULT_PRIORITY, false);
 

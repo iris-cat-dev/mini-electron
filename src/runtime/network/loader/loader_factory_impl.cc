@@ -3,6 +3,7 @@
 
 #include "src/runtime/engine/renderer/policy_container_host_impl.h"
 #include "src/runtime/engine/common/create_and_bind_templ.h"
+#include "src/runtime/engine/renderer/web_local_frame_client_impl.h"
 
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "third_party/blink/public/web/web_navigation_params.h"
@@ -72,8 +73,6 @@ BodyLoaderClient::~BodyLoaderClient()
 
     m_response.reset();
 
-    if (m_urlLoaderImpl.get())
-        m_urlLoaderImpl->m_canDestroy = true;
     m_urlLoaderImpl.reset();
 }
 
@@ -140,15 +139,14 @@ void BodyLoaderClient::DidStartLoadingResponseBody(mojo::ScopedDataPipeConsumerH
     urlResponseHead->encoded_body_length = network::mojom::EncodedBodyLength::New(m_response->ExpectedContentLength());
 
     CHECK(!m_urlLoaderImpl);
-    m_urlLoaderImpl.reset(new URLLoaderImpl(this)); // TODO: 内存泄露
+    m_urlLoaderImpl = std::make_unique<URLLoaderImpl>(this);
 
     ::network::mojom::URLLoaderClientEndpointsPtr urlLoaderClientEndpoints = ::network::mojom::URLLoaderClientEndpoints::New(
         m_urlLoaderImpl->m_urlLoader.BindNewPipeAndPassRemote(), m_urlLoaderImpl->m_urlLoaderClient.BindNewPipeAndPassReceiver());
 
-    blink::WeakWrapperResourceLoadInfoNotifier* resourceLoadInfoNotifier = new blink::WeakWrapperResourceLoadInfoNotifier(ResourceLoadInfoNotifierImpl::get());
-
     std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper> resourceLoadInfoNotifierWrap
-        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(resourceLoadInfoNotifier->AsWeakPtr());
+        = std::make_unique<blink::ResourceLoadInfoNotifierWrapper>(
+            static_cast<content::WebLocalFrameClientImpl*>(frame->ToWebLocalFrame()->Client())->getResourceLoadInfoNotifier());
 
     resourceLoadInfoNotifierWrap->NotifyResourceLoadInitiated((int64_t)resourceLoadInfoNotifierWrap.get() /*request_id*/, (GURL)(url), "GET",
         GURL() /*referrer*/, network::mojom::RequestDestination::kDocument, net::RequestPriority::DEFAULT_PRIORITY, false);
@@ -187,7 +185,6 @@ void BodyLoaderClient::DidFinishLoading(
         ::network::URLLoaderCompletionStatus status(0);
         if (m_urlLoaderImpl->m_urlLoaderClient.get())
             m_urlLoaderImpl->m_urlLoaderClient->OnComplete(status);
-        m_urlLoaderImpl->m_canDestroy = true;
         m_urlLoaderImpl.reset();
     }
 
@@ -214,18 +211,9 @@ void BodyLoaderClient::DidFail(
         ::network::URLLoaderCompletionStatus status(error.reason());
         if (m_urlLoaderImpl->m_urlLoaderClient.get())
             m_urlLoaderImpl->m_urlLoaderClient->OnComplete(status);
-        m_urlLoaderImpl->m_canDestroy = true;
         m_urlLoaderImpl.reset();
     }
     delete this;
-}
-
-ResourceLoadInfoNotifierImpl* ResourceLoadInfoNotifierImpl::get()
-{
-    static ResourceLoadInfoNotifierImpl* s_inst = nullptr;
-    if (!s_inst)
-        s_inst = new ResourceLoadInfoNotifierImpl();
-    return s_inst;
 }
 
 URLLoaderImpl::URLLoaderImpl(BodyLoaderClient* parent)
@@ -235,6 +223,8 @@ URLLoaderImpl::URLLoaderImpl(BodyLoaderClient* parent)
         [](URLLoaderImpl* ptr) {
             if (ptr->m_parent)
                 ptr->m_parent->m_urlLoaderImpl.reset();
+            else
+                delete ptr;
         },
         base::Unretained(ptr)));
 
@@ -247,11 +237,6 @@ URLLoaderImpl::URLLoaderImpl(BodyLoaderClient* parent)
 
 URLLoaderImpl::~URLLoaderImpl()
 {
-    //delete m_resourceLoadInfoNotifierImpl;
-
-    //if (!m_canDestroy)
-    //    DebugBreak();
-
     char output[100] = { 0 };
     sprintf(output, "~URLLoaderImpl: %p\n", this);
     OutputDebugStringA(output);

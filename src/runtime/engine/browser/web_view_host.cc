@@ -442,9 +442,10 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
     mojo::PendingAssociatedReceiver<blink::mojom::blink::PolicyContainerHost> policyContainerReceiver
         = policyContainerRemote.InitWithNewEndpointAndPassReceiver();
 
+    auto blinkPolicyContainerHost = std::make_unique<content::PolicyContainerHostImpl>();
     mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>* blinkPolicyContainerHostReceiver
-        = new mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>(new content::PolicyContainerHostImpl());
-    blinkPolicyContainerHostReceiver->Bind(std::move(policyContainerReceiver)); // TODO: �ڴ�й¶
+        = new mojo::AssociatedReceiver<blink::mojom::blink::PolicyContainerHost>(blinkPolicyContainerHost.get());
+    blinkPolicyContainerHostReceiver->Bind(std::move(policyContainerReceiver));
 
     std::unique_ptr<blink::WebPolicyContainer> policyContainer = std::make_unique<blink::WebPolicyContainer>(
         blink::WebPolicyContainerPolicies(), blink::ToCrossVariantAssociatedMojoType(std::move(policyContainerRemote)));
@@ -483,6 +484,7 @@ blink::WebView* WebViewHost::initializeViewInBlinkThread(blink::WebView* opener,
     new WebFrameMain(blink::LocalFrameToken::Hasher()(webframe->GetLocalFrameToken()), 0, true);
 
     m_frameClient->m_blinkPolicyContainerHostReceiver = blinkPolicyContainerHostReceiver;
+    m_frameClient->m_blinkPolicyContainerHost = std::move(blinkPolicyContainerHost);
     m_frameClient->m_isMainFrame = true;
 
 

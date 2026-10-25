@@ -8,6 +8,52 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Frame and navigation object lifetimes (2026-10-25)
+
+The Windows x64 Release source candidate was built with
+`python build.py --out out/memory-repair-native --jobs 8`, configured GN/Ninja,
+Clang 22 and MSVC 14.44.35207. The installed Desktop application and running
+production daemon were not replaced or restarted.
+
+Candidate executable SHA-256:
+`68a3b976bd2e7c5e278f7be3176ce7a15fbb0833b8c0f6c8a408b48513816fa4`.
+
+Frame-registry retirement now uses the retained frame token after
+`FrameDetached` clears the frame pointer. Resource-load notifiers belong to the
+frame client, and their weak references expire with it. Standalone navigation
+loaders retire on receiver disconnect; factory-owned loaders retain their
+existing parent ownership. Policy-container implementations belong to their
+frame client or self-owned receiver rather than an unowned allocation.
+
+Verified against the actual candidate:
+
+- `test/navigation-lifetime-smoke.cc`, linked with the production objects and
+  libraries, passed: all 64 registered frames were live before client
+  destruction; zero entries and zero notifier weak references remained after;
+  a standalone loader was destroyed when its Mojo consumer disconnected.
+- A real single-process iframe workload created and removed 1,152 frames.
+  All six sampled, exactly representable IDs were registered while live and
+  absent after detachment. The original runtime retained all five live-ID
+  samples in its 832-frame workload. Sampling is not the deterministic regression.
+- Existing `ipc-frame-smoke.js` and `same-document-navigation-smoke.js` passed
+  in the isolated candidate, including frame detachment, targeted IPC, preserved
+  same-document identity and replacement on reload.
+- A local HTTP workload verified the rendered URL, body marker and title for
+  all 20 ordinary navigations in both binaries. The following cross-document
+  back navigation exposed a pre-existing blank-document failure in both.
+  After window destruction the original retained one of 21 URLLoader objects;
+  the candidate released all 21. Cross-document back navigation is **not**
+  recorded as a passing feature test.
+
+Evidence, including failing probes, is under `out/memory-repair-investigation/`:
+`native-repair-verification.json`, `http-navigation-content-evidence.json`,
+frame-registry results and CDB allocation/destruction logs.
+
+These fixes do not establish the cause of the separately supplied V8
+heap-limit OOM. Its 2 GiB heap sample cannot identify JavaScript retaining
+owners without an actual renderer heap snapshot; native object counts and
+process commit totals are not substitutes for that evidence.
+
 ## Renderer memory forensics and receive backpressure (2026-10-24)
 
 The Windows 10 x64 source candidate was incrementally built and staged with
