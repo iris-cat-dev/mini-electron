@@ -6,6 +6,28 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.25
+
+This Apple Silicon macOS-only runtime update leaves Windows release assets, the
+Windows channel, and npm installer `0.1.12` unchanged. Installer protocol `1`,
+Electron API compatibility `41.2.0`, and Node ABI `134` are retained.
+
+- Native precise-wheel input supplies both pixel deltas and Blink wheel ticks.
+  Legacy DOM `wheelDeltaX/Y` now track logical pixels, including one-pixel Retina
+  input, so JavaScript scrollers such as xterm can consume trackpad movement.
+  Ordinary mouse-wheel distances remain 80 logical pixels per vertical notch.
+- Restores macOS source builds after the source-tree reorganization: Mojo
+  platform/system handles and net/URL helpers compile in separate object
+  namespaces, and the media promise implementation uses its relocated path.
+- Native scroll coverage shows its window without activating it, matching
+  visibility-aware renderer input. The WebSocket disposal regression accepts
+  macOS broken-pipe errors only after intentional renderer destruction while
+  retaining its prompt-close and independent-renderer assertions.
+
+The packaged runtime and the published npm installer were exercised locally.
+See [macOS verification and limits](VERIFICATION.md#macos-runtime-0125-2026-10-25).
+The app uses ad-hoc signing, not Developer ID signing or notarization.
+
 ### Windows runtime 0.1.24
 
 This Windows x64-only runtime update leaves the macOS release/channel and npm

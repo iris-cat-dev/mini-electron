@@ -189,6 +189,7 @@ Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
 `test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
 `test/macos-pointer-interaction-smoke.js`, `test/macos-scroll-smoke.js`,
+`test/macos-precise-wheel-smoke.js`,
 `test/macos-image-preview-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
@@ -207,6 +208,7 @@ out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-pointer-interaction-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-scroll-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-precise-wheel-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-image-preview-smoke.js
 ```
 
@@ -223,6 +225,11 @@ renderer view without activating its window. It checks proportional trackpad
 motion, high-frequency and fractional input, both axes, nested scroll hit testing,
 and responsive ordinary mouse-wheel steps in both directions, including several
 notches in one event, retaining compositor PNG evidence through `capturePage()`.
+The separate `test/macos-precise-wheel-smoke.js` checks native precise-wheel
+`deltaX/Y` and legacy `wheelDeltaX/Y` consistency in both directions on both
+axes, including one-logical-pixel input on Retina displays, without requiring
+application activation. This catches xterm/VS Code scrollback failures caused
+by zero wheel ticks even when ordinary DOM scroll containers still move.
 The clipboard regression invokes actual AppKit editing actions on its owned
 renderer without activating the application. It checks decoded image dimensions
 and pixels from PNG, TIFF, JPEG with HTML/URL co-representations, multi-image TIFF,
@@ -253,8 +260,11 @@ AppKit's directional frame cursors; older systems use axis resize cursors.
 
 Mouse dragging preserves the event's held-button state. AppKit precise wheel
 events retain fractional pixel deltas and both axes through IPC and Blink, with
-Retina scaling applied once. Trackpad motion bypasses the legacy 120-unit wheel
-tick conversion; ordinary mouse wheels scroll 80 logical pixels per vertical
+Retina scaling applied once. Precise input also populates Blink's wheel ticks
+from physical pixel deltas divided by 120, so legacy DOM `wheelDeltaX/Y` remain
+consistent with logical pixels; leaving ticks at zero disables JavaScript
+scrollers such as xterm. Trackpad pixel motion is not multiplied into
+mouse-wheel notches; ordinary mouse wheels scroll 80 logical pixels per vertical
 notch and retain multi-notch distances instead of clamping each event to one
 step. The renderer recognizes left, middle, and right buttons
 rather than interpreting native string names as left clicks.

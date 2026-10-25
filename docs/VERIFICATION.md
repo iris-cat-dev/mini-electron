@@ -54,6 +54,51 @@ heap-limit OOM. Its 2 GiB heap sample cannot identify JavaScript retaining
 owners without an actual renderer heap snapshot; native object counts and
 process commit totals are not substitutes for that evidence.
 
+## macOS runtime 0.1.25 (2026-10-25)
+
+Built and packaged on Apple Silicon with:
+
+```sh
+python3.14 -B build.py --jobs 8 --package-dist --dist-output out/mac-arm64/runtime-dist-0.1.25
+python3.14 -B scripts/build_runtime_release.py --macos-dist out/mac-arm64/runtime-dist-0.1.25 --runtime-only --output out/runtime-release-0.1.25
+```
+
+GN generation, 10,409 Ninja build steps, native linking, stripping, and ad-hoc
+bundle signing completed with cached dependencies. This was not a clean-room
+dependency build. The packaged executable reported `v0.1.25` and ABI `134`;
+`codesign --verify --deep --strict` succeeded.
+
+Actual packaged-runtime smoke runs passed:
+
+- `macos-precise-wheel-smoke.js`: both axes/directions, standard and legacy DOM
+  deltas, one-logical-pixel Retina input, and ordinary-wheel compatibility.
+- `macos-scroll-smoke.js`: 80-pixel mouse notches, multi-notch distances,
+  proportional trackpad movement, high-frequency/fractional input, and nested
+  scroll targeting. The window is shown without activation; hidden renderer
+  input is suspended. Renderer `capturePage()` PNG evidence was retained.
+- `runtime-event-contract-smoke.js` and `runtime-body-loader-smoke.js`:
+  reentrant window destruction, native event/reply separation, empty responses,
+  redirected uploads, streamed request bodies, and blob/file reads.
+- `webcrypto-crash-regression-smoke.js`: cryptographic vectors, authentication,
+  key formats/signatures, and malformed DER rejection.
+- `websocket-smoke.js`, `websocket-backpressure-smoke.js`,
+  `websocket-receive-lifecycle-smoke.js`, and
+  `websocket-frame-retirement-smoke.js`: native transport, bounded receives,
+  independent renderer progress, cancellation, and credit retirement.
+- `macos-exit-lifecycle-smoke.js`: native menus and preload-backed window exit.
+
+The published npm installer `0.1.12` installed the assembled local release,
+checking its archive and file/link inventory. The installed runtime reported
+`v0.1.25` and ABI `134` outside the checkout; Run-as-Node reported
+`darwin`/`arm64`, Node `24.0.0-pre`, and ABI `134`.
+
+Limits: `macos-gpu-compositing-smoke.js` could not obtain composed WindowServer
+pixels (`SCStreamErrorDomain -3811`), so no new native GPU-composition visual
+claim is made. The generic `webgl-smoke.js` reached a resize step requiring
+`BrowserWindow.setContentSize`, which this macOS host does not implement; that
+suite did not pass. Developer ID signing, notarization, and Windows builds were
+not performed.
+
 ## Renderer memory forensics and receive backpressure (2026-10-24)
 
 The Windows 10 x64 source candidate was incrementally built and staged with

@@ -44,9 +44,10 @@ function failSocket(socket, error) {
     planned: 'unknown',
     intentionallyAbandoned: false,
   };
+  // Closing a peer with unread data can reset reads or break pending writes.
   if (lifecycle.route === '/dispose' && lifecycle.intentionallyAbandoned &&
-      error?.code === 'ECONNRESET') {
-    lifecycle.phase = 'peer-reset-after-intentional-renderer-destroy';
+      (error?.code === 'ECONNRESET' || error?.code === 'EPIPE')) {
+    lifecycle.phase = 'peer-closed-after-intentional-renderer-destroy';
     return;
   }
   const cause = error instanceof Error ? error : new Error(String(error));

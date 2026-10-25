@@ -78,6 +78,8 @@ app.whenReady().then(async () => {
     let wheels=[];scroller.addEventListener('wheel',event=>wheels.push({x:event.deltaX,y:event.deltaY,mode:event.deltaMode}),{passive:true});
     window.scrollState=()=>({top:scroller.scrollTop,left:scroller.scrollLeft,otherTop:other.scrollTop,pageTop:scrollY,scale:devicePixelRatio,wheels});
     </script>`));
+  // Hidden renderers suspend input; exercise the visible surface without activation.
+  window.showInactive();
   await window.webContents.prepareToShow();
   const scroll = (x, y, precise = true) => native.scroll(title, 160, 200, x, y, precise);
   const snapshot = async filename => {
