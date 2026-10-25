@@ -13,20 +13,28 @@ See [version and channel rules](INSTALLATION.md#independent-npm-and-runtime-vers
    Leave `package.json` unchanged unless npm-shipped inputs also changed.
    Rebuild/package the native distribution so the executable and `version.json`
    carry the new runtime identity and file hashes.
-2. Assemble without staging an npm package:
+2. Assemble without staging an npm package. On Windows, `--package-dist` prints
+   `[windows] Matching executable and PDB: ...`; pass that exact archived leaf
+   directory to `--windows-symbols` (replace the placeholders below):
 
    ```sh
    python build.py --jobs 12 --package-dist
    python scripts/build_runtime_release.py \
      --windows-dist out/windows-x64/runtime-dist \
+     --windows-symbols "out/windows-x64/symbols/<pdbName>/<GUIDAGE>" \
      --runtime-only --output out/runtime-release
    ```
 
-3. Publish **all three** immutable assets from
+3. Publish every immutable asset from
    `out/runtime-release/v<runtimeVersion>/` to GitHub Release `v<runtimeVersion>`:
-   the declared ZIP, `SHASUMS256.txt`, and `artifacts.json`. The assembler computes
-   the ZIP SHA256 in the emitted manifest. Never overwrite a released version's
-   assets; fixed versions and caches depend on immutability.
+   the declared runtime ZIP, `SHASUMS256.txt`, `artifacts.json`, and, for Windows,
+   `mini-electron-v<runtimeVersion>-win32-x64-symbols.zip`. The symbols ZIP contains
+   the full matching PDB and `symbols.json` with its RSDS GUID/Age, original image
+   and PDB names, and both SHA256 hashes. Its image hash also identifies the
+   renamed `runtime-dist/electron.exe`; the duplicate EXE is not in the symbols
+   ZIP. Both ZIP checksums appear in `SHASUMS256.txt`; only the installable runtime
+   ZIP appears in the installer/channel manifest. Never overwrite a released
+   version's assets; fixed versions and caches depend on immutability.
 4. Only after those assets are available, upload each emitted channel's
    `artifacts.json` to the matching channel GitHub Release, replacing only that
    channel asset. The Windows-only command above emits
@@ -47,6 +55,40 @@ build, or both distribution arguments for a dual-platform release. Partial
 assembly is allowed only when omitted targets use different channels; omitting
 a target that shares a selected channel is rejected to avoid dropping support.
 Target selection does not depend on npm's `os`/`cpu` declarations.
+
+Windows assembly requires `--windows-symbols`; it rejects missing files,
+GUID/Age mismatches, altered metadata, and archived EXEs whose bytes differ from
+the distribution's executable, even if their RSDS identities match. Supply the
+leaf directory containing `symbols.json`, the archived EXE, and PDB, not the
+parent symbol store. The leaf is normally
+`out/windows-x64/symbols/<pdbName>/<GUIDAGE>`, where GUID is uppercase without
+hyphens and Age is uppercase hexadecimal. Preserve it for later crash analysis.
+Use symbols from the normal release build, never a temporary diagnostic build.
+PDBs and symbol metadata must stay out of `runtime-dist`, the installable ZIP,
+and npm. Assembly validates symbols before replacing any prior release output
+and checks the PDB hash again while compressing it. macOS-only assembly needs
+only `--macos-dist`, creates no symbols ZIP, and requires no Windows symbol path.
+
+### Using published Windows symbols
+
+Download and extract the symbols ZIP from the same runtime release as the crash.
+Match the crash module's RSDS GUID/Age to `symbols.json`; matching filenames or
+version labels alone are insufficient. A newer release's PDB cannot symbolize an
+older binary. Renaming the runtime to an application's EXE name does not change
+its RSDS identity.
+
+In WinDbg, add the extracted directory to the symbol path, reload symbols, and
+analyze the dump:
+
+```text
+.sympath+ C:\symbols\mini-electron-v<runtimeVersion>-win32-x64
+.reload /f
+!analyze -v
+```
+
+PDBs symbolize native stacks. JavaScript retaining paths still require a
+renderer heap snapshot; a small Crashpad minidump and PDB do not contain that
+object graph.
 
 ### Publishing an installer update
 

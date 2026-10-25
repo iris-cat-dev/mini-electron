@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import mmap
 from pathlib import Path, PureWindowsPath
@@ -10,6 +11,7 @@ import shutil
 import struct
 import tempfile
 import uuid
+import zipfile
 
 from .distribution import path_is_link, sha256
 
@@ -95,6 +97,71 @@ def _pdb_identity(pdb: Path) -> tuple[str, int]:
         offset = info_block * block_size
         _, _, age, guid = _unpack("<III16s", data, offset)
         return uuid.UUID(bytes_le=guid).hex.upper(), age
+
+def validate_windows_symbols(directory: Path, image: Path) -> dict[str, object]:
+    """Validate an archived pair against the exact executable being released."""
+    if path_is_link(directory) or not directory.is_dir():
+        raise SymbolArchiveError(f"Windows symbol archive is missing or unsafe: {directory}")
+    document = directory / "symbols.json"
+    if path_is_link(document) or not document.is_file():
+        raise SymbolArchiveError(f"Windows symbol metadata is missing or unsafe: {document}")
+    metadata = json.loads(document.read_text(encoding="utf-8"))
+    if not isinstance(metadata, dict):
+        raise SymbolArchiveError(f"Invalid Windows symbol metadata: {document}")
+    for key in ("imageName", "pdbName"):
+        name = metadata.get(key)
+        if (
+            not isinstance(name, str) or not name or name in (".", "..")
+            or PureWindowsPath(name).name != name or "/" in name or ":" in name
+        ):
+            raise SymbolArchiveError(f"Invalid Windows symbol filename: {name!r}")
+    names = [str(metadata["imageName"]), str(metadata["pdbName"]), "symbols.json"]
+    if len({name.casefold() for name in names}) != len(names):
+        raise SymbolArchiveError(f"Conflicting Windows symbol filenames: {directory}")
+    archived_image, pdb = (directory / name for name in names[:2])
+    for source in (archived_image, pdb, image):
+        if path_is_link(source) or not source.is_file() or source.stat().st_size == 0:
+            raise SymbolArchiveError(f"Windows symbol input is missing or unsafe: {source}")
+    identity = _image_identity(image)
+    if _pdb_identity(pdb) != (identity["pdbGuid"], identity["pdbAge"]):
+        raise SymbolArchiveError(f"PDB does not match the executable: {pdb}")
+    image_hash = sha256(image)
+    if sha256(archived_image) != image_hash:
+        raise SymbolArchiveError(f"Archived executable does not match the runtime: {archived_image}")
+    expected = {
+        **identity,
+        "imageName": archived_image.name,
+        "imageSha256": image_hash,
+        "pdbSha256": sha256(pdb),
+    }
+    if metadata != expected:
+        raise SymbolArchiveError(f"Windows symbol metadata does not match the files: {document}")
+    return metadata
+
+
+def create_windows_symbols_zip(directory: Path, image: Path, destination: Path) -> None:
+    """Write only the full matching PDB and its identity/hash metadata."""
+    metadata = validate_windows_symbols(directory, image)
+    pdb = directory / str(metadata["pdbName"])
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        info = zipfile.ZipInfo(pdb.name, (2026, 1, 1, 0, 0, 0))
+        info.create_system = 3
+        info.external_attr = 0o100644 << 16
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info._compresslevel = 9
+        digest = hashlib.sha256()
+        with pdb.open("rb") as source, archive.open(info, "w", force_zip64=True) as target:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+                target.write(chunk)
+        if digest.hexdigest() != metadata["pdbSha256"]:
+            raise SymbolArchiveError(f"PDB changed while archiving: {pdb}")
+        info = zipfile.ZipInfo("symbols.json", (2026, 1, 1, 0, 0, 0))
+        info.create_system = 3
+        info.external_attr = 0o100644 << 16
+        info.compress_type = zipfile.ZIP_DEFLATED
+        archive.writestr(info, json.dumps(metadata, indent=2) + "\n")
+
 
 
 def archive_windows_symbols(image: Path, root: Path) -> Path:
