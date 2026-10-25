@@ -532,8 +532,23 @@ source_set("mini_electron_net_data_url") {
   configs += [ ":mini_electron_engine_config" ]
 }
 
+# The platform and system Mojo implementations share the same source basename.
+source_set("mini_electron_mojo_platform_handle") {
+  sources = [ "//mojo/public/cpp/platform/platform_handle.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
+source_set("mini_electron_net_url_util") {
+  sources = [ "//net/base/url_util.cc" ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
 static_library("mini_electron_content") {
   sources = mini_electron_content_sources
+  sources -= [
+    "//mojo/public/cpp/platform/platform_handle.cc",
+    "//net/base/url_util.cc",
+  ]
   sources += [
     "//src/platform/macos/clipboard_mac.mm",
     "//src/platform/macos/sandbox_support_mac.mm",
@@ -541,6 +556,8 @@ static_library("mini_electron_content") {
   configs += [ ":mini_electron_engine_config" ]
   deps = [
     ":mini_electron_net_data_url",
+    ":mini_electron_mojo_platform_handle",
+    ":mini_electron_net_url_util",
     ":mini_electron_webgl",
     ":mini_electron_webgpu",
   ]

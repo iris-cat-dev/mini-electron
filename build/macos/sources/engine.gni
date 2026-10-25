@@ -9,7 +9,7 @@ mini_electron_blink_sources = [
   "//third_party/blink/renderer/platform/audio/audio_channel.cc",
   "//third_party/blink/renderer/platform/audio/sinc_resampler.cc",
   "//third_party/blink/renderer/platform/audio/vector_math.cc",
-  "//third_party/blink/renderer/platform/encryptedmedia/content_decryption_module_result_promise.cc",
+  "//third_party/blink/renderer/modules/encryptedmedia/content_decryption_module_result_promise.cc",
   "//third_party/blink/renderer/platform/media/media_player_util.cc",
   "//third_party/blink/renderer/modules/encryptedmedia/encrypted_media_utils.cc",
   "//third_party/blink/renderer/modules/encryptedmedia/media_encrypted_event.cc",

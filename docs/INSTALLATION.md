@@ -11,8 +11,8 @@ For native release history, see [release notes](RELEASES.md). For publishing ass
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
 `0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Unpinned Windows installs select runtime `0.1.24`; the macOS release
-and its independent channel are not changed by this Windows update.
+independent. macOS runtime `0.1.25` uses its own channel; this macOS-only update
+does not change Windows release assets or the Windows channel.
 
 ```sh
 npm install --save-dev @iriscat/mini-electron@0.1.12
@@ -37,7 +37,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` can install Windows `0.1.24` or macOS `0.1.21`.
+  For example, npm `0.1.12` can install Windows `0.1.24` or macOS `0.1.25`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an
@@ -53,18 +53,18 @@ Update only the local binary explicitly:
 ```sh
 npx mini-electron --update-runtime
 # Pin the macOS runtime:
-npx mini-electron --update-runtime 0.1.21
+npx mini-electron --update-runtime 0.1.25
 # Select an exact runtime that includes your platform (Windows example):
 npx mini-electron --update-runtime 0.1.24
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.24` for Windows; `0.1.21` for macOS):
+(`0.1.24` for Windows; `0.1.25` for macOS):
 
 ```sh
 # macOS arm64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.21 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.25 npm ci
 # Windows x64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.24 npm ci
 ```
