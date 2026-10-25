@@ -6,6 +6,30 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.26
+
+This Windows x64-only update preserves macOS runtime/channel `0.1.25`,
+npm installer `0.1.12`, installer protocol `1`, Electron API compatibility
+`41.2.0`, and Node ABI `134`.
+
+- Retires frame-registry entries using the retained token after frame detachment.
+  Resource-load notifiers and policy-container implementations now follow their
+  frame-client or receiver ownership; standalone navigation loaders release on
+  consumer disconnect.
+- Publishes a separate, compressed full-PDB attachment for the exact runtime
+  executable. Release assembly verifies RSDS GUID/Age and EXE/PDB hashes, rejects
+  missing or mismatched symbols, and includes both ZIPs in `SHASUMS256.txt`.
+  Symbols stay out of the installable runtime ZIP and npm package.
+- The packaged runtime passed frame/IPC, same-document navigation, request-body
+  loading, and reentrant event/destruction smokes. The production-object lifetime
+  regression and the published npm `0.1.12` installer also passed.
+
+See [release verification](VERIFICATION.md#windows-runtime-0126-2026-10-25)
+and [symbol download/debugging instructions](RELEASING.md#using-published-windows-symbols).
+The separate OMP Desktop JavaScript cache/closure/ref repairs belong to the
+application release, not this native runtime. The previously observed
+cross-document-back blank-document issue is not claimed fixed.
+
 ### macOS runtime 0.1.25
 
 This Apple Silicon macOS-only runtime update leaves Windows release assets, the

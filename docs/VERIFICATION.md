@@ -8,6 +8,56 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.26 (2026-10-25)
+
+Built the normal Windows x64 Release distribution in `out/memory-repair-native`
+with Clang 22, MSVC `14.44.35207`, Windows SDK `10.0.26100.0`, and two build
+workers. GN, Ninja, CMake, and Python came from the existing local tool cache.
+The build used cached dependencies; it was not a clean-room build.
+
+The inherited/default Dawn toolset initially selected MSVC `14.38` and encountered
+a compiler internal error. Explicit `VCToolsVersion=14.44.35207`, bounded
+`CL_MPCount=2`, and disabled MSBuild node reuse produced a successful dependency
+and application build. These were process-local build-environment settings.
+
+Packaged executable SHA-256:
+`855fb92a83a6fcbcfc922e8ed8eccf7ba18436aeb8cb2bfedec8ce05ad5adb78`.
+
+Verified on the actual packaged executable in fresh, owned profiles:
+
+- `ipc-frame-smoke.js`: frame authorization, identity, detachment, and targeted
+  delivery.
+- `same-document-navigation-smoke.js`: document/preload/frame identity survives
+  same-document history and is replaced on reload.
+- `runtime-body-loader-smoke.js`: empty HTTP responses, redirected uploads,
+  streamed request bodies, and blob/file reads.
+- `runtime-event-contract-smoke.js`: generic event/reply separation and
+  reentrant-safe destruction.
+- `navigation-lifetime-smoke.cc`, linked against the final production objects:
+  64 live frame registrations, zero retained entries/notifiers after client
+  destruction, and exactly one standalone-loader destruction on disconnect.
+- The integrity-verified, published npm installer `0.1.12` installed the actual
+  versioned runtime ZIP. Its CLI reported `v0.1.26` and ABI `134`; Run-as-Node
+  reported Windows x64, Node `24.0.0-pre`, and ABI `134`.
+
+The full PDB is 1,307,582,464 bytes; its separate symbols ZIP is 258,673,279 bytes.
+The ZIP was decompressed and the PDB SHA-256 matched the archived production
+pair. Independent LLVM tools reported GUID
+`25CD7A79-B426-853D-4C4C-44205044422E`, Age `1` for both EXE and PDB, with full
+debug/type/global information and no stripping or conflicting types. Runtime
+ZIP inspection found no PDB or symbol metadata. Temporary Blink heap-capture
+instrumentation is absent from this production executable.
+
+Release assembly tests: 19 passed, one macOS executable-permission case skipped
+on Windows; all three symbol-identity tests passed. The skip is not macOS runtime
+verification. The existing cross-document-back blank-document failure remains
+outside the passing coverage. This release does not establish a unique cause
+for the separately supplied JavaScript heap-limit OOM.
+
+Raw smoke logs, symbol/installer checks, and publication evidence are under
+`out/runtime-release-0.1.26-investigation/`. Existing user installations and
+production daemons were not replaced or restarted.
+
 ## Frame and navigation object lifetimes (2026-10-25)
 
 The Windows x64 Release source candidate was built with
