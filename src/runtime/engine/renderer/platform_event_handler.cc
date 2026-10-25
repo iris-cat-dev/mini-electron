@@ -206,7 +206,11 @@ void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, flo
     runner->PostTask(FROM_HERE, base::BindOnce(
         [](PlatformEventHandler* self, int x, int y, float deltaX, float deltaY, int modifiers) {
             base::AutoLock lock(self->m_lock);
-            self->fireWheelEventOnCompositorThread(x, y, 0, 0, deltaX, deltaY,
+            // Blink derives DOM wheelDeltaX/Y from ticks, not pixel deltas.
+            // Preserve both representations for JavaScript scrollers such as xterm.
+            self->fireWheelEventOnCompositorThread(x, y,
+                deltaX / static_cast<float>(WHEEL_DELTA),
+                deltaY / static_cast<float>(WHEEL_DELTA), deltaX, deltaY,
                 modifiers, ui::ScrollGranularity::kScrollByPrecisePixel, true);
         },
         base::Unretained(this), x, y, deltaX, deltaY, modifiers));
