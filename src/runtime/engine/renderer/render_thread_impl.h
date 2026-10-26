@@ -31,8 +31,8 @@ class AssociatedInterfaceProvider;
 
 namespace content {
 
-// Applies hysteresis and notification cooldowns to renderer memory samples.
-// Kept separate from the OS sampler so its transition behavior is deterministic.
+// Applies independent hysteresis to process and V8 heap pressure, then delivers
+// the strongest signal with notification cooldowns.
 class RendererMemoryPressurePolicy {
 public:
     enum class Level {
@@ -48,10 +48,13 @@ public:
     };
 
     Action Evaluate(uint64_t committed_bytes, uint64_t job_limit_bytes,
+        uint64_t used_heap_bytes, uint64_t heap_limit_bytes,
         bool system_low_memory, base::TimeTicks now);
     Level level() const { return m_level; }
 
 private:
+    Level m_jobLevel = Level::kNone;
+    Level m_heapLevel = Level::kNone;
     Level m_level = Level::kNone;
     base::TimeTicks m_lastModerateNotification;
     base::TimeTicks m_lastCriticalNotification;

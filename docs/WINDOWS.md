@@ -343,10 +343,16 @@ replaces the obsolete synthetic `SC_MOVE` and double-click tracking paths.
 
 ### Renderer memory diagnostics and reclamation
 
-Sandboxed Windows renderers retain the existing x64 Job budget,
-`clamp(physical RAM / 4, 1 GiB, 4 GiB)`, and per-isolate V8 heap policy.
-The repairs do not enlarge that budget or change explicit single-process mode
-into a sandboxed/crash-isolated mode.
+Windows x64 Blink/Worker isolates use V8's machine-derived
+`ResourceConstraints::ConfigureDefaults(physical, virtual)` policy, not half of
+the renderer Job limit. Let `H` be that policy's maximum old-generation plus
+young-generation bytes. The sandboxed renderer Job budget is
+`clamp(max(physical RAM / 2, 2 * H, H + 2 GiB), 2 GiB, 8 GiB)`.
+On the verified 32-GiB workstation this gives an approximately 4-GiB V8 heap
+and an 8-GiB aggregate process limit, leaving room for Blink/Oilpan, Skia and
+other native allocations. Workers share that process limit; this is not
+aggregate heap admission control. The 32-bit Job remains 1 GiB. Explicit
+single-process mode does not become sandboxed or crash-isolated.
 
 An independent, preallocated crash channel copies the renderer's exception
 record, actual failing thread and register context. The browser writes a
@@ -373,6 +379,10 @@ adds the captured diagnostics:
   matching symbols. Windows builds archive the verified EXE/PDB pair beneath
   `out/windows-x64/symbols/<pdbName>/<GUID><hex-age>/` with hashes in `symbols.json`.
   The minidump includes module symbol identity and an embedded diagnostic stream.
+- `preOomHeapSnapshot`: once-only main-isolate capture status, Win32 error/reason,
+  trigger/capture heap samples, serialized bytes, and a path only after the host
+  atomically commits a complete snapshot. A local JSON sidecar records attempted
+  capture progress and terminal status without waiting for a crash.
 
 `oomSource` distinguishes a matching V8 heap-limit report from a V8 allocation
 failure and an unknown source. It does not derive the cause from the mere
@@ -382,15 +392,47 @@ means a real Job process-memory refusal was observed; absent evidence stays
 The refusal flag is historical for that renderer; its age is reported, and it
 does not reclassify a subsequent unrelated native exception as OOM.
 
-The Blink-thread monitor samples actual renderer private commit and the enforced
-Job limit every second, and also observes Windows low-memory notifications.
-Moderate/critical entry thresholds are 70%/85%, with 60%/75% exit hysteresis;
-moderate re-entry and sustained critical notifications are rate-limited to
+The Blink-thread monitor samples renderer private commit, the enforced Job
+limit, and main-isolate V8 used/limit bytes every second, and also observes
+Windows low-memory notifications. Process and V8 utilization each enter
+moderate/critical at 70%/85%, with independent 60%/75% exit hysteresis. The
+stronger signal wins; system low-memory always requests critical pressure.
+Moderate re-entry and sustained critical notifications remain rate-limited to
 30/60 seconds. Pressure reaches Blink, V8 isolates, discardable memory and Skia
-caches. The production discardable allocator accounts live bytes, preserves
-locked buffers, frees unlocked buffers on purge, and reports discarded relock
-failure so consumers can reconstruct their data. Tight non-yielding JavaScript
-can still delay the Blink-thread monitor; reclamation is not an OOM guarantee.
+caches. The discardable allocator preserves locked data, frees unlocked
+buffers on purge, and reports discarded relock failure for reconstruction.
+Tight non-yielding JavaScript can still delay sampling; pressure cannot free
+reachable application objects and is not an OOM guarantee.
+
+Automatic pre-OOM snapshots trigger at 65% of the main isolate's V8 limit
+(about 2.6 GiB for a 4-GiB heap). The browser creates a trusted temporary file
+under `app.getPath('crashDumps')` and duplicates a write-only handle into the
+sandbox; the renderer cannot choose an output path. V8 profiling/serialization
+runs synchronously on its owning Blink thread, never in the fatal OOM callback.
+The host finalizes `renderer-pre-oom-*.heapsnapshot` and its JSON status sidecar.
+No snapshot is attempted merely because a renderer starts or closes.
+
+Capture requires fresh memory-budget samples and free physical memory, system
+commit and Job headroom of at least the greater trigger/capture heap usage plus
+256 MiB. A delayed request is skipped if the heap has already exceeded 85%.
+Progress and output chunks check these budgets and a cooperative 30-second
+deadline. Serialization is capped at 2 GiB; one host reserves at most four
+automatic snapshot/temporary files in a directory and requires 2 GiB free disk.
+It never deletes existing snapshots to make space. Failed/aborted attempts do
+not publish a completed snapshot, and the same renderer does not retry.
+
+These guards do not bound V8's internal snapshot-graph allocations or guarantee
+cancellation of stalled kernel I/O. Capture can pause the UI and increase memory.
+Non-yielding code may reach OOM without any pre-OOM snapshot. Main-isolate
+snapshots do not diagnose a separate Worker's heap.
+
+`MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT` is read only by the trusted browser
+before launch: unset means 65, values 1–65 lower the trigger, and 0 disables
+automatic capture. Invalid values report `unavailable` / `invalid-configuration`.
+Heap snapshots can contain source, paths, conversation text and credentials.
+They stay local and are not uploaded automatically; handle them as sensitive
+data. Move/delete old automatic snapshots explicitly when the storage budget
+is full.
 
 Exercise the native crash/output and production pressure paths in disposable
 runtime instances, not a live Desktop session:
@@ -399,6 +441,11 @@ runtime instances, not a live Desktop session:
 out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-memory-smoke.js
 out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-memory-smoke.js --unwritable-dump-directory
 out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-pressure-reclamation-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/windows-renderer-v8-headroom-smoke.js
+out/windows-x64/stage/mini-electron.exe --app=test/windows-pre-oom-snapshot-smoke.js --then-oom
+out/windows-x64/stage/mini-electron.exe --app=test/windows-pre-oom-snapshot-smoke.js --unwritable-dump-directory
+out/windows-x64/stage/mini-electron.exe --app=test/windows-pre-oom-snapshot-smoke.js --storage-budget
+out/windows-x64/stage/mini-electron.exe --app=test/windows-pre-oom-snapshot-smoke.js --near-heap-limit
 out/windows-x64/stage/mini-electron.exe --app=test/windows-capture-disposal-smoke.js
 MINI_CAPTURE_DISPOSAL_MODE=continue out/windows-x64/stage/mini-electron.exe --app=test/windows-capture-disposal-smoke.js
 ```

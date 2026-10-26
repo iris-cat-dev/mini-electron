@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { getHeapStatistics } = require('node:v8');
 const { app, BrowserWindow } = require('electron');
 
 const MiB = 1024 * 1024;
@@ -161,11 +162,15 @@ app.whenReady().then(async () => {
   assert.ok(cached - baseline >= 16 * MiB,
     `software decode/cache warmup must commit meaningful memory: ${JSON.stringify({ baseline, cached })}`);
 
-  // renderer_platform_win.cc enforces physical/4 clamped to [1,4] GiB on x64.
+  // Match the production default-heap/native-headroom budget. The browser uses
+  // the same unmodified V8 defaults on this machine; this is a formula-derived
+  // expectation, not a queried renderer Job limit.
   // Stop just inside the monitor's moderate band, leaving its normal production
   // hysteresis and rate limiting untouched.
+  const defaultHeap = getHeapStatistics().heap_size_limit;
   const jobLimit = process.arch === 'x64'
-    ? Math.max(GiB, Math.min(4 * GiB, Math.floor(os.totalmem() / 4)))
+    ? Math.max(2 * GiB, Math.min(8 * GiB,
+      Math.max(Math.floor(os.totalmem() / 2), 2 * defaultHeap, defaultHeap + 2 * GiB)))
     : GiB;
   const moderateThreshold = Math.floor(jobLimit * 0.70);
   const targetPrivate = Math.floor(jobLimit * 0.73);
@@ -248,7 +253,7 @@ app.whenReady().then(async () => {
     return true;
   })()`), 'release pressure test resources', 10000);
   const report = {
-    rendererPid, jobLimit, jobLimitSource: 'production physical-memory formula, not a queried Job limit',
+    rendererPid, jobLimit, jobLimitSource: 'production RAM/V8-default headroom formula, not a queried Job limit',
     moderateThreshold, baseline, cached, allocated, pressurePeak, pressured, reclaimed, captures,
   };
   if (process.env.MINI_FIX_RESULT_DIR) {

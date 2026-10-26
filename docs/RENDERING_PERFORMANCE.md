@@ -406,6 +406,11 @@ physical-presentation measurement is claimed here.
 
 ### Windows idle rendering and memory budget correction
 
+This section records the earlier 0.1.18-era measurements. The current source
+uses restored V8 defaults and a coordinated x64 Job budget up to 8 GiB;
+see [current memory policy and pre-OOM capture](WINDOWS.md#renderer-memory-diagnostics-and-reclamation)
+and [the newer candidate verification](VERIFICATION.md#windows-memory-policy-candidate-2026-10-27).
+
 The installed Windows runtime was observed producing 4,306 GPU frames in
 29.98 seconds while OMP Desktop was minimized. An independent static `data:`
 page with no timers, rAF, or animations also produced about 143.9 frames/s.

@@ -269,48 +269,38 @@ uint64_t PercentageOf(uint64_t value, int percent)
     return (value / 100) * percent + ((value % 100) * percent) / 100;
 }
 
+RendererMemoryPressurePolicy::Level PressureForUsage(
+    RendererMemoryPressurePolicy::Level previous_level,
+    uint64_t used_bytes, uint64_t limit_bytes)
+{
+    using Level = RendererMemoryPressurePolicy::Level;
+    if (!limit_bytes)
+        return Level::kNone;
+    if (used_bytes >= PercentageOf(limit_bytes, kCriticalEnterPercent))
+        return Level::kCritical;
+    if (previous_level == Level::kCritical
+        && used_bytes >= PercentageOf(limit_bytes, kCriticalExitPercent))
+        return Level::kCritical;
+    if (used_bytes >= PercentageOf(limit_bytes, kModerateEnterPercent))
+        return Level::kModerate;
+    if (previous_level != Level::kNone
+        && used_bytes >= PercentageOf(limit_bytes, kModerateExitPercent))
+        return Level::kModerate;
+    return Level::kNone;
+}
+
 } // namespace
 
 RendererMemoryPressurePolicy::Action RendererMemoryPressurePolicy::Evaluate(
     uint64_t committed_bytes, uint64_t job_limit_bytes,
+    uint64_t used_heap_bytes, uint64_t heap_limit_bytes,
     bool system_low_memory, base::TimeTicks now)
 {
     const Level previous_level = m_level;
-    if (system_low_memory) {
-        m_level = Level::kCritical;
-    } else if (!job_limit_bytes) {
-        m_level = Level::kNone;
-    } else {
-        switch (previous_level) {
-        case Level::kNone:
-            if (committed_bytes
-                >= PercentageOf(job_limit_bytes, kCriticalEnterPercent)) {
-                m_level = Level::kCritical;
-            } else if (committed_bytes
-                >= PercentageOf(job_limit_bytes, kModerateEnterPercent)) {
-                m_level = Level::kModerate;
-            }
-            break;
-        case Level::kModerate:
-            if (committed_bytes
-                >= PercentageOf(job_limit_bytes, kCriticalEnterPercent)) {
-                m_level = Level::kCritical;
-            } else if (committed_bytes
-                < PercentageOf(job_limit_bytes, kModerateExitPercent)) {
-                m_level = Level::kNone;
-            }
-            break;
-        case Level::kCritical:
-            if (committed_bytes
-                < PercentageOf(job_limit_bytes, kModerateExitPercent)) {
-                m_level = Level::kNone;
-            } else if (committed_bytes
-                < PercentageOf(job_limit_bytes, kCriticalExitPercent)) {
-                m_level = Level::kModerate;
-            }
-            break;
-        }
-    }
+    m_jobLevel = PressureForUsage(m_jobLevel, committed_bytes, job_limit_bytes);
+    m_heapLevel = PressureForUsage(m_heapLevel, used_heap_bytes, heap_limit_bytes);
+    m_level = system_low_memory ? Level::kCritical
+        : std::max(m_jobLevel, m_heapLevel);
     if (m_level != Level::kModerate)
         m_moderateNotificationPending = false;
     else if (previous_level == Level::kNone)
@@ -577,7 +567,8 @@ private:
     void Poll()
     {
         DCHECK_EQ(v8::Isolate::GetCurrent(), m_isolate);
-        atom::RecordRendererV8Memory(m_isolate);
+        v8::HeapStatistics heap;
+        m_isolate->GetHeapStatistics(&heap);
 
         uint64_t committed_bytes = 0;
         uint64_t limit_bytes = 0;
@@ -585,8 +576,8 @@ private:
         const RendererMemoryPressurePolicy::Level previous_level =
             m_policy.level();
         const RendererMemoryPressurePolicy::Action action = m_policy.Evaluate(
-            committed_bytes, limit_bytes, IsSystemLowOnMemory(),
-            base::TimeTicks::Now());
+            committed_bytes, limit_bytes, heap.used_heap_size(),
+            heap.heap_size_limit(), IsSystemLowOnMemory(), base::TimeTicks::Now());
         const RendererMemoryPressurePolicy::Level current_level =
             m_policy.level();
         if (action == RendererMemoryPressurePolicy::Action::kNone) {
@@ -603,6 +594,7 @@ private:
                 blink::MemoryPressureNotificationToAllIsolates(
                     v8::MemoryPressureLevel::kNone);
             }
+            atom::RecordRendererV8Memory(m_isolate);
             return;
         }
 
@@ -630,6 +622,7 @@ private:
         base::DiscardableMemoryAllocator::GetInstance()->ReleaseFreeMemory();
         SkGraphics::PurgeAllCaches();
         blink::MemoryPressureNotificationToAllIsolates(v8_level);
+        atom::RecordRendererV8Memory(m_isolate);
     }
 
     v8::Isolate* const m_isolate;

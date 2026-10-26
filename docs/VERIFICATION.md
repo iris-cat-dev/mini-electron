@@ -8,6 +8,73 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows memory policy candidate (2026-10-27)
+
+Incrementally built Windows x64 Release in `out/memory-repair-native` using
+Clang 22, MSVC `14.44.35207`, Windows SDK `10.0.26100.0`, and two build workers.
+Dependencies/tooling were cached; this was not a clean-room build or release.
+The initial shell invocation could not resolve CMake; the successful build
+used the existing native-build virtual environment on the process PATH.
+
+Final executable SHA-256:
+`28c68ae6342303d45b963c3be6b77803236c6a512d13f2138c8e503f9a4d87d1`.
+Its matched EXE/PDB pair is archived under
+`out/native-memory-policy-check/symbols/mini-electron.pdb/D23C8730F7B913804C4C44205044422E1/`.
+Installed Desktop binaries, production daemon and published version/channels
+were not replaced or restarted.
+
+Observed behavior in disposable, sandboxed native renderer processes:
+
+- The headroom regression retained **2,281,701,376 bytes (2.125 GiB)** of Smi
+  array slots, verified their sentinels and a subsequent DOM response, then
+  released them and exited normally. `performance.memory` reported the
+  privacy-rounded heap class, not exact byte-level limits.
+- Native diagnostics measured a **8,589,934,592-byte (8-GiB)** Job budget and
+  **4,294,705,152-byte** machine-default V8 heap limit. No `/2` custom V8
+  budget remained.
+- The production-linked C++ pressure regression passed independent heap/process
+  hysteresis, source transitions, cooldowns and missing-Job samples, alongside
+  the existing discardable-memory accounting/race cases.
+- The real software-compositor pressure workload reached **6,069,043,200 bytes**
+  peak private commit and reclaimed **66,732,032 bytes (63.64 MiB)** of warmed
+  memory while preserving held buffers and subsequent composed colors.
+  The post-pressure 2283x2130 surface was inspected. Its reported Job threshold
+  remains formula-derived; the separate crash diagnostics query the actual Job.
+- A real owning-isolate heap snapshot was JSON-parsed and checked for the
+  `PreOomSnapshotMarker` object node and its retaining property edge. It was
+  **1,807,291 bytes**. The smoke lowers the trigger to **1%**, using approximately
+  96.6 MiB of heap, rather than profiling a 2.6-GiB application heap.
+- A later deliberate V8 OOM preserved the completed snapshot status and still
+  produced a valid exception minidump. Existing minidump/metadata identity,
+  exception-context and unwritable-output contract checks passed. Restored V8
+  defaults can fail at `CALL_AND_RETRY_LAST`; tests no longer require a specific
+  internal V8 error-location phrase.
+- Unwritable snapshot destinations reported `failed` / `file-io`; four existing
+  automatic snapshots reported `skipped` / `storage-budget`, preserving those
+  files. Neither condition retried or published partial snapshots.
+- A single task retaining approximately 3.5 GiB of Smi slots reached
+  **3,758,673,964 used heap bytes** before sampling. The delayed capture was
+  refused with `skipped` / `insufficient-headroom`, zero serialized bytes,
+  and no temporary snapshot file.
+
+The first pressure run completed its memory/pixel assertions but hung during
+profile cleanup. An unnecessary `armed` sidecar was being persisted on close;
+the candidate now avoids unattempted/unchanged sidecar writes. The same full
+pressure scenario then exited with code 0. Earlier failing logs are retained.
+A double-array near-limit probe exhausted V8 before yielding; it is not counted
+as guard coverage. The passing guard scenario uses Smi arrays to avoid that
+allocation/fragmentation path.
+
+Evidence is under `out/native-memory-policy-check/`: build/link logs, native
+policy output, headroom/pressure reports and PNGs, snapshot/refusal reports,
+and runtime check results. Temporary build overrides and profiles were removed.
+
+Limits: no 14-hour soak, original-session replay, macOS runtime verification,
+or proof that V8/TS/native roots no longer retain growing object graphs.
+Default-threshold multi-GiB snapshot performance is not measured. Snapshot
+graph allocation and UI pause remain risks; see the
+[capture guards and privacy policy](WINDOWS.md#renderer-memory-diagnostics-and-reclamation).
+
 ## Windows runtime 0.1.26 (2026-10-25)
 
 Built the normal Windows x64 Release distribution in `out/memory-repair-native`

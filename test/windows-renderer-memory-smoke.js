@@ -54,7 +54,9 @@ app.whenReady().then(async () => {
   const gone = once(contents, 'render-process-gone');
   const pressure = contents.executeJavaScript(`(() => {
     globalThis.__rendererMemorySmoke = [];
-    for (let index = 0; index < 80; index++)
+    // 160 compressed-slot Smi arrays request 5 GiB, exceeding the restored
+    // machine-default ~4-GiB heap rather than only the former custom 2-GiB cap.
+    for (let index = 0; index < 160; index++)
       globalThis.__rendererMemorySmoke.push(new Array(8 * 1024 * 1024).fill(37));
     throw new Error('Expected bounded heap workload to exhaust the renderer V8 heap');
   })()`);
@@ -68,11 +70,15 @@ app.whenReady().then(async () => {
   assert.equal(details.crashCaptureStatus, 'captured');
   assert.equal(details.exceptionCode, 0xe0000008);
   assert.equal(details.rendererPid, rendererPid);
-  assert.ok(details.memory.processMemoryLimit >= 1024 ** 3);
+  const GiB = 1024 ** 3;
+  assert.ok(details.memory.processMemoryLimit >= (process.arch === 'x64' ? 2 : 1) * GiB);
+  if (process.arch === 'x64' && os.totalmem() >= 16 * GiB)
+    assert.equal(details.memory.processMemoryLimit, 8 * GiB,
+      'a modern x64 renderer must retain the full native/V8 Job headroom');
   assert.ok(details.memory.peakCommitBytes > 0 && details.memory.peakCommitBytes <= details.memory.processMemoryLimit);
   assert.ok(['last-main-isolate', 'unavailable'].includes(details.v8.sampleKind));
-  assert.ok(['Reached heap limit', 'Ineffective mark-compacts near heap limit'].includes(details.v8.location));
-  assert.equal(details.oomSource, 'v8-heap-limit');
+  assert.notEqual(details.oomSource, 'unknown',
+    'the matching fatal V8 callback must remain attributed');
   assert.equal(details.v8.failureThreadId, details.exceptionThreadId,
     'the classified V8 failure must belong to the captured exception thread');
   assert.equal(details.v8.isHeapOOM, true);

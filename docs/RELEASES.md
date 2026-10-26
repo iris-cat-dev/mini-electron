@@ -6,6 +6,24 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased Windows memory policy and pre-OOM diagnostics
+
+- Restores machine-derived V8 heap defaults instead of limiting each renderer
+  isolate to half the Job budget. Coordinates the x64 Job's native headroom
+  with those defaults, up to 8 GiB; unrelated sandbox restrictions are unchanged.
+- Combines independent renderer-commit and main-isolate V8-utilization pressure
+  signals, rather than waiting for total process commit alone.
+- Adds once-only, local pre-OOM main-isolate heap snapshots at 65% utilization,
+  with sandboxed file capabilities, memory/disk guards, bounded serialization,
+  explicit failure status, and a sensitive-data/disable policy.
+- Fixes unnecessary sidecar rewrites during renderer close that raced profile
+  cleanup. Extends real-runtime boundary, capture/refusal and OOM coverage.
+
+This is a locally verified source candidate, not a published runtime or an
+installed Desktop upgrade. See [verification](VERIFICATION.md#windows-memory-policy-candidate-2026-10-27)
+and [memory behavior](WINDOWS.md#renderer-memory-diagnostics-and-reclamation).
+The original incident's retaining object owner remains unproven.
+
 ### Windows runtime 0.1.26
 
 This Windows x64-only update preserves macOS runtime/channel `0.1.25`,

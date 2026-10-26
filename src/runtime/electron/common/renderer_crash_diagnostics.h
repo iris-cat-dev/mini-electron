@@ -41,7 +41,11 @@ void AppendRendererCrashDiagnostics(const std::shared_ptr<RendererCrashMonitor>&
     base::Value::Dict* details);
 bool InitializeRendererCrashDiagnostics(RendererCrashHandles handles);
 
-// Healthy-isolate sampling runs on its owning Blink thread, never in an OOM callback.
+// Call once per second on the owning main-isolate Blink thread, after pressure
+// handling. Samples V8 and services one automatic pre-OOM snapshot attempt.
+// Snapshot requests use the existing host channel; never call from fatal/OOM
+// callbacks. The host reads MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT before launch:
+// 1..65 lowers the default 65% threshold; 0 disables; invalid values are reported.
 void RecordRendererV8Memory(v8::Isolate* isolate) noexcept;
 // Fatal callback: copies markers only; even an uninitialized V8 heap is safe.
 void RecordRendererV8OOM(const char* location, bool is_heap_oom,

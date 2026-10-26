@@ -20,6 +20,7 @@
 #include "base/win/scoped_handle.h"
 #include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "src/runtime/electron/common/renderer_protocol.h"
+#include "v8/include/v8-isolate.h"
 
 namespace atom {
 namespace {
@@ -28,21 +29,30 @@ constexpr wchar_t kAppContainerName[] = L"mini-electron.renderer";
 constexpr size_t kFrameMappingSize = sizeof(renderer_protocol::FrameBufferHeader)
     + renderer_protocol::kMaxFrameBytes;
 
-constexpr uint64_t kMinimumRendererMemoryLimit =
-    1024ull * 1024ull * 1024ull;
-constexpr uint64_t kMaximumRendererMemoryLimit =
-    4ull * 1024ull * 1024ull * 1024ull;
-// Keep the renderer bounded without treating a modern x64 machine like a
-// 1-GiB system. V8 independently reserves half of this enforced budget.
+constexpr uint64_t kGiB = 1024ull * 1024ull * 1024ull;
+constexpr uint64_t kMaximumRendererMemoryLimit = 8 * kGiB;
 
 size_t RendererMemoryLimit()
 {
 #if defined(_M_X64)
+    const uint64_t physical_memory = base::SysInfo::AmountOfPhysicalMemory();
+    v8::ResourceConstraints constraints;
+    constraints.ConfigureDefaults(
+        physical_memory, base::SysInfo::AmountOfVirtualMemory());
+    const uint64_t default_heap =
+        static_cast<uint64_t>(constraints.max_old_generation_size_in_bytes())
+        + constraints.max_young_generation_size_in_bytes();
+    // Preserve V8's machine-derived defaults, independently of the Job. Budget
+    // half of RAM with a floor covering twice the default old+young heap and at
+    // least 2 GiB for native allocations. The supported x64 V8 heap fits its
+    // 4-GiB pointer-compression cage, so the 8-GiB ceiling preserves that floor.
+    const uint64_t with_headroom = std::max(
+        default_heap * 2, default_heap + 2 * kGiB);
     return static_cast<size_t>(std::clamp<uint64_t>(
-        base::SysInfo::AmountOfPhysicalMemory() / 4,
-        kMinimumRendererMemoryLimit, kMaximumRendererMemoryLimit));
+        std::max(physical_memory / 2, with_headroom),
+        2 * kGiB, kMaximumRendererMemoryLimit));
 #else
-    return static_cast<size_t>(kMinimumRendererMemoryLimit);
+    return static_cast<size_t>(kGiB);
 #endif
 }
 

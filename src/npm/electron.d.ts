@@ -192,6 +192,29 @@ export interface RenderProcessGoneDetails {
   crashDumpError?: number;
   crashDiagnosticsError?: number;
   jobNotificationError?: number;
+  /** Windows, local-only, once per renderer main isolate; never captured in an OOM callback. */
+  preOomHeapSnapshot?: {
+    status: "armed" | "requested" | "preparing" | "ready" | "capturing" | "finalizing"
+      | "succeeded" | "skipped" | "failed" | "disabled" | "unavailable";
+    reason: "none" | "insufficient-headroom" | "memory-budget-unavailable"
+      | "deadline-exceeded" | "serialized-size-limit" | "snapshot-incomplete"
+      | "file-io" | "renderer-stopped" | "invalid-configuration" | "storage-budget";
+    /** Win32 error code; zero means no error. */
+    error: number;
+    thresholdPercent: number;
+    triggerUsedHeapBytes: number;
+    triggerHeapLimitBytes: number;
+    triggerTickMilliseconds: number;
+    /** Fresh owning-thread sample before capture; a heap above 85% is skipped. */
+    captureUsedHeapBytes: number;
+    captureHeapLimitBytes: number;
+    serializedBytes: number;
+    /** Present only after the host atomically commits a complete snapshot. */
+    path?: string;
+    /** Local JSON sidecar, persisted without waiting for a crash. */
+    diagnosticsPath?: string;
+    diagnosticsError?: number;
+  };
   memory?: {
     processMemoryLimit: number;
     privateBytes: number;

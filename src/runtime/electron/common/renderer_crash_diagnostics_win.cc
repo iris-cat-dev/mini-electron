@@ -22,12 +22,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/scoped_handle.h"
 #include "v8/include/v8.h"
+#include "v8/include/v8-profiler.h"
 
 namespace atom {
 namespace {
 constexpr DWORD kOomException = 0xe0000008;
 constexpr DWORD kCrashMagic = 0x4d454352;
-constexpr DWORD kCrashVersion = 1;
+constexpr DWORD kCrashVersion = 2;
 constexpr DWORD kCrashWaitMilliseconds = 10000;
 constexpr DWORD kCrashExitWaitMilliseconds = 2000;
 
@@ -37,6 +38,41 @@ struct alignas(8) V8MemorySample {
     volatile LONG64 limit = 0;
     volatile LONG64 external = 0;
     volatile LONG64 tick = 0;
+};
+
+constexpr uint64_t kSnapshotReserve = 256ull * 1024 * 1024;
+constexpr uint64_t kSnapshotMaximumBytes = 2ull * 1024 * 1024 * 1024;
+constexpr uint64_t kSnapshotDeadlineMilliseconds = 30000;
+enum SnapshotState : LONG {
+    kSnapshotArmed, kSnapshotRequested, kSnapshotPreparing, kSnapshotReady,
+    kSnapshotCapturing, kSnapshotSerialized, kSnapshotSucceeded,
+    kSnapshotSkipped, kSnapshotFailed, kSnapshotDisabled, kSnapshotUnavailable
+};
+enum SnapshotReason : LONG {
+    kSnapshotNoError, kSnapshotHeadroom, kSnapshotStaleBudget, kSnapshotTimeout,
+    kSnapshotSizeLimit, kSnapshotIncomplete, kSnapshotIoError,
+    kSnapshotCancelled, kSnapshotInvalidConfiguration, kSnapshotStorageBudget
+};
+
+// Paths never cross this channel. Only the host chooses a destination, and the
+// renderer receives a write-only capability for that one temporary file.
+struct alignas(8) SnapshotRecord {
+    volatile LONG state = kSnapshotArmed;
+    volatile LONG threshold_percent = 65;
+    volatile LONG error = 0;
+    volatile LONG reason = kSnapshotNoError;
+    volatile LONG cancel = 0;
+    volatile LONG64 handle = 0;
+    volatile LONG64 trigger_used = 0;
+    volatile LONG64 trigger_limit = 0;
+    volatile LONG64 trigger_tick = 0;
+    volatile LONG64 capture_used = 0;
+    volatile LONG64 capture_limit = 0;
+    volatile LONG64 deadline = 0;
+    volatile LONG64 bytes = 0;
+    volatile LONG64 process_limit = 0;
+    volatile LONG64 job_available = 0;
+    volatile LONG64 budget_tick = 0;
 };
 
 void SampleV8(v8::Isolate* isolate, V8MemorySample* sample) noexcept
@@ -63,6 +99,7 @@ struct alignas(64) CrashRecord {
     DWORD thread_id = 0;
     DWORD oom_thread_id = 0;
     V8MemorySample main_sample;
+    SnapshotRecord snapshot;
     char location[128] {};
     char detail[256] {};
     EXCEPTION_RECORD exception {};
@@ -140,6 +177,241 @@ DWORD LastWindowsError()
 {
     const DWORD error = ::GetLastError();
     return error ? error : ERROR_GEN_FAILURE;
+}
+
+std::mutex& SnapshotStorageMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+
+// Enumeration and CREATE_NEW form one reservation across this host's monitor
+// threads. Completed and in-flight automatic snapshots both consume a slot;
+// never delete old files to make room for a new renderer.
+DWORD ReserveSnapshotFile(const base::FilePath& directory,
+    const base::FilePath& temporary, base::win::ScopedHandle* file)
+{
+    std::lock_guard<std::mutex> guard(SnapshotStorageMutex());
+    WIN32_FIND_DATAW entry {};
+    const auto pattern = directory.AppendASCII("renderer-pre-oom-*");
+    HANDLE search = ::FindFirstFileW(pattern.value().c_str(), &entry);
+    unsigned count = 0;
+    if (search == INVALID_HANDLE_VALUE) {
+        const DWORD error = LastWindowsError();
+        if (error != ERROR_FILE_NOT_FOUND)
+            return error;
+    } else {
+        DWORD error = ERROR_SUCCESS;
+        for (;;) {
+            const std::wstring_view name(entry.cFileName);
+            const auto ends_with = [&name](std::wstring_view suffix) {
+                return name.size() >= suffix.size()
+                    && name.substr(name.size() - suffix.size()) == suffix;
+            };
+            if (!(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                && (ends_with(L".heapsnapshot") || ends_with(L".heapsnapshot.part"))
+                && ++count >= 4)
+                break;
+            if (!::FindNextFileW(search, &entry)) {
+                error = LastWindowsError();
+                if (error == ERROR_NO_MORE_FILES)
+                    error = ERROR_SUCCESS;
+                break;
+            }
+        }
+        ::FindClose(search);
+        if (error)
+            return error;
+    }
+    if (count >= 4)
+        return ERROR_DISK_QUOTA_EXCEEDED;
+    ULARGE_INTEGER available {};
+    if (!::GetDiskFreeSpaceExW(directory.value().c_str(), &available, nullptr, nullptr))
+        return LastWindowsError();
+    if (available.QuadPart < kSnapshotMaximumBytes)
+        return ERROR_DISK_FULL;
+    file->Set(::CreateFileW(temporary.value().c_str(), GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, CREATE_NEW,
+        FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_OVERLAPPED, nullptr));
+    return file->is_valid() ? ERROR_SUCCESS : LastWindowsError();
+}
+
+LONG SnapshotPhase(SnapshotRecord* record)
+{
+    return ::InterlockedCompareExchange(&record->state, 0, 0);
+}
+
+void FinishSnapshot(SnapshotRecord* record, SnapshotState state,
+    DWORD error, SnapshotReason reason)
+{
+    ::InterlockedExchange(&record->error, error);
+    ::InterlockedExchange(&record->reason, reason);
+    ::InterlockedExchange(&record->state, state);
+}
+
+SnapshotReason SnapshotBudget(SnapshotRecord* record)
+{
+    const uint64_t now = ::GetTickCount64();
+    if (::InterlockedCompareExchange(&record->cancel, 0, 0))
+        return kSnapshotCancelled;
+    const uint64_t deadline = ReadCounter(&record->deadline);
+    if (deadline && now >= deadline)
+        return kSnapshotTimeout;
+    const uint64_t tick = ReadCounter(&record->budget_tick);
+    if (!tick || now - tick > 1500)
+        return kSnapshotStaleBudget;
+    const uint64_t used = std::max(ReadCounter(&record->trigger_used),
+        ReadCounter(&record->capture_used));
+    if (used > UINT64_MAX - kSnapshotReserve)
+        return kSnapshotHeadroom;
+    const uint64_t required = used + kSnapshotReserve;
+    PROCESS_MEMORY_COUNTERS_EX process {};
+    process.cb = sizeof(process);
+    PERFORMANCE_INFORMATION system {};
+    system.cb = sizeof(system);
+    if (!::GetProcessMemoryInfo(::GetCurrentProcess(),
+            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&process), sizeof(process))
+        || !::GetPerformanceInfo(&system, sizeof(system)))
+        return kSnapshotStaleBudget;
+    const uint64_t limit = ReadCounter(&record->process_limit);
+    if (!limit || process.PrivateUsage >= limit || limit - process.PrivateUsage < required
+        || ReadCounter(&record->job_available) < required
+        || system.CommitTotal > system.CommitLimit
+        || (system.CommitLimit - system.CommitTotal) * system.PageSize < required
+        || system.PhysicalAvailable * system.PageSize < required)
+        return kSnapshotHeadroom;
+    return kSnapshotNoError;
+}
+
+class SnapshotWriter final : public v8::ActivityControl, public v8::OutputStream {
+public:
+    SnapshotWriter(SnapshotRecord* record, HANDLE file)
+        : record_(record), file_(file), event_(::CreateEventW(nullptr, TRUE, FALSE, nullptr))
+    {
+        if (!event_.is_valid()) {
+            error_ = LastWindowsError();
+            reason_ = kSnapshotIoError;
+        }
+    }
+    v8::ActivityControl::ControlOption ReportProgressValue(uint32_t, uint32_t) override
+    {
+        return Check() ? v8::ActivityControl::kContinue : v8::ActivityControl::kAbort;
+    }
+    int GetChunkSize() override { return 64 * 1024; }
+    v8::OutputStream::WriteResult WriteAsciiChunk(char* data, int size) override
+    {
+        if (!Check())
+            return v8::OutputStream::kAbort;
+        if (size < 0 || static_cast<uint64_t>(size) > kSnapshotMaximumBytes - bytes_) {
+            reason_ = kSnapshotSizeLimit;
+            error_ = ERROR_FILE_TOO_LARGE;
+            return v8::OutputStream::kAbort;
+        }
+        OVERLAPPED operation {};
+        operation.Offset = static_cast<DWORD>(bytes_);
+        operation.OffsetHigh = static_cast<DWORD>(bytes_ >> 32);
+        ::ResetEvent(event_.get());
+        operation.hEvent = event_.get();
+        DWORD written = 0;
+        BOOL success = ::WriteFile(file_, data, size, &written, &operation);
+        if (!success && ::GetLastError() == ERROR_IO_PENDING) {
+            while (::WaitForSingleObject(event_.get(), 100) == WAIT_TIMEOUT && Check()) {}
+            if (!Check())
+                ::CancelIoEx(file_, &operation);
+            // The OVERLAPPED and V8 chunk must stay alive until cancellation
+            // completes. Disk I/O is overlapped so normal deadline checks run.
+            success = ::GetOverlappedResult(file_, &operation, &written, TRUE);
+        }
+        if (!success || written != static_cast<DWORD>(size)) {
+            if (!error_) error_ = success ? ERROR_WRITE_FAULT : LastWindowsError();
+            if (reason_ == kSnapshotNoError) reason_ = kSnapshotIoError;
+            return v8::OutputStream::kAbort;
+        }
+        bytes_ += written;
+        ::InterlockedExchange64(&record_->bytes, bytes_);
+        return Check() ? v8::OutputStream::kContinue : v8::OutputStream::kAbort;
+    }
+    void EndOfStream() override { complete_ = Check(); }
+    bool complete() const { return complete_; }
+    DWORD error() const { return error_ ? error_ : ERROR_OPERATION_ABORTED; }
+    SnapshotReason reason() const
+    {
+        return reason_ == kSnapshotNoError ? kSnapshotIncomplete : reason_;
+    }
+private:
+    bool Check()
+    {
+        if (reason_ == kSnapshotNoError) {
+            reason_ = SnapshotBudget(record_);
+            if (reason_ != kSnapshotNoError)
+                error_ = reason_ == kSnapshotTimeout ? ERROR_TIMEOUT : ERROR_NOT_ENOUGH_MEMORY;
+        }
+        return reason_ == kSnapshotNoError;
+    }
+    SnapshotRecord* record_;
+    HANDLE file_;
+    base::win::ScopedHandle event_;
+    uint64_t bytes_ = 0;
+    DWORD error_ = 0;
+    SnapshotReason reason_ = kSnapshotNoError;
+    bool complete_ = false;
+};
+
+void SampleSnapshot(v8::Isolate* isolate, CrashRecord* crash)
+{
+    if (!isolate)
+        return;
+    auto* record = &crash->snapshot;
+    if (SnapshotPhase(record) == kSnapshotArmed) {
+        const uint64_t limit = ReadCounter(&crash->main_sample.limit);
+        const uint64_t used = ReadCounter(&crash->main_sample.used);
+        const LONG percent = ::InterlockedCompareExchange(&record->threshold_percent, 0, 0);
+        if (!limit || percent < 1 || percent > 65 || used < (limit / 100) * percent)
+            return;
+        ::InterlockedExchange64(&record->trigger_used, used);
+        ::InterlockedExchange64(&record->trigger_limit, limit);
+        ::InterlockedExchange64(&record->trigger_tick, ::GetTickCount64());
+        ::InterlockedCompareExchange(&record->state, kSnapshotRequested, kSnapshotArmed);
+    }
+    if (::InterlockedCompareExchange(&record->state, kSnapshotCapturing, kSnapshotReady)
+        != kSnapshotReady)
+        return;
+    base::win::ScopedHandle file(reinterpret_cast<HANDLE>(ReadCounter(&record->handle)));
+    ::InterlockedExchange64(&record->handle, 0);
+    // A request may sit for a sampling interval while JavaScript grows the
+    // heap. Never start profiling near the limit based on stale trigger data.
+    const uint64_t capture_used = ReadCounter(&crash->main_sample.used);
+    const uint64_t capture_limit = ReadCounter(&crash->main_sample.limit);
+    ::InterlockedExchange64(&record->capture_used, capture_used);
+    ::InterlockedExchange64(&record->capture_limit, capture_limit);
+    if (!capture_limit || capture_used > (capture_limit / 100) * 85) {
+        file.Close();
+        FinishSnapshot(record, kSnapshotSkipped, ERROR_NOT_ENOUGH_MEMORY, kSnapshotHeadroom);
+        return;
+    }
+    const auto budget = SnapshotBudget(record);
+    if (budget != kSnapshotNoError) {
+        file.Close();
+        FinishSnapshot(record, kSnapshotSkipped, ERROR_NOT_ENOUGH_MEMORY, budget);
+        return;
+    }
+    SnapshotWriter writer(record, file.get());
+    v8::HeapProfiler::HeapSnapshotOptions options;
+    options.control = &writer;
+    const v8::HeapSnapshot* snapshot = isolate->GetHeapProfiler()->TakeHeapSnapshot(options);
+    if (snapshot) {
+        snapshot->Serialize(&writer, v8::HeapSnapshot::kJSON);
+        const_cast<v8::HeapSnapshot*>(snapshot)->Delete();
+    }
+    file.Close();
+    // A concurrent host shutdown may already have retired this attempt.
+    if (SnapshotPhase(record) == kSnapshotCapturing) {
+        ::InterlockedExchange(&record->error, writer.complete() ? ERROR_SUCCESS : writer.error());
+        ::InterlockedExchange(&record->reason,
+            writer.complete() ? kSnapshotNoError : writer.reason());
+        ::InterlockedCompareExchange(&record->state,
+            writer.complete() ? kSnapshotSerialized : kSnapshotFailed, kSnapshotCapturing);
+    }
 }
 
 base::Value::Dict ImageIdentity()
@@ -237,6 +509,24 @@ public:
             return false;
         }
         new (record_) CrashRecord();
+        // Read only in the trusted host, before the renderer is launched.
+        wchar_t configuration[16] {};
+        ::SetLastError(ERROR_SUCCESS);
+        const DWORD length = ::GetEnvironmentVariableW(
+            L"MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT", configuration, 16);
+        if (length || ::GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            int percent = -1;
+            if (length && length < 16
+                && base::StringToInt(base::WideToUTF8(configuration), &percent)
+                && percent >= 0 && percent <= 65) {
+                record_->snapshot.threshold_percent = percent;
+                if (!percent)
+                    record_->snapshot.state = kSnapshotDisabled;
+            } else {
+                FinishSnapshot(&record_->snapshot, kSnapshotUnavailable,
+                    ERROR_INVALID_PARAMETER, kSnapshotInvalidConfiguration);
+            }
+        }
         return true;
     }
 
@@ -263,6 +553,15 @@ public:
         pid_ = ::GetProcessId(process_.get());
         directory_ = base::FilePath::FromUTF8Unsafe(directory);
         image_ = ImageIdentity();
+        FILETIME time;
+        ::GetSystemTimeAsFileTime(&time);
+        const uint64_t timestamp = (static_cast<uint64_t>(time.dwHighDateTime) << 32)
+            | time.dwLowDateTime;
+        const std::string snapshot_name = "renderer-pre-oom-" + base::NumberToString(timestamp)
+            + "-" + base::NumberToString(pid_);
+        snapshot_path_ = directory_.AppendASCII(snapshot_name + ".heapsnapshot");
+        snapshot_temporary_ = directory_.AppendASCII(snapshot_name + ".heapsnapshot.part");
+        snapshot_metadata_ = directory_.AppendASCII(snapshot_name + ".json");
         port_.Set(::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
         JOBOBJECT_ASSOCIATE_COMPLETION_PORT association {};
         association.CompletionPort = port_.get();
@@ -380,8 +679,24 @@ private:
         }
         if (have_system) {
             system_commit_limit_ = system.CommitLimit * system.PageSize;
-            system_commit_available_ = (system.CommitLimit - system.CommitTotal) * system.PageSize;
+            system_commit_available_ = system.CommitTotal <= system.CommitLimit
+                ? (system.CommitLimit - system.CommitTotal) * system.PageSize : 0;
             physical_available_ = system.PhysicalAvailable * system.PageSize;
+        }
+        if (have_process && have_job && have_system
+            && (limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_PROCESS_MEMORY)) {
+            uint64_t available = counters.PrivateUsage < limits.ProcessMemoryLimit
+                ? limits.ProcessMemoryLimit - counters.PrivateUsage : 0;
+            if (limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_JOB_MEMORY) {
+                // Peak job commit is an intentionally conservative upper bound
+                // on current commit, including any other processes in this Job.
+                available = std::min<uint64_t>(available,
+                    limits.PeakJobMemoryUsed < limits.JobMemoryLimit
+                        ? limits.JobMemoryLimit - limits.PeakJobMemoryUsed : 0);
+            }
+            ::InterlockedExchange64(&record_->snapshot.process_limit, limits.ProcessMemoryLimit);
+            ::InterlockedExchange64(&record_->snapshot.job_available, available);
+            ::InterlockedExchange64(&record_->snapshot.budget_tick, ::GetTickCount64());
         }
     }
 
@@ -389,6 +704,7 @@ private:
     {
         base::Value::Dict result;
         result.Set("crashCaptureStatus", captured_ ? "captured" : "not-captured");
+        result.Set("preOomHeapSnapshot", SnapshotDetails());
         result.Set("sandboxMemoryLimitExceeded", memory_limit_hit_.load()
             ? base::Value(true) : base::Value());
         base::Value::Dict memory;
@@ -561,19 +877,244 @@ private:
         return error;
     }
 
+    base::Value::Dict SnapshotDetails()
+    {
+        auto* snapshot = &record_->snapshot;
+        const LONG state = SnapshotPhase(snapshot);
+        const char* status = "unavailable";
+        switch (state) {
+        case kSnapshotArmed: status = "armed"; break;
+        case kSnapshotRequested: status = "requested"; break;
+        case kSnapshotPreparing: status = "preparing"; break;
+        case kSnapshotReady: status = "ready"; break;
+        case kSnapshotCapturing: status = "capturing"; break;
+        case kSnapshotSerialized: status = "finalizing"; break;
+        case kSnapshotSucceeded: status = "succeeded"; break;
+        case kSnapshotSkipped: status = "skipped"; break;
+        case kSnapshotFailed: status = "failed"; break;
+        case kSnapshotDisabled: status = "disabled"; break;
+        }
+        const char* reason = "none";
+        switch (::InterlockedCompareExchange(&snapshot->reason, 0, 0)) {
+        case kSnapshotHeadroom: reason = "insufficient-headroom"; break;
+        case kSnapshotStaleBudget: reason = "memory-budget-unavailable"; break;
+        case kSnapshotTimeout: reason = "deadline-exceeded"; break;
+        case kSnapshotSizeLimit: reason = "serialized-size-limit"; break;
+        case kSnapshotIncomplete: reason = "snapshot-incomplete"; break;
+        case kSnapshotIoError: reason = "file-io"; break;
+        case kSnapshotCancelled: reason = "renderer-stopped"; break;
+        case kSnapshotInvalidConfiguration: reason = "invalid-configuration"; break;
+        case kSnapshotStorageBudget: reason = "storage-budget"; break;
+        }
+        base::Value::Dict result;
+        result.Set("status", status);
+        result.Set("reason", reason);
+        result.Set("thresholdPercent", static_cast<int>(
+            ::InterlockedCompareExchange(&snapshot->threshold_percent, 0, 0)));
+        result.Set("error", static_cast<double>(
+            static_cast<DWORD>(::InterlockedCompareExchange(&snapshot->error, 0, 0))));
+        SetBytes(result, "triggerUsedHeapBytes", ReadCounter(&snapshot->trigger_used));
+        SetBytes(result, "triggerHeapLimitBytes", ReadCounter(&snapshot->trigger_limit));
+        SetBytes(result, "triggerTickMilliseconds", ReadCounter(&snapshot->trigger_tick));
+        SetBytes(result, "captureUsedHeapBytes", ReadCounter(&snapshot->capture_used));
+        SetBytes(result, "captureHeapLimitBytes", ReadCounter(&snapshot->capture_limit));
+        SetBytes(result, "serializedBytes", ReadCounter(&snapshot->bytes));
+        if (state == kSnapshotSucceeded)
+            result.Set("path", snapshot_path_.AsUTF8Unsafe());
+        if (snapshot_metadata_written_)
+            result.Set("diagnosticsPath", snapshot_metadata_.AsUTF8Unsafe());
+        if (snapshot_metadata_error_)
+            result.Set("diagnosticsError", static_cast<double>(snapshot_metadata_error_));
+        return result;
+    }
+
+    void PersistSnapshot()
+    {
+        base::Value::Dict report;
+        {
+            std::lock_guard<std::mutex> guard(lock_);
+            report.Set("rendererPid", static_cast<double>(pid_));
+            report.Set("preOomHeapSnapshot", SnapshotDetails());
+        }
+        const auto json = base::WriteJsonWithOptions(report, base::OPTIONS_PRETTY_PRINT);
+        DWORD error = ERROR_SUCCESS;
+        const auto temporary = snapshot_metadata_.AddExtension(FILE_PATH_LITERAL(".part"));
+        if (directory_.empty() || !base::CreateDirectory(directory_))
+            error = directory_.empty() ? ERROR_PATH_NOT_FOUND : LastWindowsError();
+        else if (!json || !base::WriteFile(temporary, *json))
+            error = json ? LastWindowsError() : ERROR_INVALID_DATA;
+        else if (!::MoveFileExW(temporary.value().c_str(), snapshot_metadata_.value().c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            error = LastWindowsError();
+        if (error)
+            ::DeleteFileW(temporary.value().c_str());
+        std::lock_guard<std::mutex> guard(lock_);
+        snapshot_metadata_written_ = !error;
+        snapshot_metadata_error_ = error;
+    }
+
+    void PrepareSnapshot()
+    {
+        auto* snapshot = &record_->snapshot;
+        if (::InterlockedCompareExchange(&snapshot->state, kSnapshotPreparing, kSnapshotRequested)
+            != kSnapshotRequested)
+            return;
+        if (snapshot_attempted_) {
+            FinishSnapshot(snapshot, kSnapshotFailed, ERROR_ALREADY_EXISTS, kSnapshotIncomplete);
+            return;
+        }
+        snapshot_attempted_ = true;
+        ::InterlockedExchange64(&snapshot->deadline,
+            ::GetTickCount64() + kSnapshotDeadlineMilliseconds);
+        const uint64_t used = ReadCounter(&snapshot->trigger_used);
+        bool safe = false;
+        {
+            std::lock_guard<std::mutex> guard(lock_);
+            const uint64_t required = used <= UINT64_MAX - kSnapshotReserve
+                ? used + kSnapshotReserve : UINT64_MAX;
+            safe = ReadCounter(&snapshot->budget_tick)
+                && ::GetTickCount64() - ReadCounter(&snapshot->budget_tick) <= 1500
+                && ReadCounter(&snapshot->job_available) >= required
+                && system_commit_available_ >= required && physical_available_ >= required;
+        }
+        if (!safe) {
+            FinishSnapshot(snapshot, kSnapshotSkipped, ERROR_NOT_ENOUGH_MEMORY, kSnapshotHeadroom);
+            return;
+        }
+        DWORD error = ERROR_SUCCESS;
+        if (directory_.empty() || !base::CreateDirectory(directory_)) {
+            error = directory_.empty() ? ERROR_PATH_NOT_FOUND : LastWindowsError();
+        } else {
+            error = ReserveSnapshotFile(directory_, snapshot_temporary_, &snapshot_file_);
+        }
+        if (error == ERROR_DISK_QUOTA_EXCEEDED || error == ERROR_DISK_FULL) {
+            FinishSnapshot(snapshot, kSnapshotSkipped, error, kSnapshotStorageBudget);
+            return;
+        }
+        HANDLE remote = nullptr;
+        if (!error && !::DuplicateHandle(::GetCurrentProcess(), snapshot_file_.get(),
+                process_.get(), &remote, FILE_WRITE_DATA | SYNCHRONIZE, FALSE, 0))
+            error = LastWindowsError();
+        if (error) {
+            snapshot_file_.Close();
+            ::DeleteFileW(snapshot_temporary_.value().c_str());
+            FinishSnapshot(snapshot, kSnapshotFailed, error, kSnapshotIoError);
+            return;
+        }
+        remote_snapshot_ = remote;
+        ::InterlockedExchange64(&snapshot->handle, reinterpret_cast<LONG64>(remote));
+        ::InterlockedExchange(&snapshot->state, kSnapshotReady);
+    }
+
+    void FinalizeSnapshot()
+    {
+        auto* snapshot = &record_->snapshot;
+        LARGE_INTEGER size {};
+        DWORD error = ERROR_SUCCESS;
+        if (::GetTickCount64() >= ReadCounter(&snapshot->deadline))
+            error = ERROR_TIMEOUT;
+        else if (!snapshot_file_.is_valid())
+            error = ERROR_INVALID_HANDLE;
+        else if (!::GetFileSizeEx(snapshot_file_.get(), &size))
+            error = LastWindowsError();
+        else if (size.QuadPart <= 0 || static_cast<uint64_t>(size.QuadPart) > kSnapshotMaximumBytes
+            || static_cast<uint64_t>(size.QuadPart) != ReadCounter(&snapshot->bytes))
+            error = ERROR_INVALID_DATA;
+        else if (!::FlushFileBuffers(snapshot_file_.get()))
+            error = LastWindowsError();
+        if (!error && ::GetTickCount64() >= ReadCounter(&snapshot->deadline))
+            error = ERROR_TIMEOUT;
+        snapshot_file_.Close();
+        if (!error) {
+            // Keep a .part -> completed rename from racing a slot enumeration.
+            std::lock_guard<std::mutex> guard(SnapshotStorageMutex());
+            if (!::MoveFileExW(snapshot_temporary_.value().c_str(),
+                    snapshot_path_.value().c_str(), MOVEFILE_WRITE_THROUGH))
+                error = LastWindowsError();
+        }
+        if (error)
+            ::DeleteFileW(snapshot_temporary_.value().c_str());
+        FinishSnapshot(snapshot, error ? kSnapshotFailed : kSnapshotSucceeded,
+            error, !error ? kSnapshotNoError
+                : error == ERROR_TIMEOUT ? kSnapshotTimeout : kSnapshotIoError);
+    }
+
+    void ServiceSnapshot(bool stopping)
+    {
+        auto* snapshot = &record_->snapshot;
+        LONG state = SnapshotPhase(snapshot);
+        if (stopping) {
+            ::InterlockedExchange(&snapshot->cancel, 1);
+            // A ready capability is still host-owned. Claim its state before
+            // closing it remotely; never close an already renderer-owned handle.
+            if (::InterlockedCompareExchange(&snapshot->state, kSnapshotPreparing,
+                    kSnapshotReady) == kSnapshotReady) {
+                HANDLE remote = remote_snapshot_;
+                HANDLE reclaimed = nullptr;
+                if (remote && ::DuplicateHandle(process_.get(), remote, ::GetCurrentProcess(),
+                        &reclaimed, 0, FALSE, DUPLICATE_CLOSE_SOURCE | DUPLICATE_SAME_ACCESS))
+                    ::CloseHandle(reclaimed);
+                ::InterlockedExchange64(&snapshot->handle, 0);
+                remote_snapshot_ = nullptr;
+                state = kSnapshotPreparing;
+            } else {
+                state = SnapshotPhase(snapshot);
+            }
+            if (state == kSnapshotRequested || state == kSnapshotPreparing
+                || state == kSnapshotCapturing || state == kSnapshotSerialized) {
+                // Neither shutdown nor a crashed renderer may finalize a file.
+                FinishSnapshot(snapshot, kSnapshotFailed, ERROR_OPERATION_ABORTED,
+                    kSnapshotCancelled);
+            }
+        } else {
+            if (state == kSnapshotRequested)
+                PrepareSnapshot();
+            state = SnapshotPhase(snapshot);
+            if ((state == kSnapshotReady || state == kSnapshotCapturing)
+                && ::GetTickCount64() >= ReadCounter(&snapshot->deadline)) {
+                ::InterlockedExchange(&snapshot->cancel, 1);
+                if (state == kSnapshotReady) {
+                    ServiceSnapshot(true);
+                    return;
+                }
+                FinishSnapshot(snapshot, kSnapshotFailed, ERROR_TIMEOUT, kSnapshotTimeout);
+            }
+        }
+        state = SnapshotPhase(snapshot);
+        if (state == kSnapshotSerialized && !stopping)
+            FinalizeSnapshot();
+        else if (stopping || state == kSnapshotSkipped || state == kSnapshotFailed) {
+            snapshot_file_.Close();
+            if (state != kSnapshotSucceeded)
+                ::DeleteFileW(snapshot_temporary_.value().c_str());
+        }
+        state = SnapshotPhase(snapshot);
+        // An armed/disabled renderer has no capture to persist. Rewriting an
+        // unchanged terminal sidecar during close can race profile cleanup.
+        if (state != persisted_snapshot_state_) {
+            if (state != kSnapshotArmed && state != kSnapshotDisabled)
+                PersistSnapshot();
+            persisted_snapshot_state_ = state;
+        }
+    }
+
     void Run()
     {
         const HANDLE handles[] = { stop_.get(), requested_.get(), process_.get() };
         for (;;) {
             DWORD result = ::WaitForMultipleObjects(3, handles, FALSE, 250);
             DrainJobNotifications();
-            if (result == WAIT_OBJECT_0)
+            if (result == WAIT_OBJECT_0) {
+                ServiceSnapshot(true);
                 break;
+            }
             if (result == WAIT_OBJECT_0 + 1) {
+                ServiceSnapshot(true);
                 Capture();
                 break;
             }
             SampleMemory();
+            ServiceSnapshot(result == WAIT_OBJECT_0 + 2 || result == WAIT_FAILED);
             if (result == WAIT_OBJECT_0 + 2 || result == WAIT_FAILED)
                 break;
         }
@@ -585,6 +1126,13 @@ private:
     DWORD pid_ = 0;
     DWORD notification_error_ = 0;
     base::FilePath directory_;
+    base::FilePath snapshot_path_, snapshot_temporary_, snapshot_metadata_;
+    base::win::ScopedHandle snapshot_file_;
+    HANDLE remote_snapshot_ = nullptr; // Host-owned remote value, never read from shared memory.
+    LONG persisted_snapshot_state_ = -1;
+    bool snapshot_attempted_ = false;
+    bool snapshot_metadata_written_ = false;
+    DWORD snapshot_metadata_error_ = 0;
     base::Value::Dict image_;
     std::mutex lock_;
     base::Value::Dict result_;
@@ -654,8 +1202,10 @@ bool InitializeRendererCrashDiagnostics(RendererCrashHandles handles)
 
 void RecordRendererV8Memory(v8::Isolate* isolate) noexcept
 {
-    if (g_crash_record)
+    if (g_crash_record) {
         SampleV8(isolate, &g_crash_record->main_sample);
+        SampleSnapshot(isolate, g_crash_record);
+    }
 }
 
 void RecordRendererV8OOM(const char* location, bool is_heap_oom, const char* detail) noexcept
