@@ -8,6 +8,38 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.27 packaging (2026-10-27)
+
+Rebuilt the normal Windows x64 Release distribution with runtime identity
+`0.1.27` in `out/memory-repair-native/runtime-dist-0.1.27`, using the same
+Clang 22/MSVC 14.44/Windows SDK 10.0.26100.0 toolchain and two workers as the
+memory-policy candidate below. Assembled the Windows-only immutable release
+and its Windows channel manifest with `scripts/build_runtime_release.py
+--runtime-only`; no npm package or macOS runtime was published by that step.
+
+Release executable SHA-256:
+`f86a3c11fad2f18dccd3250f6d93e201624cb1f78bb4aa9135bdf261a776b9de`.
+The matched full PDB is **1,307,623,424 bytes**, RSDS GUID
+`989678E6BE12D8284C4C44205044422E`, Age `1`. The **258,673,710-byte** symbols
+ZIP contains only the PDB and `symbols.json`; its decompressed PDB SHA-256
+matched the metadata. The **39,493,778-byte** runtime ZIP contains no debug
+symbols. Both ZIP hashes are recorded in `SHASUMS256.txt`.
+
+The actual packaged executable reported `v0.1.27`. Its sandboxed renderer
+passed the 2.125-GiB held-JS-heap responsiveness regression and the real
+pre-OOM object/reference graph capture followed by a fatal V8 OOM/minidump.
+The published npm installer `0.1.12`, extracted into an isolated directory,
+installed the assembled local release successfully; its CLI reported
+`v0.1.27` and ABI `134`. This is local-asset installation verification, not a
+claim that the remote channel was already updated at build time.
+
+Build/assembly logs, release smoke output, installer results and publication
+evidence are under `out/runtime-release-0.1.27-investigation/`. Immutable
+artifacts are under `out/runtime-release-0.1.27/v0.1.27/`; the matching symbol
+store is under `out/memory-repair-native/symbols/mini-electron.pdb/989678E6BE12D8284C4C44205044422E1/`.
+The existing Desktop installation was not replaced. No macOS execution,
+14-hour soak, or unique retained-object cause is claimed.
+
 ## Windows memory policy candidate (2026-10-27)
 
 Incrementally built Windows x64 Release in `out/memory-repair-native` using

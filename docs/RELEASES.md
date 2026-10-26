@@ -6,7 +6,11 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased Windows memory policy and pre-OOM diagnostics
+### Windows runtime 0.1.27
+
+This Windows x64-only runtime update preserves macOS runtime/channel `0.1.25`,
+npm installer `0.1.12`, installer protocol `1`, Electron API compatibility
+`41.2.0`, and Node ABI `134`.
 
 - Restores machine-derived V8 heap defaults instead of limiting each renderer
   isolate to half the Job budget. Coordinates the x64 Job's native headroom
@@ -19,10 +23,11 @@ These are historical release and verification records, not a claim that every pl
 - Fixes unnecessary sidecar rewrites during renderer close that raced profile
   cleanup. Extends real-runtime boundary, capture/refusal and OOM coverage.
 
-This is a locally verified source candidate, not a published runtime or an
-installed Desktop upgrade. See [verification](VERIFICATION.md#windows-memory-policy-candidate-2026-10-27)
+The runtime ZIP and separate compressed matching PDB symbols are assembled from
+the same release build. See [candidate verification](VERIFICATION.md#windows-memory-policy-candidate-2026-10-27)
 and [memory behavior](WINDOWS.md#renderer-memory-diagnostics-and-reclamation).
-The original incident's retaining object owner remains unproven.
+The original incident's retaining object owner remains unproven; the changed
+budget is not proof that long-running heap growth has been eliminated.
 
 ### Windows runtime 0.1.26
 
