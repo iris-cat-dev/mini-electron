@@ -8,6 +8,35 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.28 packaging (2026-10-27)
+
+Incrementally rebuilt the Windows x64 Release with runtime identity `0.1.28`,
+Clang 22, MSVC 14.44, Windows SDK 10.0.26100.0, cached dependencies and two
+build workers. The immutable runtime ZIP and separate full-PDB ZIP were
+assembled from the same build; no npm package or macOS runtime was included.
+
+Release executable SHA-256:
+`c119de32aa5b364c1c7628864cdf389fcd8562413ab1192644344ac2c06114a5`.
+Matching PDB GUID: `C7DD7EF7035DE0494C4C44205044422E`, Age `1`;
+PDB SHA-256:
+`a92722535b883a95e28e508c36b5130c0b3a9715a46d86a14bded14d5f127434`.
+Both archive hashes are in `SHASUMS256.txt`. The installable ZIP excludes the
+PDB; the symbols ZIP contains only `mini-electron.pdb` and `symbols.json`.
+
+The actual versioned runtime passed the IndexedDB transaction lifetime smoke
+in sandboxed and explicit `--single-process` modes, the IPC-frame regression,
+and a real pre-OOM snapshot followed by a V8 OOM/minidump. The published npm
+installer `0.1.12`, downloaded from the registry and integrity-checked, installed
+the assembled local release in an isolated package. Its CLI reported `v0.1.28`
+and ABI `134`; the resulting executable also passed the IndexedDB smoke.
+
+Build, local installer and runtime evidence are under
+`out/runtime-release-0.1.28-investigation/`; assembled assets are under
+`out/runtime-release-0.1.28/v0.1.28/`. The matching EXE/PDB pair is archived at
+`out/memory-repair-native/symbols/mini-electron.pdb/C7DD7EF7035DE0494C4C44205044422E1/`.
+These local-asset checks did not replace the user's Desktop installation.
+No macOS run, original-session replay or full-day soak is claimed.
+
 ## IndexedDB transaction lifetime repair (2026-10-27)
 
 The production pre-OOM graph identified the embedded IndexedDB's database
