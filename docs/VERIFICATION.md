@@ -8,6 +8,57 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## IndexedDB transaction lifetime repair (2026-10-27)
+
+The production pre-OOM graph identified the embedded IndexedDB's database
+transaction list as the strong root for 1369 finished transactions and
+approximately 2412 MiB of historical cache strings. The source repair ports
+fake-indexeddb's deferred transaction removal on both completion and abort.
+It does not change V8/Job limits, the application's cache budget, or native
+IndexedDB service support.
+
+The new `test/indexeddb-transaction-lifetime-smoke.js` failed against the
+installed, unmodified runtime: after 32 overwrites the database still rooted
+35 finished transactions. It passed against the rebuilt Windows x64 Release
+in both sandboxed-renderer and explicit `--single-process` modes. Each run
+verified 96 large same-key overwrites with one final record, no settled
+transaction history, explicit and constraint-error rollback, cancellation
+before start, overlapping/reentrant writes, explicit commit, aborted and
+committed upgrade event ordering, and delete/reopen.
+
+A separate disposable renderer performed **512 overwrites**, each containing a
+524288-character payload. All eight settled batch samples had zero retained
+transactions; the database contained one record with sequence 512. Only after
+the writes, a known **1024-MiB** live Smi-array anchor crossed the probe's
+host-only 20% snapshot threshold. The real owning-isolate profiler collected
+and serialized the heap successfully:
+
+- Snapshot self bytes: **1025.504 MiB**, including exactly **1024 MiB** of
+  deliberately retained array storage.
+- **Zero** live `FDBTransaction` objects after collection.
+- All string self bytes: **0.591 MiB**; the only large string was the latest
+  **0.5-MiB** database value, not the 512 historical versions.
+
+The existing native IPC-frame, same-document-navigation and preload-scope
+regressions also passed. These are actual executable runs, not Node mocks.
+The 20% capture override applied only to the owned diagnostic process;
+the production default remains 65%.
+
+The normal incremental build reused `out/memory-repair-native`, Clang 22,
+MSVC 14.44 and Windows SDK 10.0.26100.0 with two workers. GN/Ninja/CMake were
+selected from the existing local tool cache. The distribution and extracted
+ZIP passed exact manifest/hash checks, and the matching full PDB was validated.
+Executable SHA-256:
+`9162260373a00699dd80372199393d699ca8666e99dad256de99273af75dfb2f`.
+PDB GUID: `633E631D480A635B4C4C44205044422E`, Age 1.
+
+Evidence, the local runtime distribution and ZIP are under
+`out/indexeddb-lifetime-fix/`; the PDB pair is under
+`out/memory-repair-native/symbols/mini-electron.pdb/633E631D480A635B4C4C44205044422E1/`.
+The local build retains metadata version `0.1.27`; no public release/channel,
+installed Desktop executable, or real user profile was replaced. No macOS
+execution, original-session replay, or full-day soak is claimed.
+
 ## Windows runtime 0.1.27 packaging (2026-10-27)
 
 Rebuilt the normal Windows x64 Release distribution with runtime identity

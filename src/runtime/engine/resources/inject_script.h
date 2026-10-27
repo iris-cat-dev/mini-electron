@@ -3770,7 +3770,7 @@ function __FakeIndexeddb__() {
                     request.result = undefined;
                 }
             });
-            this._state = "finished";
+            this._markFinished();
         }
         abort() {
             if (this._state === "committing" || this._state === "finished") {
@@ -3903,12 +3903,25 @@ function __FakeIndexeddb__() {
             // Check if transaction complete event needs to be fired
             if (this._state !== "finished") {
                 // Either aborted or committed already
-                this._state = "finished";
+                this._markFinished();
                 if (!this.error) {
                     const event = new FakeEvent("complete");
                     this.dispatchEvent(event);
                 }
             }
+        }
+        _markFinished() {
+            this._state = "finished";
+            // fake-indexeddb#171: release the database's historical transaction root.
+            // Defer one task so upgrade/abort observers still see the transaction.
+            queueTask(() => {
+                const { transactions } = this.db._rawDatabase;
+                const index = transactions.indexOf(this);
+                if (index === -1) {
+                    throw new Error("Finished transaction is missing from its database");
+                }
+                transactions.splice(index, 1);
+            });
         }
         commit() {
             if (this._state !== "active") {

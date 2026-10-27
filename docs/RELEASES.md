@@ -6,6 +6,23 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased: IndexedDB finished-transaction retention
+
+- Ports the embedded fake-indexeddb transaction-finalization fix from
+  [upstream #171](https://github.com/dumbmatter/fakeIndexedDB/pull/171). Successful
+  and aborted transactions release the database's historical transaction root
+  on a subsequent task, preserving upgrade/abort event ordering.
+- Fixes same-key cache rewrites retaining historical JSON through transaction
+  listeners and rollback closures. No heap/Job limit increase or application
+  cache reduction is used to mask the leak.
+- Adds a real-runtime lifecycle regression and verifies collection in an
+  owning-renderer heap snapshot after 512 large overwrites.
+
+The local Windows x64 build is under `out/indexeddb-lifetime-fix/`; its metadata
+still identifies runtime `0.1.27`, but it is not the published `0.1.27` binary.
+No installed Desktop executable, public channel, npm package, or macOS release
+was replaced. See [verification and exact identity](VERIFICATION.md#indexeddb-transaction-lifetime-repair-2026-10-27).
+
 ### Windows runtime 0.1.27
 
 This Windows x64-only runtime update preserves macOS runtime/channel `0.1.25`,

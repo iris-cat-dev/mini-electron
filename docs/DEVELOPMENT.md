@@ -32,6 +32,35 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+### IndexedDB transaction lifetime
+
+The embedded in-memory IndexedDB removes completed and aborted transactions
+from their database's transaction list on the next database task. This ports
+[fake-indexeddb's finished-transaction fix](https://github.com/dumbmatter/fakeIndexedDB/pull/171).
+Removal is deferred because upgrade and abort observers still inspect the
+transaction during terminal event dispatch. Event listeners and rollback data
+are not cleared prematurely to hide the retained database root.
+
+This fixes repeated writes to one key retaining all historical values through
+transaction listeners and rollback closures. It does not add a native or
+disk-persistent IndexedDB backend, or change the V8/Job memory budgets.
+
+After rebuilding, exercise the actual runtime:
+
+```sh
+out/windows-x64/runtime-dist/electron.exe --app=test/indexeddb-transaction-lifetime-smoke.js
+out/windows-x64/runtime-dist/electron.exe --single-process --app=test/indexeddb-transaction-lifetime-smoke.js
+```
+
+The isolated regression covers large same-key overwrites, explicit and
+request-error abort rollback, cancellation before start, queued/reentrant
+writes, explicit commit, upgrade abort/commit event ordering, and delete/reopen.
+It checks that settled workloads leave no database-rooted finished transactions.
+See [the Windows verification record](VERIFICATION.md#indexeddb-transaction-lifetime-repair-2026-10-27)
+for the local artifact and a real post-GC heap graph. Rebuilding this checkout
+does not replace an already installed Desktop runtime.
+
+
 ### Windows Notification lifecycle (issue #8)
 
 Source builds fix the VERSION_4 callback/temporary-tray leak reported in
