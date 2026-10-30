@@ -60,6 +60,19 @@ Logs, result JSON, and native coordinate PNG are under
 `out/verification/macos-0.1.29/`; release assembly is under
 `out/runtime-release-0.1.29/`.
 
+Published immutable [GitHub Release `v0.1.29`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.29)
+from source commit `b5b28b8a7`, with only the macOS ZIP, `artifacts.json`, and
+`SHASUMS256.txt`. Downloaded the published ZIP and matched the SHA256 above before
+updating macOS `runtime-v1`. Windows `runtime-v1-win32-x64` remained at `0.1.28`:
+its asset ID, size, update time and manifest digest stayed unchanged
+(`793ac248f1d1764ebbe5f82edb152105ea3dae4f4752109a99ef9164995fef0c`).
+A second fresh npm `0.1.12` package installed from the public, unpinned default
+channel with no local ZIP override; it reported `v0.1.29` and ABI `134`, then
+passed the actual IndexedDB and console-message regressions. The installed
+bundle's deep/strict code-signature verification also passed.
+No Windows asset or npm package was rebuilt or published, and no released
+immutable asset was overwritten.
+
 ## Windows runtime 0.1.28 packaging (2026-10-27)
 
 Incrementally rebuilt the Windows x64 Release with runtime identity `0.1.28`,
