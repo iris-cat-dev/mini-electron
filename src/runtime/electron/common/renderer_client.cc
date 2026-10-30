@@ -439,6 +439,9 @@ public:
     {
         if (closed_.exchange(true, std::memory_order_acq_rel))
             return;
+#if BUILDFLAG(IS_MAC)
+        StopRendererCrashMonitor(process_.crash_monitor);
+#endif
         {
             std::lock_guard<std::mutex> lock(state_->lock);
             state_->alive = false;
@@ -584,6 +587,10 @@ private:
         if (status.exit_code == base::win::kSandboxFatalMemoryExceeded)
             payload.Set("memoryLimitEvidence", "sandbox-exit-code");
 #endif
+#if BUILDFLAG(IS_MAC)
+        if (status.state == RendererProcessState::kExited)
+            AppendRendererCrashDiagnostics(process_.crash_monitor, &payload);
+#endif
         crash.Set("payload", std::move(payload));
         PostEvent(state, std::move(crash));
     }
@@ -692,27 +699,35 @@ private:
 } // namespace
 
 std::unique_ptr<RendererClient> RendererClient::Create(RendererLaunchOptions options,
-    EventCallback event_callback)
+    EventCallback event_callback, std::string* error)
 {
-    if (!base::SequencedTaskRunner::HasCurrentDefault() || options.contents_id <= 0)
+    if (!base::SequencedTaskRunner::HasCurrentDefault() || options.contents_id <= 0) {
+        *error = "invalid renderer launch context";
         return nullptr;
+    }
     uint64_t auth_high = base::RandUint64();
     uint64_t auth_low = base::RandUint64();
     if (!auth_high && !auth_low)
         auth_low = 1;
     RendererPlatformProcess process;
-    std::string error;
     std::unique_ptr<InProcessRenderer> in_process;
     if (IsSingleProcessMode()) {
-        in_process = CreateInProcessRenderer(&process, &error);
+        in_process = CreateInProcessRenderer(&process, error);
         if (!in_process)
             return nullptr;
-    } else if (!LaunchRendererSandbox(auth_high, auth_low, &process, &error)) {
+    } else if (!LaunchRendererSandbox(auth_high, auth_low, &process, error)) {
         return nullptr;
     }
 #if BUILDFLAG(IS_WIN)
     if (!in_process && !StartRendererCrashMonitor(process.crash_monitor,
-            process.process, process.job, options.crash_dump_directory, &error)) {
+            process.process, process.job, options.crash_dump_directory, error)) {
+        TerminateRendererProcess(&process);
+        CloseRendererPlatformProcess(&process);
+        return nullptr;
+    }
+#elif BUILDFLAG(IS_MAC)
+    if (!in_process && !StartRendererCrashMonitor(process.crash_monitor,
+            process.process_id, options.crash_dump_directory, error)) {
         TerminateRendererProcess(&process);
         CloseRendererPlatformProcess(&process);
         return nullptr;
@@ -725,6 +740,7 @@ std::unique_ptr<RendererClient> RendererClient::Create(RendererLaunchOptions opt
     auto client = std::make_unique<RendererClientImpl>(process, auth_high,
         auth_low, state, std::move(in_process));
     if (!client->Start(std::move(options))) {
+        *error = "renderer IPC initialization failed";
         client->Close();
         return nullptr;
     }

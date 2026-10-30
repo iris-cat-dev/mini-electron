@@ -8,6 +8,58 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.29 (2026-10-30)
+
+Incrementally rebuilt Apple Silicon Release with Xcode Clang 17, Python 3.14,
+GN/Ninja, eight workers and cached native dependencies. The final distribution
+was stripped and ad-hoc signed; `codesign --verify --deep --strict` passed.
+This is not a clean-room dependency build or a Windows rebuild.
+
+The 18-scenario packaged-runtime matrix passed:
+- IndexedDB transaction lifetime, console-message, and creation reentrancy in
+  both default independent-renderer and explicit single-process modes.
+- Native desktop coordinates, including negative monitor positions, moved
+  windows, BrowserView offsets, ordinary/precise wheels, and stationary capture.
+  The old `0.1.25` reproduced `112 != 316`; the new PNG visibly renders the
+  pointer/mouse event log with desktop coordinates instead of a blank/error page.
+- High-FD renderer spawn and six pre-OOM cases: actual capture, disabled/invalid
+  settings, four in-flight files, refused destination, and early close.
+  Capture parsed a real `MacPreOomMarker` object node and `retainedMarker` edge,
+  checked file bytes/0600 mode, and preserved the frozen outcome on a later
+  actual SIGKILL exit. Early close joined cleanup with no late file recreation.
+- Events, body-loader, WebSocket receive, and preload scope.
+
+Native lifetime output was `live=64 retained-after-client-destruction=0`,
+`frame-notifiers: retained-after-client-destruction=0`, and
+`standalone-loader: destroyed-after-peer-disconnect=1`. The allocator/pressure
+regression reported `PASS: renderer discardable memory and pressure policy`.
+Actual idle-visibility and event-driven AppKit/libuv pump regressions also passed.
+The registry-published npm installer `0.1.12` installed the assembled ZIP into an
+isolated package using its SHA256 manifest. Its CLI reported `v0.1.29` and ABI
+`134`; installed-runtime IndexedDB, console, creation, high-FD, native coordinates,
+and real pre-OOM capture passed. One initial parallel console run missed the five
+reload-iframe logs within the unchanged five-second observer; isolation and four
+subsequent concurrent console/IndexedDB/creation rounds passed the original test.
+The failed log remains recorded; this does not establish that no intermittent
+reload issue is possible. No exception, lock assertion, or permanent test deadline
+was suppressed or relaxed. The runtime ZIP SHA256 is
+`6e17211e382966c5a078c8357b8bee91e3a7cb96b591611d68d9d90dd3949aea`.
+
+
+Snapshot cases passed in isolated fresh processes. Concurrent runs sometimes
+correctly refused when sampled free-page headroom fell below graph-plus-reserve;
+those refusals were not changed into successes or masked by larger heap limits.
+No synthetic global macOS critical-pressure event, real fatal V8 OOM/minidump,
+full-day soak, original Desktop-session replay, complete WebGL resize matrix,
+Developer ID signing, or notarization is claimed. Automatic single-process
+snapshots are unsupported. The extra IPC-frame focus regression timed out at
+`focus blocker` on both old `0.1.25` and new `0.1.29`, including a LaunchServices
+launch of the new app; it is not counted as passing or claimed repaired here.
+
+Logs, result JSON, and native coordinate PNG are under
+`out/verification/macos-0.1.29/`; release assembly is under
+`out/runtime-release-0.1.29/`.
+
 ## Windows runtime 0.1.28 packaging (2026-10-27)
 
 Incrementally rebuilt the Windows x64 Release with runtime identity `0.1.28`,

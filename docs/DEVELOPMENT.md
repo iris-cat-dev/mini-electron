@@ -224,6 +224,37 @@ Desktop package with its normal logging initialization and unmodified preload.
 Keep preload execution and `preload-error` reporting enabled. Old Windows
 `0.1.17`/`0.1.18` download artifacts do not acquire these source fixes.
 
+### macOS lifecycle and diagnostics regressions
+
+Runtime `0.1.29` also installs the DevTools-free console delegate on macOS and
+captures source locations from the actual owning V8 isolate without Inspector.
+Native creation events preserve destroy/throw reentrancy. Metal completion only
+unlocks a registry lookup when `getPtrLocked()` returned a live owner; missing
+IDs have already been unlocked by that lookup. Lock assertions remain enabled.
+Renderer creation failures throw rather than leaving PID-zero contents loading.
+Private POSIX shared-memory validation uses the actual Darwin page size.
+
+```sh
+ninja -C out/mac-arm64 -j 8 mini_electron_navigation_lifetime_smoke \
+  mini_electron_renderer_memory_pressure_smoke
+out/mac-arm64/mini_electron_navigation_lifetime_smoke
+out/mac-arm64/mini_electron_renderer_memory_pressure_smoke
+out/mac-arm64/mini-electron test/console-message-smoke.js
+out/mac-arm64/mini-electron --single-process test/console-message-smoke.js
+out/mac-arm64/mini-electron test/web-contents-created-smoke.js
+out/mac-arm64/mini-electron --single-process test/web-contents-created-smoke.js
+out/mac-arm64/mini-electron test/mac-renderer-fd-remap-smoke.js
+out/mac-arm64/mini-electron test/mac-pre-oom-snapshot-smoke.js
+```
+
+Run snapshot cases in fresh, isolated processes with sufficient real free-page
+headroom; parallel workloads can correctly trigger a refusal. The same snapshot
+script accepts `--disabled`, `--invalid`, `--storage-budget`, `--file-refusal`, and
+`--early-close`; it verifies a real constructor node/retaining edge, once-only
+results, actual OS exits, and cancellation cleanup, not profiler mocks.
+See [macOS policy and privacy](MACOS.md#renderer-memory-pressure-and-local-pre-oom-diagnostics)
+and [the packaged-runtime record](VERIFICATION.md#macos-runtime-0129-2026-10-30).
+
 ## Trusted single-process UI mode
 
 Source builds support an opt-in mode for packaged or otherwise trusted UI.

@@ -125,7 +125,8 @@ public:
     LRESULT fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireWheelEvent(int x, int y, float wheelDeltaX, float wheelDeltaY, int modifiers,
         std::optional<gfx::PointF> screenPosition = std::nullopt);
-    void firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
+    void firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers,
+        std::optional<gfx::PointF> screenPosition);
     void fireCaptureChangedEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     void fireRealTouchEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);

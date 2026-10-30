@@ -82,6 +82,7 @@ struct HostState {
   bool ready = false;
   int exit_code = 0;
   bool quitting = false;
+  bool crash_dump_path_overridden = false;
   bool exiting = false;
   bool exit_requested = false;
   int next_window_id = 1;
@@ -246,6 +247,15 @@ NSRect ElectronRectFromCocoa(NSRect rect) {
   return rect;
 }
 
+NSPoint ScreenPointForEvent(NSEvent* event, NSWindow* window) {
+  if (CGEventRef native = event.CGEvent) {
+    const CGPoint point = CGEventGetLocation(native);
+    return NSMakePoint(point.x, point.y);
+  }
+  const NSPoint point = [window convertPointToScreen:event.locationInWindow];
+  return NSMakePoint(point.x, DesktopTop() - point.y);
+}
+
 void RefreshNamedPaths() {
   HostState& state = State();
   const std::string application_support = SearchPath(NSApplicationSupportDirectory);
@@ -257,6 +267,8 @@ void RefreshNamedPaths() {
   state.paths["cache"] = caches;
   state.paths["logs"] = logs + "/" + state.name;
   state.paths["userData"] = application_support + "/" + state.name;
+  if (!state.crash_dump_path_overridden)
+    state.paths["crashDumps"] = state.paths["userData"] + "/Crashpad";
   state.paths["documents"] = SearchPath(NSDocumentDirectory);
   state.paths["downloads"] = SearchPath(NSDownloadsDirectory);
   state.paths["desktop"] = SearchPath(NSDesktopDirectory);
@@ -365,6 +377,10 @@ void AppSetPath(const v8::FunctionCallbackInfo<v8::Value>& info) {
     return;
   }
   State().paths[name] = path;
+  if (name == "crashDumps")
+    State().crash_dump_path_overridden = true;
+  else if (name == "userData" && !State().crash_dump_path_overridden)
+    State().paths["crashDumps"] = path + "/Crashpad";
 }
 
 void AppFocus(const v8::FunctionCallbackInfo<v8::Value>&) {
@@ -767,6 +783,7 @@ class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
   void Draw(NSRect dirty_rect) override;
   void Resize() override;
   void RefreshVisibility() override;
+  void UpdateScreenRects();
   void Focus(bool focused) override;
   bool SendInput(base::Value::Dict event) override;
   bool SendNativeFileDrag(base::Value::Dict event,
@@ -841,6 +858,7 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   void DidBecomeKey();
   void DidResignKey();
   void DidResize();
+  void UpdateScreenRects();
   void LayoutWindowButtons();
 
   static v8::Persistent<v8::Function> constructor;
@@ -1436,10 +1454,13 @@ static bool IsPointerEvent(NSEventType type) {
 
 - (void)sendMouse:(NSEvent*)event type:(const char*)type button:(const char*)button {
   NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
+  const NSPoint screen_point = mini_electron::electron::ScreenPointForEvent(event, self.window);
   base::Value::Dict input;
   input.Set("type", type);
   input.Set("x", static_cast<int>(std::lround(point.x)));
   input.Set("y", static_cast<int>(std::lround(point.y)));
+  input.Set("screenX", screen_point.x);
+  input.Set("screenY", screen_point.y);
   input.Set("button", button);
   input.Set("modifiers", [self mouseModifiers:event]);
   _owner->SendInput(std::move(input));
@@ -1469,10 +1490,13 @@ static bool IsPointerEvent(NSEventType type) {
 - (void)otherMouseUp:(NSEvent*)event { [self sendMouse:event type:"mouseUp" button:"middle"]; }
 - (void)scrollWheel:(NSEvent*)event {
   NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
+  const NSPoint screen_point = mini_electron::electron::ScreenPointForEvent(event, self.window);
   base::Value::Dict input;
   input.Set("type", "mouseWheel");
   input.Set("x", static_cast<int>(std::lround(point.x)));
   input.Set("y", static_cast<int>(std::lround(point.y)));
+  input.Set("screenX", screen_point.x);
+  input.Set("screenY", screen_point.y);
   if (event.hasPreciseScrollingDeltas) {
     // Trackpads already report logical pixels; do not turn them into wheel ticks.
     input.Set("precise", true);
@@ -1739,6 +1763,19 @@ static bool IsPointerEvent(NSEventType type) {
   NativeCallbackScope scope(state);
   _owner->DidResize();
 }
+- (void)windowDidMove:(NSNotification*)notification {
+  HostState& state = State();
+  if (!CanEnterJavaScript(state))
+    return;
+  NativeCallbackScope scope(state);
+  _owner->UpdateScreenRects();
+}
+- (void)windowDidChangeScreen:(NSNotification*)notification {
+  [self windowDidResize:notification];
+}
+- (void)windowDidChangeBackingProperties:(NSNotification*)notification {
+  [self windowDidResize:notification];
+}
 - (void)windowDidUpdate:(NSNotification*)notification {
   _owner->LayoutWindowButtons();
 }
@@ -1986,6 +2023,7 @@ void MacBrowserWindow::DestroyNative() {
   closed_ = true;
   DetachNativeLayer();
   auto& windows = State().windows;
+  const size_t previous_window_count = windows.size();
   windows.erase(std::remove(windows.begin(), windows.end(), this), windows.end());
   atom::WindowList::removeWindow(this);
   if (web_contents_) {
@@ -2016,7 +2054,7 @@ void MacBrowserWindow::DestroyNative() {
 #endif
   destroying_ = false;
   Emit(getWrapper(), "closed");
-  if (windows.empty() && !State().quitting)
+  if (windows.size() < previous_window_count && windows.empty() && !State().quitting)
     Emit(AppObject(isolate()), "window-all-closed");
 }
 
@@ -2304,7 +2342,23 @@ void RendererSurfaceHost::DrawFrame(atom::WebContents* contents, NSView* view,
   drawn_generation_ = presented_frame_.generation;
 }
 
+void UpdateWebContentsScreenRects(atom::WebContents* contents, NSView* view) {
+  if (!contents || !view.window)
+    return;
+  const NSRect widget = ElectronRectFromCocoa(
+      [view.window convertRectToScreen:[view convertRect:view.bounds toView:nil]]);
+  const NSRect window = ElectronRectFromCocoa(view.window.frame);
+  const auto rect = [](NSRect value) {
+    return gfx::Rect(static_cast<int>(std::lround(value.origin.x)),
+        static_cast<int>(std::lround(value.origin.y)),
+        static_cast<int>(std::lround(value.size.width)),
+        static_cast<int>(std::lround(value.size.height)));
+  };
+  contents->setScreenRects(rect(widget), rect(window));
+}
+
 void ResizeWebContents(atom::WebContents* contents, NSView* view) {
+  UpdateWebContentsScreenRects(contents, view);
   if (!contents || !view)
     return;
   NSScreen* screen = view.window.screen ?: NSScreen.mainScreen;
@@ -2354,6 +2408,16 @@ void MacBrowserWindow::Resize() {
   ResizeWebContents(web_contents_, renderer_view_);
   UpdateFrame(web_contents_, renderer_view_);
   RefreshVisibility();
+}
+
+void MacBrowserWindow::UpdateScreenRects() {
+  UpdateWebContentsScreenRects(web_contents_, renderer_view_);
+  for (MacBrowserView* view : browser_views_)
+    view->UpdateScreenRects();
+}
+
+void MacBrowserView::UpdateScreenRects() {
+  UpdateWebContentsScreenRects(web_contents_, view_);
 }
 
 void MacBrowserWindow::RefreshVisibility() {
@@ -2501,7 +2565,22 @@ void MacBrowserView::New(const v8::FunctionCallbackInfo<v8::Value>& info) {
       gin_helper::Dictionary::CreateEmpty(info.GetIsolate());
   if (info.Length() && info[0]->IsObject())
     options = gin_helper::Dictionary(info.GetIsolate(), info[0].As<v8::Object>());
-  new MacBrowserView(info.GetIsolate(), info.This(), options);
+  v8::TryCatch creation_exception(info.GetIsolate());
+  auto* self = new MacBrowserView(info.GetIsolate(), info.This(), options);
+  if (!self->web_contents_ || creation_exception.HasCaught()) {
+    {
+      v8::TryCatch cleanup_exception(info.GetIsolate());
+      self->destroy();
+      if (cleanup_exception.HasCaught())
+        cleanup_exception.Reset();
+    }
+    self->wrapper_.Reset();
+    if (!creation_exception.HasCaught())
+      info.GetIsolate()->ThrowException(v8::Exception::Error(
+          V8String(info.GetIsolate(), "BrowserView creation failed")));
+    creation_exception.ReThrow();
+    return;
+  }
   info.GetReturnValue().Set(info.This());
 }
 
@@ -2907,7 +2986,22 @@ void MacBrowserWindow::New(const v8::FunctionCallbackInfo<v8::Value>& info) {
   }
   gin_helper::Dictionary options = gin_helper::Dictionary::CreateEmpty(info.GetIsolate());
   if (info.Length() && info[0]->IsObject()) options = gin_helper::Dictionary(info.GetIsolate(), info[0].As<v8::Object>());
-  new MacBrowserWindow(info.GetIsolate(), info.This(), options);
+  v8::TryCatch creation_exception(info.GetIsolate());
+  auto* self = new MacBrowserWindow(info.GetIsolate(), info.This(), options);
+  if (!self->web_contents_ || creation_exception.HasCaught()) {
+    {
+      v8::TryCatch cleanup_exception(info.GetIsolate());
+      self->DestroyNative();
+      if (cleanup_exception.HasCaught())
+        cleanup_exception.Reset();
+    }
+    self->wrapper_.Reset();
+    if (!creation_exception.HasCaught())
+      info.GetIsolate()->ThrowException(v8::Exception::Error(
+          V8String(info.GetIsolate(), "BrowserWindow creation failed")));
+    creation_exception.ReThrow();
+    return;
+  }
   info.GetReturnValue().Set(info.This());
 }
 
@@ -3291,6 +3385,19 @@ v8::Local<v8::Object> GetBrowserWindowForNativeWindow(void* native_window) {
       return window->getWrapper();
   }
   return {};
+}
+
+void EmitWebContentsCreated(v8::Isolate* isolate,
+                           v8::Local<v8::Object> contents) {
+  if (!CanEmitAppEvent(State()))
+    return;
+  v8::Local<v8::Object> app = AppObject(isolate);
+  mate::emitEvent(isolate, app, "web-contents-created",
+      mate::internal::createJSEvent(isolate, app), contents);
+}
+
+const std::string& GetMacCrashDumpDirectory() {
+  return State().paths.at("crashDumps");
 }
 
 void InstallMacElectronBindings(node::Environment* environment,

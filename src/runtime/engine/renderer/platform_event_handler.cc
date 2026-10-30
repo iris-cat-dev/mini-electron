@@ -196,7 +196,8 @@ void PlatformEventHandler::fireWheelEventOnCompositorThread(int x, int y,
     m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::make_unique<blink::WebCoalescedInputEvent>(webGestureEvent, ui::LatencyInfo()));
 }
 
-void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
+void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers,
+    std::optional<gfx::PointF> screenPosition)
 {
     if (deltaX == 0 && deltaY == 0)
         return;
@@ -204,16 +205,17 @@ void PlatformEventHandler::firePreciseWheelEvent(int x, int y, float deltaX, flo
     if (m_isDispatchDirectlyToWidget)
         runner = RenderThreadImpl::get()->getTaskRunner();
     runner->PostTask(FROM_HERE, base::BindOnce(
-        [](PlatformEventHandler* self, int x, int y, float deltaX, float deltaY, int modifiers) {
+        [](PlatformEventHandler* self, int x, int y, float deltaX, float deltaY, int modifiers,
+            std::optional<gfx::PointF> screenPosition) {
             base::AutoLock lock(self->m_lock);
             // Blink derives DOM wheelDeltaX/Y from ticks, not pixel deltas.
             // Preserve both representations for JavaScript scrollers such as xterm.
             self->fireWheelEventOnCompositorThread(x, y,
                 deltaX / static_cast<float>(WHEEL_DELTA),
                 deltaY / static_cast<float>(WHEEL_DELTA), deltaX, deltaY,
-                modifiers, ui::ScrollGranularity::kScrollByPrecisePixel, true);
+                modifiers, ui::ScrollGranularity::kScrollByPrecisePixel, true, screenPosition);
         },
-        base::Unretained(this), x, y, deltaX, deltaY, modifiers));
+        base::Unretained(this), x, y, deltaX, deltaY, modifiers, screenPosition));
 }
 
 LRESULT PlatformEventHandler::fireWheelEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

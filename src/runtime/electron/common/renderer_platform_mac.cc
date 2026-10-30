@@ -28,6 +28,8 @@
 #include <vector>
 
 #include "base/rand_util.h"
+#include "base/command_line.h"
+#include "src/runtime/electron/common/renderer_crash_diagnostics.h"
 #include "base/strings/string_number_conversions.h"
 #include "src/runtime/electron/common/renderer_protocol.h"
 #include "src/platform/macos/metal_compositor.h"
@@ -100,6 +102,11 @@ std::vector<std::string> GetPreferredSystemLanguages()
 bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     RendererPlatformProcess* output, std::string* error)
 {
+    auto diagnostics = CreateRendererCrashMonitor(error);
+    if (!diagnostics)
+        return false;
+    const int diagnostics_mapping = MacRendererDiagnosticsMapping(diagnostics);
+    const int diagnostics_socket = MacRendererDiagnosticsSocket(diagnostics);
     int to_child[2] = { -1, -1 };
     int from_child[2] = { -1, -1 };
     int control[2] = { -1, -1 };
@@ -192,38 +199,98 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
         "--renderer-frame-size=" + base::NumberToString(kFrameMappingSize),
         "--renderer-auth-high=" + base::NumberToString(auth_high),
         "--renderer-auth-low=" + base::NumberToString(auth_low),
+        "--renderer-diagnostics-mapping=202",
+        "--renderer-diagnostics-socket=203",
     };
     std::vector<char*> argv;
     for (auto& argument : arguments)
         argv.push_back(argument.data());
     argv.push_back(nullptr);
 
+    // A source can already occupy any of the six child destinations. Preserve
+    // every source before constructing actions so no dup2 overwrites another
+    // channel (including the dedicated diagnostics transport).
+    const int sources[] = { to_child[0], from_child[1], frame_fd, control[1],
+        diagnostics_mapping, diagnostics_socket };
+    const int destinations[] = { kRendererReadFd, kRendererWriteFd,
+        kRendererFrameFd, kRendererControlFd, 202, 203 };
+    int safe_sources[] = { -1, -1, -1, -1, -1, -1 };
+    auto close_safe_sources = [&] {
+        for (int fd : safe_sources) {
+            if (fd >= 0)
+                ::close(fd);
+        }
+    };
+    for (size_t index = 0; index < 6; ++index) {
+        if (!SetCloseOnExec(sources[index])) {
+            const int descriptor_error = errno;
+            close_safe_sources();
+            ::close(frame_read_fd);
+            ::close(frame_fd);
+            close_channels();
+            *error = std::string("failed to protect renderer source: ")
+                + std::strerror(descriptor_error);
+            return false;
+        }
+        safe_sources[index] = ::fcntl(sources[index], F_DUPFD_CLOEXEC, 204);
+        if (safe_sources[index] < 0) {
+            const int descriptor_error = errno;
+            close_safe_sources();
+            ::close(frame_read_fd);
+            ::close(frame_fd);
+            close_channels();
+            *error = std::string("failed to preserve renderer source: ")
+                + std::strerror(descriptor_error);
+            return false;
+        }
+    }
+
     posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
+    int spawn_error = posix_spawn_file_actions_init(&actions);
+    const bool actions_initialized = spawn_error == 0;
     // CLOEXEC_DEFAULT closes even standard streams unless explicitly inherited.
     // Preserve the browser's diagnostic stream without inheriting other handles.
-    if (::fcntl(STDERR_FILENO, F_GETFD) != -1)
-        posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDERR_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, to_child[0], kRendererReadFd);
-    posix_spawn_file_actions_adddup2(&actions, from_child[1], kRendererWriteFd);
-    posix_spawn_file_actions_adddup2(&actions, frame_fd, kRendererFrameFd);
-    posix_spawn_file_actions_adddup2(&actions, control[1], kRendererControlFd);
+    if (!spawn_error) {
+        if (::fcntl(STDERR_FILENO, F_GETFD) >= 0)
+            spawn_error = posix_spawn_file_actions_adddup2(
+                &actions, STDERR_FILENO, STDERR_FILENO);
+        else if (errno != EBADF)
+            spawn_error = errno;
+    }
+    for (size_t index = 0; !spawn_error && index < 6; ++index)
+        spawn_error = posix_spawn_file_actions_adddup2(
+            &actions, safe_sources[index], destinations[index]);
+    for (int fd : safe_sources) {
+        if (!spawn_error)
+            spawn_error = posix_spawn_file_actions_addclose(&actions, fd);
+    }
     for (int fd : { to_child[0], to_child[1], from_child[0], from_child[1],
-             frame_fd, control[0], control[1] }) {
-        if (fd != kRendererReadFd && fd != kRendererWriteFd
-            && fd != kRendererFrameFd && fd != kRendererControlFd)
-            posix_spawn_file_actions_addclose(&actions, fd);
+             frame_fd, frame_read_fd, control[0], control[1],
+             diagnostics_mapping, diagnostics_socket }) {
+        // Originals in this interval now name destinations, not their old
+        // channels. All other originals can be explicitly closed in the child.
+        if (!spawn_error && (fd < kRendererReadFd || fd > 203))
+            spawn_error = posix_spawn_file_actions_addclose(&actions, fd);
     }
     posix_spawnattr_t attributes;
-    posix_spawnattr_init(&attributes);
+    bool attributes_initialized = false;
+    if (!spawn_error) {
+        spawn_error = posix_spawnattr_init(&attributes);
+        attributes_initialized = spawn_error == 0;
+    }
 #ifdef POSIX_SPAWN_CLOEXEC_DEFAULT
-    posix_spawnattr_setflags(&attributes, POSIX_SPAWN_CLOEXEC_DEFAULT);
+    if (!spawn_error)
+        spawn_error = posix_spawnattr_setflags(&attributes, POSIX_SPAWN_CLOEXEC_DEFAULT);
 #endif
     pid_t pid = 0;
-    int spawn_error = ::posix_spawn(&pid, executable.c_str(), &actions,
-        &attributes, argv.data(), environ);
-    posix_spawnattr_destroy(&attributes);
-    posix_spawn_file_actions_destroy(&actions);
+    if (!spawn_error)
+        spawn_error = ::posix_spawn(&pid, executable.c_str(), &actions,
+            &attributes, argv.data(), environ);
+    if (attributes_initialized)
+        posix_spawnattr_destroy(&attributes);
+    if (actions_initialized)
+        posix_spawn_file_actions_destroy(&actions);
+    close_safe_sources();
     ::close(to_child[0]);
     to_child[0] = -1;
     ::close(from_child[1]);
@@ -257,6 +324,7 @@ bool LaunchRendererSandbox(uint64_t auth_high, uint64_t auth_low,
     output->frame_memory = frame_memory;
     output->frame_mapping_size = kFrameMappingSize;
     output->process_id = static_cast<int>(pid);
+    output->crash_monitor = std::move(diagnostics);
     return true;
 }
 
@@ -362,6 +430,7 @@ void TerminateRendererProcess(RendererPlatformProcess* process)
 
 void CloseRendererPlatformProcess(RendererPlatformProcess* process)
 {
+    StopRendererCrashMonitor(process->crash_monitor);
     if (process->frame_memory)
         ::munmap(process->frame_memory, process->frame_mapping_size);
     if (process->frame_fd >= 0)
@@ -408,6 +477,18 @@ bool ShareRendererFrameBuffer(const RendererPlatformProcess& source,
 
 bool EnterRendererSandbox(std::string* error)
 {
+    const auto* command_line = base::CommandLine::ForCurrentProcess();
+    int diagnostics_mapping = -1, diagnostics_socket = -1;
+    if (!base::StringToInt(command_line->GetSwitchValueASCII("renderer-diagnostics-mapping"), &diagnostics_mapping)
+        || !base::StringToInt(command_line->GetSwitchValueASCII("renderer-diagnostics-socket"), &diagnostics_socket)
+        || diagnostics_mapping != 202 || diagnostics_socket != 203) {
+        *error = "invalid private renderer diagnostic arguments";
+        return false;
+    }
+    if (!InitializeMacRendererCrashDiagnostics(diagnostics_mapping, diagnostics_socket)) {
+        *error = std::string("failed to initialize private renderer diagnostics: ") + std::strerror(errno);
+        return false;
+    }
     std::string executable = ExecutablePath();
     size_t bundle_marker = executable.find(".app/");
     std::string bundle_directory;

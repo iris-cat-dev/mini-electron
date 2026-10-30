@@ -492,6 +492,58 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   --app=test/macos-resize-geometry-smoke.js
 ```
 
+### Console, creation, and desktop coordinates
+
+Runtime `0.1.29` forwards DevTools-free `console-message` events with the actual
+owning-isolate URL and line. `app` emits `web-contents-created` before page output;
+listeners that destroy contents or throw abort prospective BrowserWindow/BrowserView
+construction, release native owners, and preserve the original exception.
+
+Native mouse and ordinary/precise wheel input carry desktop DIP coordinates from
+the original AppKit/CGEvent. Window movement updates widget/window rectangles
+without requiring a resize, including BrowserViews and webview guests. The
+regression covers negative-display positions and movement during pointer capture:
+
+```sh
+out/mac-arm64/runtime-dist-0.1.29/Electron.app/Contents/MacOS/Electron \
+  test/macos-pointer-screen-coordinates-smoke.js
+```
+
+### Renderer memory pressure and local pre-OOM diagnostics
+
+Default independent renderers sample native macOS memory pressure and V8 heap
+usage on the renderer owner thread. Kernel warning/critical signals remain
+distinct; V8 uses independent 70%/85% tiers, hysteresis, and 30/60-second reclaim
+cooldowns. Reclamation reaches base/Blink, discardable memory, Skia, and every
+registered isolate. macOS does not acquire a Windows-style Job/process hard cap.
+
+Automatic main-isolate heap snapshots default to 65% utilization. Set
+`MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT=0` before creating a renderer to disable;
+`1..65` lowers the trigger, and invalid settings report `unavailable` with
+`invalid-configuration`. Each renderer makes at most one attempt, including refusals.
+Capture refuses near 85% heap usage, critical/unknown pressure, or insufficient
+sampled free-page headroom for the estimated graph plus 256 MiB. Free/speculative
+pages are normalized without double counting; V8 logical heap usage is not
+assumed to be bounded by process physical footprint. Serialization has a 2 GiB
+byte cap and 30-second deadline; the destination needs 2 GiB free and permits
+at most four completed or in-flight snapshots.
+
+The browser exclusively creates/writes 0600 local files under `app.getPath('crashDumps')`
+(default `userData/Crashpad`). The renderer receives only bounded datagram transport,
+never a writable snapshot file descriptor. Browser-private state owns thresholds,
+deadline, byte accounting, and the frozen result. Closing a window cancels and
+joins the monitor before renderer shutdown; cancellation and final rename share
+one lock. Darwin peer-queue `ENOBUFS` uses bounded nonspinning backpressure.
+
+Local JSON sidecars and `render-process-gone` expose `preOomHeapSnapshot`; exit-time
+`rendererReportedV8Oom` is separate from the frozen snapshot outcome. Graphs are
+labelled `heapGraphSource: 'renderer-reported'`, not attested renderer contents.
+Signal exits are not fabricated as V8 OOM or minidumps. Heap graphs contain
+sensitive application data: they stay local and are never uploaded automatically.
+Automatic capture is unsupported in `--single-process` mode. npm `0.1.12` is
+unchanged; these macOS diagnostic additions do not imply newly published typings.
+See [release-specific verification](VERIFICATION.md#macos-runtime-0129-2026-10-30).
+
 ### macOS Metal compositing
 
 The macOS runtime defaults to native Skia Ganesh/Metal composition when device,

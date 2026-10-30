@@ -82,8 +82,12 @@ void DispatchFrame(int64_t view_id, MetalFrame frame) {
     // installing a bitmap or invoking the CPU pixel callback.
     auto* ids = common::LiveIdDetect::getWebViewIds();
     auto* view = static_cast<content::WebViewHost*>(ids->getPtrLocked(view_id));
-    if (view) view->onFramePublishedInUiThread();
-    ids->unlock(view_id, view);
+    // A missing ID releases the registry lock inside getPtrLocked(). Queued
+    // completions outlive view teardown, so only a live owner needs unlocking.
+    if (view) {
+      view->onFramePublishedInUiThread();
+      ids->unlock(view_id, view);
+    }
   });
 }
 

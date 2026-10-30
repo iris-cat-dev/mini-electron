@@ -17,6 +17,8 @@
 #include "net/base/filename_util.h"
 #if defined(_WIN32)
 #include "src/runtime/electron/browser/api/app.h"
+#elif BUILDFLAG(IS_MAC)
+#include "src/platform/macos/electron/mac_electron_bindings.h"
 #endif
 #include "src/runtime/electron/browser/api/session.h"
 #include "src/runtime/electron/browser/api/window_interface.h"
@@ -263,10 +265,13 @@ WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary op
         return nullptr;
     self->m_owner = owner;
     self->m_live_self.Reset(isolate, object);
-#if defined(_WIN32)
     v8::TryCatch creation_handler_exception(isolate);
+#if defined(_WIN32)
     if (App::getInstance())
         App::getInstance()->emit("web-contents-created", object);
+#elif BUILDFLAG(IS_MAC)
+    mini_electron::electron::EmitWebContentsCreated(isolate, object);
+#endif
     if (creation_handler_exception.HasCaught()) {
         if (!self->isDestroyedApi()) {
             // The original handler exception owns constructor failure.  Catch
@@ -279,7 +284,6 @@ WebContents* WebContents::create(v8::Isolate* isolate, gin_helper::Dictionary op
         creation_handler_exception.ReThrow();
         return nullptr;
     }
-#endif
     return self->isDestroyedApi() ? nullptr : self;
 }
 
@@ -344,6 +348,8 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
 #if BUILDFLAG(IS_WIN)
     if (App* app = App::getInstance())
         launch.crash_dump_directory = app->getPathApi("crashDumps");
+#elif BUILDFLAG(IS_MAC)
+    launch.crash_dump_directory = mini_electron::electron::GetMacCrashDumpDirectory();
 #endif
     launch.context_isolation = context_isolation;
     launch.webview_tag = webview_tag;
@@ -385,10 +391,13 @@ WebContents::WebContents(v8::Isolate* isolate, v8::Local<v8::Object> wrapper,
             launch.preloads.push_back({ preload, std::move(source) });
     }
 
+    std::string renderer_error;
     m_renderer = RendererClient::Create(std::move(launch),
-        [this](base::Value::Dict event) { onRendererEvent(std::move(event)); });
+        [this](base::Value::Dict event) { onRendererEvent(std::move(event)); }, &renderer_error);
     if (!m_renderer) {
         m_crashed = true;
+        unregisterAndNotify();
+        isolate->ThrowException(v8::Exception::Error(gin_helper::StringToV8(isolate, renderer_error)));
     }
 }
 
@@ -985,7 +994,7 @@ void WebContents::resize(int width, int height, double scale_factor)
         m_viewport_scale = scale_factor;
     }
 }
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 void WebContents::setScreenRects(const gfx::Rect& widget_screen_rect,
     const gfx::Rect& window_screen_rect)
 {
@@ -1105,6 +1114,18 @@ bool WebContents::sendInput(base::Value::Dict event)
 {
     if (!isAlive())
         return false;
+#if BUILDFLAG(IS_MAC)
+    const std::string* type = event.FindString("type");
+    if (m_screen_rects_valid && type
+        && (*type == "mouseMove" || *type == "mouseDown"
+            || *type == "mouseUp" || *type == "mouseWheel")
+        && (!event.FindDouble("screenX") || !event.FindDouble("screenY"))) {
+        event.Set("screenX", static_cast<double>(m_widget_screen_rect.x())
+            + event.FindInt("x").value_or(0));
+        event.Set("screenY", static_cast<double>(m_widget_screen_rect.y())
+            + event.FindInt("y").value_or(0));
+    }
+#endif
     base::Value::Dict params;
     params.Set("event", std::move(event));
     return m_renderer->Send("input", std::move(params));
@@ -1357,7 +1378,7 @@ bool WebContents::sendCommandApi(const v8::FunctionCallbackInfo<v8::Value>& info
             if (guest && guest->m_host == this)
                 guest->setVisible(m_visible && bounds != m_guest_bounds.end()
                     && !bounds->second.IsEmpty());
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
             if (m_screen_rects_valid)
                 setScreenRects(m_widget_screen_rect, m_window_screen_rect);
 #endif
@@ -1405,7 +1426,7 @@ bool WebContents::attachGuestApi(const v8::FunctionCallbackInfo<v8::Value>& info
         params.FindInt("x").value_or(0), params.FindInt("y").value_or(0),
         params.FindInt("width").value_or(1), params.FindInt("height").value_or(1));
     guest->setVisible(m_visible && !m_guest_bounds[guest_id].IsEmpty());
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     if (m_screen_rects_valid)
         setScreenRects(m_widget_screen_rect, m_window_screen_rect);
 #endif

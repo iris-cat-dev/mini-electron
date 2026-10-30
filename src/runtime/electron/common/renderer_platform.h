@@ -15,7 +15,7 @@
 
 namespace atom {
 
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 class RendererCrashMonitor;
 #endif
 
@@ -51,6 +51,9 @@ struct RendererPlatformProcess {
     int frame_fd = -1; // Writable producer descriptor; never transferred.
     int frame_read_fd = -1; // Read-only descriptor used for guest transfers.
     int control_socket = -1;
+#if BUILDFLAG(IS_MAC)
+    std::shared_ptr<RendererCrashMonitor> crash_monitor;
+#endif
 #endif
 };
 

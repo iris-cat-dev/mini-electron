@@ -55,6 +55,10 @@ bool RunInMainJavaScriptScope(const std::function<void()>& callback);
 // Caller must already be inside the main JavaScript scope.
 v8::Local<v8::Object> GetFocusedBrowserWindow(v8::Isolate* isolate);
 v8::Local<v8::Object> GetBrowserWindowForNativeWindow(void* native_window);
+// Caller is in the main JavaScript scope; listener exceptions propagate.
+void EmitWebContentsCreated(v8::Isolate* isolate,
+                           v8::Local<v8::Object> contents);
+const std::string& GetMacCrashDumpDirectory();
 
 }  // namespace mini_electron::electron
 

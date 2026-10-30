@@ -58,7 +58,7 @@ protected:
     v8::Isolate* isolate_;
 
 private:
-#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS) && defined(_WIN32)
+#if defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     friend class DevToolsFreeConsoleDelegate;
 #endif
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)

@@ -19,13 +19,11 @@
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
 #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
-#if defined(_WIN32)
 #include "base/no_destructor.h"
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "v8/src/debug/debug-interface.h"
-#endif
 
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
 #error "This file is only for DevTools-free targets."
@@ -48,7 +46,6 @@ LocalFrame* ToLocalFrame(ExecutionContext* context)
 
 } // namespace
 
-#if defined(_WIN32)
 namespace {
 
 // V8ConsoleMessage's plain-text formatting, without remote objects or sessions.
@@ -153,9 +150,7 @@ private:
 };
 
 } // namespace
-#endif
 
-#if defined(_WIN32)
 // Console output is an embedder API, independent of the DevTools inspector.
 // This delegate is stateless: it retains no isolate, context, frame or JS value.
 class DevToolsFreeConsoleDelegate final : public v8::debug::ConsoleDelegate {
@@ -199,7 +194,7 @@ private:
         ExecutionContext* execution_context = ToExecutionContext(context);
         if (!debugger || !execution_context)
             return;
-        auto location = CaptureSourceLocation(execution_context);
+        auto location = CaptureSourceLocation(isolate, execution_context);
         StringBuilder message;
         for (int i = 0; i < args.Length(); ++i) {
             if (i)
@@ -210,22 +205,17 @@ private:
             level, message.ToString(), location.get());
     }
 };
-#endif
 
 ThreadDebuggerCommonImpl::ThreadDebuggerCommonImpl(v8::Isolate* isolate)
     : ThreadDebugger(isolate)
     , isolate_(isolate)
 {
-#if defined(_WIN32)
     v8::debug::SetConsoleDelegate(isolate_, DevToolsFreeConsoleDelegate::Get());
-#endif
 }
 
 ThreadDebuggerCommonImpl::~ThreadDebuggerCommonImpl()
 {
-#if defined(_WIN32)
     v8::debug::SetConsoleDelegate(isolate_, nullptr);
-#endif
 }
 
 void ThreadDebuggerCommonImpl::AsyncTaskScheduled(const StringView&, void*, bool) { }

@@ -378,11 +378,12 @@ BOOL MINI_ELECTRON_CALL_TYPE mini_electron_fire_mouse_wheel_event(
 BOOL mini_electron_fire_precise_wheel_event(mini_electron_web_view handle,
                                            int x, int y,
                                            float delta_x, float delta_y,
-                                           unsigned int flags) {
+                                           unsigned int flags,
+                                           double screen_x, double screen_y) {
   if (!ViewFor(handle))
     return FALSE;
   content::ThreadCall::callBlinkThreadAsyncWithValid(
-      FROM_HERE, handle, [x, y, delta_x, delta_y, flags](content::WebViewHost* view) {
+      FROM_HERE, handle, [x, y, delta_x, delta_y, flags, screen_x, screen_y](content::WebViewHost* view) {
         const float scale = view->getWebView()->MainFrameWidget()
                                 ->GetOriginalScreenInfo().device_scale_factor;
         const int modifiers =
@@ -394,7 +395,8 @@ BOOL mini_electron_fire_precise_wheel_event(mini_electron_web_view handle,
             (flags & MINI_ELECTRON_RBUTTON ? blink::WebInputEvent::kRightButtonDown : 0) |
             (flags & MINI_ELECTRON_MBUTTON ? blink::WebInputEvent::kMiddleButtonDown : 0);
         view->onPreciseWheelEvent(std::lround(x * scale), std::lround(y * scale),
-                                 delta_x * scale, delta_y * scale, modifiers);
+                                 delta_x * scale, delta_y * scale, modifiers,
+                                 gfx::PointF(screen_x, screen_y));
       });
   return TRUE;
 }

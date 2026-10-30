@@ -1359,10 +1359,11 @@ void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned in
     m_platformEventHandler->fireWheelEvent(x, y, deltaX, deltaY, modifiers, screenPosition);
 }
 
-void WebViewHost::onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers)
+void WebViewHost::onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers,
+    std::optional<gfx::PointF> screenPosition)
 {
     if (m_platformEventHandler)
-        m_platformEventHandler->firePreciseWheelEvent(x, y, deltaX, deltaY, modifiers);
+        m_platformEventHandler->firePreciseWheelEvent(x, y, deltaX, deltaY, modifiers, screenPosition);
 }
 
 bool WebViewHost::onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey)

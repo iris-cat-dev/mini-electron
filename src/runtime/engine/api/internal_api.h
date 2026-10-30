@@ -14,7 +14,8 @@ mini_electron_web_view mini_electron_create_web_view_with_background(
 
 // AppKit precise deltas are logical pixels, not 120-unit mouse-wheel ticks.
 extern "C" BOOL mini_electron_fire_precise_wheel_event(mini_electron_web_view webview,
-    int x, int y, float delta_x, float delta_y, unsigned int flags);
+    int x, int y, float delta_x, float delta_y, unsigned int flags,
+    double screen_x, double screen_y);
 
 // Native screen identity is independent of view size and device scale factor.
 extern "C" void mini_electron_mac_set_vsync_display_id(

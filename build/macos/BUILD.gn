@@ -638,6 +638,16 @@ source_set("mini_electron_engine_api") {
   configs += [ ":mini_electron_engine_config" ]
 }
 
+static_library("mini_electron_renderer_diagnostics") {
+  sources = [
+    "//src/runtime/electron/common/renderer_crash_diagnostics.h",
+    "//src/runtime/electron/common/renderer_crash_diagnostics_mac.cc",
+    "//src/runtime/electron/common/renderer_memory_mac.h",
+    "//src/runtime/electron/common/renderer_memory_mac.cc",
+  ]
+  configs += [ ":mini_electron_engine_config" ]
+}
+
 source_set("mini_electron_posix_win_compat") {
   sources = [ "//src/platform/posix/win32/win32_compat.cc" ]
   inputs = [ "//src/platform/macos/compat/darwin_legacy_stat_rename.h" ]
@@ -692,6 +702,7 @@ group("mini_electron_engine") {
     ":mini_electron_skia_mac",
     ":mini_electron_util",
     ":mini_electron_gin",
+    ":mini_electron_renderer_diagnostics",
     ":mini_electron_additional_source_namespace",
     ":mini_electron_snappy",
     ":mini_electron_abseil",
@@ -1105,6 +1116,42 @@ executable("mini_electron_blob_endpoint_smoke") {
     "SystemConfiguration.framework",
     "UniformTypeIdentifiers.framework",
   ]
+}
+
+foreach(smoke, [ "navigation_lifetime", "renderer_memory_pressure" ]) {
+  executable("mini_electron_${smoke}_smoke") {
+    if (smoke == "navigation_lifetime") {
+      sources = [ "//test/navigation-lifetime-smoke.cc" ]
+    } else {
+      sources = [ "//test/renderer-memory-pressure-smoke.cc" ]
+    }
+    sources += [ "//src/runtime/electron/common/renderer_protocol.cc" ]
+    configs += [ ":mini_electron_engine_config" ]
+    deps = [
+      ":mini_electron_engine",
+      ":mini_electron_engine_api",
+      ":mini_electron_node_deps",
+    ]
+    libs = [
+      rebase_path("$mini_electron_curl_root/lib/libcurl.a", root_build_dir),
+      rebase_path("$mini_electron_nghttp2_root/lib/libnghttp2.a", root_build_dir),
+      "z",
+      "iconv",
+    ]
+    frameworks = [
+      "AppKit.framework",
+      "Carbon.framework",
+      "CoreGraphics.framework",
+      "CoreServices.framework",
+      "CoreText.framework",
+      "IOSurface.framework",
+      "MediaAccessibility.framework",
+      "QuartzCore.framework",
+      "Security.framework",
+      "SystemConfiguration.framework",
+      "UniformTypeIdentifiers.framework",
+    ]
+  }
 }
 
 config("mini_electron_material_color_config") {

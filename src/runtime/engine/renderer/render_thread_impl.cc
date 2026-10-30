@@ -16,6 +16,9 @@
 #include "third_party/libnode/src/node.h"
 #include "src/runtime/engine/common/create_and_bind_templ.h"
 #include "src/runtime/electron/common/renderer_crash_diagnostics.h"
+#if BUILDFLAG(IS_MAC)
+#include "src/runtime/electron/common/renderer_memory_mac.h"
+#endif
 #include "src/runtime/engine/viz/viz_service.h"
 #include "src/runtime/engine/viz/viz_host.h"
 #include "gen/services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
@@ -212,6 +215,9 @@ void RenderThreadImpl::shutdown()
     // stop and join the compositor on Blink's thread.
     self->m_hostThread.Stop();
     ThreadCall::callBlinkThreadSync(FROM_HERE, [self] {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+        self->m_memoryPressureMonitor.reset();
+#endif
         self->m_compositorTaskRunner = nullptr;
         blink::Thread::ShutdownCompositorThread();
     });
@@ -294,13 +300,12 @@ RendererMemoryPressurePolicy::Level PressureForUsage(
 RendererMemoryPressurePolicy::Action RendererMemoryPressurePolicy::Evaluate(
     uint64_t committed_bytes, uint64_t job_limit_bytes,
     uint64_t used_heap_bytes, uint64_t heap_limit_bytes,
-    bool system_low_memory, base::TimeTicks now)
+    Level system_pressure, base::TimeTicks now)
 {
     const Level previous_level = m_level;
     m_jobLevel = PressureForUsage(m_jobLevel, committed_bytes, job_limit_bytes);
     m_heapLevel = PressureForUsage(m_heapLevel, used_heap_bytes, heap_limit_bytes);
-    m_level = system_low_memory ? Level::kCritical
-        : std::max(m_jobLevel, m_heapLevel);
+    m_level = std::max(system_pressure, std::max(m_jobLevel, m_heapLevel));
     if (m_level != Level::kModerate)
         m_moderateNotificationPending = false;
     else if (previous_level == Level::kNone)
@@ -485,12 +490,13 @@ void RendererDiscardableMemoryAllocator::DestroyAllocation(
     }
 }
 
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 namespace {
 
 constexpr base::TimeDelta kMemoryPressurePollInterval = base::Seconds(1);
 
+#if BUILDFLAG(IS_WIN)
 bool ReadRendererJobMemory(uint64_t* committed_bytes, uint64_t* limit_bytes)
 {
     BOOL in_job = FALSE;
@@ -528,6 +534,7 @@ bool ReadRendererJobMemory(uint64_t* committed_bytes, uint64_t* limit_bytes)
     *limit_bytes = static_cast<uint64_t>(enforced_limit);
     return true;
 }
+#endif
 
 } // namespace
 
@@ -536,10 +543,12 @@ public:
     explicit RendererMemoryPressureMonitor(v8::Isolate* isolate)
         : m_isolate(isolate)
     {
+#if BUILDFLAG(IS_WIN)
         HANDLE notification =
             ::CreateMemoryResourceNotification(LowMemoryResourceNotification);
         if (notification)
             m_lowMemoryNotification.Set(notification);
+#endif
     }
 
     ~RendererMemoryPressureMonitor()
@@ -554,14 +563,31 @@ public:
     }
 
 private:
-    bool IsSystemLowOnMemory() const
+    RendererMemoryPressurePolicy::Level SystemPressure() const
     {
+        using Level = RendererMemoryPressurePolicy::Level;
+#if BUILDFLAG(IS_WIN)
         if (!m_lowMemoryNotification.is_valid())
-            return false;
+            return Level::kNone;
         BOOL low_memory = FALSE;
         return ::QueryMemoryResourceNotification(
                    m_lowMemoryNotification.get(), &low_memory)
-            && low_memory;
+                && low_memory ? Level::kCritical : Level::kNone;
+#else
+        atom::MacRendererMemoryStatus memory;
+        if (!atom::ReadMacRendererMemoryStatus(&memory))
+            return Level::kNone;
+        switch (memory.pressure) {
+        case atom::MacMemoryPressureLevel::kWarning:
+            return Level::kModerate;
+        case atom::MacMemoryPressureLevel::kCritical:
+            return Level::kCritical;
+        case atom::MacMemoryPressureLevel::kNormal:
+        case atom::MacMemoryPressureLevel::kUnknown:
+            return Level::kNone;
+        }
+        return Level::kNone;
+#endif
     }
 
     void Poll()
@@ -572,25 +598,19 @@ private:
 
         uint64_t committed_bytes = 0;
         uint64_t limit_bytes = 0;
+#if BUILDFLAG(IS_WIN)
         ReadRendererJobMemory(&committed_bytes, &limit_bytes);
+#endif
         const RendererMemoryPressurePolicy::Level previous_level =
             m_policy.level();
         const RendererMemoryPressurePolicy::Action action = m_policy.Evaluate(
             committed_bytes, limit_bytes, heap.used_heap_size(),
-            heap.heap_size_limit(), IsSystemLowOnMemory(), base::TimeTicks::Now());
+            heap.heap_size_limit(), SystemPressure(), base::TimeTicks::Now());
         const RendererMemoryPressurePolicy::Level current_level =
             m_policy.level();
         if (action == RendererMemoryPressurePolicy::Action::kNone) {
-            if (previous_level
-                    == RendererMemoryPressurePolicy::Level::kCritical
-                && current_level
-                    == RendererMemoryPressurePolicy::Level::kModerate) {
-                blink::MemoryPressureNotificationToAllIsolates(
-                    v8::MemoryPressureLevel::kModerate);
-            } else if (previous_level
-                    != RendererMemoryPressurePolicy::Level::kNone
-                && current_level
-                    == RendererMemoryPressurePolicy::Level::kNone) {
+            if (previous_level != RendererMemoryPressurePolicy::Level::kNone
+                && current_level == RendererMemoryPressurePolicy::Level::kNone) {
                 blink::MemoryPressureNotificationToAllIsolates(
                     v8::MemoryPressureLevel::kNone);
             }
@@ -626,12 +646,14 @@ private:
     }
 
     v8::Isolate* const m_isolate;
+#if BUILDFLAG(IS_WIN)
     base::win::ScopedHandle m_lowMemoryNotification;
+#endif
     RendererMemoryPressurePolicy m_policy;
     base::RepeatingTimer m_timer;
 };
 
-#endif // BUILDFLAG(IS_WIN)
+#endif // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 RenderThreadImpl::ThreadDelegate::~ThreadDelegate()
 {
@@ -639,7 +661,7 @@ RenderThreadImpl::ThreadDelegate::~ThreadDelegate()
     // scheduler owns that loop's SequenceManager and cannot be destroyed from
     // one of its own tasks.
     CHECK_EQ(v8::Isolate::GetCurrent(), m_parent->m_blinkIsolate);
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     m_parent->m_memoryPressureMonitor.reset();
 #endif
     delete m_parent->m_agentGroupScheduler;
@@ -1076,7 +1098,7 @@ void RenderThreadImpl::initializeWebKitOnThread(/*mojo::BinderMap* binders*/)
 
     url::EnableNonStandardSchemesForAndroidWebView();
 
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     m_memoryPressureMonitor =
         std::make_unique<RendererMemoryPressureMonitor>(m_blinkIsolate);
     m_memoryPressureMonitor->Start();

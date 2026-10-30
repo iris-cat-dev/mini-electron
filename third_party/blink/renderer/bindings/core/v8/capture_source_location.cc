@@ -15,6 +15,7 @@
 #include "third_party/blink/renderer/core/inspector/v8_inspector_string.h"
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #endif
+#include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
@@ -89,6 +90,23 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation(ExecutionContext* executio
     return std::make_unique<SourceLocation>(
         execution_context ? execution_context->Url().GetString() : String(), String(), 0, 0, std::move(stack_trace));
 #endif
+}
+
+std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, ExecutionContext* execution_context)
+{
+    if (isolate && isolate->InContext()) {
+        ScriptForbiddenScope::AllowUserAgentScript allow_scripting;
+        v8::Local<v8::StackTrace> stack = v8::StackTrace::CurrentStackTrace(isolate, 1, v8::StackTrace::kDetailed);
+        if (!stack.IsEmpty() && stack->GetFrameCount()) {
+            v8::Local<v8::StackFrame> frame = stack->GetFrame(isolate, 0);
+            String url = ToCoreStringWithNullCheck(isolate, frame->GetScriptNameOrSourceURL());
+            if (url.empty() && execution_context)
+                url = execution_context->Url();
+            return std::make_unique<SourceLocation>(url, ToCoreStringWithNullCheck(isolate, frame->GetFunctionName()), frame->GetLineNumber(),
+                frame->GetColumn(), nullptr, frame->GetScriptId());
+        }
+    }
+    return CaptureSourceLocation(execution_context);
 }
 
 std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::Local<v8::Message> message, ExecutionContext* execution_context)

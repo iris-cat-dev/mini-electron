@@ -49,7 +49,7 @@ public:
 
     Action Evaluate(uint64_t committed_bytes, uint64_t job_limit_bytes,
         uint64_t used_heap_bytes, uint64_t heap_limit_bytes,
-        bool system_low_memory, base::TimeTicks now);
+        Level system_pressure, base::TimeTicks now);
     Level level() const { return m_level; }
 
 private:
@@ -91,7 +91,7 @@ private:
     size_t m_bytesAllocated GUARDED_BY(m_lock) = 0;
 };
 
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 class RendererMemoryPressureMonitor;
 #endif
 
@@ -188,7 +188,7 @@ public:
     base::PlatformThreadId m_blinkThreadId = 0;
     scoped_refptr<base::SingleThreadTaskRunner> m_blinkTaskRunner;
     v8::Isolate* m_blinkIsolate = nullptr;
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     std::unique_ptr<RendererMemoryPressureMonitor> m_memoryPressureMonitor;
 #endif
     base::Thread m_thread;

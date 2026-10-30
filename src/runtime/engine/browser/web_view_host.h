@@ -161,7 +161,8 @@ public:
     LRESULT fireWheelEventOnUiThread(UINT message, WPARAM wParam, LPARAM lParam);
     void onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags,
         std::optional<gfx::PointF> screenPosition = std::nullopt);
-    void onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers);
+    void onPreciseWheelEvent(int x, int y, float deltaX, float deltaY, int modifiers,
+        std::optional<gfx::PointF> screenPosition);
     void onMouseMessage(unsigned int message, int x, int y, unsigned int flags,
         std::optional<gfx::PointF> screenPosition = std::nullopt);
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);

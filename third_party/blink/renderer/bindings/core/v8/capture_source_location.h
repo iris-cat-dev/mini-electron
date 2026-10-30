@@ -19,6 +19,10 @@ class ExecutionContext;
 // location if available.
 CORE_EXPORT std::unique_ptr<SourceLocation> CaptureSourceLocation(ExecutionContext*);
 
+// Captures the native caller in the owning isolate without an Inspector session.
+// Falls back to the execution context's parsing location when no JS frame exists.
+CORE_EXPORT std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, ExecutionContext* execution_context);
+
 // Shortcut when location is unknown. Tries to capture call stack or parsing
 // location using message if available.
 CORE_EXPORT std::unique_ptr<SourceLocation> CaptureSourceLocation(v8::Isolate* isolate, v8::Local<v8::Message> message, ExecutionContext* execution_context);

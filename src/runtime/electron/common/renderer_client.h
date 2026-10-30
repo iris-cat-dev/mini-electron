@@ -45,7 +45,7 @@ struct RendererLaunchOptions {
     bool transparent = false;
     bool initially_visible = true;
     std::string background_color;
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     std::string crash_dump_directory;
 #endif
     base::Value::Dict preload_process_metadata;
@@ -82,7 +82,7 @@ public:
     // sandbox by default, or the host's shared engine in single-process mode.
     // Events and replies run on the creating sequence; startup failure is null.
     static std::unique_ptr<RendererClient> Create(RendererLaunchOptions options,
-        EventCallback event_callback);
+        EventCallback event_callback, std::string* error);
 
     // Sends a cancellable request. A non-zero id is returned only if queued.
     // Closing the renderer completes every outstanding callback with an error.

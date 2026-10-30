@@ -6,6 +6,29 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.29
+
+Apple Silicon macOS-only update. Windows runtime/channel remains `0.1.28` and
+npm installer remains `0.1.12`; installer protocol `1`, Electron API compatibility
+`41.2.0`, and Node ABI `134` are unchanged.
+
+- Includes the IndexedDB finished-transaction/history release and frame/standalone
+  loader ownership repairs already shipped in the shared source.
+- Repairs DevTools-free console severity/source forwarding and early
+  `web-contents-created`, including destroy/throw owner cleanup.
+- Preserves native desktop mouse/wheel coordinates across moved windows,
+  negative display positions, BrowserViews, guests, and pointer capture.
+- Adds native macOS pressure sampling and coordinated base/Blink, discardable,
+  Skia, and all-isolate reclaim, without artificial process/heap hard limits.
+- Adds once-only local pre-OOM snapshots with browser-owned byte-stream storage,
+  explicit configuration/refusal/error results, bounded serialization, and
+  cancellation-before-shutdown. Renderer graph contents are explicitly untrusted.
+- Fixes high-FD spawn remapping, Darwin page-rounded shared-memory validation,
+  datagram `ENOBUFS` backpressure, and Metal missing-owner double unlocks.
+
+See [verification and existing boundaries](VERIFICATION.md#macos-runtime-0129-2026-10-30)
+and [snapshot policy/privacy](MACOS.md#renderer-memory-pressure-and-local-pre-oom-diagnostics).
+
 ### Windows runtime 0.1.28
 
 - Ports the embedded fake-indexeddb transaction-finalization fix from

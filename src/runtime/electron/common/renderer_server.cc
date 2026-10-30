@@ -2749,7 +2749,7 @@ private:
         int x = event.FindInt("x").value_or(0);
         int y = event.FindInt("y").value_or(0);
         int flags = event.FindInt("modifiers").value_or(0);
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
         std::optional<gfx::PointF> screenPosition;
         const auto screenX = event.FindDouble("screenX");
         const auto screenY = event.FindDouble("screenY");
@@ -2824,10 +2824,22 @@ private:
         }
         if (*type == "mouseWheel") {
 #if BUILDFLAG(IS_MAC)
-            if (event.FindBool("precise").value_or(false))
+            if (event.FindBool("precise").value_or(false)) {
+                const gfx::PointF screen = screenPosition.value_or(gfx::PointF(x, y));
                 return !!mini_electron_fire_precise_wheel_event(view_, x, y,
                     event.FindDouble("deltaX").value_or(0),
-                    event.FindDouble("deltaY").value_or(0), flags);
+                    event.FindDouble("deltaY").value_or(0), flags, screen.x(), screen.y());
+            }
+            const int delta_x = static_cast<int>(std::lround(event.FindDouble("deltaX").value_or(0)));
+            const int delta_y = static_cast<int>(std::lround(event.FindDouble("deltaY").value_or(0)));
+            content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
+                [x, y, delta_x, delta_y, flags, screenPosition](content::WebViewHost* view) {
+                    const float scale = view->getWebView()->MainFrameWidget()
+                        ->GetOriginalScreenInfo().device_scale_factor;
+                    view->onWheelEvent(std::lround(x * scale), std::lround(y * scale),
+                        delta_x, delta_y, flags, screenPosition);
+                });
+            return true;
 #endif
 #if BUILDFLAG(IS_WIN)
             if (screenPosition) {
@@ -2895,14 +2907,24 @@ private:
             default:
                 break;
             }
+#endif
             if (screenPosition) {
+#if BUILDFLAG(IS_MAC)
+                content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
+                    [message, x, y, flags, screenPosition](content::WebViewHost* view) {
+                        const float scale = view->getWebView()->MainFrameWidget()
+                            ->GetOriginalScreenInfo().device_scale_factor;
+                        view->onMouseMessage(message, std::lround(x * scale),
+                            std::lround(y * scale), flags, screenPosition);
+                    });
+#else
                 content::WebViewHost* view = View();
                 if (!view)
                     return false;
                 view->onMouseMessage(message, x, y, flags, screenPosition);
+#endif
                 return true;
             }
-#endif
             return !!mini_electron_fire_mouse_event(view_, message, x, y, flags);
         }
         unsigned key = static_cast<unsigned>(event.FindInt("keyCode").value_or(0));
@@ -5270,8 +5292,10 @@ int RunRenderer(int argc, Char* argv[])
     mini_electron::mac::PrepareMetalDevice();
 #endif
     std::string sandbox_error;
-    if (!EnterRendererSandbox(&sandbox_error))
+    if (!EnterRendererSandbox(&sandbox_error)) {
+        std::fprintf(stderr, "mini-electron: renderer sandbox initialization failed: %s\n", sandbox_error.c_str());
         return 121;
+    }
     std::string error;
     WireMessage hello;
     if (!renderer_protocol::ReadMessage(arguments.read_pipe, arguments.auth_high,

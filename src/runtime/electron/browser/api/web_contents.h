@@ -133,7 +133,7 @@ public:
 
     void setCreateWindowParam(BrowserWindowConstructorOptions* options);
     void resize(int width, int height, double scale_factor = 1.0);
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     void setScreenRects(const gfx::Rect& widget_screen_rect,
         const gfx::Rect& window_screen_rect);
 #endif
@@ -300,6 +300,8 @@ private:
     mutable std::vector<uint8_t> m_windowsPaintPixels;
     mutable uint64_t m_windowsPaintPixelsGeneration = 0;
     mutable bool m_windowsPaintNeedsFullRepaint = false;
+#endif
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
     gfx::Rect m_widget_screen_rect;
     gfx::Rect m_window_screen_rect;
     bool m_screen_rects_valid = false;

@@ -8,6 +8,8 @@
 #include "build/build_config.h"
 #if BUILDFLAG(IS_WIN)
 #include <windows.h>
+#endif
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 #include <memory>
 #include <optional>
 #include <string>
@@ -41,6 +43,20 @@ void AppendRendererCrashDiagnostics(const std::shared_ptr<RendererCrashMonitor>&
     base::Value::Dict* details);
 bool InitializeRendererCrashDiagnostics(RendererCrashHandles handles);
 
+#endif
+#if BUILDFLAG(IS_MAC)
+class RendererCrashMonitor;
+std::shared_ptr<RendererCrashMonitor> CreateRendererCrashMonitor(std::string* error);
+int MacRendererDiagnosticsMapping(const std::shared_ptr<RendererCrashMonitor>& monitor);
+int MacRendererDiagnosticsSocket(const std::shared_ptr<RendererCrashMonitor>& monitor);
+bool StartRendererCrashMonitor(const std::shared_ptr<RendererCrashMonitor>& monitor,
+    int pid, const std::string& directory, std::string* error);
+void StopRendererCrashMonitor(const std::shared_ptr<RendererCrashMonitor>& monitor);
+void AppendRendererCrashDiagnostics(const std::shared_ptr<RendererCrashMonitor>& monitor,
+    base::Value::Dict* details);
+bool InitializeMacRendererCrashDiagnostics(int mapping, int socket);
+#endif
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 // Call once per second on the owning main-isolate Blink thread, after pressure
 // handling. Samples V8 and services one automatic pre-OOM snapshot attempt.
 // Snapshot requests use the existing host channel; never call from fatal/OOM

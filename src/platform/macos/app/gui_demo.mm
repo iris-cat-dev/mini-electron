@@ -402,9 +402,11 @@ static void MINI_ELECTRON_CALL_TYPE LoadingFinished(mini_electron_web_view web_v
 - (void)scrollWheel:(NSEvent*)event {
   NSPoint point = [self convertPoint:[event locationInWindow] fromView:nil];
   if (event.hasPreciseScrollingDeltas) {
+    const NSPoint screen_point = [self.window convertPointToScreen:event.locationInWindow];
     mini_electron_fire_precise_wheel_event(_webView, static_cast<int>(point.x),
         static_cast<int>(point.y), event.scrollingDeltaX, event.scrollingDeltaY,
-        [self mouseFlagsForEvent:event]);
+        [self mouseFlagsForEvent:event], screen_point.x,
+        NSMaxY(NSScreen.screens.firstObject.frame) - screen_point.y);
     return;
   }
   int deltaX = static_cast<int>([event scrollingDeltaX] * 120.0);
