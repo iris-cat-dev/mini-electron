@@ -272,7 +272,7 @@ input, keep the opposite edge anchored, and honor window minimum/maximum sizes.
 Non-resizable and full-screen windows do not use this border. macOS 15+ uses
 AppKit's directional frame cursors; older systems use axis resize cursors.
 
-The unreleased Electron host source forwards Blink cursor changes over the binary
+Runtime `0.1.30` forwards Blink cursor changes over the binary
 renderer channel instead of leaving the content cursor at the default arrow.
 Input/contenteditable text, links, explicit CSS pointer/crosshair/cell/context-menu,
 move/grab/grabbing, resize, copy/alias/forbidden, zoom, vertical-text and hidden
@@ -770,10 +770,13 @@ ELECTRON_RUN_AS_NODE=1 "out/mac-arm64/OMP Desktop.app/Contents/MacOS/OMP Desktop
   test/node-sqlite-smoke.js
 ```
 
-The smoke verifies OAuth-style account filtering, WAL, rollback, read-only access,
-column metadata, backup, changesets, and Worker loading using temporary databases;
-it does not read or change user credentials. This native binding addition is
-macOS-only; the Windows source lists are unchanged.
+The smoke verifies OAuth-style account filtering, WAL, native read-only
+`DatabaseSync.isTransaction` state, nested savepoints, failed-transaction rollback
+recovery, writer-lock isolation, read-only access, column metadata, backup,
+changesets, and Worker loading using temporary databases; it does not read or
+change user credentials. The transaction getter reports SQLite engine state and
+throws `ERR_INVALID_STATE` on a closed connection. This native binding addition
+is macOS-only; the Windows source lists are unchanged.
 
 The macOS host also omits unsupported browser-only surfaces: Blink's
 DevTools/Inspector transport, the experimental `<permission>` element, and

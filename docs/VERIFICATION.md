@@ -8,6 +8,49 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.30 (2026-11-01)
+
+Apple Silicon macOS-only runtime update from the native cursor cutover in
+`edab61e96`, including the already committed renderer time-zone initialization
+before Seatbelt lockdown. Windows runtime/channel remains `0.1.28`; npm installer
+remains `0.1.12`. Installer protocol `1`, Electron API `41.2.0` and Node ABI `134`
+are unchanged.
+
+Packaged the current Release engine with Xcode Clang 17, Python 3.14, GN/Ninja and
+cached dependencies. The build graph regenerated and required no further native
+compilation. The app was stripped and ad-hoc signed; its actual executable
+reported `v0.1.30` and ABI `134`, and `codesign --verify --deep --strict` passed.
+The default system Python could not run packaging because it lacks
+`hashlib.file_digest`; the supported Homebrew Python 3.14 completed packaging.
+No build-script compatibility workaround was added.
+
+Packaged-runtime checks passed:
+- Native pointer/wheel screen DIPs, negative positions, window movement,
+  BrowserView offsets and stationary pointer capture.
+- Sandboxed local `Date`/`Intl` labels in system `Asia/Shanghai`, explicit
+  `America/New_York` (winter/summer DST offsets), and explicit `UTC`.
+
+Before packaging, real AppKit-view event injection passed Blink-to-binary-IPC-to-
+retained-NSCursor mapping for ordinary and hidden cursors, stationary CSS updates,
+grab transitions, a 16×16-point premultiplied sRGB custom cursor with hotspot
+`(5,7)`, BrowserView, navigation reset and captured webview guest routing.
+DOM buttons progressed `1 → 3 → 2 → 0`; the captured guest received `clientX=-208`
+with the right button still held. These are native-object/transport observations,
+not evidence of the physical cursor on the screen. Temporary diagnostics were removed.
+
+The physical-cursor regression was blocked by the explicit locked-console
+precondition. The existing packaged mouse-modifier fixture stopped at
+`Native window focused: false`; it is not counted as passing. Full unlocked hover,
+native-border precedence, inactive-window hover, captured BrowserView cursor
+presentation and late cross-window updates remain unverified. Windows cursor
+code was not compiled or run on Windows; a portable harness exercised only the
+actual captured-view routing method. No Developer ID signing or notarization is claimed.
+
+Distribution: `out/mac-arm64/runtime-dist-0.1.30/`.
+Release assembly: `out/runtime-release-0.1.30/`.
+Runtime ZIP SHA256:
+`55b16110c6af985a56efa2f606773bdd71b6e87d95a30bc32d9f30ddc64bca51`.
+
 ## macOS runtime 0.1.29 (2026-10-30)
 
 Incrementally rebuilt Apple Silicon Release with Xcode Clang 17, Python 3.14,

@@ -6,7 +6,12 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased source: native cursor semantics
+### macOS runtime 0.1.30
+
+Apple Silicon macOS-only runtime update. Windows runtime/channel remains
+`0.1.28`; npm installer remains `0.1.12`. Installer protocol `1`, Electron API
+compatibility `41.2.0` and Node ABI `134` are unchanged. Windows cursor adaptation
+is included in source, not in a newly published Windows binary.
 
 - Routes Blink cursor types and custom image/hotspot/scale data through renderer
   IPC to Electron BrowserWindow, BrowserView and active webview hosts; no CSS
@@ -16,17 +21,22 @@ These are historical release and verification records, not a claim that every pl
   cursor-info reset and embeds the existing Chromium cursor resources.
 - Preserves every held mouse button in AppKit and shared Blink input snapshots,
   preventing premature pointerup/capture release during chorded guest dragging.
+- Includes the macOS renderer system time-zone cache initialization before
+  Seatbelt lockdown, preserving local `Date`/`Intl` semantics.
 - Adds an unlocked-console native cursor regression with actual AppKit cursor
   and raster observations, stationary updates, guest/view transitions and reset.
 
-The macOS incremental source build and native pointer-screen-coordinate regression
-passed. A real AppKit-view transport inspection passed ordinary/custom cursor
+The macOS source build and packaged runtime identity, ABI, deep/strict signature,
+native pointer-screen coordinates and three local-time/DST scenarios passed.
+A real AppKit-view transport inspection passed ordinary/custom cursor
 mapping, stationary updates, BrowserView, navigation and multi-button captured
 guest routing. It inspected held native objects, not the physical pointer.
+The packaged mouse-modifier fixture stopped at `Native window focused: false`
+under the locked console; it is not counted as passing.
 Final physical hover verification is pending an unlocked console. Windows cursor
 compilation/native verification was not run; a portable harness exercised the
 actual captured-view routing method, not Win32 resources or cursor presentation.
-Published runtime channels, npm version and installed applications are unchanged.
+This is a macOS runtime-only update; no npm publication or Windows-channel update.
 
 ### macOS runtime 0.1.29
 
