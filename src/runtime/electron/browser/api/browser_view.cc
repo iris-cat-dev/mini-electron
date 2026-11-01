@@ -212,6 +212,7 @@ void BrowserView::attachBrowserWindow(HWND hWnd)
     m_webContents->setVisible(!!::IsWindowVisible(hWnd) && !::IsIconic(hWnd));
     m_webContents->setFocus(true);
     m_state = WindowInited;
+    ::PostMessageW(m_hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(m_hWnd), MAKELPARAM(HTCLIENT, 0));
 }
 
 void BrowserView::detachBrowserWindow()
@@ -221,6 +222,7 @@ void BrowserView::detachBrowserWindow()
     if (::IsWindow(m_hWnd)) {
         RECT bounds = getClientRect();
         ::InvalidateRect(m_hWnd, &bounds, FALSE);
+        ::PostMessageW(m_hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(m_hWnd), MAKELPARAM(HTCLIENT, 0));
     }
     m_hWnd = nullptr;
     if (m_state != WindowDestroyed)
@@ -301,6 +303,21 @@ void BrowserView::onWebContentsPaint(WebContents* contents, const gfx::Rect& dam
     ::InvalidateRect(m_hWnd, &rect, FALSE);
 }
 
+void BrowserView::onWebContentsCursorChanged(WebContents* contents, const ui::Cursor&)
+{
+    if (contents != m_webContents)
+        return;
+    // The parent re-hit-tests; this view must never supply a stale cursor source.
+    if (::IsWindow(m_hWnd))
+        ::PostMessageW(m_hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(m_hWnd), MAKELPARAM(HTCLIENT, 0));
+}
+
+void BrowserView::applyCursor(UINT dpi)
+{
+    if (m_webContents)
+        m_nativeCursor.apply(m_webContents->getCursor(), dpi);
+}
+
 void BrowserView::onWebContentsDeleted(WebContents* contents)
 {
     if (contents != m_webContents)
@@ -310,8 +327,10 @@ void BrowserView::onWebContentsDeleted(WebContents* contents)
     m_webContents = nullptr;
     m_hWnd = nullptr;
     m_state = WindowDestroyed;
-    if (::IsWindow(parent))
+    if (::IsWindow(parent)) {
         ::InvalidateRect(parent, &bounds, FALSE);
+        ::PostMessageW(parent, WM_SETCURSOR, reinterpret_cast<WPARAM>(parent), MAKELPARAM(HTCLIENT, 0));
+    }
 }
 
 void BrowserView::handleMouseMsgInUiThread(unsigned int message, int xInParent, int yInParent,

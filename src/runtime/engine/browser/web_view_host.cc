@@ -1584,6 +1584,10 @@ void WebViewHost::setCursor(const ::ui::Cursor& cursor)
     if (m_cursor == cursor)
         return;
     m_cursor = cursor;
+    if (m_cursorChangedCallback) {
+        m_cursorChangedCallback(m_cursor);
+        return;
+    }
 
     if (m_hWnd)
         ::PostMessageW(m_hWnd, WM_SETCURSOR, (WPARAM)m_hWnd, MAKELONG(HTCLIENT, 0)); // COleControl::OnSetCursor

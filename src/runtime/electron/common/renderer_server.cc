@@ -59,6 +59,7 @@
 #include "src/runtime/engine/renderer/webgl_context_provider.h"
 #include "src/runtime/engine/renderer/webgpu_context_provider.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
+#include "third_party/skia/include/core/SkColorSpace.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
 #include "src/runtime/network/loader/web_url_loader_internal.h"
 #include "src/runtime/network/loader/web_url_loader_manager.h"
@@ -832,6 +833,8 @@ public:
             host->setSetLanguage(self->options_.accept_languages);
             host->setTextInputStateCallback(
                 [self] { self->ScheduleTextInputState(); });
+            host->setCursorChangedCallback(
+                [self](const ui::Cursor& cursor) { self->SendCursor(cursor); });
             if (blink::WebView* web_view = host->getWebView()) {
                 blink::WebSettings* settings = web_view->GetSettings();
                 settings->SetWebSecurityEnabled(self->options_.web_security);
@@ -1055,8 +1058,10 @@ public:
                 content::SetRendererFileChooserBroker({});
                 content::ClearBrokeredFiles();
             }
-            if (content::WebViewHost* host = self->View())
+            if (content::WebViewHost* host = self->View()) {
                 host->setTextInputStateCallback({});
+                host->setCursorChangedCallback({});
+            }
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
             self->cdp_service_.reset();
 #endif
@@ -1290,6 +1295,37 @@ private:
         payload.Set("selectionRect", rect_value(state.selection_rect));
         payload.Set("markedRect", rect_value(state.marked_rect));
         SendEvent("text-input-state", std::move(payload));
+    }
+
+    void SendCursor(const ui::Cursor& cursor)
+    {
+        base::Value::Dict payload;
+        payload.Set("type", static_cast<int>(cursor.type()));
+        if (cursor.type() == ui::mojom::CursorType::kCustom) {
+            const SkBitmap& bitmap = cursor.custom_bitmap();
+            const float scale = cursor.image_scale_factor();
+            if (bitmap.width() <= 0 || bitmap.height() <= 0
+                || !std::isfinite(scale) || scale <= 0
+                || !ui::Cursor::AreDimensionsValidForWeb(
+                    gfx::Size(bitmap.width(), bitmap.height()), scale))
+                return;
+            const size_t row_bytes = static_cast<size_t>(bitmap.width()) * 4;
+            if (static_cast<size_t>(bitmap.height())
+                > std::numeric_limits<size_t>::max() / row_bytes)
+                return;
+            base::Value::BlobStorage bytes(row_bytes * bitmap.height());
+            if (!bitmap.readPixels(SkImageInfo::Make(bitmap.width(), bitmap.height(),
+                    kRGBA_8888_SkColorType, kPremul_SkAlphaType, SkColorSpace::MakeSRGB()),
+                    bytes.data(), row_bytes, 0, 0))
+                return;
+            payload.Set("width", bitmap.width());
+            payload.Set("height", bitmap.height());
+            payload.Set("hotspotX", cursor.custom_hotspot().x());
+            payload.Set("hotspotY", cursor.custom_hotspot().y());
+            payload.Set("imageScaleFactor", static_cast<double>(scale));
+            payload.Set("bitmap", base::Value(std::move(bytes)));
+        }
+        SendEvent("cursor-changed", std::move(payload));
     }
 
     void RegisterSchemes()
@@ -2757,10 +2793,52 @@ private:
             screenPosition = gfx::PointF(*screenX, *screenY);
 #endif
         int guest_id = HitTestGuest(x, y, *type);
+        if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp"
+            || *type == "mouseLeave") {
+            if (*type == "mouseLeave" || cursor_capture_buttons_)
+                guest_id = captured_cursor_guest_.load();
+            const std::string* button = event.FindString("button");
+            const unsigned button_mask = button && *button == "right" ? 2u
+                : button && *button == "middle" ? 4u : 1u;
+            if (*type == "mouseDown") {
+                captured_cursor_guest_ = guest_id;
+                cursor_capture_buttons_.fetch_or(button_mask);
+            }
+            if (cursor_guest_ != guest_id) {
+                const int previous_guest = cursor_guest_.load();
+                if (previous_guest) {
+                    base::Value::Dict leave;
+                    leave.Set("guestContentsId", previous_guest);
+                    leave.Set("event", base::Value::Dict().Set("type", "mouseLeave")
+                        .Set("modifiers", flags));
+                    SendEvent("guest-input", std::move(leave));
+                }
+                cursor_guest_ = guest_id;
+                SendEvent("cursor-owner", base::Value::Dict().Set("guestContentsId", guest_id));
+            }
+            if (*type == "mouseUp"
+                && !(cursor_capture_buttons_.fetch_and(~button_mask) & ~button_mask))
+                captured_cursor_guest_ = 0;
+        }
         if (guest_id) {
             base::Value::Dict payload;
             payload.Set("guestContentsId", guest_id);
-            payload.Set("event", event.Clone());
+            base::Value::Dict guest_event = event.Clone();
+            {
+                std::lock_guard<std::mutex> lock(guest_lock_);
+                const auto found = guests_.find(guest_id);
+                if (found == guests_.end() || !found->second.attached)
+                    return false;
+                if (event.FindInt("x"))
+                    guest_event.Set("x", static_cast<int>(std::clamp<int64_t>(
+                        static_cast<int64_t>(x) - found->second.x,
+                        std::numeric_limits<int>::min(), std::numeric_limits<int>::max())));
+                if (event.FindInt("y"))
+                    guest_event.Set("y", static_cast<int>(std::clamp<int64_t>(
+                        static_cast<int64_t>(y) - found->second.y,
+                        std::numeric_limits<int>::min(), std::numeric_limits<int>::max())));
+            }
+            payload.Set("event", std::move(guest_event));
             SendEvent("guest-input", std::move(payload));
             return true;
         }
@@ -3026,6 +3104,14 @@ private:
         std::lock_guard<std::mutex> lock(guest_lock_);
         auto found = guests_.find(id);
         if (method == "guest.detach") {
+            if (cursor_guest_ == id) {
+                cursor_guest_ = 0;
+                SendEvent("cursor-owner", base::Value::Dict().Set("guestContentsId", 0));
+            }
+            if (captured_cursor_guest_ == id) {
+                captured_cursor_guest_ = 0;
+                cursor_capture_buttons_ = 0;
+            }
             if (found != guests_.end()) {
                 ReleaseGuestFrame(&found->second);
                 guests_.erase(found);
@@ -3057,6 +3143,10 @@ private:
             guest.focused = params.FindBool("focused").value_or(false);
         }
     }
+
+    std::atomic<int> cursor_guest_ { 0 };
+    std::atomic<int> captured_cursor_guest_ { 0 };
+    std::atomic<unsigned> cursor_capture_buttons_ { 0 };
 
     int HitTestGuest(int x, int y, const std::string& type)
     {
@@ -4320,8 +4410,15 @@ private:
         uint64_t& document_epoch = self->frame_document_epochs_[frame_id];
         document_epoch = document_epoch == std::numeric_limits<uint64_t>::max()
             ? 1 : document_epoch + 1;
-        if (is_main_frame)
+        if (is_main_frame) {
             self->ResetNativeDragOnBlink();
+            self->cursor_guest_ = 0;
+            self->captured_cursor_guest_ = 0;
+            self->cursor_capture_buttons_ = 0;
+            self->SendEvent("cursor-owner", base::Value::Dict().Set("guestContentsId", 0));
+            if (content::WebViewHost* host = self->View())
+                host->setCursor(ui::Cursor(ui::mojom::CursorType::kPointer));
+        }
         self->text_input_state_.reset();
         self->SendEvent("text-input-state", {});
         self->ScheduleTextInputState();

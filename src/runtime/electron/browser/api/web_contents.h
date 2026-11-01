@@ -21,6 +21,7 @@
 #include "src/runtime/electron/common/gin_helper/dictionary.h"
 #include "src/runtime/electron/common/gin_helper/public/wrapper_info.h"
 #include "src/runtime/electron/common/renderer_client.h"
+#include "ui/base/cursor/cursor.h"
 #include "ui/gfx/geometry/rect.h"
 
 namespace node {
@@ -64,6 +65,8 @@ public:
     virtual void onWebContentsPaint(WebContents*, const gfx::Rect&) { }
     virtual void onWebContentsTextInputState(
         WebContents*, const base::Value::Dict&) { }
+    virtual void onWebContentsCursorChanged(
+        WebContents*, const ui::Cursor&) { }
     virtual bool supportsFramePreparation() const { return false; }
     // Returns the generation actually drawn into the hidden native backing.
     virtual uint64_t prepareWebContentsFrame(WebContents*, uint64_t) { return 0; }
@@ -124,6 +127,7 @@ public:
     WindowInterface* getOwner() const { return m_owner; }
     WebContents* host() const { return m_host; }
     int getIdApi() const { return m_id; }
+    const ui::Cursor& getCursor() const;
     // Object lifetime is independent of whether its renderer child is alive.
     bool isDestroyedApi() const;
     // Renderer-dependent operations must use this transport-liveness guard.
@@ -295,6 +299,7 @@ private:
     WebContents* m_host = nullptr;
     BrowserWindowConstructorOptions* m_createWindowParam = nullptr;
     std::unique_ptr<RendererClient> m_renderer;
+    ui::Cursor m_cursor { ui::mojom::CursorType::kPointer };
 #if defined(_WIN32)
     mutable RendererFrameSnapshot m_windowsPaintFrame;
     mutable std::vector<uint8_t> m_windowsPaintPixels;
@@ -318,6 +323,7 @@ private:
     uint64_t m_presentation_epoch = 0;
     std::set<int> m_guest_ids;
     std::unordered_map<int, gfx::Rect> m_guest_bounds;
+    int m_cursor_guest_id = 0;
     std::unordered_map<uint64_t, RendererFrameState> m_renderer_frames;
     std::unordered_map<uint64_t, RendererFrameEpoch> m_file_chooser_frames;
     uint64_t m_main_frame_id = 0;

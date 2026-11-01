@@ -193,6 +193,10 @@ public:
 
     bool setCursorInfoTypeByCache();
     void setCursor(const ::ui::Cursor& cursor);
+    void setCursorChangedCallback(std::function<void(const ::ui::Cursor&)> callback)
+    {
+        m_cursorChangedCallback = std::move(callback);
+    }
     void setCaretPos(const gfx::Point& pos);
     gfx::Point getCaretPos() const;
 
@@ -413,6 +417,7 @@ private:
     long m_navigateIndex = 0;
 
     ::ui::Cursor m_cursor;
+    std::function<void(const ::ui::Cursor&)> m_cursorChangedCallback;
 
     enum PageState { kPageInited, kPageDestroying, kPageDestroyed };
     PageState getState() const

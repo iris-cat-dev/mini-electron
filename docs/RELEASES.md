@@ -6,6 +6,28 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased source: native cursor semantics
+
+- Routes Blink cursor types and custom image/hotspot/scale data through renderer
+  IPC to Electron BrowserWindow, BrowserView and active webview hosts; no CSS
+  injection or application-level pointer override.
+- Adds native cursor ownership, caching, hidden/custom cursor lifetime and native
+  chrome/resize precedence on macOS and Windows. Removes Windows' fixed-arrow
+  cursor-info reset and embeds the existing Chromium cursor resources.
+- Preserves every held mouse button in AppKit and shared Blink input snapshots,
+  preventing premature pointerup/capture release during chorded guest dragging.
+- Adds an unlocked-console native cursor regression with actual AppKit cursor
+  and raster observations, stationary updates, guest/view transitions and reset.
+
+The macOS incremental source build and native pointer-screen-coordinate regression
+passed. A real AppKit-view transport inspection passed ordinary/custom cursor
+mapping, stationary updates, BrowserView, navigation and multi-button captured
+guest routing. It inspected held native objects, not the physical pointer.
+Final physical hover verification is pending an unlocked console. Windows cursor
+compilation/native verification was not run; a portable harness exercised the
+actual captured-view routing method, not Win32 resources or cursor presentation.
+Published runtime channels, npm version and installed applications are unchanged.
+
 ### macOS runtime 0.1.29
 
 Apple Silicon macOS-only update. Windows runtime/channel remains `0.1.28` and

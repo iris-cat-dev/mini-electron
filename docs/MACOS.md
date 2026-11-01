@@ -272,6 +272,40 @@ input, keep the opposite edge anchored, and honor window minimum/maximum sizes.
 Non-resizable and full-screen windows do not use this border. macOS 15+ uses
 AppKit's directional frame cursors; older systems use axis resize cursors.
 
+The unreleased Electron host source forwards Blink cursor changes over the binary
+renderer channel instead of leaving the content cursor at the default arrow.
+Input/contenteditable text, links, explicit CSS pointer/crosshair/cell/context-menu,
+move/grab/grabbing, resize, copy/alias/forbidden, zoom, vertical-text and hidden
+cursors use the existing Cocoa cursor mapping. Native chrome and resize borders
+remain authoritative. Wait/progress share AppKit's busy-but-clickable cursor.
+
+Cursor ownership follows the hovered or mouse-captured native renderer/active
+webview guest, not keyboard focus; invisible, occluded and mouse-ignored surfaces cannot overwrite
+another window's cursor. Standard native cursors are cached. Custom cursors carry
+premultiplied sRGB RGBA, image scale and hotspot, with Retina image/representation
+sizes converted to points. Hidden cursors use a transparent image, not unbalanced
+global `hide`/`unhide` calls. Navigation and renderer exit clear stale state.
+Chorded mouse events retain every held button until its own release, keeping
+pointer capture and grab/grabbing transitions valid across guest bounds.
+
+The cursor regression requires an unlocked macOS console and Xcode. It sends
+AppKit events to owned views, checks actual NSCursor shapes and raster pixels,
+and exercises stationary style changes, BrowserView/guest ownership, capture,
+native resize precedence and navigation cleanup. Pointer position is restored:
+
+```sh
+env -u ELECTRON_RUN_AS_NODE out/mac-arm64/mini-electron \
+  --app=test/macos-cursor-smoke.js
+```
+
+The incremental macOS source build and existing native pointer-screen-coordinate
+regression passed. Real AppKit-view injection also passed retained native cursor
+mapping, stationary updates, custom 16×16-point RGBA/hotspot `(5,7)`, BrowserView,
+navigation reset and guest capture with DOM `buttons` transitions `1 → 3 → 2 → 0`
+and a negative guest `clientX` while the right button remained held.
+The final physical-pointer regression remains pending while the console is locked;
+retained-native-cursor inspection is not a substitute for the unlocked screen.
+
 Mouse dragging preserves the event's held-button state. AppKit precise wheel
 events retain fractional pixel deltas and both axes through IPC and Blink, with
 Retina scaling applied once. Precise input also populates Blink's wheel ticks

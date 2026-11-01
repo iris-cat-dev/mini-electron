@@ -565,8 +565,12 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
     base::TimeTicks time = base::TimeTicks::Now();
 
     blink::WebMouseEvent webMouseEvent;
-    // Use the originating event's snapshot, not global key state on this thread.
-    webMouseEvent.SetModifiers(info.modifiers);
+    // Preserve keyboard and every held button from the originating snapshot.
+    // Chorded presses/releases must not synthesize an early pointerup.
+    webMouseEvent.SetModifiers(info.modifiers |
+        (wParam & MK_LBUTTON ? blink::WebInputEvent::kLeftButtonDown : 0) |
+        (wParam & MK_MBUTTON ? blink::WebInputEvent::kMiddleButtonDown : 0) |
+        (wParam & MK_RBUTTON ? blink::WebInputEvent::kRightButtonDown : 0));
     webMouseEvent.SetPositionInWidget(gfx::PointF(pos.x(), pos.y()));
     webMouseEvent.SetPositionInScreen(globalPos);
     webMouseEvent.SetTimeStamp(time);
@@ -649,19 +653,22 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
         case WM_LBUTTONUP:
             m_isLeftMousedown = false;
             webMouseEvent.button = blink::WebPointerProperties::Button::kLeft;
+            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() & ~blink::WebInputEvent::kLeftButtonDown);
             break;
         case WM_MBUTTONUP:
             webMouseEvent.button = blink::WebPointerProperties::Button::kMiddle;
+            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() & ~blink::WebInputEvent::kMiddleButtonDown);
             break;
         case WM_RBUTTONUP:
             webMouseEvent.button = blink::WebPointerProperties::Button::kRight;
+            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() & ~blink::WebInputEvent::kRightButtonDown);
             break;
         }
         if (button == m_activeMouseButton) {
             m_activeMouseButton = 0;
             m_activeMouseClickCount = 0;
         }
-        if (isValideWindow)
+        if (isValideWindow && !(wParam & (MK_LBUTTON | MK_MBUTTON | MK_RBUTTON)))
             ::ReleaseCapture();
         if (info.renderWidgetHost && info.renderWidgetHost->m_frameWidget) {
             info.renderWidgetHost->m_frameWidget->DragSourceSystemDragEnded();
@@ -672,13 +679,10 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
         handle = true;
         if (wParam & MK_LBUTTON) {
             webMouseEvent.button = blink::mojom::Button::kLeft;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebInputEvent::kLeftButtonDown);
         } else if (wParam & MK_MBUTTON) {
             webMouseEvent.button = blink::mojom::Button::kMiddle;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebInputEvent::kMiddleButtonDown);
         } else if (wParam & MK_RBUTTON) {
             webMouseEvent.button = blink::mojom::Button::kRight;
-            webMouseEvent.SetModifiers(webMouseEvent.GetModifiers() | blink::WebInputEvent::kRightButtonDown);
         } else {
             CHECK(!m_isLeftMousedown);
             webMouseEvent.button = blink::mojom::Button::kEraser;

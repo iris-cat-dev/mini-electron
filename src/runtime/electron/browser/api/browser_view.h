@@ -13,6 +13,7 @@
 #include "src/runtime/electron/common/gin_helper/wrappable.h"
 #include "src/runtime/electron/common/gin_helper/dictionary.h"
 #include "src/runtime/engine/public/engine_api.h"
+#include "src/platform/windows/native_cursor.h"
 #include <windows.h>
 
 namespace atom {
@@ -51,6 +52,8 @@ public:
     HWND getHWND() const override;
     void onWebContentsPaint(WebContents*, const gfx::Rect&) override;
     void onWebContentsDeleted(WebContents*) override;
+    void onWebContentsCursorChanged(WebContents*, const ui::Cursor&) override;
+    void applyCursor(UINT dpi);
 
     RECT getClientRect() const
     {
@@ -73,6 +76,7 @@ public:
     RECT m_boundsInDips;
     RECT m_clientRect;
     v8::Persistent<v8::Object> m_liveSelf;
+    mini_electron::win::NativeCursor m_nativeCursor;
 
     static gin::WrapperInfo kWrapperInfo;
     static v8::Persistent<v8::Function> constructor;

@@ -162,8 +162,6 @@ public:
         m_imeCaretHeight = 0;
         m_imeSerial = 0;
         m_pendingImeSerial = 0;
-        m_cursorInfoType = 0;
-        m_isCursorInfoTypeAsynGetting = false;
         m_memoryBMP = nullptr;
         m_memoryDC = nullptr;
         m_captionDC = nullptr;
@@ -1488,31 +1486,28 @@ public:
         if (m_foucsBrowserView && !m_foucsBrowserView->getWebContents())
             setFocusedBrowserView(nullptr);
         bool isHandled = false;
-        BrowserView* hittestView = findHittestBrowserview(x, y);
-        // If this is a left-button press, route keyboard and IME focus before
-        // delivering the click. Otherwise preserve capture routing.
-        if (WM_LBUTTONDOWN == message) {
+        BrowserView* hittestView = m_isMouseDown ? nullptr : findHittestBrowserview(x, y);
+        const bool buttonDown = message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN
+            || message == WM_RBUTTONDOWN || message == WM_LBUTTONDBLCLK
+            || message == WM_MBUTTONDBLCLK || message == WM_RBUTTONDBLCLK;
+        const bool buttonUp = message == WM_LBUTTONUP || message == WM_MBUTTONUP
+            || message == WM_RBUTTONUP;
+        // Choose the captured view on the first press, then deliver every
+        // chorded transition (including the final release) to that same view.
+        if (buttonDown && !m_isMouseDown) {
             m_isMouseDown = true;
             setFocusedBrowserView(hittestView);
-            if (hittestView) {
-                isHandled = true;
-                hittestView->handleMouseMsgInUiThread(message, x, y,
-                    screenPoint.x(), screenPoint.y(), flags);
-            }
-        } else {
-            if (WM_LBUTTONUP == message)
-                m_isMouseDown = false;
-            if (m_isMouseDown) {
-                if (m_foucsBrowserView) {
-                    isHandled = true;
-                    m_foucsBrowserView->handleMouseMsgInUiThread(message, x, y,
-                        screenPoint.x(), screenPoint.y(), flags);
-                }
-            } else if (hittestView) {
-                isHandled = true;
-                hittestView->handleMouseMsgInUiThread(message, x, y,
-                    screenPoint.x(), screenPoint.y(), flags);
-            }
+        }
+        BrowserView* target = m_isMouseDown ? m_foucsBrowserView : hittestView;
+        if (target) {
+            isHandled = true;
+            target->handleMouseMsgInUiThread(message, x, y,
+                screenPoint.x(), screenPoint.y(), flags);
+        }
+        if (buttonUp) {
+            m_isMouseDown = !!(flags & (MINI_ELECTRON_LBUTTON | MINI_ELECTRON_MBUTTON | MINI_ELECTRON_RBUTTON));
+            if (!m_isMouseDown && ::IsWindow(m_hWnd))
+                ::PostMessageW(m_hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(m_hWnd), MAKELPARAM(HTCLIENT, 0));
         }
         return isHandled;
     }
@@ -1533,12 +1528,11 @@ public:
         const gfx::PointF screenPoint = display::win::ScreenWin::ScreenToDIPPoint(
             gfx::PointF(nativeScreenPoint.x, nativeScreenPoint.y));
 
-        if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
+        if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN
+            || message == WM_LBUTTONDBLCLK || message == WM_MBUTTONDBLCLK || message == WM_RBUTTONDBLCLK) {
             if (m_createWindowParam && m_createWindowParam->isFocusable)
                 ::SetFocus(hWnd);
             ::SetCapture(hWnd);
-        } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
-            ::ReleaseCapture();
         }
 
         unsigned int flags = 0;
@@ -1570,6 +1564,9 @@ public:
             m_webContents->sendWindowsMouseEvent(
                 message, x, y, screenPoint.x(), screenPoint.y(), flags);
         }
+        if ((message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP)
+            && !(wParam & (MK_LBUTTON | MK_MBUTTON | MK_RBUTTON)) && ::GetCapture() == hWnd)
+            ::ReleaseCapture();
 
     }
 
@@ -1704,15 +1701,15 @@ public:
     }
 
 
-    void onCursorChange()
+    void onWebContentsCursorChanged(WebContents* contents, const ui::Cursor&) override
     {
-        // Cursor shape changes arrive from the remote renderer. Until a new
-        // shape is received, retain the standard arrow rather than querying an
-        // in-process Blink view.
-        m_cursorInfoType = 0;
+        if (contents != m_webContents)
+            return;
+        if (::IsWindow(m_hWnd))
+            ::PostMessageW(m_hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(m_hWnd), MAKELPARAM(HTCLIENT, 0));
     }
 
-    bool setCursorInfoTypeByCache(LPARAM lParam)
+    bool applyContentsCursor(LPARAM)
     {
         RECT rc;
         ::GetClientRect(m_hWnd, &rc);
@@ -1724,7 +1721,7 @@ public:
             return false;
 
         HCURSOR hCur = NULL;
-        if (!m_createWindowParam->isFrame && m_createWindowParam->isResizable
+        if (!m_isMouseDown && !m_createWindowParam->isFrame && m_createWindowParam->isResizable
             && !m_isMaximized && !::IsZoomed(m_hWnd) && !m_isFullScreen) {
             const int border = std::max(RESIZE_BORDER, dipToPixel(RESIZE_BORDER));
             int x = pt.x;
@@ -1756,58 +1753,15 @@ public:
             }
         }
 
-        switch (m_cursorInfoType) {
-        case kMiniElectronCursorInfoPointer:
-            hCur = ::LoadCursor(NULL, IDC_ARROW);
-            break;
-        case kMiniElectronCursorInfoIBeam:
-            hCur = ::LoadCursor(NULL, IDC_IBEAM);
-            break;
-        case kMiniElectronCursorInfoHand:
-            hCur = ::LoadCursor(NULL, IDC_HAND);
-            break;
-        case kMiniElectronCursorInfoWait:
-            hCur = ::LoadCursor(NULL, IDC_WAIT);
-            break;
-        case kMiniElectronCursorInfoHelp:
-            hCur = ::LoadCursor(NULL, IDC_HELP);
-            break;
-        case kMiniElectronCursorInfoNorthResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZENS);
-            break;
-        case kMiniElectronCursorInfoSouthWestResize:
-        case kMiniElectronCursorInfoNorthEastResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZENESW);
-            break;
-        case kMiniElectronCursorInfoSouthResize:
-        case kMiniElectronCursorInfoNorthSouthResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZENS);
-            break;
-        case kMiniElectronCursorInfoNorthWestResize:
-        case kMiniElectronCursorInfoSouthEastResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZENWSE);
-            break;
-        case kMiniElectronCursorInfoWestResize:
-        case kMiniElectronCursorInfoEastWestResize:
-        case kMiniElectronCursorInfoColumnResize:
-        case kMiniElectronCursorInfoEastResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZEWE);
-            break;
-        case kMiniElectronCursorInfoNorthEastSouthWestResize:
-        case kMiniElectronCursorInfoNorthWestSouthEastResize:
-            hCur = ::LoadCursor(NULL, IDC_SIZEALL);
-            break;
-        default:
-            hCur = ::LoadCursor(NULL, IDC_ARROW);
-            break;
-        }
-
-        if (hCur) {
-            ::SetCursor(hCur);
-            return true;
-        }
-
-        return false;
+        const UINT dpi = windowDpi();
+        BrowserView* view = m_isMouseDown ? m_foucsBrowserView : findHittestBrowserview(pt.x, pt.y);
+        if (view)
+            view->applyCursor(dpi);
+        else if (m_webContents)
+            m_nativeCursor.apply(m_webContents->getCursor(), dpi);
+        else
+            return false;
+        return true;
     }
 
 
@@ -2147,6 +2101,12 @@ public:
             // suppress the legacy OS composition window.
             lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
             return ::DefWindowProcW(hWnd, message, wParam, lParam);
+        case WM_CAPTURECHANGED:
+            if (reinterpret_cast<HWND>(lParam) != hWnd) {
+                m_isMouseDown = false;
+                ::PostMessageW(hWnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(hWnd), MAKELPARAM(HTCLIENT, 0));
+            }
+            break;
         case WM_LBUTTONDOWN:
         case WM_MBUTTONDOWN:
         case WM_RBUTTONDOWN:
@@ -2157,7 +2117,6 @@ public:
         case WM_MBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MOUSEMOVE:
-            onCursorChange();
             onMouseMessage(hWnd, message, wParam, lParam);
             break;
         case WM_CONTEXTMENU: {
@@ -2256,15 +2215,20 @@ public:
         }
 
         case WM_SETCURSOR: {
+            if (LOWORD(lParam) != HTCLIENT || m_isIgnoreMouseEvents
+                || !::IsWindowVisible(hWnd) || ::IsIconic(hWnd) || !::IsWindowEnabled(hWnd))
+                break;
+            // Renderer wakeups apply only to the HWND currently under the pointer.
             POINT point;
-            ::GetCursorPos(&point);
+            if (!::GetCursorPos(&point) || ::WindowFromPoint(point) != hWnd)
+                break;
             ::ScreenToClient(hWnd, &point);
             if (captionButtonFromPoint(point) != CaptionButtonNone) {
                 ::SetCursor(::LoadCursor(nullptr, IDC_ARROW));
                 return TRUE;
             }
-            if (setCursorInfoTypeByCache(lParam))
-                return 0;
+            if (applyContentsCursor(lParam))
+                return TRUE;
             break;
         }
         case WM_IME_STARTCOMPOSITION:
@@ -3818,8 +3782,7 @@ private:
     uint64_t m_imeSerial;
     uint64_t m_pendingImeSerial;
 
-    int m_cursorInfoType;
-    bool m_isCursorInfoTypeAsynGetting;
+    mini_electron::win::NativeCursor m_nativeCursor;
     CRITICAL_SECTION m_memoryCanvasLock;
     HBITMAP m_memoryBMP;
     HDC m_memoryDC;

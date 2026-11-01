@@ -28,6 +28,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\runtime\electron\browser\api\app.cc" />
+    <ClCompile Include="..\..\..\src\platform\windows\native_cursor.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\browser\api\browser_view.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\browser\api\browser_window.cc" />
     <ClCompile Include="..\..\..\src\runtime\electron\browser\api\command_line.cc" />
@@ -243,9 +244,14 @@
     <ClInclude Include="..\..\..\src\platform\windows\d3d_compositor.h" />
     <ClInclude Include="..\..\..\src\platform\windows\dcomp_presenter.h" />
     <ClInclude Include="..\..\..\src\platform\windows\resources\resource.h" />
+    <ClInclude Include="..\..\..\src\platform\windows\native_cursor.h" />
+    <ClInclude Include="..\..\..\src\platform\windows\resources\cursor_resources.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\platform\windows\resources\application.rc" />
+    <ResourceCompile Include="..\..\..\src\platform\windows\resources\cursors.rc">
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\src\platform\windows\resources;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

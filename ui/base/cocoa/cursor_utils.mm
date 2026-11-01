@@ -330,11 +330,13 @@ NSCursor* GetNativeCursor(const ui::Cursor& cursor) {
     case ui::mojom::CursorType::kCustom:
       return CustomNSCursor(cursor);
     case ui::mojom::CursorType::kDndNone:
+      return NSCursor.operationNotAllowedCursor;
     case ui::mojom::CursorType::kDndMove:
+      return NSCursor.closedHandCursor;
     case ui::mojom::CursorType::kDndCopy:
+      return NSCursor.dragCopyCursor;
     case ui::mojom::CursorType::kDndLink:
-      // These cursors do not apply on Mac.
-      break;
+      return NSCursor.dragLinkCursor;
   }
   NOTREACHED();
 }

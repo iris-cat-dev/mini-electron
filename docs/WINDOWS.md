@@ -259,6 +259,23 @@ and window geometry, including negative/positive positions and non-100% DPI.
 It does not send global physical input or change display/input settings.
 Set `MINI_POINTER_SCREEN_COORDINATES_RESULT` to retain its structured evidence.
 
+The unreleased cursor source uses typed Blink cursor notifications. While buttons
+are held, the captured BrowserView or main WebContents owns the cursor; otherwise
+the topmost BrowserView/active webview under the pointer wins, falling back to the
+window's own WebContents. Cursor selection does not require keyboard focus; native
+non-client chrome/caption controls and frameless resize borders take precedence.
+Occluded, hidden, disabled and mouse-ignored windows cannot steal the cursor.
+Stock Win32 cursors cover standard types; checked-in Chromium `.cur` resources
+cover grab/grabbing, zoom, copy/alias, cell, vertical text, row/column resize and
+panning. `cursor:none` uses a null handle. Owned custom handles retain the image
+and hotspot, and are resampled only when the image or monitor DPI changes.
+Chorded input preserves all held buttons rather than releasing capture early.
+This Windows source cutover has not been compiled or exercised on Windows in the
+current macOS session; resource loading and mixed-DPI native behavior are unverified.
+A portable C++ harness exercised the actual captured-view routing method for
+left/right and right/middle chords, the final out-of-bounds release, main-content
+capture and double-click. This is not Windows cursor/resource or Win32 validation.
+
 Local issue-7 verification on Windows at 150% scaling passed 55 native-window/DOM
 checks in default GPU and single-process software modes, including move-only,
 negative/positive positions, resize, maximize/restore, framed client offsets,

@@ -51,6 +51,7 @@
 #include "third_party/libuv/include/uv.h"
 #include "ui/events/keycodes/keyboard_code_conversion_mac.h"
 #include "ui/events/keycodes/dom/dom_key.h"
+#include "ui/base/cocoa/cursor_utils.h"
 
 // The layer-host class is supplied by QuartzCore; only its context identifier
 // crosses the renderer boundary, never a Mach port or an Objective-C object.
@@ -697,6 +698,7 @@ v8::Local<v8::Object> CreateApp(v8::Local<v8::Context> context) {
 // Anything that presents a WebContents frame in a MiniElectronRendererView.
 class RendererSurfaceHost {
  public:
+  virtual atom::WebContents* getWebContents() const = 0;
   virtual void Draw(NSRect dirty_rect) = 0;
   virtual void Resize() = 0;
   virtual void RefreshVisibility() = 0;
@@ -777,6 +779,8 @@ class MacBrowserView final : public mate::EventEmitter<MacBrowserView>,
   void onWebContentsPaint(atom::WebContents*, const gfx::Rect&) override;
   void onWebContentsTextInputState(
       atom::WebContents*, const base::Value::Dict& state) override;
+  void onWebContentsCursorChanged(
+      atom::WebContents*, const ui::Cursor&) override;
   bool supportsFramePreparation() const override { return view_ && view_.window; }
   uint64_t prepareWebContentsFrame(atom::WebContents*, uint64_t) override;
 
@@ -838,6 +842,8 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   void onWebContentsPaint(atom::WebContents*, const gfx::Rect&) override;
   void onWebContentsTextInputState(
       atom::WebContents*, const base::Value::Dict& state) override;
+  void onWebContentsCursorChanged(
+      atom::WebContents*, const ui::Cursor&) override;
   bool supportsFramePreparation() const override { return true; }
   uint64_t prepareWebContentsFrame(atom::WebContents*, uint64_t) override;
   void onWebContentsReadyToShow(atom::WebContents*) override;
@@ -999,6 +1005,19 @@ static NSCursor* WindowResizeCursor(NSUInteger edges) {
              : NSCursor.resizeUpDownCursor;
 }
 
+static NSCursor* NativeRendererCursor(const ui::Cursor& cursor) {
+  if (cursor.type() == ui::mojom::CursorType::kCustom)
+    return ui::GetNativeCursor(cursor);
+  // CoreCursor-backed shapes allocate in GetNativeCursor. Retain one native
+  // instance per standard type, not a new object on every hover transition.
+  static NSCursor* cursors[
+      static_cast<int>(ui::mojom::CursorType::kNorthWestSouthEastNoResize) + 2];
+  const int index = static_cast<int>(cursor.type()) + 1;
+  if (!cursors[index])
+    cursors[index] = ui::GetNativeCursor(cursor);
+  return cursors[index];
+}
+
 static bool IsPointerEvent(NSEventType type) {
   switch (type) {
     case NSEventTypeLeftMouseDown:
@@ -1033,8 +1052,10 @@ static bool IsPointerEvent(NSEventType type) {
       return false;
   }
 }
+@class MiniElectronRendererView;
 @interface MiniElectronWindow : NSPanel
 @property(nonatomic) BOOL electronFocusable;
+@property(nonatomic, weak) MiniElectronRendererView* rendererCursorCaptureView;
 - (void)setElectronIgnoreMouseEvents:(BOOL)ignore forward:(BOOL)forward;
 @end
 
@@ -1066,6 +1087,8 @@ static bool IsPointerEvent(NSEventType type) {
 
 - (void)setElectronIgnoreMouseEvents:(BOOL)ignore forward:(BOOL)forward {
   self.ignoresMouseEvents = ignore;
+  if (ignore)
+    self.rendererCursorCaptureView = nil;
   if (_localMouseMonitor) {
     [NSEvent removeMonitor:_localMouseMonitor];
     _localMouseMonitor = nil;
@@ -1158,7 +1181,36 @@ static bool IsPointerEvent(NSEventType type) {
 - (instancetype)initWithFrame:(NSRect)frame owner:(RendererSurfaceHost*)owner;
 - (void)cancelNativeDrag;
 - (void)updateTextInputState:(const base::Value::Dict&)state;
+- (void)updateCursor;
+- (void)applyCursor;
+- (void)cancelCursorCapture;
 @end
+
+static void RefreshNativeCursorAtPointer() {
+  const NSPoint screen_point = NSEvent.mouseLocation;
+  NSWindow* window = [NSApp windowWithWindowNumber:
+      [NSWindow windowNumberAtPoint:screen_point belowWindowWithWindowNumber:0]];
+  if (!window || window.ignoresMouseEvents)
+    return;
+  if ([window isKindOfClass:MiniElectronWindow.class]) {
+    MiniElectronRendererView* captured = ((MiniElectronWindow*)window).rendererCursorCaptureView;
+    if (captured && captured.window == window && !captured.hiddenOrHasHiddenAncestor) {
+      [captured applyCursor];
+      return;
+    }
+  }
+  const NSPoint point = [window convertPointFromScreen:screen_point];
+  if (const NSUInteger edges = WindowResizeEdges(window, point)) {
+    [WindowResizeCursor(edges) set];
+    return;
+  }
+  NSView* content = window.contentView;
+  NSView* target = [content hitTest:[content convertPoint:point fromView:nil]];
+  if ([target isKindOfClass:MiniElectronRendererView.class])
+    [(MiniElectronRendererView*)target applyCursor];
+  else
+    [NSCursor.arrowCursor set];
+}
 
 @interface MiniElectronWindowDelegate : NSObject <NSWindowDelegate>
 - (instancetype)initWithOwner:(MacBrowserWindow*)owner;
@@ -1176,6 +1228,9 @@ static bool IsPointerEvent(NSEventType type) {
   uint64_t _pendingImeSerial;
   NSEvent* _interpretingKey;
   BOOL _nativeDragActive;
+  NSUInteger _heldMouseButtons;
+  NSCursor* _nativeCursor;
+  NSTrackingArea* _cursorTrackingArea;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame owner:(RendererSurfaceHost*)owner {
@@ -1184,6 +1239,7 @@ static bool IsPointerEvent(NSEventType type) {
     _owner = owner;
     _textSelection = NSMakeRange(NSNotFound, 0);
     _textMarkedRange = NSMakeRange(NSNotFound, 0);
+    _nativeCursor = NSCursor.arrowCursor;
     self.wantsLayer = YES;
     [self registerForDraggedTypes:@[ NSPasteboardTypeFileURL ]];
   }
@@ -1192,7 +1248,10 @@ static bool IsPointerEvent(NSEventType type) {
 - (void)dealloc {
   [self unregisterDraggedTypes];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  if (_cursorTrackingArea)
+    [self removeTrackingArea:_cursorTrackingArea];
 #if !__has_feature(objc_arc)
+  [_cursorTrackingArea release];
   [super dealloc];
 #endif
 }
@@ -1203,8 +1262,21 @@ static bool IsPointerEvent(NSEventType type) {
 - (BOOL)acceptsFirstMouse:(NSEvent*)event {
   return !self.window.canBecomeKeyWindow || [super acceptsFirstMouse:event];
 }
+- (void)cancelCursorCapture {
+  _heldMouseButtons = 0;
+  if ([self.window isKindOfClass:MiniElectronWindow.class]) {
+    MiniElectronWindow* window = (MiniElectronWindow*)self.window;
+    if (window.rendererCursorCaptureView == self)
+      window.rendererCursorCaptureView = nil;
+  }
+}
+- (void)viewWillMoveToWindow:(NSWindow*)newWindow {
+  [self cancelCursorCapture];
+  [super viewWillMoveToWindow:newWindow];
+}
 - (void)viewDidMoveToWindow {
   [super viewDidMoveToWindow];
+  [self updateCursor];
   NSNotificationCenter* notifications = NSNotificationCenter.defaultCenter;
   [notifications removeObserver:self];
   _owner->ResetOcclusionObservation();
@@ -1245,6 +1317,9 @@ static bool IsPointerEvent(NSEventType type) {
   _owner->RefreshVisibility();
 }
 - (void)rendererVisibilityChanged:(NSNotification*)notification {
+  if (!self.window || !self.window.visible || self.window.miniaturized ||
+      self.hiddenOrHasHiddenAncestor || NSApp.hidden)
+    [self cancelCursorCapture];
   HostState& state = State();
   if (!_owner || !CanEnterJavaScript(state) || state.exiting)
     return;
@@ -1255,10 +1330,12 @@ static bool IsPointerEvent(NSEventType type) {
 - (void)viewDidHide {
   [super viewDidHide];
   [self rendererVisibilityChanged:nil];
+  RefreshNativeCursorAtPointer();
 }
 - (void)viewDidUnhide {
   [super viewDidUnhide];
   [self rendererVisibilityChanged:nil];
+  RefreshNativeCursorAtPointer();
 }
 - (void)textInputWindowChanged:(NSNotification*)notification {
   if ([notification.name isEqual:NSWindowDidChangeBackingPropertiesNotification] ||
@@ -1278,6 +1355,58 @@ static bool IsPointerEvent(NSEventType type) {
   [super setFrameSize:newSize];
   _owner->Resize();
   [self.inputContext invalidateCharacterCoordinates];
+}
+- (void)updateTrackingAreas {
+  if (!_cursorTrackingArea) {
+    _cursorTrackingArea = [[NSTrackingArea alloc]
+        initWithRect:NSZeroRect
+             options:NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited |
+                     NSTrackingCursorUpdate | NSTrackingActiveAlways |
+                     NSTrackingInVisibleRect
+               owner:self userInfo:nil];
+    [self addTrackingArea:_cursorTrackingArea];
+  }
+  [super updateTrackingAreas];
+}
+- (void)updateCursor {
+  atom::WebContents* contents = _owner->getWebContents();
+  _nativeCursor = contents ? NativeRendererCursor(contents->getCursor())
+                           : NSCursor.arrowCursor;
+  [self applyCursor];
+}
+- (void)applyCursor {
+  NSWindow* window = self.window;
+  if (!window || !window.visible || window.miniaturized ||
+      window.ignoresMouseEvents || self.hiddenOrHasHiddenAncestor ||
+      NSApp.hidden || _nativeDragActive)
+    return;
+  MiniElectronRendererView* captured = [window isKindOfClass:MiniElectronWindow.class]
+      ? ((MiniElectronWindow*)window).rendererCursorCaptureView : nil;
+  if (captured && (captured.window != window || captured.hiddenOrHasHiddenAncestor))
+    captured = nil;
+  if (captured && captured != self)
+    return;
+  const NSPoint screen_point = NSEvent.mouseLocation;
+  if ([NSWindow windowNumberAtPoint:screen_point belowWindowWithWindowNumber:0] !=
+      window.windowNumber)
+    return;
+  const NSPoint point = [window convertPointFromScreen:screen_point];
+  if (!captured && WindowResizeEdges(window, point))
+    return;
+  NSView* content = window.contentView;
+  if (!captured && [content hitTest:[content convertPoint:point fromView:nil]] != self)
+    return;
+  // The hovered or mouse-captured renderer owns the pointer, not keyboard focus.
+  // Uncaptured asynchronous updates cannot overwrite a sibling or native chrome.
+  [_nativeCursor set];
+}
+- (void)cursorUpdate:(NSEvent*)event { [self applyCursor]; }
+- (void)mouseEntered:(NSEvent*)event {
+  [self sendMouse:event type:"mouseMove" button:"none"];
+}
+- (void)mouseExited:(NSEvent*)event {
+  [self sendMouse:event type:"mouseLeave" button:"none"];
+  RefreshNativeCursorAtPointer();
 }
 - (void)resetCursorRects {
   [super resetCursorRects];
@@ -1331,25 +1460,38 @@ static bool IsPointerEvent(NSEventType type) {
 
 - (int)mouseModifiers:(NSEvent*)event {
   int result = [self inputModifiers:event];
-  const NSUInteger buttons = [NSEvent pressedMouseButtons];
-  if (buttons & 1) result |= MINI_ELECTRON_LBUTTON;
-  if (buttons & 2) result |= MINI_ELECTRON_RBUTTON;
-  if (buttons & 4) result |= MINI_ELECTRON_MBUTTON;
-  // The global state may already reflect a later queued event. Preserve the
-  // transition carried by this event, including synthetic AppKit events.
+  // AppKit's global button state can already include later queued releases.
+  // Preserve other held buttons while applying this event's transition.
   const NSEventType type = event.type;
+  MiniElectronWindow* window = [self.window isKindOfClass:MiniElectronWindow.class]
+      ? (MiniElectronWindow*)self.window : nil;
+  const bool buttonDown = type == NSEventTypeLeftMouseDown || type == NSEventTypeRightMouseDown ||
+      type == NSEventTypeOtherMouseDown;
+  if (buttonDown && window && window.rendererCursorCaptureView != self)
+    _heldMouseButtons = 0;
+  if (type == NSEventTypeMouseMoved && (!window || window.rendererCursorCaptureView != self))
+    _heldMouseButtons = [NSEvent pressedMouseButtons];
   if (type == NSEventTypeLeftMouseDown || type == NSEventTypeLeftMouseDragged)
-    result |= MINI_ELECTRON_LBUTTON;
+    _heldMouseButtons |= 1;
   else if (type == NSEventTypeLeftMouseUp)
-    result &= ~MINI_ELECTRON_LBUTTON;
+    _heldMouseButtons &= ~NSUInteger{1};
   if (type == NSEventTypeRightMouseDown || type == NSEventTypeRightMouseDragged)
-    result |= MINI_ELECTRON_RBUTTON;
+    _heldMouseButtons |= 2;
   else if (type == NSEventTypeRightMouseUp)
-    result &= ~MINI_ELECTRON_RBUTTON;
+    _heldMouseButtons &= ~NSUInteger{2};
   if (type == NSEventTypeOtherMouseDown || type == NSEventTypeOtherMouseDragged)
-    result |= MINI_ELECTRON_MBUTTON;
+    _heldMouseButtons |= 4;
   else if (type == NSEventTypeOtherMouseUp)
-    result &= ~MINI_ELECTRON_MBUTTON;
+    _heldMouseButtons &= ~NSUInteger{4};
+  if (window) {
+    if (buttonDown && !window.rendererCursorCaptureView)
+      window.rendererCursorCaptureView = self;
+    if (!_heldMouseButtons && window.rendererCursorCaptureView == self)
+      window.rendererCursorCaptureView = nil;
+  }
+  if (_heldMouseButtons & 1) result |= MINI_ELECTRON_LBUTTON;
+  if (_heldMouseButtons & 2) result |= MINI_ELECTRON_RBUTTON;
+  if (_heldMouseButtons & 4) result |= MINI_ELECTRON_MBUTTON;
   return result;
 }
 
@@ -1464,6 +1606,10 @@ static bool IsPointerEvent(NSEventType type) {
   input.Set("button", button);
   input.Set("modifiers", [self mouseModifiers:event]);
   _owner->SendInput(std::move(input));
+  [self applyCursor];
+  if (!_heldMouseButtons && (event.type == NSEventTypeLeftMouseUp ||
+      event.type == NSEventTypeRightMouseUp || event.type == NSEventTypeOtherMouseUp))
+    RefreshNativeCursorAtPointer();
 }
 
 - (void)mouseMoved:(NSEvent*)event { [self sendMouse:event type:"mouseMove" button:"none"]; }
@@ -2382,6 +2528,12 @@ void MacBrowserWindow::onWebContentsTextInputState(
   [(MiniElectronRendererView*)renderer_view_ updateTextInputState:state];
 }
 
+void MacBrowserWindow::onWebContentsCursorChanged(
+    atom::WebContents* contents, const ui::Cursor&) {
+  if (contents == web_contents_)
+    [(MiniElectronRendererView*)renderer_view_ updateCursor];
+}
+
 uint64_t MacBrowserWindow::prepareWebContentsFrame(atom::WebContents* contents,
                                                   uint64_t generation) {
   if (contents != web_contents_ || !renderer_view_ || !window_ || closed_)
@@ -2501,6 +2653,12 @@ void MacBrowserView::onWebContentsTextInputState(
   [(MiniElectronRendererView*)view_ updateTextInputState:state];
 }
 
+void MacBrowserView::onWebContentsCursorChanged(
+    atom::WebContents* contents, const ui::Cursor&) {
+  if (contents == web_contents_)
+    [(MiniElectronRendererView*)view_ updateCursor];
+}
+
 void MacBrowserView::Draw(NSRect dirty_rect) {
   DrawFrame(web_contents_, view_, dirty_rect);
 }
@@ -2552,6 +2710,7 @@ void MacBrowserView::Detach() {
   [(MiniElectronRendererView*)view_ cancelNativeDrag];
   if (view_.superview)
     [view_ removeFromSuperview];
+  RefreshNativeCursorAtPointer();
   RefreshVisibility();
 }
 

@@ -603,6 +603,7 @@ source_set("mini_electron_platform_mac") {
     "//skia/ext/skia_utils_mac.mm",
     "//ipc/file_descriptor_set_posix.cc",
     "//third_party/blink/renderer/core/editing/commands/smart_replace_cf.cc",
+    "//ui/base/cocoa/cursor_utils.mm",
     "//ui/base/cocoa/defaults_utils.mm",
     "//ui/base/idle/idle_mac.mm",
     "//ui/color/mac/css_system_color_mixer_mac.mm",

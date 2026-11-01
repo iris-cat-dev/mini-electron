@@ -39,6 +39,7 @@
 #include "src/runtime/electron/node_bindings.h"
 #include "third_party/libnode/src/node.h"
 #include "third_party/libnode/src/node_binding.h"
+#include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkPixmap.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -466,6 +467,14 @@ void WebContents::closeRenderer()
 {
     cancelPreparedFrames("Renderer closed before native presentation");
     m_observers.Notify(&WebContentsObserver::onWebContentsTextInputState, this, base::Value::Dict());
+    m_cursor_guest_id = 0;
+    m_cursor = ui::Cursor(ui::mojom::CursorType::kPointer);
+    m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged, this, m_cursor);
+    if (m_host && m_host->m_cursor_guest_id == m_id) {
+        m_host->m_cursor_guest_id = 0;
+        m_host->m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged,
+            m_host, m_host->m_cursor);
+    }
 #if !defined(MINI_ELECTRON_DISABLE_DEVTOOLS)
     m_devtools_gateway.reset();
     m_debugger_attached = false;
@@ -1066,9 +1075,24 @@ void WebContents::setVSyncDisplayId(int64_t display_id)
 }
 #endif
 
+const ui::Cursor& WebContents::getCursor() const
+{
+    WebContents* guest = m_cursor_guest_id ? fromId(m_cursor_guest_id) : nullptr;
+    const auto bounds = m_guest_bounds.find(m_cursor_guest_id);
+    if (guest && guest->m_host == this && guest->isAlive() && guest->m_visible
+        && bounds != m_guest_bounds.end() && !bounds->second.IsEmpty())
+        return guest->getCursor();
+    return m_cursor;
+}
+
 void WebContents::setVisible(bool visible)
 {
     m_visible = visible;
+    if (!visible && m_host && m_host->m_cursor_guest_id == m_id) {
+        m_host->m_cursor_guest_id = 0;
+        m_host->m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged,
+            m_host, m_host->m_cursor);
+    }
     updateVisibility();
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     for (int id : m_guest_ids) {
@@ -2261,6 +2285,78 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         emitRendererEvent(type, *params, request_id);
         return;
     }
+    if (type == "cursor-owner") {
+        if (!isAlive())
+            return;
+        const auto id = payload.FindInt("guestContentsId");
+        if (!id || (*id && !m_guest_ids.contains(*id)))
+            return;
+        WebContents* guest = *id ? fromId(*id) : nullptr;
+        const auto bounds = m_guest_bounds.find(*id);
+        if (*id && (!guest || guest->m_host != this || !guest->isAlive()
+                || !guest->m_visible || bounds == m_guest_bounds.end()
+                || bounds->second.IsEmpty()))
+            return;
+        m_cursor_guest_id = *id;
+        m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged,
+            this, getCursor());
+        return;
+    }
+    if (type == "cursor-changed") {
+        if (!isAlive())
+            return;
+        const auto value = payload.FindInt("type");
+        if (!value)
+            return;
+        const auto cursor_type = static_cast<ui::mojom::CursorType>(*value);
+        if (!ui::mojom::IsKnownEnumValue(cursor_type))
+            return;
+        ui::Cursor cursor(cursor_type);
+        if (cursor_type == ui::mojom::CursorType::kCustom) {
+            const auto width = payload.FindInt("width");
+            const auto height = payload.FindInt("height");
+            const auto hotspot_x = payload.FindInt("hotspotX");
+            const auto hotspot_y = payload.FindInt("hotspotY");
+            const auto scale = payload.FindDouble("imageScaleFactor");
+            const auto* bytes = payload.FindBlob("bitmap");
+            if (!width || !height || !hotspot_x || !hotspot_y || !scale || !bytes
+                || *width <= 0 || *height <= 0 || !std::isfinite(*scale)
+                || *scale <= 0 || *scale > std::numeric_limits<float>::max()
+                || static_cast<float>(*scale) <= 0
+                || !ui::Cursor::AreDimensionsValidForWeb(gfx::Size(*width, *height),
+                    static_cast<float>(*scale))
+                || *hotspot_x < 0 || *hotspot_x >= *width
+                || *hotspot_y < 0 || *hotspot_y >= *height
+                || static_cast<size_t>(*width) > std::numeric_limits<size_t>::max() / 4
+                || static_cast<size_t>(*height) > std::numeric_limits<size_t>::max()
+                    / (static_cast<size_t>(*width) * 4)
+                || bytes->size() != static_cast<size_t>(*width) * *height * 4)
+                return;
+            SkBitmap bitmap;
+            if (!bitmap.tryAllocPixels(SkImageInfo::Make(*width, *height,
+                    kRGBA_8888_SkColorType, kPremul_SkAlphaType, SkColorSpace::MakeSRGB())))
+                return;
+            const size_t row_bytes = static_cast<size_t>(*width) * 4;
+            for (int y = 0; y < *height; ++y)
+                std::memcpy(bitmap.getAddr(0, y), bytes->data() + row_bytes * y, row_bytes);
+            bitmap.setImmutable();
+            cursor = ui::Cursor::NewCustom(std::move(bitmap),
+                gfx::Point(*hotspot_x, *hotspot_y), static_cast<float>(*scale));
+        }
+        if (cursor_type != ui::mojom::CursorType::kCustom && m_cursor.type() == cursor_type)
+            return;
+        m_cursor = std::move(cursor);
+        if (!m_cursor_guest_id)
+            m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged, this, m_cursor);
+        if (m_host && m_host->m_cursor_guest_id == m_id && m_visible
+            && m_host->m_guest_ids.contains(m_id)) {
+            const auto bounds = m_host->m_guest_bounds.find(m_id);
+            if (bounds != m_host->m_guest_bounds.end() && !bounds->second.IsEmpty())
+                m_host->m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged,
+                    m_host, m_cursor);
+        }
+        return;
+    }
     if (type == "text-input-state") {
         // Renderer snapshots are asynchronous; never let a late snapshot
         // restore a text client after native focus has already left.
@@ -2819,6 +2915,16 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             if (SameDocumentUrl(url, m_pending_main_navigation.url))
                 m_pending_main_navigation = {};
             return;
+        }
+        if (*main_frame) {
+            m_cursor_guest_id = 0;
+            m_cursor = ui::Cursor(ui::mojom::CursorType::kPointer);
+            m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged, this, m_cursor);
+            if (m_host && m_host->m_cursor_guest_id == m_id)
+                m_host->m_observers.Notify(&WebContentsObserver::onWebContentsCursorChanged,
+                    m_host, m_host->getCursor());
+            if (!isAlive())
+                return;
         }
         const bool started_loading = *main_frame && !m_isLoading;
         if (started_loading)
