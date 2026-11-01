@@ -84,6 +84,20 @@ methods, `loadFile()`, `loadURL()`, `BrowserWindow.getAllWindows()`, and
 `webContents.getURL()`. The main process uses the same Node options as Windows
 (`--unhandled-rejections=warn`, no CommonJS module-type detection).
 
+The renderer initializes ICU's system time-zone cache before Seatbelt lockdown.
+`Date` local fields and default `Intl.DateTimeFormat` output use the macOS time
+zone rather than falling back to UTC when `/etc/localtime` becomes inaccessible.
+Persisted UTC timestamps are unchanged. This initializes the zone at renderer
+startup; live system time-zone changes are not monitored.
+
+Verify local completion labels, local date boundaries, and daylight-saving offsets:
+
+```sh
+out/mac-arm64/mini-electron test/macos-local-time-smoke.js
+TZ=America/New_York out/mac-arm64/mini-electron test/macos-local-time-smoke.js
+TZ=UTC out/mac-arm64/mini-electron test/macos-local-time-smoke.js
+```
+
 The macOS host supports transparent, nonactivating companion windows with native
 mouse passthrough and movement forwarding. `focusable`, `alwaysOnTop`, `hasShadow`,
 `showInactive()`, and `setVisibleOnAllWorkspaces()` retain their native behavior.

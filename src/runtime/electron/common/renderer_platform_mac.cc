@@ -23,6 +23,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -36,6 +37,8 @@
 #include "src/runtime/engine/renderer/webgl_context_provider.h"
 #include "src/runtime/engine/renderer/webgpu_context_provider.h"
 #include "third_party/libcurl/include/curl/curl.h"
+#include "third_party/icu/source/common/unicode/uclean.h"
+#include "third_party/icu/source/i18n/unicode/timezone.h"
 
 extern char** environ;
 
@@ -526,6 +529,15 @@ bool EnterRendererSandbox(std::string* error)
         *error = "libcurl initialization failed";
         return false;
     }
+    // ICU's first default-zone lookup reads /etc/localtime. Cache it before
+    // Seatbelt denies that file so Date and Intl retain the system time zone.
+    UErrorCode icu_error = U_ZERO_ERROR;
+    u_init(&icu_error);
+    if (U_FAILURE(icu_error)) {
+        *error = std::string("ICU initialization failed: ") + u_errorName(icu_error);
+        return false;
+    }
+    const std::unique_ptr<icu::TimeZone> time_zone(icu::TimeZone::createDefault());
     char* sandbox_error = nullptr;
     if (::sandbox_init(profile.c_str(), 0, &sandbox_error) != 0) {
         *error = sandbox_error ? sandbox_error : "seatbelt initialization failed";
