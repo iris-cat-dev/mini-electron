@@ -6,21 +6,29 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased source: native SQLite bindings
+### macOS runtime 0.1.31
 
-- Adds read-only `DatabaseSync.isTransaction` from SQLite's actual autocommit
-  state, including savepoints, statement errors, automatic rollback and closed
-  connection rejection.
-- Fixes positional binding of numbered `?NNN` slots without skipping their
-  SQLite indices when mixed with named parameters, sparse slots or repetitions.
-- Extends the isolated native SQLite regression with transaction/open state,
-  nested savepoints, failed-BEGIN writer-lock isolation, rollback recovery and
-  mixed numbered/named binding behavior.
+Apple Silicon macOS-only runtime update. Windows runtime/channel remains
+`0.1.28`; npm installer remains `0.1.12`. Installer protocol `1`, Electron API
+compatibility `41.2.0` and Node ABI `134` are unchanged. No renderer or browser
+surface changed relative to `0.1.30`; this release carries the native SQLite
+binding corrections that were committed after `0.1.30` was published.
 
-The current macOS source build passed `test/node-sqlite-smoke.js`, including
-WAL, read-only access, metadata, backup, changesets, Worker binding and extension
-restrictions. The already published `0.1.30` still fails the new numbered-binding
-case with `column index out of range`; its immutable assets were not overwritten.
+- Adds read-only `DatabaseSync.isTransaction`, reporting SQLite's actual
+  autocommit state across explicit transactions, nested savepoints, statement
+  errors and automatic rollback, and rejecting a closed connection with
+  `ERR_INVALID_STATE`.
+- Fixes positional binding of numbered `?NNN` slots: anonymous parameters no
+  longer skip an existing numbered index, so numbered slots keep their SQLite
+  indices when mixed with named parameters, sparse slots or repetitions.
+- Extends `test/node-sqlite-smoke.js` with database/transaction state, nested
+  savepoints, failed-`BEGIN` writer-lock isolation, rollback recovery and mixed
+  numbered/named binding behavior.
+
+The packaged runtime passed the isolated native SQLite regression, including
+WAL, read-only access, column metadata, backup, changesets, Worker binding and
+extension-loading restrictions. Runtime `0.1.30` and its immutable assets are
+unchanged; its numbered-binding gap is superseded by this release.
 
 ### macOS runtime 0.1.30
 

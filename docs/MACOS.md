@@ -272,7 +272,7 @@ input, keep the opposite edge anchored, and honor window minimum/maximum sizes.
 Non-resizable and full-screen windows do not use this border. macOS 15+ uses
 AppKit's directional frame cursors; older systems use axis resize cursors.
 
-Runtime `0.1.30` forwards Blink cursor changes over the binary
+Runtime `0.1.30` and later forward Blink cursor changes over the binary
 renderer channel instead of leaving the content cursor at the default arrow.
 Input/contenteditable text, links, explicit CSS pointer/crosshair/cell/context-menu,
 move/grab/grabbing, resize, copy/alias/forbidden, zoom, vertical-text and hidden
@@ -760,9 +760,9 @@ The macOS Node runtime compiles and explicitly registers the native `node:sqlite
 binding against the bundled SQLite library, including column metadata,
 session/changeset support, and positional bindings for numbered `?NNN` slots.
 Numbered slots retain their SQLite indices when mixed with named parameters.
-The numbered-binding correction is currently source-only: published runtime
-`0.1.30` still rejects the mixed numbered/named regression with
-`column index out of range`. Rebuild from the committed source for this fix.
+Runtime `0.1.31` carries the numbered-binding correction and the transaction
+getter; published `0.1.30` still rejects the mixed numbered/named regression
+with `column index out of range`.
 OMP Desktop uses `DatabaseSync` to read its OAuth
 accounts before querying quota; JavaScript module availability or a SQLite
 version string alone does not establish that the native binding is present.
