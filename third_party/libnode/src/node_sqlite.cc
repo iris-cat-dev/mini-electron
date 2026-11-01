@@ -718,6 +718,15 @@ void DatabaseSync::IsOpenGetter(const FunctionCallbackInfo<Value>& args)
     args.GetReturnValue().Set(db->IsOpen());
 }
 
+void DatabaseSync::IsTransactionGetter(const FunctionCallbackInfo<Value>& args)
+{
+    DatabaseSync* db;
+    ASSIGN_OR_RETURN_UNWRAP(&db, args.This());
+    Environment* env = Environment::GetCurrent(args);
+    THROW_AND_RETURN_ON_BAD_STATE(env, !db->IsOpen(), "database is not open");
+    args.GetReturnValue().Set(sqlite3_get_autocommit(db->connection_) == 0);
+}
+
 void DatabaseSync::Close(const FunctionCallbackInfo<Value>& args)
 {
     DatabaseSync* db;
@@ -1331,7 +1340,10 @@ bool StatementSync::BindParams(const FunctionCallbackInfo<Value>& args)
     }
 
     for (int i = anon_start; i < args.Length(); ++i) {
-        while (sqlite3_bind_parameter_name(statement_, anon_idx) != nullptr) {
+        while (const char* name = sqlite3_bind_parameter_name(statement_, anon_idx)) {
+            if (name[0] == '?') {
+                break;
+            }
             anon_idx++;
         }
 
@@ -1963,6 +1975,7 @@ static void Initialize(Local<Object> target, Local<Value> unused, Local<Context>
     SetProtoMethod(isolate, db_tmpl, "enableLoadExtension", DatabaseSync::EnableLoadExtension);
     SetProtoMethod(isolate, db_tmpl, "loadExtension", DatabaseSync::LoadExtension);
     SetSideEffectFreeGetter(isolate, db_tmpl, FIXED_ONE_BYTE_STRING(isolate, "isOpen"), DatabaseSync::IsOpenGetter);
+    SetSideEffectFreeGetter(isolate, db_tmpl, FIXED_ONE_BYTE_STRING(isolate, "isTransaction"), DatabaseSync::IsTransactionGetter);
     SetConstructorFunction(context, target, "DatabaseSync", db_tmpl);
     SetConstructorFunction(context, target, "StatementSync", StatementSync::GetConstructorTemplate(env));
 

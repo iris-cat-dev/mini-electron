@@ -6,6 +6,22 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased source: native SQLite bindings
+
+- Adds read-only `DatabaseSync.isTransaction` from SQLite's actual autocommit
+  state, including savepoints, statement errors, automatic rollback and closed
+  connection rejection.
+- Fixes positional binding of numbered `?NNN` slots without skipping their
+  SQLite indices when mixed with named parameters, sparse slots or repetitions.
+- Extends the isolated native SQLite regression with transaction/open state,
+  nested savepoints, failed-BEGIN writer-lock isolation, rollback recovery and
+  mixed numbered/named binding behavior.
+
+The current macOS source build passed `test/node-sqlite-smoke.js`, including
+WAL, read-only access, metadata, backup, changesets, Worker binding and extension
+restrictions. The already published `0.1.30` still fails the new numbered-binding
+case with `column index out of range`; its immutable assets were not overwritten.
+
 ### macOS runtime 0.1.30
 
 Apple Silicon macOS-only runtime update. Windows runtime/channel remains

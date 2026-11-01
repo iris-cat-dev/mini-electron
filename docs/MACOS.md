@@ -757,14 +757,19 @@ Blink and Node/V8 also share the same statically linked full ICU data package;
 the macOS target does not compile MiniBlink's legacy embedded ICU blob.
 
 The macOS Node runtime compiles and explicitly registers the native `node:sqlite`
-binding against the bundled SQLite library, including column metadata and
-session/changeset support. OMP Desktop uses `DatabaseSync` to read its OAuth
+binding against the bundled SQLite library, including column metadata,
+session/changeset support, and positional bindings for numbered `?NNN` slots.
+Numbered slots retain their SQLite indices when mixed with named parameters.
+The numbered-binding correction is currently source-only: published runtime
+`0.1.30` still rejects the mixed numbered/named regression with
+`column index out of range`. Rebuild from the committed source for this fix.
+OMP Desktop uses `DatabaseSync` to read its OAuth
 accounts before querying quota; JavaScript module availability or a SQLite
 version string alone does not establish that the native binding is present.
-Run the isolated regression smoke with the runtime or packaged application:
+Run the isolated regression smoke with the current source build or a rebuilt packaged application:
 
 ```sh
-ELECTRON_RUN_AS_NODE=1 out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron \
+ELECTRON_RUN_AS_NODE=1 out/mac-arm64/mini-electron \
   test/node-sqlite-smoke.js
 ELECTRON_RUN_AS_NODE=1 "out/mac-arm64/OMP Desktop.app/Contents/MacOS/OMP Desktop" \
   test/node-sqlite-smoke.js
@@ -772,8 +777,8 @@ ELECTRON_RUN_AS_NODE=1 "out/mac-arm64/OMP Desktop.app/Contents/MacOS/OMP Desktop
 
 The smoke verifies OAuth-style account filtering, WAL, native read-only
 `DatabaseSync.isTransaction` state, nested savepoints, failed-transaction rollback
-recovery, writer-lock isolation, read-only access, column metadata, backup,
-changesets, and Worker loading using temporary databases; it does not read or
+recovery, writer-lock isolation, numbered bindings, read-only access, column
+metadata, backup, changesets, and Worker loading using temporary databases; it does not read or
 change user credentials. The transaction getter reports SQLite engine state and
 throws `ERR_INVALID_STATE` on a closed connection. This native binding addition
 is macOS-only; the Windows source lists are unchanged.
