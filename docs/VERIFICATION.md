@@ -51,6 +51,26 @@ Release assembly: `out/runtime-release-0.1.30/`.
 Runtime ZIP SHA256:
 `55b16110c6af985a56efa2f606773bdd71b6e87d95a30bc32d9f30ddc64bca51`.
 
+Published immutable [GitHub Release `v0.1.30`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.30)
+from source commit `3918ca830`, uploading only the macOS runtime ZIP,
+`artifacts.json` and `SHASUMS256.txt`. Downloaded the public ZIP without credentials
+and matched the SHA256 above before updating macOS `runtime-v1`.
+
+The registry-published npm installer `0.1.12` installed the immutable `0.1.30`
+release with an explicit pin, no local distribution override and a fresh cache.
+The installed CLI reported `v0.1.30`, its native executable reported ABI `134`,
+and deep/strict signature verification, native desktop coordinates and sandboxed
+system local time passed. After the channel update, a second isolated unpinned
+installation with another fresh cache selected `0.1.30`; its CLI, ABI and
+deep/strict signature checks passed.
+
+Windows `runtime-v1-win32-x64` stayed unchanged at `0.1.28`. Its channel asset
+remained ID `681966016`, size `528`, updated `2026-10-27T15:15:07Z`, digest
+`793ac248f1d1764ebbe5f82edb152105ea3dae4f4752109a99ef9164995fef0c`.
+No Windows asset or npm package was rebuilt or published, and no immutable
+release asset was overwritten.
+
+
 ## macOS runtime 0.1.29 (2026-10-30)
 
 Incrementally rebuilt Apple Silicon Release with Xcode Clang 17, Python 3.14,
