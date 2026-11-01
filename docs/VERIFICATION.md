@@ -8,6 +8,68 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.31 (2026-11-01)
+
+Apple Silicon macOS-only runtime update carrying the native SQLite binding fixes
+committed as `71eea8427`. Windows runtime/channel remains `0.1.28`; npm installer
+remains `0.1.12`. Installer protocol `1`, Electron API `41.2.0` and Node ABI `134`
+are unchanged. No Blink renderer, cursor or browser surface changed relative to
+`0.1.30`.
+
+Rebuilt the Release engine with Xcode Clang 17, Python 3.14 and GN/Ninja. The
+first relink failed with `Undefined symbols: _SSL_get0_group_name` because the
+cached static curl archive in `.build-tools` had been compiled against OpenSSL
+3.2+ headers while the linked `libmini_electron_openssl.a` implements the
+repository's OpenSSL 3.0.13, which never defines that symbol. Deleting the stale
+`curl-8.23.0-darwin-arm64` install and rebuilding with the archive-referenced
+headers restored the link; no source or build-script change was needed. The
+distribution was stripped and ad-hoc signed; the executable reported `v0.1.31`,
+`version.json` reported runtime `0.1.31`, platform `darwin`, arch `arm64`, ABI
+`134`, and `codesign --verify --deep --strict` passed.
+
+Packaged-runtime checks passed:
+- Native SQLite regression: OAuth-style filtering, WAL, `isTransaction` state
+  including closed-connection `ERR_INVALID_STATE`, nested savepoints, failed
+  `BEGIN` writer-lock isolation, rollback recovery, mixed numbered/named
+  positional bindings, read-only access, column metadata, backup, changesets,
+  Worker binding and extension-loading restrictions (SQLite 3.49.1).
+- Native pointer/wheel screen DIPs, negative positions, window movement,
+  BrowserView offsets and stationary pointer capture.
+- Sandboxed local `Date`/`Intl` labels in system `Asia/Shanghai`.
+
+The cursor regression still requires an unlocked console and was not re-run;
+the physical hover, native-border precedence and captured-cursor presentation
+results recorded for `0.1.30` are neither repeated nor contradicted here.
+Windows binaries were not compiled or run. No Developer ID signing or
+notarization is claimed.
+
+Distribution: `out/mac-arm64/runtime-dist-0.1.31/`.
+Release assembly: `out/runtime-release-0.1.31/`.
+Runtime ZIP SHA256:
+`0638f4022bd42883488ef5276464ae2f6a799d8720d86ffcdbeb30663123899e`.
+
+Published immutable [GitHub Release `v0.1.31`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.31)
+from source commit `a04474f98`, uploading only the macOS runtime ZIP,
+`artifacts.json` and `SHASUMS256.txt`. Downloaded the public ZIP without
+credentials and matched the SHA256 above before updating macOS `runtime-v1`
+(asset ID `698404550`, digest
+`sha256:c492596d5bb3379d4a84f729dfedb42eb19816507fb55fb65f5b60a6a14cb499`).
+
+Two isolated installations of the registry-published npm installer `0.1.12`,
+each with its own fresh `MINI_ELECTRON_CACHE`, selected `0.1.31`: one with an
+explicit `0.1.31` runtime pin, one unpinned after the channel update. Both
+installed executables reported `v0.1.31` and ABI `134`, and both passed the
+native SQLite regression including numbered bindings — the case that fails on
+`v0.1.30` with `column index out of range`. The pinned installation also passed
+deep/strict signature verification; the channel installation also passed native
+desktop coordinates and sandboxed system local time.
+
+Windows `runtime-v1-win32-x64` stayed unchanged at `0.1.28`, asset ID `681966016`,
+size `528`, updated `2026-10-27T15:15:07Z`, digest
+`793ac248f1d1764ebbe5f82edb152105ea3dae4f4752109a99ef9164995fef0c`.
+No Windows asset, npm package or `v0.1.30` asset was rebuilt, republished or
+overwritten.
+
 ## macOS runtime 0.1.30 (2026-11-01)
 
 Apple Silicon macOS-only runtime update from the native cursor cutover in
