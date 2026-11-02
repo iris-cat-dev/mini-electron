@@ -6,6 +6,38 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.32
+
+Windows x64-only runtime update from the shared source through macOS `0.1.31`.
+The macOS runtime/channel remains `0.1.31`; npm installer remains `0.1.12`.
+Installer protocol `1`, Electron API compatibility `41.2.0` and Node ABI `134`
+are unchanged.
+
+- Ships typed Blink-to-Win32 cursor updates for BrowserWindow, BrowserView and
+  embedded webview guests, including stock/embedded cursor resources,
+  hidden/custom RGBA cursors, hotspots and DPI scaling.
+- Re-hit-tests native chrome for queued cursor updates and consumes stale
+  updates from non-hovered, hidden, disabled or mouse-ignored windows instead
+  of resetting another window's cursor.
+- Preserves held-button capture routing, including chorded guest dragging,
+  stationary CSS cursor changes outside captured view bounds, and native
+  capture/focus ownership for offscreen views in single-process mode.
+- Converts Win32 physical input to the guest's logical embedding coordinates
+  before hit-testing and forwarding, and derives held-button masks from native
+  left/right/middle messages instead of assuming a JavaScript button string.
+- Applies the late-frame live-owner guard to D3D: a missing view has already
+  released the registry lock and must not be unlocked twice.
+- Includes shared native SQLite transaction-state and numbered-parameter
+  binding repairs, including savepoints, automatic rollback and writer-lock
+  isolation.
+- Includes the shared lifecycle, console source-location and renderer-pressure
+  changes. Windows retains its native Job/crash/pre-OOM implementation;
+  macOS-only Seatbelt, POSIX-FD and time-zone repairs are not Windows features.
+
+The installable runtime ZIP and separate matching full-PDB ZIP are assembled
+from the same Release build. See the [Windows verification record](VERIFICATION.md#windows-runtime-0132-2026-11-02)
+for exercised scenarios and remaining hardware/display limits.
+
 ### macOS runtime 0.1.31
 
 Apple Silicon macOS-only runtime update. Windows runtime/channel remains

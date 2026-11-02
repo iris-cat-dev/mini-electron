@@ -8,6 +8,83 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.32 (2026-11-02)
+
+Synchronized the clean Windows checkout from `1dac123b9` to `249bf1cfa`,
+then completed the Windows cursor/input and late-D3D-owner counterparts.
+macOS-only Seatbelt, POSIX-FD and time-zone repairs were not generalized to
+Windows. npm installer `0.1.12`, installer protocol `1`, Electron API `41.2.0`
+and Node ABI `134` are unchanged; the macOS runtime/channel remains `0.1.31`.
+
+Built the normal Windows x64 Release with Clang 22, MSVC `14.44.35207`,
+Windows SDK `10.0.26100.0`, Python 3.14 and four workers. Native output was
+rebuilt in `out/windows-x64`, followed by incremental rebuilds for the defects
+found by real-runtime verification. ANGLE/Dawn dependencies used the existing
+local tool/source cache. This is not a clean-room dependency bootstrap.
+
+Before-fix observations:
+- Immutable Windows `0.1.28` lacks `DatabaseSync.isTransaction`, rejects mixed
+  numbered/named bindings with `column index out of range`, and lacks embedded
+  cursor resource `alias` (`45000`).
+- Native diagnostics showed a captured BrowserView receiving `(-2,-73)` with
+  `buttons:1` and DOM pointer capture, while a stationary CSS update left the
+  Win32 cursor at `grabbing`. Blink's timer path ignored the capture target.
+- In single-process mode, offscreen native focus/capture calls cleared the
+  BrowserWindow's HWND capture; the out-of-view move reached the host instead.
+- At 150% display scaling, a correctly positioned physical pointer failed to
+  reach the guest because Win32 pixels were compared with logical guest bounds.
+
+The final packaged executable passed **33 runtime scenarios**:
+- 17 shared checks: native SQLite, plus console-message, creation reentrancy,
+  runtime event/destruction, IndexedDB transaction lifetime, body-loader,
+  preload scope, same-document navigation and IPC-frame checks in sandboxed
+  and explicit single-process modes.
+- Eight native checks: cursor semantics and desktop coordinates in both
+  process modes; complete hardware compositor checks in both modes; the
+  software compositor check; and all four GPU/CPU host/guest combinations.
+  Cursor observations use real SendInput and GetCursorInfo/GetIconInfo/GetDIBits,
+  including RGBA/hotspots, stationary captured updates, chorded guest input,
+  native caption/border precedence, inactive hover and hidden/ignored wakeups.
+  Both coordinate runs passed 55 native/DOM assertions. GPU checks retained
+  their hardware-clock assertions, native pixel/capture checks and six active
+  GPU-owner teardown cycles per hardware run.
+- Eight serial memory checks: live JS heap above 2 GiB, real cache reclamation
+  and redraw, renderer OOM/minidump and dump refusal, and pre-OOM capture,
+  file refusal, storage budget and near-heap-limit refusal. Real heap graphs
+  and symbol-identifiable exception dumps were inspected by the regressions.
+
+A separate disposable runtime probe passed in both modes at emulated renderer
+scales `1.5` and `2`: native-message input hit a bounded guest target at `(50,50)`,
+preserved DOM buttons `1 -> 3 -> 2 -> 0`, and retained the captured guest at
+`(-230,-40)` after left release while right remained held. This exercises the
+non-unit Win32-to-guest conversion without changing OS display settings; it is
+not a physical mixed-DPI monitor transition. The final native matrix ran on a
+single 100%-scale display; earlier candidate diagnostics used a 150%-scale
+display. Earlier timer-clock prerequisite and fixture-initialization failures
+remain recorded; no hardware assertion or deadline was weakened to pass them.
+The exact missing-owner D3D interleaving was not forced deterministically.
+No macOS run, mixed-monitor transition, original Desktop-session replay or
+full-day soak is claimed.
+
+Final executable SHA256:
+`0daab4201c9a48386619235fc79ca2d78d4fa8c2d0e0e2be5c8f47ea25f3b3dd`.
+Matching PDB GUID `E476DFFD226220F04C4C44205044422E`, Age `1`; PDB SHA256:
+`b58e3e14f2745ac8b2c78727b4774f1015d39606851026e38126e8ea74c3ea3a`.
+Runtime ZIP SHA256:
+`891574cc63a0da559f45bafc84bfd465795c2a5ff43a4aa4c07854b40f85ee2c`.
+Separate symbols ZIP SHA256:
+`88bc42c11b006b4a08689c4b04e5e9ecd9023d6d77a9b514d8d9ccb5b6b8cd91`.
+Release assembly validates the matching EXE/PDB pair and excludes symbols from
+the installable ZIP. The integrity-checked registry npm installer `0.1.12`
+installed the assembled final release in an isolated package; its CLI reported
+`v0.1.32` and its executable passed the complete native SQLite regression.
+
+Distribution: `out/windows-x64/runtime-dist-0.1.32/`.
+Immutable assembly: `out/runtime-release-0.1.32/v0.1.32/`.
+Logs, JSON results and native PNGs:
+`out/verification/windows-0.1.32/`, with final matrices under `release-matrix-*`.
+No installed Desktop executable or user application profile was replaced.
+
 ## macOS runtime 0.1.31 (2026-11-01)
 
 Apple Silicon macOS-only runtime update carrying the native SQLite binding fixes

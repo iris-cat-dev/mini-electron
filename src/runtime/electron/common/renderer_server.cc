@@ -2785,6 +2785,9 @@ private:
         int x = event.FindInt("x").value_or(0);
         int y = event.FindInt("y").value_or(0);
         int flags = event.FindInt("modifiers").value_or(0);
+#if BUILDFLAG(IS_WIN)
+        const int native_message = event.FindInt("nativeMessage").value_or(0);
+#endif
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
         std::optional<gfx::PointF> screenPosition;
         const auto screenX = event.FindDouble("screenX");
@@ -2792,14 +2795,60 @@ private:
         if (screenX && screenY)
             screenPosition = gfx::PointF(*screenX, *screenY);
 #endif
-        int guest_id = HitTestGuest(x, y, *type);
+        // Native Win32 widget positions are physical pixels; embedded guest
+        // bounds and their 1x backing view use logical coordinates. Preserve
+        // the original position for non-guest Blink input.
+        int guest_x = x;
+        int guest_y = y;
+#if BUILDFLAG(IS_WIN)
+        if (native_message) {
+            float scale;
+            {
+                std::lock_guard<std::mutex> lock(viewport_lock_);
+                scale = viewport_scale_;
+            }
+            if (scale != 1.f) {
+                const auto logical_coordinate = [scale](int coordinate) {
+                    return static_cast<int>(std::clamp(
+                        std::floor(coordinate / static_cast<double>(scale)),
+                        static_cast<double>(std::numeric_limits<int>::min()),
+                        static_cast<double>(std::numeric_limits<int>::max())));
+                };
+                guest_x = logical_coordinate(x);
+                guest_y = logical_coordinate(y);
+            }
+        }
+#endif
+        int button = 0;
+        int guest_id = HitTestGuest(guest_x, guest_y, *type);
         if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp"
             || *type == "mouseLeave") {
             if (*type == "mouseLeave" || cursor_capture_buttons_)
                 guest_id = captured_cursor_guest_.load();
-            const std::string* button = event.FindString("button");
-            const unsigned button_mask = button && *button == "right" ? 2u
-                : button && *button == "middle" ? 4u : 1u;
+            button = event.FindInt("button").value_or(0);
+            if (const std::string* name = event.FindString("button")) {
+                if (*name == "right")
+                    button = 2;
+                else if (*name == "middle")
+                    button = 1;
+            }
+#if BUILDFLAG(IS_WIN)
+            switch (native_message) {
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONDBLCLK:
+            case WM_MBUTTONUP:
+                button = 1;
+                break;
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONDBLCLK:
+            case WM_RBUTTONUP:
+                button = 2;
+                break;
+            default:
+                break;
+            }
+#endif
+            const unsigned button_mask = button == 2 ? 2u : button == 1 ? 4u : 1u;
             if (*type == "mouseDown") {
                 captured_cursor_guest_ = guest_id;
                 cursor_capture_buttons_.fetch_or(button_mask);
@@ -2831,11 +2880,11 @@ private:
                     return false;
                 if (event.FindInt("x"))
                     guest_event.Set("x", static_cast<int>(std::clamp<int64_t>(
-                        static_cast<int64_t>(x) - found->second.x,
+                        static_cast<int64_t>(guest_x) - found->second.x,
                         std::numeric_limits<int>::min(), std::numeric_limits<int>::max())));
                 if (event.FindInt("y"))
                     guest_event.Set("y", static_cast<int>(std::clamp<int64_t>(
-                        static_cast<int64_t>(y) - found->second.y,
+                        static_cast<int64_t>(guest_y) - found->second.y,
                         std::numeric_limits<int>::min(), std::numeric_limits<int>::max())));
             }
             payload.Set("event", std::move(guest_event));
@@ -2937,31 +2986,6 @@ private:
         }
         if (*type == "mouseMove" || *type == "mouseDown" || *type == "mouseUp") {
             unsigned message = MINI_ELECTRON_MSG_MOUSEMOVE;
-            int button = event.FindInt("button").value_or(0);
-            if (const std::string* name = event.FindString("button")) {
-                if (*name == "right")
-                    button = 2;
-                else if (*name == "middle")
-                    button = 1;
-            }
-#if BUILDFLAG(IS_WIN)
-            const int native_message =
-                event.FindInt("nativeMessage").value_or(0);
-            switch (native_message) {
-            case WM_MBUTTONDOWN:
-            case WM_MBUTTONDBLCLK:
-            case WM_MBUTTONUP:
-                button = 1;
-                break;
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONDBLCLK:
-            case WM_RBUTTONUP:
-                button = 2;
-                break;
-            default:
-                break;
-            }
-#endif
             if (*type == "mouseDown")
                 message = button == 2 ? MINI_ELECTRON_MSG_RBUTTONDOWN
                     : button == 1 ? MINI_ELECTRON_MSG_MBUTTONDOWN : MINI_ELECTRON_MSG_LBUTTONDOWN;

@@ -65,10 +65,10 @@ stay below FileTracker's path limit. The backend prefers native x64 MSBuild.
 Windows does not currently provide the macOS-only browser demo or screenshot
 option. OMP Desktop packaging is supported on both desktop targets.
 
-The current release manifest declares only macOS, so use this source-build
-executable for Windows verification, not an old `runtime-dist/electron.exe`.
-`--package-dist` requires a declared Windows artifact; this source verification
-does not change npm's platform policy or publish a Windows runtime.
+Use the freshly built executable for source verification, not a stale
+`runtime-dist/electron.exe`. `python build.py --package-dist` produces the
+declared Windows runtime distribution, ZIP, and matching archived EXE/PDB pair;
+publishing those assets is a separate [release step](RELEASING.md).
 
 Windows defaults to Skia Ganesh/D3D12 GPU compositing when hardware setup
 succeeds. Shared textures and fences feed retained D3D11 textures and
@@ -91,6 +91,9 @@ its lifetime. Presents borrow that handle instead of acquiring another one
 per frame. Active and pending chains retain separate ownership; cancellation,
 replacement, and destruction stop any native wait before releasing the handle.
 First-frame GPU completion remains asynchronous during resizing.
+Queued D3D publications may outlive their view. The live-view registry lookup
+already releases its lock on a missing owner; frame completion must unlock only
+a successful lookup, matching the Metal ownership rule.
 
 Windows frame scheduling follows the selected monitor's DXGI VBlank clock,
 with validated DWM timing for the primary monitor or a refresh-calibrated
@@ -186,8 +189,10 @@ The Windows Node runtime compiles and explicitly registers `node:sqlite` against
 the bundled SQLite library, with column metadata and session/changeset support.
 The same binding is available in standalone Node mode and Workers. Extension
 loading remains disabled unless explicitly allowed when the database is created.
-The native regression exercises OAuth-style account filtering, WAL, rollback,
-read-only access, metadata, backup, changesets, Workers, and extension restrictions.
+The native regression exercises OAuth-style account filtering, WAL, read-only
+`DatabaseSync.isTransaction` across savepoints, errors and automatic rollback,
+numbered/named parameter binding, writer-lock isolation, read-only access,
+metadata, backup, changesets, Workers, and extension restrictions.
 
 Windows file identity uses the same volume serial for `stat`/`lstat` and `fstat`.
 Number and bigint stats agree across synchronous, callback, and promises APIs;
@@ -259,7 +264,7 @@ and window geometry, including negative/positive positions and non-100% DPI.
 It does not send global physical input or change display/input settings.
 Set `MINI_POINTER_SCREEN_COORDINATES_RESULT` to retain its structured evidence.
 
-The unreleased cursor source uses typed Blink cursor notifications. While buttons
+Runtime `0.1.32` uses typed Blink cursor notifications. While buttons
 are held, the captured BrowserView or main WebContents owns the cursor; otherwise
 the topmost BrowserView/active webview under the pointer wins, falling back to the
 window's own WebContents. Cursor selection does not require keyboard focus; native
@@ -270,11 +275,21 @@ cover grab/grabbing, zoom, copy/alias, cell, vertical text, row/column resize an
 panning. `cursor:none` uses a null handle. Owned custom handles retain the image
 and hotspot, and are resampled only when the image or monitor DPI changes.
 Chorded input preserves all held buttons rather than releasing capture early.
-This Windows source cutover has not been compiled or exercised on Windows in the
-current macOS session; resource loading and mixed-DPI native behavior are unverified.
-A portable C++ harness exercised the actual captured-view routing method for
-left/right and right/middle chords, the final out-of-bounds release, main-content
-capture and double-click. This is not Windows cursor/resource or Win32 validation.
+Stationary CSS updates retain the captured DOM target outside the view bounds.
+Offscreen views never take native focus/capture with a null HWND. Native guest
+input converts host physical pixels to logical embedding coordinates before
+hit-testing/forwarding; the guest's existing 1x backing-store policy is unchanged.
+Held-button masks also honor native Win32 button messages.
+Queued renderer updates re-hit-test native chrome and cannot reset another
+window's cursor when their originating window is not hovered, or is hidden,
+disabled or mouse-ignored.
+Run `test/windows-cursor-smoke.js` with the rebuilt runtime on an unlocked,
+unobscured desktop. Its separate C# helper observes real cursor bitmaps,
+hotspots and native input; it restores its pointer position and held buttons.
+It covers standard/resource/custom cursors, stationary updates, native
+caption/resize precedence, BrowserView and chorded guest capture, inactive
+hover, stale-window updates and navigation reset. Mixed-DPI transitions run
+only when a second differently scaled display is available.
 
 Local issue-7 verification on Windows at 150% scaling passed 55 native-window/DOM
 checks in default GPU and single-process software modes, including move-only,

@@ -92,6 +92,8 @@ internal static class NativeInputHelper
     private static int accepted;
     private static bool heldLeftButton;
     private static IntPtr heldPointerWindow;
+    private static Point savedPointer;
+    private static bool pointerMoved;
 
     private sealed class PresentationPoint {
         public int X, Y, Red, Green, Blue, Tolerance;
@@ -139,8 +141,18 @@ internal static class NativeInputHelper
     private static void Mouse(bool up) {
         Send(new Input { Type = 0, Data = new InputUnion { Mouse = new MouseInput { Flags = up ? 4u : 2u } } });
     }
+    private static bool SetTestCursorPos(int x, int y) {
+        if (!SetCursorPos(x, y)) return false;
+        pointerMoved = true;
+        return true;
+    }
+    private static void RestorePointer() {
+        if (!pointerMoved) return;
+        if (!SetCursorPos(savedPointer.X, savedPointer.Y)) throw new Win32Exception();
+        pointerMoved = false;
+    }
     private static void Click(int x, int y) {
-        if (!SetCursorPos(x, y)) throw new Win32Exception();
+        if (!SetTestCursorPos(x, y)) throw new Win32Exception();
         Mouse(false); Thread.Sleep(50); Mouse(true);
     }
     private static void ValidateClientPoint(IntPtr window, int x, int y) {
@@ -171,6 +183,7 @@ internal static class NativeInputHelper
         Send(new Input { Type = 0, Data = new InputUnion { Mouse = new MouseInput {
             X = (int)normalizedX, Y = (int)normalizedY, Flags = 0x0001u | 0x4000u | 0x8000u
         } } });
+        pointerMoved = true;
     }
     private static void MovePointer(IntPtr window, int x, int y) {
         SendPointerMove(window, x, y);
@@ -251,7 +264,7 @@ internal static class NativeInputHelper
             if (SendMessageTimeout(window, 0x0084, UIntPtr.Zero, new IntPtr(position), 2, 1000, out hit) == IntPtr.Zero
                 || hit.ToUInt64() < 10 || hit.ToUInt64() > 17)
                 throw new InvalidOperationException("Native resize did not hit a window sizing edge");
-            if (!SetCursorPos(x, y) || WindowFromPoint(new Point { X = x, Y = y }) != window)
+            if (!SetTestCursorPos(x, y) || WindowFromPoint(new Point { X = x, Y = y }) != window)
                 throw new InvalidOperationException("Native resize edge is obscured");
             Mouse(false);
             heldLeftButton = true;
@@ -283,7 +296,7 @@ internal static class NativeInputHelper
                         throw new InvalidOperationException("Native resize target lost foreground during drag");
                     int moveX = edge == 1 ? x : x + (targetX - x) * step / steps;
                     int moveY = edge == 0 ? y : y + (targetY - y) * step / steps;
-                    if (!SetCursorPos(moveX, moveY)) throw new Win32Exception();
+                    if (!SetTestCursorPos(moveX, moveY)) throw new Win32Exception();
                     Thread.Sleep(interval);
                 }
             } finally { ReleaseHeldPointer(); }
@@ -911,7 +924,7 @@ internal static class NativeInputHelper
             Focus(window);
             int x = Number(command, "x"), y = Number(command, "y");
             ValidateClientPoint(window, x, y);
-            if (!SetCursorPos(x, y)) throw new Win32Exception();
+            if (!SetTestCursorPos(x, y)) throw new Win32Exception();
             Send(new Input { Type = 0, Data = new InputUnion { Mouse = new MouseInput {
                 Data = unchecked((uint)Number(command, "delta")),
                 Flags = Flag(command, "horizontal") ? 0x1000u : 0x0800u
@@ -948,7 +961,7 @@ internal static class NativeInputHelper
                     throw new InvalidOperationException("Desktop presentation sampler did not finish during shutdown");
                 restorePresentation = null;
             }
-            ReleaseHeldPointer(); RestoreClipboard(); form.Close(); return true;
+            ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); form.Close(); return true;
         }
         throw new InvalidOperationException("Unknown native command " + action);
     }
@@ -967,9 +980,11 @@ internal static class NativeInputHelper
         drag = command; accepted = 0;
         new Thread(() => {
             try {
-                SetCursorPos(origin.X, origin.Y); Thread.Sleep(80); Mouse(false); Thread.Sleep(100);
+                if (!SetTestCursorPos(origin.X, origin.Y)) throw new Win32Exception();
+                Thread.Sleep(80); Mouse(false); Thread.Sleep(100);
                 for (int step = 1; step <= 36; ++step) {
-                    SetCursorPos(origin.X + (destination.X - origin.X) * step / 36, origin.Y + (destination.Y - origin.Y) * step / 36);
+                    if (!SetTestCursorPos(origin.X + (destination.X - origin.X) * step / 36,
+                        origin.Y + (destination.Y - origin.Y) * step / 36)) throw new Win32Exception();
                     Thread.Sleep(15);
                 }
                 Thread.Sleep(700);
@@ -980,6 +995,7 @@ internal static class NativeInputHelper
     }
     [STAThread] private static void Main() {
         SetProcessDpiAwarenessContext(new IntPtr(-4));
+        if (!GetCursorPos(out savedPointer)) throw new Win32Exception();
         Console.InputEncoding = new UTF8Encoding(false); Console.OutputEncoding = new UTF8Encoding(false);
         Application.EnableVisualStyles();
         form = new Form { Text = "mini-electron native input source", AutoScaleMode = AutoScaleMode.None,
@@ -1025,7 +1041,7 @@ internal static class NativeInputHelper
                 if (!form.IsDisposed) form.BeginInvoke(new Action(() => form.Close()));
             }) { IsBackground = true }.Start();
         };
-        form.FormClosing += (sender, e) => { ReleaseHeldPointer(); RestoreClipboard(); };
+        form.FormClosing += (sender, e) => { ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); };
         Application.Run(form);
     }
 }

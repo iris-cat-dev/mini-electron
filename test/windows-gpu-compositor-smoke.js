@@ -241,6 +241,12 @@ async function exerciseAnimationAndVSync(before) {
   const captionSample = { x: maximize.left + dip(7, geometry.dpi), y: maximize.top + dip(7, geometry.dpi) };
   const hoverPoint = { x: Math.floor((maximize.left + maximize.right) / 2), y: Math.floor((maximize.top + maximize.bottom) / 2) };
   const readPhysical = async point => (await request('sample', { ...point, width: 1, height: 1 }))[0].rgb;
+  // A previous failed run may have left the physical pointer on this button.
+  // Establish the unhovered native state before sampling its baseline.
+  await request('pointerMove', {
+    x: geometry.clientX + dip(24, geometry.dpi),
+    y: geometry.clientY + dip(overlayHeight + 24, geometry.dpi),
+  });
   const baseline = await eventually(() => readPhysical(captionSample), rgb => delta(rgb, overlayColor) <= 4,
     'opaque native caption baseline');
   await request('pointerMove', hoverPoint);
@@ -362,6 +368,44 @@ app.whenReady().then(async () => {
   const beforeAnimation = await compositorInfo();
   assert.equal(beforeAnimation.readbacks, initialInfo.readbacks,
     'initial ordinary frame transition must not read pixels back');
+  if (!expectSoftware) {
+    // Drain late GPU publications after removing their real view owners. Run
+    // in --single-process too, where a renderer registry failure kills the host.
+    // Keep this ownership evidence even when a later display-clock prerequisite
+    // fails; it is not a passing result for the complete compositor fixture.
+    evidence.gpuOwnerTeardown = { retired: [] };
+    for (let iteration = 0; iteration < 6; iteration++) {
+      const retiring = new BrowserWindow({ width: 320, height: 240, show: false,
+        focusable: false, skipTaskbar: true,
+        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+      windows.push(retiring);
+      await retiring.loadURL('data:text/html,' + encodeURIComponent(`<!doctype html><script>
+        let frame = 0;
+        function animate() {
+          document.documentElement.style.background = (++frame % 2) ? 'red' : 'blue';
+          requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+      </script>`));
+      retiring.showInactive();
+      const retiringInfo = await eventually(() => compositorInfo(retiring.webContents), info =>
+        info.backend === 'd3d12' && info.presentation === 'directcomposition'
+          && info.frames > 1 && info.importedFrames > 1 ? info : false,
+      'retiring GPU renderer did not publish and import active frames');
+      assertCompositorInfo(retiringInfo, 'retiring compositor diagnostics');
+      retiring.setSize(340, 260);
+      retiring.webContents.invalidate();
+      retiring.destroy();
+      await pause(50);
+      evidence.gpuOwnerTeardown.retired.push({ iteration, beforeDestroy: retiringInfo,
+        destroyed: retiring.isDestroyed() });
+    }
+    assert.equal(await evaluate('6 * 7'), 42,
+      'the surviving renderer remains usable after GPU view teardown');
+    const survivorInfo = await compositorInfo();
+    assertCompositorInfo(survivorInfo, 'post-teardown compositor diagnostics');
+    evidence.gpuOwnerTeardown.survivor = survivorInfo;
+  }
   const afterAnimation = await exerciseAnimationAndVSync(beforeAnimation);
 
   await view.webContents.executeJavaScript(`setColor('rgb(${viewFinal.join(',')})')`);

@@ -479,7 +479,18 @@ void EventHandler::UpdateCursor()
     HitTestRequest request(HitTestRequest::kReadOnly | HitTestRequest::kAllowChildFrameContent);
     HitTestLocation location(view->ViewportToFrame(mouse_event_manager_->LastKnownMousePositionInViewport()));
     HitTestResult result(request, location);
-    layout_view->HitTest(location, result);
+    // Match GetMouseEventTarget(): capture owns the cursor even when the last
+    // physical position is outside the widget. A style-only update must not
+    // fall back to hit-testing that out-of-bounds position.
+    if (Element* capture_target = pointer_event_manager_->GetMouseCaptureTarget()) {
+        const LayoutObject* layout_object = capture_target->GetLayoutObject();
+        const PhysicalOffset local_point = layout_object
+            ? layout_object->AbsoluteToLocalPoint(location.Point())
+            : location.Point();
+        result.SetNodeAndPosition(capture_target, local_point);
+    } else {
+        layout_view->HitTest(location, result);
+    }
 
     if (LocalFrame* frame = result.InnerNodeFrame()) {
         std::optional<ui::Cursor> optional_cursor = frame->GetEventHandler().SelectCursor(location, result);

@@ -3,12 +3,12 @@ const { execFileSync, spawn } = require('node:child_process');
 const path = require('node:path');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function startNativeInput(temporary, title) {
+async function startNativeInput(temporary, title, helperName = 'windows-native-input-helper.cs') {
   const compiler = path.join(process.env.WINDIR || 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe');
   const executable = path.join(temporary, 'native-input.exe');
   execFileSync(compiler, ['/nologo', '/target:exe', `/out:${executable}`,
     '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll', '/reference:System.Web.Extensions.dll',
-    path.join(__dirname, 'windows-native-input-helper.cs')], { stdio: 'inherit', timeout: 30000, windowsHide: true });
+    path.join(__dirname, helperName)], { stdio: 'inherit', timeout: 30000, windowsHide: true });
   const child = spawn(executable, [], { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true });
   const pending = new Map();
   let sequence = 0, stdout = '', closing = false;
@@ -62,7 +62,7 @@ async function startNativeInput(temporary, title) {
     const code = await Promise.race([closed, pause(3000).then(() => undefined)]);
     if (code === undefined) {
       child.kill(); await closed;
-      failure = failure || new Error('Native input helper did not close and restore clipboard normally');
+      failure = failure || new Error('Native input helper did not close and restore native state normally');
     } else if (code !== 0) failure = failure || new Error(`Native input helper exited (${code})`);
     if (failure) throw failure;
   }

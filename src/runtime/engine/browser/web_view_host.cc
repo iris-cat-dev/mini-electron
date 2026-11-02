@@ -1303,13 +1303,18 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
             }
         });
 
-        bool isNotInDraggableRegion = !doDraggableRegionNcHitTest(m_hWnd, x, y);
-        if (::GetFocus() != m_hWnd && isNotInDraggableRegion && g_enableNativeSetFocus) {
-            ::SetFocus(m_hWnd);
+        // Offscreen renderer views have no HWND. SetCapture(nullptr) would
+        // release the BrowserWindow's capture in single-process mode.
+        if (::IsWindow(m_hWnd)) {
+            bool isNotInDraggableRegion = !doDraggableRegionNcHitTest(m_hWnd, x, y);
+            if (::GetFocus() != m_hWnd && isNotInDraggableRegion && g_enableNativeSetFocus)
+                ::SetFocus(m_hWnd);
+            if (isNotInDraggableRegion && g_enableNativeSetCapture)
+                ::SetCapture(m_hWnd);
         }
-        if (isNotInDraggableRegion && g_enableNativeSetCapture)
-            ::SetCapture(m_hWnd);
-    } else if (message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP) {
+    } else if ((message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP)
+        && ::IsWindow(m_hWnd) && ::GetCapture() == m_hWnd
+        && !(flags & (MINI_ELECTRON_LBUTTON | MINI_ELECTRON_MBUTTON | MINI_ELECTRON_RBUTTON))) {
         ::ReleaseCapture();
     }
 

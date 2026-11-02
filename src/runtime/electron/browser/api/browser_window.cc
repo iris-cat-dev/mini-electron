@@ -2215,13 +2215,26 @@ public:
         }
 
         case WM_SETCURSOR: {
-            if (LOWORD(lParam) != HTCLIENT || m_isIgnoreMouseEvents
-                || !::IsWindowVisible(hWnd) || ::IsIconic(hWnd) || !::IsWindowEnabled(hWnd))
+            const bool rendererWakeup = HIWORD(lParam) == 0;
+            if (LOWORD(lParam) != HTCLIENT)
                 break;
-            // Renderer wakeups apply only to the HWND currently under the pointer.
+            if (m_isIgnoreMouseEvents || !::IsWindowVisible(hWnd)
+                || ::IsIconic(hWnd) || !::IsWindowEnabled(hWnd)) {
+                if (rendererWakeup)
+                    return TRUE;
+                break;
+            }
+            // Renderer wakeups carry HTCLIENT but may arrive after the pointer
+            // entered another window or native chrome. Do not let a stale
+            // wakeup apply either a page cursor or DefWindowProc's class cursor.
             POINT point;
             if (!::GetCursorPos(&point) || ::WindowFromPoint(point) != hWnd)
-                break;
+                return rendererWakeup ? TRUE : FALSE;
+            if (rendererWakeup && !m_isMouseDown) {
+                const LRESULT hit = ::SendMessageW(hWnd, WM_NCHITTEST, 0, MAKELPARAM(point.x, point.y));
+                if (hit != HTCLIENT)
+                    return ::DefWindowProcW(hWnd, message, wParam, MAKELPARAM(hit, 0));
+            }
             ::ScreenToClient(hWnd, &point);
             if (captionButtonFromPoint(point) != CaptionButtonNone) {
                 ::SetCursor(::LoadCursor(nullptr, IDC_ARROW));

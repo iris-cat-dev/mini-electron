@@ -203,9 +203,12 @@ void DispatchFrame(int64_t view_id, D3DFrame frame) {
       return;
     auto* ids = common::LiveIdDetect::getWebViewIds();
     auto* view = static_cast<content::WebViewHost*>(ids->getPtrLocked(view_id));
-    if (view)
+    // A queued completion may outlive its view. Missing IDs already release
+    // the registry lock inside getPtrLocked().
+    if (view) {
       view->onFramePublishedInUiThread();
-    ids->unlock(view_id, view);
+      ids->unlock(view_id, view);
+    }
   });
 }
 
