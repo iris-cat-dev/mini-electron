@@ -85,6 +85,31 @@ Logs, JSON results and native PNGs:
 `out/verification/windows-0.1.32/`, with final matrices under `release-matrix-*`.
 No installed Desktop executable or user application profile was replaced.
 
+Published immutable [GitHub Release `v0.1.32`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.32)
+from source commit `e22b23b483da98b631a10f5d6815259039d37efa`, with only the
+Windows runtime ZIP, matching symbols ZIP, `artifacts.json` and `SHASUMS256.txt`.
+GitHub's SHA256 digests matched all four local assets. Downloaded the public
+runtime ZIP, manifest and checksum file without credentials and matched the
+runtime hash above before changing the Windows channel.
+
+The registry-published npm installer `0.1.12`, integrity
+`sha512-GRxg5hZnklfaqCmMje/rZ9NSuBC6J3Ac8zjBGIEsKJst37IOM7HmpnGQpDwz2XLTPA3qX1Oy6K9RxVMISTxmEg==`,
+installed the public release into two isolated packages with separate fresh
+caches and no local distribution/mirror override. The pinned installation
+reported `v0.1.32` and ABI `134`, then passed native SQLite and the complete
+native cursor/captured-guest regression. After the channel update, the unpinned
+installation independently selected `0.1.32`, reported the same version/ABI,
+and passed native SQLite and console-message regressions. Both installed EXEs
+matched the final executable SHA256 above.
+
+Windows `runtime-v1-win32-x64/artifacts.json` is asset ID `700412260`, size `528`,
+updated `2026-11-02T03:43:15Z`, digest
+`sha256:7ea70fd7503139429e0a378462e00688919b238bf41d1312eace80b296944621`.
+macOS `runtime-v1` stayed unchanged: asset ID `698404550`, size `541`, updated
+`2026-11-01T13:20:40Z`, digest
+`sha256:c492596d5bb3379d4a84f729dfedb42eb19816507fb55fb65f5b60a6a14cb499`.
+No macOS asset, old immutable runtime asset or npm package was republished.
+
 ## macOS runtime 0.1.31 (2026-11-01)
 
 Apple Silicon macOS-only runtime update carrying the native SQLite binding fixes
