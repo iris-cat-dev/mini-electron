@@ -1,0 +1,96 @@
+name: Build Windows binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: Maximum parallel compiler jobs (use 2 on memory-constrained runners)
+        required: true
+        default: '4'
+        type: choice
+        options:
+          - '2'
+          - '4'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      BUILD_JOBS: ${{ inputs.jobs }}
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+
+    steps:
+      - name: Enable long checkout paths
+        run: git config --global core.longpaths true
+
+      - name: Check out sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+
+      - name: Install LLVM 22.1.8
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'LLVM-22.1.8-win64.exe'
+          Invoke-WebRequest 'https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/LLVM-22.1.8-win64.exe' -OutFile $installer
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne '16e5709785fef73c854646241c4a92c5cd574318d1b33c63330dd7721903e55c') {
+            throw 'LLVM installer checksum mismatch'
+          }
+          $llvm = Join-Path $env:RUNNER_TEMP 'llvm-22.1.8'
+          $install = Start-Process $installer -ArgumentList '/S', "/D=$llvm" -Wait -PassThru
+          if ($install.ExitCode -ne 0) {
+            throw "LLVM installation failed: $($install.ExitCode)"
+          }
+          "LLVM_INSTALL_DIR=$llvm" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "$llvm\bin" | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
+          Remove-Item $installer
+
+      - name: Install pinned GN
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'gn-windows-amd64.zip'
+          Invoke-WebRequest 'https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/Y2vmS4GnLLPqfY_kY52u8SUitw7zUMGo610lNjpAz6YC' -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne '636be64b81a72cb3ea7d8fe4639daef12522b70ef350c1a8eb5d25363a40cfa6') {
+            throw 'GN archive checksum mismatch'
+          }
+          $gn = Join-Path $env:RUNNER_TEMP 'gn'
+          Expand-Archive $archive -DestinationPath $gn
+          "MINI_ELECTRON_GN=$gn\gn.exe" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Remove-Item $archive
+
+      - name: Build Release x64 runtime distribution
+        run: python build.py --out out/windows-x64 --package-dist --jobs "$env:BUILD_JOBS"
+
+      - name: Smoke check the built runtime
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: '& .\out\windows-x64\runtime-dist\electron.exe test/node-sqlite-smoke.js'
+
+      - name: Assemble runtime and matching symbols archives
+        run: |
+          $symbols = @(Get-ChildItem out/windows-x64/symbols -Recurse -Filter symbols.json -File)
+          if ($symbols.Count -ne 1) {
+            throw "Expected one matching symbol archive, found $($symbols.Count)"
+          }
+          python scripts/build_runtime_release.py --windows-dist out/windows-x64/runtime-dist --windows-symbols "$($symbols[0].DirectoryName)" --runtime-only --output out/windows-release
+
+      - name: Upload Windows build artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-x64-${{ github.sha }}
+          path: out/windows-release/v*/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

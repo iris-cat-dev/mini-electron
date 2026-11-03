@@ -6,6 +6,37 @@
 
 Shared examples and runtime behavior: [development guide](DEVELOPMENT.md). Runtime installation: [installation guide](INSTALLATION.md).
 
+## GitHub Actions build
+
+The [Build Windows binaries](../.github/workflows/windows-build.yml) workflow
+builds `Release|x64` from source on GitHub's `windows-2022` runner. It uses
+Python 3.12, the runner's Visual Studio 2022/ATL, Windows SDK `10.0.26100.0`,
+CMake and Ninja, and installs checksum-pinned LLVM
+[22.1.8](https://github.com/llvm/llvm-project/releases/tag/llvmorg-22.1.8) and GN.
+The existing backend downloads and verifies the remaining build dependencies.
+
+After committing and pushing the workflow to the default branch:
+
+1. Open **Actions → Build Windows binaries → Run workflow**.
+2. Select the branch and compiler job count. The default is 4; select 2 on
+   memory-constrained runners.
+3. After success, download the `windows-x64-<commit SHA>` artifact from the run.
+
+The artifact contains the Windows runtime ZIP, matching symbols ZIP,
+`SHASUMS256.txt`, and Windows-only `artifacts.json`. Versions come from the
+repository's runtime manifest. Extract the runtime ZIP and keep `electron.exe`
+with its `resources` directory, version metadata, and license files; the EXE
+alone is not the complete distribution. Keep the symbols ZIP for crash analysis.
+
+The workflow invokes `python build.py --package-dist`, runs the built runtime's
+SQLite smoke in `ELECTRON_RUN_AS_NODE=1` mode, and uses
+`scripts/build_runtime_release.py` to validate and assemble both archives.
+It requires only read access to repository contents; it does not sign binaries,
+publish a GitHub Release, update installer channels, or publish npm packages.
+Runs are manual only, with a six-hour job timeout and 30-day artifact retention.
+This headless build does not qualify native clipboard, input, or GPU behavior;
+those checks still require an unlocked Windows desktop.
+
 ## Windows (x64)
 
 Requirements:
