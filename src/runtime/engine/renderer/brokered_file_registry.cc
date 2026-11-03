@@ -15,6 +15,8 @@
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "src/runtime/engine/renderer/blob_registry_impl.h"
+#include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 
 namespace content {
 namespace {
@@ -26,6 +28,7 @@ struct BrokeredFile {
     std::string authorized_path;
     uint64_t authorized_frame_id = 0;
     bool is_directory = false;
+    bool is_clipboard = false;
 };
 
 std::map<std::string, BrokeredFile>& Files()
@@ -39,6 +42,15 @@ RendererFileChooserBroker& FileChooserBroker()
     static base::NoDestructor<RendererFileChooserBroker> broker;
     return *broker;
 }
+
+RendererClipboardFileBroker& ClipboardFileBroker()
+{
+    static base::NoDestructor<RendererClipboardFileBroker> broker;
+    return *broker;
+}
+
+thread_local ClipboardInputState clipboard_input;
+thread_local uint64_t clipboard_read_frame = 0;
 
 } // namespace
 
@@ -56,6 +68,31 @@ void RegisterBrokeredFile(const std::string& broker_url,
         display_name, std::move(data), {}, std::move(authorized_path),
         authorized_frame_id, is_directory
     };
+}
+
+void RegisterClipboardFile(const std::string& broker_url,
+    const std::string& display_name, std::vector<uint8_t> bytes,
+    std::string authorized_path, uint64_t frame_id)
+{
+    const WTF::String name = WTF::String::FromUTF8(display_name);
+    const auto dot = name.ReverseFind('.');
+    WTF::String type = dot == WTF::kNotFound ? WTF::g_empty_string
+        : blink::MIMETypeRegistry::GetWellKnownMIMETypeForExtension(name.Substring(dot + 1));
+    if (type.IsNull())
+        type = WTF::g_empty_string;
+    auto blob = CreateOwnedBytesBlob(std::move(bytes), type);
+    Files()[broker_url] = {display_name, {}, std::move(blob),
+        std::move(authorized_path), frame_id, false, true};
+}
+
+void SetClipboardFileAuthority(blink::File& file, blink::ExecutionContext& context,
+    uint64_t frame_id, const std::string& broker_url)
+{
+    auto found = Files().find(broker_url);
+    if (found != Files().end() && found->second.is_clipboard
+        && found->second.authorized_frame_id == frame_id)
+        file.SetClipboardAuthority(&context, frame_id,
+            WTF::String::FromUTF8(found->second.authorized_path));
 }
 
 blink::FileList* CreateBrokeredFileList(
@@ -96,10 +133,14 @@ scoped_refptr<blink::BlobDataHandle> GetBrokeredFileBlob(
     uint64_t frame_id, const std::string& broker_url,
     const WTF::String& content_type)
 {
-    const blink::RawData* bytes = FindBrokeredFileBytes(frame_id, broker_url);
-    if (!bytes)
+    auto found = Files().find(broker_url);
+    if (found == Files().end() || !frame_id
+        || found->second.authorized_frame_id != frame_id)
         return nullptr;
-    BrokeredFile& file = Files().find(broker_url)->second;
+    BrokeredFile& file = found->second;
+    if (file.blob)
+        return file.blob;
+    const auto* bytes = file.bytes.get();
     if (!file.blob) {
         auto data = std::make_unique<blink::BlobData>();
         data->SetContentType(content_type);
@@ -136,6 +177,11 @@ bool GetAuthorizedPathForBrokeredFile(
 {
     if (!frame_id || !authorized_path || file.FileSystemURL().IsEmpty())
         return false;
+    const WTF::String clipboard_path = file.ClipboardAuthorizedPath(frame_id);
+    if (!clipboard_path.empty()) {
+        *authorized_path = clipboard_path.Utf8();
+        return true;
+    }
     auto found = Files().find(file.FileSystemURL().GetString().Utf8());
     if (found == Files().end() || found->second.authorized_path.empty()
         || found->second.authorized_frame_id != frame_id)
@@ -170,6 +216,55 @@ void RequestRendererFileChooser(uint64_t frame_id,
         return;
     }
     FileChooserBroker()(frame_id, std::move(request), std::move(reply));
+}
+
+void SetRendererClipboardFileBroker(RendererClipboardFileBroker broker)
+{
+    ClipboardFileBroker() = std::move(broker);
+}
+
+bool ReadRendererClipboardFiles(uint64_t frame_id, base::Value::Dict* result)
+{
+    if (!RendererClipboardFileReadAllowed(frame_id) || !result || !ClipboardFileBroker())
+        return false;
+    clipboard_input.attempted_read = true;
+    return ClipboardFileBroker()(frame_id, "readFiles", result);
+}
+
+bool RendererClipboardFileReadAllowed(uint64_t frame_id)
+{
+    return frame_id && clipboard_input.frame_id == frame_id
+        && clipboard_read_frame == frame_id;
+}
+
+ScopedRendererClipboardInput::ScopedRendererClipboardInput(uint64_t frame_id, bool paste)
+    : paste_(paste), previous_(clipboard_input)
+{
+    if (paste_)
+        clipboard_input = {frame_id, false};
+}
+
+ScopedRendererClipboardInput::~ScopedRendererClipboardInput()
+{
+    if (!paste_)
+        return;
+    if (!clipboard_input.attempted_read && ClipboardFileBroker()) {
+        base::Value::Dict ignored;
+        ClipboardFileBroker()(clipboard_input.frame_id, "finishFiles", &ignored);
+    }
+    for (auto found = Files().begin(); found != Files().end();) {
+        if (found->second.is_clipboard
+            && found->second.authorized_frame_id == clipboard_input.frame_id)
+            found = Files().erase(found);
+        else
+            ++found;
+    }
+    clipboard_input = previous_;
+}
+
+ScopedRendererClipboardFileRead::ScopedRendererClipboardFileRead(uint64_t frame_id, bool allowed)
+    : reset_(&clipboard_read_frame, allowed ? frame_id : 0)
+{
 }
 
 } // namespace content

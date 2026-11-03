@@ -31,6 +31,9 @@
 
 #include "third_party/blink/renderer/core/editing/commands/clipboard_commands.h"
 
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
+#include "third_party/blink/renderer/core/page/focus_controller.h"
+#include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "third_party/blink/renderer/core/clipboard/clipboard_utilities.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer_access_policy.h"
@@ -162,6 +165,18 @@ Element* ClipboardCommands::FindEventTargetForClipboardEvent(LocalFrame& frame, 
     return FindEventTargetFrom(frame, frame.Selection().ComputeVisibleSelectionInDOMTree());
 }
 
+static DataObject* CreateClipboardDataObject(LocalFrame& frame, ExecutionContext* context,
+    PasteMode paste_mode, EditorCommandSource source)
+{
+    const bool native = source == EditorCommandSource::kMenuOrKeyBinding
+        && frame.IsMainFrame() && frame.GetPage()
+        && frame.GetPage()->GetFocusController().FocusedFrame() == &frame
+        && frame.Selection().SelectionHasFocus();
+    content::ScopedRendererClipboardFileRead read(
+        LocalFrameToken::Hasher()(frame.GetLocalFrameToken()), native);
+    return DataObject::CreateFromClipboard(context, frame.GetSystemClipboard(), paste_mode);
+}
+
 // Returns true if Editor should continue with default processing.
 bool ClipboardCommands::DispatchClipboardEvent(
     LocalFrame& frame, const AtomicString& event_type, DataTransferAccessPolicy policy, EditorCommandSource source, PasteMode paste_mode)
@@ -173,7 +188,7 @@ bool ClipboardCommands::DispatchClipboardEvent(
     SystemClipboard* system_clipboard = frame.GetSystemClipboard();
     DataTransfer* const data_transfer = DataTransfer::Create(DataTransfer::kCopyAndPaste, policy,
         policy == DataTransferAccessPolicy::kWritable ? DataObject::Create()
-                                                      : DataObject::CreateFromClipboard(target->GetExecutionContext(), system_clipboard, paste_mode));
+                                                      : CreateClipboardDataObject(frame, target->GetExecutionContext(), paste_mode, source));
 
     bool no_default_processing = false;
     {
@@ -474,7 +489,7 @@ void ClipboardCommands::Paste(LocalFrame& frame, EditorCommandSource source)
         Element* const target = FindEventTargetForClipboardEvent(frame, source);
 
         DataTransfer* data_transfer = DataTransfer::Create(DataTransfer::kCopyAndPaste, DataTransferAccessPolicy::kReadable,
-            DataObject::CreateFromClipboard(target ? target->GetExecutionContext() : nullptr, frame.GetSystemClipboard(), paste_mode));
+            CreateClipboardDataObject(frame, target ? target->GetExecutionContext() : nullptr, paste_mode, source));
 
         if (DispatchBeforeInputDataTransfer(target, InputEvent::InputType::kInsertFromPaste, data_transfer) != DispatchEventResult::kNotCanceled) {
             return;

@@ -1338,7 +1338,8 @@ void WebLocalFrameClientImpl::GetInterface(::mojo::GenericPendingReceiver receiv
         createAndBindInterface<::blink::mojom::blink::QuotaManagerHost, QuotaManagerHostImpl>(receiver.PassPipe());
         //mojo::MakeSelfOwnedReceiver
     } else if ("blink.mojom.ClipboardHost" == name) {
-        createAndBindInterface<::blink::mojom::blink::ClipboardHost, ClipboardHostImpl>(receiver.PassPipe());
+        createAndBindInterface<::blink::mojom::blink::ClipboardHost, ClipboardHostImpl>(
+            receiver.PassPipe(), static_cast<uint64_t>(getFrameIdByWebLocalFrame(m_frame)));
     } else if ("blink.mojom.NoStatePrefetchProcessor" == name) {
         createAndBindInterface<::blink::mojom::blink::NoStatePrefetchProcessor, NoStatePrefetchProcessorImpl>(receiver.PassPipe());
     } else if ("blink.mojom.WebSocketConnector" == name) {

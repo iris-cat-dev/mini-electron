@@ -217,6 +217,25 @@ TEST(FileTest, BlobBackingFileWithoutTimestamp)
     ExpectTimestampIsNow(*file);
 }
 
+TEST(FileTest, ClipboardAuthorityIsFrameAndContextBound)
+{
+    test::TaskEnvironment task_environment;
+    Persistent<File> retained;
+    {
+        ScopedNullExecutionContext context;
+        retained = MakeGarbageCollected<File>("name", std::nullopt, BlobDataHandle::Create());
+        retained->SetClipboardAuthority(&context.GetExecutionContext(), 7, "/authorized/file");
+        EXPECT_EQ("/authorized/file", retained->ClipboardAuthorizedPath(7));
+        EXPECT_TRUE(retained->ClipboardAuthorizedPath(8).empty());
+        auto* forged = MakeGarbageCollected<File>("name", std::nullopt, retained->GetBlobDataHandle());
+        EXPECT_TRUE(forged->ClipboardAuthorizedPath(7).empty());
+    }
+    // A surviving Blob/File does not keep its old document's path authority
+    // alive after the execution context is destroyed by navigation.
+    EXPECT_TRUE(retained->ClipboardAuthorizedPath(7).empty());
+    EXPECT_TRUE(retained->GetBlobDataHandle());
+}
+
 TEST(FileTest, BlobBackingFileWithWindowsEpochTimestamp)
 {
     test::TaskEnvironment task_environment;

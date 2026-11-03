@@ -273,6 +273,28 @@ File::File(const File& other)
     , snapshot_modification_time_(other.snapshot_modification_time_)
     , relative_path_(other.relative_path_)
 {
+    clipboard_context_ = other.clipboard_context_;
+    clipboard_frame_id_ = other.clipboard_frame_id_;
+    clipboard_authorized_path_ = other.clipboard_authorized_path_;
+}
+
+void File::SetClipboardAuthority(ExecutionContext* context, uint64_t frame_id, const String& path)
+{
+    clipboard_context_ = context;
+    clipboard_frame_id_ = frame_id;
+    clipboard_authorized_path_ = path;
+}
+
+String File::ClipboardAuthorizedPath(uint64_t frame_id) const
+{
+    return clipboard_context_ && !clipboard_context_->IsContextDestroyed()
+        && frame_id == clipboard_frame_id_ ? clipboard_authorized_path_ : String();
+}
+
+void File::Trace(Visitor* visitor) const
+{
+    visitor->Trace(clipboard_context_);
+    Blob::Trace(visitor);
 }
 
 File* File::Clone(const String& name) const

@@ -258,6 +258,7 @@ def release_metadata(root: Path, platform_name: str, arch: str) -> dict[str, obj
         **{name: artifacts[name] for name in required},
         "platform": platform_name,
         "arch": arch,
+        "features": {"nativeClipboardFiles": 1} if platform_name == "win32" else {},
         "executable": executable,
         "archive": archive,
     }
@@ -553,6 +554,7 @@ def write_version_metadata(directory: Path, metadata: dict[str, object]) -> None
             "arch",
         )
     }
+    document["features"] = metadata.get("features", {})
     document["files"] = {
         relative: sha256(path)
         for path, relative, kind, _ in entries
@@ -592,6 +594,8 @@ def validate_distribution(
                     f"{directory} metadata {name} does not match the release: "
                     f"{document.get(name)!r} != {expected_metadata.get(name)!r}"
                 )
+        if document.get("features", {}) != expected_metadata.get("features", {}):
+            raise DistributionError(f"{directory} runtime feature metadata does not match the release")
 
     declared_files = document.get("files")
     declared_links = document.get("links")

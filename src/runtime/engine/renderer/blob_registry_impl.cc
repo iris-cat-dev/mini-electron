@@ -26,6 +26,7 @@
 #include "base/files/file_util.h"
 #include "base/strings/string_util.h"
 #include "base/task/thread_pool.h"
+#include "base/uuid.h"
 #include <algorithm>
 #include <limits>
 #include <windows.h>
@@ -549,6 +550,32 @@ BlobEntry::BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, 
     m_valid = true;
     ++m_blobReceiverRefCount;
     new BlobReceiver(blob.PassPipe(), uuid);
+}
+
+BlobEntry::BlobEntry(mojo::PendingReceiver<blink::mojom::blink::Blob> blob,
+    const std::string& uuid, const std::string& content_type, std::vector<uint8_t> bytes)
+    : m_valid(true), m_blobReceiverRefCount(1), m_uuid(uuid), m_contentType(content_type)
+{
+    auto* element = new DataElementImpl();
+    element->tag = DataElementType::kBytes;
+    element->u.bytes = new DataElementBytesImpl{bytes.size(), std::move(bytes)};
+    m_elements.push_back(element);
+    new BlobReceiver(blob.PassPipe(), uuid);
+}
+
+scoped_refptr<blink::BlobDataHandle> CreateOwnedBytesBlob(
+    std::vector<uint8_t> bytes, const WTF::String& content_type)
+{
+    if (!s_blobEntrys)
+        s_blobEntrys = new std::map<std::string, BlobEntry*>();
+    const auto size = bytes.size();
+    const std::string uuid = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    mojo::PendingRemote<blink::mojom::blink::Blob> remote;
+    auto receiver = remote.InitWithNewPipeAndPassReceiver();
+    auto* entry = new BlobEntry(std::move(receiver), uuid, content_type.Utf8(), std::move(bytes));
+    (*s_blobEntrys)[uuid] = entry;
+    return blink::BlobDataHandle::Create(WTF::String::FromUTF8(uuid), content_type, size,
+        std::move(remote));
 }
 
 BlobEntry::~BlobEntry()

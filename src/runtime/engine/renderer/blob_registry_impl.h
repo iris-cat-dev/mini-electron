@@ -8,17 +8,25 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include <map>
+#include <cstdint>
+#include <vector>
+#include "base/memory/scoped_refptr.h"
+namespace blink { class BlobDataHandle; }
 
 namespace content {
 
 class BlobEntry;
 class BlobURLStoreImpl;
 class DataElementImpl;
+scoped_refptr<blink::BlobDataHandle> CreateOwnedBytesBlob(
+    std::vector<uint8_t> bytes, const WTF::String& content_type);
 
 class BlobEntry {
 public:
     BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob, const std::string& uuid, const std::string& contentType,
         const std::string& contentDisposition, WTF::Vector<::blink::mojom::blink::DataElementPtr> elements);
+    BlobEntry(::mojo::PendingReceiver<::blink::mojom::blink::Blob> blob,
+        const std::string& uuid, const std::string& content_type, std::vector<uint8_t> bytes);
     ~BlobEntry();
     bool isValid() const { return m_valid; }
 

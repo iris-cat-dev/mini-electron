@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 #include <functional>
 
 #include "base/files/file_path.h"
@@ -335,6 +336,12 @@ private:
     bool m_native_drag_operation_known = false;
     bool m_native_drag_operation_accepted = false;
     std::vector<std::string> m_native_drag_tokens;
+    struct ClipboardPasteGrant {
+        uint64_t generation;
+        uint64_t sequence_high;
+        uint64_t sequence_low;
+    };
+    std::deque<ClipboardPasteGrant> m_clipboard_paste_grants;
 
     bool m_isLoading = false;
     bool m_canGoBack = false;

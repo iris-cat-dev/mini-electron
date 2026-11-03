@@ -7,6 +7,16 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { app, BrowserWindow, Menu, clipboard } = require('electron');
+const { spawnSync } = require('node:child_process');
+function privateBytes(pid) {
+  const sample = spawnSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
+    `[int64](Get-Process -Id ${pid} -ErrorAction Stop).PrivateMemorySize64`],
+    { encoding: 'utf8', windowsHide: true, timeout: 15000 });
+  assert.equal(sample.status, 0, sample.stderr);
+  const bytes = Number(sample.stdout.trim());
+  assert.ok(Number.isSafeInteger(bytes) && bytes > 0);
+  return bytes;
+}
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-windows-native-input-'));
 const title = `mini-windows-native-input-${process.pid}`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -61,6 +71,12 @@ const key = (...keys) => request('key', { keys });
 const setText = text => request('clipboardWrite', { formats: [
   { name: 'UnicodeText', data: Buffer.from(text + '\0', 'utf16le').toString('base64') },
 ] });
+const setFiles = files => {
+  const paths = Buffer.from(files.join('\0') + '\0\0', 'utf16le');
+  const drop = Buffer.alloc(20 + paths.length);
+  drop.writeUInt32LE(20, 0); drop.writeUInt32LE(1, 16); paths.copy(drop, 20);
+  return request('clipboardWrite', { formats: [{ name: 'CF_HDROP', data: drop.toString('base64') }] });
+};
 async function select(id) {
   await evaluate(`(() => { const element = document.getElementById(${JSON.stringify(id)}); element.focus();
     if ('select' in element) element.select();
@@ -102,7 +118,7 @@ app.whenReady().then(async () => {
   dibV5.writeUInt32LE(124, 0); dibV5.writeUInt32LE(3, 16);
   for (const [offset, mask] of [[40, 0x00ff0000], [44, 0x0000ff00], [48, 0x000000ff], [52, 0xff000000], [56, 0x73524742]]) dibV5.writeUInt32LE(mask, offset);
   const textPath = path.join(temporary, '文本 café.txt');
-  const imagePath = path.join(temporary, 'native-pixel.png');
+  const imagePath = path.join(temporary, '图片 café 😀.png');
   const folderPath = path.join(temporary, 'native-folder');
   const textBytes = Buffer.from('native file café 中文 😀\n', 'utf8');
   fs.writeFileSync(textPath, textBytes); fs.writeFileSync(imagePath, png); fs.mkdirSync(folderPath);
@@ -141,8 +157,11 @@ app.whenReady().then(async () => {
     document.getElementById('empty').addEventListener('copy',event=>{event.clipboardData.setData('text/plain','');event.preventDefault()});
     document.getElementById('click-target').addEventListener('click',event=>clicks.push(event.detail));
     addEventListener('paste',async event=>{const types=Array.from(event.clipboardData.types),text=event.clipboardData.getData('text/plain');
-      const files=await Promise.all(Array.from(event.clipboardData.files).map(async file=>{const bytes=new Uint8Array(await file.arrayBuffer());
-        return {type:file.type,size:file.size,header:Array.from(bytes.slice(0,24))}}));pastes.push({types,text,files})});
+      const nativeFiles=Array.from(event.clipboardData.files);if(nativeFiles.length)event.preventDefault();window.savedPasteFiles=nativeFiles;
+      const scriptPaste=!!window.scriptPasteDepth;
+      const files=await Promise.all(nativeFiles.map(async file=>{const bytes=new Uint8Array(await file.arrayBuffer());
+        return {name:file.name,type:file.type,size:file.size,path:nativeFileDrag.getPath(file),header:Array.from(bytes.slice(0,24))}}));
+      pastes.push({types,text,files,scriptPaste,forgedPath:nativeFileDrag.getPath(new File(['forged'],'文本 café.txt'))})});
     for(const type of ['dragenter','dragover','dragleave'])addEventListener(type,event=>{dragState.events.push(type);
       if(type!=='dragleave'&&acceptNativeDrags&&event.target.id==='drop-target')event.preventDefault()});
     addEventListener('drop',async event=>{dragState.events.push('drop');if(acceptNativeDrags&&event.target.id==='drop-target')event.preventDefault();
@@ -224,6 +243,97 @@ app.whenReady().then(async () => {
     console.log(`PASS: ${label} rejection`);
   }
   console.log('PASS: native PNG/DIB/DIBV5 images, DIB fallback and malformed/oversized rejection');
+
+  for (const files of [[textPath], [imagePath], [imagePath, textPath]]) {
+    await select('paste-target'); await evaluate('pastes=[];true');
+    await setFiles(files); await key(17, 86);
+    const pasted = await eventually(() => value('pastes'), pastes => pastes.length === 1, 'native file-list paste');
+    assert.ok(pasted[0].types.includes('Files'));
+    assert.deepEqual(pasted[0].files.map(file => file.name), files.map(file => path.basename(file)));
+    assert.deepEqual(pasted[0].files.map(file => file.path), files.map(file => fs.realpathSync(file)));
+    assert.deepEqual(pasted[0].files.map(file => file.size), files.map(file => fs.statSync(file).size));
+    assert.deepEqual(pasted[0].files.map(file => file.header), files.map(file => Array.from(fs.readFileSync(file).subarray(0,24))));
+    assert.equal(pasted[0].forgedPath, '', 'script-created File has no filesystem authority');
+    assert.equal(pasted[0].files[0].type, files[0] === imagePath ? 'image/png' : 'text/plain');
+  }
+  await select('paste-target'); await evaluate('pastes=[];true');
+  await setFiles([textPath]); await key(16, 45);
+  assert.equal((await eventually(() => value('pastes'), rows => rows.length === 1, 'Shift+Insert native file paste'))[0].files[0].name, path.basename(textPath));
+  await select('paste-target'); await evaluate('pastes=[];true');
+  await setText(textPath); await key(17, 86);
+  const pathText = await eventually(() => value('pastes'), rows => rows.length === 1, 'text path remains text');
+  assert.deepEqual(pathText[0].files, [], 'plain clipboard paths do not authorize files');
+  assert.equal(await evaluate('document.getElementById("paste-target").value'), textPath);
+  await setFiles([textPath]); await evaluate('pastes=[];document.execCommand("paste");true');
+  await pause(100);
+  assert.ok((await value('pastes')).every(paste => paste.files.length === 0), 'script paste has no native file-list grant');
+  console.log('PASS: native CF_HDROP single/mixed PNG+TXT, UTF-16 names, Shift+Insert, text/forged/script authority boundaries');
+
+  // Exercise actual key cancellation, not the menu accelerator which
+  // intentionally bypasses DOM keydown dispatch. isTrusted is not a source
+  // discriminator: execCommand also creates a user-agent ClipboardEvent.
+  Menu.setApplicationMenu(null);
+  await select('paste-target'); await setFiles([textPath]);
+  await evaluate(`pastes=[];window.canceledPasteKeys=0;window.scriptPasteDepth=false;window.cancelPasteKey=event=>{
+    if(event.ctrlKey&&event.code==='KeyV'){canceledPasteKeys++;event.preventDefault();scriptPasteDepth=true;
+      try{document.execCommand('paste')}finally{scriptPasteDepth=false}}};
+    addEventListener('keydown',cancelPasteKey,true);true`);
+  await key(17,86);
+  await eventually(() => evaluate('canceledPasteKeys'), count => count === 1, 'native canceled Ctrl+V');
+  await evaluate(`removeEventListener('keydown',cancelPasteKey,true);scriptPasteDepth=true;
+    try{document.execCommand('paste')}finally{scriptPasteDepth=false};true`);
+  await pause(100);
+  const canceled = await value('pastes');
+  assert.ok(canceled.length > 0, 'DOM paste was exercised with a real native grant pending');
+  assert.ok(canceled.every(paste => paste.scriptPaste && paste.files.length === 0), 'canceled shortcut cannot lend its grant to script paste');
+
+  await evaluate(`pastes=[];window.nestedPaste=event=>{if(!scriptPasteDepth){event.preventDefault();scriptPasteDepth=true;
+    try{document.execCommand('paste')}finally{scriptPasteDepth=false}}};addEventListener('paste',nestedPaste);true`);
+  await key(17,86);
+  const nested = await eventually(() => value('pastes'), rows => rows.some(row=>!row.scriptPaste)&&rows.some(row=>row.scriptPaste), 'nested DOM paste inside native paste');
+  assert.equal(nested.find(row=>!row.scriptPaste).files.length,1);
+  assert.ok(nested.filter(row=>row.scriptPaste).every(row=>row.files.length===0), 'DOM paste cannot reuse native snapshot');
+  await evaluate(`removeEventListener('paste',nestedPaste);true`);
+
+  await evaluate(`window.childPastes=[];window.child=document.createElement('iframe');
+    child.srcdoc='<textarea id="editor"></textarea><script>addEventListener("paste",event=>{event.preventDefault();parent.childPastes.push(event.clipboardData.files.length)})<\\/script>';
+    document.body.appendChild(child);true`);
+  await eventually(() => evaluate('!!child.contentDocument.getElementById("editor")'), ready=>ready, 'owned child frame');
+  await evaluate('child.contentDocument.getElementById("editor").focus();true');
+  await key(17,86);
+  const childPastes = await eventually(() => value('childPastes'), rows=>rows.length===1, 'native paste with child-frame focus');
+  assert.equal(childPastes[0],0,'main-only file permission cannot be lent to the child');
+  await select('paste-target'); await evaluate('pastes=[];document.execCommand("paste");true');
+  await pause(100);
+  assert.ok((await value('pastes')).every(row=>row.files.length===0), 'child-focused input leaves no main-frame file grant');
+  await evaluate('child.remove();true'); Menu.setApplicationMenu(applicationMenu);
+
+  await select('paste-target'); await evaluate('pastes=[];true');
+  await setFiles([textPath]); await key(17,86);
+  await eventually(() => value('pastes'),rows=>rows.length===1,'post-revocation positive paste');
+  assert.equal(await evaluate('nativeFileDrag.getPath(savedPasteFiles[0])'),fs.realpathSync(textPath),'File-owned path survives paste scope');
+  assert.deepEqual(JSON.parse(await evaluate('(async()=>JSON.stringify(Array.from(new Uint8Array(await savedPasteFiles[0].arrayBuffer()))))()')),
+    Array.from(textBytes),'File-owned Blob survives paste scope');
+
+  const memoryFile=path.join(temporary,'clipboard-lifetime.bin');
+  fs.writeFileSync(memoryFile,Buffer.alloc(8*1024*1024,37));
+  const memorySamples=[];
+  for(let index=0;index<48;index++){
+    await select('paste-target');await evaluate('pastes=[];savedPasteFiles=[];true');
+    await setFiles([memoryFile]);await key(17,86);
+    const rows=await eventually(()=>value('pastes'),rows=>rows.length===1,'repeated native Blob materialization');
+    assert.equal(rows[0].files[0].size,8*1024*1024);
+    await evaluate('pastes=[];savedPasteFiles=[];true');
+    if(index===15||index===47){
+      // Real allocation pressure lets V8/Oilpan finalize unreachable Files;
+      // no testing-only GC flag or synthetic Files is involved.
+      await evaluate('(()=>{const pressure=[];for(let i=0;i<8;i++)pressure.push(new Array(1024*1024).fill(i));return pressure.reduce((total,array)=>total+array.length,0)})()');
+      await pause(300);memorySamples.push(privateBytes(window.webContents.getProcessId()));
+    }
+  }
+  assert.ok(memorySamples[1]-memorySamples[0]<128*1024*1024,
+    'ignored attachments must not permanently retain another 32x8 MiB of native blobs: '+JSON.stringify(memorySamples));
+  console.log('PASS: canceled/native/DOM snapshot authority, child-frame focus, File lifetime and bounded native private bytes '+JSON.stringify(memorySamples));
 
   await select('plain'); await evaluate('keys=[];plain.value="";true');
   await key(17, 75); await key(17, 188); await key(17, 74);
@@ -314,6 +424,46 @@ app.whenReady().then(async () => {
   const junction = path.join(temporary, 'reparse-folder'); fs.symlinkSync(folderPath, junction, 'junction');
   await rejected([junction], 'Windows reparse point rejection');
   await rejected([path.join(junction, 'nested.txt')], 'ancestor Windows reparse point rejection');
+  for (const [files, label] of [
+    [excessiveEntries, 'clipboard entry count'], [[oversized], 'clipboard per-file size'],
+    [aggregate, 'clipboard aggregate size'], [[junction], 'clipboard reparse point'],
+    [[path.join(junction, 'nested.txt')], 'clipboard ancestor reparse point'],
+  ]) {
+    await select('paste-target'); await evaluate('pastes=[];true');
+    await setFiles(files); await key(17, 86);
+    const pasted = await eventually(() => value('pastes'), rows => rows.length === 1, label);
+    assert.deepEqual(pasted[0].files, [], label);
+  }
+  const raceSelected=path.join(temporary,'race-selected');
+  const raceVictim=path.join(temporary,'race-victim');
+  const raceAlternate=path.join(temporary,'race-junction');
+  const raceParked=path.join(temporary,'race-parked');
+  fs.mkdirSync(raceSelected);fs.mkdirSync(raceVictim);
+  const safeBytes=Buffer.from('SAFE authorized ordinary file');
+  fs.writeFileSync(path.join(raceSelected,'race.txt'),safeBytes);
+  fs.writeFileSync(path.join(raceVictim,'race.txt'),'VICTIM behind raced junction');
+  fs.symlinkSync(raceVictim,raceAlternate,'junction');
+  let safeReads=0,rejectedRaces=0,raceStats;
+  await request('raceStart',{selected:raceSelected,alternate:raceAlternate,parked:raceParked});
+  try{
+    for(let index=0;index<40;index++){
+      await select('paste-target');await evaluate('pastes=[];savedPasteFiles=[];true');
+      await setFiles([path.join(raceSelected,'race.txt')]);await key(17,86);
+      const rows=await eventually(()=>value('pastes'),rows=>rows.length===1,'real ancestor reparse race');
+      if(rows[0].files.length===0){rejectedRaces++;continue}
+      assert.equal(rows[0].files.length,1);
+      assert.deepEqual(rows[0].files[0].header,Array.from(safeBytes.subarray(0,24)),
+        'an ancestor replacement must never substitute junction-target bytes');
+      assert.equal(rows[0].files[0].size,safeBytes.length);safeReads++;
+    }
+  }finally{raceStats=await request('raceStop')}
+  assert.ok(raceStats.junctionSwitches>0&&raceStats.ordinaryRestores>0,'the actor really alternated ordinary directory and junction');
+  assert.equal(fs.lstatSync(raceSelected).isSymbolicLink(),false,'owned fixture restored after race');
+  await select('paste-target');await evaluate('pastes=[];true');
+  await setFiles([path.join(raceSelected,'race.txt')]);await key(17,86);
+  const restored=await eventually(()=>value('pastes'),rows=>rows.length===1,'post-race ordinary file');
+  assert.deepEqual(restored[0].files[0].header,Array.from(safeBytes.subarray(0,24)));
+  console.log('PASS: real reparse ancestor replacement '+JSON.stringify({safeReads,rejectedRaces,...raceStats}));
   console.log('PASS: real OLE Unicode files/folder, authorized bytes/paths and rejection boundaries');
   const originalDpr = await evaluate('devicePixelRatio');
   window.webContents.setZoomFactor(1.2);

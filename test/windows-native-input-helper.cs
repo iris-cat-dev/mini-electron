@@ -14,6 +14,50 @@ using System.Windows.Forms;
 
 internal static class NativeInputHelper
 {
+    private sealed class ReparseRace {
+        public string Selected, Alternate, Parked, Error;
+        public volatile bool Stop;
+        public int JunctionSwitches, OrdinaryRestores, Blocked;
+        public Thread Worker;
+    }
+    private static ReparseRace reparseRace;
+    private static void RunReparseRace(ReparseRace race) {
+        try {
+            while (!race.Stop) {
+                try {
+                    if (Directory.Exists(race.Parked)) {
+                        if (Directory.Exists(race.Selected)) Directory.Move(race.Selected, race.Alternate);
+                        Directory.Move(race.Parked, race.Selected); race.OrdinaryRestores++;
+                    } else {
+                        Directory.Move(race.Selected, race.Parked);
+                        Directory.Move(race.Alternate, race.Selected); race.JunctionSwitches++;
+                    }
+                } catch (IOException) { race.Blocked++; }
+                  catch (UnauthorizedAccessException) { race.Blocked++; }
+                Thread.Sleep(1);
+            }
+        } finally {
+            // Never leave the selected fixture as a junction, including on
+            // smoke failure, driver quit, or interactive window close.
+            for (int attempt = 0; attempt < 500 && Directory.Exists(race.Parked); attempt++) {
+                try {
+                    if (Directory.Exists(race.Selected)) Directory.Move(race.Selected, race.Alternate);
+                    Directory.Move(race.Parked, race.Selected);
+                } catch (IOException) { Thread.Sleep(10); }
+                  catch (UnauthorizedAccessException) { Thread.Sleep(10); }
+            }
+            if (Directory.Exists(race.Parked)) race.Error = "Could not restore owned reparse fixture";
+        }
+    }
+    private static object StopReparseRace() {
+        ReparseRace race = reparseRace;
+        if (race == null) return null;
+        race.Stop = true;
+        if (!race.Worker.Join(10000)) throw new InvalidOperationException("Reparse actor did not stop");
+        reparseRace = null;
+        if (race.Error != null) throw new InvalidOperationException(race.Error);
+        return new { junctionSwitches = race.JunctionSwitches, ordinaryRestores = race.OrdinaryRestores, blocked = race.Blocked };
+    }
     [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct GuiThreadInfo {
@@ -713,11 +757,27 @@ internal static class NativeInputHelper
         string action = Convert.ToString(command["action"]);
         if (action == "clipboardSave") { SaveClipboard(); return true; }
         if (action == "clipboardRestore") { RestoreClipboard(); return true; }
+        if (action == "raceStart") {
+            if (reparseRace != null) throw new InvalidOperationException("Reparse actor is already running");
+            var race = new ReparseRace { Selected = Path.GetFullPath(Convert.ToString(command["selected"])),
+                Alternate = Path.GetFullPath(Convert.ToString(command["alternate"])),
+                Parked = Path.GetFullPath(Convert.ToString(command["parked"])) };
+            string parent = Path.GetDirectoryName(race.Selected);
+            if (!String.Equals(parent, Path.GetDirectoryName(race.Alternate), StringComparison.OrdinalIgnoreCase)
+                || !String.Equals(parent, Path.GetDirectoryName(race.Parked), StringComparison.OrdinalIgnoreCase)
+                || !Directory.Exists(race.Selected) || !Directory.Exists(race.Alternate) || Directory.Exists(race.Parked)
+                || (File.GetAttributes(race.Selected) & FileAttributes.ReparsePoint) != 0
+                || (File.GetAttributes(race.Alternate) & FileAttributes.ReparsePoint) == 0)
+                throw new InvalidOperationException("Race requires an owned ordinary directory, sibling junction and absent parking path");
+            race.Worker = new Thread(() => RunReparseRace(race)) { IsBackground = true };
+            reparseRace = race; race.Worker.Start(); return true;
+        }
+        if (action == "raceStop") return StopReparseRace();
         if (action == "clipboardWrite") {
             var items = new List<ClipboardItem>();
             foreach (Dictionary<string, object> item in (IEnumerable)command["formats"]) {
                 string name = Convert.ToString(item["name"]);
-                uint format = name == "UnicodeText" ? 13u : name == "DIB" ? 8u : name == "DIBV5" ? 17u : RegisterClipboardFormat(name);
+                uint format = name == "UnicodeText" ? 13u : name == "DIB" ? 8u : name == "DIBV5" ? 17u : name == "CF_HDROP" ? 15u : RegisterClipboardFormat(name);
                 items.Add(new ClipboardItem { Format = format, Bytes = Convert.FromBase64String(Convert.ToString(item["data"])) });
             }
             WriteClipboard(items); return true;
@@ -961,7 +1021,9 @@ internal static class NativeInputHelper
                     throw new InvalidOperationException("Desktop presentation sampler did not finish during shutdown");
                 restorePresentation = null;
             }
-            ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); form.Close(); return true;
+            try { StopReparseRace(); }
+            finally { ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); form.Close(); }
+            return true;
         }
         throw new InvalidOperationException("Unknown native command " + action);
     }
@@ -1041,7 +1103,10 @@ internal static class NativeInputHelper
                 if (!form.IsDisposed) form.BeginInvoke(new Action(() => form.Close()));
             }) { IsBackground = true }.Start();
         };
-        form.FormClosing += (sender, e) => { ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); };
+        form.FormClosing += (sender, e) => {
+            try { StopReparseRace(); }
+            finally { ReleaseHeldPointer(); RestoreClipboard(); RestorePointer(); }
+        };
         Application.Run(form);
     }
 }

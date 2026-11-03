@@ -15,6 +15,7 @@
 #include "src/runtime/engine/common/utf16.h"
 #include "src/runtime/engine/renderer/render_thread_impl.h"
 #include "src/runtime/engine/renderer/renderer_blink_platform_impl.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 #include "src/runtime/network/loader/web_url_loader_internal.h"
 #include "src/runtime/network/loader/web_url_loader_manager.h"
 #include "src/runtime/network/cookies/web_cookie_jar_curl_impl.h"
@@ -437,6 +438,11 @@ void MINI_ELECTRON_CALL_TYPE mini_electron_execute_edit_command(mini_electron_we
     content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, webviewHandle,
         [command = std::string(command)](content::WebViewHost* view) {
             auto* webView = view->getWebView();
+            auto* main = webView ? webView->MainFrame() : nullptr;
+            content::ScopedRendererClipboardInput native_paste(
+                main && main->IsWebLocalFrame()
+                    ? blink::LocalFrameToken::Hasher()(main->ToWebLocalFrame()->GetLocalFrameToken()) : 0,
+                command == "Paste");
             if (webView && webView->FocusedFrame())
                 webView->FocusedFrame()->ExecuteCommand(blink::WebString::FromUTF8(command));
         });

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 
 #include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -65,6 +66,7 @@ CloneFsaToken(mojo::PendingRemote<mojom::blink::FileSystemAccessDataTransferToke
 SystemClipboard::SystemClipboard(LocalFrame* frame)
     : clipboard_(frame->DomWindow())
 {
+    clipboard_frame_id_ = LocalFrameToken::Hasher()(frame->GetLocalFrameToken());
     frame->GetBrowserInterfaceBroker().GetInterface(clipboard_.BindNewPipeAndPassReceiver(frame->GetTaskRunner(TaskType::kUserInteraction)));
 #if BUILDFLAG(IS_OZONE)
     is_selection_buffer_available_ = frame->GetSettings()->GetSelectionClipboardBufferAvailable();
@@ -327,6 +329,10 @@ void SystemClipboard::WriteImage(const SkBitmap& bitmap)
 mojom::blink::ClipboardFilesPtr SystemClipboard::ReadFiles()
 {
     mojom::blink::ClipboardFilesPtr files;
+    // Check before consulting the shared snapshot: nested DOM paste cannot
+    // inherit the native paste's file list.
+    if (!content::RendererClipboardFileReadAllowed(clipboard_frame_id_))
+        return mojom::blink::ClipboardFiles::New();
     if (!IsValidBufferType(buffer_) || !clipboard_.is_bound())
         return files;
 

@@ -6,8 +6,10 @@
 #include <vector>
 
 #include "base/containers/span.h"
+#include "base/files/file_path.h"
 #include "base/unguessable_token.h"
 #include "src/platform/clipboard.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/renderer/platform/image-encoders/image_encoder.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -166,7 +168,7 @@ bool ClipboardHostImpl::ReadAvailableTypes(
   const auto formats = mini_electron::AvailableClipboardFormats();
   for (const auto& format : formats) {
     if (format == u"text/plain" || format == u"text/html"
-        || format == u"image/png") {
+        || format == u"image/png" || format == u"text/uri-list") {
       types->push_back(FromUTF16(format));
     }
   }
@@ -277,13 +279,31 @@ void ClipboardHostImpl::ReadPng(
 bool ClipboardHostImpl::ReadFiles(
     ::blink::mojom::blink::ClipboardBuffer buffer,
     ::blink::mojom::blink::ClipboardFilesPtr* out_result) {
-  return false;
+  *out_result = ::blink::mojom::blink::ClipboardFiles::New();
+  if (!IsStandardBuffer(buffer))
+    return false;
+  base::Value::Dict result;
+  if (!ReadRendererClipboardFiles(frame_id_, &result))
+    return false;
+  const auto* files = result.FindList("files");
+  if (!files)
+    return false;
+  for (const auto& value : *files) {
+    const auto& file = value.GetDict();
+    auto item = ::blink::mojom::blink::DataTransferFile::New();
+    item->path = base::FilePath::FromUTF8Unsafe(*file.FindString("brokerUrl"));
+    item->display_name = base::FilePath::FromUTF8Unsafe(*file.FindString("name"));
+    (*out_result)->files.push_back(std::move(item));
+  }
+  return true;
 }
 
 void ClipboardHostImpl::ReadFiles(
     ::blink::mojom::blink::ClipboardBuffer buffer,
     ReadFilesCallback callback) {
-  std::move(callback).Run(::blink::mojom::blink::ClipboardFiles::New());
+  ::blink::mojom::blink::ClipboardFilesPtr files;
+  ReadFiles(buffer, &files);
+  std::move(callback).Run(std::move(files));
 }
 
 bool ClipboardHostImpl::ReadAvailableCustomAndStandardFormats(

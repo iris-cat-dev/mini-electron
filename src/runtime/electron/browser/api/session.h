@@ -85,7 +85,8 @@ public:
     std::string authorizeFile(int contentsId, uint64_t frame_id,
         uint64_t frame_generation, const base::FilePath& path,
         int64_t* authorized_size = nullptr,
-        base::Time* authorized_modified = nullptr);
+        base::Time* authorized_modified = nullptr,
+        base::FilePath* authorized_path = nullptr);
     bool authorizeUploadPaths(int contents_id,
         const std::vector<std::string>& paths, std::string* error);
     base::Value::List authorizeSelectedFiles(int contentsId,

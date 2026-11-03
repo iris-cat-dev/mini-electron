@@ -210,6 +210,21 @@ std::vector<uint8_t> ReadClipboardPng() {
     return {};
   return png;
 }
+std::vector<std::string> ReadClipboardFilePaths() {
+  if (RendererBrokerRequired())
+    return {};
+  std::vector<ui::FileInfo> files;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, nullptr, &files);
+  if (files.size() > 1024)
+    return {};
+  std::vector<std::string> paths;
+  paths.reserve(files.size());
+  for (const auto& file : files)
+    paths.push_back(file.path.AsUTF8Unsafe());
+  return paths;
+}
+
 
 std::vector<std::u16string> AvailableClipboardFormats() {
   BrokerResult broker = BrokerRequest("availableFormats");
@@ -233,6 +248,10 @@ std::vector<std::u16string> AvailableClipboardFormats() {
   if (clipboard->IsFormatAvailable(ui::ClipboardFormatType::PngType(),
           ui::ClipboardBuffer::kCopyPaste, nullptr)) {
     AppendUnique(&formats, base::UTF8ToUTF16(ui::kMimeTypePNG));
+  }
+  if (clipboard->IsFormatAvailable(ui::ClipboardFormatType::FilenameType(),
+          ui::ClipboardBuffer::kCopyPaste, nullptr)) {
+    AppendUnique(&formats, base::UTF8ToUTF16(ui::kMimeTypeURIList));
   }
   return formats;
 }

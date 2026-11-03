@@ -1126,6 +1126,7 @@ void WebContents::setFocus(bool focused)
 {
     m_focused = focused;
     if (!focused) {
+        m_clipboard_paste_grants.clear();
         m_observers.Notify(&WebContentsObserver::onWebContentsTextInputState, this, base::Value::Dict());
     }
     base::Value::Dict params;
@@ -1148,6 +1149,23 @@ bool WebContents::sendInput(base::Value::Dict event)
             + event.FindInt("x").value_or(0));
         event.Set("screenY", static_cast<double>(m_widget_screen_rect.y())
             + event.FindInt("y").value_or(0));
+    }
+#endif
+#if BUILDFLAG(IS_WIN)
+    const auto* type = event.FindString("type");
+    const auto* command = event.FindString("command");
+    const int modifiers = event.FindInt("modifiers").value_or(0);
+    const int key = event.FindInt("keyCode").value_or(0);
+    const bool paste = type && ((*type == "editCommand" && command && *command == "Paste")
+        || (*type == "keyDown" && !(modifiers & (MINI_ELECTRON_ALT | MINI_ELECTRON_META))
+            && ((key == 'V' && (modifiers & MINI_ELECTRON_CONTROL)
+                    && !(modifiers & MINI_ELECTRON_SHIFT))
+                || (key == VK_INSERT && (modifiers & MINI_ELECTRON_SHIFT)
+                    && !(modifiers & MINI_ELECTRON_CONTROL)))));
+    if (paste && m_focused && isRendererFrameCurrent(m_main_frame_id)) {
+        const auto sequence = mini_electron::GetClipboardSequence();
+        m_clipboard_paste_grants.push_back({
+            m_renderer_frames.at(m_main_frame_id).generation, sequence.high, sequence.low});
     }
 #endif
     base::Value::Dict params;
@@ -2649,6 +2667,48 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 std::vector<uint8_t> png =
                     mini_electron::ReadClipboardPng();
                 result.Set("data", base::Value(std::move(png)));
+#if BUILDFLAG(IS_WIN)
+            } else if (operation == "readFiles") {
+                const auto grant = m_clipboard_paste_grants.empty()
+                    ? ClipboardPasteGrant{} : m_clipboard_paste_grants.front();
+                if (!m_clipboard_paste_grants.empty())
+                    m_clipboard_paste_grants.pop_front();
+                const auto sequence = mini_electron::GetClipboardSequence();
+                if (!m_focused || frame_id != m_main_frame_id
+                    || !grant.generation || grant.generation != frame.generation
+                    || sequence.high != grant.sequence_high || sequence.low != grant.sequence_low) {
+                    m_renderer->Respond(request_id, {}, "Clipboard files require a current native paste");
+                    return;
+                }
+                const auto paths = mini_electron::ReadClipboardFilePaths();
+                std::string error;
+                base::Value::List files;
+                if (!paths.empty())
+                    files = session->authorizeDroppedFiles(m_id, frame_id,
+                        frame.generation, paths, &error);
+                const auto after = mini_electron::GetClipboardSequence();
+                if (!error.empty() || after.high != sequence.high || after.low != sequence.low) {
+                    for (const auto& file : files) {
+                        if (const auto* token = file.GetDict().FindString("token"))
+                            session->revokeFile(*token);
+                    }
+                    m_renderer->Respond(request_id, {}, error.empty()
+                        ? "Clipboard selection changed" : std::move(error));
+                    return;
+                }
+                base::Value::List regular_files;
+                for (auto& file : files) {
+                    if (!file.GetDict().FindBool("directory").value_or(false))
+                        regular_files.Append(std::move(file));
+                }
+                result.Set("files", std::move(regular_files));
+            } else if (operation == "finishFiles") {
+                // The final Blink input scope acknowledges even canceled native
+                // shortcuts. FIFO grants prevent an older completion revoking
+                // a newer, already queued paste.
+                if (frame_id == m_main_frame_id && !m_clipboard_paste_grants.empty())
+                    m_clipboard_paste_grants.pop_front();
+#endif
             } else if (operation == "availableFormats") {
                 base::Value::List formats;
                 for (const auto& format :

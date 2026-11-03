@@ -658,6 +658,68 @@ bool IsPathFreeOfReparsePoints(const base::FilePath& absolute)
 #endif
 }
 
+#if BUILDFLAG(IS_WIN)
+// Keep each directory non-writable and non-renamable until the leaf handle is
+// opened. OPEN_REPARSE_POINT is effective for the leaf only; ancestor handles
+// are what prevent a checked directory being swapped for a junction mid-walk.
+std::shared_ptr<base::File> OpenWindowsAuthorizedFile(
+    const base::FilePath& absolute, base::FilePath* canonical)
+{
+    const auto components = absolute.StripTrailingSeparators().GetComponents();
+    const bool network = absolute.IsNetwork();
+    const size_t roots = network ? 3 : 2;
+    if (components.size() <= roots)
+        return {};
+    auto root = components[0] + components[1];
+    if (network)
+        root += L"\\" + components[2];
+    base::FilePath current(root);
+    std::vector<base::File> locked_directories;
+    locked_directories.reserve(components.size() - roots);
+    for (size_t index = roots; index <= components.size(); ++index) {
+        const bool leaf = index == components.size();
+        HANDLE handle = ::CreateFileW(current.value().c_str(),
+            leaf ? GENERIC_READ : FILE_READ_ATTRIBUTES, FILE_SHARE_READ,
+            nullptr, OPEN_EXISTING,
+            FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+        if (handle == INVALID_HANDLE_VALUE)
+            return {};
+        base::File file(handle);
+        BY_HANDLE_FILE_INFORMATION info = {};
+        if (!::GetFileInformationByHandle(handle, &info)
+            || (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+            || !!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == leaf)
+            return {};
+        if (!leaf) {
+            locked_directories.push_back(std::move(file));
+            current = current.Append(components[index]);
+            continue;
+        }
+        const DWORD needed = ::GetFinalPathNameByHandleW(handle, nullptr, 0,
+            FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (!needed || needed > 32768)
+            return {};
+        std::wstring final_path(needed, L'\0');
+        const DWORD written = ::GetFinalPathNameByHandleW(handle, final_path.data(), needed,
+            FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (!written || written >= needed)
+            return {};
+        final_path.resize(written);
+        if (final_path.rfind(L"\\\\?\\UNC\\", 0) == 0)
+            final_path = L"\\\\" + final_path.substr(8);
+        else if (final_path.rfind(L"\\\\?\\", 0) == 0)
+            final_path.erase(0, 4);
+        if (!base::NormalizeFilePath(absolute, canonical)
+            || !base::FilePath::CompareEqualIgnoreCase(
+                canonical->NormalizePathSeparators().value(),
+                base::FilePath(final_path).NormalizePathSeparators().value()))
+            return {};
+        return std::make_shared<base::File>(std::move(file));
+    }
+    return {};
+}
+#endif
+
 
 bool IsBrokerFileAllowed(const base::FilePath& path,
     const BrokerNetworkRequest& request)
@@ -3207,17 +3269,21 @@ bool ApiSession::authorizeUploadPaths(int contents_id,
 
 std::string ApiSession::authorizeFile(int contentsId, uint64_t frame_id,
     uint64_t frame_generation, const base::FilePath& path,
-    int64_t* authorized_size, base::Time* authorized_modified)
+    int64_t* authorized_size, base::Time* authorized_modified,
+    base::FilePath* authorized_path)
 {
     constexpr int64_t kMaximumAuthorizedFileSize =
         std::numeric_limits<int>::max();
     base::FilePath absolute = base::MakeAbsoluteFilePath(path);
     base::FilePath canonical;
-    if (contentsId <= 0 || !frame_id || !frame_generation || absolute.empty()
-        || !IsPathFreeOfReparsePoints(absolute)
+    if (contentsId <= 0 || !frame_id || !frame_generation || absolute.empty())
+        return std::string();
+#if !BUILDFLAG(IS_WIN)
+    if (!IsPathFreeOfReparsePoints(absolute)
         || !base::NormalizeFilePath(absolute, &canonical)) {
         return std::string();
     }
+#endif
     std::shared_ptr<base::File> file;
 #if BUILDFLAG(IS_POSIX)
     const int descriptor = open(canonical.value().c_str(),
@@ -3234,9 +3300,12 @@ std::string ApiSession::authorizeFile(int contentsId, uint64_t frame_id,
         return std::string();
     }
     file = std::make_shared<base::File>(descriptor);
+#elif BUILDFLAG(IS_WIN)
+    file = OpenWindowsAuthorizedFile(absolute, &canonical);
+    if (!file)
+        return std::string();
 #else
-    file = std::make_shared<base::File>(
-        canonical, base::File::FLAG_OPEN | base::File::FLAG_READ);
+    file = std::make_shared<base::File>(canonical, base::File::FLAG_OPEN | base::File::FLAG_READ);
 #endif
     base::File::Info info;
     if (!file->IsValid() || !file->GetInfo(&info) || info.is_directory
@@ -3248,6 +3317,8 @@ std::string ApiSession::authorizeFile(int contentsId, uint64_t frame_id,
         *authorized_size = info.size;
     if (authorized_modified)
         *authorized_modified = info.last_modified;
+    if (authorized_path)
+        *authorized_path = canonical;
     base::AutoLock lock(m_brokerLock);
     std::string token;
     do {
@@ -3436,9 +3507,10 @@ base::Value::List ApiSession::authorizeDroppedFiles(int contentsId,
             }
             int64_t authorized_size = 0;
             base::Time authorized_modified;
+            base::FilePath authorized_path;
             std::string token = authorizeFile(contentsId, frame_id,
                 frame_generation, absolute, &authorized_size,
-                &authorized_modified);
+                &authorized_modified, &authorized_path);
             if (token.empty())
                 return fail("Native drag file changed before authorization");
             if (authorized_size > kMaximumDroppedFileBytes
@@ -3450,6 +3522,8 @@ base::Value::List ApiSession::authorizeDroppedFiles(int contentsId,
             granted_tokens.push_back(token);
             file.Set("token", std::move(token));
             file.Set("size", static_cast<int>(authorized_size));
+            file.Set("name", authorized_path.BaseName().AsUTF8Unsafe());
+            file.Set("path", authorized_path.AsUTF8Unsafe());
             file.Set("lastModified",
                 authorized_modified.InMillisecondsFSinceUnixEpochIgnoringNull());
         }

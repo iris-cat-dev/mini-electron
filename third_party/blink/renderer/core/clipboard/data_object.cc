@@ -34,6 +34,11 @@
 
 #include "base/functional/overloaded.h"
 #include "base/notreached.h"
+#include "base/time/time.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -70,6 +75,27 @@ DataObject* DataObject::CreateFromClipboard(ExecutionContext* context, SystemCli
                     files->files.clear();
                 } else {
                     for (const mojom::blink::DataTransferFilePtr& file : files->files) {
+                        const KURL broker_url(FilePathToString(file->path));
+                        if (broker_url.ProtocolIs("mini-electron-broker")) {
+                            auto* window = DynamicTo<LocalDOMWindow>(context);
+                            if (!window || !window->GetFrame())
+                                continue;
+                            const uint64_t frame_id = LocalFrameToken::Hasher()(window->GetLocalFrameToken());
+                            const auto blob = content::GetBrokeredFileBlob(frame_id, broker_url.GetString().Utf8(), g_empty_string);
+                            if (!blob)
+                                continue;
+                            FileMetadata metadata;
+                            metadata.type = FileMetadata::kTypeFile;
+                            metadata.length = blob->size();
+                            metadata.modification_time = base::Time::Now();
+                            auto* dom_file = File::CreateForFileSystemFile(
+                                *context, broker_url, metadata, File::kIsUserVisible);
+                            if (dom_file)
+                                content::SetClipboardFileAuthority(*dom_file, *context,
+                                    frame_id, broker_url.GetString().Utf8());
+                            data_object->Add(dom_file);
+                            continue;
+                        }
                         data_object->AddFilename(context, FilePathToString(file->path), FilePathToString(file->display_name), files->file_system_id,
                             base::MakeRefCounted<FileSystemAccessDropData>(std::move(file->file_system_access_token)));
                     }

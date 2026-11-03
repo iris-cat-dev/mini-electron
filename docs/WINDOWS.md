@@ -164,6 +164,17 @@ pipeline, including malformed-PNG fallback and bounds of 32 MiB encoded PNG,
 8192 pixels per dimension, and 40 × 1024² decoded pixels. Native PNG metadata
 and pixels are validated with one codec before returning or brokering the bytes.
 macOS-only ImageIO JPEG/TIFF pasteboard behavior is not claimed for Windows.
+
+Explorer `CF_HDROP` file lists use the authenticated Session file broker, not
+renderer filesystem privileges or text-path heuristics. Unicode names and
+mixed image/document entries become genuine DOM Files in one native paste.
+File authorization is bound to the focused main-frame document, native Paste,
+and clipboard sequence; DOM/script paste cannot consume a leftover native grant.
+Directories and reparse-point paths are rejected. File contents move into
+frame-bound Blob/File storage rather than accumulating a second full-byte copy
+until navigation. Rebuilt Windows distributions advertise
+`features.nativeClipboardFiles: 1`; only build/package output may set that flag.
+
 Keyboard descriptors retain scan code, layout, modifiers and keyup state;
 disabled and `registerAccelerator: false` shortcuts reach the DOM instead of
 invoking a menu action. Native click counts honor the Windows double-click time
@@ -256,6 +267,13 @@ ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-sqlite-smok
 The Windows input tests compile a shared WinForms helper with the system .NET Framework 4 C# compiler
 and send real keyboard, pointer, and OLE input. Clipboard-mutating tests snapshot
 and restore the original clipboard, refusing formats that cannot be preserved losslessly.
+The native-input smoke includes real single/multiple/mixed Explorer-file paste,
+Unicode filenames, canceled/script paste authorization boundaries, and brokered
+file-path access. Run it and the image smoke on an unlocked Windows desktop;
+macOS builds do not compile the Windows implementation or qualify `CF_HDROP`.
+Applications must additionally verify their real file-attachment UI and upload
+consumer, including busy-state and ordinary-text paste.
+
 The caption, hover-presentation, restore-presentation, companion, screen-coordinate,
 navigation, pointer, image-preview, and composition-color regressions never read or change clipboard content.
 The pointer-screen-coordinate regression uses a separate PID/HWND-guarded native

@@ -29,6 +29,7 @@
  */
 
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 
 #include <memory>
 #include <utility>
@@ -2732,6 +2733,21 @@ WebInputEventResult WebFrameWidgetImpl::HandleInputEvent(const WebCoalescedInput
     TRACE_EVENT1("input,rail", "WebFrameWidgetImpl::HandleInputEvent", "type", WebInputEvent::GetName(input_event.GetType()));
     DCHECK(!WebInputEvent::IsTouchEventType(input_event.GetType()));
     CHECK(LocalRootImpl());
+#if BUILDFLAG(IS_WIN)
+    const auto type = input_event.GetType();
+    bool paste = false;
+    if (type == WebInputEvent::Type::kRawKeyDown || type == WebInputEvent::Type::kKeyDown) {
+        const auto& key = static_cast<const WebKeyboardEvent&>(input_event);
+        const int modifiers = key.GetModifiers();
+        paste = !(modifiers & (WebInputEvent::kAltKey | WebInputEvent::kMetaKey))
+            && ((key.windows_key_code == 'V' && (modifiers & WebInputEvent::kControlKey)
+                    && !(modifiers & WebInputEvent::kShiftKey))
+                || (key.windows_key_code == 0x2d && (modifiers & WebInputEvent::kShiftKey)
+                    && !(modifiers & WebInputEvent::kControlKey)));
+    }
+    content::ScopedRendererClipboardInput native_paste(
+        LocalFrameToken::Hasher()(LocalRootImpl()->GetLocalFrameToken()), paste);
+#endif
 
     // Clients shouldn't be dispatching events to a provisional frame but this
     // can happen. Ensure that event handling can assume we're in a committed

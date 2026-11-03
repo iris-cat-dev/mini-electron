@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/values.h"
+#include "base/auto_reset.h"
 #include "base/memory/scoped_refptr.h"
 
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -19,6 +20,7 @@ class File;
 class FileList;
 class RawData;
 class BlobDataHandle;
+class ExecutionContext;
 }
 
 namespace content {
@@ -53,6 +55,36 @@ using RendererFileChooserBroker = std::function<void(
 void SetRendererFileChooserBroker(RendererFileChooserBroker broker);
 void RequestRendererFileChooser(uint64_t frame_id,
     base::Value::Dict request, RendererFileChooserReply reply);
+
+using RendererClipboardFileBroker =
+    std::function<bool(uint64_t, const char*, base::Value::Dict*)>;
+void SetRendererClipboardFileBroker(RendererClipboardFileBroker broker);
+bool ReadRendererClipboardFiles(uint64_t frame_id, base::Value::Dict* result);
+bool RendererClipboardFileReadAllowed(uint64_t frame_id);
+
+struct ClipboardInputState {
+    uint64_t frame_id = 0;
+    bool attempted_read = false;
+};
+class ScopedRendererClipboardInput {
+public:
+    ScopedRendererClipboardInput(uint64_t frame_id, bool paste);
+    ~ScopedRendererClipboardInput();
+private:
+    bool paste_;
+    ClipboardInputState previous_;
+};
+class ScopedRendererClipboardFileRead {
+public:
+    ScopedRendererClipboardFileRead(uint64_t frame_id, bool allowed);
+private:
+    base::AutoReset<uint64_t> reset_;
+};
+void RegisterClipboardFile(const std::string& broker_url,
+    const std::string& display_name, std::vector<uint8_t> bytes,
+    std::string authorized_path, uint64_t frame_id);
+void SetClipboardFileAuthority(blink::File& file, blink::ExecutionContext& context,
+    uint64_t frame_id, const std::string& broker_url);
 
 } // namespace content
 

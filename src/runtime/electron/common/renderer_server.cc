@@ -850,6 +850,21 @@ public:
                 FrameOwners()[static_cast<uint64_t>(
                     reinterpret_cast<uintptr_t>(self->main_frame_))] = self;
             }
+            content::SetRendererClipboardFileBroker(
+                [](uint64_t frame_id, const char* operation, base::Value::Dict* result) {
+                    auto* self = ForFrame(frame_id);
+                    if (!self || self->closing_)
+                        return false;
+                    if (std::string_view(operation) == "readFiles")
+                        return self->MaterializeClipboardFiles(frame_id, result);
+                    base::Value::Dict request;
+                    request.Set("kind", "clipboard");
+                    request.Set("operation", operation);
+                    std::string error;
+                    return self->RequestParentSync("broker-request", std::move(request),
+                        reinterpret_cast<mini_electron_web_frame_handle>(static_cast<uintptr_t>(frame_id)),
+                        result, &error);
+                });
             content::SetRendererFileChooserBroker(
                 [](uint64_t frame_id, base::Value::Dict request,
                     content::RendererFileChooserReply reply) {
@@ -1056,6 +1071,7 @@ public:
             if (!self->in_process_) {
                 content::SetRendererWebSocketCommand({});
                 content::SetRendererFileChooserBroker({});
+                content::SetRendererClipboardFileBroker({});
                 content::ClearBrokeredFiles();
             }
             if (content::WebViewHost* host = self->View()) {
@@ -3555,6 +3571,83 @@ private:
             static_cast<uintptr_t>(frame_id));
         RequestParent("broker-request", std::move(request),
             [](base::Value::Dict, std::string) {}, frame);
+    }
+
+    bool MaterializeClipboardFiles(uint64_t frame_id, base::Value::Dict* output)
+    {
+        auto epoch = frame_document_epochs_.find(frame_id);
+        if (!output || epoch == frame_document_epochs_.end())
+            return false;
+        const uint64_t document_epoch = epoch->second;
+        auto frame = reinterpret_cast<mini_electron_web_frame_handle>(
+            static_cast<uintptr_t>(frame_id));
+        base::Value::Dict request;
+        request.Set("kind", "clipboard");
+        request.Set("operation", "readFiles");
+        base::Value::Dict selection;
+        std::string error;
+        if (!RequestParentSync("broker-request", std::move(request), frame,
+                &selection, &error))
+            return false;
+        const auto* files = selection.FindList("files");
+        if (!files)
+            return false;
+        base::Value::List materialized;
+        const auto fail = [&] {
+            for (const auto& file : materialized)
+                content::UnregisterBrokeredFile(*file.GetDict().FindString("brokerUrl"));
+            RevokeAuthorizedUploads(frame_id, *files);
+            return false;
+        };
+        for (const auto& value : *files) {
+            const auto* file = value.GetIfDict();
+            const auto* token = file ? file->FindString("token") : nullptr;
+            const auto* name = file ? file->FindString("name") : nullptr;
+            const auto* path = file ? file->FindString("path") : nullptr;
+            const auto size = file ? file->FindInt("size") : std::nullopt;
+            if (!token || token->empty() || !name || name->empty()
+                || !path || path->empty() || !size || *size < 0)
+                return fail();
+            std::vector<uint8_t> bytes;
+            if (*size > 8 * 1024 * 1024)
+                bytes.reserve(static_cast<size_t>(*size));
+            int offset = 0;
+            do {
+                const int length = std::min(8 * 1024 * 1024, *size - offset);
+                base::Value::Dict read;
+                read.Set("kind", "file");
+                read.Set("operation", "read");
+                read.Set("token", *token);
+                read.Set("offset", offset);
+                read.Set("length", length);
+                base::Value::Dict result;
+                if (!RequestParentSync("broker-request", std::move(read), frame,
+                        &result, &error))
+                    return fail();
+                auto* body = result.FindBlob("data");
+                if (!body || body->size() != static_cast<size_t>(length)
+                    || !IsCurrentFrameDocument(frame_id, document_epoch))
+                    return fail();
+                if (*size <= 8 * 1024 * 1024)
+                    bytes = std::move(*body);
+                else
+                    bytes.insert(bytes.end(), body->begin(), body->end());
+                offset += length;
+            } while (offset < *size);
+            std::string broker_url = GURL("mini-electron-broker://" + *token
+                + "/" + base::EscapePath(*name)).spec();
+            content::RegisterClipboardFile(broker_url, *name,
+                std::move(bytes), *path, frame_id);
+            base::Value::Dict item;
+            item.Set("brokerUrl", std::move(broker_url));
+            item.Set("name", *name);
+            materialized.Append(std::move(item));
+        }
+        // File bytes now live in the existing frame-bound Blob registry; no
+        // filesystem capability has to remain alive after this transfer.
+        RevokeAuthorizedUploads(frame_id, *files);
+        output->Set("files", std::move(materialized));
+        return true;
     }
 
     void MaterializeChosenFiles(uint64_t frame_id, uint64_t document_epoch,

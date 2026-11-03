@@ -67,6 +67,8 @@ ClipboardHtml ReadClipboardHtml();
 std::string ReadClipboardRtf();
 void ReadClipboardBookmark(std::u16string* title, std::string* url);
 std::vector<uint8_t> ReadClipboardPng();
+// Browser-only native selection. A renderer never supplies filesystem paths.
+std::vector<std::string> ReadClipboardFilePaths();
 std::vector<std::u16string> AvailableClipboardFormats();
 
 // |format| is a MIME type (text/plain, text/html, text/rtf, image/png,

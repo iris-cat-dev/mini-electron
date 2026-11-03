@@ -2,6 +2,7 @@
 #ifndef content_renderer_ClipboardHostImpl_h
 #define content_renderer_ClipboardHostImpl_h
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -13,6 +14,8 @@ namespace content {
 
 class ClipboardHostImpl : public ::blink::mojom::blink::ClipboardHost {
 public:
+    explicit ClipboardHostImpl(uint64_t frame_id) : frame_id_(frame_id) {}
+    const uint64_t frame_id_;
     bool GetSequenceNumber(::blink::mojom::blink::ClipboardBuffer buffer, ::blink::ClipboardSequenceNumberToken* out_result) override;
 
     //using GetSequenceNumberCallback = base::OnceCallback<void(const ::blink::ClipboardSequenceNumberToken&)>;

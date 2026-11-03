@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
+#include "src/runtime/engine/renderer/brokered_file_registry.h"
 
 #include <memory>
 
@@ -56,6 +57,10 @@ protected:
     SystemClipboard& system_clipboard()
     {
         return *(page_holder_.get()->GetFrame().GetSystemClipboard());
+    }
+    uint64_t clipboard_frame_id()
+    {
+        return system_clipboard().clipboard_frame_id_;
     }
     void reset_remote_and_validate_buffer()
     {
@@ -256,6 +261,8 @@ TEST_F(SystemClipboardTest, Png)
 
 TEST_F(SystemClipboardTest, Files)
 {
+    content::ScopedRendererClipboardInput input(clipboard_frame_id(), true);
+    content::ScopedRendererClipboardFileRead read(clipboard_frame_id(), true);
     // Clipboard starts empty.
     auto files = system_clipboard().ReadFiles();
     EXPECT_EQ(files->files.size(), 0u);
@@ -279,6 +286,41 @@ TEST_F(SystemClipboardTest, Files)
     // Now that the snapshot is out of scope, reads from the system clipboard
     // reflect the state of the clipboard host.
     EXPECT_EQ(system_clipboard().ReadFiles()->files.size(), 3u);
+}
+
+TEST_F(SystemClipboardTest, DOMPasteCannotReuseNativeFileSnapshot)
+{
+    mock_clipboard_host()->WriteFiles(CreateFiles(1));
+    content::ScopedRendererClipboardInput input(clipboard_frame_id(), true);
+    content::ScopedRendererClipboardFileRead native(clipboard_frame_id(), true);
+    ScopedSystemClipboardSnapshot snapshot(system_clipboard());
+    EXPECT_EQ(system_clipboard().ReadFiles()->files.size(), 1u);
+    {
+        content::ScopedRendererClipboardFileRead dom(clipboard_frame_id(), false);
+        EXPECT_TRUE(system_clipboard().ReadFiles()->files.empty());
+    }
+    EXPECT_EQ(system_clipboard().ReadFiles()->files.size(), 1u);
+}
+
+TEST_F(SystemClipboardTest, FileReadsNeedNativeInputAndSource)
+{
+    mock_clipboard_host()->WriteFiles(CreateFiles(1));
+    ScopedSystemClipboardSnapshot snapshot(system_clipboard());
+    EXPECT_TRUE(system_clipboard().ReadFiles()->files.empty());
+    {
+        content::ScopedRendererClipboardFileRead source(clipboard_frame_id(), true);
+        EXPECT_TRUE(system_clipboard().ReadFiles()->files.empty());
+    }
+    {
+        content::ScopedRendererClipboardInput input(clipboard_frame_id(), true);
+        {
+            content::ScopedRendererClipboardFileRead wrong_frame(clipboard_frame_id() + 1, true);
+            EXPECT_TRUE(system_clipboard().ReadFiles()->files.empty());
+        }
+        content::ScopedRendererClipboardFileRead source(clipboard_frame_id(), true);
+        EXPECT_EQ(system_clipboard().ReadFiles()->files.size(), 1u);
+    }
+    EXPECT_TRUE(system_clipboard().ReadFiles()->files.empty());
 }
 
 TEST_F(SystemClipboardTest, CustomData)
@@ -444,6 +486,8 @@ TEST_F(SystemClipboardTest, ReadPngWithUnboundClipboardHost)
 
 TEST_F(SystemClipboardTest, ReadFilesWithUnboundClipboardHost)
 {
+    content::ScopedRendererClipboardInput input(clipboard_frame_id(), true);
+    content::ScopedRendererClipboardFileRead read(clipboard_frame_id(), true);
     // Clipboard starts empty.
     auto files = system_clipboard().ReadFiles();
     EXPECT_EQ(files->files.size(), 0u);

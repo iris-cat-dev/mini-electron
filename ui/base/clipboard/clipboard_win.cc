@@ -588,10 +588,15 @@ void ClipboardWin::ReadFilenames(ClipboardBuffer buffer, const DataTransferEndpo
 
             const int kMaxFilenameLen = 4096;
             const unsigned num_files = DragQueryFileW(hdrop.data(), 0xffffffff, 0, 0);
+            if (num_files > 1024)
+                return;
             for (unsigned int i = 0; i < num_files; ++i) {
                 wchar_t filename[kMaxFilenameLen];
-                if (!DragQueryFileW(hdrop.data(), i, filename, kMaxFilenameLen)) {
-                    continue;
+                const unsigned length = DragQueryFileW(hdrop.data(), i, nullptr, 0);
+                if (!length || length >= kMaxFilenameLen
+                    || DragQueryFileW(hdrop.data(), i, filename, kMaxFilenameLen) != length) {
+                    result->clear();
+                    return;
                 }
                 base::FilePath path(filename);
                 result->push_back(ui::FileInfo(path, base::FilePath()));

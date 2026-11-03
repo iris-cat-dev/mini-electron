@@ -34,6 +34,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -224,6 +225,9 @@ public:
 
     // Return false if this File instance is not serializable to FormControlState.
     bool AppendToControlState(FormControlState& state);
+    void SetClipboardAuthority(ExecutionContext* context, uint64_t frame_id, const String& path);
+    String ClipboardAuthorizedPath(uint64_t frame_id) const;
+    void Trace(Visitor* visitor) const override;
 
 private:
     // Note that this involves synchronous file operation. Think twice before
@@ -258,6 +262,9 @@ private:
     mutable std::optional<base::Time> snapshot_modification_time_;
 
     String relative_path_;
+    WeakMember<ExecutionContext> clipboard_context_;
+    uint64_t clipboard_frame_id_ = 0;
+    String clipboard_authorized_path_;
 };
 
 template <> struct DowncastTraits<File> {

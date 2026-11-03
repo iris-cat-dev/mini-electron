@@ -176,6 +176,7 @@ private:
     // or kSelection.  In other platforms |buffer_| always equals
     // ClipboardBuffer::kStandard.
     mojom::blink::ClipboardBuffer buffer_ = mojom::blink::ClipboardBuffer::kStandard;
+    uint64_t clipboard_frame_id_ = 0;
 
     // Whether the selection buffer is available on the underlying platform.
     bool is_selection_buffer_available_ = false;

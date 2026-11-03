@@ -206,6 +206,18 @@ class RuntimeReleaseTest(unittest.TestCase):
         self.assertFalse((output / "npm-package").exists())
         self.assertTrue((output / "runtime-v1" / "artifacts.json").is_file())
 
+    def test_windows_clipboard_file_capability_is_in_distribution(self) -> None:
+        metadata = validate_distribution(self.distribution)
+        self.assertEqual(metadata["features"], {"nativeClipboardFiles": 1})
+
+    def test_missing_clipboard_file_capability_rejects_old_distribution(self) -> None:
+        version = self.distribution / "version.json"
+        metadata = json.loads(version.read_text(encoding="utf-8"))
+        metadata.pop("features")
+        version.write_text(json.dumps(metadata), encoding="utf-8")
+        with self.assertRaisesRegex(DistributionError, "runtime feature metadata"):
+            self.assemble()
+
     def test_old_identity_is_rejected(self) -> None:
         version = self.distribution / "version.json"
         metadata = json.loads(version.read_text(encoding="utf-8"))
