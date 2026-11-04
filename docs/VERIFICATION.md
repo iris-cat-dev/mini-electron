@@ -68,6 +68,30 @@ Immutable assembly: `out/runtime-release-0.1.33/v0.1.33/`.
 Logs, results and native screenshots: `out/verification/windows-0.1.33/`.
 No installed Desktop executable or user application profile was replaced.
 
+Published [GitHub Release `v0.1.33`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.33)
+from source commit `51d584617965bb40d1e09b770330ca392bafdfe9`, with bilingual
+release notes and only the Windows runtime ZIP, matching full-PDB ZIP,
+`artifacts.json` and `SHASUMS256.txt`. GitHub's SHA256 digests and byte sizes
+matched all four local assets before the Windows channel was changed.
+
+The registry-published npm installer `0.1.12`, verified against registry integrity
+`sha512-GRxg5hZnklfaqCmMje/rZ9NSuBC6J3Ac8zjBGIEsKJst37IOM7HmpnGQpDwz2XLTPA3qX1Oy6K9RxVMISTxmEg==`,
+installed the public release in two isolated packages with separate fresh
+caches and no local distribution, mirror or offline override. The pinned
+installation reported `v0.1.33`, then passed application identity, native V8
+layout/Worker consistency and SQLite. After channel cutover, the unpinned
+installation independently selected `0.1.33` and passed those same checks plus
+console-message forwarding. Both installed EXEs matched the executable hash above.
+
+Windows `runtime-v1-win32-x64/artifacts.json` is asset ID `707805325`, size `528`,
+updated `2026-11-04T01:38:44Z`, digest
+`sha256:a9e797b907d873992e6216a57e9a9c5f54fa198c06c8a4b701b8084b70fac85d`.
+The channel retains its prerelease classification and has only that asset.
+macOS `runtime-v1` stayed unchanged: asset ID `698404550`, size `541`, updated
+`2026-11-01T13:20:40Z`, digest
+`sha256:c492596d5bb3379d4a84f729dfedb42eb19816507fb55fb65f5b60a6a14cb499`.
+No macOS asset, older immutable runtime asset or npm package was republished.
+
 ## Windows runtime 0.1.32 (2026-11-02)
 
 Synchronized the clean Windows checkout from `1dac123b9` to `249bf1cfa`,
