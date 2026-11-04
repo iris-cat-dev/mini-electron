@@ -13,6 +13,12 @@
       <AdditionalOptions>%(AdditionalOptions) -Wno-everything -Wno-error</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(MSBuildProjectName)' == 'v8_core_2'">
+    <!-- The checked-in Windows snapshot has no JS context-hook builtins. -->
+    <ClCompile Update="..\..\..\v8\src\execution\isolate.cc">
+      <PreprocessorDefinitions>MINI_ELECTRON_CONTEXT_PROMISE_HOOKS_VIA_RUNTIME=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(MSBuildProjectName)' == 'application'">
     <ClCompile>
       <PreprocessorDefinitions>CURL_STATICLIB;WINVER=0x0A00;_WIN32_WINNT=0x0A00;HAVE_CRC32C=0;HAVE_SNAPPY=0;LEVELDB_COMPILE_LIBRARY;LEVELDB_HAS_PORT_CONFIG_H=0;LEVELDB_PLATFORM_WINDOWS=1;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
