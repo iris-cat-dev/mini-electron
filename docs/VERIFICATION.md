@@ -97,6 +97,39 @@ state. No installed Desktop or user profile was replaced. Original Windows 11
 Desktop sessions, the real Figma tool catalog, physical mixed-DPI transitions
 and a full-day soak were not exercised.
 
+### Publication and public installation
+
+Published [Windows runtime `v0.1.34`](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.34)
+as the latest stable release at source commit
+`9f0ce3033d30aec3533c10d5dc945db187e642b7`. All four GitHub assets were in the
+uploaded state and their server-reported sizes/SHA256 digests matched the
+local assembly. The saved/reopened bilingual notes matched exactly after
+GitHub form newline normalization; the live body had 22 flat items and no
+nested lists.
+
+Two fresh projects installed the registry-published npm installer `0.1.12`
+with its published SHA512 integrity, separate empty npm/runtime caches and
+no local distribution, mirror or offline override. The first explicitly
+pinned `0.1.34`; after that passed, only the Windows mutable channel's
+`artifacts.json` was replaced, and the second installed without a pin.
+Both downloaded executable hashes matched the final EXE above and passed
+six runtime scenarios each: identity, ALS and native V8 layout in both entry
+modes, plus SQLite.
+
+The Windows channel remains a pre-release with the same release ID and
+target commit. Its new manifest SHA256 is
+`9d26ba42043e57ac52aea5a94f05409bb7c514152e7b761a6abbfa7b1004b39a`.
+The macOS channel's release settings, asset ID `698404550`, asset update
+timestamp, size and SHA256 digest remained unchanged; it still serves
+runtime `0.1.31`. Existing valid npm installations still require an explicit
+runtime update.
+
+Public installation logs and per-case results are under
+`out/verification/windows-0.1.34/public-{pinned,channel}/`;
+GitHub release/tag/asset/channel snapshots are under
+`out/verification/windows-0.1.34-merged/`. No installed Desktop was replaced.
+
+
 ## Windows async context source repair (2026-11-04)
 
 Built `Release|x64` from the repaired source and staged it in
