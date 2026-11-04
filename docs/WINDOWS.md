@@ -229,12 +229,19 @@ selection/forced-color handling are unchanged.
 
 The Windows Node runtime compiles and explicitly registers `node:sqlite` against
 the bundled SQLite library, with column metadata and session/changeset support.
-The same binding is available in standalone Node mode and Workers. Extension
-loading remains disabled unless explicitly allowed when the database is created.
-The native regression exercises OAuth-style account filtering, WAL, read-only
+The final packaged `0.1.35` executable passed the native regression in Node-only
+and application modes, including Workers. Pass-through CommonJS hooks preserve
+the mandatory `node:sqlite` URL and native builtin `null` source; bare
+`require('sqlite')` remains rejected rather than becoming an unprefixed builtin.
+SQLite `3.49.1` FTS5 passed MATCH/phrase queries, BM25/rank, update/delete index
+maintenance, durable read-only reopen and Worker queries. Extension loading
+remains disabled unless explicitly allowed when the database is created.
+The regression also covers OAuth-style account filtering, WAL,
 `DatabaseSync.isTransaction` across savepoints, errors and automatic rollback,
 numbered/named parameter binding, writer-lock isolation, read-only access,
-metadata, backup, changesets, Workers, and extension restrictions.
+metadata, backup, changesets and extension restrictions.
+This local pre-publication run passed all fifteen final-archive scenarios;
+see [exact assets, evidence and limits](VERIFICATION.md#windows-runtime-0135-2026-11-05).
 
 Windows file identity uses the same volume serial for `stat`/`lstat` and `fstat`.
 Number and bigint stats agree across synchronous, callback, and promises APIs;
@@ -292,6 +299,7 @@ MINI_ELECTRON_DISABLE_GPU=1 MINI_GPU_SMOKE_EXPECT_SOFTWARE=1 MINI_GPU_SMOKE_EXPE
 ./out/windows-x64/mini-electron.exe --app=test/windows-pointer-interaction-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-image-preview-smoke.js
 ./out/windows-x64/mini-electron.exe --app=test/windows-composition-colors-smoke.js
+./out/windows-x64/mini-electron.exe --app=test/node-sqlite-smoke.js
 ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-sqlite-smoke.js
 ```
 

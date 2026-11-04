@@ -1,13 +1,40 @@
 'use strict';
 
-// Run with ELECTRON_RUN_AS_NODE=1 and either packaged runtime:
-// out/windows-x64/runtime-dist/electron.exe test/node-sqlite-smoke.js
-// out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron test/node-sqlite-smoke.js
+// Run in application mode (--app=test/node-sqlite-smoke.js) and Node-only mode:
+// ELECTRON_RUN_AS_NODE=1 out/windows-x64/runtime-dist/electron.exe test/node-sqlite-smoke.js
+// ELECTRON_RUN_AS_NODE=1 out/mac-arm64/runtime-dist/Electron.app/Contents/MacOS/Electron test/node-sqlite-smoke.js
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { DatabaseSync, backup } = require('node:sqlite');
+// A pass-through hook must preserve the mandatory node: prefix and the native
+// builtin's null source, including when this smoke runs outside the application.
+const { isBuiltin, registerHooks } = require('node:module');
+const sqliteHooks = registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const result = nextResolve(specifier, context);
+    if (specifier === 'node:sqlite') assert.equal(result.url, 'node:sqlite');
+    return result;
+  },
+  load(url, context, nextLoad) {
+    const result = nextLoad(url, context);
+    if (url === 'node:sqlite') {
+      assert.equal(result.format, 'builtin');
+      assert.equal(result.source, null);
+    }
+    return result;
+  },
+});
+let sqlite;
+try {
+  sqlite = require('node:sqlite');
+  assert.equal(isBuiltin('node:sqlite'), true);
+  assert.equal(isBuiltin('sqlite'), false);
+  assert.throws(() => require('sqlite'), { code: 'MODULE_NOT_FOUND' });
+} finally {
+  sqliteHooks.deregister();
+}
+const { DatabaseSync, backup } = sqlite;
 const { Worker } = require('node:worker_threads');
 
 async function main() {
@@ -204,7 +231,18 @@ async function main() {
   }
 }
 
-main().catch(error => {
+function reportFailure(error) {
   console.error(error.stack || error);
-  process.exitCode = 1;
-});
+  return 1;
+}
+
+if (process.env.ELECTRON_RUN_AS_NODE === '1') {
+  main().catch(error => { process.exitCode = reportFailure(error); });
+} else {
+  const { app } = require('electron');
+  app.on('window-all-closed', () => {});
+  app.whenReady().then(main).then(
+    () => app.exit(0),
+    error => app.exit(reportFailure(error)),
+  );
+}

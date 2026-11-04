@@ -49,11 +49,11 @@ it does **not** bypass or enlarge the compressed cage. An independent
 noncompressed Node engine remains an explicit architecture decision, not part
 of this metadata correction.
 
-Windows and macOS builds refresh the canonical bootstrap
-`third_party/libnode/lib/internal/bootstrap/node.js` into the vendored js2c
-resource through `build/mini_electron/node_sources.py` before native compilation.
-Do not fix only the embedded `config.gypi` JSON or edit generated bootstrap
-bytes without changing the canonical script.
+Windows and macOS builds refresh canonical Node bootstrap and CommonJS loader
+scripts into the vendored js2c resource through
+`build/mini_electron/node_sources.py` before native compilation. Do not fix only
+the embedded `config.gypi` JSON or edit generated script bytes without changing
+the canonical script.
 
 After rebuilding, run the native-layout regression in both entry modes:
 
@@ -107,8 +107,9 @@ amalgamation. Mnemopi requires FTS5 for its tables even in explicit
 `noEmbeddings: true` / `llmMode: none` mode; a native `node:sqlite` binding and a
 SQLite version string alone do not establish support. The observed Windows
 `0.1.34` distribution lacks FTS5 (`CREATE VIRTUAL TABLE ... USING fts5` fails
-with `no such module: fts5`). Rebuild the runtime to obtain this source change;
-changing SDK settings cannot add a compiled-out SQLite module.
+with `no such module: fts5`). The normally rebuilt and packaged Windows
+`0.1.35` runtime passed these FTS5 checks; changing SDK settings cannot add a
+compiled-out SQLite module to an older runtime.
 
 The extended `test/node-sqlite-smoke.js` covers phrase matching, BM25,
 update/delete index maintenance, durable read-only reopen, and Worker queries
@@ -117,12 +118,25 @@ checks in `ELECTRON_RUN_AS_NODE=1` mode. The real Desktop core SDK also passed
 explicit keyword/manual retain/recall, failed reconfiguration, and persistent
 reopen without outbound fetch calls.
 
-The application-entry SQLite smoke currently fails with
-`ERR_INVALID_RETURN_PROPERTY_VALUE` in the builtin-module load hook, before any
-SQLite checks. This reproduces with both the official Windows `0.1.34` binary
-and the rebuilt development runtime, so it does not validate application-mode
-FTS5. The macOS source change remains unbuilt and unexercised. Existing
+The application-entry SQLite failure observed in both official Windows
+`0.1.34` and the rebuilt FTS5 development runtime is a CommonJS hook-resolution
+bug, not an FTS5 or `--app` invocation failure. The default resolver strips
+`node:sqlite` to `sqlite`, then incorrectly uses that scheme-only builtin's bare
+name as its hook URL. Its legitimate builtin `null` source is consequently
+rejected as a non-`node:` module. The source repair preserves the requested
+`node:` URL; it neither fabricates source nor bypasses hooks, and unprefixed
+`require('sqlite')` remains an ordinary package lookup rather than a builtin.
+The existing SQLite smoke now checks this boundary through pass-through hooks
+in both entry modes, with explicit application lifecycle completion.
+
+The `0.1.35` normal build includes this resolver in the existing js2c refresh
+path. Its final ZIP's extracted executable passed all fifteen runtime scenarios,
+including the forwarding-hook and FTS5 smoke in both Node and application entry
+modes, plus the freshly staged Desktop core SDK `18.14.0` Eval artifact probe.
+The new SQLite/js2c repair remains unbuilt and unexercised on macOS. Existing
 `0.1.34` release artifacts have not been replaced or relabeled as FTS5-capable.
+This is local pre-publication verification, not a publication claim. See the
+[diagnosis and final evidence record](VERIFICATION.md#windows-runtime-0135-2026-11-05).
 
 ### IndexedDB transaction lifetime
 

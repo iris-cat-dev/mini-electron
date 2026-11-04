@@ -1085,7 +1085,10 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
       conditions: context.conditions,
     });
 
-    defaultResolvedURL = convertCJSFilenameToURL(defaultResolvedFilename);
+    // Scheme-only builtins (e.g. node:sqlite) lose their builtin identity if the
+    // normalized filename is converted back to a URL without its required prefix.
+    defaultResolvedURL = StringPrototypeStartsWith(specifier, 'node:') ?
+      specifier : convertCJSFilenameToURL(defaultResolvedFilename);
     return { __proto__: null, url: defaultResolvedURL };
   }
 

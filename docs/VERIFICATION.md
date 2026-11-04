@@ -8,6 +8,146 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.35 (2026-11-05)
+
+Status: normally built, packaged and **verified locally; not yet published**.
+The Windows manifest/archive and native runtime version are `0.1.35`; npm
+installer `0.1.12`, installer protocol `1`, Electron API `41.2.0`, Node ABI `134`,
+the macOS manifest entry and both channel names are unchanged.
+The published macOS channel continues to serve `0.1.31`.
+
+### Application-entry SQLite diagnosis
+
+The previously recorded official `0.1.34` and FTS5 development application
+failures both report builtin loading through `lib/browser/init.js:44`, with
+`ERR_INVALID_RETURN_PROPERTY_VALUE` because the load hook received `null` source.
+This is not evidence that SQLite executed or that application-mode FTS5 passed.
+The official executable SHA256 is
+`f11e9761e05bcb9bd0ce5e944ccf4235f5b353ea79e4da3c9e3f8ecc669e62b4`;
+the development executable SHA256 recorded with the failure is
+`96ffb52375a84b7492737b77dafca371c3b9edf684312489b5fcfef7ae30c20d`.
+
+A minimal diagnosis used only that existing development EXE in Node-only mode,
+with empty `NODE_OPTIONS`/`NODE_PATH` and throwaway home/profile/temp directories.
+It registered ordinary forwarding `resolve`/`load` hooks and required
+`node:fs` followed by `node:sqlite`, without changing either hook's result:
+
+```text
+node:fs     -> resolve URL node:fs -> load format builtin -> required
+node:sqlite -> resolve URL sqlite  -> load format builtin -> ERR_INVALID_RETURN_PROPERTY_VALUE
+```
+
+The cause is `resolveForCJSWithHooks()` in the canonical Node CommonJS loader:
+`defaultResolveImpl()` correctly recognizes `node:sqlite` and returns normalized
+filename `sqlite`, but the hook default resolver reconverts that filename and
+overwrites the valid `node:sqlite` URL. `sqlite` is deliberately excluded from
+unprefixed builtin names, so conversion leaves it bare. The default builtin
+loader correctly returns `null`; `validateLoad()` correctly rejects that source
+for the now non-`node:` URL. The decoded checked-in js2c resource contains the
+same resolution and validation logic, excluding stale embedded script contents
+as the cause. This also explains why the hook-free Node-only SQLite entry passed.
+
+The narrow source repair preserves an explicitly requested `node:` URL after
+normal builtin validation. It does not change builtin visibility, provide fake
+source, relax source validation or skip hooks. The existing source-to-js2c
+refresh now includes the CommonJS loader so the next native build embeds it.
+The SQLite smoke adds a forwarding-hook regression and confirms unprefixed
+`require('sqlite')` is not accepted as a builtin; its application route now uses
+the same readiness/exit convention as the other Node consumer smokes.
+
+### Final-archive verification
+
+`out/verification/windows-0.1.34-merged/runtime-checks.json` supplied the exact
+fourteen historical executable/argument arrays. Its SQLite case was Node-only,
+not `--app=...`; it did not establish application-entry SQLite coverage.
+The normal `0.1.35` release was assembled before these checks. Only
+`out/verification/windows-0.1.35/extracted-final/electron.exe`, extracted from
+the final runtime ZIP, was used for the new fifteen-case run:
+
+| Scenario | Result |
+| --- | --- |
+| Runtime identity/platform/architecture/ABI/protocol/features | PASS |
+| Async-context Node-only | PASS |
+| Async-context application | PASS |
+| Native build configuration/heap layout/Workers Node-only | PASS |
+| Native build configuration/heap layout/Workers application | PASS |
+| SQLite Node-only | PASS |
+| SQLite application (additional fifteenth case) | PASS |
+| Fresh Desktop core SDK `18.14.0` artifact/Eval | PASS |
+| Windows native input sandbox | PASS |
+| Windows native input single-process | PASS |
+| Windows cursor/capture sandbox | PASS |
+| Windows cursor/capture single-process | PASS |
+| Public clipboard image | PASS |
+| Console forwarding sandbox | PASS |
+| Console forwarding single-process | PASS |
+
+All fifteen processes exited `0`. Both SQLite entries passed the unchanged
+forwarding CJS hook assertions (`node:sqlite`, builtin `null` source and rejected
+bare `sqlite`) and native SQLite `3.49.1` FTS5 MATCH/phrase/BM25/rank,
+update/delete, read-only durable reopen and Worker checks, together with the
+existing transaction, binding, backup, changeset and extension restrictions.
+Both configuration entries measured four-byte tagged slots and flags `1/1/0`
+for pointer compression/31-bit Smis/sandbox; this does not remove the 4 GiB cage.
+The SDK probe used the freshly rebuilt current
+`D:/Project/omp-desktop/packages/desktop/sdk-dist/node_modules/@oh-my-pi/pi-coding-agent`
+stage, version `18.14.0`, and a new `sdk-artifact` output directory. Real Eval
+passed sync/await output, final object expression and explicit error delivery;
+no paid model request was made.
+
+Node-only cases explicitly set `ELECTRON_RUN_AS_NODE=1`; application cases
+removed it. Every case isolated HOME, USERPROFILE, APPDATA, LOCALAPPDATA, TEMP,
+TMP, OMP_AGENT_DIR, PI_CODING_AGENT_DIR and PASEO_HOME and removed NODE_OPTIONS
+and NODE_PATH. GUI cases ran serially with per-case MINI_NATIVE_INPUT_ARTIFACTS;
+the native scripts completed their normal pointer/clipboard restoration.
+An initial harness layout used independent profile and AppData directories:
+Win32 `SHGetFolderPathW(CSIDL_APPDATA)` returned `0x80070003`, so application
+startup failed before the smoke scripts loaded. Fresh-process diagnosis and a
+conventional private `USERPROFILE/AppData/Roaming` and `Local` layout resolved
+that harness issue without changing runtime code or weakening assertions.
+The initial logs and diagnosis remain beside the successful final results.
+
+All **53** `version.json.files` SHA256 entries matched the extracted files.
+Metadata and live identity agreed on runtime `0.1.35`, `win32`, `x64`, ABI `134`,
+installer protocol `1`, Electron API `41.2.0` and
+`features.asyncContextPropagation: 1` (also `nativeClipboardFiles: 1`).
+The Windows-only schema-v2 `artifacts.json` and both SHASUMS entries matched
+the exact final assets:
+
+| Asset | Bytes | SHA256 |
+| --- | ---: | --- |
+| `mini-electron-v0.1.35-win32-x64.zip` | 39,633,967 | `ff36c793ba04bfe8439f36811320f5f2b657674a6a70f7bb49720b3a64e942d8` |
+| `mini-electron-v0.1.35-win32-x64-symbols.zip` | 258,897,224 | `87fef7f29cce48344999b6441a34347026609ff48d2d3ceba841fe9734b7973f` |
+| `artifacts.json` | 528 | `bd229751958d723a901732c2e6a210d7231efedb1966c3ede43738ca1322b4e2` |
+| `SHASUMS256.txt` | 214 | `e37369815d634bdeef15ddb764b7478f79a11edcfd1e9b3245ed8476ecb388fa` |
+
+The extracted EXE is 100,568,576 bytes, SHA256
+`ed0327bf7a62c392ae1b55f51fb2ae144d4a921e241d0d17cc1a8140ccb85f3e`.
+Its parsed PE RSDS record independently matches the extracted full PDB:
+GUID `59E0A05A338C1A424C4C44205044422E`, Age `1`, PDB name
+`mini-electron.pdb`. The PDB is 1,308,106,752 bytes, SHA256
+`9555ce59002166f9dac562aaf4d2beabc1fcb400cde890497e2231748f988185`.
+LLVM `llvm-pdbutil dump -summary` independently reports that GUID/Age, debug
+info/types/IDs/globals/publics present, `Is stripped: false`, no incremental
+linking and no conflicting types. PDB and EXE hashes also match the exact leaf
+`out/windows-x64/symbols/mini-electron.pdb/59E0A05A338C1A424C4C44205044422E1`.
+The symbols ZIP contains exactly `mini-electron.pdb` and `symbols.json`, no EXE;
+the runtime ZIP contains no PDB. Symbol metadata hashes and identity matched.
+
+Evidence retained under `out/verification/windows-0.1.35/`:
+`runtime-checks.json` with all commands/exit codes/timings and per-case logs,
+`asset-checks.json`, `llvm-pdb-summary.log`, `profile-layout-diagnosis.json`,
+`initial-profile-layout/`, per-case native-input success PNGs and cursor JSON,
+the new SDK artifact output, and `extracted-final/` plus `symbols-final/`.
+Throwaway runner/identity scripts and private profiles were removed.
+
+Boundaries: this is local pre-publication Windows x64 verification, not proof
+of a GitHub release, installed Desktop update, macOS build or macOS SQLite/js2c
+repair. Existing Desktop, its daemon/configuration/credentials and frozen
+`0.1.34` installation packages were not used or modified. The prior `0.1.34`
+artifacts are not relabeled as FTS5-capable. No native rebuild or assertion
+relaxation was performed during final-archive verification.
+
 ## macOS source capture repair (2026-11-04)
 
 Built the current arm64 source with Homebrew Python 3.14 and four workers.

@@ -6,6 +6,38 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.35 (built and verified locally; not yet published)
+
+Windows x64-only binary update. npm installer `0.1.12`, installer protocol `1`,
+Electron API `41.2.0`, Node ABI `134` and the published macOS runtime/channel
+`0.1.31` remain unchanged.
+
+- Includes the existing FTS5 compile configuration and SQLite phrase/ranking,
+  index-maintenance, durable-reopen and Worker regression coverage.
+- Preserves mandatory `node:` URLs for scheme-only builtins through CommonJS
+  resolution hooks. This repairs the established application-entry
+  `node:sqlite` load failure without fake source or a hook bypass.
+- Extends the SQLite consumer smoke to exercise pass-through hook resolution,
+  native builtin `null` source and rejection of unprefixed `require('sqlite')`
+  in both entry modes, retaining normal application readiness/exit handling.
+- Preserves prior async-context and native-input behavior. The assembled release
+  contains the runtime ZIP, separate matching full-PDB symbols ZIP,
+  `artifacts.json` and `SHASUMS256.txt`, using only the Windows runtime channel.
+
+The final ZIP's extracted executable passed **15/15** scenarios: identity;
+async-context and native heap configuration in Node/application entry modes;
+SQLite in both entry modes, including forwarding hooks, FTS5 and Workers;
+fresh Desktop core SDK `18.14.0` Eval; sandbox/single-process native input,
+cursor/capture and console; and public clipboard images.
+
+EXE SHA256: `ed0327bf7a62c392ae1b55f51fb2ae144d4a921e241d0d17cc1a8140ccb85f3e`.
+The independently paired full, unstripped PDB has GUID
+`59E0A05A338C1A424C4C44205044422E`, Age `1`, SHA256
+`9555ce59002166f9dac562aaf4d2beabc1fcb400cde890497e2231748f988185`.
+No installed Desktop or frozen `0.1.34` package was replaced; macOS was not
+built or tested for the SQLite/js2c repair. See the
+[source diagnosis, final asset hashes and verification limits](VERIFICATION.md#windows-runtime-0135-2026-11-05).
+
 ### Source verification: platform-owned mouse capture
 
 - Restricts HWND focus/capture and title-bar dragging to Win32. macOS keeps

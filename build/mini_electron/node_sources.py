@@ -5,11 +5,15 @@ from pathlib import Path
 import re
 
 
-_BOOTSTRAPS = ("internal/bootstrap/node", "internal/main/worker_thread")
+_BOOTSTRAPS = (
+    "internal/bootstrap/node",
+    "internal/main/worker_thread",
+    "internal/modules/cjs/loader",
+)
 
 
 def generate_node_bootstraps(root: Path) -> None:
-    """Refresh vendored js2c resources from their canonical bootstrap scripts."""
+    """Refresh vendored js2c resources from canonical bootstrap and loader scripts."""
     node = root / "third_party" / "libnode"
     generated = node / "gen" / "src" / "node" / "node_javascript.cc"
     original = generated.read_text(encoding="utf-8")
