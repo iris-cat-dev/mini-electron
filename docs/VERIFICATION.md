@@ -31,6 +31,11 @@ The unlocked-console native regressions also passed:
   metadata. The existing low diagnostic threshold safely triggered capture;
   the test's signal exit was not reported as V8 OOM and produced no fake dump.
 
+The merged source build also passed `test/node-async-context-smoke.js` on macOS
+arm64 in application and Node-only modes, including default/frame-based ALS
+children, Workers, foreign Promise realms and once-only Promise hook ordering.
+This post-merge run is not Windows verification.
+
 The cursor smoke retained a compositor PNG and native JSON observations.
 Only new test processes/profiles were used; installed applications and
 runtime channels were unchanged. Windows was not run for this source repair.
