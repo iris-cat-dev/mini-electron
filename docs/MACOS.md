@@ -298,13 +298,14 @@ env -u ELECTRON_RUN_AS_NODE out/mac-arm64/mini-electron \
   --app=test/macos-cursor-smoke.js
 ```
 
-The incremental macOS source build and existing native pointer-screen-coordinate
-regression passed. Real AppKit-view injection also passed retained native cursor
-mapping, stationary updates, custom 16×16-point RGBA/hotspot `(5,7)`, BrowserView,
-navigation reset and guest capture with DOM `buttons` transitions `1 → 3 → 2 → 0`
-and a negative guest `clientX` while the right button remained held.
-The final physical-pointer regression remains pending while the console is locked;
-retained-native-cursor inspection is not a substitute for the unlocked screen.
+The 2026-11-04 source build passed the application and Node-only V8
+configuration/layout regression, including Workers. The unlocked-console
+cursor regression passed real AppKit cursor/raster observations, stationary
+updates, custom RGBA/hotspots, BrowserView non-owner releases, navigation reset,
+and guest buttons `1 → 3 → 7 → 6 → 4 → 0`. Capture survives the intermediate
+releases and out-of-bounds middle-button dragging; only the final release emits
+`pointerup`. Native pointer-screen-coordinate and precise-wheel regressions
+also passed. These are source-build results, not a new runtime publication.
 
 Mouse dragging preserves the event's held-button state. AppKit precise wheel
 events retain fractional pixel deltas and both axes through IPC and Blink, with

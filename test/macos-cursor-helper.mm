@@ -75,6 +75,9 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
   else if ([type isEqualToString:@"rightDown"]) native_type = NSEventTypeRightMouseDown;
   else if ([type isEqualToString:@"rightDrag"]) native_type = NSEventTypeRightMouseDragged;
   else if ([type isEqualToString:@"rightUp"]) native_type = NSEventTypeRightMouseUp;
+  else if ([type isEqualToString:@"middleDown"]) native_type = NSEventTypeOtherMouseDown;
+  else if ([type isEqualToString:@"middleDrag"]) native_type = NSEventTypeOtherMouseDragged;
+  else if ([type isEqualToString:@"middleUp"]) native_type = NSEventTypeOtherMouseUp;
   else {
     napi_throw_type_error(env, nullptr, "Unknown native mouse type");
     return nullptr;
@@ -118,6 +121,9 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
         case NSEventTypeRightMouseDown: [view rightMouseDown:event]; break;
         case NSEventTypeRightMouseDragged: [view rightMouseDragged:event]; break;
         case NSEventTypeRightMouseUp: [view rightMouseUp:event]; break;
+        case NSEventTypeOtherMouseDown: [view otherMouseDown:event]; break;
+        case NSEventTypeOtherMouseDragged: [view otherMouseDragged:event]; break;
+        case NSEventTypeOtherMouseUp: [view otherMouseUp:event]; break;
         default: break;
       }
     }

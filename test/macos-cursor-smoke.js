@@ -23,7 +23,7 @@ function finish(error) {
   for (const item of [other, window]) if (item && !item.isDestroyed()) item.destroy();
   fs.rmSync(temporary, { recursive: true, force: true });
   if (error) console.error(error.stack || error);
-  else console.log('PASS: native editing/link/CSS cursors, stationary updates, grab transition, hidden/custom restoration, BrowserView and resize precedence');
+  else console.log('PASS: native editing/link/CSS cursors, stationary updates, grab transition, hidden/custom restoration, BrowserView non-owner releases, three-button guest capture and resize precedence');
   app.exit(error ? 1 : 0);
 }
 const shapes = ['crosshair', 'grab', 'grabbing', 'move', 'not-allowed', 'copy', 'alias',
@@ -150,6 +150,8 @@ app.whenReady().then(async () => {
   const outsideView = { x: hostEdit.x - 280, y: hostEdit.y - 110 };
   const viewMove = await mouseTransition(view.webContents, 'drag', outsideView, 1, 'mousemove', 1);
   assert.ok(Math.abs(viewMove.x - outsideView.x) <= 1, 'captured BrowserView receives out-of-bounds coordinates');
+  await mouseTransition(window.webContents, 'up', hostEdit, 0, 'mouseup', 0);
+  await cursor('grabbing', 'a non-owning host release cannot clear BrowserView capture');
   await evaluate(view.webContents, 'document.getElementById("drag").style.cursor="copy"; true');
   observations.push({ id: 'captured-view-stationary-update', ...await cursor('copy', 'captured view owns cursor outside its bounds') });
   await mouseTransition(view.webContents, 'up', outsideView, 1, 'mouseup', 0);
@@ -189,6 +191,23 @@ app.whenReady().then(async () => {
     'guest retains capture until every held button is released: ' + await evaluate(guest, 'JSON.stringify(trace)'));
   observations.push({ id: 'guest-multi-button-capture', ...await cursor('crosshair', 'captured guest keeps cursor outside its bounds') });
   await mouseTransition(guest, 'rightUp', outside, 0, 'mouseup', 0);
+  observations.push(await hover(window.webContents, 'link', 'pointer'));
+  observations.push(await hover(guest, 'guestTarget', 'crosshair', 0, title, offset));
+  const chordStart = await evaluate(guest, 'trace.length');
+  await mouseTransition(guest, 'down', nativeGuestPoint, 0, 'mousedown', 1);
+  await mouseTransition(guest, 'rightDown', nativeGuestPoint, 0, 'mousedown', 3);
+  await mouseTransition(guest, 'middleDown', nativeGuestPoint, 0, 'mousedown', 7);
+  await mouseTransition(guest, 'up', nativeGuestPoint, 0, 'mouseup', 6);
+  await mouseTransition(guest, 'rightUp', nativeGuestPoint, 0, 'mouseup', 4);
+  const middleMove = await mouseTransition(guest, 'middleDrag', outside, 0, 'mousemove', 4);
+  assert.ok(Math.abs(middleMove.x - (outside.x - offset.x)) <= 1,
+    'offscreen guest retains out-of-bounds input while only the middle button is held');
+  assert.equal(await evaluate(guest, `trace.slice(${chordStart}).filter(e=>e.type==='pointerup').length`), 0,
+    'intermediate chord releases do not end pointer capture');
+  observations.push({ id: 'guest-three-button-capture', ...await cursor('crosshair', 'middle-button guest capture') });
+  await mouseTransition(guest, 'middleUp', outside, 0, 'mouseup', 0);
+  assert.equal(await evaluate(guest, `trace.slice(${chordStart}).filter(e=>e.type==='pointerup').length`), 1,
+    'the final chord release produces exactly one pointerup');
   observations.push(await hover(window.webContents, 'link', 'pointer'));
   await evaluate(window.webContents, 'document.getElementById("guest").remove(); true');
   // Late updates from a different native surface must not overwrite the hovered view.

@@ -6,6 +6,18 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased source: platform-owned mouse capture
+
+- Restricts HWND focus/capture and title-bar dragging to Win32. macOS keeps
+  its existing AppKit capture owner; the shared renderer no longer releases
+  another native surface's capture.
+- Preserves all held buttons when synthesizing a left-button release and
+  covers BrowserView non-owner releases plus three-button guest dragging.
+- The macOS source build, native V8 layout in application/Node-only modes
+  and Workers, cursor/capture, desktop pointer coordinates and precise-wheel
+  regressions passed on 2026-11-04. Windows verification is pending for this
+  source change. No runtime channel or installed Desktop was replaced.
+
 ### Windows runtime 0.1.33
 
 Windows x64-only runtime update. The macOS runtime/channel remains `0.1.31`;

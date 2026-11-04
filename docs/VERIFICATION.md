@@ -8,6 +8,33 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS source capture repair (2026-11-04)
+
+Built the current arm64 source with Homebrew Python 3.14 and four workers.
+The application and `ELECTRON_RUN_AS_NODE=1` entries both passed
+`test/node-build-config-smoke.js`, including Workers: pointer compression `1`,
+31-bit Smis `1`, sandbox `0`, and measured tagged-slot width four bytes.
+This corrects configuration reporting; it does not enlarge the V8 cage.
+
+The unlocked-console native regressions also passed:
+- `test/macos-cursor-smoke.js`: real AppKit cursor/raster observations,
+  BrowserView non-owner release protection, guest buttons
+  `1 → 3 → 7 → 6 → 4 → 0`, out-of-bounds middle-button dragging, and exactly
+  one final `pointerup`.
+- `test/macos-pointer-screen-coordinates-smoke.js`: native mouse/wheel desktop
+  DIPs, negative display positions, moved windows, BrowserView offsets and
+  stationary captured input.
+- `test/macos-precise-wheel-smoke.js`: both axes/directions, standard/legacy
+  DOM deltas, one-pixel input and ordinary mouse-wheel compatibility.
+- `test/mac-pre-oom-snapshot-smoke.js` (capture case): a real owning-renderer
+  heap graph, restricted local sidecar, once-only capture and frozen exit
+  metadata. The existing low diagnostic threshold safely triggered capture;
+  the test's signal exit was not reported as V8 OOM and produced no fake dump.
+
+The cursor smoke retained a compositor PNG and native JSON observations.
+Only new test processes/profiles were used; installed applications and
+runtime channels were unchanged. Windows was not run for this source repair.
+
 ## Windows runtime 0.1.33 (2026-11-04)
 
 Windows x64-only runtime update carrying brokered native clipboard files and

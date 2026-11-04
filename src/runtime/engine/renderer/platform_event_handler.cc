@@ -61,11 +61,6 @@ static bool isWithinDoubleClickBounds(const gfx::Point& first, const gfx::Point&
 #endif
 }
 
-static void postDragMessageImpl(HWND hWnd, void* param)
-{
-    ::ReleaseCapture();
-    ::PostMessageW(hWnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
-}
 
 PlatformEventHandler::PlatformEventHandler(int64_t webviewid, blink::WebWidget* webWidget, blink::WebViewImpl* webViewImpl)
 //     : m_checkMouseLeaveTimer(this, &PlatformEventHandler::checkMouseLeave)
@@ -458,27 +453,6 @@ void PlatformEventHandler::fireInputEventToCompositingThread(const blink::WebInp
     }
 }
 
-static void postDragMessage(HWND hWnd)
-{
-    HWND hRootWnd = hWnd;
-    while (true) {
-        hWnd = ::GetParent(hWnd);
-        if (!hWnd)
-            break;
-        hRootWnd = hWnd;
-    }
-
-    if (!hRootWnd)
-        return;
-
-    if (!/*blink::RuntimeEnabledFeatures::updataInOtherThreadEnabled()*/ true) {
-        postDragMessageImpl(hRootWnd, nullptr);
-        return;
-    }
-
-    //     if (wke::g_wkeUiThreadPostTaskCallback)
-    //         wke::g_wkeUiThreadPostTaskCallback(hRootWnd, postDragMessageImpl, nullptr);
-}
 
 void PlatformEventHandler::checkMouseLeave()
 {
@@ -517,7 +491,7 @@ bool PlatformEventHandler::fireMouseUpEventIfNeeded(HWND hWnd, UINT message, WPA
     if ((wParam & MK_LBUTTON))
         return false;
 
-    fireMouseEvent(hWnd, WM_LBUTTONUP, 0, lParam, info, nullptr);
+    fireMouseEvent(hWnd, WM_LBUTTONUP, wParam, lParam, info, nullptr);
     if (bHandle)
         *bHandle = true;
     return true;
@@ -614,8 +588,6 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
             if (m_webViewImpl && isValideWindow && ::GetFocus() != hWnd) {
                 setFocusOnBlinkThread(m_webviewid, hWnd, m_webViewImpl);
             }
-            //             if (wke::g_enableNativeSetCapture && isValideWindow)
-            //                 ::SetCapture(hWnd);
         }
         switch (message) {
         case WM_LBUTTONDOWN:
@@ -668,8 +640,8 @@ LRESULT PlatformEventHandler::fireMouseEvent(HWND hWnd, UINT message, WPARAM wPa
             m_activeMouseButton = 0;
             m_activeMouseClickCount = 0;
         }
-        if (isValideWindow && !(wParam & (MK_LBUTTON | MK_MBUTTON | MK_RBUTTON)))
-            ::ReleaseCapture();
+        // Native capture is released by WebViewHost on the owning UI thread
+        // (or by AppKit on macOS), never by delayed compositor input.
         if (info.renderWidgetHost && info.renderWidgetHost->m_frameWidget) {
             info.renderWidgetHost->m_frameWidget->DragSourceSystemDragEnded();
         }

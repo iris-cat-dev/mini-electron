@@ -1237,19 +1237,18 @@ void WebViewHost::onResize(int w, int h, bool needSetHostWnd)
 //     return handle;
 // }
 
+#if defined(_WIN32)
 bool WebViewHost::doDraggableRegionNcHitTest(HWND hWnd, int x, int y)
 {
     bool handle = PlatformEventHandler::isDraggableRegionNcHitTest(hWnd, gfx::Point(x, y), m_draggableRegion);
     if (handle) {
         HWND hRootWnd = hWnd;
-#ifdef _WIN32
         while (true) {
             hWnd = ::GetParent(hWnd);
             if (!hWnd)
                 break;
             hRootWnd = hWnd;
         }
-#endif // _WIN32
         if (hRootWnd) {
             ::ReleaseCapture();
             ::PostMessageW(hRootWnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
@@ -1257,6 +1256,7 @@ bool WebViewHost::doDraggableRegionNcHitTest(HWND hWnd, int x, int y)
     }
     return handle;
 }
+#endif
 
 void WebViewHost::onImeComposition(ImeCompositioType type, WCHAR c)
 {
@@ -1294,7 +1294,8 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
     if (!m_enableMouseKeyMessage)
         return;
 
-    if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN) {
+    if (message == WM_LBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_RBUTTONDOWN
+        || message == WM_LBUTTONDBLCLK || message == WM_MBUTTONDBLCLK || message == WM_RBUTTONDBLCLK) {
         content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, getWebviewHandle(), [](WebViewHost* self) {
             blink::WebViewImpl* webWiew = (blink::WebViewImpl*)(self->m_renderWidgetHostImpl->m_webWiew);
             if (webWiew) {
@@ -1303,6 +1304,7 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
             }
         });
 
+#if defined(_WIN32)
         // Offscreen renderer views have no HWND. SetCapture(nullptr) would
         // release the BrowserWindow's capture in single-process mode.
         if (::IsWindow(m_hWnd)) {
@@ -1312,11 +1314,21 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
             if (isNotInDraggableRegion && g_enableNativeSetCapture)
                 ::SetCapture(m_hWnd);
         }
-    } else if ((message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP)
+#endif
+    }
+
+#if defined(_WIN32)
+    // Capture is owned by the native UI thread/window. An offscreen renderer
+    // must not release a BrowserWindow's capture, nor may an intermediate
+    // chorded release end capture while another button is still held.
+    if ((message == WM_LBUTTONUP || message == WM_MBUTTONUP || message == WM_RBUTTONUP)
         && ::IsWindow(m_hWnd) && ::GetCapture() == m_hWnd
         && !(flags & (MINI_ELECTRON_LBUTTON | MINI_ELECTRON_MBUTTON | MINI_ELECTRON_RBUTTON))) {
         ::ReleaseCapture();
     }
+#endif
+    // On macOS AppKit owns native drag delivery; MiniElectronRendererView
+    // tracks chorded button/cursor ownership before forwarding input here.
 
     //onCursorChange();
 

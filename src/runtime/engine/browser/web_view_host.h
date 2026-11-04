@@ -317,7 +317,9 @@ private:
 
     void delayDoMouseMsgInCompositorThread();
     bool isDraggableRegionNcHitTest(HWND hWnd);
+#if defined(_WIN32)
     bool doDraggableRegionNcHitTest(HWND hWnd, int x, int y);
+#endif
 
     int64_t m_id;
 
