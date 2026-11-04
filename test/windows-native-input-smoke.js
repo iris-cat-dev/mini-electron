@@ -4,6 +4,7 @@
 const assert = require('node:assert/strict');
 const { startNativeInput } = require('./windows-native-input-driver');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const { app, BrowserWindow, Menu, clipboard } = require('electron');
@@ -20,7 +21,7 @@ function privateBytes(pid) {
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-windows-native-input-'));
 const title = `mini-windows-native-input-${process.pid}`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-let window, driver, finished = false;
+let window, driver, server, finished = false;
 const request = (...args) => driver.request(...args);
 const deadline = setTimeout(() => finish(new Error('Windows native input smoke timed out')), 120000);
 app.on('window-all-closed', () => {});
@@ -47,6 +48,7 @@ async function finish(error) {
     catch (restoreError) { error = error || restoreError; }
   }
   if (window && !window.isDestroyed()) window.destroy();
+  if (server) server.close();
   try { fs.rmSync(temporary, { recursive: true, force: true }); }
   catch (cleanupError) { error = error || cleanupError; }
   if (error) console.error(error.stack || error);
@@ -142,7 +144,7 @@ app.whenReady().then(async () => {
     ] },
   ]);
   Menu.setApplicationMenu(applicationMenu);
-  await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><title>${title}</title>
+  const fixtureHTML = `<!doctype html><meta charset="utf-8"><title>${title}</title>
     <style>body{background:#fff;font:16px sans-serif;margin:20px}textarea{width:340px;height:75px;display:block;margin:8px}
     #rich,#target{width:340px;min-height:35px;border:1px solid;margin:8px}#drop-target{position:absolute;left:430px;top:210px;width:300px;height:230px;background:#ddd}
     #click-target{position:absolute;left:440px;top:90px;width:280px;height:60px;background:#dde}</style>
@@ -170,7 +172,15 @@ app.whenReady().then(async () => {
       try{const described=await Promise.all(files.map(async file=>({name:file.name,type:file.type,size:file.size,path:nativeFileDrag.getPath(file),bytes:holdFiles?null:Array.from(new Uint8Array(await file.arrayBuffer()))})));
       dragState.result={target:event.target.id,x:event.clientX,y:event.clientY,types,files:described,entries,
         forgedPath:nativeFileDrag.getPath(new File(['forged'],'native-pixel.png',{type:'image/png'}))}}catch(error){dragState.result={error:String(error)}}});
-    </script>`));
+    </script>`;
+  server = http.createServer((request, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    response.end(request.url === '/child.html'
+      ? '<!doctype html><textarea id="editor"></textarea><script>addEventListener("paste",event=>{event.preventDefault();parent.childPastes.push(event.clipboardData.files.length)})</script>'
+      : fixtureHTML);
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await window.loadURL(`http://127.0.0.1:${server.address().port}/`);
   window.show(); window.focus();
   await eventually(() => window.isFocused(), value => value, 'fixture focus');
   const plainText = 'café 中文 😀 clipboard';
@@ -296,9 +306,9 @@ app.whenReady().then(async () => {
   await evaluate(`removeEventListener('paste',nestedPaste);true`);
 
   await evaluate(`window.childPastes=[];window.child=document.createElement('iframe');
-    child.srcdoc='<textarea id="editor"></textarea><script>addEventListener("paste",event=>{event.preventDefault();parent.childPastes.push(event.clipboardData.files.length)})<\\/script>';
+    child.src='/child.html';
     document.body.appendChild(child);true`);
-  await eventually(() => evaluate('!!child.contentDocument.getElementById("editor")'), ready=>ready, 'owned child frame');
+  await eventually(() => evaluate('!!(child.contentDocument && child.contentDocument.getElementById("editor"))'), ready=>ready, 'owned child frame');
   await evaluate('child.contentDocument.getElementById("editor").focus();true');
   await key(17,86);
   const childPastes = await eventually(() => value('childPastes'), rows=>rows.length===1, 'native paste with child-frame focus');

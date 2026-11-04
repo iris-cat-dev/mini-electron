@@ -8,6 +8,66 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.33 (2026-11-04)
+
+Windows x64-only runtime update carrying brokered native clipboard files and
+the native V8 build-configuration reporting correction. npm installer `0.1.12`,
+installer protocol `1`, Electron API `41.2.0` and Node ABI `134` are unchanged;
+the macOS runtime/channel remains `0.1.31`.
+
+Built the normal `Release|x64` distribution with four workers and the existing
+local ANGLE/Dawn/tool cache, without diagnostic compiler flags. GN, Ninja and
+CMake were explicitly selected from `.build-tools`; initial attempts lacking
+their tool paths stopped before a complete native build.
+
+The final packaged executable passed nine runtime scenarios:
+- Application identity: native runtime `0.1.33`, Electron API `41.2.0`, ABI `134`
+  and `features.nativeClipboardFiles: 1`.
+- `node-build-config-smoke.js` in application and Node-only modes, including
+  Workers and cross-entry consistency. Native tagged slots measured four bytes;
+  compression/31-bit-SMI/sandbox reported `1/1/0`; `process.config` stayed deeply
+  frozen. This does not remove V8's compressed-heap 4 GiB cage.
+- Native SQLite, including transaction state, mixed numbered bindings,
+  savepoints, rollback recovery, writer-lock isolation, WAL and Workers.
+- Complete native-input checks in sandboxed and explicit single-process modes:
+  Unicode/rich/empty text, PNG/DIB/DIBV5, single/mixed Explorer-file paste,
+  canceled and nested/script authorization, child-frame focus, File lifetime,
+  native private-byte retention, keyboard policy, OLE and rejection boundaries.
+  Real ancestor-reparse races returned only authorized bytes or rejection.
+  Private-byte samples were `326053888 -> 326057984` in sandboxed mode and
+  `365924352 -> 360464384` in single-process mode.
+- Public `clipboard.readImage()` format/fallback/pixel/rejection checks.
+- Console-message forwarding in sandboxed and single-process modes.
+
+The original native-input fixture stopped at its `srcdoc` child:
+`contentDocument` was null. A readiness guard alone still timed out. The
+engine's existing `about:srcdoc` navigation rewrites to an independent data URL,
+so the regression now serves both real documents from one loopback HTTP origin.
+All paste/security/lifetime assertions and existing deadlines remain intact;
+both complete native-input runs then passed. No runtime `srcdoc` repair,
+macOS execution, application-specific attachment UI, mixed-monitor transition
+or full-day soak is claimed.
+
+Release-assembly tests ran 22 cases (21 passed, one skipped); all three symbol tests passed.
+Assembly validated the archived EXE/PDB identity and hashes. The runtime ZIP
+contains no PDB or symbol metadata; the symbols ZIP contains only the full
+`mini-electron.pdb` and `symbols.json`. ZIP-member EXE and PDB hashes were also
+checked against that metadata.
+
+Executable SHA256:
+`76be49183fb5167a72558d905af0fc6d6073fe11723453264e90159238ba4b4d`.
+PDB GUID `C27221B57099F8054C4C44205044422E`, Age `1`; PDB SHA256:
+`b8c467707160d428071d14697dd3584cb132ac171500c3c9b17708d7ed245c15`.
+Runtime ZIP SHA256:
+`875f96d6bd284e51965f18b964e3f43394f20678a4d34e96c664b70504a879b9`.
+Symbols ZIP SHA256:
+`80d0b6e522eb2f3642ac791b32531e8749afa3fe29aa011b76e79014f1bd4cdb`.
+
+Distribution: `out/windows-x64/runtime-dist-0.1.33/`.
+Immutable assembly: `out/runtime-release-0.1.33/v0.1.33/`.
+Logs, results and native screenshots: `out/verification/windows-0.1.33/`.
+No installed Desktop executable or user application profile was replaced.
+
 ## Windows runtime 0.1.32 (2026-11-02)
 
 Synchronized the clean Windows checkout from `1dac123b9` to `249bf1cfa`,

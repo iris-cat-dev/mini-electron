@@ -6,8 +6,20 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased shared native runtime
+### Windows runtime 0.1.33
 
+Windows x64-only runtime update. The macOS runtime/channel remains `0.1.31`;
+npm installer remains `0.1.12`. Installer protocol `1`, Electron API compatibility
+`41.2.0` and Node ABI `134` are unchanged.
+
+- Adds authenticated Explorer `CF_HDROP` file paste for genuine DOM Files,
+  including Unicode names and mixed image/document entries. Grants remain
+  bound to the focused main-frame document, native paste and clipboard sequence;
+  canceled shortcuts, nested/script paste and child-frame focus cannot reuse them.
+- Moves authorized bytes into frame-bound Blob/File storage without retaining
+  another complete native copy. Rejects size/count limits, directories and
+  reparse paths, including a concurrently replaced ancestor. Packaged Windows
+  distributions advertise `features.nativeClipboardFiles: 1`.
 - Corrects `process.config.variables.v8_enable_pointer_compression` and the
   existing 31-bit-SMI/sandbox fields from actual C++ compilation flags instead
   of stale vendored `config.gypi` values. The shared bootstrap stays deeply
@@ -22,6 +34,13 @@ These are historical release and verification records, not a claim that every pl
   heap's 4 GiB cage boundary. `--max-old-space-size` cannot bypass that cage.
   A separate noncompressed Node engine remains an explicit architecture
   decision. See [the shared runtime boundary](DEVELOPMENT.md#node-build-configuration-and-heap-boundary).
+
+The final packaged runtime passed nine scenarios covering identity, native V8
+layout in both entry modes with Workers, SQLite, full native input in sandboxed
+and single-process modes, public clipboard images and console forwarding in
+both process modes. The input fixture now uses real same-origin HTTP pages
+instead of `srcdoc`; runtime `srcdoc` behavior is unchanged. See the
+[Windows verification record](VERIFICATION.md#windows-runtime-0133-2026-11-04).
 
 
 ### Windows runtime 0.1.32
