@@ -6,6 +6,24 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased shared native runtime
+
+- Corrects `process.config.variables.v8_enable_pointer_compression` and the
+  existing 31-bit-SMI/sandbox fields from actual C++ compilation flags instead
+  of stale vendored `config.gypi` values. The shared bootstrap stays deeply
+  frozen across application, Node-only and Worker startup; both native build
+  backends refresh its generated js2c resource.
+- Adds `test/node-build-config-smoke.js`, an executable native heap-layout and
+  Worker/entry-mode consistency regression. Verified locally on Windows x64 in
+  application and Node-only modes, including Workers: tagged slots measured
+  4 bytes and compression/31-bit-SMI/sandbox flags reported `1/1/0`. macOS has
+  not been exercised for this change.
+- This is a reporting correction, not removal of the current compressed
+  heap's 4 GiB cage boundary. `--max-old-space-size` cannot bypass that cage.
+  A separate noncompressed Node engine remains an explicit architecture
+  decision. See [the shared runtime boundary](DEVELOPMENT.md#node-build-configuration-and-heap-boundary).
+
+
 ### Windows runtime 0.1.32
 
 Windows x64-only runtime update from the shared source through macOS `0.1.31`.

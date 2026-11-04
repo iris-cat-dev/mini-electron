@@ -88,6 +88,26 @@ static void InitConfig(Local<Object> target, Local<Value> unused, Local<Context>
 
     READONLY_PROPERTY(target, "bits", Number::New(isolate, 8 * sizeof(intptr_t)));
 
+    // The vendored config.gypi can describe a different V8 build. Bootstrap
+    // process.config from the flags used to compile this binding instead.
+#ifdef V8_COMPRESS_POINTERS
+    READONLY_TRUE_PROPERTY(target, "v8EnablePointerCompression");
+#else
+    READONLY_FALSE_PROPERTY(target, "v8EnablePointerCompression");
+#endif
+
+#ifdef V8_31BIT_SMIS_ON_64BIT_ARCH
+    READONLY_TRUE_PROPERTY(target, "v8Enable31BitSmisOn64BitArch");
+#else
+    READONLY_FALSE_PROPERTY(target, "v8Enable31BitSmisOn64BitArch");
+#endif
+
+#ifdef V8_ENABLE_SANDBOX
+    READONLY_TRUE_PROPERTY(target, "v8EnableSandbox");
+#else
+    READONLY_FALSE_PROPERTY(target, "v8EnableSandbox");
+#endif
+
     SetMethodNoSideEffect(context, target, "getDefaultLocale", GetDefaultLocale);
 } // InitConfig
 

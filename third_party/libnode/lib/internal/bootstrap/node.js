@@ -131,10 +131,17 @@ process.domain = null;
 }
 process._exiting = false;
 
-// process.config is serialized config.gypi
+// process.config starts with serialized config.gypi. V8 layout options must
+// reflect the actual native build, not the vendored configuration.
 const binding = internalBinding('builtins');
 
-const processConfig = JSONParse(binding.config, (_key, value) => {
+const processConfig = JSONParse(binding.config, (key, value) => {
+  if (key === 'v8_enable_pointer_compression')
+    return +config.v8EnablePointerCompression;
+  if (key === 'v8_enable_31bit_smis_on_64bit_arch')
+    return +config.v8Enable31BitSmisOn64BitArch;
+  if (key === 'v8_enable_sandbox')
+    return +config.v8EnableSandbox;
   // The `reviver` argument of the JSONParse method will visit all the values of
   // the parsed config, including the "root" object, so there is no need to
   // explicitly freeze the config outside of this method

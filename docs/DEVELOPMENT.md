@@ -32,6 +32,52 @@ uses Node module loading, accepts an application directory or main script, and
 discovers packaged `Contents/Resources/app.asar` or `app`. Its
 `ELECTRON_RUN_AS_NODE` route registers ASAR support before entering Node.
 
+### Node build configuration and heap boundary
+
+Node and Blink share this repository's V8 build. The shared Node bootstrap
+replaces the vendored `config.gypi` pointer-compression, 31-bit-SMI and sandbox
+values with flags from the compiled native `config` binding before deeply
+freezing `process.config`. This applies to normal application startup,
+`ELECTRON_RUN_AS_NODE=1`, and Workers. It corrects metadata; it does not change
+V8 build flags or increase the available heap.
+
+The current compressed-pointer build uses 4-byte tagged slots and a 4 GiB
+addressable compressed heap cage. This is not a 4 GiB total-process/RSS limit:
+native allocations and external buffers have different accounting, and usable
+JavaScript heap space can be smaller. `--max-old-space-size` adjusts a GC budget;
+it does **not** bypass or enlarge the compressed cage. An independent
+noncompressed Node engine remains an explicit architecture decision, not part
+of this metadata correction.
+
+Windows and macOS builds refresh the canonical bootstrap
+`third_party/libnode/lib/internal/bootstrap/node.js` into the vendored js2c
+resource through `build/mini_electron/node_sources.py` before native compilation.
+Do not fix only the embedded `config.gypi` JSON or edit generated bootstrap
+bytes without changing the canonical script.
+
+After rebuilding, run the native-layout regression in both entry modes:
+
+```sh
+# Windows (Git Bash)
+./out/windows-x64/mini-electron.exe --app=test/node-build-config-smoke.js
+ELECTRON_RUN_AS_NODE=1 ./out/windows-x64/mini-electron.exe test/node-build-config-smoke.js
+# macOS
+out/mac-arm64/mini-electron --app=test/node-build-config-smoke.js
+ELECTRON_RUN_AS_NODE=1 out/mac-arm64/mini-electron test/node-build-config-smoke.js
+```
+
+The smoke measures actual tagged backing-store widths and integer/SMI
+boundaries from native heap snapshots, checks deep freezing, and compares the
+main thread, Workers and a Node-only child. It writes snapshots synchronously
+into uniquely owned temporary directories and removes them after parsing.
+Worker inspection has a 30-second deadline; the Node-only child has a
+60-second deadline. It does not use user profiles, replace installed runtimes,
+assert source text, or allocate multi-GiB heaps. A local Windows x64 Release
+build passed this smoke in application and Node-only modes, including Workers:
+tagged slots measured 4 bytes and compression/31-bit-SMI/sandbox flags reported
+`1/1/0`. macOS has not been built or exercised for this change.
+
+
 ### IndexedDB transaction lifetime
 
 The embedded in-memory IndexedDB removes completed and aborted transactions
