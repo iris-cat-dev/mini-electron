@@ -6,7 +6,7 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Unreleased source: platform-owned mouse capture
+### Source verification: platform-owned mouse capture
 
 - Restricts HWND focus/capture and title-bar dragging to Win32. macOS keeps
   its existing AppKit capture owner; the shared renderer no longer releases
@@ -15,19 +15,34 @@ These are historical release and verification records, not a claim that every pl
   covers BrowserView non-owner releases plus three-button guest dragging.
 - The macOS source build, native V8 layout in application/Node-only modes
   and Workers, cursor/capture, desktop pointer coordinates and precise-wheel
-  regressions passed on 2026-11-04. Windows verification is pending for this
-  source change. No runtime channel or installed Desktop was replaced.
+  regressions passed on 2026-11-04. The merged Windows source then passed the
+  final runtime `0.1.34` scenarios below. No installed Desktop was replaced.
 
-### Unreleased Windows source changes
+### Windows runtime 0.1.34
 
-- Restores `AsyncLocalStorage` across `await` and foreign Promise realms in the
-  existing Windows snapshot, including Workers, without changing Node ABI or
-  switching ALS implementations. Context resolve notifications remain single.
-- Requires actual staged-executable async-context verification before publishing
-  `features.asyncContextPropagation: 1`; a newer runtime version is not enough.
-- This repair is a local source build, not a claim that the released `0.1.33`
-  assets or an already installed Desktop contain it. See the
-  [source-repair verification record](VERIFICATION.md#windows-async-context-source-repair-2026-11-04).
+Windows x64-only runtime update. macOS runtime/channel remains `0.1.31`;
+npm installer remains `0.1.12`. Installer protocol `1`, Electron API
+compatibility `41.2.0` and Node ABI `134` are unchanged.
+
+- Restores `AsyncLocalStorage` across `await`, foreign Promise realms,
+  microtasks, timers and Workers in the existing Windows snapshot. Concurrent
+  and nested scopes stay isolated without switching ALS implementations.
+- Preserves one context resolve notification around the actual Promise
+  continuation; it does not double-report thenable assimilation.
+- Advertises `features.asyncContextPropagation: 1` only after the actual staged
+  executable passes the native semantic probe.
+- Keeps mouse capture and final release on the owning Win32 window/UI thread,
+  preserves other held buttons during synthetic left-button releases and
+  routes double-click presses through the existing focus/capture path.
+- Ships the matching full, unstripped PDB in a separate symbols ZIP; the
+  installable runtime ZIP contains no debug symbols.
+
+The executable extracted from the final ZIP passed fourteen real-runtime
+scenarios, including both ALS entry modes, heap layout/Workers, SQLite,
+Desktop core SDK Eval, native input, native cursor/capture and console
+forwarding in both process modes, and public clipboard images. See the
+[Windows verification record](VERIFICATION.md#windows-runtime-0134-2026-11-04)
+for exact hashes and remaining platform boundaries.
 
 
 ### Windows runtime 0.1.33

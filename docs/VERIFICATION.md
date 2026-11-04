@@ -40,6 +40,63 @@ The cursor smoke retained a compositor PNG and native JSON observations.
 Only new test processes/profiles were used; installed applications and
 runtime channels were unchanged. Windows was not run for this source repair.
 
+## Windows runtime 0.1.34 (2026-11-04)
+
+Windows x64-only normal `Release|x64` rebuild of the async-context repair in
+`79af817edffa0a96678e8c6854069f22f726008b`, integrated with remote main
+`679cd8e2c` and its platform-owned capture repair before the final rebuild.
+Four workers and the existing LLVM/ANGLE/Dawn tool cache were used, without
+diagnostic compiler flags or a default ALS implementation change. npm
+installer `0.1.12`, installer protocol `1`, Electron API `41.2.0`, Node ABI
+`134` and the macOS runtime/channel `0.1.31` are unchanged.
+
+The exact executable extracted from the assembled runtime ZIP passed fourteen
+real-runtime scenarios:
+- Runtime/application version, Electron API, Node ABI and capability identity.
+- `node-async-context-smoke.js` in Node-only and application modes, including
+  default/frame-based ALS children, Workers, foreign realms, concurrent/nested
+  scopes, microtasks, timers, bound callbacks, rejection and single ordered
+  Promise notifications.
+- `node-build-config-smoke.js` in both entry modes with native heap-layout,
+  frozen configuration and Worker consistency checks.
+- Native SQLite transaction/binding, rollback, lock isolation, WAL and Worker
+  checks.
+- Real Desktop core SDK artifact smoke, including native I/O, SQLite, image
+  handling, Koffi, shared workers, synchronous/post-await Eval output, object
+  final expressions and explicit errors.
+- Complete native input in sandboxed and explicit single-process modes.
+- Real native cursor resources, RGBA/hotspots, stationary updates, chrome,
+  inactive windows, BrowserView and chorded guest capture in sandboxed and
+  explicit single-process modes.
+- Public clipboard image format/pixel/fallback/rejection checks.
+- Console forwarding in sandboxed and explicit single-process modes.
+
+Release-assembly regressions ran 22 cases (21 passed, one skipped); all three
+Windows symbol regressions passed. Assembly and extracted-ZIP validation
+checked all runtime file hashes. The symbols ZIP contains only
+`mini-electron.pdb` and `symbols.json`; its decompressed PDB stream hash matched
+the archived production pair. Independent LLVM tools reported identical
+EXE/PDB GUID/Age, debug/type/global/public records, no incremental linking
+and an unstripped PDB.
+
+Executable SHA256:
+`f11e9761e05bcb9bd0ce5e944ccf4235f5b353ea79e4da3c9e3f8ecc669e62b4`.
+PDB GUID `B6FD71D98B49FC954C4C44205044422E`, Age `1`; PDB SHA256:
+`a3c0dc93b7bb9561f87bc0bd4f9b5b3cc69da4f43bb1f5835dd0f84a3cb42e64`.
+Runtime ZIP: 39,553,485 bytes, SHA256
+`3bf107154eae8d9dba38254f1ca6c2fa49b176405cdc341a10f9b7baa051c9f5`.
+Symbols ZIP: 258,737,502 bytes, SHA256
+`ad04c002af2a9587ab89e66099f72413e56a800d67759d83c7d6edd5d611d34a`.
+
+Distribution: `out/windows-x64/runtime-dist-0.1.34-merged/`.
+Immutable assembly: `out/runtime-release-0.1.34-merged/v0.1.34/`.
+Logs/results/native screenshots:
+`out/verification/windows-0.1.34-merged/`.
+The tests used isolated profiles and saved/restored native clipboard/pointer
+state. No installed Desktop or user profile was replaced. Original Windows 11
+Desktop sessions, the real Figma tool catalog, physical mixed-DPI transitions
+and a full-day soak were not exercised.
+
 ## Windows async context source repair (2026-11-04)
 
 Built `Release|x64` from the repaired source and staged it in
