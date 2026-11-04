@@ -62,6 +62,30 @@ async function main() {
     assert.deepEqual(select.all('openai-codex').map(row => ({ ...row })), [
       { id: 6, provider: 'openai-codex' },
     ]);
+
+    // Mnemopi creates FTS5 tables even when embeddings and memory inference are disabled.
+    // Exercise search and index maintenance, not just SQLite's version/module metadata.
+    const memoryFile = path.join(temporary, 'memory.db');
+    const memory = open(memoryFile);
+    memory.exec('CREATE VIRTUAL TABLE memories USING fts5(content, tokenize=unicode61)');
+    const remember = memory.prepare('INSERT INTO memories(rowid, content) VALUES (?, ?)');
+    remember.run(1, 'Aster observatory uses a copper telescope');
+    remember.run(2, 'Birch laboratory stores a brass telescope');
+    const recall = memory.prepare('SELECT rowid, bm25(memories) AS score FROM memories WHERE memories MATCH ? ORDER BY rank, rowid');
+    assert.deepEqual(recall.all('"copper telescope"').map(row => row.rowid), [1]);
+    assert.equal(recall.get('"copper telescope"').score < 0, true);
+    memory.prepare('UPDATE memories SET content = ? WHERE rowid = ?').run('Aster observatory uses a silver telescope', 1);
+    assert.deepEqual(recall.all('"copper telescope"'), []);
+    assert.deepEqual(recall.all('"silver telescope"').map(row => row.rowid), [1]);
+    memory.prepare('DELETE FROM memories WHERE rowid = ?').run(2);
+    assert.deepEqual(recall.all('"brass telescope"'), []);
+    memory.close();
+    databases.delete(memory);
+    const reopenedMemory = open(memoryFile, { readOnly: true });
+    assert.deepEqual(
+      reopenedMemory.prepare('SELECT content FROM memories WHERE memories MATCH ?').all('"silver telescope"').map(row => row.content),
+      ['Aster observatory uses a silver telescope'],
+    );
     assert.equal(select.columns()[0].table, 'auth_credentials');
     database.exec('BEGIN IMMEDIATE');
     assert.equal(database.isTransaction, true);
@@ -155,7 +179,12 @@ async function main() {
         const { parentPort } = require('node:worker_threads');
         const { DatabaseSync } = require('node:sqlite');
         const db = new DatabaseSync(':memory:');
-        parentPort.postMessage(db.prepare('SELECT 42 AS value').get().value);
+        db.exec('CREATE VIRTUAL TABLE memories USING fts5(content)');
+        db.prepare('INSERT INTO memories(content) VALUES (?)').run('Worker copper telescope memory');
+        parentPort.postMessage({
+          value: db.prepare('SELECT 42 AS value').get().value,
+          recalled: db.prepare('SELECT content FROM memories WHERE memories MATCH ?').get('"copper telescope"').content,
+        });
         db.close();
       `, { eval: true });
       worker.on('message', value => { result = value; });
@@ -163,12 +192,12 @@ async function main() {
       worker.on('exit', code => {
         try {
           assert.equal(code, 0);
-          assert.equal(result, 42);
+          assert.deepEqual(result, { value: 42, recalled: 'Worker copper telescope memory' });
           resolve();
         } catch (error) { reject(error); }
       });
     });
-    console.log(`PASS: native SQLite ${process.versions.sqlite}, OAuth-style filtering, WAL, transaction state, numbered bindings, savepoints, rollback recovery, writer-lock isolation, read-only access, metadata, backup, changesets, worker binding, and extension-loading restrictions`);
+    console.log(`PASS: native SQLite ${process.versions.sqlite}, OAuth-style filtering, FTS5 MATCH/ranking/update/delete/reopen, WAL, transaction state, numbered bindings, savepoints, rollback recovery, writer-lock isolation, read-only access, metadata, backup, changesets, worker binding, and extension-loading restrictions`);
   } finally {
     for (const database of databases) database.close();
     fs.rmSync(temporary, { recursive: true, force: true });

@@ -910,7 +910,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>HAVE_SQLITE=1;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_PREUPDATE_HOOK;SQLITE_ENABLE_SESSION;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>HAVE_SQLITE=1;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS5;SQLITE_ENABLE_PREUPDATE_HOOK;SQLITE_ENABLE_SESSION;SQLITE_THREADSAFE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)../third_party/sqlite;$(MiniElectronNGHTTP2Root)\lib\includes;$(SolutionDir)../third_party/libnode/deps/zstd/lib;$(SolutionDir)../gen;$(SolutionDir)../base/allocator/partition_allocator/src;$(SolutionDir)../gen/base/allocator/partition_allocator/src;$(SolutionDir)../third_party/abseil-cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>

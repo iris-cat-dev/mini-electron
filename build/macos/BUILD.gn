@@ -125,6 +125,7 @@ config("mini_electron_engine_config") {
 config("mini_electron_sqlite_config") {
   defines = [
     "SQLITE_ENABLE_COLUMN_METADATA",
+    "SQLITE_ENABLE_FTS5",
     "SQLITE_ENABLE_PREUPDATE_HOOK",
     "SQLITE_ENABLE_SESSION",
     "SQLITE_THREADSAFE=1",

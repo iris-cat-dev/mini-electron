@@ -100,7 +100,29 @@ Desktop must select this rebuilt distribution explicitly until it is released;
 a runtime version number alone does not establish the required semantics.
 See [verification](VERIFICATION.md#windows-async-context-source-repair-2026-11-04).
 
+### SQLite full-text capability
 
+The Windows and macOS source configurations enable SQLite FTS5 in the bundled
+amalgamation. Mnemopi requires FTS5 for its tables even in explicit
+`noEmbeddings: true` / `llmMode: none` mode; a native `node:sqlite` binding and a
+SQLite version string alone do not establish support. The observed Windows
+`0.1.34` distribution lacks FTS5 (`CREATE VIRTUAL TABLE ... USING fts5` fails
+with `no such module: fts5`). Rebuild the runtime to obtain this source change;
+changing SDK settings cannot add a compiled-out SQLite module.
+
+The extended `test/node-sqlite-smoke.js` covers phrase matching, BM25,
+update/delete index maintenance, durable read-only reopen, and Worker queries
+using isolated databases. The rebuilt Windows development runtime passed these
+checks in `ELECTRON_RUN_AS_NODE=1` mode. The real Desktop core SDK also passed
+explicit keyword/manual retain/recall, failed reconfiguration, and persistent
+reopen without outbound fetch calls.
+
+The application-entry SQLite smoke currently fails with
+`ERR_INVALID_RETURN_PROPERTY_VALUE` in the builtin-module load hook, before any
+SQLite checks. This reproduces with both the official Windows `0.1.34` binary
+and the rebuilt development runtime, so it does not validate application-mode
+FTS5. The macOS source change remains unbuilt and unexercised. Existing
+`0.1.34` release artifacts have not been replaced or relabeled as FTS5-capable.
 
 ### IndexedDB transaction lifetime
 
