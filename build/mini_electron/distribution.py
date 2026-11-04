@@ -258,7 +258,7 @@ def release_metadata(root: Path, platform_name: str, arch: str) -> dict[str, obj
         **{name: artifacts[name] for name in required},
         "platform": platform_name,
         "arch": arch,
-        "features": {"nativeClipboardFiles": 1} if platform_name == "win32" else {},
+        "features": {"nativeClipboardFiles": 1, "asyncContextPropagation": 1} if platform_name == "win32" else {},
         "executable": executable,
         "archive": archive,
     }

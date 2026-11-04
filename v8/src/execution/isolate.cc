@@ -6085,8 +6085,14 @@ void Isolate::UpdatePromiseHookProtector()
 
 void Isolate::PromiseHookStateUpdated()
 {
+    // The Windows runtime ships a snapshot generated without JS context-hook
+    // builtins. Route its context hooks through the existing runtime callbacks.
+    bool has_runtime_hook = promise_hook_ != nullptr;
+#ifdef MINI_ELECTRON_CONTEXT_PROMISE_HOOKS_VIA_RUNTIME
+    has_runtime_hook = has_runtime_hook || HasContextPromiseHooks();
+#endif
     promise_hook_flags_ = (promise_hook_flags_ & PromiseHookFields::HasContextPromiseHook::kMask)
-        | PromiseHookFields::HasIsolatePromiseHook::encode(promise_hook_) | PromiseHookFields::HasAsyncEventDelegate::encode(async_event_delegate_)
+        | PromiseHookFields::HasIsolatePromiseHook::encode(has_runtime_hook) | PromiseHookFields::HasAsyncEventDelegate::encode(async_event_delegate_)
         | PromiseHookFields::IsDebugActive::encode(debug()->is_active());
 
     if (promise_hook_flags_ != 0) {
@@ -6422,7 +6428,11 @@ void Isolate::SetPromiseHook(PromiseHook hook)
 void Isolate::RunAllPromiseHooks(PromiseHookType type, Handle<JSPromise> promise, Handle<Object> parent)
 {
 #ifdef V8_ENABLE_JAVASCRIPT_PROMISE_HOOKS
-    if (HasContextPromiseHooks()) {
+    if (HasContextPromiseHooks()
+#ifdef MINI_ELECTRON_CONTEXT_PROMISE_HOOKS_VIA_RUNTIME
+        && type == PromiseHookType::kResolve
+#endif
+    ) {
         native_context()->RunPromiseHook(type, promise, parent);
     }
 #endif
@@ -6435,8 +6445,14 @@ void Isolate::RunPromiseHook(PromiseHookType type, Handle<JSPromise> promise, Ha
 {
     if (!HasIsolatePromiseHooks())
         return;
-    DCHECK(promise_hook_ != nullptr);
-    promise_hook_(type, v8::Utils::PromiseToLocal(promise), v8::Utils::ToLocal(parent));
+#ifdef MINI_ELECTRON_CONTEXT_PROMISE_HOOKS_VIA_RUNTIME
+    // Resolve() also fires an isolate hook before assimilating thenables.
+    // Context resolve hooks belong to Fulfill()/Reject(), not both boundaries.
+    if (type != PromiseHookType::kResolve && HasContextPromiseHooks())
+        native_context()->RunPromiseHook(type, promise, parent);
+#endif
+    if (promise_hook_ != nullptr)
+        promise_hook_(type, v8::Utils::PromiseToLocal(promise), v8::Utils::ToLocal(parent));
 }
 
 void Isolate::OnAsyncFunctionSuspended(Handle<JSPromise> promise, Handle<JSPromise> parent)

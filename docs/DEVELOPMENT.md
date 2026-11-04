@@ -77,6 +77,30 @@ build passed this smoke in application and Node-only modes, including Workers:
 tagged slots measured 4 bytes and compression/31-bit-SMI/sandbox flags reported
 `1/1/0`. macOS has not been built or exercised for this change.
 
+### Windows Node async context
+
+The checked-in Windows V8 snapshot was generated without JavaScript context-hook
+builtins even though native headers enable them. Source builds route context
+init/before/after hooks through V8's existing runtime callbacks; resolve hooks
+remain at fulfillment/rejection, not additionally at thenable assimilation.
+This preserves per-context/per-isolate routing without a global current run or
+changing the Node ABI, reported Node version, or default ALS implementation.
+
+Windows distribution staging runs `test/node-async-context-smoke.js` against its
+actual executable before publishing metadata with `asyncContextPropagation: 1`.
+The smoke checks overlapping/nested scopes, foreign Promise realms, microtasks,
+timers, bound callbacks, rejection, Workers, default/frame-based ALS, and
+single ordered Promise-hook callbacks. Never label an older binary by hand.
+
+```sh
+ELECTRON_RUN_AS_NODE=1 out/windows-x64/runtime-dist/electron.exe test/node-async-context-smoke.js
+```
+
+Desktop must select this rebuilt distribution explicitly until it is released;
+a runtime version number alone does not establish the required semantics.
+See [verification](VERIFICATION.md#windows-async-context-source-repair-2026-11-04).
+
+
 
 ### IndexedDB transaction lifetime
 

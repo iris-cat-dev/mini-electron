@@ -6,6 +6,18 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Unreleased Windows source changes
+
+- Restores `AsyncLocalStorage` across `await` and foreign Promise realms in the
+  existing Windows snapshot, including Workers, without changing Node ABI or
+  switching ALS implementations. Context resolve notifications remain single.
+- Requires actual staged-executable async-context verification before publishing
+  `features.asyncContextPropagation: 1`; a newer runtime version is not enough.
+- This repair is a local source build, not a claim that the released `0.1.33`
+  assets or an already installed Desktop contain it. See the
+  [source-repair verification record](VERIFICATION.md#windows-async-context-source-repair-2026-11-04).
+
+
 ### Windows runtime 0.1.33
 
 Windows x64-only runtime update. The macOS runtime/channel remains `0.1.31`;

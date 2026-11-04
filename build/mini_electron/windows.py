@@ -845,6 +845,18 @@ def _package_runtime_distribution(
         copy_release_notices(root, staged)
         copy_runtime_javascript(root, staged / "resources")
         copy_release_notices(root, staged / "resources")
+        probe = subprocess.run(
+            [str(executable), str(root / "test" / "node-async-context-smoke.js")],
+            cwd=root,
+            env={**os.environ, "ELECTRON_RUN_AS_NODE": "1", "NODE_OPTIONS": ""},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=120,
+        )
+        if probe.returncode != 0:
+            raise BuildError(f"Native async context verification failed:\n{probe.stdout}")
+        print(probe.stdout, end="")
         published, archive, _ = publish_distribution(staged, destination, metadata)
     except BaseException:
         if staged.exists():

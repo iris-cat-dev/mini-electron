@@ -8,6 +8,36 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows async context source repair (2026-11-04)
+
+Built `Release|x64` from the repaired source and staged it in
+`out/async-context-verification/runtime-dist`. The actual `electron.exe` SHA-256:
+
+```text
+5185671fb5444b6c5faf4cfe1f13b94b49772c3bbd3c034f5cba1ac5506dee13
+```
+
+`test/node-async-context-smoke.js` passed in application and Node-only modes
+against this binary, including default/frame-based ALS children and Workers. Concurrent/nested
+scopes, foreign Promise realms, microtasks, timers, bound callbacks and rejection
+retained the correct store. The explicit Promise continuation produced one
+init/before/resolve/after sequence; the probe caught and blocked an intermediate
+build with duplicate resolve notifications.
+
+The same binary passed Desktop's runtime async-context probe and the real
+Desktop core SDK artifact smoke: native read/write, SQLite, image handling,
+Koffi, shared workers, synchronous/post-await Eval output, object final
+expression, and explicit errors. Native CLI `browser-relay` status/serve on an
+isolated loopback port distinguished an absent service from a serving relay
+without an extension, then reused that service without replacing it.
+
+The staged metadata includes `asyncContextPropagation: 1`. Runtime version
+remains `0.1.33` for this unpublished local artifact; the hash above, not the
+version, identifies the repaired binary. No installed Desktop was replaced,
+no GitHub runtime assets were published, and Windows 11, a real Chrome extension
+handshake, and the real Figma tool catalog were not exercised.
+
+
 ## Windows runtime 0.1.33 (2026-11-04)
 
 Windows x64-only runtime update carrying brokered native clipboard files and
