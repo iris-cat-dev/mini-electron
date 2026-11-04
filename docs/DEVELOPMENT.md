@@ -135,7 +135,10 @@ including the forwarding-hook and FTS5 smoke in both Node and application entry
 modes, plus the freshly staged Desktop core SDK `18.14.0` Eval artifact probe.
 The new SQLite/js2c repair remains unbuilt and unexercised on macOS. Existing
 `0.1.34` release artifacts have not been replaced or relabeled as FTS5-capable.
-This is local pre-publication verification, not a publication claim. See the
+The verified Windows assets are published as
+[v0.1.35](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.35),
+with a separate matching full-PDB archive. Only the Windows channel was
+advanced. See the
 [diagnosis and final evidence record](VERIFICATION.md#windows-runtime-0135-2026-11-05).
 
 ### IndexedDB transaction lifetime

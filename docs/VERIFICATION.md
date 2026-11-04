@@ -10,7 +10,9 @@ verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
 ## Windows runtime 0.1.35 (2026-11-05)
 
-Status: normally built, packaged and **verified locally; not yet published**.
+Status: normally built, packaged, independently symbol-verified and
+[published as v0.1.35](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.35),
+with all four asset digests verified on GitHub.
 The Windows manifest/archive and native runtime version are `0.1.35`; npm
 installer `0.1.12`, installer protocol `1`, Electron API `41.2.0`, Node ABI `134`,
 the macOS manifest entry and both channel names are unchanged.
@@ -141,10 +143,11 @@ Evidence retained under `out/verification/windows-0.1.35/`:
 the new SDK artifact output, and `extracted-final/` plus `symbols-final/`.
 Throwaway runner/identity scripts and private profiles were removed.
 
-Boundaries: this is local pre-publication Windows x64 verification, not proof
-of a GitHub release, installed Desktop update, macOS build or macOS SQLite/js2c
-repair. Existing Desktop, its daemon/configuration/credentials and frozen
-`0.1.34` installation packages were not used or modified. The prior `0.1.34`
+Boundaries: the execution evidence is local Windows x64 verification. The
+published runtime and matching PDB do not establish an installed Desktop update,
+macOS build or macOS SQLite/js2c repair. Existing Desktop, its daemon,
+configuration, credentials and frozen `0.1.34` installation packages were not
+used or modified. The prior `0.1.34`
 artifacts are not relabeled as FTS5-capable. No native rebuild or assertion
 relaxation was performed during final-archive verification.
 

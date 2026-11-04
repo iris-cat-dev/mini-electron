@@ -240,8 +240,10 @@ The regression also covers OAuth-style account filtering, WAL,
 `DatabaseSync.isTransaction` across savepoints, errors and automatic rollback,
 numbered/named parameter binding, writer-lock isolation, read-only access,
 metadata, backup, changesets and extension restrictions.
-This local pre-publication run passed all fifteen final-archive scenarios;
-see [exact assets, evidence and limits](VERIFICATION.md#windows-runtime-0135-2026-11-05).
+The final archive passed all fifteen scenarios and is published as
+[v0.1.35](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.35),
+including its independently matched full PDB; only the Windows channel was
+advanced. See [exact assets, evidence and limits](VERIFICATION.md#windows-runtime-0135-2026-11-05).
 
 Windows file identity uses the same volume serial for `stat`/`lstat` and `fstat`.
 Number and bigint stats agree across synchronous, callback, and promises APIs;

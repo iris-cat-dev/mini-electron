@@ -6,7 +6,7 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Windows runtime 0.1.35 (built and verified locally; not yet published)
+### Windows runtime 0.1.35
 
 Windows x64-only binary update. npm installer `0.1.12`, installer protocol `1`,
 Electron API `41.2.0`, Node ABI `134` and the published macOS runtime/channel
@@ -23,6 +23,12 @@ Electron API `41.2.0`, Node ABI `134` and the published macOS runtime/channel
 - Preserves prior async-context and native-input behavior. The assembled release
   contains the runtime ZIP, separate matching full-PDB symbols ZIP,
   `artifacts.json` and `SHASUMS256.txt`, using only the Windows runtime channel.
+
+Published as [v0.1.35](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.35)
+from source `624558d63ea4e6bc15232f4e79a8036e21551696`, with all four
+assets uploaded and their server-side digests verified. The Windows
+`runtime-v1-win32-x64` manifest now selects this immutable runtime;
+the macOS channel's asset identities and contents are unchanged.
 
 The final ZIP's extracted executable passed **15/15** scenarios: identity;
 async-context and native heap configuration in Node/application entry modes;
