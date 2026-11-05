@@ -8,6 +8,33 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS lost mouse-release recovery (2026-11-05)
+
+The source runtime rebuild and local runtime-distribution build passed. AppKit
+ordinary mouse moves now reconcile the native held-button mask even for the
+capture owner. Renderer guest routing also clears its held-button/capture cache
+after forwarding a no-button move to the former owner. Ordered down/drag/up
+transitions remain unchanged.
+
+Before the native repair, the extended `macos-cursor-smoke.js` failed because a
+no-button move still reached the captured drag target with `buttons=1`. The
+native-only repair exposed the second cache: lost right/middle releases kept
+later input routed away from a newly attached webview. The final repair covers
+both layers; the regression retains those subsequent guest-input assertions.
+
+A throwaway owned-AppKit-input smoke ran against
+`out/mac-arm64/pointer-recovery/runtime-dist/Electron.app/Contents/MacOS/Electron`.
+All nine combinations of window/BrowserView/webview and left/right/middle
+lost releases passed: the held-button snapshot was retained during dragging,
+the no-button move released DOM capture, and the first subsequent click reached
+the other control. This used process-owned NSViews without global mouse or
+keyboard injection.
+
+The final unlocked-console cursor suite stopped at its console-lock
+prerequisite after the system locked. The owned-input smoke does not establish
+physical cursor/raster observations or a packaged Desktop visual acceptance
+run. This is an unpublished local runtime build; no runtime channel was updated.
+
 ## Windows runtime 0.1.35 (2026-11-05)
 
 Status: normally built, packaged, independently symbol-verified and

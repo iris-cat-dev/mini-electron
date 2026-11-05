@@ -133,6 +133,7 @@ static napi_value Mouse(napi_env env, napi_callback_info info) {
   Number(env, result, "warpError", warp_error);
   Number(env, result, "active", NSApp.active);
   Number(env, result, "windowKey", view.window.keyWindow);
+  Number(env, result, "pressedButtons", NSEvent.pressedMouseButtons);
   Number(env, result, "windowNumber", view.window.windowNumber);
   Number(env, result, "pointerWindow", [NSWindow windowNumberAtPoint:NSEvent.mouseLocation
       belowWindowWithWindowNumber:0]);

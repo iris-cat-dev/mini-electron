@@ -287,11 +287,18 @@ sizes converted to points. Hidden cursors use a transparent image, not unbalance
 global `hide`/`unhide` calls. Navigation and renderer exit clear stale state.
 Chorded mouse events retain every held button until its own release, keeping
 pointer capture and grab/grabbing transitions valid across guest bounds.
+Ordinary AppKit mouse moves reconcile held buttons even while a renderer owns
+capture, allowing a release delivered outside the view to end a stuck divider
+drag. The renderer forwards that no-button move to the former guest owner, then
+clears its routing capture so the next click reaches the newly hit-tested
+control. Down/drag/up events retain their ordered button transitions rather than
+sampling later queued releases from global state.
 
 The cursor regression requires an unlocked macOS console and Xcode. It sends
 AppKit events to owned views, checks actual NSCursor shapes and raster pixels,
 and exercises stationary style changes, BrowserView/guest ownership, capture,
-native resize precedence and navigation cleanup. Pointer position is restored:
+lost left/right/middle releases and the first subsequent control click, native
+resize precedence and navigation cleanup. Pointer position is restored:
 
 ```sh
 env -u ELECTRON_RUN_AS_NODE out/mac-arm64/mini-electron \
