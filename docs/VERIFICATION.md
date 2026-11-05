@@ -30,6 +30,16 @@ the no-button move released DOM capture, and the first subsequent click reached
 the other control. This used process-owned NSViews without global mouse or
 keyboard injection.
 
+Desktop `npm run build:mac`, with `MINI_ELECTRON_DIST_PATH` selecting that local
+distribution, produced the arm64 `OMP Desktop.app`, DMG and ZIP under Desktop's
+`packages/desktop/release/`. The `OMP Desktop Local` signature passed strict/deep
+verification; notarization was not performed. The same nine owned-input cases
+also passed against the final branded application executable. Launching the
+real bundle without `--app`, with an isolated profile/home, created its main
+window and built-in daemon without model requests. Window screenshot capture
+was unavailable while the console was locked. The installed `/Applications`
+bundle was not replaced.
+
 The final unlocked-console cursor suite stopped at its console-lock
 prerequisite after the system locked. The owned-input smoke does not establish
 physical cursor/raster observations or a packaged Desktop visual acceptance
