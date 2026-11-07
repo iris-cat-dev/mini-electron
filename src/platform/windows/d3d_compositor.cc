@@ -25,7 +25,8 @@
 #include "base/no_destructor.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/task/thread_pool.h"
+#include "base/time/time.h"
+#include "base/win/object_watcher.h"
 #include "components/viz/service/display/software_output_device.h"
 #include "src/runtime/engine/browser/web_view_host.h"
 #include "src/runtime/engine/common/live_id_detect.h"
@@ -47,6 +48,8 @@ namespace {
 using Microsoft::WRL::ComPtr;
 
 constexpr int64_t kMaximumSurfaceBytes = 256ll * 1024 * 1024;
+constexpr base::TimeDelta kReadbackTimeout = base::Seconds(2);
+constexpr base::TimeDelta kReadbackRetryDelay = base::Milliseconds(4);
 
 uint64_t NextSourceId() {
   static std::atomic<uint64_t> next_id{0};
@@ -150,6 +153,7 @@ struct Endpoint {
 struct D3DFrameCopyResult {
   SkBitmap bitmap;
   float scale_factor = 1.f;
+  bool pending = false;
 };
 
 struct D3DFrameIdentity {
@@ -213,6 +217,7 @@ void DispatchFrame(int64_t view_id, D3DFrame frame) {
 }
 
 class D3DOutputDevice final : public viz::SoftwareOutputDevice,
+                              private base::win::ObjectWatcher::Delegate,
                               private skgpu::ShaderErrorHandler {
  public:
   D3DOutputDevice(int64_t view_id, bool transparent)
@@ -242,8 +247,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       return false;
     }
     ready_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    readback_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-    if (!ready_event_ || !readback_event_)
+    if (!ready_event_)
       return false;
 
     {
@@ -269,8 +273,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       registry.active_readbacks.erase(view_id_);
     }
     weak_factory_.InvalidateWeakPtrs();
-    if (ready_wait_in_flight_)
-      ready_wait_finished_.Wait();
+    ready_watcher_.StopWatching();
     if (context_ && !context_->abandoned())
       context_->flushAndSubmit(GrSyncCpu::kYes);
     images_.clear();
@@ -284,8 +287,6 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       CloseHandle(fence_handle_);
     if (ready_event_)
       CloseHandle(ready_event_);
-    if (readback_event_)
-      CloseHandle(readback_event_);
     context_.reset();
   }
 
@@ -462,7 +463,6 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
 
   void CompleteReady(uint64_t frame_id, bool success) {
     DCHECK(runner_->RunsTasksInCurrentSequence());
-    ready_wait_in_flight_ = false;
     if (pending_swap_callback_.is_null() || pending_published_ ||
         pending_frame_.frame_id != frame_id) {
       return;
@@ -512,7 +512,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     std::move(callback).Run(size);
   }
 
-  SkBitmap Readback() {
+  SkBitmap Readback(bool* pending) {
     DCHECK(runner_->RunsTasksInCurrentSequence());
     SkBitmap result;
     if (!Usable() || !surface_ || !root_has_drawn_)
@@ -536,16 +536,10 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
         return {};
       }
       if (completed_value < safe_value) {
-        ResetEvent(readback_event_);
-        if (FAILED(fence_->SetEventOnCompletion(safe_value,
-                                                readback_event_)) ||
-            WaitForSingleObject(readback_event_, INFINITE) != WAIT_OBJECT_0 ||
-            (completed_value = fence_->GetCompletedValue()) == UINT64_MAX ||
-            completed_value < safe_value) {
-          Fail(5);
-          ReleasePendingSwap();
-          return {};
-        }
+        // A browser import may still own this texture. Never block Viz while
+        // its UI/IPC work is needed to release it, and never read it early.
+        *pending = true;
+        return {};
       }
       if (!pending_frame_counted_) {
         ++completed_frames_;
@@ -573,7 +567,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   D3DFrameCopyResult ReadbackWithScale() {
     D3DFrameCopyResult result;
     result.scale_factor = scale_factor_;
-    result.bitmap = Readback();
+    result.bitmap = Readback(&result.pending);
     return result;
   }
 
@@ -639,53 +633,19 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   }
 
   bool AwaitReady(uint64_t frame_id) {
-    DCHECK(!ready_wait_in_flight_);
-    ready_wait_finished_.Reset();
+    DCHECK(!ready_watcher_.IsWatching());
     ResetEvent(ready_event_);
-    const uint64_t ready_value = frame_id * 2;
-    if (FAILED(fence_->SetEventOnCompletion(ready_value, ready_event_)))
+    if (FAILED(fence_->SetEventOnCompletion(frame_id * 2, ready_event_)))
       return false;
+    awaited_frame_id_ = frame_id;
+    return ready_watcher_.StartWatchingOnce(ready_event_, this);
+  }
 
-    auto runner = runner_;
-    auto weak = weak_factory_.GetWeakPtr();
-    auto* completion_fence = fence_.Get();
-    auto* wait_finished = &ready_wait_finished_;
-    ready_wait_in_flight_ = true;
-    if (!base::ThreadPool::PostTask(
-            FROM_HERE,
-            {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
-             base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
-            base::BindOnce(
-                [](ID3D12Fence* completion_fence, uintptr_t ready_event,
-                   base::WaitableEvent* wait_finished,
-                   scoped_refptr<base::SingleThreadTaskRunner> runner,
-                   base::WeakPtr<D3DOutputDevice> weak, uint64_t frame_id) {
-                  const DWORD wait_result =
-                      WaitForSingleObject(reinterpret_cast<HANDLE>(ready_event), INFINITE);
-                  const uint64_t completed_value =
-                      completion_fence->GetCompletedValue();
-                  const bool completed =
-                      wait_result == WAIT_OBJECT_0 &&
-                      completed_value != UINT64_MAX &&
-                      SUCCEEDED(Device().device->GetDeviceRemovedReason()) &&
-                      completed_value >= frame_id * 2;
-                  wait_finished->Signal();
-                  runner->PostTask(
-                      FROM_HERE,
-                      base::BindOnce(
-                          [](base::WeakPtr<D3DOutputDevice> device,
-                             uint64_t completed_frame_id, bool success) {
-                            if (device)
-                              device->CompleteReady(completed_frame_id, success);
-                          },
-                          weak, frame_id, completed));
-                }, base::Unretained(completion_fence),
-                reinterpret_cast<uintptr_t>(ready_event_),
-                base::Unretained(wait_finished), std::move(runner), weak, frame_id))) {
-      ready_wait_in_flight_ = false;
-      return false;
-    }
-    return true;
+  void OnObjectSignaled(HANDLE) override {
+    const uint64_t completed = fence_->GetCompletedValue();
+    CompleteReady(awaited_frame_id_,
+        completed != UINT64_MAX && completed >= awaited_frame_id_ * 2 &&
+        SUCCEEDED(Device().device->GetDeviceRemovedReason()));
   }
 
   // D3D12 PRESENT aliases COMMON. Ask Ganesh to emit the final transition so
@@ -745,7 +705,6 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   HANDLE retired_texture_handle_ = nullptr;
   HANDLE fence_handle_ = nullptr;
   HANDLE ready_event_ = nullptr;
-  HANDLE readback_event_ = nullptr;
   float scale_factor_ = 1.f;
   uint64_t frame_id_ = 0;
   uint64_t source_id_ = 0;
@@ -757,8 +716,8 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   bool pending_published_ = false;
   bool pending_frame_counted_ = false;
   bool failed_ = false;
-  bool ready_wait_in_flight_ = false;
-  base::WaitableEvent ready_wait_finished_;
+  uint64_t awaited_frame_id_ = 0;
+  base::win::ObjectWatcher ready_watcher_;
   std::map<uint32_t, Image> images_;
   base::WeakPtrFactory<D3DOutputDevice> weak_factory_{this};
 };
@@ -789,6 +748,25 @@ void AcknowledgeFrameInternal(int64_t view_id,
               device->Acknowledge(id, source, was_unconsumed);
           },
           endpoint.device, frame_id, source_id, unconsumed));
+}
+
+void CopyD3DFrameOnDeviceSequence(
+    base::WeakPtr<D3DOutputDevice> device, base::TimeTicks deadline,
+    scoped_refptr<base::SingleThreadTaskRunner> reply_runner,
+    D3DFrameCopyCallback callback) {
+  auto result = device ? device->ReadbackWithScale() : D3DFrameCopyResult{};
+  if (result.pending && base::TimeTicks::Now() < deadline) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&CopyD3DFrameOnDeviceSequence, device, deadline,
+                       std::move(reply_runner), std::move(callback)),
+        kReadbackRetryDelay);
+    return;
+  }
+  reply_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(std::move(callback), std::move(result.bitmap),
+                     result.scale_factor));
 }
 
 }  // namespace
@@ -855,20 +833,12 @@ void CopyD3DFrameAsync(int64_t view_id, D3DFrameCopyCallback callback) {
     return;
   }
 
-  endpoint.runner->PostTaskAndReplyWithResult(
+  endpoint.runner->PostTask(
       FROM_HERE,
-      base::BindOnce(
-          [](base::WeakPtr<D3DOutputDevice> device) {
-            return device ? device->ReadbackWithScale()
-                          : D3DFrameCopyResult{};
-          },
-          endpoint.device),
-      base::BindOnce(
-          [](D3DFrameCopyCallback reply, D3DFrameCopyResult result) {
-            std::move(reply).Run(std::move(result.bitmap),
-                                 result.scale_factor);
-          },
-          std::move(callback)));
+      base::BindOnce(&CopyD3DFrameOnDeviceSequence, endpoint.device,
+                     base::TimeTicks::Now() + kReadbackTimeout,
+                     base::SingleThreadTaskRunner::GetCurrentDefault(),
+                     std::move(callback)));
 }
 
 D3DCompositorInfo GetD3DCompositorInfo(int64_t view_id) {

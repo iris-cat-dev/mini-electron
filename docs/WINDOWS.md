@@ -122,6 +122,14 @@ its lifetime. Presents borrow that handle instead of acquiring another one
 per frame. Active and pending chains retain separate ownership; cancellation,
 replacement, and destruction stop any native wait before releasing the handle.
 First-frame GPU completion remains asynchronous during resizing.
+Source builds use cancellable Windows object notifications for producer-fence
+and first-present completion, rather than blocking a ThreadPool worker for
+each pending wait. Explicit captures retry an externally owned texture on the
+Viz sequence for at most two seconds, allowing the browser import/acknowledgement
+to progress; a timed-out capture fails without reading or releasing that texture
+early. A later completed fence can still resume ordinary presentation. This is
+not a general GPU-device-reset implementation; synchronous driver readback and
+healthy-device teardown remain separate boundaries.
 Queued D3D publications may outlive their view. The live-view registry lookup
 already releases its lock on a missing owner; frame completion must unlock only
 a successful lookup, matching the Metal ownership rule.
@@ -495,8 +503,9 @@ buffers on purge, and reports discarded relock failure for reconstruction.
 Tight non-yielding JavaScript can still delay sampling; pressure cannot free
 reachable application objects and is not an OOM guarantee.
 
-Automatic pre-OOM snapshots trigger at 65% of the main isolate's V8 limit
-(about 2.6 GiB for a 4-GiB heap). The browser creates a trusted temporary file
+Pre-OOM heap snapshots are opt-in. Setting a positive threshold enables capture
+when the main isolate reaches that percentage of its V8 heap limit.
+The browser creates a trusted temporary file
 under `app.getPath('crashDumps')` and duplicates a write-only handle into the
 sandbox; the renderer cannot choose an output path. V8 profiling/serialization
 runs synchronously on its owning Blink thread, never in the fatal OOM callback.
@@ -518,8 +527,10 @@ Non-yielding code may reach OOM without any pre-OOM snapshot. Main-isolate
 snapshots do not diagnose a separate Worker's heap.
 
 `MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT` is read only by the trusted browser
-before launch: unset means 65, values 1–65 lower the trigger, and 0 disables
-automatic capture. Invalid values report `unavailable` / `invalid-configuration`.
+before launch: unset or 0 disables capture; values 1–65 explicitly enable it.
+For example, 65 triggers at about 2.6 GiB for a 4-GiB heap. Invalid values report
+`unavailable` / `invalid-configuration`. Lightweight memory sampling, pressure
+handling and fatal-OOM minidumps do not require automatic heap snapshots.
 Heap snapshots can contain source, paths, conversation text and credentials.
 They stay local and are not uploaded automatically; handle them as sensitive
 data. Move/delete old automatic snapshots explicitly when the storage budget

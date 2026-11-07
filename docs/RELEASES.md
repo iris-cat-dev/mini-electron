@@ -6,6 +6,26 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.36 (prepared)
+
+- Producer-fence and first-present completion use cancellable native event
+  notifications instead of blocking worker tasks. Explicit capture yields while
+  a shared texture remains externally owned and bounds those retries to two
+  seconds; it never frees GPU resources merely because a capture timed out.
+- Pre-OOM heap snapshots are now explicitly opt-in through
+  `MINI_ELECTRON_PRE_OOM_SNAPSHOT_PERCENT=1..65`; unset/zero keeps ordinary
+  sampling, pressure handling and crash dumps without synchronous heap profiling.
+- Windows source verification passed hardware composition in sandboxed and
+  single-process modes, software composition, mixed-backend guests,
+  snapshot opt-in/configuration and real renderer-OOM diagnostics.
+  The activity-phase hardware VSync assertions remain in place; the smoke no
+  longer assumes a newly created clock already has a known first-tick source.
+- The Windows runtime and matching full-PDB symbols archives have been assembled
+  locally. GitHub publication and channel promotion are pending. No installed
+  application or macOS binary was replaced. See
+  [verification and limits](VERIFICATION.md#windows-long-session-responsiveness-2026-11-07-source-build).
+
+
 ### Windows runtime 0.1.35
 
 Windows x64-only binary update. npm installer `0.1.12`, installer protocol `1`,

@@ -8,6 +8,95 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.36 (2026-11-07)
+
+Status: normally built and assembled locally; GitHub publication and Windows
+channel promotion are pending. The final runtime ZIP was extracted into a fresh
+directory and all 53 declared file hashes were checked before execution.
+
+- **16/16 final-artifact scenarios passed**, with isolated HOME, profile,
+  application-data and temporary directories. GUI scenarios ran serially.
+- Runtime identity reported `0.1.36`, Electron API `41.2.0`, Node
+  `24.0.0-pre`, Node ABI `134` and Chromium major `132`.
+- Async-context propagation, actual V8 heap layout/configuration and SQLite
+  FTS5/forwarding CommonJS hooks passed in both Node and application modes.
+- Hardware composition passed in independent-renderer and single-process modes;
+  software composition and mixed GPU/CPU guests also passed. These exercised
+  native desktop pixels, alpha, capture, resize, teardown and real hardware VSync.
+- Unset, zero and invalid snapshot settings retained responsive renderer
+  JavaScript with no heap snapshot. Explicit opt-in produced a genuine,
+  once-only V8 heap graph; fatal renderer OOM still produced a symbol-identifiable
+  exception dump with the production default.
+- Release assembly tests: 21 passed, one skipped. Windows symbol tests:
+  three passed. Final symbols ZIP contains only the full PDB and `symbols.json`;
+  runtime ZIP contains no PDB. EXE RSDS and independent LLVM PDB inspection agree,
+  with debug info, types, IDs, globals and publics present and stripping disabled.
+
+Final asset SHA-256:
+
+- Runtime ZIP (`39,632,780` bytes):
+  `7ce2fdd8a814cdd590cbbbfb729b82a14bba56d4107a2c5056a0885c3ae4e218`.
+- Symbols ZIP (`258,867,775` bytes):
+  `ec1a7985ff73e487b701b9e309b1e5b5272f1ed3f78b9620890b87466e2e0e11`.
+- EXE: `028f01ecef9926706c2568e7519dc9fef0eac5909b97dea8f88685f4fe3ebf83`.
+- PDB: `59ef63eff062f7512ed7d22494faae9b0a63437d4f542c7051cbb2906e48b967`.
+- PDB GUID `4059B752CC9D58CA4C4C44205044422E`, Age `1`.
+
+Evidence: `out/verification/windows-0.1.36/runtime-checks.json`, per-scenario
+logs and PNGs, and `llvm-pdb-summary.log`. npm installer and macOS were not
+rebuilt or published. The [long-session investigation limits](#windows-long-session-responsiveness-2026-11-07-source-build)
+still apply; these focused runs do not substitute for a multi-hour Desktop soak
+or GPU fault injection. No installed Desktop was replaced.
+
+## Windows long-session responsiveness (2026-11-07, source build)
+
+Built the normal Windows x64 runtime with the existing cached GN, Ninja, CMake,
+ANGLE and Dawn toolchains, four jobs, and no diagnostic compiler flags.
+`out/windows-x64/mini-electron.exe` SHA-256:
+`e6d6911539a3806dbed625ea1fd4ec4bedbdea9e3d522b32175689967a252eb4`.
+The installed OMP Desktop, published runtime assets and channels were not changed.
+
+- Replaced blocking producer-fence and first-present worker tasks with
+  cancellable `ObjectWatcher` notifications. Explicit readback defers on an
+  incomplete external fence instead of blocking Viz, and fails after a
+  two-second retry deadline without treating that texture as released.
+- Automatic pre-OOM heap snapshots are disabled unless the trusted host
+  explicitly supplies a threshold from 1 through 65. V8/Job pressure sampling
+  and crash minidumps remain enabled.
+- Real hardware compositor smoke passed in independent-renderer and
+  `--single-process` modes on Windows 10 x64 / NVIDIA RTX 3090. Native desktop
+  pixels, transparent alpha, BrowserViews, six active-view teardowns, resize,
+  minimize/restore, captions, explicit captures and active hardware VSync were
+  exercised. Software composition also passed.
+- The real webview guest smoke passed GPU/GPU, GPU/CPU, CPU/GPU and CPU/CPU
+  combinations, including simultaneous crops, capture, movement and detach.
+- Fresh isolated runtime probes passed unset, explicit-zero and invalid
+  snapshot configuration. Disabled cases retained usable JavaScript and
+  produced no heap snapshot. The existing positive-threshold smoke parsed a
+  real once-only V8 heap graph; the existing renderer OOM smoke still produced
+  a symbol-identifiable exception dump with the new production default.
+
+An initial single-process smoke rejected `source: unknown` before the first
+clock tick. That state is explicitly declared by `WindowsVSyncInfo`; the
+generic startup-source assertion was removed, not re-pinned to another initial
+value. The animation phase still requires an actual DXGI/DWM clock, increasing
+ticks and a bounded tick rate. Its serial rerun passed. Graphical smoke runs
+must not contend for the foreground window.
+
+Native PNG evidence is retained under `out/verification/long-run/gpu`,
+`gpu-single-process` and `software`. In the associated Desktop checkout,
+269 focused server tests, server typecheck and server library build passed.
+A real 6,000-file rename/delete workload verified every expected path and empty
+post-unsubscribe inventory; its 10 ms heartbeat's maximum observed gap was
+34.8 ms. `out/verification/long-run/observer-result.json` records those counters.
+
+Limits: no multi-hour Desktop soak, stuck-fence/device-loss fault injection,
+electrical power measurement or macOS build was performed. The deadline bounds
+the external-ownership retry, not arbitrary driver readback or healthy-device
+teardown. This work does not establish the cause of a previously unrecorded UI
+freeze or impose a hard memory limit on live conversation state.
+
+
 ## Windows runtime 0.1.35 (2026-11-05)
 
 Status: normally built, packaged, independently symbol-verified and

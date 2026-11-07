@@ -57,8 +57,8 @@ enum SnapshotReason : LONG {
 // Paths never cross this channel. Only the host chooses a destination, and the
 // renderer receives a write-only capability for that one temporary file.
 struct alignas(8) SnapshotRecord {
-    volatile LONG state = kSnapshotArmed;
-    volatile LONG threshold_percent = 65;
+    volatile LONG state = kSnapshotDisabled;
+    volatile LONG threshold_percent = 0;
     volatile LONG error = 0;
     volatile LONG reason = kSnapshotNoError;
     volatile LONG cancel = 0;
@@ -520,8 +520,7 @@ public:
                 && base::StringToInt(base::WideToUTF8(configuration), &percent)
                 && percent >= 0 && percent <= 65) {
                 record_->snapshot.threshold_percent = percent;
-                if (!percent)
-                    record_->snapshot.state = kSnapshotDisabled;
+                record_->snapshot.state = percent ? kSnapshotArmed : kSnapshotDisabled;
             } else {
                 FinishSnapshot(&record_->snapshot, kSnapshotUnavailable,
                     ERROR_INVALID_PARAMETER, kSnapshotInvalidConfiguration);

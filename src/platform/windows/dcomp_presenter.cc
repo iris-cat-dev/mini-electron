@@ -16,9 +16,6 @@
 #include <utility>
 
 #include "base/win/object_watcher.h"
-#include "base/functional/bind.h"
-#include "base/memory/weak_ptr.h"
-#include "base/task/thread_pool.h"
 
 namespace mini_electron::win {
 namespace {
@@ -369,7 +366,7 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
       ReportFailure("first-frame completion device", result);
       return false;
     }
-    auto state = std::make_shared<Priming>();
+    auto state = std::make_unique<Priming>();
     state->chain = chain;
     state->ready.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
     if (!state->ready.get()) {
@@ -377,36 +374,15 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
                     HRESULT_FROM_WIN32(GetLastError()));
       return false;
     }
-    priming_ = state;
-    // The task owns the event and swap chain through completion, including
-    // when a newer resize cancels this candidate or destroys the presenter.
-    if (!base::ThreadPool::PostTaskAndReplyWithResult(
-            FROM_HERE,
-            {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
-             base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
-            base::BindOnce([](std::shared_ptr<Priming> state) {
-              return WaitForSingleObject(state->ready.get(), INFINITE)
-                  == WAIT_OBJECT_0;
-            }, state),
-            base::BindOnce([](base::WeakPtr<SwapChainWake> self,
-                              std::shared_ptr<Priming> state, bool ready) {
-              if (!self || self->priming_ != state)
-                return;
-              state->complete = true;
-              state->failed = !ready ||
-                  FAILED(SharedDevice().device->GetDeviceRemovedReason());
-              if (IsWindow(self->window_))
-                InvalidateRect(self->window_, nullptr, FALSE);
-            }, weak_factory_.GetWeakPtr(), state))) {
-      priming_.reset();
-      ReportFailure("first-frame completion task", E_FAIL);
-      return false;
-    }
     result = device->EnqueueSetEvent(state->ready.get());
     if (FAILED(result)) {
-      priming_.reset();
-      SetEvent(state->ready.get());
       ReportFailure("first-frame completion enqueue", result);
+      return false;
+    }
+    priming_ = std::move(state);
+    if (!watcher_.StartWatchingOnce(priming_->ready.get(), this)) {
+      priming_.reset();
+      ReportFailure("first-frame completion watch", E_FAIL);
       return false;
     }
     SharedDevice().context->Flush();
@@ -441,6 +417,11 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
   };
 
   void OnObjectSignaled(HANDLE object) override {
+    if (priming_ && object == priming_->ready.get()) {
+      priming_->complete = true;
+      priming_->failed =
+          FAILED(SharedDevice().device->GetDeviceRemovedReason());
+    }
     // A wake requests another non-blocking Present; DXGI remains the authority
     // on queue capacity, rather than a cached/consumed event token.
     if (IsWindow(window_))
@@ -449,8 +430,7 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
 
   HWND window_ = nullptr;
   base::win::ObjectWatcher watcher_;
-  std::shared_ptr<Priming> priming_;
-  base::WeakPtrFactory<SwapChainWake> weak_factory_{this};
+  std::unique_ptr<Priming> priming_;
 };
 
 PresentResult PresentSwapChain(const CompositionSwapChain& swap_chain,

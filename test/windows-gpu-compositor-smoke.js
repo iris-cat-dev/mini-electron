@@ -205,7 +205,6 @@ function assertCompositorInfo(info, label) {
     assert.equal(info.importedFrames, 0, `${label}: software presentation has no GPU frame imports`);
     assert.equal(info.readbacks, 0, `${label}: software capture has no GPU readback`);
   }
-  assert.ok(info.vsync && ['dxgi', 'dwm', 'timer'].includes(info.vsync.source), `${label}: known VSync source`);
   assert.equal(typeof info.vsync.displayId, 'string', `${label}: VSync display identity`);
   assert.ok(info.vsync.displayId.length > 0, `${label}: selected display identity`);
   assert.ok(Number.isFinite(info.vsync.intervalUs) && info.vsync.intervalUs > 0, `${label}: selected display interval`);
