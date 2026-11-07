@@ -2884,6 +2884,13 @@ private:
             if (*type == "mouseUp"
                 && !(cursor_capture_buttons_.fetch_and(~button_mask) & ~button_mask))
                 captured_cursor_guest_ = 0;
+            // Deliver this move to the former owner, then let the next input
+            // hit-test normally when a native release was delivered elsewhere.
+            if (*type == "mouseMove"
+                && !(flags & (MINI_ELECTRON_LBUTTON | MINI_ELECTRON_RBUTTON | MINI_ELECTRON_MBUTTON))) {
+                cursor_capture_buttons_ = 0;
+                captured_cursor_guest_ = 0;
+            }
         }
         if (guest_id) {
             base::Value::Dict payload;

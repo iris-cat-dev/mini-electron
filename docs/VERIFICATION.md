@@ -96,6 +96,42 @@ the external-ownership retry, not arbitrary driver readback or healthy-device
 teardown. This work does not establish the cause of a previously unrecorded UI
 freeze or impose a hard memory limit on live conversation state.
 
+## macOS lost mouse-release recovery (2026-11-05)
+
+The source runtime rebuild and local runtime-distribution build passed. AppKit
+ordinary mouse moves now reconcile the native held-button mask even for the
+capture owner. Renderer guest routing also clears its held-button/capture cache
+after forwarding a no-button move to the former owner. Ordered down/drag/up
+transitions remain unchanged.
+
+Before the native repair, the extended `macos-cursor-smoke.js` failed because a
+no-button move still reached the captured drag target with `buttons=1`. The
+native-only repair exposed the second cache: lost right/middle releases kept
+later input routed away from a newly attached webview. The final repair covers
+both layers; the regression retains those subsequent guest-input assertions.
+
+A throwaway owned-AppKit-input smoke ran against
+`out/mac-arm64/pointer-recovery/runtime-dist/Electron.app/Contents/MacOS/Electron`.
+All nine combinations of window/BrowserView/webview and left/right/middle
+lost releases passed: the held-button snapshot was retained during dragging,
+the no-button move released DOM capture, and the first subsequent click reached
+the other control. This used process-owned NSViews without global mouse or
+keyboard injection.
+
+Desktop `npm run build:mac`, with `MINI_ELECTRON_DIST_PATH` selecting that local
+distribution, produced the arm64 `OMP Desktop.app`, DMG and ZIP under Desktop's
+`packages/desktop/release/`. The `OMP Desktop Local` signature passed strict/deep
+verification; notarization was not performed. The same nine owned-input cases
+also passed against the final branded application executable. Launching the
+real bundle without `--app`, with an isolated profile/home, created its main
+window and built-in daemon without model requests. Window screenshot capture
+was unavailable while the console was locked. The installed `/Applications`
+bundle was not replaced.
+
+The final unlocked-console cursor suite stopped at its console-lock
+prerequisite after the system locked. The owned-input smoke does not establish
+physical cursor/raster observations or a packaged Desktop visual acceptance
+run. This is an unpublished local runtime build; no runtime channel was updated.
 
 ## Windows runtime 0.1.35 (2026-11-05)
 

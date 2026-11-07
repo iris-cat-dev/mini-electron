@@ -1469,7 +1469,9 @@ static void RefreshNativeCursorAtPointer() {
       type == NSEventTypeOtherMouseDown;
   if (buttonDown && window && window.rendererCursorCaptureView != self)
     _heldMouseButtons = 0;
-  if (type == NSEventTypeMouseMoved && (!window || window.rendererCursorCaptureView != self))
+  // AppKit uses dragged events while a button is held. An ordinary move must
+  // reconcile even the capture owner after a release was delivered elsewhere.
+  if (type == NSEventTypeMouseMoved)
     _heldMouseButtons = [NSEvent pressedMouseButtons];
   if (type == NSEventTypeLeftMouseDown || type == NSEventTypeLeftMouseDragged)
     _heldMouseButtons |= 1;

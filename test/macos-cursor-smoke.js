@@ -23,7 +23,7 @@ function finish(error) {
   for (const item of [other, window]) if (item && !item.isDestroyed()) item.destroy();
   fs.rmSync(temporary, { recursive: true, force: true });
   if (error) console.error(error.stack || error);
-  else console.log('PASS: native editing/link/CSS cursors, stationary updates, grab transition, hidden/custom restoration, BrowserView non-owner releases, three-button guest capture and resize precedence');
+  else console.log('PASS: native editing/link/CSS cursors, stationary updates, grab transition, lost-release recovery, hidden/custom restoration, BrowserView non-owner releases, three-button guest capture and resize precedence');
   app.exit(error ? 1 : 0);
 }
 const shapes = ['crosshair', 'grab', 'grabbing', 'move', 'not-allowed', 'copy', 'alias',
@@ -37,8 +37,10 @@ input,a,[contenteditable]{box-sizing:border-box;width:180px;min-height:42px;padd
 #dynamic{cursor:pointer}#drag{cursor:grab}#drag.held{cursor:grabbing}
 </style><main><h1>Native cursor semantics</h1><div class="row"><input id="edit" value="Hover to edit"><a id="link" href="#target">Hover a link</a><div id="editable" contenteditable>Editable text</div></div>
 <div id="grid">${shapes.map(shape => `<div class="tile" id="${shape}" style="cursor:${shape}">${shape}</div>`).join('')}<div class="tile" id="dynamic">Stationary change</div><div class="tile" id="drag">Hold to drag</div><div class="tile" id="custom">RGBA cursor</div></div></main><script>
-window.lastTarget='';window.trace=[];for(const type of ['mousemove','mousedown','mouseup'])document.addEventListener(type,e=>{trace.push({type,x:e.clientX,buttons:e.buttons});if(type==='mousemove')lastTarget=e.target.id});
-const drag=document.getElementById('drag');drag.addEventListener('pointerdown',e=>{drag.setPointerCapture(e.pointerId);drag.classList.add('held')});drag.addEventListener('pointerup',()=>drag.classList.remove('held'));
+window.lastTarget='';window.trace=[];for(const type of ['mousemove','mousedown','mouseup','pointerdown','pointerup','lostpointercapture','click'])document.addEventListener(type,e=>{trace.push({type,x:e.clientX,buttons:e.buttons,target:e.target.id});if(type==='mousemove')lastTarget=e.target.id});
+const drag=document.getElementById('drag');drag.addEventListener('pointerdown',e=>{drag.setPointerCapture(e.pointerId);drag.classList.add('held')});for(const type of ['pointerup','lostpointercapture'])drag.addEventListener(type,()=>drag.classList.remove('held'));
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.getElementById('link').addEventListener('click',e=>e.preventDefault());
 const canvas=document.createElement('canvas');canvas.width=canvas.height=16;const context=canvas.getContext('2d');context.fillStyle='rgba(40,180,90,0.5)';context.fillRect(0,0,16,16);document.getElementById('custom').style.cursor='url('+canvas.toDataURL()+') 5 7, crosshair';
 </script>`;
 const load = contents => contents.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page));
@@ -93,6 +95,36 @@ async function hover(contents, id, expected, index = 0, nativeTitle = title, off
   const state = await cursor(expected, id);
   return { id, ...state, nativeWindowKey: receipt.windowKey };
 }
+async function recoverLostRelease(contents, command, buttons, index = 0) {
+  const drag = await center(contents, 'drag');
+  const link = await center(contents, 'link');
+  await mouseTransition(contents, command, drag, index, 'mousedown', buttons);
+  const dragCommand = command === 'down' ? 'drag' :
+    command === 'rightDown' ? 'rightDrag' : 'middleDrag';
+  await mouseTransition(contents, dragCommand, { x: drag.x + 4, y: drag.y }, index, 'mousemove', buttons);
+  assert.equal(await evaluate(contents, 'document.getElementById("drag").hasPointerCapture(1)'), true,
+    `${command}: the drag owns pointer capture before its native release is lost`);
+  const start = await evaluate(contents, 'trace.length');
+  // No matching up: AppKit's next ordinary move must recover the stale mask.
+  const receipt = native.mouse(title, 'move', link.x, link.y, index);
+  assert.equal(receipt.pressedButtons, 0, 'the fixture requires no physical mouse buttons held');
+  let recovered = false;
+  for (let i = 0; i < 100; ++i) {
+    recovered = await evaluate(contents, `trace.slice(${start}).some(e=>e.type==='lostpointercapture'&&e.buttons===0)`);
+    if (recovered) break;
+    await pause(20);
+  }
+  assert.equal(recovered, true, `${command}: a no-button move releases stale capture: ` +
+    await evaluate(contents, `JSON.stringify(trace.slice(${start}))`));
+  assert.equal(await evaluate(contents, 'document.getElementById("drag").hasPointerCapture(1)'), false);
+  await hover(contents, 'link', 'pointer', index);
+  const clickStart = await evaluate(contents, 'trace.length');
+  await mouseTransition(contents, 'down', link, index, 'mousedown', 1);
+  await mouseTransition(contents, 'up', link, index, 'mouseup', 0);
+  assert.equal(await evaluate(contents, `trace.slice(${clickStart}).some(e=>e.type==='click'&&e.target==='link')`), true,
+    'the first click after recovery reaches the other control');
+  return { id: `lost-${command}-recovery`, rendererIndex: index, buttons: 0, captured: false, firstClickTarget: 'link' };
+}
 app.whenReady().then(async () => {
   assert.equal(process.platform, 'darwin');
   const root = path.resolve(__dirname, '..');
@@ -123,6 +155,8 @@ app.whenReady().then(async () => {
   observations.push({ id: 'pointerdown', ...await cursor('grabbing', 'pressed drag handle') });
   await mouseTransition(window.webContents, 'up', drag, 0, 'mouseup', 0);
   observations.push({ id: 'pointerup', ...await cursor('grab', 'released drag handle') });
+  for (const [command, buttons] of [['down', 1], ['rightDown', 2], ['middleDown', 4]])
+    observations.push(await recoverLostRelease(window.webContents, command, buttons));
   const custom = await hover(window.webContents, 'custom', 'custom');
   assert.equal(custom.width, 16); assert.equal(custom.height, 16);
   assert.equal(custom.hotspotX, 5); assert.equal(custom.hotspotY, 7);
@@ -156,6 +190,7 @@ app.whenReady().then(async () => {
   observations.push({ id: 'captured-view-stationary-update', ...await cursor('copy', 'captured view owns cursor outside its bounds') });
   await mouseTransition(view.webContents, 'up', outsideView, 1, 'mouseup', 0);
   observations.push(await hover(window.webContents, 'edit', 'text'));
+  observations.push(await recoverLostRelease(view.webContents, 'down', 1, 1));
   window.removeBrowserView(view);
   observations.push(await hover(window.webContents, 'copy', 'copy'));
   native.mouse(title, 'move', 2, 280, 0);
