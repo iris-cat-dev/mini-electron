@@ -10,9 +10,14 @@ verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
 ## Windows runtime 0.1.36 (2026-11-07)
 
-Status: normally built and assembled locally; GitHub publication and Windows
-channel promotion are pending. The final runtime ZIP was extracted into a fresh
-directory and all 53 declared file hashes were checked before execution.
+Status: normally built, assembled and
+[published as v0.1.36](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.36)
+from source `a9c594ee163a27cafdad83e2e3f846e425bdd345`. All four GitHub asset
+sizes and SHA-256 digests match the local release. The Windows channel now
+selects `0.1.36`; anonymous runtime and channel-manifest downloads were checked.
+The macOS channel's asset ID, digest, size and update time are unchanged.
+The final runtime ZIP was extracted into a fresh directory and all 53 declared
+file hashes were checked before execution.
 
 - **16/16 final-artifact scenarios passed**, with isolated HOME, profile,
   application-data and temporary directories. GUI scenarios ran serially.

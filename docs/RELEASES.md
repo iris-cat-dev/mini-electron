@@ -6,7 +6,7 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
-### Windows runtime 0.1.36 (prepared)
+### Windows runtime 0.1.36
 
 - Producer-fence and first-present completion use cancellable native event
   notifications instead of blocking worker tasks. Explicit capture yields while
@@ -20,10 +20,15 @@ These are historical release and verification records, not a claim that every pl
   snapshot opt-in/configuration and real renderer-OOM diagnostics.
   The activity-phase hardware VSync assertions remain in place; the smoke no
   longer assumes a newly created clock already has a known first-tick source.
-- The Windows runtime and matching full-PDB symbols archives have been assembled
-  locally. GitHub publication and channel promotion are pending. No installed
-  application or macOS binary was replaced. See
-  [verification and limits](VERIFICATION.md#windows-long-session-responsiveness-2026-11-07-source-build).
+- Published as [v0.1.36](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.36)
+  from source `a9c594ee163a27cafdad83e2e3f846e425bdd345`. All four asset sizes
+  and SHA-256 digests match the verified local release. The final ZIP passed
+  16/16 isolated runtime scenarios and all 53 declared file hashes.
+- The Windows `runtime-v1-win32-x64` channel now selects `0.1.36`; anonymous
+  downloads of the runtime and channel manifest were verified. The macOS
+  channel's asset identity, hash, size and update time are unchanged.
+  npm was not published and no installed Desktop was replaced. See
+  [final asset evidence and limits](VERIFICATION.md#windows-runtime-0136-2026-11-07).
 
 
 ### Windows runtime 0.1.35
