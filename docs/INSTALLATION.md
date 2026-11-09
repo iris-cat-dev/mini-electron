@@ -55,18 +55,18 @@ npx mini-electron --update-runtime
 # Pin the macOS runtime:
 npx mini-electron --update-runtime 0.1.31
 # Select an exact runtime that includes your platform (Windows example):
-npx mini-electron --update-runtime 0.1.36
+npx mini-electron --update-runtime 0.1.37
 node -p "require('@iriscat/mini-electron/dist/version.json').runtimeVersion"
 ```
 
 For reproducible fresh installations, pin the runtime separately from npm
-(`0.1.36` for Windows; `0.1.31` for macOS):
+(`0.1.37` for Windows; `0.1.31` for macOS):
 
 ```sh
 # macOS arm64:
 MINI_ELECTRON_RUNTIME_VERSION=0.1.31 npm ci
 # Windows x64:
-MINI_ELECTRON_RUNTIME_VERSION=0.1.36 npm ci
+MINI_ELECTRON_RUNTIME_VERSION=0.1.37 npm ci
 ```
 
 Keep that environment setting in CI/build configuration: npm's lockfile fixes

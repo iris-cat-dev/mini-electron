@@ -21,6 +21,29 @@ clipboard and async-context capabilities, only after staged executable checks.
 The matching PDB has GUID `D87D19E62F0962DF4C4C44205044422E`, Age `1`,
 and SHA-256
 `023a057c12153270503fa01dfc48796f2c14380ef3422106ff5d2f79857f3aea`.
+`llvm-pdbutil dump -summary` reports debug information, types, IDs, globals and
+publics, no conflicting types, and `Is stripped: false`.
+
+Published [v0.1.37](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.37)
+from source `2845171129b1188a63368eaf7362822ae1ae3ecb`.
+The exact saved bilingual notes were reopened and the public rendered body has
+12 flat list items and no nested lists. GitHub's uploaded sizes and SHA-256
+digests match these local files:
+
+| Asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `mini-electron-v0.1.37-win32-x64.zip` | 39,639,810 | `e462daf33fe2f7f15517f60b0a859fc4e8fbd5bcba1e959b61b74930f1874cac` |
+| `mini-electron-v0.1.37-win32-x64-symbols.zip` | 258,934,311 | `3a38fe3935d44c050e9633794b168904ccdd754c80bb0799910deec2381aa7eb` |
+| `artifacts.json` | 528 | `e15872c494f5aadd898f0b76bd3d7734edacad7328056dfb3d1798192de3bd0a` |
+| `SHASUMS256.txt` | 214 | `c2b13461b37547313bd9f6ca45751ab77a621b79977af032235983d90b60d72a` |
+
+The Windows channel manifest was updated only after immutable assets were
+published. Its anonymous download selects `0.1.37` and the matching runtime ZIP
+hash. Anonymous HEAD access to the PDB asset returns `200` and 258,934,311 bytes.
+The macOS channel's asset ID `698404550`, size and SHA-256 remain unchanged.
+The Desktop checkout's explicit public install,
+`npx mini-electron --update-runtime 0.1.37`, completed successfully.
+
 
 - The real native async-context probe passed during distribution staging.
 - All six isolated broker-storage phases passed: write, restart, exit-write,

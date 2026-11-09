@@ -28,6 +28,15 @@ runtime/channel remain unchanged.
   The macOS shutdown consumer is updated in source; no macOS verification is
   implied by the Windows capability.
 
+Published as [v0.1.37](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.37)
+from source `2845171129b1188a63368eaf7362822ae1ae3ecb`.
+All four uploaded asset sizes and server SHA-256 digests match the local release.
+LLVM confirms the matching PDB has debug information, types, globals and publics
+and is not stripped. The Windows channel now selects `0.1.37`; anonymous channel
+and PDB-asset access passed. The macOS channel retains the same asset ID, size
+and digest. See [final asset evidence](VERIFICATION.md#windows-runtime-0137--broker-storage-responsiveness).
+
+
 ### Windows runtime 0.1.36
 
 - Producer-fence and first-present completion use cancellable native event
