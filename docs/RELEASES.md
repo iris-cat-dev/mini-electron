@@ -6,6 +6,28 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.37 — asynchronous broker storage
+
+Windows x64-only binary update. npm installer `0.1.12`, installer protocol `1`,
+Electron API `41.2.0`, Node ABI `134`, and the existing published macOS
+runtime/channel remain unchanged.
+
+- Persistent Web Storage keeps immediate in-memory visibility while serializing
+  and atomically replacing `BrokerStorage.json` on an ordered background sequence.
+  Same-value sets and other no-op mutations do not rewrite the file.
+- Clear acknowledgements use broker-owned state instead of a borrowed Blink
+  cache. This removes the stale-map dereference when Blink replaces its cache
+  before sending `DeleteAll`.
+- Explicit flush, storage clearing and normal host shutdown drain accepted
+  mutations. Persistence failures retain dirty data and are observable through
+  stderr, explicit flush errors and unsuccessful final shutdown status.
+- Windows runtime staging requires the isolated native storage regression before
+  advertising `asyncStoragePersistence: 1`; Desktop packaging checks that marker
+  as well as the executable hash. Existing published `0.1.36` assets are unchanged.
+- See [storage semantics and qualification](DEVELOPMENT.md#broker-storage-persistence).
+  The macOS shutdown consumer is updated in source; no macOS verification is
+  implied by the Windows capability.
+
 ### Windows runtime 0.1.36
 
 - Producer-fence and first-present completion use cancellable native event

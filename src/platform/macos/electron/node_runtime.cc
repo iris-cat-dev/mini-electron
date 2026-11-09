@@ -16,6 +16,7 @@
 #include "src/runtime/electron/common/atom_version.h"
 #include "src/runtime/electron/common/chrome_version.h"
 #include "src/runtime/engine/renderer/render_thread_impl.h"
+#include "src/runtime/electron/browser/api/session.h"
 
 #include "src/platform/macos/electron/desktop_api_mac.h"
 #include "src/platform/macos/electron/mac_auto_updater.h"
@@ -173,13 +174,22 @@ int RunMainProcess(const MainProcessOptions& options) {
       RunMacMainLoop();
     else if (!process_exit)
       std::fputs("mini-electron: browser bootstrap failed\n", stderr);
-    const int result =
+    int result =
         process_exit.value_or(loaded ? GetMacMainProcessExitCode() : 1);
     if (!process_exit)
       (void)node::EmitProcessExit(setup->env());
     ShutdownMacAutoUpdaterBinding();
     ShutdownMacRunLoopIntegration();
     content::RenderThreadImpl::shutdown();
+    // Sessions are retained by SessionMgr. Drain after the last JS exit
+    // listeners, before ThreadPool shutdown can skip delayed storage writes.
+    std::string storage_error;
+    if (!atom::SessionMgr::get()->flushStorageData(&storage_error)) {
+      std::fprintf(stderr, "mini-electron: storage shutdown failed: %s\n",
+                   storage_error.c_str());
+      if (!result)
+        result = 1;
+    }
     node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
     return result;
   }();

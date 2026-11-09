@@ -857,6 +857,30 @@ def _package_runtime_distribution(
         if probe.returncode != 0:
             raise BuildError(f"Native async context verification failed:\n{probe.stdout}")
         print(probe.stdout, end="")
+        node = shutil.which("node")
+        if not node:
+            raise BuildError("Node.js is required to verify broker storage persistence")
+        storage_env = {**os.environ, "NODE_OPTIONS": ""}
+        storage_env.pop("ELECTRON_RUN_AS_NODE", None)
+        storage_probe = subprocess.run(
+            [
+                node,
+                str(root / "test" / "broker-storage-persistence-smoke.js"),
+                "--runtime",
+                str(executable),
+            ],
+            cwd=root,
+            env=storage_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=180,
+        )
+        if storage_probe.returncode != 0:
+            raise BuildError(
+                f"Native broker storage verification failed:\n{storage_probe.stdout}"
+            )
+        print(storage_probe.stdout, end="")
         published, archive, _ = publish_distribution(staged, destination, metadata)
     except BaseException:
         if staged.exists():

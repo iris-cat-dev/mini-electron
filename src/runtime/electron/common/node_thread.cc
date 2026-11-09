@@ -1,6 +1,7 @@
 #include "src/runtime/electron/common/node_thread.h"
 
 #include "src/runtime/electron/browser/api/app.h"
+#include "src/runtime/electron/browser/api/session.h"
 #include "src/runtime/electron/browser/api/window_list.h"
 #include "src/runtime/electron/common/atom_command_line.h"
 #include "src/runtime/electron/common/gin_helper/per_isolate_data.h"
@@ -117,6 +118,16 @@ int runNodeMain()
         exitCode = processExit.value_or(loaded ? App::getExitCode() : 1);
         if (!processExit)
             node::EmitProcessExit(setup->env());
+        // SessionMgr retains sessions, so their destructors are not a shutdown
+        // barrier. Drain after the final JS exit listeners, including app.exit
+        // and process.exit, while the blocking I/O task runners are still alive.
+        std::string storageError;
+        if (!SessionMgr::get()->flushStorageData(&storageError)) {
+            std::fprintf(stderr, "mini-electron: storage shutdown failed: %s\n",
+                storageError.c_str());
+            if (!exitCode)
+                exitCode = 1;
+        }
         node::Stop(setup->env(), node::StopFlags::kDoNotTerminateIsolate);
         state.uiThreadNodeEnv.env = nullptr;
         state.m_nodeBinding = nullptr;

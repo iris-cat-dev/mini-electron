@@ -8,6 +8,60 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.37 — broker storage responsiveness
+
+Built and qualified `out/windows-x64/runtime-dist` with runtime identity
+`0.1.37` from the repaired local source checkout, using the normal release
+configuration. No installed Desktop was replaced.
+EXE SHA-256:
+`d47e87c38500a928960109551f2db73ce73b7c39276d6cd2d969e9b2ac720578`.
+The distribution declares `asyncStoragePersistence: 1` alongside the existing
+clipboard and async-context capabilities, only after staged executable checks.
+
+The matching PDB has GUID `D87D19E62F0962DF4C4C44205044422E`, Age `1`,
+and SHA-256
+`023a057c12153270503fa01dfc48796f2c14380ef3422106ff5d2f79857f3aea`.
+
+- The real native async-context probe passed during distribution staging.
+- All six isolated broker-storage phases passed: write, restart, exit-write,
+  exit-read, quit-read, and the deliberately failing exit-error phase (expected
+  status `1`). These cover existing-format loading, no-op file timestamps,
+  origin/partition isolation, quota rejection, set/remove/clear ordering,
+  persistence errors and recovery, and retained-session shutdown draining.
+- The regression exposed a renderer AV while clearing nonempty storage:
+  Blink had replaced its cache before the backend used a borrowed map pointer.
+  The obsolete registration bridge is removed; ordered clear acknowledgements
+  now use broker-owned `wasNonempty`, without dereferencing a renderer cache.
+
+An additional visible standalone native window used a fresh owned profile,
+synthetic data, no daemon, and 32 calls per case: 40 characters per value,
+waiting 200 ms after each call. All times below are milliseconds:
+
+| Case | Median | P95 | Maximum | Maximum rAF interval |
+| --- | ---: | ---: | ---: | ---: |
+| Small persistent store, changed value | 0.2 | 0.4 | 0.5 | 13.9 |
+| Small persistent store, same value | 0.2 | 0.3 | 0.4 | 13.3 |
+| Additional 500,000-character synthetic cache, changed value | 0.2 | 0.4 | 0.6 | 8.2 |
+
+No case recorded an rAF interval above 50 ms. Explicit flush and disk reads
+verified the complete latest draft and 500,000 cache characters. The small
+store was 88 bytes; the larger file was 500,109 bytes.
+
+With continued 200 ms writes during eight native maximize/unmaximize
+transitions, all final renderer dimensions matched the native content size.
+Operation-before-renderer-resize timestamps ranged 17.6–37.9 ms; adding two
+rAFs ranged 23.6–61.4 ms. The concurrent writes had median 0.2 ms and maximum
+32.1 ms, so this is not a claim that every write stays below a frame during a
+window transition. The final concurrent value was also flushed and checked.
+
+Evidence in the sibling Desktop checkout:
+`.tmp/issue-139-fixed-kernel/result.json`, `maximized.png`, and `restored.png`.
+Staging's native regression evidence is under
+`%TEMP%/mini-broker-storage-v5spd9/`, with per-phase JSON records.
+Renderer events and `capturePage()` do not prove DWM presentation latency.
+No long-session Windows 11 soak, forced-power-loss guarantee, or macOS
+build/runtime verification is implied.
+
 ## Windows runtime 0.1.36 (2026-11-07)
 
 Status: normally built, assembled and

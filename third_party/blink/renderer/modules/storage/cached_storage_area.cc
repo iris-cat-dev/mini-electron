@@ -200,9 +200,6 @@ void CachedStorageArea::Clear(Source* source)
         EnqueueCheckpointMicrotask(source);
     }
 
-    if (remote_area_.is_bound())
-        remote_area_->SetStorageAreaMap(nullptr);
-
     if (!IsSessionStorage())
         EnqueuePendingMutation(String(), String(), String(), source_string);
     else if (!already_empty)
@@ -229,12 +226,7 @@ CachedStorageArea::CachedStorageArea(AreaType type, const BlinkStorageKey& stora
 //         this, "DOMStorage", Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted()));
 }
 
-CachedStorageArea::~CachedStorageArea()
-{
-    //base::trace_event::MemoryDumpManager::GetInstance()->UnregisterDumpProvider(this);
-    if (remote_area_.is_bound())
-        remote_area_->SetStorageAreaMap(nullptr); // weolar
-}
+CachedStorageArea::~CachedStorageArea() = default;
 
 LocalDOMWindow* CachedStorageArea::GetBestCurrentDOMWindow()
 {
@@ -614,7 +606,6 @@ void CachedStorageArea::EnsureLoaded()
     for (const auto& item : data) {
         map_->SetItemIgnoringQuota(Uint8VectorToString(item->key, key_format), Uint8VectorToString(item->value, value_format));
     }
-    remote_area_->SetStorageAreaMap(map_.get()); // weolar: 为了节省内存，把内部变量导出去了
 
     base::TimeDelta time_to_prime = base::TimeTicks::Now() - before;
     UMA_HISTOGRAM_TIMES("LocalStorage.MojoTimeToPrime", time_to_prime);

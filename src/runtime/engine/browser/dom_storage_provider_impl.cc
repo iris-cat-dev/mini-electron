@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
-#include "third_party/blink/renderer/modules/storage/storage_area_map.h"
 #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
 #include "third_party/blink/public/mojom/dom_storage/dom_storage.mojom-blink.h"
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom-blink.h"
@@ -107,24 +106,6 @@ public:
 
     bool isLocal() const { return m_isLocal; }
 
-    void setStorageAreaMap(const void* owner, blink::StorageAreaMap* areaMap)
-    {
-        if (!areaMap) {
-            clearStorageAreaMap(owner);
-            return;
-        }
-        m_areaMapOwner = owner;
-        m_areaMap = areaMap;
-    }
-
-    void clearStorageAreaMap(const void* owner)
-    {
-        if (m_areaMapOwner != owner)
-            return;
-        m_areaMapOwner = nullptr;
-        m_areaMap = nullptr;
-    }
-
     const WTF::String& cacheKey() const { return m_cacheKey; }
     void addUser() { ++m_users; }
     bool removeUser()
@@ -133,36 +114,17 @@ public:
         return --m_users != 0;
     }
 
-    String getItem(const String& key, bool* found) const
+    bool clear(uint64_t frameId, bool* wasNonempty)
     {
-        *found = false;
-        if (!m_areaMap)
-            return g_empty_string;
-
-        *found = true;
-        return m_areaMap->GetItem(key);
-    }
-
-    unsigned getLength()
-    {
-        if (!m_areaMap)
-            return 0;
-        return m_areaMap->GetLength();
-    }
-
-
-    bool clear(uint64_t frameId)
-    {
-        if (m_areaMap) {
-            while (m_areaMap->GetLength()) {
-                String ignored;
-                m_areaMap->RemoveItem(m_areaMap->GetKey(0), &ignored);
-            }
-        }
+        // Blink owns and replaces its cache before DeleteAll enters here.
+        // Only the broker owns backend data; it never borrows renderer maps.
         base::Value::Dict result;
         std::string error;
-        return RequestRendererStorage(
-            frameId, StorageRequest("clear"), &result, &error);
+        if (!RequestRendererStorage(
+                frameId, StorageRequest("clear"), &result, &error))
+            return false;
+        *wasNonempty = result.FindBool("wasNonempty").value_or(false);
+        return true;
     }
 
     bool put(uint64_t frameId, const WTF::Vector<uint8_t>& encoded_key,
@@ -297,8 +259,6 @@ private:
     }
 
     bool m_isLocal;
-    blink::StorageAreaMap* m_areaMap = nullptr;
-    const void* m_areaMapOwner = nullptr;
     size_t m_users = 0;
     blink::BlinkStorageKey m_storageKey;
     WTF::String m_namespaceId;
@@ -410,7 +370,6 @@ public:
 
     ~StorageAreaStub()
     {
-        m_impl->clearStorageAreaMap(this);
         StorageAreaImplMgr::get()->release(m_impl);
         s_StorageAreaStub--;
     }
@@ -449,12 +408,6 @@ public:
         addObserverImpl(std::move(observer));
     }
 
-    void SetStorageAreaMap(void* areaMap) override
-    {
-        m_impl->setStorageAreaMap(
-            this, static_cast<blink::StorageAreaMap*>(areaMap));
-    }
-
     enum DelayDispatchObserversType {
         kPut, kDelete, kDeleteAll
     };
@@ -464,7 +417,7 @@ public:
         const WTF::Vector<uint8_t>& value, 
         const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
         const WTF::String& source, 
-        base::OnceCallback<void(bool)> callback)
+        base::OnceCallback<void(bool)> callback, bool wasNonempty = false)
     {
         // Mojo acknowledgements must arrive after CachedStorageArea has queued
         // its pending mutation. The local receiver shortcut is synchronous, so
@@ -472,7 +425,7 @@ public:
         base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
             base::BindOnce(&StorageAreaStub::dispatchObservers,
                 m_weakFactory.GetWeakPtr(), type, key, value, clientOldValue,
-                source, std::move(callback)));
+                source, std::move(callback), wasNonempty));
     }
 
     void dispatchObservers(DelayDispatchObserversType type,
@@ -480,7 +433,7 @@ public:
         const WTF::Vector<uint8_t>& value,
         const absl::optional<WTF::Vector<uint8_t>>& clientOldValue,
         const WTF::String& source,
-        base::OnceCallback<void(bool)> callback)
+        base::OnceCallback<void(bool)> callback, bool wasNonempty)
     {
         if (m_impl->isLocal()) {
             for (const auto& observer : m_observers) {
@@ -492,7 +445,6 @@ public:
                 } else if (type == kDelete) {
                     observer->KeyDeleted(key, std::nullopt, source);
                 } else if (type == kDeleteAll) {
-                    bool wasNonempty = (m_impl->getLength() == 0);
                     observer->AllDeleted(/*was_nonempty=*/wasNonempty, source);
                 }
             }
@@ -543,14 +495,15 @@ public:
     {
         CHECK(ThreadCall::isBlinkThread());
         addObserverImpl(std::move(newObserver));
-        if (!m_impl->clear(m_frameId)) {
+        bool wasNonempty = false;
+        if (!m_impl->clear(m_frameId, &wasNonempty)) {
             std::move(callback).Run(false);
             return;
         }
         if (m_impl->isLocal()) {
             delayDispatchObservers(DelayDispatchObserversType::kDeleteAll,
                 WTF::Vector<uint8_t>(), WTF::Vector<uint8_t>(), std::nullopt,
-                source, std::move(callback));
+                source, std::move(callback), wasNonempty);
         } else {
             std::move(callback).Run(true);
         }

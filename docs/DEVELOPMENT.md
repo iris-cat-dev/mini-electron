@@ -100,6 +100,39 @@ Desktop must select this rebuilt distribution explicitly until it is released;
 a runtime version number alone does not establish the required semantics.
 See [verification](VERIFICATION.md#windows-async-context-source-repair-2026-11-04).
 
+### Broker storage persistence
+
+`localStorage` mutations update the browser's authoritative in-memory state
+synchronously. Persistent sessions transfer ordered deltas to a dedicated blocking-I/O
+sequence, coalesced over 50 ms; JSON serialization and atomic file replacement do not
+run in the Blink request/reply critical path. Repeated same-value sets, missing-key
+removals and empty clears enqueue no disk work. The `BrokerStorage.json` format is
+unchanged; session storage and nonpersistent partitions remain memory-only.
+
+Accepted mutations remain queued/dirty when scheduling or disk I/O fails. Errors
+are written to stderr; `session.flushStorageData()` is an explicit synchronous
+barrier that throws if persistence still fails, and a later barrier retries dirty
+data. `clearStorageData()` uses the same ordered writer and rejects a failed
+persistence barrier; a requested clear is not rolled back by that disk failure.
+Normal host shutdown drains retained sessions after final JavaScript exit listeners
+and before the thread pool stops. Failed final persistence changes a successful
+exit status to nonzero. Abrupt termination or power loss can still lose recent
+coalesced mutations; a successful Web Storage call is not a physical-disk commit.
+
+Windows distribution staging runs the real isolated regression before emitting
+`features.asyncStoragePersistence: 1`:
+
+```sh
+node test/broker-storage-persistence-smoke.js --runtime out/windows-x64/mini-electron.exe --output-dir out/verification/issue-139-storage
+```
+
+The regression checks immediate reads, no-op file churn, existing-format loading,
+origin/partition isolation, quota rejection, clear ordering, failure recovery and
+quit/exit durability across separate processes. Select the rebuilt distribution
+explicitly in OMP Desktop until a qualifying native release is available.
+The shared macOS shutdown path has the same source-level drain, but Windows
+qualification does not establish a macOS build or runtime result.
+
 ### SQLite full-text capability
 
 The Windows and macOS source configurations enable SQLite FTS5 in the bundled

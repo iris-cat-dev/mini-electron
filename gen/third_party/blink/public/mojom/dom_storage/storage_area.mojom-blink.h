@@ -179,8 +179,6 @@ public:
 
     virtual void AddObserver(::mojo::PendingRemote<StorageAreaObserver> observer) = 0;
 
-    virtual void SetStorageAreaMap(void* area_map) = 0; // weolar
-
     using PutCallback = base::OnceCallback<void(bool)>;
 
     virtual void Put(const WTF::Vector<uint8_t>& key, const WTF::Vector<uint8_t>& value, const std::optional<WTF::Vector<uint8_t>>& client_old_value,

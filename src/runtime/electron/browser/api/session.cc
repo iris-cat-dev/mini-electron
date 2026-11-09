@@ -31,6 +31,7 @@
 #include "base/base_paths.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_util.h"
+#include "base/files/important_file_writer.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/hash/sha1.h"
 #include "base/json/json_reader.h"
@@ -64,6 +65,7 @@
 #include <optional>
 #include <condition_variable>
 #include <cstdint>
+#include <cstdio>
 #include <deque>
 #include <mutex>
 #include <thread>
@@ -2133,8 +2135,190 @@ private:
     ApiSession::BrokerReply reply_;
 };
 
+// The UI owns the authoritative, immediately visible DOMStorage dictionary.
+// This sequence owns a second dictionary, built once from the original file and
+// then updated with ordered deltas. Neither serialization nor file I/O is part
+// of a synchronous renderer mutation.
+class BrokerStorageWriter : public std::enable_shared_from_this<BrokerStorageWriter> {
+public:
+    enum class Operation { Set, Remove, ClearOrigin, ClearAll };
+    struct Mutation {
+        Operation operation;
+        std::string origin;
+        std::string key;
+        std::string value;
+    };
+
+    static std::shared_ptr<BrokerStorageWriter> Create(
+        const base::FilePath& path, std::string initial_json)
+    {
+        return std::shared_ptr<BrokerStorageWriter>(
+            new BrokerStorageWriter(path, std::move(initial_json)));
+    }
+
+    void enqueue(Mutation mutation)
+    {
+        bool scheduled = false;
+        {
+            base::AutoLock lock(m_pendingLock);
+            // Acceptance is in-memory, even while persistence is failing. Keep
+            // ownership before posting: a rejected task must not discard an
+            // acknowledged renderer mutation or diverge from its cache.
+            m_pending.push_back(std::move(mutation));
+            if (m_writeScheduled)
+                return;
+            scheduled = m_runner->PostDelayedTask(FROM_HERE,
+                base::BindOnce([](std::shared_ptr<BrokerStorageWriter> self) {
+                    {
+                        base::AutoLock lock(self->m_pendingLock);
+                        self->m_writeScheduled = false;
+                    }
+                    self->persist();
+                }, shared_from_this()), base::Milliseconds(50));
+            m_writeScheduled = scheduled;
+        }
+        if (!scheduled)
+            recordError("Unable to schedule broker storage write");
+    }
+
+    bool flush(std::string* error)
+    {
+        // A barrier on the same sequence applies every previously accepted
+        // delta before writing. Delayed coalescing tasks cannot write an older
+        // snapshot after this barrier (notably after clearStorageData).
+        struct Completion {
+            std::mutex mutex;
+            std::condition_variable condition;
+            bool done = false;
+            std::string error;
+        } completion;
+        if (!m_runner->PostTask(FROM_HERE,
+                base::BindOnce([](std::shared_ptr<BrokerStorageWriter> self,
+                                  Completion* completion) {
+                    std::string result = self->persist();
+                    {
+                        std::lock_guard<std::mutex> lock(completion->mutex);
+                        completion->error = std::move(result);
+                        completion->done = true;
+                        completion->condition.notify_one();
+                    }
+                }, shared_from_this(), base::Unretained(&completion)))) {
+            *error = "Unable to schedule broker storage flush";
+            recordError(*error);
+            return false;
+        }
+        std::unique_lock<std::mutex> lock(completion.mutex);
+        completion.condition.wait(lock, [&completion] { return completion.done; });
+        *error = std::move(completion.error);
+        return error->empty();
+    }
+
+private:
+    BrokerStorageWriter(const base::FilePath& path, std::string initial_json)
+        : m_path(path.AppendASCII("BrokerStorage.json"))
+        , m_runner(base::ThreadPool::CreateSequencedTaskRunner({
+              base::MayBlock(), base::TaskPriority::USER_VISIBLE,
+              base::TaskShutdownBehavior::BLOCK_SHUTDOWN }))
+        , m_initialJson(std::move(initial_json))
+    {
+    }
+
+    void recordError(const std::string& error)
+    {
+        base::AutoLock lock(m_errorLock);
+        if (error != m_error)
+            std::fprintf(stderr, "mini-electron: %s (%s)\n",
+                error.c_str(), m_path.AsUTF8Unsafe().c_str());
+        m_error = error;
+    }
+
+    void apply(Mutation mutation)
+    {
+        if (mutation.operation == Operation::ClearAll) {
+            m_storage.clear();
+        } else {
+            auto* values = m_storage.FindDict(mutation.origin);
+            if (!values) {
+                m_storage.Set(mutation.origin, base::Value::Dict());
+                values = m_storage.FindDict(mutation.origin);
+            }
+            switch (mutation.operation) {
+            case Operation::Set:
+                values->Set(std::move(mutation.key), std::move(mutation.value));
+                break;
+            case Operation::Remove:
+                values->Remove(mutation.key);
+                break;
+            case Operation::ClearOrigin:
+                values->clear();
+                break;
+            case Operation::ClearAll:
+                break;
+            }
+        }
+        m_dirty = true;
+    }
+
+    std::string persist()
+    {
+        if (!m_initialized) {
+            if (!m_initialJson.empty()) {
+                auto parsed = base::JSONReader::Read(m_initialJson);
+                if (!parsed || !parsed->is_dict()) {
+                    std::string error = "Unable to initialize broker storage writer";
+                    recordError(error);
+                    return error;
+                }
+                m_storage = std::move(parsed->GetDict());
+                m_initialJson.clear();
+            }
+            m_initialized = true;
+        }
+        std::deque<Mutation> pending;
+        {
+            base::AutoLock lock(m_pendingLock);
+            pending.swap(m_pending);
+        }
+        for (auto& mutation : pending)
+            apply(std::move(mutation));
+        if (m_dirty) {
+            std::string json;
+            std::string error;
+            if (!base::JSONWriter::Write(m_storage, &json))
+                error = "Unable to serialize broker storage";
+            else if (!base::ImportantFileWriter::WriteFileAtomically(m_path, json))
+                error = "Unable to commit broker storage";
+            if (!error.empty()) {
+                recordError(error);
+                return error;
+            }
+            m_dirty = false;
+        }
+        base::AutoLock lock(m_errorLock);
+        m_error.clear();
+        return {};
+    }
+
+    const base::FilePath m_path;
+    const scoped_refptr<base::SequencedTaskRunner> m_runner;
+    base::Lock m_errorLock;
+    std::string m_error;
+    base::Lock m_pendingLock;
+    std::deque<Mutation> m_pending;
+    bool m_writeScheduled = false;
+    // Accessed only on m_runner.
+    base::Value::Dict m_storage;
+    std::string m_initialJson;
+    bool m_initialized = false;
+    bool m_dirty = false;
+};
+
 ApiSession::~ApiSession()
 {
+    std::string storage_error;
+    if (!flushStorageData(&storage_error))
+        std::fprintf(stderr, "mini-electron: session destruction: %s\n",
+            storage_error.c_str());
     std::vector<std::shared_ptr<BrokerWebSocket>> sockets;
     if (m_brokerSocketRegistry) {
         base::AutoLock lock(m_brokerSocketRegistry->lock);
@@ -2215,6 +2399,7 @@ void ApiSession::init(v8::Isolate* isolate, v8::Local<v8::Object> target)
     builder.SetMethod("setPreloads", &ApiSession::setPreloadsApi);
     builder.SetMethod("getStoragePath", &ApiSession::getStoragePathApi);
     builder.SetMethod("clearStorageData", &ApiSession::clearStorageDataApi);
+    builder.SetMethod("flushStorageData", &ApiSession::flushStorageDataApi);
     builder.SetMethod("clearCache", &ApiSession::clearCacheApi);
     builder.SetMethod("clearAuthCache", &ApiSession::clearAuthCacheApi);
     builder.SetMethod("getPartition", &ApiSession::getPartition);
@@ -2982,11 +3167,19 @@ bool ApiSession::clearStorage(
         }
         if (!clearDirectories({ "Local Storage" }, error))
             return false;
-        base::AutoLock lock(m_brokerLock);
-        m_brokerLocalStorage.clear();
-        m_brokerSessionStorage.clear();
-        m_brokerStorageLoaded = true;
-        if (m_persistent && !saveBrokerStorage(error))
+        {
+            base::AutoLock lock(m_brokerLock);
+            if (m_persistent) {
+                if (!m_brokerStorageWriter)
+                    m_brokerStorageWriter = BrokerStorageWriter::Create(m_path, {});
+                m_brokerStorageWriter->enqueue({
+                    BrokerStorageWriter::Operation::ClearAll, {}, {}, {} });
+            }
+            m_brokerLocalStorage.clear();
+            m_brokerSessionStorage.clear();
+            m_brokerStorageLoaded = true;
+        }
+        if (!flushStorageData(error))
             return false;
     }
     if (requested("indexdb") && !clearDirectories({ "IndexedDB" }, error))
@@ -3030,6 +3223,27 @@ void ApiSession::clearStorageDataApi(
     args.GetReturnValue().Set(handle);
 }
 
+bool ApiSession::flushStorageData(std::string* error)
+{
+    std::shared_ptr<BrokerStorageWriter> writer;
+    {
+        base::AutoLock lock(m_brokerLock);
+        writer = m_brokerStorageWriter;
+    }
+    return !writer || writer->flush(error);
+}
+
+void ApiSession::flushStorageDataApi(
+    const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    std::string error;
+    if (!flushStorageData(&error)) {
+        args.GetIsolate()->ThrowException(v8::Exception::Error(
+            v8::String::NewFromUtf8(args.GetIsolate(), error.c_str())
+                .ToLocalChecked()));
+    }
+}
+
 void ApiSession::clearCacheApi(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     gin_helper::Promise<void> promise(args.GetIsolate());
@@ -3058,16 +3272,21 @@ bool ApiSession::loadBrokerStorage(std::string* error)
 {
     if (m_brokerStorageLoaded)
         return true;
-    m_brokerStorageLoaded = true;
-    if (!m_persistent)
+    if (!m_persistent) {
+        m_brokerStorageLoaded = true;
         return true;
+    }
     base::FilePath file = m_path.AppendASCII("BrokerStorage.json");
-    if (!base::PathExists(file))
-        return true;
     std::string json;
-    if (!base::ReadFileToString(file, &json)) {
+    const bool exists = base::PathExists(file);
+    if (exists && !base::ReadFileToString(file, &json)) {
         *error = "Unable to read broker storage";
         return false;
+    }
+    if (!exists) {
+        m_brokerStorageWriter = BrokerStorageWriter::Create(m_path, {});
+        m_brokerStorageLoaded = true;
+        return true;
     }
     auto parsed = base::JSONReader::Read(json);
     if (!parsed || !parsed->is_dict()) {
@@ -3075,33 +3294,11 @@ bool ApiSession::loadBrokerStorage(std::string* error)
         return false;
     }
     m_brokerLocalStorage = std::move(parsed->GetDict());
+    m_brokerStorageWriter = BrokerStorageWriter::Create(m_path, std::move(json));
+    m_brokerStorageLoaded = true;
     return true;
 }
 
-bool ApiSession::saveBrokerStorage(std::string* error)
-{
-    if (!m_persistent)
-        return true;
-    std::string json;
-    if (!base::JSONWriter::Write(m_brokerLocalStorage, &json)) {
-        *error = "Unable to serialize broker storage";
-        return false;
-    }
-    base::FilePath file = m_path.AppendASCII("BrokerStorage.json");
-    base::FilePath temporary = m_path.AppendASCII("BrokerStorage.json.tmp");
-    if (!base::WriteFile(temporary, json)) {
-        *error = "Unable to write broker storage";
-        return false;
-    }
-    bool committed = base::PathExists(file)
-        ? base::ReplaceFile(temporary, file, nullptr)
-        : base::Move(temporary, file);
-    if (!committed) {
-        base::DeleteFile(temporary);
-        *error = "Unable to commit broker storage";
-    }
-    return committed;
-}
 
 void ApiSession::handleStorageBroker(int contentsId,
     const BrokerFrameContext& frameContext,
@@ -3179,6 +3376,12 @@ void ApiSession::handleStorageBroker(int contentsId,
             values = origins->FindDict(origin);
         }
 
+        const auto persist = [&](BrokerStorageWriter::Operation operation,
+                                 const std::string& key = {},
+                                 const std::string& value = {}) {
+            if (*storage_type == "local" && m_persistent)
+                m_brokerStorageWriter->enqueue({ operation, origin, key, value });
+        };
         const std::string* key = payload.FindString("key");
         if (*operation == "get") {
             if (!key) {
@@ -3193,7 +3396,8 @@ void ApiSession::handleStorageBroker(int contentsId,
             const std::string* value = payload.FindString("value");
             if (!key || !value) {
                 error = "Storage set requires string key and value";
-            } else {
+            } else if (const std::string* previous = values->FindString(*key);
+                       !previous || *previous != *value) {
                 size_t usage = 0;
                 for (const auto& item : *values) {
                     const std::string* existing = item.second.GetIfString();
@@ -3208,16 +3412,23 @@ void ApiSession::handleStorageBroker(int contentsId,
                             mini_electron::kPerStorageAreaQuota)) {
                     error = "Storage quota exceeded";
                 } else {
+                    persist(BrokerStorageWriter::Operation::Set, *key, *value);
                     values->Set(*key, *value);
                 }
             }
         } else if (*operation == "remove") {
             if (!key)
                 error = "Storage remove requires a key";
-            else
+            else if (values->contains(*key)) {
+                persist(BrokerStorageWriter::Operation::Remove, *key);
                 values->Remove(*key);
+            }
         } else if (*operation == "clear") {
-            values->clear();
+            result.Set("wasNonempty", !values->empty());
+            if (!values->empty()) {
+                persist(BrokerStorageWriter::Operation::ClearOrigin);
+                values->clear();
+            }
         } else if (*operation == "keys") {
             base::Value::List keys;
             for (const auto& item : *values)
@@ -3225,10 +3436,6 @@ void ApiSession::handleStorageBroker(int contentsId,
             result.Set("keys", std::move(keys));
         } else {
             error = "Unsupported storage operation";
-        }
-        if (error.empty() && *storage_type == "local"
-            && *operation != "get" && *operation != "keys") {
-            saveBrokerStorage(&error);
         }
     }
     reply(std::move(result), std::move(error));
@@ -4401,6 +4608,27 @@ base::FilePath SessionMgr::getRootDir() const
 {
     base::AutoLock lock(m_lock);
     return m_rootDir;
+}
+
+bool SessionMgr::flushStorageData(std::string* error)
+{
+    std::vector<ApiSession*> sessions;
+    {
+        base::AutoLock lock(m_lock);
+        for (const auto& entry : m_map)
+            sessions.push_back(entry.second);
+    }
+    bool success = true;
+    for (ApiSession* session : sessions) {
+        std::string session_error;
+        if (!session->flushStorageData(&session_error)) {
+            if (!error->empty())
+                *error += "; ";
+            *error += session_error;
+            success = false;
+        }
+    }
+    return success;
 }
 
 ApiSession* SessionMgr::findOrCreateSession(v8::Isolate* isolate,

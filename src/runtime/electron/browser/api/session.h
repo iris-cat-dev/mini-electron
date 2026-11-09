@@ -32,6 +32,7 @@ class BrokerRequestPipeline;
 class WebContents;
 class BrokerWebSocket;
 struct BrokerSocketRegistry;
+class BrokerStorageWriter;
 
 class ApiSession : public mate::EventEmitter<ApiSession> {
 public:
@@ -68,6 +69,7 @@ public:
     std::string getName() const { return m_partition; }
     std::string getPartition() const { return m_partition; }
     bool isPersistent() const { return m_persistent; }
+    bool flushStorageData(std::string* error);
 
     std::vector<std::string> getPreloadsApi();
     void onLoadUrlBeginInBlinkThread(mini_electron_web_view webView, const char* url, void* job);
@@ -125,6 +127,7 @@ private:
     void setDevicePermissionHandlerApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     void setPreloadsApi(const std::vector<std::string>& paths);
     void clearStorageDataApi(const v8::FunctionCallbackInfo<v8::Value>& args);
+    void flushStorageDataApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     void clearCacheApi(const v8::FunctionCallbackInfo<v8::Value>& args);
     void clearAuthCacheApi(const v8::FunctionCallbackInfo<v8::Value>& args);
 
@@ -132,7 +135,6 @@ private:
     bool clearStorage(const std::vector<std::string>& storages, std::string* error);
     bool clearDirectories(const std::vector<const char*>& names, std::string* error);
     bool loadBrokerStorage(std::string* error);
-    bool saveBrokerStorage(std::string* error);
     void handleStorageBroker(int contentsId,
         const BrokerFrameContext& frameContext,
         const base::Value::Dict& payload, BrokerReply reply);
@@ -164,6 +166,7 @@ private:
     base::Lock m_brokerLock;
     bool m_brokerStorageLoaded = false;
     base::Value::Dict m_brokerLocalStorage;
+    std::shared_ptr<BrokerStorageWriter> m_brokerStorageWriter;
     std::map<std::string, base::Value::Dict> m_brokerSessionStorage;
     std::map<int, std::vector<std::string>> m_sessionStorageNamespaces;
     struct AuthorizedFile {
@@ -203,6 +206,7 @@ public:
     base::FilePath createSessionDirname(const std::string& partition,
         bool* persistent = nullptr) const;
     base::FilePath getRootDir() const;
+    bool flushStorageData(std::string* error);
 
 private:
     SessionMgr();
