@@ -24,9 +24,12 @@ Apple Silicon macOS-only runtime update, built from shared source
   diagnostic recorded an injected down followed by a no-button move,
   synthesized release, and lost capture; it is not counted as passing.
 
-The runtime ZIP, `artifacts.json`, and `SHASUMS256.txt` are assembled in
-`out/runtime-release-mac-0.1.38/v0.1.38/`. The bundle is ad-hoc signed, not
-Developer ID signed or notarized. See [exact verification and limits](VERIFICATION.md#macos-runtime-0138-2026-11-10).
+Published as [v0.1.38](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.38)
+from source `79ed2d3d8f8e1dcb83f5496650fbbd1b4cfae800`, with the runtime ZIP,
+`artifacts.json`, and `SHASUMS256.txt`. Anonymous runtime download matched the
+published SHA-256. The macOS `runtime-v1` channel now selects `0.1.38`; the
+Windows channel remains `0.1.37`. The bundle is ad-hoc signed, not Developer ID
+signed or notarized. See [exact verification and limits](VERIFICATION.md#macos-runtime-0138-2026-11-10).
 
 ### Windows runtime 0.1.37 — asynchronous broker storage
 

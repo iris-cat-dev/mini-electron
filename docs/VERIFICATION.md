@@ -28,6 +28,14 @@ Installer protocol `1`, Electron API `41.2.0`, Node `24.0.0-pre`, Node ABI
 `134`, and Chromium major `132` are unchanged. Windows runtime/channel remains
 `0.1.37`; npm installer remains `0.1.12`.
 
+Published [v0.1.38](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.38)
+from source `79ed2d3d8f8e1dcb83f5496650fbbd1b4cfae800`. All three immutable
+assets are uploaded. Anonymous downloads of the ZIP, version manifest and
+`SHASUMS256.txt` succeeded; the downloaded ZIP's SHA-256 matches the value above.
+The public macOS `runtime-v1/artifacts.json` now selects `0.1.38` and the same
+archive hash. Only that channel's manifest was replaced; its prerelease label
+and notes remain unchanged. Windows runtime/channel remains `0.1.37`.
+
 Passed:
 
 - Application runtime identity `0.1.38`/Electron `41.2.0`/ABI `134`, and
