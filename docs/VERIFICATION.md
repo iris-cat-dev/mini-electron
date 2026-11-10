@@ -8,6 +8,64 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.38 (2026-11-10)
+
+Built using `/opt/homebrew/bin/python3.13 build.py --jobs 12 --package-dist`
+from shared source `8be282e56` plus the macOS-only runtime version update.
+The system `python3` is 3.9.6 and lacks `hashlib.file_digest`; the documented
+Python 3.12+ prerequisite is satisfied by Python 3.13.
+
+Release assembly used `scripts/build_runtime_release.py --macos-dist
+out/mac-arm64/runtime-dist --runtime-only --output
+out/runtime-release-mac-0.1.38`. Its final ZIP was extracted with `ditto` to
+`out/verification/mac-0.1.38/runtime/`; every scenario below uses that extracted
+executable. `file` identifies Mach-O arm64, and `codesign --verify --deep
+--strict` passed for the app and bundled frameworks.
+
+Runtime ZIP SHA-256:
+`75eec013df8448e94f457e4806862dd7281ff1d9c1d904a7874e7144e3c0648f`.
+Installer protocol `1`, Electron API `41.2.0`, Node `24.0.0-pre`, Node ABI
+`134`, and Chromium major `132` are unchanged. Windows runtime/channel remains
+`0.1.37`; npm installer remains `0.1.12`.
+
+Passed:
+
+- Application runtime identity `0.1.38`/Electron `41.2.0`/ABI `134`, and
+  Node-only arm64/ABI identity. Node-only mode intentionally has no Electron
+  version fields; the initial probe's contrary assertion was corrected.
+- `node-async-context-smoke.js` in application and Node-only modes, including
+  Workers, foreign Promise realms, nested scopes and once-ordered Promise hooks.
+- `node-build-config-smoke.js` in both modes and Workers: native tagged slots
+  measured 4 bytes; pointer-compression/31-bit-SMI/sandbox flags were `1/1/0`.
+- `node-sqlite-smoke.js` in both modes, including forwarding builtin hooks,
+  FTS5 MATCH/ranking/update/delete/reopen, transactions, WAL, backup and Workers.
+- `macos-storage-mutation-smoke.js`: repeated set/delete/clear acknowledgements
+  and reload retain the final value without a renderer crash.
+- `macos-exit-lifecycle-smoke.js`: native menus and preload-backed windows exit.
+- All six broker-storage phases: write, restart, exit-write, exit-read,
+  quit-read, and exit-error with expected status `1`. The temporary copy changed
+  only the Windows platform assertion to macOS; all behavioral checks remained.
+  This covers no-op file timestamps, existing-format loading, origin/partition
+  isolation, persistence failures/recovery, clearing and shutdown durability.
+
+Evidence: per-scenario JSON under `out/verification/mac-0.1.38/`, with broker
+results under `mini-broker-storage-O6QdCj/`. Only the external `node` driver's
+actual six-phase result counts; an earlier invocation incorrectly used the
+Desktop host executable and did not run the storage driver.
+
+The complete `macos-cursor-smoke.js` did not pass: its pressed-drag assertion
+observed `default` rather than `grabbing`. A diagnostic later observed `grab`
+and recorded injected `pointerdown`/`mousedown` with buttons `1`, followed by
+`pointerup`/`mouseup`, `lostpointercapture`, and real no-button mouse moves.
+The final DOM had no held class/capture and CSS `grab`. Native injection does
+not hold the system mouse button; ordinary movement reconciles the capture
+owner from AppKit's actual pressed buttons. This result does not qualify the
+full physical drag/cursor matrix. The captured native fixture rendered correctly
+in `cursor-diagnostic.png`; no cursor behavior was changed to bypass the check.
+
+Developer ID signing, notarization and a multi-hour desktop soak were not run.
+
+
 ## Windows runtime 0.1.37 — broker storage responsiveness
 
 Built and qualified `out/windows-x64/runtime-dist` with runtime identity

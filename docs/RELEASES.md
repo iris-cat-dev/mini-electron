@@ -6,6 +6,28 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.38
+
+Apple Silicon macOS-only runtime update, built from shared source
+`8be282e56` with the `0.1.38` runtime identity. Windows runtime/channel remains
+`0.1.37`; npm installer remains `0.1.12`. Installer protocol `1`, Electron API
+`41.2.0`, Node ABI `134`, and Chromium major `132` are unchanged.
+
+- Includes asynchronous broker storage persistence, no-op write suppression,
+  ordered clearing, explicit flush errors, and macOS quit/exit draining.
+- Includes the shared SQLite FTS5 and forwarding CommonJS builtin-loader
+  repairs, plus native V8 configuration reporting and async-context changes.
+- The final ZIP's extracted executable passed application/Node identity,
+  async-context, heap-layout and SQLite/FTS5 checks, native storage mutations,
+  preload-backed exit lifecycle, and all six isolated broker-storage phases.
+- The full native cursor smoke stopped at the pressed-drag assertion. A
+  diagnostic recorded an injected down followed by a no-button move,
+  synthesized release, and lost capture; it is not counted as passing.
+
+The runtime ZIP, `artifacts.json`, and `SHASUMS256.txt` are assembled in
+`out/runtime-release-mac-0.1.38/v0.1.38/`. The bundle is ad-hoc signed, not
+Developer ID signed or notarized. See [exact verification and limits](VERIFICATION.md#macos-runtime-0138-2026-11-10).
+
 ### Windows runtime 0.1.37 — asynchronous broker storage
 
 Windows x64-only binary update. npm installer `0.1.12`, installer protocol `1`,
