@@ -4413,7 +4413,7 @@ void ApiSession::handleBrokerRequest(int contentsId,
         GURL url(request_url ? *request_url : std::string());
         if (m_protocol && m_protocol->isProtocolHandled(url.scheme())) {
             m_protocol->handleBrokerRequest(contentsId,
-                frameContext.frame_id, payload, std::move(reply));
+                frameContext, payload, std::move(reply));
         } else {
             handleNetworkBroker(
                 contentsId, frameContext, payload, std::move(reply));
@@ -4445,7 +4445,7 @@ void ApiSession::handleBrokerRequest(int contentsId,
             return;
         }
         m_protocol->handleBrokerRequest(
-            contentsId, frameContext.frame_id, payload,
+            contentsId, frameContext, payload,
             std::move(reply));
     } else {
         reply({}, "Broker request kind is not authorized");

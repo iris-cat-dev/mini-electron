@@ -36,6 +36,8 @@ function getRendererFrame(contents, frameId, generation) {
   const frame = {
     get processId() { return details.processId; },
     get routingId() { return details.routingId; },
+    get nativeID() { return details.frameId; },
+    get navigationToken() { return details.navigationToken || null; },
     get url() { return currentDetails()?.url || ''; },
     get detached() { return currentDetails() === null; },
     send(channel, ...args) {

@@ -175,6 +175,16 @@ typed-array view's offset and length instead of enumerating each byte into a
 numeric-key dictionary, which stalled previews and exceeded the object-entry
 limit for larger files.
 
+`ipcMain` preserves standard EventEmitter listener identity: `removeListener`
+stops later renderer messages, and `once` releases its listener after the first
+message. Invoke handlers remain in a separate dispatcher. The native
+`test/ipc-frame-smoke.js` checks both listener lifetimes together with owning
+frame authorization, stable send/invoke identity, navigation detachment, focused
+child-frame disposal, and frame-targeted delivery. Run in application mode from
+an owned fixture, with early user-data paths redirected before loading the test.
+The rebuilt macOS candidate passed this complete regression; the previous
+runtime failed because a removed listener still consumed a renderer message.
+
 Native AppKit file drags and Windows Explorer OLE `CF_HDROP` file/folder drags
 are exposed as brokered DOM `File` objects only after the browser authorizes the
 current document. Regular files are limited to 50 MiB each and 256 MiB per drag;
@@ -190,6 +200,19 @@ document-wide acceptance.
 
 Custom protocol `Response` headers preserve MIME type, charset, and binary data;
 HTML with `Content-Type: text/html; charset=utf-8` is parsed as a document.
+Renderer custom-scheme requests use the same request-header serialization as
+HTTP/file requests, including `Range` and application headers. The standard
+`Request` delivered to `protocol.handle()` retains its browser-owned readonly
+`nativeRequest` identity independently of headers and query parameters.
+`test/macos-protocol-identity-smoke.js` checks both windows' full responses,
+eight-byte `206` ranges, malformed/unsatisfiable `416` responses, status text,
+`Content-Range`, and binary bodies with cache bypass and `no-store` responses.
+It also verifies that forged identity headers reach the handler without changing
+the canonical identity. Run it from a dedicated application fixture with
+`MINI_PROTOCOL_IDENTITY_ROOT` and `MINI_PROTOCOL_IDENTITY_APP_DATA` set; its
+application name is `omp-native-protocol-identity-2s3ufs`, and all runtime paths
+are redirected under the fixture root before creating windows.
+
 Local `net.fetch(file:)` responses remain streamed with backpressure and
 cancellation. Read chunks are capped at 1 MiB and the file size to amortize
 native main-loop work when loading large frontend assets; HEAD responses do
@@ -199,6 +222,70 @@ Shutdown invalidates AppKit menu actions before disposing V8 and retains sandbox
 preload hosts until Blink has destroyed their frame contexts, so live menus,
 pending preload IPC, and companion windows can exit without late handle access.
 
+Asynchronous `dialog.showOpenDialog(window, options)` and
+`dialog.showSaveDialog(window, options)` present a sheet on that exact live native
+window. Calls without a parent use an asynchronous standalone panel. Node timers
+and owner operations keep running while either panel is visible; completion
+reenters the original JavaScript context and settles the original Promise once.
+Closing the owner cancels its panel, including a close before queued presentation.
+An unknown/destroyed specified owner rejects instead of opening an unparented
+panel, and shutdown invalidates pending callbacks before disposing V8. The
+synchronous file-dialog APIs retain `runModal` behavior.
+File filters, title/message/button label, default directory/name, file/directory
+selection and multiple selection are applied to the actual native panel.
+
+`test/macos-owned-dialog-smoke.js` uses a prebuilt
+`test/macos-owned-dialog-helper.mm` N-API helper to inspect real panel visibility,
+exact sheet ownership, native options and callback retirement. It covers open/save
+cancellation, owner close/destroy before and after presentation, standalone
+panels, real open/save acceptance, synchronous blocking behavior, invalid-owner
+rejection, and exit/quit with a pending panel.
+Its AppKit watchdog dismisses the old blocking implementation without fabricating
+results, so the same regression can retain fail-before and pass-after evidence.
+For AppKit's remote file picker, the helper sends Return as WindowServer keyboard
+events addressed only to the owned Native PID, with that exact panel
+holding active key focus. The helper links ApplicationServices and checks event
+posting permission without prompting or modifying TCC. A posting denial fails
+the regression instead of manufacturing a selection or falling back to another
+application's focus.
+Launch with `node test/macos-owned-dialog-smoke.js --runtime=<owned Electron>
+--helper=<owned helper.node>` during an exclusive GUI slot. The launcher redirects
+HOME/CFFIXED_USER_HOME/TMPDIR under its dedicated acceptance root and checks the
+canonical native early userData before creating any window. It does not build the
+runtime or helper; the integrated verification owner supplies both artifacts.
+
+The 2026-11-10 owned Native run retained the old blocking/ownerless-panel failure
+and passed 48 repaired-matrix assertions: exact sheet ownership, options, original
+callback retirement, Node progress while visible, owner operations and closure,
+queued-close cancellation, sync behavior and invalid-owner rejection. Exit/quit
+with pending panels also passed with zero callbacks and zero remaining windows.
+Four ordinary cancellation result/cleanup cases reached the watchdog's actual
+AppKit `cancel:` action at approximately 2.5 seconds; they do not prove synthetic
+Escape delivery. The production Wallpaper picker independently observed Escape
+ineffective for 10 seconds and canceled successfully when its owner closed. The
+regression now records watchdog provenance and requires cancellation without it
+before qualifying Escape; the new provenance assertion has not been rerun.
+Real open/save acceptance remains blocked: `CGPreflightPostEventAccess` denied
+posting before any keyboard event was sent, despite the active application and
+exact panel key focus. The full matrix reports failure rather than replacing
+selection results. The owned evidence summary is
+`/private/tmp/omp-unified-plugin-smoke-2s3uFs/native-owned-dialog-acceptance.json`.
+
+For a separately authorized human-click session, `--case=manual-accept` prepares
+only the two outstanding selections. It opens the actual owned-window open/save
+panels, displays the owned paths, and waits for the user to select `chosen.txt`
+and accept the default `manual-saved.txt` destination. `observe()` only reads
+panel state; it arms no auto-cancel watchdog, posts no keys, and invokes no panel
+action. The consumer checks the original AppKit result, one native callback and
+panel dismissal, then closes its owned window. Build the updated helper before
+launching this mode. This manual consumer was prepared statically; no manual
+selection has been exercised and the permission blocker above remains recorded.
+The user explicitly chose to retain the manual block. The integration owner built
+`native-owned-dialog-manual-observer.node` successfully under the owned root, but
+no manual scene or input was launched. Real acceptance, Escape delivery and
+remote-panel content opacity remain unqualified; API cancellation, asynchronous
+ownership and cleanup evidence remains valid with the provenance limits above.
+
 Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
 `test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
@@ -206,6 +293,7 @@ Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-precise-wheel-smoke.js`,
 `test/macos-image-preview-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
+`test/macos-protocol-identity-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
 `test/macos-window-buttons-smoke.js`, and `test/macos-exit-lifecycle-smoke.js`.
 Input helpers require Xcode. The initial-background regression captures actual

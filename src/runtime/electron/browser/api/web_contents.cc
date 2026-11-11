@@ -571,6 +571,20 @@ bool WebContents::isRendererFrameCurrent(uint64_t frame_id) const
     return false;
 }
 
+bool WebContents::isBrokerRequestCurrent(uint64_t frame_id, uint64_t generation,
+    const std::string& navigation_token, bool is_document) const
+{
+    if (!isAlive() || !isRendererFrameCurrent(frame_id))
+        return false;
+    const RendererFrameState& frame = m_renderer_frames.at(frame_id);
+    if (frame.generation != generation || navigation_token.empty())
+        return false;
+    return is_document
+        ? frame.navigation.consumed && frame.navigation.token == navigation_token
+        : frame.committed_navigation_token == navigation_token;
+}
+
+
 bool WebContents::registerRendererFrame(
     uint64_t frame_id, uint64_t parent_id, bool main_frame)
 {
@@ -657,11 +671,14 @@ void WebContents::retireRendererFrameSockets(uint64_t frame_id)
 }
 
 bool WebContents::commitRendererFrame(
-    uint64_t frame_id, const std::string& url)
+    uint64_t frame_id, const std::string& url,
+    const std::string& document_token)
 {
-    if (!isRendererFrameCurrent(frame_id))
+    if (document_token.empty() || !isRendererFrameCurrent(frame_id))
         return false;
     RendererFrameState& frame = m_renderer_frames.at(frame_id);
+    if (document_token == frame.committed_document_token)
+        return false;
     GURL target(url);
     if (!target.is_valid())
         return false;
@@ -678,7 +695,11 @@ bool WebContents::commitRendererFrame(
                 && SameDocumentUrl(url, frame.navigation.url))
             || (frame.committed_url.empty()
                 && (target.IsAboutBlank() || target.IsAboutSrcdoc())));
-    if (!observed_document && !approved_intrinsic)
+    // Native javascript:/XSLT replacement commits create a new Document without
+    // a network navigation. Its token must never inherit the old lease.
+    bool document_replacement = !frame.committed_document_token.empty()
+        && SameDocumentUrl(url, frame.committed_url);
+    if (!observed_document && !approved_intrinsic && !document_replacement)
         return false;
     url::Origin origin = url::Origin::Create(target);
     std::string inherited_origin = frame.parent_id
@@ -692,6 +713,11 @@ bool WebContents::commitRendererFrame(
         ? std::move(inherited_origin)
         : (origin.opaque() ? std::string() : origin.Serialize());
     frame.committed_url = target.spec();
+    frame.committed_document_token = document_token;
+    frame.committed_navigation_token = observed_document || approved_intrinsic
+        ? (frame.navigation.token.empty()
+                ? document_token : std::move(frame.navigation.token))
+        : document_token;
     retireRendererFrameSockets(frame_id);
     if (frame.main_frame)
         cancelPreparedFrames("Document replaced before native presentation");
@@ -831,6 +857,7 @@ void WebContents::getFrameApi(const v8::FunctionCallbackInfo<v8::Value>& info) c
     frame.Set("processId", getProcessIdApi());
     frame.Set("routingId", static_cast<double>(state.generation));
     frame.Set("url", state.committed_url);
+    frame.Set("navigationToken", state.committed_navigation_token);
     info.GetReturnValue().Set(gin_helper::ConvertToV8(info.GetIsolate(), frame));
 }
 
@@ -2430,7 +2457,8 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         RendererFrameState& frame = m_renderer_frames.at(frame_id);
         GURL target(ReadString(payload, "url"));
         if (!target.is_valid() || frame.committed_url.empty()
-            || frame.parent_id != parent_id || frame.main_frame != *main_frame)
+            || frame.parent_id != parent_id || frame.main_frame != *main_frame
+            || ReadString(payload, "documentToken") != frame.committed_document_token)
             return;
         url::Origin target_origin = url::Origin::Create(target);
         if (!target.IsAboutBlank() && !target.IsAboutSrcdoc()
@@ -2461,6 +2489,16 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             || !main_frame
             || !registerRendererFrame(frame_id, parent_id, *main_frame))
             return;
+        if (type == "frame-created") {
+            RendererFrameState& frame = m_renderer_frames.at(frame_id);
+            const std::string initial_url = ReadString(payload, "url");
+            const GURL initial_target(initial_url);
+            if (frame.committed_url.empty()
+                && (initial_target.IsAboutBlank() || initial_target.IsAboutSrcdoc())) {
+                commitRendererFrame(frame_id, initial_url,
+                    ReadString(payload, "documentToken"));
+            }
+        }
         if (type == "frame-committed") {
             RendererFrameState& frame = m_renderer_frames.at(frame_id);
             const std::string committed_url = ReadString(payload, "url");
@@ -2488,7 +2526,8 @@ void WebContents::onRendererEvent(base::Value::Dict event)
                 && !committed_target.IsAboutBlank()
                 && !committed_target.IsAboutSrcdoc();
             const uint64_t previous_generation = frame.generation;
-            if (!commitRendererFrame(frame_id, committed_url))
+            if (!commitRendererFrame(frame_id, committed_url,
+                    ReadString(payload, "documentToken")))
                 return;
             if (expected_ready_navigation || first_renderer_navigation) {
                 m_ready_to_show_armed = true;
@@ -2579,14 +2618,25 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         }
         const std::string url = ReadString(payload, "url");
         const std::string method = ReadString(payload, "method");
-        const std::string token = ReadString(payload, "navigationToken");
-        const bool document_request =
-            payload.FindBool("isDocument").value_or(false);
+        const base::Value::Dict* native_context = event.FindDict("brokerContext");
+        uint64_t parent_id = 0;
+        const std::optional<bool> main_frame = native_context
+            ? native_context->FindBool("isMainFrame") : std::nullopt;
+        const std::optional<bool> native_document = native_context
+            ? native_context->FindBool("isDocument") : std::nullopt;
+        if (!native_context || !main_frame || !native_document
+            || !ReadFrameIdentity(*native_context, "parentFrameId", &parent_id, true)) {
+            m_renderer->Respond(request_id, {}, "Invalid native broker context");
+            return;
+        }
+        const std::string token = ReadString(*native_context, "navigationToken");
+        const bool document_request = *native_document;
         if (document_request && !m_pending_main_navigation.token.empty()
             && token == m_pending_main_navigation.token
             && SameDocumentUrl(url, m_pending_main_navigation.url)
             && method == m_pending_main_navigation.method) {
-            if (!registerRendererFrame(frame_id, 0, true)) {
+            if (!*main_frame || parent_id
+                || !registerRendererFrame(frame_id, 0, true)) {
                 m_renderer->Respond(request_id, {},
                     "Main navigation frame identity changed");
                 return;
@@ -2601,9 +2651,15 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             return;
         }
         RendererFrameState& frame = m_renderer_frames.at(frame_id);
+        if (frame.parent_id != parent_id || frame.main_frame != *main_frame) {
+            m_renderer->Respond(request_id, {}, "Native broker frame context changed");
+            return;
+        }
         ApiSession::BrokerFrameContext context;
         context.frame_id = frame_id;
         context.frame_generation = frame.generation;
+        context.is_main_frame = frame.main_frame;
+        context.is_document = document_request;
         context.committed_url = frame.committed_url;
         context.committed_origin = frame.committed_origin;
         auto top = m_renderer_frames.find(m_main_frame_id);
@@ -2635,12 +2691,17 @@ void WebContents::onRendererEvent(base::Value::Dict event)
             context.navigation_initiator_origin =
                 frame.navigation.initiator_origin;
             context.browser_approved_navigation = true;
+            context.navigation_token = frame.navigation.token;
             context.browser_initiated_navigation =
                 frame.navigation.browser_initiated;
-        } else if (frame.committed_url.empty()) {
+        } else if (frame.committed_document_token.empty()
+            || ReadString(*native_context, "documentToken")
+                != frame.committed_document_token) {
             m_renderer->Respond(request_id, {},
-                "Frame has not committed an authorized document");
+                "Broker request belongs to an uncommitted or replaced document");
             return;
+        } else {
+            context.navigation_token = frame.committed_navigation_token;
         }
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
         if (ReadString(payload, "kind") == "clipboard") {

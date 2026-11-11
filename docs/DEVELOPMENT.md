@@ -8,7 +8,7 @@ Platform prerequisites and API coverage: [Windows](WINDOWS.md) · [macOS](MACOS.
 
 ## Shared Electron example
 
-Python 3.10 or newer is required on macOS; Windows requires Python 3.12 or newer.
+Python 3.11 or newer is required on macOS (`hashlib.file_digest` verifies Dawn dependencies); Windows requires Python 3.12 or newer.
 From the repository root, on either supported OS:
 
 ```sh

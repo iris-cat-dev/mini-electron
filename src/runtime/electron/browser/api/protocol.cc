@@ -22,6 +22,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "url/gurl.h"
+#include "src/runtime/electron/browser/api/web_contents.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -313,7 +314,8 @@ public:
         info.brokerReply(std::move(result), {});
     }
 
-    void handleBrokerRequest(int contentsId, uint64_t frameId,
+    void handleBrokerRequest(int contentsId,
+        const ApiSession::BrokerFrameContext& frameContext,
         const base::Value::Dict& payload, BrokerReply reply) override
     {
         const std::string* requestUrl = payload.FindString("url");
@@ -348,12 +350,34 @@ public:
         base::Value::Dict requestData = payload.Clone();
         requestData.Remove("kind");
         requestData.Set("contentsId", contentsId);
-        requestData.Set("frameId", base::NumberToString(frameId));
+        requestData.Set("frameId", base::NumberToString(frameContext.frame_id));
+        requestData.Set("isMainFrame", frameContext.is_main_frame);
+        requestData.Set("isDocument", frameContext.is_document);
+        requestData.Set("navigationToken", frameContext.navigation_token);
         auto ownedRequestData =
             std::make_shared<base::Value::Dict>(std::move(requestData));
         content::ThreadCall::callUiThreadAsync(FROM_HERE,
-            [this, handlerId, requestId,
+            [this, handlerId, requestId, contentsId,
+             frameId = frameContext.frame_id,
+             generation = frameContext.frame_generation,
+             isDocument = frameContext.is_document,
              requestData = std::move(ownedRequestData)] {
+                WebContents* contents = WebContents::fromId(contentsId);
+                if (!contents || !contents->isBrokerRequestCurrent(frameId,
+                        generation, *requestData->FindString("navigationToken"),
+                        isDocument)) {
+                    BrokerReply cancelled;
+                    {
+                        base::AutoLock autoLock(m_lock);
+                        auto pending = m_pendingResponses.find(requestId);
+                        if (pending == m_pendingResponses.end())
+                            return;
+                        cancelled = std::move(pending->second.brokerReply);
+                        m_pendingResponses.erase(pending);
+                    }
+                    cancelled({}, "Protocol source document was replaced before dispatch");
+                    return;
+                }
                 auto isolate = v8::Isolate::GetCurrent();
                 if (!isolate)
                     return;

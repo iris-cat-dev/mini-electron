@@ -24,11 +24,13 @@ namespace mini_electron {
 
 
 LoaderFactoryImpl::LoaderFactoryImpl(int64_t mbwebviewId,
-    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame)
+    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame,
+    const base::UnguessableToken& documentToken)
     : m_engineViewId(mbwebviewId)
     , m_frameId(frameId)
     , m_parentFrameId(parentFrameId)
     , m_isMainFrame(isMainFrame)
+    , m_documentToken(documentToken)
 {
 }
 
@@ -41,7 +43,8 @@ std::unique_ptr<blink::URLLoader> LoaderFactoryImpl::CreateURLLoader(
 {
     auto loader = std::make_unique<WebURLLoaderImplCurl>(std::move(freezableTaskRunnerHandle),
         std::move(unfreezableTaskRunnerHandle), m_terminateSyncLoadEvent,
-        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame);
+        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame,
+        m_documentToken);
     loader->SetIsOfflineMode(m_isOfflineMode);
     return loader;
 }

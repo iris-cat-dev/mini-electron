@@ -112,6 +112,8 @@ public:
     static void init(v8::Isolate*, v8::Local<v8::Object>, node::Environment*);
     static WebContents* create(v8::Isolate*, gin_helper::Dictionary, WindowInterface* owner);
     static WebContents* fromId(int id);
+    bool isBrokerRequestCurrent(uint64_t frame_id, uint64_t generation,
+        const std::string& navigation_token, bool is_document) const;
     static bool sendRendererMessage(int contents_id, const std::string& method,
         base::Value::Dict params);
     // The packaged/default application directory that renderer file loads may
@@ -268,6 +270,10 @@ private:
         bool main_frame = false;
         std::string committed_url;
         std::string committed_origin;
+        // The approved navigation survives one-shot authorization consumption.
+        std::string committed_navigation_token;
+        // Actual Blink Document.Token(), including intrinsic/replacement docs.
+        std::string committed_document_token;
         std::string response_url;
         RendererNavigation navigation;
     };
@@ -281,7 +287,8 @@ private:
         const std::string& method);
     bool registerRendererFrame(uint64_t frame_id, uint64_t parent_id,
         bool main_frame);
-    bool commitRendererFrame(uint64_t frame_id, const std::string& url);
+    bool commitRendererFrame(uint64_t frame_id, const std::string& url,
+        const std::string& document_token);
     void retireRendererFrameSockets(uint64_t frame_id);
     bool isRendererFrameCurrent(uint64_t frame_id) const;
 #if BUILDFLAG(IS_WIN)

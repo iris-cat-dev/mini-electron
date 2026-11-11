@@ -3,11 +3,13 @@
 
 #import <AppKit/AppKit.h>
 #import <objc/runtime.h>
+#include <dispatch/dispatch.h>
 
 #include "src/platform/macos/electron/mac_platform_apis.h"
 #include "src/platform/macos/electron/mac_electron_bindings.h"
 
 #include <algorithm>
+#include <memory>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -542,21 +544,50 @@ v8::Local<v8::Function> DialogCallback(v8::Isolate* isolate,
   return {};
 }
 
-NSArray<NSString*>* RunOpenPanel(v8::Local<v8::Context> context,
-                                 v8::Local<v8::Object> options, bool save) {
+NSSavePanel* ConfigureFilePanel(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> options, bool save) {
   NSSavePanel* panel = save ? [NSSavePanel savePanel] : [NSOpenPanel openPanel];
   const std::string title = Text(context, options, "title");
   const std::string default_path = Text(context, options, "defaultPath");
   if (!title.empty()) panel.title = NSStringFrom(title);
+  const std::string message = Text(context, options, "message");
+  const std::string button_label = Text(context, options, "buttonLabel");
+  if (!message.empty()) panel.message = NSStringFrom(message);
+  if (!button_label.empty()) panel.prompt = NSStringFrom(button_label);
+  panel.showsHiddenFiles = Boolean(context, options, "showsHiddenFiles", false);
+  v8::Local<v8::Value> filters = Get(context, options, "filters");
+  if (filters->IsArray()) {
+    NSMutableArray<NSString*>* extensions = [NSMutableArray array];
+    bool allows_other_types = false;
+    v8::Local<v8::Array> array = filters.As<v8::Array>();
+    for (uint32_t index = 0; index < array->Length(); ++index) {
+      v8::Local<v8::Value> filter;
+      if (!array->Get(context, index).ToLocal(&filter) || !filter->IsObject())
+        continue;
+      v8::Local<v8::Value> values = Get(context, filter.As<v8::Object>(), "extensions");
+      if (!values->IsArray()) continue;
+      v8::Local<v8::Array> types = values.As<v8::Array>();
+      for (uint32_t type = 0; type < types->Length(); ++type) {
+        v8::Local<v8::Value> extension;
+        if (!types->Get(context, type).ToLocal(&extension) || !extension->IsString())
+          continue;
+        const std::string value = Utf8(context->GetIsolate(), extension);
+        if (value == "*") allows_other_types = true;
+        else if (!value.empty()) [extensions addObject:NSStringFrom(value)];
+      }
+    }
+    if (extensions.count) panel.allowedFileTypes = extensions;
+    panel.allowsOtherFileTypes = allows_other_types || extensions.count == 0;
+  }
   if (!default_path.empty()) {
     NSString* path = NSStringFrom(default_path);
     BOOL is_directory = NO;
     const BOOL exists = [NSFileManager.defaultManager fileExistsAtPath:path
                                                           isDirectory:&is_directory];
-    if (save && !(exists && is_directory) && ![path hasSuffix:@"/"]) {
+    if (!(exists && is_directory) && ![path hasSuffix:@"/"]) {
       panel.directoryURL = [NSURL fileURLWithPath:path.stringByDeletingLastPathComponent
                                       isDirectory:YES];
-      panel.nameFieldStringValue = path.lastPathComponent;
+      if (save) panel.nameFieldStringValue = path.lastPathComponent;
     } else {
       panel.directoryURL = [NSURL fileURLWithPath:path isDirectory:YES];
     }
@@ -564,20 +595,32 @@ NSArray<NSString*>* RunOpenPanel(v8::Local<v8::Context> context,
   if (!save) {
     NSOpenPanel* open = (NSOpenPanel*)panel;
     v8::Local<v8::Value> properties = Get(context, options, "properties");
+    bool choose_files = false;
+    bool choose_directories = false;
     if (properties->IsArray()) {
       v8::Local<v8::Array> array = properties.As<v8::Array>();
       for (uint32_t index = 0; index < array->Length(); ++index) {
         v8::Local<v8::Value> value;
         if (!array->Get(context, index).ToLocal(&value)) continue;
         const std::string property = Utf8(context->GetIsolate(), value);
-        if (property == "openDirectory") open.canChooseDirectories = YES;
+        if (property == "openFile") choose_files = true;
+        if (property == "openDirectory") choose_directories = true;
         if (property == "multiSelections") open.allowsMultipleSelection = YES;
         if (property == "createDirectory") open.canCreateDirectories = YES;
+        if (property == "noResolveAliases") open.resolvesAliases = NO;
+        if (property == "treatPackageAsDirectory") open.treatsFilePackagesAsDirectories = YES;
       }
     }
+    open.canChooseDirectories = choose_directories;
+    open.canChooseFiles = choose_files || !choose_directories;
   }
-  if ([panel runModal] != NSModalResponseOK) return @[];
-  if (save) return @[ panel.URL.path ?: @"" ];
+  return panel;
+}
+
+NSArray<NSString*>* FilePanelPaths(NSSavePanel* panel, bool save,
+                                 NSModalResponse response) {
+  if (response != NSModalResponseOK) return @[];
+  if (save) return panel.URL ? @[ panel.URL.path ] : @[];
   NSMutableArray<NSString*>* paths = [NSMutableArray array];
   for (NSURL* url in ((NSOpenPanel*)panel).URLs) [paths addObject:url.path];
   return paths;
@@ -590,11 +633,116 @@ v8::Local<v8::Array> Paths(v8::Local<v8::Context> context, NSArray<NSString*>* p
   return result;
 }
 
+class AsyncFileDialog;
+std::vector<std::shared_ptr<AsyncFileDialog>> g_file_dialogs;
+
+class AsyncFileDialog final : public std::enable_shared_from_this<AsyncFileDialog> {
+ public:
+  AsyncFileDialog(const v8::FunctionCallbackInfo<v8::Value>& info,
+                  NSSavePanel* panel, bool save)
+      : isolate_(info.GetIsolate()), panel_(panel), save_(save),
+        context_(isolate_, isolate_->GetCurrentContext()),
+        receiver_(isolate_, info.This()),
+        callback_(isolate_, DialogCallback(isolate_, info)) {
+#if !__has_feature(objc_arc)
+    [panel_ retain];
+#endif
+  }
+  ~AsyncFileDialog() {
+#if !__has_feature(objc_arc)
+    [panel_ release];
+#endif
+  }
+
+  void Begin(NSWindow* owner) {
+    auto self = shared_from_this();
+    if (owner) {
+      owner_observer_ = [NSNotificationCenter.defaultCenter
+          addObserverForName:NSWindowWillCloseNotification object:owner queue:nil
+          usingBlock:^(NSNotification*) { self->Cancel(true); }];
+#if !__has_feature(objc_arc)
+      [owner_observer_ retain];
+#endif
+    }
+    // AppKit can synchronously initialize its remote file-picker service here.
+    // Present after returning the JS Promise, without delaying owner-close guards.
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (self->completed_) return;
+      if (owner) {
+        [self->panel_ beginSheetModalForWindow:owner completionHandler:^(NSModalResponse response) {
+          self->Finish(response, true);
+        }];
+      } else {
+        [self->panel_ beginWithCompletionHandler:^(NSModalResponse response) {
+          self->Finish(response, true);
+        }];
+      }
+    });
+  }
+
+  void Cancel(bool deliver) { Finish(NSModalResponseCancel, deliver); }
+
+ private:
+  void Finish(NSModalResponse response, bool deliver) {
+    if (completed_) return;
+    // Removing the observer/registry and ending the panel can release every
+    // native holder of this operation before its JS callback has returned.
+    auto keep_alive = shared_from_this();
+    completed_ = true;
+    if (owner_observer_) {
+      [NSNotificationCenter.defaultCenter removeObserver:owner_observer_];
+#if !__has_feature(objc_arc)
+      [owner_observer_ release];
+#endif
+      owner_observer_ = nil;
+    }
+    // Mark completion before ending the native session: AppKit may reenter its
+    // completion handler synchronously. The original Promise observes dismissal.
+    if (panel_.sheetParent)
+      [panel_.sheetParent endSheet:panel_ returnCode:response];
+    else if (response != NSModalResponseOK)
+      [panel_ cancel:nil];
+    [panel_ orderOut:nil];
+    g_file_dialogs.erase(std::remove_if(g_file_dialogs.begin(), g_file_dialogs.end(),
+        [this](const auto& dialog) { return dialog.get() == this; }), g_file_dialogs.end());
+    if (deliver) {
+      RunInMainJavaScriptScope([this, response] {
+        v8::Local<v8::Context> context = context_.Get(isolate_);
+        v8::Context::Scope scope(context);
+        v8::Local<v8::Function> callback = callback_.Get(isolate_);
+        v8::Local<v8::Object> receiver = receiver_.Get(isolate_);
+        v8::Local<v8::Value> arguments[] = {
+          v8::Boolean::New(isolate_, response != NSModalResponseOK),
+          Paths(context, FilePanelPaths(panel_, save_, response))
+        };
+        context_.Reset();
+        receiver_.Reset();
+        callback_.Reset();
+        (void)callback->Call(context, receiver, 2, arguments);
+      });
+    }
+    // Shutdown may reject entry into JavaScript; clear handles before disposal.
+    context_.Reset();
+    receiver_.Reset();
+    callback_.Reset();
+  }
+
+  v8::Isolate* isolate_;
+  NSSavePanel* panel_;
+  id owner_observer_ = nil;
+  bool save_;
+  bool completed_ = false;
+  v8::Global<v8::Context> context_;
+  v8::Global<v8::Object> receiver_;
+  v8::Global<v8::Function> callback_;
+};
+
 void ShowOpen(const v8::FunctionCallbackInfo<v8::Value>& info, bool save, bool sync) {
   v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-  NSArray<NSString*>* paths = RunOpenPanel(context, DialogOptions(context, info), save);
-  v8::Local<v8::Array> values = Paths(context, paths);
+  NSSavePanel* panel = ConfigureFilePanel(context, DialogOptions(context, info), save);
   if (sync) {
+    NSArray<NSString*>* paths = FilePanelPaths(panel, save, [panel runModal]);
+    v8::Local<v8::Array> values = Paths(context, paths);
     if (save) {
       if (paths.count)
         info.GetReturnValue().Set(String(info.GetIsolate(), [paths[0] UTF8String]));
@@ -605,11 +753,24 @@ void ShowOpen(const v8::FunctionCallbackInfo<v8::Value>& info, bool save, bool s
     }
     return;
   }
-  v8::Local<v8::Function> callback = DialogCallback(info.GetIsolate(), info);
-  if (!callback.IsEmpty()) {
-    v8::Local<v8::Value> arguments[] = { v8::Boolean::New(info.GetIsolate(), paths.count == 0), values };
-    (void)callback->Call(context, info.This(), 2, arguments);
+  if (DialogCallback(info.GetIsolate(), info).IsEmpty()) {
+    info.GetIsolate()->ThrowException(v8::Exception::TypeError(
+        String(info.GetIsolate(), "File dialog requires a completion callback")));
+    return;
   }
+  NSWindow* owner = nil;
+  if (info.Length() && info[0]->IsInt32()) {
+    owner = (__bridge NSWindow*)GetNativeWindowForBrowserWindowId(
+        info[0].As<v8::Int32>()->Value());
+    if (!owner) {
+      info.GetIsolate()->ThrowException(v8::Exception::Error(
+          String(info.GetIsolate(), "File dialog owner is destroyed or unknown")));
+      return;
+    }
+  }
+  auto dialog = std::make_shared<AsyncFileDialog>(info, panel, save);
+  g_file_dialogs.push_back(dialog);
+  dialog->Begin(owner);
 }
 void DialogOpen(const v8::FunctionCallbackInfo<v8::Value>& info) { ShowOpen(info, false, false); }
 void DialogOpenSync(const v8::FunctionCallbackInfo<v8::Value>& info) { ShowOpen(info, false, true); }
@@ -869,6 +1030,10 @@ void InstallMacPlatformApiBindings(node::Environment* environment) {
 }
 
 void ShutdownMacPlatformApiBindings() {
+  // A completion block can outlive the Environment. Cancel native sessions and
+  // invalidate their V8 state first; any later AppKit completion is a no-op.
+  auto dialogs = std::move(g_file_dialogs);
+  for (const auto& dialog : dialogs) dialog->Cancel(false);
   // AppKit may retain menu items until its outer autorelease pool drains, after
   // Node has disposed the isolate. Release every V8 handle while the isolate is
   // still valid; later NSMenuItem teardown then only destroys empty handles.

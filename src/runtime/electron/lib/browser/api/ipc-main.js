@@ -4,15 +4,6 @@ function createIpcMain() {
     var ipcMain = new EventEmitter();
     ipcMain.m_invokeHandlers = new Map();
     
-    ipcMain.__origOn__ = ipcMain.on;
-    ipcMain.on = function (channel, callback) {
-        let cbStub = function (event, ...args) {
-            if (event.innnerChannel == 'ipc-render-invoke')
-                return;
-            callback(event, ...args);
-        }
-        return ipcMain.__origOn__(channel, cbStub);
-    }
     
     ipcMain.handle = function (channel, listener) { // 这里的channel是用户定义的channel
         if (ipcMain.m_invokeHandlers.has(channel)) {

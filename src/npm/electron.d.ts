@@ -244,10 +244,22 @@ export interface RenderProcessGoneDetails {
     pdbName?: string;
   };
 }
+export interface WebFrameMain {
+  /** Lossless native frame identity; routingId is a separate compatibility number. */
+  readonly nativeID: string;
+  readonly navigationToken: string | null;
+  readonly processId: number;
+  readonly routingId: number;
+  readonly url: string;
+  readonly detached: boolean;
+  readonly framesInSubtree: readonly WebFrameMain[];
+  send(channel: string, ...args: unknown[]): void;
+}
 export interface WebContents extends EventEmitter {
   readonly id: number;
   readonly session: Session;
   readonly debugger: Debugger;
+  readonly mainFrame: WebFrameMain | null;
   send(channel: string, ...args: unknown[]): void;
   loadURL(url: string, options?: { httpReferrer?: string; userAgent?: string; extraHeaders?: string; postData?: unknown[] }): Promise<void>;
   loadFile(filePath: string, options?: { query?: Record<string, string>; search?: string; hash?: string }): Promise<void>;
@@ -421,9 +433,20 @@ export const contextBridge: ContextBridge;
 export const webUtils: { getPathForFile(file: File): string };
 
 export interface ProtocolRequest { url: string; method: string; referrer: string; headers: Record<string, string>; uploadData?: Array<{ bytes?: Buffer; file?: string }> }
+export interface NativeProtocolRequestIdentity {
+  readonly contentsId: number;
+  readonly frameId: string;
+  readonly isMainFrame: boolean;
+  readonly isDocument: boolean;
+  readonly navigationToken: string;
+}
+export interface ProtocolFetchRequest extends Request {
+  /** Present only for browser-brokered requests; never populated from headers or URL fields. */
+  readonly nativeRequest?: Readonly<NativeProtocolRequestIdentity>;
+}
 export const protocol: {
   registerSchemesAsPrivileged(customSchemes: Array<{ scheme: string; privileges?: { standard?: boolean; secure?: boolean; supportFetchAPI?: boolean; bypassCSP?: boolean; allowServiceWorkers?: boolean; stream?: boolean; codeCache?: boolean } }>): void;
-  handle(scheme: string, handler: (request: Request) => Response | Promise<Response>): Promise<void>;
+  handle(scheme: string, handler: (request: ProtocolFetchRequest) => Response | Promise<Response>): Promise<void>;
   unhandle(scheme: string): Promise<void>;
 };
 export const screen: { getPrimaryDisplay(): Display; getAllDisplays(): Display[]; getDisplayNearestPoint(point: Point): Display; getCursorScreenPoint(): Point };

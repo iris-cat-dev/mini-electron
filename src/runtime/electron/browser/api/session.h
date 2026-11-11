@@ -40,6 +40,9 @@ public:
     struct BrokerFrameContext {
         uint64_t frame_id = 0;
         uint64_t frame_generation = 0;
+        std::string navigation_token;
+        bool is_main_frame = false;
+        bool is_document = false;
         std::string committed_url;
         std::string committed_origin;
         std::string top_origin;

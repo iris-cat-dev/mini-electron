@@ -78,7 +78,19 @@ Protocol.prototype.handle = function(scheme, handler) {
                 init.body = request.body;
                 init.duplex = 'half';
             }
-            return handler(new Request(request.url, init));
+            const fetchRequest = new Request(request.url, init);
+            if (request.contentsId > 0) {
+                if (!request.frameId || !request.navigationToken)
+                    throw new Error('Native protocol request has no document identity');
+                Object.defineProperty(fetchRequest, 'nativeRequest', { value: Object.freeze({
+                    contentsId: request.contentsId,
+                    frameId: request.frameId,
+                    isMainFrame: request.isMainFrame,
+                    isDocument: request.isDocument,
+                    navigationToken: request.navigationToken,
+                }) });
+            }
+            return handler(fetchRequest);
         }).then(async response => {
             if (!(response instanceof Response))
                 throw new TypeError('Protocol handler must return a Response');

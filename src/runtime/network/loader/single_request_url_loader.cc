@@ -25,7 +25,10 @@ SingleRequestURLLoader::SingleRequestURLLoader(
     scoped_refptr<WebURLRequestExtraDataWrap> extraData)
 {
     m_extraData = extraData;
-    m_loader = std::make_unique<WebURLLoaderImplCurl>(freezableTaskRunnerHandle, unfreezableTaskRunnerHandle, terminateSyncLoadEvent, m_extraData->mbwebviewId);
+    m_loader = std::make_unique<WebURLLoaderImplCurl>(freezableTaskRunnerHandle,
+        unfreezableTaskRunnerHandle, terminateSyncLoadEvent, m_extraData->mbwebviewId,
+        m_extraData->frameId, m_extraData->parentFrameId, m_extraData->isMainFrame,
+        m_extraData->documentToken);
 }
 
 SingleRequestURLLoader::~SingleRequestURLLoader()

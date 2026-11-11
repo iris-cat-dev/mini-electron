@@ -8,8 +8,10 @@
 
 #include "base/values.h"
 #include "src/runtime/electron/common/renderer_client.h"
+#include "src/runtime/electron/browser/api/session.h"
 
 namespace atom {
+
 
 class ProtocolInterface {
 public:
@@ -20,7 +22,8 @@ public:
 
     virtual bool isProtocolHandled(const std::string& scheme) = 0;
     using BrokerReply = std::function<void(base::Value::Dict, std::string)>;
-    virtual void handleBrokerRequest(int contentsId, uint64_t frameId,
+    virtual void handleBrokerRequest(int contentsId,
+        const ApiSession::BrokerFrameContext& frameContext,
         const base::Value::Dict& payload, BrokerReply reply) = 0;
     virtual std::vector<RendererPrivilegedScheme> getPrivilegedSchemes() const = 0;
     virtual ~ProtocolInterface()

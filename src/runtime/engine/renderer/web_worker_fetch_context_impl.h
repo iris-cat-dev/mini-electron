@@ -2,6 +2,7 @@
 #ifndef content_renderer_WebWorkerFetchContextImpl_h
 #define content_renderer_WebWorkerFetchContextImpl_h
 #include <cstdint>
+#include "base/unguessable_token.h"
 
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
 
@@ -15,7 +16,7 @@ class WebWorkerFetchContextImpl : public blink::WebWorkerFetchContext {
 public:
     WebWorkerFetchContextImpl(const blink::WebSecurityOrigin& orig,
         int64_t mbwebviewId, uint64_t frameId, uint64_t parentFrameId,
-        bool isMainFrame);
+        bool isMainFrame, const base::UnguessableToken& documentToken);
     ~WebWorkerFetchContextImpl() override;
     scoped_refptr<WebWorkerFetchContextImpl> Clone() const;
 
@@ -50,6 +51,7 @@ private:
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    base::UnguessableToken m_documentToken;
     bool m_isOfflineMode = false;
     std::unique_ptr<mini_electron::LoaderFactoryImpl> m_loaderFactoryImpl;
 };

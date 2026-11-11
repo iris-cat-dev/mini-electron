@@ -32,6 +32,7 @@ namespace content {
 class PolicyContainerHostImpl;
 class AssociatedInterfaceProviderImpl;
 class BlinkInterfaceRegistryImpl;
+class WebViewHost;
 
 intptr_t getFrameIdByWebLocalFrame(blink::WebLocalFrame* frame);
 intptr_t getParentFrameId(intptr_t frame);
@@ -163,6 +164,7 @@ public:
 
     void updateStateForCommit(blink::WebHistoryCommitType commitType, bool should_ReplaceCurrentEntry);
     void didCommitNavigationInternal(blink::WebHistoryCommitType commitType, bool should_ReplaceCurrentEntry);
+    void notifyDocumentCommitted(WebViewHost* webview);
     void updateNavigationHistory(blink::WebHistoryCommitType commitType, bool should_ReplaceCurrentEntry);
 
     static void loadHistoryItem(blink::WebLocalFrame* frame, const blink::WebHistoryItem& item, bool isSameDocument);

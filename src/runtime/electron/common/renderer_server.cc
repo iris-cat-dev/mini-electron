@@ -106,6 +106,7 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
@@ -133,6 +134,10 @@
 #include <unistd.h>
 #endif
 
+namespace blink {
+LocalFrame* FromFrameTokenHash(const size_t& frame_token_hash);
+}
+
 namespace atom {
 namespace {
 
@@ -143,6 +148,13 @@ std::string FrameIdString(mini_electron_web_frame_handle frame)
 {
     return base::NumberToString(
         static_cast<uint64_t>(reinterpret_cast<uintptr_t>(frame)));
+}
+
+blink::Document* NativeDocumentForFrame(mini_electron_web_frame_handle frame)
+{
+    blink::LocalFrame* local_frame = blink::FromFrameTokenHash(
+        reinterpret_cast<uintptr_t>(frame));
+    return local_frame ? local_frame->GetDocument() : nullptr;
 }
 
 bool SameNavigationResource(const std::string& approved_url,
@@ -1235,6 +1247,42 @@ private:
         std::string method;
         std::string token;
     };
+    struct NativeBrokerContext {
+        uint64_t parent_frame_id = 0;
+        bool is_main_frame = false;
+        bool is_document = false;
+        base::UnguessableToken document_token;
+        std::string navigation_token;
+    };
+
+    NativeBrokerContext CurrentBrokerContext(mini_electron_web_frame_handle frame)
+    {
+        const uint64_t frame_id = static_cast<uint64_t>(
+            reinterpret_cast<uintptr_t>(frame));
+        std::lock_guard<std::mutex> lock(navigation_lock_);
+        NativeBrokerContext context;
+        auto hierarchy = frame_hierarchy_.find(frame_id);
+        if (hierarchy != frame_hierarchy_.end()) {
+            context.parent_frame_id = hierarchy->second.first;
+            context.is_main_frame = hierarchy->second.second;
+        }
+        auto document = frame_document_tokens_.find(frame_id);
+        if (document != frame_document_tokens_.end())
+            context.document_token = document->second;
+        return context;
+    }
+
+    static base::Value::Dict SerializeBrokerContext(NativeBrokerContext context)
+    {
+        base::Value::Dict value;
+        value.Set("parentFrameId", base::NumberToString(context.parent_frame_id));
+        value.Set("isMainFrame", context.is_main_frame);
+        value.Set("isDocument", context.is_document);
+        value.Set("documentToken", context.document_token.is_empty()
+            ? std::string() : context.document_token.ToString());
+        value.Set("navigationToken", std::move(context.navigation_token));
+        return value;
+    }
 
 
     content::WebViewHost* View() const
@@ -1415,7 +1463,8 @@ private:
 
     uint64_t RequestParent(std::string type, base::Value::Dict payload,
         ParentReply callback, mini_electron_web_frame_handle frame = nullptr,
-        bool reply_on_reader_thread = false)
+        bool reply_on_reader_thread = false,
+        std::optional<NativeBrokerContext> broker_context = std::nullopt)
     {
         uint64_t id = next_parent_request_.fetch_add(1, std::memory_order_relaxed);
         {
@@ -1424,6 +1473,10 @@ private:
                 ParentReplyEntry { std::move(callback), reply_on_reader_thread });
         }
         base::Value::Dict event;
+        if (type == "broker-request") {
+            event.Set("brokerContext", SerializeBrokerContext(broker_context
+                ? std::move(*broker_context) : CurrentBrokerContext(frame)));
+        }
         event.Set("type", std::move(type));
         event.Set("contentsId", options_.contents_id);
         event.Set("frameId", FrameIdString(frame));
@@ -1515,6 +1568,8 @@ private:
                 false });
         }
         base::Value::Dict event;
+        if (type == "broker-request")
+            event.Set("brokerContext", SerializeBrokerContext(CurrentBrokerContext(frame)));
         event.Set("type", std::move(type));
         event.Set("contentsId", options_.contents_id);
         event.Set("frameId", FrameIdString(frame));
@@ -4422,11 +4477,15 @@ private:
         FrameOwners()[frame_id] = self;
         uint64_t parent_frame_id =
             mini_electron_get_parent_frame_id(view, frame);
+        blink::Document* document = NativeDocumentForFrame(frame);
+        const base::UnguessableToken document_token = document
+            ? document->Token().value() : base::UnguessableToken();
         {
             std::lock_guard<std::mutex> lock(self->navigation_lock_);
             self->frame_hierarchy_[frame_id] = {
                 parent_frame_id, is_main_frame
             };
+            self->frame_document_tokens_[frame_id] = document_token;
         }
         if (self->registered_frames_.insert(frame_id).second) {
             self->frame_document_epochs_[frame_id] = 1;
@@ -4435,6 +4494,9 @@ private:
             payload.Set("parentFrameId",
                 base::NumberToString(parent_frame_id));
             payload.Set("isMainFrame", is_main_frame);
+            payload.Set("url", document ? document->Url().GetString().Utf8() : "");
+            payload.Set("documentToken", document_token.is_empty()
+                ? std::string() : document_token.ToString());
             self->SendEvent("frame-created", std::move(payload), frame);
         }
         if (!is_main_frame && !self->options_.preload_all_frames)
@@ -4525,6 +4587,11 @@ private:
         payload.Set("url", url ? url : "");
         payload.Set("parentFrameId", base::NumberToString(parent_frame_id));
         payload.Set("isMainFrame", !!is_main_frame);
+        blink::Document* document = NativeDocumentForFrame(frame);
+        if (!document)
+            return;
+        const base::UnguessableToken document_token = document->Token().value();
+        payload.Set("documentToken", document_token.ToString());
         if (is_same_document) {
             self->SendEvent(
                 "frame-navigated-in-page", std::move(payload), frame);
@@ -4551,6 +4618,7 @@ private:
             self->frame_hierarchy_[frame_id] = {
                 parent_frame_id, !!is_main_frame
             };
+            self->frame_document_tokens_[frame_id] = document_token;
         }
         self->SendEvent("frame-committed", std::move(payload), frame);
     }
@@ -4661,6 +4729,7 @@ private:
             std::lock_guard<std::mutex> lock(self->navigation_lock_);
             self->pending_navigations_.erase(frame_id);
             self->frame_hierarchy_.erase(frame_id);
+            self->frame_document_tokens_.erase(frame_id);
         }
         self->loading_states_.erase(static_cast<uintptr_t>(frame_id));
         if (!self->closing_)
@@ -5269,15 +5338,19 @@ private:
                 == MINI_ELECTRON_RESOURCE_TYPE_MAIN_FRAME
             || canonical_resource_type
                 == MINI_ELECTRON_RESOURCE_TYPE_SUB_FRAME;
-        request.Set("isDocument", is_document_request);
+        NativeBrokerContext broker_context;
+        broker_context.parent_frame_id = request_info.parent_frame_id;
+        broker_context.is_main_frame = !!request_info.is_main_frame;
+        broker_context.is_document = is_document_request;
+        broker_context.document_token =
+            static_cast<mini_electron::WebURLLoaderInternal*>(job)->m_documentToken;
         if (is_document_request) {
-            std::string navigation_token = self->TakePendingNavigation(
+            broker_context.navigation_token = self->TakePendingNavigation(
                 request_info.frame_id, url.spec(), method_string);
-            if (navigation_token.empty()) {
+            if (broker_context.navigation_token.empty()) {
                 mini_electron_net_cancel_request(job);
                 return TRUE;
             }
-            request.Set("navigationToken", std::move(navigation_token));
         }
         if (url.SchemeIs("mini-electron-broker")) {
             request.Set("kind", "file");
@@ -5285,13 +5358,16 @@ private:
             request.Set("token", url.host());
             request.Set("offset", 0);
             request.Set("length", 16 * 1024 * 1024);
-        } else if (network) {
-            request.Set("kind", "network");
-            request.Set("operation", "request");
+        } else {
+            request.Set("kind", network ? "network" : "protocol");
+            if (network)
+                request.Set("operation", "request");
             request.Set("url", url.spec());
             request.Set("method", method_string);
-            const char* referrer = mini_electron_net_get_referrer(job);
-            request.Set("referrer", referrer ? referrer : "");
+            if (network) {
+                const char* referrer = mini_electron_net_get_referrer(job);
+                request.Set("referrer", referrer ? referrer : "");
+            }
             base::Value::Dict headers;
             for (const mini_electron_slist* item =
                     mini_electron_net_get_raw_http_head_in_blink_thread(job);
@@ -5308,11 +5384,6 @@ private:
                     line.substr(value_start));
             }
             request.Set("headers", std::move(headers));
-        } else {
-            request.Set("kind", "protocol");
-            request.Set("url", url.spec());
-            request.Set("method", "GET");
-            request.Set("headers", base::Value::Dict());
         }
         const int job_id =
             static_cast<mini_electron::WebURLLoaderInternal*>(job)->m_id;
@@ -5322,7 +5393,7 @@ private:
                 renderer_protocol::kMaxMessageBytes,
                 base::BindOnce(
                     [](base::WeakPtr<RendererServerImpl> self, int job_id,
-                        base::Value::Dict request,
+                        base::Value::Dict request, NativeBrokerContext broker_context,
                         std::vector<uint8_t> body, std::string error) {
                         mini_electron::AutoLockJob lock(
                             mini_electron::WebURLLoaderManager::sharedInstance(), job_id);
@@ -5337,17 +5408,20 @@ private:
                         const auto request_frame =
                             reinterpret_cast<mini_electron_web_frame_handle>(
                                 static_cast<uintptr_t>(job->m_frameId));
-                        self->SendBrokerRequest(job_id, std::move(request), request_frame);
+                        self->SendBrokerRequest(job_id, std::move(request), request_frame,
+                            std::move(broker_context));
                     }, self->weak_factory_.GetWeakPtr(), job_id,
-                    std::move(request)));
+                    std::move(request), std::move(broker_context)));
         } else {
-            self->SendBrokerRequest(job_id, std::move(request), request_frame);
+            self->SendBrokerRequest(job_id, std::move(request), request_frame,
+                std::move(broker_context));
         }
         return TRUE;
     }
 
     void SendBrokerRequest(int job_id, base::Value::Dict request,
-        mini_electron_web_frame_handle request_frame)
+        mini_electron_web_frame_handle request_frame,
+        NativeBrokerContext broker_context)
     {
         mini_electron::AutoLockJob lock(
             mini_electron::WebURLLoaderManager::sharedInstance(), job_id);
@@ -5404,7 +5478,7 @@ private:
                     }
                     mini_electron_net_continue_job(job);
                 });
-            }, request_frame)) {
+            }, request_frame, false, std::move(broker_context))) {
             mini_electron_net_cancel_request(job);
         }
     }
@@ -5474,6 +5548,7 @@ private:
     std::mutex navigation_lock_;
     std::map<uint64_t, PendingNavigation> pending_navigations_;
     std::map<uint64_t, std::pair<uint64_t, bool>> frame_hierarchy_;
+    std::map<uint64_t, base::UnguessableToken> frame_document_tokens_;
     std::map<uint64_t, uint64_t> frame_document_epochs_;
     std::set<uint64_t> registered_frames_;
     std::map<uintptr_t, std::unique_ptr<SandboxPreloadHost>> preload_hosts_;

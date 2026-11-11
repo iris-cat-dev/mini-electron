@@ -106,7 +106,8 @@ public:
 class LoaderFactoryImpl final : public blink::URLLoaderFactory {
 public:
     LoaderFactoryImpl(int64_t mbwebviewId, uint64_t frameId,
-        uint64_t parentFrameId, bool isMainFrame);
+        uint64_t parentFrameId, bool isMainFrame,
+        const base::UnguessableToken& documentToken);
 
     // URLLoaderFactory implementation:
     std::unique_ptr<blink::URLLoader> CreateURLLoader(const network::ResourceRequest& request,
@@ -127,6 +128,7 @@ private:
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    base::UnguessableToken m_documentToken;
     bool m_isOfflineMode = false;
 };
 

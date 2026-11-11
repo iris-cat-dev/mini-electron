@@ -3548,6 +3548,14 @@ v8::Local<v8::Object> GetBrowserWindowForNativeWindow(void* native_window) {
   return {};
 }
 
+void* GetNativeWindowForBrowserWindowId(int window_id) {
+  for (MacBrowserWindow* window : State().windows) {
+    if (window->getId() == window_id && !window->isClosed())
+      return window->getNativeWindowHandle();
+  }
+  return nullptr;
+}
+
 void EmitWebContentsCreated(v8::Isolate* isolate,
                            v8::Local<v8::Object> contents) {
   if (!CanEmitAppEvent(State()))

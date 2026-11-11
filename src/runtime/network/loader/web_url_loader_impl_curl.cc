@@ -93,7 +93,7 @@ WebURLLoaderImplCurl::WebURLLoaderImplCurl(
     scoped_refptr<base::SingleThreadTaskRunner> unfreezableTaskRunnerHandle, 
     base::WaitableEvent* terminateSyncLoadEvent,
     int64_t mbwebviewId, uint64_t frameId, uint64_t parentFrameId,
-    bool isMainFrame)
+    bool isMainFrame, const base::UnguessableToken& documentToken)
     : m_freezableTaskRunner(std::move(freezableTaskRunnerHandle))
     , m_unfreezableTaskRunner(std::move(unfreezableTaskRunnerHandle))
     , m_terminateSyncLoadEvent(terminateSyncLoadEvent)
@@ -101,6 +101,7 @@ WebURLLoaderImplCurl::WebURLLoaderImplCurl(
     , m_frameId(frameId)
     , m_parentFrameId(parentFrameId)
     , m_isMainFrame(isMainFrame)
+    , m_documentToken(documentToken)
 {
     CHECK(m_engineViewId > 0);
     m_jobId = -1;
@@ -205,7 +206,7 @@ void WebURLLoaderImplCurl::LoadAsynchronously(
     job->m_frozen = m_mode != blink::LoaderFreezeMode::kNone;
     job->m_engineViewId = mbwebviewId;
     job->setRequestFrameMetadata(blink::mojom::RequestContextFrameType::kNone,
-        m_frameId, m_parentFrameId, m_isMainFrame);
+        m_frameId, m_parentFrameId, m_isMainFrame, m_documentToken);
     //job->m_dataPipeProducerHandle = extraDataWrap->dataPipeProducerHandle;
     //job->m_downloadName = extraDataWrap->releaseDownloadName();
 
@@ -268,7 +269,7 @@ void WebURLLoaderImplCurl::LoadSynchronously(
         = new mini_electron::WebURLLoaderInternal(netManager->getIoThread(type), this, std::move(request), &syncLoader, false, shouldContentSniffURL(url));
     job->m_engineViewId = m_engineViewId;
     job->setRequestFrameMetadata(blink::mojom::RequestContextFrameType::kNone,
-        m_frameId, m_parentFrameId, m_isMainFrame);
+        m_frameId, m_parentFrameId, m_isMainFrame, m_documentToken);
     netManager->dispatchSynchronousJob(job, m_terminateSyncLoadEvent);
     data = WTF::SharedBuffer::Create(base::span<const unsigned char>((const unsigned char*)buffer.data(), buffer.size()));
     memset(buffer.data(), 0, buffer.size());
@@ -372,7 +373,8 @@ void WebURLLoaderImplCurl::LoadAsynchronouslyEx(
     job->m_engineViewId = mbwebviewId;
     job->m_dataPipeProducerHandle = extraDataWrap->dataPipeProducerHandle;
     job->setRequestFrameMetadata(extraDataWrap->frameType, extraDataWrap->frameId,
-        extraDataWrap->parentFrameId, extraDataWrap->isMainFrame);
+        extraDataWrap->parentFrameId, extraDataWrap->isMainFrame,
+        extraDataWrap->documentToken);
     if (m_autoFollowRedirects)
         job->m_downloadName = extraDataWrap->releaseDownloadName();
     else if (extraDataWrap->downloadName)

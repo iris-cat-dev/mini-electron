@@ -15,14 +15,16 @@ namespace content {
 
 WebWorkerFetchContextImpl::WebWorkerFetchContextImpl(
     const blink::WebSecurityOrigin& orig, int64_t mbwebviewId,
-    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame)
+    uint64_t frameId, uint64_t parentFrameId, bool isMainFrame,
+    const base::UnguessableToken& documentToken)
     : m_orig(blink::WebSecurityOrigin::CreateFromString(orig.ToString()))
     , m_engineViewId(mbwebviewId)
     , m_frameId(frameId)
     , m_parentFrameId(parentFrameId)
     , m_isMainFrame(isMainFrame)
+    , m_documentToken(documentToken)
     , m_loaderFactoryImpl(new mini_electron::LoaderFactoryImpl(
-          mbwebviewId, frameId, parentFrameId, isMainFrame))
+          mbwebviewId, frameId, parentFrameId, isMainFrame, documentToken))
 {
 }
 
@@ -34,7 +36,8 @@ WebWorkerFetchContextImpl::~WebWorkerFetchContextImpl()
 scoped_refptr<WebWorkerFetchContextImpl> WebWorkerFetchContextImpl::Clone() const
 {
     auto context = base::AdoptRef(new WebWorkerFetchContextImpl(
-        m_orig, m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame));
+        m_orig, m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame,
+        m_documentToken));
     context->SetIsOfflineMode(m_isOfflineMode);
     return context;
 }
@@ -58,7 +61,8 @@ std::unique_ptr<blink::URLLoaderFactory> WebWorkerFetchContextImpl::WrapURLLoade
     blink::CrossVariantMojoRemote<network::mojom::URLLoaderFactoryInterfaceBase> url_loader_factory)
 {
     auto loaderFactory = std::make_unique<mini_electron::LoaderFactoryImpl>(
-        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame);
+        m_engineViewId, m_frameId, m_parentFrameId, m_isMainFrame,
+        m_documentToken);
     loaderFactory->SetIsOfflineMode(m_isOfflineMode);
     return loaderFactory;
 }
@@ -77,6 +81,7 @@ void WebWorkerFetchContextImpl::FinalizeRequest(blink::WebURLRequest& request)
     extraData->frameId = m_frameId;
     extraData->parentFrameId = m_parentFrameId;
     extraData->isMainFrame = m_isMainFrame;
+    extraData->documentToken = m_documentToken;
 
     blink::WebURLRequest* req = (blink::WebURLRequest*)(&request);
     req->SetURLRequestExtraData(extraData);

@@ -2385,7 +2385,8 @@ WebURLLoaderInternal::WebURLLoaderInternal(base::Thread* ioThread, WebURLLoaderI
     RequestFrameMetadata frameMetadata;
     if (TakeRequestFrameMetadata(&frameMetadata)) {
         setRequestFrameMetadata(frameMetadata.frameType, frameMetadata.frameId,
-            frameMetadata.parentFrameId, frameMetadata.isMainFrame);
+            frameMetadata.parentFrameId, frameMetadata.isMainFrame,
+            frameMetadata.documentToken);
     }
     GURL url = m_firstRequest->url;
     m_user = url.username();

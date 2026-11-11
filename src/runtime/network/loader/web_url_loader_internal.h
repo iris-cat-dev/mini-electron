@@ -40,6 +40,7 @@
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "base/atomicops.h"
 #include "base/functional/callback_helpers.h"
+#include "base/unguessable_token.h"
 #include "third_party/libcurl/include/curl/curl.h"
 #include "base/threading/thread.h"
 #include <windows.h>
@@ -79,6 +80,7 @@ struct RequestFrameMetadata {
     uint64_t frameId = 0;
     uint64_t parentFrameId = 0;
     bool isMainFrame = false;
+    base::UnguessableToken documentToken;
 };
 
 void RegisterRequestFrameMetadata(RequestFrameMetadata metadata);
@@ -167,12 +169,14 @@ public:
     void resetFirstRequest(std::unique_ptr<network::ResourceRequest>&& newRequest);
     void setRequestFrameMetadata(
         blink::mojom::RequestContextFrameType frameType, uint64_t frameId,
-        uint64_t parentFrameId, bool isMainFrame)
+        uint64_t parentFrameId, bool isMainFrame,
+        const base::UnguessableToken& documentToken)
     {
         m_frameType = frameType;
         m_frameId = frameId;
         m_parentFrameId = parentFrameId;
         m_isMainFrame = isMainFrame;
+        m_documentToken = documentToken;
     }
 
 
@@ -247,6 +251,8 @@ public:
     uint64_t m_frameId = 0;
     uint64_t m_parentFrameId = 0;
     bool m_isMainFrame = false;
+    // Captured by the native initiating document, before any asynchronous IO.
+    base::UnguessableToken m_documentToken;
     std::string m_requestInitiator;
 
     std::unique_ptr<String> m_downloadName;

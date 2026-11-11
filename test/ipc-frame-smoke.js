@@ -21,7 +21,7 @@ function finish(error) {
   clearTimeout(deadline);
   fs.rmSync(temporary, { recursive: true, force: true });
   if (error) console.error(error.stack || error);
-  else console.log('PASS: IPC frame authorization, identity, detachment, and target-only delivery');
+  else console.log('PASS: IPC listener cleanup, frame authorization, identity, detachment, and target-only delivery');
   app.exit(error ? 1 : 0);
 }
 const deadline = setTimeout(() => finish(new Error('Native IPC frame smoke timed out')), 20000);
@@ -99,6 +99,20 @@ async function exerciseFocusedFrameDetach() {
 
 
 app.whenReady().then(async () => {
+  let removedCalls = 0;
+  let onceCalls = 0;
+  const removedListener = () => { removedCalls++; };
+  ipcMain.on('smoke:removed-listener', removedListener);
+  ipcMain.removeListener('smoke:removed-listener', removedListener);
+  ipcMain.once('smoke:once-listener', () => { onceCalls++; });
+  ipcMain.handle('smoke:listener-lifetime', event => {
+    assert.equal(event.senderFrame, window.webContents.mainFrame);
+    assert.equal(removedCalls, 0, 'A removed listener must not consume later renderer IPC');
+    assert.equal(onceCalls, 1, 'A once listener must consume exactly one renderer message');
+    assert.equal(ipcMain.listenerCount('smoke:once-listener'), 0,
+      'A consumed once listener must release its closure');
+    return { removedCalls, onceCalls };
+  });
   const preload = path.join(temporary, 'preload.js');
   fs.writeFileSync(preload, `const {contextBridge,ipcRenderer}=require('electron');
     const role = new URL(location.href).pathname.slice(1) || 'main';
@@ -129,6 +143,12 @@ app.whenReady().then(async () => {
     }
     contextBridge.exposeInMainWorld('frameSmoke', {
       inspect: role => ipcRenderer.invoke('smoke:inspect', role),
+      listenerLifetime: () => {
+        ipcRenderer.send('smoke:removed-listener');
+        ipcRenderer.send('smoke:once-listener');
+        ipcRenderer.send('smoke:once-listener');
+        return ipcRenderer.invoke('smoke:listener-lifetime');
+      },
       report: (role, error) => ipcRenderer.send('smoke:report', role, error)
     });`);
   ipcMain.handle('smoke:inspect', (event, role) => {
@@ -188,6 +208,10 @@ app.whenReady().then(async () => {
       (async () => {
         const role = ${JSON.stringify(role)};
         try {
+          if (role === 'main') {
+            const lifetime = await frameSmoke.listenerLifetime();
+            if (lifetime.removedCalls !== 0 || lifetime.onceCalls !== 1) throw new Error('Invalid IPC listener lifetime');
+          }
           for (let i = 0; i < 2; ++i) {
             const result = await frameSmoke.inspect(role);
             if (result.authorized !== (role === 'main' || role === 'second')) throw new Error('Incorrect main-frame authorization');
