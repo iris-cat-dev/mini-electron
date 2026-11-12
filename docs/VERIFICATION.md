@@ -8,6 +8,58 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.40 (2026-11-12)
+
+Built normal `Release|x64` with `python build.py --jobs 8 --package-dist`,
+including the Windows ownership fixes and shared macOS `0.1.39` changes.
+The final runtime ZIP was extracted to `out/verification/windows-0.1.40/runtime/`;
+only its `electron.exe` was used for the final archive regression.
+
+Runtime/metadata identity: `0.1.40`, Electron API `41.2.0`, Node `24.0.0-pre`,
+ABI `134`, installer protocol `1`, `win32`/`x64`. All 53 declared file hashes
+matched, with native clipboard, async-context and async-storage capabilities.
+EXE SHA-256:
+`7914daa9f1e9c5406880e9fdaf357034c060e027bd8e3eea7ce5f3acdf77eaa3`.
+
+The full PDB's GUID is `903A1B48D09BAF894C4C44205044422E`, Age `1`, SHA-256
+`a849bfad61b2bc4e228feaaf9d499bc48614297df2f9c45f0265c7a5a3f9e3e0`.
+`llvm-pdbutil dump -summary` reports debug info, types, IDs, globals and publics,
+no conflicting types, and `Is stripped: false`. The symbol store retains the
+exact archived EXE/PDB pair under
+`out/windows-x64/symbols/mini-electron.pdb/903A1B48D09BAF894C4C44205044422E1`.
+Assembly validated the renamed distribution EXE against this pair. The final
+symbols ZIP contains only the PDB and `symbols.json`; streaming the archived PDB
+reproduced its hash. The installable runtime ZIP contains no symbols.
+
+Passed against the final extracted executable:
+
+- Runtime identity/platform/architecture/ABI/protocol/features.
+- IPC frame/listener lifetime, native protocol identity/forged-header isolation,
+  Range `206`/`416`, binary resources and document navigation lifetime, each in
+  default sandbox and `--single-process` modes.
+- Full Windows native file-dialog matrix: exact owner, Node progress, native
+  open/save acceptance/cancel, destroyed-owner rejection, active and queued
+  close/destroy cancellation, callback reentry and exactly-once completion.
+- Pending and queued `app.exit`/`app.quit`, including exit-listener-created dialogs.
+- Async-context and Promise-hook ordering, native build/heap layout, SQLite/FTS5
+  and Worker regressions in Node-only and application modes.
+- All six isolated broker-storage phases, including deliberately failing
+  persistence with expected exit status `1`.
+
+The four local release assets:
+
+| Asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `mini-electron-v0.1.40-win32-x64.zip` | 39,647,458 | `73c3f13c2c205361e985cf3365d20689d5c4556084b57c55a92ccb4f81d6f07f` |
+| `mini-electron-v0.1.40-win32-x64-symbols.zip` | 258,990,059 | `196c6ca35ed5c7a5314503c0dbbbc698c20318e9e64e4e91d8eeccbce779bede` |
+| `artifacts.json` | 528 | `0e6280e1a25714e3ae8203925997fe58c19eb7b82f5ae69108d04af7e9160eb6` |
+| `SHASUMS256.txt` | 214 | `dc0d5d28d7a084672ac8f5ea429b9c4e4364a61ba1d41a8058e15982fe5a9830` |
+
+Assets are assembled under `out/runtime-release-0.1.40/v0.1.40/`; evidence is
+under `out/verification/windows-0.1.40/`. npm installer `0.1.13`, macOS binaries,
+installed Desktop and the macOS `runtime-v1` channel were not changed.
+Windows 11, physical human file-picker interaction and macOS were not exercised.
+
 ## npm installer 0.1.13 (2026-11-12)
 
 Assembled `out/npm-release-0.1.13/npm-package` using the existing release
@@ -43,6 +95,60 @@ resolved package-root `dist`; the installed `node_modules/.bin/mini-electron`
 launched the runtime and reported Node `24.0.0-pre`, ABI `134` and arm64.
 Public consumption evidence is under `out/verification/npm-0.1.13/public-install/`.
 
+## Windows source parity with macOS 0.1.39 (2026-11-12)
+
+Fast-forwarded `main` from `8be282e56` to `155dd50c5`, then supplemented Windows
+asynchronous file-dialog ownership/shutdown handling. IPC listener lifetime,
+frame/document identity, protocol identity and request-header transport already
+use shared sources; no duplicate Windows implementation was added.
+
+Built normal `Release|x64` with `python build.py --jobs 8`, LLVM 22, the existing
+MSVC/SDK, and the repository's GN/Ninja/CMake tools. Source-verification executable:
+`out/windows-x64/mini-electron.exe`, SHA-256
+`c66055e2a363da118eb9b2b34ee1fd301af27d77268086f9c48066f7951acc70`.
+Application mode reported runtime `0.1.39`, Electron API `41.2.0`, Node
+`24.0.0-pre`, ABI `134`, `win32`/`x64`. This is a local source candidate, not a
+published Windows `0.1.39` distribution: the Windows archive/channel remains
+`0.1.37`, and npm, installed Desktop and existing release assets were unchanged.
+
+Observed against the old executable before rebuilding:
+
+- A removed `ipcMain` listener still consumed renderer messages.
+- Open-dialog requests naming a destroyed owner stayed pending instead of
+  rejecting.
+
+An intermediate ownership implementation exposed a native close deadlock.
+CDB showed the UI thread joining the dialog worker while the worker remained
+inside `comdlg32`'s modal loop. `IFileDialog::Close` returned `S_OK` without
+dismissing that dialog during owner destruction; posting `WM_CLOSE` to the actual
+owned dialog released the wait. The final implementation requests that native
+closure on the dialog's STA and rechecks canceled state through file-dialog
+initialization events, rather than relying on `Close` or timer polling.
+
+Passed on the final executable:
+
+| Scenario | Exercised result |
+| --- | --- |
+| `ipc-frame-smoke.js`, default sandbox and `--single-process` | Listener removal/once, frame authority/identity, detachment and targeted delivery |
+| `protocol-identity-smoke.js`, both process modes | Frozen native identity, distinct windows/subframes, forged-header isolation, headers, binary resources, Range `206`/`416`, document replacement |
+| `same-document-navigation-smoke.js`, both process modes | History preserves document/preload/frame identity; custom-protocol and HTTP reload replace it |
+| `windows-owned-dialog-smoke.js`, full matrix | Exact owner HWND, Node progress, open/save native acceptance/cancel, active and queued owner close/destroy, destroyed-owner rejection, once-only and reentrant completion, ownerless dialog |
+| Dialog launcher shutdown phases | Pending and queued `app.exit`/`app.quit` exit successfully, including a dialog created by an exit listener |
+| External Win32 synchronous open/save smoke | Both actual dialogs cancel and return `undefined`; Node timers do not run before the synchronous call returns |
+| `broker-storage-persistence-smoke.js`, all six phases | Ordering, no-op suppression, flush/restart/quit/exit durability; deliberate persistence failure retains expected exit code `1` |
+
+Evidence is under `out/verification/windows-mac-parity/`: final frame/navigation
+results, `protocol-final-*`, `dialogs-verified`, `sync-dialogs/final-result.json`,
+`storage-final`, candidate identity and before/after/close-diagnostic records.
+The isolated launchers preserve Windows known-folder environment variables;
+overriding them made `SHGetFolderPath` fail before main. They redirect native
+paths before sessions/windows and remove only the fresh empty startup namespace.
+The native helper recognizes both classic-open and DirectUI-save filename
+controls, validates fixture PID/HWND/title, and checks the returned Unicode path.
+
+No Windows release packaging/publishing, Windows 11 qualification, physical
+human file-picker interaction or macOS rerun was performed.
+
 ## macOS runtime 0.1.39 (2026-11-12)
 
 The plugin runtime changes in `adca57273` were fast-forwarded into `main`.
@@ -61,7 +167,7 @@ Passed using the extracted executable and dedicated HOME/user-data fixtures:
 
 - Complete `ipc-frame-smoke.js`: listener removal/once, frame authorization,
   stable identity, navigation detachment and target-only delivery.
-- Complete `macos-protocol-identity-smoke.js`: readonly identity across windows
+- Complete `protocol-identity-smoke.js`: readonly identity across windows
   and subframes, forged-header isolation, transported headers, Range `206`/`416`,
   binary resources and document replacement.
 - Focused real AppKit open/save sheets: exact native owner, options, Node timer

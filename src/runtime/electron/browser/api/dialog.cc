@@ -21,6 +21,10 @@
 #include <Shlobj.h>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <atomic>
+#include <memory>
+#include <mutex>
 
 //struct __declspec(uuid("00000000-0000-0000-c000-000000000046")) IFileOpenDialog;
 namespace content {
@@ -94,22 +98,279 @@ public:
     typedef std::pair<std::string, std::vector<std::string>> Filter;
     typedef std::vector<Filter> Filters;
 
-    struct ShowOpenOrSaveDialogThreadInfo {
-        bool isOpenOrSave;
+    // This state crosses the STA boundary; it deliberately contains no V8 handles.
+    struct FileDialogState {
+        bool isOpenOrSave = true;
         std::string title;
         std::string defaultPath;
         std::string buttonLabel;
         Filters filters;
-        int fileDialogProperty;
-        v8::Isolate* isolate;
-        v8::Persistent<v8::Object> recv;
-        v8::Persistent<v8::Function> callback;
+        int fileDialogProperty = 0;
         base::Value::List paths;
-        bool canceled;
-        HRESULT error;
-        HWND hwnd;
-        HANDLE completed;
+        HRESULT error = E_FAIL;
+        HWND owner = nullptr;
+        HANDLE completed = nullptr;
+        std::atomic<bool> canceled { false };
+        std::mutex windowMutex;
+        HWND cancelWindow = nullptr; // Protected against destruction/HWND reuse.
+        IOleWindow* nativeWindow = nullptr; // Accessed only on the dialog's STA.
+
+        ~FileDialogState()
+        {
+            if (completed)
+                ::CloseHandle(completed);
+        }
+
+        void cancel()
+        {
+            canceled.store(true);
+            std::lock_guard<std::mutex> lock(windowMutex);
+            if (cancelWindow)
+                ::PostMessageW(cancelWindow, WM_APP, 0, 0);
+        }
+
+        void closeIfCanceled()
+        {
+            if (!canceled.load() || !nativeWindow)
+                return;
+            HWND window = nullptr;
+            if (SUCCEEDED(nativeWindow->GetWindow(&window)) && window)
+                ::PostMessageW(window, WM_CLOSE, 0, 0);
+        }
+
+        void wait()
+        {
+            // Show(owner) sends messages to the owner's thread. Dispatch only
+            // sent messages while joining, never queued JS/Node/completion work.
+            while (::MsgWaitForMultipleObjectsEx(1, &completed, INFINITE,
+                       QS_SENDMESSAGE, MWMO_INPUTAVAILABLE) != WAIT_OBJECT_0) {
+                MSG message;
+                ::PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE);
+            }
+        }
+
+        static LRESULT CALLBACK cancelWindowProc(HWND window, UINT message,
+            WPARAM wParam, LPARAM lParam)
+        {
+            if (message == WM_NCCREATE) {
+                auto* create = reinterpret_cast<CREATESTRUCTW*>(lParam);
+                ::SetWindowLongPtrW(window, GWLP_USERDATA,
+                    reinterpret_cast<LONG_PTR>(create->lpCreateParams));
+            }
+            auto* state = reinterpret_cast<FileDialogState*>(
+                ::GetWindowLongPtrW(window, GWLP_USERDATA));
+            if (message == WM_APP && state) {
+                state->closeIfCanceled();
+                return 0;
+            }
+            return ::DefWindowProcW(window, message, wParam, lParam);
+        }
     };
+
+    // Shell initialization can pump cancellation before its dialog HWND exists.
+    // Native dialog events retry at initialization boundaries, without timers.
+    class FileDialogEvents final : public IFileDialogEvents {
+    public:
+        explicit FileDialogEvents(FileDialogState* state) : m_state(state) { }
+
+        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override
+        {
+            if (!result)
+                return E_POINTER;
+            if (iid == IID_IUnknown || iid == __uuidof(IFileDialogEvents)) {
+                *result = static_cast<IFileDialogEvents*>(this);
+                AddRef();
+                return S_OK;
+            }
+            *result = nullptr;
+            return E_NOINTERFACE;
+        }
+        ULONG STDMETHODCALLTYPE AddRef() override { return ++m_references; }
+        ULONG STDMETHODCALLTYPE Release() override
+        {
+            const ULONG count = --m_references;
+            if (!count)
+                delete this;
+            return count;
+        }
+        HRESULT STDMETHODCALLTYPE OnFileOk(IFileDialog*) override
+        {
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnFolderChanging(IFileDialog*, IShellItem*) override
+        {
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnFolderChange(IFileDialog*) override
+        {
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnSelectionChange(IFileDialog*) override
+        {
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnTypeChange(IFileDialog*) override
+        {
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnShareViolation(IFileDialog*, IShellItem*,
+            FDE_SHAREVIOLATION_RESPONSE* response) override
+        {
+            *response = FDESVR_DEFAULT;
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE OnOverwrite(IFileDialog*, IShellItem*,
+            FDE_OVERWRITE_RESPONSE* response) override
+        {
+            *response = FDEOR_DEFAULT;
+            m_state->closeIfCanceled();
+            return S_OK;
+        }
+
+    private:
+        std::atomic<ULONG> m_references { 1 };
+        FileDialogState* m_state;
+    };
+
+    struct AsyncFileDialog : public std::enable_shared_from_this<AsyncFileDialog> {
+        explicit AsyncFileDialog(v8::Isolate* isolate,
+            const std::shared_ptr<FileDialogState>& state)
+            : isolate(isolate), state(state) { }
+
+        v8::Isolate* isolate;
+        std::shared_ptr<FileDialogState> state;
+        v8::Global<v8::Context> context;
+        v8::Global<v8::Object> receiver;
+        v8::Global<v8::Function> callback;
+        HWND owner = nullptr;
+        bool started = false;
+        bool finished = false;
+
+        static std::vector<std::shared_ptr<AsyncFileDialog>>& active()
+        {
+            static std::vector<std::shared_ptr<AsyncFileDialog>> dialogs;
+            return dialogs;
+        }
+
+        static std::shared_ptr<AsyncFileDialog> find(const std::shared_ptr<FileDialogState>& state)
+        {
+            for (const auto& operation : active()) {
+                if (operation->state == state)
+                    return operation;
+            }
+            return nullptr;
+        }
+
+        static LRESULT CALLBACK ownerSubclass(HWND window, UINT message,
+            WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR data)
+        {
+            if (message == WM_DESTROY || message == WM_NCDESTROY) {
+                auto* operation = reinterpret_cast<AsyncFileDialog*>(data);
+                auto keepAlive = operation->shared_from_this();
+                operation->state->cancel();
+                ::RemoveWindowSubclass(window, ownerSubclass, id);
+                operation->owner = nullptr;
+                // Do not let DestroyWindow release/reuse the exact owner HWND
+                // while a queued or active Show() can still reference it.
+                if (operation->started)
+                    operation->state->wait();
+            }
+            return ::DefSubclassProc(window, message, wParam, lParam);
+        }
+
+        void finish(bool deliver)
+        {
+            if (finished)
+                return;
+            auto keepAlive = shared_from_this();
+            finished = true;
+            if (started)
+                state->wait();
+            if (owner) {
+                ::RemoveWindowSubclass(owner, ownerSubclass, reinterpret_cast<UINT_PTR>(this));
+                owner = nullptr;
+            }
+            auto& dialogs = active();
+            dialogs.erase(std::remove(dialogs.begin(), dialogs.end(), keepAlive), dialogs.end());
+            if (deliver) {
+                v8::HandleScope handles(isolate);
+                auto localContext = context.Get(isolate);
+                v8::Context::Scope scope(localContext);
+                auto localReceiver = receiver.Get(isolate);
+                auto localCallback = callback.Get(isolate);
+                const bool canceled = state->canceled.load()
+                    || state->error == HRESULT_FROM_WIN32(ERROR_CANCELLED);
+                if (canceled)
+                    state->paths.clear();
+                v8::Local<v8::Value> argv[] = {
+                    v8::Boolean::New(isolate, canceled),
+                    gin_helper::Converter<base::Value::List>::ToV8(isolate, state->paths),
+                    FAILED(state->error) && !canceled
+                        ? gin_helper::StringToV8(isolate,
+                              dialogErrorMessage("File dialog", state->error)).As<v8::Value>()
+                        : v8::Undefined(isolate).As<v8::Value>()
+                };
+                // Detach all native and persistent state before calling user JS:
+                // it may destroy the owner, open another dialog, or exit.
+                context.Reset();
+                receiver.Reset();
+                callback.Reset();
+                (void)localCallback->Call(localContext, localReceiver, 3, argv);
+            }
+            context.Reset();
+            receiver.Reset();
+            callback.Reset();
+        }
+
+        void begin()
+        {
+            if (finished)
+                return;
+            if (state->canceled.load()) {
+                finish(true);
+                return;
+            }
+            auto* parameter = new std::shared_ptr<FileDialogState>(state);
+            HANDLE thread = ::CreateThread(nullptr, 0, showOpenOrSaveDialogThreadEntryPoint,
+                parameter, 0, nullptr);
+            if (!thread) {
+                state->error = HRESULT_FROM_WIN32(::GetLastError());
+                delete parameter;
+                finish(true);
+                return;
+            }
+            started = true;
+            ::CloseHandle(thread);
+        }
+    };
+
+    static void shutdownDialogs(v8::Isolate* isolate = nullptr)
+    {
+        shuttingDown = true;
+        // Cancel every worker before waiting for any of them. Never deliver
+        // completion callbacks while shutdown removes isolate-owned handles.
+        const auto dialogs = AsyncFileDialog::active();
+        for (const auto& operation : dialogs) {
+            if (!isolate || operation->isolate == isolate)
+                operation->state->cancel();
+        }
+        for (const auto& operation : dialogs) {
+            if (!isolate || operation->isolate == isolate)
+                operation->finish(false);
+        }
+    }
+
+    static void cleanupDialogs(void* isolate)
+    {
+        shutdownDialogs(static_cast<v8::Isolate*>(isolate));
+        constructor.Reset();
+    }
 
     static std::string dialogErrorMessage(const char* operation, HRESULT error)
     {
@@ -135,35 +396,21 @@ public:
         return message;
     }
 
-    static void showOpenOrSaveDialogEnd(ShowOpenOrSaveDialogThreadInfo* info)
+    static DWORD __stdcall showOpenOrSaveDialogThreadEntryPoint(void* parameter)
     {
-        v8::HandleScope handleScope(info->isolate);
-        v8::Local<v8::Object> recv = info->recv.Get(info->isolate);
-        v8::Local<v8::Value> argv[3];
-        argv[0] = info->canceled ? v8::True(info->isolate) : v8::False(info->isolate);
-        argv[1] = gin_helper::Converter<base::Value::List>::ToV8(info->isolate, info->paths);
-        argv[2] = FAILED(info->error) && !info->canceled
-            ? gin_helper::StringToV8(info->isolate, dialogErrorMessage("File dialog", info->error)).As<v8::Value>()
-            : v8::Undefined(info->isolate).As<v8::Value>();
-        info->callback.Get(info->isolate)->Call(
-            recv->GetCreationContextChecked(), recv, 3, argv);
-        delete info;
-    }
-
-    static DWORD __stdcall showOpenOrSaveDialogThreadEntryPoint(void* param)
-    {
-        ShowOpenOrSaveDialogThreadInfo* info =
-            static_cast<ShowOpenOrSaveDialogThreadInfo*>(param);
-        info->error = showOpenOrSaveDialog(
-            info->isOpenOrSave, info->hwnd, info->title, info->buttonLabel,
-            info->defaultPath, info->filters, info->fileDialogProperty, &info->paths);
-        info->canceled = info->error == HRESULT_FROM_WIN32(ERROR_CANCELLED);
-        if (info->completed) {
-            ::SetEvent(info->completed);
-            return 0;
+        std::unique_ptr<std::shared_ptr<FileDialogState>> holder(
+            static_cast<std::shared_ptr<FileDialogState>*>(parameter));
+        auto state = *holder;
+        if (!state->canceled.load()) {
+            state->error = showOpenOrSaveDialog(state->isOpenOrSave, state->owner,
+                state->title, state->buttonLabel, state->defaultPath,
+                state->filters, state->fileDialogProperty, &state->paths, state.get());
         }
-        content::ThreadCall::callUiThreadAsync(
-            FROM_HERE, [info] { showOpenOrSaveDialogEnd(info); });
+        content::ThreadCall::callUiThreadAsync(FROM_HERE, [state] {
+            if (auto operation = AsyncFileDialog::find(state))
+                operation->finish(true);
+        });
+        ::SetEvent(state->completed);
         return 0;
     }
 
@@ -175,6 +422,11 @@ public:
             return;
         v8::Isolate* isolate = args.GetIsolate();
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
+        if (!isSync && shuttingDown) {
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, "File dialog is shutting down")));
+            return;
+        }
 
         int browserWindowId = -1;
         if (args[0]->IsInt32())
@@ -184,71 +436,71 @@ public:
         if (args[1]->IsObject())
             options = args[1]->ToObject(context).ToLocalChecked();
 
-        ShowOpenOrSaveDialogThreadInfo* info = new ShowOpenOrSaveDialogThreadInfo();
-        info->isolate = isolate;
-        info->isOpenOrSave = isOpenOrSave;
-        info->canceled = true;
-        info->error = E_FAIL;
-        info->hwnd = nullptr;
-        info->completed = isSync ? ::CreateEventW(nullptr, TRUE, FALSE, nullptr) : nullptr;
-
+        auto state = std::make_shared<FileDialogState>();
+        state->isOpenOrSave = isOpenOrSave;
         WindowInterface* face = WindowList::getInstance()->find(browserWindowId);
         if (face)
-            info->hwnd = face->getHWND();
+            state->owner = face->getHWND();
+        // Only async calls gain the new lifetime contract; sync semantics stay
+        // on the owner's thread, with the same options/result behavior.
+        if (!isSync && args[0]->IsInt32()
+            && (!face || face->isClosed() || !::IsWindow(state->owner))) {
+            isolate->ThrowException(v8::Exception::Error(
+                gin_helper::StringToV8(isolate, "File dialog owner is destroyed or unknown")));
+            return;
+        }
 
-        getOptions(isolate, options, &info->title, &info->defaultPath,
-            &info->filters, &info->buttonLabel, &info->fileDialogProperty);
+        getOptions(isolate, options, &state->title, &state->defaultPath,
+            &state->filters, &state->buttonLabel, &state->fileDialogProperty);
 
         if (!isSync) {
             if (!args[2]->IsFunction()) {
-                delete info;
                 isolate->ThrowException(v8::Exception::TypeError(
                     gin_helper::StringToV8(isolate, "Dialog callback is required")));
                 return;
             }
-            info->callback.Reset(isolate, args[2].As<v8::Function>());
-            info->recv.Reset(isolate, context->Global());
-        } else if (!info->completed) {
-            delete info;
-            isolate->ThrowException(v8::Exception::Error(
-                gin_helper::StringToV8(isolate, "Failed to create dialog completion event")));
-            return;
-        }
-
-        if (isSync) {
-            // Run a synchronous owned dialog on the window's thread. Creating it
-            // on a worker while this thread waits can deadlock on owner messages.
-            showOpenOrSaveDialogThreadEntryPoint(info);
-            ::WaitForSingleObject(info->completed, INFINITE);
-            ::CloseHandle(info->completed);
-        } else {
-            DWORD threadIdentifier = 0;
-            HANDLE threadHandle = ::CreateThread(
-                nullptr, 0, showOpenOrSaveDialogThreadEntryPoint, info, 0,
-                &threadIdentifier);
-            if (!threadHandle) {
-                delete info;
+            state->completed = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+            if (!state->completed) {
                 isolate->ThrowException(v8::Exception::Error(
-                    gin_helper::StringToV8(isolate, "Failed to create dialog thread")));
+                    gin_helper::StringToV8(isolate, "Failed to create dialog completion event")));
                 return;
             }
-            ::CloseHandle(threadHandle);
+            auto operation = std::make_shared<AsyncFileDialog>(isolate, state);
+            operation->owner = state->owner;
+            if (state->owner && !::SetWindowSubclass(state->owner,
+                    AsyncFileDialog::ownerSubclass, reinterpret_cast<UINT_PTR>(operation.get()),
+                    reinterpret_cast<DWORD_PTR>(operation.get()))) {
+                isolate->ThrowException(v8::Exception::Error(
+                    gin_helper::StringToV8(isolate, "Failed to observe file dialog owner")));
+                return;
+            }
+            operation->context.Reset(isolate, context);
+            operation->receiver.Reset(isolate, context->Global());
+            operation->callback.Reset(isolate, args[2].As<v8::Function>());
+            AsyncFileDialog::active().push_back(operation);
+            // Establish owner guards now, but return the Promise before native
+            // presentation. Immediate destroy() cancels even a queued operation.
+            content::ThreadCall::callUiThreadAsync(FROM_HERE, [state] {
+                if (auto operation = AsyncFileDialog::find(state))
+                    operation->begin();
+            });
             return;
         }
 
-        if (FAILED(info->error) && !info->canceled) {
-            std::string message = dialogErrorMessage("File dialog", info->error);
-            delete info;
+        state->error = showOpenOrSaveDialog(isOpenOrSave, state->owner,
+            state->title, state->buttonLabel, state->defaultPath, state->filters,
+            state->fileDialogProperty, &state->paths);
+
+        const bool canceled = state->error == HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        if (FAILED(state->error) && !canceled) {
             isolate->ThrowException(v8::Exception::Error(
-                gin_helper::StringToV8(isolate, message)));
+                gin_helper::StringToV8(isolate, dialogErrorMessage("File dialog", state->error))));
             return;
         }
-
-        if (!info->canceled) {
+        if (!canceled) {
             args.GetReturnValue().Set(
-                gin_helper::Converter<base::Value::List>::ToV8(isolate, info->paths));
+                gin_helper::Converter<base::Value::List>::ToV8(isolate, state->paths));
         }
-        delete info;
     }
 
     void _showErrorBoxApi(const std::string& title, const std::string& content)
@@ -665,7 +917,7 @@ private:
         const std::string& defaultPath,
         const Filters& filters,
         int properties,
-        base::Value::List* paths)
+        base::Value::List* paths, FileDialogState* state = nullptr)
     {
         HRESULT initializeResult =
             ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -681,8 +933,43 @@ private:
             return hr;
         }
 
+        IOleWindow* nativeWindow = nullptr;
+        DWORD eventCookie = 0;
+        bool eventsAdvised = false;
+        if (state) {
+            hr = dialog->QueryInterface(IID_PPV_ARGS(&nativeWindow));
+            if (SUCCEEDED(hr)) {
+                state->nativeWindow = nativeWindow;
+                auto* events = new FileDialogEvents(state);
+                hr = dialog->Advise(events, &eventCookie);
+                events->Release();
+                eventsAdvised = SUCCEEDED(hr);
+            }
+        }
+
+        if (state && SUCCEEDED(hr)) {
+            static const ATOM windowClass = [] {
+                WNDCLASSW type = {};
+                type.lpfnWndProc = FileDialogState::cancelWindowProc;
+                type.hInstance = ::GetModuleHandleW(nullptr);
+                type.lpszClassName = L"MiniElectronFileDialogCancellation";
+                return ::RegisterClassW(&type);
+            }();
+            std::lock_guard<std::mutex> lock(state->windowMutex);
+            if (windowClass) {
+                state->cancelWindow = ::CreateWindowExW(0,
+                    L"MiniElectronFileDialogCancellation", L"", 0, 0, 0, 0, 0,
+                    HWND_MESSAGE, nullptr, ::GetModuleHandleW(nullptr), state);
+            }
+            if (!state->cancelWindow) {
+                const DWORD error = ::GetLastError();
+                hr = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
+            }
+        }
+
         DWORD dialogOptions = 0;
-        hr = dialog->GetOptions(&dialogOptions);
+        if (SUCCEEDED(hr))
+            hr = dialog->GetOptions(&dialogOptions);
         if (SUCCEEDED(hr)) {
             dialogOptions |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
             if (properties & FILE_DIALOG_SHOW_HIDDEN_FILES)
@@ -748,7 +1035,8 @@ private:
 
         if (SUCCEEDED(hr)) {
             setDefaultPath(dialog, base::UTF8ToUTF16(defaultPath));
-            hr = dialog->Show(parentWindow);
+            hr = state && state->canceled.load()
+                ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : dialog->Show(parentWindow);
         }
 
         if (SUCCEEDED(hr) && isOpenOrSave) {
@@ -781,6 +1069,19 @@ private:
             }
         }
 
+        if (eventsAdvised)
+            dialog->Unadvise(eventCookie);
+
+        if (state) {
+            std::lock_guard<std::mutex> lock(state->windowMutex);
+            if (state->cancelWindow)
+                ::DestroyWindow(state->cancelWindow);
+            state->cancelWindow = nullptr;
+            state->nativeWindow = nullptr;
+        }
+        if (nativeWindow)
+            nativeWindow->Release();
+
         dialog->Release();
         ::CoUninitialize();
         return hr;
@@ -789,15 +1090,24 @@ private:
 public:
     static gin_helper::WrapperInfo kWrapperInfo;
     static v8::Persistent<v8::Function> constructor;
+    static bool shuttingDown;
 };
 
 
 v8::Persistent<v8::Function> Dialog::constructor;
+bool Dialog::shuttingDown = false;
 gin_helper::WrapperInfo Dialog::kWrapperInfo = { gin_helper::GinEmbedder::kEmbedderNativeGin };
+
+void shutdownFileDialogs()
+{
+    Dialog::shutdownDialogs();
+}
 
 static void initializeDialogApi(v8::Local<v8::Object> target, v8::Local<v8::Value> unused, v8::Local<v8::Context> context, const NodeNative* native)
 {
     Dialog::init(context->GetIsolate(), target);
+    node::AddEnvironmentCleanupHook(context->GetIsolate(),
+        Dialog::cleanupDialogs, context->GetIsolate());
 }
 
 static const char BrowserDialogNative[] = "console.log('BrowserDialogNative');"

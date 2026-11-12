@@ -440,6 +440,48 @@ authenticated IPC. Win32 `WM_NCHITTEST` returns `HTCAPTION` only for eligible dr
 regions; no-drag holes win even when rectangles overlap. Native caption handling
 replaces the obsolete synthetic `SC_MOVE` and double-click tracking paths.
 
+### IPC, protocol identity and owned file dialogs
+
+The macOS `0.1.39` IPC/protocol changes also compile into Windows: they live in
+the shared Electron, renderer and network-loader sources. `ipcMain.on`,
+`removeListener` and `once` preserve EventEmitter listener identity; invoke
+handlers use their separate dispatcher. `senderFrame`/`mainFrame` expose stable
+frame identity, `nativeID` and `navigationToken`; replaced documents detach their
+old frame objects.
+
+`protocol.handle()` receives a standard `Request` with readonly, frozen
+`nativeRequest` identity (`contentsId`, `frameId`, `isMainFrame`, `isDocument`,
+`navigationToken`). Identity comes from browser-authorized native frame/document
+state, not URL parameters or headers. Custom-scheme requests also transport
+application/Range headers, binary bodies and response status/headers.
+
+Windows asynchronous open/save dialogs retain the exact explicit owner HWND;
+destroyed/unknown owners reject instead of becoming ownerless. Closing/destroying
+the owner cancels queued and visible dialogs and settles each operation once.
+Native cancellation runs on the dialog's COM STA, while V8 callbacks remain on
+the UI thread and are invalidated before shutdown disposes the isolate. Calls
+without an owner remain asynchronous, and synchronous file dialogs retain their
+blocking semantics. Existing native file options/results are unchanged.
+
+Run the isolated protocol and native-dialog regressions against a fresh build:
+
+```sh
+node test/protocol-identity-smoke.js --runtime out/windows-x64/mini-electron.exe
+node test/protocol-identity-smoke.js --runtime out/windows-x64/mini-electron.exe --single-process
+node test/windows-owned-dialog-smoke.js --runtime out/windows-x64/mini-electron.exe
+```
+
+The dialog regression requires an interactive desktop and the system .NET
+Framework C# compiler. Its helper inspects/controls only fixture PID/HWNDs.
+The launchers clear inherited `ELECTRON_RUN_AS_NODE`, use unique application names
+and fresh migration-marked profiles, and redirect runtime paths before creating
+sessions/windows. Windows known-folder environment variables remain intact:
+native startup can briefly create a unique empty AppData namespace, which the
+child removes nonrecursively after redirecting its paths. `--output-dir <directory>`
+retains fixtures and native logs. Existing `test/ipc-frame-smoke.js` and
+`test/same-document-navigation-smoke.js` exercise the shared frame lifecycle;
+run them in application mode with isolated paths.
+
 ### Renderer memory diagnostics and reclamation
 
 Windows x64 Blink/Worker isolates use V8's machine-derived

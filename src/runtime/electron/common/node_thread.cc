@@ -21,6 +21,8 @@
 #include <optional>
 
 namespace atom {
+void shutdownFileDialogs();
+
 
 base::PlatformThreadId g_mainThreadId;
 NodeArgc* g_nodeArgc = nullptr;
@@ -118,6 +120,7 @@ int runNodeMain()
         exitCode = processExit.value_or(loaded ? App::getExitCode() : 1);
         if (!processExit)
             node::EmitProcessExit(setup->env());
+        shutdownFileDialogs();
         // SessionMgr retains sessions, so their destructors are not a shutdown
         // barrier. Drain after the final JS exit listeners, including app.exit
         // and process.exit, while the blocking I/O task runners are still alive.

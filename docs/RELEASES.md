@@ -6,6 +6,25 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.40 — native identity, owned dialogs and full symbols
+
+Windows x64-only runtime update. npm installer `0.1.13`, installer protocol `1`,
+Electron API `41.2.0`, Node ABI `134` and macOS runtime/channel `0.1.39` remain
+unchanged.
+
+- Carries the shared IPC listener removal/once, native frame/document identity
+  and protocol request identity/header/binary-response changes to Windows.
+- Completes Windows asynchronous open/save ownership: destroyed-owner rejection,
+  active/queued owner-close cancellation, exactly-once callbacks and shutdown
+  cleanup. Native cancellation avoids an owner-destruction modal-loop deadlock.
+- Includes a separate matching full, unstripped PDB ZIP with RSDS GUID/Age and
+  executable/PDB SHA-256 metadata; no PDB is included in the installable runtime.
+- The final runtime ZIP's extracted executable passed native identity, IPC,
+  protocol identity/Range and navigation in both process modes, the full native
+  dialog/exit matrix, Node/Worker configuration, SQLite/FTS5 and storage durability.
+
+See [exact final assets and qualification](VERIFICATION.md#windows-runtime-0140-2026-11-12).
+
 ### npm installer 0.1.13 — native frame and protocol identity types
 
 Installer/types update; macOS runtime/channel remains `0.1.39` and Windows

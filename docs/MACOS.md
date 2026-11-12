@@ -204,14 +204,14 @@ Renderer custom-scheme requests use the same request-header serialization as
 HTTP/file requests, including `Range` and application headers. The standard
 `Request` delivered to `protocol.handle()` retains its browser-owned readonly
 `nativeRequest` identity independently of headers and query parameters.
-`test/macos-protocol-identity-smoke.js` checks both windows' full responses,
+`test/protocol-identity-smoke.js` checks both windows' full responses,
 eight-byte `206` ranges, malformed/unsatisfiable `416` responses, status text,
 `Content-Range`, and binary bodies with cache bypass and `no-store` responses.
 It also verifies that forged identity headers reach the handler without changing
-the canonical identity. Run it from a dedicated application fixture with
-`MINI_PROTOCOL_IDENTITY_ROOT` and `MINI_PROTOCOL_IDENTITY_APP_DATA` set; its
-application name is `omp-native-protocol-identity-2s3ufs`, and all runtime paths
-are redirected under the fixture root before creating windows.
+the canonical identity. Run `node test/protocol-identity-smoke.js --runtime
+out/mac-arm64/mini-electron`; the cross-platform launcher creates a uniquely named
+application and redirects runtime paths under its dedicated fixture before
+creating windows. `--output-dir <directory>` retains the fixture and native logs.
 
 Local `net.fetch(file:)` responses remain streamed with backpressure and
 cancellation. Read chunks are capped at 1 MiB and the file size to amortize
@@ -293,7 +293,7 @@ Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-precise-wheel-smoke.js`,
 `test/macos-image-preview-smoke.js`,
 `test/macos-file-drag-smoke.js`, `test/macos-protocol-response-smoke.js`,
-`test/macos-protocol-identity-smoke.js`,
+`test/protocol-identity-smoke.js`,
 `test/macos-initial-background-smoke.js`, `test/macos-frame-presentation-smoke.js`,
 `test/macos-window-buttons-smoke.js`, and `test/macos-exit-lifecycle-smoke.js`.
 Input helpers require Xcode. The initial-background regression captures actual
