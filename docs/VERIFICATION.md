@@ -62,6 +62,29 @@ Evidence is under `out/verification/windows-0.1.41/`: `qualification.json`,
 The public-service certificate matrix is session evidence, not a new
 network-dependent permanent test. macOS and npm are not part of this binary update.
 
+Published [v0.1.41](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.41)
+from source `f01a4acbb7601dedae89d5389f1275a95c184b40`.
+GitHub reports all four immutable assets uploaded, with exact sizes and SHA-256
+digests matching the table. Anonymous full downloads of both ZIPs, both release
+metadata files and the Windows channel manifest returned HTTP `200` and reproduced
+their hashes. The public release page displayed both languages, 12 flat list
+items, no nested lists and all four uploaded download links.
+
+A fresh unpinned public npm `0.1.13` installation selected Windows `0.1.41`.
+All 53 installed file hashes and the EXE hash matched the qualified archive;
+the package import returned that executable. The public CLI passed application
+mode with `miniElectron=0.1.41`, Electron API `41.2.0` and ABI `134`; Node-only
+mode passed Node `24.0.0-pre`, ABI/platform/architecture and executable identity.
+
+The Windows `runtime-v1-win32-x64` manifest asset is now `741521157`, SHA-256
+`546d20a060ac5509e6b1ca5af0ef6b7947c478755f9165eccc104a416991c362`.
+The macOS `runtime-v1` asset remains `737495293`, `541` bytes, SHA-256
+`8d960c21ee6fa7ac4c015929aa601fa05cffb23127bca99fe2d8b5fb58aa64a6`;
+its update timestamp is unchanged. Public download, page, channel and installation
+evidence is retained alongside the local qualification JSON. Temporary probe
+scripts, profiles and test private keys were removed. No npm was published and
+no installed Desktop application was replaced.
+
 ## Windows native HTTPS/WSS CA trust (2026-11-12)
 
 Built normal `Release|x64` with `python build.py --jobs 8`, using the existing local

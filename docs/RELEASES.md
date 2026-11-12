@@ -22,6 +22,15 @@ unchanged.
 - See the [original root-cause qualification](VERIFICATION.md#windows-native-httpswss-ca-trust-2026-11-12)
   and [final release evidence](VERIFICATION.md#windows-runtime-0141-2026-11-13).
 
+Published as [v0.1.41](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.41)
+from source `f01a4acbb7601dedae89d5389f1275a95c184b40`. All four uploaded asset
+sizes/SHA-256 digests match the qualified local archives. Anonymous full runtime
+and PDB ZIP downloads reproduced their hashes; the bilingual public release page
+rendered correctly. The Windows channel now selects `0.1.41`; a fresh unpinned
+public npm `0.1.13` installation selected it and passed package import and CLI
+checks. The macOS channel asset is unchanged. No npm was published and no
+installed Desktop application was replaced.
+
 ### Windows runtime 0.1.40 — native identity, owned dialogs and full symbols
 
 Windows x64-only runtime update. npm installer `0.1.13`, installer protocol `1`,
