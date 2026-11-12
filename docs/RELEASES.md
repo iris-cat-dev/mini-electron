@@ -6,6 +6,28 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.39 — plugin IPC, protocol identity and owned dialogs
+
+Apple Silicon macOS-only runtime update from `adca57273`, merged into `main`,
+with runtime identity `0.1.39`. Windows runtime/channel remains `0.1.37`;
+npm installer remains `0.1.12`. Installer protocol `1`, Electron API `41.2.0`,
+Node ABI `134`, and Chromium major `132` are unchanged.
+
+- Preserves EventEmitter listener removal/once semantics and authorizes IPC
+  against its owning frame, document lifetime and navigation identity.
+- Exposes readonly browser-owned `nativeRequest` identity to protocol handlers;
+  transports request headers, binary resources and byte-range responses.
+- Presents asynchronous open/save sheets on their exact native owner, cancels
+  them on owner close/destroy, rejects invalid owners and retires shutdown callbacks.
+- The final ZIP's extracted executable passed IPC frame/listener regression,
+  protocol identity and Range `206`/`416` regression, and a focused native dialog
+  smoke covering ownership/options, Node progress, close/destroy, queued
+  cancellation and destroyed-owner rejection. Ad-hoc signature validation passed.
+- Real file acceptance, Escape delivery and remote-panel opacity retain the
+  existing [qualification limits](MACOS.md); they were not rerun or marked passing.
+
+See [release verification](VERIFICATION.md#macos-runtime-0139-2026-11-12).
+
 ### macOS runtime 0.1.38
 
 Apple Silicon macOS-only runtime update, built from shared source

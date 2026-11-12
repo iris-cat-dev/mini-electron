@@ -8,6 +8,43 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.39 (2026-11-12)
+
+The plugin runtime changes in `adca57273` were fast-forwarded into `main`.
+Built with `/opt/homebrew/bin/python3.13 build.py --jobs 12 --package-dist`
+and assembled with `scripts/build_runtime_release.py --macos-dist
+out/mac-arm64/runtime-dist --runtime-only --output out/runtime-release-mac-0.1.39`.
+The final ZIP was extracted with `ditto` to `out/verification/mac-0.1.39/runtime/`.
+
+Runtime ZIP SHA-256:
+`edfc61df3687388a83d322429d8d9f95941c2a7ade646a657ea0bdb95855cdbe`.
+The extracted app passed `codesign --verify --deep --strict`; `file` identified
+Mach-O arm64. Node-only startup reported Node `24.0.0-pre`, ABI `134` and arm64.
+Application startup reported runtime `0.1.39`, Electron `41.2.0` and ABI `134`.
+
+Passed using the extracted executable and dedicated HOME/user-data fixtures:
+
+- Complete `ipc-frame-smoke.js`: listener removal/once, frame authorization,
+  stable identity, navigation detachment and target-only delivery.
+- Complete `macos-protocol-identity-smoke.js`: readonly identity across windows
+  and subframes, forged-header isolation, transported headers, Range `206`/`416`,
+  binary resources and document replacement.
+- Focused real AppKit open/save sheets: exact native owner, options, Node timer
+  progress, owner movement, close/destroy cancellation, exactly one completion,
+  native dismissal, close/destroy before queued presentation and invalid-owner
+  rejection. The existing native observer only read panel state; no synthetic
+  acceptance, Escape or watchdog dismissal was used.
+
+Evidence: `out/verification/mac-0.1.39/smoke-results.json`, per-scenario
+`result.json`/logs and `dialog-smoke/results.json`. The first launcher inherited
+`ELECTRON_RUN_AS_NODE=1` from the agent host and never entered application mode;
+the passing runs explicitly removed it from the child environment.
+
+The existing [dialog qualification limits](MACOS.md) remain: real file acceptance,
+Escape delivery and remote-panel opacity are unqualified. The older full cursor
+failure was not rerun. Developer ID signing, notarization and a multi-hour soak
+were not run. Windows and npm were not published by this runtime-only release.
+
 ## macOS runtime 0.1.38 (2026-11-10)
 
 Built using `/opt/homebrew/bin/python3.13 build.py --jobs 12 --package-dist`
