@@ -6,6 +6,25 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### npm installer 0.1.13 — native frame and protocol identity types
+
+Installer/types update; macOS runtime/channel remains `0.1.39` and Windows
+runtime/channel remains `0.1.37`. Installer protocol `1`, Electron API `41.2.0`
+and Node ABI `134` are unchanged.
+
+- Includes `WebFrameMain`, `WebContents.mainFrame`, readonly
+  `NativeProtocolRequestIdentity` and `ProtocolFetchRequest.nativeRequest` types.
+- Ships the repository's `src/npm/` layout with package-root-aware installer
+  and executable resolution. Existing package imports and CLI entry points remain.
+- The packed tarball passed real local-distribution installation, package import,
+  CLI execution and a strict TypeScript consumer. All 16 existing installer
+  regressions passed. See [qualification](VERIFICATION.md#npm-installer-0113-2026-11-12).
+
+Published [npm `0.1.13`](https://www.npmjs.com/package/@iriscat/mini-electron/v/0.1.13)
+with public access and the `latest` tag. The registry integrity matches the
+tested tarball. Fresh public installation, package import and the installed
+`mini-electron` CLI passed using macOS runtime `0.1.39`.
+
 ### macOS runtime 0.1.39 — plugin IPC, protocol identity and owned dialogs
 
 Apple Silicon macOS-only runtime update from `adca57273`, merged into `main`,

@@ -10,12 +10,13 @@ For native release history, see [release notes](RELEASES.md). For publishing ass
 
 The npm package is `@iriscat/mini-electron` and supports Windows x64 and Apple
 Silicon macOS. Intel macOS and Windows ARM64 are not supported. Installer
-`0.1.12` restores Windows installation; npm and native runtime versions remain
-independent. Windows runtime `0.1.37` and macOS runtime `0.1.39` use separate
+`0.1.13` includes native frame/protocol identity types; `0.1.12` restored Windows
+installation. npm and native runtime versions remain independent. Windows runtime
+`0.1.37` and macOS runtime `0.1.39` use separate
 channels; either platform can update without changing the other channel.
 
 ```sh
-npm install --save-dev @iriscat/mini-electron@0.1.12
+npm install --save-dev @iriscat/mini-electron@0.1.13
 node -p "require('@iriscat/mini-electron')"
 ```
 
@@ -37,7 +38,7 @@ The Electron API compatibility version remains `41.2.0`.
 - Root `artifacts.json.runtimeVersion` versions the native distribution, including
   its embedded runtime JavaScript. Binary-only changes update this manifest and
   GitHub assets; they do **not** require an npm version bump or npm publication.
-  For example, npm `0.1.12` can install Windows `0.1.37` or macOS `0.1.39`.
+  For example, npm `0.1.13` can install Windows `0.1.37` or macOS `0.1.39`.
 - `installerProtocol` replaces the old npm `packageVersion` equality check in
   runtime `version.json`. The remote manifest uses schema version `2`; protocol
   and Electron API compatibility must match the installer. Never point an

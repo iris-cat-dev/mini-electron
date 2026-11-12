@@ -97,6 +97,11 @@ that directory with public access when installer/CLI/types/package inputs change
 The staged npm package excludes `artifacts.json`, so a runtime-only manifest bump
 does not change its installer inputs.
 
+Installer `0.1.13` synchronizes the native frame/protocol identity declarations
+and the `src/npm/` package layout. It uses the already-published macOS `0.1.39`
+and Windows `0.1.37` channels; no new native release or channel replacement is
+needed for this npm-only update.
+
 The Windows-only installer `0.1.12` update required Windows runtime `0.1.14`
 and its new `runtime-v1-win32-x64` channel before npm publication. That update
 left macOS runtime `0.1.13` and `runtime-v1` unchanged. Later macOS runtime-only

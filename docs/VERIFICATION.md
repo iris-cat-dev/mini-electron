@@ -8,6 +8,41 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## npm installer 0.1.13 (2026-11-12)
+
+Assembled `out/npm-release-0.1.13/npm-package` using the existing release
+assembler and the macOS `0.1.39` distribution, without `--runtime-only`.
+`npm pack` produced `iriscat-mini-electron-0.1.13.tgz`: nine package files,
+including `src/npm/electron.d.ts`; no native runtime or root `artifacts.json`.
+Runtime release assets and channel manifests were not uploaded or replaced.
+
+Passed:
+
+- All 16 existing `node --test test/npm-package.test.js` regressions, including
+  atomic installation, channel/version precedence, integrity failures, framework
+  symlinks, CLI argv/status/signals and preservation of valid installed runtimes.
+- Real installation of the packed tarball with `MINI_ELECTRON_DIST_PATH` selecting
+  the already-qualified macOS `0.1.39` distribution. Package import resolved the
+  executable under package-root `dist`, outside the new `src/npm/` layout.
+- The packaged CLI launched that executable in Node-only mode and reported Node
+  `24.0.0-pre`, ABI `134` and arm64.
+- A strict TypeScript `7.0.2` consumer imported `WebFrameMain`,
+  `NativeProtocolRequestIdentity` and `ProtocolFetchRequest`, accessed
+  `WebContents.mainFrame`, narrowed optional native request identity and enforced
+  its readonly fields. Compilation used `--noEmit --strict --module NodeNext
+  --moduleResolution NodeNext --target ES2022`.
+
+Local consumption evidence is under `out/verification/npm-0.1.13/local-install/`.
+
+Published `@iriscat/mini-electron@0.1.13` with public access and `latest`.
+The public registry integrity matches the tested tarball:
+`sha512-8zLj4oxA70w9zyyZjE4dhbeS0KFponEwsNLJWnn7nyClGVeRcq9zHkdCnlGmfrRrUJ11vmWu01rcwYZWMq4PvQ==`.
+Fresh public installation with no local distribution override or runtime pin
+installed macOS runtime `0.1.39` through the existing channel. Package import
+resolved package-root `dist`; the installed `node_modules/.bin/mini-electron`
+launched the runtime and reported Node `24.0.0-pre`, ABI `134` and arm64.
+Public consumption evidence is under `out/verification/npm-0.1.13/public-install/`.
+
 ## macOS runtime 0.1.39 (2026-11-12)
 
 The plugin runtime changes in `adca57273` were fast-forwarded into `main`.
