@@ -60,6 +60,27 @@ under `out/verification/windows-0.1.40/`. npm installer `0.1.13`, macOS binaries
 installed Desktop and the macOS `runtime-v1` channel were not changed.
 Windows 11, physical human file-picker interaction and macOS were not exercised.
 
+Published [v0.1.40](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.40)
+from source `4c3d1cc47f54d33b28930dd02f742cc60215134b`. GitHub's sizes and SHA-256
+digests match all four assets above. The bilingual public release body rendered
+its flat lists correctly. An anonymous full runtime ZIP download reproduced its
+SHA-256; anonymous PDB HEAD access returned `200` and 258,990,059 bytes.
+
+Only after immutable assets became public, the Windows
+`runtime-v1-win32-x64/artifacts.json` pointer was replaced. Its anonymous download
+selects `0.1.40`, Windows x64 only, with the qualified runtime ZIP hash.
+The macOS channel asset retains ID `737495293`, size 541, SHA-256
+`8d960c21ee6fa7ac4c015929aa601fa05cffb23127bca99fe2d8b5fb58aa64a6`,
+timestamp, title and prerelease state.
+
+A fresh public `npm install @iriscat/mini-electron@0.1.13` used dedicated npm and
+runtime caches, no local distribution override and no runtime pin. Package import
+resolved its installed `dist/electron.exe`, runtime `0.1.40`/ABI `134`/Windows x64;
+that EXE's SHA-256 matches the final archive. The installed CLI launched native
+Node `24.0.0-pre`, ABI `134`, Windows x64. Evidence includes
+`public-install-identity.json`, `anonymous-assets.json`, channel snapshots and
+the uploaded/public release metadata under the verification directory.
+
 ## npm installer 0.1.13 (2026-11-12)
 
 Assembled `out/npm-release-0.1.13/npm-package` using the existing release

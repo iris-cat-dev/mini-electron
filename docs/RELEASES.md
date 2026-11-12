@@ -23,6 +23,14 @@ unchanged.
   protocol identity/Range and navigation in both process modes, the full native
   dialog/exit matrix, Node/Worker configuration, SQLite/FTS5 and storage durability.
 
+Published as [v0.1.40](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.40)
+from source `4c3d1cc47f54d33b28930dd02f742cc60215134b`. All four uploaded
+sizes/server SHA-256 digests match the qualified local assets. Anonymous runtime
+download and PDB access passed; a fresh public npm `0.1.13` installation selected
+Windows runtime `0.1.40`, and its package import/CLI passed. The Windows channel
+now selects `0.1.40`; the macOS channel asset is unchanged. No npm was published
+and no installed Desktop was replaced.
+
 See [exact final assets and qualification](VERIFICATION.md#windows-runtime-0140-2026-11-12).
 
 ### npm installer 0.1.13 — native frame and protocol identity types
