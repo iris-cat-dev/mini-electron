@@ -794,6 +794,27 @@ int AbortCanceledCurl(void* data, curl_off_t, curl_off_t,
         std::memory_order_acquire) ? 1 : 0;
 }
 
+CURL* CreateBrokerCurlHandle()
+{
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        return nullptr;
+    CURLcode result = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if (result == CURLE_OK)
+        result = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+#if BUILDFLAG(IS_WIN)
+    // The OpenSSL backend does not load Windows roots by default. Node's
+    // bundled CA store is separate from both HTTPS and WSS broker handles.
+    if (result == CURLE_OK)
+        result = curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS,
+            static_cast<long>(CURLSSLOPT_NATIVE_CA));
+#endif
+    if (result != CURLE_OK) {
+        curl_easy_cleanup(curl);
+        return nullptr;
+    }
+    return curl;
+}
 
 bool RunCurlRequest(const BrokerNetworkRequest& request, const GURL& url,
     const ResolvedEndpoint& endpoint, const std::string& method,
@@ -802,7 +823,7 @@ bool RunCurlRequest(const BrokerNetworkRequest& request, const GURL& url,
     std::string* content_type, std::string* error)
 {
     response->request = &request;
-    CURL* curl = curl_easy_init();
+    CURL* curl = CreateBrokerCurlHandle();
     if (!curl) {
         *error = "Unable to initialize network request";
         return false;
@@ -1543,7 +1564,7 @@ private:
             Finished();
             return;
         }
-        CURL* curl = curl_easy_init();
+        CURL* curl = CreateBrokerCurlHandle();
         if (!curl) {
             base::Value::Dict event;
             event.Set("event", "error");

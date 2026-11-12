@@ -8,6 +8,121 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.41 (2026-11-13)
+
+Built normal `Release|x64` with `python build.py --jobs 8 --package-dist`.
+Assembled only Windows with `scripts/build_runtime_release.py --runtime-only`,
+using the exact symbol leaf printed by the build:
+`out/windows-x64/symbols/mini-electron.pdb/869E453D751DFEA14C4C44205044422E1`.
+The runtime ZIP was extracted to `out/verification/windows-0.1.41/runtime/`;
+that extracted `electron.exe` was used for the final native regressions.
+
+Runtime identity: `0.1.41`, Electron API `41.2.0`, Node `24.0.0-pre`, ABI `134`,
+installer protocol `1`, `win32`/`x64`. All 53 declared file hashes matched.
+Native clipboard, asynchronous context and storage capabilities remain enabled.
+EXE SHA-256:
+`a2dddafb20584dbc16ffcbfff280d2cebcc0646ce8793ebc881d41274994e42f`.
+
+The matching full PDB has GUID `869E453D751DFEA14C4C44205044422E`, Age `1`,
+SHA-256 `0ee6d0d9c0af7dadb13391aa4084e67817b6e580591256341b89566b349b6979`.
+`llvm-pdbutil dump -summary` reports debug info, types, IDs, globals and publics,
+no conflicting types, and `Is stripped: false`. The symbols ZIP contains only
+`mini-electron.pdb` and `symbols.json`; streaming the archived PDB reproduced its
+hash. The installable ZIP contains no PDB or symbol metadata.
+
+| Immutable asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `mini-electron-v0.1.41-win32-x64.zip` | `39647022` | `e601dd377d81ab25bd20fb9210175e0f2be23f559d86cdf434200d7ec758300f` |
+| `mini-electron-v0.1.41-win32-x64-symbols.zip` | `258993274` | `b2f20e3cdc1d2a601bc6c695ba593b2fc334d9f8aa9c5038894e34c7c673d091` |
+| `artifacts.json` | `528` | `546d20a060ac5509e6b1ca5af0ef6b7947c478755f9165eccc104a416991c362` |
+| `SHASUMS256.txt` | `214` | `efd9461125b03b4d8e4420aba349b2c451197e6e8a5c731e5f07f7bdd7695392` |
+
+Passed against the final extracted executable:
+
+- HTTPS navigation and native WSS echo/clean `1000` close, in default sandbox
+  and `--single-process` modes.
+- HTTPS and WSS rejection of untrusted/self-signed, expired and wrong-host
+  certificates in both modes. The matching-SAN local self-signed fixture
+  received neither an HTTP application request nor a WebSocket upgrade.
+- Unchanged WS handshake, fragmented text, binary, ping/pong and clean-close
+  regression in both process modes.
+- Node/Worker native build layout and Node-only startup; SQLite/FTS5, transactions,
+  backup, changesets and Worker binding; application async-context/Promise ordering.
+- Build/package qualification also passed Node-only async-context/Worker ordering
+  and all six isolated broker-storage durability/error phases.
+
+TLS verification retained `webSecurity`, sandboxing, context isolation and
+disabled renderer Node integration. No root certificate was installed and no TLS
+validation bypass was used. WSS used a loopback HTTP initiator because this
+workstation's Fake-IP DNS triggers existing private-endpoint authorization from a
+custom-scheme origin; that separate authorization policy remains unchanged.
+
+Evidence is under `out/verification/windows-0.1.41/`: `qualification.json`,
+`build.log`, `pdb-summary.txt`, and isolated native result/row JSON files.
+The public-service certificate matrix is session evidence, not a new
+network-dependent permanent test. macOS and npm are not part of this binary update.
+
+## Windows native HTTPS/WSS CA trust (2026-11-12)
+
+Built normal `Release|x64` with `python build.py --jobs 8`, using the existing local
+GN, Ninja and CMake installations. Qualified `out/windows-x64/mini-electron.exe`,
+SHA-256 `73352b4d07688d78697f8a1bf7e659e0cb94dc5325a20b13cc24f770992303aa`.
+Its existing `0.1.40` version metadata was not advanced; this is an unreleased
+source build, not the immutable published `0.1.40` archive.
+
+The original `0.1.37` runtime ZIP was extracted into an isolated directory.
+Baseline EXE SHA-256:
+`d47e87c38500a928960109551f2db73ce73b7c39276d6cd2d969e9b2ac720578`.
+It rejected `https://example.com/` with the webRequest error
+`SSL peer certificate or SSH remote key was not OK`; a renderer connection to
+`wss://ws.postman-echo.com/raw` failed before opening and closed with `1006`.
+
+A throwaway native probe linked the runtime's actual `support.lib` and
+`openssl.lib`, reporting curl `8.5.0-DEV`, TLS `BoringSSL`, CAfile `(none)` and
+CApath `(none)`. With peer verification `1` and hostname verification `2`:
+
+| Configuration / endpoint | curl result | TLS verify result | HTTP result |
+| --- | --- | --- | --- |
+| Default CA configuration, `https://example.com/` | `60` | `20` (local issuer unavailable) | No response |
+| Windows native CA enabled, same endpoint | `0` | `0` | `200` |
+| Windows native CA enabled, Postman WSS | `0` | `0` | Upgrade `101` |
+| Windows native CA enabled, `wrong.host.badssl.com` | `60` | `1`, explicit hostname-mismatch diagnostic | No response |
+| Windows native CA enabled, `expired.badssl.com` | `60` | `10` (expired) | No response |
+
+The rebuilt runtime passed the following actual renderer scenarios in both the
+default sandbox process model and `--single-process`:
+
+- HTTPS navigation loaded the expected `Example Domain` page without webRequest
+  errors.
+- WSS opened, echoed `mini-native-tls-trust`, and closed cleanly with `1000`.
+- HTTPS and WSS rejected a locally generated, currently valid self-signed
+  certificate with a matching `127.0.0.1` SAN. Neither an HTTP request nor a
+  WebSocket upgrade reached that fixture's application handlers.
+- HTTPS and WSS rejected the expired and wrong-host public certificate fixtures.
+- The unchanged `test/websocket-smoke.js` passed handshake, fragmented text,
+  binary, ping/pong and clean close in both process models.
+
+The TLS scenarios retained `webSecurity`, sandboxing, context isolation and
+disabled Node integration. No test root was installed in Windows, no CA bundle
+was injected, and no certificate-validation bypass was used. Temporary profiles
+and generated application names isolated the runs from installed applications.
+
+Environment boundary: Windows DNS on this workstation returned Fake-IP addresses
+in `198.18.0.0/15` and `2001:2::` for the external test hosts. An initial
+custom-scheme-origin run restored HTTPS but WSS still failed the existing private
+endpoint authorization check. The final WSS certificate scenarios used an allowed
+loopback HTTP page as their initiator, without changing that authorization policy.
+This repair does not claim to change Fake-IP/private-network authorization.
+
+Evidence is under `out/verification/windows-tls-trust/`: native curl diagnostic
+logs, `build.log`, baseline `isolated-tls-LUYwuf/result.json`, default-process
+`isolated-tls-krh8td/{result.json,native-rows.json}`, single-process
+`isolated-tls-jrw1ez/{result.json,native-rows.json}`, and WS regression result
+directories. The external-service checks are session evidence, not hermetic
+permanent tests; the throwaway probes and certificate private key were removed.
+No release was published, installed Desktop was not replaced, and macOS was not
+built or exercised for this change.
+
 ## Windows runtime 0.1.40 (2026-11-12)
 
 Built normal `Release|x64` with `python build.py --jobs 8 --package-dist`,

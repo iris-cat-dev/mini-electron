@@ -6,6 +6,22 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.41 — HTTPS/WSS system CA trust
+
+Windows x64-only runtime update. npm installer `0.1.13`, installer protocol `1`,
+Electron API `41.2.0`, Node ABI `134` and macOS runtime/channel `0.1.39` remain
+unchanged.
+
+- Native Session HTTPS and WSS connections share TLS initialization that imports
+  Windows ROOT certificates with `CURLSSLOPT_NATIVE_CA`; certificate-chain and
+  hostname verification remain enabled. Configuration failure rejects the handle.
+- Fixes the missing-CA failure in the original Windows `0.1.37` runtime without
+  disabling TLS validation or changing private-network authorization.
+- Ships a separate matching full, unstripped PDB archive with RSDS GUID/Age and
+  EXE/PDB SHA-256 metadata. Debug symbols remain outside the installable runtime.
+- See the [original root-cause qualification](VERIFICATION.md#windows-native-httpswss-ca-trust-2026-11-12)
+  and [final release evidence](VERIFICATION.md#windows-runtime-0141-2026-11-13).
+
 ### Windows runtime 0.1.40 — native identity, owned dialogs and full symbols
 
 Windows x64-only runtime update. npm installer `0.1.13`, installer protocol `1`,

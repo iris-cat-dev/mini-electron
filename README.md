@@ -25,7 +25,7 @@ The npm installer and native runtime are versioned independently:
 | Component | Version | Target |
 | --- | --- | --- |
 | npm installer | `0.1.13` | Both supported platforms |
-| Windows runtime | `0.1.40` | Windows x64 |
+| Windows runtime | `0.1.41` | Windows x64 |
 | macOS runtime | `0.1.39` | macOS arm64 |
 | Electron API compatibility version | `41.2.0` | Partial implementation, not full API parity |
 

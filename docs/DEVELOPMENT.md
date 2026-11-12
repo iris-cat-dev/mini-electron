@@ -468,6 +468,27 @@ the original message type across continuation and interleaved control frames.
 The actual text/binary, ping/pong and close smoke passes in both process modes.
 The macOS source path is integrated but has not been built or run for this change.
 
+## Windows HTTPS/WSS certificate trust
+
+Source builds initialize native Session HTTPS and WSS broker connections through
+one TLS configuration: certificate-chain verification (`CURLOPT_SSL_VERIFYPEER=1`)
+and hostname verification (`CURLOPT_SSL_VERIFYHOST=2`) stay enabled. On Windows,
+`CURLSSLOPT_NATIVE_CA` imports the Windows ROOT certificate store into the
+OpenSSL-compatible TLS backend. Failure to configure a handle rejects its creation;
+failure to validate a certificate rejects the connection.
+
+The Windows `0.1.37` broker left both CAfile and CApath unset without enabling
+native roots. The bundled curl `8.5.0-DEV` / BoringSSL therefore rejected valid
+public certificates with curl error `60`, while WSS surfaced abnormal close `1006`.
+Node's bundled roots are a separate trust source; successful Node or Chrome
+connections do not establish that the native broker has loaded any CA roots.
+
+Windows runtime `0.1.41` includes this fix; older immutable release archives are
+not replaced. See the [original Windows TLS qualification](VERIFICATION.md#windows-native-httpswss-ca-trust-2026-11-12)
+for before/after behavior, invalid-certificate rejection and the Fake-IP DNS
+authorization boundary, and the [release qualification](VERIFICATION.md#windows-runtime-0141-2026-11-13)
+for the final runtime/PDB pair. No macOS runtime verification is implied.
+
 ## WebSocket receive backpressure
 
 Received payload credit stays outstanding through native assembly, browser tasks,
