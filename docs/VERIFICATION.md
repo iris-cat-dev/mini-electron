@@ -34,11 +34,26 @@ Passed using the extracted executable and dedicated HOME/user-data fixtures:
   native dismissal, close/destroy before queued presentation and invalid-owner
   rejection. The existing native observer only read panel state; no synthetic
   acceptance, Escape or watchdog dismissal was used.
+- `macos-owned-dialog-smoke.js --case=exit-pending` and `--case=quit-pending`
+  passed with a visible standalone panel before shutdown, zero late callbacks
+  and zero remaining windows. Their observations/logs are copied under
+  `out/verification/mac-0.1.39/{exit-pending,quit-pending}/`.
 
 Evidence: `out/verification/mac-0.1.39/smoke-results.json`, per-scenario
 `result.json`/logs and `dialog-smoke/results.json`. The first launcher inherited
 `ELECTRON_RUN_AS_NODE=1` from the agent host and never entered application mode;
 the passing runs explicitly removed it from the child environment.
+
+Published [v0.1.39](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.39)
+from source `155dd50c5`. The three immutable assets are publicly available;
+the macOS `runtime-v1` manifest selects `0.1.39` with the ZIP hash above and
+retains its existing release title, notes and prerelease label.
+An isolated public `npm install @iriscat/mini-electron@0.1.12` pinned to
+runtime `0.1.39` downloaded and installed the release through the existing
+archive/inventory verification path. The installed executable reported Node
+`24.0.0-pre`, ABI `134` and arm64. An explicit `--update-runtime` with no version
+pin also installed `0.1.39` through the normal channel URL. Installed identity
+is recorded in `out/verification/mac-0.1.39/public-install-identity.json`.
 
 The existing [dialog qualification limits](MACOS.md) remain: real file acceptance,
 Escape delivery and remote-panel opacity are unqualified. The older full cursor

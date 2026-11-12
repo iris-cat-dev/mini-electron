@@ -26,6 +26,12 @@ Node ABI `134`, and Chromium major `132` are unchanged.
 - Real file acceptance, Escape delivery and remote-panel opacity retain the
   existing [qualification limits](MACOS.md); they were not rerun or marked passing.
 
+Published as [v0.1.39](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.39)
+from source `155dd50c5`, with the runtime ZIP, `artifacts.json` and
+`SHASUMS256.txt`. The macOS `runtime-v1` channel selects `0.1.39`; the channel
+retains its prerelease label. Public installation with npm installer `0.1.12`
+and an explicit unpinned runtime update both succeeded. Windows remains `0.1.37`.
+
 See [release verification](VERIFICATION.md#macos-runtime-0139-2026-11-12).
 
 ### macOS runtime 0.1.38
