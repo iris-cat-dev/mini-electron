@@ -25,6 +25,10 @@ Node ABI `134` and Chromium major `132` are unchanged.
 - The system IME candidate panel was not exercised. Installed Desktop
   applications are unchanged by this runtime-only release.
 
+Published [v0.1.42](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.42)
+from [`dba87300e`](https://github.com/iris-cat-dev/mini-electron/commit/dba87300e90d19d4a2e4c76d654eb6c831dbead0).
+The macOS `runtime-v1` channel now selects `0.1.42`.
+
 See [final assets and qualification](VERIFICATION.md#macos-runtime-0142-2026-11-13).
 
 ### Windows runtime 0.1.41 — HTTPS/WSS system CA trust

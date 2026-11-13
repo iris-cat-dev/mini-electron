@@ -22,7 +22,7 @@ env -u SDKROOT -u ELECTRON_RUN_AS_NODE /opt/homebrew/bin/python3.13 \
 ```
 
 Extracted the final versioned ZIP to
-`out/verification/macos-0.1.42/runtime`. All native checks below used its
+`out/verification/macos-0.1.42/runtime`. Pre-publication native checks used its
 `Electron.app/Contents/MacOS/Electron`, not the unstripped build output.
 
 | Final asset | Evidence |
@@ -46,6 +46,23 @@ The system IME candidate panel was not exercised. The package is ad-hoc
 signed; Developer ID signing and notarization were not performed. No Windows
 binary was rebuilt. Windows runtime/channel stays at `0.1.41`, and the npm
 installer stays at `0.1.13`. Installed Desktop applications were not replaced.
+
+### Public release and channel
+
+- Published [v0.1.42](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.42)
+  as Latest from source commit `dba87300e90d19d4a2e4c76d654eb6c831dbead0`.
+  All three versioned asset download links are present. The reopened editor's
+  saved bilingual Markdown matches the intended text; its 14 bullets are flat.
+- The public `SHASUMS256.txt` and macOS `runtime-v1/artifacts.json` identify
+  the qualified ZIP digest above. The channel selects `0.1.42` and retains its
+  pre-release state, title, description and tag target.
+- An unpinned fresh npm install of `@iriscat/mini-electron@0.1.13` in an
+  isolated directory and download cache reported
+  `mini-electron runtime v0.1.42 installed`. Package `require()` resolved its
+  installed executable; native application-mode identity matched the runtime,
+  Electron API and ABI qualified above.
+- The public Windows `runtime-v1-win32-x64/artifacts.json` still selects
+  `0.1.41`. No npm package was published.
 
 ## Windows runtime 0.1.41 (2026-11-13)
 
