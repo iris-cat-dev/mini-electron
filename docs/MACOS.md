@@ -169,6 +169,13 @@ On macOS, marked text without explicit IME styling uses a translucent neutral-gr
 background instead of yellow, preserving the editor's foreground color in light
 and dark themes. Native selection colors and candidate-panel styling are unchanged.
 
+Return and Shift+Return insert a line break in multiline editors, including
+keypad Enter. AppKit's newline commands forward one character event after
+`keydown`, preserving native modifiers and DOM `preventDefault()` handling.
+Chat editors can keep plain Enter as submit while allowing Shift+Enter to
+insert a newline. During marked-text composition, Return stays on the native
+IME path instead of inserting a line break or submitting a chat.
+
 Sandbox IPC preserves nested `ArrayBuffer` and typed-array properties as binary
 structured-clone data in both directions. Image attachment writes retain the
 typed-array view's offset and length instead of enumerating each byte into a
@@ -289,6 +296,7 @@ ownership and cleanup evidence remains valid with the provenance limits above.
 Targeted native regressions: `test/macos-companion-smoke.js`,
 `test/macos-shortcuts-smoke.js`, `test/macos-clipboard-editing-smoke.js`,
 `test/macos-selection-colors-smoke.js`, `test/macos-ime-position-smoke.js`,
+`test/macos-newline-smoke.js`,
 `test/macos-pointer-interaction-smoke.js`, `test/macos-scroll-smoke.js`,
 `test/macos-precise-wheel-smoke.js`,
 `test/macos-image-preview-smoke.js`,
@@ -308,6 +316,7 @@ against a rebuilt runtime:
 out/mac-arm64/mini-electron --app=test/macos-selection-colors-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
+out/mac-arm64/mini-electron --app=test/macos-newline-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-pointer-interaction-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-scroll-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-precise-wheel-smoke.js

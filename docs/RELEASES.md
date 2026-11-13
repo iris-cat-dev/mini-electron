@@ -6,6 +6,27 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.42 — native multiline Return input
+
+Apple Silicon macOS-only runtime update. Windows runtime/channel `0.1.41`,
+npm installer `0.1.13`, installer protocol `1`, Electron API `41.2.0`,
+Node ABI `134` and Chromium major `132` are unchanged.
+
+- Fixes Return and Shift+Return in multiline editors by forwarding AppKit's
+  newline commands through the existing character-event path. Native Shift and
+  keypad location survive; DOM keydown/keypress cancellation remains effective.
+- Leaves Return during marked-text composition to the native IME path, preserving
+  candidate text and avoiding an accidental newline or chat submission.
+- The executable extracted from `mini-electron-v0.1.42-darwin-arm64.zip` passed
+  `test/macos-newline-smoke.js`: textarea/contenteditable newline insertion,
+  selected-text replacement, keypad Enter, DOM cancellation, chat Enter submit,
+  ordinary character input and native marked-text commit. Its visible newline
+  capture is `out/verification/macos-0.1.42/newline.png`.
+- The system IME candidate panel was not exercised. Installed Desktop
+  applications are unchanged by this runtime-only release.
+
+See [final assets and qualification](VERIFICATION.md#macos-runtime-0142-2026-11-13).
+
 ### Windows runtime 0.1.41 — HTTPS/WSS system CA trust
 
 Windows x64-only runtime update. npm installer `0.1.13`, installer protocol `1`,

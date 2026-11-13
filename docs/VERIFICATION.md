@@ -8,6 +8,45 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.42 (2026-11-13)
+
+Built the synchronized source and native Return fix with Python 3.13:
+
+```sh
+env -u SDKROOT -u ELECTRON_RUN_AS_NODE /opt/homebrew/bin/python3.13 \
+  build.py --jobs 8 --package-dist \
+  --dist-output out/mac-arm64/runtime-dist-0.1.42
+/opt/homebrew/bin/python3.13 scripts/build_runtime_release.py \
+  --macos-dist out/mac-arm64/runtime-dist-0.1.42 --runtime-only \
+  --output out/runtime-release-mac-0.1.42
+```
+
+Extracted the final versioned ZIP to
+`out/verification/macos-0.1.42/runtime`. All native checks below used its
+`Electron.app/Contents/MacOS/Electron`, not the unstripped build output.
+
+| Final asset | Evidence |
+| --- | --- |
+| `mini-electron-v0.1.42-darwin-arm64.zip` | SHA-256 `e3de790063c4ca8e10eb86ee29c235dee197fb952c21bf7dc1838679f9b08127` |
+| `SHASUMS256.txt` | Contains the same ZIP digest |
+| `artifacts.json` | Darwin arm64 only; runtime `0.1.42`, protocol `1`, Electron API `41.2.0`, ABI `134`, Chromium major `132` |
+
+- `validate_distribution()` verified all 193 inventoried files after extraction.
+- `codesign --verify --deep --strict` passed on the extracted app bundle.
+- Native application-mode identity reported runtime `0.1.42`, Electron API
+  `41.2.0`, Node `24.0.0-pre`, ABI `134`, Darwin and arm64.
+- `test/macos-newline-smoke.js` passed with the Xcode macOS 26.2 SDK:
+  textarea Return/Shift+Return, selected-text replacement, keypad Enter
+  location `3`, contenteditable newline, keydown/keypress cancellation,
+  chat Enter submission, ordinary characters and native marked-text commit.
+- The inspected `out/verification/macos-0.1.42/newline.png` capture shows
+  `ab` and `CD` on separate lines, with the textarea caret at the new line.
+
+The system IME candidate panel was not exercised. The package is ad-hoc
+signed; Developer ID signing and notarization were not performed. No Windows
+binary was rebuilt. Windows runtime/channel stays at `0.1.41`, and the npm
+installer stays at `0.1.13`. Installed Desktop applications were not replaced.
+
 ## Windows runtime 0.1.41 (2026-11-13)
 
 Built normal `Release|x64` with `python build.py --jobs 8 --package-dist`.

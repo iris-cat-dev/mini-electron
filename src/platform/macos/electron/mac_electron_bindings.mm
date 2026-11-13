@@ -1774,6 +1774,19 @@ static void RefreshNativeCursorAtPointer() {
   return NO;
 }
 
+- (void)sendCharacter:(unichar)character text:(NSString*)text {
+  base::Value::Dict input;
+  input.Set("type", "char");
+  input.Set("charCode", static_cast<int>(character));
+  input.Set("modifiers", [self inputModifiers:_interpretingKey]);
+  input.Set("nativeKeyCode", static_cast<int>(_interpretingKey.keyCode));
+  input.Set("domCode", static_cast<int>(ui::DomCodeFromNSEvent(_interpretingKey)));
+  input.Set("domKey", static_cast<int>(static_cast<uint32_t>(ui::DomKeyFromNSEvent(_interpretingKey))));
+  input.Set("text", text.UTF8String ?: "");
+  input.Set("unmodifiedText", _interpretingKey.charactersIgnoringModifiers.UTF8String ?: "");
+  _owner->SendInput(std::move(input));
+}
+
 - (void)insertText:(id)value replacementRange:(NSRange)replacementRange {
   const BOOL was_composing = _composing;
   NSString* text = [value isKindOfClass:[NSAttributedString class]]
@@ -1792,20 +1805,9 @@ static void RefreshNativeCursorAtPointer() {
     _composing = NO;
     return;
   }
-  for (NSUInteger index = 0; index < text.length; ++index) {
-    base::Value::Dict input;
-    input.Set("type", "char");
-    input.Set("charCode", static_cast<int>([text characterAtIndex:index]));
-    if (_interpretingKey) {
-      input.Set("modifiers", [self inputModifiers:_interpretingKey]);
-      input.Set("nativeKeyCode", static_cast<int>(_interpretingKey.keyCode));
-      input.Set("domCode", static_cast<int>(ui::DomCodeFromNSEvent(_interpretingKey)));
-      input.Set("domKey", static_cast<int>(static_cast<uint32_t>(ui::DomKeyFromNSEvent(_interpretingKey))));
-      input.Set("text", std::string([[text substringWithRange:NSMakeRange(index, 1)] UTF8String] ?: ""));
-      input.Set("unmodifiedText", _interpretingKey.charactersIgnoringModifiers.UTF8String ?: "");
-    }
-    _owner->SendInput(std::move(input));
-  }
+  for (NSUInteger index = 0; index < text.length; ++index)
+    [self sendCharacter:[text characterAtIndex:index]
+                   text:[text substringWithRange:NSMakeRange(index, 1)]];
 }
 - (void)insertText:(id)value { [self insertText:value replacementRange:NSMakeRange(NSNotFound, 0)]; }
 - (void)setMarkedText:(id)value selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
@@ -1872,7 +1874,16 @@ static void RefreshNativeCursorAtPointer() {
   // Resolve window placement at query time so moving a window never stales IPC.
   return [self.window convertRectToScreen:[self convertRect:rect toView:nil]];
 }
-- (void)doCommandBySelector:(SEL)selector { (void)selector; }
+- (void)doCommandBySelector:(SEL)selector {
+  if (_interpretingKey && !_composing &&
+      (selector == @selector(insertNewline:) ||
+       selector == @selector(insertLineBreak:) ||
+       selector == @selector(insertNewlineIgnoringFieldEditor:))) {
+    // AppKit delivers Return as a command, not insertText:. Outside marked
+    // text, forward a character so Blink can honor keyDown cancellation.
+    [self sendCharacter:'\r' text:@"\r"];
+  }
+}
 @end
 
 @implementation MiniElectronWindowDelegate {
