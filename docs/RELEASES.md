@@ -6,6 +6,23 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### Windows runtime 0.1.43 — compositor diagnostics and device-loss recovery
+
+Windows x64-only runtime update. macOS runtime `0.1.42`, npm installer `0.1.13`,
+installer protocol `1`, Electron API `41.2.0`, and Node ABI `134` are unchanged.
+
+- Adds window-scoped producer, consumer, and DirectComposition metadata to
+  `webContents._getCompositorInfo()` without a repaint or GPU readback.
+- Retires a lost D3D11 presentation device for the browser process. Affected
+  windows report `render-process-gone` with `gpuDeviceRemovedReason`; replacement
+  windows use software rendering without restarting the browser.
+- Ships the full matching PDB in a separate symbols ZIP.
+
+Published [v0.1.43](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.43)
+from [`e26e7e3a4`](https://github.com/iris-cat-dev/mini-electron/commit/e26e7e3a4b1efb95be6144eef47325f600cefa20).
+The Windows `runtime-v1-win32-x64` channel selects `0.1.43`; a fresh unpinned
+install from npm selected it. See [release verification](VERIFICATION.md#windows-runtime-0143-2026-11-22).
+
 ### macOS runtime 0.1.42 — native multiline Return input
 
 Apple Silicon macOS-only runtime update. Windows runtime/channel `0.1.41`,

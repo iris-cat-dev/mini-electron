@@ -8,6 +8,34 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## Windows runtime 0.1.43 (2026-11-22)
+
+Built normal `Release|x64` from `e26e7e3a4b1efb95be6144eef47325f600cefa20`
+and assembled `--runtime-only` with the build's exact symbol leaf
+`out/windows-x64/symbols/mini-electron.pdb/C78985791B96FA0B4C4C44205044422E1`.
+`llvm-pdbutil` confirmed GUID `C7898579-1B96-FA0B-4C4C-44205044422E`, age `1`,
+and full unstripped symbols. The installable archive contains no PDB.
+
+| Published ZIP | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `mini-electron-v0.1.43-win32-x64.zip` | `39657089` | `ff751cef437da02d3c90d4d9dc8ca92d9ba1d721fa2fee7fa72440ec5d7fd40b` |
+| `mini-electron-v0.1.43-win32-x64-symbols.zip` | `259004351` | `e124cfb6ca3515478767ad3c37280ac0ae7f6367ce377aeac8003342f51b538c` |
+
+- Staged runtime passed Node async-context and broker storage persistence; the
+  packaged binary passed the native SQLite smoke and the hardware compositor
+  diagnostics lifecycle smoke. The runtime ZIP passed the full distribution
+  inventory check and its extracted executable passed the CPU-fallback
+  diagnostics smoke and Node platform/ABI checks.
+- The hardware smoke covered resource identity, reload/resize, window
+  isolation, and absence of diagnostic readbacks. It does not qualify physical
+  scanout or force device loss in the published binary.
+- [GitHub Release v0.1.43](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.43)
+  reported all four assets uploaded with matching sizes and SHA-256 digests.
+  A fresh install of the public npm `0.1.13` package without a runtime pin
+  selected Windows `0.1.43`, validated all 53 inventoried file hashes and
+  resolved the installed `electron.exe` on import. The separate macOS channel
+  still selects `0.1.42`; no npm package was published.
+
 ## macOS runtime 0.1.42 (2026-11-13)
 
 Built the synchronized source and native Return fix with Python 3.13:
