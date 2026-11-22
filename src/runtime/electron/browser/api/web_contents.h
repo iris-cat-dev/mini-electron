@@ -177,6 +177,7 @@ public:
     void appendDCompLayers(std::vector<mini_electron::win::DCompLayer>& layers,
         const RECT& bounds, const RECT& clip, unsigned depth = 0) const;
     void getCompositorInfoApi(const v8::FunctionCallbackInfo<v8::Value>&);
+    void handleD3DDeviceLoss(HRESULT reason);
 #endif
     void closeRenderer();
 
@@ -251,6 +252,7 @@ private:
     void updateVisibility();
 
     void onRendererEvent(base::Value::Dict event);
+    void rendererGone(const base::Value::Dict& details);
     void emitRendererEvent(const std::string& type, const base::Value::Dict& payload, uint64_t request_id);
     std::unique_ptr<WindowOpenHandlerResult> onWindowOpenHandler(
         v8::Local<v8::Context>, const base::Value::Dict& details);

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/functional/callback.h"
+#include "base/values.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
 namespace viz {
@@ -39,11 +40,16 @@ struct D3DCompositorInfo {
   bool gpu_active = false;
   uint64_t frames = 0;
   uint64_t readbacks = 0;
+  base::Value::Dict diagnostics;
 };
 
 std::unique_ptr<viz::SoftwareOutputDevice> CreateD3DOutputDevice(
     int64_t view_id,
     bool transparent);
+
+// Retire any in-process producers when their browser-side device is lost.
+// Shutting down such a producer must not wait for an orphaned release fence.
+void RetireInProcessD3DCompositing();
 
 // Register/unregister on the engine UI sequence. Callbacks run there as well.
 void SetD3DFrameCallback(

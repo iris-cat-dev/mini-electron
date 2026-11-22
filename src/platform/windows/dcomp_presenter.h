@@ -21,6 +21,12 @@ namespace mini_electron::win {
 // the browser UI thread; the result is cached for the shared device's lifetime.
 bool CanUseD3DPresentation();
 
+// Call only after a native presentation operation fails, on the browser UI
+// sequence. On the first device loss, retire the shared device for this
+// process and return true so its windows can leave native presentation.
+bool RetireD3DPresentationIfDeviceLost();
+HRESULT D3DPresentationDeviceLossReason();
+
 // Imports renderer-owned D3D12 frames into a browser-owned retained D3D11
 // texture. All methods are browser-UI-thread-affine.
 class D3DFrameConsumer {
@@ -41,6 +47,7 @@ class D3DFrameConsumer {
   uint64_t imported_frames() const;
   int width() const;
   int height() const;
+  base::Value::Dict Diagnostics() const;
 
   // Native access is for DCompPresenter only. The returned objects remain owned
   // by this consumer and must only be used on the browser UI thread.
@@ -94,6 +101,11 @@ class DCompPresenter {
                const DCompOverlay& overlay);
 
   uint64_t presented_frame_id(int id) const;
+
+  // Metadata only; browser UI sequence. Events survive presenter replacement
+  // until window destruction, without retaining any graphics resources.
+  static base::Value::Dict Diagnostics(HWND window, int layer_id);
+  static void ForgetDiagnostics(HWND window);
 
  private:
   struct Impl;

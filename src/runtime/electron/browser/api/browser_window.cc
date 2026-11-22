@@ -1059,6 +1059,44 @@ public:
     }
 
 
+    static void notifyRemovedD3DDevice()
+    {
+        if (!mini_electron::win::RetireD3DPresentationIfDeviceLost())
+            return;
+
+        // Notify outside WM_PAINT: renderer-gone handlers may close this
+        // window or create replacements. New windows already select GDI.
+        for (WindowInterface* window : *WindowList::getInstance()) {
+            const HWND hwnd = window->getHWND();
+            if (hwnd && (::GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_NOREDIRECTIONBITMAP))
+                ::PostMessageW(hwnd, WM_D3D_PRESENTATION_DEVICE_LOST, 0, 0);
+        }
+    }
+
+    void onD3DDeviceLost()
+    {
+        const HRESULT reason = mini_electron::win::D3DPresentationDeviceLossReason();
+        if (SUCCEEDED(reason) || !m_webContents || !m_createWindowParam
+            || !(m_createWindowParam->styleEx & WS_EX_NOREDIRECTIONBITMAP))
+            return;
+
+        m_gpuPresenter.reset();
+        m_gpuLayers.clear();
+        // Use identities across the callbacks: a listener can destroy the
+        // window and its BrowserViews while handling the first event.
+        std::vector<int> contents_ids;
+        contents_ids.reserve(1 + m_browserViews.size());
+        contents_ids.push_back(m_webContents->getIdApi());
+        for (BrowserView* view : m_browserViews) {
+            if (view && view->getWebContents())
+                contents_ids.push_back(view->getWebContents()->getIdApi());
+        }
+        for (int id : contents_ids) {
+            if (auto* contents = WebContents::fromId(id))
+                contents->handleD3DDeviceLoss(reason);
+        }
+    }
+
     bool paintGpuScene()
     {
         if (!m_createWindowParam
@@ -1084,8 +1122,10 @@ public:
         }
         if (!m_gpuPresenter) {
             m_gpuPresenter = mini_electron::win::DCompPresenter::Create(m_hWnd);
-            if (!m_gpuPresenter)
+            if (!m_gpuPresenter) {
+                notifyRemovedD3DDevice();
                 return true;
+            }
         }
         mini_electron::win::DCompOverlay overlay;
         SkPixmap pixels;
@@ -1109,8 +1149,10 @@ public:
             }
         }
         auto presenter = m_gpuPresenter;
-        if (!presenter->Present(m_gpuLayers, overlay))
+        if (!presenter->Present(m_gpuLayers, overlay)) {
             m_gpuPresenter.reset();
+            notifyRemovedD3DDevice();
+        }
         return true;
     }
 
@@ -1788,6 +1830,9 @@ public:
         }
 
         switch (message) {
+        case WM_D3D_PRESENTATION_DEVICE_LOST:
+            onD3DDeviceLost();
+            return 0;
         case WM_NCCALCSIZE:
             if (m_createWindowParam->isFrame)
                 break;
@@ -1821,6 +1866,7 @@ public:
 
         case WM_NCDESTROY:
             m_gpuPresenter.reset();
+            mini_electron::win::DCompPresenter::ForgetDiagnostics(hWnd);
             m_gpuLayers.clear();
             stopImeComposition(true);
             clearTextInputState();

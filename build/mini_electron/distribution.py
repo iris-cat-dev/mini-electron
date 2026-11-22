@@ -262,6 +262,7 @@ def release_metadata(root: Path, platform_name: str, arch: str) -> dict[str, obj
             "nativeClipboardFiles": 1,
             "asyncContextPropagation": 1,
             "asyncStoragePersistence": 1,
+            "compositorDiagnostics": 1,
         } if platform_name == "win32" else {},
         "executable": executable,
         "archive": archive,

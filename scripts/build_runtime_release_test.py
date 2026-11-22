@@ -222,6 +222,14 @@ class RuntimeReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(DistributionError, "runtime feature metadata"):
             self.assemble()
 
+    def test_missing_compositor_diagnostics_rejects_old_distribution(self) -> None:
+        version = self.distribution / "version.json"
+        metadata = json.loads(version.read_text(encoding="utf-8"))
+        metadata["features"].pop("compositorDiagnostics")
+        version.write_text(json.dumps(metadata), encoding="utf-8")
+        with self.assertRaisesRegex(DistributionError, "runtime feature metadata"):
+            self.assemble()
+
     def test_old_identity_is_rejected(self) -> None:
         version = self.distribution / "version.json"
         metadata = json.loads(version.read_text(encoding="utf-8"))

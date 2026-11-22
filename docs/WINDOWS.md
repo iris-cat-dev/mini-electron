@@ -117,6 +117,25 @@ Initial renderer GPU failure can use CPU layers through DirectComposition.
 legacy CPU/GDI presentation path. `MINI_ELECTRON_DISABLE_GPU=1` selects CPU
 renderer composition while leaving eligible native presentation enabled.
 
+**Presentation device loss**
+
+If swap-chain creation, drawing, or presentation reports that the shared
+browser D3D11 device has been removed, the runtime retires that device for the
+rest of the browser process. Queue pressure and occlusion are still transient.
+Affected native-composition windows release their presenters and report
+`webContents` `render-process-gone` with reason `killed` and
+`gpuDeviceRemovedReason` (the signed HRESULT). An old renderer's shared texture
+and fence cannot be transferred to a new device after acknowledgement, and
+the existing `WS_EX_NOREDIRECTIONBITMAP` window has no GDI backing.
+
+Apps recover by opening a replacement window. Its renderer and native
+presentation both use software; the browser process stays up. Restarting the
+browser lets it probe hardware again. A Windows desktop probe injected
+`DXGI_ERROR_DEVICE_REMOVED` at swap-chain creation after two windows had
+presented hardware frames. In both sandboxed and `--single-process` modes both
+windows received the loss event, and native pixel samples verified that the
+software replacement displayed a new color after minimize/restore.
+
 Each DirectComposition swap chain owns one frame-latency waitable handle for
 its lifetime. Presents borrow that handle instead of acquiring another one
 per frame. Active and pending chains retain separate ownership; cancellation,
@@ -139,6 +158,67 @@ with validated DWM timing for the primary monitor or a refresh-calibrated
 timer when hardware timing is unavailable. Non-blocking successful DXGI
 waits are rejected rather than generating a busy loop. BrowserViews and
 webviews inherit the host monitor; moving between monitors updates the clock.
+
+**Compositor diagnostics**
+
+Windows `_getCompositorInfo()` keeps its existing fields and adds
+`diagnostics.schemaVersion: 1` with `producer`, `consumer`, and `presenter`
+metadata. Availability is explicit: CPU fallback or an absent GPU resource is
+not a healthy GPU snapshot with zero counters.
+
+Producer records describe the owning Viz sequence's output device, backing
+source, frame/fence values, publication and acknowledgement state, damage,
+canvas clip/save depth, cache size, and device failures. Consumer records
+describe the actual imported source and retained texture. Presenter records
+describe native visual/swapchain generations, bounded layers, pending
+replacement/priming, Present outcomes, and visual-tree commits. Successful
+Present/Commit does **not** prove physical scanout or correct pixels.
+
+Resource IDs are logical, process-local lifetime generations, not raw pointers
+or reusable OS handles. Qualify them with the process/window/document identity.
+All 64-bit IDs, counters, event sequences, and monotonic `timeUs` values are
+decimal strings. Each event ring holds at most 64 numeric/static-label records.
+Normal frames only increment counters; JSON is constructed on explicit queries.
+
+`eventHistoryFirstSeq`, `eventHistoryLastSeq`, `eventHistoryOverwrites`, and
+`eventHistoryCapacity` describe the ring **before owner filtering**. Producer
+history is shared within a renderer process, presenter history within the
+browser process, and consumer history belongs to one consumer. Gaps can belong
+to another owner; overwrites count slot reuse, not proven losses for this
+window. Destroyed-window records are erased before HWND reuse.
+
+Queries do not capture pixels, import/copy another frame, flush the GPU,
+invalidate, reload, resize, or reconstruct graphics resources. No page content,
+URL, title, or raw texture/handle value is included in this diagnostic schema.
+
+Runtime distribution staging earns `features.compositorDiagnostics: 1` by
+running the exact staged executable with the API/CPU-fallback probe:
+
+```powershell
+.\out\windows-x64\mini-electron.exe --app=test/windows-compositor-diagnostics-smoke.js --schema-only
+```
+
+That probe does **not** qualify GPU behavior. On an unlocked interactive desktop
+with hardware D3D12/DirectComposition, run the full lifecycle smoke separately:
+
+```powershell
+.\out\windows-x64\mini-electron.exe --app=test/windows-compositor-diagnostics-smoke.js
+```
+
+The full smoke uses a real file document and observes producer/imported/presented
+frame agreement, metadata-query stability, reload, resize resource replacement,
+independent windows and teardown, and no diagnostic GPU readback or implicit
+repaint. Resize handoff is recorded **before** an explicit ordinary document
+paint; frame agreement is then checked again after that separate intervention.
+It is a short regression, not an aging/physical-display ghosting qualification.
+
+`presentedSourceId`/`presentedFrameId` are the native scheduler's final-Present
+confirmation cache, not a physical display observation. After first-buffer
+priming and attachment, this cache can be zero while `waiting` and `priming`
+are already false. That is not proof that no buffer was submitted or that the
+screen was black. The smoke verifies that metadata queries preserve such a
+handoff, then uses a deliberate page paint to observe final frame agreement.
+The diagnostic API itself must not finish a handoff by forcing another paint.
 
 Windows hidden-title windows honor `titleBarStyle`, `titleBarOverlay`, and
 `setTitleBarOverlay()`. Minimize/maximize/restore/close controls are rasterized

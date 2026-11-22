@@ -13,6 +13,7 @@
 #include <new>
 #include <utility>
 
+#include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
@@ -419,6 +420,19 @@ public:
         return false;
     }
 
+#if BUILDFLAG(IS_WIN)
+    base::Value::Dict GetCompositorConsumerDiagnostics() const override
+    {
+        DCHECK(state_->owner_runner->RunsTasksInCurrentSequence());
+        if (gpu_frame_)
+            return gpu_frame_->Diagnostics();
+        base::Value::Dict unavailable;
+        unavailable.Set("available", false);
+        unavailable.Set("events", base::Value::List());
+        return unavailable;
+    }
+#endif
+
     bool ShareFrameBufferWith(RendererClient& target,
         int guest_contents_id) const override
     {
@@ -435,7 +449,14 @@ public:
             guest_contents_id, &error);
     }
 
-    void Close() override
+    void Close() override { CloseRenderer(false); }
+
+#if BUILDFLAG(IS_WIN)
+    void CloseForD3DDeviceLoss() override { CloseRenderer(true); }
+#endif
+
+private:
+    void CloseRenderer(bool device_lost)
     {
         if (closed_.exchange(true, std::memory_order_acq_rel))
             return;
@@ -456,10 +477,11 @@ public:
             return;
         }
 
-        Write({ MessageKind::kShutdown, 0, {} }, true);
+        if (!device_lost)
+            Write({ MessageKind::kShutdown, 0, {} }, true);
         {
             std::lock_guard<std::mutex> lock(process_lock_);
-            if (!WaitForRendererProcess(&process_, 2000))
+            if (device_lost || !WaitForRendererProcess(&process_, 2000))
                 TerminateRendererProcess(&process_);
         }
         renderer_protocol::ClosePipe(process_.read_pipe);
@@ -476,7 +498,6 @@ public:
         }
     }
 
-private:
     uint64_t NextRequestId()
     {
         uint64_t id = next_request_id_.fetch_add(1,

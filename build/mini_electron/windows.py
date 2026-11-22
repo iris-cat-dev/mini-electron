@@ -881,6 +881,30 @@ def _package_runtime_distribution(
                 f"Native broker storage verification failed:\n{storage_probe.stdout}"
             )
         print(storage_probe.stdout, end="")
+        # Earn the API schema from this exact staged executable, including honest
+        # CPU-fallback unavailability. Headless CI must not claim GPU coverage;
+        # run the same smoke without --schema-only on interactive hardware.
+        diagnostics_probe = subprocess.run(
+            [
+                str(executable),
+                f"--app={root / 'test' / 'windows-compositor-diagnostics-smoke.js'}",
+                "--schema-only",
+            ],
+            cwd=root,
+            env=storage_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=120,
+        )
+        if (
+            diagnostics_probe.returncode != 0
+            or "PASS: compositor diagnostics schema1 CPU fallback availability" not in diagnostics_probe.stdout
+        ):
+            raise BuildError(
+                f"Native compositor diagnostics API verification failed:\n{diagnostics_probe.stdout}"
+            )
+        print(diagnostics_probe.stdout, end="")
         published, archive, _ = publish_distribution(staged, destination, metadata)
     except BaseException:
         if staged.exists():

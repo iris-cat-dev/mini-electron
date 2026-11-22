@@ -13,9 +13,11 @@
 #include <limits>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include "base/win/object_watcher.h"
+#include "src/platform/windows/compositor_diagnostics.h"
 
 namespace mini_electron::win {
 namespace {
@@ -23,17 +25,85 @@ namespace {
 using Microsoft::WRL::ComPtr;
 
 constexpr uint64_t kMaximumTextureBytes = 64ull * 1024 * 1024;
+constexpr wchar_t kDiagnosticPresenterProperty[] =
+    L"MiniElectronCompositorDiagnosticPresenter";
+
+// Browser UI sequence only. Bounded numeric history deliberately outlives a
+// failed presenter, but owns no HWND/COM/HANDLE resources. WM_NCDESTROY erases
+// that window's records, including before Windows can reuse its HWND.
+CompositorDiagnosticEvents<>& PresenterEvents() {
+  static CompositorDiagnosticEvents<> events;
+  return events;
+}
+
+struct PresentCounters {
+  uint64_t attempts = 0;
+  uint64_t successes = 0;
+  uint64_t busy = 0;
+  uint64_t occluded = 0;
+  uint64_t mode_change = 0;
+  uint64_t failures = 0;
+  bool has_result = false;
+  HRESULT last_result = S_OK;
+};
+
+// Scoped propagation through the existing failure-reporting helpers; stack
+// storage only. All entrypoints are UI-affine, including in-process imports.
+struct DiagnosticContext {
+  CompositorDiagnosticEvents<>* events;
+  uint64_t owner;
+  uint64_t identity;
+  uint64_t source = 0;
+  uint64_t frame = 0;
+  int layer = 0;
+  int width = 0;
+  int height = 0;
+  PresentCounters* presents = nullptr;
+
+  void Record(const char* type, int32_t result = 0,
+              uint64_t resource = 0) const {
+    events->Add(owner, type, resource ? resource : identity, source, frame,
+                layer, width, height, result);
+  }
+};
+
+thread_local const DiagnosticContext* current_diagnostics = nullptr;
+class ScopedDiagnostics {
+ public:
+  explicit ScopedDiagnostics(const DiagnosticContext& context)
+      : previous_(current_diagnostics) {
+    current_diagnostics = &context;
+  }
+  ~ScopedDiagnostics() { current_diagnostics = previous_; }
+ private:
+  const DiagnosticContext* previous_;
+};
+
+void RecordDiagnostic(const char* type, int32_t result = 0,
+                      uint64_t resource = 0) {
+  if (current_diagnostics)
+    current_diagnostics->Record(type, result, resource);
+}
 
 bool SameLuid(const LUID& left, const LUID& right) {
   return left.LowPart == right.LowPart && left.HighPart == right.HighPart;
 }
 
+void RememberDeviceLoss(HRESULT result);
+
 void ReportFailure(const char* operation, HRESULT result) {
+  RecordDiagnostic(operation, result);
+  if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET ||
+      result == DXGI_ERROR_DEVICE_HUNG ||
+      result == DXGI_ERROR_DRIVER_INTERNAL_ERROR) {
+    RememberDeviceLoss(result);
+  }
   std::fprintf(stderr, "[mini-electron] D3D presentation %s failed (0x%08lx)\n",
                operation, static_cast<unsigned long>(result));
 }
 
 void ReportInvalidFrame(const char* reason) {
+  RecordDiagnostic(reason, E_INVALIDARG);
   std::fprintf(stderr, "[mini-electron] rejected renderer GPU frame: %s\n",
                reason);
 }
@@ -210,6 +280,8 @@ struct DeviceState {
   bool ready = false;
   bool composition_capability_checked = false;
   bool composition_capable = false;
+  HRESULT reported_device_loss = S_OK;
+  HRESULT device_loss = S_OK;
   DWORD thread_id = 0;
   LUID luid{};
   ComPtr<IDXGIAdapter1> adapter;
@@ -223,6 +295,12 @@ struct DeviceState {
 DeviceState& SharedDevice() {
   static DeviceState state;
   return state;
+}
+
+void RememberDeviceLoss(HRESULT result) {
+  auto& shared = SharedDevice();
+  if (shared.OnDeviceThread() && SUCCEEDED(shared.reported_device_loss))
+    shared.reported_device_loss = result;
 }
 
 bool RealProcessHandle(HANDLE process, DWORD* process_id, bool in_process) {
@@ -288,6 +366,7 @@ struct CompositionSwapChain {
 
   ComPtr<IDXGISwapChain1> chain;
   ScopedHandle ready;
+  uint64_t diagnostic_id = 0;
 };
 
 bool DuplicateRendererHandle(HANDLE renderer_process,
@@ -368,6 +447,8 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
     }
     auto state = std::make_unique<Priming>();
     state->chain = chain;
+    if (current_diagnostics)
+      state->diagnostics = *current_diagnostics;
     state->ready.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
     if (!state->ready.get()) {
       ReportFailure("first-frame completion event",
@@ -401,6 +482,7 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
 
 
   bool IsWatching() const { return watcher_.IsWatching(); }
+  bool HasPriming() const { return priming_ != nullptr; }
 
   void Cancel() {
     if (watcher_.IsWatching())
@@ -412,6 +494,7 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
   struct Priming {
     ComPtr<IDXGISwapChain1> chain;
     ScopedHandle ready;
+    std::optional<DiagnosticContext> diagnostics;
     bool complete = false;
     bool failed = false;
   };
@@ -419,8 +502,13 @@ class SwapChainWake final : public base::win::ObjectWatcher::Delegate {
   void OnObjectSignaled(HANDLE object) override {
     if (priming_ && object == priming_->ready.get()) {
       priming_->complete = true;
-      priming_->failed =
-          FAILED(SharedDevice().device->GetDeviceRemovedReason());
+      const auto& shared = SharedDevice();
+      const HRESULT reason = FAILED(shared.device_loss)
+                                 ? shared.device_loss
+                                 : shared.device->GetDeviceRemovedReason();
+      priming_->failed = FAILED(reason);
+      if (priming_->failed && priming_->diagnostics)
+        priming_->diagnostics->Record("priming-device-failed", reason);
     }
     // A wake requests another non-blocking Present; DXGI remains the authority
     // on queue capacity, rather than a cached/consumed event token.
@@ -438,6 +526,34 @@ PresentResult PresentSwapChain(const CompositionSwapChain& swap_chain,
                                UINT interval) {
   const HRESULT result =
       swap_chain.chain->Present(interval, DXGI_PRESENT_DO_NOT_WAIT);
+  if (current_diagnostics && current_diagnostics->presents) {
+    auto& counters = *current_diagnostics->presents;
+    ++counters.attempts;
+    if (result == DXGI_ERROR_WAS_STILL_DRAWING)
+      ++counters.busy;
+    else if (result == DXGI_STATUS_OCCLUDED)
+      ++counters.occluded;
+    else if (result == DXGI_STATUS_MODE_CHANGE_IN_PROGRESS)
+      ++counters.mode_change;
+    else if (FAILED(result))
+      ++counters.failures;
+    else
+      ++counters.successes;
+    if (!counters.has_result || result != counters.last_result) {
+      if (result == DXGI_ERROR_WAS_STILL_DRAWING)
+        RecordDiagnostic("present-busy", result, swap_chain.diagnostic_id);
+      else if (result == DXGI_STATUS_OCCLUDED)
+        RecordDiagnostic("present-occluded", result, swap_chain.diagnostic_id);
+      else if (result == DXGI_STATUS_MODE_CHANGE_IN_PROGRESS)
+        RecordDiagnostic("present-mode-change", result, swap_chain.diagnostic_id);
+      else if (FAILED(result))
+        RecordDiagnostic("present-failed", result, swap_chain.diagnostic_id);
+      else if (counters.has_result && counters.last_result != S_OK)
+        RecordDiagnostic("present-recovered", result, swap_chain.diagnostic_id);
+    }
+    counters.has_result = true;
+    counters.last_result = result;
+  }
   if (result == DXGI_ERROR_WAS_STILL_DRAWING) {
     if (!wake->Arm(swap_chain.ready.get())) {
       ReportFailure("swap-chain wake registration", E_FAIL);
@@ -500,6 +616,8 @@ bool CreateCompositionSwapChain(int width,
     ReportFailure("swap-chain latency handle", E_HANDLE);
     return false;
   }
+  candidate.diagnostic_id = NextCompositorDiagnosticId();
+  RecordDiagnostic("swapchain-created", S_OK, candidate.diagnostic_id);
   *swap_chain = std::move(candidate);
   return true;
 }
@@ -578,6 +696,11 @@ struct D3DFrameConsumer::Impl {
   }
 
   DWORD process_id = 0;
+  const uint64_t diagnostic_id = NextCompositorDiagnosticId();
+  uint64_t retained_texture_id = 0;
+  uint64_t ready_value = 0;
+  uint64_t rejected_frames = 0;
+  CompositorDiagnosticEvents<> events;
   uint64_t texture_handle_value = 0;
   uint64_t fence_handle_value = 0;
   uint64_t frame_id = 0;
@@ -598,6 +721,23 @@ D3DFrameConsumer::~D3DFrameConsumer() = default;
 
 bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
                             bool in_process) {
+  const DiagnosticContext context{&impl_->events, impl_->diagnostic_id,
+      impl_->diagnostic_id, frame.source_id, frame.frame_id, 0,
+      frame.width, frame.height};
+  const ScopedDiagnostics diagnostics(context);
+  struct Attempt {
+    Impl* impl;
+    const D3DFrame& frame;
+    bool accepted = false;
+    ~Attempt() {
+      if (!accepted) {
+        ++impl->rejected_frames;
+        impl->events.Add(impl->diagnostic_id, "import-rejected",
+            impl->diagnostic_id, frame.source_id, frame.frame_id, 0,
+            frame.width, frame.height, frame.error ? frame.error : E_FAIL);
+      }
+    }
+  } attempt{impl_.get(), frame};
   if (frame.error) {
     ReportInvalidFrame("renderer reported a GPU error");
     return false;
@@ -642,8 +782,10 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
     ReportInvalidFrame("stale or conflicting frame source");
     return false;
   }
-  if (same_source && frame.frame_id == impl_->frame_id)
+  if (same_source && frame.frame_id == impl_->frame_id) {
+    attempt.accepted = true;
     return true;
+  }
 
   ScopedHandle texture_handle;
   ScopedHandle fence_handle;
@@ -687,6 +829,7 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
   }
 
   ComPtr<ID3D11Texture2D> retained_texture = impl_->retained_texture;
+  uint64_t retained_texture_id = impl_->retained_texture_id;
   if (!retained_texture || frame.width != impl_->width ||
       frame.height != impl_->height) {
     const D3D11_TEXTURE2D_DESC description =
@@ -697,6 +840,8 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
       ReportFailure("retained texture creation", result);
       return false;
     }
+    retained_texture_id = NextCompositorDiagnosticId();
+    RecordDiagnostic("retained-texture-created", S_OK, retained_texture_id);
   }
 
   // Even though publication waits for the producer fence on the CPU, enqueue
@@ -723,6 +868,7 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
   }
 
   if (!same_source) {
+    RecordDiagnostic(impl_->source_id ? "source-replaced" : "source-imported");
     impl_->texture_handle = std::move(texture_handle);
     impl_->fence_handle = std::move(fence_handle);
     impl_->source_texture = std::move(source_texture);
@@ -733,10 +879,13 @@ bool D3DFrameConsumer::Import(HANDLE renderer_process, const D3DFrame& frame,
     impl_->source_id = frame.source_id;
   }
   impl_->retained_texture = std::move(retained_texture);
+  impl_->retained_texture_id = retained_texture_id;
   impl_->frame_id = frame.frame_id;
   ++impl_->imported_frames;
   impl_->width = frame.width;
   impl_->height = frame.height;
+  impl_->ready_value = frame.ready_value;
+  attempt.accepted = true;
   return true;
 }
 
@@ -750,6 +899,25 @@ uint64_t D3DFrameConsumer::frame_id() const {
 
 uint64_t D3DFrameConsumer::imported_frames() const {
   return impl_->imported_frames;
+}
+
+base::Value::Dict D3DFrameConsumer::Diagnostics() const {
+  base::Value::Dict value;
+  value.Set("available", true);
+  value.Set("consumerId", base::NumberToString(impl_->diagnostic_id));
+  value.Set("importedFrames", base::NumberToString(impl_->imported_frames));
+  value.Set("rejectedFrames", base::NumberToString(impl_->rejected_frames));
+  if (impl_->process_id) {
+    value.Set("rendererPid", static_cast<int>(impl_->process_id));
+    value.Set("sourceId", base::NumberToString(impl_->source_id));
+    value.Set("frameId", base::NumberToString(impl_->frame_id));
+    value.Set("readyValue", base::NumberToString(impl_->ready_value));
+    value.Set("retainedTextureId", base::NumberToString(impl_->retained_texture_id));
+    value.Set("width", impl_->width);
+    value.Set("height", impl_->height);
+  }
+  impl_->events.AppendTo(value, impl_->diagnostic_id);
+  return value;
 }
 
 int D3DFrameConsumer::width() const {
@@ -789,8 +957,40 @@ bool CanUseD3DPresentation() {
   return shared.composition_capable;
 }
 
+bool RetireD3DPresentationIfDeviceLost() {
+  auto& shared = SharedDevice();
+  if (!shared.OnDeviceThread())
+    return false;
+
+  HRESULT reason = shared.device->GetDeviceRemovedReason();
+  if (SUCCEEDED(reason))
+    reason = shared.reported_device_loss;
+  if (SUCCEEDED(reason))
+    return false;
+
+  // The old device can no longer complete its cross-API release fences.
+  // Never import an already-acknowledged producer texture on a replacement
+  // device: the renderer may own and be writing it again.
+  shared.device_loss = reason;
+  shared.ready = false;
+  RetireInProcessD3DCompositing();
+  shared.context4.Reset();
+  shared.context.Reset();
+  shared.device5.Reset();
+  shared.device.Reset();
+  shared.factory.Reset();
+  shared.adapter.Reset();
+  return true;
+}
+
+HRESULT D3DPresentationDeviceLossReason() {
+  return SharedDevice().device_loss;
+}
+
 struct DCompPresenter::Impl {
   struct LayerState {
+    uint64_t visual_id = 0;
+    PresentCounters presents;
     ComPtr<IDCompositionVisual> visual;
     ComPtr<IDCompositionRectangleClip> clip;
     ComPtr<IDCompositionScaleTransform> scale;
@@ -816,6 +1016,8 @@ struct DCompPresenter::Impl {
   };
 
   struct OverlayState {
+    uint64_t visual_id = 0;
+    PresentCounters presents;
     ComPtr<IDCompositionVisual> visual;
     CompositionSwapChain swap_chain;
     CompositionSwapChain pending_swap_chain;
@@ -847,25 +1049,42 @@ struct DCompPresenter::Impl {
     overlay.pending_height = 0;
   }
   ~Impl() {
+    const DiagnosticContext context{
+        &PresenterEvents(), reinterpret_cast<uintptr_t>(window), diagnostic_id};
+    const ScopedDiagnostics diagnostics(context);
+    RecordDiagnostic("presenter-destroyed");
+    if (GetPropW(window, kDiagnosticPresenterProperty) ==
+        reinterpret_cast<HANDLE>(this))
+      RemovePropW(window, kDiagnosticPresenterProperty);
     CancelPendingPresents();
     if (diagnostic_property_set && IsWindow(window))
       RemovePropW(window, L"MiniElectronDirectComposition");
     if (target && composition_device) {
-      target->SetRoot(nullptr);
-      composition_device->Commit();
+      const HRESULT detach = target->SetRoot(nullptr);
+      const HRESULT commit = composition_device->Commit();
+      if (FAILED(detach))
+        ReportFailure("DirectComposition detach", detach);
+      if (FAILED(commit))
+        ReportFailure("DirectComposition teardown commit", commit);
     }
   }
 
   bool Initialize(HWND target_window) {
+    window = target_window;
+    const DiagnosticContext context{
+        &PresenterEvents(), reinterpret_cast<uintptr_t>(window), diagnostic_id};
+    const ScopedDiagnostics diagnostics(context);
+    RecordDiagnostic("presenter-creating");
     if (!IsWindow(target_window)) {
       ReportFailure("invalid presentation window", E_INVALIDARG);
       return false;
     }
     auto& shared = SharedDevice();
-    if (!shared.Initialize(nullptr))
+    if (!shared.Initialize(nullptr)) {
+      RecordDiagnostic("presenter-device-unavailable");
       return false;
+    }
 
-    window = target_window;
     overlay.wake.SetWindow(window);
     // A prior presenter should have removed this. Clear it defensively so a
     // failed replacement can never leave stale diagnostics behind.
@@ -892,6 +1111,13 @@ struct DCompPresenter::Impl {
       ReportFailure("DirectComposition initialization", result);
       return false;
     }
+    ++commit_count;
+    overlay.visual_id = NextCompositorDiagnosticId();
+    if (!SetPropW(window, kDiagnosticPresenterProperty,
+                  reinterpret_cast<HANDLE>(this)))
+      ReportFailure("diagnostic presenter property",
+                    HRESULT_FROM_WIN32(GetLastError()));
+    RecordDiagnostic("presenter-created");
     return true;
   }
 
@@ -906,6 +1132,8 @@ struct DCompPresenter::Impl {
       ReportFailure("layer visual creation", result);
       return false;
     }
+    state->visual_id = NextCompositorDiagnosticId();
+    RecordDiagnostic("layer-created", S_OK, state->visual_id);
     return true;
   }
 
@@ -1038,7 +1266,10 @@ struct DCompPresenter::Impl {
         ReportFailure("layer swap-chain attachment", result);
         return PresentResult::kFailed;
       }
+      const bool replaced = static_cast<bool>(state->swap_chain);
       state->swap_chain = std::move(state->pending_swap_chain);
+      RecordDiagnostic(replaced ? "swapchain-replaced" : "swapchain-attached", S_OK,
+                       state->swap_chain.diagnostic_id);
       state->backing_width = width;
       state->backing_height = height;
       state->pending_width = 0;
@@ -1279,7 +1510,10 @@ struct DCompPresenter::Impl {
           ReportFailure("caption swap-chain attachment", result);
           return PresentResult::kFailed;
         }
+        const bool replaced = static_cast<bool>(overlay.swap_chain);
         overlay.swap_chain = std::move(overlay.pending_swap_chain);
+        RecordDiagnostic(replaced ? "swapchain-replaced" : "swapchain-attached", S_OK,
+                         overlay.swap_chain.diagnostic_id);
         overlay.backing_width = input.width;
         overlay.backing_height = input.height;
         overlay.pending_width = 0;
@@ -1308,6 +1542,12 @@ struct DCompPresenter::Impl {
 
 
   bool PresentationFailed() {
+    RecordDiagnostic("presenter-failed", E_FAIL);
+    if (SharedDevice().device) {
+      const HRESULT reason = SharedDevice().device->GetDeviceRemovedReason();
+      if (FAILED(reason))
+        RecordDiagnostic("device-removed", reason);
+    }
     CancelPendingPresents();
     if (diagnostic_property_set && IsWindow(window)) {
       RemovePropW(window, L"MiniElectronDirectComposition");
@@ -1318,7 +1558,14 @@ struct DCompPresenter::Impl {
 
   bool Present(const std::vector<DCompLayer>& requested_layers,
                const DCompOverlay& requested_overlay) {
-    if (!SharedDevice().OnDeviceThread()) {
+    ++present_calls;
+    const DiagnosticContext context{
+        &PresenterEvents(), reinterpret_cast<uintptr_t>(window), diagnostic_id};
+    const ScopedDiagnostics diagnostics(context);
+    const auto& shared = SharedDevice();
+    if (FAILED(shared.reported_device_loss))
+      return PresentationFailed();
+    if (!shared.OnDeviceThread()) {
       ReportFailure("presentation from non-UI thread", E_UNEXPECTED);
       return PresentationFailed();
     }
@@ -1339,6 +1586,12 @@ struct DCompPresenter::Impl {
       }
       auto insertion = layers.try_emplace(layer.id);
       auto found = insertion.first;
+      const DiagnosticContext layer_context{
+          &PresenterEvents(), reinterpret_cast<uintptr_t>(window), diagnostic_id,
+          layer.frame ? layer.frame->source_id() : 0,
+          layer.frame ? layer.frame->frame_id() : layer.generation,
+          layer.id, layer.width, layer.height, &found->second.presents};
+      const ScopedDiagnostics layer_diagnostics(layer_context);
       if (insertion.second && !CreateLayerState(&found->second)) {
         layers.erase(found);
         return PresentationFailed();
@@ -1355,6 +1608,11 @@ struct DCompPresenter::Impl {
                                    requested_overlay.width > 0 &&
                                    requested_overlay.height > 0;
     if (overlay_requested) {
+      const DiagnosticContext overlay_context{
+          &PresenterEvents(), reinterpret_cast<uintptr_t>(window), diagnostic_id,
+          0, requested_overlay.generation, -1,
+          requested_overlay.width, requested_overlay.height, &overlay.presents};
+      const ScopedDiagnostics overlay_diagnostics(overlay_context);
       if (UpdateOverlay(requested_overlay) == PresentResult::kFailed)
         fatal_error = true;
     } else {
@@ -1389,15 +1647,21 @@ struct DCompPresenter::Impl {
     if (SUCCEEDED(result))
       result = composition_device->Commit();
     if (FAILED(result)) {
+      ++commit_failures;
       ReportFailure("DirectComposition commit", result);
       return PresentationFailed();
     }
+    ++commit_count;
 
     for (auto it = layers.begin(); it != layers.end();) {
       const bool requested = std::any_of(
           requested_layers.begin(), requested_layers.end(),
           [id = it->first](const DCompLayer& layer) { return layer.id == id; });
       if (!requested) {
+        PresenterEvents().Add(
+            reinterpret_cast<uintptr_t>(window), "layer-removed",
+            it->second.visual_id, it->second.presented_source_id,
+            it->second.presented_frame_id, it->first);
         it->second.wake.Cancel();
         it->second.pending_swap_chain = {};
         it = layers.erase(it);
@@ -1424,6 +1688,10 @@ struct DCompPresenter::Impl {
   }
 
   HWND window = nullptr;
+  const uint64_t diagnostic_id = NextCompositorDiagnosticId();
+  uint64_t present_calls = 0;
+  uint64_t commit_count = 0;
+  uint64_t commit_failures = 0;
   bool diagnostic_property_set = false;
   ComPtr<IDCompositionDevice> composition_device;
   ComPtr<IDCompositionTarget> target;
@@ -1453,6 +1721,90 @@ bool DCompPresenter::Present(const std::vector<DCompLayer>& layers,
 uint64_t DCompPresenter::presented_frame_id(int id) const {
   const auto found = impl_->layers.find(id);
   return found == impl_->layers.end() ? 0 : found->second.presented_frame_id;
+}
+
+base::Value::Dict DCompPresenter::Diagnostics(HWND window, int layer_id) {
+  base::Value::Dict value;
+  const auto* impl = window && IsWindow(window)
+      ? reinterpret_cast<const Impl*>(
+            GetPropW(window, kDiagnosticPresenterProperty))
+      : nullptr;
+  value.Set("available", impl != nullptr);
+  // A successful DXGI Present/Commit is not proof of physical scanout.
+  value.Set("physicalScanoutObserved", false);
+  PresenterEvents().AppendTo(value, reinterpret_cast<uintptr_t>(window));
+  const auto& shared = SharedDevice();
+  if (FAILED(shared.device_loss))
+    value.Set("deviceRemovedReason", static_cast<int>(shared.device_loss));
+  else if (shared.device)
+    value.Set("deviceRemovedReason",
+              static_cast<int>(shared.device->GetDeviceRemovedReason()));
+  if (!impl)
+    return value;
+  value.Set("presenterId", base::NumberToString(impl->diagnostic_id));
+  value.Set("layerCount", static_cast<int>(impl->layers.size()));
+  value.Set("presentCalls", base::NumberToString(impl->present_calls));
+  value.Set("commitCount", base::NumberToString(impl->commit_count));
+  value.Set("commitFailures", base::NumberToString(impl->commit_failures));
+  base::Value::List layers;
+  const auto append = [&layers](int id, const auto& state) {
+    base::Value::Dict layer;
+    layer.Set("layerId", id);
+    layer.Set("visualId", base::NumberToString(state.visual_id));
+    layer.Set("swapChainId", base::NumberToString(
+        state.swap_chain ? state.swap_chain.diagnostic_id : 0));
+    layer.Set("pendingSwapChainId", base::NumberToString(
+        state.pending_swap_chain ? state.pending_swap_chain.diagnostic_id : 0));
+    layer.Set("backingWidth", state.backing_width);
+    layer.Set("backingHeight", state.backing_height);
+    layer.Set("pendingWidth", state.pending_width);
+    layer.Set("pendingHeight", state.pending_height);
+    layer.Set("waiting", state.wake.IsWatching());
+    layer.Set("priming", state.wake.HasPriming());
+    const auto& counters = state.presents;
+    if (counters.has_result)
+      layer.Set("lastPresentResult", static_cast<int>(counters.last_result));
+    layer.Set("presentAttempts", base::NumberToString(counters.attempts));
+    layer.Set("presentSuccesses", base::NumberToString(counters.successes));
+    layer.Set("presentBusy", base::NumberToString(counters.busy));
+    layer.Set("presentOccluded", base::NumberToString(counters.occluded));
+    layer.Set("presentModeChange", base::NumberToString(counters.mode_change));
+    layer.Set("presentFailures", base::NumberToString(counters.failures));
+    layers.Append(std::move(layer));
+  };
+  const auto append_page = [&append, &layers](int id, const Impl::LayerState& state) {
+    append(id, state);
+    auto& layer = layers.back().GetDict();
+    layer.Set("presentedSourceId", base::NumberToString(state.presented_source_id));
+    layer.Set("presentedFrameId", base::NumberToString(state.presented_frame_id));
+    layer.Set("presentedCpuGeneration",
+              base::NumberToString(state.presented_cpu_generation));
+    layer.Set("backingIsGpu", state.backing_is_gpu);
+  };
+  // Prioritize the requested WebContents in a bounded multi-layer snapshot.
+  const auto requested = impl->layers.find(layer_id);
+  if (requested != impl->layers.end())
+    append_page(requested->first, requested->second);
+  for (const auto& entry : impl->layers) {
+    if (layers.size() >= 15)
+      break;
+    if (entry.first != layer_id)
+      append_page(entry.first, entry.second);
+  }
+  if (impl->overlay.swap_chain || impl->overlay.pending_swap_chain) {
+    append(-1, impl->overlay);
+    auto& layer = layers.back().GetDict();
+    layer.Set("presentedCpuGeneration",
+              base::NumberToString(impl->overlay.presented_generation));
+    layer.Set("backingIsGpu", false);
+  }
+  value.Set("layers", std::move(layers));
+  return value;
+}
+
+void DCompPresenter::ForgetDiagnostics(HWND window) {
+  PresenterEvents().Erase(reinterpret_cast<uintptr_t>(window));
+  RemovePropW(window, kDiagnosticPresenterProperty);
 }
 
 

@@ -107,6 +107,14 @@ public:
     // Native presentation normally reads metadata only, never capture pixels.
     virtual bool CopyFrame(RendererFrameSnapshot* snapshot,
         bool include_native_pixels = false) const = 0;
+#if BUILDFLAG(IS_WIN)
+    // Owner sequence, metadata only. Unlike CopyFrame this never imports,
+    // acknowledges, copies, flushes or reads back a newly published frame.
+    virtual base::Value::Dict GetCompositorConsumerDiagnostics() const = 0;
+    // A renderer whose browser-side device was removed cannot drain its
+    // shared GPU fence. Do not wait for its normal shutdown handshake.
+    virtual void CloseForD3DDeviceLoss() = 0;
+#endif
     // Registers an owned read-only frame reference with |target| under
     // guest_contents_id. Cross-process handles travel out-of-band; local
     // mappings register synchronously. Raw handle values never enter JS.

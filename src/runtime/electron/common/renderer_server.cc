@@ -1863,7 +1863,7 @@ private:
             return;
         }
         if (method == "getCompositorInfo") {
-            const auto gpu = mini_electron::win::GetD3DCompositorInfo(static_cast<int64_t>(view_));
+            auto gpu = mini_electron::win::GetD3DCompositorInfo(static_cast<int64_t>(view_));
             int64_t display_id = -1;
             if (const std::string* token = params.FindString("displayId"))
                 base::StringToInt64(*token, &display_id);
@@ -1885,6 +1885,10 @@ private:
                 : static_cast<double>(frame_->presented_generation / 2));
             result.Set("readbacks", static_cast<double>(gpu.readbacks));
             result.Set("vsync", std::move(vsync));
+            base::Value::Dict diagnostics;
+            diagnostics.Set("schemaVersion", 1);
+            diagnostics.Set("producer", std::move(gpu.diagnostics));
+            result.Set("diagnostics", std::move(diagnostics));
             Reply(request_id, std::move(result));
             return;
         }

@@ -27,6 +27,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/win/object_watcher.h"
+#include "src/platform/windows/compositor_diagnostics.h"
 #include "components/viz/service/display/software_output_device.h"
 #include "src/runtime/engine/browser/web_view_host.h"
 #include "src/runtime/engine/common/live_id_detect.h"
@@ -50,6 +51,7 @@ using Microsoft::WRL::ComPtr;
 constexpr int64_t kMaximumSurfaceBytes = 256ll * 1024 * 1024;
 constexpr base::TimeDelta kReadbackTimeout = base::Seconds(2);
 constexpr base::TimeDelta kReadbackRetryDelay = base::Milliseconds(4);
+std::atomic_bool in_process_compositing_retired{false};
 
 uint64_t NextSourceId() {
   static std::atomic<uint64_t> next_id{0};
@@ -72,6 +74,8 @@ D3DDevice& Device() {
 }
 
 bool GpuDisabled() {
+  if (in_process_compositing_retired.load(std::memory_order_relaxed))
+    return true;
   const char* disabled = std::getenv("MINI_ELECTRON_DISABLE_GPU");
   if (disabled && *disabled && std::strcmp(disabled, "0") != 0)
     return true;
@@ -145,9 +149,16 @@ bool PrepareD3DDevice() {
 }
 
 class D3DOutputDevice;
+
+struct ConsumerFenceWait {
+  ID3D12Fence* fence = nullptr;
+  std::atomic<uint64_t> value{0};
+};
+
 struct Endpoint {
   scoped_refptr<base::SingleThreadTaskRunner> runner;
   base::WeakPtr<D3DOutputDevice> device;
+  ConsumerFenceWait* consumer_wait = nullptr;
 };
 
 struct D3DFrameCopyResult {
@@ -168,6 +179,7 @@ struct Registry {
   std::map<int64_t, D3DFrameIdentity> delivered_frames;
   std::map<int64_t, D3DFrame> deferred_frames;
   std::set<int64_t> active_readbacks;
+  CompositorDiagnosticEvents<> diagnostic_events;
 };
 Registry& GlobalRegistry() {
   static base::NoDestructor<Registry> registry;
@@ -223,12 +235,16 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   D3DOutputDevice(int64_t view_id, bool transparent)
       : view_id_(view_id),
         transparent_(transparent),
-        runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
+        runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {
+    Record("output-device-created");
+  }
 
   bool Initialize() {
     DCHECK(runner_->RunsTasksInCurrentSequence());
-    if (!PrepareD3DDevice())
+    if (!PrepareD3DDevice()) {
+      Record("device-unavailable");
       return false;
+    }
 
     GrD3DBackendContext backend;
     backend.fAdapter.retain(Device().adapter.Get());
@@ -237,45 +253,49 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     GrContextOptions options;
     options.fShaderErrorHandler = this;
     context_ = GrDirectContext::MakeDirect3D(backend, options);
-    if (!context_ || failed_)
+    if (!context_ || failed_) {
+      Record("context-creation-failed");
       return false;
+    }
 
-    if (FAILED(Device().device->CreateFence(
-            0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&fence_))) ||
-        FAILED(Device().device->CreateSharedHandle(
-            fence_.Get(), nullptr, GENERIC_ALL, nullptr, &fence_handle_))) {
+    HRESULT result = Device().device->CreateFence(
+        0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&fence_));
+    if (SUCCEEDED(result))
+      result = Device().device->CreateSharedHandle(
+          fence_.Get(), nullptr, GENERIC_ALL, nullptr, &fence_handle_);
+    if (FAILED(result)) {
+      Record("fence-creation-failed", result);
       return false;
     }
     ready_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    if (!ready_event_)
+    if (!ready_event_) {
+      Record("ready-event-creation-failed", HRESULT_FROM_WIN32(GetLastError()));
       return false;
+    }
 
     {
       std::lock_guard<std::mutex> lock(GlobalRegistry().mutex);
+      if (base::CommandLine::ForCurrentProcess()->HasSwitch("single-process"))
+        consumer_wait_.fence = fence_.Get();
       GlobalRegistry().endpoints[view_id_] = {
-          runner_, weak_factory_.GetWeakPtr()};
+          runner_, weak_factory_.GetWeakPtr(), &consumer_wait_};
     }
     return true;
   }
 
   ~D3DOutputDevice() override {
     DCHECK(runner_->RunsTasksInCurrentSequence());
-    {
-      auto& registry = GlobalRegistry();
-      std::lock_guard<std::mutex> lock(registry.mutex);
-      auto found = registry.endpoints.find(view_id_);
-      if (found != registry.endpoints.end() &&
-          found->second.device.get() == this) {
-        registry.endpoints.erase(found);
-      }
-      registry.delivered_frames.erase(view_id_);
-      registry.deferred_frames.erase(view_id_);
-      registry.active_readbacks.erase(view_id_);
-    }
+    Record("output-device-destroyed", error_);
+    // Keep the fence reachable until Skia's destructor has drained the
+    // queue. The host can lose its device during normal view teardown.
     weak_factory_.InvalidateWeakPtrs();
     ready_watcher_.StopWatching();
-    if (context_ && !context_->abandoned())
-      context_->flushAndSubmit(GrSyncCpu::kYes);
+    if (context_ && !context_->abandoned()) {
+      if (in_process_compositing_retired.load(std::memory_order_relaxed))
+        context_->abandonContext();
+      else
+        context_->flushAndSubmit(GrSyncCpu::kYes);
+    }
     images_.clear();
     surface_.reset();
     backend_render_target_ = {};
@@ -288,6 +308,16 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     if (ready_event_)
       CloseHandle(ready_event_);
     context_.reset();
+    auto& registry = GlobalRegistry();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    auto found = registry.endpoints.find(view_id_);
+    if (found != registry.endpoints.end() &&
+        found->second.consumer_wait == &consumer_wait_) {
+      registry.endpoints.erase(found);
+    }
+    registry.delivered_frames.erase(view_id_);
+    registry.deferred_frames.erase(view_id_);
+    registry.active_readbacks.erase(view_id_);
   }
 
   // The offscreen backing can follow the submitted root frame. Resize before
@@ -300,6 +330,8 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       return;
     viewport_pixel_size_ = size;
     scale_factor_ = std::isfinite(scale) && scale > 0.f ? scale : 1.f;
+    ++backing_resizes_;
+    Record("backing-resize");
     root_has_drawn_ = false;
     surface_.reset();
     backend_render_target_ = {};
@@ -343,12 +375,14 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     clear.Format = description.Format;
     clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.f;
     clear.Color[3] = transparent_ ? 0.f : 1.f;
-    if (FAILED(Device().device->CreateCommittedResource(
-            &heap, D3D12_HEAP_FLAG_SHARED, &description,
-            D3D12_RESOURCE_STATE_COMMON, &clear,
-            IID_PPV_ARGS(&texture_))) ||
-        FAILED(Device().device->CreateSharedHandle(
-            texture_.Get(), nullptr, GENERIC_ALL, nullptr, &texture_handle_))) {
+    HRESULT result = Device().device->CreateCommittedResource(
+        &heap, D3D12_HEAP_FLAG_SHARED, &description,
+        D3D12_RESOURCE_STATE_COMMON, &clear, IID_PPV_ARGS(&texture_));
+    if (SUCCEEDED(result))
+      result = Device().device->CreateSharedHandle(
+          texture_.Get(), nullptr, GENERIC_ALL, nullptr, &texture_handle_);
+    if (FAILED(result)) {
+      Record("backing-creation-failed", result);
       Fail(7);
       return;
     }
@@ -365,10 +399,12 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
         context_.get(), backend_render_target_, kTopLeft_GrSurfaceOrigin,
         kBGRA_8888_SkColorType, SkColorSpace::MakeSRGB(), nullptr);
     if (!surface_) {
+      Record("surface-wrap-failed");
       Fail(7);
       return;
     }
     source_id_ = NextSourceId();
+    Record("backing-created");
     surface_->getCanvas()->clear(transparent_ ? SK_ColorTRANSPARENT
                                                : SK_ColorWHITE);
   }
@@ -467,7 +503,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
         pending_frame_.frame_id != frame_id) {
       return;
     }
-    if (!success || failed_) {
+    if (!success || failed_ || RetiredInProcess()) {
       if (!success)
         Fail(5);
       auto callback = std::move(pending_swap_callback_);
@@ -479,6 +515,9 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       return;
     }
     pending_published_ = true;
+    published_source_id_ = pending_frame_.source_id;
+    published_frame_id_ = pending_frame_.frame_id;
+    published_ready_value_ = pending_frame_.ready_value;
     if (!pending_frame_counted_) {
       ++completed_frames_;
       pending_frame_counted_ = true;
@@ -496,11 +535,19 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
       return;
     }
 
-    HRESULT result = unconsumed
-                         ? Device().queue->Signal(fence_.Get(),
-                                                  pending_frame_.ready_value + 1)
-                         : Device().queue->Wait(fence_.Get(),
-                                                pending_frame_.ready_value + 1);
+    const uint64_t release_value = pending_frame_.ready_value + 1;
+    HRESULT result = S_OK;
+    if (unconsumed) {
+      result = Device().queue->Signal(fence_.Get(), release_value);
+    } else if (!consumer_wait_.fence) {
+      result = Device().queue->Wait(fence_.Get(), release_value);
+    } else {
+      // Ordered with retirement's scan: either it observes this value or
+      // we see retirement and do not enqueue another GPU wait.
+      consumer_wait_.value.store(release_value);
+      if (!in_process_compositing_retired.load())
+        result = Device().queue->Wait(fence_.Get(), release_value);
+    }
     auto callback = std::move(pending_swap_callback_);
     const gfx::Size size(pending_frame_.width, pending_frame_.height);
     ReleaseRetiredSource();
@@ -572,11 +619,77 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   }
 
   D3DCompositorInfo Info() {
-    return {!failed_ && context_ && !context_->abandoned(),
-            completed_frames_, readbacks_};
+    D3DCompositorInfo info;
+    info.gpu_active = !failed_ && context_ && !context_->abandoned();
+    info.frames = completed_frames_;
+    info.readbacks = readbacks_;
+    auto& value = info.diagnostics;
+    value.Set("available", true);
+    value.Set("rendererPid", static_cast<int>(GetCurrentProcessId()));
+    value.Set("viewId", base::NumberToString(view_id_));
+    value.Set("outputDeviceId", base::NumberToString(diagnostic_id_));
+    value.Set("sourceId", base::NumberToString(source_id_));
+    value.Set("frameId", base::NumberToString(frame_id_));
+    value.Set("readyValue", base::NumberToString(frame_id_ * 2));
+    value.Set("frames", base::NumberToString(completed_frames_));
+    value.Set("readbacks", base::NumberToString(readbacks_));
+    value.Set("width", viewport_pixel_size_.width());
+    value.Set("height", viewport_pixel_size_.height());
+    value.Set("scale", scale_factor_);
+    value.Set("failed", failed_);
+    value.Set("backingResizes", base::NumberToString(backing_resizes_));
+    value.Set("pendingSourceId", base::NumberToString(pending_frame_.source_id));
+    value.Set("pendingFrameId", base::NumberToString(pending_frame_.frame_id));
+    value.Set("pendingReadyValue", base::NumberToString(pending_frame_.ready_value));
+    value.Set("publishedSourceId", base::NumberToString(published_source_id_));
+    value.Set("publishedFrameId", base::NumberToString(published_frame_id_));
+    value.Set("publishedReadyValue", base::NumberToString(published_ready_value_));
+    value.Set("error", error_);
+    value.Set("pendingSwap", !pending_swap_callback_.is_null());
+    value.Set("pendingPublished", pending_published_);
+    value.Set("awaitedFrameId", base::NumberToString(awaited_frame_id_));
+    value.Set("imageCacheSize", static_cast<int>(images_.size()));
+    base::Value::Dict damage;
+    damage.Set("x", damage_rect_.x());
+    damage.Set("y", damage_rect_.y());
+    damage.Set("width", damage_rect_.width());
+    damage.Set("height", damage_rect_.height());
+    value.Set("lastDamage", std::move(damage));
+    if (Device().device)
+      value.Set("deviceRemovedReason",
+                static_cast<int>(Device().device->GetDeviceRemovedReason()));
+    if (surface_) {
+      const auto* canvas = surface_->getCanvas();
+      value.Set("canvasSaveCount", canvas->getSaveCount());
+      const SkIRect clip = canvas->getDeviceClipBounds();
+      base::Value::Dict bounds;
+      bounds.Set("x", clip.x());
+      bounds.Set("y", clip.y());
+      bounds.Set("width", clip.width());
+      bounds.Set("height", clip.height());
+      value.Set("canvasClip", std::move(bounds));
+    }
+    {
+      auto& registry = GlobalRegistry();
+      std::lock_guard<std::mutex> lock(registry.mutex);
+      registry.diagnostic_events.AppendTo(value, view_id_);
+      value.Set("capturePending", registry.active_readbacks.count(view_id_) != 0);
+      value.Set("pendingAcknowledgement",
+                !pending_swap_callback_.is_null() && pending_published_);
+      value.Set("deferredPublish", registry.deferred_frames.count(view_id_) != 0);
+    }
+    return info;
   }
 
  private:
+  void Record(const char* type, int32_t result = 0) {
+    auto& registry = GlobalRegistry();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    registry.diagnostic_events.Add(
+        view_id_, type, diagnostic_id_, source_id_, frame_id_, 0,
+        viewport_pixel_size_.width(), viewport_pixel_size_.height(), result);
+  }
+
   struct Image {
     sk_sp<SkImage> source;
     sk_sp<SkImage> texture;
@@ -665,7 +778,14 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
            SUCCEEDED(Device().device->GetDeviceRemovedReason());
   }
 
+  bool RetiredInProcess() const {
+    return consumer_wait_.fence &&
+           in_process_compositing_retired.load(std::memory_order_relaxed);
+  }
+
   bool Usable() {
+    if (RetiredInProcess())
+      return false;
     if (!failed_ && context_ && !context_->abandoned())
       return true;
     if (!failed_)
@@ -677,6 +797,13 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
     if (failed_)
       return;
     failed_ = true;
+    error_ = error;
+    Record("producer-failed", error);
+    if (Device().device) {
+      const HRESULT reason = Device().device->GetDeviceRemovedReason();
+      if (FAILED(reason))
+        Record("device-removed", reason);
+    }
     std::fprintf(stderr,
                  "[mini-electron] D3D12 compositor failure: view=%lld code=%d\n",
                  static_cast<long long>(view_id_), error);
@@ -694,6 +821,12 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
 
   const int64_t view_id_;
   const bool transparent_;
+  const uint64_t diagnostic_id_ = NextCompositorDiagnosticId();
+  int error_ = 0;
+  uint64_t backing_resizes_ = 0;
+  uint64_t published_source_id_ = 0;
+  uint64_t published_frame_id_ = 0;
+  uint64_t published_ready_value_ = 0;
   scoped_refptr<base::SingleThreadTaskRunner> runner_;
   sk_sp<GrDirectContext> context_;
   GrBackendRenderTarget backend_render_target_;
@@ -717,6 +850,7 @@ class D3DOutputDevice final : public viz::SoftwareOutputDevice,
   bool pending_frame_counted_ = false;
   bool failed_ = false;
   uint64_t awaited_frame_id_ = 0;
+  ConsumerFenceWait consumer_wait_;
   base::win::ObjectWatcher ready_watcher_;
   std::map<uint32_t, Image> images_;
   base::WeakPtrFactory<D3DOutputDevice> weak_factory_{this};
@@ -770,6 +904,22 @@ void CopyD3DFrameOnDeviceSequence(
 }
 
 }  // namespace
+
+void RetireInProcessD3DCompositing() {
+  in_process_compositing_retired.store(true);
+  auto& registry = GlobalRegistry();
+  std::lock_guard<std::mutex> lock(registry.mutex);
+  // The removed D3D11 device cannot signal its releases. Complete only the
+  // waits already submitted by retiring producers; no texture is reused.
+  for (const auto& entry : registry.endpoints) {
+    const auto& wait = *entry.second.consumer_wait;
+    if (!wait.fence)
+      continue;
+    const uint64_t value = wait.value.load();
+    if (wait.fence->GetCompletedValue() < value)
+      wait.fence->Signal(value);
+  }
+}
 
 std::unique_ptr<viz::SoftwareOutputDevice> CreateD3DOutputDevice(
     int64_t view_id,
@@ -842,18 +992,24 @@ void CopyD3DFrameAsync(int64_t view_id, D3DFrameCopyCallback callback) {
 }
 
 D3DCompositorInfo GetD3DCompositorInfo(int64_t view_id) {
+  D3DCompositorInfo result;
+  result.diagnostics.Set("available", false);
+  result.diagnostics.Set("rendererPid", static_cast<int>(GetCurrentProcessId()));
+  result.diagnostics.Set("viewId", base::NumberToString(view_id));
   Endpoint endpoint;
   {
     std::lock_guard<std::mutex> lock(GlobalRegistry().mutex);
+    GlobalRegistry().diagnostic_events.AppendTo(result.diagnostics, view_id);
     auto found = GlobalRegistry().endpoints.find(view_id);
     if (found == GlobalRegistry().endpoints.end())
-      return {};
+      return result;
     endpoint = found->second;
   }
-  if (endpoint.runner->RunsTasksInCurrentSequence())
-    return endpoint.device ? endpoint.device->Info() : D3DCompositorInfo{};
-
-  D3DCompositorInfo result;
+  if (endpoint.runner->RunsTasksInCurrentSequence()) {
+    if (endpoint.device)
+      return endpoint.device->Info();
+    return result;
+  }
   base::WaitableEvent completed;
   if (!endpoint.runner->PostTask(
           FROM_HERE,
@@ -865,7 +1021,7 @@ D3DCompositorInfo GetD3DCompositorInfo(int64_t view_id) {
                 event->Signal();
               },
               endpoint.device, &result, &completed))) {
-    return {};
+    return result;
   }
   completed.Wait();
   return result;

@@ -496,6 +496,28 @@ void WebContents::closeRenderer()
     }
 }
 
+void WebContents::rendererGone(const base::Value::Dict& details)
+{
+    m_crashed = true;
+    closeRenderer();
+    mate::EventEmitter<WebContents>::emit("render-process-gone", details);
+}
+
+#if BUILDFLAG(IS_WIN)
+void WebContents::handleD3DDeviceLoss(HRESULT reason)
+{
+    if (!m_renderer || m_crashed)
+        return;
+
+    m_renderer->CloseForD3DDeviceLoss();
+    m_windowsPaintFrame = {};
+    rendererGone(base::Value::Dict()
+        .Set("reason", "killed")
+        .Set("error", "Windows D3D11 presentation device lost")
+        .Set("gpuDeviceRemovedReason", static_cast<int>(reason)));
+}
+#endif
+
 bool WebContents::isAlive() const
 {
     return !m_destroyed && m_renderer && m_renderer->IsAlive();
@@ -1809,6 +1831,18 @@ void WebContents::getCompositorInfoApi(const v8::FunctionCallbackInfo<v8::Value>
                 result.Set("presentation", native ? "directcomposition" : "software");
                 result.Set("importedFrames", contents->m_windowsPaintFrame.gpu_frame
                     ? static_cast<double>(contents->m_windowsPaintFrame.gpu_frame->imported_frames()) : 0.0);
+                if (auto* diagnostics = result.FindDict("diagnostics")) {
+                    if (diagnostics->FindInt("schemaVersion") == 1) {
+                        // Query the client's actual consumer, including failed
+                        // first imports and before a paint snapshot exists.
+                        // CopyFrame here would import, copy and flush a newly
+                        // published frame; metadata must never advance it.
+                        diagnostics->Set("consumer",
+                            contents->m_renderer->GetCompositorConsumerDiagnostics());
+                        diagnostics->Set("presenter",
+                            mini_electron::win::DCompPresenter::Diagnostics(window, id));
+                    }
+                }
                 promise->Resolve(result);
             })) {
         promise->RejectWithErrorMessage("Compositor diagnostics could not be queued");
@@ -3310,9 +3344,7 @@ void WebContents::onRendererEvent(base::Value::Dict event)
         else
             destroyed();
     } else if (type == "crashed") {
-        m_crashed = true;
-        closeRenderer();
-        mate::EventEmitter<WebContents>::emit("render-process-gone", payload);
+        rendererGone(payload);
     } else {
         emitRendererEvent(type, payload, request_id);
     }
