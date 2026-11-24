@@ -6,6 +6,22 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.44 — native full screen and editing shortcuts
+
+Apple Silicon macOS-only runtime update. Windows stays at `0.1.43`; the npm
+installer stays at `0.1.13`.
+
+- The green window button enters native macOS full screen. Exiting restores
+  the window's previous bounds and title-bar button layout.
+- Text inputs, textareas, and rich-text editors use AppKit bindings for
+  line and paragraph navigation, selection, and deletion. Application menu
+  shortcuts take priority and pages can cancel the default editor action.
+
+Published [v0.1.44](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.44)
+from [`15c1628fc`](https://github.com/iris-cat-dev/mini-electron/commit/15c1628fc03d9e35f9951de4af72e60df5c25a66).
+The macOS `runtime-v1` channel selects `0.1.44`. See
+[release verification](VERIFICATION.md#macos-runtime-0144-2026-11-24).
+
 ### Windows runtime 0.1.43 — compositor diagnostics and device-loss recovery
 
 Windows x64-only runtime update. macOS runtime `0.1.42`, npm installer `0.1.13`,

@@ -8,6 +8,26 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.44 (2026-11-24)
+
+The Apple Silicon macOS release was assembled from `15c1628fc` using
+`build.py --jobs 8 --package-dist` and `build_runtime_release.py --runtime-only`.
+The published `mini-electron-v0.1.44-darwin-arm64.zip` contains 38,644,413 bytes;
+its SHA-256 (`bc5dd56412d8a18302c29729e1c1ef5b30d9d09e4c5e8e0ae91e2b47275b81c3`)
+matches the public checksums and versioned manifest. The extracted application
+passed `codesign --verify --deep --strict` and all 193 runtime inventory checks.
+
+The extracted executable passed the native shortcut, newline, IME geometry
+and composition, window-button, companion-window, and DOM fullscreen lifecycle
+smokes. The IME test exercised marked-text lifecycle and Retina placement; it
+did not open the system candidate panel. The runtime is ad-hoc signed, not
+Developer ID signed or notarized.
+
+The public macOS `runtime-v1/artifacts.json` points to `0.1.44`. A fresh,
+unpinned install with npm installer `0.1.13` downloaded that runtime and
+its executable reported `v0.1.44` (ABI `134`). The public Windows channel
+manifest stayed at `0.1.43` byte-for-byte. The npm installer was not republished.
+
 ## Windows runtime 0.1.43 (2026-11-22)
 
 Built normal `Release|x64` from `e26e7e3a4b1efb95be6144eef47325f600cefa20`
