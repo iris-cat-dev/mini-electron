@@ -425,31 +425,31 @@ void PlatformEventHandler::fireImeText(const std::u16string& text, bool committe
     m_lock.Release();
 }
 
-void PlatformEventHandler::fireInputEventToCompositingThread(const blink::WebInputEvent& evt)
+void PlatformEventHandler::fireInputEventToCompositingThread(const blink::WebInputEvent& evt,
+    WTF::Vector<blink::mojom::blink::EditCommandPtr> commands)
 {
     if (evt.GetType() == blink::WebInputEvent::Type::kKeyDown)
         OutputDebugStringA("kKeyDown\n");
 
     scoped_refptr<base::SingleThreadTaskRunner> runner = blink::ThreadScheduler::CompositorThreadScheduler()->InputTaskRunner();
-    std::unique_ptr<blink::WebInputEvent> newEvt = evt.Clone();
-
+    auto dispatch = [](PlatformEventHandler* self,
+                        std::unique_ptr<blink::WebCoalescedInputEvent> event,
+                        WTF::Vector<blink::mojom::blink::EditCommandPtr> commands) {
+        base::AutoLock lock(self->m_lock);
+        if (!self->m_blinkWidgetInputHandler.is_bound() || !self->m_blinkWidgetInputHandler.is_connected())
+            return;
+        // Keep the native bindings and their key event adjacent on the
+        // same widget queue. Blink runs them only as the keyDown default.
+        if (!commands.empty())
+            self->m_blinkWidgetInputHandler->SetEditCommandsForNextKeyEvent(std::move(commands));
+        self->m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::move(event));
+    };
+    auto event = std::make_unique<blink::WebCoalescedInputEvent>(evt, ui::LatencyInfo());
     if (m_isDispatchDirectlyToWidget || runner->BelongsToCurrentThread()) {
-        std::unique_ptr<blink::WebCoalescedInputEvent> event = std::make_unique<blink::WebCoalescedInputEvent>(std::move(evt), ui::LatencyInfo());
-        m_lock.Acquire();
-        if (m_blinkWidgetInputHandler.is_bound() && m_blinkWidgetInputHandler.is_connected())
-            m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::move(event)); // TODO: û���ǿ���̱����������
-        m_lock.Release();
+        dispatch(this, std::move(event), std::move(commands));
     } else {
-        runner->PostTask(FROM_HERE,
-            base::BindOnce(
-                [](PlatformEventHandler* self, std::unique_ptr<blink::WebInputEvent> evt) {
-                    std::unique_ptr<blink::WebCoalescedInputEvent> event = std::make_unique<blink::WebCoalescedInputEvent>(std::move(evt), ui::LatencyInfo());
-                    self->m_lock.Acquire();
-                    if (self->m_blinkWidgetInputHandler.is_bound() && self->m_blinkWidgetInputHandler.is_connected())
-                        self->m_blinkWidgetInputHandler->DispatchNonBlockingEvent(std::move(event)); // TODO: û���ǿ���̱����������
-                    self->m_lock.Release();
-                },
-                base::Unretained(this), std::move(newEvt)));
+        runner->PostTask(FROM_HERE, base::BindOnce(
+            dispatch, base::Unretained(this), std::move(event), std::move(commands)));
     }
 }
 

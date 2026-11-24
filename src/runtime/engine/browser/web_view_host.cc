@@ -1357,10 +1357,11 @@ void WebViewHost::onMouseMessage(unsigned int message, int x, int y, unsigned in
     }, id));
 }
 
-void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event)
+void WebViewHost::onKeyboardEvent(const blink::WebKeyboardEvent& event,
+    WTF::Vector<blink::mojom::blink::EditCommandPtr> commands)
 {
     if (m_platformEventHandler)
-        m_platformEventHandler->fireInputEventToCompositingThread(event);
+        m_platformEventHandler->fireInputEventToCompositingThread(event, std::move(commands));
 }
 
 void WebViewHost::onWheelEvent(int x, int y, int deltaX, int deltaY, unsigned int flags,

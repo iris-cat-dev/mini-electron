@@ -3397,6 +3397,20 @@ bool WebFrameWidgetImpl::HandleCurrentKeyboardEvent()
     if (edit_commands_.empty()) {
         return false;
     }
+#if BUILDFLAG(IS_MAC)
+    const WebInputEvent* input = CurrentInputEvent::Get();
+    if (input && input->GetType() == WebInputEvent::Type::kRawKeyDown) {
+        const int key = static_cast<const WebKeyboardEvent*>(input)->windows_key_code;
+        if (key == VKEY_LEFT || key == VKEY_RIGHT || key == VKEY_UP || key == VKEY_DOWN) {
+            // Cocoa arrow bindings assume horizontal text. Blink's default
+            // keyboard handler transposes them for the editor's writing mode.
+            const Element* focused = FocusedElement();
+            const ComputedStyle* style = focused ? focused->GetComputedStyle() : nullptr;
+            if (style && !style->IsHorizontalWritingMode())
+                return false;
+        }
+    }
+#endif
     WebLocalFrame* frame = FocusedWebLocalFrameInWidget();
     if (!frame)
         frame = local_root_;

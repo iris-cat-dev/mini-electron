@@ -165,7 +165,8 @@ public:
 
     static bool isDraggableRegionNcHitTest(HWND hWnd, const gfx::Point& pos, const blink::WebVector<blink::WebDraggableRegion>& draggableRegion);
 
-    void fireInputEventToCompositingThread(const blink::WebInputEvent& evt);
+    void fireInputEventToCompositingThread(const blink::WebInputEvent& evt,
+        WTF::Vector<blink::mojom::blink::EditCommandPtr> commands = {});
     enum ImeCompositioHandleType {
         kImeCompositioHandleTypeStart,
         kImeCompositioHandleTypeCom,

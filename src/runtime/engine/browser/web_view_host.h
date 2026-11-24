@@ -16,6 +16,7 @@
 #include "src/runtime/engine/bindings/callback_registry.h"
 #include "src/runtime/network/loader/page_net_extra_data.h"
 #include "third_party/blink/public/web/web_draggable_region.h"
+#include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 #include "third_party/blink/public/mojom/page/widget.mojom-blink.h"
 #include "v8.h"
 #include <memory>
@@ -168,7 +169,8 @@ public:
     bool onKeyUp(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyDown(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
     bool onKeyPress(unsigned int virtualKeyCode, unsigned int flags, BOOL isSystemKey);
-    void onKeyboardEvent(const blink::WebKeyboardEvent& event);
+    void onKeyboardEvent(const blink::WebKeyboardEvent& event,
+        WTF::Vector<blink::mojom::blink::EditCommandPtr> commands = {});
 
     enum ImeCompositioType {
         kImeCompositioTypeStart,

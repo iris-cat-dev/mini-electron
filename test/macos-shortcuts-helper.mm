@@ -24,6 +24,39 @@ static NSWindow* Window(napi_env env, napi_value value) {
   if (!result) napi_throw_error(env, nullptr, "Owned window not found");
   return result;
 }
+static NSString* KeyCharacters(const UCKeyboardLayout* layout,
+                               uint32_t code,
+                               NSEventModifierFlags modifiers) {
+  unichar function_key;
+  switch (code) {
+    case kVK_LeftArrow: function_key = NSLeftArrowFunctionKey; break;
+    case kVK_RightArrow: function_key = NSRightArrowFunctionKey; break;
+    case kVK_UpArrow: function_key = NSUpArrowFunctionKey; break;
+    case kVK_DownArrow: function_key = NSDownArrowFunctionKey; break;
+    case kVK_Home: function_key = NSHomeFunctionKey; break;
+    case kVK_End: function_key = NSEndFunctionKey; break;
+    case kVK_PageUp: function_key = NSPageUpFunctionKey; break;
+    case kVK_PageDown: function_key = NSPageDownFunctionKey; break;
+    case kVK_Delete: function_key = NSDeleteCharacter; break;
+    case kVK_ForwardDelete: function_key = NSDeleteFunctionKey; break;
+    default: function_key = 0; break;
+  }
+  if (function_key)
+    return [NSString stringWithCharacters:&function_key length:1];
+
+  UInt32 carbon = 0;
+  if (modifiers & NSEventModifierFlagShift) carbon |= shiftKey;
+  if (modifiers & NSEventModifierFlagControl) carbon |= controlKey;
+  if (modifiers & NSEventModifierFlagOption) carbon |= optionKey;
+  if (modifiers & NSEventModifierFlagCommand) carbon |= cmdKey;
+  UInt32 dead = 0;
+  UniChar chars[8];
+  UniCharCount length = 0;
+  UCKeyTranslate(layout, code, kUCKeyActionDown, carbon >> 8, LMGetKbdType(),
+      kUCKeyTranslateNoDeadKeysMask, &dead, 8, &length, chars);
+  return [NSString stringWithCharacters:chars length:length];
+}
+
 static napi_value Key(napi_env env, napi_callback_info info) {
   size_t count = 3; napi_value args[3];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
@@ -38,16 +71,14 @@ static napi_value Key(napi_env env, napi_callback_info info) {
   TISInputSourceRef source = TISCopyCurrentKeyboardLayoutInputSource();
   CFDataRef data = source ? (CFDataRef)TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) : nullptr;
   if (!data) { if (source) CFRelease(source); napi_throw_error(env, nullptr, "Keyboard layout unavailable"); return nullptr; }
-  UInt32 dead = 0; UniChar chars[8]; UniCharCount length = 0;
-  UInt32 shift = (modifiers & NSEventModifierFlagShift) ? shiftKey >> 8 : 0;
-  UCKeyTranslate((const UCKeyboardLayout*)CFDataGetBytePtr(data), code, kUCKeyActionDown,
-      shift, LMGetKbdType(), kUCKeyTranslateNoDeadKeysBit, &dead, 8, &length, chars);
-  NSString* text = [NSString stringWithCharacters:chars length:length];
+  const auto* layout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(data));
+  NSString* text = KeyCharacters(layout, code, modifiers);
+  NSString* unmodified = KeyCharacters(layout, code, modifiers & NSEventModifierFlagShift);
   CFRelease(source);
   for (NSEventType type : {NSEventTypeKeyDown, NSEventTypeKeyUp}) {
     NSEvent* event = [NSEvent keyEventWithType:type location:NSZeroPoint modifierFlags:modifiers
         timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:window.windowNumber
-        context:nil characters:text charactersIgnoringModifiers:text isARepeat:NO keyCode:code];
+        context:nil characters:text charactersIgnoringModifiers:unmodified isARepeat:NO keyCode:code];
     [[NSApplication sharedApplication] sendEvent:event];
   }
   napi_value result; napi_get_undefined(env, &result); return result;

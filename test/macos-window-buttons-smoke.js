@@ -11,6 +11,7 @@ const path = require('node:path');
 const { app, BrowserWindow } = require('electron');
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-window-buttons-'));
+app.setPath('userData', path.join(temporary, 'profile'));
 const title = `mini-window-buttons-${process.pid}`;
 let finished = false;
 let window;
@@ -26,7 +27,7 @@ function finish(error) {
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
     if (error) console.error(error.stack || error);
-    else console.log('PASS: macOS window buttons retain equal spacing, native hit targets, and close/minimize/zoom actions');
+    else console.log('PASS: macOS window buttons retain equal spacing, native hit targets, and close/minimize/full-screen actions');
     app.exit(error ? 1 : 0);
   }
 }
@@ -104,12 +105,16 @@ app.whenReady().then(async () => {
   await eventually(() => window.isMinimized(), false,
     'restoring after the minimize action must complete');
 
+  const normalBounds = window.getBounds();
   assert.equal(native.click(title, 'zoom'), true);
-  await eventually(() => window.isMaximized(), true,
-    'clicking the native zoom button must maximize the BrowserWindow');
-  window.unmaximize();
-  await eventually(() => window.isMaximized(), false,
-    'unmaximizing after the zoom action must complete');
+  await eventually(() => native.fullScreenSettled(title), true,
+    'clicking the green button must enter native full screen, not just zoom');
+  assert.equal(window.isFullScreen(), true);
+  window.setFullScreen(false);
+  await eventually(() => native.fullScreenSettled(title), false,
+    'AppKit must finish leaving native full screen');
+  assert.equal(window.isFullScreen(), false);
+  assert.deepEqual(window.getBounds(), normalBounds);
   assertLayout(native, 14.5);
 
   let closeEvents = 0;

@@ -3175,8 +3175,22 @@ private:
             else if (location == ui::DomKeyLocation::RIGHT)
                 modifiers |= blink::WebInputEvent::kIsRight;
             input.SetModifiers(modifiers);
-            content::ThreadCall::callBlinkThreadAsyncWithValid(FROM_HERE, view_,
-                [input](content::WebViewHost* view) { view->onKeyboardEvent(input); });
+            WTF::Vector<blink::mojom::blink::EditCommandPtr> commands;
+            if (event_type == blink::WebInputEvent::Type::kRawKeyDown) {
+                if (const auto* bindings = event.FindList("editCommands")) {
+                    commands.ReserveInitialCapacity(bindings->size());
+                    for (const auto& binding : *bindings) {
+                        if (!binding.is_string())
+                            return false;
+                        commands.push_back(blink::mojom::blink::EditCommand::New(
+                            WTF::String::FromUTF8(binding.GetString()), WTF::String()));
+                    }
+                }
+            }
+            PostBlink([this, input, commands = std::move(commands)]() mutable {
+                if (auto* view = View())
+                    view->onKeyboardEvent(input, std::move(commands));
+            });
             return true;
         }
         if (*type == "keyDown")

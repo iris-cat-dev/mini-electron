@@ -309,10 +309,11 @@ composed display pixels and requires Screen Recording permission and unobstructe
 test windows. Optional physical passthrough verification uses
 `MINI_COMPANION_PHYSICAL=1` and macOS Accessibility permission.
 
-Run the selection, image-clipboard, IME, pointer, scroll, and image-preview regressions
-against a rebuilt runtime:
+Run the native editing, clipboard, IME, selection, pointer, scroll, and
+image-preview regressions against a rebuilt runtime:
 
 ```sh
+out/mac-arm64/mini-electron --app=test/macos-shortcuts-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-selection-colors-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-clipboard-editing-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-ime-position-smoke.js
@@ -322,6 +323,13 @@ out/mac-arm64/mini-electron --app=test/macos-scroll-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-precise-wheel-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-image-preview-smoke.js
 ```
+
+Text fields, textareas, and `contenteditable` use AppKit key bindings for caret
+movement, selection, and editing. For example, Command–Left goes to the start
+of the line, Option–Shift–Up extends the selection, and Control–K deletes to
+the end of the paragraph. Menu accelerators keep priority; a page can cancel
+an editor binding with `keydown.preventDefault()`. Blink handles arrow
+movement in vertical text so the caret follows the writing direction.
 
 The selection regression captures actual native renderer-view pixels in both
 color schemes. The IME regression clicks real native editor targets, checks the
@@ -356,6 +364,12 @@ Hidden-titlebar traffic lights retain AppKit's native button size and gap when
 `trafficLightPosition` or `setWindowButtonPosition()` moves them. Their title-bar
 container follows the requested top margin, keeping all three native hit targets
 clickable above document drag regions. Fractional runtime positions are preserved.
+
+On titled, resizable, focusable windows, the green button enters native macOS
+full screen by default, including with a hidden title bar. Set
+`fullscreenable: false` to keep the button's window zoom behavior instead.
+Companion panels can still appear alongside a full-screen window via
+`setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })`.
 
 CSS `-webkit-app-region: drag` regions use native AppKit window dragging.
 Overlapping `no-drag` regions take precedence so titlebar controls stay clickable.
@@ -604,7 +618,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 The window-button regression compiles a native helper, verifies equal AppKit
 spacing and hit targets at constructor and runtime positions, then sends real
-mouse events through the window to close, minimize, and zoom:
+mouse events to close, minimize, and enter native full screen. It also checks
+that exiting full screen restores the previous bounds and button layout:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \

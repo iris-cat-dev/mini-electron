@@ -59,6 +59,7 @@ export interface BrowserWindowConstructorOptions {
   frame?: boolean;
   transparent?: boolean;
   focusable?: boolean;
+  fullscreenable?: boolean;
   alwaysOnTop?: boolean;
   hasShadow?: boolean;
   backgroundColor?: string;

@@ -27,6 +27,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
+#include "base/auto_reset.h"
 #include "base/apple/scoped_cftyperef.h"
 #include "base/files/file_path.h"
 #include "base/message_loop/message_pump_apple.h"
@@ -932,6 +933,7 @@ class MacBrowserWindow final : public mate::EventEmitter<MacBrowserWindow>,
   CGFloat window_button_spacing_ = 0;
   bool has_window_button_position_ = false;
   bool has_window_button_spacing_ = false;
+  bool can_be_full_screen_primary_ = false;
   atom::WebContents* web_contents_ = nullptr;
   std::vector<MacBrowserView*> browser_views_;
   struct DraggableRegion {
@@ -1216,6 +1218,13 @@ static void RefreshNativeCursorAtPointer() {
 - (instancetype)initWithOwner:(MacBrowserWindow*)owner;
 @end
 
+struct MacKeyInterpretation {
+  NSEvent* event;
+  base::Value::List commands;
+  NSString* text = nil;
+  bool key_sent = false;
+};
+
 @implementation MiniElectronRendererView {
   RendererSurfaceHost* _owner;
   NSRange _textSelection;
@@ -1226,7 +1235,7 @@ static void RefreshNativeCursorAtPointer() {
   BOOL _composing;
   uint64_t _imeSerial;
   uint64_t _pendingImeSerial;
-  NSEvent* _interpretingKey;
+  MacKeyInterpretation* _interpretingKey;
   BOOL _nativeDragActive;
   NSUInteger _heldMouseButtons;
   NSCursor* _nativeCursor;
@@ -1656,7 +1665,9 @@ static void RefreshNativeCursorAtPointer() {
   input.Set("modifiers", [self mouseModifiers:event]);
   _owner->SendInput(std::move(input));
 }
-- (void)sendKey:(NSEvent*)event type:(const char*)type {
+- (void)sendKey:(NSEvent*)event
+          type:(const char*)type
+      commands:(base::Value::List*)commands {
   base::Value::Dict input;
   input.Set("type", type);
   input.Set("keyCode", static_cast<int>(ui::KeyboardCodeFromNSEvent(event)));
@@ -1667,17 +1678,33 @@ static void RefreshNativeCursorAtPointer() {
   input.Set("text", event.characters.UTF8String ?: "");
   input.Set("unmodifiedText", event.charactersIgnoringModifiers.UTF8String ?: "");
   input.Set("systemKey", false);
+  if (commands && !commands->empty())
+    input.Set("editCommands", std::move(*commands));
   _owner->SendInput(std::move(input));
 }
-- (void)keyDown:(NSEvent*)event {
-  [self sendKey:event type:"keyDown"];
-  if (!(event.modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl))) {
-    _interpretingKey = event;
-    [self interpretKeyEvents:@[ event ]];
-    _interpretingKey = nil;
+- (void)dispatchInterpretedKey {
+  MacKeyInterpretation& key = *_interpretingKey;
+  if (!key.key_sent) {
+    key.key_sent = true;
+    [self sendKey:key.event type:"keyDown" commands:&key.commands];
+  }
+  NSString* text = key.text;
+  key.text = nil;
+  for (NSUInteger index = 0; index < text.length; ++index) {
+    [self sendCharacter:[text characterAtIndex:index]
+                   text:[text substringWithRange:NSMakeRange(index, 1)]
+                  event:key.event];
   }
 }
-- (void)keyUp:(NSEvent*)event { [self sendKey:event type:"keyUp"]; }
+- (void)keyDown:(NSEvent*)event {
+  MacKeyInterpretation key{.event = event, .commands = {}};
+  base::AutoReset interpreting(&_interpretingKey, &key);
+  [self interpretKeyEvents:@[ event ]];
+  [self dispatchInterpretedKey];
+}
+- (void)keyUp:(NSEvent*)event {
+  [self sendKey:event type:"keyUp" commands:nullptr];
+}
 - (void)executeEditCommand:(const char*)command {
   base::Value::Dict input;
   input.Set("type", "editCommand");
@@ -1703,7 +1730,7 @@ static void RefreshNativeCursorAtPointer() {
     if ([menu performKeyEquivalent:alias]) return YES;
   }
   if (event.modifierFlags & NSEventModifierFlagCommand) {
-    [self sendKey:event type:"keyDown"];
+    [self keyDown:event];
     return YES;
   }
   return [super performKeyEquivalent:event];
@@ -1766,6 +1793,12 @@ static void RefreshNativeCursorAtPointer() {
     input.Set("replacementStart", static_cast<int>(range.location));
     input.Set("replacementLength", static_cast<int>(range.length));
   }
+  if (_interpretingKey) {
+    // Keep raw keyDown ahead of marked-text updates and commits, so DOM
+    // shortcuts (such as Return to submit) still see the composing state.
+    _interpretingKey->commands.clear();
+    [self dispatchInterpretedKey];
+  }
   _pendingImeSerial = ++_imeSerial;
   input.Set("imeSerial", base::NumberToString(_pendingImeSerial));
   if (_owner->SendInput(std::move(input)))
@@ -1774,16 +1807,16 @@ static void RefreshNativeCursorAtPointer() {
   return NO;
 }
 
-- (void)sendCharacter:(unichar)character text:(NSString*)text {
+- (void)sendCharacter:(unichar)character text:(NSString*)text event:(NSEvent*)event {
   base::Value::Dict input;
   input.Set("type", "char");
   input.Set("charCode", static_cast<int>(character));
-  input.Set("modifiers", [self inputModifiers:_interpretingKey]);
-  input.Set("nativeKeyCode", static_cast<int>(_interpretingKey.keyCode));
-  input.Set("domCode", static_cast<int>(ui::DomCodeFromNSEvent(_interpretingKey)));
-  input.Set("domKey", static_cast<int>(static_cast<uint32_t>(ui::DomKeyFromNSEvent(_interpretingKey))));
+  input.Set("modifiers", [self inputModifiers:event]);
+  input.Set("nativeKeyCode", static_cast<int>(event.keyCode));
+  input.Set("domCode", static_cast<int>(ui::DomCodeFromNSEvent(event)));
+  input.Set("domKey", static_cast<int>(static_cast<uint32_t>(ui::DomKeyFromNSEvent(event))));
   input.Set("text", text.UTF8String ?: "");
-  input.Set("unmodifiedText", _interpretingKey.charactersIgnoringModifiers.UTF8String ?: "");
+  input.Set("unmodifiedText", event.charactersIgnoringModifiers.UTF8String ?: "");
   _owner->SendInput(std::move(input));
 }
 
@@ -1805,9 +1838,11 @@ static void RefreshNativeCursorAtPointer() {
     _composing = NO;
     return;
   }
-  for (NSUInteger index = 0; index < text.length; ++index)
-    [self sendCharacter:[text characterAtIndex:index]
-                   text:[text substringWithRange:NSMakeRange(index, 1)]];
+  if (!(_interpretingKey->event.modifierFlags &
+        (NSEventModifierFlagCommand | NSEventModifierFlagControl))) {
+    NSString* pending = _interpretingKey->text;
+    _interpretingKey->text = pending ? [pending stringByAppendingString:text] : text;
+  }
 }
 - (void)insertText:(id)value { [self insertText:value replacementRange:NSMakeRange(NSNotFound, 0)]; }
 - (void)setMarkedText:(id)value selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
@@ -1875,14 +1910,37 @@ static void RefreshNativeCursorAtPointer() {
   return [self.window convertRectToScreen:[self convertRect:rect toView:nil]];
 }
 - (void)doCommandBySelector:(SEL)selector {
-  if (_interpretingKey && !_composing &&
-      (selector == @selector(insertNewline:) ||
-       selector == @selector(insertLineBreak:) ||
-       selector == @selector(insertNewlineIgnoringFieldEditor:))) {
-    // AppKit delivers Return as a command, not insertText:. Outside marked
-    // text, forward a character so Blink can honor keyDown cancellation.
-    [self sendCharacter:'\r' text:@"\r"];
+  if (!_interpretingKey || _interpretingKey->key_sent || _composing ||
+      selector == @selector(noop:)) {
+    return;
   }
+  std::string_view name(sel_getName(selector));
+  if (!name.ends_with(':'))
+    return;
+  name.remove_suffix(1);
+  if (name.starts_with("insert")) {
+    // Keep insertion on the character path: Tab can move focus and a page
+    // can cancel Return, even after its keyDown reaches the focused editor.
+    const unsigned short key = _interpretingKey->event.keyCode;
+    if ((key == kVK_Return || key == kVK_ANSI_KeypadEnter) &&
+        (name == "insertNewline" || name == "insertLineBreak" ||
+         name == "insertNewlineIgnoringFieldEditor" ||
+         name == "insertParagraphSeparator")) {
+      _interpretingKey->text = @"\r";
+    }
+    return;
+  }
+  if (name == "pageUp")
+    name = "MovePageUp";
+  else if (name == "pageDown")
+    name = "MovePageDown";
+  else if (name == "pageUpAndModifySelection")
+    name = "MovePageUpAndModifySelection";
+  else if (name == "pageDownAndModifySelection")
+    name = "MovePageDownAndModifySelection";
+  else if (name == "showGuessPanel")
+    name = "ToggleSpellPanel";
+  _interpretingKey->commands.Append(name);
 }
 @end
 
@@ -2045,6 +2103,7 @@ MacBrowserWindow::MacBrowserWindow(v8::Isolate* isolate,
   bool frame = true;
   bool transparent = false;
   bool focusable = true;
+  bool fullscreenable = true;
   bool always_on_top = false;
   bool has_shadow = true;
   std::string title = State().name;
@@ -2060,6 +2119,7 @@ MacBrowserWindow::MacBrowserWindow(v8::Isolate* isolate,
   options.GetBydefaultVal("frame", frame, &frame);
   options.GetBydefaultVal("transparent", transparent, &transparent);
   options.GetBydefaultVal("focusable", focusable, &focusable);
+  options.GetBydefaultVal("fullscreenable", fullscreenable, &fullscreenable);
   options.GetBydefaultVal("alwaysOnTop", always_on_top, &always_on_top);
   options.GetBydefaultVal("hasShadow", has_shadow, &has_shadow);
   options.GetBydefaultVal("title", title, &title);
@@ -2089,6 +2149,10 @@ MacBrowserWindow::MacBrowserWindow(v8::Isolate* isolate,
   ((NSPanel*)window_).hidesOnDeactivate = NO;
   window_.hasShadow = has_shadow;
   window_.level = always_on_top ? NSFloatingWindowLevel : NSNormalWindowLevel;
+  // NSPanel does not make its green button a full-screen control by default.
+  can_be_full_screen_primary_ = fullscreenable && frame && resizable && focusable;
+  if (can_be_full_screen_primary_)
+    window_.collectionBehavior |= NSWindowCollectionBehaviorFullScreenPrimary;
   window_.title = NSStringFromUtf8(title);
   window_.opaque = !transparent;
   window_.backgroundColor = initial_background;
@@ -2955,16 +3019,19 @@ void MacBrowserWindow::SetVisibleOnAllWorkspaces(const v8::FunctionCallbackInfo<
     gin_helper::Dictionary options(info.GetIsolate(), info[1].As<v8::Object>());
     options.Get("visibleOnFullScreen", &full_screen);
   }
+  const bool all_workspaces = info[0]->BooleanValue(info.GetIsolate());
   NSWindowCollectionBehavior behavior = self->window_.collectionBehavior;
   behavior &= ~(NSWindowCollectionBehaviorCanJoinAllSpaces |
+                NSWindowCollectionBehaviorFullScreenPrimary |
                 NSWindowCollectionBehaviorFullScreenAuxiliary);
-  if (info[0]->BooleanValue(info.GetIsolate())) {
+  if (all_workspaces) {
     behavior &= ~NSWindowCollectionBehaviorMoveToActiveSpace;
     behavior |= NSWindowCollectionBehaviorCanJoinAllSpaces;
-    if (full_screen) {
-      behavior &= ~NSWindowCollectionBehaviorFullScreenPrimary;
-      behavior |= NSWindowCollectionBehaviorFullScreenAuxiliary;
-    }
+  }
+  if (all_workspaces && full_screen) {
+    behavior |= NSWindowCollectionBehaviorFullScreenAuxiliary;
+  } else if (self->can_be_full_screen_primary_) {
+    behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
   }
   self->window_.collectionBehavior = behavior;
 }

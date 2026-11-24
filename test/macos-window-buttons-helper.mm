@@ -4,6 +4,10 @@
 
 #include <string>
 
+static NSHashTable<NSWindow*>* g_full_screen_windows;
+static id g_enter_full_screen;
+static id g_exit_full_screen;
+
 static std::string String(napi_env env, napi_value value) {
   size_t length = 0;
   if (napi_get_value_string_utf8(env, value, nullptr, 0, &length) != napi_ok)
@@ -114,6 +118,22 @@ static napi_value Snapshot(napi_env env, napi_callback_info info) {
   return result;
 }
 
+static napi_value FullScreenSettled(napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1];
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc != 1) {
+    napi_throw_type_error(env, nullptr, "fullScreenSettled(title) requires one argument");
+    return nullptr;
+  }
+  NSWindow* window = OwnedWindow(env, args[0]);
+  if (!window)
+    return nullptr;
+  napi_value result;
+  napi_get_boolean(env, [g_full_screen_windows containsObject:window], &result);
+  return result;
+}
+
 static NSEvent* MouseEvent(NSWindow* window,
                            NSEventType type,
                            NSPoint point) {
@@ -180,11 +200,23 @@ static napi_value Click(napi_env env, napi_callback_info info) {
 }
 
 NAPI_MODULE_INIT() {
+  g_full_screen_windows = [NSHashTable weakObjectsHashTable];
+  NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
+  g_enter_full_screen = [center addObserverForName:NSWindowDidEnterFullScreenNotification
+      object:nil queue:nil usingBlock:^(NSNotification* notification) {
+        [g_full_screen_windows addObject:notification.object];
+      }];
+  g_exit_full_screen = [center addObserverForName:NSWindowDidExitFullScreenNotification
+      object:nil queue:nil usingBlock:^(NSNotification* notification) {
+        [g_full_screen_windows removeObject:notification.object];
+      }];
   const napi_property_descriptor methods[] = {
       {"snapshot", nullptr, Snapshot, nullptr, nullptr, nullptr, napi_default,
        nullptr},
       {"click", nullptr, Click, nullptr, nullptr, nullptr, napi_default,
        nullptr},
+      {"fullScreenSettled", nullptr, FullScreenSettled, nullptr, nullptr,
+       nullptr, napi_default, nullptr},
   };
   napi_define_properties(env, exports, sizeof(methods) / sizeof(methods[0]),
                          methods);
