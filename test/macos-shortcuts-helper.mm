@@ -1,5 +1,6 @@
 #import <AppKit/AppKit.h>
 #import <Carbon/Carbon.h>
+#import <objc/runtime.h>
 #include <node_api.h>
 #include <cstring>
 #include <string>
@@ -57,15 +58,43 @@ static NSString* KeyCharacters(const UCKeyboardLayout* layout,
   return [NSString stringWithCharacters:chars length:length];
 }
 
+static NSString* interpretedText;
+
+static void InterpretWithReusedText(id<NSTextInputClient> responder, SEL, NSArray*) {
+  NSMutableString* buffer = [interpretedText mutableCopy];
+  [responder insertText:buffer replacementRange:NSMakeRange(NSNotFound, 0)];
+  // Native IMEs may reuse the buffer before interpretKeyEvents: returns.
+  [buffer setString:@""];
+}
+
+static Class ReusedTextInterpreter(Class rendererClass) {
+  static Class interpreter = [rendererClass] {
+    Class cls = objc_allocateClassPair(rendererClass, "MiniShortcutSmokeTextInterpreter", 0);
+    const SEL selector = @selector(interpretKeyEvents:);
+    class_addMethod(cls, selector, reinterpret_cast<IMP>(InterpretWithReusedText),
+        method_getTypeEncoding(class_getInstanceMethod(rendererClass, selector)));
+    objc_registerClassPair(cls);
+    return cls;
+  }();
+  return interpreter;
+}
+
 static napi_value Key(napi_env env, napi_callback_info info) {
-  size_t count = 3; napi_value args[3];
+  size_t count = 4; napi_value args[4];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
   uint32_t code = 0, modifiers = 0;
-  if (count != 3 || napi_get_value_uint32(env, args[1], &code) != napi_ok ||
+  if (count < 3 || napi_get_value_uint32(env, args[1], &code) != napi_ok ||
       napi_get_value_uint32(env, args[2], &modifiers) != napi_ok) {
-    napi_throw_type_error(env, nullptr, "key(title, hardwareKeycode, modifiers)"); return nullptr;
+    napi_throw_type_error(env, nullptr, "key(title, hardwareKeycode, modifiers[, interpretedText])"); return nullptr;
   }
   NSWindow* window = Window(env, args[0]); if (!window) return nullptr;
+  NSString* reuse = count == 4 ? Text(env, args[3]) : nil;
+  if (count == 4 && !reuse) return nullptr;
+  NSResponder* responder = window.firstResponder;
+  if (reuse && ![responder conformsToProtocol:@protocol(NSTextInputClient)]) {
+    napi_throw_error(env, nullptr, "Owned renderer is not the text input client");
+    return nullptr;
+  }
   // Translate the actual current keyboard layout, rather than pretending the
   // hardware code is an ASCII or Windows virtual key.
   TISInputSourceRef source = TISCopyCurrentKeyboardLayoutInputSource();
@@ -79,7 +108,19 @@ static napi_value Key(napi_env env, napi_callback_info info) {
     NSEvent* event = [NSEvent keyEventWithType:type location:NSZeroPoint modifierFlags:modifiers
         timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:window.windowNumber
         context:nil characters:text charactersIgnoringModifiers:unmodified isARepeat:NO keyCode:code];
-    [[NSApplication sharedApplication] sendEvent:event];
+    if (reuse && type == NSEventTypeKeyDown) {
+      const Class original = object_getClass(responder);
+      interpretedText = reuse;
+      object_setClass(responder, ReusedTextInterpreter(original));
+      @try {
+        [responder keyDown:event];
+      } @finally {
+        object_setClass(responder, original);
+        interpretedText = nil;
+      }
+    } else {
+      [[NSApplication sharedApplication] sendEvent:event];
+    }
   }
   napi_value result; napi_get_undefined(env, &result); return result;
 }

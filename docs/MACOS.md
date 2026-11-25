@@ -330,6 +330,11 @@ of the line, Option–Shift–Up extends the selection, and Control–K deletes 
 the end of the paragraph. Menu accelerators keep priority; a page can cancel
 an editor binding with `keydown.preventDefault()`. Blink handles arrow
 movement in vertical text so the caret follows the writing direction.
+Plain text returned by AppKit is snapshotted before the input method can reuse
+its buffer, so spaces and full-width punctuation reach the editor after
+`keydown`. The shortcut regression emulates buffer reuse without changing the
+system keyboard input source and also checks that canceling `keydown` suppresses
+the resulting text.
 
 The selection regression captures actual native renderer-view pixels in both
 color schemes. The IME regression clicks real native editor targets, checks the

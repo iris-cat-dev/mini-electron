@@ -107,7 +107,11 @@ app.whenReady().then(async () => {
       })
     }
     document.addEventListener('keyup', () => { window.editKeyReleased = true }); true`)
-  for (const [label, code, modifiers, result, field = 'edit', cancel = '', vertical = false] of [
+  for (const [label, code, modifiers, result, field = 'edit', cancel = '', vertical = false, interpreted] of [
+    ['Space: insert text from an IME buffer in a single-line input', 49, 0, ['first line b eta gamma last', 13, 13], 'single', '', false, ' '],
+    ['Comma: insert full-width text from an IME buffer in a textarea', 43, 0, ['first line\nb，eta gamma\nlast', 13, 13], 'edit', '', false, '，'],
+    ['Period: insert full-width text from an IME buffer in contenteditable', 47, 0, ['first line\nb。eta gamma\nlast', 13, 13], 'rich', '', false, '。'],
+    ['Space: keydown cancellation leaves IME text uninserted', 49, 0, [text, 12, 12], 'edit', 'keydown', false, ' '],
     ['Cmd+Left: start of single-line input', 123, CMD, ['first line beta gamma last', 0, 0], 'single'],
     ['Cmd+Shift+Right: select to end of line', 124, CMD | SHIFT, [text, 12, 21]],
     ['Cmd+Up: start of textarea', 126, CMD, [text, 0, 0]],
@@ -144,7 +148,7 @@ app.whenReady().then(async () => {
       window.editKeyReleased = false
       window.cancelShortcut = ${JSON.stringify(cancel)}
     } true`)
-    helper.key(title, code, modifiers)
+    helper.key(title, code, modifiers, ...(interpreted === undefined ? [] : [interpreted]))
     const delivered = modifiers & CMD ? 'keys.length === 1' : 'keys.length === 1 && editKeyReleased'
     await eventually(async () => await evaluate(delivered), label)
     const actual = JSON.parse(await evaluate(`JSON.stringify((() => {

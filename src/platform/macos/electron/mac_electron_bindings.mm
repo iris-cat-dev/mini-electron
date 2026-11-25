@@ -1841,7 +1841,8 @@ struct MacKeyInterpretation {
   if (!(_interpretingKey->event.modifierFlags &
         (NSEventModifierFlagCommand | NSEventModifierFlagControl))) {
     NSString* pending = _interpretingKey->text;
-    _interpretingKey->text = pending ? [pending stringByAppendingString:text] : text;
+    // The input method can clear its string before interpretKeyEvents: returns.
+    _interpretingKey->text = pending ? [pending stringByAppendingString:text] : [text copy];
   }
 }
 - (void)insertText:(id)value { [self insertText:value replacementRange:NSMakeRange(NSNotFound, 0)]; }
