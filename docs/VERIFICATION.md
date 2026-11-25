@@ -8,6 +8,22 @@ Each record applies only to its stated source layout, runtime, platform and
 workload. Older records migrated from the root README are not evidence of a new
 verification run. Release-specific evidence is in [release notes](RELEASES.md).
 
+## macOS runtime 0.1.45 (2026-11-25)
+
+Built the Apple Silicon runtime from `b9c768257` and assembled it with
+`build_runtime_release.py --runtime-only`. The 38,644,424-byte archive has SHA-256
+`e002da7b9928149753ca1dfcebc824dae210b3003be2c6c294c2efa75b5c89bc`, matching
+both the release checksum and the published asset. The extracted app passed
+strict signature verification and the native shortcut, newline, and IME
+composition smokes. The shortcut regression covers a reused input-method buffer
+for space, full-width comma and period, plus `keydown` cancellation.
+
+The public macOS `runtime-v1` manifest selects `0.1.45`, and an unpinned
+install with OMP Desktop's `@iriscat/mini-electron@0.1.12` selected it. The
+project's downloaded executable reported `v0.1.45`, passed the native shortcut
+smoke, and was accepted as the `darwin-arm64` distribution by its packager.
+The Windows channel manifest is unchanged; no npm package was published.
+
 ## macOS runtime 0.1.44 (2026-11-24)
 
 The Apple Silicon macOS release was assembled from `15c1628fc` using

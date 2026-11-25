@@ -6,6 +6,19 @@
 
 These are historical release and verification records, not a claim that every platform ships every change. npm installer and native runtime versions are independent. See [installation](INSTALLATION.md) and [publishing](RELEASING.md).
 
+### macOS runtime 0.1.45 — spaces and punctuation input fix
+
+Apple Silicon macOS-only runtime update. Windows stays at `0.1.43`; the npm
+installer stays at `0.1.13`.
+
+- Restores spaces and punctuation, including full-width commas and periods
+  with Simplified Pinyin. Space still confirms a composition candidate without
+  inserting a literal space.
+
+Published [v0.1.45](https://github.com/iris-cat-dev/mini-electron/releases/tag/v0.1.45)
+from [`b9c768257`](https://github.com/iris-cat-dev/mini-electron/commit/b9c76825780b2357d76ccfed300667bbaedc1020).
+See [release verification](VERIFICATION.md#macos-runtime-0145-2026-11-25).
+
 ### macOS runtime 0.1.44 — native full screen and editing shortcuts
 
 Apple Silicon macOS-only runtime update. Windows stays at `0.1.43`; the npm
