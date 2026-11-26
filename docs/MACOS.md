@@ -173,8 +173,10 @@ Return and Shift+Return insert a line break in multiline editors, including
 keypad Enter. AppKit's newline commands forward one character event after
 `keydown`, preserving native modifiers and DOM `preventDefault()` handling.
 Chat editors can keep plain Enter as submit while allowing Shift+Enter to
-insert a newline. During marked-text composition, Return stays on the native
-IME path instead of inserting a line break or submitting a chat.
+insert a newline. During marked-text composition, Return confirms the candidate
+without inserting a line break or submitting the chat. The native key keeps
+its `KeyboardEvent.isComposing` flag even if Blink commits the candidate before
+dispatching that key to the page. A separate Return can submit immediately.
 
 Sandbox IPC preserves nested `ArrayBuffer` and typed-array properties as binary
 structured-clone data in both directions. Image attachment writes retain the
@@ -322,6 +324,15 @@ out/mac-arm64/mini-electron --app=test/macos-pointer-interaction-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-scroll-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-precise-wheel-smoke.js
 out/mac-arm64/mini-electron --app=test/macos-image-preview-smoke.js
+```
+
+To exercise the real macOS input method, select Simplified Pinyin, grant the
+test launcher Accessibility permission, and leave the test window focused.
+The smoke posts keys only to its own window's process. It verifies that the
+first Return commits `abox` without sending and the second sends exactly once.
+
+```sh
+MINI_NEWLINE_PINYIN=1 out/mac-arm64/mini-electron --app=test/macos-newline-smoke.js
 ```
 
 Text fields, textareas, and `contenteditable` use AppKit key bindings for caret

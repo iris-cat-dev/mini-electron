@@ -3174,6 +3174,8 @@ private:
                 modifiers |= blink::WebInputEvent::kIsLeft;
             else if (location == ui::DomKeyLocation::RIGHT)
                 modifiers |= blink::WebInputEvent::kIsRight;
+            if (event.FindBool("isComposing").value_or(false))
+                modifiers |= blink::WebInputEvent::kIsComposing;
             input.SetModifiers(modifiers);
             WTF::Vector<blink::mojom::blink::EditCommandPtr> commands;
             if (event_type == blink::WebInputEvent::Type::kRawKeyDown) {

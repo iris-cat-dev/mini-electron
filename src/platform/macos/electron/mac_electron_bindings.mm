@@ -1221,6 +1221,7 @@ static void RefreshNativeCursorAtPointer() {
 struct MacKeyInterpretation {
   NSEvent* event;
   base::Value::List commands;
+  bool was_composing;
   NSString* text = nil;
   bool key_sent = false;
 };
@@ -1667,7 +1668,8 @@ struct MacKeyInterpretation {
 }
 - (void)sendKey:(NSEvent*)event
           type:(const char*)type
-      commands:(base::Value::List*)commands {
+      commands:(base::Value::List*)commands
+     composing:(BOOL)composing {
   base::Value::Dict input;
   input.Set("type", type);
   input.Set("keyCode", static_cast<int>(ui::KeyboardCodeFromNSEvent(event)));
@@ -1678,6 +1680,8 @@ struct MacKeyInterpretation {
   input.Set("text", event.characters.UTF8String ?: "");
   input.Set("unmodifiedText", event.charactersIgnoringModifiers.UTF8String ?: "");
   input.Set("systemKey", false);
+  if (composing)
+    input.Set("isComposing", true);
   if (commands && !commands->empty())
     input.Set("editCommands", std::move(*commands));
   _owner->SendInput(std::move(input));
@@ -1686,7 +1690,8 @@ struct MacKeyInterpretation {
   MacKeyInterpretation& key = *_interpretingKey;
   if (!key.key_sent) {
     key.key_sent = true;
-    [self sendKey:key.event type:"keyDown" commands:&key.commands];
+    [self sendKey:key.event type:"keyDown" commands:&key.commands
+        composing:key.was_composing];
   }
   NSString* text = key.text;
   key.text = nil;
@@ -1697,13 +1702,15 @@ struct MacKeyInterpretation {
   }
 }
 - (void)keyDown:(NSEvent*)event {
-  MacKeyInterpretation key{.event = event, .commands = {}};
+  // AppKit can commit the candidate while interpreting this same key.
+  MacKeyInterpretation key{
+      .event = event, .commands = {}, .was_composing = static_cast<bool>(_composing)};
   base::AutoReset interpreting(&_interpretingKey, &key);
   [self interpretKeyEvents:@[ event ]];
   [self dispatchInterpretedKey];
 }
 - (void)keyUp:(NSEvent*)event {
-  [self sendKey:event type:"keyUp" commands:nullptr];
+  [self sendKey:event type:"keyUp" commands:nullptr composing:NO];
 }
 - (void)executeEditCommand:(const char*)command {
   base::Value::Dict input;
@@ -1794,8 +1801,8 @@ struct MacKeyInterpretation {
     input.Set("replacementLength", static_cast<int>(range.length));
   }
   if (_interpretingKey) {
-    // Keep raw keyDown ahead of marked-text updates and commits, so DOM
-    // shortcuts (such as Return to submit) still see the composing state.
+    // Forward keyDown before its IME operation. The renderer's keyboard queue
+    // may still deliver it later, so keyDown also carries the original state.
     _interpretingKey->commands.clear();
     [self dispatchInterpretedKey];
   }

@@ -110,7 +110,7 @@ KeyboardEvent::KeyboardEvent(const WebKeyboardEvent& key, LocalDOMWindow* dom_wi
     code_(FromUTF8(ui::KeycodeConverter::DomCodeToCodeString(static_cast<ui::DomCode>(key.dom_code))))
     , key_(FromUTF8(ui::KeycodeConverter::DomKeyToKeyString(static_cast<ui::DomKey>(key.dom_key))))
     , location_(GetKeyLocationCode(key))
-    , is_composing_(HasCurrentComposition(dom_window))
+    , is_composing_((key.GetModifiers() & WebInputEvent::kIsComposing) || HasCurrentComposition(dom_window))
 {
     InitLocationModifiers(location_);
 

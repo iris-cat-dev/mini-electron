@@ -4,6 +4,7 @@
 #include <node_api.h>
 #include <cstring>
 #include <string>
+#include <unistd.h>
 
 static NSString* Text(napi_env env, napi_value value) {
   size_t length = 0;
@@ -124,6 +125,52 @@ static napi_value Key(napi_env env, napi_callback_info info) {
   }
   napi_value result; napi_get_undefined(env, &result); return result;
 }
+// Route through WindowServer so the selected input method handles the key,
+// without posting to whichever application happens to have global focus.
+static napi_value PinyinKey(napi_env env, napi_callback_info info) {
+  size_t count = 2; napi_value args[2];
+  napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
+  uint32_t code = 0;
+  if (count != 2 || napi_get_value_uint32(env, args[1], &code) != napi_ok || code > 127) {
+    napi_throw_type_error(env, nullptr, "pinyinKey(title, hardwareKeycode)"); return nullptr;
+  }
+  NSWindow* window = Window(env, args[0]);
+  if (!window) return nullptr;
+  if (!window.isKeyWindow ||
+      ![window.firstResponder conformsToProtocol:@protocol(NSTextInputClient)]) {
+    NSString* frontmost = NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier;
+    NSString* error = [NSString stringWithFormat:
+        @"The owned Pinyin editor lost focus (frontmost: %@)", frontmost ?: @"unknown"];
+    napi_throw_error(env, nullptr, error.UTF8String); return nullptr;
+  }
+  TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+  const auto identifier = source
+      ? static_cast<CFStringRef>(TISGetInputSourceProperty(source, kTISPropertyInputSourceID))
+      : nullptr;
+  const bool pinyin = identifier && CFEqual(identifier, CFSTR("com.apple.inputmethod.SCIM.ITABC"));
+  if (source) CFRelease(source);
+  if (!pinyin) {
+    napi_throw_error(env, nullptr, "Select macOS Simplified Pinyin for the Pinyin smoke");
+    return nullptr;
+  }
+  if (!CGPreflightPostEventAccess()) {
+    napi_throw_error(env, nullptr, "Pinyin smoke requires Accessibility permission to post native keys");
+    return nullptr;
+  }
+  CGEventRef down = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(code), true);
+  CGEventRef up = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(code), false);
+  if (!down || !up) {
+    if (down) CFRelease(down);
+    if (up) CFRelease(up);
+    napi_throw_error(env, nullptr, "Cannot create WindowServer key events"); return nullptr;
+  }
+  CGEventPostToPid(getpid(), down);
+  CGEventPostToPid(getpid(), up);
+  CFRelease(down);
+  CFRelease(up);
+  napi_value result; napi_get_undefined(env, &result); return result;
+}
+
 static napi_value Edit(napi_env env, napi_callback_info info) {
   size_t count = 2; napi_value args[2];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
@@ -256,6 +303,7 @@ static napi_value ImageClipboard(napi_env env, napi_callback_info info) {
 NAPI_MODULE_INIT() {
   napi_property_descriptor methods[] = {
     {"key", nullptr, Key, nullptr, nullptr, nullptr, napi_default, nullptr},
+    {"pinyinKey", nullptr, PinyinKey, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"edit", nullptr, Edit, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"click", nullptr, Click, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"clipboard", nullptr, Clipboard, nullptr, nullptr, nullptr, napi_default, nullptr},

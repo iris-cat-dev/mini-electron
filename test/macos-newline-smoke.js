@@ -8,9 +8,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mini-newline-'));
+const systemPinyin = process.env.MINI_NEWLINE_PINYIN === '1';
 const SHIFT = 1 << 17;
 const title = `Native newline ${process.pid}`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+app.setPath('userData', temporary);
 let window, keys, ime;
 const deadline = setTimeout(() => finish(new Error('Native newline smoke timed out')), 60000);
 function finish(error) {
@@ -18,7 +20,7 @@ function finish(error) {
   if (window && !window.isDestroyed()) window.destroy();
   fs.rmSync(temporary, { recursive: true, force: true });
   if (error) console.error(error.stack || error);
-  else console.log('PASS: native Return/Shift+Return/keypad newline, selection replacement, DOM cancellation, chat submit and marked-text commit');
+  else console.log('PASS: native Return/Shift+Return/keypad newline, selection replacement, DOM cancellation, chat submit and IME Return isolation');
   app.exit(error ? 1 : 0);
 }
 const evaluate = source => window.webContents.executeJavaScript(source);
@@ -78,7 +80,7 @@ app.whenReady().then(async () => {
     window.events=[];window.submissions=0;window.options={};window.editorId='plain';
     window.reset=options=>{
       window.options=options;window.editorId=options.rich?'rich':'plain';
-      const target=document.getElementById(editorId);const text='abCD';
+      const target=document.getElementById(editorId);const text=options.text??'abCD';
       if(options.rich)target.textContent=text;else target.value=text;
       target.focus();const start=options.start??2,end=options.end??start;
       if(options.rich){const range=document.createRange();range.setStart(target.firstChild,start);range.setEnd(target.firstChild,end);getSelection().removeAllRanges();getSelection().addRange(range)}
@@ -147,6 +149,69 @@ app.whenReady().then(async () => {
   state = await snapshot();
   assert.equal(state.events.filter(event => event.type === 'compositionend').length, 1);
   console.log(JSON.stringify({ pass: 'IME Return and native commit', ...state }));
+
+  // Confirm marked text from inside interpretation of the first Return, like
+  // macOS Pinyin does. The renderer can process the commit before DOM keydown.
+  await reset({ chat: true });
+  ime.mark(title, 'a bo x', 6, 0);
+  await eventually('Pinyin-style marked text reaches Blink', async () =>
+    (await snapshot()).text === 'aba bo xCD');
+  keys.key(title, 36, 0, 'abox');
+  keys.key(title, 36, 0);
+  await eventually('Both Returns and the candidate commit reach the editor', async () => {
+    const current = await snapshot();
+    return (current.events.filter(event => event.type === 'keyup' && event.key === 'Enter').length === 2 &&
+      current.events.some(event => event.type === 'compositionend')) || current;
+  });
+  state = await snapshot();
+  const returns = state.events.filter(event => event.type === 'keydown' && event.key === 'Enter');
+  assert.deepEqual(returns.map(event => event.defaultPrevented), [false, true],
+    'The confirming Return stays with the IME; the immediate second Return sends');
+  assert.equal(state.submissions, 1, 'Immediate second Return sends exactly once');
+  assert.equal(state.text, 'ababoxCD', 'Sending leaves the committed text intact');
+
+  if (systemPinyin) {
+    let lateKeyDowns = 0;
+    let checked = 0;
+    for (const delay of [0, 6, 40]) {
+      for (const text of ['', '中文草稿：']) {
+        for (let attempt = 0; attempt < 2; ++attempt) {
+          if (!window.isFocused()) window.focus();
+          await reset({ chat: true, text, start: text.length });
+          // Let WindowServer and the IME observe the window before posting keys.
+          await pause(150);
+          for (const keyCode of [0, 11, 31, 7]) { // a, b, o, x
+            keys.pinyinKey(title, keyCode);
+            if (delay) await pause(delay);
+          }
+          keys.pinyinKey(title, 36);
+          // Don't run a renderer probe between the posted keystroke and commit.
+          await pause(110);
+          await eventually('Pinyin confirms the candidate on the first Return', async () => {
+            const current = await snapshot();
+            return (current.events.some(event => event.type === 'compositionend') &&
+              current.events.some(event => event.type === 'keyup' && event.key === 'Enter')) || current;
+          });
+          state = await snapshot();
+          assert.equal(state.text, text + 'abox', 'First Return commits the Latin text');
+          const keyDown = state.events.findIndex(event => event.type === 'keydown' && event.key === 'Enter');
+          assert.notEqual(keyDown, -1, 'The native confirming Return reaches the page');
+          const end = state.events.findIndex(event => event.type === 'compositionend');
+          if (end < keyDown) ++lateKeyDowns;
+          assert.equal(state.submissions, 0, `First Return only confirms (DOM commit before keydown: ${end < keyDown})`);
+          keys.pinyinKey(title, 36);
+          await eventually('The independent second Return sends', async () => {
+            const current = await snapshot();
+            const releases = current.events.filter(event => event.type === 'keyup' && event.key === 'Enter');
+            return (releases.length === 2 && current.submissions === 1 && current.text === text + 'abox') || current;
+          });
+          ++checked;
+        }
+      }
+    }
+    console.log(JSON.stringify({ pass: 'System Pinyin abox confirmations and sends', checked, lateKeyDowns }));
+  }
+  console.log(JSON.stringify({ pass: 'IME confirmation followed by immediate chat Return' }));
 
   if (process.env.MINI_NEWLINE_SCREENSHOT) {
     await reset({ chat: true });
